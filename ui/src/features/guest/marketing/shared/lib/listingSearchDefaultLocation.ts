@@ -9,17 +9,30 @@ import { buildParkingListEntries } from '@/features/guest/marketing/parkings/lib
 import { mockProperties } from '@/features/guest/marketing/properties/data/mockProperties';
 import { findPlaceByLocationSlug } from '@/features/guest/marketing/properties/lib/groupPropertiesByLocation';
 
-/** Route-aware default for the hero search "Where" field (mock data until public APIs ship). */
+/**
+ * Route-aware default for the hero search "Where" field.
+ *
+ * Category indexes (`/developments`, `/properties`, …) stay empty — the page
+ * already scopes the catalog; stuffing the category label into Where looks like
+ * a failed search ("No matches" for "Developments").
+ *
+ * Detail / location browse paths prefill a real place or listing name.
+ */
 export function getListingSearchDefaultLocation(pathname: string): string {
-  if (pathname === '/developments') return 'Developments';
-  if (pathname === '/properties') return '';
-  if (pathname === '/parkings') return 'Parkings';
-  if (pathname === '/services') return 'Services';
+  // Category indexes — never invent a Where value from the nav label.
+  if (
+    pathname === '/developments' ||
+    pathname === '/properties' ||
+    pathname === '/parkings' ||
+    pathname === '/services' ||
+    pathname === '/search'
+  ) {
+    return '';
+  }
 
   const developmentsInMatch = pathname.match(/^\/developments\/in\/([^/]+)$/);
   if (developmentsInMatch) {
-    const city = findCityByLocationSlug(developmentsInMatch[1] ?? '', mockDevelopments);
-    return city ? `${city} Developments` : '';
+    return findCityByLocationSlug(developmentsInMatch[1] ?? '', mockDevelopments) ?? '';
   }
 
   const developmentDetailMatch = pathname.match(/^\/developments\/([^/]+)$/);
@@ -42,7 +55,7 @@ export function getListingSearchDefaultLocation(pathname: string): string {
   if (developmentParkingMatch) {
     const slug = developmentParkingMatch[1] ?? '';
     const development = mockDevelopments.find((d) => d.slug === slug);
-    return development ? `${development.name} Parking` : '';
+    return development?.name ?? '';
   }
 
   const propertiesInMatch = pathname.match(/^\/properties\/in\/([^/]+)$/);
@@ -52,8 +65,7 @@ export function getListingSearchDefaultLocation(pathname: string): string {
 
   const parkingsInMatch = pathname.match(/^\/parkings\/in\/([^/]+)$/);
   if (parkingsInMatch) {
-    const city = findParkingCityByLocationSlug(parkingsInMatch[1] ?? '', buildParkingListEntries());
-    return city ? `${city} Parking` : '';
+    return findParkingCityByLocationSlug(parkingsInMatch[1] ?? '', buildParkingListEntries()) ?? '';
   }
 
   return '';

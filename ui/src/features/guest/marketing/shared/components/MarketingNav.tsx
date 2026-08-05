@@ -74,7 +74,7 @@ export function MarketingNav() {
     'rounded-full border-2 bg-transparent px-6 shadow-none',
     headerSolid
       ? 'border-border text-foreground hover:border-primary/30 hover:bg-accent hover:text-accent-foreground'
-      : 'border-white/60 text-white hover:border-white hover:bg-white/10 hover:text-white'
+      : 'border-border text-foreground hover:border-foreground/40 hover:bg-muted/80 dark:border-white/60 dark:text-white dark:hover:border-white dark:hover:bg-white/10 dark:hover:text-white'
   );
 
   const handleBecomeHost = () => {
@@ -287,7 +287,7 @@ export function MarketingNav() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed inset-x-0 top-16 z-40 lg:hidden"
+            className="fixed inset-x-0 top-16 z-[60] lg:hidden"
           >
             <div className="bg-background/95 border-b shadow-lg backdrop-blur-xl">
               <div className="container mx-auto space-y-4 px-4 py-6">

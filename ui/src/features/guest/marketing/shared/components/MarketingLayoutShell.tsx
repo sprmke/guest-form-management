@@ -40,6 +40,7 @@ export function MarketingLayoutShell() {
     <ListingScrollSearchProvider
       enabled
       redirectTo={scrollSearchConfig.redirectTo}
+      preferType={scrollSearchConfig.preferType}
       defaultLocation={defaultLocation}
       fields={fields}
       whereLabel={whereSegment.label}
