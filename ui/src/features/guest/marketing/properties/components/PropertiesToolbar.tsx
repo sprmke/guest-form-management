@@ -1,5 +1,7 @@
 import { SlidersHorizontal, LayoutGrid, List, Map, ArrowUpDown } from 'lucide-react';
 
+import { PROPERTY_SORT_OPTIONS } from '@/features/guest/marketing/shared/lib/listingFilterChips';
+
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -14,15 +16,6 @@ interface PropertiesToolbarProps {
   filtersOpen: boolean;
   onToggleFilters: () => void;
 }
-
-const sortOptions = [
-  { value: 'recommended', label: 'Recommended' },
-  { value: 'price-low', label: 'Price: Low to High' },
-  { value: 'price-high', label: 'Price: High to Low' },
-  { value: 'rating', label: 'Highest Rated' },
-  { value: 'reviews', label: 'Most Reviews' },
-  { value: 'newest', label: 'Newest' },
-];
 
 const viewModes: { value: ViewMode; icon: typeof LayoutGrid; label: string }[] = [
   { value: 'grid', icon: LayoutGrid, label: 'Grid view' },
@@ -40,15 +33,15 @@ export function PropertiesToolbar({
   onToggleFilters,
 }: PropertiesToolbarProps) {
   return (
-    <div className="border-border bg-background border-b">
-      <div className="flex items-center justify-between gap-4 px-4 py-3 sm:px-6">
-        <div className="flex items-center gap-4">
+    <div className="border-border bg-background shrink-0 border-b">
+      <div className="flex items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-6">
+        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
           <Button
             variant="outline"
             size="sm"
             onClick={onToggleFilters}
             className={cn(
-              'hidden gap-2 lg:flex',
+              'hidden min-h-[44px] gap-2 lg:inline-flex',
               filtersOpen && 'border-primary bg-primary/10 text-primary hover:bg-primary/15'
             )}
           >
@@ -56,28 +49,27 @@ export function PropertiesToolbar({
             {filtersOpen ? 'Hide Filters' : 'Show Filters'}
           </Button>
 
-          <span className="text-muted-foreground text-sm">
-            <span className="text-foreground font-semibold">{totalResults}</span>{' '}
+          <span className="text-muted-foreground truncate text-sm">
+            <span className="text-foreground font-semibold tabular-nums">{totalResults}</span>{' '}
             {totalResults === 1 ? 'property' : 'properties'}
           </span>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3">
-          <div className="relative hidden sm:block">
-            <div className="flex items-center gap-2">
-              <ArrowUpDown className="text-muted-foreground h-4 w-4" aria-hidden />
-              <select
-                value={sortBy}
-                onChange={(e) => onSortChange(e.target.value)}
-                className="border-border bg-background text-foreground focus:border-primary focus:ring-primary/20 appearance-none rounded-lg border py-2 pl-2 pr-8 text-sm focus:outline-none focus:ring-2"
-              >
-                {sortOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <div className="relative flex items-center gap-2">
+            <ArrowUpDown className="text-muted-foreground hidden h-4 w-4 sm:block" aria-hidden />
+            <select
+              value={sortBy}
+              onChange={(e) => onSortChange(e.target.value)}
+              aria-label="Sort properties"
+              className="border-border bg-background text-foreground focus:border-primary focus:ring-primary/20 min-h-[44px] max-w-[11rem] appearance-none rounded-lg border py-2 pl-2 pr-8 text-sm focus:outline-none focus:ring-2 sm:max-w-none"
+            >
+              {PROPERTY_SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="border-border bg-muted/50 flex rounded-lg border p-1">
@@ -96,6 +88,7 @@ export function PropertiesToolbar({
                       : 'text-muted-foreground hover:text-foreground'
                   )}
                   aria-label={mode.label}
+                  aria-pressed={isActive}
                   title={mode.label}
                 >
                   <Icon className="h-4 w-4" aria-hidden />

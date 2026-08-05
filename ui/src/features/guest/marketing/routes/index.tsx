@@ -22,6 +22,7 @@ import { PropertyFormPage } from '@/features/guest/marketing/pages/PropertyFormP
 import { ServicesPage } from '@/features/guest/marketing/pages/ServicesPage';
 import { TermsPage } from '@/features/guest/marketing/pages/TermsPage';
 import { MarketingLayoutShell } from '@/features/guest/marketing/shared/components/MarketingLayoutShell';
+import { SearchResultsPage } from '@/features/guest/search/pages/SearchResultsPage';
 
 function DevelopmentParkingListRedirect() {
   const { slug = '' } = useParams<{ slug: string }>();
@@ -37,6 +38,7 @@ function DevelopmentParkingCategoryRedirect() {
 export const marketingRoutes = [
   <Route key="marketing-shell" element={<MarketingLayoutShell />}>
     <Route index element={<GuestLandingPage />} />
+    <Route path="search" element={<SearchResultsPage />} />
     <Route path="for-hosts" element={<ForHostsPage />} />
     <Route path="services" element={<ServicesPage />} />
     <Route path="hosts/:orgSlug" element={<HostPublicPage />} />

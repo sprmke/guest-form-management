@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { useLocation } from 'react-router-dom';
 
 import {
   HeroSearch,
@@ -11,6 +12,8 @@ import {
   useListingSearchFields,
   useListingSearchWhereSegment,
 } from '@/features/guest/marketing/shared/lib/listingSearchFields';
+import type { ListingSearchPreferType } from '@/features/guest/marketing/shared/lib/listingSearchPreferType';
+import { resolveListingSearchPreferType } from '@/features/guest/marketing/shared/lib/listingScrollSearchPaths';
 
 import { cn } from '@/lib/utils';
 
@@ -18,7 +21,9 @@ export type { HeroSearchValues as PropertySearchState };
 
 interface ListingHeroSearchProps {
   onSearch?: (values: HeroSearchValues) => void;
+  /** Always navigates to `/search` for real results (kept for API compatibility). */
   redirectTo?: string;
+  preferType?: ListingSearchPreferType | null;
   className?: string;
   fields?: HeroSearchField[];
   whereLabel?: string;
@@ -28,13 +33,15 @@ interface ListingHeroSearchProps {
 
 export function ListingHeroSearch({
   onSearch,
-  redirectTo = '/properties',
+  redirectTo = '/search',
+  preferType: preferTypeProp,
   className,
   fields: fieldsProp,
   whereLabel: whereLabelProp,
   wherePlaceholder: wherePlaceholderProp,
   whereCompactPlaceholder: whereCompactPlaceholderProp,
 }: ListingHeroSearchProps) {
+  const { pathname } = useLocation();
   const scrollSearch = useListingScrollSearchOptional();
   const morphEnabled = scrollSearch?.enabled ?? false;
   const routeDefaultLocation = useListingSearchDefaultLocation();
@@ -49,6 +56,10 @@ export function ListingHeroSearch({
     whereCompactPlaceholderProp ??
     scrollSearch?.whereCompactPlaceholder ??
     routeWhereSegment.compactPlaceholder;
+  const preferType =
+    preferTypeProp !== undefined
+      ? preferTypeProp
+      : (scrollSearch?.preferType ?? resolveListingSearchPreferType(pathname));
 
   if (morphEnabled && scrollSearch) {
     return (
@@ -70,6 +81,7 @@ export function ListingHeroSearch({
     >
       <HeroSearch
         redirectTo={redirectTo}
+        preferType={preferType}
         defaultLocation={defaultLocation}
         onSearch={onSearch}
         fields={fields}
