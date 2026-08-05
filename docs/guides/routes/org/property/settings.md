@@ -379,10 +379,10 @@ Payment details are shown on the guest form and ready-for-check-in email for **t
 
 Shared GAF + pet PDF owner fields in `app_settings`:
 
-- Unit owner, on-site contact, owner phone, signature image
+- Unit owner, on-site contact, owner phone, unit owner / SPA signature
 - **Tower & unit** — read-only; auto-filled from **Basic Information** (`properties.tower` + `properties.unit_number`)
 
-Signature upload saves immediately (like payment QR) and does not reset other unsaved building-form text fields.
+**Signature** — one signature slot shared across tabs (upload appears on the Sign canvas; a saved draw appears on Upload). **Sign** tab: canvas draw; **Save signature** shows only while there are unsaved strokes and hides after save. **Upload** tab: PNG/JPEG file with **Replace signature** when one exists. Live GAF/pet PDF preview on the right updates while drawing and after save. **Clear** wipes the pad for a redraw; each save replaces storage and persists a versioned public URL (`?v=…`) on `gaf_unit_owner_signature_url`. Signature upload saves immediately (like payment QR) and does not reset other unsaved building-form text fields.
 
 ---
 

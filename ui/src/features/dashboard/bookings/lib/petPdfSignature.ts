@@ -75,7 +75,7 @@ async function drawSignatureInFormField(
   const page = pageForSignatureField(pdfDoc, field);
   if (!page) return;
 
-  const res = await fetch(signatureUrl);
+  const res = await fetch(signatureUrl, { cache: 'no-store' });
   if (!res.ok) {
     throw new Error(`Failed to load signature image (${res.status})`);
   }

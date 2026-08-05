@@ -125,7 +125,6 @@ export function PropertyOperationalSettingsSections({
             data.gafUnitOwnerSignatureUrl,
             data.fieldSources?.gafUnitOwnerSignatureUrl
           )}
-          signatureSource={data.fieldSources?.gafUnitOwnerSignatureUrl}
           disabled={disabled}
           onChange={(key, value) => {
             const fieldIds: Partial<Record<keyof AppSettingsFormValues, string>> = {
