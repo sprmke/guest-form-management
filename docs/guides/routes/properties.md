@@ -17,14 +17,14 @@ Routes:
 - `/properties/:propertySlug/messages` — guest ↔ host web chat (see [chat.md](./properties/chat.md))
 - `/properties/:propertySlug/forms/:formId` — dynamic form builder preview
 
-> **Status:** Documented — **Phase 2a (detail API)** for `/properties/:propertySlug`; list/browse still mock.
+> **Status:** Documented — **Phase 2a (detail API)** for `/properties/:propertySlug`; **list + filters** live via `list-public-properties` (URL-backed facets/sort). Location/development sub-browse pages still mock.
 
 ## Progress overview
 
 | Section           | E2E save | Validation | Docs       | Notes                                                |
 | ----------------- | -------- | ---------- | ---------- | ---------------------------------------------------- |
-| List + filters    | —        | —          | Documented | Location-grouped carousels (grid)                    |
-| Location browse   | —        | —          | Documented | `/properties/in/:location`                           |
+| List + filters    | —        | Live       | Documented | URL state + `list-public-properties` facets/sort     |
+| Location browse   | —        | —          | Documented | `/properties/in/:location` (mock until wired)        |
 | Detail page       | —        | —          | Documented | Live API + mock fallback; see below                  |
 | Property calendar | —        | —          | Documented | Live `get-booked-dates` via `PublicPropertyCalendar` |
 | Public form       | —        | —          | Documented | `PublicFormRenderer`; mock submit                    |
@@ -59,7 +59,20 @@ This is where guests browse homes, open a listing, save favorites, contact the h
   A: The main booking flow uses the standard reservation form after guests pick dates. Separate form links are for custom questionnaires or previews — they don't replace the official booking form yet.
 - Q: Why doesn't my inactive property show on my public host page?
   A: Only active listings appear there; archived or draft units stay out of public view until you publish them again.
+- Q: Will cheaper listings bury mine in search?
+  A: Guests cannot sort by lowest price. The default is **Recommended** (ratings / reviews). Budget guests use price-range filters — those still keep Recommended order inside their budget.
 
+---
+
+## Sort options (list + `/search` properties tab)
+
+| Sort                         | Default? | Role                  |
+| ---------------------------- | -------- | --------------------- |
+| Recommended                  | Yes      | Quality-first landing |
+| Highest Rated / Most Reviews | No       | Social proof          |
+| Newest                       | No       | Fresh inventory       |
+
+**Price: Low to High / High to Low are not offered** — prevents race-to-bottom pricing pressure on hosts. Budget shopping uses price-range filters. Rationale: **`docs/workflow/done/smart-filters.md`** § Sort fairness.
 ---
 
 ## Public host profile (`/hosts/:orgSlug`)
@@ -75,16 +88,19 @@ This is where guests browse homes, open a listing, save favorites, contact the h
 
 ## List (`/properties`)
 
-| UI          | Component / data                                                                                                 |
-| ----------- | ---------------------------------------------------------------------------------------------------------------- |
-| Search      | `ListingHeroSearch` (`HeroSearch`), `PropertiesToolbar`                                                          |
-| Scroll dock | On scroll, search morphs into header center (Airbnb-style); nav links slide up and fade via `useListingNavMorph` |
-| Where field | Empty on `/properties`; `Tagaytay` on `/properties/in/tagaytay` (`listingSearchDefaultLocation.ts`)              |
-| Grid        | **`PropertiesByLocation`** — rows by place (`Homes in {place}`), carousel cards, title → View all                |
-| List / map  | Flat `PropertyListItem` / `PropertiesMap` from `mockProperties`                                                  |
-| Sort / view | Client-only (grid / list / map)                                                                                  |
+| UI          | Component / data                                                                                                                                                                                                                                                                                                             |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Search      | `ListingHeroSearch` (`HeroSearch`), `PropertiesToolbar`                                                                                                                                                                                                                                                                      |
+| Scroll dock | On scroll, search morphs into header center (Airbnb-style); nav links slide up and fade via `useListingNavMorph`                                                                                                                                                                                                             |
+| Where field | Empty on `/properties`; `Tagaytay` on `/properties/in/tagaytay` (`listingSearchDefaultLocation.ts`). Placeholder: **Search properties** (`listingSearchFields.ts`)                                                                                                                                                           |
+| Grid        | **`PropertiesByLocation`** — rows by place (`Homes in {place}`), carousel cards, title → View all                                                                                                                                                                                                                            |
+| List / map  | Flat `PropertyListItem` / real Google Maps `PropertiesMap` → shared `ListingMapView` (page pins; pan/zoom auto-updates bbox; initial fit also writes bbox). In map view, sidebar facets come from the **visible map pool** (before type/price/bedroom/amenity/development filters), so options update as the viewport moves. |
+| Sort / view | URL `sort` + toolbar grid/list/map; sort also in mobile Filters & Sort sheet                                                                                                                                                                                                                                                 |
+| Applied     | Dismissible filter chips under toolbar; filtered empty state with **Clear filters**; empty facet sections show **None**                                                                                                                                                                                                      |
 
 Query params mirror PMA where implemented (location, dates, guests).
+
+**Scale behavior:** `list-public-properties` reads lean ACTIVE candidates in deterministic 1,000-row ranges, computes filters/availability/Nearby/totals/facets before page slicing, then enriches the current page where possible. A 20,000-row safety ceiling fails the request instead of silently truncating totals.
 
 ---
 
@@ -142,7 +158,7 @@ Operational guest booking form remains **`/form`** (see [form.md](./form.md)).
 | Action          | Endpoint / edge function                                                                                    |
 | --------------- | ----------------------------------------------------------------------------------------------------------- |
 | Property detail | **`get-public-property?property=`** (shipped)                                                               |
-| List properties | Public catalog (planned)                                                                                    |
+| List properties | **`list-public-properties`** — page of cards; totals/facets over full filtered set; 20k fail-closed ceiling |
 | Booked dates    | **`get-booked-dates?property=`** — `useGuestBookedDates` → `PublicPropertyCalendar`, `BookingCalendarModal` |
 | Form submit     | Property-scoped form submission API                                                                         |
 

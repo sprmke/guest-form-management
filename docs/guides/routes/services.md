@@ -34,7 +34,7 @@ This page previews add-on services (cleaning, maintenance, supplies, and similar
 
 ## Behavior
 
-- Search bar shows **What** and **When** only (no **Who** segment). Submits back to `/services` with the shared listing query parameters.
+- Search bar shows **What** and **When** only (no **Who** segment). **Where/What** starts empty on `/services` (no category-label prefill). Submits to unified `/search` with page focus omitted.
 - No filters, inventory, booking actions, API calls, or persistence.
 - Service chips are decorative previews (property manager, agent, marketing, maintenance, food & essentials, supplies, transportation) and are not interactive.
 - Motion respects the user's reduced-motion preference.

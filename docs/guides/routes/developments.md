@@ -17,13 +17,13 @@ Routes:
 - `/developments/:slug/parking/category` · `…/parking/list` — legacy redirects → `…/parking`
 - `/developments/:slug/forms/:formId` — development-scoped public form
 
-> **Status:** Documented — **Phase 1 (UI only)**. PMA UI ported; mock data.
+> **Status:** Documented — list + filters live via `list-public-developments` (URL facets/sort, chips, mobile sheet sort). Detail/location sub-pages may still use mocks.
 
 ## Progress overview
 
 | Section            | E2E save | Validation | Docs       | Notes                                                                                                                                                                           |
 | ------------------ | -------- | ---------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Developments list  | —        | —          | Documented | Location-grouped carousels                                                                                                                                                      |
+| Developments list  | —        | —          | Documented | Live `list-public-developments`; URL-driven filters + facets                                                                                                                    |
 | Location browse    | —        | —          | Documented | Properties grouped by development                                                                                                                                               |
 | Development detail | —        | —          | Documented | Hero, amenities, unit + parking previews                                                                                                                                        |
 | Properties in dev  | —        | —          | Documented | Links to `/properties/:slug`                                                                                                                                                    |
@@ -57,14 +57,15 @@ Development pages market a whole building or condominium — guests can browse u
 
 ## List (`/developments`)
 
-**`DevelopmentsListPage`** — **`mockDevelopments`** with search/filter UI (client-only).
+**`DevelopmentsListPage`** — **`list-public-developments`** edge function; URL params drive filters/sort; facets from API (types, cities, price, developers). Empty facet sections in the sidebar show **None**. Lean candidates load in deterministic 1,000-row ranges (20,000-row fail-closed ceiling); `propertyCount` on cards is loaded for the **current page only** (not used for facets/sort).
 
 - **Grid view (default):** Airbnb-style rows grouped by **`city`** (`DevelopmentsByLocation` → `DevelopmentsLocationRow`). Each row has a clickable title + chevron (**View all** → `/developments/in/:location`), horizontal scroll of compact cards, and desktop carousel chevrons.
 - **List view:** flat **`DevelopmentsGrid`** (list layout).
+- **Map view:** Google Map with price pins for geocoded developments on the current page; pan/zoom **automatically** updates `swLat`/`swLng`/`neLat`/`neLng` in the URL after the map settles (same bbox contract as `/properties`), including after the initial fit. Pin preview links to **`/developments/:slug`**. Requires `VITE_GOOGLE_MAPS_API_KEY`. View mode persists via `?view=map|list` (grid omits `view`). In map view, sidebar facets (types, cities, developers, price) are computed from the **visible map pool** before categorical filters, so options track what’s on screen.
 
 On scroll, **`ListingHeroSearch`** morphs into the fixed header center (same behavior as `/properties`).
 
-**Where field:** `Developments` on `/developments`; `{city} Developments` on `/developments/in/:location`; development name on `/developments/:slug` and `/developments/:slug/properties`; **`{development} Parking`** on `/developments/:slug/parking` (`listingSearchDefaultLocation.ts`). Parking routes omit the **Who** segment (`listingSearchFields.ts`).
+**Where field:** empty on `/developments` (category index — do not prefill the nav label); city name on `/developments/in/:location`; development name on `/developments/:slug`, `/developments/:slug/properties`, and `/developments/:slug/parking` (`listingSearchDefaultLocation.ts`). Placeholder: **Search developments** (`listingSearchFields.ts`). Parking routes omit the **Who** segment.
 
 ---
 
