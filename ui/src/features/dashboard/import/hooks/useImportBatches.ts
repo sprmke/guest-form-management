@@ -1,11 +1,12 @@
 /**
- * useImportBatches — list import batches for the current property (history page).
+ * useImportBatches — list import batches for the current property (history modal).
  */
 
 import { useQuery } from '@tanstack/react-query';
 
-import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import type { ImportBatchListResult } from '@/features/dashboard/import/types/importBatch';
+import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
+
 import { supabase } from '@/lib/supabase/client';
 
 async function getSessionJwt(): Promise<string> {
@@ -17,12 +18,12 @@ async function getSessionJwt(): Promise<string> {
 
 export const IMPORT_BATCHES_KEY = ['import-batches'] as const;
 
-export function useImportBatches(page = 1, limit = 20) {
+export function useImportBatches(page = 1, limit = 20, { enabled = true } = {}) {
   const propertyId = usePropertyIdParam();
 
   return useQuery({
     queryKey: [...IMPORT_BATCHES_KEY, propertyId, page, limit] as const,
-    enabled: Boolean(propertyId),
+    enabled: enabled && Boolean(propertyId),
     queryFn: async (): Promise<ImportBatchListResult> => {
       if (!propertyId) throw new Error('Property context is required');
 
@@ -50,4 +51,3 @@ export function useImportBatches(page = 1, limit = 20) {
     },
   });
 }
-

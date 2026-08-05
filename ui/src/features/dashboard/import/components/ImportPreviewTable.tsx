@@ -1,18 +1,18 @@
 import * as React from 'react';
 
-import {
-  AlertTriangle,
-  ChevronLeft,
-  ChevronRight,
-  Loader2,
-} from 'lucide-react';
+import { AlertTriangle, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 
+import {
+  ImportAlert,
+  ImportStatStrip,
+} from '@/features/dashboard/import/components/ImportModalChrome';
 import { useImportBatchRows } from '@/features/dashboard/import/hooks/useImportBatchRows';
 import { useUpdateImportRow } from '@/features/dashboard/import/hooks/useUpdateImportRow';
 import type {
   ImportBatchRowPreview,
   ImportPreviewSummary,
 } from '@/features/dashboard/import/types/importBatch';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -36,28 +36,15 @@ type Props = {
 };
 
 function PreviewSummary({ summary }: { summary: ImportPreviewSummary }) {
-  const importable = summary.valid;
-  const needsFix = summary.error;
-
   return (
-    <div className="grid grid-cols-2 gap-2 text-center text-sm sm:grid-cols-4">
-      <div className="rounded-lg border bg-muted/30 px-3 py-2">
-        <p className="text-xl font-semibold text-primary">{importable}</p>
-        <p className="text-xs text-muted-foreground">Ready</p>
-      </div>
-      <div className="rounded-lg border bg-muted/30 px-3 py-2">
-        <p className="text-xl font-semibold text-destructive">{needsFix}</p>
-        <p className="text-xs text-muted-foreground">Need fixing</p>
-      </div>
-      <div className="rounded-lg border bg-muted/30 px-3 py-2">
-        <p className="text-xl font-semibold text-foreground">{summary.skipped}</p>
-        <p className="text-xs text-muted-foreground">Excluded</p>
-      </div>
-      <div className="rounded-lg border bg-muted/30 px-3 py-2">
-        <p className="text-xl font-semibold text-amber-600">{summary.warning}</p>
-        <p className="text-xs text-muted-foreground">Warnings</p>
-      </div>
-    </div>
+    <ImportStatStrip
+      stats={[
+        { label: 'Ready', value: summary.valid, tone: 'primary' },
+        { label: 'Need fixing', value: summary.error, tone: 'danger' },
+        { label: 'Turned off', value: summary.skipped, tone: 'neutral' },
+        { label: 'Warnings', value: summary.warning, tone: 'warning' },
+      ]}
+    />
   );
 }
 
@@ -79,11 +66,11 @@ function rowStatusVariant(
 function rowStatusLabel(status: ImportBatchRowPreview['validationStatus']): string {
   switch (status) {
     case 'valid':
-      return 'Valid';
+      return 'Ready';
     case 'error':
-      return 'Error';
+      return 'Needs fixing';
     case 'skipped':
-      return 'Excluded';
+      return 'Turned off';
     default:
       return status;
   }
@@ -96,37 +83,41 @@ function primaryErrorMessage(row: ImportBatchRowPreview): string | null {
   return warning?.message ?? null;
 }
 
+function guestName(row: ImportBatchRowPreview): string {
+  return row.mappedData.primary_guest_name ?? row.mappedData.guest_facebook_name ?? 'No name';
+}
+
 type PreviewRowProps = {
   row: ImportBatchRowPreview;
   batchId: string;
   displayIndex: number;
 };
 
-function PreviewRow({ row, batchId, displayIndex }: PreviewRowProps) {
+function useRowImportToggle(batchId: string, row: ImportBatchRowPreview) {
   const updateRow = useUpdateImportRow(batchId);
   const isExcluded = row.validationStatus === 'skipped';
-  const message = primaryErrorMessage(row);
-  const hasWarning = row.validationErrors.some((entry) => entry.severity === 'warning');
+  const isError = row.validationStatus === 'error';
 
-  const handleToggle = (checked: boolean) => {
+  const handleToggle = (willImport: boolean) => {
     updateRow.mutate({
       batchId,
       rowId: row.id,
-      validationStatus: checked ? 'skipped' : 'valid',
+      validationStatus: willImport ? 'valid' : 'skipped',
     });
   };
 
+  return { updateRow, isExcluded, isError, handleToggle };
+}
+
+function PreviewRowDesktop({ row, batchId, displayIndex }: PreviewRowProps) {
+  const { updateRow, isExcluded, isError, handleToggle } = useRowImportToggle(batchId, row);
+  const message = primaryErrorMessage(row);
+  const hasWarning = row.validationErrors.some((entry) => entry.severity === 'warning');
+
   return (
-    <TableRow
-      className={cn(
-        row.validationStatus === 'error' && 'bg-destructive/5',
-        isExcluded && 'opacity-60'
-      )}
-    >
-      <TableCell className="w-10 px-2 text-xs text-muted-foreground">{displayIndex}</TableCell>
-      <TableCell className="max-w-[8rem] truncate px-2 text-xs">
-        {row.mappedData.primary_guest_name ?? row.mappedData.guest_facebook_name ?? '—'}
-      </TableCell>
+    <TableRow className={cn(isError && 'bg-destructive/5', isExcluded && 'opacity-60')}>
+      <TableCell className="text-muted-foreground w-10 px-2 text-xs">{displayIndex}</TableCell>
+      <TableCell className="max-w-[8rem] truncate px-2 text-xs">{guestName(row)}</TableCell>
       <TableCell className="whitespace-nowrap px-2 text-xs">
         {row.mappedData.check_in_date ?? '—'}
       </TableCell>
@@ -144,10 +135,10 @@ function PreviewRow({ row, batchId, displayIndex }: PreviewRowProps) {
             className={cn(
               'flex items-start gap-1',
               hasWarning && row.validationStatus === 'valid' && 'text-amber-600',
-              row.validationStatus === 'error' && 'text-destructive'
+              isError && 'text-destructive'
             )}
           >
-            {(row.validationStatus === 'error' || hasWarning) && (
+            {(isError || hasWarning) && (
               <AlertTriangle className="mt-0.5 size-3 shrink-0" aria-hidden />
             )}
             <span className="line-clamp-2">{message}</span>
@@ -158,13 +149,120 @@ function PreviewRow({ row, batchId, displayIndex }: PreviewRowProps) {
       </TableCell>
       <TableCell className="px-2">
         <Switch
-          checked={isExcluded}
-          disabled={updateRow.isPending}
-          aria-label={`Exclude row ${displayIndex}`}
+          checked={!isExcluded}
+          disabled={updateRow.isPending || isError}
+          aria-label={`Import row ${displayIndex}`}
           onCheckedChange={handleToggle}
         />
       </TableCell>
     </TableRow>
+  );
+}
+
+function PreviewRowMobile({ row, batchId, displayIndex }: PreviewRowProps) {
+  const { updateRow, isExcluded, isError, handleToggle } = useRowImportToggle(batchId, row);
+  const message = primaryErrorMessage(row);
+  const hasWarning = row.validationErrors.some((entry) => entry.severity === 'warning');
+
+  return (
+    <li
+      className={cn(
+        'border-border/70 space-y-2 rounded-xl border px-3 py-2.5',
+        isError && 'border-destructive/40 bg-destructive/5',
+        isExcluded && 'opacity-60'
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-foreground truncate text-sm font-medium">
+            <span className="text-muted-foreground mr-1.5 tabular-nums">#{displayIndex}</span>
+            {guestName(row)}
+          </p>
+          <p className="text-muted-foreground mt-0.5 text-xs tabular-nums">
+            {row.mappedData.check_in_date ?? '—'} → {row.mappedData.check_out_date ?? '—'}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <Badge variant={rowStatusVariant(row.validationStatus)} className="text-[10px]">
+            {rowStatusLabel(row.validationStatus)}
+          </Badge>
+          <Switch
+            checked={!isExcluded}
+            disabled={updateRow.isPending || isError}
+            aria-label={`Import row ${displayIndex}`}
+            onCheckedChange={handleToggle}
+          />
+        </div>
+      </div>
+      {message ? (
+        <p
+          className={cn(
+            'flex items-start gap-1.5 text-xs',
+            isError && 'text-destructive',
+            hasWarning && !isError && 'text-amber-700 dark:text-amber-300'
+          )}
+        >
+          <AlertTriangle className="mt-0.5 size-3 shrink-0" aria-hidden />
+          <span className="line-clamp-3">{message}</span>
+        </p>
+      ) : null}
+      {isError ? (
+        <p className="text-muted-foreground text-[11px]">Go Back to fix column mapping.</p>
+      ) : null}
+    </li>
+  );
+}
+
+function PreviewPagination({
+  pageStart,
+  pageSize,
+  total,
+  safePage,
+  pageCount,
+  onPageChange,
+}: {
+  pageStart: number;
+  pageSize: number;
+  total: number;
+  safePage: number;
+  pageCount: number;
+  onPageChange: (page: number) => void;
+}) {
+  if (pageCount <= 1) return null;
+
+  return (
+    <div className="flex items-center justify-between gap-2 text-xs">
+      <span className="text-muted-foreground">
+        {pageStart + 1}–{Math.min(pageStart + pageSize, total)} of {total}
+      </span>
+      <div className="flex items-center gap-1">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="size-11"
+          aria-label="Previous page"
+          disabled={safePage <= 0}
+          onClick={() => onPageChange(Math.max(0, safePage - 1))}
+        >
+          <ChevronLeft className="size-4" aria-hidden />
+        </Button>
+        <span className="min-w-[4rem] text-center tabular-nums">
+          {safePage + 1} / {pageCount}
+        </span>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="size-11"
+          aria-label="Next page"
+          disabled={safePage >= pageCount - 1}
+          onClick={() => onPageChange(Math.min(pageCount - 1, safePage + 1))}
+        >
+          <ChevronRight className="size-4" aria-hidden />
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -183,26 +281,27 @@ export function ImportPreviewTable({ batchId, isLoading, error, onRetry }: Props
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center gap-3 py-10 text-center">
-        <Loader2 className="size-8 animate-spin text-primary" aria-hidden />
-        <p className="text-sm text-muted-foreground">Validating rows…</p>
+      <div className="text-muted-foreground flex flex-col items-center gap-3 py-14">
+        <Loader2 className="text-primary size-7 animate-spin" aria-hidden />
+        <p className="text-sm">Checking every row…</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="space-y-3">
-        <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
-          <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
-          <span>{error}</span>
-        </div>
-        {onRetry && (
-          <Button type="button" variant="outline" size="sm" onClick={onRetry}>
-            Retry
-          </Button>
-        )}
-      </div>
+      <ImportAlert
+        tone="error"
+        action={
+          onRetry ? (
+            <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+              Try again
+            </Button>
+          ) : undefined
+        }
+      >
+        {error}
+      </ImportAlert>
     );
   }
 
@@ -212,12 +311,20 @@ export function ImportPreviewTable({ batchId, isLoading, error, onRetry }: Props
     <div className="space-y-3">
       <PreviewSummary summary={summary} />
 
-      <p className="text-xs text-muted-foreground">
-        {summary.valid} of {summary.total} rows ready
-        {summary.error > 0 ? ` · ${summary.error} need fixing` : ''}
-      </p>
+      {/* Phone: stacked cards */}
+      <ul className="space-y-2 sm:hidden">
+        {pageRows.map((row, index) => (
+          <PreviewRowMobile
+            key={row.id}
+            row={row}
+            batchId={batchId}
+            displayIndex={pageStart + index + 1}
+          />
+        ))}
+      </ul>
 
-      <div className="rounded-lg border">
+      {/* Tablet+ : table */}
+      <div className="border-border/70 hidden overflow-hidden rounded-xl border sm:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -227,12 +334,12 @@ export function ImportPreviewTable({ batchId, isLoading, error, onRetry }: Props
               <TableHead className="h-9 px-2 text-xs">Check-out</TableHead>
               <TableHead className="h-9 px-2 text-xs">Status</TableHead>
               <TableHead className="h-9 px-2 text-xs">Issue</TableHead>
-              <TableHead className="h-9 px-2 text-xs">Exclude</TableHead>
+              <TableHead className="h-9 px-2 text-xs">Import</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {pageRows.map((row, index) => (
-              <PreviewRow
+              <PreviewRowDesktop
                 key={row.id}
                 row={row}
                 batchId={batchId}
@@ -243,40 +350,14 @@ export function ImportPreviewTable({ batchId, isLoading, error, onRetry }: Props
         </Table>
       </div>
 
-      {pageCount > 1 && (
-        <div className="flex items-center justify-between gap-2 text-xs">
-          <span className="text-muted-foreground">
-            {pageStart + 1}–{Math.min(pageStart + PAGE_SIZE, rows.length)} of {rows.length}
-          </span>
-          <div className="flex items-center gap-1">
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="size-7"
-              aria-label="Previous page"
-              disabled={safePage <= 0}
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-            >
-              <ChevronLeft className="size-3.5" aria-hidden />
-            </Button>
-            <span className="min-w-[4rem] text-center">
-              {safePage + 1} / {pageCount}
-            </span>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="size-7"
-              aria-label="Next page"
-              disabled={safePage >= pageCount - 1}
-              onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
-            >
-              <ChevronRight className="size-3.5" aria-hidden />
-            </Button>
-          </div>
-        </div>
-      )}
+      <PreviewPagination
+        pageStart={pageStart}
+        pageSize={PAGE_SIZE}
+        total={rows.length}
+        safePage={safePage}
+        pageCount={pageCount}
+        onPageChange={setPage}
+      />
     </div>
   );
 }

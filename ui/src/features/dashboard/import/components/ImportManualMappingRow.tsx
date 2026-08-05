@@ -1,12 +1,12 @@
-import {
-  ChevronRight,
-} from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 
 import {
   OPTIONAL_TARGET_FIELDS,
   REQUIRED_TARGET_FIELDS,
 } from '@/features/dashboard/import/lib/importTargetFields';
 import type { ImportColumnMappingEntry } from '@/features/dashboard/import/types/importBatch';
+
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -16,7 +16,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 const SKIP_VALUE = '__skip__';
@@ -32,101 +31,103 @@ type Props = {
   usedTargets: Set<string>;
 };
 
-function statusBadge(status: ImportColumnMappingEntry['status']) {
-  switch (status) {
-    case 'matched':
-      return <Badge variant="default" className="shrink-0 text-[10px]">Matched</Badge>;
-    case 'likely_matched':
-      return <Badge variant="secondary" className="shrink-0 text-[10px]">Likely</Badge>;
-    case 'ambiguous':
-      return <Badge variant="outline" className="shrink-0 text-[10px] text-amber-600 border-amber-300">Ambiguous</Badge>;
-    default:
-      return <Badge variant="outline" className="shrink-0 text-[10px] text-muted-foreground">Unmatched</Badge>;
-  }
-}
+type StatusBadge = { label: string; className: string };
+
+const UNMATCHED_BADGE: StatusBadge = {
+  label: 'No match',
+  className: 'border-border bg-transparent text-muted-foreground',
+};
+
+const STATUS_BADGE: Partial<Record<ImportColumnMappingEntry['status'], StatusBadge>> = {
+  matched: { label: 'Matched', className: 'border-primary/30 bg-primary/10 text-primary' },
+  confirmed: { label: 'Matched', className: 'border-primary/30 bg-primary/10 text-primary' },
+  likely_matched: { label: 'Likely match', className: 'border-border bg-muted text-foreground' },
+  ambiguous: {
+    label: 'Not sure',
+    className:
+      'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200',
+  },
+  skipped: { label: 'Skipped', className: 'border-border bg-transparent text-muted-foreground' },
+  unmatched: UNMATCHED_BADGE,
+};
 
 export function ImportManualMappingRow({ entry, samples, value, onChange, usedTargets }: Props) {
-  const selectValue = value === null ? SKIP_VALUE : (value ?? SKIP_VALUE);
-
-  const handleChange = (val: string) => {
-    onChange(entry.rawHeader, val === SKIP_VALUE ? null : val);
-  };
-
+  const selectValue = value ?? SKIP_VALUE;
+  const badge = STATUS_BADGE[entry.status] ?? UNMATCHED_BADGE;
   const nonEmptySamples = samples.filter(Boolean).slice(0, 3);
 
+  const handleChange = (next: string) => {
+    onChange(entry.rawHeader, next === SKIP_VALUE ? null : next);
+  };
+
+  const renderOption = (field: { id: string; description: string }) => {
+    const takenByAnotherColumn = usedTargets.has(field.id) && value !== field.id;
+    return (
+      <SelectItem key={field.id} value={field.id} disabled={takenByAnotherColumn}>
+        {field.description}
+      </SelectItem>
+    );
+  };
+
   return (
-    <div className={cn(
-      'grid grid-cols-1 gap-2 rounded-lg border px-3 py-2.5 text-sm sm:grid-cols-[1fr_auto_1fr]',
-      value === null && 'opacity-60',
-    )}>
-      {/* Raw header + samples */}
-      <div className="min-w-0 space-y-0.5">
-        <p className="font-medium text-foreground truncate">{entry.rawHeader}</p>
-        {nonEmptySamples.length > 0 && (
-          <p className="text-muted-foreground text-xs truncate">
+    <div
+      className={cn(
+        'border-border/70 grid grid-cols-1 items-center gap-x-3 gap-y-2 rounded-xl border px-3 py-2.5',
+        'sm:grid-cols-[minmax(0,1fr)_1rem_minmax(0,15rem)]',
+        value === null && 'bg-muted/20'
+      )}
+    >
+      {/* Column in the host's file */}
+      <div className="min-w-0">
+        <div className="flex min-w-0 items-center gap-2">
+          <p className="text-foreground min-w-0 truncate text-sm font-medium">{entry.rawHeader}</p>
+          <Badge variant="outline" className={cn('shrink-0 text-[10px]', badge.className)}>
+            {badge.label}
+          </Badge>
+        </div>
+        {nonEmptySamples.length > 0 ? (
+          <p className="text-muted-foreground mt-0.5 truncate text-xs">
             {nonEmptySamples.join(' · ')}
           </p>
-        )}
+        ) : null}
       </div>
 
-      {/* Arrow divider */}
-      <div className="hidden items-center sm:flex">
-        <ChevronRight className="size-4 text-muted-foreground shrink-0" aria-hidden />
-      </div>
+      <ChevronRight className="text-muted-foreground/60 hidden size-4 sm:block" aria-hidden />
 
-      {/* Target select */}
-      <div className="flex items-center gap-2">
-        {statusBadge(entry.status)}
-        <Select value={selectValue} onValueChange={handleChange}>
-          <SelectTrigger className="h-8 min-h-11 min-w-0 flex-1 text-xs" aria-label={`Map column ${entry.rawHeader}`}>
-            <SelectValue placeholder="Map to field…" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={SKIP_VALUE}>
-              <span className="text-muted-foreground">Skip / Not applicable</span>
-            </SelectItem>
+      {/* Booking field it maps to */}
+      <Select value={selectValue} onValueChange={handleChange}>
+        <SelectTrigger
+          className="min-h-11 w-full text-xs"
+          aria-label={`Booking field for ${entry.rawHeader}`}
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={SKIP_VALUE}>
+            <span className="text-muted-foreground">Skip this column</span>
+          </SelectItem>
 
-            <SelectGroup>
-              <SelectLabel className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                Required fields
-              </SelectLabel>
-              {REQUIRED_TARGET_FIELDS.map((field) => (
-                <SelectItem
-                  key={field.id}
-                  value={field.id}
-                  disabled={usedTargets.has(field.id) && value !== field.id}
-                >
-                  {field.description}
-                  {usedTargets.has(field.id) && value !== field.id ? ' ✓' : ''}
-                </SelectItem>
-              ))}
-            </SelectGroup>
+          <SelectGroup>
+            <SelectLabel className="text-muted-foreground text-[10px] uppercase tracking-wide">
+              Required
+            </SelectLabel>
+            {REQUIRED_TARGET_FIELDS.map(renderOption)}
+          </SelectGroup>
 
-            <SelectGroup>
-              <SelectLabel className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                Optional fields
-              </SelectLabel>
-              {OPTIONAL_TARGET_FIELDS.map((field) => (
-                <SelectItem
-                  key={field.id}
-                  value={field.id}
-                  disabled={usedTargets.has(field.id) && value !== field.id}
-                >
-                  {field.description}
-                  {usedTargets.has(field.id) && value !== field.id ? ' ✓' : ''}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-      </div>
+          <SelectGroup>
+            <SelectLabel className="text-muted-foreground text-[10px] uppercase tracking-wide">
+              Optional
+            </SelectLabel>
+            {OPTIONAL_TARGET_FIELDS.map(renderOption)}
+          </SelectGroup>
+        </SelectContent>
+      </Select>
 
-      {/* Reason hint below on mobile */}
-      {entry.reason && entry.status !== 'matched' && (
-        <p className="col-span-full text-[11px] text-muted-foreground sm:col-start-3 sm:col-end-4">
+      {entry.reason && entry.status !== 'matched' ? (
+        <p className="text-muted-foreground col-span-full line-clamp-2 text-[11px]">
           {entry.reason}
         </p>
-      )}
+      ) : null}
     </div>
   );
 }

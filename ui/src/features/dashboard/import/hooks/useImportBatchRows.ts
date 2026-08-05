@@ -4,12 +4,12 @@
 
 import { type QueryClient, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import type {
   ImportBatchRowPreview,
   ImportPreviewResult,
   ImportPreviewSummary,
 } from '@/features/dashboard/import/types/importBatch';
+import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 
 export const IMPORT_PREVIEW_KEY = ['import-preview'] as const;
 
