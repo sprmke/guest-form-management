@@ -156,3 +156,13 @@ Update for hosts landing page animation section section with updated features an
 ===
 
 Improve avatar video animation
+
+===
+
+Make google map view mode in search or public page listing
+
+Since we already have google map API in our app, use it to render multiple property/developments/parking based on search result or category.
+Meaning, we just render whatever data we have on our grid or list view.
+Again, we also should respect whatever pagination or performance related optimization that we have on listing data or search & filter, and applied those as well here on this map view.
+Or if we need to apply different kind of app or performance optimization when navigating the map, please apply as well.
+Just make sure it's working correctly, no lagginess, no UI/UX issues, no performance issues, etc.

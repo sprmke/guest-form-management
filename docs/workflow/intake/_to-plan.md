@@ -329,10 +329,40 @@ After we refine the roles & permissions that we have on both org and property le
 
 ===
 
-In app notification for chat & other activity
+✅ In app notification for chat & other activity
 
 When we receive new chat or guest message from inbox, we should display a toast or notification message on our app as long as we are using the app and even we are not on inbox page.
 
 For now, I think this would be helpful for chat events, but if you can see other features and functionality that you think we can add to our notification. Feel free to suggest and plan it as well
 
-Maybe analyze all the activities, events and actions that we have on Notifications page module as support in app notification on all of it.
+Maybe analyze all the activities, events and actions that we have on Notifications page module as support in app notification on all activities, events or actions that you think it's helpful to display within our app.
+
+Analyze how popular apps how handle this and make sure we implement the way possible and make sure it will not result to any kind of performance or heavy process issues.
+
+→ **Plan:** `docs/workflow/planned/in-app-notifications.md` — full persisted notification center (bell + toast), covering chat, booking workflow events, and Gmail auto-approvals.
+
+===
+
+Smart import data with use of AI
+
+One of the big feature we need after onboarding is to offer a way to import existing data of the hosts to be imported within our app.
+For now, we should be able to offer Google sheet/excel or csv file when importing data.
+But one challenge that we have is that each hosts has different columns, structure, data.
+So we need to be smart and find a way how we can handle different structure of data to match and successfully import their data to our app.
+One suggestion I have in mind is that we will offer a sample csv or sheet structure and user can manually fill-up or migrate their sheet/csv to this structure.
+But that's a lot of work for hosts, that's why I'm thinking if we can do that process within the app with the use of AI.
+So first, we need to analyze carefully all the data that we have, specially with bookings and finance or other modules and have a standard csv or sheet to be used and offer hosts.
+This will be used as standard structure that our importer will accept when migrating or importing data to our app.
+Then, we will have AI smart importer where user can just upload their excel or csv file, then auto-analyze its data.
+Then, for common of obvious data, we can auto match that with our structured csv/sheet column.
+Then, for other uncommon or not obvious data or some column or data that needs confirmation with the host, what we can do is offer a column or field mapping between their sheet/csv structured format and with our standard format.
+With this, we can import data as much as possible. We just need to come up with a plan and best UI/UX for hosts to manually do this mapping and also find the best way for AI to automate this kind of things.
+I want you to plan and explore the best and easiest way for hosts to do this process. Maybe a field mapper, a Q/A per field, etc.
+The goal is as much as possible, hosts can match or connect all the columns that we have from our standard structured csv/sheet to their data so we can import as much data as possible.
+Then, we should also offer a way to generate, preview, accept, make some modifications, cancel or revert this process. Generate the best UI/UX for this.
+
+→ **Plan:** `docs/workflow/planned/smart-ai-data-importer.md` — Bookings-only CSV import via a modal opened from a new "Import" button beside "New booking"; AI column auto-mapping, manual mapping fallback, new `IMPORTED` booking status, preview/commit/revert. Finance/Maintenance/XLSX/Google Sheets read are scoped as future follow-on phases.
+
+===
+
+Pool fee should be configurable via development settings and we need to adjust AI receptionist or AI tool that beside on reading property & booking info, we should also check which development it's under the current property and have access to development information just like the amenities, pool fee, schedule of pool, requirements, guides, etc

@@ -17,7 +17,7 @@ updated: 2026-08-05
 - [x] `usePublicProperties`, `usePublicDevelopments`, `usePublicParkings`
 - [x] Properties / Developments / Parkings list pages wired to URL-backed filters + server facets/sort
 - [x] Phase 4: `/search` category tabs reuse vertical filter sidebars + `list-public-*` (All view stays `search-listings`)
-- [x] Phase 4 polish: `/search` toolbar with sort + grid/list/map view; Filters from All soft-switches to preferred category
+- [x] Phase 4 polish: `/search` toolbar with sort + grid/list/map view; Filters from All switches to the preferred category (button names it; Nearby scope carried as `lat`/`lng`)
 - [x] Harden: mobile sheet sort, dismissible filter chips, filtered empty + Clear filters, a11y (dialog/aria-pressed/44px/reduced-motion/token colors)
 - [x] Product decision: **remove** price L↔H sorts (race-to-bottom risk); budget via price-range filters only; see § Sort fairness
 - [x] Route guides + edge-functions API table updated

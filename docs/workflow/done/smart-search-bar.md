@@ -20,7 +20,7 @@ updated: 2026-08-05
 - [x] Smart intents v1: Nearby geo + concept/expanded fallback (`_shared/searchIntents.ts`)
 - [x] Docs: route guide + `guides/testing/smart-search-intents-manual.md`
 - [x] Page-aware search: category pages → `/search` + `focus`; typeahead/All reorder; “Search all results” clears focus
-- [x] Harden pass: status banner, filter soft-switch toast, error retry, empty recovery, 44px Search control
+- [x] Harden pass: status banner, filter category switch (self-labelling button, no toast), error retry, empty recovery, 44px Search control
 - [ ] Playwright walkthrough against live local functions + seeded data (manual QA remaining)
 - [ ] Phase 2: LLM/embedding fallback when deterministic expansion returns 0
 

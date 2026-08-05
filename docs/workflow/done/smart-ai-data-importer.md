@@ -174,7 +174,9 @@ Wizard shell inside the modal: local `useState<Step>`, per the `OnboardingPage.t
 
 Every step keeps an explicit **Cancel** (deletes the batch + rows + storage object; only possible before `status='committed'`) that simply closes the modal.
 
-New hooks (TanStack Query, mirroring `useFinanceLineItems.ts`'s shape): `useImportBatch.ts`, `useImportBatchRows.ts`, `useCommitImportBatch.ts`, `useRevertImportBatch.ts`. New `pages/ImportHistoryPage.tsx` listing past batches with status + revert action — kept as a lightweight route (not primary nav) reachable via a small "View past imports" link inside `ImportWizardModal.tsx`'s opening state, gated the same way as the modal itself.
+New hooks (TanStack Query, mirroring `useFinanceLineItems.ts`'s shape): `useImportBatch.ts`, `useImportBatchRows.ts`, `useCommitImportBatch.ts`, `useRevertImportBatch.ts`.
+
+**Shipped variant:** past batches live in `components/ImportHistoryModal.tsx`, a sibling modal opened by **Past imports** inside `ImportWizardModal.tsx` (no route). Both modals share `components/ImportModalChrome.tsx` for header, stepper, body, alerts, and footer, and are gated the same way.
 
 ---
 
