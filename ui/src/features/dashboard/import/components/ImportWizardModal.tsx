@@ -15,7 +15,10 @@ import { ImportManualMappingRow } from '@/features/dashboard/import/components/I
 import { ImportPreviewTable } from '@/features/dashboard/import/components/ImportPreviewTable';
 import { useAiMapColumns } from '@/features/dashboard/import/hooks/useAiMapColumns';
 import { useCancelImportBatch } from '@/features/dashboard/import/hooks/useCancelImportBatch';
-import { useCommitImportBatch } from '@/features/dashboard/import/hooks/useCommitImportBatch';
+import {
+  useCommitImportBatch,
+  type CommitImportBatchFailure,
+} from '@/features/dashboard/import/hooks/useCommitImportBatch';
 import { clearImportPreviewCache, useImportBatchRows } from '@/features/dashboard/import/hooks/useImportBatchRows';
 import { useImportPreview } from '@/features/dashboard/import/hooks/useImportPreview';
 import { useSaveImportMapping } from '@/features/dashboard/import/hooks/useSaveImportMapping';
@@ -323,13 +326,18 @@ type CommitStepProps = {
   validCount: number;
   isCommitting: boolean;
   error: string | null;
+  failedRows: CommitImportBatchFailure[];
 };
 
-function CommitStep({ validCount, isCommitting, error }: CommitStepProps) {
+function CommitStep({ validCount, isCommitting, error, failedRows }: CommitStepProps) {
+  const visibleFailures = failedRows.slice(0, 5);
+
   return (
     <div className="flex flex-col items-center gap-4 py-8 text-center">
       {isCommitting ? (
         <Loader2 className="size-8 animate-spin text-muted-foreground" aria-hidden />
+      ) : error ? (
+        <AlertTriangle className="size-8 text-destructive" aria-hidden />
       ) : (
         <CheckCircle2 className="size-8 text-primary" aria-hidden />
       )}
@@ -339,13 +347,27 @@ function CommitStep({ validCount, isCommitting, error }: CommitStepProps) {
             ? 'Importing…'
             : `Ready to import ${validCount.toLocaleString()} booking${validCount !== 1 ? 's' : ''}`}
         </p>
-        {!isCommitting && (
+        {!isCommitting && !error && (
           <p className="text-xs text-muted-foreground">
             Historical bookings will be created with status Imported and will not trigger emails or calendar events.
           </p>
         )}
       </div>
       {error && <p className="text-xs text-destructive">{error}</p>}
+      {visibleFailures.length > 0 && (
+        <ul className="w-full max-w-sm space-y-1 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-left text-xs text-destructive">
+          {visibleFailures.map((row) => (
+            <li key={row.rowIndex}>
+              Row {row.rowIndex + 1}: {row.reason}
+            </li>
+          ))}
+          {failedRows.length > visibleFailures.length && (
+            <li className="text-muted-foreground">
+              +{failedRows.length - visibleFailures.length} more
+            </li>
+          )}
+        </ul>
+      )}
     </div>
   );
 }
@@ -365,8 +387,10 @@ export function ImportWizardModal({ open, onOpenChange, properties = [], onViewH
   const [aiResult, setAiResult] = React.useState<AiMapColumnsResult | null>(null);
   const [aiError, setAiError] = React.useState<string | null>(null);
   const [mappingState, setMappingState] = React.useState<Record<string, string | null>>({});
-  // True only after a successful import-commit call (Tasks 5–6). Guards cancel-on-close.
+  // True only after import-commit returns status=committed. Guards cancel-on-close.
   const [isBatchCommitted, setIsBatchCommitted] = React.useState(false);
+  const [commitResultError, setCommitResultError] = React.useState<string | null>(null);
+  const [commitFailures, setCommitFailures] = React.useState<CommitImportBatchFailure[]>([]);
   const [previewRunKey, setPreviewRunKey] = React.useState(0);
 
   const queryClient = useQueryClient();
@@ -389,6 +413,8 @@ export function ImportWizardModal({ open, onOpenChange, properties = [], onViewH
       setAiError(null);
       setMappingState({});
       setIsBatchCommitted(false);
+      setCommitResultError(null);
+      setCommitFailures([]);
       setPreviewRunKey(0);
       previewMutation.reset();
       commitMutation.reset();
@@ -511,19 +537,41 @@ export function ImportWizardModal({ open, onOpenChange, properties = [], onViewH
 
   const handleCommit = async () => {
     if (!parseResult?.batchId || commitMutation.isPending) return;
+    setCommitResultError(null);
+    setCommitFailures([]);
     try {
-      await commitMutation.mutateAsync(parseResult.batchId);
-      setIsBatchCommitted(true);
-      // Refresh bookings list and import history after successful commit.
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY }),
-        queryClient.invalidateQueries({ queryKey: [...IMPORT_BATCHES_KEY] }),
-      ]);
-      onOpenChange(false);
+      const data = await commitMutation.mutateAsync(parseResult.batchId);
+
+      if (data.status === 'committed') {
+        setIsBatchCommitted(true);
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY }),
+          queryClient.invalidateQueries({ queryKey: [...IMPORT_BATCHES_KEY] }),
+        ]);
+        onOpenChange(false);
+        return;
+      }
+
+      if (data.status === 'failed') {
+        setCommitResultError(
+          data.failed.length > 0
+            ? `${data.failed.length} row(s) failed to import`
+            : 'Import failed — no rows were inserted'
+        );
+        setCommitFailures(data.failed);
+        return;
+      }
+
+      setCommitResultError('No valid rows to import');
     } catch (err) {
       console.error('[ImportWizardModal] commit failed:', err);
     }
   };
+
+  const commitError =
+    commitMutation.isError
+      ? (commitMutation.error as Error).message
+      : commitResultError;
 
   const isBusy =
     aiMapMutation.isPending ||
@@ -609,7 +657,8 @@ export function ImportWizardModal({ open, onOpenChange, properties = [], onViewH
             <CommitStep
               validCount={previewSummary.valid}
               isCommitting={commitMutation.isPending}
-              error={commitMutation.isError ? (commitMutation.error as Error).message : null}
+              error={commitError}
+              failedRows={commitFailures}
             />
           )}
         </div>
@@ -626,6 +675,10 @@ export function ImportWizardModal({ open, onOpenChange, properties = [], onViewH
             <p className="mb-2 text-xs text-destructive">
               {(previewMutation.error as Error).message}
             </p>
+          )}
+
+          {commitError && step === 'commit' && (
+            <p className="mb-2 text-xs text-destructive">{commitError}</p>
           )}
 
           <ResponsiveModalFooter className="pt-0">

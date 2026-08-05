@@ -14,12 +14,15 @@ async function getSessionJwt(): Promise<string> {
   return token;
 }
 
+export type CommitImportBatchFailure = { rowIndex: number; reason: string };
+
+/** import-commit HTTP 200 payload — status reflects batch outcome, not HTTP success alone. */
 export type CommitImportBatchResult = {
   batchId: string;
-  status: string;
+  status: 'committed' | 'failed' | 'previewed';
   inserted: number;
   skipped: number;
-  failed: Array<{ rowIndex: number; reason: string }>;
+  failed: CommitImportBatchFailure[];
 };
 
 export function useCommitImportBatch() {
