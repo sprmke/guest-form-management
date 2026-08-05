@@ -469,6 +469,21 @@ verify_jwt = false
 [functions.get-public-parking]
 verify_jwt = false
 
+[functions.search-suggestions]
+verify_jwt = false
+
+[functions.search-listings]
+verify_jwt = false
+
+[functions.list-public-properties]
+verify_jwt = false
+
+[functions.list-public-developments]
+verify_jwt = false
+
+[functions.list-public-parkings]
+verify_jwt = false
+
 [functions.property-templates-settings]
 verify_jwt = false
 

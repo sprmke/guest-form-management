@@ -23,15 +23,22 @@ type ParsedCsv = {
 };
 
 function parseCsvText(text: string): ParsedCsv {
-  const result = Papa.parse<Record<string, string>>(text, {
+  // Excel and Google Sheets both prepend a UTF-8 BOM, which would otherwise ride
+  // along on the first header and break column matching.
+  const result = Papa.parse<Record<string, string>>(text.replace(/^\uFEFF/, ''), {
     header: true,
     skipEmptyLines: 'greedy',
     transformHeader: (header) => header.trim(),
   });
 
-  if (result.errors.length > 0) {
-    const first = result.errors[0];
-    throw new Error(`CSV parse error${first.row != null ? ` on row ${first.row + 1}` : ''}: ${first.message}`);
+  // Host spreadsheets routinely carry a note line or a short trailing row, which
+  // Papa reports as FieldMismatch while still returning usable data. Those rows
+  // surface as fixable rows in preview; only unparseable input aborts the upload.
+  const fatal = result.errors.find((error) => error.type !== 'FieldMismatch');
+  if (fatal) {
+    throw new Error(
+      `CSV parse error${fatal.row != null ? ` on row ${fatal.row + 1}` : ''}: ${fatal.message}`
+    );
   }
 
   const headers = (result.meta.fields ?? []).map((field) => field.trim()).filter(Boolean);
@@ -39,9 +46,16 @@ function parseCsvText(text: string): ParsedCsv {
     throw new Error('CSV must include a header row');
   }
 
-  const rows = (result.data ?? []).filter((row) =>
-    Object.values(row).some((value) => String(value ?? '').trim().length > 0)
-  );
+  // Building each row from `headers` also drops Papa's `__parsed_extra` bucket,
+  // so an over-wide row cannot invent a phantom column downstream.
+  const rows: Record<string, string>[] = [];
+  for (const row of result.data ?? []) {
+    const cells: Record<string, string> = {};
+    for (const header of headers) {
+      cells[header] = String(row[header] ?? '').trim();
+    }
+    if (Object.values(cells).some((value) => value.length > 0)) rows.push(cells);
+  }
 
   return { headers, rows };
 }
@@ -173,6 +187,7 @@ serveAuthenticated('import-parse-file', async (req) => {
 
   return jsonSuccess(req, {
     batchId,
+    fileName,
     headers: parsed.headers,
     sampleRows: sampleRows(parsed.rows),
     rowCount: parsed.rows.length,
