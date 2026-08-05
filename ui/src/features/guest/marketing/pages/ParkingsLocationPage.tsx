@@ -28,7 +28,7 @@ export function ParkingsLocationPage() {
   const allEntries = useMemo(() => buildParkingListEntries(), []);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [sortBy, setSortBy] = useState<ParkingSortKey>('price_asc');
+  const [sortBy, setSortBy] = useState<ParkingSortKey>('tower');
   const [filters, setFilters] = useState<ParkingFilterState>(DEFAULT_PARKING_FILTERS);
 
   const locationEntries = useMemo(

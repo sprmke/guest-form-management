@@ -40,9 +40,9 @@ function searchValuesFromParams(
 }
 
 function initialFiltersFromParams(searchParams: URLSearchParams): ParkingFilterState {
-  const locations = locationsFromLegacyTypeParam(searchParams.get('type'));
-  if (locations.length === 0) return DEFAULT_PARKING_FILTERS;
-  return { ...DEFAULT_PARKING_FILTERS, locations };
+  const legacy = locationsFromLegacyTypeParam(searchParams.get('type'));
+  if (legacy.locations.length === 0 && !legacy.motorcycle) return DEFAULT_PARKING_FILTERS;
+  return { ...DEFAULT_PARKING_FILTERS, locations: legacy.locations, motorcycle: legacy.motorcycle };
 }
 
 export function DevelopmentParkingListPage() {
@@ -52,7 +52,7 @@ export function DevelopmentParkingListPage() {
 
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [sortBy, setSortBy] = useState<ParkingSortKey>('price_asc');
+  const [sortBy, setSortBy] = useState<ParkingSortKey>('tower');
   const [filters, setFilters] = useState<ParkingFilterState>(() =>
     initialFiltersFromParams(searchParams)
   );

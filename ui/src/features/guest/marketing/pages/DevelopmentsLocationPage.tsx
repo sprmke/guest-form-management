@@ -11,6 +11,10 @@ import {
   DevelopmentsToolbar,
   type DevelopmentViewMode,
 } from '@/features/guest/marketing/developments/components';
+import {
+  DEFAULT_DEVELOPMENTS_QUERY,
+  EMPTY_DEVELOPMENTS_FACETS,
+} from '@/features/guest/marketing/developments/lib/developmentsQuery';
 import { mockDevelopments } from '@/features/guest/marketing/developments/data/mockDevelopments';
 import {
   filterDevelopmentsByLocationSlug,
@@ -32,6 +36,7 @@ export function DevelopmentsLocationPage() {
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [viewMode, setViewMode] = useState<DevelopmentViewMode>('grid');
   const [sortBy, setSortBy] = useState('recommended');
+  const [filterQuery, setFilterQuery] = useState(DEFAULT_DEVELOPMENTS_QUERY);
 
   const city = findCityByLocationSlug(location, mockDevelopments);
 
@@ -45,10 +50,6 @@ export function DevelopmentsLocationPage() {
     switch (sortBy) {
       case 'rating':
         return sorted.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
-      case 'price-low':
-        return sorted.sort((a, b) => a.priceRange.min - b.priceRange.min);
-      case 'price-high':
-        return sorted.sort((a, b) => b.priceRange.min - a.priceRange.min);
       case 'newest':
         return sorted.sort((a, b) => (b.established ?? 0) - (a.established ?? 0));
       default:
@@ -74,10 +75,6 @@ export function DevelopmentsLocationPage() {
     switch (sortBy) {
       case 'rating':
         return sorted.sort((a, b) => b.rating - a.rating);
-      case 'price-low':
-        return sorted.sort((a, b) => a.price - b.price);
-      case 'price-high':
-        return sorted.sort((a, b) => b.price - a.price);
       case 'newest':
         return sorted.sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0));
       default:
@@ -118,12 +115,18 @@ export function DevelopmentsLocationPage() {
           isOpen={filtersOpen}
           onClose={() => setFiltersOpen(false)}
           isMobile={false}
+          value={filterQuery}
+          onChange={setFilterQuery}
+          facets={EMPTY_DEVELOPMENTS_FACETS}
         />
 
         <DevelopmentsFilters
           isOpen={mobileFiltersOpen}
           onClose={() => setMobileFiltersOpen(false)}
           isMobile={true}
+          value={filterQuery}
+          onChange={setFilterQuery}
+          facets={EMPTY_DEVELOPMENTS_FACETS}
         />
 
         <main className="min-w-0 flex-1 overflow-x-hidden">

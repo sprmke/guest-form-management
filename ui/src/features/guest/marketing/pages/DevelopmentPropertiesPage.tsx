@@ -18,6 +18,11 @@ import {
 } from '@/features/guest/marketing/properties/components';
 import { mockProperties } from '@/features/guest/marketing/properties/data/mockProperties';
 import { propertiesForDevelopment } from '@/features/guest/marketing/properties/lib/groupPropertiesByDevelopment';
+import {
+  DEFAULT_PROPERTIES_QUERY,
+  EMPTY_PROPERTIES_FACETS,
+  type PropertiesListingQuery,
+} from '@/features/guest/marketing/properties/lib/propertiesQuery';
 
 import { Button } from '@/components/ui/button';
 
@@ -29,6 +34,7 @@ export function DevelopmentPropertiesPage() {
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [sortBy, setSortBy] = useState('recommended');
+  const [filterQuery, setFilterQuery] = useState<PropertiesListingQuery>(DEFAULT_PROPERTIES_QUERY);
 
   const developmentProperties = useMemo(() => {
     if (!development) return [];
@@ -38,10 +44,6 @@ export function DevelopmentPropertiesPage() {
   const sortedProperties = useMemo(() => {
     const sorted = [...developmentProperties];
     switch (sortBy) {
-      case 'price-low':
-        return sorted.sort((a, b) => a.price - b.price);
-      case 'price-high':
-        return sorted.sort((a, b) => b.price - a.price);
       case 'rating':
         return sorted.sort((a, b) => b.rating - a.rating);
       case 'reviews':
@@ -74,17 +76,23 @@ export function DevelopmentPropertiesPage() {
         </Button>
       </div>
 
-      <div className="flex">
+      <div className="flex min-w-0">
         <PropertiesFilters
           isOpen={filtersOpen}
           onClose={() => setFiltersOpen(false)}
           isMobile={false}
+          value={filterQuery}
+          onChange={setFilterQuery}
+          facets={EMPTY_PROPERTIES_FACETS}
         />
 
         <PropertiesFilters
           isOpen={mobileFiltersOpen}
           onClose={() => setMobileFiltersOpen(false)}
           isMobile={true}
+          value={filterQuery}
+          onChange={setFilterQuery}
+          facets={EMPTY_PROPERTIES_FACETS}
         />
 
         <main className="min-w-0 flex-1 overflow-x-hidden">
@@ -124,7 +132,7 @@ export function DevelopmentPropertiesPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="h-[calc(100vh-200px)] p-4"
+                className="min-w-0 p-4 sm:p-6"
               >
                 <PropertiesMap properties={sortedProperties} />
               </motion.div>
