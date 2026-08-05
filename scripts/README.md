@@ -31,13 +31,17 @@ Requires `pip3 install --user edge-tts`. Flags: `--voice` (default `en-US-AriaNe
 | `export-local-supabase-runtime-env.sh` | `build-local-functions-env.sh`                | Export `SUPABASE_URL` / service role from `supabase status`                                                         |
 | `check-ui-filename-conventions.sh`     | `bun run check:filenames`                     | Verify `ui/src` filenames match naming rules                                                                        |
 | `check-ai-tooling-sync.sh`             | `bun run check:ai-tooling-sync`               | Cursor/Claude skills, commands, agents, hooks, MCP parity                                                           |
-| `setup-ai-tooling.sh`                  | `bun run setup:ai-tooling`                    | One-shot team AI tooling setup (symlinks, Impeccable, verify)                                                       |
-| `setup-impeccable.sh`                  | `bun run setup:impeccable`                    | Impeccable only (also run by setup-ai-tooling)                                                                      |
+| `setup-ai-tooling.sh`                  | `bun run setup:ai-tooling`                    | One-shot team AI tooling setup (symlinks, ecosystem skills, DESIGN.md, Playwright CLI, verify)                      |
+| `setup-agents-skills.sh`               | `bun run setup:agents-skills`                 | Restore `.agents/skills/*` from `skills-lock.json` + Cursor/Claude symlinks                                         |
+| `setup-impeccable.sh`                  | `bun run setup:impeccable`                    | Alias → `setup-agents-skills` (backcompat)                                                                          |
+| `setup-playwright-cli.sh`              | `bun run setup:playwright-cli`                | Ensure `@playwright/cli` binary + skill                                                                             |
+| `setup-design-md.sh`                   | `bun run setup:design-md`                     | Vendor awesome-design-md refs + wire `design-md` skill                                                              |
 | `port-pma-public-ui.sh`                | (manual)                                      | Rsync PMA `features/marketing` → `ui/src/features/guest/marketing` (excludes GFM pages/routes)                      |
 | `migrate-shared-imports.sh`            | (one-shot reference)                          | Bulk `@/lib/*` + `@/utils/*` path rewrites                                                                          |
 | `gh-issue.mjs`                         | (manual)                                      | View / create / update / **ship** GitHub issues → `docs/archive/todos/shipped/` (see `/github-issue`)               |
 | `backlog-issue-sizing.mjs`             | `gh-issue.mjs create`                         | Auto-label heuristics for new issues                                                                                |
 | `check-video-motion-profiles.mjs`      | (manual, `bun`; source `ui/.env.development`) | Quiet Coast Motion: finite Remotion springs, recipe layout coverage, and storyboard→layer seed for all 16 templates |
+| `seed-search-fixtures.sql`             | (manual / `supabase/seed.sql`)                | Azure ACTIVE listings so typeahead **See all** has ≥3 hits per category (`azure`)                                   |
 
 ## Data (`scripts/data/`)
 

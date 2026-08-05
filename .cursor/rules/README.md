@@ -21,7 +21,7 @@ Keep this list **small**. Heavy domain specs use globs.
 
 ## New developer setup (AI tooling)
 
-After `git clone` and `bun install`, run **`bun run setup:ai-tooling`** once — symlinks, Impeccable hooks, Claude local settings template, and sync verification. Rules/commands/agents/hooks load from the repo automatically; no copy from `~/.cursor` or `~/.claude` is required.
+After `git clone` and `bun install`, run **`bun run setup:ai-tooling`** once — symlinks, ecosystem skills (Taste / Playwright CLI / Impeccable), DESIGN.md catalog, Claude local settings template, and sync verification. Rules/commands/agents/hooks load from the repo automatically; no copy from `~/.cursor` or `~/.claude` is required.
 
 | Step | Action                                                                                                                                               |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -31,14 +31,22 @@ After `git clone` and `bun install`, run **`bun run setup:ai-tooling`** once —
 | 3    | Install **`markitdown-mcp`** on `PATH`: `uv tool install markitdown-mcp`                                                                             |
 | 4    | **Claude Code only:** install the **ponytail** plugin once (`/plugin marketplace add DietrichGebert/ponytail`) — team rule is also in `ponytail.mdc` |
 
-Flags: `bun run setup:ai-tooling -- --skip-impeccable` · `--skip-local-settings` · `--help`
+Flags: `bun run setup:ai-tooling -- --skip-agents-skills` · `--skip-playwright-cli` · `--skip-design-md` · `--skip-local-settings` · `--help`
 
 **Two skill roots (both valid):**
 
-| Path                        | Owner                               | Use                                                                                                              |
-| --------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `.agent/skills/` (singular) | GFM repo                            | Team domain skills — edit here; symlinked to `.cursor/skills/` and `.claude/skills/`                             |
-| `.agents/skills/` (plural)  | [skills.sh](https://skills.sh/) CLI | Ecosystem installs (e.g. Impeccable) — do not move into `.agent/`; Impeccable scripts hard-code `.agents/` paths |
+| Path                        | Owner                               | Use                                                                                                                           |
+| --------------------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `.agent/skills/` (singular) | GFM repo                            | Team domain skills — edit here; symlinked to `.cursor/skills/` and `.claude/skills/`                                          |
+| `.agents/skills/` (plural)  | [skills.sh](https://skills.sh/) CLI | Ecosystem installs — locked in `skills-lock.json`; do not move into `.agent/` (Impeccable scripts hard-code `.agents/` paths) |
+
+**Ecosystem packages (project-scoped):**
+
+| Package                                                             | What you get                                                                                       | Setup                          |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------ |
+| [Taste Skill](https://github.com/Leonxlnx/taste-skill)              | `design-taste-frontend`, `redesign-existing-projects`, `stitch-design-taste`, related craft skills | `bun run setup:agents-skills`  |
+| [Playwright CLI](https://github.com/microsoft/playwright-cli)       | skill `playwright-cli` + `bun x playwright-cli` (`@playwright/cli`)                                | `bun run setup:playwright-cli` |
+| [awesome-design-md](https://github.com/VoltAgent/awesome-design-md) | root `DESIGN.md` + `.agents/design-md/*` refs + skill `design-md`                                  | `bun run setup:design-md`      |
 
 **Intentionally user-scoped (do not commit):** `~/.cursor/mcp.json` (e.g. claude-mem), `~/.cursor/hooks.json` (claude-mem session hooks), `~/.claude/settings.json` (model, status line, extra plugins), Cursor built-in `~/.cursor/skills-cursor/*`, marketplace plugins (Notion, Figma, Vercel) unless a task needs them.
 
@@ -98,21 +106,24 @@ Run **`bun run check:ai-tooling-sync`** after changing hooks, commands, agents, 
 
 ### UI & quality
 
-| Skill                     | Use for                                                                                        |
-| ------------------------- | ---------------------------------------------------------------------------------------------- |
-| `competitive-ux-research` | Material UX only — Airbnb + PMS before new flows                                               |
-| `frontend-design`         | Layout, visual patterns                                                                        |
-| `component-generator`     | New components                                                                                 |
-| `tanstack-table`          | Admin list tables                                                                              |
-| `accessibility`           | WCAG deep patterns                                                                             |
-| `minimal-ui-copy`         | Sparse copy                                                                                    |
-| `route-guides`            | `docs/guides/routes/*`                                                                         |
-| `performance`             | Vite bundle, query tuning                                                                      |
-| `batch-commit`            | Daily N commits × 5–10 files (not whole tree)                                                  |
-| `github-issues`           | GitHub Issues — view, create, ship                                                             |
-| `workflow`                | Workflow docs lifecycle — start/done, in-progress tracking                                     |
-| `superpowers`             | Superpowers opt-in — save plans/specs to `docs/workflow/`                                      |
-| `mobile-responsive`       | Breakpoints, touch targets — same content as the glob rule; invoke on Claude Code for UI tasks |
+| Skill                     | Use for                                                                                          |
+| ------------------------- | ------------------------------------------------------------------------------------------------ |
+| `competitive-ux-research` | Material UX only — Airbnb + PMS before new flows                                                 |
+| `frontend-design`         | Layout, visual patterns                                                                          |
+| `design-md`               | Root `DESIGN.md` + awesome-design-md inspiration catalog                                         |
+| `design-taste-frontend`   | Taste Skill anti-slop craft (`.agents/skills/` — also redesign / stitch variants)                |
+| `playwright-cli`          | Token-efficient browser automation via `bun x playwright-cli` (prefer over MCP for coding loops) |
+| `component-generator`     | New components                                                                                   |
+| `tanstack-table`          | Admin list tables                                                                                |
+| `accessibility`           | WCAG deep patterns                                                                               |
+| `minimal-ui-copy`         | Sparse copy                                                                                      |
+| `route-guides`            | `docs/guides/routes/*`                                                                           |
+| `performance`             | Vite bundle, query tuning                                                                        |
+| `batch-commit`            | Daily N commits × 5–10 files (not whole tree)                                                    |
+| `github-issues`           | GitHub Issues — view, create, ship                                                               |
+| `workflow`                | Workflow docs lifecycle — start/done, in-progress tracking                                       |
+| `superpowers`             | Superpowers opt-in — save plans/specs to `docs/workflow/`                                        |
+| `mobile-responsive`       | Breakpoints, touch targets — same content as the glob rule; invoke on Claude Code for UI tasks   |
 
 **No dedicated skill yet** (fall back to `docs-first` + `docs/PROJECT.md` directly): Finance module, Maintenance module, Marketing Studio (AI captions/video/Meta publish), Guest Inbox AI suggestions, guest portal (authenticated guest profile/trips), pricing calendars, super-admin platform ops (`/admin/*`, developments, hosts), org verification (base/enhanced tiers). These are real, shipped parts of the app — don't assume they don't exist just because there's no skill card for them yet.
 

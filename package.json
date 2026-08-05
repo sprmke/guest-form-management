@@ -20,7 +20,10 @@
     "check:filenames": "./scripts/dev/check-ui-filename-conventions.sh",
     "check:ai-tooling-sync": "bash scripts/dev/check-ai-tooling-sync.sh",
     "setup:ai-tooling": "bash scripts/dev/setup-ai-tooling.sh",
+    "setup:agents-skills": "bash scripts/dev/setup-agents-skills.sh",
     "setup:impeccable": "bash scripts/dev/setup-impeccable.sh",
+    "setup:playwright-cli": "bash scripts/dev/setup-playwright-cli.sh",
+    "setup:design-md": "bash scripts/dev/setup-design-md.sh",
     "type-check": "cd ui && bun run type-check",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,md,json,mdc,css}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,md,json,mdc,css}\"",
@@ -49,6 +52,7 @@
   "devDependencies": {
     "@commitlint/cli": "^19.8.0",
     "@commitlint/config-conventional": "^19.8.0",
+    "@playwright/cli": "^0.1.17",
     "@supabase/supabase-js": "^2.49.1",
     "concurrently": "^8.2.2",
     "husky": "^9.1.7",

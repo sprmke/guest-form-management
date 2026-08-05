@@ -75,6 +75,7 @@ docs/.obsidian/graph.json
 
 # Tests / local agent tooling (keep .fallowrc.json tracked)
 .playwright-mcp/
+.playwright-cli/
 .worktrees/
 .superpowers/
 .impeccable/

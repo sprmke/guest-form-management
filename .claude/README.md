@@ -11,15 +11,16 @@ bun run setup:ai-tooling
 
 See **`.cursor/rules/README.md` → New developer setup (AI tooling)** for MCP env vars, `markitdown-mcp`, and ponytail plugin (manual once per machine).
 
-| Item                          | Location                                                             |
-| ----------------------------- | -------------------------------------------------------------------- |
-| One-shot setup                | `bun run setup:ai-tooling`                                           |
-| Team hooks + MCP enable list  | `.claude/settings.json` (committed)                                  |
-| Personal permission overrides | `.claude/settings.local.json` (gitignored — created by setup script) |
-| Shared skills                 | `.agent/skills/<name>/` via symlinks in `.claude/skills/`            |
-| Impeccable                    | `.agents/skills/impeccable/` — installed/wired by setup script       |
-| Claude-only verify skill      | `.claude/skills/verify/` (real directory, not symlinked)             |
-| Drift check                   | `bun run check:ai-tooling-sync`                                      |
+| Item                          | Location                                                                         |
+| ----------------------------- | -------------------------------------------------------------------------------- |
+| One-shot setup                | `bun run setup:ai-tooling`                                                       |
+| Team hooks + MCP enable list  | `.claude/settings.json` (committed)                                              |
+| Personal permission overrides | `.claude/settings.local.json` (gitignored — created by setup script)             |
+| Shared skills                 | `.agent/skills/<name>/` via symlinks in `.claude/skills/`                        |
+| Ecosystem skills              | `.agents/skills/` — Taste Skill, playwright-cli, Impeccable (`skills-lock.json`) |
+| DESIGN.md                     | Root `DESIGN.md` + `.agents/design-md/` + skill `design-md`                      |
+| Claude-only verify skill      | `.claude/skills/verify/` (real directory, not symlinked)                         |
+| Drift check                   | `bun run check:ai-tooling-sync`                                                  |
 
 Install the **ponytail** marketplace once per machine if you want the plugin commands; the same guidance is always-on in `.cursor/rules/ponytail.mdc`.
 
@@ -102,9 +103,11 @@ Ported from `.cursor/hooks.json` + `.cursor/hooks/*.sh`, translated to Claude Co
 | Server       | Needs                                                         | Use for                                         |
 | ------------ | ------------------------------------------------------------- | ----------------------------------------------- |
 | `supabase`   | `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF` (env)         | Schema/logs/advisors — **read-only by default** |
-| `playwright` | nothing                                                       | Browser drive for `/verify`                     |
+| `playwright` | nothing                                                       | Long exploratory browser loops for `/verify`    |
 | `context7`   | nothing (optional key for higher rate limits)                 | Current library docs                            |
 | `markitdown` | `markitdown-mcp` on `PATH` (`uv tool install markitdown-mcp`) | PDF/Office → markdown (`markitdown-mcp.mdc`)    |
+
+Prefer skill **`playwright-cli`** + `bun x playwright-cli` for day-to-day coding-agent browser checks (token-efficient). Keep Playwright MCP for persistent exploratory sessions. Setup: `bun run setup:playwright-cli`.
 
 **Not in project `.mcp.json` (use these instead):**
 
