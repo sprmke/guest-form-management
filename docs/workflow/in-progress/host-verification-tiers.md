@@ -1,9 +1,9 @@
 ---
 title: 'Host verification tiers'
-stage: planned
-status: ready
-updated: 2026-08-04
-tags: [workflow, planned, verification, onboarding]
+stage: in-progress
+status: in-progress
+updated: 2026-08-07
+tags: [workflow, in-progress, verification, onboarding]
 ---
 
 # Host verification tiers

@@ -1,15 +1,15 @@
 ---
 title: 'Booking workflow multi-tenancy: audit, design & backlog'
-status: planned
-tags: [workflow, planned, booking-workflow, multi-tenancy]
-updated: 2026-08-02
-stage: planned
+status: in-progress
+tags: [workflow, in-progress, booking-workflow, multi-tenancy]
+updated: 2026-08-07
+stage: in-progress
 kind: plan
 ---
 
 # Booking workflow multi-tenancy: audit, design & backlog
 
-Back to [planned work](./README.md).
+Back to [in progress work](./README.md).
 
 **Implementation plan (v1 slice):** [`booking-workflow-configurable-docs.md`](../done/booking-workflow-configurable-docs.md) — **done** (2026-08-03). Tasks 1–8 shipped. Post-ship: document requirements editor on Super Admin → Developments; property override retired; property settings = Workflow sync only.
 
