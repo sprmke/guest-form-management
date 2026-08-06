@@ -25,7 +25,7 @@ else
     basenames+="$(basename "$f"), "
   done
   basenames="${basenames%, }"
-  status="Workflow in-progress: ${basenames} — primary session docs under docs/workflow/in-progress/."
+  status="Workflow in-progress: ${basenames} — primary session docs under docs/workflow/in-progress/. Sync scratchpad emojis in docs/workflow/intake/_to-prompt.md and _to-plan.md when status changes (see workflow-intake-scratchpads skill)."
 fi
 
 escaped=$(escape_for_json "$status")

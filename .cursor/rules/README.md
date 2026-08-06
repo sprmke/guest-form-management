@@ -106,24 +106,25 @@ Run **`bun run check:ai-tooling-sync`** after changing hooks, commands, agents, 
 
 ### UI & quality
 
-| Skill                     | Use for                                                                                          |
-| ------------------------- | ------------------------------------------------------------------------------------------------ |
-| `competitive-ux-research` | Material UX only — Airbnb + PMS before new flows                                                 |
-| `frontend-design`         | Layout, visual patterns                                                                          |
-| `design-md`               | Root `DESIGN.md` + awesome-design-md inspiration catalog                                         |
-| `design-taste-frontend`   | Taste Skill anti-slop craft (`.agents/skills/` — also redesign / stitch variants)                |
-| `playwright-cli`          | Token-efficient browser automation via `bun x playwright-cli` (prefer over MCP for coding loops) |
-| `component-generator`     | New components                                                                                   |
-| `tanstack-table`          | Admin list tables                                                                                |
-| `accessibility`           | WCAG deep patterns                                                                               |
-| `minimal-ui-copy`         | Sparse copy                                                                                      |
-| `route-guides`            | `docs/guides/routes/*`                                                                           |
-| `performance`             | Vite bundle, query tuning                                                                        |
-| `batch-commit`            | Daily N commits × 5–10 files (not whole tree)                                                    |
-| `github-issues`           | GitHub Issues — view, create, ship                                                               |
-| `workflow`                | Workflow docs lifecycle — start/done, in-progress tracking                                       |
-| `superpowers`             | Superpowers opt-in — save plans/specs to `docs/workflow/`                                        |
-| `mobile-responsive`       | Breakpoints, touch targets — same content as the glob rule; invoke on Claude Code for UI tasks   |
+| Skill                         | Use for                                                                                          |
+| ----------------------------- | ------------------------------------------------------------------------------------------------ |
+| `competitive-ux-research`     | Material UX only — Airbnb + PMS before new flows                                                 |
+| `frontend-design`             | Layout, visual patterns                                                                          |
+| `design-md`                   | Root `DESIGN.md` + awesome-design-md inspiration catalog                                         |
+| `design-taste-frontend`       | Taste Skill anti-slop craft (`.agents/skills/` — also redesign / stitch variants)                |
+| `playwright-cli`              | Token-efficient browser automation via `bun x playwright-cli` (prefer over MCP for coding loops) |
+| `component-generator`         | New components                                                                                   |
+| `tanstack-table`              | Admin list tables                                                                                |
+| `accessibility`               | WCAG deep patterns                                                                               |
+| `minimal-ui-copy`             | Sparse copy                                                                                      |
+| `route-guides`                | `docs/guides/routes/*`                                                                           |
+| `performance`                 | Vite bundle, query tuning                                                                        |
+| `batch-commit`                | Daily N commits × 5–10 files (not whole tree)                                                    |
+| `github-issues`               | GitHub Issues — view, create, ship                                                               |
+| `workflow`                    | Workflow docs lifecycle — start/done, in-progress tracking                                       |
+| `workflow-intake-scratchpads` | Sync `_to-prompt.md` / `_to-plan.md` emojis with planned/in-progress/done/wont-do                |
+| `superpowers`                 | Superpowers opt-in — save plans/specs to `docs/workflow/`                                        |
+| `mobile-responsive`           | Breakpoints, touch targets — same content as the glob rule; invoke on Claude Code for UI tasks   |
 
 **No dedicated skill yet** (fall back to `docs-first` + `docs/PROJECT.md` directly): Finance module, Maintenance module, Marketing Studio (AI captions/video/Meta publish), Guest Inbox AI suggestions, guest portal (authenticated guest profile/trips), pricing calendars, super-admin platform ops (`/admin/*`, developments, hosts), org verification (base/enhanced tiers). These are real, shipped parts of the app — don't assume they don't exist just because there's no skill card for them yet.
 
