@@ -9,24 +9,29 @@ cd "$ROOT"
 SUPABASE=("$ROOT/scripts/dev/bunx" --bun supabase@latest)
 ENV_FILE="$ROOT/supabase/.env.dev.local"
 PROJECT_REF_FILE="$ROOT/supabase/.temp/project-ref"
+# shellcheck source=scripts/dev/check-linked-project.sh
+source "$ROOT/scripts/dev/check-linked-project.sh"
 
 DB_ONLY=false
 FUNCTIONS_ONLY=false
 INCLUDE_ALL=false
 ALLOW_MULTI_TENANCY=false
+SKIP_BACKUP=false
 
 usage() {
   cat <<'EOF'
 Usage: ./scripts/deploy/deploy-supabase-dev.sh [options]
 
 Deploy to the DEV Supabase project (supabase/.env.dev.local → DEV_PROJECT_REF).
-Refuses when DEV_PROJECT_REF matches the currently linked prod ref.
+Refuses when DEV_PROJECT_REF matches the currently linked prod ref. Backs up
+the dev project first (schema + data) unless --skip-backup is passed.
 
 Options:
   --db-only              Run supabase db push only
   --functions-only       Run supabase functions deploy only
   --include-all          Pass --include-all to db push
   --allow-multi-tenancy  Skip multi-tenancy guard on function deploy
+  --skip-backup          Skip the automatic pre-db-push backup (loud warning; not recommended)
   -h, --help             Show this help
 
 Examples:
@@ -42,6 +47,7 @@ while [[ $# -gt 0 ]]; do
     --functions-only) FUNCTIONS_ONLY=true; shift ;;
     --include-all) INCLUDE_ALL=true; shift ;;
     --allow-multi-tenancy) ALLOW_MULTI_TENANCY=true; shift ;;
+    --skip-backup) SKIP_BACKUP=true; shift ;;
     -h | --help) usage; exit 0 ;;
     *)
       echo "Unknown option: $1" >&2
@@ -80,10 +86,8 @@ if [[ -n "$PROD_REF_GUARD" && "$DEV_REF" == "$PROD_REF_GUARD" ]]; then
   exit 1
 fi
 
-LINKED_REF=""
-if [[ -f "$PROJECT_REF_FILE" ]]; then
-  LINKED_REF="$(tr -d '[:space:]' <"$PROJECT_REF_FILE")"
-fi
+print_linked_project
+LINKED_REF="$LINKED_PROJECT_REF"
 
 if [[ -n "$LINKED_REF" && "$LINKED_REF" != "$DEV_REF" ]]; then
   echo "Note: CLI is currently linked to $LINKED_REF; will re-link to dev ($DEV_REF)." >&2
@@ -118,6 +122,20 @@ assert_functions_match_db_schema() {
   fi
 }
 
+run_backup_if_needed() {
+  if [[ "$FUNCTIONS_ONLY" == true ]]; then
+    return 0
+  fi
+  if [[ "$SKIP_BACKUP" == true ]]; then
+    echo "⚠️  WARNING: --skip-backup set — proceeding WITHOUT a pre-deploy backup." >&2
+    echo "⚠️  If this db push goes wrong, you will have nothing scripted to roll back to." >&2
+    return 0
+  fi
+  echo "→ Backing up before db push (./scripts/deploy/backup-supabase.sh dev)"
+  "$ROOT/scripts/deploy/backup-supabase.sh" dev
+  echo
+}
+
 run_db_push() {
   local -a push_args=(db push)
   if [[ "$INCLUDE_ALL" == true ]]; then
@@ -133,15 +151,22 @@ run_functions_deploy() {
   "${SUPABASE[@]}" functions deploy
 }
 
+run_backup_if_needed
+
+DEPLOY_KIND="both"
 if [[ "$DB_ONLY" == true ]]; then
+  DEPLOY_KIND="db"
   run_db_push
 elif [[ "$FUNCTIONS_ONLY" == true ]]; then
+  DEPLOY_KIND="functions"
   run_functions_deploy
 else
   run_db_push
   echo
   run_functions_deploy
 fi
+
+log_deploy "dev" "$DEPLOY_KIND"
 
 echo
 echo "Dev deploy complete (linked ref is now $DEV_REF)."
