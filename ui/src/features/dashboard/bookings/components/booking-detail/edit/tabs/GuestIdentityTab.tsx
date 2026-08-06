@@ -8,7 +8,6 @@
 
 import { Info, Plus } from 'lucide-react';
 
-
 import { BOOKING_SOURCE_OPTIONS } from '@/features/guest/form/lib/bookingSourceFromSearchParams';
 import {
   FIFTH_PARTY_GUEST_MAX_AGE,
@@ -162,7 +161,7 @@ export function GuestIdentityTab({
         </Row2>
         <Row2>
           <Field
-            label="Facebook / Airbnb Name"
+            label="Display name"
             required
             htmlFor="guest_facebook_name"
             fieldKey="guest_facebook_name"

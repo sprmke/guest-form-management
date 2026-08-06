@@ -38,7 +38,6 @@ import {
   type BookingsQuery,
   type BookingsSort,
 } from '@/features/dashboard/bookings/lib/types';
-import { ImportHistoryModal } from '@/features/dashboard/import/components/ImportHistoryModal';
 import { ImportWizardModal } from '@/features/dashboard/import/components/ImportWizardModal';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useOrgSlugParam } from '@/features/dashboard/org/lib/adminApiScope';
@@ -149,7 +148,6 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
   const hideKanban = scope === 'org';
   const [searchParams, setSearchParams] = useSearchParams();
   const [importOpen, setImportOpen] = useState(false);
-  const [importHistoryOpen, setImportHistoryOpen] = useState(false);
   const { data: propertyAccess } = usePropertyPermissions();
   const canImport =
     scope !== 'org' && hasPropertyPermission(propertyAccess?.permissions, 'import:manage');
@@ -534,26 +532,7 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
         ) : null}
       </AdminMobilePage>
 
-      {canImport ? (
-        <>
-          <ImportWizardModal
-            open={importOpen}
-            onOpenChange={setImportOpen}
-            onViewHistory={() => {
-              setImportOpen(false);
-              setImportHistoryOpen(true);
-            }}
-          />
-          <ImportHistoryModal
-            open={importHistoryOpen}
-            onOpenChange={setImportHistoryOpen}
-            onBackToImport={() => {
-              setImportHistoryOpen(false);
-              setImportOpen(true);
-            }}
-          />
-        </>
-      ) : null}
+      {canImport ? <ImportWizardModal open={importOpen} onOpenChange={setImportOpen} /> : null}
     </>
   );
 }
