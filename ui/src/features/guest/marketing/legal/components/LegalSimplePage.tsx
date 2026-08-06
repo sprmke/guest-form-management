@@ -1,36 +1,55 @@
+import type { ReactNode } from 'react';
+
+import { MarketingPublicPageContent } from '@/features/guest/marketing/shared/components/MarketingPublicPageContent';
+import { MarketingPublicPageHero } from '@/features/guest/marketing/shared/components/MarketingPublicPageHero';
+
 interface LegalSection {
   title: string;
   paragraphs: string[];
 }
 
 interface LegalSimplePageProps {
+  eyebrow?: string;
   title: string;
-  description: string;
+  description: ReactNode;
   sections: LegalSection[];
+  blobPosition?: 'left' | 'right';
 }
 
-export function LegalSimplePage({ title, description, sections }: LegalSimplePageProps) {
+export function LegalSimplePage({
+  eyebrow = 'Legal',
+  title,
+  description,
+  sections,
+  blobPosition = 'left',
+}: LegalSimplePageProps) {
   return (
-    <div className="container mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
-      <header className="mb-10">
-        <h1 className="text-foreground mb-4 text-3xl font-bold tracking-tight lg:text-4xl">
-          {title}
-        </h1>
-        <p className="text-muted-foreground text-lg">{description}</p>
-      </header>
+    <div className="bg-background min-h-screen">
+      <MarketingPublicPageHero
+        eyebrow={eyebrow}
+        title={title}
+        description={description}
+        blobPosition={blobPosition}
+        narrow
+        titleClassName="lg:text-5xl"
+      />
 
-      <div className="space-y-8">
-        {sections.map((section) => (
-          <section key={section.title}>
-            <h2 className="text-foreground mb-3 text-xl font-semibold">{section.title}</h2>
-            <div className="text-muted-foreground space-y-3 leading-7">
-              {section.paragraphs.map((paragraph) => (
-                <p key={paragraph}>{paragraph}</p>
-              ))}
-            </div>
-          </section>
-        ))}
-      </div>
+      <MarketingPublicPageContent narrow>
+        <div className="divide-border divide-y">
+          {sections.map((section) => (
+            <section key={section.title} className="py-10 first:pb-10 first:pt-0">
+              <h2 className="text-foreground text-xl font-semibold tracking-tight sm:text-2xl">
+                {section.title}
+              </h2>
+              <div className="text-muted-foreground mt-4 space-y-4 text-base leading-relaxed">
+                {section.paragraphs.map((paragraph) => (
+                  <p key={paragraph}>{paragraph}</p>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      </MarketingPublicPageContent>
     </div>
   );
 }

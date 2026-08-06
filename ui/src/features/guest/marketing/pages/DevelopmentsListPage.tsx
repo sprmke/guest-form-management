@@ -23,13 +23,19 @@ import {
   writeDevelopmentsQuery,
   type DevelopmentsListingQuery,
   type DevelopmentsSort,
+  type PublicDevelopmentListItem,
 } from '@/features/guest/marketing/developments/lib/developmentsQuery';
 import { ListingActiveFilterChips } from '@/features/guest/marketing/shared/components/ListingActiveFilterChips';
 import { ListingFilteredEmpty } from '@/features/guest/marketing/shared/components/ListingFilteredEmpty';
+import { usePublicPlaceGroups } from '@/features/guest/marketing/shared/hooks/usePublicPlaceGroups';
 import {
   buildDevelopmentFilterChips,
   removeDevelopmentFilterChip,
 } from '@/features/guest/marketing/shared/lib/listingFilterChips';
+import {
+  parseBboxFromSearchParams,
+  type MapBbox,
+} from '@/features/guest/marketing/shared/lib/listingMapMarkers';
 
 import { Button } from '@/components/ui/button';
 
@@ -38,11 +44,44 @@ function parseViewMode(raw: string | null): DevelopmentViewMode {
   return 'grid';
 }
 
+function isDefaultGroupedBrowse(
+  query: DevelopmentsListingQuery,
+  viewMode: DevelopmentViewMode
+): boolean {
+  return (
+    viewMode === 'grid' &&
+    !query.where &&
+    !query.locationSlug &&
+    query.type.length === 0 &&
+    query.city.length === 0 &&
+    query.minPrice == null &&
+    query.maxPrice == null &&
+    query.developer.length === 0 &&
+    query.lat == null &&
+    query.lng == null &&
+    query.swLat == null &&
+    query.swLng == null &&
+    query.neLat == null &&
+    query.neLng == null &&
+    query.sort === 'recommended' &&
+    query.page === 1
+  );
+}
+
 export function DevelopmentsListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const query = useMemo(() => parseDevelopmentsQuery(searchParams), [searchParams]);
   const viewMode = parseViewMode(searchParams.get('view'));
-  const { data, isLoading, isError, isFetching } = usePublicDevelopments(query);
+  const groupedBrowse = isDefaultGroupedBrowse(query, viewMode);
+  const facetQuery = useMemo(
+    () => (groupedBrowse ? { ...query, pageSize: 1 } : query),
+    [groupedBrowse, query]
+  );
+  const { data, isLoading, isError, isFetching } = usePublicDevelopments(facetQuery);
+  const placeGroups = usePublicPlaceGroups<PublicDevelopmentListItem>(
+    'developments',
+    groupedBrowse
+  );
   const reduceMotion = useReducedMotion();
 
   const [filtersOpen, setFiltersOpen] = useState(true);
@@ -100,7 +139,38 @@ export function DevelopmentsListPage() {
     [setSearchParams]
   );
 
+  const mapBbox = useMemo(() => parseBboxFromSearchParams(searchParams), [searchParams]);
+
+  const applyMapViewport = useCallback(
+    (bbox: MapBbox) => {
+      patchQuery({
+        swLat: bbox.swLat,
+        swLng: bbox.swLng,
+        neLat: bbox.neLat,
+        neLng: bbox.neLng,
+        page: 1,
+      });
+    },
+    [patchQuery]
+  );
+
+  const clearMapViewport = useCallback(() => {
+    patchQuery({ swLat: null, swLng: null, neLat: null, neLng: null, page: 1 });
+  }, [patchQuery]);
+
   const developments = useMemo(() => (data?.data ?? []).map(toDevelopmentCard), [data?.data]);
+  const developmentLocationGroups = useMemo(
+    () =>
+      (placeGroups.data?.pages ?? []).flatMap((page) =>
+        page.groups.map((group) => ({
+          city: group.place,
+          locationSlug: group.locationSlug,
+          title: group.title,
+          developments: group.preview.map(toDevelopmentCard),
+        }))
+      ),
+    [placeGroups.data?.pages]
+  );
   const facets = data?.facets ?? EMPTY_DEVELOPMENTS_FACETS;
   const totalResults = data?.total ?? 0;
   const filterChips = useMemo(() => buildDevelopmentFilterChips(query, facets), [query, facets]);
@@ -197,15 +267,10 @@ export function DevelopmentsListPage() {
                   <DevelopmentsMap
                     developments={developments}
                     totalInView={totalResults}
-                    onViewportChange={(bbox) =>
-                      patchQuery({
-                        swLat: bbox.swLat,
-                        swLng: bbox.swLng,
-                        neLat: bbox.neLat,
-                        neLng: bbox.neLng,
-                        page: 1,
-                      })
-                    }
+                    bbox={mapBbox}
+                    loading={isFetching}
+                    onViewportChange={applyMapViewport}
+                    onResetViewport={mapBbox ? clearMapViewport : undefined}
                   />
                 </motion.div>
               ) : (
@@ -217,7 +282,46 @@ export function DevelopmentsListPage() {
                   className="min-w-0 p-4 sm:p-6"
                 >
                   {viewMode === 'grid' ? (
-                    <DevelopmentsByLocation developments={developments} />
+                    groupedBrowse && placeGroups.isLoading ? (
+                      <div
+                        className="text-muted-foreground py-6 text-sm"
+                        role="status"
+                        aria-live="polite"
+                      >
+                        Loading…
+                      </div>
+                    ) : groupedBrowse &&
+                      placeGroups.isError &&
+                      developmentLocationGroups.length === 0 ? (
+                      <div className="flex flex-col items-center gap-3 py-16" role="alert">
+                        <p className="text-muted-foreground text-sm">Could not load places.</p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="min-h-[44px]"
+                          onClick={() => void placeGroups.refetch()}
+                        >
+                          Try again
+                        </Button>
+                      </div>
+                    ) : (
+                      <DevelopmentsByLocation
+                        developments={groupedBrowse ? [] : developments}
+                        groups={groupedBrowse ? developmentLocationGroups : undefined}
+                        hasMore={groupedBrowse && Boolean(placeGroups.hasNextPage)}
+                        isLoadingMore={placeGroups.isFetchingNextPage}
+                        hasLoadMoreError={
+                          groupedBrowse &&
+                          placeGroups.isError &&
+                          developmentLocationGroups.length > 0
+                        }
+                        onLoadMore={
+                          groupedBrowse && developmentLocationGroups.length > 0
+                            ? () => void placeGroups.fetchNextPage()
+                            : undefined
+                        }
+                      />
+                    )
                   ) : (
                     <DevelopmentsGrid developments={developments} viewMode={viewMode} />
                   )}

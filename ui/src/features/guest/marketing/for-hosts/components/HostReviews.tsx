@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 function HostAvatar({ testimonial }: { testimonial: HostTestimonial }) {
   return (
     <div
-      className="from-primary to-primary/70 flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-base font-black text-white shadow-lg"
+      className="bg-primary text-primary-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-base font-bold shadow-md"
       aria-hidden
     >
       {testimonial.name.charAt(0)}
@@ -42,7 +42,7 @@ export function HostReviews() {
               Host stories
             </p>
             <h2 className="text-foreground text-3xl font-bold tracking-tight sm:text-4xl">
-              Built around the work hosts actually do.
+              Built for the work hosts do every day
             </h2>
             <div className="mt-8 flex items-center gap-2">
               {hostTestimonials.map((testimonial, index) => (
