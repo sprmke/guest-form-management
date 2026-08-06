@@ -6,14 +6,7 @@
  */
 
 export type ImportTargetFieldType =
-  | 'string'
-  | 'email'
-  | 'phone'
-  | 'date'
-  | 'time'
-  | 'integer'
-  | 'decimal'
-  | 'boolean';
+  'string' | 'email' | 'phone' | 'date' | 'time' | 'integer' | 'decimal' | 'boolean';
 
 export type ImportTargetField = {
   id: string;
@@ -25,10 +18,10 @@ export type ImportTargetField = {
 /** Fields hosts may map CSV columns onto when importing into guest_submissions. */
 export const BOOKING_IMPORT_TARGET_FIELDS: readonly ImportTargetField[] = [
   {
-    id: 'guest_facebook_name',
+    id: 'guest_display_name',
     type: 'string',
     required: true,
-    description: "Guest's Facebook or Airbnb display name",
+    description: 'Guest display name (Direct, Facebook, or Airbnb)',
   },
   {
     id: 'primary_guest_name',
@@ -241,13 +234,39 @@ export type BookingImportTargetFieldId = (typeof BOOKING_IMPORT_TARGET_FIELDS)[n
 
 const TARGET_FIELD_ID_SET = new Set<string>(BOOKING_IMPORT_TARGET_FIELDS.map((field) => field.id));
 
+/**
+ * Legacy CSV / header names → current import target ids.
+ * Keeps old downloads and fixtures mappable without a DB rename.
+ */
+export const BOOKING_IMPORT_HEADER_ALIASES: Readonly<Record<string, BookingImportTargetFieldId>> = {
+  guest_facebook_name: 'guest_display_name',
+};
+
+/**
+ * Import target ids that write to a different guest_submissions column.
+ * DB column stays `guest_facebook_name` — no migration.
+ */
+export const BOOKING_IMPORT_TARGET_TO_DB_COLUMN: Readonly<Record<string, string>> = {
+  guest_display_name: 'guest_facebook_name',
+};
+
 export function isBookingImportTargetFieldId(value: string): value is BookingImportTargetFieldId {
   return TARGET_FIELD_ID_SET.has(value);
 }
 
-export function getBookingImportTargetField(
-  id: string
-): ImportTargetField | undefined {
+/** Resolve a CSV header or target id (including legacy aliases) to a current target id. */
+export function resolveBookingImportTargetId(value: string): BookingImportTargetFieldId | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (isBookingImportTargetFieldId(trimmed)) return trimmed;
+  return BOOKING_IMPORT_HEADER_ALIASES[trimmed] ?? null;
+}
+
+export function dbColumnForImportTarget(fieldId: string): string {
+  return BOOKING_IMPORT_TARGET_TO_DB_COLUMN[fieldId] ?? fieldId;
+}
+
+export function getBookingImportTargetField(id: string): ImportTargetField | undefined {
   return BOOKING_IMPORT_TARGET_FIELDS.find((field) => field.id === id);
 }
 

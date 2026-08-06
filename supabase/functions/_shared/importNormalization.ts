@@ -5,7 +5,22 @@
 import dayjs from 'https://esm.sh/dayjs@1.11.10';
 import customParseFormat from 'https://esm.sh/dayjs@1.11.10/plugin/customParseFormat';
 
+import { getBookingImportTargetField } from './importTargetSchemas.ts';
+
 dayjs.extend(customParseFormat);
+
+const BOOLEAN_TRUTHY = new Set(['yes', 'y', 'true', '1', 't']);
+const BOOLEAN_FALSY = new Set(['no', 'n', 'false', '0', 'f']);
+
+/** yes/no/true/false → guest_submissions Yes/No text convention. */
+export function normalizeImportBoolean(value: string | null | undefined): string | null {
+  const raw = String(value ?? '').trim();
+  if (!raw) return null;
+  const lowered = raw.toLowerCase();
+  if (BOOLEAN_TRUTHY.has(lowered)) return 'Yes';
+  if (BOOLEAN_FALSY.has(lowered)) return 'No';
+  return null;
+}
 
 const KNOWN_BOOKING_SOURCES = ['direct', 'facebook', 'airbnb'] as const;
 
@@ -69,6 +84,11 @@ export function normalizeImportFieldValue(
 ): string | null {
   const text = String(rawValue ?? '').trim();
   if (!text) return null;
+
+  const field = getBookingImportTargetField(targetFieldId);
+  if (field?.type === 'boolean') {
+    return normalizeImportBoolean(text) ?? text;
+  }
 
   switch (targetFieldId) {
     case 'check_in_date':

@@ -2,7 +2,7 @@
  * Import preview — map raw CSV rows + validate against importTargetSchemas.
  */
 
-import { normalizeImportFieldValue } from './importNormalization.ts';
+import { normalizeImportBoolean, normalizeImportFieldValue } from './importNormalization.ts';
 import {
   BOOKING_IMPORT_TARGET_FIELDS,
   getBookingImportTargetField,
@@ -14,6 +14,8 @@ export type ImportValidationError = {
   code: string;
   message: string;
   severity: 'error' | 'warning';
+  /** Source cell value that failed validation (pre-normalization when available). */
+  value?: string | null;
 };
 
 export type ImportColumnMappingEntry = {
@@ -46,10 +48,13 @@ export type ImportPreviewSummary = {
   warning: number;
 };
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+type MappedRowData = {
+  mappedData: Record<string, string | null>;
+  /** Trimmed source string per target field id (empty string when cell was blank). */
+  sourceByField: Record<string, string>;
+};
 
-const BOOLEAN_TRUTHY = new Set(['yes', 'y', 'true', '1', 't']);
-const BOOLEAN_FALSY = new Set(['no', 'n', 'false', '0', 'f']);
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function parseColumnMappingEntries(columnMapping: unknown): ImportColumnMappingEntry[] {
   if (!columnMapping || typeof columnMapping !== 'object') return [];
@@ -81,15 +86,52 @@ export function buildHeaderToTargetMap(columnMapping: unknown): Map<string, stri
   return map;
 }
 
+/** Reverse map: target field id → CSV header (first mapping wins). */
+export function buildTargetToHeaderMap(columnMapping: unknown): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const entry of parseColumnMappingEntries(columnMapping)) {
+    if (entry.suggestedTarget && entry.status !== 'skipped' && !map.has(entry.suggestedTarget)) {
+      map.set(entry.suggestedTarget, entry.rawHeader);
+    }
+  }
+  return map;
+}
+
 export function applyImportColumnMapping(
   rawData: Record<string, string>,
   headerToTarget: Map<string, string>
 ): Record<string, string | null> {
-  const mapped: Record<string, string | null> = {};
+  return mapImportRowData(rawData, headerToTarget).mappedData;
+}
+
+function mapImportRowData(
+  rawData: Record<string, string>,
+  headerToTarget: Map<string, string>
+): MappedRowData {
+  const mappedData: Record<string, string | null> = {};
+  const sourceByField: Record<string, string> = {};
+
   for (const [header, targetFieldId] of headerToTarget) {
-    mapped[targetFieldId] = normalizeImportFieldValue(targetFieldId, rawData[header]);
+    const source = String(rawData[header] ?? '').trim();
+    sourceByField[targetFieldId] = source;
+    mappedData[targetFieldId] = normalizeImportFieldValue(targetFieldId, source || null);
   }
-  return mapped;
+
+  return { mappedData, sourceByField };
+}
+
+/** Write corrected target-field values back into raw_data via column mapping. */
+export function applyFieldValuePatches(
+  rawData: Record<string, string>,
+  targetToHeader: Map<string, string>,
+  fieldValues: Record<string, string>
+): Record<string, string> {
+  const next = { ...rawData };
+  for (const [fieldId, value] of Object.entries(fieldValues)) {
+    const header = targetToHeader.get(fieldId);
+    if (header) next[header] = value;
+  }
+  return next;
 }
 
 function normalizeComparableUnit(value: string | null | undefined): string {
@@ -98,21 +140,78 @@ function normalizeComparableUnit(value: string | null | undefined): string {
     .replace(/[^a-z0-9]/g, '');
 }
 
-function parseBooleanValue(value: string | null | undefined): string | null {
-  const raw = String(value ?? '').trim();
-  if (!raw) return null;
-  const lowered = raw.toLowerCase();
-  if (BOOLEAN_TRUTHY.has(lowered)) return 'Yes';
-  if (BOOLEAN_FALSY.has(lowered)) return 'No';
-  return null;
+function booleanFieldLabel(fieldId: string): string {
+  return getBookingImportTargetField(fieldId)?.description ?? fieldId.replace(/_/g, ' ');
+}
+
+function invalidFormatMessage(fieldType: ImportTargetFieldType, fieldId: string): string {
+  switch (fieldType) {
+    case 'email':
+      return 'Invalid email address';
+    case 'phone':
+      return 'Phone number has no digits';
+    case 'date':
+      return 'Unrecognized date format';
+    case 'integer':
+      return 'Expected a whole number';
+    case 'decimal':
+      return 'Expected a number';
+    case 'boolean':
+      return `${booleanFieldLabel(fieldId)} must be yes, no, true, or false in your file`;
+    default:
+      return 'Invalid value';
+  }
+}
+
+/** Non-empty source that failed normalization → typed error instead of silent null. */
+function validateNormalizationFailures(
+  mappedData: Record<string, string | null>,
+  sourceByField: Record<string, string>
+): ImportValidationError[] {
+  const errors: ImportValidationError[] = [];
+
+  for (const [fieldId, source] of Object.entries(sourceByField)) {
+    if (!source) continue;
+    const field = getBookingImportTargetField(fieldId);
+    if (!field) continue;
+
+    const normalized = mappedData[fieldId];
+    if (normalized !== null && normalized !== '') continue;
+
+    if (field.type === 'boolean' && normalizeImportBoolean(source) === null) {
+      errors.push({
+        field: fieldId,
+        code: 'invalid_boolean',
+        message: invalidFormatMessage('boolean', fieldId),
+        severity: 'error',
+        value: source,
+      });
+      continue;
+    }
+
+    if (field.type === 'date') {
+      errors.push({
+        field: fieldId,
+        code: 'invalid_date',
+        message: invalidFormatMessage('date', fieldId),
+        severity: 'error',
+        value: source,
+      });
+    }
+  }
+
+  return errors;
 }
 
 function validateFieldType(
   fieldId: string,
   fieldType: ImportTargetFieldType,
-  value: string | null
+  value: string | null,
+  sourceValue?: string
 ): ImportValidationError | null {
   if (value === null || value === '') return null;
+
+  const displayValue = sourceValue && sourceValue !== value ? sourceValue : value;
 
   switch (fieldType) {
     case 'email':
@@ -122,6 +221,7 @@ function validateFieldType(
           code: 'invalid_email',
           message: 'Invalid email address',
           severity: 'error',
+          value: displayValue,
         };
       }
       return null;
@@ -132,6 +232,7 @@ function validateFieldType(
           code: 'invalid_phone',
           message: 'Phone number has no digits',
           severity: 'error',
+          value: displayValue,
         };
       }
       return null;
@@ -143,6 +244,7 @@ function validateFieldType(
           code: 'invalid_date',
           message: 'Unrecognized date format',
           severity: 'error',
+          value: displayValue,
         };
       }
       return null;
@@ -155,6 +257,7 @@ function validateFieldType(
           code: 'invalid_integer',
           message: 'Expected a whole number',
           severity: 'error',
+          value: displayValue,
         };
       }
       return null;
@@ -167,17 +270,19 @@ function validateFieldType(
           code: 'invalid_decimal',
           message: 'Expected a number',
           severity: 'error',
+          value: displayValue,
         };
       }
       return null;
     }
     case 'boolean': {
-      if (parseBooleanValue(value) === null) {
+      if (normalizeImportBoolean(value) === null) {
         return {
           field: fieldId,
           code: 'invalid_boolean',
-          message: 'Expected yes/no or true/false',
+          message: invalidFormatMessage('boolean', fieldId),
           severity: 'error',
+          value: displayValue,
         };
       }
       return null;
@@ -187,35 +292,51 @@ function validateFieldType(
   }
 }
 
-function validateRequiredFields(mappedData: Record<string, string | null>): ImportValidationError[] {
+function validateRequiredFields(
+  mappedData: Record<string, string | null>,
+  sourceByField: Record<string, string>,
+  fieldsWithErrors: Set<string>
+): ImportValidationError[] {
   const errors: ImportValidationError[] = [];
   for (const field of BOOKING_IMPORT_TARGET_FIELDS) {
     if (!field.required) continue;
+    if (fieldsWithErrors.has(field.id)) continue;
+
     const value = mappedData[field.id];
     if (value === null || value === '') {
+      const source = sourceByField[field.id] ?? '';
       errors.push({
         field: field.id,
         code: 'required',
         message: 'Required field is missing',
         severity: 'error',
+        value: source || null,
       });
     }
   }
   return errors;
 }
 
-function validateFieldTypes(mappedData: Record<string, string | null>): ImportValidationError[] {
+function validateFieldTypes(
+  mappedData: Record<string, string | null>,
+  sourceByField: Record<string, string>,
+  fieldsWithErrors: Set<string>
+): ImportValidationError[] {
   const errors: ImportValidationError[] = [];
   for (const [fieldId, value] of Object.entries(mappedData)) {
+    if (fieldsWithErrors.has(fieldId)) continue;
     const field = getBookingImportTargetField(fieldId);
     if (!field || value === null || value === '') continue;
-    const typeError = validateFieldType(fieldId, field.type, value);
+    const typeError = validateFieldType(fieldId, field.type, value, sourceByField[fieldId]);
     if (typeError) errors.push(typeError);
   }
   return errors;
 }
 
-function validateDateOrder(mappedData: Record<string, string | null>): ImportValidationError | null {
+function validateDateOrder(
+  mappedData: Record<string, string | null>,
+  sourceByField: Record<string, string>
+): ImportValidationError | null {
   const checkIn = mappedData.check_in_date;
   const checkOut = mappedData.check_out_date;
   if (!checkIn || !checkOut) return null;
@@ -236,6 +357,7 @@ function validateDateOrder(mappedData: Record<string, string | null>): ImportVal
       code: 'date_order',
       message: 'Check-out must be after check-in',
       severity: 'error',
+      value: sourceByField.check_out_date || checkOut,
     };
   }
   return null;
@@ -270,6 +392,7 @@ function validateUnitMismatch(
     code: 'unit_mismatch',
     message: `Row mentions "${rowUnit}" but import target is ${label}`,
     severity: 'warning',
+    value: rowUnit,
   };
 }
 
@@ -292,22 +415,27 @@ export function previewImportRow(
     };
   }
 
-  const mappedData = applyImportColumnMapping(row.raw_data, headerToTarget);
+  const { mappedData, sourceByField } = mapImportRowData(row.raw_data, headerToTarget);
 
-  for (const field of BOOKING_IMPORT_TARGET_FIELDS) {
-    if (field.type !== 'boolean') continue;
-    const raw = mappedData[field.id];
-    if (raw === null || raw === '') continue;
-    mappedData[field.id] = parseBooleanValue(raw) ?? raw;
-  }
+  const normalizationErrors = validateNormalizationFailures(mappedData, sourceByField);
+  const fieldsWithErrors = new Set(
+    normalizationErrors.map((entry) => entry.field).filter(Boolean) as string[]
+  );
 
   const validationErrors: ImportValidationError[] = [
-    ...validateRequiredFields(mappedData),
-    ...validateFieldTypes(mappedData),
+    ...normalizationErrors,
+    ...validateRequiredFields(mappedData, sourceByField, fieldsWithErrors),
+    ...validateFieldTypes(mappedData, sourceByField, fieldsWithErrors),
   ];
 
-  const dateOrderError = validateDateOrder(mappedData);
-  if (dateOrderError) validationErrors.push(dateOrderError);
+  for (const entry of validationErrors) {
+    if (entry.field) fieldsWithErrors.add(entry.field);
+  }
+
+  const dateOrderError = validateDateOrder(mappedData, sourceByField);
+  if (dateOrderError && !fieldsWithErrors.has('check_out_date')) {
+    validationErrors.push(dateOrderError);
+  }
 
   const unitWarning = validateUnitMismatch(mappedData, propertyTowerAndUnit, propertyName);
   if (unitWarning) validationErrors.push(unitWarning);

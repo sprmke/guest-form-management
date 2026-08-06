@@ -5,6 +5,7 @@
 
 import {
   isBookingImportTargetFieldId,
+  resolveBookingImportTargetId,
   serializeBookingImportTargetFields,
 } from './importTargetSchemas.ts';
 
@@ -149,6 +150,9 @@ function sanitizeMappingEntry(
         : 'Suggested by AI';
 
   if (suggestedTarget && !isBookingImportTargetFieldId(suggestedTarget)) {
+    suggestedTarget = resolveBookingImportTargetId(suggestedTarget);
+  }
+  if (suggestedTarget && !isBookingImportTargetFieldId(suggestedTarget)) {
     suggestedTarget = null;
     status = 'unmatched';
   }
@@ -166,12 +170,41 @@ function sanitizeMappingEntry(
 }
 
 function buildDegradedMappings(headers: string[]): ImportColumnMappingEntry[] {
-  return headers.map((rawHeader) => ({
-    rawHeader,
-    suggestedTarget: null,
-    status: 'unmatched' as const,
-    reason: 'AI mapping unavailable — map manually',
-  }));
+  return applyDeterministicHeaderMatches(
+    headers.map((rawHeader) => {
+      const resolved = resolveBookingImportTargetId(rawHeader);
+      if (resolved) {
+        return {
+          rawHeader,
+          suggestedTarget: resolved,
+          status: 'matched' as const,
+          reason: 'Column header matches booking field',
+        };
+      }
+      return {
+        rawHeader,
+        suggestedTarget: null,
+        status: 'unmatched' as const,
+        reason: 'AI mapping unavailable — map manually',
+      };
+    })
+  );
+}
+
+/** When a CSV header equals a canonical field id (or legacy alias), trust the header over AI drift. */
+function applyDeterministicHeaderMatches(
+  mappings: ImportColumnMappingEntry[]
+): ImportColumnMappingEntry[] {
+  return mappings.map((entry) => {
+    const resolved = resolveBookingImportTargetId(entry.rawHeader);
+    if (!resolved) return entry;
+    return {
+      ...entry,
+      suggestedTarget: resolved,
+      status: 'matched',
+      reason: 'Column header matches booking field',
+    };
+  });
 }
 
 function buildPrompt(input: ImportColumnMappingInput): string {
@@ -222,10 +255,7 @@ function extractGeminiText(json: unknown): string | null {
   return text || null;
 }
 
-function parseMappingsPayload(
-  text: string,
-  headers: string[]
-): ImportColumnMappingEntry[] | null {
+function parseMappingsPayload(text: string, headers: string[]): ImportColumnMappingEntry[] | null {
   const trimmed = text.trim();
   const jsonMatch = trimmed.match(/\{[\s\S]*\}/);
   if (!jsonMatch) return null;
@@ -238,8 +268,7 @@ function parseMappingsPayload(
     for (const row of parsed.mappings) {
       if (!row || typeof row !== 'object') continue;
       const record = row as Record<string, unknown>;
-      const header =
-        typeof record.rawHeader === 'string' ? record.rawHeader.trim() : '';
+      const header = typeof record.rawHeader === 'string' ? record.rawHeader.trim() : '';
       if (header) byHeader.set(header, record);
     }
 
@@ -381,12 +410,20 @@ export async function suggestImportColumnMappings(
   const prompt = buildPrompt({ ...input, headers });
   const geminiMappings = await tryGeminiMapping(prompt, headers);
   if (geminiMappings) {
-    return { mappings: geminiMappings, provider: 'gemini', degraded: false };
+    return {
+      mappings: applyDeterministicHeaderMatches(geminiMappings),
+      provider: 'gemini',
+      degraded: false,
+    };
   }
 
   const groqMappings = await tryGroqMapping(prompt, headers);
   if (groqMappings) {
-    return { mappings: groqMappings, provider: 'groq', degraded: false };
+    return {
+      mappings: applyDeterministicHeaderMatches(groqMappings),
+      provider: 'groq',
+      degraded: false,
+    };
   }
 
   console.warn('[importColumnMappingAi] All providers unavailable — degrading to unmatched');
