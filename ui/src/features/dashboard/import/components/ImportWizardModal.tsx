@@ -4,10 +4,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
   CheckCircle2,
-  ChevronDown,
-  ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Download,
-  History,
   Loader2,
   Upload,
 } from 'lucide-react';
@@ -33,7 +32,6 @@ import {
   useCommitImportBatch,
   type CommitImportBatchFailure,
 } from '@/features/dashboard/import/hooks/useCommitImportBatch';
-import { IMPORT_BATCHES_KEY } from '@/features/dashboard/import/hooks/useImportBatches';
 import {
   clearImportPreviewCache,
   useImportBatchRows,
@@ -47,6 +45,7 @@ import {
 } from '@/features/dashboard/import/lib/importTargetFields';
 import type {
   AiMapColumnsResult,
+  ImportBatchRowPreview,
   ImportColumnMappingEntry,
 } from '@/features/dashboard/import/types/importBatch';
 import type { ImportParseResult } from '@/features/dashboard/import/types/importParse';
@@ -62,90 +61,78 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import {
   ResponsiveModal,
   ResponsiveModalContent,
   ResponsiveModalDescription,
 } from '@/components/ui/responsive-modal';
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { formatMoney } from '@/utils/format/currency';
 
 // ── Steps ─────────────────────────────────────────────────────────────────────
 
-type Step = 'upload' | 'automap' | 'manual' | 'preview' | 'commit';
+type Step = 'upload' | 'automap' | 'preview' | 'commit';
 
-const ALL_STEPS: Step[] = ['upload', 'automap', 'manual', 'preview', 'commit'];
+const ALL_STEPS: Step[] = ['upload', 'automap', 'preview', 'commit'];
 
 const STEP_LABELS: Record<Step, string> = {
   upload: 'Upload',
   automap: 'Match',
-  manual: 'Columns',
   preview: 'Preview',
   commit: 'Import',
 };
 
 const STEP_COPY: Record<Step, { title: string; description: string }> = {
   upload: {
-    title: 'Add your file',
+    title: 'Add your file & let us do the work',
     description:
-      'Upload a spreadsheet of past bookings. We hold the file until you finish or cancel.',
+      'Upload a CSV or Excel spreadsheet of existing bookings. We’ll automatically recognize and attempt to match and map your columns to our template.',
   },
   automap: {
-    title: 'Reading your columns',
-    description: 'We line up each column in your file with a booking field.',
-  },
-  manual: {
-    title: 'Confirm the rest',
-    description: 'Pick a booking field for each column below. Choose Skip if you do not need it.',
+    title: 'Match your columns',
+    description: 'Review automatic matches and resolve any columns that need your input.',
   },
   preview: {
     title: 'Check the rows',
-    description: 'Rows with a problem are left out. Switch off Import on any row you want to skip.',
+    description:
+      'Only rows marked Ready are imported. Open a row to fix invalid values, or turn off Import to skip a row.',
   },
   commit: {
-    title: 'Ready to import',
-    description:
-      'Bookings are added with the status Imported. Guests are not emailed and no calendar events are created. You can undo this later from Past imports.',
+    title: 'Review and import',
+    description: 'Confirm what will be added before completing the import.',
   },
 };
 
 // ── Upload step ───────────────────────────────────────────────────────────────
 
 type UploadStepProps = {
+  parseResult: ImportParseResult | null;
   onParsed: (result: ImportParseResult) => void;
-  onViewHistory?: () => void;
+  onReplace: () => void;
+  isBusy?: boolean;
 };
 
-function UploadStep({ onParsed, onViewHistory }: UploadStepProps) {
-  return (
-    <div>
-      <ImportFileDropzone onParsed={onParsed} />
-
-      <div className="border-border/70 mt-4 flex items-center justify-between gap-2 border-t pt-3">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="text-muted-foreground hover:text-foreground -ml-2 min-h-11"
-          onClick={() => downloadImportCsvTemplate()}
-        >
-          <Download className="size-4" aria-hidden />
-          Download template
-        </Button>
-        {onViewHistory ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground hover:text-foreground -mr-2 min-h-11"
-            onClick={onViewHistory}
-          >
-            <History className="size-4" aria-hidden />
-            Past imports
-          </Button>
-        ) : null}
-      </div>
-    </div>
+function UploadStep({ parseResult, onParsed, onReplace, isBusy }: UploadStepProps) {
+  return parseResult ? (
+    <ImportFileBar
+      fileName={parseResult.fileName}
+      rowCount={parseResult.rowCount}
+      columnCount={parseResult.headers.length}
+      onReplace={onReplace}
+      replaceDisabled={isBusy}
+    />
+  ) : (
+    <ImportFileDropzone onParsed={onParsed} disabled={isBusy} />
   );
 }
 
@@ -153,14 +140,31 @@ function UploadStep({ onParsed, onViewHistory }: UploadStepProps) {
 
 type AutoMapStepProps = {
   aiResult: AiMapColumnsResult | null;
+  parseResult: ImportParseResult;
+  mappingState: Record<string, string | null>;
+  onMappingChange: (header: string, target: string | null) => void;
   isLoading: boolean;
   error: string | null;
+  saveError: string | null;
+  missingRequired: string[];
   onRunMapping: () => void;
 };
 
-function AutoMapStep({ aiResult, isLoading, error, onRunMapping }: AutoMapStepProps) {
-  const [matchedExpanded, setMatchedExpanded] = React.useState(false);
-  const matchedPanelId = React.useId();
+function AutoMapStep({
+  aiResult,
+  parseResult,
+  mappingState,
+  onMappingChange,
+  isLoading,
+  error,
+  saveError,
+  missingRequired,
+  onRunMapping,
+}: AutoMapStepProps) {
+  const [activeTab, setActiveTab] = React.useState<'review' | 'matched'>('review');
+  const mappings = aiResult?.columnMapping.mappings ?? [];
+  const needsReview = mappings.filter((entry) => entry.status !== 'matched');
+  const matched = mappings.filter((entry) => entry.status === 'matched');
 
   React.useEffect(() => {
     if (!aiResult && !isLoading && !error) {
@@ -168,6 +172,33 @@ function AutoMapStep({ aiResult, isLoading, error, onRunMapping }: AutoMapStepPr
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  React.useEffect(() => {
+    if (!aiResult) return;
+    setActiveTab(needsReview.length > 0 ? 'review' : 'matched');
+    // Reset only for a new mapping result, not while the host edits selections.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aiResult?.batchId]);
+
+  React.useEffect(() => {
+    if (missingRequired.length > 0 || saveError) setActiveTab('review');
+  }, [missingRequired.length, saveError]);
+
+  const usedTargets = new Set<string>();
+  for (const [, target] of Object.entries(mappingState)) {
+    if (target) usedTargets.add(target);
+  }
+  for (const entry of matched) {
+    if (entry.suggestedTarget) usedTargets.add(entry.suggestedTarget);
+  }
+
+  const samplesByHeader: Record<string, string[]> = {};
+  for (const header of parseResult.headers) {
+    samplesByHeader[header] = parseResult.sampleRows
+      .map((row) => String(row[header] ?? '').trim())
+      .filter(Boolean)
+      .slice(0, 3);
+  }
 
   if (isLoading) {
     return (
@@ -195,146 +226,85 @@ function AutoMapStep({ aiResult, isLoading, error, onRunMapping }: AutoMapStepPr
 
   if (!aiResult) return null;
 
-  const { summary, columnMapping } = aiResult;
-  const matched = columnMapping.mappings.filter((e) => e.status === 'matched');
-
   return (
-    <div className="space-y-4">
-      <ImportStatStrip
-        stats={[
-          { label: 'Matched', value: summary.matched, tone: 'primary' },
-          { label: 'Need your input', value: summary.needsReview, tone: 'neutral' },
-        ]}
-      />
-
+    <div className="space-y-3">
       {aiResult.degraded ? (
         <ImportAlert tone="warning">
           Matching ran in basic mode, so please double-check the suggestions.
         </ImportAlert>
       ) : null}
 
-      {matched.length > 0 ? (
-        <div className="border-border/70 overflow-hidden rounded-xl border">
-          <button
-            type="button"
-            className="hover:bg-muted/40 flex min-h-11 w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm transition-colors"
-            onClick={() => setMatchedExpanded((p) => !p)}
-            aria-expanded={matchedExpanded}
-            aria-controls={matchedPanelId}
-          >
-            <span className="text-foreground flex items-center gap-2 font-medium">
-              <CheckCircle2 className="text-primary size-4 shrink-0" aria-hidden />
-              {matched.length} column{matched.length !== 1 ? 's' : ''} matched
-            </span>
-            {matchedExpanded ? (
-              <ChevronUp className="text-muted-foreground size-4" aria-hidden />
-            ) : (
-              <ChevronDown className="text-muted-foreground size-4" aria-hidden />
-            )}
-          </button>
-          {matchedExpanded ? (
-            <ul id={matchedPanelId} className="border-border/70 divide-border/60 divide-y border-t">
+      <ImportStatStrip
+        ariaLabel="Show columns by match status"
+        stats={[
+          {
+            label: 'Matched',
+            value: matched.length,
+            tone: 'primary',
+            selected: activeTab === 'matched',
+            onSelect: () => setActiveTab('matched'),
+          },
+          {
+            label: 'Need input',
+            value: needsReview.length,
+            tone: 'warning',
+            selected: activeTab === 'review',
+            onSelect: () => setActiveTab('review'),
+          },
+        ]}
+      />
+
+      {activeTab === 'review' ? (
+        <div className="space-y-2">
+          {saveError ? <ImportAlert tone="error">{saveError}</ImportAlert> : null}
+          {missingRequired.length > 0 ? (
+            <ImportAlert tone="warning">
+              Still need: {missingRequired.map(labelForImportTarget).join(', ')}
+            </ImportAlert>
+          ) : null}
+
+          {needsReview.length > 0 ? (
+            needsReview.map((entry: ImportColumnMappingEntry) => (
+              <ImportManualMappingRow
+                key={entry.rawHeader}
+                entry={entry}
+                samples={samplesByHeader[entry.rawHeader] ?? []}
+                value={mappingState[entry.rawHeader] ?? null}
+                onChange={onMappingChange}
+                usedTargets={usedTargets}
+              />
+            ))
+          ) : (
+            <div className="border-border/70 flex flex-col items-center gap-2 rounded-xl border py-10 text-center">
+              <CheckCircle2 className="text-primary size-6" aria-hidden />
+              <p className="text-foreground text-sm font-medium">No columns need input</p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div>
+          {matched.length > 0 ? (
+            <ul className="border-border/70 divide-border/60 divide-y overflow-hidden rounded-xl border">
               {matched.map((entry) => (
                 <li
                   key={entry.rawHeader}
-                  className="flex items-center justify-between gap-3 px-3 py-2 text-xs"
+                  className="grid min-h-11 grid-cols-[minmax(0,1fr)_1rem_minmax(0,1fr)] items-center gap-3 px-3 py-2 text-xs"
                 >
-                  <span className="text-muted-foreground min-w-0 flex-1 truncate">
-                    {entry.rawHeader}
-                  </span>
-                  <span className="text-foreground max-w-[55%] shrink-0 truncate text-right font-medium">
+                  <span className="text-muted-foreground min-w-0 truncate">{entry.rawHeader}</span>
+                  <ChevronRight className="text-muted-foreground/60 size-4" aria-hidden />
+                  <span className="text-foreground min-w-0 truncate font-medium">
                     {labelForImportTarget(entry.suggestedTarget)}
                   </span>
                 </li>
               ))}
             </ul>
-          ) : null}
+          ) : (
+            <p className="text-muted-foreground border-border/70 rounded-xl border py-10 text-center text-sm">
+              No automatic matches.
+            </p>
+          )}
         </div>
-      ) : (
-        <ImportAlert tone="info">
-          Nothing matched automatically. Continue to map each column yourself.
-        </ImportAlert>
       )}
-    </div>
-  );
-}
-
-// ── Columns step ──────────────────────────────────────────────────────────────
-
-type ManualMappingStepProps = {
-  aiResult: AiMapColumnsResult;
-  parseResult: ImportParseResult;
-  mappingState: Record<string, string | null>;
-  onMappingChange: (header: string, target: string | null) => void;
-  error: string | null;
-  missingRequired: string[];
-};
-
-function ManualMappingStep({
-  aiResult,
-  parseResult,
-  mappingState,
-  onMappingChange,
-  error,
-  missingRequired,
-}: ManualMappingStepProps) {
-  const needsReview = aiResult.columnMapping.mappings.filter((e) => e.status !== 'matched');
-  const matched = aiResult.columnMapping.mappings.filter((e) => e.status === 'matched');
-
-  const usedTargets = React.useMemo(() => {
-    const used = new Set<string>();
-    for (const [, target] of Object.entries(mappingState)) {
-      if (target) used.add(target);
-    }
-    for (const entry of matched) {
-      if (entry.suggestedTarget) used.add(entry.suggestedTarget);
-    }
-    return used;
-  }, [mappingState, matched]);
-
-  const samplesByHeader = React.useMemo(() => {
-    const map: Record<string, string[]> = {};
-    for (const header of parseResult.headers) {
-      map[header] = parseResult.sampleRows
-        .map((row) => String(row[header] ?? '').trim())
-        .filter(Boolean)
-        .slice(0, 3);
-    }
-    return map;
-  }, [parseResult]);
-
-  if (needsReview.length === 0) {
-    return (
-      <div className="flex flex-col items-center gap-2 py-14 text-center">
-        <CheckCircle2 className="text-primary size-8" aria-hidden />
-        <p className="text-foreground text-sm font-medium">Every column matched</p>
-        <p className="text-muted-foreground text-sm">There is nothing to confirm here.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-2">
-      {error ? (
-        <ImportAlert tone="error" className="mb-3">
-          {error}
-        </ImportAlert>
-      ) : null}
-      {missingRequired.length > 0 ? (
-        <ImportAlert tone="warning" className="mb-3">
-          Still need: {missingRequired.map(labelForImportTarget).join(', ')}
-        </ImportAlert>
-      ) : null}
-      {needsReview.map((entry: ImportColumnMappingEntry) => (
-        <ImportManualMappingRow
-          key={entry.rawHeader}
-          entry={entry}
-          samples={samplesByHeader[entry.rawHeader] ?? []}
-          value={mappingState[entry.rawHeader] ?? null}
-          onChange={onMappingChange}
-          usedTargets={usedTargets}
-        />
-      ))}
     </div>
   );
 }
@@ -368,6 +338,7 @@ function PreviewStep({ batchId, previewRunKey, isLoading, error, onRunPreview }:
 // ── Import step ───────────────────────────────────────────────────────────────
 
 type CommitStepProps = {
+  rows: ImportBatchRowPreview[];
   validCount: number;
   excludedCount: number;
   isCommitting: boolean;
@@ -375,14 +346,40 @@ type CommitStepProps = {
   failedRows: CommitImportBatchFailure[];
 };
 
+const COMMIT_PAGE_SIZE = 10;
+
+function importGuestName(row: ImportBatchRowPreview): string {
+  return row.mappedData.primary_guest_name ?? row.mappedData.guest_display_name ?? 'No name';
+}
+
+function importTotalGuests(row: ImportBatchRowPreview): number {
+  const adults = Number(row.mappedData.number_of_adults ?? 0);
+  const children = Number(row.mappedData.number_of_children ?? 0);
+  return (Number.isFinite(adults) ? adults : 0) + (Number.isFinite(children) ? children : 0);
+}
+
 function CommitStep({
+  rows,
   validCount,
   excludedCount,
   isCommitting,
   error,
   failedRows,
 }: CommitStepProps) {
+  const [page, setPage] = React.useState(0);
   const visibleFailures = failedRows.slice(0, 5);
+  const importRows = React.useMemo(
+    () => rows.filter((row) => row.validationStatus === 'valid'),
+    [rows]
+  );
+  const pageCount = Math.max(1, Math.ceil(importRows.length / COMMIT_PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const pageStart = safePage * COMMIT_PAGE_SIZE;
+  const pageRows = importRows.slice(pageStart, pageStart + COMMIT_PAGE_SIZE);
+
+  React.useEffect(() => {
+    setPage(0);
+  }, [rows]);
 
   if (isCommitting) {
     return (
@@ -396,9 +393,10 @@ function CommitStep({
   return (
     <div className="space-y-4">
       <ImportStatStrip
+        ariaLabel="Import summary"
         stats={[
-          { label: 'Will be added', value: validCount, tone: 'primary' },
-          { label: 'Left out', value: excludedCount, tone: 'neutral' },
+          { label: 'Ready to import', value: validCount, tone: 'primary' },
+          { label: 'Not included', value: excludedCount, tone: 'neutral' },
         ]}
       />
 
@@ -418,6 +416,128 @@ function CommitStep({
           ) : null}
         </div>
       ) : null}
+
+      <section aria-labelledby="bookings-to-import-heading" className="space-y-2">
+        <div className="flex items-end justify-between gap-3">
+          <h3 id="bookings-to-import-heading" className="text-sm font-semibold">
+            Bookings to import
+          </h3>
+          <p className="text-muted-foreground text-xs tabular-nums">
+            {importRows.length.toLocaleString()} total
+          </p>
+        </div>
+
+        <ul className="divide-border/70 border-border/70 divide-y overflow-hidden rounded-xl border sm:hidden">
+          {pageRows.map((row) => (
+            <li key={row.id} className="space-y-2.5 px-3 py-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{importGuestName(row)}</p>
+                  <p className="text-muted-foreground mt-0.5 text-xs tabular-nums">
+                    Row {row.rowIndex + 1}
+                  </p>
+                </div>
+                <p className="shrink-0 text-sm font-semibold tabular-nums">
+                  {formatMoney(row.mappedData.booking_rate)}
+                </p>
+              </div>
+              <dl className="grid grid-cols-3 gap-2 text-xs">
+                <div>
+                  <dt className="text-muted-foreground">Check-in</dt>
+                  <dd className="mt-0.5 font-medium tabular-nums">
+                    {row.mappedData.check_in_date ?? '—'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Check-out</dt>
+                  <dd className="mt-0.5 font-medium tabular-nums">
+                    {row.mappedData.check_out_date ?? '—'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Guests</dt>
+                  <dd className="mt-0.5 font-medium tabular-nums">{importTotalGuests(row)}</dd>
+                </div>
+              </dl>
+            </li>
+          ))}
+        </ul>
+
+        <div className="border-border/70 hidden overflow-hidden rounded-xl border sm:block">
+          <Table className="table-fixed">
+            <TableCaption className="sr-only">
+              Bookings that will be created when the import is confirmed
+            </TableCaption>
+            <TableHeader className="bg-muted/35">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="h-9 w-12 px-3 text-xs">#</TableHead>
+                <TableHead className="h-9 px-3 text-xs">Guest</TableHead>
+                <TableHead className="h-9 w-32 px-3 text-xs">Check-in</TableHead>
+                <TableHead className="h-9 w-32 px-3 text-xs">Check-out</TableHead>
+                <TableHead className="h-9 w-24 px-3 text-right text-xs">Guests</TableHead>
+                <TableHead className="h-9 w-36 px-3 text-right text-xs">Booking rate</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pageRows.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell className="text-muted-foreground px-3 py-2.5 text-xs tabular-nums">
+                    {row.rowIndex + 1}
+                  </TableCell>
+                  <TableCell className="truncate px-3 py-2.5 text-sm font-medium">
+                    {importGuestName(row)}
+                  </TableCell>
+                  <TableCell className="px-3 py-2.5 text-xs tabular-nums">
+                    {row.mappedData.check_in_date ?? '—'}
+                  </TableCell>
+                  <TableCell className="px-3 py-2.5 text-xs tabular-nums">
+                    {row.mappedData.check_out_date ?? '—'}
+                  </TableCell>
+                  <TableCell className="px-3 py-2.5 text-right text-xs font-medium tabular-nums">
+                    {importTotalGuests(row)}
+                  </TableCell>
+                  <TableCell className="px-3 py-2.5 text-right text-sm font-semibold tabular-nums">
+                    {formatMoney(row.mappedData.booking_rate)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        {pageCount > 1 ? (
+          <div className="flex items-center justify-between gap-3 pt-1">
+            <p className="text-muted-foreground text-xs tabular-nums">
+              {pageStart + 1}–{Math.min(pageStart + COMMIT_PAGE_SIZE, importRows.length)} of{' '}
+              {importRows.length.toLocaleString()}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="size-11"
+                aria-label="Previous bookings"
+                disabled={safePage === 0}
+                onClick={() => setPage((current) => Math.max(0, current - 1))}
+              >
+                <ChevronLeft className="size-4" aria-hidden />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="size-11"
+                aria-label="Next bookings"
+                disabled={safePage >= pageCount - 1}
+                onClick={() => setPage((current) => Math.min(pageCount - 1, current + 1))}
+              >
+                <ChevronRight className="size-4" aria-hidden />
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      </section>
     </div>
   );
 }
@@ -449,15 +569,29 @@ function missingRequiredTargets(
   return REQUIRED_TARGET_FIELDS.map((f) => f.id).filter((id) => !used.has(id));
 }
 
+function buildFinalColumnMapping(
+  aiResult: AiMapColumnsResult,
+  mappingState: Record<string, string | null>
+): Record<string, string | null> {
+  const finalMapping: Record<string, string | null> = {};
+  for (const entry of aiResult.columnMapping.mappings) {
+    if (entry.status === 'matched' && entry.suggestedTarget) {
+      finalMapping[entry.rawHeader] = entry.suggestedTarget;
+    } else {
+      finalMapping[entry.rawHeader] = mappingState[entry.rawHeader] ?? null;
+    }
+  }
+  return finalMapping;
+}
+
 // ── Wizard ────────────────────────────────────────────────────────────────────
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onViewHistory?: () => void;
 };
 
-export function ImportWizardModal({ open, onOpenChange, onViewHistory }: Props) {
+export function ImportWizardModal({ open, onOpenChange }: Props) {
   const [step, setStep] = React.useState<Step>('upload');
   const [parseResult, setParseResult] = React.useState<ImportParseResult | null>(null);
   const [aiResult, setAiResult] = React.useState<AiMapColumnsResult | null>(null);
@@ -468,6 +602,7 @@ export function ImportWizardModal({ open, onOpenChange, onViewHistory }: Props) 
   const [commitFailures, setCommitFailures] = React.useState<CommitImportBatchFailure[]>([]);
   const [previewRunKey, setPreviewRunKey] = React.useState(0);
   const [discardOpen, setDiscardOpen] = React.useState(false);
+  const [templateConfirmOpen, setTemplateConfirmOpen] = React.useState(false);
   const [showMissingRequired, setShowMissingRequired] = React.useState(false);
 
   /** Batch that must be cancelled if the modal closes without a successful commit. */
@@ -481,30 +616,33 @@ export function ImportWizardModal({ open, onOpenChange, onViewHistory }: Props) 
   const previewMutation = useImportPreview();
   const cancelMutation = useCancelImportBatch();
   const commitMutation = useCommitImportBatch();
-  const { summary: previewSummary, isReady: previewReady } = useImportBatchRows(
-    parseResult?.batchId ?? null
-  );
+  const {
+    rows: previewRows,
+    summary: previewSummary,
+    isReady: previewReady,
+  } = useImportBatchRows(parseResult?.batchId ?? null);
 
+  // Reset wizard state only when the modal opens — not when mutation hooks re-render.
   React.useEffect(() => {
-    if (open) {
-      setStep('upload');
-      setParseResult(null);
-      setAiResult(null);
-      setAiError(null);
-      setMappingState({});
-      setIsBatchCommitted(false);
-      setCommitResultError(null);
-      setCommitFailures([]);
-      setPreviewRunKey(0);
-      setDiscardOpen(false);
-      setShowMissingRequired(false);
-      previewMutation.reset();
-      commitMutation.reset();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, previewMutation]);
+    if (!open) return;
+    setStep('upload');
+    setParseResult(null);
+    setAiResult(null);
+    setAiError(null);
+    setMappingState({});
+    setIsBatchCommitted(false);
+    setCommitResultError(null);
+    setCommitFailures([]);
+    setPreviewRunKey(0);
+    setDiscardOpen(false);
+    setTemplateConfirmOpen(false);
+    setShowMissingRequired(false);
+    previewMutation.reset();
+    commitMutation.reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- previewMutation/commitMutation identities change every reset()
+  }, [open]);
 
-  // Parent can close without going through requestClose (e.g. Past imports). Cancel orphans.
+  // Cancel orphaned batches when the modal closes without a successful commit.
   React.useEffect(() => {
     if (open) return;
     const batchId = pendingCancelBatchIdRef.current;
@@ -533,7 +671,10 @@ export function ImportWizardModal({ open, onOpenChange, onViewHistory }: Props) 
   const handleParsed = (result: ImportParseResult) => {
     pendingCancelBatchIdRef.current = result.batchId;
     setParseResult(result);
-    setStep('automap');
+    setAiResult(null);
+    setAiError(null);
+    setMappingState({});
+    setShowMissingRequired(false);
   };
 
   const handleRunAiMapping = async () => {
@@ -567,6 +708,12 @@ export function ImportWizardModal({ open, onOpenChange, onViewHistory }: Props) 
     onOpenChange(false);
   };
 
+  /** Cancel button + Escape inside the confirm dialog route through Radix, not our own handlers. */
+  const handleDiscardOpenChange = (nextOpen: boolean) => {
+    if (nextOpen || cancelMutation.isPending) return;
+    setDiscardOpen(false);
+  };
+
   const discardAndClose = async () => {
     const batchId = pendingCancelBatchIdRef.current ?? parseResult?.batchId ?? null;
     pendingCancelBatchIdRef.current = null;
@@ -587,6 +734,24 @@ export function ImportWizardModal({ open, onOpenChange, onViewHistory }: Props) 
     cancelMutation.isPending ||
     commitMutation.isPending;
 
+  const handleReplaceFile = async () => {
+    if (isBusy) return;
+    const batchId = parseResult?.batchId ?? pendingCancelBatchIdRef.current;
+    pendingCancelBatchIdRef.current = null;
+    setParseResult(null);
+    setAiResult(null);
+    setAiError(null);
+    setMappingState({});
+    setShowMissingRequired(false);
+    if (batchId) {
+      try {
+        await cancelMutation.mutateAsync(batchId);
+      } catch {
+        // Best effort — user can upload a new file anyway.
+      }
+    }
+  };
+
   const requestClose = () => {
     if (isBusy) return;
     if (pendingCancelBatchIdRef.current && !isBatchCommitted) {
@@ -601,59 +766,35 @@ export function ImportWizardModal({ open, onOpenChange, onViewHistory }: Props) 
     requestClose();
   };
 
-  const handleViewHistory = () => {
-    // Closing triggers the orphan-cancel effect if a batch somehow exists.
-    onViewHistory?.();
+  /**
+   * Radix reports touch outside-pointerdowns on the following `click`, by which point React has
+   * already flushed the confirm dialog closed — without this the wizard would treat "Keep working"
+   * as an outside click and reopen the confirm.
+   */
+  const isFromConfirmDialog = (event: { detail?: { originalEvent?: Event } }) => {
+    const target = event.detail?.originalEvent?.target;
+    return target instanceof Element && Boolean(target.closest('[role="alertdialog"]'));
   };
 
-  const hasReviewColumns = React.useMemo(
-    () => Boolean(aiResult?.columnMapping.mappings.some((e) => e.status !== 'matched')),
-    [aiResult]
-  );
-
-  const visibleSteps = React.useMemo(() => {
-    if (aiResult && !hasReviewColumns) {
-      return ALL_STEPS.filter((s) => s !== 'manual');
-    }
-    return ALL_STEPS;
-  }, [aiResult, hasReviewColumns]);
+  const visibleSteps = ALL_STEPS;
 
   const missingRequired = React.useMemo(
     () => missingRequiredTargets(aiResult, mappingState),
     [aiResult, mappingState]
   );
 
-  const handleContinueFromAutomap = () => {
+  const handleContinueFromAutomap = async () => {
     if (!aiResult || !parseResult) return;
-    if (hasReviewColumns) {
-      setStep('manual');
-    } else {
-      invalidatePreviewCache(parseResult.batchId);
-      setStep('preview');
-    }
-  };
-
-  const handleContinueFromManual = async () => {
-    if (!parseResult || !aiResult) return;
 
     if (missingRequired.length > 0) {
       setShowMissingRequired(true);
       return;
     }
 
-    const finalMapping: Record<string, string | null> = {};
-    for (const entry of aiResult.columnMapping.mappings) {
-      if (entry.status === 'matched' && entry.suggestedTarget) {
-        finalMapping[entry.rawHeader] = entry.suggestedTarget;
-      } else {
-        finalMapping[entry.rawHeader] = mappingState[entry.rawHeader] ?? null;
-      }
-    }
-
     try {
       await saveMappingMutation.mutateAsync({
         batchId: parseResult.batchId,
-        columnMapping: finalMapping,
+        columnMapping: buildFinalColumnMapping(aiResult, mappingState),
       });
       invalidatePreviewCache(parseResult.batchId);
       setStep('preview');
@@ -683,10 +824,7 @@ export function ImportWizardModal({ open, onOpenChange, onViewHistory }: Props) 
         const importedCount = data.inserted ?? previewSummary.valid;
         pendingCancelBatchIdRef.current = null;
         setIsBatchCommitted(true);
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY }),
-          queryClient.invalidateQueries({ queryKey: [...IMPORT_BATCHES_KEY] }),
-        ]);
+        await Promise.all([queryClient.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY })]);
         toast.success(
           `Imported ${importedCount.toLocaleString()} booking${importedCount !== 1 ? 's' : ''}`
         );
@@ -715,42 +853,40 @@ export function ImportWizardModal({ open, onOpenChange, onViewHistory }: Props) 
     : commitResultError;
 
   const backTarget: Step | null =
-    step === 'manual'
-      ? 'automap'
+    step === 'automap'
+      ? 'upload'
       : step === 'preview'
-        ? hasReviewColumns
-          ? 'manual'
-          : 'automap'
+        ? 'automap'
         : step === 'commit'
           ? 'preview'
           : null;
 
   const copy = STEP_COPY[step];
   const stepIdx = Math.max(0, visibleSteps.indexOf(step));
-  /** Preview and column mapping need a tall scrollport; upload/match/commit shrink to content. */
-  const tallStep = step === 'preview' || step === 'manual';
+  /** Review-heavy steps need a tall scrollport; upload can shrink to content. */
+  const tallStep = step === 'preview' || step === 'automap' || step === 'commit';
 
   const primaryAction = (() => {
-    if (step === 'automap') {
+    if (step === 'upload') {
       return (
         <Button
           type="button"
           className="w-full sm:w-auto"
-          disabled={isBusy || !aiResult}
-          onClick={handleContinueFromAutomap}
+          disabled={isBusy || !parseResult}
+          onClick={() => setStep('automap')}
         >
           Continue
         </Button>
       );
     }
 
-    if (step === 'manual') {
+    if (step === 'automap') {
       return (
         <Button
           type="button"
           className="w-full sm:w-auto"
-          disabled={isBusy}
-          onClick={() => void handleContinueFromManual()}
+          disabled={isBusy || !aiResult}
+          onClick={() => void handleContinueFromAutomap()}
         >
           {saveMappingMutation.isPending ? (
             <>
@@ -805,14 +941,14 @@ export function ImportWizardModal({ open, onOpenChange, onViewHistory }: Props) 
       <ResponsiveModal open={open} onOpenChange={handleOpenChange}>
         <ResponsiveModalContent
           className={cn(
-            'flex w-[min(calc(100vw-1.5rem),42rem)] max-w-none flex-col gap-0 overflow-hidden p-0',
+            'flex w-[min(calc(100vw-1.5rem),68rem)] max-w-none flex-col gap-0 overflow-hidden p-0',
             tallStep ? 'h-[min(90dvh,40rem)] max-h-[min(90dvh,40rem)]' : 'max-h-[min(90dvh,40rem)]',
-            'sm:w-[min(92vw,42rem)] sm:max-w-[42rem] sm:p-0',
+            'sm:w-[min(94vw,68rem)] sm:max-w-[68rem] sm:p-0',
             tallStep && 'sm:h-[min(90dvh,40rem)] sm:max-h-[min(90dvh,40rem)]'
           )}
           sheetLayout="split"
           showCloseButton={false}
-          aria-label="Import bookings"
+          aria-label="AI-Assisted import bookings"
           onEscapeKeyDown={(event) => {
             if (isBusy || discardOpen) {
               event.preventDefault();
@@ -822,7 +958,7 @@ export function ImportWizardModal({ open, onOpenChange, onViewHistory }: Props) 
             requestClose();
           }}
           onPointerDownOutside={(event) => {
-            if (isBusy || discardOpen) {
+            if (isBusy || discardOpen || isFromConfirmDialog(event)) {
               event.preventDefault();
               return;
             }
@@ -830,14 +966,14 @@ export function ImportWizardModal({ open, onOpenChange, onViewHistory }: Props) 
             requestClose();
           }}
           onInteractOutside={(event) => {
-            if (isBusy || discardOpen) {
+            if (isBusy || discardOpen || isFromConfirmDialog(event)) {
               event.preventDefault();
             }
           }}
         >
           <ImportModalHeader
             icon={<Upload className="size-4" aria-hidden />}
-            title="Import bookings"
+            title="AI-Assisted import bookings"
             closeDisabled={isBusy}
             onClose={requestClose}
             below={
@@ -856,46 +992,45 @@ export function ImportWizardModal({ open, onOpenChange, onViewHistory }: Props) 
               {copy.title}. {copy.description}
             </p>
 
-            {parseResult ? (
-              <ImportFileBar
-                fileName={parseResult.fileName}
-                rowCount={parseResult.rowCount}
-                columnCount={parseResult.headers.length}
-              />
-            ) : null}
-
             <ImportStepHeading
               title={copy.title}
               description={copy.description}
               headingRef={stepHeadingRef}
+              className={parseResult && step !== 'upload' ? 'mb-3' : 'mb-4'}
             />
+
+            {parseResult && step !== 'upload' ? (
+              <div className="mb-4">
+                <ImportFileBar
+                  fileName={parseResult.fileName}
+                  rowCount={parseResult.rowCount}
+                  columnCount={parseResult.headers.length}
+                />
+              </div>
+            ) : null}
 
             {step === 'upload' && (
               <UploadStep
+                parseResult={parseResult}
                 onParsed={handleParsed}
-                onViewHistory={onViewHistory ? handleViewHistory : undefined}
+                onReplace={() => void handleReplaceFile()}
+                isBusy={isBusy}
               />
             )}
 
             {step === 'automap' && parseResult && (
               <AutoMapStep
                 aiResult={aiResult}
-                isLoading={aiMapMutation.isPending}
-                error={aiError}
-                onRunMapping={() => void handleRunAiMapping()}
-              />
-            )}
-
-            {step === 'manual' && parseResult && aiResult && (
-              <ManualMappingStep
-                aiResult={aiResult}
                 parseResult={parseResult}
                 mappingState={mappingState}
                 onMappingChange={handleMappingChange}
-                error={
+                isLoading={aiMapMutation.isPending}
+                error={aiError}
+                saveError={
                   saveMappingMutation.isError ? (saveMappingMutation.error as Error).message : null
                 }
                 missingRequired={showMissingRequired ? missingRequired : []}
+                onRunMapping={() => void handleRunAiMapping()}
               />
             )}
 
@@ -911,6 +1046,7 @@ export function ImportWizardModal({ open, onOpenChange, onViewHistory }: Props) 
 
             {step === 'commit' && (
               <CommitStep
+                rows={previewRows}
                 validCount={previewSummary.valid}
                 excludedCount={previewSummary.error + previewSummary.skipped}
                 isCommitting={commitMutation.isPending}
@@ -925,13 +1061,23 @@ export function ImportWizardModal({ open, onOpenChange, onViewHistory }: Props) 
               backTarget ? (
                 <Button
                   type="button"
-                  variant="ghost"
-                  className="w-full sm:w-auto"
+                  variant="outline"
+                  className="min-h-11 w-full sm:w-auto"
                   disabled={isBusy}
                   onClick={() => setStep(backTarget)}
                 >
                   <ArrowLeft className="size-4" aria-hidden />
                   Back
+                </Button>
+              ) : step === 'upload' ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="text-muted-foreground hover:text-foreground min-h-11 w-full sm:w-auto"
+                  onClick={() => setTemplateConfirmOpen(true)}
+                >
+                  <Download className="size-4" aria-hidden />
+                  Download template
                 </Button>
               ) : null
             }
@@ -940,12 +1086,46 @@ export function ImportWizardModal({ open, onOpenChange, onViewHistory }: Props) 
         </ResponsiveModalContent>
       </ResponsiveModal>
 
-      <AlertDialog open={discardOpen}>
-        <AlertDialogContent>
+      <AlertDialog open={templateConfirmOpen} onOpenChange={setTemplateConfirmOpen}>
+        <AlertDialogContent
+          overlayClassName="z-[110] pointer-events-auto"
+          className="pointer-events-auto z-[111] max-w-[min(calc(100vw-1.5rem),35rem)]"
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>No manual updates needed!</AlertDialogTitle>
+            <AlertDialogDescription>
+              Upload your existing CSV or spreadsheet as-is. We automatically recognizes and
+              attempts to match and map your columns to our template. No need for any manual
+              updates! Our template is available for reference only.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="min-h-11" onClick={() => setTemplateConfirmOpen(false)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="min-h-11"
+              onClick={() => {
+                setTemplateConfirmOpen(false);
+                downloadImportCsvTemplate();
+              }}
+            >
+              <Download className="size-4" aria-hidden />
+              Download template
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={discardOpen} onOpenChange={handleDiscardOpenChange}>
+        <AlertDialogContent
+          overlayClassName="z-[110] pointer-events-auto"
+          className="pointer-events-auto z-[111] max-w-[min(calc(100vw-1.5rem),26rem)]"
+        >
           <AlertDialogHeader>
             <AlertDialogTitle>Leave this import?</AlertDialogTitle>
             <AlertDialogDescription>
-              Your upload will be discarded. Nothing will be added to bookings.
+              Your file and column matches will be discarded. No bookings are added.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -957,8 +1137,14 @@ export function ImportWizardModal({ open, onOpenChange, onViewHistory }: Props) 
             </AlertDialogCancel>
             <AlertDialogAction
               disabled={cancelMutation.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => void discardAndClose()}
+              className={cn(
+                buttonVariants({ variant: 'destructive' }),
+                '!bg-destructive hover:!bg-destructive/90 [background-image:none]'
+              )}
+              onClick={(event) => {
+                event.preventDefault();
+                void discardAndClose();
+              }}
             >
               {cancelMutation.isPending ? (
                 <>
@@ -966,7 +1152,7 @@ export function ImportWizardModal({ open, onOpenChange, onViewHistory }: Props) 
                   Discarding…
                 </>
               ) : (
-                'Discard upload'
+                'Discard import'
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

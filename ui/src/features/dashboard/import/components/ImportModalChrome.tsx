@@ -1,11 +1,10 @@
 /**
- * Shared chrome for the import modals (wizard + history) so both read as one
- * surface: same header rhythm, same body gutters, same footer alignment.
+ * Shared chrome for the import wizard: header rhythm, body gutters, footer alignment.
  */
 
 import * as React from 'react';
 
-import { AlertTriangle, Info, X } from 'lucide-react';
+import { AlertTriangle, FileSpreadsheet, Info, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { ResponsiveModalTitle } from '@/components/ui/responsive-modal';
@@ -131,13 +130,15 @@ export function ImportStepHeading({
   title,
   description,
   headingRef,
+  className,
 }: {
   title: string;
   description: string;
   headingRef?: React.Ref<HTMLHeadingElement>;
+  className?: string;
 }) {
   return (
-    <div className="mb-4 space-y-1">
+    <div className={cn('space-y-1', className)}>
       <h2
         ref={headingRef}
         tabIndex={-1}
@@ -150,23 +151,49 @@ export function ImportStepHeading({
   );
 }
 
-/** Persistent reminder of which file is being worked on. */
+/** Persistent reminder of which file is being worked on — sits under the step heading. */
 export function ImportFileBar({
   fileName,
   rowCount,
   columnCount,
+  onReplace,
+  replaceDisabled,
 }: {
   fileName: string;
   rowCount: number;
   columnCount?: number;
+  onReplace?: () => void;
+  replaceDisabled?: boolean;
 }) {
   return (
-    <div className="bg-muted/40 text-muted-foreground mb-4 flex items-center gap-2 rounded-lg px-3 py-2 text-xs">
-      <span className="text-foreground min-w-0 flex-1 truncate font-medium">{fileName}</span>
-      <span className="shrink-0 tabular-nums">
-        {rowCount.toLocaleString()} rows
-        {typeof columnCount === 'number' ? ` · ${columnCount} columns` : ''}
+    <div className="border-border/70 bg-muted/30 group flex items-center gap-3 rounded-xl border px-3 py-2.5">
+      <span
+        className="bg-background text-primary flex size-9 shrink-0 items-center justify-center rounded-lg border shadow-sm"
+        aria-hidden
+      >
+        <FileSpreadsheet className="size-4" />
       </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-foreground truncate text-sm font-medium">{fileName}</p>
+        <p className="text-muted-foreground text-xs tabular-nums">
+          {rowCount.toLocaleString()} row{rowCount !== 1 ? 's' : ''}
+          {typeof columnCount === 'number'
+            ? ` · ${columnCount} column${columnCount !== 1 ? 's' : ''}`
+            : ''}
+        </p>
+      </div>
+      {onReplace ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground hover:text-foreground min-h-11 shrink-0 opacity-100 transition-opacity sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100"
+          disabled={replaceDisabled}
+          onClick={onReplace}
+        >
+          Replace
+        </Button>
+      ) : null}
     </div>
   );
 }
@@ -205,7 +232,7 @@ export function ImportAlert({
     >
       <Icon className="mt-0.5 size-4 shrink-0" aria-hidden />
       <div className="min-w-0 flex-1 space-y-2">
-        <div className="leading-relaxed">{children}</div>
+        <div className="text-xs leading-relaxed">{children}</div>
         {action}
       </div>
     </div>
@@ -218,6 +245,8 @@ export type ImportStat = {
   label: string;
   value: number;
   tone?: 'primary' | 'neutral' | 'danger' | 'warning';
+  selected?: boolean;
+  onSelect?: () => void;
 };
 
 const STAT_TONES: Record<NonNullable<ImportStat['tone']>, string> = {
@@ -227,29 +256,62 @@ const STAT_TONES: Record<NonNullable<ImportStat['tone']>, string> = {
   warning: 'text-amber-600 dark:text-amber-400',
 };
 
-export function ImportStatStrip({ stats }: { stats: ImportStat[] }) {
+export function ImportStatStrip({
+  stats,
+  ariaLabel = 'Filter import rows by status',
+}: {
+  stats: ImportStat[];
+  ariaLabel?: string;
+}) {
+  const interactive = stats.some((stat) => stat.onSelect);
+
   return (
-    <dl
+    <div
+      role={interactive ? 'group' : undefined}
+      aria-label={interactive ? ariaLabel : undefined}
       className={cn(
         'divide-border/70 border-border/70 grid divide-x overflow-hidden rounded-xl border',
         stats.length === 2 ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-4',
         stats.length > 2 && 'max-sm:divide-y'
       )}
     >
-      {stats.map((stat) => (
-        <div key={stat.label} className="bg-muted/25 px-3 py-2.5">
-          <dt className="text-muted-foreground text-xs">{stat.label}</dt>
-          <dd
-            className={cn(
-              'mt-0.5 text-xl font-semibold tabular-nums',
-              STAT_TONES[stat.tone ?? 'neutral']
+      {stats.map((stat) => {
+        const content = (
+          <>
+            <span className="text-muted-foreground block text-left text-xs">{stat.label}</span>
+            <span
+              className={cn(
+                'mt-0.5 block text-left text-xl font-semibold tabular-nums',
+                STAT_TONES[stat.tone ?? 'neutral']
+              )}
+            >
+              {stat.value.toLocaleString()}
+            </span>
+          </>
+        );
+
+        return (
+          <div key={stat.label} className="bg-muted/25 min-w-0">
+            {stat.onSelect ? (
+              <button
+                type="button"
+                className={cn(
+                  'hover:bg-muted/70 focus-visible:ring-ring h-full w-full px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset',
+                  stat.selected && 'bg-primary/10 shadow-[inset_0_-2px_0_hsl(var(--primary))]'
+                )}
+                aria-pressed={stat.selected}
+                aria-label={`${stat.label}: ${stat.value.toLocaleString()} rows`}
+                onClick={stat.onSelect}
+              >
+                {content}
+              </button>
+            ) : (
+              <div className="px-3 py-2.5">{content}</div>
             )}
-          >
-            {stat.value.toLocaleString()}
-          </dd>
-        </div>
-      ))}
-    </dl>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -272,7 +334,12 @@ export function ImportModalFooter({
         GUTTER
       )}
     >
-      <div className="flex flex-col-reverse items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div
+        className={cn(
+          'flex flex-col-reverse items-stretch gap-2 sm:flex-row sm:items-center',
+          left ? 'sm:justify-between' : 'sm:justify-end'
+        )}
+      >
         <div className="flex items-center justify-start gap-2 empty:hidden">{left}</div>
         <div className="flex items-center justify-end gap-2 empty:hidden">{right}</div>
       </div>

@@ -169,7 +169,9 @@ export function ImportFileDropzone({
             <span className="bg-primary/10 text-primary flex size-11 items-center justify-center rounded-full">
               <Upload className="size-5" aria-hidden />
             </span>
-            <span className="text-foreground text-sm font-medium">Drop a CSV here or browse</span>
+            <span className="text-foreground text-sm font-medium">
+              Drop a CSV or Excel file here or browse
+            </span>
             <span className="text-muted-foreground text-xs">{IMPORT_LIMITS_HINT}</span>
           </label>
         )}

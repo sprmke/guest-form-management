@@ -1,13 +1,22 @@
 import * as React from 'react';
 
 import { AlertTriangle, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 import {
   ImportAlert,
   ImportStatStrip,
 } from '@/features/dashboard/import/components/ImportModalChrome';
+import {
+  ImportRowFixSheet,
+  type ImportRowFixMode,
+} from '@/features/dashboard/import/components/ImportRowFixSheet';
 import { useImportBatchRows } from '@/features/dashboard/import/hooks/useImportBatchRows';
-import { useUpdateImportRow } from '@/features/dashboard/import/hooks/useUpdateImportRow';
+import {
+  useUpdateImportRow,
+  type UpdateImportRowInput,
+} from '@/features/dashboard/import/hooks/useUpdateImportRow';
+import { formatImportRowIssueSummary } from '@/features/dashboard/import/lib/importTargetFields';
 import type {
   ImportBatchRowPreview,
   ImportPreviewSummary,
@@ -27,6 +36,7 @@ import {
 import { cn } from '@/lib/utils';
 
 const PAGE_SIZE = 50;
+type ImportPreviewStatusFilter = 'all' | 'error' | 'valid' | 'skipped' | 'warning';
 
 type Props = {
   batchId: string;
@@ -35,14 +45,67 @@ type Props = {
   onRetry?: () => void;
 };
 
-function PreviewSummary({ summary }: { summary: ImportPreviewSummary }) {
+function filterRows(rows: ImportBatchRowPreview[], filter: ImportPreviewStatusFilter) {
+  switch (filter) {
+    case 'error':
+      return rows.filter((row) => row.validationStatus === 'error');
+    case 'valid':
+      return rows.filter((row) => row.validationStatus === 'valid');
+    case 'skipped':
+      return rows.filter((row) => row.validationStatus === 'skipped');
+    case 'warning':
+      return rows.filter((row) =>
+        row.validationErrors.some((entry) => entry.severity === 'warning')
+      );
+    default:
+      return rows;
+  }
+}
+
+function PreviewSummary({
+  summary,
+  filter,
+  onFilterChange,
+}: {
+  summary: ImportPreviewSummary;
+  filter: ImportPreviewStatusFilter;
+  onFilterChange: (filter: ImportPreviewStatusFilter) => void;
+}) {
+  const toggleFilter = (next: ImportPreviewStatusFilter) => {
+    onFilterChange(filter === next ? 'all' : next);
+  };
+
   return (
     <ImportStatStrip
       stats={[
-        { label: 'Ready', value: summary.valid, tone: 'primary' },
-        { label: 'Need fixing', value: summary.error, tone: 'danger' },
-        { label: 'Turned off', value: summary.skipped, tone: 'neutral' },
-        { label: 'Warnings', value: summary.warning, tone: 'warning' },
+        {
+          label: 'Ready',
+          value: summary.valid,
+          tone: 'primary',
+          selected: filter === 'valid',
+          onSelect: () => toggleFilter('valid'),
+        },
+        {
+          label: 'Need fixing',
+          value: summary.error,
+          tone: 'danger',
+          selected: filter === 'error',
+          onSelect: () => toggleFilter('error'),
+        },
+        {
+          label: 'Skipped',
+          value: summary.skipped,
+          tone: 'neutral',
+          selected: filter === 'skipped',
+          onSelect: () => toggleFilter('skipped'),
+        },
+        {
+          label: 'Warnings',
+          value: summary.warning,
+          tone: 'warning',
+          selected: filter === 'warning',
+          onSelect: () => toggleFilter('warning'),
+        },
       ]}
     />
   );
@@ -70,52 +133,105 @@ function rowStatusLabel(status: ImportBatchRowPreview['validationStatus']): stri
     case 'error':
       return 'Needs fixing';
     case 'skipped':
-      return 'Turned off';
+      return 'Skipped';
     default:
       return status;
   }
 }
 
-function primaryErrorMessage(row: ImportBatchRowPreview): string | null {
-  const blocking = row.validationErrors.find((entry) => entry.severity === 'error');
-  if (blocking) return blocking.message;
-  const warning = row.validationErrors.find((entry) => entry.severity === 'warning');
-  return warning?.message ?? null;
+function PreviewIssueGuidance({ errorCount }: { errorCount: number }) {
+  if (errorCount <= 0) return null;
+
+  return (
+    <ImportAlert tone="warning">
+      {errorCount === 1
+        ? 'One row needs attention. Open it to fix or skip it.'
+        : `${errorCount.toLocaleString()} rows need attention. Open a row to fix or skip it.`}
+    </ImportAlert>
+  );
 }
 
 function guestName(row: ImportBatchRowPreview): string {
-  return row.mappedData.primary_guest_name ?? row.mappedData.guest_facebook_name ?? 'No name';
+  return row.mappedData.primary_guest_name ?? row.mappedData.guest_display_name ?? 'No name';
 }
 
 type PreviewRowProps = {
   row: ImportBatchRowPreview;
-  batchId: string;
   displayIndex: number;
+  isUpdating: boolean;
+  onImportToggle: (rowId: string, willImport: boolean) => void;
+  onFix: (rowId: string) => void;
 };
 
-function useRowImportToggle(batchId: string, row: ImportBatchRowPreview) {
-  const updateRow = useUpdateImportRow(batchId);
-  const isExcluded = row.validationStatus === 'skipped';
+function IssueCell({ row }: { row: ImportBatchRowPreview }) {
   const isError = row.validationStatus === 'error';
-
-  const handleToggle = (willImport: boolean) => {
-    updateRow.mutate({
-      batchId,
-      rowId: row.id,
-      validationStatus: willImport ? 'valid' : 'skipped',
-    });
-  };
-
-  return { updateRow, isExcluded, isError, handleToggle };
-}
-
-function PreviewRowDesktop({ row, batchId, displayIndex }: PreviewRowProps) {
-  const { updateRow, isExcluded, isError, handleToggle } = useRowImportToggle(batchId, row);
-  const message = primaryErrorMessage(row);
+  const isSkipped = row.validationStatus === 'skipped';
   const hasWarning = row.validationErrors.some((entry) => entry.severity === 'warning');
+  const hasBlocking = row.validationErrors.some((entry) => entry.severity === 'error');
+  const { primary, extraCount } = formatImportRowIssueSummary(row);
+
+  if (!primary) {
+    return <span className="text-muted-foreground">—</span>;
+  }
 
   return (
-    <TableRow className={cn(isError && 'bg-destructive/5', isExcluded && 'opacity-60')}>
+    <span
+      className={cn(
+        'flex items-start gap-1',
+        hasWarning && row.validationStatus === 'valid' && 'text-amber-600',
+        (isError || (isSkipped && hasBlocking)) && 'text-destructive'
+      )}
+    >
+      {(isError || hasWarning || (isSkipped && hasBlocking)) && (
+        <AlertTriangle className="mt-0.5 size-3 shrink-0" aria-hidden />
+      )}
+      <span className="line-clamp-2">
+        {primary}
+        {extraCount > 0 ? (
+          <span className="text-muted-foreground font-normal"> · +{extraCount} more</span>
+        ) : null}
+      </span>
+    </span>
+  );
+}
+
+function PreviewRowDesktop({
+  row,
+  displayIndex,
+  isUpdating,
+  onImportToggle,
+  onFix,
+}: PreviewRowProps) {
+  const isExcluded = row.validationStatus === 'skipped';
+  const isError = row.validationStatus === 'error';
+  const isImportOn = row.validationStatus === 'valid';
+  const canOpenFix = isError || isExcluded;
+
+  const handleToggle = (willImport: boolean) => {
+    if (isError && willImport) return;
+    onImportToggle(row.id, willImport);
+  };
+
+  return (
+    <TableRow
+      className={cn(
+        isError && 'bg-destructive/5',
+        isExcluded && 'opacity-60',
+        canOpenFix && 'cursor-pointer'
+      )}
+      tabIndex={canOpenFix ? 0 : undefined}
+      onClick={canOpenFix ? () => onFix(row.id) : undefined}
+      onKeyDown={
+        canOpenFix
+          ? (event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onFix(row.id);
+              }
+            }
+          : undefined
+      }
+    >
       <TableCell className="text-muted-foreground w-10 px-2 text-xs">{displayIndex}</TableCell>
       <TableCell className="max-w-[8rem] truncate px-2 text-xs">{guestName(row)}</TableCell>
       <TableCell className="whitespace-nowrap px-2 text-xs">
@@ -124,53 +240,79 @@ function PreviewRowDesktop({ row, batchId, displayIndex }: PreviewRowProps) {
       <TableCell className="whitespace-nowrap px-2 text-xs">
         {row.mappedData.check_out_date ?? '—'}
       </TableCell>
-      <TableCell className="px-2">
-        <Badge variant={rowStatusVariant(row.validationStatus)} className="text-[10px]">
+      <TableCell className="w-[7.5rem] px-2">
+        <Badge
+          variant={rowStatusVariant(row.validationStatus)}
+          className="whitespace-nowrap px-2.5 text-[10px]"
+        >
           {rowStatusLabel(row.validationStatus)}
         </Badge>
       </TableCell>
-      <TableCell className="max-w-[10rem] px-2 text-xs">
-        {message ? (
-          <span
-            className={cn(
-              'flex items-start gap-1',
-              hasWarning && row.validationStatus === 'valid' && 'text-amber-600',
-              isError && 'text-destructive'
-            )}
-          >
-            {(isError || hasWarning) && (
-              <AlertTriangle className="mt-0.5 size-3 shrink-0" aria-hidden />
-            )}
-            <span className="line-clamp-2">{message}</span>
-          </span>
-        ) : (
-          <span className="text-muted-foreground">—</span>
-        )}
+      <TableCell className="w-[25rem] max-w-[25rem] px-2 text-xs">
+        <IssueCell row={row} />
       </TableCell>
-      <TableCell className="px-2">
-        <Switch
-          checked={!isExcluded}
-          disabled={updateRow.isPending || isError}
-          aria-label={`Import row ${displayIndex}`}
-          onCheckedChange={handleToggle}
-        />
+      <TableCell className="px-2" onClick={(event) => event.stopPropagation()}>
+        {isError || isExcluded ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="min-h-11 text-xs"
+            disabled={isUpdating}
+            onClick={() => onFix(row.id)}
+          >
+            Fix
+          </Button>
+        ) : (
+          <Switch
+            checked={isImportOn}
+            disabled={isUpdating}
+            aria-label={`Import row ${displayIndex}`}
+            onCheckedChange={handleToggle}
+          />
+        )}
       </TableCell>
     </TableRow>
   );
 }
 
-function PreviewRowMobile({ row, batchId, displayIndex }: PreviewRowProps) {
-  const { updateRow, isExcluded, isError, handleToggle } = useRowImportToggle(batchId, row);
-  const message = primaryErrorMessage(row);
-  const hasWarning = row.validationErrors.some((entry) => entry.severity === 'warning');
+function PreviewRowMobile({
+  row,
+  displayIndex,
+  isUpdating,
+  onImportToggle,
+  onFix,
+}: PreviewRowProps) {
+  const isExcluded = row.validationStatus === 'skipped';
+  const isError = row.validationStatus === 'error';
+  const isImportOn = row.validationStatus === 'valid';
+  const canOpenFix = isError || isExcluded;
+
+  const handleToggle = (willImport: boolean) => {
+    if (isError && willImport) return;
+    onImportToggle(row.id, willImport);
+  };
 
   return (
     <li
       className={cn(
         'border-border/70 space-y-2 rounded-xl border px-3 py-2.5',
         isError && 'border-destructive/40 bg-destructive/5',
-        isExcluded && 'opacity-60'
+        isExcluded && 'opacity-60',
+        canOpenFix && 'cursor-pointer'
       )}
+      tabIndex={canOpenFix ? 0 : undefined}
+      onClick={canOpenFix ? () => onFix(row.id) : undefined}
+      onKeyDown={
+        canOpenFix
+          ? (event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onFix(row.id);
+              }
+            }
+          : undefined
+      }
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
@@ -182,33 +324,40 @@ function PreviewRowMobile({ row, batchId, displayIndex }: PreviewRowProps) {
             {row.mappedData.check_in_date ?? '—'} → {row.mappedData.check_out_date ?? '—'}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <Badge variant={rowStatusVariant(row.validationStatus)} className="text-[10px]">
+        <div
+          className="flex shrink-0 items-center gap-2"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <Badge
+            variant={rowStatusVariant(row.validationStatus)}
+            className="whitespace-nowrap px-2.5 text-[10px]"
+          >
             {rowStatusLabel(row.validationStatus)}
           </Badge>
-          <Switch
-            checked={!isExcluded}
-            disabled={updateRow.isPending || isError}
-            aria-label={`Import row ${displayIndex}`}
-            onCheckedChange={handleToggle}
-          />
+          {isError || isExcluded ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="min-h-11 text-xs"
+              disabled={isUpdating}
+              onClick={() => onFix(row.id)}
+            >
+              Fix
+            </Button>
+          ) : (
+            <Switch
+              checked={isImportOn}
+              disabled={isUpdating}
+              aria-label={`Import row ${displayIndex}`}
+              onCheckedChange={handleToggle}
+            />
+          )}
         </div>
       </div>
-      {message ? (
-        <p
-          className={cn(
-            'flex items-start gap-1.5 text-xs',
-            isError && 'text-destructive',
-            hasWarning && !isError && 'text-amber-700 dark:text-amber-300'
-          )}
-        >
-          <AlertTriangle className="mt-0.5 size-3 shrink-0" aria-hidden />
-          <span className="line-clamp-3">{message}</span>
-        </p>
-      ) : null}
-      {isError ? (
-        <p className="text-muted-foreground text-[11px]">Go Back to fix column mapping.</p>
-      ) : null}
+      <div className="text-xs">
+        <IssueCell row={row} />
+      </div>
     </li>
   );
 }
@@ -266,18 +415,166 @@ function PreviewPagination({
   );
 }
 
+/** Frozen for as long as the fix sheet stays open: row status changes must not swap the queue. */
+type FixSession = {
+  rowId: string;
+  mode: ImportRowFixMode;
+  queue: string[];
+};
+
 export function ImportPreviewTable({ batchId, isLoading, error, onRetry }: Props) {
   const { rows, summary, isReady } = useImportBatchRows(batchId);
+  const updateRow = useUpdateImportRow(batchId);
   const [page, setPage] = React.useState(0);
+  const [statusFilter, setStatusFilter] = React.useState<ImportPreviewStatusFilter>('error');
+  const [fixSession, setFixSession] = React.useState<FixSession | null>(null);
+  const [pendingAction, setPendingAction] = React.useState<'save' | 'skip' | 'restore' | null>(
+    null
+  );
+  /** Host override — skip auto filter until the batch changes. */
+  const filterTouchedRef = React.useRef(false);
+  const filterBatchRef = React.useRef<string | null>(null);
 
-  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const setFilterFromUser = React.useCallback((next: ImportPreviewStatusFilter) => {
+    filterTouchedRef.current = true;
+    setStatusFilter(next);
+  }, []);
+
+  React.useEffect(() => {
+    if (!isReady || !batchId) return;
+
+    if (filterBatchRef.current !== batchId) {
+      filterBatchRef.current = batchId;
+      filterTouchedRef.current = false;
+    }
+
+    if (filterTouchedRef.current) {
+      // Stay on Need fixing only while that queue still has work.
+      if (statusFilter === 'error' && summary.error === 0) {
+        setStatusFilter('valid');
+      }
+      return;
+    }
+
+    setStatusFilter(summary.error > 0 ? 'error' : 'valid');
+  }, [batchId, isReady, statusFilter, summary.error]);
+
+  const filteredRows = React.useMemo(() => filterRows(rows, statusFilter), [rows, statusFilter]);
+
+  const errorRowIds = React.useMemo(
+    () => rows.filter((row) => row.validationStatus === 'error').map((row) => row.id),
+    [rows]
+  );
+  const skippedRowIds = React.useMemo(
+    () => rows.filter((row) => row.validationStatus === 'skipped').map((row) => row.id),
+    [rows]
+  );
+
+  const fixRow = fixSession ? (rows.find((row) => row.id === fixSession.rowId) ?? null) : null;
+  const fixQueueIndex = fixSession ? fixSession.queue.indexOf(fixSession.rowId) : -1;
+
+  /** Opening decides the queue once; later status changes must not move the host to another queue. */
+  const openFixRow = React.useCallback(
+    (rowId: string) => {
+      const isSkipped = rows.find((row) => row.id === rowId)?.validationStatus === 'skipped';
+      const queue = isSkipped ? skippedRowIds : errorRowIds;
+      setFixSession({
+        rowId,
+        mode: isSkipped ? 'restore' : 'fix',
+        queue: queue.includes(rowId) ? queue : [rowId],
+      });
+    },
+    [errorRowIds, rows, skippedRowIds]
+  );
+
+  /** Drop a resolved row from the frozen queue and land on its neighbour, or close when the queue empties. */
+  const advanceFixSession = React.useCallback((rowId: string) => {
+    setFixSession((current) => {
+      if (!current) return null;
+      const index = current.queue.indexOf(rowId);
+      const queue = index >= 0 ? current.queue.filter((id) => id !== rowId) : current.queue;
+      if (queue.length === 0) return null;
+      const nextRowId = index >= 0 ? (queue[index] ?? queue[queue.length - 1]) : current.rowId;
+      return { ...current, rowId: nextRowId, queue };
+    });
+  }, []);
+
+  const handleImportToggle = React.useCallback(
+    (rowId: string, willImport: boolean) => {
+      updateRow.mutate({
+        batchId,
+        rowId,
+        validationStatus: willImport ? 'valid' : 'skipped',
+      });
+    },
+    [batchId, updateRow]
+  );
+
+  const handleSaveFixes = React.useCallback(
+    async (input: UpdateImportRowInput) => {
+      setPendingAction('save');
+      try {
+        const result = await updateRow.mutateAsync(input);
+        if (result.validationStatus === 'valid') {
+          toast.success('Row is ready to import');
+          advanceFixSession(input.rowId);
+        }
+      } finally {
+        setPendingAction(null);
+      }
+    },
+    [advanceFixSession, updateRow]
+  );
+
+  const handleSkipRow = React.useCallback(
+    async (rowId: string) => {
+      setPendingAction('skip');
+      try {
+        await updateRow.mutateAsync({
+          batchId,
+          rowId,
+          validationStatus: 'skipped',
+        });
+        advanceFixSession(rowId);
+      } finally {
+        setPendingAction(null);
+      }
+    },
+    [advanceFixSession, batchId, updateRow]
+  );
+
+  const handleRestoreRow = React.useCallback(
+    async (rowId: string) => {
+      setPendingAction('restore');
+      try {
+        const result = await updateRow.mutateAsync({
+          batchId,
+          rowId,
+          validationStatus: 'valid',
+        });
+        if (result.validationStatus === 'valid') {
+          toast.success('Row restored');
+        } else {
+          toast.warning('Row restored — it still needs fixing before import');
+        }
+        advanceFixSession(rowId);
+      } finally {
+        setPendingAction(null);
+      }
+    },
+    [advanceFixSession, batchId, updateRow]
+  );
+
+  const updatingRowId = updateRow.isPending ? updateRow.variables?.rowId : undefined;
+
+  const pageCount = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount - 1);
   const pageStart = safePage * PAGE_SIZE;
-  const pageRows = rows.slice(pageStart, pageStart + PAGE_SIZE);
+  const pageRows = filteredRows.slice(pageStart, pageStart + PAGE_SIZE);
 
   React.useEffect(() => {
     setPage(0);
-  }, [batchId, rows.length]);
+  }, [batchId, filteredRows.length, statusFilter]);
 
   if (isLoading) {
     return (
@@ -308,56 +605,111 @@ export function ImportPreviewTable({ batchId, isLoading, error, onRetry }: Props
   if (!isReady) return null;
 
   return (
-    <div className="space-y-3">
-      <PreviewSummary summary={summary} />
+    <>
+      <div className="space-y-3">
+        <PreviewSummary
+          summary={summary}
+          filter={statusFilter}
+          onFilterChange={setFilterFromUser}
+        />
+        <PreviewIssueGuidance errorCount={summary.error} />
 
-      {/* Phone: stacked cards */}
-      <ul className="space-y-2 sm:hidden">
-        {pageRows.map((row, index) => (
-          <PreviewRowMobile
-            key={row.id}
-            row={row}
-            batchId={batchId}
-            displayIndex={pageStart + index + 1}
-          />
-        ))}
-      </ul>
+        {filteredRows.length === 0 ? (
+          <p className="text-muted-foreground py-8 text-center text-sm">
+            No rows match this filter.
+          </p>
+        ) : (
+          <>
+            <ul className="space-y-2 sm:hidden">
+              {pageRows.map((row) => (
+                <PreviewRowMobile
+                  key={row.id}
+                  row={row}
+                  displayIndex={row.rowIndex + 1}
+                  isUpdating={updatingRowId === row.id}
+                  onImportToggle={handleImportToggle}
+                  onFix={openFixRow}
+                />
+              ))}
+            </ul>
 
-      {/* Tablet+ : table */}
-      <div className="border-border/70 hidden overflow-hidden rounded-xl border sm:block">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="h-9 px-2 text-xs">#</TableHead>
-              <TableHead className="h-9 px-2 text-xs">Guest</TableHead>
-              <TableHead className="h-9 px-2 text-xs">Check-in</TableHead>
-              <TableHead className="h-9 px-2 text-xs">Check-out</TableHead>
-              <TableHead className="h-9 px-2 text-xs">Status</TableHead>
-              <TableHead className="h-9 px-2 text-xs">Issue</TableHead>
-              <TableHead className="h-9 px-2 text-xs">Import</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {pageRows.map((row, index) => (
-              <PreviewRowDesktop
-                key={row.id}
-                row={row}
-                batchId={batchId}
-                displayIndex={pageStart + index + 1}
-              />
-            ))}
-          </TableBody>
-        </Table>
+            <div className="border-border/70 hidden overflow-hidden rounded-xl border sm:block">
+              <Table className="table-fixed">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="h-9 w-10 px-2 text-xs">#</TableHead>
+                    <TableHead className="h-9 w-[9rem] px-2 text-xs">Guest</TableHead>
+                    <TableHead className="h-9 w-[7rem] px-2 text-xs">Check-in</TableHead>
+                    <TableHead className="h-9 w-[7rem] px-2 text-xs">Check-out</TableHead>
+                    <TableHead className="h-9 w-[7.5rem] px-2 text-xs">Status</TableHead>
+                    <TableHead className="h-9 w-[25rem] px-2 text-xs">Issue</TableHead>
+                    <TableHead className="h-9 w-[4.5rem] px-2 text-xs">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pageRows.map((row) => (
+                    <PreviewRowDesktop
+                      key={row.id}
+                      row={row}
+                      displayIndex={row.rowIndex + 1}
+                      isUpdating={updatingRowId === row.id}
+                      onImportToggle={handleImportToggle}
+                      onFix={openFixRow}
+                    />
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            <PreviewPagination
+              pageStart={pageStart}
+              pageSize={PAGE_SIZE}
+              total={filteredRows.length}
+              safePage={safePage}
+              pageCount={pageCount}
+              onPageChange={setPage}
+            />
+          </>
+        )}
       </div>
 
-      <PreviewPagination
-        pageStart={pageStart}
-        pageSize={PAGE_SIZE}
-        total={rows.length}
-        safePage={safePage}
-        pageCount={pageCount}
-        onPageChange={setPage}
+      <ImportRowFixSheet
+        batchId={batchId}
+        open={Boolean(fixSession && fixRow)}
+        onOpenChange={(open) => {
+          if (!open) setFixSession(null);
+        }}
+        row={fixRow}
+        mode={fixSession?.mode ?? 'fix'}
+        queuePosition={
+          fixSession && fixQueueIndex >= 0
+            ? { index: fixQueueIndex, total: fixSession.queue.length }
+            : null
+        }
+        isSaving={pendingAction === 'save' && updateRow.isPending}
+        isSkipping={pendingAction === 'skip' && updateRow.isPending}
+        isRestoring={pendingAction === 'restore' && updateRow.isPending}
+        onSave={handleSaveFixes}
+        onSkip={handleSkipRow}
+        onRestore={handleRestoreRow}
+        onPrevious={() => {
+          if (fixQueueIndex > 0) {
+            setFixSession((current) =>
+              current ? { ...current, rowId: current.queue[fixQueueIndex - 1]! } : current
+            );
+          }
+        }}
+        onNext={() => {
+          if (fixSession && fixQueueIndex >= 0 && fixQueueIndex < fixSession.queue.length - 1) {
+            setFixSession((current) =>
+              current ? { ...current, rowId: current.queue[fixQueueIndex + 1]! } : current
+            );
+          }
+        }}
       />
-    </div>
+    </>
   );
 }
+
+
+
