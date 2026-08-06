@@ -38,6 +38,7 @@ import {
   computeStringCountFacet,
   propertyTypeLabel,
 } from '../_shared/publicListingFacets.ts';
+import { propertyPlaceLabel, toLocationSlug } from '../_shared/listingPlace.ts';
 import { loadPublicListingRows } from '../_shared/publicListingRows.ts';
 import { mapPropertySearchSummary, postgrestOrIlikeValue } from '../_shared/publicSearch.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
@@ -175,6 +176,7 @@ servePublic('list-public-properties', async (req) => {
   const sortExplicit = Boolean(sortRaw && VALID_SORTS.has(sortRaw as SortKey));
   const page = parsePage(url.searchParams.get('page'));
   const pageSize = parsePageSize(url.searchParams.get('pageSize'));
+  const locationSlug = (url.searchParams.get('locationSlug') ?? '').trim().toLowerCase();
   const origin = readGeoOrigin(url.searchParams);
   const mapBbox = readMapBbox(url.searchParams);
 
@@ -211,6 +213,10 @@ servePublic('list-public-properties', async (req) => {
     if (types.length > 1 && !mapBbox) {
       const typeSet = new Set(types);
       rows = rows.filter((row) => typeSet.has(String(row.type).toLowerCase()));
+    }
+
+    if (locationSlug) {
+      rows = rows.filter((row) => toLocationSlug(propertyPlaceLabel(row)) === locationSlug);
     }
 
     let distanceById = new Map<string, number>();

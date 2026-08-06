@@ -40,6 +40,7 @@ import {
   resolveSearchIntent,
   type ResolvedSearchIntent,
 } from '../_shared/searchIntents.ts';
+import { loadPublicListingRows } from '../_shared/publicListingRows.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
 
 type SearchType = 'all' | 'properties' | 'developments' | 'parkings';
@@ -316,24 +317,23 @@ servePublic('search-listings', async (req) => {
     let parkingTotal = 0;
 
     if (wantProperties) {
-      let query = supabase
-        .from('properties')
-        .select('id, slug, name, type, city, residence_name, max_guests, settings, created_at')
-        .eq('status', 'ACTIVE');
+      const buildPropertyQuery = () => {
+        let query = supabase
+          .from('properties')
+          .select('id, slug, name, type, city, residence_name, max_guests, settings, created_at')
+          .eq('status', 'ACTIVE');
 
-      if (pattern) {
-        query = query.or(
-          `name.ilike.${pattern},city.ilike.${pattern},residence_name.ilike.${pattern}`
-        );
-      }
+        if (pattern) {
+          query = query.or(
+            `name.ilike.${pattern},city.ilike.${pattern},residence_name.ilike.${pattern}`
+          );
+        }
+        return query;
+      };
 
-      const { data, error } = await query.limit(500);
-      if (error) {
-        console.error('[search-listings] properties', error);
-        throw error;
-      }
-
-      let rows = data ?? [];
+      let rows = await loadPublicListingRows('search properties', (from, to) =>
+        buildPropertyQuery().order('id').range(from, to)
+      );
 
       if (activeSearch.mode === 'literal') {
         rows = rows.filter((row) =>
@@ -431,24 +431,23 @@ servePublic('search-listings', async (req) => {
     }
 
     if (wantDevelopments) {
-      let query = supabase
-        .from('developments')
-        .select(
-          'id, slug, name, type, city, location, developer_name, cover_image_url, settings, created_at'
-        )
-        .eq('status', 'ACTIVE');
+      const buildDevelopmentQuery = () => {
+        let query = supabase
+          .from('developments')
+          .select(
+            'id, slug, name, type, city, location, developer_name, cover_image_url, settings, created_at'
+          )
+          .eq('status', 'ACTIVE');
 
-      if (pattern) {
-        query = query.or(`name.ilike.${pattern},city.ilike.${pattern},location.ilike.${pattern}`);
-      }
+        if (pattern) {
+          query = query.or(`name.ilike.${pattern},city.ilike.${pattern},location.ilike.${pattern}`);
+        }
+        return query;
+      };
 
-      const { data, error } = await query.limit(500);
-      if (error) {
-        console.error('[search-listings] developments', error);
-        throw error;
-      }
-
-      let rows = data ?? [];
+      let rows = await loadPublicListingRows('search developments', (from, to) =>
+        buildDevelopmentQuery().order('id').range(from, to)
+      );
 
       if (activeSearch.mode === 'literal') {
         rows = rows.filter((row) => matchesWhere(literalQuery, row.name, row.city, row.location));
@@ -522,26 +521,25 @@ servePublic('search-listings', async (req) => {
     }
 
     if (wantParkings) {
-      let query = supabase
-        .from('parkings')
-        .select(
-          'id, slug, name, residence_name, tower, level, slot_label, parking_type, rate_per_night, settings, created_at'
-        )
-        .eq('status', 'ACTIVE');
+      const buildParkingQuery = () => {
+        let query = supabase
+          .from('parkings')
+          .select(
+            'id, slug, name, residence_name, tower, level, slot_label, parking_type, rate_per_night, settings, created_at'
+          )
+          .eq('status', 'ACTIVE');
 
-      if (pattern) {
-        query = query.or(
-          `name.ilike.${pattern},residence_name.ilike.${pattern},tower.ilike.${pattern}`
-        );
-      }
+        if (pattern) {
+          query = query.or(
+            `name.ilike.${pattern},residence_name.ilike.${pattern},tower.ilike.${pattern}`
+          );
+        }
+        return query;
+      };
 
-      const { data, error } = await query.limit(500);
-      if (error) {
-        console.error('[search-listings] parkings', error);
-        throw error;
-      }
-
-      let rows = data ?? [];
+      let rows = await loadPublicListingRows('search parkings', (from, to) =>
+        buildParkingQuery().order('id').range(from, to)
+      );
 
       if (activeSearch.mode === 'literal') {
         rows = rows.filter((row) => {

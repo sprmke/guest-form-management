@@ -24,6 +24,7 @@ import {
   resolveListingCoords,
   scopeRowsToRadius,
 } from '../_shared/publicGeoScope.ts';
+import { normalizeCityPlace, toLocationSlug } from '../_shared/listingPlace.ts';
 import { computePriceFacet, computeStringCountFacet } from '../_shared/publicListingFacets.ts';
 import { loadPublicListingRows } from '../_shared/publicListingRows.ts';
 import { mapParkingSearchSummary, postgrestOrIlikeValue } from '../_shared/publicSearch.ts';
@@ -128,6 +129,7 @@ servePublic('list-public-parkings', async (req) => {
   parseSort(url.searchParams.get('sort'));
   const page = parsePage(url.searchParams.get('page'));
   const pageSize = parsePageSize(url.searchParams.get('pageSize'));
+  const locationSlug = (url.searchParams.get('locationSlug') ?? '').trim().toLowerCase();
   const origin = readGeoOrigin(url.searchParams);
   const mapBbox = readMapBbox(url.searchParams);
 
@@ -211,6 +213,12 @@ servePublic('list-public-parkings', async (req) => {
         settings: row.settings,
       };
     });
+
+    if (locationSlug) {
+      working = working.filter(
+        (row) => toLocationSlug(normalizeCityPlace(row.city)) === locationSlug
+      );
+    }
 
     if (origin) {
       working = scopeRowsToRadius(working, origin, (row) =>

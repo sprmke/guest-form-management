@@ -484,6 +484,9 @@ verify_jwt = false
 [functions.list-public-parkings]
 verify_jwt = false
 
+[functions.list-public-place-groups]
+verify_jwt = false
+
 [functions.property-templates-settings]
 verify_jwt = false
 
