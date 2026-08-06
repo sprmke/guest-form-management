@@ -1,13 +1,13 @@
 const capabilities = [
   { value: '9', label: 'connected modules' },
   { value: '1', label: 'booking workflow' },
-  { value: 'AI', label: 'assisted operations' },
+  { value: 'AI', label: 'assisted review' },
   { value: '24/7', label: 'background automation' },
 ];
 
 export function HostCapabilityStrip() {
   return (
-    <section className="border-border bg-background border-y">
+    <section className="border-border bg-background border-y" aria-label="Platform capabilities">
       <div className="container mx-auto grid grid-cols-2 px-4 sm:px-6 lg:grid-cols-4 lg:px-8">
         {capabilities.map((capability, index) => (
           <div
@@ -20,7 +20,7 @@ export function HostCapabilityStrip() {
                   : ''
             }`}
           >
-            <p className="text-foreground text-2xl font-black tracking-tight sm:text-3xl">
+            <p className="text-foreground text-2xl font-black tabular-nums tracking-tight sm:text-3xl">
               {capability.value}
             </p>
             <p className="text-muted-foreground mt-1 text-xs font-medium sm:text-sm">

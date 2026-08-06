@@ -1,16 +1,31 @@
 import { Building2 } from 'lucide-react';
 
+import { ListingPlaceGroupsFooter } from '@/features/guest/marketing/shared/components/ListingPlaceGroupsFooter';
+
 import { DevelopmentsLocationRow } from './DevelopmentsLocationRow';
 import { groupDevelopmentsByLocation } from '../lib/groupDevelopmentsByLocation';
 
+import type { DevelopmentLocationGroup } from '../lib/groupDevelopmentsByLocation';
 import type { Development } from '../types';
 
 interface DevelopmentsByLocationProps {
-  developments: Development[];
+  developments?: Development[];
+  groups?: DevelopmentLocationGroup[];
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+  hasLoadMoreError?: boolean;
+  onLoadMore?: () => void;
 }
 
-export function DevelopmentsByLocation({ developments }: DevelopmentsByLocationProps) {
-  const groups = groupDevelopmentsByLocation(developments);
+export function DevelopmentsByLocation({
+  developments = [],
+  groups: providedGroups,
+  hasMore = false,
+  isLoadingMore = false,
+  hasLoadMoreError = false,
+  onLoadMore,
+}: DevelopmentsByLocationProps) {
+  const groups = providedGroups ?? groupDevelopmentsByLocation(developments);
 
   if (groups.length === 0) {
     return (
@@ -33,6 +48,14 @@ export function DevelopmentsByLocation({ developments }: DevelopmentsByLocationP
           developments={group.developments}
         />
       ))}
+      {onLoadMore ? (
+        <ListingPlaceGroupsFooter
+          hasMore={hasMore}
+          isLoading={isLoadingMore}
+          hasError={hasLoadMoreError}
+          onLoadMore={onLoadMore}
+        />
+      ) : null}
     </div>
   );
 }
