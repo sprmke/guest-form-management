@@ -7,36 +7,40 @@ updated: 2026-08-02
 
 # For hosts — operator guide
 
-Route: `/for-hosts`
+Route: `/for-hosts` · `/for-hosts/pricing`
 
 > **Status:** Documented — **Phase 1 (UI only)**. PMA marketing page; CTAs point to GFM admin sign-in.
 
 ## Progress overview
 
-| Section      | E2E save | Validation | Docs       | Notes                               |
-| ------------ | -------- | ---------- | ---------- | ----------------------------------- |
-| Hero + tour  | —        | —          | Documented | 54-second interactive product tour  |
-| How it works | —        | —          | Documented | Four-step host onboarding           |
-| Host reviews | —        | —          | Documented | Mock host quote carousel            |
-| Host CTAs    | —        | —          | Documented | → `/for-hosts/login` (Google OAuth) |
+| Section      | E2E save | Validation | Docs       | Notes                                                      |
+| ------------ | -------- | ---------- | ---------- | ---------------------------------------------------------- |
+| Hero + tour  | —        | —          | Documented | 54-second interactive product tour                         |
+| How it works | —        | —          | Documented | Four-step host onboarding                                  |
+| Host reviews | —        | —          | Documented | Mock host quote carousel                                   |
+| Host pricing | —        | —          | Documented | `/for-hosts/pricing` starter plan + closing CTA on landing |
+| Host CTAs    | —        | —          | Documented | → `/for-hosts/login` (Google OAuth)                        |
 
 ---
 
 ## Overview
 
-Host acquisition landing (PMA `(marketing)/for-hosts`). The page opens with the platform value proposition and an in-browser, video-like dashboard tour, then capability stats, host onboarding steps, host reviews, and the free-trial CTA.
+Host acquisition landing (PMA `(marketing)/for-hosts`). The page opens with the platform value proposition and an in-browser, video-like dashboard tour, then capability stats, host onboarding steps, and host reviews.
+
+**Pricing** lives on **`/for-hosts/pricing`** — same hero pattern as other public footer pages, with the free Starter plan (one property) and sign-up CTA. Footer **Pricing** and host-mode nav **Pricing** link there. Legacy **`/for-hosts#pricing`** redirects to the pricing page.
 
 The 54-second tour uses Remotion Player and nine interactive chapters: dashboard overview, booking workflow, Guest Inbox, finance, pricing, Marketing Studio, maintenance, Telegram alerts, and AI assistance. Chapters auto-advance and loop; hosts can pause, restart, or jump directly to a module. Hover and keyboard focus pause playback. `prefers-reduced-motion` disables autoplay and shows a static tour frame.
 
 **Narration:** each chapter has a pre-generated Edge TTS MP3 under `ui/public/marketing/for-hosts/narration/{chapterId}.mp3`, played via Remotion `<Audio>` inside that chapter's `Sequence`. Narration starts **muted** (browser autoplay policy) and an unmute control sits next to pause/play. Muting is passed into the composition as `inputProps.narrationMuted` rather than `Player.initiallyMuted` — a Player that mounts muted and unmutes later crashes Remotion's shared audio tags (fixed upstream in 4.0.498; the composition-level flag also keeps the audio pool stable). Audio follows the transport: pausing pauses narration, seeking a chapter restarts that chapter's line. Visible chapter title/description and `aria-live` still carry the meaning without relying on voice. Regenerate assets with `bun scripts/marketing/generate-host-tour-narration.ts` (requires `edge-tts` on PATH).
 
-Host-mode navigation replaces the explore links with **Features**, **How It Works**, and **Reviews** anchors. Anchor targets use smooth scrolling unless reduced motion is enabled. `/for-hosts` is currently the only host-mode route in `MarketingLayoutShell`; future host marketing routes must not assume these page-local anchors exist.
+Host-mode navigation replaces the explore links with **Features**, **How It Works**, **Reviews** (anchors on `/for-hosts`; from other host marketing routes they link back to `/for-hosts#…`), and **Pricing** → **`/for-hosts/pricing`**. Anchor targets use smooth scrolling unless reduced motion is enabled. Host marketing routes under **`/for-hosts/*`** share host-mode chrome but only the landing page defines the Features / How It Works / Reviews sections.
 
 **CTA difference from PMA:** When signed out, host marketing shows solid **Explore** (mode switch) + outlined **Sign In** → **`/for-hosts/login`**. When signed in, **Explore** + avatar menu (**Dashboard** → last org dashboard or **`/dashboard`**, log out). Explore marketing keeps **Become a host?** + guest avatar when signed in.
 
 **Mode switch:** One global curtain (`ModeSwitchTransitionProvider` in `App.tsx`) covers every explore ↔ host crossing so the overlay survives layout remounts:
 
 - Explore → host: marketing nav **Become a host?**, footer **Become a Host**
+- Footer **Pricing** → **`/for-hosts/pricing`**
 - Host → explore: admin account menu **Explore / Host** switcher, marketing logo on `/for-hosts`, host-auth mobile logo
 
 The curtain closes over 500 ms, holds the Kame Homes wordmark for 350 ms, then reopens over 500 ms. Brand color comes from the listing **`brandColor`** on property/parking pages, scoped admin/property CSS vars on dashboard pages, otherwise default Kame teal.
@@ -63,6 +67,10 @@ This is the marketing page that introduces the platform to property owners befor
 | Concern                | Path                                                                                                                                                              |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Page                   | `ui/src/features/guest/marketing/pages/ForHostsPage.tsx`                                                                                                          |
+| Pricing page           | `ui/src/features/guest/marketing/pages/ForHostsPricingPage.tsx`                                                                                                   |
+| Starter plan card      | `ui/src/features/guest/marketing/for-hosts/components/HostPricingStarterCard.tsx`                                                                                 |
+| Landing closing CTA    | `ui/src/features/guest/marketing/for-hosts/components/HostClosingCta.tsx`                                                                                         |
+| Shared public sections | `ui/src/features/guest/marketing/shared/components/MarketingPublic*.tsx` (hero, content, section heading, icon card, callout, FAQ)                                |
 | Host landing sections  | `ui/src/features/guest/marketing/for-hosts/components/**`                                                                                                         |
 | Tour timeline + copy   | `ui/src/features/guest/marketing/for-hosts/data/hostTourChapters.ts`                                                                                              |
 | Tour narration lines   | `ui/src/features/guest/marketing/for-hosts/data/hostTourNarration.ts`                                                                                             |
