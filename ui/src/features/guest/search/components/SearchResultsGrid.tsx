@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+
 import { motion, useReducedMotion } from 'framer-motion';
 
 import { DevelopmentCard } from '@/features/guest/marketing/developments/components/DevelopmentCard';
@@ -12,12 +14,12 @@ import {
 } from '@/features/guest/marketing/shared/lib/listingMapMarkers';
 import { orderListingCategories } from '@/features/guest/marketing/shared/lib/listingSearchPreferType';
 import { resolveListingImages } from '@/features/guest/marketing/shared/lib/mockListingImages';
+import type { SearchViewMode } from '@/features/guest/search/components/SearchResultsToolbar';
 import {
   mapDevelopmentSummaryToCard,
   mapParkingSummaryToSlot,
   mapPropertySummaryToCard,
 } from '@/features/guest/search/lib/mapSearchSummaries';
-import type { SearchViewMode } from '@/features/guest/search/components/SearchResultsToolbar';
 import type {
   DevelopmentSearchSummary,
   ParkingSearchSummary,
@@ -38,7 +40,11 @@ type Props = {
   /** Origin page category — preferred section renders first on All. */
   focus?: CategoryId | null;
   onViewCategory?: (type: CategoryId) => void;
+  /** Map bounds currently applied from the URL. */
+  mapBbox?: MapBbox | null;
+  mapLoading?: boolean;
   onViewportChange?: (bbox: MapBbox) => void;
+  onResetViewport?: () => void;
 };
 
 function CategoryHeading({
@@ -138,48 +144,66 @@ function parkingMarkers(parkings: ParkingSearchSummary[]): ListingMapMarker[] {
   }));
 }
 
-export function SearchResultsGrid({
+const CATEGORY_NOUNS: Record<CategoryId, { singular: string; plural: string }> = {
+  properties: { singular: 'property', plural: 'properties' },
+  developments: { singular: 'development', plural: 'developments' },
+  parkings: { singular: 'parking', plural: 'parkings' },
+};
+
+/**
+ * Own component so the marker memo survives the parent's refetch renders — the map
+ * keeps its instance and viewport instead of remounting on every bounds change.
+ */
+function SearchResultsMap({
   type,
   properties,
   developments,
   parkings,
   totals,
-  viewMode = 'grid',
-  focus = null,
-  onViewCategory,
+  mapBbox,
+  mapLoading,
   onViewportChange,
-}: Props) {
+  onResetViewport,
+}: Props & { type: CategoryId }) {
+  const markers = useMemo(() => {
+    if (type === 'properties') return propertyMarkers(properties);
+    if (type === 'developments') return developmentMarkers(developments);
+    return parkingMarkers(parkings);
+  }, [type, properties, developments, parkings]);
+
+  const noun = CATEGORY_NOUNS[type];
+
+  return (
+    <ListingMapView
+      markers={markers}
+      totalInView={totals[type]}
+      nounSingular={noun.singular}
+      nounPlural={noun.plural}
+      initialBbox={mapBbox ?? null}
+      loading={mapLoading}
+      onViewportChange={onViewportChange}
+      onResetViewport={onResetViewport}
+    />
+  );
+}
+
+export function SearchResultsGrid(props: Props) {
+  const {
+    type,
+    properties,
+    developments,
+    parkings,
+    totals,
+    viewMode = 'grid',
+    focus = null,
+    onViewCategory,
+  } = props;
   const reduceMotion = useReducedMotion();
   const isAll = type === 'all';
   const categoryOrder = orderListingCategories(focus, DEFAULT_CATEGORY_ORDER);
 
   if (viewMode === 'map' && type !== 'all') {
-    const markers =
-      type === 'properties'
-        ? propertyMarkers(properties)
-        : type === 'developments'
-          ? developmentMarkers(developments)
-          : parkingMarkers(parkings);
-    const total =
-      type === 'properties'
-        ? totals.properties
-        : type === 'developments'
-          ? totals.developments
-          : totals.parkings;
-    const nounSingular =
-      type === 'properties' ? 'property' : type === 'developments' ? 'development' : 'parking';
-    const nounPlural =
-      type === 'properties' ? 'properties' : type === 'developments' ? 'developments' : 'parkings';
-
-    return (
-      <ListingMapView
-        markers={markers}
-        totalInView={total}
-        nounSingular={nounSingular}
-        nounPlural={nounPlural}
-        onViewportChange={onViewportChange}
-      />
-    );
+    return <SearchResultsMap {...props} type={type} />;
   }
 
   const effectiveView: SearchViewMode = viewMode === 'map' ? 'grid' : viewMode;

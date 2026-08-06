@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useSearchParams } from 'react-router-dom';
 
@@ -16,6 +16,10 @@ import {
   parkingsQueryToFilterState,
 } from '@/features/guest/marketing/parkings/lib/parkingsQuery';
 import { usePublicParkings } from '@/features/guest/marketing/parkings/hooks/usePublicParkings';
+import {
+  parseBboxFromSearchParams,
+  type MapBbox,
+} from '@/features/guest/marketing/shared/lib/listingMapMarkers';
 import { SearchEmptyState } from '@/features/guest/search/components/SearchEmptyState';
 import { SearchErrorState } from '@/features/guest/search/components/SearchErrorState';
 import { SearchResultsGrid } from '@/features/guest/search/components/SearchResultsGrid';
@@ -235,20 +239,15 @@ export function SearchResultsPage() {
   );
 
   const searchData = overviewSearch.data;
-  const searchTotals = searchData?.totals ?? {
-    properties: 0,
-    developments: 0,
-    parkings: 0,
-    all: 0,
-  };
+  const searchTotals = useMemo(
+    () => searchData?.totals ?? { properties: 0, developments: 0, parkings: 0, all: 0 },
+    [searchData]
+  );
   const meta = searchData?.meta;
   const effectiveType = searchData ? resolveEffectiveType(query.type, searchTotals) : query.type;
 
-  const mapBboxActive =
-    searchParams.has('swLat') &&
-    searchParams.has('swLng') &&
-    searchParams.has('neLat') &&
-    searchParams.has('neLng');
+  const mapBbox = useMemo(() => parseBboxFromSearchParams(searchParams), [searchParams]);
+  const mapBboxActive = mapBbox != null;
 
   const useFilteredProperties =
     effectiveType === 'properties' &&
@@ -281,21 +280,33 @@ export function SearchResultsPage() {
 
   const scopedData = scopedSearch.data;
 
-  const properties = useFilteredProperties
-    ? (propertiesList.data?.data ?? []).map(toPropertySummary)
-    : effectiveType === 'properties'
-      ? (scopedData?.properties ?? [])
-      : (searchData?.properties ?? []);
-  const developments = useFilteredDevelopments
-    ? (developmentsList.data?.data ?? []).map(toDevelopmentSummary)
-    : effectiveType === 'developments'
-      ? (scopedData?.developments ?? [])
-      : (searchData?.developments ?? []);
-  const parkings = useFilteredParkings
-    ? (parkingsList.data?.data ?? []).map(toParkingSummary)
-    : effectiveType === 'parkings'
-      ? (scopedData?.parkings ?? [])
-      : (searchData?.parkings ?? []);
+  const properties = useMemo(
+    () =>
+      useFilteredProperties
+        ? (propertiesList.data?.data ?? []).map(toPropertySummary)
+        : effectiveType === 'properties'
+          ? (scopedData?.properties ?? [])
+          : (searchData?.properties ?? []),
+    [useFilteredProperties, propertiesList.data?.data, effectiveType, scopedData, searchData]
+  );
+  const developments = useMemo(
+    () =>
+      useFilteredDevelopments
+        ? (developmentsList.data?.data ?? []).map(toDevelopmentSummary)
+        : effectiveType === 'developments'
+          ? (scopedData?.developments ?? [])
+          : (searchData?.developments ?? []),
+    [useFilteredDevelopments, developmentsList.data?.data, effectiveType, scopedData, searchData]
+  );
+  const parkings = useMemo(
+    () =>
+      useFilteredParkings
+        ? (parkingsList.data?.data ?? []).map(toParkingSummary)
+        : effectiveType === 'parkings'
+          ? (scopedData?.parkings ?? [])
+          : (searchData?.parkings ?? []),
+    [useFilteredParkings, parkingsList.data?.data, effectiveType, scopedData, searchData]
+  );
 
   const totals = useMemo(() => {
     if (useFilteredProperties) {
@@ -377,6 +388,37 @@ export function SearchResultsPage() {
       setViewMode('grid');
     }
   }, [effectiveType, viewMode]);
+
+  /** Map bounds live in the URL so the viewport is shareable and back-navigable. */
+  const applyMapViewport = useCallback(
+    (bbox: MapBbox) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set('swLat', String(bbox.swLat));
+          next.set('swLng', String(bbox.swLng));
+          next.set('neLat', String(bbox.neLat));
+          next.set('neLng', String(bbox.neLng));
+          next.set('page', '1');
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
+
+  const clearMapViewport = useCallback(() => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        for (const key of ['swLat', 'swLng', 'neLat', 'neLng']) next.delete(key);
+        next.set('page', '1');
+        return next;
+      },
+      { replace: true }
+    );
+  }, [setSearchParams]);
 
   const requestLocation = async () => {
     setLocationRequesting(true);
@@ -545,13 +587,19 @@ export function SearchResultsPage() {
     (parkingsList.error as Error | null)?.message ||
     undefined;
 
-  const isMapView = viewMode === 'map' && effectiveType !== 'all';
+  /**
+   * Map view keeps its own chrome and canvas mounted through every refetch. Each
+   * pan writes new bounds, which makes the category query a fresh key — swapping in
+   * a skeleton there would tear the map down and reset the viewport mid-gesture.
+   */
+  const isMapView = viewMode === 'map' && effectiveType !== 'all' && !showError;
+  const chromeVisible = showResults || isMapView;
 
   return (
     <div className="bg-background min-h-screen">
       <SearchResultsHeader />
 
-      {showResults ? (
+      {chromeVisible ? (
         <div className="border-border bg-background/95 sticky top-16 z-30 border-b p-4 backdrop-blur-sm lg:hidden">
           <Button
             variant="outline"
@@ -635,7 +683,7 @@ export function SearchResultsPage() {
         ) : null}
 
         <main className="min-w-0 flex-1 overflow-x-hidden">
-          {showResults ? (
+          {chromeVisible ? (
             <SearchResultsToolbar
               category={effectiveType === 'all' ? 'all' : effectiveType}
               totalResults={toolbarTotal}
@@ -663,7 +711,7 @@ export function SearchResultsPage() {
               </div>
             ) : null}
 
-            {showResults || showEmpty ? (
+            {showResults || showEmpty || isMapView ? (
               <SearchStatusBanner
                 focus={query.focus}
                 type={effectiveType}
@@ -680,9 +728,9 @@ export function SearchResultsPage() {
               />
             ) : null}
 
-            {showSkeleton ? <SearchResultsSkeleton viewMode={viewMode} /> : null}
+            {showSkeleton && !isMapView ? <SearchResultsSkeleton viewMode={viewMode} /> : null}
 
-            {showEmpty ? (
+            {showEmpty && !isMapView ? (
               <SearchEmptyState
                 where={query.where}
                 needsLocation={needsLocation}
@@ -706,7 +754,23 @@ export function SearchResultsPage() {
               />
             ) : null}
 
-            {showResults ? (
+            {isMapView ? (
+              <SearchResultsGrid
+                type={effectiveType}
+                properties={properties}
+                developments={developments}
+                parkings={parkings}
+                totals={totals}
+                viewMode="map"
+                focus={query.focus}
+                mapBbox={mapBbox}
+                mapLoading={isFetching || showSkeleton}
+                onViewportChange={applyMapViewport}
+                onResetViewport={mapBboxActive ? clearMapViewport : undefined}
+              />
+            ) : null}
+
+            {showResults && !isMapView ? (
               <div className={isFetching ? 'opacity-80 transition-opacity' : undefined}>
                 <SearchResultsGrid
                   type={effectiveType}
@@ -717,22 +781,8 @@ export function SearchResultsPage() {
                   viewMode={viewMode}
                   focus={query.focus}
                   onViewCategory={(type) => patchQuery({ type, page: 1 }, { replace: false })}
-                  onViewportChange={(bbox) => {
-                    setSearchParams(
-                      (prev) => {
-                        const next = new URLSearchParams(prev);
-                        next.set('swLat', String(bbox.swLat));
-                        next.set('swLng', String(bbox.swLng));
-                        next.set('neLat', String(bbox.neLat));
-                        next.set('neLng', String(bbox.neLng));
-                        next.set('page', '1');
-                        return next;
-                      },
-                      { replace: true }
-                    );
-                  }}
                 />
-                {!isMapView && showPagination ? (
+                {showPagination ? (
                   <div className="mt-8">
                     <SearchResultsPagination
                       page={query.page}
