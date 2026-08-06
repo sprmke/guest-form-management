@@ -1,16 +1,31 @@
 import { Home } from 'lucide-react';
 
+import { ListingPlaceGroupsFooter } from '@/features/guest/marketing/shared/components/ListingPlaceGroupsFooter';
+
 import { PropertiesLocationRow } from './PropertiesLocationRow';
 import { groupPropertiesByLocation } from '../lib/groupPropertiesByLocation';
 
 import type { Property } from './PropertyCard';
+import type { PropertyLocationGroup } from '../lib/groupPropertiesByLocation';
 
 interface PropertiesByLocationProps {
-  properties: Property[];
+  properties?: Property[];
+  groups?: PropertyLocationGroup[];
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+  hasLoadMoreError?: boolean;
+  onLoadMore?: () => void;
 }
 
-export function PropertiesByLocation({ properties }: PropertiesByLocationProps) {
-  const groups = groupPropertiesByLocation(properties);
+export function PropertiesByLocation({
+  properties = [],
+  groups: providedGroups,
+  hasMore = false,
+  isLoadingMore = false,
+  hasLoadMoreError = false,
+  onLoadMore,
+}: PropertiesByLocationProps) {
+  const groups = providedGroups ?? groupPropertiesByLocation(properties);
 
   if (groups.length === 0) {
     return (
@@ -33,6 +48,14 @@ export function PropertiesByLocation({ properties }: PropertiesByLocationProps) 
           properties={group.properties}
         />
       ))}
+      {onLoadMore ? (
+        <ListingPlaceGroupsFooter
+          hasMore={hasMore}
+          isLoading={isLoadingMore}
+          hasError={hasLoadMoreError}
+          onLoadMore={onLoadMore}
+        />
+      ) : null}
     </div>
   );
 }

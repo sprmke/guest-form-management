@@ -64,11 +64,16 @@ export function bboxToSearchParams(bbox: MapBbox): Record<string, string> {
 }
 
 export function parseBboxFromSearchParams(sp: URLSearchParams): MapBbox | null {
-  const swLat = Number(sp.get('swLat'));
-  const swLng = Number(sp.get('swLng'));
-  const neLat = Number(sp.get('neLat'));
-  const neLng = Number(sp.get('neLng'));
+  const raw = ['swLat', 'swLng', 'neLat', 'neLng'].map((key) => sp.get(key));
+  // A missing param coerces to 0, which would read as a valid box off West Africa.
+  if (raw.some((value) => value == null || value.trim() === '')) return null;
+
+  const [swLat, swLng, neLat, neLng] = raw.map(Number) as [number, number, number, number];
   if (![swLat, swLng, neLat, neLng].every((n) => Number.isFinite(n))) return null;
-  if (swLat > neLat) return null;
+  if (Math.abs(swLat) > 90 || Math.abs(neLat) > 90) return null;
+  if (Math.abs(swLng) > 180 || Math.abs(neLng) > 180) return null;
+  // A box with no area frames nothing; the result set should own the viewport instead.
+  if (swLat >= neLat || swLng === neLng) return null;
+
   return { swLat, swLng, neLat, neLng };
 }

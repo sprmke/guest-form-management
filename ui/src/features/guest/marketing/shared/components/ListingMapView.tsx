@@ -1,21 +1,23 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { Link } from 'react-router-dom';
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { MapPin, Minus, Plus, Star, X } from 'lucide-react';
+import { Loader2, MapPin, Minus, Plus, Star, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
 
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
+import {
+  listingMapCanvasClass,
+  listingMapMinHeightClass,
+} from '@/features/guest/marketing/shared/lib/listingMapLayout';
 import {
   formatMapPinLabel,
   type ListingMapMarker,
   type MapBbox,
 } from '@/features/guest/marketing/shared/lib/listingMapMarkers';
 import { resolveListingCoverImage } from '@/features/guest/marketing/shared/lib/mockListingImages';
-import {
-  listingMapCanvasClass,
-  listingMapMinHeightClass,
-} from '@/features/guest/marketing/shared/lib/listingMapLayout';
+
 import { useGoogleMapsLoader } from '@/lib/google-maps/useGoogleMapsLoader';
 import { cn } from '@/lib/utils';
 
@@ -27,73 +29,225 @@ type ListingMapViewProps = {
   nounPlural: string;
   className?: string;
   /**
-   * Called when the map settles after pan/zoom (debounced idle).
-   * Writes viewport bounds so the parent can refetch in-bounds listings.
+   * Viewport the map opens at, read from the URL bounds. While set, the map never
+   * re-frames itself on data changes — the guest's viewport is the source of truth.
+   */
+  initialBbox?: MapBbox | null;
+  /** In-bounds results are refetching; pins stay put while the badge shows activity. */
+  loading?: boolean;
+  /**
+   * Called once the map settles after a guest pan/zoom so the parent can refetch
+   * in-bounds listings. Never fires for programmatic framing.
    */
   onViewportChange?: (bbox: MapBbox) => void;
+  /** Drops the URL bounds and re-frames on the full result set. */
+  onResetViewport?: () => void;
 };
 
-type PinOverlay = {
-  marker: ListingMapMarker;
-  overlay: google.maps.OverlayView;
-  el: HTMLButtonElement;
+type MapPin = {
+  key: string;
+  lat: number;
+  lng: number;
+  markers: ListingMapMarker[];
 };
 
 const PH_DEFAULT_CENTER = { lat: 12.8797, lng: 121.774 };
-const CLUSTER_PIXEL = 48;
-const VIEWPORT_IDLE_MS = 400;
+const PH_DEFAULT_ZOOM = 6;
+const SINGLE_LISTING_ZOOM = 15;
+/** Street-level ceiling: tighter bounds carry no map detail, only confusion. */
+const MAX_OPEN_ZOOM = 17;
+/** Past this, zooming can no longer pull apart pins that share an address. */
+const MAX_DETAIL_ZOOM = 19;
+const CLUSTER_CELL_PX = 52;
+const OFFSCREEN = 'translate3d(-9999px, -9999px, 0)';
 
 function readBounds(map: google.maps.Map): MapBbox | null {
-  const b = map.getBounds();
-  if (!b) return null;
-  const sw = b.getSouthWest();
-  const ne = b.getNorthEast();
-  return {
-    swLat: sw.lat(),
-    swLng: sw.lng(),
-    neLat: ne.lat(),
-    neLng: ne.lng(),
-  };
+  const bounds = map.getBounds();
+  if (!bounds) return null;
+  const sw = bounds.getSouthWest();
+  const ne = bounds.getNorthEast();
+  return { swLat: sw.lat(), swLng: sw.lng(), neLat: ne.lat(), neLng: ne.lng() };
 }
 
 function bboxKey(bbox: MapBbox): string {
   return [bbox.swLat, bbox.swLng, bbox.neLat, bbox.neLng].map((n) => n.toFixed(5)).join(',');
 }
 
-function clusterMarkers(
-  markers: ListingMapMarker[],
-  projection: google.maps.MapCanvasProjection,
-  zoom: number
-): Array<{ markers: ListingMapMarker[]; lat: number; lng: number }> {
-  if (zoom >= 14 || markers.length <= 12) {
-    return markers.map((m) => ({ markers: [m], lat: m.latitude, lng: m.longitude }));
-  }
+function toLatLngBounds(bbox: MapBbox): google.maps.LatLngBounds {
+  return new google.maps.LatLngBounds(
+    { lat: bbox.swLat, lng: bbox.swLng },
+    { lat: bbox.neLat, lng: bbox.neLng }
+  );
+}
 
-  const cell = CLUSTER_PIXEL * (zoom < 10 ? 2 : 1);
-  const buckets = new Map<string, ListingMapMarker[]>();
+/**
+ * Buckets markers into fixed screen-pixel cells using the zoom-independent world
+ * projection, so a pan never reshuffles clusters — only a zoom change does.
+ */
+function buildPins(
+  markers: ListingMapMarker[],
+  zoom: number | null,
+  projection: google.maps.Projection | null
+): MapPin[] {
+  const singles = () =>
+    markers.map((marker) => ({
+      key: marker.id,
+      lat: marker.latitude,
+      lng: marker.longitude,
+      markers: [marker],
+    }));
+
+  if (markers.length < 2) return singles();
+  if (!projection || zoom == null) return singles();
+
+  const scale = 2 ** zoom;
+  const cells = new Map<string, ListingMapMarker[]>();
 
   for (const marker of markers) {
-    const point = projection.fromLatLngToDivPixel(
+    const point = projection.fromLatLngToPoint(
       new google.maps.LatLng(marker.latitude, marker.longitude)
     );
-    if (!point) {
-      const key = `${marker.id}`;
-      buckets.set(key, [marker]);
-      continue;
-    }
-    const key = `${Math.floor(point.x / cell)}:${Math.floor(point.y / cell)}`;
-    const list = buckets.get(key);
-    if (list) list.push(marker);
-    else buckets.set(key, [marker]);
+    const cell = point
+      ? `${Math.floor((point.x * scale) / CLUSTER_CELL_PX)}:${Math.floor((point.y * scale) / CLUSTER_CELL_PX)}`
+      : marker.id;
+    const bucket = cells.get(cell);
+    if (bucket) bucket.push(marker);
+    else cells.set(cell, [marker]);
   }
 
-  const clusters: Array<{ markers: ListingMapMarker[]; lat: number; lng: number }> = [];
-  for (const group of buckets.values()) {
-    const lat = group.reduce((s, m) => s + m.latitude, 0) / group.length;
-    const lng = group.reduce((s, m) => s + m.longitude, 0) / group.length;
-    clusters.push({ markers: group, lat, lng });
+  const pins: MapPin[] = [];
+  for (const group of cells.values()) {
+    if (group.length === 1) {
+      const marker = group[0]!;
+      pins.push({
+        key: marker.id,
+        lat: marker.latitude,
+        lng: marker.longitude,
+        markers: group,
+      });
+      continue;
+    }
+    const ids = group.map((m) => m.id).sort();
+    pins.push({
+      key: `cluster:${ids[0]}:${group.length}`,
+      lat: group.reduce((sum, m) => sum + m.latitude, 0) / group.length,
+      lng: group.reduce((sum, m) => sum + m.longitude, 0) / group.length,
+      markers: group,
+    });
   }
-  return clusters;
+  return pins;
+}
+
+function ListingMapCard({ listing, onClose }: { listing: ListingMapMarker; onClose: () => void }) {
+  return (
+    <>
+      <div className="relative aspect-[16/10]">
+        <Image
+          src={resolveListingCoverImage(
+            listing.images,
+            listing.images?.[0],
+            listing.family,
+            listing.slug
+          )}
+          alt={listing.name}
+          fill
+          className="object-cover"
+        />
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-2 top-2 flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center rounded-full bg-white/90 shadow-lg backdrop-blur-sm"
+          aria-label="Close"
+        >
+          <X className="h-4 w-4 text-slate-900" aria-hidden />
+        </button>
+      </div>
+      <Link to={listing.href as never} className="block p-3">
+        <div className="mb-1 flex items-start justify-between gap-2">
+          <h4 className="text-foreground line-clamp-1 font-semibold">{listing.name}</h4>
+          {listing.rating != null && listing.rating > 0 ? (
+            <div className="flex shrink-0 items-center gap-1 text-sm">
+              <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden />
+              <span className="font-medium tabular-nums">{listing.rating.toFixed(1)}</span>
+            </div>
+          ) : null}
+        </div>
+        <p className="text-muted-foreground mb-2 line-clamp-1 text-sm">{listing.location}</p>
+        {listing.price != null ? (
+          <div>
+            <span className="text-foreground font-bold tabular-nums">
+              ₱{listing.price.toLocaleString()}
+            </span>
+            {listing.family === 'property' || listing.family === 'parking' ? (
+              <span className="text-muted-foreground text-sm"> / night</span>
+            ) : null}
+          </div>
+        ) : null}
+      </Link>
+    </>
+  );
+}
+
+/** Listings that share an address — a zoom can never separate them, so list them. */
+function ListingMapStack({
+  listings,
+  nounPlural,
+  onClose,
+}: {
+  listings: ListingMapMarker[];
+  nounPlural: string;
+  onClose: () => void;
+}) {
+  return (
+    <>
+      <div className="border-border flex items-center justify-between gap-2 border-b pl-3">
+        <p className="text-foreground text-sm font-semibold tabular-nums">
+          {listings.length} {nounPlural} here
+        </p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="hover:bg-muted flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center"
+          aria-label="Close"
+        >
+          <X className="h-4 w-4" aria-hidden />
+        </button>
+      </div>
+      <ul className="divide-border max-h-72 divide-y overflow-y-auto">
+        {listings.map((listing) => (
+          <li key={listing.id}>
+            <Link
+              to={listing.href as never}
+              className="hover:bg-muted flex min-h-[44px] items-center gap-3 p-3"
+            >
+              <div className="relative h-12 w-16 shrink-0 overflow-hidden rounded-md">
+                <Image
+                  src={resolveListingCoverImage(
+                    listing.images,
+                    listing.images?.[0],
+                    listing.family,
+                    listing.slug
+                  )}
+                  alt={listing.name}
+                  fill
+                  className="object-cover"
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-foreground line-clamp-1 text-sm font-medium">{listing.name}</p>
+                <p className="text-muted-foreground line-clamp-1 text-xs">{listing.location}</p>
+              </div>
+              {listing.price != null ? (
+                <span className="text-foreground shrink-0 text-sm font-semibold tabular-nums">
+                  ₱{listing.price.toLocaleString()}
+                </span>
+              ) : null}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
 }
 
 export function ListingMapView({
@@ -102,57 +256,110 @@ export function ListingMapView({
   nounSingular,
   nounPlural,
   className,
+  initialBbox = null,
+  loading = false,
   onViewportChange,
+  onResetViewport,
 }: ListingMapViewProps) {
   const { ready, error, apiKeyConfigured } = useGoogleMapsLoader();
   const reduceMotion = useReducedMotion();
+
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
-  const overlaysRef = useRef<PinOverlay[]>([]);
-  const clusterOverlaysRef = useRef<google.maps.OverlayView[]>([]);
-  const [selected, setSelected] = useState<ListingMapMarker | null>(null);
-  const [mapReady, setMapReady] = useState(false);
-  /** Skip idle emissions caused by programmatic fitBounds / setCenter. */
-  const suppressUntilRef = useRef(0);
-  /** After the guest pans/zooms, never re-fitBounds when marker sets refresh. */
-  const userNavigatedRef = useRef(false);
-  const fittedKeyRef = useRef('');
-  const lastEmittedBboxRef = useRef('');
+  const overlayRef = useRef<google.maps.OverlayView | null>(null);
+  const pinElsRef = useRef(new Map<string, HTMLElement>());
+
+  const [pinLayer, setPinLayer] = useState<HTMLDivElement | null>(null);
+  const previousBoundsKeyRef = useRef('');
+  const [zoom, setZoom] = useState<number | null>(null);
+  /** Bumped once the map projection exists so clustering can recompute. */
+  const [projectionEpoch, setProjectionEpoch] = useState(0);
+  /** Open card: one listing, or every listing sharing a pin. */
+  const [selection, setSelection] = useState<ListingMapMarker[]>([]);
+
+  /** A guest gesture happened; the next settle is theirs to publish. */
+  const gestureRef = useRef(false);
+  const lastEmittedRef = useRef('');
+  const framedBoundsRef = useRef('');
+  const framedMarkersRef = useRef('');
+
   const onViewportChangeRef = useRef(onViewportChange);
   onViewportChangeRef.current = onViewportChange;
 
-  const noun = totalInView === 1 ? nounSingular : nounPlural;
-  const locatedCount = markers.length;
+  /**
+   * Callers rebuild marker arrays on every render; hold the previous array while the
+   * listings themselves are unchanged so pins are never torn down mid-interaction.
+   */
+  const signature = markers.map((m) => `${m.id}:${m.price ?? ''}`).join('|');
+  const signatureRef = useRef(signature);
+  const stableMarkersRef = useRef(markers);
+  if (signatureRef.current !== signature) {
+    signatureRef.current = signature;
+    stableMarkersRef.current = markers;
+  }
+  const stableMarkers = stableMarkersRef.current;
 
-  const suppressProgrammaticIdle = (ms = 600) => {
-    suppressUntilRef.current = Date.now() + ms;
-  };
+  const initialBboxKey = initialBbox ? bboxKey(initialBbox) : '';
+  const initialBboxRef = useRef(initialBbox);
+  initialBboxRef.current = initialBbox;
 
-  /** After fitBounds settles, sync URL bbox once so filters/facets match the visible map. */
-  const emitViewportAfterFit = (map: google.maps.Map, delayMs = 650) => {
-    suppressProgrammaticIdle(delayMs);
-    window.setTimeout(() => {
-      const callback = onViewportChangeRef.current;
-      if (!callback) return;
-      const bbox = readBounds(map);
-      if (!bbox) return;
-      const key = bboxKey(bbox);
-      if (key === lastEmittedBboxRef.current) return;
-      lastEmittedBboxRef.current = key;
-      userNavigatedRef.current = true;
-      callback(bbox);
-    }, delayMs + 50);
-  };
+  const pins = useMemo(
+    () => buildPins(stableMarkers, zoom, mapRef.current?.getProjection() ?? null),
+    // Projection arrives asynchronously; the epoch re-runs clustering once it does.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [stableMarkers, zoom, projectionEpoch]
+  );
+  const pinsRef = useRef(pins);
+  pinsRef.current = pins;
 
+  const positionPins = useCallback(() => {
+    const projection = overlayRef.current?.getProjection();
+    if (!projection) return;
+    for (const pin of pinsRef.current) {
+      const el = pinElsRef.current.get(pin.key);
+      if (!el) continue;
+      const point = projection.fromLatLngToDivPixel(new google.maps.LatLng(pin.lat, pin.lng));
+      if (!point) continue;
+      el.style.transform = `translate3d(${Math.round(point.x)}px, ${Math.round(point.y)}px, 0)`;
+    }
+  }, []);
+
+  const markGesture = useCallback(() => {
+    gestureRef.current = true;
+  }, []);
+
+  /**
+   * Frames URL bounds, clamping bounds so tight that the map would show nothing but
+   * empty canvas. A clamp widens the visible area, so it publishes the corrected
+   * bounds once — the listing set and the map always describe the same place.
+   */
+  const frameBounds = useCallback((bbox: MapBbox) => {
+    const map = mapRef.current;
+    if (!map) return;
+    gestureRef.current = false;
+    map.fitBounds(toLatLngBounds(bbox), 0);
+    if ((map.getZoom() ?? 0) > MAX_OPEN_ZOOM) {
+      map.setZoom(MAX_OPEN_ZOOM);
+      gestureRef.current = true;
+    }
+  }, []);
+
+  /**
+   * The map instance outlives every data change: it is created once per mount and
+   * reads live props through refs, so a refetch can never reset the viewport.
+   */
   useEffect(() => {
-    if (!ready || !containerRef.current || mapRef.current) return;
+    const container = containerRef.current;
+    if (!ready || !container || mapRef.current) return;
 
-    const map = new google.maps.Map(containerRef.current, {
+    const opening = initialBboxRef.current;
+    const map = new google.maps.Map(container, {
       center: PH_DEFAULT_CENTER,
-      zoom: 6,
+      zoom: PH_DEFAULT_ZOOM,
       mapTypeControl: false,
       streetViewControl: false,
       fullscreenControl: false,
+      zoomControl: false,
       clickableIcons: false,
       gestureHandling: 'greedy',
       styles: [
@@ -161,203 +368,161 @@ export function ListingMapView({
       ],
     });
     mapRef.current = map;
-    setMapReady(true);
-    suppressProgrammaticIdle(800);
 
-    let idleTimer: number | undefined;
+    if (opening) {
+      const key = bboxKey(opening);
+      framedBoundsRef.current = key;
+      previousBoundsKeyRef.current = key;
+      lastEmittedRef.current = key;
+      frameBounds(opening);
+      google.maps.event.addListenerOnce(map, 'idle', () => {
+        if ((map.getZoom() ?? 0) <= MAX_OPEN_ZOOM) return;
+        map.setZoom(MAX_OPEN_ZOOM);
+        gestureRef.current = true;
+      });
+    }
 
-    const onIdle = () => {
-      if (Date.now() < suppressUntilRef.current) return;
+    const layer = document.createElement('div');
+    layer.style.position = 'absolute';
+    layer.style.top = '0';
+    layer.style.left = '0';
+    layer.style.pointerEvents = 'none';
 
-      const callback = onViewportChangeRef.current;
-      if (!callback) return;
+    const overlay = new google.maps.OverlayView();
+    overlay.onAdd = function onAdd() {
+      this.getPanes()?.overlayMouseTarget.appendChild(layer);
+    };
+    overlay.draw = () => positionPins();
+    overlay.onRemove = () => layer.remove();
+    overlay.setMap(map);
+    overlayRef.current = overlay;
+    setPinLayer(layer);
 
-      window.clearTimeout(idleTimer);
-      idleTimer = window.setTimeout(() => {
-        if (Date.now() < suppressUntilRef.current) return;
+    const listeners = [
+      map.addListener('projection_changed', () => setProjectionEpoch((n) => n + 1)),
+      map.addListener('zoom_changed', () => setZoom(map.getZoom() ?? null)),
+      map.addListener('idle', () => {
+        setZoom(map.getZoom() ?? null);
+        positionPins();
+
+        if (!gestureRef.current) return;
         const bbox = readBounds(map);
         if (!bbox) return;
         const key = bboxKey(bbox);
-        if (key === lastEmittedBboxRef.current) return;
-        lastEmittedBboxRef.current = key;
-        userNavigatedRef.current = true;
-        setSelected(null);
-        callback(bbox);
-      }, VIEWPORT_IDLE_MS);
-    };
+        if (key === lastEmittedRef.current) return;
+        gestureRef.current = false;
+        lastEmittedRef.current = key;
+        setSelection([]);
+        onViewportChangeRef.current?.(bbox);
+      }),
+    ];
 
-    const idleListener = map.addListener('idle', onIdle);
+    container.addEventListener('pointerdown', markGesture, { passive: true });
+    container.addEventListener('wheel', markGesture, { passive: true });
+    container.addEventListener('dblclick', markGesture);
+    container.addEventListener('keydown', markGesture);
 
     return () => {
-      window.clearTimeout(idleTimer);
-      google.maps.event.removeListener(idleListener);
+      container.removeEventListener('pointerdown', markGesture);
+      container.removeEventListener('wheel', markGesture);
+      container.removeEventListener('dblclick', markGesture);
+      container.removeEventListener('keydown', markGesture);
+      for (const listener of listeners) google.maps.event.removeListener(listener);
+      overlay.setMap(null);
       google.maps.event.clearInstanceListeners(map);
+      overlayRef.current = null;
       mapRef.current = null;
-      setMapReady(false);
+      setPinLayer(null);
     };
-  }, [ready]);
+  }, [ready, markGesture, positionPins, frameBounds]);
 
+  /**
+   * Framing runs only when nobody owns the viewport yet: URL bounds win over the
+   * result set, and a viewport the guest just published is never re-framed.
+   */
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !mapReady) return;
+    if (!map) return;
 
-    for (const entry of overlaysRef.current) {
-      entry.overlay.setMap(null);
+    const droppedBounds = previousBoundsKeyRef.current !== '' && initialBboxKey === '';
+    previousBoundsKeyRef.current = initialBboxKey;
+    if (droppedBounds) framedMarkersRef.current = '';
+
+    if (initialBboxKey) {
+      if (initialBboxKey === framedBoundsRef.current) return;
+      framedBoundsRef.current = initialBboxKey;
+      if (initialBboxKey === lastEmittedRef.current) return;
+      const bbox = initialBboxRef.current;
+      if (bbox) frameBounds(bbox);
+      return;
     }
-    overlaysRef.current = [];
-    for (const overlay of clusterOverlaysRef.current) {
-      overlay.setMap(null);
+
+    framedBoundsRef.current = '';
+    if (signature === framedMarkersRef.current) return;
+    framedMarkersRef.current = signature;
+    gestureRef.current = false;
+
+    const bounds = new google.maps.LatLngBounds();
+    for (const marker of stableMarkers) {
+      bounds.extend({ lat: marker.latitude, lng: marker.longitude });
     }
-    clusterOverlaysRef.current = [];
-
-    const projectionReady = () => {
-      const overlay = new google.maps.OverlayView();
-      overlay.onAdd = () => undefined;
-      overlay.draw = () => undefined;
-      overlay.onRemove = () => undefined;
-      overlay.setMap(map);
-      return overlay;
-    };
-
-    const probe = projectionReady();
-
-    const paint = () => {
-      const projection = probe.getProjection();
-      if (!projection) {
-        requestAnimationFrame(paint);
-        return;
-      }
-
-      const zoom = map.getZoom() ?? 10;
-      const clusters = clusterMarkers(markers, projection, zoom);
-
-      for (const cluster of clusters) {
-        if (cluster.markers.length === 1) {
-          const marker = cluster.markers[0]!;
-          const btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = cn(
-            'listing-map-pin absolute -translate-x-1/2 -translate-y-full cursor-pointer',
-            'border-border bg-background rounded-full border px-2.5 py-1.5 text-sm font-semibold shadow-md',
-            'text-foreground transition-transform hover:scale-105',
-            'focus-visible:ring-primary focus-visible:outline-none focus-visible:ring-2'
-          );
-          btn.textContent = formatMapPinLabel(marker.price, marker.name);
-          btn.setAttribute('aria-label', marker.name);
-          btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            setSelected(marker);
-            btn.classList.add('bg-primary', 'text-primary-foreground', 'border-primary');
-          });
-
-          const pinOverlay = new google.maps.OverlayView();
-          pinOverlay.onAdd = function onAdd() {
-            const panes = this.getPanes();
-            panes?.overlayMouseTarget.appendChild(btn);
-          };
-          pinOverlay.draw = function draw() {
-            const proj = this.getProjection();
-            if (!proj) return;
-            const point = proj.fromLatLngToDivPixel(
-              new google.maps.LatLng(marker.latitude, marker.longitude)
-            );
-            if (!point) return;
-            btn.style.left = `${point.x}px`;
-            btn.style.top = `${point.y}px`;
-          };
-          pinOverlay.onRemove = function onRemove() {
-            btn.remove();
-          };
-          pinOverlay.setMap(map);
-          overlaysRef.current.push({ marker, overlay: pinOverlay, el: btn });
-        } else {
-          const count = cluster.markers.length;
-          const el = document.createElement('button');
-          el.type = 'button';
-          el.className = cn(
-            'absolute flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center',
-            'border-border bg-primary text-primary-foreground rounded-full border text-sm font-bold shadow-md',
-            'focus-visible:ring-primary focus-visible:outline-none focus-visible:ring-2'
-          );
-          el.textContent = String(count);
-          el.setAttribute('aria-label', `${count} listings`);
-          el.addEventListener('click', (e) => {
-            e.stopPropagation();
-            suppressProgrammaticIdle();
-            map.setCenter({ lat: cluster.lat, lng: cluster.lng });
-            map.setZoom(Math.min((map.getZoom() ?? 10) + 2, 16));
-          });
-
-          const clusterOverlay = new google.maps.OverlayView();
-          clusterOverlay.onAdd = function onAdd() {
-            this.getPanes()?.overlayMouseTarget.appendChild(el);
-          };
-          clusterOverlay.draw = function draw() {
-            const proj = this.getProjection();
-            if (!proj) return;
-            const point = proj.fromLatLngToDivPixel(
-              new google.maps.LatLng(cluster.lat, cluster.lng)
-            );
-            if (!point) return;
-            el.style.left = `${point.x}px`;
-            el.style.top = `${point.y}px`;
-          };
-          clusterOverlay.onRemove = function onRemove() {
-            el.remove();
-          };
-          clusterOverlay.setMap(map);
-          clusterOverlaysRef.current.push(clusterOverlay);
-        }
-      }
-
-      probe.setMap(null);
-
-      const fitKey = markers.map((m) => m.id).join(',');
-      if (!userNavigatedRef.current && fitKey !== fittedKeyRef.current && markers.length > 0) {
-        fittedKeyRef.current = fitKey;
-        suppressProgrammaticIdle();
-        const bounds = new google.maps.LatLngBounds();
-        for (const m of markers) {
-          bounds.extend({ lat: m.latitude, lng: m.longitude });
-        }
-        map.fitBounds(bounds, 64);
-        if (markers.length === 1) {
-          map.setZoom(14);
-        }
-        emitViewportAfterFit(map);
-      } else if (
-        !userNavigatedRef.current &&
-        markers.length === 0 &&
-        fitKey !== fittedKeyRef.current
-      ) {
-        fittedKeyRef.current = fitKey;
-        suppressProgrammaticIdle();
-        map.setCenter(PH_DEFAULT_CENTER);
-        map.setZoom(6);
-        emitViewportAfterFit(map);
-      } else {
-        fittedKeyRef.current = fitKey;
-      }
-    };
-
-    paint();
-  }, [markers, mapReady]);
-
-  useEffect(() => {
-    for (const entry of overlaysRef.current) {
-      const active = selected?.id === entry.marker.id;
-      entry.el.classList.toggle('bg-primary', active);
-      entry.el.classList.toggle('text-primary-foreground', active);
-      entry.el.classList.toggle('border-primary', active);
+    // Fitting an empty box lands the camera on null island, so fall back to the country.
+    if (bounds.isEmpty()) {
+      map.setCenter(PH_DEFAULT_CENTER);
+      map.setZoom(PH_DEFAULT_ZOOM);
+      return;
     }
-  }, [selected]);
+    map.fitBounds(bounds, 64);
+    if ((map.getZoom() ?? 0) > MAX_OPEN_ZOOM || stableMarkers.length === 1) {
+      map.setZoom(SINGLE_LISTING_ZOOM);
+    }
+  }, [initialBboxKey, signature, stableMarkers, pinLayer, frameBounds]);
+
+  useLayoutEffect(() => {
+    positionPins();
+  }, [pins, positionPins]);
+
+  const registerPin = useCallback(
+    (key: string) => (el: HTMLDivElement | null) => {
+      if (el) pinElsRef.current.set(key, el);
+      else pinElsRef.current.delete(key);
+    },
+    []
+  );
 
   const zoomBy = (delta: number) => {
     const map = mapRef.current;
     if (!map) return;
-    const zoom = map.getZoom() ?? 10;
-    map.setZoom(zoom + delta);
+    markGesture();
+    map.setZoom((map.getZoom() ?? PH_DEFAULT_ZOOM) + delta);
   };
+
+  /**
+   * Zooming separates listings that merely sit close together. Listings that share an
+   * address never separate, so those open as a list instead of a dead zoom-in.
+   */
+  const openCluster = (pin: MapPin) => {
+    const map = mapRef.current;
+    if (!map) return;
+    const places = new Set(
+      pin.markers.map((m) => `${m.latitude.toFixed(5)},${m.longitude.toFixed(5)}`)
+    );
+    if (places.size > 1 && (map.getZoom() ?? PH_DEFAULT_ZOOM) < MAX_DETAIL_ZOOM) {
+      markGesture();
+      const bounds = new google.maps.LatLngBounds();
+      for (const marker of pin.markers) {
+        bounds.extend({ lat: marker.latitude, lng: marker.longitude });
+      }
+      map.fitBounds(bounds, 72);
+      return;
+    }
+    gestureRef.current = false;
+    setSelection(pin.markers);
+  };
+
+  const locatedCount = stableMarkers.length;
+  const noun = totalInView === 1 ? nounSingular : nounPlural;
+  const showEmptyArea = ready && locatedCount === 0 && !loading;
 
   if (!apiKeyConfigured || error) {
     return (
@@ -385,24 +550,93 @@ export function ListingMapView({
     >
       <div ref={containerRef} className="absolute inset-0" role="presentation" />
 
+      {pinLayer
+        ? createPortal(
+            <>
+              {pins.map((pin) => {
+                const single = pin.markers.length === 1 ? pin.markers[0]! : null;
+                const active = pin.markers.some((m) => selection.some((s) => s.id === m.id));
+                return (
+                  <div
+                    key={pin.key}
+                    ref={registerPin(pin.key)}
+                    className="absolute left-0 top-0"
+                    style={{ transform: OFFSCREEN, pointerEvents: 'auto' }}
+                  >
+                    {single ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // Opening a card is not a viewport change.
+                          gestureRef.current = false;
+                          setSelection([single]);
+                        }}
+                        aria-label={`${single.name}, ${single.location}`}
+                        className={cn(
+                          'border-border bg-background text-foreground -translate-x-1/2 -translate-y-full cursor-pointer',
+                          'rounded-full border px-2.5 py-1.5 text-sm font-semibold tabular-nums shadow-md',
+                          'focus-visible:ring-primary transition-colors focus-visible:outline-none focus-visible:ring-2',
+                          active && 'bg-primary text-primary-foreground border-primary'
+                        )}
+                      >
+                        {formatMapPinLabel(single.price, single.name)}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => openCluster(pin)}
+                        aria-label={`${pin.markers.length} ${nounPlural} here`}
+                        className={cn(
+                          'bg-primary text-primary-foreground border-primary/60 cursor-pointer',
+                          'flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center',
+                          'rounded-full border text-sm font-bold tabular-nums shadow-md',
+                          'focus-visible:ring-primary focus-visible:outline-none focus-visible:ring-2'
+                        )}
+                      >
+                        {pin.markers.length}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </>,
+            pinLayer
+          )
+        : null}
+
       {!ready && (
         <div className="bg-muted/80 absolute inset-0 z-10 flex items-center justify-center">
           <div className="border-primary h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
         </div>
       )}
 
-      <div className="border-border bg-background/95 absolute left-3 top-3 z-20 flex items-center gap-2 rounded-full border px-3 py-2 text-sm shadow-md backdrop-blur-sm sm:left-4 sm:top-4">
-        <MapPin className="text-primary h-4 w-4 shrink-0" aria-hidden />
-        <span className="text-foreground font-medium tabular-nums">
-          {locatedCount}
-          {totalInView > locatedCount ? `/${totalInView}` : ''} {noun}
-        </span>
+      <div className="absolute left-3 top-3 z-20 flex flex-wrap items-center gap-2 sm:left-4 sm:top-4">
+        <div className="border-border bg-background/95 flex items-center gap-2 rounded-full border px-3 py-2 text-sm shadow-md backdrop-blur-sm">
+          {loading ? (
+            <Loader2 className="text-primary h-4 w-4 shrink-0 animate-spin" aria-hidden />
+          ) : (
+            <MapPin className="text-primary h-4 w-4 shrink-0" aria-hidden />
+          )}
+          <span className="text-foreground font-medium tabular-nums" aria-live="polite">
+            {locatedCount}
+            {totalInView > locatedCount ? `/${totalInView}` : ''} {noun}
+          </span>
+        </div>
+        {initialBbox && onResetViewport ? (
+          <button
+            type="button"
+            onClick={onResetViewport}
+            className="border-border bg-background/95 text-foreground hover:bg-muted cursor-pointer rounded-full border px-3 py-2 text-sm font-medium shadow-md backdrop-blur-sm"
+          >
+            Reset area
+          </button>
+        ) : null}
       </div>
 
       <div className="border-border bg-background absolute right-3 top-3 z-20 flex flex-col overflow-hidden rounded-lg border shadow-md sm:right-4 sm:top-4">
         <button
           type="button"
-          className="hover:bg-muted flex min-h-[44px] min-w-[44px] items-center justify-center"
+          className="hover:bg-muted flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center"
           aria-label="Zoom in"
           onClick={() => zoomBy(1)}
         >
@@ -411,7 +645,7 @@ export function ListingMapView({
         <div className="bg-border h-px" />
         <button
           type="button"
-          className="hover:bg-muted flex min-h-[44px] min-w-[44px] items-center justify-center"
+          className="hover:bg-muted flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center"
           aria-label="Zoom out"
           onClick={() => zoomBy(-1)}
         >
@@ -419,8 +653,25 @@ export function ListingMapView({
         </button>
       </div>
 
+      {showEmptyArea ? (
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center p-4">
+          <div className="border-border bg-background/95 pointer-events-auto max-w-xs rounded-xl border p-4 text-center shadow-lg backdrop-blur-sm">
+            <p className="text-foreground text-sm font-medium">No {nounPlural} in this area</p>
+            {onResetViewport ? (
+              <button
+                type="button"
+                onClick={onResetViewport}
+                className="text-primary mt-2 min-h-[44px] cursor-pointer text-sm font-semibold underline-offset-4 hover:underline"
+              >
+                Reset area
+              </button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
       <AnimatePresence>
-        {selected ? (
+        {selection.length > 0 ? (
           <motion.div
             initial={reduceMotion ? false : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -428,51 +679,15 @@ export function ListingMapView({
             className="absolute bottom-3 left-3 right-3 z-30 sm:bottom-4 sm:left-auto sm:right-4 sm:w-80"
           >
             <div className="border-border bg-card overflow-hidden rounded-xl border shadow-xl">
-              <div className="relative aspect-[16/10]">
-                <Image
-                  src={resolveListingCoverImage(
-                    selected.images,
-                    selected.images?.[0],
-                    selected.family,
-                    selected.slug
-                  )}
-                  alt={selected.name}
-                  fill
-                  className="object-cover"
+              {selection.length === 1 ? (
+                <ListingMapCard listing={selection[0]!} onClose={() => setSelection([])} />
+              ) : (
+                <ListingMapStack
+                  listings={selection}
+                  nounPlural={nounPlural}
+                  onClose={() => setSelection([])}
                 />
-                <button
-                  type="button"
-                  onClick={() => setSelected(null)}
-                  className="absolute right-2 top-2 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-white/90 shadow-lg backdrop-blur-sm"
-                  aria-label="Close"
-                >
-                  <X className="h-4 w-4 text-slate-900" aria-hidden />
-                </button>
-              </div>
-              <Link to={selected.href as never} className="block p-3">
-                <div className="mb-1 flex items-start justify-between gap-2">
-                  <h4 className="text-foreground line-clamp-1 font-semibold">{selected.name}</h4>
-                  {selected.rating != null && selected.rating > 0 ? (
-                    <div className="flex shrink-0 items-center gap-1 text-sm">
-                      <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden />
-                      <span className="font-medium tabular-nums">{selected.rating.toFixed(1)}</span>
-                    </div>
-                  ) : null}
-                </div>
-                <p className="text-muted-foreground mb-2 line-clamp-1 text-sm">
-                  {selected.location}
-                </p>
-                {selected.price != null ? (
-                  <div>
-                    <span className="text-foreground font-bold tabular-nums">
-                      ₱{selected.price.toLocaleString()}
-                    </span>
-                    {selected.family === 'property' || selected.family === 'parking' ? (
-                      <span className="text-muted-foreground text-sm"> / night</span>
-                    ) : null}
-                  </div>
-                ) : null}
-              </Link>
+              )}
             </div>
           </motion.div>
         ) : null}

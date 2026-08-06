@@ -34,6 +34,8 @@ export type PropertiesListingQuery = {
   swLng: number | null;
   neLat: number | null;
   neLng: number | null;
+  /** Place group slug for `/properties/in/:location` (server-side place filter). */
+  locationSlug: string;
   sort: PropertiesSort;
   page: number;
   pageSize: number;
@@ -57,6 +59,7 @@ export const DEFAULT_PROPERTIES_QUERY: PropertiesListingQuery = {
   swLng: null,
   neLat: null,
   neLng: null,
+  locationSlug: '',
   sort: 'recommended',
   page: 1,
   pageSize: 24,
@@ -145,6 +148,7 @@ export function parsePropertiesQuery(sp: URLSearchParams): PropertiesListingQuer
     swLng: parseOptionalNumber(sp.get('swLng')),
     neLat: parseOptionalNumber(sp.get('neLat')),
     neLng: parseOptionalNumber(sp.get('neLng')),
+    locationSlug: (sp.get('locationSlug') ?? '').trim().toLowerCase(),
     sort: parseSortAllowlist(sp.get('sort'), PROPERTIES_SORTS, DEFAULT_PROPERTIES_QUERY.sort),
     page: parsePositiveInt(sp.get('page'), 1),
     pageSize: Math.min(
@@ -178,6 +182,7 @@ export function writePropertiesQuery(
     'swLng',
     'neLat',
     'neLng',
+    'locationSlug',
     'sort',
     'page',
     'pageSize',
@@ -201,6 +206,7 @@ export function writePropertiesQuery(
   setIfNotDefault(next, 'swLng', query.swLng, null);
   setIfNotDefault(next, 'neLat', query.neLat, null);
   setIfNotDefault(next, 'neLng', query.neLng, null);
+  setOrDelete(next, 'locationSlug', query.locationSlug || null);
   setIfNotDefault(next, 'sort', query.sort, DEFAULT_PROPERTIES_QUERY.sort);
   setIfNotDefault(next, 'page', query.page, 1);
   setIfNotDefault(next, 'pageSize', query.pageSize, DEFAULT_PROPERTIES_QUERY.pageSize);
