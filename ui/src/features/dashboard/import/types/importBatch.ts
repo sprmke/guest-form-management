@@ -7,7 +7,8 @@ import type { ImportBatchStatus } from '@/features/dashboard/import/lib/importBa
 
 // ── AI mapping response shapes ────────────────────────────────────────────────
 
-export type ImportColumnMappingStatus = 'matched' | 'likely_matched' | 'ambiguous' | 'unmatched' | 'skipped' | 'confirmed';
+export type ImportColumnMappingStatus =
+  'matched' | 'likely_matched' | 'ambiguous' | 'unmatched' | 'skipped' | 'confirmed';
 
 export type ImportColumnMappingEntry = {
   rawHeader: string;
@@ -68,6 +69,8 @@ export type ImportValidationError = {
   code: string;
   message: string;
   severity: ImportValidationSeverity;
+  /** Source cell value that failed validation. */
+  value?: string | null;
 };
 
 export type ImportBatchRowPreview = {

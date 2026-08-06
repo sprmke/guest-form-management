@@ -8,7 +8,7 @@
 
 /** Canonical booking columns offered for host spreadsheets (snake_case). */
 export const IMPORT_CSV_TEMPLATE_HEADERS = [
-  'guest_facebook_name',
+  'guest_display_name',
   'primary_guest_name',
   'guest_email',
   'guest_phone_number',
@@ -33,13 +33,15 @@ export const IMPORT_CSV_TEMPLATE_HEADERS = [
 
 type ImportCsvTemplateHeader = (typeof IMPORT_CSV_TEMPLATE_HEADERS)[number];
 
+type ImportCsvRow = Record<ImportCsvTemplateHeader, string>;
+
 /**
  * One filled row so the expected shapes (dates, times, yes/no) are visible
  * without reading a guide. It lands in Preview like any other row, where it can
  * be switched off. Keyed by header so a new column cannot ship without a sample.
  */
-const IMPORT_CSV_TEMPLATE_EXAMPLE: Record<ImportCsvTemplateHeader, string> = {
-  guest_facebook_name: 'Juan Dela Cruz',
+const IMPORT_CSV_TEMPLATE_EXAMPLE: ImportCsvRow = {
+  guest_display_name: 'Juan Dela Cruz',
   primary_guest_name: 'Juan Dela Cruz',
   guest_email: 'juan.delacruz@example.com',
   guest_phone_number: '09171234567',
@@ -72,19 +74,24 @@ function rowsToCsv(lines: string[][]): string {
   return `${lines.map((row) => row.map(escapeCsvCell).join(',')).join('\r\n')}\r\n`;
 }
 
-export function buildImportCsvTemplate(): string {
-  return rowsToCsv([
-    [...IMPORT_CSV_TEMPLATE_HEADERS],
-    IMPORT_CSV_TEMPLATE_HEADERS.map((header) => IMPORT_CSV_TEMPLATE_EXAMPLE[header]),
-  ]);
+function rowToLine(row: ImportCsvRow): string[] {
+  return IMPORT_CSV_TEMPLATE_HEADERS.map((header) => row[header]);
 }
 
-export function downloadImportCsvTemplate(fileName = 'booking-import-template.csv'): void {
-  const blob = new Blob([buildImportCsvTemplate()], { type: 'text/csv;charset=utf-8' });
+export function buildImportCsvTemplate(): string {
+  return rowsToCsv([[...IMPORT_CSV_TEMPLATE_HEADERS], rowToLine(IMPORT_CSV_TEMPLATE_EXAMPLE)]);
+}
+
+function downloadCsv(body: string, fileName: string): void {
+  const blob = new Blob([body], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
   anchor.download = fileName;
   anchor.click();
   URL.revokeObjectURL(url);
+}
+
+export function downloadImportCsvTemplate(fileName = 'booking-import-template.csv'): void {
+  downloadCsv(buildImportCsvTemplate(), fileName);
 }

@@ -14,10 +14,10 @@ export type ImportTargetField = {
 /** Client mirror — must match server importTargetSchemas.ts BOOKING_IMPORT_TARGET_FIELDS */
 export const BOOKING_IMPORT_TARGET_FIELDS: readonly ImportTargetField[] = [
   {
-    id: 'guest_facebook_name',
+    id: 'guest_display_name',
     type: 'string',
     required: true,
-    description: "Guest's Facebook or Airbnb display name",
+    description: 'Guest display name (Direct, Facebook, or Airbnb)',
   },
   {
     id: 'primary_guest_name',
@@ -174,4 +174,55 @@ const TARGET_LABEL_BY_ID = new Map(
 export function labelForImportTarget(targetId: string | null | undefined): string {
   if (!targetId) return '';
   return TARGET_LABEL_BY_ID.get(targetId) ?? targetId;
+}
+
+type ImportValidationMessage = {
+  field?: string;
+  code: string;
+  message: string;
+  value?: string | null;
+  severity?: 'error' | 'warning';
+};
+
+function quoteImportValue(value: string | null | undefined): string | null {
+  const trimmed = String(value ?? '').trim();
+  if (!trimmed) return null;
+  const shortened = trimmed.length > 48 ? `${trimmed.slice(0, 45)}…` : trimmed;
+  return `“${shortened}”`;
+}
+
+/** Row-level issue text for the preview table — names the field, reason, and bad value when known. */
+export function formatImportValidationMessage(error: ImportValidationMessage): string {
+  const label = error.field ? labelForImportTarget(error.field) : null;
+  const quoted = quoteImportValue(error.value);
+
+  let base: string;
+  if (error.code === 'invalid_boolean' && label) {
+    base = `${label}: use yes, no, true, or false in your file`;
+  } else if (error.code === 'invalid_date' && label) {
+    base = `${label}: use a recognizable date (e.g. 2026-01-15)`;
+  } else if (error.code === 'required' && label) {
+    base = `${label} is missing`;
+  } else {
+    base = label ? `${label}: ${error.message}` : error.message;
+  }
+
+  return quoted ? `${base} · ${quoted}` : base;
+}
+
+/** Compact issue summary for table cells — primary error + overflow count. */
+export function formatImportRowIssueSummary(row: { validationErrors: ImportValidationMessage[] }): {
+  primary: string | null;
+  extraCount: number;
+} {
+  const blocking = row.validationErrors.filter((entry) => entry.severity === 'error');
+  const primaryEntry =
+    blocking[0] ?? row.validationErrors.find((entry) => entry.severity === 'warning');
+  if (!primaryEntry) return { primary: null, extraCount: 0 };
+
+  const pool = blocking.length > 0 ? blocking : row.validationErrors;
+  return {
+    primary: formatImportValidationMessage(primaryEntry),
+    extraCount: Math.max(0, pool.length - 1),
+  };
 }
