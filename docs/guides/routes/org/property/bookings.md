@@ -53,11 +53,7 @@ This page is your main dashboard for all bookings at this property. Summary card
 - Q: How do I create a new booking?
   A: Use **New booking** in the page header — it opens the guest booking form for this property.
 - Q: Can I bulk-import bookings from a spreadsheet?
-  A: Yes — use **Import** beside **New booking** (property bookings only). Upload a CSV, confirm column mapping, preview rows, then commit. Imported bookings start in **Imported** status and do not trigger new-booking emails or calendar events.
-- Q: Where can I see files I imported before?
-  A: Open **Import**, then **Past imports**. It lists every file with its date, row count, and status, and lets you revert a finished import.
-- Q: What happens when I revert an import?
-  A: Bookings from that file still in **Imported** status are cancelled. If you already moved some into your live workflow, the revert dialog asks whether to cancel those too.
+  A: Yes — use **Import** beside **New booking** (property bookings only). Upload a CSV or Excel file (or download your Google Sheet as Excel/CSV first), confirm column mapping, then review the rows. Select **Need fixing** to see problem rows; **Fix** opens the complete row so you can correct every invalid value together. **Skipped** rows stay openable the same way — use **Restore** to bring them back, or **Fix** to correct them. Imported bookings start in **Imported** status and do not trigger new-booking emails or calendar events.
 
 ---
 
@@ -69,42 +65,20 @@ This page is your main dashboard for all bookings at this property. Summary card
 
 **Steps:**
 
-1. **Upload** — CSV only, max 2,000 rows / 15 MB. Calls `import-parse-file`. File is held in storage until commit or cancel.
-   - **Download template** builds the file client-side (`lib/importCsvTemplate.ts`): one header row of 21 canonical columns plus one example row showing the expected date (`YYYY-MM-DD`), time (`HH:mm`), and yes/no shapes. It must stay uploadable as-is — no note lines and no second table, or every row's column count disagrees with the header and the upload fails.
+1. **Upload** — CSV or Excel (`.csv`, `.xlsx`, `.xls`), max 2,000 rows / 15 MB. Calls `import-parse-file` (CSV via PapaParse; Excel via SheetJS, **first worksheet only**). File is held in storage until commit or cancel. **Continue** stays disabled until the file parses successfully; no toast on success. **Back** from later steps returns here with the same file — use **Replace** to pick a different file.
+   - **Google Sheets:** not a native upload — in Sheets use **File → Download → Microsoft Excel (.xlsx)** or **CSV**, then upload that file.
+   - **Download template** first opens a short confirmation explaining that existing CSV or spreadsheet files can be uploaded as-is because column matching is automatic. **Download template** confirms and builds a CSV client-side (`lib/importCsvTemplate.ts`); **Cancel** returns to Upload. The file has one header row of 21 canonical columns (starting with `guest_display_name`, which commits to DB column `guest_facebook_name`) plus one example row showing the expected date (`YYYY-MM-DD`), time (`HH:mm`), and yes/no shapes. It must stay uploadable as-is — no note lines and no second table, or every row's column count disagrees with the header and the upload fails. Legacy header `guest_facebook_name` still auto-maps.
+   - **QA fixtures:** run `node scripts/dev/generate-import-booking-fixtures.mjs` — writes scenario CSVs and matching `.xlsx` samples under `temp/import-booking/` (gitignored; see README there).
    - **Parse tolerance:** a UTF-8 BOM is stripped, blank lines are skipped, and ragged rows (a trailing note, a short row, an over-wide row) are accepted — they arrive as fixable rows in Preview instead of rejecting the file. Only unparseable input (e.g. an unterminated quoted field) aborts the upload.
-2. **Match** — AI suggests column → field matches (`import-ai-map-columns`). Works without AI keys (all columns manual). When every header matched, **Columns** is skipped and the header progress bar drops to 4 segments so the count stays honest.
-3. **Columns** — resolve ambiguous/unmatched headers; Continue blocked until all required booking fields are mapped; `import-save-mapping`.
-4. **Preview** — row validation errors (blocking) vs property mismatch warnings (non-blocking); **Import** switch per row via `import-update-row`. Phone uses stacked cards; tablet+ uses a table.
-5. **Commit** — `import-commit` inserts rows with **`status = IMPORTED`** and **`imported_from_batch_id`**; no email/calendar/PDF side effects. Success toast + list refresh.
+2. **Match** — AI suggests column → field matches (`import-ai-map-columns`). The same step uses the Preview-style clickable summary cards, ordered **Matched** then **Need input**. It auto-selects Need input whenever unresolved columns exist; otherwise it selects Matched. Need input shows every ambiguous/unmatched header with sample values and a booking-field selector; Matched shows the confirmed source → target pairs. Works without AI keys (all columns appear under Need input). Continue stays on this four-step flow, requires every mandatory booking field to be mapped, then persists the complete mapping with `import-save-mapping`.
+3. **Preview** — row validation errors (blocking) vs property mismatch warnings (non-blocking). The Ready / Need fixing / Skipped / Warnings summary cards are the filters. Entering the step auto-selects **Need fixing** when any error rows exist, otherwise **Ready**; if the host clears the error queue while Need fixing is selected, it switches to Ready. Select the active card again to show all. The Issue column has a fixed readable width and shows the field, reason, and quoted bad value. **Fix** opens a row editor at the same desktop width as the import wizard: **Row details** are on the left and all blocking **Fields to fix** are on the right; invalid fields remain visible in Row details using their original bad value and red text, while missing invalid values appear as `—`. Client validation runs on every edit. The primary **Fix** action stays disabled until every flagged value is valid, then `import-update-row` `{ fieldValues }` patches `raw_data` and re-validates server-side. **Skip** leaves a row out of the import (matching the **Skipped** status) and keeps its validation issues so the row stays reviewable. Skip and Fix use equal minimum widths. **Skipped** rows stay clickable (row or **Fix**) and open the same editor titled **Skipped row N** with **Restore** + **Fix** instead of Skip + Fix; Restore calls `import-update-row` `{ validationStatus: 'valid' }` and re-validates — a row that comes back still invalid moves to Need fixing and toasts that it needs fixing. A skipped row with no blocking issues shows Restore alone as the primary action. The editor's queue and its Skip/Restore mode are fixed when it opens: opening from Need fixing walks the error rows, opening from Skipped walks the skipped rows, and Prev/Next stay available in both. Acting on a row drops it from that queue and moves to the next one in it; the editor never switches queues mid-session and closes once the queue it opened with is empty. Ready rows use the **Import** switch. Phone: stacked cards + bottom sheet; tablet+: table + dialog.
+4. **Commit** — a compact summary shows how many bookings are ready and how many rows are not included. Under it, the host reviews only the rows that will be created in a paginated table: source row number, guest, check-in, check-out, total guests (adults + children), and booking rate. Ten rows render at a time; phone layouts use compact stacked rows with the same information. The review reads from the existing Preview cache and makes no extra API request. Email and calendar side-effect details are intentionally omitted from this screen to avoid confusion. `import-commit` inserts rows with **`status = IMPORTED`** and **`imported_from_batch_id`**; no email/calendar/PDF side effects. Success toast + list refresh.
 
-**Leave / discard:** Closing the wizard (X, Escape, overlay) after upload asks for confirm, then `import-cancel` deletes batch + storage. Dismiss is blocked while a network action is in flight. Closing via **Past imports** also cancels any leftover uncommitted batch.
+**Leave / discard:** Closing the wizard (X, Escape, overlay) after a file is parsed asks for confirm (**Leave this import?**). **Discard import** runs `import-cancel` (deletes batch + storage) and closes; **Keep working** or Escape dismisses only the confirm and returns to the current step. Both dismiss paths are blocked while a network action is in flight.
 
 **Manual override after commit:** from booking detail, admin can move **`IMPORTED → PENDING_REVIEW`** or **`IMPORTED → CANCELLED`** (manual-only).
 
 **Filters:** **Imported** appears in the status filter and **History** stage card (`?stage=history`). Imported rows are excluded from Action Required, SD-refund cron, and guest calendar availability.
-
----
-
-## Import history (modal)
-
-**Entry:** **Past imports** inside `ImportWizardModal` (upload step). Opens `ImportHistoryModal` as a sibling modal — no route, no URL change. Its **Back** action reopens the wizard. Same `import:manage` gate as the wizard.
-
-Batch rows list original filename, status badge, row count, created date, creator email. Data from **`import-list-batches`** (`GET ?property_id=&limit=&page=`); the query only runs while the modal is open. Paginated (20 per page) when history is long.
-
-| Batch status | Meaning                                         |
-| ------------ | ----------------------------------------------- |
-| `committed`  | Import finished, bookings in DB                 |
-| `reverted`   | Admin reverted, linked bookings cancelled       |
-| `failed`     | Commit or parse failed, see batch error         |
-| In-progress  | Wizard left mid-flow (`uploaded` … `previewed`) |
-
-**Revert** (only for `committed` batches):
-
-1. **Revert** → `import-revert` dry-run loads counts (`stillImported`, `moved`, `modifiedSinceImport`).
-2. Dialog warns about rows moved out of Imported or edited after import; optional checkbox includes moved rows.
-3. Confirm → `import-revert` transitions each target booking **`IMPORTED → CANCELLED`** (manual override, no side effects). Batch → `reverted`; bookings list cache invalidates.
-
-`imported_from_batch_id` is kept on cancelled rows for audit traceability. Reverts cannot be undone; re-import the file instead.
 
 ---
 
@@ -162,7 +136,6 @@ New: `stage` (see above).
 
 - `list-bookings` edge function — admin JWT; see [[PROJECT|Guest Form Management — Project Documentation]] API table.
 - CSV import: `import-parse-file`, `import-ai-map-columns`, `import-save-mapping`, `import-preview`, `import-update-row`, `import-commit`, `import-cancel` — all require **`import:manage`** (or org owner/admin) + `?property_id=`.
-- Import history: `import-list-batches` (GET), `import-revert` (POST, `dryRun` / `includeMoved`) — same gate. Server helper: `supabase/functions/_shared/importAccess.ts`.
 
 ---
 
@@ -172,7 +145,6 @@ New: `stage` (see above).
 | --------------------- | ------------------------------------------------------------------------------ |
 | Page                  | `ui/src/features/dashboard/bookings/pages/BookingsListPage.tsx`                |
 | Import wizard modal   | `ui/src/features/dashboard/import/components/ImportWizardModal.tsx`            |
-| Import history modal  | `ui/src/features/dashboard/import/components/ImportHistoryModal.tsx`           |
 | Shared modal chrome   | `ui/src/features/dashboard/import/components/ImportModalChrome.tsx`            |
 | Import hooks / types  | `ui/src/features/dashboard/import/hooks/`, `lib/`, `types/`                    |
 | Stage mapping         | `ui/src/features/dashboard/bookings/lib/bookingStages.ts`                      |
