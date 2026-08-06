@@ -3,7 +3,7 @@ stage: planned
 title: 'AI Opportunities Roadmap — Guest Form Management'
 status: planned
 tags: [planning, planned-modules, ai, roadmap]
-updated: 2026-08-02
+updated: 2026-08-06
 ---
 
 # AI Opportunities Roadmap — Guest Form Management
@@ -12,17 +12,18 @@ updated: 2026-08-02
 
 ## Context
 
-GFM already ships five AI features (all Gemini-primary, Groq/Llama-4-Scout fallback, server-side only): downpayment receipt validation at booking submission, Guest Inbox AI-suggest/auto-reply (Meta + web chat), marketing caption generation, an AI-integration health card in Property Settings, and a Gemini Live voice receptionist for guest calls. This doc is a full sweep of every guest, admin, and dev-facing page/feature to find where AI can help next — beyond what's already built — covering hosts, guests, platform admins, and developers.
+GFM already ships six AI features (all Gemini-primary, Groq/Llama-4-Scout fallback, server-side only): downpayment receipt validation at booking submission, Guest Inbox AI-suggest/auto-reply (Meta + web chat), marketing caption generation, an AI-integration health card in Property Settings, a Gemini Live voice receptionist for guest calls, and smart bookings CSV import. This doc is a full sweep of every guest, admin, and dev-facing page/feature to find where AI can help next — beyond what's already built — covering hosts, guests, platform admins, and developers.
 
 ## Already shipped (baseline — don't re-propose these)
 
-| Feature                           | Where                                                                              | Model                                    |
-| --------------------------------- | ---------------------------------------------------------------------------------- | ---------------------------------------- |
-| Receipt AI validation             | `submit-form`, `validate-booking-receipts` → `_shared/receiptValidationService.ts` | Gemini 2.5 Flash (vision), Groq fallback |
-| Guest Inbox AI suggest/auto-reply | `social-inbox-ai-suggest` → `_shared/socialInboxAiService.ts`                      | Gemini 2.5 Flash, Groq fallback          |
-| Marketing caption generation      | `generate-marketing-caption` → `_shared/marketingCaptionAi.ts`                     | Gemini 2.0 Flash, Groq fallback          |
-| AI integration health card        | `AiIntegrationCard.tsx` / `useAiIntegration.ts` (Property Settings)                | checks Gemini/Groq key + latency         |
-| Voice Receptionist                | `voice-receptionist-*` fns, `useVoiceSession.ts`, guest chat page                  | Gemini Live (native audio)               |
+| Feature                           | Where                                                                                                         | Model                                    |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| Receipt AI validation             | `submit-form`, `validate-booking-receipts` → `_shared/receiptValidationService.ts`                            | Gemini 2.5 Flash (vision), Groq fallback |
+| Guest Inbox AI suggest/auto-reply | `social-inbox-ai-suggest` → `_shared/socialInboxAiService.ts`                                                 | Gemini 2.5 Flash, Groq fallback          |
+| Marketing caption generation      | `generate-marketing-caption` → `_shared/marketingCaptionAi.ts`                                                | Gemini 2.0 Flash, Groq fallback          |
+| AI integration health card        | `AiIntegrationCard.tsx` / `useAiIntegration.ts` (Property Settings)                                           | checks Gemini/Groq key + latency         |
+| Voice Receptionist                | `voice-receptionist-*` fns, `useVoiceSession.ts`, guest chat page                                             | Gemini Live (native audio)               |
+| Smart CSV import (bookings)       | Bookings import wizard + `IMPORTED` status — [`smart-ai-data-importer.md`](../done/smart-ai-data-importer.md) | Gemini column mapping, preview/fix queue |
 
 ## Idea catalog
 

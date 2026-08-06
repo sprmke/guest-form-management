@@ -1,9 +1,12 @@
 ---
 title: Smart concept suggestions
-status: approved
-tags: [search, marketing, typeahead]
-updated: 2026-08-05
+status: done
+stage: done
+tags: [workflow, done, search, marketing, typeahead]
+updated: 2026-08-06
 ---
+
+**Shipped (2026-08-05)** as part of [`smart-search-bar.md`](./smart-search-bar.md) — `search-suggestions` concept branch + `resolveSearchIntent` shared with `search-listings`.
 
 # Smart concept suggestions
 
