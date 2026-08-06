@@ -1,14 +1,14 @@
 ---
 stage: done
 title: 'Smart AI Data Importer — Implementation Plan'
-status: in-progress
+status: done
 tags: [planning, planned-modules, ai, import, onboarding, bookings]
-updated: 2026-08-05
+updated: 2026-08-06
 ---
 
 # Smart AI Data Importer — Implementation Plan
 
-> **Task status (2026-08-05):** Tasks 1–6 implemented on `feature/smart-ai-data-importer`. Task 7 (docs sync + automated verification) complete — manual wizard/Playwright QA and workflow-done move deferred to controller.
+> **Task status (2026-08-06):** Tasks 1–7 complete. Wizard is live on property bookings (**Import** beside **New booking**). Preview fix-queue polish and commit review live under [`import-preview-fix-queue.md`](./import-preview-fix-queue.md). Intentional deltas vs original plan are listed under **Shipped variant** in Task 4 (Excel upload, combined Match step, no in-app history/revert UI). Future phases (Sheets live URL, Finance/Maintenance) remain separate.
 
 ## Context
 
@@ -167,16 +167,15 @@ Frontend module `ui/src/features/dashboard/import/` with the standard `component
 Wizard shell inside the modal: local `useState<Step>`, per the `OnboardingPage.tsx` convention (no shared stepper component exists — don't introduce one for this feature alone).
 
 1. **Upload** — `ImportFileDropzone.tsx` (Phase 2), calls `import-parse-file` with the property already fixed.
-2. **Auto-map results** — calls `import-ai-map-columns`, shows a summary ("X matched, Y need review"). `matched` columns collapse into a confirmed list; everything else expands into step 3.
-3. **Manual mapping** (`ImportManualMappingRow.tsx`) — one row per `likely_matched`/`ambiguous`/`unmatched` raw column: raw header + 2-3 sample values (read-only) next to a `<Select>` of canonical fields from `importTargetSchemas.ts` (grouped required/optional, "Skip / Not applicable" always present). `likely_matched` pre-fills the AI's suggestion for one-click confirm; `ambiguous`/`unmatched` start blank. Corrections stay in local wizard state until "Continue," then a single `PATCH import-batches?batchId=` persists `column_mapping`, batch → `mapped`.
-4. **Preview** — see Phase 5.
-5. **Commit** — explicit confirm dialog inside the modal, calls `import-commit` (Phase 6), then closes and refreshes the bookings list so the newly imported rows appear immediately.
+2. **Match** — calls `import-ai-map-columns` and keeps automatic results plus manual review in one step. Preview-style clickable summary cards, ordered **Matched** / **Need input**, separate confirmed source → target pairs from unresolved mapping controls; Need input is auto-selected whenever it has items, otherwise Matched is selected. `ImportManualMappingRow.tsx` renders each `likely_matched`/`ambiguous`/`unmatched` raw column with 2-3 sample values and a canonical-field `<Select>`; Continue validates required targets and persists the complete mapping with one `import-save-mapping` request.
+3. **Preview** — see Phase 5.
+4. **Commit** — explicit confirm dialog inside the modal, calls `import-commit` (Phase 6), then closes and refreshes the bookings list so the newly imported rows appear immediately.
 
 Every step keeps an explicit **Cancel** (deletes the batch + rows + storage object; only possible before `status='committed'`) that simply closes the modal.
 
 New hooks (TanStack Query, mirroring `useFinanceLineItems.ts`'s shape): `useImportBatch.ts`, `useImportBatchRows.ts`, `useCommitImportBatch.ts`, `useRevertImportBatch.ts`.
 
-**Shipped variant:** past batches live in `components/ImportHistoryModal.tsx`, a sibling modal opened by **Past imports** inside `ImportWizardModal.tsx` (no route). Both modals share `components/ImportModalChrome.tsx` for header, stepper, body, alerts, and footer, and are gated the same way.
+**Shipped variant:** single four-step `ImportWizardModal` on the property bookings list (no route). Modal chrome lives in `components/ImportModalChrome.tsx`; Match combines automatic and manual column review in clickable summary cards rather than adding a conditional Columns step. Accepts **CSV and Excel** (`.csv`, `.xlsx`, `.xls`; Excel = first sheet). Google Sheets live URL import remains future work — hosts download as Excel/CSV. Past-import history UI was removed; edge endpoints `import-list-batches` / `import-revert` remain for potential future use. Preview step ships **error filters**, **bad-value display** (`validationErrors[].value`), and an in-app **Fix sheet** (`import-update-row` `fieldValues`) so hosts can correct flagged fields without re-uploading.
 
 ---
 

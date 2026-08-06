@@ -1,12 +1,14 @@
 ---
-stage: planned
+stage: done
 title: 'Refine Footer & Create Public Pages — Implementation Plan'
-status: planned
+status: complete
 tags: [planning, planned-modules]
-updated: 2026-08-01
+updated: 2026-08-06
 ---
 
 # Refine Footer & Create Public Pages — Implementation Plan
+
+> **Status (2026-08-06):** Implemented. Footer trimmed; About/Contact/Support/Cookies routes live; Terms/Privacy rewritten with product-grounded copy.
 
 ## Context
 

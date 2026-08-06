@@ -14,7 +14,7 @@ tags: [workflow, planned, super-admin, reviews, moderation]
 
 **Tech stack:** Deno edge functions, Postgres JSONB (no migration required), React 18 + TanStack Query, existing super-admin auth (`verifySuperAdminJwt`).
 
-**Design spec:** [`docs/workflow/intake/review-approval-workflow-design.md`](../intake/review-approval-workflow-design.md)
+**Design spec:** [`review-approval-workflow-design.md`](./review-approval-workflow-design.md)
 
 **Start implementation:** `/workflow-start review-approval-workflow`
 

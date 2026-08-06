@@ -1,7 +1,7 @@
 ---
-stage: in-progress
+stage: done
 title: 'Listing & search pagination at scale — Implementation Plan'
-status: in-progress
+status: done
 tags: [planning, search, marketing, performance, pagination]
 updated: 2026-08-06
 ---
@@ -16,9 +16,9 @@ updated: 2026-08-06
 
 **Tech stack:** Supabase Edge Functions (Deno), PostgREST/Postgres, existing UI hooks (`usePublicProperties`, `useSearchListings`, etc.).
 
-**Spec:** [`../intake/listing-search-pagination-design.md`](../intake/listing-search-pagination-design.md)
+**Spec:** [`listing-search-pagination-design.md`](./listing-search-pagination-design.md)
 
-**Progress:** Phases **1A + 1B complete** (local volume/correctness smoke). Phase 1C is next.
+**Progress:** **Shipped** (Phases 1–2 + acceptance). Moved to [`../done/`](../done/).
 
 ## Global constraints
 
@@ -39,6 +39,7 @@ updated: 2026-08-06
 | `supabase/functions/list-public-properties/index.ts`       | Property browse/filter — primary hot path                           |
 | `supabase/functions/list-public-developments/index.ts`     | Developments browse                                                 |
 | `supabase/functions/list-public-parkings/index.ts`         | Parkings browse                                                     |
+| `supabase/functions/list-public-place-groups/index.ts`     | Bounded location groups + page-only previews                        |
 | `supabase/functions/search-listings/index.ts`              | Unified search (All preview + category page)                        |
 | `supabase/functions/_shared/publicListingFacets.ts`        | Facet helpers (reuse / extend)                                      |
 | `supabase/functions/_shared/publicGeoScope.ts`             | Radius scoping (keep)                                               |
@@ -151,14 +152,18 @@ Lean filtering still loads up to `limit(2000)` / `limit(500)`. At thousands of A
 - Modify: `search-listings/index.ts`
 - Review: `supabase/migrations/20261005130000_search_indexes.sql`, `20261006120000_public_listing_filter_indexes.sql`
 
-- [ ] **Step 1:** Same lean → page → enrich pattern; remove silent 500-row truncation or document replacement ceiling/RPC.
-- [ ] **Step 2:** Add indexes only if `EXPLAIN` on local shows sequential scans on hot filters (new migration; do not edit shipped migrations).
+- [x] **Step 1:** Same lean → page → enrich pattern; remove silent 500-row truncation or document replacement ceiling/RPC.
+- [x] **Step 2:** Add indexes only if `EXPLAIN` on local shows sequential scans on hot filters (new migration; do not edit shipped migrations).
+
+**Verification:** temporary local seed added 601 rows per family. `type=all` returned exact totals `{ properties: 601, developments: 601, parkings: 601, all: 1803 }` with 12-card previews; page 51 returned the final row for each scoped family. Literal, Condo concept, Nearby, and availability exclusion passed. Selective text-filter plans completed in 0.66–0.90 ms on the scale seed; existing trigram/status indexes were sufficient, so no migration was added.
 
 ### Task 9: Phase 1 acceptance
 
-- [ ] **Step 1:** UI smoke: `/search` All, category tabs, Filters, pager; `/properties` filters + pager; location page `/properties/in/…`.
-- [ ] **Step 2:** Confirm **no** intentional layout/CSS/component structure changes in the UI (diff should be empty or docs-only on `ui/` unless a bugfix was required).
-- [ ] **Step 3:** Update `docs/PROJECT.md` edge inventory one-liners if behavior of caps changed.
+- [x] **Step 1:** UI smoke: `/search` All, category tabs, Filters, pager; `/properties` filters + pager; location page `/properties/in/…`.
+- [x] **Step 2:** Confirm **no** intentional layout/CSS/component structure changes in the UI (diff should be empty or docs-only on `ui/` unless a bugfix was required).
+- [x] **Step 3:** Update `docs/PROJECT.md` edge inventory one-liners if behavior of caps changed.
+
+**UI acceptance:** desktop All/category/filter layouts and the 375 px mobile sheet/tab layout were unchanged. A 25-row temporary seed showed `1 / 3`; Next produced shareable `?page=2`, rendered 12 different cards, and showed `2 / 3`. Browser console had no errors (only existing React Router v7 future-flag warnings).
 
 ---
 
@@ -179,8 +184,10 @@ Do **not** start until Phase 1 acceptance passes. Still no redesign of row chrom
 - Response: `{ groups: [{ place, locationSlug, title, total, preview: PropertyCard[] }], groupTotal, groupOffset, groupLimit }`
 - Preview length: small (e.g. 8–12) matching current row carousel capacity
 
-- [ ] **Step 1:** Implement properties place-index; curl first/next group pages.
-- [ ] **Step 2:** Mirror developments/parkings if those indexes use the same ByLocation pattern.
+- [x] **Step 1:** Implement properties place-index; curl first/next group pages.
+- [x] **Step 2:** Mirror developments/parkings if those indexes use the same ByLocation pattern.
+
+**Implemented contract:** `list-public-place-groups?family=properties|developments|parkings&groupOffset=&groupLimit=&previewSize=`. Defaults are six groups and eight preview cards; limits are bounded at 12. Group counts come from the full lean ACTIVE family (shared 20,000-row fail-closed ceiling), while pricing/reviews/property counts/development chrome are loaded only for selected preview rows.
 
 ### Task 11: Wire UI without redesign
 
@@ -189,10 +196,13 @@ Do **not** start until Phase 1 acceptance passes. Still no redesign of row chrom
 - Modify: `PropertiesByLocation.tsx` (+ developments/parkings equivalents)
 - Modify: list page that currently passes full `properties` into grouping
 
-- [ ] **Step 1:** Fetch place-index instead of grouping full catalog client-side when on unfiltered (or lightly filtered) index browse.
-- [ ] **Step 2:** Append groups on “More places” or intersection observer — **no** change to card component or row title styling beyond loading affordance if required.
-- [ ] **Step 3:** View all still navigates to `/properties/in/:slug` (Phase 1 paged grid).
-- [ ] **Step 4:** Docs: properties/developments/parkings route guides + design spec Phase 2 “shipped” note when done.
+- [x] **Step 1:** Fetch place-index instead of grouping full catalog client-side when on unfiltered (or lightly filtered) index browse.
+- [x] **Step 2:** Append groups on “More places” or intersection observer — **no** change to card component or row title styling beyond loading affordance if required.
+- [x] **Step 3:** View all navigates to `/properties|developments|parkings/in/:slug` live paged grids via `locationSlug` (same place resolver as place-groups).
+- [x] **Step 4:** Docs: properties/developments/parkings route guides + design spec Phase 2 “shipped” note when done.
+- [x] **Production harden (pre-done):** shared `listingPlace` parity (BGC / City strip / settings.city); initial place-groups error + retry (no silent client fallback); default browse uses `pageSize=1` facet fetch; footer `aria-busy` + live region.
+
+**Verification:** local endpoint smoke returned first/next one-group windows with distinct slugs for all families (`san-fernando → azure-north-residences`, `san-fernando → paranaque`, `other → san-fernando`). Properties, developments, and parkings rendered the existing location row/card chrome with zero browser-console errors. A 375 px properties smoke had no document-width overflow. Filtered `/properties?type=condo` called only `list-public-properties`, confirming filtered/list/map behavior still uses the Phase 1 path. Unicode place slugs are normalized (`Parañaque` → `paranaque`). `locationSlug=san-fernando` on list-public-\* returns matching place totals.
 
 ---
 
