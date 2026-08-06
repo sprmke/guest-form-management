@@ -1,4 +1,7 @@
-import { toLocationSlug } from '@/features/guest/marketing/shared/lib/locationSlug';
+import {
+  normalizeCityPlace,
+  toLocationSlug,
+} from '@/features/guest/marketing/shared/lib/locationSlug';
 
 import type { ParkingListEntry } from './parkingListEntries';
 
@@ -18,8 +21,7 @@ export function findCityByLocationSlug(
   if (!needle) return null;
 
   for (const entry of entries) {
-    const city = entry.city.trim();
-    if (!city) continue;
+    const city = normalizeCityPlace(entry.city);
     if (toLocationSlug(city) === needle) return city;
   }
 
@@ -32,7 +34,7 @@ export function filterParkingEntriesByLocationSlug(
 ): ParkingListEntry[] {
   const city = findCityByLocationSlug(locationSlug, entries);
   if (!city) return [];
-  return entries.filter((entry) => entry.city.trim() === city);
+  return entries.filter((entry) => normalizeCityPlace(entry.city) === city);
 }
 
 /** Group parking slots by city for Airbnb-style location rows. */
@@ -40,7 +42,7 @@ export function groupParkingsByLocation(entries: ParkingListEntry[]): ParkingLoc
   const byCity = new Map<string, ParkingListEntry[]>();
 
   for (const entry of entries) {
-    const city = entry.city.trim() || 'Other';
+    const city = normalizeCityPlace(entry.city);
     const existing = byCity.get(city);
     if (existing) {
       existing.push(entry);

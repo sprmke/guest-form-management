@@ -14,6 +14,7 @@ import {
   PropertiesMap,
   type ViewMode,
 } from '@/features/guest/marketing/properties/components';
+import type { Property } from '@/features/guest/marketing/properties/components/PropertyCard';
 import { usePublicProperties } from '@/features/guest/marketing/properties/hooks/usePublicProperties';
 import {
   clearPropertyFilters,
@@ -24,13 +25,17 @@ import {
   type PropertiesSort,
   type PublicPropertyListItem,
 } from '@/features/guest/marketing/properties/lib/propertiesQuery';
-import type { Property } from '@/features/guest/marketing/properties/components/PropertyCard';
 import { ListingActiveFilterChips } from '@/features/guest/marketing/shared/components/ListingActiveFilterChips';
 import { ListingFilteredEmpty } from '@/features/guest/marketing/shared/components/ListingFilteredEmpty';
+import { usePublicPlaceGroups } from '@/features/guest/marketing/shared/hooks/usePublicPlaceGroups';
 import {
   buildPropertyFilterChips,
   removePropertyFilterChip,
 } from '@/features/guest/marketing/shared/lib/listingFilterChips';
+import {
+  parseBboxFromSearchParams,
+  type MapBbox,
+} from '@/features/guest/marketing/shared/lib/listingMapMarkers';
 import { resolveListingImages } from '@/features/guest/marketing/shared/lib/mockListingImages';
 
 import { Button } from '@/components/ui/button';
@@ -66,11 +71,43 @@ function parseViewMode(raw: string | null): ViewMode {
   return 'grid';
 }
 
+function isDefaultGroupedBrowse(query: PropertiesListingQuery, viewMode: ViewMode): boolean {
+  return (
+    viewMode === 'grid' &&
+    !query.where &&
+    !query.locationSlug &&
+    query.type.length === 0 &&
+    query.minPrice == null &&
+    query.maxPrice == null &&
+    query.bedrooms == null &&
+    query.amenities.length === 0 &&
+    query.development.length === 0 &&
+    !query.checkIn &&
+    !query.checkOut &&
+    query.adults === 0 &&
+    query.children === 0 &&
+    query.lat == null &&
+    query.lng == null &&
+    query.swLat == null &&
+    query.swLng == null &&
+    query.neLat == null &&
+    query.neLng == null &&
+    query.sort === 'recommended' &&
+    query.page === 1
+  );
+}
+
 export function PropertiesListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const query = useMemo(() => parsePropertiesQuery(searchParams), [searchParams]);
   const viewMode = parseViewMode(searchParams.get('view'));
-  const { data, isLoading, isError, isFetching } = usePublicProperties(query);
+  const groupedBrowse = isDefaultGroupedBrowse(query, viewMode);
+  const facetQuery = useMemo(
+    () => (groupedBrowse ? { ...query, pageSize: 1 } : query),
+    [groupedBrowse, query]
+  );
+  const { data, isLoading, isError, isFetching } = usePublicProperties(facetQuery);
+  const placeGroups = usePublicPlaceGroups<PublicPropertyListItem>('properties', groupedBrowse);
   const reduceMotion = useReducedMotion();
 
   const [filtersOpen, setFiltersOpen] = useState(true);
@@ -128,7 +165,38 @@ export function PropertiesListPage() {
     [setSearchParams]
   );
 
+  const mapBbox = useMemo(() => parseBboxFromSearchParams(searchParams), [searchParams]);
+
+  const applyMapViewport = useCallback(
+    (bbox: MapBbox) => {
+      patchQuery({
+        swLat: bbox.swLat,
+        swLng: bbox.swLng,
+        neLat: bbox.neLat,
+        neLng: bbox.neLng,
+        page: 1,
+      });
+    },
+    [patchQuery]
+  );
+
+  const clearMapViewport = useCallback(() => {
+    patchQuery({ swLat: null, swLng: null, neLat: null, neLng: null, page: 1 });
+  }, [patchQuery]);
+
   const properties = useMemo(() => (data?.data ?? []).map(toPropertyCard), [data?.data]);
+  const propertyLocationGroups = useMemo(
+    () =>
+      (placeGroups.data?.pages ?? []).flatMap((page) =>
+        page.groups.map((group) => ({
+          place: group.place,
+          locationSlug: group.locationSlug,
+          title: group.title,
+          properties: group.preview.map(toPropertyCard),
+        }))
+      ),
+    [placeGroups.data?.pages]
+  );
   const facets = data?.facets ?? EMPTY_PROPERTIES_FACETS;
   const totalResults = data?.total ?? 0;
   const filterChips = useMemo(() => buildPropertyFilterChips(query, facets), [query, facets]);
@@ -224,15 +292,10 @@ export function PropertiesListPage() {
                   <PropertiesMap
                     properties={properties}
                     totalInView={totalResults}
-                    onViewportChange={(bbox) =>
-                      patchQuery({
-                        swLat: bbox.swLat,
-                        swLng: bbox.swLng,
-                        neLat: bbox.neLat,
-                        neLng: bbox.neLng,
-                        page: 1,
-                      })
-                    }
+                    bbox={mapBbox}
+                    loading={isFetching}
+                    onViewportChange={applyMapViewport}
+                    onResetViewport={mapBbox ? clearMapViewport : undefined}
                   />
                 </motion.div>
               ) : (
@@ -244,7 +307,44 @@ export function PropertiesListPage() {
                   className="min-w-0 p-4 sm:p-6"
                 >
                   {viewMode === 'grid' ? (
-                    <PropertiesByLocation properties={properties} />
+                    groupedBrowse && placeGroups.isLoading ? (
+                      <div
+                        className="text-muted-foreground py-6 text-sm"
+                        role="status"
+                        aria-live="polite"
+                      >
+                        Loading…
+                      </div>
+                    ) : groupedBrowse &&
+                      placeGroups.isError &&
+                      propertyLocationGroups.length === 0 ? (
+                      <div className="flex flex-col items-center gap-3 py-16" role="alert">
+                        <p className="text-muted-foreground text-sm">Could not load places.</p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="min-h-[44px]"
+                          onClick={() => void placeGroups.refetch()}
+                        >
+                          Try again
+                        </Button>
+                      </div>
+                    ) : (
+                      <PropertiesByLocation
+                        properties={groupedBrowse ? [] : properties}
+                        groups={groupedBrowse ? propertyLocationGroups : undefined}
+                        hasMore={groupedBrowse && Boolean(placeGroups.hasNextPage)}
+                        isLoadingMore={placeGroups.isFetchingNextPage}
+                        hasLoadMoreError={
+                          groupedBrowse && placeGroups.isError && propertyLocationGroups.length > 0
+                        }
+                        onLoadMore={
+                          groupedBrowse && propertyLocationGroups.length > 0
+                            ? () => void placeGroups.fetchNextPage()
+                            : undefined
+                        }
+                      />
+                    )
                   ) : (
                     <div className="mx-auto max-w-4xl space-y-4">
                       {properties.map((property, index) => (

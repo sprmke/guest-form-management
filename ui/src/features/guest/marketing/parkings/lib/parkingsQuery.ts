@@ -8,6 +8,7 @@ import {
   setIfNotDefault,
   setOrDelete,
 } from '@/features/guest/marketing/shared/lib/listingQueryParams';
+import { normalizeCityPlace } from '@/features/guest/marketing/shared/lib/locationSlug';
 import { resolveListingCoverImage } from '@/features/guest/marketing/shared/lib/mockListingImages';
 import type { ParkingListEntry } from '@/features/guest/marketing/parkings/lib/parkingListEntries';
 import {
@@ -36,6 +37,8 @@ export type ParkingsListingQuery = {
   swLng: number | null;
   neLat: number | null;
   neLng: number | null;
+  /** Place group slug for `/parkings/in/:location`. */
+  locationSlug: string;
   sort: ParkingSortKey;
   page: number;
   pageSize: number;
@@ -56,6 +59,7 @@ export const DEFAULT_PARKINGS_QUERY: ParkingsListingQuery = {
   swLng: null,
   neLat: null,
   neLng: null,
+  locationSlug: '',
   sort: 'tower',
   page: 1,
   pageSize: 24,
@@ -147,6 +151,7 @@ export function parseParkingsQuery(sp: URLSearchParams): ParkingsListingQuery {
     swLng: parseOptionalNumber(sp.get('swLng')),
     neLat: parseOptionalNumber(sp.get('neLat')),
     neLng: parseOptionalNumber(sp.get('neLng')),
+    locationSlug: (sp.get('locationSlug') ?? '').trim().toLowerCase(),
     sort: parseSortAllowlist(sp.get('sort'), PARKINGS_SORTS, DEFAULT_PARKINGS_QUERY.sort),
     page: parsePositiveInt(sp.get('page'), 1),
     pageSize: Math.min(
@@ -176,6 +181,7 @@ export function writeParkingsQuery(
     'swLng',
     'neLat',
     'neLng',
+    'locationSlug',
     'sort',
     'page',
     'pageSize',
@@ -195,6 +201,7 @@ export function writeParkingsQuery(
   setIfNotDefault(next, 'swLng', query.swLng, null);
   setIfNotDefault(next, 'neLat', query.neLat, null);
   setIfNotDefault(next, 'neLng', query.neLng, null);
+  setOrDelete(next, 'locationSlug', query.locationSlug || null);
   setIfNotDefault(next, 'sort', query.sort, DEFAULT_PARKINGS_QUERY.sort);
   setIfNotDefault(next, 'page', query.page, 1);
   setIfNotDefault(next, 'pageSize', query.pageSize, DEFAULT_PARKINGS_QUERY.pageSize);
@@ -289,7 +296,7 @@ export function toParkingListEntry(item: PublicParkingListItem): ParkingListEntr
     slot,
     developmentSlug: item.developmentSlug ?? '',
     developmentName: item.developmentName ?? item.residenceName ?? '',
-    city: item.city?.trim() || 'Other',
+    city: normalizeCityPlace(item.city),
     detailSlug: item.slug,
   };
 }

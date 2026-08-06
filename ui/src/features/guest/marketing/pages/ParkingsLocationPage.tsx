@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 
 import { Navigate, useParams } from 'react-router-dom';
 
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { SlidersHorizontal } from 'lucide-react';
 
 import { ParkingFilters, ParkingToolbar } from '@/features/guest/marketing/developments/components';
@@ -15,28 +15,44 @@ import {
   type ParkingSortKey,
 } from '@/features/guest/marketing/developments/lib/parkingSlotFilters';
 import { ParkingsEntriesGrid, ParkingsHero } from '@/features/guest/marketing/parkings/components';
-import { filterParkingEntriesByLocationSlug } from '@/features/guest/marketing/parkings/lib/groupParkingsByLocation';
+import { usePublicParkings } from '@/features/guest/marketing/parkings/hooks/usePublicParkings';
+import { parkingSlotsFromEntries } from '@/features/guest/marketing/parkings/lib/parkingListEntries';
 import {
-  buildParkingListEntries,
-  parkingSlotsFromEntries,
-} from '@/features/guest/marketing/parkings/lib/parkingListEntries';
+  DEFAULT_PARKINGS_QUERY,
+  toParkingListEntry,
+} from '@/features/guest/marketing/parkings/lib/parkingsQuery';
+import { normalizeCityPlace } from '@/features/guest/marketing/shared/lib/locationSlug';
 
 import { Button } from '@/components/ui/button';
 
 export function ParkingsLocationPage() {
   const { location = '' } = useParams<{ location: string }>();
-  const allEntries = useMemo(() => buildParkingListEntries(), []);
+  const locationSlug = location.trim().toLowerCase();
+  const reduceMotion = useReducedMotion();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [sortBy, setSortBy] = useState<ParkingSortKey>('tower');
   const [filters, setFilters] = useState<ParkingFilterState>(DEFAULT_PARKING_FILTERS);
+  const [page, setPage] = useState(1);
 
-  const locationEntries = useMemo(
-    () => filterParkingEntriesByLocationSlug(allEntries, location),
-    [allEntries, location]
+  const listingQuery = useMemo(
+    () => ({
+      ...DEFAULT_PARKINGS_QUERY,
+      locationSlug,
+      page,
+      pageSize: 48,
+    }),
+    [locationSlug, page]
   );
 
-  const city = locationEntries[0]?.city ?? null;
+  const { data, isLoading, isError, isFetching, refetch } = usePublicParkings(
+    listingQuery,
+    Boolean(locationSlug)
+  );
+
+  const locationEntries = useMemo(() => (data?.data ?? []).map(toParkingListEntry), [data?.data]);
+
+  const city = locationEntries[0] != null ? normalizeCityPlace(locationEntries[0].city) : null;
 
   const insideTowerOptions = useMemo(
     () => uniqueTowersFromInsideSlots(parkingSlotsFromEntries(locationEntries)),
@@ -57,7 +73,15 @@ export function ParkingsLocationPage() {
       .sort((a, b) => (order.get(a.slot.id) ?? 0) - (order.get(b.slot.id) ?? 0));
   }, [locationEntries, filters, sortBy]);
 
-  if (!city) {
+  const totalResults = data?.total ?? 0;
+  const pageSize = data?.pageSize ?? 48;
+  const totalPages = Math.max(1, Math.ceil(totalResults / pageSize) || 1);
+
+  if (!locationSlug) {
+    return <Navigate to="/parkings" replace />;
+  }
+
+  if (!isLoading && !isError && totalResults === 0) {
     return <Navigate to="/parkings" replace />;
   }
 
@@ -80,18 +104,21 @@ export function ParkingsLocationPage() {
         <ParkingFilters
           isOpen={filtersOpen}
           onClose={() => setFiltersOpen(false)}
+          isMobile={false}
           filters={filters}
           onFiltersChange={setFilters}
-          insideTowerOptions={insideTowerOptions}
+          towerOptions={insideTowerOptions}
         />
 
         <ParkingFilters
           isOpen={mobileFiltersOpen}
           onClose={() => setMobileFiltersOpen(false)}
-          isMobile
+          isMobile={true}
           filters={filters}
           onFiltersChange={setFilters}
-          insideTowerOptions={insideTowerOptions}
+          towerOptions={insideTowerOptions}
+          sortBy={sortBy}
+          onSortChange={(sort) => setSortBy(sort as ParkingSortKey)}
         />
 
         <main className="min-w-0 flex-1 overflow-x-hidden">
@@ -104,20 +131,61 @@ export function ParkingsLocationPage() {
           />
 
           <h1 className="text-foreground px-4 pt-4 text-lg font-semibold tracking-tight sm:px-6 sm:pt-5 sm:text-xl">
-            Parking in {city}
+            Parking in {city ?? '…'}
           </h1>
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={`${location}-${filteredEntries.length}-${sortBy}`}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="min-w-0 p-4 sm:p-6"
-            >
-              <ParkingsEntriesGrid entries={filteredEntries} />
-            </motion.div>
-          </AnimatePresence>
+          {isError ? (
+            <div className="flex flex-col items-center gap-3 px-4 py-16" role="alert">
+              <p className="text-muted-foreground text-sm">Could not load parking.</p>
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-[44px]"
+                onClick={() => void refetch()}
+              >
+                Try again
+              </Button>
+            </div>
+          ) : isLoading ? (
+            <div className="text-muted-foreground px-4 py-16 text-sm sm:px-6">Loading…</div>
+          ) : (
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={`${locationSlug}-${page}`}
+                initial={reduceMotion ? false : { opacity: 0 }}
+                animate={{ opacity: isFetching ? 0.7 : 1 }}
+                exit={reduceMotion ? undefined : { opacity: 0 }}
+                className="min-w-0 space-y-6 p-4 sm:p-6"
+              >
+                <ParkingsEntriesGrid entries={filteredEntries} />
+                {totalPages > 1 ? (
+                  <div className="flex items-center justify-center gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="min-h-[44px]"
+                      disabled={page <= 1 || isFetching}
+                      onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                    >
+                      Previous
+                    </Button>
+                    <span className="text-muted-foreground text-sm">
+                      {page} / {totalPages}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="min-h-[44px]"
+                      disabled={page >= totalPages || isFetching}
+                      onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                ) : null}
+              </motion.div>
+            </AnimatePresence>
+          )}
         </main>
       </div>
     </div>
