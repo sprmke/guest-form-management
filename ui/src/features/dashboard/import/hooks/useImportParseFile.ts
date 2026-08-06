@@ -1,5 +1,5 @@
 /**
- * useImportParseFile — upload CSV to import-parse-file edge function.
+ * useImportParseFile — upload CSV/Excel to import-parse-file edge function.
  */
 
 import { useMutation } from '@tanstack/react-query';
@@ -25,8 +25,14 @@ function friendlyParseError(raw: string | undefined, status: number): string {
   if (lower.includes('too many') || (lower.includes('row') && lower.includes('limit'))) {
     return message || 'This file has too many rows. Split it and try again.';
   }
-  if (lower.includes('csv') || lower.includes('parse')) {
-    return message || 'We could not read that CSV. Check the file and try again.';
+  if (
+    lower.includes('csv') ||
+    lower.includes('excel') ||
+    lower.includes('xlsx') ||
+    lower.includes('parse') ||
+    lower.includes('sheet')
+  ) {
+    return message || 'We could not read that file. Check the format and try again.';
   }
   if (status === 401 || status === 403) {
     return 'You do not have permission to import for this property.';

@@ -40,11 +40,15 @@ export function useImportBatchRows(batchId: string | null) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: propertyId && batchId ? importPreviewQueryKey(propertyId, batchId) : IMPORT_PREVIEW_KEY,
+    queryKey:
+      propertyId && batchId ? importPreviewQueryKey(propertyId, batchId) : IMPORT_PREVIEW_KEY,
     enabled: Boolean(propertyId && batchId),
     queryFn: (): ImportPreviewResult | null => {
       if (!propertyId || !batchId) return null;
-      return queryClient.getQueryData<ImportPreviewResult>(importPreviewQueryKey(propertyId, batchId)) ?? null;
+      return (
+        queryClient.getQueryData<ImportPreviewResult>(importPreviewQueryKey(propertyId, batchId)) ??
+        null
+      );
     },
     staleTime: Infinity,
   });
@@ -68,18 +72,27 @@ export function useImportBatchRows(batchId: string | null) {
       patch: Partial<ImportBatchRowPreview>,
       nextSummary?: ImportPreviewSummary
     ) => {
-      if (!propertyId || !batchId || !preview) return;
+      if (!propertyId || !batchId) return;
+      const current = queryClient.getQueryData<ImportPreviewResult>(
+        importPreviewQueryKey(propertyId, batchId)
+      );
+      if (!current) return;
+
       const updated: ImportPreviewResult = {
-        ...preview,
-        summary: nextSummary ?? preview.summary,
-        rows: preview.rows.map((row) => (row.id === rowId ? { ...row, ...patch } : row)),
+        ...current,
+        summary: nextSummary ?? current.summary,
+        rows: current.rows.map((row) => (row.id === rowId ? { ...row, ...patch } : row)),
       };
       queryClient.setQueryData(importPreviewQueryKey(propertyId, batchId), updated);
     },
     patchSummary: (nextSummary: ImportPreviewSummary) => {
-      if (!propertyId || !batchId || !preview) return;
+      if (!propertyId || !batchId) return;
+      const current = queryClient.getQueryData<ImportPreviewResult>(
+        importPreviewQueryKey(propertyId, batchId)
+      );
+      if (!current) return;
       queryClient.setQueryData(importPreviewQueryKey(propertyId, batchId), {
-        ...preview,
+        ...current,
         summary: nextSummary,
       });
     },
