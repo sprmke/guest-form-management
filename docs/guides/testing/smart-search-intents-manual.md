@@ -172,7 +172,7 @@ Expanded: craft a query that fails literal match but contains `condo` as a token
 
 ---
 
-## 7. Pagination smoke (Phases 1A–1B)
+## 7. Pagination smoke (Phase 1)
 
 Local only (`./dev.sh`). Confirm page slice + stable totals (no UI change expected).
 
@@ -197,3 +197,22 @@ Pass when:
 UI: `/properties` and `/search?type=properties` pager still works; Network payload size stays ~page-sized.
 
 Recorded Phase 1B smoke used 2,107 temporary local properties: page 88 (`pageSize=24`) returned 19 rows with `total: 2107`; one blocked property reduced both total and facet count by one. Temporary rows were removed after the check.
+
+Recorded Phase 1C smoke used 601 temporary rows per search family. All returned exact totals (`1803` combined), and page 51 returned the final row for Properties, Developments, and Parkings. A 25-property browser smoke confirmed the existing classic pager updates the URL to `page=2` and preserves filters/tabs on desktop and mobile.
+
+## 8. Location-group lazy loading (Phase 2)
+
+For each `family=properties|developments|parkings`, call `list-public-place-groups` with `groupLimit=1&previewSize=2`, then repeat with `groupOffset=1`.
+
+Pass when:
+
+- first and second responses have different `locationSlug` values;
+- each response contains at most one group and two preview cards;
+- `groupTotal` is stable across offsets;
+- default `/properties`, `/developments`, and `/parkings` keep the existing row/card chrome;
+- **Show more places** appends later groups when more than six locations exist;
+- **View all** still opens `/…/in/:location`;
+- filtered/list/map modes continue to call the existing `list-public-*` endpoint;
+- 375 px has no document-level horizontal overflow.
+
+Recorded local smoke returned distinct first/next slugs for every family and normalized `Parañaque` to `paranaque`. Browser checks passed with zero console errors; filtered `/properties?type=condo` made no place-group request.

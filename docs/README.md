@@ -13,12 +13,12 @@ Navigation for **guest-form-management**.
 
 ## Workflow (active feature work)
 
-| Doc                                                | Purpose                                          |
-| -------------------------------------------------- | ------------------------------------------------ |
-| [`workflow/README.md`](./workflow/README.md)       | Lifecycle: intake → planned → in-progress → done |
-| [`workflow/planned/`](./workflow/planned/)         | Plans not yet shipped                            |
-| [`workflow/in-progress/`](./workflow/in-progress/) | Active implementation                            |
-| [`workflow/done/`](./workflow/done/)               | Verified shipped plans                           |
+| Doc                                                | Purpose                                                    |
+| -------------------------------------------------- | ---------------------------------------------------------- |
+| [`workflow/README.md`](./workflow/README.md)       | Lifecycle: intake → planned → in-progress → done · wont-do |
+| [`workflow/planned/`](./workflow/planned/)         | Plans not yet shipped                                      |
+| [`workflow/in-progress/`](./workflow/in-progress/) | Active implementation                                      |
+| [`workflow/done/`](./workflow/done/)               | Verified shipped plans                                     |
 
 ## Product backlog (GitHub Issues)
 
