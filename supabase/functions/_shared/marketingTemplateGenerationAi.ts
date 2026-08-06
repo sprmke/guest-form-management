@@ -201,6 +201,10 @@ function buildUserPrompt(input: GenerateMarketingTemplateInput): string {
 
 async function generateJsonText(systemPrompt: string, userPrompt: string): Promise<string> {
   const keys = geminiKeys();
+  let geminiSawKeys = keys.length > 0;
+  let geminiQuotaHit = false;
+  let geminiLastStatus: number | null = null;
+
   for (const apiKey of keys) {
     try {
       const res = await fetch(`${GEMINI_URL}?key=${encodeURIComponent(apiKey)}`, {
@@ -216,6 +220,11 @@ async function generateJsonText(systemPrompt: string, userPrompt: string): Promi
           },
         }),
       });
+      geminiLastStatus = res.status;
+      if (res.status === 429) {
+        geminiQuotaHit = true;
+        continue;
+      }
       if (!res.ok) continue;
       const json = await res.json();
       const text = extractGeminiText(json);
@@ -226,34 +235,55 @@ async function generateJsonText(systemPrompt: string, userPrompt: string): Promi
   }
 
   const groq = groqKey();
+  let groqLastStatus: number | null = null;
   if (groq) {
-    const res = await fetch(GROQ_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${groq}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        temperature: 0.85,
-        max_tokens: 512,
-        response_format: { type: 'json_object' },
-      }),
-    });
-    if (res.ok) {
-      const json = (await res.json()) as {
-        choices?: Array<{ message?: { content?: string } }>;
-      };
-      const text = json.choices?.[0]?.message?.content?.trim();
-      if (text) return text;
+    try {
+      const res = await fetch(GROQ_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${groq}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: GROQ_MODEL,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          temperature: 0.85,
+          max_tokens: 512,
+          response_format: { type: 'json_object' },
+        }),
+      });
+      groqLastStatus = res.status;
+      if (res.ok) {
+        const json = (await res.json()) as {
+          choices?: Array<{ message?: { content?: string } }>;
+        };
+        const text = json.choices?.[0]?.message?.content?.trim();
+        if (text) return text;
+      }
+    } catch {
+      /* fall through */
     }
   }
 
-  throw new Error('AI generation unavailable — configure GEMINI_API_KEYS or GROQ_API_KEY');
+  if (!geminiSawKeys && !groq) {
+    throw new Error('AI generation unavailable — configure GEMINI_API_KEYS or GROQ_API_KEY');
+  }
+  if (geminiQuotaHit) {
+    throw new Error(
+      'AI generation unavailable — Gemini quota exceeded on all configured keys' +
+        (groqLastStatus ? ` (Groq fallback HTTP ${groqLastStatus})` : groq ? '' : '')
+    );
+  }
+  if (geminiLastStatus || groqLastStatus) {
+    throw new Error(
+      `AI generation unavailable — Gemini HTTP ${geminiLastStatus ?? 'n/a'}` +
+        (groq ? `, Groq HTTP ${groqLastStatus ?? 'n/a'}` : '')
+    );
+  }
+  throw new Error('AI generation unavailable — providers returned empty responses');
 }
 
 export async function generateMarketingTemplateTokens(
