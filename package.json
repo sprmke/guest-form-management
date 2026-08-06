@@ -19,6 +19,8 @@
     "lint:fix": "cd ui && bun run lint:fix",
     "check:filenames": "./scripts/dev/check-ui-filename-conventions.sh",
     "check:ai-tooling-sync": "bash scripts/dev/check-ai-tooling-sync.sh",
+    "check:workflow-scratchpads": "bash scripts/dev/check-workflow-scratchpads.sh",
+    "sync:workflow-scratchpads": "bash scripts/dev/sync-workflow-scratchpads.sh",
     "setup:ai-tooling": "bash scripts/dev/setup-ai-tooling.sh",
     "setup:agents-skills": "bash scripts/dev/setup-agents-skills.sh",
     "setup:impeccable": "bash scripts/dev/setup-impeccable.sh",
@@ -47,7 +49,18 @@
     "deploy:supabase": "./scripts/deploy/deploy-supabase.sh",
     "deploy:supabase:db": "./scripts/deploy/deploy-supabase.sh --db-only",
     "deploy:supabase:functions": "./scripts/deploy/deploy-supabase.sh --functions-only",
-    "deploy:supabase:dev": "./scripts/deploy/deploy-supabase-dev.sh"
+    "deploy:supabase:dev": "./scripts/deploy/deploy-supabase-dev.sh",
+    "deploy:supabase:dev:db": "./scripts/deploy/deploy-supabase-dev.sh --db-only",
+    "deploy:supabase:dev:functions": "./scripts/deploy/deploy-supabase-dev.sh --functions-only",
+    "backup:supabase:dev": "./scripts/deploy/backup-supabase.sh dev",
+    "backup:supabase:prod": "./scripts/deploy/backup-supabase.sh prod",
+    "rollback:supabase:dev": "./scripts/deploy/rollback-supabase.sh dev",
+    "rollback:supabase:prod": "./scripts/deploy/rollback-supabase.sh prod",
+    "rollback:functions:dev": "./scripts/deploy/rollback-functions.sh dev",
+    "rollback:functions:prod": "./scripts/deploy/rollback-functions.sh prod",
+    "migrations:status:dev": "./scripts/deploy/migration-status.sh dev",
+    "migrations:status:prod": "./scripts/deploy/migration-status.sh prod",
+    "env:status": "./scripts/dev/check-linked-project.sh"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.8.0",
