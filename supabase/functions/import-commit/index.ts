@@ -16,8 +16,16 @@ import {
   isImportBatchStatus,
   type ImportBatchStatus,
 } from '../_shared/importBatchStatusMachine.ts';
-import { BOOKING_IMPORT_TARGET_FIELDS } from '../_shared/importTargetSchemas.ts';
-import { jsonError, jsonSuccess, readJsonBody, requireHttpMethod } from '../_shared/httpResponse.ts';
+import {
+  BOOKING_IMPORT_TARGET_FIELDS,
+  dbColumnForImportTarget,
+} from '../_shared/importTargetSchemas.ts';
+import {
+  jsonError,
+  jsonSuccess,
+  readJsonBody,
+  requireHttpMethod,
+} from '../_shared/httpResponse.ts';
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
@@ -65,16 +73,18 @@ function buildSubmissionRow(
     if (!ALLOWED_FIELD_IDS.has(fieldId)) continue;
     if (rawValue === null || rawValue === '') continue;
 
+    const column = dbColumnForImportTarget(fieldId);
+
     if (BOOLEAN_FIELD_IDS.has(fieldId)) {
-      row[fieldId] = rawValue.toLowerCase() === 'yes';
+      row[column] = rawValue.toLowerCase() === 'yes';
     } else if (INTEGER_FIELD_IDS.has(fieldId)) {
       const parsed = Number.parseInt(rawValue.replace(/,/g, ''), 10);
-      if (Number.isFinite(parsed)) row[fieldId] = parsed;
+      if (Number.isFinite(parsed)) row[column] = parsed;
     } else if (DECIMAL_FIELD_IDS.has(fieldId)) {
       const parsed = Number.parseFloat(rawValue.replace(/,/g, ''));
-      if (Number.isFinite(parsed)) row[fieldId] = parsed;
+      if (Number.isFinite(parsed)) row[column] = parsed;
     } else {
-      row[fieldId] = rawValue;
+      row[column] = rawValue;
     }
   }
 

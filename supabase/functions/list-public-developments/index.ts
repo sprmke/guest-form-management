@@ -21,6 +21,7 @@ import {
   resolveListingCoords,
   scopeRowsToRadius,
 } from '../_shared/publicGeoScope.ts';
+import { normalizeCityPlace, toLocationSlug } from '../_shared/listingPlace.ts';
 import { computePriceFacet, computeStringCountFacet } from '../_shared/publicListingFacets.ts';
 import { loadPublicListingRows } from '../_shared/publicListingRows.ts';
 import { mapDevelopmentSearchSummary, postgrestOrIlikeValue } from '../_shared/publicSearch.ts';
@@ -126,6 +127,7 @@ servePublic('list-public-developments', async (req) => {
   const sortExplicit = Boolean(sortRaw && VALID_SORTS.has(sortRaw as SortKey));
   const page = parsePage(url.searchParams.get('page'));
   const pageSize = parsePageSize(url.searchParams.get('pageSize'));
+  const locationSlug = (url.searchParams.get('locationSlug') ?? '').trim().toLowerCase();
   const origin = readGeoOrigin(url.searchParams);
   const mapBbox = readMapBbox(url.searchParams);
 
@@ -177,6 +179,12 @@ servePublic('list-public-developments', async (req) => {
         established: establishedFromSettings ?? (Number.isFinite(createdYear) ? createdYear : null),
       };
     });
+
+    if (locationSlug) {
+      working = working.filter(
+        (row) => toLocationSlug(normalizeCityPlace(row.city)) === locationSlug
+      );
+    }
 
     let distanceById = new Map<string, number>();
     if (origin) {

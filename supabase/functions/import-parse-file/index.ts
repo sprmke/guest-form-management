@@ -1,64 +1,22 @@
 /**
- * import-parse-file — Upload CSV, store privately, parse rows into import_batches staging.
+ * import-parse-file — Upload CSV/Excel, store privately, parse rows into import_batches staging.
  * Auth: resolveImportAccess (import:manage / org owner-admin layer).
  */
 
-import Papa from 'https://esm.sh/papaparse@5.4.1';
 import { resolveImportAccess } from '../_shared/importAccess.ts';
+import { parseImportFile } from '../_shared/importFileParse.ts';
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import {
   IMPORT_MAX_FILE_BYTES,
   IMPORT_MAX_ROW_COUNT,
   IMPORT_ROW_INSERT_CHUNK_SIZE,
   IMPORT_UPLOAD_BUCKET,
+  contentTypeForImportKind,
   importStoragePath,
-  isAllowedImportCsvFile,
+  isAllowedImportFile,
 } from '../_shared/importUploadLimits.ts';
 import { jsonError, jsonSuccess, requireHttpMethod } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
-
-type ParsedCsv = {
-  headers: string[];
-  rows: Record<string, string>[];
-};
-
-function parseCsvText(text: string): ParsedCsv {
-  // Excel and Google Sheets both prepend a UTF-8 BOM, which would otherwise ride
-  // along on the first header and break column matching.
-  const result = Papa.parse<Record<string, string>>(text.replace(/^\uFEFF/, ''), {
-    header: true,
-    skipEmptyLines: 'greedy',
-    transformHeader: (header) => header.trim(),
-  });
-
-  // Host spreadsheets routinely carry a note line or a short trailing row, which
-  // Papa reports as FieldMismatch while still returning usable data. Those rows
-  // surface as fixable rows in preview; only unparseable input aborts the upload.
-  const fatal = result.errors.find((error) => error.type !== 'FieldMismatch');
-  if (fatal) {
-    throw new Error(
-      `CSV parse error${fatal.row != null ? ` on row ${fatal.row + 1}` : ''}: ${fatal.message}`
-    );
-  }
-
-  const headers = (result.meta.fields ?? []).map((field) => field.trim()).filter(Boolean);
-  if (headers.length === 0) {
-    throw new Error('CSV must include a header row');
-  }
-
-  // Building each row from `headers` also drops Papa's `__parsed_extra` bucket,
-  // so an over-wide row cannot invent a phantom column downstream.
-  const rows: Record<string, string>[] = [];
-  for (const row of result.data ?? []) {
-    const cells: Record<string, string> = {};
-    for (const header of headers) {
-      cells[header] = String(row[header] ?? '').trim();
-    }
-    if (Object.values(cells).some((value) => value.length > 0)) rows.push(cells);
-  }
-
-  return { headers, rows };
-}
 
 function sampleRows(rows: Record<string, string>[], limit = 5): Record<string, string>[] {
   return rows.slice(0, limit);
@@ -108,11 +66,28 @@ serveAuthenticated('import-parse-file', async (req) => {
   if (!fileName) {
     return jsonError(req, 'fileName is required');
   }
-  if (!isAllowedImportCsvFile(file, fileName)) {
-    return jsonError(req, 'File must be a CSV (.csv)');
+  if (!isAllowedImportFile(file, fileName)) {
+    return jsonError(req, 'File must be a CSV (.csv) or Excel (.xlsx, .xls)');
   }
   if (file.size > IMPORT_MAX_FILE_BYTES) {
     return jsonError(req, 'File must be 15 MB or smaller');
+  }
+
+  let parsedKind: 'csv' | 'xlsx' | 'xls';
+  let parsed;
+  try {
+    const result = await parseImportFile(file, fileName);
+    parsedKind = result.kind;
+    parsed = result.table;
+  } catch (error) {
+    return jsonError(req, (error as Error).message);
+  }
+
+  if (parsed.rows.length === 0) {
+    return jsonError(req, 'File must include at least one data row');
+  }
+  if (parsed.rows.length > IMPORT_MAX_ROW_COUNT) {
+    return jsonError(req, `File exceeds the ${IMPORT_MAX_ROW_COUNT.toLocaleString()} row limit`);
   }
 
   const batchId = crypto.randomUUID();
@@ -122,30 +97,12 @@ serveAuthenticated('import-parse-file', async (req) => {
     .from(IMPORT_UPLOAD_BUCKET)
     .upload(storagePath, file, {
       upsert: false,
-      contentType: 'text/csv',
+      contentType: contentTypeForImportKind(parsedKind),
     });
 
   if (uploadError) {
     console.error('[import-parse-file] storage upload failed:', uploadError.message);
     return jsonError(req, `Upload failed: ${uploadError.message}`);
-  }
-
-  let parsed: ParsedCsv;
-  try {
-    const text = await file.text();
-    parsed = parseCsvText(text);
-  } catch (error) {
-    await supabase.storage.from(IMPORT_UPLOAD_BUCKET).remove([storagePath]);
-    return jsonError(req, (error as Error).message);
-  }
-
-  if (parsed.rows.length === 0) {
-    await supabase.storage.from(IMPORT_UPLOAD_BUCKET).remove([storagePath]);
-    return jsonError(req, 'CSV must include at least one data row');
-  }
-  if (parsed.rows.length > IMPORT_MAX_ROW_COUNT) {
-    await supabase.storage.from(IMPORT_UPLOAD_BUCKET).remove([storagePath]);
-    return jsonError(req, `CSV exceeds the ${IMPORT_MAX_ROW_COUNT.toLocaleString()} row limit`);
   }
 
   const { error: batchError } = await supabase.from('import_batches').insert({
@@ -182,7 +139,7 @@ serveAuthenticated('import-parse-file', async (req) => {
   }
 
   console.log(
-    `[import-parse-file] batch ${batchId} — ${parsed.rows.length} rows for property ${access.propertyId}`
+    `[import-parse-file] batch ${batchId} — ${parsed.rows.length} rows (${parsedKind}) for property ${access.propertyId}`
   );
 
   return jsonSuccess(req, {
