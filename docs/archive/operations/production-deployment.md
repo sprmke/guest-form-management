@@ -20,11 +20,12 @@ Ship **migrations**, **Edge Functions**, **Secrets**, **Google integrations**, *
 
 ## 0. Preconditions
 
-| Requirement    | Notes                                                                |
-| -------------- | -------------------------------------------------------------------- |
-| Supabase CLI   | Prefer **`bunx supabase@latest`**. **`supabase login`**.             |
-| Linked project | From repo root: **`supabase link --project-ref <prod-ref>`**.        |
-| Dashboard      | Database, Edge Functions → **Secrets**, **Authentication**, Storage. |
+| Requirement                     | Notes                                                                                                                                                                  |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Supabase CLI                    | Prefer **`bunx supabase@latest`**. **`supabase login`**.                                                                                                               |
+| Linked project                  | From repo root: **`supabase link --project-ref <prod-ref>`**.                                                                                                          |
+| Dashboard                       | Database, Edge Functions → **Secrets**, **Authentication**, Storage.                                                                                                   |
+| Branch protection (recommended) | Enable required-status-checks on `main` (GitHub repo Settings → Branches) so the `quality` CI job must pass before merge — prod deploys assume `main` is always green. |
 
 Have **production URL(s)** ready for Redirect URIs (**Google A/B**, **`GMAIL_OAUTH_ALLOWED_RETURN_ORIGINS`**) and **Site URL** (Supabase Auth).
 
@@ -41,7 +42,9 @@ Do not **`supabase db push`** until **§1** backup + **§2** preview feel right.
 | **Pro+** | Dashboard → **Database → Backups** — create or confirm a snapshot; note id / time. |
 | **Free** | Take a logical **data** snapshot (scheduled backups are absent on Free tier).      |
 
-**Patterns (pick one or both — treat output as PII):**
+**Automated (preferred):** `bun run backup:supabase:prod` runs `supabase db dump --linked` (schema) and `--data-only` (data) into `backups/prod/<UTC-timestamp>_{schema,data}.sql` (gitignored). It refuses to run unless the linked project actually looks like prod. This also runs automatically as the first step of `bun run deploy:supabase` / `deploy:supabase:db` (skip via `--skip-backup`, not recommended — prints a loud warning).
+
+**Manual (fallback / Pro+ Dashboard snapshot) — pick one or both, treat output as PII:**
 
 ```bash
 # With pooler/direct URI from Dashboard → Connect (URL-encode password; IPv4-only networks often need the pooler host).
@@ -235,7 +238,11 @@ Longer checklist: **`migration-runbook.md` §11.9**.
 
 ## 12. Rollback / incidents
 
-Prefer **fix-forward** (correct data SQL + re-**`push`**) unless you staged a downtime restore window.
+**First option — automated restore:** `bun run rollback:supabase:prod` restores the most recent `backups/prod/*_data.sql` (add `--schema` to also restore the matching `*_schema.sql` first) via `psql` against the linked project. Same `kamewave` gate as prod deploy, plus a typed `prod` confirmation. Dry-run first: `./scripts/deploy/rollback-supabase.sh prod --dry-run`.
+
+**Edge Functions rollback:** `bun run rollback:functions:prod -- <git-ref>` (e.g. `main`) redeploys `supabase/functions/` from an older commit via a throwaway `git worktree` — no need to check out that commit on your machine.
+
+Otherwise prefer **fix-forward** (correct data SQL + re-**`push`**) unless you staged a downtime restore window.
 
 **Postgres logical restore caveats:** data dump column lists must align with restored schema migrations — mismatched eras break **`INSERT`** / **`COPY`**.
 
@@ -255,6 +262,11 @@ bun run deploy:supabase
 bun run deploy:supabase -- --include-all
 bun run deploy:supabase:db
 bun run deploy:supabase:functions
+
+# Backups & rollback
+bun run backup:supabase:prod
+bun run rollback:supabase:prod   # requires kamewave
+bun run migrations:status:prod   # read-only drift check
 ```
 
 Or invoke the Supabase CLI directly:
