@@ -34,7 +34,7 @@ bun run deploy:supabase:dev     # deploy migrations + functions to dev project
 bun run backup:supabase:dev / :prod     # pre-deploy backups (also automatic before deploy)
 bun run rollback:supabase:dev / :prod   # restore most recent backup (prod: kamewave required)
 bun run env:status                      # which Supabase project is linked (dev/prod/unknown)
-bun run setup:ai-tooling        # once after clone: Cursor/Claude/.agent skills, Taste, Playwright CLI, DESIGN.md, MCP symlinks
+bun run setup:ai-tooling        # once after clone: Cursor/Claude/OpenCode + .agent skills, Taste, Playwright CLI, DESIGN.md, MCP
 
 bun run lint / lint:fix / type-check / build / check:filenames / format:check
 bun run start:supabase / stop:supabase / status:supabase / db:reset
@@ -44,6 +44,8 @@ bun run deploy:supabase    # PRODUCTION — kamewave unlock required for agents
 ```
 
 Dev/staging setup guide: **`docs/archive/operations/dev-staging-environment.md`**
+
+**Dual-track (multi-tenant WIP):** Live = `main` + [`guest-form-management-app`](https://vercel.com/sprmkes-projects/guest-form-management-app) + LEGACY `zftt…`. Multi-tenant = [`kame-homes`](https://vercel.com/kame-works/kame-homes) + `fwor…`. Inventory: `docs/architecture/deployment.md`.
 
 CI (`.github/workflows/ci.yml`): type-check, lint, check:filenames, build — no test step (none exist yet, see Conventions).
 
@@ -151,7 +153,7 @@ Doc index: `docs/README.md`. Full rules/skills index: `.cursor/rules/README.md`.
 
 ## Agent tooling
 
-Full index: `.claude/README.md`. Skills (mirrors `.cursor/skills/` + Claude-only `verify`), subagents (`security-auditor`, `debugger`, `test-runner`, `verifier`), commands (`/fix-merge-conflicts`, `/github-issue`), hooks (auto-format, wrong-stack warning, shell/migration guards), and MCP servers (`supabase`, `playwright`, `context7`, `github` — need `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_REF`/`GITHUB_TOKEN` exported locally, never committed). Check there before re-deriving conventions.
+Full index: `.claude/README.md` (Claude Code) · `.cursor/rules/README.md` (Cursor) · **`.opencode/README.md`** (OpenCode) · root **`opencode.json`**. Skills (mirrors `.cursor/skills/` + Claude-only `verify`), subagents (`security-auditor`, `debugger`, `test-runner`, `verifier`), commands (`/fix-merge-conflicts`, `/github-issue`, `/workflow-*`, `/superpowers-*`), hooks (auto-format, wrong-stack warning, shell/migration guards — OpenCode via `.opencode/plugins/gfm-ai-tooling.ts`), and MCP servers (`supabase`, `playwright`, `context7`, `markitdown` — need `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_REF` exported locally, never committed). Check those indexes before re-deriving conventions.
 
 ## Don'ts
 

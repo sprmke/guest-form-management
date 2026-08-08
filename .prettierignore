@@ -10,3 +10,4 @@ supabase_backup_*.sql
 coverage
 .env*
 .fallow
+.opencode/commands/**

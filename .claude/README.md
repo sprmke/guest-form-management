@@ -1,6 +1,6 @@
 # Claude Code tooling — Guest Form Management
 
-Agent context for **Claude Code** in this repo. Mirrors `.cursor/rules/README.md` (the Cursor-side index) — read that too; `.mdc` rule files aren't auto-loaded by Claude Code, so `CLAUDE.md` points here and at `.cursor/rules/*.mdc` directly.
+Agent context for **Claude Code** in this repo. Mirrors `.cursor/rules/README.md` (the Cursor-side index) and `.opencode/README.md` (OpenCode). `.mdc` rule files aren't auto-loaded by Claude Code, so `CLAUDE.md` points here and at `.cursor/rules/*.mdc` directly.
 
 ## New developer setup
 
@@ -9,7 +9,7 @@ bun install
 bun run setup:ai-tooling
 ```
 
-See **`.cursor/rules/README.md` → New developer setup (AI tooling)** for MCP env vars, `markitdown-mcp`, and ponytail plugin (manual once per machine).
+See **`.cursor/rules/README.md` → New developer setup (AI tooling)** for MCP env vars, `markitdown-mcp`, OpenCode, and ponytail plugin (manual once per machine).
 
 | Item                          | Location                                                                         |
 | ----------------------------- | -------------------------------------------------------------------------------- |
@@ -20,6 +20,7 @@ See **`.cursor/rules/README.md` → New developer setup (AI tooling)** for MCP e
 | Ecosystem skills              | `.agents/skills/` — Taste Skill, playwright-cli, Impeccable (`skills-lock.json`) |
 | DESIGN.md                     | Root `DESIGN.md` + `.agents/design-md/` + skill `design-md`                      |
 | Claude-only verify skill      | `.claude/skills/verify/` (real directory, not symlinked)                         |
+| OpenCode (same goals)         | `opencode.json` + `.opencode/` — see **`.opencode/README.md`**                   |
 | Drift check                   | `bun run check:ai-tooling-sync`                                                  |
 
 Install the **ponytail** marketplace once per machine if you want the plugin commands; the same guidance is always-on in `.cursor/rules/ponytail.mdc`.
@@ -137,8 +138,8 @@ Canonical: **`.cursor/rules/ai-usage.mdc`**. Summary:
 
 ## Updating
 
-- **Skills:** edit `.agent/skills/<name>/SKILL.md` directly — `.cursor/skills/<name>` and `.claude/skills/<name>` are symlinks to it, so both sides update automatically. Never edit the symlinked paths.
-- **Commands, agents, hooks:** each side has its own real file (different frontmatter/shape). Edit the Cursor-side file (`.cursor/commands/`, `.cursor/agents/`, `.cursor/hooks/` + `.cursor/hooks.json`), then apply the equivalent conceptual change to the Claude-side file (`.claude/commands/`, `.claude/agents/`, `.claude/hooks/` + `.claude/settings.json`) — see `.claude/skills/README.md` for the exact translation notes per category.
+- **Skills:** edit `.agent/skills/<name>/SKILL.md` directly — `.cursor/skills/<name>` and `.claude/skills/<name>` are symlinks to it, so both sides update automatically. OpenCode loads the same roots via `opencode.json` `skills.paths` and Claude-compat discovery. Never edit the symlinked paths.
+- **Commands, agents, hooks:** each side has its own real file (different frontmatter/shape). Edit the Cursor-side file (`.cursor/commands/`, `.cursor/agents/`, `.cursor/hooks/` + `.cursor/hooks.json`), then apply the equivalent conceptual change to the Claude-side file (`.claude/commands/`, `.claude/agents/`, `.claude/hooks/` + `.claude/settings.json`) **and** OpenCode (`.opencode/commands` symlinks to Claude; `.opencode/agents/` frontmatter; hooks plugin calls Claude scripts) — see `.claude/skills/README.md` and **`.opencode/README.md`**.
 - Run `bun run check:ai-tooling-sync` (also enforced in pre-commit) before committing; known intentional gaps live in `scripts/dev/ai-tooling-sync-exceptions.txt`.
-- Commit both sides in the same change.
-- `.mcp.json` needs no mirroring — `.cursor/mcp.json` is a symlink to it. This is separate from the global MCP config, which is intentionally asymmetric (Cursor's `~/.cursor/mcp.json` vs Claude Code's plugin mechanism) — see `.claude/skills/README.md`.
+- Commit all sides in the same change.
+- `.mcp.json` needs no Cursor mirroring — `.cursor/mcp.json` is a symlink to it. **Also update `opencode.json` `mcp`** when adding/removing servers (OpenCode uses a different local-server shape).
