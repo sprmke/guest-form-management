@@ -1224,7 +1224,13 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
   );
 }
 
-export function GetVerifiedSidebarCta({ collapsed }: { collapsed?: boolean }) {
+export function GetVerifiedSidebarCta({
+  collapsed,
+  variant = 'sidebar',
+}: {
+  collapsed?: boolean;
+  variant?: 'sidebar' | 'icon';
+}) {
   const [open, setOpen] = useState(false);
   const org = useCurrentOrganization();
   const detail = readOrgVerificationDetail(org?.settings);
@@ -1233,6 +1239,23 @@ export function GetVerifiedSidebarCta({ collapsed }: { collapsed?: boolean }) {
   if (!org || !shouldShowGetVerifiedCta(detail)) return null;
 
   const label = verificationSidebarLabel(detail);
+
+  if (variant === 'icon') {
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          title={label}
+          aria-label={label}
+          className="border-primary/25 from-primary/[0.12] to-primary/[0.04] text-primary hover:from-primary/15 hover:to-primary/[0.08] flex size-10 shrink-0 items-center justify-center rounded-xl border bg-gradient-to-br shadow-sm transition-colors"
+        >
+          <BadgeCheck className="size-4 shrink-0" aria-hidden />
+        </button>
+        {!forced ? <GetVerifiedModal open={open} onOpenChange={setOpen} /> : null}
+      </>
+    );
+  }
 
   return (
     <>
