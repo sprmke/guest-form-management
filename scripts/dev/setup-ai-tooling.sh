@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-shot team dev setup: Cursor + Claude Code rules/skills/hooks/MCP parity.
+# One-shot team dev setup: Cursor + Claude Code + OpenCode rules/skills/hooks/MCP parity.
 # Idempotent — safe to re-run after clone or when symlinks break.
 #
 # Usage: bun run setup:ai-tooling [options]
@@ -24,9 +24,11 @@ for arg in "$@"; do
       cat <<'EOF'
 Usage: bun run setup:ai-tooling [options]
 
-Project-scoped AI tooling for Cursor, Claude Code, and .agent skills:
+Project-scoped AI tooling for Cursor, Claude Code, OpenCode, and .agent skills:
   - .cursor/mcp.json symlink
   - .agent/skills → .cursor/skills + .claude/skills symlinks
+  - .opencode/commands → .claude/commands symlinks
+  - opencode.json (MCP + always-on instructions + skills.paths)
   - Ecosystem skills (.agents/skills via skills-lock.json):
       Impeccable, Taste Skill, playwright-cli skill
   - Playwright CLI binary (@playwright/cli)
@@ -107,6 +109,28 @@ for skill_dir in .agent/skills/*/; do
 done
 ok "Team skill symlinks verified"
 
+# --- 2b. OpenCode commands (→ .claude/commands) -----------------------------
+
+info "OpenCode command symlinks"
+if [[ ! -f opencode.json ]]; then
+  echo "ERROR: opencode.json missing at repo root"
+  exit 1
+fi
+mkdir -p .opencode/commands .opencode/agents .opencode/plugins
+if [[ -d .claude/commands ]]; then
+  for cmd in .claude/commands/*.md; do
+    [[ -e "$cmd" ]] || continue
+    name="$(basename "$cmd")"
+    link_relative ".opencode/commands/${name}" "../../.claude/commands/${name}"
+  done
+fi
+if [[ ! -f .opencode/plugins/gfm-ai-tooling.ts ]]; then
+  warn ".opencode/plugins/gfm-ai-tooling.ts missing — OpenCode hooks will not run"
+else
+  ok "OpenCode hooks plugin present"
+fi
+ok "OpenCode tooling paths verified"
+
 # --- 3. Ecosystem skills (skills.sh / .agents/skills) -----------------------
 
 if [[ "$SKIP_AGENTS_SKILLS" -eq 0 ]]; then
@@ -181,19 +205,20 @@ cat <<'EOF'
 
 AI tooling setup complete.
 
-Committed in repo (no copy from ~/.cursor or ~/.claude needed):
-  • Rules:     .cursor/rules/*.mdc + CLAUDE.md
+Committed in repo (no copy from ~/.cursor, ~/.claude, or ~/.config/opencode needed):
+  • Rules:     .cursor/rules/*.mdc + CLAUDE.md (+ opencode.json instructions)
   • Skills:    .agent/skills/ + .agents/skills/* (skills-lock.json)
   • DESIGN.md: root system + .agents/design-md/ inspiration refs
-  • Commands:  .cursor/commands/ ↔ .claude/commands/
-  • Agents:    .cursor/agents/ ↔ .claude/agents/
-  • Hooks:     .cursor/hooks.json + .claude/settings.json
-  • MCP:       .mcp.json (via .cursor/mcp.json symlink)
+  • Commands:  .cursor/commands/ ↔ .claude/commands/ ↔ .opencode/commands/
+  • Agents:    .cursor/agents/ ↔ .claude/agents/ + .opencode/agents/
+  • Hooks:     .cursor/hooks.json + .claude/settings.json + .opencode/plugins/
+  • MCP:       .mcp.json (Cursor) + opencode.json mcp block (OpenCode)
   • CLI:       bun x playwright-cli (@playwright/cli)
+  • OpenCode:  opencode.json + .opencode/README.md
 
 Once per machine (manual):
   • Claude Code ponytail plugin: /plugin marketplace add DietrichGebert/ponytail
-  • Personal UI/model prefs:     ~/.claude/settings.json (not in repo)
+  • Personal UI/model prefs:     ~/.claude/settings.json / ~/.config/opencode/opencode.json
 
 Re-run anytime: bun run setup:ai-tooling
 Drift check:      bun run check:ai-tooling-sync (also pre-commit)

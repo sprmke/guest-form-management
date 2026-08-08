@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Restore skills.sh ecosystem packages into .agents/skills/ and symlink for
-# Cursor + Claude Code. Canonical lock: skills-lock.json at repo root.
+# Cursor + Claude Code (OpenCode discovers .agents/skills/ natively + via
+# opencode.json skills.paths). Canonical lock: skills-lock.json at repo root.
 #
 # Includes: Impeccable, Taste Skill (design-taste-frontend + variants),
 # playwright-cli skill, and any other locked entries.
@@ -100,4 +101,4 @@ if [[ -f "$AGENTS_SKILLS/impeccable/scripts/hook.mjs" ]]; then
   node --check "$AGENTS_SKILLS/impeccable/scripts/hook-before-edit.mjs"
 fi
 
-echo "OK — ecosystem skills under $AGENTS_SKILLS; Cursor + Claude Code symlinks wired."
+echo "OK — ecosystem skills under $AGENTS_SKILLS; Cursor + Claude Code symlinks wired (OpenCode loads .agents/skills directly)."

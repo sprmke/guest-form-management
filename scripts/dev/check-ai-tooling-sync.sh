@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Drift prevention: Cursor and Claude Code AI tooling must stay in sync.
+# Drift prevention: Cursor, Claude Code, and OpenCode AI tooling must stay in sync.
 # See .agent/skills/ (shared source), .cursor/{skills,commands,agents,hooks.json,mcp.json},
-# .claude/{skills,commands,agents,settings.json}, and .mcp.json.
+# .claude/{skills,commands,agents,settings.json}, .opencode/{commands,agents,plugins},
+# opencode.json, and .mcp.json.
 #
 # Exit 1 on any violation. Intentional asymmetries are documented in
 # scripts/dev/ai-tooling-sync-exceptions.txt and skipped here.
@@ -162,6 +163,61 @@ else
   fi
 fi
 
+# --- 4b. OpenCode config + command/agent/plugin parity ---------------------
+
+if [[ ! -f opencode.json ]]; then
+  fail "opencode.json missing at repo root"
+else
+  if ! jq -e '.mcp.supabase and .mcp.playwright and .mcp.context7 and .mcp.markitdown' opencode.json >/dev/null 2>&1; then
+    fail "opencode.json mcp must define supabase, playwright, context7, markitdown (mirror .mcp.json)"
+  fi
+  if ! jq -e '.skills.paths | type == "array" and length >= 1' opencode.json >/dev/null 2>&1; then
+    fail "opencode.json skills.paths must list at least one skill root (.agent/skills and/or .agents/skills)"
+  fi
+  if ! jq -e '.instructions | type == "array" and length >= 1' opencode.json >/dev/null 2>&1; then
+    fail "opencode.json instructions must include always-on .cursor/rules files"
+  fi
+fi
+
+# Commands: every Claude command must have an OpenCode counterpart (symlink preferred)
+if [[ -d .claude/commands ]]; then
+  for f in .claude/commands/*.md; do
+    [[ -e "$f" ]] || continue
+    name="$(basename "$f")"
+    oc=".opencode/commands/${name}"
+    if [[ ! -e "$oc" ]]; then
+      fail "${oc} missing (expected symlink to ../../.claude/commands/${name})"
+    fi
+  done
+fi
+
+if [[ -d .opencode/commands ]]; then
+  for f in .opencode/commands/*; do
+    [[ -e "$f" || -L "$f" ]] || continue
+    name="$(basename "$f")"
+    [[ -f ".claude/commands/${name}" ]] || fail ".opencode/commands/${name} has no .claude/commands/${name} counterpart"
+  done
+fi
+
+# Agents: existence parity with Cursor/Claude (OpenCode frontmatter differs — content not compared)
+for name in debugger security-auditor test-runner verifier; do
+  [[ -f ".opencode/agents/${name}.md" ]] || fail ".opencode/agents/${name}.md missing"
+done
+
+if [[ ! -f .opencode/plugins/gfm-ai-tooling.ts ]]; then
+  fail ".opencode/plugins/gfm-ai-tooling.ts missing (OpenCode hooks plugin)"
+fi
+
+# MCP server name parity: every key in .mcp.json mcpServers must exist under opencode.json mcp
+if [[ -f .mcp.json ]] && [[ -f opencode.json ]]; then
+  while IFS= read -r server; do
+    [[ -n "$server" ]] || continue
+    if ! jq -e --arg s "$server" '.mcp[$s] != null' opencode.json >/dev/null 2>&1; then
+      fail "MCP server '${server}' in .mcp.json has no opencode.json mcp.${server} counterpart"
+    fi
+  done < <(jq -r '.mcpServers // {} | keys[]' .mcp.json 2>/dev/null)
+fi
+
 # --- 5. Ecosystem skills (.agents/skills via skills.sh) ---------------------
 
 if [[ -d .agents/skills ]]; then
@@ -216,4 +272,4 @@ if [[ "$VIOLATIONS" -gt 0 ]]; then
   exit 1
 fi
 
-echo "OK — Cursor and Claude AI tooling are in sync."
+echo "OK — Cursor, Claude, and OpenCode AI tooling are in sync."
