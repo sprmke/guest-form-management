@@ -66,7 +66,7 @@ export function HostAccountMenu() {
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-52">
+      <DropdownMenuContent align="end" className="z-[60] w-52">
         <DropdownMenuItem asChild>
           <Link to={dashboardHref}>
             <LayoutDashboard className="mr-2 size-4" aria-hidden />

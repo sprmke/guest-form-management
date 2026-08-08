@@ -2,7 +2,7 @@
 
 > **For agentic workers:** Use superpowers:subagent-driven-development or executing-plans. Checkboxes track progress.  
 > **Issue:** [#120](https://github.com/sprmke/kame-homes/issues/120)  
-> **Depends on:** [`unit-handoff-phase-a.md`](../planned/unit-handoff-phase-a.md) shipped  
+> **Depends on:** [`unit-handoff-phase-a.md`](./unit-handoff-phase-a.md) shipped  
 > **Approved:** 2026-08-02
 
 **Goal:** Sublessee / Auth Rep contract end → notices, T+0 offline + grace, Request consideration or full renew, T+5 listing lock; SA grant/deny with anti-abuse — without breaking Phase A uniqueness.

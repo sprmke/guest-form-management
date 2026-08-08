@@ -2,8 +2,10 @@
 title: 'Claude To Plan'
 status: archived
 tags: [planning]
-updated: 2026-08-02
+updated: 2026-08-07
 ---
+
+**Status legend:** ✅ done · 🚧 in progress · 📋 planned (plan doc written) · 🔵 pending / open · ❌ cancelled / won't do
 
 ===
 
@@ -15,17 +17,13 @@ Reviews section from hosts is also good. We can use mock data for now.
 
 We should also need to update our header menus for hosts mode
 
-/frontend-design
-
 ===
 
-Improve onboarding flow UI/UX page
+🔵 Improve onboarding flow UI/UX page
 
 I want to update the left section of the onboarding page and showcase all the features that we have for our system.
 Maybe an auto-play carousel of animated features that we have on our dashboard.
 I want this to look very interactive, animated, looks professional and looks good on any resolution.
-
-/frontend-design
 
 ===
 
@@ -36,13 +34,15 @@ Then, we should support for host to add new template for each tab/category.
 
 ===
 
-OPTION A: Improve stay guide UI/UX page
+📋 OPTION A: Improve stay guide UI/UX page
 
 The stay guide page looks very plain and not appealing at all. This needs to be mobile friendly, looks professional, interactive and has wow factor so that when hosts send this link to their guests, they will be happy using it.
 
-<Provide sample design here>
+→ **Plan:** [`../planned/custom-pages-module.md`](../planned/custom-pages-module.md) (Option B; Option A is stay-guide slice of same plan)
 
-OPTION B: Templated configurable & shareable custom pages
+===
+
+📋 OPTION B: Templated configurable & shareable custom pages
 
 Generate 3-5 templated stunning and professional looking landing pages/stay guide pages that contains these standard templates, property information and booking information for hosts to send their to their guests.
 
@@ -50,6 +50,8 @@ Generate 3-5 templated stunning and professional looking landing pages/stay guid
 
 On the dashboard, we will have new menu and page for "Custom Pages" where they can selected templated pages that's configurable and shareable.
 Maybe we will offer a simplified website editor?
+
+→ **Plan:** [`../planned/custom-pages-module.md`](../planned/custom-pages-module.md)
 
 ===
 
@@ -65,6 +67,8 @@ See how popular apps do this and make sure we have similar UI/UX and search resu
 
 Make sure that filtered result are animated and we display it elegantly. Not sure if we need to redirect it new /search result page or we can just display and update our content section based on result.
 
+→ **Done:** [`../done/smart-search-bar.md`](../done/smart-search-bar.md)
+
 ===
 
 ✅ Make filters fully working
@@ -76,6 +80,8 @@ Based on which route or module we are, we should provide smart filter options an
 The goal is to have a very smart filter sidebar section to filter any data that we have on different modules & pages.
 
 We should also refine and update our sort options based on our data and make sure this will also work properly.
+
+→ **Done:** [`../done/smart-filters.md`](../done/smart-filters.md)
 
 ===
 
@@ -103,7 +109,7 @@ Same with marketing design templates goal.
 
 ===
 
-✅ Marketing 4: Use AI to generate marketing calendar, design and video templates
+🚧 Marketing 4: Use AI to generate marketing calendar, design and video templates
 
 Now that we made some improvements on marketing calendar, canvas and video editors, I want to really extend by having AI feature that will generate design and video templates from scratch that looks very beautiful, elegant, instagrammable and has wow factor to hosts.
 
@@ -113,9 +119,11 @@ We can also make some research if there's a free or low cost API that can do thi
 
 The end goal is that with the help of AI, we should be able to generate calendar, canvas and video templates for our hosts that's still using our booking or property information and some prompts/settings.
 
+→ **In progress:** [`../in-progress/marketing-ai-generated-templates.md`](../in-progress/marketing-ai-generated-templates.md) (calendar MVP shipped; design/video next)
+
 ===
 
-Marketing 5: Refine & finalize Marketing module
+🔵 Marketing 5: Refine & finalize Marketing module
 
 - Make sure each module is optimized. Right now, something is not right and kinda laggy when we visit it
 - Make sure publish to social platform is supported
@@ -125,11 +133,9 @@ Marketing 5: Refine & finalize Marketing module
 
 ✅ Refine footer & create public pages
 
-Let's refine all our footer links and we should create public pages for each of them.
+Plan only — not implemented. Footer links point at `/about`, `/contact`, `/support`, `/cookies` but routes/pages do not exist yet.
 
-By default, let's generate a default but still looks good and contains essential information per public page.
-
-Specially with Legal links & pages, please generate a content based on all the information that you have for application, features, content, etc.
+→ **Plan:** [`../planned/refine-footer-public-pages.md`](../planned/refine-footer-public-pages.md)
 
 ===
 
@@ -160,9 +166,11 @@ All the settings should be configurable in our admin dashboard as well. If we ca
 
 I think there are a lot of existing projects like this, what we need to plan and refine is this should be production grade level, will not introduce any issues or security risks, it should not crash, and it should be easy to use and helpful for guests.
 
+→ **Done:** [`../done/ai-voice-receptionist.md`](../done/ai-voice-receptionist.md)
+
 ===
 
-✅ Provide chat app that can access and manage entire dashboard
+📋 Provide chat app that can access and manage entire dashboard
 
 Another big module that I'd like to support is to have a chat app that can access and manage entire dashboard. This should be a chat app that can understand natural language, and can do actions like booking, check-in, check-out, etc. It should be able to understand the context of the conversation and respond accordingly.
 
@@ -181,46 +189,108 @@ We need to plan the architecture, flow, process for both module to build a produ
 
 Also, this should be tied app with our pricing and subscription module so that we can limit the free usages of this feature to a certain amount and charge for additional usage.
 
-===
-
-Booking from listing e2e
+→ **Plan:** [`../planned/ai-dashboard-assistant.md`](../planned/ai-dashboard-assistant.md)
 
 ===
 
-Avail parking e2e flow
+🔵 Booking from listing e2e
 
-Flow 1: Get parking after confirmed booking
-Flow 2: Get parking from listing
+I want you to review our whole booking end to end flow and make sure it's production ready. When a guest book from our listing page or from our guest form. Please review each step, flow and process that we have. Improve UI/UX or flow that we need to improve.
 
-===
+The end goal is to make sure that we don't miss any important step or process for e2e booking process. Make sure we provide the best UX as much as possible to our guest.
 
-Host/Guest booking payment e2e
+Do /impeccable critique, audit, review, harden & polish of our current e2e booking process and list down things that we can improve and create superpowers executable plan for it.
 
-===
+🔵 Refine booking detail page, edit and workflow
 
-Guest chat to confirmed booking flow e2e
-
-===
-
-Free trial, subscription and payments to use app
+- Improve UI/UX of entire booking detail page and edit form
+- Improve UI/UX and refine each elements, sections, modal, actions, process, status, logic and flow for booking e2e flow and make sure it's production ready
+  - Update implementation for automated gmail listener to use resend reply/hooks to prevent the need of Google CASA approval
+  - Entirely remove or limit access for google calendar and sheets sync?
 
 ===
 
-Review, refine and improve e2e of booking flow/page
+🔵 Avail parking e2e flow
+
+Phase 1: Plan how host received parking booking
+The first phase than we need to finalize for parking e2e is how host should receive and handle parking bookings. Should we follow how property bookings? Create new workflow and different status for parking? Also, how we should notify parking host that they received parking and need immediate review? Same telegram flow?
+
+    Phase 0: Update parking registration, settings, etc
+      - Update parking registration to ask for type (car, motor)
+      - Update parking dimension to list of car type we can accommodate? In relation to height clearance
+    Phase 1a: How do we notify both side (host & guest) about the parking request
+      - Host side:
+        - For immediate booking, use broadcast notif? First to accept will get the booking, if not process after 5 or 10mins, send new broadcast request.
+        - How host will accept, reject, manage, send parking endorsement, etc
+      - Guest side:
+        - We should have realtime update if someone avail our parking, parking status, how guest can get and view parking endorsement
+    Phase 1b: Create or reuse property detail page for parking detail page & edit form
+      - Parking host should be able or required to modify their parking size/dimension so that we know if a certain car is fit or not when we connect or provide parking to guests
+    Phase 1c: Create new workflow, actions & status for parking e2e flow
+    Phase 1d: Update bookings page to support updated flow, changes (list, kanban?)
+    Phase 1e: Review, refine, finalize and make sure it's production ready, multi-tenant/property/user, etc
+
+Phase 2a: Get immediate parking
+
+- When a guest avail a same day or on the spot look for available parking slot
+- What's the logic or process to get the best parking available
+  - Check-in & check-out
+  - Respect tower unless bay
+  - Is car going to fit on parking dimension
+- Parking expiration: when host did not accept or process parking after a certain period, we will pass and look for other parking host
+  - 15mins expiration for booking. 1hr expiration for non-same day/upcoming bookings
+- Flow when we don't find available parking, do refund & notify guests?
+
+Phase 2b: Look for parking after a confirmed booking from other host/property (upcoming/advance parking booking)
+
+- When a guest book a property and require parking, and host does not have any parking, we should plan a way to automatically search and look for available parking on the same booking date/s and we should notify parking host to accept and manage it.
+- Mostly same flow and logic with immediate parking flow
+
+Phase 3: Finalize how we display parking from our listing
+
+How are we going to display or provide UI/UX when guests/user wants to find a parking.
+Same UI that we have now? But what if that parking host is not responsive anymore? Or not replying immediately?
+
+- Should provide few ways to get parking?
+  - A: Same UI listing we have for properties
+  - B: Find/search available parking based on filters
+
+Phase 4: Manual & Physical on site tasks:
+
+- Picture different type of parking (tower, bay). Edit and add parking slot number dynamically
+- Measure dimension and height clearance
 
 ===
 
-Redesign our main landing page
+🔵 Host/Guest booking payment e2e
 
 ===
 
-===
-
-Implement Sentry & Posthog
+🔵 Invoice generator? Or provide invoice every after successful booking
 
 ===
 
-✅ Do an ground up redesign for mobile view
+🔵 Guest chat to confirmed booking flow e2e
+
+===
+
+🔵 Free trial, subscription and payments to use app
+
+===
+
+🔵 Review, refine and improve e2e of booking flow/page
+
+===
+
+🔵 Redesign our main landing page
+
+===
+
+🔵 Implement Sentry & Posthog
+
+===
+
+🚧 Do an ground up redesign for mobile view
 
 I want to have a rebuilt or groundup redesign for mobile view to make our app look and feels like a native mobile app.
 Not just simply a website or page that's adjusted to be responsive to different resolution.
@@ -229,9 +299,26 @@ The end goal is when we resize to mobile view, it should look and feel like a na
 
 Apply to all pages including both public and dashboard pages
 
+→ **In progress:** [`../in-progress/mobile-native-redesign.md`](../in-progress/mobile-native-redesign.md)
+
 ===
 
-Review implementation on the following modules
+📋 Do ground up redesign in dashboard UI to not make it look like AI generated app
+
+Even after multiple redesign changes, it looks and feel like our dashboard UI looks like AI generated dashboard app.
+We need to do /impeccable critique, audit then do plan, shape, document then do layout, optimize, bolder & polish.
+The end goal is to make our boring or current dashboard UI to level up and looks more beautiful, elegant, clean & professional, animated & interactive that offers best UI/UX and specially, does not look like AI generated design and application.
+You can refer to our public pages design. See how elegant and clean it is.
+
+We can separate our dashboard redesign to different phases. Maybe start with base styles, fonts & sizing, colors & theme and designs, etc. Then, next phases are structural change, text copy change, alignment, responsiveness, etc.
+
+Just make sure that we don't change or affect any public related pages that we have. make sure not even one single style on our public pages will be affected. We need to make sure that the design in our dashboard is scoped & isolated and will not affect our public UIs.
+
+→ **Plan:** [`../planned/dashboard-ground-up-redesign.md`](../planned/dashboard-ground-up-redesign.md)
+
+===
+
+🔵 Review implementation on the following modules
 
 Review the implementation on the following modules and make sure we simplify, recode, improve and make sure it's production ready and does not contain trash code or changes, poor implemented features caused by AI vibe coding. Be a 10x senior software engineering and review the following modules and make sure it met our standards and they are all production ready and will not cause any performance issue or security and lastly, make sure everything is still working properly
 
@@ -241,23 +328,23 @@ Review the implementation on the following modules and make sure we simplify, re
 
 ===
 
-Offer ads within the app
+🔵 Offer ads within the app
 
 ===
 
-Display announcements per development from super admin
+🔵 Display announcements per development from super admin
 
 ===
 
-Monitoring for suspicious or unusual activities from super admin
+🔵 Monitoring for suspicious or unusual activities from super admin
 
 ===
 
-Guest Review after booking
+🔵 Guest Review after booking
 
 ===
 
-Prod readiness checklist
+🔵 Prod readiness checklist
 
 - Frontend
 - Backend & APIs
@@ -290,9 +377,11 @@ The goal is to find and implement the best way to document each flow, logic, pro
 
 Let's update our implementation that's using or relying with AI like the AI-auto reply, AI receptionist, and other future related features that will use AI.
 
+→ **Done:** [`../done/docs-obsidian-tooling-sync.md`](../done/docs-obsidian-tooling-sync.md)
+
 ===
 
-✅ Analyze entire app pages & features and brainstorm how AI can help us for each feature
+📋 Analyze entire app pages & features and brainstorm how AI can help us for each feature
 
 Analyze the entire codebase, pages and features that we have, and see how AI can help hosts, guests, admin, and us developers on anything
 
@@ -301,9 +390,11 @@ Example:
 - Use AI to analyze and suggest marketing strategies
 - Use AI to help managing finance, analyze big expenses, how to fix and suggest financial strats, etc
 
+→ **Plan / backlog:** [`../planned/ai-opportunities-roadmap.md`](../planned/ai-opportunities-roadmap.md)
+
 ===
 
-✅ Document, refine, finalize booking detail & workflow
+🚧 Document, refine, finalize booking detail & workflow
 
 I want you to carefully review our booking detail page, booking edit and booking workflow and see how we can improve, refine, make other flow, logic and settings to be configurable from our property settings and make the whole flow to be multi users and multi property. What we have in prod, we are focused and only support Kame Home 2604. Now we are building our system to be used with different tenant, users, multi-properties, multi residence or property type and I want every little things to be configurable and refined for production used.
 
@@ -321,18 +412,59 @@ Also, another important thing I'd like to improve is to automate everything as m
 
 The end goal is after this, our booking detail, edit and workflow is refined & finalize and production ready.
 
+→ **In progress:** [`../in-progress/booking-workflow-multi-tenancy.md`](../in-progress/booking-workflow-multi-tenancy.md) · v1 slice **done:** [`../done/booking-workflow-configurable-docs.md`](../done/booking-workflow-configurable-docs.md)
+
 ===
 
-Review each dashboard pages, section & actions based on user role
+🔵 Review each dashboard pages, section & actions based on user role
 
 After we refine the roles & permissions that we have on both org and property level, we need to revisit and review each pages within the dashboard and make sure that each section, elements, action, process, flow, basically everything is well thought and only be accessible based on user role
 
 ===
 
-In app notification for chat & other activity
+📋 In app notification for chat & other activity
 
 When we receive new chat or guest message from inbox, we should display a toast or notification message on our app as long as we are using the app and even we are not on inbox page.
 
 For now, I think this would be helpful for chat events, but if you can see other features and functionality that you think we can add to our notification. Feel free to suggest and plan it as well
 
-Maybe analyze all the activities, events and actions that we have on Notifications page module as support in app notification on all of it.
+Maybe analyze all the activities, events and actions that we have on Notifications page module as support in app notification on all activities, events or actions that you think it's helpful to display within our app.
+
+Analyze how popular apps how handle this and make sure we implement the way possible and make sure it will not result to any kind of performance or heavy process issues.
+
+→ **Plan:** [`../planned/in-app-notifications.md`](../planned/in-app-notifications.md)
+
+===
+
+✅ Smart import data with use of AI
+
+Shipped: [`../done/smart-ai-data-importer.md`](../done/smart-ai-data-importer.md) + [`../done/import-preview-fix-queue.md`](../done/import-preview-fix-queue.md)
+
+===
+
+🔵 Pool fee should be configurable via development settings and we need to adjust AI receptionist or AI tool that beside on reading property & booking info, we should also check which development it's under the current property and have access to development information just like the amenities, pool fee, schedule of pool, requirements, guides, etc
+
+===
+
+🔵 Create marketing video ads for our app with remotion that features our core & main features
+
+===
+
+🔵 Support google map directions from use current area to properties/places
+
+===
+
+✅ Deployment process to different environment (local - dev - prod) — see [`supabase-deploy-guardrails-and-rollback`](../done/supabase-deploy-guardrails-and-rollback.md)
+
+Now, I would like to plan to create supabase dev env for staging.
+Make sure we update all scripts, docs, commands, hooks/cofiguration, run tasks or any other process that we have and make sure it knows and we have a solid flow and steps/guard rails to deploy our application from local -> dev -> prod.
+
+Analyze our current setup, update things need to be updated to have these flow and make sure we have a solit process/flow/script that we can use to makes deployment to different environment very easy and safe.
+
+Make sure each command or deployment has guard rails, safety check, and can safely rollback changes anytime in case we have executed or did dangerous actions.
+
+The end goal is that deployment to different env should be easy for us, and we implement safety measures, standard process. WE should have a solid and best implemenation for this.
+
+===
+
+🔵 Cancellation Process

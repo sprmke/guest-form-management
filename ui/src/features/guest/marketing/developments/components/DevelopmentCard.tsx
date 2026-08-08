@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { MapPin, Star, Building2, Home, Layers, ArrowRight } from 'lucide-react';
 
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
+import { resolveListingCoverImage } from '@/features/guest/marketing/shared/lib/mockListingImages';
 
 import { cn } from '@/lib/utils';
 
@@ -59,6 +60,12 @@ export function DevelopmentCard({
 }: DevelopmentCardProps) {
   const typeConfig = TYPE_CONFIG[development.type];
   const TypeIcon = typeConfig.icon;
+  const coverImage = resolveListingCoverImage(
+    development.images,
+    development.coverImage,
+    'development',
+    development.slug
+  );
 
   if (variant === 'carousel') {
     return (
@@ -71,7 +78,7 @@ export function DevelopmentCard({
         <Link to={`/developments/${development.slug}`} className="block">
           <div className="relative mb-2 aspect-square overflow-hidden rounded-xl">
             <Image
-              src={development.coverImage}
+              src={coverImage}
               alt={development.name}
               fill
               className="object-cover transition-transform duration-500 group-hover:scale-105"
@@ -126,7 +133,7 @@ export function DevelopmentCard({
         <div className="border-border bg-card hover:border-primary/20 overflow-hidden rounded-2xl border shadow-sm transition-all duration-300 hover:shadow-xl">
           <div className="relative aspect-[16/9] overflow-hidden">
             <Image
-              src={development.coverImage}
+              src={coverImage}
               alt={development.name}
               fill
               className="object-cover transition-transform duration-500 group-hover:scale-105"

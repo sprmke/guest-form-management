@@ -23,7 +23,10 @@ servePublic('get-booked-dates', async (req) => {
     .from('guest_submissions')
     .select('id, check_in_date, check_out_date, status')
     .eq('property_id', propertyId)
-    .neq('status', 'CANCELLED');
+    .neq('status', 'CANCELLED')
+    // IMPORTED bookings are historical records — they must not block live availability.
+    // Treat them the same as CANCELLED for date-blocking purposes.
+    .neq('status', 'IMPORTED');
 
   if (error) {
     console.error('Database error:', error);
@@ -55,7 +58,9 @@ servePublic('get-booked-dates', async (req) => {
   const bookedDateRanges =
     bookings
       ?.filter((booking) => {
-        if (booking.status === 'CANCELLED') {
+        // CANCELLED and IMPORTED are already excluded by the DB query above;
+        // this guard handles any future statuses that slip through.
+        if (booking.status === 'CANCELLED' || booking.status === 'IMPORTED') {
           return false;
         }
 

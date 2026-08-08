@@ -9,17 +9,22 @@ cd "$ROOT"
 
 SUPABASE=("$ROOT/scripts/dev/bunx" --bun supabase@latest)
 PROJECT_REF_FILE="$ROOT/supabase/.temp/project-ref"
+# shellcheck source=scripts/dev/check-linked-project.sh
+source "$ROOT/scripts/dev/check-linked-project.sh"
 
 DB_ONLY=false
 FUNCTIONS_ONLY=false
 INCLUDE_ALL=false
 ALLOW_MULTI_TENANCY=false
+SKIP_BACKUP=false
 
 usage() {
   cat <<'EOF'
 Usage: ./scripts/deploy/deploy-supabase.sh [options]
 
 Deploy to the linked Supabase project (supabase link --project-ref <ref>).
+Backs up the linked project first (schema + data) unless --skip-backup is
+passed. Requires typing "prod" to confirm.
 
 Options:
   --db-only              Run supabase db push only
@@ -27,6 +32,7 @@ Options:
   --include-all          Pass --include-all to db push (migration history repair)
   --allow-multi-tenancy  Skip guard when this tree has multi-tenancy edge code
                          (requires matching DB migrations on the linked project)
+  --skip-backup          Skip the automatic pre-db-push backup (loud warning; not recommended)
   -h, --help             Show this help
 
 Examples:
@@ -55,6 +61,10 @@ while [[ $# -gt 0 ]]; do
       ALLOW_MULTI_TENANCY=true
       shift
       ;;
+    --skip-backup)
+      SKIP_BACKUP=true
+      shift
+      ;;
     -h | --help)
       usage
       exit 0
@@ -78,9 +88,27 @@ if [[ ! -f "$PROJECT_REF_FILE" ]]; then
   exit 1
 fi
 
-PROJECT_REF="$(tr -d '[:space:]' <"$PROJECT_REF_FILE")"
-echo "Linked project: $PROJECT_REF"
-echo "See docs/archive/operations/production-deployment.md for backups and post-deploy steps."
+print_linked_project
+if [[ "$LINKED_PROJECT_KIND" == "dev" ]]; then
+  echo "" >&2
+  echo "ERROR: This is the PROD deploy script but the linked project looks like DEV ($LINKED_PROJECT_REF)." >&2
+  echo "Use 'bun run deploy:supabase:dev' for dev, or re-link to prod first:" >&2
+  echo "  bunx supabase@latest link --project-ref <prod-ref>" >&2
+  exit 1
+fi
+
+echo "════════════════════════════════════════════════════════════"
+echo "  PRODUCTION Supabase deploy"
+echo "  Linked project: $LINKED_PROJECT_REF"
+echo "  See docs/archive/operations/production-deployment.md for the full checklist."
+echo "════════════════════════════════════════════════════════════"
+echo ""
+echo "Type prod to confirm deploy to this project:"
+read -r confirm
+if [[ "$confirm" != "prod" ]]; then
+  echo "Aborted (expected: prod)."
+  exit 1
+fi
 echo
 
 assert_functions_match_db_schema() {
@@ -102,6 +130,20 @@ assert_functions_match_db_schema() {
   fi
 }
 
+run_backup_if_needed() {
+  if [[ "$FUNCTIONS_ONLY" == true ]]; then
+    return 0
+  fi
+  if [[ "$SKIP_BACKUP" == true ]]; then
+    echo "⚠️  WARNING: --skip-backup set — proceeding WITHOUT a pre-deploy backup." >&2
+    echo "⚠️  If this db push goes wrong, you will have nothing scripted to roll back to." >&2
+    return 0
+  fi
+  echo "→ Backing up before db push (./scripts/deploy/backup-supabase.sh prod)"
+  "$ROOT/scripts/deploy/backup-supabase.sh" prod
+  echo
+}
+
 run_db_push() {
   local -a push_args=(db push)
   if [[ "$INCLUDE_ALL" == true ]]; then
@@ -117,15 +159,22 @@ run_functions_deploy() {
   "${SUPABASE[@]}" functions deploy
 }
 
+run_backup_if_needed
+
+DEPLOY_KIND="both"
 if [[ "$DB_ONLY" == true ]]; then
+  DEPLOY_KIND="db"
   run_db_push
 elif [[ "$FUNCTIONS_ONLY" == true ]]; then
+  DEPLOY_KIND="functions"
   run_functions_deploy
 else
   run_db_push
   echo
   run_functions_deploy
 fi
+
+log_deploy "prod" "$DEPLOY_KIND"
 
 echo
 echo "Deploy complete."

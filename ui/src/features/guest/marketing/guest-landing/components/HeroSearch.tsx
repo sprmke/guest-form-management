@@ -1,21 +1,12 @@
 import { forwardRef, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { format } from 'date-fns';
 import { AnimatePresence, motion } from 'framer-motion';
-import {
-  Building2,
-  Minus,
-  Mountain,
-  Navigation,
-  Palmtree,
-  Plus,
-  Search,
-  Waves,
-} from 'lucide-react';
+import { Minus, Plus, Search } from 'lucide-react';
 
-import { suggestedDestinations } from '@/features/guest/marketing/guest-landing/data/landingContent';
 import {
   HERO_SEARCH_SINGLE_MONTH_PANEL_WIDTH,
   heroSearchCalendarClassNames,
@@ -23,6 +14,29 @@ import {
   heroSearchWhenPanelWidth,
 } from '@/features/guest/marketing/guest-landing/lib/heroSearchCalendarClassNames';
 import { lerp, smoothstep } from '@/features/guest/marketing/shared/lib/listingScrollSearchEasing';
+import { resolveListingSearchPreferType } from '@/features/guest/marketing/shared/lib/listingScrollSearchPaths';
+import type { ListingSearchPreferType } from '@/features/guest/marketing/shared/lib/listingSearchPreferType';
+import { SearchSuggestedEmptyPanel } from '@/features/guest/search/components/SearchSuggestedEmptyPanel';
+import {
+  flattenSuggestions,
+  SearchSuggestionPanel,
+  type SuggestionCategoryTarget,
+} from '@/features/guest/search/components/SearchSuggestionPanel';
+import { useSearchSuggestions } from '@/features/guest/search/hooks/useSearchSuggestions';
+import type { SuggestedSearchItem } from '@/features/guest/search/hooks/useSuggestedCategoryListings';
+import { requestGuestGeolocation } from '@/features/guest/search/lib/geolocation';
+import {
+  isConceptSuggestionId,
+  isNearbyQuery,
+  nearbyCategoryFromQuery,
+  nearbyDisplayLabel,
+  resolveClientSearchIntent,
+} from '@/features/guest/search/lib/searchIntents';
+import { buildSearchHref, parseSearchParams } from '@/features/guest/search/lib/searchParams';
+import type {
+  SearchListingsType,
+  SearchSuggestionItem,
+} from '@/features/guest/search/types/search';
 
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
@@ -97,14 +111,6 @@ function estimatedPanelHeight(field: SearchField, calendarMonths: number) {
   }
 }
 
-const ICONS = {
-  nearby: Navigation,
-  city: Building2,
-  beach: Waves,
-  mountain: Mountain,
-  island: Palmtree,
-} as const;
-
 export interface HeroSearchValues {
   location: string;
   checkIn: string;
@@ -114,8 +120,14 @@ export interface HeroSearchValues {
 
 interface HeroSearchProps {
   className?: string;
-  /** Navigate here on search when `onSearch` is not provided. Default: `/properties` */
+  /** Navigate here on search when `onSearch` is not provided. Default: `/search` */
   redirectTo?: string;
+  /**
+   * Prefer this listing family in typeahead + `/search` All view (`focus` URL param).
+   * Omit to resolve from the current pathname (or existing `focus` on `/search`).
+   * “Search all results” always clears focus.
+   */
+  preferType?: ListingSearchPreferType | null;
   /** Pre-fill "Where" when no `?location=` query param (route-derived on listing pages). */
   defaultLocation?: string;
   /** Local filter mode — skips navigation */
@@ -148,6 +160,26 @@ function parseGuestsParam(raw: string | null): GuestCounts {
   return { adults: total, children: 0, infants: 0, pets: 0 };
 }
 
+function parseGuestBreakdown(sp: URLSearchParams): GuestCounts {
+  const hasBreakdown = sp.has('adults') || sp.has('children') || sp.has('pets');
+  if (hasBreakdown) {
+    const adults = Number.parseInt(sp.get('adults') ?? '', 10);
+    const children = Number.parseInt(sp.get('children') ?? '', 10);
+    const pets = Number.parseInt(sp.get('pets') ?? '', 10);
+    return {
+      adults: Number.isFinite(adults) && adults >= 0 ? Math.max(adults, 1) : 1,
+      children: Number.isFinite(children) && children >= 0 ? children : 0,
+      infants: 0,
+      pets: Number.isFinite(pets) && pets >= 0 ? pets : 0,
+    };
+  }
+  return parseGuestsParam(sp.get('guests'));
+}
+
+function readWhereParam(sp: URLSearchParams, fallback = ''): string {
+  return (sp.get('where') ?? sp.get('location') ?? fallback).trim() || fallback;
+}
+
 function buildSearchValues(
   location: string,
   dateRange: DateRange | undefined,
@@ -164,10 +196,9 @@ function buildSearchValues(
 
 function formatGuestSummary(counts: GuestCounts) {
   const guestCount = counts.adults + counts.children;
-  if (guestCount === 0 && counts.infants === 0 && counts.pets === 0) return '';
+  if (guestCount === 0 && counts.pets === 0) return '';
   const parts: string[] = [];
   if (guestCount > 0) parts.push(`${guestCount} guest${guestCount === 1 ? '' : 's'}`);
-  if (counts.infants > 0) parts.push(`${counts.infants} infant${counts.infants === 1 ? '' : 's'}`);
   if (counts.pets > 0) parts.push(`${counts.pets} pet${counts.pets === 1 ? '' : 's'}`);
   return parts.join(', ');
 }
@@ -175,7 +206,6 @@ function formatGuestSummary(counts: GuestCounts) {
 function formatGuestSummaryCompact(counts: GuestCounts) {
   const guestCount = counts.adults + counts.children;
   if (guestCount > 0) return String(guestCount);
-  if (counts.infants > 0) return `${counts.infants} inf`;
   if (counts.pets > 0) return `${counts.pets} pet`;
   return '';
 }
@@ -400,7 +430,8 @@ const SearchSegment = forwardRef<HTMLButtonElement, SearchSegmentProps>(function
 
 export function HeroSearch({
   className,
-  redirectTo = '/properties',
+  redirectTo: _redirectTo = '/search',
+  preferType: preferTypeProp,
   defaultLocation = '',
   onSearch,
   fields = DEFAULT_FIELD_ORDER,
@@ -414,6 +445,10 @@ export function HeroSearch({
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [searchParams] = useSearchParams();
+  const preferType =
+    preferTypeProp !== undefined
+      ? preferTypeProp
+      : (parseSearchParams(searchParams).focus ?? resolveListingSearchPreferType(pathname));
   const rootRef = useRef<HTMLDivElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -427,15 +462,13 @@ export function HeroSearch({
   const prevFieldRef = useRef<SearchField | null>(null);
   const hasOpenedRef = useRef(false);
   const [pillBounds, setPillBounds] = useState<SegmentPillBounds | null>(null);
+  const [suggestionIndex, setSuggestionIndex] = useState(-1);
 
   const [activeField, setActiveField] = useState<SearchField | null>(null);
-  const [location, setLocation] = useState(
-    () => searchParams.get('location') ?? defaultLocation ?? ''
-  );
+  const [location, setLocation] = useState(() => readWhereParam(searchParams, defaultLocation));
 
   useEffect(() => {
-    const paramLocation = searchParams.get('location');
-    setLocation(paramLocation ?? defaultLocation ?? '');
+    setLocation(readWhereParam(searchParams, defaultLocation));
   }, [pathname, defaultLocation, searchParams]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
     const from = parseDateParam(searchParams.get('checkIn'));
@@ -443,9 +476,11 @@ export function HeroSearch({
     if (!from) return undefined;
     return { from, to: to ?? from };
   });
-  const [guests, setGuests] = useState<GuestCounts>(() =>
-    parseGuestsParam(searchParams.get('guests'))
-  );
+  const [guests, setGuests] = useState<GuestCounts>(() => parseGuestBreakdown(searchParams));
+
+  useEffect(() => {
+    setGuests(parseGuestBreakdown(searchParams));
+  }, [pathname, searchParams]);
   const [calendarMonths, setCalendarMonths] = useState(1);
   const [rootWidth, setRootWidth] = useState(0);
   const [viewportWidth, setViewportWidth] = useState(() =>
@@ -702,27 +737,215 @@ export function HeroSearch({
     setActiveField(field);
   }, []);
 
+  const suggestionsEnabled = activeField === 'where';
+  const { data: suggestionData, isFetching: suggestionsLoading } = useSearchSuggestions(
+    location,
+    suggestionsEnabled
+  );
+
+  const flatSuggestions = flattenSuggestions({
+    locations: suggestionData?.locations ?? [],
+    developments: suggestionData?.developments ?? [],
+    properties: suggestionData?.properties ?? [],
+    parkings: suggestionData?.parkings ?? [],
+    preferType,
+  });
+
+  useEffect(() => {
+    setSuggestionIndex(-1);
+  }, [location, suggestionData]);
+
   const selectDestination = (label: string) => {
     setLocation(label);
     setActiveField('when');
   };
 
-  const handleSearch = () => {
+  const navigateToSearch = async (
+    whereValue: string,
+    options?: {
+      clearFocus?: boolean;
+      type?: SearchListingsType;
+      focus?: ListingSearchPreferType | null;
+    }
+  ) => {
+    const values = buildSearchValues(whereValue, dateRange, guests);
+    let lat: number | null = null;
+    let lng: number | null = null;
+
+    if (isNearbyQuery(whereValue)) {
+      const geo = await requestGuestGeolocation();
+      if (geo.ok) {
+        lat = geo.latitude;
+        lng = geo.longitude;
+      }
+      // Always land on /search — page shows Allow location when coords missing.
+    }
+
+    const nearbyCategory =
+      options?.focus !== undefined
+        ? options.focus
+        : (nearbyCategoryFromQuery(whereValue) ?? (options?.clearFocus ? null : preferType));
+
+    const type =
+      options?.type ?? (isNearbyQuery(whereValue) && nearbyCategory ? nearbyCategory : 'all');
+    const focus =
+      options?.focus !== undefined
+        ? options.focus
+        : options?.clearFocus
+          ? null
+          : isNearbyQuery(whereValue)
+            ? nearbyCategory
+            : preferType;
+
+    const whereParam = isNearbyQuery(whereValue)
+      ? nearbyDisplayLabel(nearbyCategoryFromQuery(whereValue) ?? nearbyCategory)
+      : values.location;
+
+    navigate(
+      buildSearchHref({
+        where: whereParam,
+        checkIn: values.checkIn,
+        checkOut: values.checkOut,
+        adults: guests.adults,
+        children: guests.children,
+        infants: 0,
+        pets: guests.pets,
+        type,
+        lat,
+        lng,
+        focus,
+      })
+    );
+    setActiveField(null);
+  };
+
+  const viewSuggestionCategory = (target: SuggestionCategoryTarget) => {
+    const whereValue = location.trim();
+    if (target.type) {
+      void navigateToSearch(whereValue, {
+        type: target.type,
+        focus: target.type,
+        clearFocus: false,
+      });
+      return;
+    }
+    // Locations → All results for this where text
+    void navigateToSearch(whereValue, { type: 'all', clearFocus: true });
+  };
+
+  const selectSuggestion = (item: SearchSuggestionItem) => {
+    if (isConceptSuggestionId(item.id)) {
+      const intent = resolveClientSearchIntent(item.label);
+      const focus = intent.kind === 'concept' ? (intent.preferType ?? null) : null;
+      void navigateToSearch(item.label, {
+        type: 'all',
+        focus,
+        clearFocus: !focus,
+      });
+      return;
+    }
+    if (item.id === 'nearby' || (item.kind === 'location' && isNearbyQuery(item.label))) {
+      void navigateToSearch(nearbyDisplayLabel(preferType), {
+        type: preferType ?? 'all',
+        focus: preferType,
+      });
+      return;
+    }
+    if (item.kind === 'property' && item.slug) {
+      navigate(`/properties/${item.slug}`);
+      setActiveField(null);
+      return;
+    }
+    if (item.kind === 'development' && item.slug) {
+      navigate(`/developments/${item.slug}`);
+      setActiveField(null);
+      return;
+    }
+    if (item.kind === 'parking' && item.slug) {
+      navigate(`/parkings/${item.slug}`);
+      setActiveField(null);
+      return;
+    }
+    selectDestination(item.city || item.label);
+  };
+
+  const runSearchNavigation = (clearFocus: boolean) => {
     const values = buildSearchValues(location, dateRange, guests);
 
-    if (onSearch) {
+    if (onSearch && !clearFocus) {
       onSearch(values);
       setActiveField(null);
       return;
     }
 
-    const params = new URLSearchParams();
-    if (values.location) params.set('location', values.location);
-    if (values.checkIn) params.set('checkIn', values.checkIn);
-    if (values.checkOut) params.set('checkOut', values.checkOut);
-    if (values.guests) params.set('guests', values.guests);
-    navigate(params.size ? `${redirectTo}?${params.toString()}` : redirectTo);
+    // Always use unified /search for real results (legacy redirectTo shells ignored).
+    void navigateToSearch(values.location, { clearFocus });
+  };
+
+  const handleSearch = () => {
+    runSearchNavigation(false);
+  };
+
+  /** Typeahead “Search all results for …” — unified /search without page focus. */
+  const handleSearchAllResults = () => {
+    runSearchNavigation(true);
+  };
+
+  const pickSuggestedNearby = (label: string) => {
+    const category = nearbyCategoryFromQuery(label) ?? preferType;
+    void navigateToSearch(nearbyDisplayLabel(category), {
+      type: category ?? 'all',
+      focus: category,
+    });
+  };
+
+  const pickSuggestedDestination = (label: string) => {
+    if (isNearbyQuery(label)) {
+      pickSuggestedNearby(label);
+      return;
+    }
+    selectDestination(label);
+  };
+
+  const pickSuggestedListing = (item: SuggestedSearchItem) => {
+    if (!item.slug || !item.listingType) return;
+    if (item.listingType === 'properties') navigate(`/properties/${item.slug}`);
+    else if (item.listingType === 'developments') navigate(`/developments/${item.slug}`);
+    else navigate(`/parkings/${item.slug}`);
     setActiveField(null);
+  };
+
+  const onWhereKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
+    const liveMode = location.trim().length >= 2;
+    if (!liveMode) {
+      if (event.key === 'Enter') handleSearch();
+      return;
+    }
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setSuggestionIndex((current) =>
+        flatSuggestions.length === 0 ? -1 : Math.min(current + 1, flatSuggestions.length - 1)
+      );
+      return;
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setSuggestionIndex((current) => Math.max(current - 1, -1));
+      return;
+    }
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      if (suggestionIndex >= 0 && flatSuggestions[suggestionIndex]) {
+        selectSuggestion(flatSuggestions[suggestionIndex]);
+        return;
+      }
+      handleSearch();
+      return;
+    }
+    if (event.key === 'Escape') {
+      setActiveField(null);
+    }
   };
 
   const updateGuest = (key: keyof GuestCounts, delta: number) => {
@@ -981,40 +1204,42 @@ export function HeroSearch({
                       type="text"
                       value={location}
                       onChange={(event) => setLocation(event.target.value)}
-                      onKeyDown={(event) => event.key === 'Enter' && handleSearch()}
-                      placeholder="Search destinations"
+                      onKeyDown={onWhereKeyDown}
+                      placeholder={wherePlaceholder}
                       autoComplete="off"
+                      role="combobox"
+                      aria-expanded={location.trim().length >= 2}
+                      aria-controls="hero-search-suggestions"
+                      aria-activedescendant={
+                        suggestionIndex >= 0 ? `search-suggestion-${suggestionIndex}` : undefined
+                      }
                       className="text-foreground placeholder:text-muted-foreground border-border focus:ring-primary/30 mb-4 w-full rounded-xl border bg-transparent px-4 py-3 text-sm focus:outline-none focus:ring-2"
                     />
-                    <p className="text-foreground mb-3 text-xs font-semibold">
-                      Suggested destinations
-                    </p>
-                    <ul className="scrollbar-hide max-h-[min(42vh,300px)] space-y-1 overflow-y-auto">
-                      {suggestedDestinations.map((destination) => {
-                        const Icon = ICONS[destination.icon];
-                        return (
-                          <li key={destination.id}>
-                            <button
-                              type="button"
-                              onClick={() => selectDestination(destination.label)}
-                              className="hover:bg-muted flex min-h-[44px] w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors"
-                            >
-                              <span className="bg-muted text-primary flex size-10 shrink-0 items-center justify-center rounded-xl">
-                                <Icon className="h-4 w-4" aria-hidden />
-                              </span>
-                              <span className="min-w-0">
-                                <span className="text-foreground block text-sm font-medium">
-                                  {destination.label}
-                                </span>
-                                <span className="text-muted-foreground block truncate text-xs">
-                                  {destination.subtitle}
-                                </span>
-                              </span>
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
+                    {location.trim().length >= 2 ? (
+                      <div id="hero-search-suggestions" role="listbox">
+                        <SearchSuggestionPanel
+                          locations={suggestionData?.locations ?? []}
+                          developments={suggestionData?.developments ?? []}
+                          properties={suggestionData?.properties ?? []}
+                          parkings={suggestionData?.parkings ?? []}
+                          isLoading={suggestionsLoading}
+                          query={location}
+                          activeIndex={suggestionIndex}
+                          onHighlight={setSuggestionIndex}
+                          onSelect={selectSuggestion}
+                          onSearchAnyway={handleSearchAllResults}
+                          onViewCategory={viewSuggestionCategory}
+                          preferType={preferType}
+                        />
+                      </div>
+                    ) : (
+                      <SearchSuggestedEmptyPanel
+                        preferType={preferType}
+                        onPickNearby={pickSuggestedNearby}
+                        onPickDestination={pickSuggestedDestination}
+                        onPickListing={pickSuggestedListing}
+                      />
+                    )}
                   </div>
                 ) : null}
 
@@ -1069,13 +1294,6 @@ export function HeroSearch({
                       value={guests.children}
                       onDecrement={() => updateGuest('children', -1)}
                       onIncrement={() => updateGuest('children', 1)}
-                    />
-                    <GuestRow
-                      label="Infants"
-                      subtitle="Under 2"
-                      value={guests.infants}
-                      onDecrement={() => updateGuest('infants', -1)}
-                      onIncrement={() => updateGuest('infants', 1)}
                     />
                     <GuestRow
                       label="Pets"

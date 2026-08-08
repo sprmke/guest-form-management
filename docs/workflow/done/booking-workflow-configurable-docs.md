@@ -19,7 +19,7 @@ kind: plan
 
 **Tech Stack:** Postgres migrations, Deno edge (`_shared/`), Vite React admin UI, existing `app-settings` / `transition-booking` endpoints.
 
-**Parent audit/design:** [`booking-workflow-multi-tenancy.md`](../planned/booking-workflow-multi-tenancy.md)
+**Parent audit/design:** [`booking-workflow-multi-tenancy.md`](../in-progress/booking-workflow-multi-tenancy.md)
 
 ## Global Constraints
 
@@ -544,7 +544,7 @@ EOF
 
 **Files:**
 
-- Modify: `docs/workflow/planned/booking-workflow-multi-tenancy.md` — mark tasks 1–7 as planned-for-implementation via this plan; leave 8–11 backlog
+- Modify: `docs/workflow/in-progress/booking-workflow-multi-tenancy.md` — mark tasks 1–7 as planned-for-implementation via this plan; leave 8–11 backlog
 - Modify: `docs/PROJECT.md` or architecture edge-functions/settings sections if columns/API surface documented there
 - Modify: `docs/workflow/planned/README.md` (index row)
 

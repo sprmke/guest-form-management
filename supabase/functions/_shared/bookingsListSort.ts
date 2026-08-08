@@ -21,6 +21,7 @@ const STATUS_PRIORITY: Record<string, number> = {
   READY_FOR_CHECKOUT: 6,
   READY_FOR_CHECKIN: 7,
   COMPLETED: 8,
+  IMPORTED: 10,
   CANCELLED: 9,
 };
 

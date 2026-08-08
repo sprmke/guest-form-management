@@ -50,7 +50,7 @@ flowchart TB
   end
 ```
 
-**Important:** Production Supabase deploys stay blocked until a human says unlock word **`kamewave`** in chat (`.cursor/rules/no-prod-deploy.mdc`). Dev deploys use `bun run deploy:supabase:dev` and never touch prod.
+**Important:** Production Supabase deploys stay blocked until a human says unlock word **`kamewave`** in chat (`.cursor/rules/no-prod-deploy.mdc`). Dev deploys (`bun run deploy:supabase:dev`, `:dev:db`, `:dev:functions`) run **without** the kamewave prompt — the script's own DEV/PROD ref check plus a typed `dev` confirmation is the safety net, and it never touches prod.
 
 ---
 
@@ -427,16 +427,22 @@ Hybrid mode covers **edge function code**, not unapplied migration DDL.
 
 ## 6. VS Code / Cursor run tasks
 
-| Task                                    | What it runs                                              |
-| --------------------------------------- | --------------------------------------------------------- |
-| **Start dev server** _(default)_        | `./dev.sh` — full local stack                             |
-| **Dev: Local Supabase (full stack)**    | `./dev.sh` — alias                                        |
-| **Dev: UI only (remote Supabase)**      | `./dev.sh --ui-only` — legacy; uses `ui/.env.development` |
-| **Dev: Hosted dev (UI only)**           | `./dev.sh --ui-only --env dev`                            |
-| **Dev: Edge functions (local stack)**   | `bun run dev:api`                                         |
-| **Dev: Edge functions (dev stack)**     | `bun run dev:remote-api`                                  |
-| **Dev: Hosted dev (hybrid — API + UI)** | Parallel: remote-api + hosted UI                          |
-| **Deploy: Supabase dev**                | `bun run deploy:supabase:dev`                             |
+| Task                                      | What it runs                                                |
+| ----------------------------------------- | ----------------------------------------------------------- |
+| **Start dev server** _(default)_          | `./dev.sh` — full local stack                               |
+| **Dev: Local Supabase (full stack)**      | `./dev.sh` — alias                                          |
+| **Dev: UI only (remote Supabase)**        | `./dev.sh --ui-only` — legacy; uses `ui/.env.development`   |
+| **Dev: Hosted dev (UI only)**             | `./dev.sh --ui-only --env dev`                              |
+| **Dev: Edge functions (local stack)**     | `bun run dev:api`                                           |
+| **Dev: Edge functions (dev stack)**       | `bun run dev:remote-api`                                    |
+| **Dev: Hosted dev (hybrid — API + UI)**   | Parallel: remote-api + hosted UI                            |
+| **Deploy: Supabase dev**                  | `bun run deploy:supabase:dev`                               |
+| **Deploy: Supabase dev (db only)**        | `bun run deploy:supabase:dev:db`                            |
+| **Deploy: Supabase dev (functions only)** | `bun run deploy:supabase:dev:functions`                     |
+| **Backup: Supabase dev / prod**           | `bun run backup:supabase:dev` / `:prod`                     |
+| **Rollback: Supabase dev / PROD**         | `bun run rollback:supabase:dev` / `:prod` (prod = kamewave) |
+| **Env: Status**                           | `bun run env:status`                                        |
+| **Migrations: Status (dev / prod)**       | `bun run migrations:status:dev` / `:prod`                   |
 
 **Debug compounds:** Run and Debug → **Start dev server + Chrome**, **Dev: Hosted dev + Chrome**, **Dev: Hosted dev (hybrid) + Chrome**.
 
@@ -453,21 +459,24 @@ cat supabase/.temp/project-ref
 | Dev ref     | `deploy:supabase:dev`, dev Dashboard work                        |
 | Prod ref    | Read-only (`db diff --linked`); prod deploy only with `kamewave` |
 
+Or the scripted version: `bun run env:status` (prints ref + `dev`/`prod`/`unknown` classification).
+
 ---
 
 ## 8. Troubleshooting
 
-| Symptom                                            | Fix                                                                                                                                                                                                           |
-| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `./dev.sh --ui-only --env dev` → missing env file  | Create `ui/.env.development.dev` from example                                                                                                                                                                 |
-| `dev:remote-api` → missing `.env.dev.local`        | Create `supabase/.env.dev.local` from example                                                                                                                                                                 |
-| Admin sign-in fails on preview                     | Add preview URL to Supabase Auth + Google OAuth origins                                                                                                                                                       |
-| Form hits wrong Supabase ref                       | Check `VITE_SUPABASE_URL` in active env file / Vercel Preview vars                                                                                                                                            |
-| `deploy:supabase:dev` refuses                      | `DEV_PROJECT_REF` equals prod — fix `.env.dev.local`                                                                                                                                                          |
-| 502 on local `/functions/v1` after reset           | `bun run stop:supabase` then `./dev.sh`                                                                                                                                                                       |
-| Hybrid auth works but API 503                      | Start `dev:remote-api` first; check hybrid env URLs                                                                                                                                                           |
-| `gen_random_bytes does not exist` on dev `db push` | Pull latest repo (`20260908115900_enable_pgcrypto.sql`), re-run `bun run deploy:supabase:dev -- --db-only`. Or Dashboard SQL: `CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;` then re-push. |
-| OAuth `invalid_client` locally                     | Verify `GOOGLE_CLIENT_*` in `ui/.env.development`; restart Supabase                                                                                                                                           |
+| Symptom                                              | Fix                                                                                                                                                                                                                                                                                                                                                              |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `./dev.sh --ui-only --env dev` → missing env file    | Create `ui/.env.development.dev` from example                                                                                                                                                                                                                                                                                                                    |
+| `dev:remote-api` → missing `.env.dev.local`          | Create `supabase/.env.dev.local` from example                                                                                                                                                                                                                                                                                                                    |
+| Admin sign-in fails on preview                       | Add preview URL to Supabase Auth + Google OAuth origins                                                                                                                                                                                                                                                                                                          |
+| Form hits wrong Supabase ref                         | Check `VITE_SUPABASE_URL` in active env file / Vercel Preview vars                                                                                                                                                                                                                                                                                               |
+| `deploy:supabase:dev` refuses                        | `DEV_PROJECT_REF` equals prod — fix `.env.dev.local`                                                                                                                                                                                                                                                                                                             |
+| 502 on local `/functions/v1` after reset             | `bun run stop:supabase` then `./dev.sh`                                                                                                                                                                                                                                                                                                                          |
+| Hybrid auth works but API 503                        | Start `dev:remote-api` first; check hybrid env URLs                                                                                                                                                                                                                                                                                                              |
+| `gen_random_bytes does not exist` on dev `db push`   | `20260908115900` enables `pgcrypto` in schema `extensions`; RBAC migrations use `extensions.gen_random_bytes()`. If push failed mid-way, run Dashboard SQL then re-push: `CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;` and `ALTER DATABASE postgres SET search_path TO public, extensions;` then `bun run deploy:supabase:dev -- --db-only`. |
+| `permission denied for sequence org_settings_id_seq` | Apply `20261008120000_service_role_sequence_grants.sql` via `bun run deploy:supabase:dev -- --db-only`. Immediate: Dashboard SQL `GRANT USAGE, SELECT ON SEQUENCE public.org_settings_id_seq TO service_role;`                                                                                                                                                   |
+| OAuth `invalid_client` locally                       | Verify `GOOGLE_CLIENT_*` in `ui/.env.development`; restart Supabase                                                                                                                                                                                                                                                                                              |
 
 ---
 
@@ -486,6 +495,18 @@ bun run dev:remote-api
 # Deploy to dev Supabase
 bun run deploy:supabase:dev
 
+# Back up dev / prod (also runs automatically before deploy — skip with --skip-backup)
+bun run backup:supabase:dev
+bun run backup:supabase:prod
+
+# Roll back to most recent backup
+bun run rollback:supabase:dev
+bun run rollback:supabase:prod   # requires kamewave
+
+# Check who's applied what migrations where (read-only)
+bun run migrations:status:dev
+bun run migrations:status:prod
+
 # Check linked project
 cat supabase/.temp/project-ref
 ```
@@ -494,11 +515,40 @@ cat supabase/.temp/project-ref
 
 ## 10. Related files
 
-| File                                                                                              | Purpose                            |
-| ------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| [`supabase/.env.dev.example`](../../../supabase/.env.dev.example)                                 | Dev project ref + secrets template |
-| [`ui/.env.development.dev.example`](../../../ui/.env.development.dev.example)                     | Hosted dev UI env                  |
-| [`ui/.env.development.local.example`](../../../ui/.env.development.local.example)                 | Local stack UI env                 |
-| [`scripts/deploy/deploy-supabase-dev.sh`](../../../scripts/deploy/deploy-supabase-dev.sh)         | Dev deploy with prod guard         |
-| [`scripts/dev/run-remote-functions-serve.sh`](../../../scripts/dev/run-remote-functions-serve.sh) | Hybrid local API                   |
-| [`.vscode/tasks.json`](../../../.vscode/tasks.json)                                               | Run Task entries                   |
+| File                                                                                              | Purpose                                |
+| ------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| [`supabase/.env.dev.example`](../../../supabase/.env.dev.example)                                 | Dev project ref + secrets template     |
+| [`ui/.env.development.dev.example`](../../../ui/.env.development.dev.example)                     | Hosted dev UI env                      |
+| [`ui/.env.development.local.example`](../../../ui/.env.development.local.example)                 | Local stack UI env                     |
+| [`scripts/deploy/deploy-supabase-dev.sh`](../../../scripts/deploy/deploy-supabase-dev.sh)         | Dev deploy with prod guard             |
+| [`scripts/deploy/backup-supabase.sh`](../../../scripts/deploy/backup-supabase.sh)                 | Pre-deploy backups (dev + prod)        |
+| [`scripts/deploy/rollback-supabase.sh`](../../../scripts/deploy/rollback-supabase.sh)             | DB restore from backup                 |
+| [`scripts/deploy/rollback-functions.sh`](../../../scripts/deploy/rollback-functions.sh)           | Edge Functions rollback (git worktree) |
+| [`scripts/deploy/migration-status.sh`](../../../scripts/deploy/migration-status.sh)               | Read-only migration drift check        |
+| [`scripts/dev/check-linked-project.sh`](../../../scripts/dev/check-linked-project.sh)             | Linked-project preflight + audit log   |
+| [`scripts/dev/run-remote-functions-serve.sh`](../../../scripts/dev/run-remote-functions-serve.sh) | Hybrid local API                       |
+| [`.vscode/tasks.json`](../../../.vscode/tasks.json)                                               | Run Task entries                       |
+
+---
+
+## 11. Backups & rollback
+
+Every `deploy:supabase*` run backs up first (`backup-supabase.sh`) unless `--skip-backup` is passed — schema and data dumps land in `backups/<env>/<UTC-timestamp>_{schema,data}.sql` (gitignored). Every deploy and rollback also appends a row to `backups/deploy-log.csv` (timestamp, env, kind, git SHA/branch, OS user) — a lightweight audit trail of who deployed what, when.
+
+```bash
+# Manual backup
+bun run backup:supabase:dev
+bun run backup:supabase:prod
+
+# Restore the most recent backup (add --schema to also restore structure)
+bun run rollback:supabase:dev
+bun run rollback:supabase:prod       # requires kamewave + typed "prod" confirm
+
+# Roll back Edge Functions to an older commit (no local checkout needed)
+bun run rollback:functions:dev -- main
+bun run rollback:functions:prod -- main   # requires kamewave
+```
+
+Both rollback scripts refuse to run if the currently linked project doesn't match the `<dev|prod>` argument, and both support `--dry-run` to preview the exact restore command without executing it. `rollback-supabase.sh` needs a Postgres connection string — `DEV_DB_URL` / `PROD_DB_URL` — supplied at runtime (same convention as `PROD_DB_URL` in `scripts/data/sync-prod-public-data-to-local.sh`); it is never committed.
+
+See [`production-deployment.md`](./production-deployment.md) §1 and §12 for the prod-specific checklist, and [`migration-runbook.md`](./migration-runbook.md) §6 for restore caveats.

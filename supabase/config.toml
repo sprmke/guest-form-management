@@ -351,6 +351,12 @@ verify_jwt = false
 [functions.upload-property-media]
 verify_jwt = false
 
+[functions.import-parse-file]
+verify_jwt = false
+
+[functions.import-ai-map-columns]
+verify_jwt = false
+
 [functions.upload-development-media]
 verify_jwt = false
 
@@ -461,6 +467,24 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.get-public-parking]
+verify_jwt = false
+
+[functions.search-suggestions]
+verify_jwt = false
+
+[functions.search-listings]
+verify_jwt = false
+
+[functions.list-public-properties]
+verify_jwt = false
+
+[functions.list-public-developments]
+verify_jwt = false
+
+[functions.list-public-parkings]
+verify_jwt = false
+
+[functions.list-public-place-groups]
 verify_jwt = false
 
 [functions.property-templates-settings]
@@ -667,6 +691,27 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.list-platform-properties]
+verify_jwt = false
+
+[functions.import-save-mapping]
+verify_jwt = false
+
+[functions.import-cancel]
+verify_jwt = false
+
+[functions.import-list-batches]
+verify_jwt = false
+
+[functions.import-preview]
+verify_jwt = false
+
+[functions.import-commit]
+verify_jwt = false
+
+[functions.import-revert]
+verify_jwt = false
+
+[functions.import-update-row]
 verify_jwt = false
 
 # ── kept for reference (cloud schedule lines, never uncomment locally) ─────────

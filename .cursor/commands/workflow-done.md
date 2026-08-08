@@ -12,4 +12,5 @@ bash scripts/dev/workflow-move.sh done <slug>
 ```
 
 3. Confirm docs/route guides/`PROJECT.md` updates were made per `.cursor/rules/documentation-maintenance.mdc`.
-4. If work maps to a GitHub Issue, ship via `bun scripts/dev/gh-issue.mjs ship --github N`.
+4. **Sync scratchpads:** `workflow-move.sh done` runs `bun run sync:workflow-scratchpads -- --slug=<slug>` automatically. Add or verify `→ **Done:** [../done/<slug>.md](…)` on the matching item. Read `.agent/skills/workflow-intake-scratchpads/SKILL.md`.
+5. If work maps to a GitHub Issue, ship via `bun scripts/dev/gh-issue.mjs ship --github N`.

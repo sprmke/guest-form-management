@@ -178,6 +178,7 @@ export function CalendarBuilder({
   const [activeAutosaveTemplateId, setActiveAutosaveTemplateId] = useState<string | null>(null);
   const [activeCustomTemplateId, setActiveCustomTemplateId] = useState<string | null>(null);
   const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
+  const [aiGenerateBusy, setAiGenerateBusy] = useState(false);
 
   const propertyId = usePropertyIdParam();
   const queryClient = useQueryClient();
@@ -777,23 +778,26 @@ export function CalendarBuilder({
         availability: boolean;
       };
     }) => {
-      const result = await generateTemplate.mutateAsync({
-        contentType: 'calendar',
-        prompt: input.prompt,
-        includeContext: input.includeContext,
-        amenitiesText: input.includeContext.amenities ? amenitiesText : undefined,
-        availabilityText: input.includeContext.availability ? availabilityText : undefined,
-      });
-
-      const photoUrl = input.includeContext.propertyPhoto ? propertyPhotoUrl : undefined;
-      const variants = resolveAiGeneratedCalendarStylesForAllFormats(result.tokens, {
-        brandColor,
-        propertyPhotoUrl: photoUrl,
-      });
-
+      setAiGenerateBusy(true);
       beginAutoSaveSuspension();
+      let aiSucceeded = false;
       try {
-        const savedRecords = await Promise.all(
+        const result = await generateTemplate.mutateAsync({
+          contentType: 'calendar',
+          prompt: input.prompt,
+          includeContext: input.includeContext,
+          amenitiesText: input.includeContext.amenities ? amenitiesText : undefined,
+          availabilityText: input.includeContext.availability ? availabilityText : undefined,
+        });
+        aiSucceeded = true;
+
+        const photoUrl = input.includeContext.propertyPhoto ? propertyPhotoUrl : undefined;
+        const variants = resolveAiGeneratedCalendarStylesForAllFormats(result.tokens, {
+          brandColor,
+          propertyPhotoUrl: photoUrl,
+        });
+
+        const settled = await Promise.allSettled(
           variants.map((variant) =>
             saveMarketingTemplate(propertyId, {
               name: result.tokens.label,
@@ -809,7 +813,25 @@ export function CalendarBuilder({
           )
         );
 
+        const savedRecords = settled
+          .filter(
+            (
+              entry
+            ): entry is PromiseFulfilledResult<Awaited<ReturnType<typeof saveMarketingTemplate>>> =>
+              entry.status === 'fulfilled'
+          )
+          .map((entry) => entry.value);
+        const failedCount = settled.filter((entry) => entry.status === 'rejected').length;
+
         void queryClient.invalidateQueries({ queryKey: ['marketing-templates', propertyId] });
+
+        if (savedRecords.length === 0) {
+          const firstReject = settled.find((entry) => entry.status === 'rejected') as
+            PromiseRejectedResult | undefined;
+          throw firstReject?.reason instanceof Error
+            ? firstReject.reason
+            : new Error('Could not save generated templates');
+        }
 
         const currentAspect = aspectPresetForCalendarFormat(canvasFrame.format);
         const preferred =
@@ -819,20 +841,30 @@ export function CalendarBuilder({
           variants[0]?.styles;
 
         if (preferred && preferredStyles) {
+          saveToHistory();
           setStyles(preferredStyles, { markDirty: false });
           setActiveCustomTemplateId(preferred.id);
           setActiveAutosaveTemplateId(preferred.id);
           setSelectedTemplateKey(`custom:${preferred.id}`);
           setShowAdvancedSettings(false);
           setIsDirty(false);
-          saveToHistory();
           markBaseline();
         }
 
         setAiGenerateOpen(false);
-        toast.success('Custom templates added for Square, Portrait, and Landscape');
+        if (failedCount > 0) {
+          toast.warning(`Saved ${savedRecords.length} of 3 formats — retry Generate for the rest`);
+        } else {
+          toast.success('Custom templates added for Square, Portrait, and Landscape');
+        }
+      } catch (error) {
+        // AI failures already toast via useGenerateMarketingTemplate.onError
+        if (aiSucceeded) {
+          toast.error((error as Error).message || 'Could not save generated templates');
+        }
       } finally {
         endAutoSaveSuspension();
+        setAiGenerateBusy(false);
       }
     },
     [
@@ -974,6 +1006,7 @@ export function CalendarBuilder({
                     onCustomizeCustom={handleCustomizeCustom}
                     onRemoveCustom={handleRemoveCustom}
                     onOpenAiGenerate={() => setAiGenerateOpen(true)}
+                    aiGenerateBusy={aiGenerateBusy || generateTemplate.isPending}
                   />
                 </div>
               )}
@@ -1260,9 +1293,12 @@ export function CalendarBuilder({
 
       <MarketingAiGeneratePanel
         open={aiGenerateOpen}
-        onOpenChange={setAiGenerateOpen}
+        onOpenChange={(open) => {
+          if (aiGenerateBusy && !open) return;
+          setAiGenerateOpen(open);
+        }}
         contentType="calendar"
-        generating={generateTemplate.isPending}
+        generating={aiGenerateBusy || generateTemplate.isPending}
         contextOptions={[
           {
             key: 'propertyPhoto',

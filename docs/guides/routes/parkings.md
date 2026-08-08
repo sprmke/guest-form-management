@@ -2,7 +2,7 @@
 title: 'Parkings (guest marketing) — operator guide'
 status: active
 tags: [guides, routes, parking]
-updated: 2026-08-02
+updated: 2026-08-06
 ---
 
 # Parkings (guest marketing) — operator guide
@@ -13,13 +13,13 @@ Routes:
 - `/parkings/in/:location` — flat grid for one place (city slug, e.g. `san-fernando-city`, `tagaytay`)
 - `/parkings/:parkingSlug` — slot detail (live API)
 
-> **Status:** Documented — **Phase 1 (UI only)**. Mock parking slots from developments catalog.
+> **Status:** Documented — list + filters live via `list-public-parkings` (URL facets/sort, chips, mobile sheet sort). Location browse uses `locationSlug`.
 
 ## Progress overview
 
 | Section         | E2E save | Validation | Docs       | Notes                                                                   |
 | --------------- | -------- | ---------- | ---------- | ----------------------------------------------------------------------- |
-| List + filters  | —        | —          | Documented | Location-grouped carousels (grid)                                       |
+| List + filters  | —        | —          | Documented | Live `list-public-parkings`; URL-driven filters + facets                |
 | Location browse | —        | —          | Documented | `/parkings/in/:location`                                                |
 | Detail page     | —        | —          | Documented | `get-public-parking` + pricing; shared **`BookingCard`** (parking mode) |
 | Reserve slot    | —        | —          | Documented | **`useParkingReserve`** → `/parkings/:slug/form` with dates             |
@@ -29,7 +29,7 @@ Routes:
 
 ## Overview
 
-Browse parking slots across developments. Mirrors **`/properties`** list + location browse patterns. Data comes from **`mockParkingSlots`** joined to **`mockDevelopments`** (city grouping).
+Browse parking slots across developments. **`ParkingsListPage`** uses **`list-public-parkings`** (live DB). Location browse (`/parkings/in/:location`) uses the same API with **`locationSlug`**.
 
 **Unknown location slug:** redirects to **`/parkings`**.
 
@@ -54,25 +54,27 @@ Guests browse standalone parking slots by city or building, open a slot detail p
 
 ## List (`/parkings`)
 
-**`ParkingsListPage`** — hero search, collapsible **`ParkingFilters`** sidebar (location type, tower, price), **`ParkingToolbar`** sort, location-grouped carousels via **`ParkingsByLocation`**.
+**`ParkingsListPage`** — hero search, collapsible **`ParkingFilters`** sidebar (location type, tower, price), **`ParkingToolbar`** sort, location-grouped carousels via **`ParkingsByLocation`**. Filters/sort from URL; tower options from API facets. When Tower is shown but has no options, the section shows **None**.
 
+- **Scale behavior:** `list-public-parkings` reads lean candidates in deterministic 1,000-row ranges, computes availability/Nearby/totals/facets before page slicing, and fails closed above 20,000 rows instead of silently truncating totals. Default unfiltered `/parkings` additionally uses `list-public-place-groups?family=parkings` for six city rows with eight previews each; **Show more places** appends later groups. Filtered browse stays on `list-public-parkings`. When map bbox params are present (e.g. `/search` parkings map tab), facets are computed from the **visible map pool** before location/tower/price filters.
 - Each row title: **Parking in {city}** → **View all** → `/parkings/in/:location`
 - Cards: **`ParkingSlotCard`** carousel variant — **Parking in {city}** title + **development name** subtext (matches property carousel pattern); **Reserve** via card link to development form
 - On scroll, **`ListingHeroSearch`** morphs into the fixed header center (same as `/properties`).
 
-**Where field:** `Parkings` on `/parkings`; `{city} Parking` on `/parkings/in/:location` (`listingSearchDefaultLocation.ts`).
+**Where field:** empty on `/parkings` (category index — do not prefill the nav label); city name on `/parkings/in/:location` (`listingSearchDefaultLocation.ts`). Placeholder: **Search parkings** (`listingSearchFields.ts`).
 
 ---
 
 ## Location browse (`/parkings/in/:location`)
 
-**`ParkingsLocationPage`** — all parking slots in one city.
+**`ParkingsLocationPage`** — live parking slots in one city.
 
-- **`:location`** — slugified city via **`toLocationSlug`** / **`findCityByLocationSlug`**
+- **`:location`** — slugified city via shared **`normalizeCityPlace`** + **`toLocationSlug`** (matches place-groups).
+- Loads **`list-public-parkings?locationSlug=…`** (paged).
 - Page title: **Parking in {city}**
 - Flat **`ParkingsEntriesGrid`** (responsive card grid)
-- Same filters + sort as list page
-- Unknown location slug → redirect to **`/parkings`**
+- Same filters + sort chrome as list page (client filter on the loaded page window)
+- Unknown / empty location → redirect to **`/parkings`**. Error: **Try again**.
 
 Route is registered at the marketing shell level (no dynamic slug conflict).
 
@@ -118,6 +120,7 @@ Distinct from:
 | Edge           | `supabase/functions/get-public-parking/index.ts`                                                                           |
 | Location page  | `ui/src/features/guest/marketing/pages/ParkingsLocationPage.tsx`                                                           |
 | Grouping       | `ui/src/features/guest/marketing/parkings/lib/groupParkingsByLocation.ts`                                                  |
+| Place groups   | `ui/src/features/guest/marketing/shared/hooks/usePublicPlaceGroups.ts` + `list-public-place-groups`                        |
 | Entry builder  | `ui/src/features/guest/marketing/parkings/lib/parkingListEntries.ts`                                                       |
 | UI components  | `ui/src/features/guest/marketing/parkings/components/*`                                                                    |
 | Slot cards     | `ui/src/features/guest/marketing/developments/components/ParkingSlotCard.tsx`                                              |

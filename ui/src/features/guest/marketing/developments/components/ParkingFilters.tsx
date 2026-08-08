@@ -3,7 +3,11 @@ import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Building2, Car, Layers, X } from 'lucide-react';
 
+import { FilterEmptyLabel } from '@/features/guest/marketing/shared/components/FilterEmptyLabel';
 import { FilterSection } from '@/features/guest/marketing/shared/components/FilterSection';
+import { FilterSheetSort } from '@/features/guest/marketing/shared/components/FilterSheetSort';
+import { PARKING_SORT_OPTIONS } from '@/features/guest/marketing/shared/lib/listingFilterChips';
+import { useListingFilterMotion } from '@/features/guest/marketing/shared/lib/listingFilterMotion';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -24,7 +28,13 @@ interface ParkingFiltersProps {
   isMobile?: boolean;
   filters: ParkingFilterState;
   onFiltersChange: (filters: ParkingFilterState) => void;
-  insideTowerOptions: string[];
+  /** Tower names from API facets or mock slot list. */
+  towerOptions?: string[];
+  /** @deprecated use towerOptions */
+  insideTowerOptions?: string[];
+  /** Mobile sheet sort (keeps “Filters & Sort” honest). */
+  sortBy?: string;
+  onSortChange?: (sort: string) => void;
 }
 
 const LOCATION_ICONS: Record<ParkingLocationFilter, typeof Building2> = {
@@ -38,13 +48,19 @@ export function ParkingFilters({
   isMobile = false,
   filters,
   onFiltersChange,
+  towerOptions = [],
   insideTowerOptions,
+  sortBy,
+  onSortChange,
 }: ParkingFiltersProps) {
+  const motionProps = useListingFilterMotion();
+  const towers = towerOptions.length > 0 ? towerOptions : (insideTowerOptions ?? []);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     location: true,
     tower: true,
     price: true,
   });
+  const showSheetSort = Boolean(isMobile && sortBy != null && onSortChange);
 
   const showTowerSection = showsTowerFilter(filters);
 
@@ -66,6 +82,10 @@ export function ParkingFilters({
     onFiltersChange(next);
   };
 
+  const toggleMotorcycle = () => {
+    onFiltersChange({ ...filters, motorcycle: !filters.motorcycle });
+  };
+
   const toggleTower = (tower: string) => {
     const towers = filters.towers.includes(tower)
       ? filters.towers.filter((t) => t !== tower)
@@ -82,6 +102,13 @@ export function ParkingFilters({
 
   const filterContent = (
     <div className="space-y-6">
+      {showSheetSort ? (
+        <FilterSheetSort
+          value={sortBy!}
+          options={[...PARKING_SORT_OPTIONS]}
+          onChange={onSortChange!}
+        />
+      ) : null}
       <FilterSection
         title="Location"
         expanded={expandedSections.location ?? false}
@@ -96,6 +123,7 @@ export function ParkingFilters({
                 key={option.id}
                 type="button"
                 onClick={() => toggleLocation(option.id)}
+                aria-pressed={isSelected}
                 className={cn(
                   'flex min-h-[44px] items-center gap-2 rounded-lg border p-3 text-left text-sm transition-all',
                   isSelected
@@ -108,39 +136,58 @@ export function ParkingFilters({
               </button>
             );
           })}
+          <button
+            type="button"
+            onClick={toggleMotorcycle}
+            aria-pressed={filters.motorcycle}
+            className={cn(
+              'flex min-h-[44px] items-center gap-2 rounded-lg border p-3 text-left text-sm transition-all',
+              filters.motorcycle
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-border bg-background text-foreground hover:border-primary/50 hover:bg-muted'
+            )}
+          >
+            <Car className="h-4 w-4 shrink-0" aria-hidden />
+            Motorcycle
+          </button>
         </div>
       </FilterSection>
 
-      {showTowerSection && insideTowerOptions.length > 0 ? (
+      {showTowerSection ? (
         <FilterSection
           title="Tower"
           expanded={expandedSections.tower ?? false}
           onToggle={() => toggleSection('tower')}
         >
-          <div className="space-y-1.5">
-            {insideTowerOptions.map((tower) => {
-              const isSelected = filters.towers.includes(tower);
-              return (
-                <button
-                  key={tower}
-                  type="button"
-                  onClick={() => toggleTower(tower)}
-                  className={cn(
-                    'flex min-h-[44px] w-full items-center gap-2 rounded-lg border px-3 py-2.5 text-left text-sm transition-all',
-                    isSelected
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border bg-background text-foreground hover:border-primary/50 hover:bg-muted'
-                  )}
-                >
-                  <Layers className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                  <span className="line-clamp-1 flex-1">{tower}</span>
-                  {isSelected ? (
-                    <span className="bg-primary h-2 w-2 shrink-0 rounded-full" />
-                  ) : null}
-                </button>
-              );
-            })}
-          </div>
+          {towers.length === 0 ? (
+            <FilterEmptyLabel />
+          ) : (
+            <div className="space-y-1.5">
+              {towers.map((tower) => {
+                const isSelected = filters.towers.includes(tower);
+                return (
+                  <button
+                    key={tower}
+                    type="button"
+                    onClick={() => toggleTower(tower)}
+                    aria-pressed={isSelected}
+                    className={cn(
+                      'flex min-h-[44px] w-full items-center gap-2 rounded-lg border px-3 py-2.5 text-left text-sm transition-all',
+                      isSelected
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border bg-background text-foreground hover:border-primary/50 hover:bg-muted'
+                    )}
+                  >
+                    <Layers className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    <span className="line-clamp-1 flex-1">{tower}</span>
+                    {isSelected ? (
+                      <span className="bg-primary h-2 w-2 shrink-0 rounded-full" aria-hidden />
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </FilterSection>
       ) : null}
 
@@ -151,27 +198,31 @@ export function ParkingFilters({
         onToggle={() => toggleSection('price')}
       >
         <div className="space-y-2">
-          {PARKING_PRICE_RANGE_OPTIONS.map((range) => (
-            <button
-              key={range.id}
-              type="button"
-              onClick={() =>
-                onFiltersChange({
-                  ...filters,
-                  priceRange: filters.priceRange === range.id ? null : range.id,
-                })
-              }
-              className={cn(
-                'flex min-h-[44px] w-full items-center justify-between rounded-lg border p-3 text-sm transition-all',
-                filters.priceRange === range.id
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-border bg-background text-foreground hover:border-primary/50 hover:bg-muted'
-              )}
-            >
-              <span className="font-medium">{range.label}</span>
-              <span className="text-muted-foreground">{range.display}</span>
-            </button>
-          ))}
+          {PARKING_PRICE_RANGE_OPTIONS.map((range) => {
+            const isSelected = filters.priceRange === range.id;
+            return (
+              <button
+                key={range.id}
+                type="button"
+                aria-pressed={isSelected}
+                onClick={() =>
+                  onFiltersChange({
+                    ...filters,
+                    priceRange: isSelected ? null : range.id,
+                  })
+                }
+                className={cn(
+                  'flex min-h-[44px] w-full items-center justify-between rounded-lg border p-3 text-sm transition-all',
+                  isSelected
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border bg-background text-foreground hover:border-primary/50 hover:bg-muted'
+                )}
+              >
+                <span className="font-medium">{range.label}</span>
+                <span className="text-muted-foreground">{range.display}</span>
+              </button>
+            );
+          })}
         </div>
       </FilterSection>
     </div>
@@ -182,10 +233,10 @@ export function ParkingFilters({
       <AnimatePresence>
         {isOpen ? (
           <motion.aside
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 320, opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            initial={motionProps.asideInitial}
+            animate={motionProps.asideAnimate}
+            exit={motionProps.asideExit}
+            transition={motionProps.asideTransition}
             className="border-border bg-background hidden shrink-0 overflow-hidden border-r lg:block"
           >
             <div className="h-full w-[320px] overflow-y-auto p-6">
@@ -212,30 +263,35 @@ export function ParkingFilters({
     );
   }
 
+  const sheetTitle = showSheetSort ? 'Filters & Sort' : 'Filters';
+
   return (
     <AnimatePresence>
       {isOpen ? (
         <>
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={motionProps.fadeInitial}
+            animate={motionProps.fadeAnimate}
+            exit={motionProps.fadeExit}
             onClick={onClose}
             className="fixed inset-0 z-50 bg-black/50 lg:hidden"
           />
           <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+            initial={motionProps.sheetInitial}
+            animate={motionProps.sheetAnimate}
+            exit={motionProps.sheetExit}
+            transition={motionProps.sheetTransition}
             className="bg-background fixed inset-x-0 bottom-0 z-50 max-h-[85vh] overflow-hidden rounded-t-3xl lg:hidden"
+            role="dialog"
+            aria-modal="true"
+            aria-label={sheetTitle}
           >
             <div className="flex justify-center py-3">
               <div className="bg-muted-foreground/30 h-1.5 w-12 rounded-full" />
             </div>
             <div className="border-border flex items-center justify-between border-b px-6 pb-4">
               <div>
-                <h3 className="text-foreground text-lg font-semibold">Filters</h3>
+                <h3 className="text-foreground text-lg font-semibold">{sheetTitle}</h3>
                 {activeFiltersCount > 0 ? (
                   <p className="text-muted-foreground text-sm">
                     {activeFiltersCount} filter{activeFiltersCount !== 1 && 's'} applied
@@ -248,7 +304,7 @@ export function ParkingFilters({
                 className="hover:bg-muted min-h-[44px] min-w-[44px] rounded-full p-2"
                 aria-label="Close filters"
               >
-                <X className="text-muted-foreground h-5 w-5" />
+                <X className="text-muted-foreground h-5 w-5" aria-hidden />
               </button>
             </div>
             <div className="max-h-[60vh] overflow-y-auto p-6">{filterContent}</div>

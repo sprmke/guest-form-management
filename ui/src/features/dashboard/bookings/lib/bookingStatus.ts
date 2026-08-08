@@ -15,6 +15,7 @@ export const BOOKING_STATUSES = [
   'PENDING_SD_REFUND',
   'COMPLETED',
   'CANCELLED',
+  'IMPORTED',
 ] as const;
 
 export type BookingStatus = (typeof BOOKING_STATUSES)[number];
@@ -72,6 +73,7 @@ export const STATUS_LABELS: Record<BookingStatus, string> = {
   PENDING_SD_REFUND: 'Pending SD Refund',
   COMPLETED: 'Completed',
   CANCELLED: 'Cancelled',
+  IMPORTED: 'Imported',
 };
 
 /**
@@ -93,6 +95,7 @@ export const STATUS_TONE: Record<BookingStatus, StatusTone> = {
   PENDING_SD_REFUND: 'orange',
   COMPLETED: 'blue',
   CANCELLED: 'purple',
+  IMPORTED: 'neutral',
 };
 
 /** Terminal statuses — no further transitions are valid. */

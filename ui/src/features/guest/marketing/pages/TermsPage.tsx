@@ -4,27 +4,62 @@ export function TermsPage() {
   return (
     <LegalSimplePage
       title="Terms of Service"
-      description="These terms govern your use of Kame Homes as a guest, host, or organization member."
+      description="These terms govern your use of Kame Homes as a guest, host, organization member, or visitor of our public site."
       sections={[
         {
-          title: 'Using the platform',
+          title: 'Who we are',
           paragraphs: [
-            'You must provide accurate account information and use Kame Homes only for lawful property management and booking activities.',
-            'Hosts are responsible for listing accuracy, guest communication, and compliance with local rental, tax, and safety requirements.',
+            'Kame Homes (“we,” “us”) operates a property-management platform based in Manila, Philippines. Contact: hello@kamehomes.com.',
+            'These Terms apply to the marketing site, guest booking flows, guest portal accounts, and host dashboards. Individual properties may publish additional house rules; those rules apply to stays at that property.',
           ],
         },
         {
-          title: 'Bookings and payments',
+          title: 'Accounts and eligibility',
           paragraphs: [
-            'Booking terms, cancellation rules, and payment schedules may vary by property and are shown before confirmation.',
-            'Kame Homes provides tools to manage bookings and payments but does not guarantee availability, occupancy, or third-party payment processor uptime.',
+            'Hosts and team members must provide accurate account information and keep credentials secure. Guest portal accounts (profile, stays, messages) are separate from host admin access.',
+            'Use the platform only for lawful rental, parking, and property-management activities. Do not bypass access controls, scrape private data, or interfere with other users’ stays.',
+          ],
+        },
+        {
+          title: 'Bookings and property rules',
+          paragraphs: [
+            'Submitting a guest form creates a booking request subject to host review. Availability, rates, fees, cancellation, pets, parking, and document requirements are set by the property or organization and may appear in the form, emails, or stay materials.',
+            'Hosts are responsible for listing accuracy, local compliance (including tax and safety rules), guest communication, and decisions on approvals, cancellations, and refunds within the tools we provide.',
+          ],
+        },
+        {
+          title: 'Payments, deposits, and refunds',
+          paragraphs: [
+            'Payment proof, security deposits, and refund timing follow the property’s instructions and the booking workflow—including document review, check-in, check-out, and security-deposit refund steps when enabled.',
+            'Kame Homes provides software to collect information and run that workflow. We do not guarantee occupancy, payment-processor uptime, or that every third-party transfer will succeed on first attempt.',
+          ],
+        },
+        {
+          title: 'Acceptable use',
+          paragraphs: [
+            'Do not upload fraudulent IDs, receipts, or documents; harass others; or use messaging and marketing tools for spam or illegal content.',
+            'We may suspend access when we reasonably believe these Terms, property rules, or applicable law have been violated.',
+          ],
+        },
+        {
+          title: 'Platform availability and third parties',
+          paragraphs: [
+            'The service depends on infrastructure and integrations (for example hosting, email, maps, messaging, and AI helpers). Features may change, and temporary outages can occur.',
+            'Links to third-party sites or apps are provided for convenience; their terms and privacy practices apply separately.',
           ],
         },
         {
           title: 'Limitation of liability',
           paragraphs: [
-            'Kame Homes is provided on an as-is basis to the extent permitted by law. We are not liable for indirect, incidental, or consequential damages arising from platform use.',
-            'If you have questions about these terms, contact us at support@kamehomes.com.',
+            'To the fullest extent permitted by Philippine law, Kame Homes is provided on an as-is and as-available basis. We are not liable for indirect, incidental, special, or consequential damages arising from use of the platform, including disputes between guests and hosts over stays, deposits, or property conditions.',
+            'Nothing in these Terms limits liability that cannot be limited under applicable law.',
+          ],
+        },
+        {
+          title: 'Governing law and changes',
+          paragraphs: [
+            'These Terms are governed by the laws of the Republic of the Philippines. Courts in Metro Manila have exclusive jurisdiction, subject to mandatory consumer protections that cannot be waived.',
+            'We may update these Terms by posting a revised version on this page. Continued use after changes take effect constitutes acceptance. Questions: hello@kamehomes.com.',
           ],
         },
       ]}

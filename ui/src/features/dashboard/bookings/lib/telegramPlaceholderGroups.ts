@@ -51,7 +51,7 @@ const PLACEHOLDER_META: Record<string, PlaceholderMeta> = {
   },
   guest_facebook_name: {
     group: 'Guest',
-    description: 'Facebook/Airbnb name',
+    description: 'Guest display name',
     example: 'Kyle Soriano',
   },
   guest_name: {

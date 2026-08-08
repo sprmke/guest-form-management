@@ -90,7 +90,7 @@ export const STAGE_STATUS_MAP: Record<Exclude<BookingStage, 'all'>, readonly Boo
     'PENDING_PET_REQUEST',
   ],
   confirmed: ['READY_FOR_CHECKIN'],
-  history: ['COMPLETED', 'CANCELLED'],
+  history: ['COMPLETED', 'CANCELLED', 'IMPORTED'],
 };
 
 export function getBookingStage(status: string): BookingStage {
@@ -221,6 +221,15 @@ export const KANBAN_STATUS_CONFIG: Record<BookingStatus, KanbanStatusConfig> = {
     borderColor: 'border-gray-200 dark:border-gray-500/30',
     stage: 'history',
   },
+  IMPORTED: {
+    label: 'Imported',
+    shortLabel: 'Imported',
+    icon: History,
+    color: 'text-gray-600 dark:text-gray-400',
+    bgColor: 'bg-gray-50 dark:bg-gray-500/10',
+    borderColor: 'border-gray-200 dark:border-gray-500/30',
+    stage: 'history',
+  },
 };
 
 /** Kanban columns in workflow order (excludes cancelled and parent PENDING_DOCUMENTS). */
@@ -276,7 +285,7 @@ export function kanbanColumnForBooking(
   if ((KANBAN_COLUMNS as readonly string[]).includes(status)) {
     return status as BookingStatus;
   }
-  if (status === 'CANCELLED') return null;
+  if (status === 'CANCELLED' || status === 'IMPORTED') return null;
   return null;
 }
 

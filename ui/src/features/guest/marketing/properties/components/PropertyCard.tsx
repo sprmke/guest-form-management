@@ -8,6 +8,7 @@ import { Star, MapPin, Users, Bed, Bath, ChevronLeft, ChevronRight, Wifi, Car } 
 import { PropertySaveButton } from '@/features/guest/marketing/properties/components/PropertySaveButton';
 import { placeLabelFromPropertyLocation } from '@/features/guest/marketing/properties/lib/groupPropertiesByLocation';
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
+import { resolveListingImages } from '@/features/guest/marketing/shared/lib/mockListingImages';
 
 import { cn } from '@/lib/utils';
 
@@ -38,6 +39,8 @@ export interface Property {
   unitNumber?: string;
   /** Legacy combined tower + unit string (optional) */
   towerAndUnit?: string;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 interface PropertyCardProps {
@@ -54,22 +57,23 @@ export const PropertyCard = memo(function PropertyCard({
 }: PropertyCardProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
+  const images = resolveListingImages(property.images, 'property', property.slug);
 
   const nextImage = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setCurrentImageIndex((prev) => (prev + 1) % property.images.length);
+    setCurrentImageIndex((prev) => (prev + 1) % images.length);
   };
 
   const prevImage = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setCurrentImageIndex((prev) => (prev === 0 ? property.images.length - 1 : prev - 1));
+    setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
   };
 
   if (variant === 'carousel') {
     const place = placeLabelFromPropertyLocation(property.location);
-    const cover = property.images[0] ?? '';
+    const cover = images[0] ?? '';
 
     return (
       <motion.div
@@ -132,7 +136,7 @@ export const PropertyCard = memo(function PropertyCard({
         <Link to={`/properties/${property.slug}`} className="block">
           <div className="relative aspect-[4/3] overflow-hidden">
             <div className="relative h-full w-full">
-              {property.images.map((image, idx) => (
+              {images.map((image, idx) => (
                 <Image
                   key={idx}
                   src={image}
@@ -167,7 +171,7 @@ export const PropertyCard = memo(function PropertyCard({
 
             <PropertySaveButton propertySlug={property.slug} variant="card" />
 
-            {property.images.length > 1 && (
+            {images.length > 1 && (
               <>
                 <button
                   onClick={prevImage}
@@ -185,7 +189,7 @@ export const PropertyCard = memo(function PropertyCard({
                 </button>
 
                 <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
-                  {property.images.map((_, idx) => (
+                  {images.map((_, idx) => (
                     <button
                       key={idx}
                       onClick={(e) => {

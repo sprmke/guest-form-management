@@ -724,6 +724,15 @@
     @apply gradient-primary text-primary-foreground native-press max-lg:shadow-native-primary sm:shadow-soft inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl px-5 text-sm font-semibold tracking-tight sm:min-h-[44px] sm:w-auto sm:rounded-xl;
   }
 
+  /**
+   * Secondary companion to `.native-cta` — same geometry, neutral colors.
+   * Pair with `variant="outline"`; never put `.native-cta` on a light-background
+   * variant, its white text disappears.
+   */
+  .native-cta-secondary {
+    @apply text-foreground native-press inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl px-5 text-sm font-semibold tracking-tight sm:min-h-[44px] sm:w-auto sm:rounded-xl;
+  }
+
   /** Soft brand-tinted page canvas — phone/tablet only; desktop uses plain shell. */
   .native-page-canvas {
     @apply max-lg:from-muted max-lg:via-muted/40 max-lg:to-background dark:max-lg:from-primary/[0.1] dark:max-lg:via-background max-lg:bg-gradient-to-b;
@@ -1952,4 +1961,19 @@ input.ui-native-datetime[type='datetime-local']::-webkit-calendar-picker-indicat
 /* Google Maps Embed API iframes do not support native dark mode — approximate when JS API is unavailable. */
 .property-map-embed-dark {
   filter: invert(90%) hue-rotate(180deg) brightness(0.92) contrast(0.9);
+}
+
+/* Listing map canvas — min-height only; page layout stays normal document flow. */
+:root {
+  --listing-map-min-height: max(16rem, calc(100dvh - 22rem));
+}
+
+@media (max-height: 800px) {
+  :root {
+    --listing-map-min-height: max(22rem, 90dvh);
+  }
+}
+
+.listing-map-canvas {
+  min-height: var(--listing-map-min-height);
 }

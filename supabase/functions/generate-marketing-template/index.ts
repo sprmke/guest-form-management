@@ -23,6 +23,12 @@ serveAdmin('generate-marketing-template', async (req, admin) => {
       : 'calendar';
 
   const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : '';
+  if (!prompt) {
+    return jsonError(req, 'Prompt is required', 400);
+  }
+  if (prompt.length > 500) {
+    return jsonError(req, 'Prompt is too long', 400);
+  }
   const includeContext =
     body.includeContext && typeof body.includeContext === 'object'
       ? (body.includeContext as Record<string, unknown>)

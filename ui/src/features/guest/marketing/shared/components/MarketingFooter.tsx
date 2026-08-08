@@ -6,24 +6,17 @@ import { Facebook, Instagram, Twitter, Mail, MapPin, Phone } from 'lucide-react'
 
 import { getAppModeFromPath } from '@/features/guest/auth/config/mode-switch';
 import { useModeSwitchTransition } from '@/features/guest/marketing/shared/context/ModeSwitchTransitionContext';
+import { marketingGuestNavLinks } from '@/features/guest/marketing/shared/lib/marketingGuestNavLinks';
 
 const footerLinks = {
-  explore: [
-    { href: '/properties', label: 'Properties' },
-    { href: '/properties?type=apartment', label: 'Apartments' },
-    { href: '/properties?type=villa', label: 'Villas' },
-    { href: '/properties?type=condo', label: 'Condos' },
-  ],
+  explore: marketingGuestNavLinks,
   company: [
     { href: '/about', label: 'About Us' },
     { href: '/contact', label: 'Contact' },
-    { href: '/careers', label: 'Careers' },
-    { href: '/blog', label: 'Blog' },
   ],
   hosts: [
     { href: '/for-hosts', label: 'Become a Host', switchesToHost: true },
-    { href: '/pricing', label: 'Pricing' },
-    { href: '/resources', label: 'Host Resources' },
+    { href: '/for-hosts/pricing', label: 'Pricing' },
     { href: '/support', label: 'Support' },
   ],
   legal: [

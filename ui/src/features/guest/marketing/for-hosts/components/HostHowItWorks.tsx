@@ -9,17 +9,17 @@ const steps = [
   },
   {
     number: '02',
-    title: 'Set forms and pricing',
+    title: 'Configure forms and rates',
     icon: SlidersHorizontal,
   },
   {
     number: '03',
-    title: 'Run the workflow',
+    title: 'Run the booking workflow',
     icon: Workflow,
   },
   {
     number: '04',
-    title: 'Track every result',
+    title: 'Track every stay to completion',
     icon: CheckCircle2,
   },
 ];
@@ -40,7 +40,7 @@ export function HostHowItWorks() {
             How it works
           </p>
           <h2 className="text-foreground text-3xl font-bold tracking-tight sm:text-4xl">
-            Set it once. Keep every stay moving.
+            Set it once. Every stay follows the same path.
           </h2>
         </motion.div>
 

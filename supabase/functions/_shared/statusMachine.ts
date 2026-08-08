@@ -38,6 +38,7 @@ export const BOOKING_STATUSES = [
   'PENDING_SD_REFUND',
   'COMPLETED',
   'CANCELLED',
+  'IMPORTED',
 ] as const;
 
 export type BookingStatus = (typeof BOOKING_STATUSES)[number];
@@ -170,6 +171,7 @@ const TRANSITION_GRAPH: Record<BookingStatus, ReadonlyArray<BookingStatus>> = {
   PENDING_SD_REFUND: ['COMPLETED', 'CANCELLED'],
   COMPLETED: [],
   CANCELLED: [],
+  IMPORTED: [],
 };
 
 /**
@@ -203,6 +205,7 @@ const MANUAL_OVERRIDE_GRAPH: Record<BookingStatus, ReadonlyArray<BookingStatus>>
   PENDING_SD_REFUND: ['READY_FOR_CHECKOUT'],
   COMPLETED: [],
   CANCELLED: [],
+  IMPORTED: ['CANCELLED', 'PENDING_REVIEW'],
 };
 
 export type TransitionContext = {
@@ -267,6 +270,7 @@ export const STATUS_CALENDAR_META: Record<BookingStatus, CalendarStatusMeta> = {
   PENDING_SD_REFUND: { colorId: '6', label: 'PENDING SD REFUND' },
   COMPLETED: { colorId: '9', label: 'COMPLETED' },
   CANCELLED: { colorId: '3', label: 'CANCELED' },
+  IMPORTED: { colorId: '8', label: 'IMPORTED' },
 };
 
 /** DB fields used to derive nested “what is still pending” under PENDING_DOCUMENTS (calendar). */
@@ -544,4 +548,5 @@ export const STATUS_HUMAN_LABEL: Record<BookingStatus, string> = {
   PENDING_SD_REFUND: 'Pending SD Refund',
   COMPLETED: 'Completed',
   CANCELLED: 'Cancelled',
+  IMPORTED: 'Imported',
 };

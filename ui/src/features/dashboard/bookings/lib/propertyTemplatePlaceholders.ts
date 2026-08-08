@@ -7,7 +7,7 @@ export const PROPERTY_TEMPLATE_PLACEHOLDERS_REFERENCE: readonly string[] = [
   '{{primary_guest_name}} — primary guest name',
   '{{guest_phone}} — guest phone',
   '{{guest_email}} — guest email',
-  '{{guest_facebook_name}} — Facebook/Airbnb name',
+  '{{guest_facebook_name}} — Guest display name',
   '{{guest_name}} — guest display name',
   '{{check_in_date}} — check-in date',
   '{{check_out_date}} — check-out date',

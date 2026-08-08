@@ -66,7 +66,7 @@ export function GuestAccountMenu() {
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-52">
+      <DropdownMenuContent align="end" className="z-[60] w-52">
         {menuLinks.map((item) => (
           <DropdownMenuItem key={item.href} asChild>
             <Link to={item.href}>{item.label}</Link>

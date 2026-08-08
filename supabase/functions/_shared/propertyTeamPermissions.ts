@@ -36,6 +36,7 @@ export const TEAM_PERMISSION_IDS = [
   'inbox:view',
   'inbox:reply',
   'inbox:manage',
+  'import:manage',
 ] as const;
 
 export type TeamPermissionId = (typeof TEAM_PERMISSION_IDS)[number];

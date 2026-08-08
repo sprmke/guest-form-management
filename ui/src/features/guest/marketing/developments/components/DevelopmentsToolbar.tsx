@@ -1,9 +1,11 @@
-import { SlidersHorizontal, Grid3X3, LayoutList, ChevronDown } from 'lucide-react';
+import { SlidersHorizontal, LayoutGrid, List, Map, ArrowUpDown } from 'lucide-react';
+
+import { DEVELOPMENT_SORT_OPTIONS } from '@/features/guest/marketing/shared/lib/listingFilterChips';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-export type DevelopmentViewMode = 'grid' | 'list';
+export type DevelopmentViewMode = 'grid' | 'list' | 'map';
 
 interface DevelopmentsToolbarProps {
   viewMode: DevelopmentViewMode;
@@ -17,12 +19,10 @@ interface DevelopmentsToolbarProps {
   resultsNoun?: string;
 }
 
-const SORT_OPTIONS = [
-  { value: 'recommended', label: 'Recommended' },
-  { value: 'rating', label: 'Highest Rated' },
-  { value: 'price-low', label: 'Price: Low to High' },
-  { value: 'price-high', label: 'Price: High to Low' },
-  { value: 'newest', label: 'Newest' },
+const viewModes: { value: DevelopmentViewMode; icon: typeof LayoutGrid; label: string }[] = [
+  { value: 'grid', icon: LayoutGrid, label: 'Grid view' },
+  { value: 'list', icon: List, label: 'List view' },
+  { value: 'map', icon: Map, label: 'Map view' },
 ];
 
 export function DevelopmentsToolbar({
@@ -37,74 +37,67 @@ export function DevelopmentsToolbar({
 }: DevelopmentsToolbarProps) {
   return (
     <div className="border-border bg-background border-b">
-      <div className="flex items-center justify-between gap-4 px-4 py-3 sm:px-6">
-        {/* Left: Filters toggle + count */}
-        <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-6">
+        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
           <Button
             variant="outline"
             size="sm"
             onClick={onToggleFilters}
             className={cn(
-              'hidden gap-2 lg:flex',
+              'hidden min-h-[44px] gap-2 lg:inline-flex',
               filtersOpen && 'border-primary bg-primary/10 text-primary hover:bg-primary/15'
             )}
           >
-            <SlidersHorizontal className="h-4 w-4" />
+            <SlidersHorizontal className="h-4 w-4" aria-hidden />
             {filtersOpen ? 'Hide Filters' : 'Show Filters'}
           </Button>
 
-          <span className="text-muted-foreground text-sm">
-            <span className="text-foreground font-semibold">{totalResults}</span>{' '}
+          <span className="text-muted-foreground truncate text-sm">
+            <span className="text-foreground font-semibold tabular-nums">{totalResults}</span>{' '}
             {totalResults === 1 ? resultsNoun : `${resultsNoun}s`}
           </span>
         </div>
 
-        {/* Right: Sort + View mode */}
-        <div className="flex items-center gap-2">
-          {/* Sort dropdown (native select for simplicity) */}
-          <div className="relative hidden sm:block">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <div className="relative flex items-center gap-2">
+            <ArrowUpDown className="text-muted-foreground hidden h-4 w-4 sm:block" aria-hidden />
             <select
               value={sortBy}
               onChange={(e) => onSortChange(e.target.value)}
-              className="border-border bg-background text-foreground focus:ring-primary appearance-none rounded-lg border py-2 pl-3 pr-8 text-sm focus:outline-none focus:ring-1"
+              aria-label="Sort developments"
+              className="border-border bg-background text-foreground focus:border-primary focus:ring-primary/20 min-h-[44px] max-w-[11rem] appearance-none rounded-lg border py-2 pl-2 pr-8 text-sm focus:outline-none focus:ring-2 sm:max-w-none"
             >
-              {SORT_OPTIONS.map((opt) => (
+              {DEVELOPMENT_SORT_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
               ))}
             </select>
-            <ChevronDown className="text-muted-foreground pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2" />
           </div>
 
-          {/* View mode toggle */}
-          <div className="border-border flex overflow-hidden rounded-lg border">
-            <button
-              onClick={() => onViewModeChange('grid')}
-              className={cn(
-                'flex items-center justify-center p-2 text-sm transition-colors',
-                viewMode === 'grid'
-                  ? 'bg-primary text-white'
-                  : 'bg-background text-muted-foreground hover:bg-muted'
-              )}
-              aria-label="Grid view"
-              aria-pressed={viewMode === 'grid'}
-            >
-              <Grid3X3 className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => onViewModeChange('list')}
-              className={cn(
-                'border-border flex items-center justify-center border-l p-2 text-sm transition-colors',
-                viewMode === 'list'
-                  ? 'bg-primary text-white'
-                  : 'bg-background text-muted-foreground hover:bg-muted'
-              )}
-              aria-label="List view"
-              aria-pressed={viewMode === 'list'}
-            >
-              <LayoutList className="h-4 w-4" />
-            </button>
+          <div className="border-border bg-muted/50 flex rounded-lg border p-1">
+            {viewModes.map((mode) => {
+              const Icon = mode.icon;
+              const isActive = viewMode === mode.value;
+              return (
+                <button
+                  key={mode.value}
+                  type="button"
+                  onClick={() => onViewModeChange(mode.value)}
+                  className={cn(
+                    'min-h-[44px] min-w-[44px] rounded-md p-2 transition-all',
+                    isActive
+                      ? 'bg-background text-primary shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                  aria-label={mode.label}
+                  aria-pressed={isActive}
+                  title={mode.label}
+                >
+                  <Icon className="h-4 w-4" aria-hidden />
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

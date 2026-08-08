@@ -2,8 +2,12 @@
 title: 'Tasks To Prompt'
 status: archived
 tags: [planning]
-updated: 2026-08-02
+updated: 2026-08-07
 ---
+
+**Status legend:** ✅ done · 🚧 in progress · 📋 planned (plan doc written) · 🔵 pending / open · ❌ cancelled / won't do
+
+===
 
 ✅ Expand Inbox module to both org and property levels
 
@@ -39,7 +43,7 @@ The end goal is that we should support both properties & parking modules in book
 
 ===
 
-🚧 Socials at org and property level
+🔵 Socials at org and property level
 
 We should refine how we can improve the socials management for org and property level to prevent any redundant fill up.
 Provide a best UI/UX so that on property/parking level, we have option to reuse the same value of org level per fields.
@@ -72,9 +76,9 @@ Lastly, let's provide card description for each section, for what each module is
 
 ❌ Add main header in dashboard
 
-Implement header in our dashboard and move the user, notification, light dark mode toggle, etc
-Then, the toggle between explore and host mode should be on sidebar
-Also, we still keep the get verified on sidebar
+Won't do — profile, theme toggle, and Explore/Host mode stay in the sidebar footer (`AdminLayout`); separate top header bar rejected.
+
+→ **Won't do:** [`../wont-do/dashboard-top-header-bar.md`](../wont-do/dashboard-top-header-bar.md)
 
 ===
 
@@ -89,11 +93,11 @@ Guide: `docs/guides/routes/org/property/calendar.md`
 
 ===
 
-Improve dashboard UI at org & property level
+🔵 Improve dashboard UI at org & property level
 
 ===
 
-Display animated popup party when hosts open calendar and we have 20+ bookings this month
+🔵 Display animated popup party when hosts open calendar and we have 20+ bookings this month
 
 ===
 
@@ -101,7 +105,7 @@ Display animated popup party when hosts open calendar and we have 20+ bookings t
 
 ===
 
-Redesign hosts page to be similar UI with developments page.
+🔵 Redesign hosts page to be similar UI with developments page.
 
 Maybe add org photos/banner from org settings?
 
@@ -125,7 +129,7 @@ Make sure we apply this validation on onboarding, settings and all other locatio
 
 ===
 
-✅ Can you please give me a step by step guide to have a branch deployment for our app in UI and backend since we already have production where users currently use our app.
+🚧 Branch deployment guide + dev/staging environment
 
 Meaning, I want to deploy our app in vercel with ou current branch with our new changes.
 
@@ -134,6 +138,8 @@ Same for supabase, but instead of having branch deployment with Suapabase which 
 The goal in the end is for us to deploy and see fully working application with our new changes.
 
 Also, another important setup I'd like to have is to point or use supabase deployed dev in our local so that we don't need to run docker from our local to test and work locally. Meaning, when we have any supabase related changes locally, and test our app, I still want to see our changes and fully working on it with our local frontend. Meaning, when we are working locally, we can still work on it without running docker and without deploying our backend/supabase related changes to dev. Then, once good, we can deploy our changes to dev. I'm not sure how is this possible but this is how we do it on other projects and I'd like to implement in our app
+
+→ **Runbook shipped; operator bootstrap pending:** [`../in-progress/dev-staging-environment.md`](../in-progress/dev-staging-environment.md)
 
 ===
 
@@ -147,12 +153,26 @@ Also, another thing that we need to improve is that we should display or redesig
 
 ===
 
-Refine all property public pages
+🚧 Refine all property public pages
+
+→ **In progress:** [`../in-progress/public-operational-guest-pages-multi-tenant.md`](../in-progress/public-operational-guest-pages-multi-tenant.md)
 
 ===
 
-Update for hosts landing page animation section section with updated features and more refined text/voice
+🔵 Update for-hosts landing page animation section with updated features and more refined text/voice
 
 ===
 
-Improve avatar video animation
+🔵 Improve avatar video animation
+
+===
+
+✅ Make google map view mode in search or public page listing
+
+Shipped: [`../done/google-map-listing-view.md`](../done/google-map-listing-view.md). Real Google Maps on `/properties`, `/developments`, and `/search` category tabs. `/parkings` index map toggle still optional follow-up.
+
+===
+
+🔵 Generate more real world mock data
+
+Generate more real world and hundreds of mock data for different properties, developments, parking, and other type of place so that we can fully test and simulate real world test data and fully verify if our search, filters, lazy load, and any app performance optimization implementation are working properly.

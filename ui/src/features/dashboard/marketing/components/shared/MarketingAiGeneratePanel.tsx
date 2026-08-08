@@ -1,17 +1,17 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
-import { Loader2, Sparkles, X } from 'lucide-react';
+import { Check, Loader2, Sparkles } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalDescription,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 
@@ -35,13 +35,17 @@ const DEFAULT_CALENDAR_VIBES = [
   'Soft pastel availability',
   'Sunny weekend promo',
   'Botanical calm',
-  'Dreamy dusk',
-  'Clean editorial',
 ];
 
+const EMPTY_CONTEXT: Record<MarketingAiContextKey, boolean> = {
+  propertyPhoto: true,
+  amenities: true,
+  availability: true,
+};
+
 /**
- * Shared Marketing Studio AI generate sheet.
- * Calendar MVP: prompt + vibe chips + removable context → one generation.
+ * Shared Marketing Studio AI generate modal.
+ * Matches Publish / Save template dialog chrome (ResponsiveModal defaults).
  */
 export function MarketingAiGeneratePanel({
   open,
@@ -53,16 +57,22 @@ export function MarketingAiGeneratePanel({
   onGenerate,
 }: MarketingAiGeneratePanelProps) {
   const [prompt, setPrompt] = useState('');
-  const [includeContext, setIncludeContext] = useState<Record<MarketingAiContextKey, boolean>>({
-    propertyPhoto: true,
-    amenities: true,
-    availability: true,
-  });
+  const [includeContext, setIncludeContext] =
+    useState<Record<MarketingAiContextKey, boolean>>(EMPTY_CONTEXT);
+
+  useEffect(() => {
+    if (!open) {
+      setPrompt('');
+      setIncludeContext(EMPTY_CONTEXT);
+    }
+  }, [open]);
 
   const visibleContext = useMemo(
     () => contextOptions.filter((option) => option.available),
     [contextOptions]
   );
+
+  const canGenerate = prompt.trim().length > 0 && !generating;
 
   const handleVibe = (chip: string) => {
     setPrompt((prev) => {
@@ -74,8 +84,10 @@ export function MarketingAiGeneratePanel({
   };
 
   const handleGenerate = async () => {
+    const trimmed = prompt.trim();
+    if (!trimmed || generating) return;
     await onGenerate({
-      prompt: prompt.trim(),
+      prompt: trimmed,
       includeContext: {
         propertyPhoto: includeContext.propertyPhoto,
         amenities: includeContext.amenities,
@@ -91,41 +103,53 @@ export function MarketingAiGeneratePanel({
         ? 'Generate design'
         : 'Generate video';
 
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        className="flex w-full flex-col gap-0 p-0 sm:max-w-md"
-        aria-describedby={undefined}
-      >
-        <SheetHeader className="border-border space-y-1 border-b px-4 py-4 text-left">
-          <SheetTitle className="flex items-center gap-2 text-base">
-            <Sparkles className="size-4" aria-hidden />
-            {title}
-          </SheetTitle>
-          <SheetDescription className="sr-only">
-            Describe the look you want, then generate a custom template.
-          </SheetDescription>
-        </SheetHeader>
+  const outcomeHint =
+    contentType === 'calendar'
+      ? 'Adds custom templates for Square, Portrait, and Landscape.'
+      : 'Creates a custom template from your description.';
 
-        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 py-4">
+  return (
+    <ResponsiveModal
+      open={open}
+      onOpenChange={(next) => {
+        if (generating && !next) return;
+        onOpenChange(next);
+      }}
+    >
+      <ResponsiveModalContent
+        className="max-w-[min(calc(100vw-1.5rem),28rem)]"
+        aria-busy={generating || undefined}
+        onPointerDownOutside={(event) => {
+          if (generating) event.preventDefault();
+        }}
+        onEscapeKeyDown={(event) => {
+          if (generating) event.preventDefault();
+        }}
+      >
+        <ResponsiveModalHeader>
+          <ResponsiveModalTitle>{title}</ResponsiveModalTitle>
+          <ResponsiveModalDescription>{outcomeHint}</ResponsiveModalDescription>
+        </ResponsiveModalHeader>
+
+        <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="marketing-ai-prompt">Prompt</Label>
+            <Label htmlFor="marketing-ai-prompt">Look</Label>
             <Textarea
               id="marketing-ai-prompt"
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
-              rows={4}
-              className="min-h-[96px]"
+              rows={3}
+              className="min-h-[88px] resize-none"
               placeholder="Soft mint bubbles, weekend availability…"
               disabled={generating}
+              maxLength={500}
             />
           </div>
 
           {vibeChips.length > 0 ? (
             <div className="space-y-2">
-              <p className="text-muted-foreground text-xs font-medium">Suggestions</p>
-              <div className="flex flex-wrap gap-2">
+              <Label>Suggestions</Label>
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Look suggestions">
                 {vibeChips.map((chip) => (
                   <button
                     key={chip}
@@ -134,8 +158,8 @@ export function MarketingAiGeneratePanel({
                     onClick={() => handleVibe(chip)}
                     className={cn(
                       'border-border bg-background hover:bg-muted/60 focus-visible:ring-ring',
-                      'inline-flex min-h-[44px] cursor-pointer items-center rounded-full border px-3 text-sm',
-                      'transition-colors focus-visible:outline-none focus-visible:ring-2'
+                      'inline-flex min-h-[44px] cursor-pointer items-center rounded-md border px-3 text-sm',
+                      'transition-colors focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50'
                     )}
                   >
                     {chip}
@@ -147,8 +171,8 @@ export function MarketingAiGeneratePanel({
 
           {visibleContext.length > 0 ? (
             <div className="space-y-2">
-              <p className="text-muted-foreground text-xs font-medium">Include</p>
-              <div className="flex flex-wrap gap-2">
+              <Label>Include</Label>
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Context to include">
                 {visibleContext.map((option) => {
                   const active = includeContext[option.key];
                   return (
@@ -164,27 +188,30 @@ export function MarketingAiGeneratePanel({
                         }))
                       }
                       className={cn(
-                        'focus-visible:ring-ring inline-flex min-h-[44px] cursor-pointer items-center gap-1.5 rounded-full border px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2',
+                        'focus-visible:ring-ring inline-flex min-h-[44px] cursor-pointer items-center gap-1.5 rounded-md border px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50',
                         active
                           ? 'border-primary/40 bg-primary/10 text-foreground'
                           : 'border-border bg-background text-muted-foreground'
                       )}
                     >
+                      {active ? <Check className="size-3.5 opacity-70" aria-hidden /> : null}
                       {option.label}
-                      {active ? <X className="size-3.5 opacity-70" aria-hidden /> : null}
                     </button>
                   );
                 })}
               </div>
             </div>
           ) : null}
+
+          <p className="text-muted-foreground sr-only" aria-live="polite">
+            {generating ? 'Generating templates. Please wait.' : ''}
+          </p>
         </div>
 
-        <SheetFooter className="border-border mt-auto gap-2 border-t px-4 py-4 sm:flex-row">
+        <ResponsiveModalFooter className="gap-2">
           <Button
             type="button"
             variant="outline"
-            className="min-h-[44px]"
             disabled={generating}
             onClick={() => onOpenChange(false)}
           >
@@ -192,8 +219,8 @@ export function MarketingAiGeneratePanel({
           </Button>
           <Button
             type="button"
-            className="min-h-[44px] gap-2"
-            disabled={generating}
+            className="gap-2"
+            disabled={!canGenerate}
             onClick={() => void handleGenerate()}
           >
             {generating ? (
@@ -201,10 +228,10 @@ export function MarketingAiGeneratePanel({
             ) : (
               <Sparkles className="size-4" aria-hidden />
             )}
-            Generate
+            {generating ? 'Generating…' : 'Generate'}
           </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        </ResponsiveModalFooter>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

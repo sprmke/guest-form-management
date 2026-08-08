@@ -239,7 +239,7 @@ Follow **[[production-deployment|Production deployment — checkout checklist]]*
 
 **Do not skip any step.**
 
-1. Backup the DB: **Pro+** Dashboard → Database → Backups; **Free** → **`pg_dump`** (pooler URI from **Connect** — **§3.5.3** URI guidance) **and/or** **`bunx supabase@latest db dump --linked --data-only`**; keep dumps **off git** (**PII**).
+1. Backup the DB: **Pro+** Dashboard → Database → Backups; **Free** → **`pg_dump`** (pooler URI from **Connect** — **§3.5.3** URI guidance) **and/or** **`bunx supabase@latest db dump --linked --data-only`**; keep dumps **off git** (**PII**). Or automated: `bun run backup:supabase:prod` (also runs automatically before `deploy:supabase`/`deploy:supabase:db` unless `--skip-backup`).
 2. Confirm the linked project ref:
 
    ```bash
@@ -277,6 +277,8 @@ After **`repair --status reverted`**, if **`db push`** says **found local migrat
 ---
 
 ## 6. Rollback
+
+**Automated first option:** `bun run rollback:supabase:prod` restores the most recent `backups/prod/*_data.sql` (or `--schema` too) via `psql`, kamewave-gated with a typed `prod` confirm; `bun run rollback:functions:prod -- <git-ref>` redeploys Edge Functions from an older commit via a throwaway `git worktree`. See `production-deployment.md` §12.
 
 This section reverses **only** the Phase 0 batch artifacts from **§1.1** (backup snapshot table, Phase 0 columns, buckets, `processed_emails`, `gmail_listener_state`). It does **not** undo **`status` enum widening**, SD refund columns, or other migrations listed in **§1.3** — for those, use a **dashboard backup restore** or author inverse migrations.
 

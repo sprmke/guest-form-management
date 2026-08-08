@@ -13,6 +13,7 @@ import {
   INITIAL_ENABLED_HOUSE_RULES,
   resolveHouseRulesForDisplay,
 } from '@/features/dashboard/org/lib/propertyHouseRulesConstants';
+import { MOCK_HOST_AVATAR_URL } from '@/features/guest/marketing/shared/lib/mockListingImages';
 
 /** Same default as guest forms / org settings preview */
 export const DEFAULT_ORG_LOGO_URL = '/images/logo.png';
@@ -148,11 +149,11 @@ export function mapMockPropertyToResolved(detail: PropertyDetail): ResolvedPrope
       organizationName: 'Kame Homes',
       organizationSlug: 'kame-home',
       ownerName: 'Kame Homes',
-      ownerAvatarUrl: DEFAULT_ORG_LOGO_URL,
-      organizationLogoUrl: DEFAULT_ORG_LOGO_URL,
+      ownerAvatarUrl: MOCK_HOST_AVATAR_URL,
+      organizationLogoUrl: MOCK_HOST_AVATAR_URL,
     },
     hostName: 'Kame Homes',
-    hostImage: DEFAULT_ORG_LOGO_URL,
+    hostImage: MOCK_HOST_AVATAR_URL,
     pricing: {
       baseRate: detail.pricing.baseRate,
       currency: detail.pricing.currency,
@@ -212,11 +213,11 @@ export function mapBasicMockToResolved(basic: Property): ResolvedPropertyDetail 
       organizationName: 'Kame Homes',
       organizationSlug: 'kame-home',
       ownerName: 'Kame Homes',
-      ownerAvatarUrl: DEFAULT_ORG_LOGO_URL,
-      organizationLogoUrl: DEFAULT_ORG_LOGO_URL,
+      ownerAvatarUrl: MOCK_HOST_AVATAR_URL,
+      organizationLogoUrl: MOCK_HOST_AVATAR_URL,
     },
     hostName: 'Kame Homes',
-    hostImage: DEFAULT_ORG_LOGO_URL,
+    hostImage: MOCK_HOST_AVATAR_URL,
     pricing: {
       baseRate: basic.price,
       currency: 'PHP',
