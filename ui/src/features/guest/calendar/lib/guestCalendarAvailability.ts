@@ -135,12 +135,28 @@ export function hasBlockedNightBetween(
 
 // ponytail: dev-only guard — turnover checkout on next guest's check-in day must stay allowed
 if (import.meta.env.DEV) {
-  const turnoverBooked = [{ id: '1', checkInDate: '2026-08-07', checkOutDate: '2026-08-10' }];
-  const turnoverCheckIn = toMidnight(new Date(2026, 7, 6));
-  const turnoverCheckout = toMidnight(new Date(2026, 7, 7));
+  const today = toMidnight(new Date());
+  const offsetDay = (n: number) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + n);
+    return toMidnight(d);
+  };
+  const toYmd = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+  // Guest A: check-in today+2, check-out today+3. Guest B arrives today+3 (turnover day).
+  const nextGuestCheckIn = offsetDay(3);
+  const turnoverBooked = [
+    { id: '1', checkInDate: toYmd(nextGuestCheckIn), checkOutDate: toYmd(offsetDay(6)) },
+  ];
+  const myCheckIn = offsetDay(2);
+  const myCheckout = nextGuestCheckIn;
   if (
-    !isGuestCalendarValidCheckoutDate(turnoverBooked, turnoverCheckout, turnoverCheckIn) ||
-    hasBlockedNightBetween(turnoverBooked, turnoverCheckIn, turnoverCheckout)
+    !isGuestCalendarValidCheckoutDate(turnoverBooked, myCheckout, myCheckIn, today) ||
+    hasBlockedNightBetween(turnoverBooked, myCheckIn, myCheckout)
   ) {
     throw new Error(
       'guestCalendarAvailability: turnover checkout on booked check-in day must stay allowed'
