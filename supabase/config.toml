@@ -714,6 +714,15 @@ verify_jwt = false
 [functions.import-update-row]
 verify_jwt = false
 
+[functions.ai-platform-global-settings]
+verify_jwt = false
+
+[functions.ai-platform-settings]
+verify_jwt = false
+
+[functions.ai-platform-usage]
+verify_jwt = false
+
 # ── kept for reference (cloud schedule lines, never uncomment locally) ─────────
 # [functions.gmail-listener] schedule = "*/5 * * * *"
 # [functions.sd-refund-cron] schedule = "*/5 * * * *"
