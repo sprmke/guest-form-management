@@ -2,7 +2,7 @@
 title: 'Dev / staging environment'
 status: active
 tags: [workflow, in-progress, deployment]
-updated: 2026-08-07
+updated: 2026-08-08
 stage: in-progress
 kind: plan
 ---
@@ -13,7 +13,8 @@ kind: plan
 
 ## Summary
 
-- Separate **dev Supabase project** (different account) + **Vercel Preview** env vars
+- **Two stacks (already split):** [`guest-form-management-app`](https://vercel.com/sprmkes-projects/guest-form-management-app) + LEGACY Supabase vs [`kame-homes`](https://vercel.com/kame-works/kame-homes) + mt-dev Supabase — see [`ci-cd-dev-prod.md`](./ci-cd-dev-prod.md) Task 2 **Quick verify**
+- Separate **dev Supabase project** + **`kame-homes` Production** env vars (not legacy Preview-only)
 - **Local modes:** full Docker (`./dev.sh`), hosted dev UI (`--ui-only --env dev`), hybrid API (`dev:remote-api`)
 - **Dev deploy:** `bun run deploy:supabase:dev` with `PROD_PROJECT_REF` guard in `supabase/.env.dev.local`
 
@@ -34,6 +35,7 @@ kind: plan
 1. Create dev Supabase project → copy `supabase/.env.dev.example` → `.env.dev.local`
 2. `bun run deploy:supabase:dev`
 3. Dashboard secrets + Google OAuth (runbook §2.5–2.7)
-4. Vercel Preview env vars (runbook §3)
-5. Copy `ui/.env.development.dev.example` → `.env.development.dev`
-6. `./dev.sh --ui-only --env dev` or VS Code → **Dev: Hosted dev (UI only)**
+4. **`kame-homes`** Production env vars → fwor… — Task 2 in [`ci-cd-dev-prod.md`](./ci-cd-dev-prod.md)
+5. **`bun run deploy:supabase:dev -- --allow-multi-tenancy`** — Task 3 in same doc (or Quick verify if already done)
+6. Copy `ui/.env.development.dev.example` → `.env.development.dev`
+7. `./dev.sh --ui-only --env dev` or VS Code → **Dev: Hosted dev (UI only)**

@@ -2,7 +2,7 @@
 title: 'Claude To Plan'
 status: archived
 tags: [planning]
-updated: 2026-08-07
+updated: 2026-08-08
 ---
 
 **Status legend:** ✅ done · 🚧 in progress · 📋 planned (plan doc written) · 🔵 pending / open · ❌ cancelled / won't do
@@ -210,7 +210,7 @@ Do /impeccable critique, audit, review, harden & polish of our current e2e booki
 
 ===
 
-🔵 Avail parking e2e flow
+📋 Avail parking e2e flow
 
 Phase 1: Plan how host received parking booking
 The first phase than we need to finalize for parking e2e is how host should receive and handle parking bookings. Should we follow how property bookings? Create new workflow and different status for parking? Also, how we should notify parking host that they received parking and need immediate review? Same telegram flow?
@@ -259,6 +259,8 @@ Phase 4: Manual & Physical on site tasks:
 
 - Picture different type of parking (tower, bay). Edit and add parking slot number dynamically
 - Measure dimension and height clearance
+
+→ **Plan (Phase 0 & Phase 1):** [`../planned/parking-e2e-phase1-overview.md`](../planned/parking-e2e-phase1-overview.md) (+ companions: registration-dimensions, status-workflow, host-broadcast-notifications, guest-request-realtime-status, bookings-page-updates). Phase 2a/2b/3/4 stubs: [`../planned/parking-e2e-later-phases.md`](../planned/parking-e2e-later-phases.md).
 
 ===
 
@@ -454,12 +456,9 @@ Shipped: [`../done/smart-ai-data-importer.md`](../done/smart-ai-data-importer.md
 
 ===
 
-✅ Deployment process to different environment (local - dev - prod) — see [`supabase-deploy-guardrails-and-rollback`](../done/supabase-deploy-guardrails-and-rollback.md)
+📋 CI/CD to dev and production — design [`ci-cd-dev-prod-design.md`](./ci-cd-dev-prod-design.md) · plan [`../in-progress/ci-cd-dev-prod.md`](../in-progress/ci-cd-dev-prod.md)
 
-Now, I would like to plan to create supabase dev env for staging.
-Make sure we update all scripts, docs, commands, hooks/cofiguration, run tasks or any other process that we have and make sure it knows and we have a solid flow and steps/guard rails to deploy our application from local -> dev -> prod.
-
-Analyze our current setup, update things need to be updated to have these flow and make sure we have a solit process/flow/script that we can use to makes deployment to different environment very easy and safe.
+Dual-track: **`guest-form-management-app`**+`main`+**LEGACY** `zftt…`; **`kame-homes`**+mt branch+**MULTI_TENANT_DEV** `fwor…`. Same git repo, separate Vercel + Supabase stacks.
 
 Make sure each command or deployment has guard rails, safety check, and can safely rollback changes anytime in case we have executed or did dangerous actions.
 
