@@ -1,4 +1,7 @@
-import { toLocationSlug } from '@/features/guest/marketing/shared/lib/locationSlug';
+import {
+  normalizeCityPlace,
+  toLocationSlug,
+} from '@/features/guest/marketing/shared/lib/locationSlug';
 
 import type { Development } from '../types';
 
@@ -21,8 +24,7 @@ export function findCityByLocationSlug(
   if (!needle) return null;
 
   for (const development of developments) {
-    const city = development.city.trim();
-    if (!city) continue;
+    const city = normalizeCityPlace(development.city);
     if (toLocationSlug(city) === needle) return city;
   }
   return null;
@@ -34,7 +36,7 @@ export function filterDevelopmentsByLocationSlug(
 ): Development[] {
   const city = findCityByLocationSlug(locationSlug, developments);
   if (!city) return [];
-  return developments.filter((d) => d.city.trim() === city);
+  return developments.filter((d) => normalizeCityPlace(d.city) === city);
 }
 
 /** Group developments by city for Airbnb-style location rows. */
@@ -44,7 +46,7 @@ export function groupDevelopmentsByLocation(
   const byCity = new Map<string, Development[]>();
 
   for (const development of developments) {
-    const city = development.city.trim() || 'Other';
+    const city = normalizeCityPlace(development.city);
     const existing = byCity.get(city);
     if (existing) {
       existing.push(development);

@@ -13,7 +13,7 @@ kind: plan
 
 ## Context
 
-The public guest booking form (`ui/src/features/guest/form/`) is hardcoded to one property's rules, the same way the booking-status workflow was before the recent **configurable document requirements** effort (shipped: [`../done/booking-workflow-configurable-docs.md`](../done/booking-workflow-configurable-docs.md), audited in [`booking-workflow-multi-tenancy.md`](./booking-workflow-multi-tenancy.md)). This plan is the guest-form counterpart of that same generalization: as the platform onboards more properties, hosts need to turn Pets / Parking / Surprise Decor on or off per unit, and the booking-source field needs to stop defaulting to "Facebook" for every booking that doesn't explicitly come from a listing platform.
+The public guest booking form (`ui/src/features/guest/form/`) is hardcoded to one property's rules, the same way the booking-status workflow was before the recent **configurable document requirements** effort (shipped: [`../done/booking-workflow-configurable-docs.md`](../done/booking-workflow-configurable-docs.md), audited in [`../in-progress/booking-workflow-multi-tenancy.md`](../in-progress/booking-workflow-multi-tenancy.md)). This plan is the guest-form counterpart of that same generalization: as the platform onboards more properties, hosts need to turn Pets / Parking / Surprise Decor on or off per unit, and the booking-source field needs to stop defaulting to "Facebook" for every booking that doesn't explicitly come from a listing platform.
 
 Two concrete problems drove this:
 

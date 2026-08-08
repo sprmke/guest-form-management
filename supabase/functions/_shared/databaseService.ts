@@ -975,10 +975,13 @@ export class DatabaseService {
       // - New check-out === existing check-in
 
       // Phase 2+: only CANCELLED bookings free dates — every other status blocks.
+      // IMPORTED bookings are historical records — must not block live availability,
+      // same as CANCELLED. A host importing a past stay should not prevent new bookings.
       let query = this.supabase
         .from('guest_submissions')
         .select('id, check_in_date, check_out_date, status, primary_guest_name')
-        .neq('status', 'CANCELLED');
+        .neq('status', 'CANCELLED')
+        .neq('status', 'IMPORTED');
 
       if (propertyId) {
         query = query.eq('property_id', propertyId);
@@ -1076,7 +1079,9 @@ export class DatabaseService {
     let query = this.supabase
       .from('guest_submissions')
       .select('check_in_date, check_out_date, status')
-      .neq('status', 'CANCELLED');
+      .neq('status', 'CANCELLED')
+      // IMPORTED bookings are historical records — must not block live availability.
+      .neq('status', 'IMPORTED');
     if (propertyId) {
       query = query.eq('property_id', propertyId);
     }

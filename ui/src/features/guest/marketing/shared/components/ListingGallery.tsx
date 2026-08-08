@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, ChevronLeft, ChevronRight, Grid3X3, Share2 } from 'lucide-react';
 
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
+import { LISTING_PLACEHOLDER_PROPERTY } from '@/features/guest/marketing/shared/lib/mockListingImages';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -20,7 +21,7 @@ export function ListingGallery({
   images,
   listingName,
   actionSlot,
-  placeholderSrc = '/images/placeholder-property.jpg',
+  placeholderSrc = LISTING_PLACEHOLDER_PROPERTY,
 }: Props) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);

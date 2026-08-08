@@ -303,7 +303,9 @@ export async function loadBookedDateKeys(
     .from('guest_submissions')
     .select('check_in_date, check_out_date, status')
     .eq('property_id', propertyId)
-    .neq('status', 'CANCELLED');
+    .neq('status', 'CANCELLED')
+    // IMPORTED bookings are historical records — must not block live availability.
+    .neq('status', 'IMPORTED');
 
   if (error) {
     throw new Error(`Failed to load booked dates: ${error.message}`);
@@ -314,7 +316,7 @@ export async function loadBookedDateKeys(
   const rangeEnd = monthEnd ? parseOccupancyDate(monthEnd) : null;
 
   for (const row of data ?? []) {
-    if (row.status === 'CANCELLED') continue;
+    if (row.status === 'CANCELLED' || row.status === 'IMPORTED') continue;
     const checkIn = parseOccupancyDate(row.check_in_date);
     const checkOut = parseOccupancyDate(row.check_out_date);
     if (!checkIn || !checkOut || checkIn >= checkOut) continue;
@@ -361,7 +363,9 @@ export async function loadCalendarBookings(
       'id, status, check_in_date, check_out_date, primary_guest_name, guest_facebook_name, guest_email, guest_phone_number, booking_rate, number_of_nights, need_parking, has_pets, guest_requests_surprise_decor, valid_id_url'
     )
     .eq('property_id', propertyId)
-    .neq('status', 'CANCELLED');
+    .neq('status', 'CANCELLED')
+    // IMPORTED bookings are historical records — must not block live availability.
+    .neq('status', 'IMPORTED');
 
   if (error) {
     throw new Error(`Failed to load calendar bookings: ${error.message}`);
@@ -369,7 +373,7 @@ export async function loadCalendarBookings(
 
   const rows: PropertyPricingCalendarBooking[] = [];
   for (const row of data ?? []) {
-    if (row.status === 'CANCELLED') continue;
+    if (row.status === 'CANCELLED' || row.status === 'IMPORTED') continue;
     const checkIn = parseOccupancyDate(row.check_in_date);
     const checkOut = parseOccupancyDate(row.check_out_date);
     if (!checkIn || !checkOut || !bookingOverlapsMonth(checkIn, checkOut, rangeStart, rangeEnd)) {

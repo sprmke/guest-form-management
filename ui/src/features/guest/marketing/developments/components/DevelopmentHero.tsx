@@ -48,7 +48,7 @@ export function DevelopmentHero({ development }: DevelopmentHeroProps) {
   return (
     <section className="bg-background pt-20 lg:pt-24">
       <div className="container mx-auto px-4 pb-6 pt-4 sm:px-6 lg:px-8">
-        <ListingHeroSearch redirectTo="/developments" />
+        <ListingHeroSearch />
       </div>
 
       <div className="container relative mx-auto px-4 sm:px-6 lg:px-8">

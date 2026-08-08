@@ -1,16 +1,31 @@
 import { Car } from 'lucide-react';
 
+import { ListingPlaceGroupsFooter } from '@/features/guest/marketing/shared/components/ListingPlaceGroupsFooter';
+
 import { ParkingsLocationRow } from './ParkingsLocationRow';
 import { groupParkingsByLocation } from '../lib/groupParkingsByLocation';
 
+import type { ParkingLocationGroup } from '../lib/groupParkingsByLocation';
 import type { ParkingListEntry } from '../lib/parkingListEntries';
 
 interface ParkingsByLocationProps {
-  entries: ParkingListEntry[];
+  entries?: ParkingListEntry[];
+  groups?: ParkingLocationGroup[];
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+  hasLoadMoreError?: boolean;
+  onLoadMore?: () => void;
 }
 
-export function ParkingsByLocation({ entries }: ParkingsByLocationProps) {
-  const groups = groupParkingsByLocation(entries);
+export function ParkingsByLocation({
+  entries = [],
+  groups: providedGroups,
+  hasMore = false,
+  isLoadingMore = false,
+  hasLoadMoreError = false,
+  onLoadMore,
+}: ParkingsByLocationProps) {
+  const groups = providedGroups ?? groupParkingsByLocation(entries);
 
   if (groups.length === 0) {
     return (
@@ -33,6 +48,14 @@ export function ParkingsByLocation({ entries }: ParkingsByLocationProps) {
           entries={group.entries}
         />
       ))}
+      {onLoadMore ? (
+        <ListingPlaceGroupsFooter
+          hasMore={hasMore}
+          isLoading={isLoadingMore}
+          hasError={hasLoadMoreError}
+          onLoadMore={onLoadMore}
+        />
+      ) : null}
     </div>
   );
 }

@@ -21,7 +21,7 @@ export function GuestInfoPanel({
   return (
     <BookingDetailCard title="Guest information" icon={UserRound}>
       <BookingDetailRowGroup>
-        <BookingDetailRow label="Facebook / Airbnb name" value={booking.guest_facebook_name} />
+        <BookingDetailRow label="Display name" value={booking.guest_facebook_name} />
         <BookingDetailRow label="Primary guest" value={booking.primary_guest_name} />
         <BookingDetailRow label="Email" value={booking.guest_email} />
         <BookingDetailRow label="Phone" value={booking.guest_phone_number} />

@@ -13,12 +13,12 @@ Navigation for **guest-form-management**.
 
 ## Workflow (active feature work)
 
-| Doc                                                | Purpose                                          |
-| -------------------------------------------------- | ------------------------------------------------ |
-| [`workflow/README.md`](./workflow/README.md)       | Lifecycle: intake → planned → in-progress → done |
-| [`workflow/planned/`](./workflow/planned/)         | Plans not yet shipped                            |
-| [`workflow/in-progress/`](./workflow/in-progress/) | Active implementation                            |
-| [`workflow/done/`](./workflow/done/)               | Verified shipped plans                           |
+| Doc                                                | Purpose                                                    |
+| -------------------------------------------------- | ---------------------------------------------------------- |
+| [`workflow/README.md`](./workflow/README.md)       | Lifecycle: intake → planned → in-progress → done · wont-do |
+| [`workflow/planned/`](./workflow/planned/)         | Plans not yet shipped                                      |
+| [`workflow/in-progress/`](./workflow/in-progress/) | Active implementation                                      |
+| [`workflow/done/`](./workflow/done/)               | Verified shipped plans                                     |
 
 ## Product backlog (GitHub Issues)
 
@@ -48,6 +48,7 @@ See epics #101–#119 in historical [`archive/todos/BACKLOG_DRAFT.md`](./archive
 | [`guides/README.md`](./guides/README.md)                                                                     | Route guides overview                           |
 | [`guides/routes/README.md`](./guides/routes/README.md)                                                       | Route → file index                              |
 | [`guides/testing/contract-expiry-lifecycle-manual.md`](./guides/testing/contract-expiry-lifecycle-manual.md) | Sublessee / Auth Rep contract-expiry manual E2E |
+| [`guides/testing/smart-search-intents-manual.md`](./guides/testing/smart-search-intents-manual.md)           | Nearby / concept / literal search manual E2E    |
 
 ## Archive
 

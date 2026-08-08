@@ -1,6 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
-import { motion, AnimatePresence } from 'framer-motion';
+import { useSearchParams } from 'react-router-dom';
+
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { SlidersHorizontal } from 'lucide-react';
 
 import {
@@ -12,34 +14,193 @@ import {
   PropertiesMap,
   type ViewMode,
 } from '@/features/guest/marketing/properties/components';
-import { mockProperties } from '@/features/guest/marketing/properties/data/mockProperties';
+import type { Property } from '@/features/guest/marketing/properties/components/PropertyCard';
+import { usePublicProperties } from '@/features/guest/marketing/properties/hooks/usePublicProperties';
+import {
+  clearPropertyFilters,
+  EMPTY_PROPERTIES_FACETS,
+  parsePropertiesQuery,
+  writePropertiesQuery,
+  type PropertiesListingQuery,
+  type PropertiesSort,
+  type PublicPropertyListItem,
+} from '@/features/guest/marketing/properties/lib/propertiesQuery';
+import { ListingActiveFilterChips } from '@/features/guest/marketing/shared/components/ListingActiveFilterChips';
+import { ListingFilteredEmpty } from '@/features/guest/marketing/shared/components/ListingFilteredEmpty';
+import { usePublicPlaceGroups } from '@/features/guest/marketing/shared/hooks/usePublicPlaceGroups';
+import {
+  buildPropertyFilterChips,
+  removePropertyFilterChip,
+} from '@/features/guest/marketing/shared/lib/listingFilterChips';
+import {
+  parseBboxFromSearchParams,
+  type MapBbox,
+} from '@/features/guest/marketing/shared/lib/listingMapMarkers';
+import { resolveListingImages } from '@/features/guest/marketing/shared/lib/mockListingImages';
 
 import { Button } from '@/components/ui/button';
 
+function toPropertyCard(item: PublicPropertyListItem): Property {
+  return {
+    id: item.id,
+    slug: item.slug,
+    name: item.name,
+    location: item.location,
+    price: item.price,
+    rating: item.rating,
+    reviews: item.reviews,
+    images: resolveListingImages(item.images, 'property', item.slug),
+    type: item.type,
+    guests: item.guests,
+    bedrooms: item.bedrooms,
+    bathrooms: item.bathrooms,
+    amenities: item.amenities,
+    isSuperhost: item.isSuperhost,
+    isNew: item.isNew,
+    developmentSlug: item.developmentSlug,
+    developmentName: item.developmentName,
+    tower: item.tower,
+    unitNumber: item.unitNumber,
+    latitude: item.latitude,
+    longitude: item.longitude,
+  };
+}
+
+function parseViewMode(raw: string | null): ViewMode {
+  if (raw === 'list' || raw === 'map') return raw;
+  return 'grid';
+}
+
+function isDefaultGroupedBrowse(query: PropertiesListingQuery, viewMode: ViewMode): boolean {
+  return (
+    viewMode === 'grid' &&
+    !query.where &&
+    !query.locationSlug &&
+    query.type.length === 0 &&
+    query.minPrice == null &&
+    query.maxPrice == null &&
+    query.bedrooms == null &&
+    query.amenities.length === 0 &&
+    query.development.length === 0 &&
+    !query.checkIn &&
+    !query.checkOut &&
+    query.adults === 0 &&
+    query.children === 0 &&
+    query.lat == null &&
+    query.lng == null &&
+    query.swLat == null &&
+    query.swLng == null &&
+    query.neLat == null &&
+    query.neLng == null &&
+    query.sort === 'recommended' &&
+    query.page === 1
+  );
+}
+
 export function PropertiesListPage() {
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const query = useMemo(() => parsePropertiesQuery(searchParams), [searchParams]);
+  const viewMode = parseViewMode(searchParams.get('view'));
+  const groupedBrowse = isDefaultGroupedBrowse(query, viewMode);
+  const facetQuery = useMemo(
+    () => (groupedBrowse ? { ...query, pageSize: 1 } : query),
+    [groupedBrowse, query]
+  );
+  const { data, isLoading, isError, isFetching } = usePublicProperties(facetQuery);
+  const placeGroups = usePublicPlaceGroups<PublicPropertyListItem>('properties', groupedBrowse);
+  const reduceMotion = useReducedMotion();
+
+  const [filtersOpen, setFiltersOpen] = useState(true);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const [sortBy, setSortBy] = useState('recommended');
 
-  const sortedProperties = useMemo(() => {
-    const sorted = [...mockProperties];
-    switch (sortBy) {
-      case 'price-low':
-        return sorted.sort((a, b) => a.price - b.price);
-      case 'price-high':
-        return sorted.sort((a, b) => b.price - a.price);
-      case 'rating':
-        return sorted.sort((a, b) => b.rating - a.rating);
-      case 'reviews':
-        return sorted.sort((a, b) => b.reviews - a.reviews);
-      case 'newest':
-        return sorted.sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0));
-      default:
-        return sorted;
-    }
-  }, [sortBy]);
+  const patchQuery = useCallback(
+    (partial: Partial<PropertiesListingQuery>) => {
+      setSearchParams(
+        (prev) => writePropertiesQuery({ ...parsePropertiesQuery(prev), ...partial }, prev),
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
 
+  const setFilters = useCallback(
+    (next: PropertiesListingQuery) => {
+      setSearchParams(
+        (prev) =>
+          writePropertiesQuery(
+            {
+              ...next,
+              swLat: null,
+              swLng: null,
+              neLat: null,
+              neLng: null,
+              page: 1,
+            },
+            prev
+          ),
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
+
+  const setViewMode = useCallback(
+    (mode: ViewMode) => {
+      setSearchParams(
+        (prev) => {
+          const next = writePropertiesQuery(
+            {
+              ...parsePropertiesQuery(prev),
+              ...(mode !== 'map' ? { swLat: null, swLng: null, neLat: null, neLng: null } : {}),
+            },
+            prev
+          );
+          if (mode === 'grid') next.delete('view');
+          else next.set('view', mode);
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
+
+  const mapBbox = useMemo(() => parseBboxFromSearchParams(searchParams), [searchParams]);
+
+  const applyMapViewport = useCallback(
+    (bbox: MapBbox) => {
+      patchQuery({
+        swLat: bbox.swLat,
+        swLng: bbox.swLng,
+        neLat: bbox.neLat,
+        neLng: bbox.neLng,
+        page: 1,
+      });
+    },
+    [patchQuery]
+  );
+
+  const clearMapViewport = useCallback(() => {
+    patchQuery({ swLat: null, swLng: null, neLat: null, neLng: null, page: 1 });
+  }, [patchQuery]);
+
+  const properties = useMemo(() => (data?.data ?? []).map(toPropertyCard), [data?.data]);
+  const propertyLocationGroups = useMemo(
+    () =>
+      (placeGroups.data?.pages ?? []).flatMap((page) =>
+        page.groups.map((group) => ({
+          place: group.place,
+          locationSlug: group.locationSlug,
+          title: group.title,
+          properties: group.preview.map(toPropertyCard),
+        }))
+      ),
+    [placeGroups.data?.pages]
+  );
+  const facets = data?.facets ?? EMPTY_PROPERTIES_FACETS;
+  const totalResults = data?.total ?? 0;
+  const filterChips = useMemo(() => buildPropertyFilterChips(query, facets), [query, facets]);
+  const hasActiveFilters = filterChips.length > 0;
   return (
     <div className="bg-background min-h-screen">
       <PropertiesHero />
@@ -48,9 +209,9 @@ export function PropertiesListPage() {
         <Button
           variant="outline"
           onClick={() => setMobileFiltersOpen(true)}
-          className="w-full gap-2"
+          className="min-h-[44px] w-full gap-2"
         >
-          <SlidersHorizontal className="h-4 w-4" />
+          <SlidersHorizontal className="h-4 w-4" aria-hidden />
           Filters & Sort
         </Button>
       </div>
@@ -60,56 +221,141 @@ export function PropertiesListPage() {
           isOpen={filtersOpen}
           onClose={() => setFiltersOpen(false)}
           isMobile={false}
+          value={query}
+          onChange={setFilters}
+          facets={facets}
         />
 
         <PropertiesFilters
           isOpen={mobileFiltersOpen}
           onClose={() => setMobileFiltersOpen(false)}
           isMobile={true}
+          value={query}
+          onChange={setFilters}
+          facets={facets}
+          sortBy={query.sort}
+          onSortChange={(sort) => patchQuery({ sort: sort as PropertiesSort, page: 1 })}
         />
 
         <main className="min-w-0 flex-1 overflow-x-hidden">
           <PropertiesToolbar
             viewMode={viewMode}
             onViewModeChange={setViewMode}
-            sortBy={sortBy}
-            onSortChange={setSortBy}
-            totalResults={sortedProperties.length}
+            sortBy={query.sort}
+            onSortChange={(sort) => patchQuery({ sort: sort as PropertiesSort, page: 1 })}
+            totalResults={totalResults}
             filtersOpen={filtersOpen}
             onToggleFilters={() => setFiltersOpen(!filtersOpen)}
           />
 
-          <AnimatePresence mode="wait">
-            {viewMode === 'map' ? (
-              <motion.div
-                key="map"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="h-[calc(100vh-200px)] p-4"
-              >
-                <PropertiesMap properties={sortedProperties} />
-              </motion.div>
-            ) : (
-              <motion.div
-                key={viewMode}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="min-w-0 p-4 sm:p-6"
-              >
-                {viewMode === 'grid' ? (
-                  <PropertiesByLocation properties={sortedProperties} />
-                ) : (
-                  <div className="mx-auto max-w-4xl space-y-4">
-                    {sortedProperties.map((property, index) => (
-                      <PropertyListItem key={property.id} property={property} index={index} />
-                    ))}
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {hasActiveFilters ? (
+            <div className="border-border border-b px-4 py-3 sm:px-6">
+              <ListingActiveFilterChips
+                chips={filterChips}
+                onRemove={(id) => setFilters(removePropertyFilterChip(query, id))}
+                onClearAll={() => setFilters(clearPropertyFilters(query))}
+              />
+            </div>
+          ) : null}
+
+          {isError ? (
+            <div className="text-muted-foreground p-6 text-sm" role="alert">
+              Could not load properties.
+            </div>
+          ) : isLoading && !data ? (
+            <div className="text-muted-foreground p-6 text-sm">Loading…</div>
+          ) : properties.length === 0 ? (
+            <ListingFilteredEmpty
+              noun="properties"
+              onClearFilters={() => setFilters(clearPropertyFilters(query))}
+              onOpenFilters={() => {
+                if (
+                  typeof window !== 'undefined' &&
+                  window.matchMedia('(max-width: 1023px)').matches
+                ) {
+                  setMobileFiltersOpen(true);
+                } else {
+                  setFiltersOpen(true);
+                }
+              }}
+            />
+          ) : (
+            <AnimatePresence mode="wait">
+              {viewMode === 'map' ? (
+                <motion.div
+                  key="map"
+                  initial={reduceMotion ? false : { opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={reduceMotion ? undefined : { opacity: 0 }}
+                  className="min-w-0 p-4 sm:p-6"
+                >
+                  <PropertiesMap
+                    properties={properties}
+                    totalInView={totalResults}
+                    bbox={mapBbox}
+                    loading={isFetching}
+                    onViewportChange={applyMapViewport}
+                    onResetViewport={mapBbox ? clearMapViewport : undefined}
+                  />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key={viewMode}
+                  initial={reduceMotion ? false : { opacity: 0 }}
+                  animate={{ opacity: isFetching ? 0.7 : 1 }}
+                  exit={reduceMotion ? undefined : { opacity: 0 }}
+                  className="min-w-0 p-4 sm:p-6"
+                >
+                  {viewMode === 'grid' ? (
+                    groupedBrowse && placeGroups.isLoading ? (
+                      <div
+                        className="text-muted-foreground py-6 text-sm"
+                        role="status"
+                        aria-live="polite"
+                      >
+                        Loading…
+                      </div>
+                    ) : groupedBrowse &&
+                      placeGroups.isError &&
+                      propertyLocationGroups.length === 0 ? (
+                      <div className="flex flex-col items-center gap-3 py-16" role="alert">
+                        <p className="text-muted-foreground text-sm">Could not load places.</p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="min-h-[44px]"
+                          onClick={() => void placeGroups.refetch()}
+                        >
+                          Try again
+                        </Button>
+                      </div>
+                    ) : (
+                      <PropertiesByLocation
+                        properties={groupedBrowse ? [] : properties}
+                        groups={groupedBrowse ? propertyLocationGroups : undefined}
+                        hasMore={groupedBrowse && Boolean(placeGroups.hasNextPage)}
+                        isLoadingMore={placeGroups.isFetchingNextPage}
+                        hasLoadMoreError={
+                          groupedBrowse && placeGroups.isError && propertyLocationGroups.length > 0
+                        }
+                        onLoadMore={
+                          groupedBrowse && propertyLocationGroups.length > 0
+                            ? () => void placeGroups.fetchNextPage()
+                            : undefined
+                        }
+                      />
+                    )
+                  ) : (
+                    <div className="mx-auto max-w-4xl space-y-4">
+                      {properties.map((property, index) => (
+                        <PropertyListItem key={property.id} property={property} index={index} />
+                      ))}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          )}
         </main>
       </div>
     </div>

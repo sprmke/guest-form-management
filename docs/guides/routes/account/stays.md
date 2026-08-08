@@ -45,13 +45,13 @@ Guests see every property they've booked (past or upcoming) in one list once the
 
 ### Fields (per card)
 
-| Field                  | Storage                                              | Notes                                |
-| ---------------------- | ---------------------------------------------------- | ------------------------------------ |
-| Property thumbnail     | Property's public listing image                      | Falls back to empty tile             |
-| Property name          | `guest_submissions.property_id` → property name      |                                      |
-| Status badge           | `guest_submissions.status`                           | Human label via `STATUS_LABELS`      |
-| Check-in / check-out   | `guest_submissions.check_in_date` / `check_out_date` |                                      |
-| Facebook / Airbnb name | `guest_submissions.guest_facebook_name`              | Shown as secondary line when present |
+| Field                | Storage                                              | Notes                                |
+| -------------------- | ---------------------------------------------------- | ------------------------------------ |
+| Property thumbnail   | Property's public listing image                      | Falls back to empty tile             |
+| Property name        | `guest_submissions.property_id` → property name      |                                      |
+| Status badge         | `guest_submissions.status`                           | Human label via `STATUS_LABELS`      |
+| Check-in / check-out | `guest_submissions.check_in_date` / `check_out_date` |                                      |
+| Display name         | `guest_submissions.guest_facebook_name`              | Shown as secondary line when present |
 
 ### Load path
 

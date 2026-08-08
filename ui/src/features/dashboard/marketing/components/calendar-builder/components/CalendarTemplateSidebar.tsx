@@ -49,6 +49,7 @@ type Props = {
   onCustomizeCustom: (id: string) => void;
   onRemoveCustom: (id: string) => void | Promise<void>;
   onOpenAiGenerate?: () => void;
+  aiGenerateBusy?: boolean;
 };
 
 export const CalendarTemplateSidebar = memo(function CalendarTemplateSidebar({
@@ -64,6 +65,7 @@ export const CalendarTemplateSidebar = memo(function CalendarTemplateSidebar({
   onCustomizeCustom,
   onRemoveCustom,
   onOpenAiGenerate,
+  aiGenerateBusy = false,
 }: Props) {
   const { getThumbnailUrl, isThumbnailLoading, requestThumbnail } = useCalendarThumbnails();
   const [removeTarget, setRemoveTarget] = useState<SavedCalendarTemplate | null>(null);
@@ -122,10 +124,11 @@ export const CalendarTemplateSidebar = memo(function CalendarTemplateSidebar({
             type="button"
             variant="outline"
             className="mb-3 min-h-[44px] w-full gap-2"
+            disabled={aiGenerateBusy}
             onClick={onOpenAiGenerate}
           >
             <Sparkles className="size-4" aria-hidden />
-            Generate with AI
+            {aiGenerateBusy ? 'Generating…' : 'Generate with AI'}
           </Button>
         ) : null}
         <ul className={MARKETING_SIDEBAR_GRID}>

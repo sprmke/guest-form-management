@@ -1,4 +1,6 @@
-import { ArrowUpDown, SlidersHorizontal } from 'lucide-react';
+import { SlidersHorizontal } from 'lucide-react';
+
+import { PARKING_SORT_OPTIONS } from '@/features/guest/marketing/shared/lib/listingFilterChips';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -13,12 +15,6 @@ interface ParkingToolbarProps {
   onToggleFilters: () => void;
 }
 
-const sortOptions: Array<{ value: ParkingSortKey; label: string }> = [
-  { value: 'price_asc', label: 'Price: Low to High' },
-  { value: 'price_desc', label: 'Price: High to Low' },
-  { value: 'tower', label: 'Tower' },
-];
-
 export function ParkingToolbar({
   sortBy,
   onSortChange,
@@ -26,6 +22,11 @@ export function ParkingToolbar({
   filtersOpen,
   onToggleFilters,
 }: ParkingToolbarProps) {
+  const showSort = PARKING_SORT_OPTIONS.length > 1;
+  const safeSort = PARKING_SORT_OPTIONS.some((o) => o.value === sortBy)
+    ? sortBy
+    : PARKING_SORT_OPTIONS[0]!.value;
+
   return (
     <div className="border-border bg-background border-b">
       <div className="flex items-center justify-between gap-4 px-4 py-3 sm:px-6">
@@ -49,21 +50,22 @@ export function ParkingToolbar({
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
-          <ArrowUpDown className="text-muted-foreground hidden h-4 w-4 sm:block" aria-hidden />
-          <select
-            value={sortBy}
-            onChange={(e) => onSortChange(e.target.value as ParkingSortKey)}
-            aria-label="Sort parking slots"
-            className="border-border bg-background text-foreground focus:border-primary focus:ring-primary/20 min-h-[44px] appearance-none rounded-lg border py-2 pl-2 pr-8 text-sm focus:outline-none focus:ring-2"
-          >
-            {sortOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        {showSort ? (
+          <div className="flex items-center gap-2">
+            <select
+              value={safeSort}
+              onChange={(e) => onSortChange(e.target.value as ParkingSortKey)}
+              aria-label="Sort parking slots"
+              className="border-border bg-background text-foreground focus:border-primary focus:ring-primary/20 min-h-[44px] appearance-none rounded-lg border py-2 pl-2 pr-8 text-sm focus:outline-none focus:ring-2"
+            >
+              {PARKING_SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
       </div>
     </div>
   );

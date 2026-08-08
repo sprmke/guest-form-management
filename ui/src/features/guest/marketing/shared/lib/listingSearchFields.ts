@@ -6,6 +6,10 @@ import {
   HERO_SEARCH_FIELDS,
   type HeroSearchField,
 } from '@/features/guest/marketing/guest-landing/components/HeroSearch';
+import {
+  getListingSearchPreferType,
+  type ListingSearchPreferType,
+} from '@/features/guest/marketing/shared/lib/listingSearchPreferType';
 
 export type ListingSearchWhereSegment = {
   label: string;
@@ -25,6 +29,24 @@ const SERVICES_WHERE_SEGMENT: ListingSearchWhereSegment = {
   compactPlaceholder: 'Services',
 };
 
+const CATEGORY_WHERE_SEGMENTS: Record<ListingSearchPreferType, ListingSearchWhereSegment> = {
+  developments: {
+    label: 'Where',
+    placeholder: 'Search developments',
+    compactPlaceholder: 'Developments',
+  },
+  properties: {
+    label: 'Where',
+    placeholder: 'Search properties',
+    compactPlaceholder: 'Properties',
+  },
+  parkings: {
+    label: 'Where',
+    placeholder: 'Search parkings',
+    compactPlaceholder: 'Parkings',
+  },
+};
+
 /** Route-aware visible search segments (e.g. parking and services omit Who). */
 export function getListingSearchFields(pathname: string): HeroSearchField[] {
   if (pathname === '/services') {
@@ -39,10 +61,13 @@ export function getListingSearchFields(pathname: string): HeroSearchField[] {
   return [...HERO_SEARCH_FIELDS];
 }
 
+/** Where label + placeholders — category pages name the family; home stays destination-generic. */
 export function getListingSearchWhereSegment(pathname: string): ListingSearchWhereSegment {
-  if (pathname === '/services') {
+  if (pathname === '/services' || pathname.startsWith('/services/')) {
     return SERVICES_WHERE_SEGMENT;
   }
+  const prefer = getListingSearchPreferType(pathname);
+  if (prefer) return CATEGORY_WHERE_SEGMENTS[prefer];
   return DEFAULT_WHERE_SEGMENT;
 }
 

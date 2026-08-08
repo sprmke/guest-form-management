@@ -1,6 +1,9 @@
 import { Navigate, Route, useParams } from 'react-router-dom';
 
 import { guestAccountRoutes } from '@/features/guest/account/routes';
+import { AboutPage } from '@/features/guest/marketing/pages/AboutPage';
+import { ContactPage } from '@/features/guest/marketing/pages/ContactPage';
+import { CookiesPage } from '@/features/guest/marketing/pages/CookiesPage';
 import { DevelopmentDetailPage } from '@/features/guest/marketing/pages/DevelopmentDetailPage';
 import { DevelopmentFormPage } from '@/features/guest/marketing/pages/DevelopmentFormPage';
 import { DevelopmentParkingListPage } from '@/features/guest/marketing/pages/DevelopmentParkingListPage';
@@ -8,6 +11,7 @@ import { DevelopmentPropertiesPage } from '@/features/guest/marketing/pages/Deve
 import { DevelopmentsListPage } from '@/features/guest/marketing/pages/DevelopmentsListPage';
 import { DevelopmentsLocationPage } from '@/features/guest/marketing/pages/DevelopmentsLocationPage';
 import { ForHostsPage } from '@/features/guest/marketing/pages/ForHostsPage';
+import { ForHostsPricingPage } from '@/features/guest/marketing/pages/ForHostsPricingPage';
 import { GuestLandingPage } from '@/features/guest/marketing/pages/GuestLandingPage';
 import { HostPublicPage } from '@/features/guest/marketing/pages/HostPublicPage';
 import { ParkingDetailPage } from '@/features/guest/marketing/pages/ParkingDetailPage';
@@ -20,8 +24,10 @@ import { PropertiesLocationPage } from '@/features/guest/marketing/pages/Propert
 import { PropertyDetailPage } from '@/features/guest/marketing/pages/PropertyDetailPage';
 import { PropertyFormPage } from '@/features/guest/marketing/pages/PropertyFormPage';
 import { ServicesPage } from '@/features/guest/marketing/pages/ServicesPage';
+import { SupportPage } from '@/features/guest/marketing/pages/SupportPage';
 import { TermsPage } from '@/features/guest/marketing/pages/TermsPage';
 import { MarketingLayoutShell } from '@/features/guest/marketing/shared/components/MarketingLayoutShell';
+import { SearchResultsPage } from '@/features/guest/search/pages/SearchResultsPage';
 
 function DevelopmentParkingListRedirect() {
   const { slug = '' } = useParams<{ slug: string }>();
@@ -37,6 +43,8 @@ function DevelopmentParkingCategoryRedirect() {
 export const marketingRoutes = [
   <Route key="marketing-shell" element={<MarketingLayoutShell />}>
     <Route index element={<GuestLandingPage />} />
+    <Route path="search" element={<SearchResultsPage />} />
+    <Route path="for-hosts/pricing" element={<ForHostsPricingPage />} />
     <Route path="for-hosts" element={<ForHostsPage />} />
     <Route path="services" element={<ServicesPage />} />
     <Route path="hosts/:orgSlug" element={<HostPublicPage />} />
@@ -61,8 +69,12 @@ export const marketingRoutes = [
     />
     <Route path="developments/:slug/parking/list" element={<DevelopmentParkingListRedirect />} />
     <Route path="developments/:slug/forms/:formId" element={<DevelopmentFormPage />} />
+    <Route path="about" element={<AboutPage />} />
+    <Route path="contact" element={<ContactPage />} />
+    <Route path="support" element={<SupportPage />} />
     <Route path="terms" element={<TermsPage />} />
     <Route path="privacy" element={<PrivacyPage />} />
+    <Route path="cookies" element={<CookiesPage />} />
     {guestAccountRoutes}
   </Route>,
 ];

@@ -31,7 +31,10 @@ bun install
 ./dev.sh --ui-only --env dev    # UI only — hosted dev (ui/.env.development.dev)
 bun run dev:remote-api          # local edge functions → hosted dev DB (hybrid)
 bun run deploy:supabase:dev     # deploy migrations + functions to dev project
-bun run setup:ai-tooling        # once after clone: Cursor/Claude rules, skills, hooks, MCP symlinks
+bun run backup:supabase:dev / :prod     # pre-deploy backups (also automatic before deploy)
+bun run rollback:supabase:dev / :prod   # restore most recent backup (prod: kamewave required)
+bun run env:status                      # which Supabase project is linked (dev/prod/unknown)
+bun run setup:ai-tooling        # once after clone: Cursor/Claude/.agent skills, Taste, Playwright CLI, DESIGN.md, MCP symlinks
 
 bun run lint / lint:fix / type-check / build / check:filenames / format:check
 bun run start:supabase / stop:supabase / status:supabase / db:reset

@@ -162,24 +162,50 @@ else
   fi
 fi
 
-# --- 5. Impeccable (skills.sh) — when present, symlinks + hook scripts ------
+# --- 5. Ecosystem skills (.agents/skills via skills.sh) ---------------------
 
+if [[ -d .agents/skills ]]; then
+  for skill_dir in .agents/skills/*/; do
+    [[ -d "$skill_dir" ]] || continue
+    name="$(basename "$skill_dir")"
+    [[ -f "${skill_dir}SKILL.md" ]] || continue
+
+    for side in cursor claude; do
+      link=".${side}/skills/${name}"
+      if [[ ! -L "$link" ]]; then
+        fail "$link missing — run 'bun run setup:agents-skills'"
+        continue
+      fi
+      link_real="$(cd "$link" && pwd -P)"
+      target_real="$(cd "$skill_dir" && pwd -P)"
+      if [[ "$link_real" != "$target_real" ]]; then
+        fail "$link resolves to $link_real, expected $target_real"
+      fi
+    done
+  done
+fi
+
+# Impeccable hooks (when present)
 if [[ -d .agents/skills/impeccable ]]; then
   for script in scripts/hook.mjs scripts/hook-before-edit.mjs; do
     [[ -f ".agents/skills/impeccable/${script}" ]] \
       || fail ".agents/skills/impeccable/${script} missing"
   done
+fi
+
+# --- 6. DESIGN.md skill + root design system --------------------------------
+
+if [[ -d .agent/skills/design-md ]]; then
   for side in cursor claude; do
-    link=".${side}/skills/impeccable"
+    link=".${side}/skills/design-md"
     if [[ ! -L "$link" ]]; then
-      fail "$link missing — run 'bun run setup:impeccable'"
-    fi
-    link_real="$(cd "$link" && pwd -P)"
-    target_real="$(cd .agents/skills/impeccable && pwd -P)"
-    if [[ "$link_real" != "$target_real" ]]; then
-      fail "$link resolves to $link_real, expected $target_real"
+      fail "$link missing — run 'bun run setup:design-md'"
     fi
   done
+fi
+
+if [[ ! -f DESIGN.md ]]; then
+  fail "DESIGN.md missing at repo root (Stitch-style project design system)"
 fi
 
 # --- Result ------------------------------------------------------------------

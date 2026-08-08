@@ -1,3 +1,4 @@
+export { DevelopmentsMap } from './DevelopmentsMap';
 export { DevelopmentCard } from './DevelopmentCard';
 export { DevelopmentsHero } from './DevelopmentsHero';
 export { DevelopmentsGrid } from './DevelopmentsGrid';

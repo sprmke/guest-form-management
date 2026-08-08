@@ -21,8 +21,40 @@ prod_deploy_is_blocked() {
     return 1
   fi
 
+  # Dev-targeted and read-only commands are always safe without kamewave — checked
+  # FIRST so they can't be caught by the broader prod-shaped patterns below (e.g.
+  # "deploy:supabase:dev" contains the substring "deploy:supabase"). Each of these
+  # scripts has its own independent safety net (DEV/PROD ref check + typed
+  # confirmation for dev deploy/rollback; read-only for backup/status).
+  case "$cmd" in
+    *deploy:supabase:dev*|*deploy-supabase-dev.sh*)
+      return 1
+      ;;
+    *rollback:supabase:dev*|*rollback-supabase.sh" dev"*|*rollback-supabase.sh" "*" dev"*)
+      return 1
+      ;;
+    *rollback:functions:dev*|*rollback-functions.sh" dev"*|*rollback-functions.sh" "*" dev"*)
+      return 1
+      ;;
+    *backup:supabase:*|*backup-supabase.sh*)
+      return 1
+      ;;
+    *migrations:status:*|*migration-status.sh*)
+      return 1
+      ;;
+    *env:status*|*check-linked-project.sh*)
+      return 1
+      ;;
+  esac
+
   case "$cmd" in
     *deploy:supabase*|*deploy-supabase.sh*)
+      return 0
+      ;;
+    *rollback:supabase:prod*|*rollback-supabase.sh*)
+      return 0
+      ;;
+    *rollback:functions:prod*|*rollback-functions.sh*)
       return 0
       ;;
     *"functions deploy"*)
@@ -61,6 +93,6 @@ We develop on git branches with live production — do not deploy DB migrations,
 
 To authorize for this shell command only, the user must say the unlock word "${PROD_DEPLOY_UNLOCK_WORD}" in chat, then rerun with that word present in the command (e.g. KAMEWAVE=${PROD_DEPLOY_UNLOCK_WORD} bun run deploy:supabase).
 
-Safe without unlock: local supabase (start/stop/db:reset/db:migrate), functions serve, read-only linked checks (db diff --linked, db dump --linked).
+Safe without unlock: local supabase (start/stop/db:reset/db:migrate), functions serve, dev deploy (deploy:supabase:dev and its --db-only/--functions-only variants), backups (any env), dev rollback (rollback:supabase:dev, rollback:functions:dev), migration/env status checks, read-only linked checks (db diff --linked, db dump --linked).
 EOF
 }

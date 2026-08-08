@@ -15,10 +15,10 @@ alwaysApply: false
 
 ## Route groups
 
-| Group                    | Routes                                                                      | Data                        |
-| ------------------------ | --------------------------------------------------------------------------- | --------------------------- |
-| **Marketing** (PMA port) | `/`, `/for-hosts`, `/properties/*`, `/developments/*`, `/terms`, `/privacy` | Phase 1: **mock data** only |
-| **Operational**          | `/calendar`, `/form`, `/success`, `/sd-form`, `/bookings/:id/parking`       | Live edge functions         |
+| Group                    | Routes                                                                                                                    | Data                        |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
+| **Marketing** (PMA port) | `/`, `/for-hosts`, `/properties/*`, `/developments/*`, `/about`, `/contact`, `/support`, `/terms`, `/privacy`, `/cookies` | Phase 1: **mock data** only |
+| **Operational**          | `/calendar`, `/form`, `/success`, `/sd-form`, `/bookings/:id/parking`                                                     | Live edge functions         |
 
 No admin auth on these routes. Property scope via `?property=<slug>` or `?property_id=`.
 

@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Move workflow docs between lifecycle stages.
 # Usage:
-#   workflow-move.sh start <slug-or-path>   # planned -> in-progress
-#   workflow-move.sh done <slug-or-path>    # in-progress -> done
+#   workflow-move.sh start <slug-or-path>    # planned -> in-progress
+#   workflow-move.sh done <slug-or-path>     # in-progress -> done
+#   workflow-move.sh wont-do <slug-or-path>  # planned|in-progress -> wont-do
 #
 # Accepts slug (mobile-native-redesign.md) or path under docs/workflow/.
 
@@ -15,7 +16,7 @@ cmd="${1:-}"
 slug="${2:-}"
 
 usage() {
-  echo "Usage: workflow-move.sh start|done <slug-or-path>" >&2
+  echo "Usage: workflow-move.sh start|done|wont-do <slug-or-path>" >&2
   exit 1
 }
 
@@ -33,6 +34,10 @@ resolve_source() {
   fi
   if [[ -f "$DOCS/in-progress/$s" ]]; then
     echo "$DOCS/in-progress/$s"
+    return
+  fi
+  if [[ -f "$DOCS/wont-do/$s" ]]; then
+    echo "$DOCS/wont-do/$s"
     return
   fi
   if [[ "$s" != *.md ]]; then
@@ -55,6 +60,31 @@ patch_stage() {
   if grep -q '^updated:' "$file"; then
     perl -pi -e "s/^updated: .*/updated: ${today}/" "$file"
   fi
+  if [[ "$stage" == "wont-do" ]] && grep -q '^status:' "$file"; then
+    perl -pi -e "s/^status: .*/status: cancelled/" "$file"
+  fi
+}
+
+move_design_spec() {
+  local src_dir="$1"
+  local dest_dir="$2"
+  local base="$3"
+  local slug="${base%.md}"
+  local design="${slug}-design.md"
+  local design_src="$src_dir/$design"
+
+  if [[ ! -f "$design_src" ]]; then
+    return 0
+  fi
+
+  git mv "$design_src" "$dest_dir/$design" 2>/dev/null || mv "$design_src" "$dest_dir/$design"
+  patch_stage "$dest_dir/$design" "$4"
+  echo "Moved design spec: docs/workflow/${dest_dir#"$DOCS/"}/$design"
+}
+
+sync_scratchpad() {
+  local base="$1"
+  node "$ROOT/scripts/dev/sync-workflow-scratchpads.mjs" --slug="${base%.md}" || true
 }
 
 case "$cmd" in
@@ -67,18 +97,44 @@ case "$cmd" in
       echo "Already in progress: $base"
       exit 0
     fi
+    src_dir="$(dirname "$src")"
     git mv "$src" "$dest" 2>/dev/null || mv "$src" "$dest"
     patch_stage "$dest" "in-progress"
+    move_design_spec "$src_dir" "$DOCS/in-progress" "$base" "in-progress"
     echo "Started: docs/workflow/in-progress/$base"
+    sync_scratchpad "$base"
     ;;
   done)
     src="$(resolve_source "$slug")"
     [[ -n "$src" ]] || { echo "Not found: $slug" >&2; exit 1; }
     base="$(basename "$src")"
     dest="$DOCS/done/$base"
+    if [[ "$src" == "$dest" ]]; then
+      echo "Already done: $base"
+      exit 0
+    fi
+    src_dir="$(dirname "$src")"
     git mv "$src" "$dest" 2>/dev/null || mv "$src" "$dest"
     patch_stage "$dest" "done"
+    move_design_spec "$src_dir" "$DOCS/done" "$base" "done"
     echo "Done: docs/workflow/done/$base"
+    sync_scratchpad "$base"
+    ;;
+  wont-do)
+    src="$(resolve_source "$slug")"
+    [[ -n "$src" ]] || { echo "Not found: $slug" >&2; exit 1; }
+    base="$(basename "$src")"
+    dest="$DOCS/wont-do/$base"
+    if [[ "$src" == "$dest" ]]; then
+      echo "Already won't do: $base"
+      exit 0
+    fi
+    src_dir="$(dirname "$src")"
+    git mv "$src" "$dest" 2>/dev/null || mv "$src" "$dest"
+    patch_stage "$dest" "wont-do"
+    move_design_spec "$src_dir" "$DOCS/wont-do" "$base" "wont-do"
+    echo "Won't do: docs/workflow/wont-do/$base"
+    sync_scratchpad "$base"
     ;;
   *)
     usage

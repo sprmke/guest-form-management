@@ -2,33 +2,42 @@
 # One-shot team dev setup: Cursor + Claude Code rules/skills/hooks/MCP parity.
 # Idempotent — safe to re-run after clone or when symlinks break.
 #
-# Usage: bun run setup:ai-tooling [--skip-impeccable] [--skip-local-settings]
+# Usage: bun run setup:ai-tooling [options]
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
-SKIP_IMPECCABLE=0
+SKIP_AGENTS_SKILLS=0
+SKIP_PLAYWRIGHT_CLI=0
+SKIP_DESIGN_MD=0
 SKIP_LOCAL_SETTINGS=0
 
 for arg in "$@"; do
   case "$arg" in
-    --skip-impeccable) SKIP_IMPECCABLE=1 ;;
+    --skip-impeccable | --skip-agents-skills) SKIP_AGENTS_SKILLS=1 ;;
+    --skip-playwright-cli) SKIP_PLAYWRIGHT_CLI=1 ;;
+    --skip-design-md) SKIP_DESIGN_MD=1 ;;
     --skip-local-settings) SKIP_LOCAL_SETTINGS=1 ;;
     -h | --help)
       cat <<'EOF'
 Usage: bun run setup:ai-tooling [options]
 
-Project-scoped AI tooling for Cursor and Claude Code:
+Project-scoped AI tooling for Cursor, Claude Code, and .agent skills:
   - .cursor/mcp.json symlink
   - .agent/skills → .cursor/skills + .claude/skills symlinks
-  - Impeccable (.agents/skills/impeccable) + hook symlinks
+  - Ecosystem skills (.agents/skills via skills-lock.json):
+      Impeccable, Taste Skill, playwright-cli skill
+  - Playwright CLI binary (@playwright/cli)
+  - DESIGN.md catalog (awesome-design-md refs) + design-md skill
   - .claude/settings.local.json from example (optional)
   - check-ai-tooling-sync verification
 
 Options:
-  --skip-impeccable       Skip Impeccable install/symlinks
+  --skip-agents-skills    Skip .agents/skills restore (alias: --skip-impeccable)
+  --skip-playwright-cli   Skip Playwright CLI binary/browser check
+  --skip-design-md        Skip DESIGN.md reference catalog
   --skip-local-settings   Do not copy .claude/settings.local.json.example
 
 Manual (once per machine, not scripted):
@@ -98,16 +107,34 @@ for skill_dir in .agent/skills/*/; do
 done
 ok "Team skill symlinks verified"
 
-# --- 3. Impeccable (skills.sh / .agents/skills) -----------------------------
+# --- 3. Ecosystem skills (skills.sh / .agents/skills) -----------------------
 
-if [[ "$SKIP_IMPECCABLE" -eq 0 ]]; then
-  info "Impeccable (optional UI design hooks)"
-  bash "$ROOT/scripts/dev/setup-impeccable.sh"
+if [[ "$SKIP_AGENTS_SKILLS" -eq 0 ]]; then
+  info "Ecosystem skills (Impeccable, Taste Skill, playwright-cli, …)"
+  bash "$ROOT/scripts/dev/setup-agents-skills.sh"
 else
-  warn "Skipped Impeccable (--skip-impeccable)"
+  warn "Skipped ecosystem skills (--skip-agents-skills)"
 fi
 
-# --- 4. Claude Code personal settings template ------------------------------
+# --- 4. Playwright CLI binary -----------------------------------------------
+
+if [[ "$SKIP_PLAYWRIGHT_CLI" -eq 0 ]]; then
+  info "Playwright CLI"
+  bash "$ROOT/scripts/dev/setup-playwright-cli.sh"
+else
+  warn "Skipped Playwright CLI (--skip-playwright-cli)"
+fi
+
+# --- 5. DESIGN.md catalog (awesome-design-md) -------------------------------
+
+if [[ "$SKIP_DESIGN_MD" -eq 0 ]]; then
+  info "DESIGN.md catalog"
+  bash "$ROOT/scripts/dev/setup-design-md.sh"
+else
+  warn "Skipped DESIGN.md catalog (--skip-design-md)"
+fi
+
+# --- 6. Claude Code personal settings template ------------------------------
 
 if [[ "$SKIP_LOCAL_SETTINGS" -eq 0 ]]; then
   info "Claude Code local settings"
@@ -125,7 +152,7 @@ else
   warn "Skipped local settings copy (--skip-local-settings)"
 fi
 
-# --- 5. Optional external tools (warn only) ---------------------------------
+# --- 7. Optional external tools (warn only) ---------------------------------
 
 info "Optional external tools"
 if command -v markitdown-mcp >/dev/null 2>&1; then
@@ -145,7 +172,7 @@ if [[ "$missing_env" -eq 0 ]]; then
   ok "Supabase MCP env vars set"
 fi
 
-# --- 6. Verify parity -------------------------------------------------------
+# --- 8. Verify parity -------------------------------------------------------
 
 info "Running check-ai-tooling-sync"
 bash "$ROOT/scripts/dev/check-ai-tooling-sync.sh"
@@ -156,11 +183,13 @@ AI tooling setup complete.
 
 Committed in repo (no copy from ~/.cursor or ~/.claude needed):
   • Rules:     .cursor/rules/*.mdc + CLAUDE.md
-  • Skills:    .agent/skills/ (+ .agents/skills/impeccable when installed)
+  • Skills:    .agent/skills/ + .agents/skills/* (skills-lock.json)
+  • DESIGN.md: root system + .agents/design-md/ inspiration refs
   • Commands:  .cursor/commands/ ↔ .claude/commands/
   • Agents:    .cursor/agents/ ↔ .claude/agents/
   • Hooks:     .cursor/hooks.json + .claude/settings.json
   • MCP:       .mcp.json (via .cursor/mcp.json symlink)
+  • CLI:       bun x playwright-cli (@playwright/cli)
 
 Once per machine (manual):
   • Claude Code ponytail plugin: /plugin marketplace add DietrichGebert/ponytail

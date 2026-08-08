@@ -2,35 +2,29 @@
 title: 'Planned work'
 status: active
 tags: [workflow, planned]
-updated: 2026-08-04
+updated: 2026-08-06
 stage: planned
 kind: reference
 ---
 
 # Planned work
 
-Not yet shipped. See [`../done/`](../done/) for completed plans.
+Approved plans **not yet started**. Once implementation begins (even a partial slice), run `/workflow-start` → [`../in-progress/`](../in-progress/). See [`../done/`](../done/) for completed plans.
 
-| Plan                                                                                   | Status          | Summary                                                                                                                             |
-| -------------------------------------------------------------------------------------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| [`smart-search-bar.md`](./smart-search-bar.md)                                         | not started     | Live search, `/search`, availability typeahead                                                                                      |
-| [`smart-filters.md`](./smart-filters.md)                                               | not started     | Filter sidebar for listing pages                                                                                                    |
-| [`ai-dashboard-assistant.md`](./ai-dashboard-assistant.md)                             | not started     | RBAC-scoped admin chat assistant                                                                                                    |
-| [`custom-pages-module.md`](./custom-pages-module.md)                                   | not started     | Custom Pages module + stay-guide redesign                                                                                           |
-| [`refine-footer-public-pages.md`](./refine-footer-public-pages.md)                     | not started     | Footer trim + About/Contact/Support pages                                                                                           |
-| [`google-oauth-verification.md`](./google-oauth-verification.md)                       | not started     | Inbound email webhook for PMO approvals                                                                                             |
-| [`native-mobile-brand-hero-reskin.md`](./native-mobile-brand-hero-reskin.md)           | **Done (A)**    | Brand hero + overlap shell on Dashboard, Bookings, Finance (`max-lg` only)                                                          |
-| [`mobile-sticky-chrome-morph.md`](./mobile-sticky-chrome-morph.md)                     | **Done**        | Morphing sticky header on scroll — float → fixed bar; Bookings date + More filters                                                  |
-| [`ai-opportunities-roadmap.md`](./ai-opportunities-roadmap.md)                         | not started     | AI opportunity backlog across guest/host/admin/dev                                                                                  |
-| [`booking-workflow-multi-tenancy.md`](./booking-workflow-multi-tenancy.md)             | not started     | Multi-property booking workflow audit, design & backlog                                                                             |
-| [`guest-form-configurable-sections.md`](../done/guest-form-configurable-sections.md)   | **Done (v1)**   | Per-property guest form toggles, Direct source, check-in/out + unit capacity                                                        |
-| [`unit-handoff-active-uniqueness.md`](./unit-handoff-active-uniqueness.md)             | not started     | [#120](https://github.com/sprmke/kame-homes/issues/120) → phase A + B                                                               |
-| [`unit-handoff-phase-a.md`](./unit-handoff-phase-a.md)                                 | shipped         | One ACTIVE listing per tower+unit; SA approve/swap                                                                                  |
-| [`host-verification-tiers.md`](./host-verification-tiers.md)                           | Phase 3 partial | Phases 1–2 shipped; admin queue priority; search boost deferred                                                                     |
-| [`property-public-pages-shell-redesign.md`](./property-public-pages-shell-redesign.md) | not started     | Persistent shell unifying property detail + calendar/form/chat/sd-form/pay-parking layout, media showcase panel, native transitions |
-| [`dev-staging-environment.md`](./dev-staging-environment.md)                           | in progress     | Dev Supabase + Vercel Preview + local mode picker — scripts/runbook shipped; operator bootstrap pending                             |
+| Plan                                                                                   | Status      | Summary                                                                                    |
+| -------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------ |
+| [`ai-dashboard-assistant.md`](./ai-dashboard-assistant.md)                             | not started | RBAC-scoped admin chat assistant                                                           |
+| [`custom-pages-module.md`](./custom-pages-module.md)                                   | not started | Custom Pages module + stay-guide redesign                                                  |
+| [`refine-footer-public-pages.md`](./refine-footer-public-pages.md)                     | not started | Footer trim + About/Contact/Support pages (footer links exist; routes/pages not built)     |
+| [`google-oauth-verification.md`](./google-oauth-verification.md)                       | not started | Inbound email webhook for PMO approvals (Gmail CASA pivot)                                 |
+| [`ai-opportunities-roadmap.md`](./ai-opportunities-roadmap.md)                         | not started | AI opportunity backlog across guest/host/admin/dev                                         |
+| [`property-public-pages-shell-redesign.md`](./property-public-pages-shell-redesign.md) | not started | Persistent shell unifying property detail + calendar/form/chat/sd-form/pay-parking layout  |
+| [`in-app-notifications.md`](./in-app-notifications.md)                                 | not started | Notification center: bell + toast for chat, booking workflow events & Gmail auto-approvals |
+| [`dashboard-ground-up-redesign.md`](./dashboard-ground-up-redesign.md)                 | not started | Ground-up desktop visual redesign of the admin dashboard, isolated from public pages       |
 
-**Done:** [`booking-workflow-configurable-docs.md`](../done/booking-workflow-configurable-docs.md), [`property-calendar-page.md`](../done/property-calendar-page.md), [`unit-handoff-phase-b.md`](../done/unit-handoff-phase-b.md)
+**In progress:** [`../in-progress/README.md`](../in-progress/README.md) — includes partial plans (Phases 1–2 shipped but plan not closed, v1 slice shipped but backlog open, etc.).
+
+**Done (recent):** [`supabase-deploy-guardrails-and-rollback.md`](../done/supabase-deploy-guardrails-and-rollback.md), [`unit-handoff-active-uniqueness.md`](../done/unit-handoff-active-uniqueness.md), [`google-map-listing-view.md`](../done/google-map-listing-view.md), [`smart-ai-data-importer.md`](../done/smart-ai-data-importer.md), [`import-preview-fix-queue.md`](../done/import-preview-fix-queue.md), [`booking-workflow-configurable-docs.md`](../done/booking-workflow-configurable-docs.md)
 
 ## Naming
 

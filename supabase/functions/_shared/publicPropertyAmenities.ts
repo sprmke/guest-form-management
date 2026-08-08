@@ -3,7 +3,7 @@
  * Keep in sync when admin amenity ids change.
  */
 
-const AMENITY_LABELS: Record<string, string> = {
+export const AMENITY_LABELS: Record<string, string> = {
   wifi: 'WiFi',
   aircon: 'Air Conditioning',
   heating: 'Heating',

@@ -24,20 +24,30 @@ Requires `pip3 install --user edge-tts`. Flags: `--voice` (default `en-US-AriaNe
 
 ## Dev (`scripts/dev/`)
 
-| Script                                 | Used by                                       | Purpose                                                                                                             |
-| -------------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `run-with-ui-dev-env.sh`               | `dev.sh`, `bun run start:supabase`            | Load `ui/.env.development` then exec command                                                                        |
-| `build-local-functions-env.sh`         | `dev.sh`, `bun run dev:api`                   | Merge `.env.local` + local API keys for `functions serve`                                                           |
-| `export-local-supabase-runtime-env.sh` | `build-local-functions-env.sh`                | Export `SUPABASE_URL` / service role from `supabase status`                                                         |
-| `check-ui-filename-conventions.sh`     | `bun run check:filenames`                     | Verify `ui/src` filenames match naming rules                                                                        |
-| `check-ai-tooling-sync.sh`             | `bun run check:ai-tooling-sync`               | Cursor/Claude skills, commands, agents, hooks, MCP parity                                                           |
-| `setup-ai-tooling.sh`                  | `bun run setup:ai-tooling`                    | One-shot team AI tooling setup (symlinks, Impeccable, verify)                                                       |
-| `setup-impeccable.sh`                  | `bun run setup:impeccable`                    | Impeccable only (also run by setup-ai-tooling)                                                                      |
-| `port-pma-public-ui.sh`                | (manual)                                      | Rsync PMA `features/marketing` → `ui/src/features/guest/marketing` (excludes GFM pages/routes)                      |
-| `migrate-shared-imports.sh`            | (one-shot reference)                          | Bulk `@/lib/*` + `@/utils/*` path rewrites                                                                          |
-| `gh-issue.mjs`                         | (manual)                                      | View / create / update / **ship** GitHub issues → `docs/archive/todos/shipped/` (see `/github-issue`)               |
-| `backlog-issue-sizing.mjs`             | `gh-issue.mjs create`                         | Auto-label heuristics for new issues                                                                                |
-| `check-video-motion-profiles.mjs`      | (manual, `bun`; source `ui/.env.development`) | Quiet Coast Motion: finite Remotion springs, recipe layout coverage, and storyboard→layer seed for all 16 templates |
+| Script                                 | Used by                                                               | Purpose                                                                                                                         |
+| -------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `run-with-ui-dev-env.sh`               | `dev.sh`, `bun run start:supabase`                                    | Load `ui/.env.development` then exec command                                                                                    |
+| `build-local-functions-env.sh`         | `dev.sh`, `bun run dev:api`                                           | Merge `.env.local` + local API keys for `functions serve`                                                                       |
+| `export-local-supabase-runtime-env.sh` | `build-local-functions-env.sh`                                        | Export `SUPABASE_URL` / service role from `supabase status`                                                                     |
+| `check-ui-filename-conventions.sh`     | `bun run check:filenames`                                             | Verify `ui/src` filenames match naming rules                                                                                    |
+| `check-ai-tooling-sync.sh`             | `bun run check:ai-tooling-sync`                                       | Cursor/Claude skills, commands, agents, hooks, MCP parity                                                                       |
+| `check-linked-project.sh`              | deploy/backup/rollback/migration-status scripts, `bun run env:status` | Print "You are linked to: <ref> (<dev\|prod\|unknown>)"; `log_deploy()` writes `backups/deploy-log.csv`                         |
+| `setup-ai-tooling.sh`                  | `bun run setup:ai-tooling`                                            | One-shot team AI tooling setup (symlinks, ecosystem skills, DESIGN.md, Playwright CLI, verify)                                  |
+| `setup-agents-skills.sh`               | `bun run setup:agents-skills`                                         | Restore `.agents/skills/*` from `skills-lock.json` + Cursor/Claude symlinks                                                     |
+| `setup-impeccable.sh`                  | `bun run setup:impeccable`                                            | Alias → `setup-agents-skills` (backcompat)                                                                                      |
+| `setup-playwright-cli.sh`              | `bun run setup:playwright-cli`                                        | Ensure `@playwright/cli` binary + skill                                                                                         |
+| `setup-design-md.sh`                   | `bun run setup:design-md`                                             | Vendor awesome-design-md refs + wire `design-md` skill                                                                          |
+| `port-pma-public-ui.sh`                | (manual)                                                              | Rsync PMA `features/marketing` → `ui/src/features/guest/marketing` (excludes GFM pages/routes)                                  |
+| `migrate-shared-imports.sh`            | (one-shot reference)                                                  | Bulk `@/lib/*` + `@/utils/*` path rewrites                                                                                      |
+| `gh-issue.mjs`                         | (manual)                                                              | View / create / update / **ship** GitHub issues → `docs/archive/todos/shipped/` (see `/github-issue`)                           |
+| `backlog-issue-sizing.mjs`             | `gh-issue.mjs create`                                                 | Auto-label heuristics for new issues                                                                                            |
+| `check-video-motion-profiles.mjs`      | (manual, `bun`; source `ui/.env.development`)                         | Quiet Coast Motion: finite Remotion springs, recipe layout coverage, and storyboard→layer seed for all 16 templates             |
+| `seed-search-fixtures.sql`             | (manual / `supabase/seed.sql`)                                        | Azure ACTIVE listings so typeahead **See all** has ≥3 hits per category (`azure`)                                               |
+| `generate-import-booking-fixtures.mjs` | (manual)                                                              | Writes CSV + Excel QA fixtures to `temp/import-booking/` (gitignored) — see fixture README there                                |
+| `check-workflow-scratchpads.sh`        | pre-commit (when scratchpads staged)                                  | `_to-prompt.md` / `_to-plan.md` item titles must start with ✅ 🚧 📋 🔵 ❌                                                      |
+| `sync-workflow-scratchpads.mjs`        | `/workflow-sync-scratchpads`, `workflow-move.sh`                      | Set scratchpad title emojis from `planned/` / `in-progress/` / `done/` / `wont-do/` links (`bun run sync:workflow-scratchpads`) |
+| `touch-workflow-scratchpads.sh`        | pre-commit (when scratchpads staged)                                  | Bump `updated:` on staged intake scratchpads                                                                                    |
+| `workflow-move.sh`                     | `/workflow-start`, `/workflow-done`, `/workflow-wont-do`              | Move plan between lifecycle folders; runs sync for moved slug                                                                   |
 
 ## Data (`scripts/data/`)
 
@@ -48,9 +58,16 @@ Requires `pip3 install --user edge-tts`. Flags: `--voice` (default `en-US-AriaNe
 
 ## Deploy (`scripts/deploy/`)
 
-| Script               | npm script                | Purpose                                          |
-| -------------------- | ------------------------- | ------------------------------------------------ |
-| `deploy-supabase.sh` | `bun run deploy:supabase` | `db push` + `functions deploy` to linked project |
+| Script                   | npm script                                 | Purpose                                                                                                        |
+| ------------------------ | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `deploy-supabase.sh`     | `bun run deploy:supabase`                  | `db push` + `functions deploy` to linked **prod** project (backup first, typed `prod` confirm, kamewave-gated) |
+| `deploy-supabase-dev.sh` | `bun run deploy:supabase:dev`              | `db push` + `functions deploy` to linked **dev** project (backup first, typed `dev` confirm, no kamewave)      |
+| `backup-supabase.sh`     | `bun run backup:supabase:dev` / `:prod`    | `supabase db dump --linked` (schema + data) → `backups/<env>/` (gitignored); read-only                         |
+| `rollback-supabase.sh`   | `bun run rollback:supabase:dev` / `:prod`  | Restore most recent (or `--file`) backup via `psql`; prod is kamewave-gated                                    |
+| `rollback-functions.sh`  | `bun run rollback:functions:dev` / `:prod` | Redeploy Edge Functions from an older git ref via a throwaway `git worktree`; prod is kamewave-gated           |
+| `migration-status.sh`    | `bun run migrations:status:dev` / `:prod`  | Read-only `supabase migration list --linked` per environment                                                   |
+
+Every deploy and rollback appends an audit line to `backups/deploy-log.csv` (timestamp, env, kind, git SHA/branch, OS user) via `log_deploy()` in `scripts/dev/check-linked-project.sh`.
 
 ## Preview (`scripts/preview/`)
 

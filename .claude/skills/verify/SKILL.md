@@ -34,12 +34,13 @@ Stop and fix before continuing if any of these fail — don't try to verify beha
 
 ## 3. UI changes — drive the real browser, don't just read the diff
 
-With the **Playwright MCP** server configured (`.mcp.json`), prefer actually loading the page over describing what the code should do:
+Prefer driving the real browser over describing what the code should do:
 
 1. `./dev.sh --ui-only` (or full `./dev.sh`) so the app is running at the local Vite URL.
-2. Use the Playwright MCP tools to navigate to the affected route, interact with it (fill the guest form, click through the admin workflow panel, etc.), and take a snapshot/screenshot.
-3. Check both the **golden path** and at least one edge case relevant to the change (e.g. Airbnb-source booking skipping the payment step, a booking with `security_deposit = 0` skipping SD refund, mobile breakpoint below `lg`).
-4. For admin routes, sign in as an allow-listed Google account first (`/for-hosts/login`) — there's no bypass.
+2. **Playwright CLI** (token-efficient for coding agents — skill `playwright-cli`, binary `bun x playwright-cli`): `open` → `snapshot` → `click`/`fill` → `screenshot`. Setup: `bun run setup:playwright-cli`.
+3. **Playwright MCP** (`.mcp.json`) remains useful for long exploratory `/verify` loops with persistent browser context.
+4. Check both the **golden path** and at least one edge case relevant to the change (e.g. Airbnb-source booking skipping the payment step, a booking with `security_deposit = 0` skipping SD refund, mobile breakpoint below `lg`).
+5. For admin routes, sign in as an allow-listed Google account first (`/for-hosts/login`) — there's no bypass.
 
 If Playwright MCP isn't available in the current session, say so explicitly rather than claiming the UI was verified — static checks alone don't confirm feature correctness (see `CLAUDE.md` project instructions).
 

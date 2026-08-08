@@ -33,6 +33,7 @@ module.exports = {
         'org',
         'finance',
         'bookings',
+        'import',
         'inbox',
         'guest-form',
         'docs',

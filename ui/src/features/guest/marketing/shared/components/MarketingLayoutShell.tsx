@@ -1,5 +1,8 @@
-import { Outlet, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
 
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+
+import { scrollToSection } from '@/features/guest/marketing/for-hosts/lib/scrollToSection';
 import { MarketingFooter } from '@/features/guest/marketing/shared/components/MarketingFooter';
 import { MarketingNav } from '@/features/guest/marketing/shared/components/MarketingNav';
 import { ListingScrollSearchProvider } from '@/features/guest/marketing/shared/context/ListingScrollSearchContext';
@@ -15,12 +18,45 @@ function isPublicFormRoute(pathname: string) {
 }
 
 export function MarketingLayoutShell() {
-  const { pathname } = useLocation();
+  const { pathname, hash } = useLocation();
+  const navigate = useNavigate();
   const isFormPage = isPublicFormRoute(pathname);
   const scrollSearchConfig = getListingScrollSearchConfig(pathname);
   const defaultLocation = getListingSearchDefaultLocation(pathname);
   const fields = getListingSearchFields(pathname);
   const whereSegment = getListingSearchWhereSegment(pathname);
+
+  useEffect(() => {
+    if (pathname === '/for-hosts' && hash === '#pricing') {
+      navigate('/for-hosts/pricing', { replace: true });
+      return;
+    }
+    if (!hash) return;
+    const id = hash.replace(/^#/, '');
+    if (!id) return;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    let cancelled = false;
+    let attempts = 0;
+    const tryScroll = () => {
+      if (cancelled) return;
+      const el = document.getElementById(id);
+      if (el) {
+        scrollToSection(id, reduceMotion);
+        return;
+      }
+      attempts += 1;
+      if (attempts < 20) {
+        window.setTimeout(tryScroll, 50);
+      }
+    };
+
+    const frame = window.requestAnimationFrame(tryScroll);
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
+    };
+  }, [pathname, hash, navigate]);
 
   const shell = (
     <div className="relative flex min-h-screen flex-col">
@@ -40,6 +76,7 @@ export function MarketingLayoutShell() {
     <ListingScrollSearchProvider
       enabled
       redirectTo={scrollSearchConfig.redirectTo}
+      preferType={scrollSearchConfig.preferType}
       defaultLocation={defaultLocation}
       fields={fields}
       whereLabel={whereSegment.label}

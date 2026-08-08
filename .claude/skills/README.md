@@ -2,6 +2,8 @@
 
 **Canonical source:** `.agent/skills/<name>/SKILL.md`. `.cursor/skills/<name>` and `.claude/skills/<name>` are **relative symlinks** into `.agent/skills/<name>` (e.g. `.claude/skills/forms -> ../../.agent/skills/forms`) — edit only under `.agent/skills/`; both tool-side paths update automatically.
 
+**Ecosystem skills** (Taste Skill, playwright-cli, Impeccable) live under `.agents/skills/` (plural) via [skills.sh](https://skills.sh/) and `skills-lock.json`. Symlinks in `.cursor/skills/` and `.claude/skills/` point at those folders — restore with `bun run setup:agents-skills`.
+
 One exception: **`verify/`** in this folder is a real directory, Claude Code–only (no Cursor equivalent, no `.agent/skills` counterpart — it's the recorded recipe for Claude Code's bundled `/verify` skill). Don't turn it into a symlink.
 
 ## Keeping commands/agents/hooks in sync

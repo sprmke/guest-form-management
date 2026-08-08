@@ -16,6 +16,7 @@ import {
   type HeroSearchField,
   type HeroSearchValues,
 } from '@/features/guest/marketing/guest-landing/components/HeroSearch';
+import type { ListingSearchPreferType } from '@/features/guest/marketing/shared/lib/listingSearchPreferType';
 import {
   clamp01,
   easeOutCubic,
@@ -27,8 +28,18 @@ const MORPH_DISTANCE = 168;
 const HEADER_HEIGHT_MOBILE = 64;
 const HEADER_HEIGHT_DESKTOP = 80;
 /** Space reserved for logo icon when the wordmark collapses on mobile scroll morph. */
-const MOBILE_MORPH_LOGO_SLOT = 52;
-const MOBILE_MORPH_MENU_SLOT = 48;
+const MOBILE_MORPH_LOGO_SLOT = 76;
+const MOBILE_MORPH_MENU_SLOT = 72;
+const TABLET_MORPH_LOGO_SLOT = 84;
+const TABLET_MORPH_MENU_SLOT = 80;
+/** Prevent the touch-first search control from stretching across tablet headers. */
+const MOBILE_DOCKED_BAR_MAX_WIDTH = 720;
+/** Docked pill height on mobile — centers it in the header row. */
+const MOBILE_DOCKED_BAR_HEIGHT = 46;
+/** The floater renders at `top-[-3px]`; add it back so the centered value lands true. */
+const FLOATER_TOP_OFFSET = 3;
+/** Above header shell (z-50), below header overlays like account menus (z-60). */
+const SEARCH_FLOATER_Z_CLASS = 'z-[55]';
 /** Hero placeholder — compact mobile; taller labeled bar on desktop hero. */
 export const LISTING_SEARCH_PLACEHOLDER_HEIGHT_MOBILE = 56;
 export const LISTING_SEARCH_PLACEHOLDER_HEIGHT_DESKTOP = 92;
@@ -52,6 +63,7 @@ type ListingScrollSearchContextValue = {
   morph: MorphBounds;
   placeholderHeight: number;
   redirectTo: string;
+  preferType: ListingSearchPreferType | null;
   defaultLocation: string;
   fields: HeroSearchField[];
   whereLabel: string;
@@ -116,9 +128,19 @@ function useMorphBounds(
           width = lerp(heroRect.width, headerRect.width, positionT);
         } else if (!isLg) {
           const headerRect = header?.getBoundingClientRect();
-          const endTop = headerRect?.top ?? (headerHeight - 40) / 2;
-          const endLeft = MOBILE_MORPH_LOGO_SLOT;
-          const endWidth = window.innerWidth - MOBILE_MORPH_LOGO_SLOT - MOBILE_MORPH_MENU_SLOT;
+          // The header anchor is `hidden lg:flex`, so below lg its rect is all zeros.
+          const endTop =
+            headerRect && headerRect.height > 0
+              ? headerRect.top
+              : (headerHeight - MOBILE_DOCKED_BAR_HEIGHT) / 2 + FLOATER_TOP_OFFSET;
+          // clientWidth excludes a desktop scrollbar; innerWidth would dock under it.
+          const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+          const usesTabletGutters = viewportWidth >= 640;
+          const logoSlot = usesTabletGutters ? TABLET_MORPH_LOGO_SLOT : MOBILE_MORPH_LOGO_SLOT;
+          const menuSlot = usesTabletGutters ? TABLET_MORPH_MENU_SLOT : MOBILE_MORPH_MENU_SLOT;
+          const availableWidth = viewportWidth - logoSlot - menuSlot;
+          const endWidth = Math.min(availableWidth, MOBILE_DOCKED_BAR_MAX_WIDTH);
+          const endLeft = logoSlot + Math.max(0, (availableWidth - endWidth) / 2);
           const widthT = easeOutCubic(smoothstep(0.48, 0.98, progress));
           top = lerp(heroRect.top, endTop, positionT);
           left = lerp(heroRect.left, endLeft, widthT);
@@ -193,6 +215,7 @@ function useMorphBounds(
 
 function ListingSearchFloater({
   redirectTo,
+  preferType,
   defaultLocation,
   fields,
   whereLabel,
@@ -201,6 +224,7 @@ function ListingSearchFloater({
   onSearch,
 }: {
   redirectTo: string;
+  preferType: ListingSearchPreferType | null;
   defaultLocation: string;
   fields: HeroSearchField[];
   whereLabel: string;
@@ -214,7 +238,7 @@ function ListingSearchFloater({
 
   return createPortal(
     <div
-      className="pointer-events-auto fixed left-0 top-[-3px] z-[70]"
+      className={`pointer-events-auto fixed left-0 top-[-3px] ${SEARCH_FLOATER_Z_CLASS}`}
       style={{
         transform: `translate3d(${morph.left}px, ${morph.top}px, 0)`,
         width: morph.width,
@@ -225,6 +249,7 @@ function ListingSearchFloater({
         morphProgress={morph.compactProgress}
         scrollProgress={morph.progress}
         redirectTo={redirectTo}
+        preferType={preferType}
         defaultLocation={defaultLocation}
         fields={fields}
         whereLabel={whereLabel}
@@ -241,6 +266,7 @@ type ProviderProps = {
   children: ReactNode;
   enabled: boolean;
   redirectTo: string;
+  preferType?: ListingSearchPreferType | null;
   defaultLocation: string;
   fields: HeroSearchField[];
   whereLabel?: string;
@@ -253,6 +279,7 @@ export function ListingScrollSearchProvider({
   children,
   enabled,
   redirectTo,
+  preferType = null,
   defaultLocation,
   fields,
   whereLabel = 'Where',
@@ -271,6 +298,7 @@ export function ListingScrollSearchProvider({
     morph,
     placeholderHeight: LISTING_SEARCH_PLACEHOLDER_HEIGHT_DESKTOP,
     redirectTo,
+    preferType,
     defaultLocation,
     fields,
     whereLabel,
@@ -285,6 +313,7 @@ export function ListingScrollSearchProvider({
       {enabled ? (
         <ListingSearchFloater
           redirectTo={redirectTo}
+          preferType={preferType}
           defaultLocation={defaultLocation}
           fields={fields}
           whereLabel={whereLabel}
@@ -306,7 +335,8 @@ export function useListingScrollSearch(): ListingScrollSearchContextValue {
       headerAnchorRef: { current: null },
       morph: defaultMorph,
       placeholderHeight: LISTING_SEARCH_PLACEHOLDER_HEIGHT_DESKTOP,
-      redirectTo: '/properties',
+      redirectTo: '/search',
+      preferType: null,
       defaultLocation: '',
       fields: ['where', 'when', 'who'],
       whereLabel: 'Where',

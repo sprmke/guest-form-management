@@ -3,16 +3,23 @@ stage: in-progress
 title: 'Marketing 4: AI-Generated Marketing Calendar, Design & Video Templates — Implementation Plan'
 status: in-progress
 tags: [planning, planned-modules, marketing, templates]
-updated: 2026-08-05
+updated: 2026-08-07
 ---
 
 # Marketing 4: AI-Generated Marketing Calendar, Design & Video Templates — Implementation Plan
 
-**Status:** In progress — **calendar tab shipped** (edge + compiler + Generate with AI sheet + fan-out save for 3 orientations). Design/Video compilers and entry points still pending.
+**Status:** In progress — **calendar tab production-hardened** (edge + compiler + Generate with AI modal + fan-out save for 3 orientations + empty-prompt guards + partial-save handling). Design/Video compilers and entry points still pending.
+
+### Calendar polish (2026-08-06)
+
+- Empty prompt blocked client + edge (`400`)
+- Modal: outcome line for three formats, Look label, Check on include chips, reset on close, dismiss locked while generating, `Generating…` busy state
+- Saves use `Promise.allSettled` with partial-success toast; undo snapshots pre-AI styles
+- Impeccable audit/critique: detector clean; remaining Marketing 4 work is Design/Video
 
 ## Calendar MVP decisions (session 2026-08-04)
 
-- **UX:** Sheet from **Generate with AI** in Custom — prompt + vibe chips + removable context → Generate → custom templates (not a 3-variation picker).
+- **UX:** Modal from **Generate with AI** in Custom (`ResponsiveModal` — centered dialog on desktop, bottom sheet below `lg`) — prompt + vibe chips + removable context → Generate → custom templates (not a 3-variation picker).
 - **Orientations without 3× AI cost:** one Gemini/Groq call returns design tokens; client compiles once and saves **three** `marketing_templates` rows (square / portrait / landscape) with format-specific `canvasFrame` defaults.
 - **Persistence:** `sourcePresetId: custom` + `aiGenerated` / `aiTokens` in `designJson`; loads into store and autosaves like other custom calendars.
 

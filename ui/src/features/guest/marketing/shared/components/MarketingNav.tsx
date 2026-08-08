@@ -18,6 +18,7 @@ import {
   useListingScrollSearch,
 } from '@/features/guest/marketing/shared/context/ListingScrollSearchContext';
 import { useModeSwitchTransition } from '@/features/guest/marketing/shared/context/ModeSwitchTransitionContext';
+import { marketingGuestNavLinks } from '@/features/guest/marketing/shared/lib/marketingGuestNavLinks';
 
 import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
 
@@ -26,18 +27,18 @@ import { Button } from '@/components/ui/button';
 import { usePrefersReducedMotion } from '@/hooks/useMediaQuery';
 import { cn } from '@/lib/utils';
 
-const guestNavLinks = [
-  { href: '/developments', label: 'Developments' },
-  { href: '/properties', label: 'Properties' },
-  { href: '/parkings', label: 'Parkings' },
-  { href: '/services', label: 'Services' },
-];
+const guestNavLinks = marketingGuestNavLinks;
 
 const hostNavLinks = [
-  { id: 'features', label: 'Features' },
-  { id: 'how-it-works', label: 'How It Works' },
-  { id: 'reviews', label: 'Reviews' },
+  { kind: 'section' as const, id: 'features', label: 'Features' },
+  { kind: 'section' as const, id: 'how-it-works', label: 'How It Works' },
+  { kind: 'section' as const, id: 'reviews', label: 'Reviews' },
+  { kind: 'route' as const, href: '/for-hosts/pricing', label: 'Pricing' },
 ];
+
+function hostSectionTarget(pathname: string, id: string) {
+  return pathname === '/for-hosts' ? `#${id}` : `/for-hosts#${id}`;
+}
 
 export function MarketingNav() {
   const { pathname } = useLocation();
@@ -74,7 +75,7 @@ export function MarketingNav() {
     'rounded-full border-2 bg-transparent px-6 shadow-none',
     headerSolid
       ? 'border-border text-foreground hover:border-primary/30 hover:bg-accent hover:text-accent-foreground'
-      : 'border-white/60 text-white hover:border-white hover:bg-white/10 hover:text-white'
+      : 'border-border text-foreground hover:border-foreground/40 hover:bg-muted/80 dark:border-white/60 dark:text-white dark:hover:border-white dark:hover:bg-white/10 dark:hover:text-white'
   );
 
   const handleBecomeHost = () => {
@@ -95,6 +96,107 @@ export function MarketingNav() {
     event.preventDefault();
     setIsMobileMenuOpen(false);
     scrollToSection(id, prefersReducedMotion);
+  };
+
+  const navLinkClassName = cn(
+    'hover:text-primary text-sm font-medium transition-colors',
+    headerSolid
+      ? 'text-muted-foreground'
+      : 'text-foreground/80 hover:text-foreground dark:text-white/80 dark:hover:text-white'
+  );
+
+  const mobileNavLinkClassName =
+    'text-foreground hover:text-primary block min-h-[44px] py-3 text-lg font-medium transition-colors';
+
+  const renderNavLink = (link: (typeof guestNavLinks)[number] | (typeof hostNavLinks)[number]) => {
+    if ('kind' in link) {
+      if (link.kind === 'route') {
+        return (
+          <Link key={link.href} to={link.href} className={navLinkClassName}>
+            {link.label}
+          </Link>
+        );
+      }
+
+      if (pathname === '/for-hosts') {
+        return (
+          <a
+            key={link.id}
+            href={`#${link.id}`}
+            onClick={(event) => handleHostNavClick(event, link.id)}
+            className={navLinkClassName}
+          >
+            {link.label}
+          </a>
+        );
+      }
+
+      return (
+        <Link key={link.id} to={hostSectionTarget(pathname, link.id)} className={navLinkClassName}>
+          {link.label}
+        </Link>
+      );
+    }
+
+    return (
+      <Link key={link.href} to={link.href} className={navLinkClassName}>
+        {link.label}
+      </Link>
+    );
+  };
+
+  const renderMobileNavLink = (
+    link: (typeof guestNavLinks)[number] | (typeof hostNavLinks)[number]
+  ) => {
+    if ('kind' in link) {
+      if (link.kind === 'route') {
+        return (
+          <Link
+            key={link.href}
+            to={link.href}
+            onClick={() => setIsMobileMenuOpen(false)}
+            className={mobileNavLinkClassName}
+          >
+            {link.label}
+          </Link>
+        );
+      }
+
+      if (pathname === '/for-hosts') {
+        return (
+          <a
+            key={link.id}
+            href={`#${link.id}`}
+            onClick={(event) => handleHostNavClick(event, link.id)}
+            className={mobileNavLinkClassName}
+          >
+            {link.label}
+          </a>
+        );
+      }
+
+      return (
+        <Link
+          key={link.id}
+          to={hostSectionTarget(pathname, link.id)}
+          onClick={() => setIsMobileMenuOpen(false)}
+          className={mobileNavLinkClassName}
+        >
+          {link.label}
+        </Link>
+      );
+    }
+
+    return (
+      <Link
+        key={link.href}
+        to={link.href}
+        onClick={() => setIsMobileMenuOpen(false)}
+        className={mobileNavLinkClassName}
+      >
+        {link.label}
+      </Link>
+    );
   };
 
   const modeCta = isExploreMode ? (
@@ -181,69 +283,11 @@ export function MarketingNav() {
                   pointerEvents: navMorph.progress > 0.58 ? 'none' : 'auto',
                 }}
               >
-                {navLinks.map((link) =>
-                  'href' in link ? (
-                    <Link
-                      key={link.href}
-                      to={link.href}
-                      className={cn(
-                        'hover:text-primary text-sm font-medium transition-colors',
-                        headerSolid
-                          ? 'text-muted-foreground'
-                          : 'text-foreground/80 hover:text-foreground dark:text-white/80 dark:hover:text-white'
-                      )}
-                    >
-                      {link.label}
-                    </Link>
-                  ) : (
-                    <a
-                      key={link.id}
-                      href={`#${link.id}`}
-                      onClick={(event) => handleHostNavClick(event, link.id)}
-                      className={cn(
-                        'hover:text-primary text-sm font-medium transition-colors',
-                        headerSolid
-                          ? 'text-muted-foreground'
-                          : 'text-foreground/80 hover:text-foreground dark:text-white/80 dark:hover:text-white'
-                      )}
-                    >
-                      {link.label}
-                    </a>
-                  )
-                )}
+                {navLinks.map((link) => renderNavLink(link))}
               </div>
             ) : (
               <div className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-8 lg:flex">
-                {navLinks.map((link) =>
-                  'href' in link ? (
-                    <Link
-                      key={link.href}
-                      to={link.href}
-                      className={cn(
-                        'hover:text-primary text-sm font-medium transition-colors',
-                        headerSolid
-                          ? 'text-muted-foreground'
-                          : 'text-foreground/80 hover:text-foreground dark:text-white/80 dark:hover:text-white'
-                      )}
-                    >
-                      {link.label}
-                    </Link>
-                  ) : (
-                    <a
-                      key={link.id}
-                      href={`#${link.id}`}
-                      onClick={(event) => handleHostNavClick(event, link.id)}
-                      className={cn(
-                        'hover:text-primary text-sm font-medium transition-colors',
-                        headerSolid
-                          ? 'text-muted-foreground'
-                          : 'text-foreground/80 hover:text-foreground dark:text-white/80 dark:hover:text-white'
-                      )}
-                    >
-                      {link.label}
-                    </a>
-                  )
-                )}
+                {navLinks.map((link) => renderNavLink(link))}
               </div>
             )}
 
@@ -287,31 +331,11 @@ export function MarketingNav() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed inset-x-0 top-16 z-40 lg:hidden"
+            className="fixed inset-x-0 top-16 z-[60] lg:hidden"
           >
             <div className="bg-background/95 border-b shadow-lg backdrop-blur-xl">
               <div className="container mx-auto space-y-4 px-4 py-6">
-                {navLinks.map((link) =>
-                  'href' in link ? (
-                    <Link
-                      key={link.href}
-                      to={link.href}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className="text-foreground hover:text-primary block min-h-[44px] py-3 text-lg font-medium transition-colors"
-                    >
-                      {link.label}
-                    </Link>
-                  ) : (
-                    <a
-                      key={link.id}
-                      href={`#${link.id}`}
-                      onClick={(event) => handleHostNavClick(event, link.id)}
-                      className="text-foreground hover:text-primary block min-h-[44px] py-3 text-lg font-medium transition-colors"
-                    >
-                      {link.label}
-                    </a>
-                  )
-                )}
+                {navLinks.map((link) => renderMobileNavLink(link))}
                 <div className="space-y-3 border-t pt-4">
                   <div className="flex items-center justify-between py-2">
                     <span className="text-muted-foreground text-sm">Theme</span>

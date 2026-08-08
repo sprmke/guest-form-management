@@ -20,6 +20,10 @@
 **/.env.production
 supabase/.env.dev.local
 
+# Deploy artifacts (DB backups, deploy audit log — may contain PII/refs, never commit)
+backups/
+.worktrees/
+
 # Logs
 **/logs
 **/*.log
@@ -75,6 +79,7 @@ docs/.obsidian/graph.json
 
 # Tests / local agent tooling (keep .fallowrc.json tracked)
 .playwright-mcp/
+.playwright-cli/
 .worktrees/
 .superpowers/
 .impeccable/
