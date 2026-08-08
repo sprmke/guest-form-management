@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useNavigate, useParams } from 'react-router-dom';
 
-import { AlertTriangle, Info, Loader2, Save, Share2 } from 'lucide-react';
+import { AlertTriangle, Info, Loader2, Save, Share2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 import {
@@ -10,6 +10,7 @@ import {
   type AdminSectionNavItem,
 } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
 import { RequireAdmin } from '@/features/dashboard/bookings/components/RequireAdmin';
+import { OrgAiPlatformSection } from '@/features/dashboard/org/components/org-settings/OrgAiPlatformSection';
 import { OrgDangerZoneSection } from '@/features/dashboard/org/components/org-settings/OrgDangerZoneSection';
 import {
   OrgBasicInformationSection,
@@ -52,6 +53,7 @@ import { friendlyToastError } from '@/lib/feedback/toastMessages';
 const SETTINGS_SECTIONS: AdminSectionNavItem[] = [
   { id: 'basic', label: 'Basic information', icon: Info },
   { id: 'branding', label: 'Socials', icon: Share2 },
+  { id: 'ai', label: 'AI usage', icon: Sparkles },
   { id: 'danger', label: 'Danger zone', icon: AlertTriangle },
 ];
 
@@ -383,6 +385,8 @@ export function OrgSettingsPage() {
               markFieldInteracted={markFieldInteracted}
               onOperatorChange={setOperatorField}
             />
+
+            <OrgAiPlatformSection />
 
             <OrgDangerZoneSection
               orgName={org.name}
