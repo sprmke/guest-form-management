@@ -1,8 +1,18 @@
 /**
- * AI column-header → booking field mapping (Gemini Flash primary, Groq Scout fallback).
+ * AI column-header → booking field mapping (Gemini Flash-Lite primary, Groq Scout fallback).
  * Categorical status only — never numeric confidence scores.
  */
 
+import {
+  extractGeminiText,
+  extractGeminiUsage,
+  getGeminiApiKeys,
+  getGroqApiKey,
+  nextGeminiKeyStartIndex,
+  shouldTryNextProvider,
+} from './aiGeminiKeys.ts';
+import { geminiGenerateContentUrl, getModelConfig } from './aiModelRouter.ts';
+import { assertOrgAiQuota, recordAiUsage } from './aiUsageService.ts';
 import {
   isBookingImportTargetFieldId,
   resolveBookingImportTargetId,
@@ -32,38 +42,19 @@ export type ImportColumnMappingResult = {
 };
 
 export type ImportColumnMappingInput = {
+  organizationId: string;
+  propertyId: string;
   headers: string[];
   /** Up to 5 sample cell values per header (column-major). */
   samplesByHeader: Record<string, string[]>;
 };
 
-const GEMINI_MODEL = 'gemini-2.5-flash';
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+const IMPORT_FEATURE = 'import_column_map' as const;
+const GEMINI_MODEL = getModelConfig(IMPORT_FEATURE).model;
+const GEMINI_URL = geminiGenerateContentUrl(GEMINI_MODEL);
 const GROQ_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const AI_TIMEOUT_MS = 18_000;
-
-let geminiKeyIndex = 0;
-
-function getGeminiApiKeys(): string[] {
-  const multi = Deno.env.get('GEMINI_API_KEYS')?.trim();
-  if (multi) {
-    return multi
-      .split(',')
-      .map((key) => key.trim())
-      .filter(Boolean);
-  }
-  const single = Deno.env.get('GEMINI_API_KEY')?.trim();
-  return single ? [single] : [];
-}
-
-function getGroqApiKey(): string | null {
-  return Deno.env.get('GROQ_API_KEY')?.trim() || null;
-}
-
-function shouldTryNextProvider(status: number): boolean {
-  return status === 429 || status === 403 || status >= 500;
-}
 
 function normalizeMappingStatus(raw: unknown): ImportColumnMappingStatus {
   const value = String(raw ?? '')
@@ -241,20 +232,6 @@ function buildPrompt(input: ImportColumnMappingInput): string {
   );
 }
 
-function extractGeminiText(json: unknown): string | null {
-  const parts =
-    (
-      json as {
-        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-      }
-    ).candidates?.[0]?.content?.parts ?? [];
-  const text = parts
-    .map((part) => part.text ?? '')
-    .join('')
-    .trim();
-  return text || null;
-}
-
 function parseMappingsPayload(text: string, headers: string[]): ImportColumnMappingEntry[] | null {
   const trimmed = text.trim();
   const jsonMatch = trimmed.match(/\{[\s\S]*\}/);
@@ -283,14 +260,15 @@ function parseMappingsPayload(text: string, headers: string[]): ImportColumnMapp
 
 async function tryGeminiMapping(
   prompt: string,
-  headers: string[]
+  headers: string[],
+  usage: { organizationId: string; propertyId: string }
 ): Promise<ImportColumnMappingEntry[] | null> {
   const keys = getGeminiApiKeys();
   if (!keys.length) return null;
 
+  const startIdx = nextGeminiKeyStartIndex(keys.length);
   for (let attempt = 0; attempt < keys.length; attempt++) {
-    const apiKey = keys[(geminiKeyIndex + attempt) % keys.length]!;
-    geminiKeyIndex = (geminiKeyIndex + 1) % keys.length;
+    const apiKey = keys[(startIdx + attempt) % keys.length]!;
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
@@ -341,7 +319,19 @@ async function tryGeminiMapping(
       if (!text) continue;
 
       const mappings = parseMappingsPayload(text, headers);
-      if (mappings) return mappings;
+      if (mappings) {
+        const tokenUsage = extractGeminiUsage(json);
+        await recordAiUsage({
+          organizationId: usage.organizationId,
+          propertyId: usage.propertyId,
+          feature: IMPORT_FEATURE,
+          provider: 'gemini',
+          model: GEMINI_MODEL,
+          inputTokens: tokenUsage.inputTokens,
+          outputTokens: tokenUsage.outputTokens,
+        });
+        return mappings;
+      }
     } catch (error) {
       clearTimeout(timer);
       if ((error as Error).name === 'AbortError') break;
@@ -353,7 +343,8 @@ async function tryGeminiMapping(
 
 async function tryGroqMapping(
   prompt: string,
-  headers: string[]
+  headers: string[],
+  usage: { organizationId: string; propertyId: string }
 ): Promise<ImportColumnMappingEntry[] | null> {
   const groqKey = getGroqApiKey();
   if (!groqKey) return null;
@@ -386,9 +377,22 @@ async function tryGroqMapping(
 
     const body = (await res.json()) as {
       choices?: Array<{ message?: { content?: string } }>;
+      usage?: { prompt_tokens?: number; completion_tokens?: number };
     };
     const text = body.choices?.[0]?.message?.content ?? '';
-    return parseMappingsPayload(text, headers);
+    const mappings = parseMappingsPayload(text, headers);
+    if (mappings) {
+      await recordAiUsage({
+        organizationId: usage.organizationId,
+        propertyId: usage.propertyId,
+        feature: IMPORT_FEATURE,
+        provider: 'groq',
+        model: GROQ_MODEL,
+        inputTokens: Number(body.usage?.prompt_tokens ?? 0),
+        outputTokens: Number(body.usage?.completion_tokens ?? 0),
+      });
+      return mappings;
+    }
   } catch (error) {
     clearTimeout(timer);
     if ((error as Error).name !== 'AbortError') {
@@ -407,8 +411,20 @@ export async function suggestImportColumnMappings(
     return { mappings: [], provider: 'none', degraded: true };
   }
 
+  try {
+    await assertOrgAiQuota(input.organizationId);
+  } catch (error) {
+    console.warn('[importColumnMappingAi] quota blocked:', (error as Error).message);
+    return {
+      mappings: buildDegradedMappings(headers),
+      provider: 'none',
+      degraded: true,
+    };
+  }
+
   const prompt = buildPrompt({ ...input, headers });
-  const geminiMappings = await tryGeminiMapping(prompt, headers);
+  const usage = { organizationId: input.organizationId, propertyId: input.propertyId };
+  const geminiMappings = await tryGeminiMapping(prompt, headers, usage);
   if (geminiMappings) {
     return {
       mappings: applyDeterministicHeaderMatches(geminiMappings),
@@ -417,7 +433,7 @@ export async function suggestImportColumnMappings(
     };
   }
 
-  const groqMappings = await tryGroqMapping(prompt, headers);
+  const groqMappings = await tryGroqMapping(prompt, headers, usage);
   if (groqMappings) {
     return {
       mappings: applyDeterministicHeaderMatches(groqMappings),

@@ -3,40 +3,20 @@
  * Calendar MVP: returns a single calendar token payload (not full CalendarStyles).
  */
 
-const GEMINI_MODEL = 'gemini-2.0-flash';
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+import {
+  extractGeminiText,
+  extractGeminiUsage,
+  getGeminiApiKeys,
+  getGroqApiKey,
+} from './aiGeminiKeys.ts';
+import { geminiGenerateContentUrl, getModelConfig } from './aiModelRouter.ts';
+import { assertOrgAiQuota, recordAiUsage } from './aiUsageService.ts';
+
+const FEATURE = 'marketing_template' as const;
+const GEMINI_MODEL = getModelConfig(FEATURE).model;
+const GEMINI_URL = geminiGenerateContentUrl(GEMINI_MODEL);
 const GROQ_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
-
-function geminiKeys(): string[] {
-  const multi = Deno.env.get('GEMINI_API_KEYS')?.trim();
-  if (multi) {
-    return multi
-      .split(',')
-      .map((k) => k.trim())
-      .filter(Boolean);
-  }
-  const single = Deno.env.get('GEMINI_API_KEY')?.trim();
-  return single ? [single] : [];
-}
-
-function groqKey(): string | null {
-  return Deno.env.get('GROQ_API_KEY')?.trim() || null;
-}
-
-function extractGeminiText(json: unknown): string | null {
-  const parts =
-    (
-      json as {
-        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-      }
-    ).candidates?.[0]?.content?.parts ?? [];
-  const text = parts
-    .map((p) => p.text ?? '')
-    .join('')
-    .trim();
-  return text || null;
-}
 
 function stripJsonFence(text: string): string {
   const trimmed = text.trim();
@@ -76,6 +56,8 @@ export type CalendarTemplateTokens = {
 };
 
 export type GenerateMarketingTemplateInput = {
+  organizationId: string;
+  propertyId: string;
   contentType: MarketingTemplateContentType;
   prompt: string;
   propertyName: string;
@@ -199,8 +181,12 @@ function buildUserPrompt(input: GenerateMarketingTemplateInput): string {
   return lines.join('\n');
 }
 
-async function generateJsonText(systemPrompt: string, userPrompt: string): Promise<string> {
-  const keys = geminiKeys();
+async function generateJsonText(
+  systemPrompt: string,
+  userPrompt: string,
+  usage: { organizationId: string; propertyId: string }
+): Promise<string> {
+  const keys = getGeminiApiKeys();
   let geminiSawKeys = keys.length > 0;
   let geminiQuotaHit = false;
   let geminiLastStatus: number | null = null;
@@ -228,13 +214,25 @@ async function generateJsonText(systemPrompt: string, userPrompt: string): Promi
       if (!res.ok) continue;
       const json = await res.json();
       const text = extractGeminiText(json);
-      if (text) return text;
+      if (text) {
+        const tokenUsage = extractGeminiUsage(json);
+        await recordAiUsage({
+          organizationId: usage.organizationId,
+          propertyId: usage.propertyId,
+          feature: FEATURE,
+          provider: 'gemini',
+          model: GEMINI_MODEL,
+          inputTokens: tokenUsage.inputTokens,
+          outputTokens: tokenUsage.outputTokens,
+        });
+        return text;
+      }
     } catch {
       /* try next key */
     }
   }
 
-  const groq = groqKey();
+  const groq = getGroqApiKey();
   let groqLastStatus: number | null = null;
   if (groq) {
     try {
@@ -259,9 +257,21 @@ async function generateJsonText(systemPrompt: string, userPrompt: string): Promi
       if (res.ok) {
         const json = (await res.json()) as {
           choices?: Array<{ message?: { content?: string } }>;
+          usage?: { prompt_tokens?: number; completion_tokens?: number };
         };
         const text = json.choices?.[0]?.message?.content?.trim();
-        if (text) return text;
+        if (text) {
+          await recordAiUsage({
+            organizationId: usage.organizationId,
+            propertyId: usage.propertyId,
+            feature: FEATURE,
+            provider: 'groq',
+            model: GROQ_MODEL,
+            inputTokens: Number(json.usage?.prompt_tokens ?? 0),
+            outputTokens: Number(json.usage?.completion_tokens ?? 0),
+          });
+          return text;
+        }
       }
     } catch {
       /* fall through */
@@ -293,7 +303,12 @@ export async function generateMarketingTemplateTokens(
     throw new Error(`contentType "${input.contentType}" is not supported yet — use calendar`);
   }
 
-  const rawText = await generateJsonText(calendarSystemPrompt(), buildUserPrompt(input));
+  await assertOrgAiQuota(input.organizationId);
+
+  const rawText = await generateJsonText(calendarSystemPrompt(), buildUserPrompt(input), {
+    organizationId: input.organizationId,
+    propertyId: input.propertyId,
+  });
   let parsed: unknown;
   try {
     parsed = JSON.parse(stripJsonFence(rawText));

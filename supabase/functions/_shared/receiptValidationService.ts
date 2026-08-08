@@ -11,6 +11,26 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
+import {
+  getGeminiApiKeys,
+  getGroqApiKey,
+  nextGeminiKeyStartIndex,
+  shouldTryNextProvider,
+  extractGeminiUsage,
+} from './aiGeminiKeys.ts';
+import { geminiGenerateContentUrl, getModelConfig } from './aiModelRouter.ts';
+import {
+  assertOrgAiQuotaOptional,
+  AiQuotaExceededError,
+  recordAiUsageOptional,
+  type RecordAiUsageInput,
+} from './aiUsageService.ts';
+
+export type AiUsageContext = {
+  organizationId: string;
+  propertyId?: string | null;
+};
+
 export type ReceiptValidationVerdict = 'valid' | 'likely_valid' | 'unclear' | 'invalid' | 'skipped';
 
 export type ReceiptValidationResult = {
@@ -26,34 +46,24 @@ export type ReceiptValidationResult = {
   provider?: 'gemini' | 'groq';
 };
 
-const GEMINI_MODEL = 'gemini-2.5-flash';
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+const RECEIPT_FEATURE = 'receipt_validation' as const;
+const VERIFY_FEATURE = 'ai_integration_verify' as const;
+const GEMINI_MODEL = getModelConfig(RECEIPT_FEATURE).model;
+const VERIFY_GEMINI_MODEL = getModelConfig(VERIFY_FEATURE).model;
+const GEMINI_URL = geminiGenerateContentUrl(GEMINI_MODEL);
+const VERIFY_GEMINI_URL = geminiGenerateContentUrl(VERIFY_GEMINI_MODEL);
 
 const GROQ_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 // --- Multi-key rotation state (in-memory, per isolate) ---
 
-let geminiKeyIndex = 0;
-
-function getGeminiApiKeys(): string[] {
-  const multi = Deno.env.get('GEMINI_API_KEYS')?.trim();
-  if (multi) {
-    return multi
-      .split(',')
-      .map((k) => k.trim())
-      .filter(Boolean);
-  }
-  const single = Deno.env.get('GEMINI_API_KEY')?.trim();
-  return single ? [single] : [];
+function getGeminiApiKeysLocal(): string[] {
+  return getGeminiApiKeys();
 }
 
-function getGroqApiKey(): string | null {
-  return Deno.env.get('GROQ_API_KEY')?.trim() || null;
-}
-
-function shouldTryNextProvider(status: number): boolean {
-  return status === 429 || status === 403 || status >= 500;
+function getGroqApiKeyLocal(): string | null {
+  return getGroqApiKey();
 }
 
 // --- Verify integration ---
@@ -71,11 +81,11 @@ export type GeminiIntegrationVerifyResult = {
 
 /** Admin-only: ping Gemini with a minimal text request + report Groq availability. */
 export async function verifyGeminiIntegration(): Promise<GeminiIntegrationVerifyResult> {
-  const keys = getGeminiApiKeys();
-  const groqKey = getGroqApiKey();
+  const keys = getGeminiApiKeysLocal();
+  const groqKey = getGroqApiKeyLocal();
   const base: GeminiIntegrationVerifyResult = {
     apiKeyConfigured: keys.length > 0,
-    model: GEMINI_MODEL,
+    model: VERIFY_GEMINI_MODEL,
     ok: false,
     geminiKeysCount: keys.length,
     groqConfigured: !!groqKey,
@@ -91,7 +101,7 @@ export async function verifyGeminiIntegration(): Promise<GeminiIntegrationVerify
   const apiKey = keys[0];
   const started = Date.now();
   try {
-    const res = await fetch(`${GEMINI_URL}?key=${encodeURIComponent(apiKey)}`, {
+    const res = await fetch(`${VERIFY_GEMINI_URL}?key=${encodeURIComponent(apiKey)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -283,7 +293,10 @@ async function tryGeminiKey(
   safeMime: string,
   logTag: string,
   defaultSummary: string
-): Promise<ReceiptValidationResult | null> {
+): Promise<{
+  result: ReceiptValidationResult;
+  usage: { inputTokens: number; outputTokens: number };
+} | null> {
   try {
     const res = await fetch(`${GEMINI_URL}?key=${encodeURIComponent(apiKey)}`, {
       method: 'POST',
@@ -309,28 +322,35 @@ async function tryGeminiKey(
       }
       const detail = parseGeminiApiError(res.status, errText);
       console.error(`[${logTag}] Gemini API error:`, res.status, errText);
-      return aiModelFailure('AI validation failed', detail);
+      return {
+        result: aiModelFailure('AI validation failed', detail),
+        usage: { inputTokens: 0, outputTokens: 0 },
+      };
     }
 
-    const body = (await res.json()) as {
-      candidates?: Array<{
-        content?: { parts?: Array<{ text?: string }> };
-      }>;
-    };
-    const text = body.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+    const body = await res.json();
+    const text =
+      (body as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> })
+        .candidates?.[0]?.content?.parts?.[0]?.text ?? '';
     const parsed = parseGeminiJson(text, defaultSummary);
     if (!parsed) {
       console.warn(`[${logTag}] Could not parse Gemini response:`, text.slice(0, 200));
-      return aiModelFailure(
-        'AI validation returned unreadable result',
-        'The AI model returned a response we could not parse. Try again.'
-      );
+      return {
+        result: aiModelFailure(
+          'AI validation returned unreadable result',
+          'The AI model returned a response we could not parse. Try again.'
+        ),
+        usage: extractGeminiUsage(body),
+      };
     }
 
     console.log(
       `[${logTag}] [gemini] verdict=${parsed.verdict} confidence=${parsed.confidence} summary=${parsed.summary}`
     );
-    return { ...parsed, provider: 'gemini' };
+    return {
+      result: { ...parsed, provider: 'gemini' },
+      usage: extractGeminiUsage(body),
+    };
   } catch (err) {
     console.warn(
       `[${logTag}] Gemini key threw (network?):`,
@@ -427,10 +447,20 @@ async function callGeminiVision(
   imageBytes: Uint8Array,
   mimeType: string,
   logTag: string,
-  defaultSummary: string
+  defaultSummary: string,
+  usageContext?: AiUsageContext | null
 ): Promise<ReceiptValidationResult> {
-  const geminiKeys = getGeminiApiKeys();
-  const groqKey = getGroqApiKey();
+  try {
+    await assertOrgAiQuotaOptional(usageContext?.organizationId);
+  } catch (error) {
+    if (error instanceof AiQuotaExceededError) {
+      return aiModelFailure('AI quota exceeded', error.message);
+    }
+    throw error;
+  }
+
+  const geminiKeys = getGeminiApiKeysLocal();
+  const groqKey = getGroqApiKeyLocal();
 
   if (geminiKeys.length === 0 && !groqKey) {
     console.warn(`[${logTag}] No AI API keys configured — skipping`);
@@ -445,10 +475,10 @@ async function callGeminiVision(
 
   // Layer 1: Try all Gemini keys (round-robin starting from last successful index)
   if (geminiKeys.length > 0) {
-    const startIdx = geminiKeyIndex % geminiKeys.length;
+    const startIdx = nextGeminiKeyStartIndex(geminiKeys.length);
     for (let i = 0; i < geminiKeys.length; i++) {
       const idx = (startIdx + i) % geminiKeys.length;
-      const result = await tryGeminiKey(
+      const geminiAttempt = await tryGeminiKey(
         geminiKeys[idx],
         prompt,
         base64,
@@ -456,9 +486,9 @@ async function callGeminiVision(
         logTag,
         defaultSummary
       );
-      if (result) {
-        geminiKeyIndex = (idx + 1) % geminiKeys.length; // advance for next call
-        return result;
+      if (geminiAttempt) {
+        await recordVisionUsage(usageContext, 'gemini', geminiAttempt.usage);
+        return geminiAttempt.result;
       }
     }
     console.warn(
@@ -469,7 +499,10 @@ async function callGeminiVision(
   // Layer 2: Groq fallback
   if (groqKey) {
     const result = await tryGroq(groqKey, prompt, base64, safeMime, logTag, defaultSummary);
-    if (result) return result;
+    if (result) {
+      await recordVisionUsage(usageContext, 'groq', null);
+      return result;
+    }
   }
 
   // All providers exhausted
@@ -482,44 +515,71 @@ async function callGeminiVision(
   return aiModelFailure('AI validation temporarily unavailable', detail);
 }
 
+async function recordVisionUsage(
+  usageContext: AiUsageContext | null | undefined,
+  provider: 'gemini' | 'groq',
+  tokenUsage: { inputTokens: number; outputTokens: number } | null
+): Promise<void> {
+  if (!usageContext?.organizationId) return;
+  const usage: Omit<RecordAiUsageInput, 'organizationId'> = {
+    propertyId: usageContext.propertyId ?? null,
+    feature: RECEIPT_FEATURE,
+    provider,
+    model: provider === 'gemini' ? GEMINI_MODEL : GROQ_MODEL,
+    inputTokens: tokenUsage?.inputTokens,
+    outputTokens: tokenUsage?.outputTokens,
+  };
+  await recordAiUsageOptional(usageContext.organizationId, usage);
+}
+
 async function validateReceiptImage(
   imageBytes: Uint8Array,
-  mimeType: string
+  mimeType: string,
+  usageContext?: AiUsageContext | null
 ): Promise<ReceiptValidationResult> {
   return callGeminiVision(
     RECEIPT_PROMPT,
     imageBytes,
     mimeType,
     'receipt-validation',
-    'Receipt analyzed.'
+    'Receipt analyzed.',
+    usageContext
   );
 }
 
 async function validateValidIdImage(
   imageBytes: Uint8Array,
   mimeType: string,
-  path?: string
+  path?: string,
+  usageContext?: AiUsageContext | null
 ): Promise<ReceiptValidationResult> {
   return callGeminiVision(
     VALID_ID_PROMPT,
     imageBytes,
     normalizeVisionMimeType(mimeType, path),
     'valid-id-validation',
-    'ID analyzed.'
+    'ID analyzed.',
+    usageContext
   );
 }
 
-export async function validateReceiptFile(file: File | Blob): Promise<ReceiptValidationResult> {
+export async function validateReceiptFile(
+  file: File | Blob,
+  usageContext?: AiUsageContext | null
+): Promise<ReceiptValidationResult> {
   const mimeType = file instanceof File ? file.type || 'image/jpeg' : 'image/jpeg';
   const bytes = new Uint8Array(await file.arrayBuffer());
-  return validateReceiptImage(bytes, mimeType);
+  return validateReceiptImage(bytes, mimeType, usageContext);
 }
 
-export async function validateValidIdFile(file: File | Blob): Promise<ReceiptValidationResult> {
+export async function validateValidIdFile(
+  file: File | Blob,
+  usageContext?: AiUsageContext | null
+): Promise<ReceiptValidationResult> {
   const fileName = file instanceof File ? file.name : '';
   const mimeType = file instanceof File ? file.type || mimeTypeFromPath(fileName) : 'image/jpeg';
   const bytes = new Uint8Array(await file.arrayBuffer());
-  return validateValidIdImage(bytes, mimeType, fileName);
+  return validateValidIdImage(bytes, mimeType, fileName, usageContext);
 }
 
 const STORAGE_OBJECT_PATH_RE = /\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.+)$/;
@@ -581,20 +641,26 @@ async function validateDocumentFromStorageUrl(
 }
 
 /** Download a stored receipt image and run Gemini validation (admin backfill). */
-async function validateReceiptFromStorageUrl(url: string): Promise<ReceiptValidationResult> {
+async function validateReceiptFromStorageUrl(
+  url: string,
+  usageContext?: AiUsageContext | null
+): Promise<ReceiptValidationResult> {
   return validateDocumentFromStorageUrl(
     url,
-    (bytes, mimeType) => validateReceiptImage(bytes, mimeType),
+    (bytes, mimeType) => validateReceiptImage(bytes, mimeType, usageContext),
     'Could not parse receipt URL',
     'Could not download receipt image'
   );
 }
 
 /** Download a stored valid ID and run Gemini validation (admin backfill). */
-async function validateValidIdFromStorageUrl(url: string): Promise<ReceiptValidationResult> {
+async function validateValidIdFromStorageUrl(
+  url: string,
+  usageContext?: AiUsageContext | null
+): Promise<ReceiptValidationResult> {
   return validateDocumentFromStorageUrl(
     url,
-    (bytes, mimeType, path) => validateValidIdImage(bytes, mimeType, path),
+    (bytes, mimeType, path) => validateValidIdImage(bytes, mimeType, path, usageContext),
     'Could not parse valid ID URL',
     'Could not download valid ID image'
   );
@@ -633,7 +699,8 @@ const TERMINAL_BOOKING_STATUSES = new Set(['COMPLETED', 'CANCELLED']);
  * received an AI verdict during submit/upload.
  */
 export async function backfillMissingReceiptAiVerdicts(
-  booking: Record<string, unknown>
+  booking: Record<string, unknown>,
+  usageContext?: AiUsageContext | null
 ): Promise<ReceiptBackfillResult> {
   const status = String(booking.status ?? '');
   if (TERMINAL_BOOKING_STATUSES.has(status)) {
@@ -667,8 +734,8 @@ export async function backfillMissingReceiptAiVerdicts(
   for (const target of targets) {
     const validation =
       target.kind === 'valid_id'
-        ? await validateValidIdFromStorageUrl(target.url)
-        : await validateReceiptFromStorageUrl(target.url);
+        ? await validateValidIdFromStorageUrl(target.url, usageContext)
+        : await validateReceiptFromStorageUrl(target.url, usageContext);
     if (validation.aiModelError) {
       errors.push({
         kind: target.kind,

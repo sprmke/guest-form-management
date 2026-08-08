@@ -2,42 +2,24 @@
  * AI-assisted social captions for Marketing Content Studio (Gemini / Groq).
  */
 
-const GEMINI_MODEL = 'gemini-2.0-flash';
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+import {
+  extractGeminiText,
+  extractGeminiUsage,
+  getGeminiApiKeys,
+  getGroqApiKey,
+} from './aiGeminiKeys.ts';
+import { geminiGenerateContentUrl, getModelConfig } from './aiModelRouter.ts';
+import { assertOrgAiQuota, recordAiUsage } from './aiUsageService.ts';
+
+const FEATURE = 'marketing_caption' as const;
+const GEMINI_MODEL = getModelConfig(FEATURE).model;
+const GEMINI_URL = geminiGenerateContentUrl(GEMINI_MODEL);
 const GROQ_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
-function geminiKeys(): string[] {
-  const multi = Deno.env.get('GEMINI_API_KEYS')?.trim();
-  if (multi) {
-    return multi
-      .split(',')
-      .map((k) => k.trim())
-      .filter(Boolean);
-  }
-  const single = Deno.env.get('GEMINI_API_KEY')?.trim();
-  return single ? [single] : [];
-}
-
-function groqKey(): string | null {
-  return Deno.env.get('GROQ_API_KEY')?.trim() || null;
-}
-
-function extractGeminiText(json: unknown): string | null {
-  const parts =
-    (
-      json as {
-        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-      }
-    ).candidates?.[0]?.content?.parts ?? [];
-  const text = parts
-    .map((p) => p.text ?? '')
-    .join('')
-    .trim();
-  return text || null;
-}
-
 export type MarketingCaptionInput = {
+  organizationId: string;
+  propertyId: string;
   propertyName: string;
   platform: 'facebook' | 'instagram';
   postType: 'post' | 'story';
@@ -47,6 +29,8 @@ export type MarketingCaptionInput = {
 };
 
 export async function generateMarketingCaption(input: MarketingCaptionInput): Promise<string> {
+  await assertOrgAiQuota(input.organizationId);
+
   const systemPrompt =
     'You write short, engaging social media captions for vacation rental properties in the Philippines. ' +
     'Use warm Filipino-English when natural. No hashtags unless asked. No markdown. ' +
@@ -62,7 +46,8 @@ export async function generateMarketingCaption(input: MarketingCaptionInput): Pr
     (input.contentHint ? `Creative: ${input.contentHint}\n` : '') +
     'Write one caption only — no quotes or labels.';
 
-  const keys = geminiKeys();
+  const maxLen = input.postType === 'story' ? 220 : 400;
+  const keys = getGeminiApiKeys();
   for (const apiKey of keys) {
     try {
       const res = await fetch(`${GEMINI_URL}?key=${encodeURIComponent(apiKey)}`, {
@@ -71,18 +56,34 @@ export async function generateMarketingCaption(input: MarketingCaptionInput): Pr
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: systemPrompt }] },
           contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 256 },
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 256,
+            thinkingConfig: { thinkingBudget: 0 },
+          },
         }),
       });
       const json = await res.json();
       const text = extractGeminiText(json);
-      if (text) return text.slice(0, input.postType === 'story' ? 220 : 400);
+      if (text) {
+        const usage = extractGeminiUsage(json);
+        await recordAiUsage({
+          organizationId: input.organizationId,
+          propertyId: input.propertyId,
+          feature: FEATURE,
+          provider: 'gemini',
+          model: GEMINI_MODEL,
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
+        });
+        return text.slice(0, maxLen);
+      }
     } catch {
       /* try next key */
     }
   }
 
-  const groq = groqKey();
+  const groq = getGroqApiKey();
   if (groq) {
     const res = await fetch(GROQ_URL, {
       method: 'POST',
@@ -102,9 +103,21 @@ export async function generateMarketingCaption(input: MarketingCaptionInput): Pr
     });
     const json = (await res.json()) as {
       choices?: Array<{ message?: { content?: string } }>;
+      usage?: { prompt_tokens?: number; completion_tokens?: number };
     };
     const text = json.choices?.[0]?.message?.content?.trim();
-    if (text) return text.slice(0, input.postType === 'story' ? 220 : 400);
+    if (text) {
+      await recordAiUsage({
+        organizationId: input.organizationId,
+        propertyId: input.propertyId,
+        feature: FEATURE,
+        provider: 'groq',
+        model: GROQ_MODEL,
+        inputTokens: Number(json.usage?.prompt_tokens ?? 0),
+        outputTokens: Number(json.usage?.completion_tokens ?? 0),
+      });
+      return text.slice(0, maxLen);
+    }
   }
 
   throw new Error('AI caption unavailable — configure GEMINI_API_KEYS or GROQ_API_KEY');

@@ -3,39 +3,29 @@
  * One Flash call for the whole call — not per-turn (avoids latency + token burn).
  */
 
-const GEMINI_MODEL = 'gemini-2.5-flash';
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+import {
+  extractGeminiText,
+  extractGeminiUsage,
+  getGeminiApiKeys,
+  providerError,
+  shouldTryNextProvider,
+} from './aiGeminiKeys.ts';
+import { geminiGenerateContentUrl, getModelConfig } from './aiModelRouter.ts';
+import { assertOrgAiQuotaOptional, recordAiUsageOptional } from './aiUsageService.ts';
+
+const VOICE_POLISH_FEATURE = 'voice_polish' as const;
+const GEMINI_MODEL = getModelConfig(VOICE_POLISH_FEATURE).model;
+const GEMINI_URL = geminiGenerateContentUrl(GEMINI_MODEL);
 
 export const VOICE_POLISH_MAX_TURNS = 40;
 export const VOICE_POLISH_MAX_INPUT_CHARS = 2000;
 
-function geminiKeys(): string[] {
-  const multi = Deno.env.get('GEMINI_API_KEYS')?.trim();
-  if (multi) {
-    return multi
-      .split(',')
-      .map((k) => k.trim())
-      .filter(Boolean);
-  }
-  const single = Deno.env.get('GEMINI_API_KEY')?.trim();
-  return single ? [single] : [];
-}
-
-function extractGeminiText(json: unknown): string | null {
-  const parts =
-    (
-      json as {
-        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-      }
-    ).candidates?.[0]?.content?.parts ?? [];
-  const text = parts
-    .map((p) => p.text ?? '')
-    .join('')
-    .trim();
-  return text || null;
-}
-
 export type VoicePolishTurn = { role: 'guest' | 'assistant'; text: string; at?: string };
+
+export type VoicePolishUsageContext = {
+  organizationId: string;
+  propertyId?: string | null;
+};
 
 const SYSTEM_PROMPT =
   'You clean a voice-call transcript for a vacation-rental guest chat.\n' +
@@ -59,7 +49,8 @@ function normalizeWhitespace(raw: string): string {
  * Falls back to whitespace-normalized raw turns on any failure.
  */
 export async function polishVoiceTranscriptTurns(
-  turns: VoicePolishTurn[]
+  turns: VoicePolishTurn[],
+  usageContext?: VoicePolishUsageContext | null
 ): Promise<VoicePolishTurn[]> {
   if (!turns.length) return turns;
 
@@ -69,8 +60,15 @@ export async function polishVoiceTranscriptTurns(
     at: t.at,
   }));
 
-  const keys = geminiKeys();
+  const keys = getGeminiApiKeys();
   if (!keys.length) return capped;
+
+  try {
+    await assertOrgAiQuotaOptional(usageContext?.organizationId);
+  } catch {
+    console.warn('[polishVoiceTranscriptTurns] quota exceeded — using raw transcript');
+    return capped;
+  }
 
   const payload = capped.map(({ role, text }) => ({ role, text }));
   const userPrompt = `Clean this transcript JSON:\n${JSON.stringify(payload)}`;
@@ -79,8 +77,6 @@ export async function polishVoiceTranscriptTurns(
   for (const apiKey of keys) {
     try {
       const controller = new AbortController();
-      // Runs after the call already ended (nobody is waiting on captions), so a generous
-      // budget beats falling back to raw STT — the 8s ceiling was aborting every call.
       const timer = setTimeout(() => controller.abort(), 20_000);
       const res = await fetch(`${GEMINI_URL}?key=${encodeURIComponent(apiKey)}`, {
         method: 'POST',
@@ -104,8 +100,6 @@ export async function polishVoiceTranscriptTurns(
                 required: ['role', 'text'],
               },
             },
-            // 2.5-flash reasons by default; thinking tokens would eat maxOutputTokens
-            // and return an empty candidate, silently falling back to raw STT.
             thinkingConfig: { thinkingBudget: 0 },
           },
         }),
@@ -113,10 +107,9 @@ export async function polishVoiceTranscriptTurns(
       clearTimeout(timer);
       const json = await res.json();
       if (!res.ok) {
-        lastError =
-          (json as { error?: { message?: string } }).error?.message ?? `HTTP ${res.status}`;
-        if (res.status !== 429 && res.status !== 503) break;
-        continue;
+        lastError = providerError(json, `HTTP ${res.status}`);
+        if (shouldTryNextProvider(res.status)) continue;
+        break;
       }
       const text = extractGeminiText(json);
       if (!text) {
@@ -131,6 +124,16 @@ export async function polishVoiceTranscriptTurns(
         lastError = 'response was not a non-empty JSON array';
         continue;
       }
+
+      const usage = extractGeminiUsage(json);
+      await recordAiUsageOptional(usageContext?.organizationId, {
+        propertyId: usageContext?.propertyId,
+        feature: VOICE_POLISH_FEATURE,
+        provider: 'gemini',
+        model: GEMINI_MODEL,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+      });
 
       const out: VoicePolishTurn[] = [];
       for (let i = 0; i < capped.length; i++) {

@@ -2,57 +2,33 @@
  * AI reply suggestions for social inbox — Gemini/Groq with org context.
  */
 
+import {
+  extractGeminiText,
+  extractGeminiUsage,
+  getGeminiApiKeys,
+  getGroqApiKey,
+  providerError,
+} from './aiGeminiKeys.ts';
+import { geminiGenerateContentUrl, getModelConfig } from './aiModelRouter.ts';
+import { assertOrgAiQuota, recordAiUsage, type RecordAiUsageInput } from './aiUsageService.ts';
 import { createServiceClient } from './orgAuth.ts';
 import { buildAiGroundingFacts } from './inboxAiGuestContext.ts';
 import { AI_SUGGEST_FALLBACK_REPLY, assertSafeGuestReply } from './inboxAiSafetyGuard.ts';
 
-const GEMINI_MODEL = 'gemini-2.5-flash';
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+const INBOX_FEATURE = 'inbox_suggest' as const;
+const GEMINI_MODEL = getModelConfig(INBOX_FEATURE).model;
+const GEMINI_URL = geminiGenerateContentUrl(GEMINI_MODEL);
 const GROQ_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
-function geminiKeys(): string[] {
-  const multi = Deno.env.get('GEMINI_API_KEYS')?.trim();
-  if (multi) {
-    return multi
-      .split(',')
-      .map((k) => k.trim())
-      .filter(Boolean);
-  }
-  const single = Deno.env.get('GEMINI_API_KEY')?.trim();
-  return single ? [single] : [];
-}
+type GeminiReplyResult = { text: string; usage: RecordAiUsageInput };
 
-function groqKey(): string | null {
-  return Deno.env.get('GROQ_API_KEY')?.trim() || null;
-}
-
-function extractGeminiText(json: unknown): string | null {
-  const parts =
-    (
-      json as {
-        candidates?: Array<{
-          content?: { parts?: Array<{ text?: string; thought?: boolean }> };
-        }>;
-      }
-    ).candidates?.[0]?.content?.parts ?? [];
-  const text = parts
-    .filter((p) => !p.thought)
-    .map((p) => p.text ?? '')
-    .join('')
-    .trim();
-  return text || null;
-}
-
-function providerError(json: unknown, fallback: string): string {
-  const err = json as { error?: { message?: string; code?: string | number } };
-  const message = err.error?.message?.trim();
-  if (message) return message;
-  return fallback;
-}
-
-async function tryGeminiReply(systemPrompt: string, userPrompt: string): Promise<string | null> {
-  const keys = geminiKeys();
+async function tryGeminiReply(
+  systemPrompt: string,
+  userPrompt: string,
+  usageBase: Omit<RecordAiUsageInput, 'provider' | 'model' | 'inputTokens' | 'outputTokens'>
+): Promise<GeminiReplyResult | null> {
+  const keys = getGeminiApiKeys();
   if (!keys.length) return null;
 
   let lastError = 'GEMINI_API_KEYS not set';
@@ -79,7 +55,19 @@ async function tryGeminiReply(systemPrompt: string, userPrompt: string): Promise
         continue;
       }
       const text = extractGeminiText(json);
-      if (text) return text;
+      if (text) {
+        const usage = extractGeminiUsage(json);
+        return {
+          text,
+          usage: {
+            ...usageBase,
+            provider: 'gemini',
+            model: GEMINI_MODEL,
+            inputTokens: usage.inputTokens,
+            outputTokens: usage.outputTokens,
+          },
+        };
+      }
       lastError = 'Empty Gemini response';
     } catch (e) {
       lastError = (e as Error).message;
@@ -89,8 +77,12 @@ async function tryGeminiReply(systemPrompt: string, userPrompt: string): Promise
   throw new Error(`Gemini: ${lastError}`);
 }
 
-async function tryGroqReply(systemPrompt: string, userPrompt: string): Promise<string | null> {
-  const key = groqKey();
+async function tryGroqReply(
+  systemPrompt: string,
+  userPrompt: string,
+  usageBase: Omit<RecordAiUsageInput, 'provider' | 'model' | 'inputTokens' | 'outputTokens'>
+): Promise<GeminiReplyResult | null> {
+  const key = getGroqApiKey();
   if (!key) return null;
 
   const res = await fetch(GROQ_URL, {
@@ -114,7 +106,19 @@ async function tryGroqReply(systemPrompt: string, userPrompt: string): Promise<s
     throw new Error(`Groq: ${providerError(json, `HTTP ${res.status}`)}`);
   }
   const text = json.choices?.[0]?.message?.content?.trim();
-  if (text) return text;
+  if (text) {
+    const usage = json.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined;
+    return {
+      text,
+      usage: {
+        ...usageBase,
+        provider: 'groq',
+        model: GROQ_MODEL,
+        inputTokens: Number(usage?.prompt_tokens ?? 0),
+        outputTokens: Number(usage?.completion_tokens ?? 0),
+      },
+    };
+  }
   throw new Error('Groq: Empty response');
 }
 
@@ -127,8 +131,8 @@ export type InboxAiProviderStatus = {
 
 /** Lightweight probe — used by automation settings to warn when auto-send cannot run. */
 export async function checkInboxAiProviders(): Promise<InboxAiProviderStatus> {
-  const geminiConfigured = geminiKeys().length > 0;
-  const groqConfigured = !!groqKey();
+  const geminiConfigured = getGeminiApiKeys().length > 0;
+  const groqConfigured = !!getGroqApiKey();
   if (!geminiConfigured && !groqConfigured) {
     return {
       available: false,
@@ -144,8 +148,11 @@ export async function checkInboxAiProviders(): Promise<InboxAiProviderStatus> {
   const errors: string[] = [];
   if (geminiConfigured) {
     try {
-      const text = await tryGeminiReply(probeSystem, probeUser);
-      if (text) {
+      const probe = await tryGeminiReply(probeSystem, probeUser, {
+        organizationId: '00000000-0000-0000-0000-000000000000',
+        feature: 'ai_integration_verify',
+      });
+      if (probe?.text) {
         return { available: true, geminiConfigured, groqConfigured, error: null };
       }
     } catch (e) {
@@ -155,8 +162,11 @@ export async function checkInboxAiProviders(): Promise<InboxAiProviderStatus> {
 
   if (groqConfigured) {
     try {
-      const text = await tryGroqReply(probeSystem, probeUser);
-      if (text) {
+      const probe = await tryGroqReply(probeSystem, probeUser, {
+        organizationId: '00000000-0000-0000-0000-000000000000',
+        feature: 'ai_integration_verify',
+      });
+      if (probe?.text) {
         return { available: true, geminiConfigured, groqConfigured, error: null };
       }
     } catch (e) {
@@ -191,6 +201,8 @@ export type AiSuggestResult = {
 };
 
 export async function suggestInboxReply(input: AiSuggestInput): Promise<AiSuggestResult> {
+  await assertOrgAiQuota(input.orgId);
+
   const sb = createServiceClient();
   const { data: orgRow } = await sb
     .from('organizations')
@@ -250,28 +262,50 @@ export async function suggestInboxReply(input: AiSuggestInput): Promise<AiSugges
 
   const errors: string[] = [];
   let draft: string | null = null;
+  let usageRecord: RecordAiUsageInput | null = null;
+  const feature =
+    input.platform === 'web' && input.conversationType === 'web_chat'
+      ? ('inbox_auto_reply' as const)
+      : INBOX_FEATURE;
+  const usageBase = {
+    organizationId: input.orgId,
+    propertyId: input.propertyId ?? null,
+    feature,
+  };
 
-  if (geminiKeys().length) {
+  if (getGeminiApiKeys().length) {
     try {
-      draft = await tryGeminiReply(systemPrompt, userPrompt);
+      const result = await tryGeminiReply(systemPrompt, userPrompt, usageBase);
+      if (result) {
+        draft = result.text;
+        usageRecord = result.usage;
+      }
     } catch (e) {
       errors.push((e as Error).message);
     }
   }
 
-  if (!draft && groqKey()) {
+  if (!draft && getGroqApiKey()) {
     try {
-      draft = await tryGroqReply(systemPrompt, userPrompt);
+      const result = await tryGroqReply(systemPrompt, userPrompt, usageBase);
+      if (result) {
+        draft = result.text;
+        usageRecord = result.usage;
+      }
     } catch (e) {
       errors.push((e as Error).message);
     }
   }
 
   if (!draft) {
-    if (!geminiKeys().length && !groqKey()) {
+    if (!getGeminiApiKeys().length && !getGroqApiKey()) {
       throw new Error('AI suggestion unavailable — set GEMINI_API_KEYS or GROQ_API_KEY');
     }
     throw new Error(`AI suggestion unavailable — ${errors.join('; ')}`);
+  }
+
+  if (usageRecord) {
+    await recordAiUsage(usageRecord);
   }
 
   const guard = assertSafeGuestReply({
