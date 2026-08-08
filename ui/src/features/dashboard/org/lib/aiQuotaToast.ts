@@ -1,0 +1,69 @@
+import { toast } from 'sonner';
+
+/** Thrown when an edge function returns 429 + upgradeHook. */
+export class AiQuotaExceededClientError extends Error {
+  readonly upgradeHook = true;
+
+  constructor(message?: string) {
+    super(message ?? 'AI usage limit reached');
+    this.name = 'AiQuotaExceededClientError';
+  }
+}
+
+/** Surfaces the stub upgrade CTA when edge functions return upgradeHook. */
+export function toastAiQuotaExceeded(message?: string): void {
+  toast.error(message ?? 'AI usage limit reached', {
+    action: {
+      label: 'Upgrade',
+      onClick: () => {
+        toast.message('AI upgrade billing is coming soon — contact support for higher limits.');
+      },
+    },
+  });
+}
+
+export function isAiQuotaResponse(
+  body: unknown
+): body is { upgradeHook?: boolean; error?: string } {
+  return Boolean(
+    body && typeof body === 'object' && (body as { upgradeHook?: boolean }).upgradeHook
+  );
+}
+
+export function isAiQuotaError(error: unknown): error is AiQuotaExceededClientError {
+  return error instanceof AiQuotaExceededClientError;
+}
+
+type EdgeEnvelope = {
+  success?: boolean;
+  error?: string;
+  upgradeHook?: boolean;
+  data?: unknown;
+};
+
+/** Parse `{ success, data }` edge JSON; throws AiQuotaExceededClientError on quota responses. */
+export async function parseEdgeJsonOrQuota<T>(res: Response): Promise<T> {
+  const json = (await res.json()) as EdgeEnvelope;
+  if (json.upgradeHook || res.status === 429) {
+    throw new AiQuotaExceededClientError(json.error);
+  }
+  if (!res.ok || !json.success) {
+    throw new Error(json.error ?? 'Request failed');
+  }
+  return json.data as T;
+}
+
+/** Check a parsed edge envelope before unwrap (inbox-style responses). */
+export function throwIfAiQuota(json: EdgeEnvelope, res: Response): void {
+  if (json.upgradeHook || res.status === 429) {
+    throw new AiQuotaExceededClientError(json.error);
+  }
+}
+
+export function handleAiMutationError(error: Error): void {
+  if (isAiQuotaError(error)) {
+    toastAiQuotaExceeded(error.message);
+    return;
+  }
+  toast.error(error.message || 'Request failed');
+}

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 
 import { ClipboardCheck, Landmark, Users, Building2 } from 'lucide-react';
 
+import { AiPlatformKillSwitchCard } from '@/features/dashboard/super-admin/components/AiPlatformKillSwitchCard';
 import { VoiceReceptionistKillSwitchCard } from '@/features/dashboard/super-admin/components/VoiceReceptionistKillSwitchCard';
 import { superAdminPaths } from '@/features/dashboard/super-admin/lib/superAdminPaths';
 
@@ -29,6 +30,7 @@ export function SuperAdminOverviewPage() {
         ))}
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <AiPlatformKillSwitchCard />
         <VoiceReceptionistKillSwitchCard />
       </div>
     </div>
