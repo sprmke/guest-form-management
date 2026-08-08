@@ -21,12 +21,12 @@ Keep this list **small**. Heavy domain specs use globs.
 
 ## New developer setup (AI tooling)
 
-After `git clone` and `bun install`, run **`bun run setup:ai-tooling`** once — symlinks, ecosystem skills (Taste / Playwright CLI / Impeccable), DESIGN.md catalog, Claude local settings template, and sync verification. Rules/commands/agents/hooks load from the repo automatically; no copy from `~/.cursor` or `~/.claude` is required.
+After `git clone` and `bun install`, run **`bun run setup:ai-tooling`** once — symlinks, ecosystem skills (Taste / Playwright CLI / Impeccable), DESIGN.md catalog, OpenCode command links, Claude local settings template, and sync verification. Rules/commands/agents/hooks load from the repo automatically; no copy from `~/.cursor`, `~/.claude`, or `~/.config/opencode` is required.
 
 | Step | Action                                                                                                                                               |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 0    | **`bun run setup:ai-tooling`** — one-shot project AI tooling setup (re-run after broken symlinks)                                                    |
-| 1    | Open the repo root in **Cursor** or **Claude Code**                                                                                                  |
+| 1    | Open the repo root in **Cursor**, **Claude Code**, or **OpenCode**                                                                                   |
 | 2    | Export **`SUPABASE_ACCESS_TOKEN`** and **`SUPABASE_PROJECT_REF`** in your shell (read-only Supabase MCP)                                             |
 | 3    | Install **`markitdown-mcp`** on `PATH`: `uv tool install markitdown-mcp`                                                                             |
 | 4    | **Claude Code only:** install the **ponytail** plugin once (`/plugin marketplace add DietrichGebert/ponytail`) — team rule is also in `ponytail.mdc` |
@@ -37,7 +37,7 @@ Flags: `bun run setup:ai-tooling -- --skip-agents-skills` · `--skip-playwright-
 
 | Path                        | Owner                               | Use                                                                                                                           |
 | --------------------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `.agent/skills/` (singular) | GFM repo                            | Team domain skills — edit here; symlinked to `.cursor/skills/` and `.claude/skills/`                                          |
+| `.agent/skills/` (singular) | GFM repo                            | Team domain skills — edit here; symlinked to `.cursor/skills/` and `.claude/skills/` (OpenCode also loads via `skills.paths`) |
 | `.agents/skills/` (plural)  | [skills.sh](https://skills.sh/) CLI | Ecosystem installs — locked in `skills-lock.json`; do not move into `.agent/` (Impeccable scripts hard-code `.agents/` paths) |
 
 **Ecosystem packages (project-scoped):**
@@ -48,11 +48,13 @@ Flags: `bun run setup:ai-tooling -- --skip-agents-skills` · `--skip-playwright-
 | [Playwright CLI](https://github.com/microsoft/playwright-cli)       | skill `playwright-cli` + `bun x playwright-cli` (`@playwright/cli`)                                | `bun run setup:playwright-cli` |
 | [awesome-design-md](https://github.com/VoltAgent/awesome-design-md) | root `DESIGN.md` + `.agents/design-md/*` refs + skill `design-md`                                  | `bun run setup:design-md`      |
 
-**Intentionally user-scoped (do not commit):** `~/.cursor/mcp.json` (e.g. claude-mem), `~/.cursor/hooks.json` (claude-mem session hooks), `~/.claude/settings.json` (model, status line, extra plugins), Cursor built-in `~/.cursor/skills-cursor/*`, marketplace plugins (Notion, Figma, Vercel) unless a task needs them.
+**Intentionally user-scoped (do not commit):** `~/.cursor/mcp.json` (e.g. claude-mem), `~/.cursor/hooks.json` (claude-mem session hooks), `~/.claude/settings.json` (model, status line, extra plugins), `~/.config/opencode/opencode.json` (OpenCode providers/models), Cursor built-in `~/.cursor/skills-cursor/*`, marketplace plugins (Notion, Figma, Vercel) unless a task needs them.
 
 **Personal skill copies in `~/.claude/skills/`** (design, brand, ui-styling, …) are superseded by this repo's `.agent/skills/` — do not edit the home-directory copies when working here.
 
 Run **`bun run check:ai-tooling-sync`** after changing hooks, commands, agents, or skill symlinks (also runs in pre-commit).
+
+**OpenCode:** project config is root **`opencode.json`** + **`.opencode/`** (index: **`.opencode/README.md`**). Same skills/commands/MCP goals as Cursor/Claude; hooks run via `.opencode/plugins/gfm-ai-tooling.ts`.
 
 ## Conditional rules (by file glob — loaded when relevant)
 
@@ -175,14 +177,14 @@ Do **not** spawn Explore / Plan subagents by default — see `ai-usage.mdc`.
 
 ## Updating
 
-Add rules with `globs` + update this README. Claude Code has its own equivalent tooling under `.claude/` (index: **`.claude/README.md`**) — when you add or change something here, mirror it there in the same change:
+Add rules with `globs` + update this README. Claude Code has its own equivalent tooling under `.claude/` (index: **`.claude/README.md`**); OpenCode under **`.opencode/README.md`** + root **`opencode.json`**. When you add or change something here, mirror it on the other sides in the same change:
 
-| Cursor                                      | Claude Code                                                | Notes                                                                                                                      |
-| ------------------------------------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `.cursor/skills/*`                          | `.claude/skills/*`                                         | Both are relative symlinks into `.agent/skills/<name>/` — edit only under `.agent/skills/`; see `.claude/skills/README.md` |
-| `.cursor/agents/*.md`                       | `.claude/agents/*.md`                                      | Translate frontmatter: `readonly: true` → drop `Write`/`Edit`/`NotebookEdit` from `tools`; `model: fast` → `model: haiku`  |
-| `.cursor/commands/*.md`                     | `.claude/commands/*.md`                                    | Content is portable as-is                                                                                                  |
-| `.cursor/hooks.json` + `.cursor/hooks/*.sh` | `.claude/settings.json` (`"hooks"`) + `.claude/hooks/*.sh` | **Not** a straight copy — different stdin JSON shape and output contract, see `.claude/skills/README.md`                   |
-| —                                           | `.mcp.json` (symlinked from `.cursor/mcp.json`)            | Shared MCP config, no mirroring needed — one file, one symlink                                                             |
+| Cursor                                      | Claude Code                                                | OpenCode                                                                                          | Notes                                                                                                |
+| ------------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `.cursor/skills/*`                          | `.claude/skills/*`                                         | `.agent/skills` + `.agents/skills` via `opencode.json` `skills.paths` (+ Claude-compat discovery) | Edit only under `.agent/skills/` (team) or restore ecosystem via `setup:agents-skills`               |
+| `.cursor/agents/*.md`                       | `.claude/agents/*.md`                                      | `.opencode/agents/*.md`                                                                           | Translate frontmatter: Cursor `readonly` / Claude `tools` → OpenCode `mode: subagent` + `permission` |
+| `.cursor/commands/*.md`                     | `.claude/commands/*.md`                                    | `.opencode/commands/*` → symlink to Claude                                                        | Content is portable as-is                                                                            |
+| `.cursor/hooks.json` + `.cursor/hooks/*.sh` | `.claude/settings.json` (`"hooks"`) + `.claude/hooks/*.sh` | `.opencode/plugins/gfm-ai-tooling.ts` (calls `.claude/hooks/`)                                    | Not a straight copy — each harness has a different event shape                                       |
+| `.cursor/mcp.json` → `.mcp.json`            | `.mcp.json`                                                | `opencode.json` → `mcp` (local `type` + command array)                                            | Keep MCP server **names** in parity; OpenCode shape differs                                          |
 
-Not everything here has a Claude Code equivalent (glob-scoped `alwaysApply: false` rules like `security.mdc`, `state-management.mdc`, `tech-stack.mdc` don't auto-load in Claude Code the way they do in Cursor) — `CLAUDE.md` tells Claude to read `.cursor/rules/*.mdc` directly when relevant instead of duplicating them.
+Not everything here has a Claude Code / OpenCode auto-load equivalent (glob-scoped `alwaysApply: false` rules like `security.mdc`, `state-management.mdc`, `tech-stack.mdc` don't auto-load) — `CLAUDE.md` / session context tells agents to read `.cursor/rules/*.mdc` directly when relevant instead of duplicating them.

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Warn-only SessionStart check: Cursor/Claude AI tooling drift.
+# Warn-only SessionStart check: Cursor/Claude/OpenCode AI tooling drift.
 # See scripts/dev/check-ai-tooling-sync.sh (also blocking in .husky/pre-commit).
 
 set -uo pipefail
@@ -7,7 +7,7 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
 if bash "$ROOT/scripts/dev/check-ai-tooling-sync.sh" >/dev/null 2>&1; then
-  status="AI tooling sync: OK (Cursor/Claude skills, commands, agents, hooks, mcp.json in sync)."
+  status="AI tooling sync: OK (Cursor/Claude/OpenCode skills, commands, agents, hooks, mcp in sync)."
 else
   status="AI tooling sync: DRIFT DETECTED — run 'bun run check:ai-tooling-sync' for details."
 fi
