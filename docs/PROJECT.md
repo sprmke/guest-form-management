@@ -45,4 +45,21 @@ Property-scoped spreadsheet import wizard — upload host booking history into `
 
 ---
 
+## Platform AI metering (production cost control)
+
+Centralized Gemini usage for receipts, inbox drafts, marketing AI, import column mapping, and voice transcript polish. Voice Live sessions remain metered separately in `voice_receptionist_sessions`.
+
+| Concern                 | Detail                                                                                                                                                                                                                                                                             |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Tables**              | `ai_platform_global_settings` (kill switch + `enforce_quotas`), `ai_platform_org_settings` (per-org enable + daily/monthly **call** limits), `ai_platform_usage_daily` (aggregates), `ai_platform_usage_events` (audit log). Migration **`20261009120000_ai_platform_usage.sql`**. |
+| **Shared edge modules** | `_shared/aiModelRouter.ts` (feature → Flash / Flash-Lite), `_shared/aiGeminiKeys.ts` (key loading), `_shared/aiUsageService.ts` (`assertOrgAiQuota`, `recordAiUsage`).                                                                                                             |
+| **Model tiering**       | Receipt / inbox / marketing / voice polish → **Gemini 2.5 Flash**; import column map → **Flash-Lite**.                                                                                                                                                                             |
+| **Quota behavior**      | Inbox + marketing → HTTP **429** + `upgradeHook: true`; receipt + import → non-blocking degrade (`aiModelError` or unmatched columns). Voice polish skips polish on quota (raw transcript).                                                                                        |
+| **Defaults**            | 200 calls/day, 5000 calls/month per org (when `enforce_quotas` is on).                                                                                                                                                                                                             |
+| **Edge functions**      | `ai-platform-global-settings` (super-admin), `ai-platform-settings`, `ai-platform-usage` — see [`docs/architecture/edge-functions.md`](architecture/edge-functions.md).                                                                                                            |
+| **UI**                  | Org **Settings → AI usage** (`OrgAiPlatformSection`); super-admin kill switch on `/admin`. Upgrade CTA is a stub toast until Stripe billing ships.                                                                                                                                 |
+| **Ops**                 | Paid **`GEMINI_API_KEY`** on one billing project for hosted envs; multi-key rotation local-only — [`docs/archive/operations/ai-platform-billing.md`](archive/operations/ai-platform-billing.md), [`docs/architecture/validation-and-env.md`](architecture/validation-and-env.md).  |
+
+---
+
 _Last updated from repository analysis (internal documentation)._
