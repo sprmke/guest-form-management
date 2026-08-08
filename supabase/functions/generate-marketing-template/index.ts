@@ -4,7 +4,8 @@
  */
 
 import { generateMarketingTemplateTokens } from '../_shared/marketingTemplateGenerationAi.ts';
-import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
+import { jsonError, jsonResponse, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
+import { isAiPlatformDisabledError, isAiQuotaError } from '../_shared/aiUsageService.ts';
 import { resolveAdminPropertyId } from '../_shared/propertyScope.ts';
 import { serveAdmin } from '../_shared/serveEdge.ts';
 import { createServiceClient } from '../_shared/orgAuth.ts';
@@ -50,12 +51,14 @@ serveAdmin('generate-marketing-template', async (req, admin) => {
   const sb = createServiceClient();
   const { data: propertyRow, error } = await sb
     .from('properties')
-    .select('name, residence_name, address, settings')
+    .select('name, residence_name, address, settings, organization_id')
     .eq('id', propertyId)
     .maybeSingle();
 
   if (error) return jsonError(req, error.message, 500);
-  if (!propertyRow?.name) return jsonError(req, 'Property not found', 404);
+  if (!propertyRow?.name || !propertyRow.organization_id) {
+    return jsonError(req, 'Property not found', 404);
+  }
 
   const settings = (propertyRow.settings ?? {}) as Record<string, unknown>;
   const media = Array.isArray(settings.media) ? settings.media : [];
@@ -82,6 +85,8 @@ serveAdmin('generate-marketing-template', async (req, admin) => {
 
   try {
     const result = await generateMarketingTemplateTokens({
+      organizationId: String(propertyRow.organization_id),
+      propertyId,
       contentType,
       prompt,
       propertyName: propertyLabel || String(propertyRow.name),
@@ -92,6 +97,16 @@ serveAdmin('generate-marketing-template', async (req, admin) => {
 
     return jsonSuccess(req, result);
   } catch (err) {
+    if (isAiQuotaError(err)) {
+      return jsonResponse(
+        req,
+        { success: false, error: (err as Error).message, upgradeHook: true },
+        429
+      );
+    }
+    if (isAiPlatformDisabledError(err)) {
+      return jsonError(req, (err as Error).message, 503);
+    }
     return jsonError(req, (err as Error).message, 503);
   }
 });

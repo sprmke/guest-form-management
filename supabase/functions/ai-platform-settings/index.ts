@@ -1,0 +1,61 @@
+/**
+ * ai-platform-settings — Org GET/PATCH for per-org AI allowance and enable toggle.
+ */
+
+import {
+  getAiPlatformOrgSettings,
+  upsertAiPlatformOrgSettings,
+} from '../_shared/aiUsageService.ts';
+import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
+import { resolveOrgAccessContext } from '../_shared/propertyScope.ts';
+import { serveAuthenticated } from '../_shared/serveEdge.ts';
+
+serveAuthenticated('ai-platform-settings', async (req, user) => {
+  const ctx = await resolveOrgAccessContext(req);
+
+  if (req.method === 'GET') {
+    const settings = await getAiPlatformOrgSettings(ctx.org.id);
+    return jsonSuccess(req, {
+      organizationId: settings.organizationId,
+      enabled: settings.enabled,
+      dailyCallLimit: settings.dailyCallLimit,
+      monthlyCallLimit: settings.monthlyCallLimit,
+      planTier: settings.planTier,
+      updatedAt: settings.updatedAt,
+    });
+  }
+
+  if (req.method === 'PATCH') {
+    const body = await readJsonBody(req);
+    if (body.enabled !== undefined && typeof body.enabled !== 'boolean') {
+      return jsonError(req, 'enabled must be a boolean when provided', 400);
+    }
+    const daily = body.dailyCallLimit !== undefined ? Number(body.dailyCallLimit) : undefined;
+    const monthly = body.monthlyCallLimit !== undefined ? Number(body.monthlyCallLimit) : undefined;
+    if (daily !== undefined && (!Number.isFinite(daily) || daily <= 0)) {
+      return jsonError(req, 'dailyCallLimit must be a positive number', 400);
+    }
+    if (monthly !== undefined && (!Number.isFinite(monthly) || monthly <= 0)) {
+      return jsonError(req, 'monthlyCallLimit must be a positive number', 400);
+    }
+
+    const settings = await upsertAiPlatformOrgSettings({
+      organizationId: ctx.org.id,
+      enabled: typeof body.enabled === 'boolean' ? body.enabled : undefined,
+      dailyCallLimit: daily,
+      monthlyCallLimit: monthly,
+      updatedBy: user.id,
+    });
+
+    return jsonSuccess(req, {
+      organizationId: settings.organizationId,
+      enabled: settings.enabled,
+      dailyCallLimit: settings.dailyCallLimit,
+      monthlyCallLimit: settings.monthlyCallLimit,
+      planTier: settings.planTier,
+      updatedAt: settings.updatedAt,
+    });
+  }
+
+  return jsonError(req, 'Method not allowed', 405);
+});
