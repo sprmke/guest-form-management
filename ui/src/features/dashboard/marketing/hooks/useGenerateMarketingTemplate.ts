@@ -1,8 +1,11 @@
 import { useMutation } from '@tanstack/react-query';
-import { toast } from 'sonner';
 
 import type { CalendarTemplateTokens } from '@/features/dashboard/marketing/lib/calendarAiTokens';
 import { usePropertyIdParam, scopedFunctionsUrl } from '@/features/dashboard/org/lib/adminApiScope';
+import {
+  handleAiMutationError,
+  parseEdgeJsonOrQuota,
+} from '@/features/dashboard/org/lib/aiQuotaToast';
 import { getSessionJwt } from '@/features/dashboard/org/lib/edgeClient';
 
 export type GenerateMarketingTemplatePayload = {
@@ -23,11 +26,7 @@ export type GenerateMarketingTemplateResult = {
 };
 
 async function parseEdgeJson<T>(res: Response): Promise<T> {
-  const json = (await res.json()) as { success?: boolean; error?: string; data?: T };
-  if (!res.ok || !json.success) {
-    throw new Error(json.error ?? 'Request failed');
-  }
-  return json.data as T;
+  return parseEdgeJsonOrQuota<T>(res);
 }
 
 export async function generateMarketingTemplateRequest(
@@ -52,6 +51,6 @@ export function useGenerateMarketingTemplate() {
   return useMutation({
     mutationFn: (payload: GenerateMarketingTemplatePayload) =>
       generateMarketingTemplateRequest(propertyId, payload),
-    onError: (error: Error) => toast.error(error.message || 'AI generation failed'),
+    onError: (error: Error) => handleAiMutationError(error),
   });
 }

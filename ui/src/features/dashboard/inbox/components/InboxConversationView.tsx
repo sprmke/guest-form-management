@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { handleAiMutationError, isAiQuotaError } from '@/features/dashboard/org/lib/aiQuotaToast';
 import {
   InboxMediaPreviewDialog,
   InboxMessageMediaTile,
@@ -310,6 +311,10 @@ export function InboxConversationView({
       setDraftFromAi(true);
       setDraftAiFlagged(result.flagged);
     } catch (e) {
+      if (isAiQuotaError(e)) {
+        handleAiMutationError(e);
+        return;
+      }
       toast.error((e as Error).message);
     }
   };

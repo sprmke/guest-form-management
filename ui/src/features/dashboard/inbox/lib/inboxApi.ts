@@ -16,6 +16,7 @@ import {
   useOrgIdParam,
   useOrgSlugParam,
 } from '@/features/dashboard/org/lib/adminApiScope';
+import { throwIfAiQuota } from '@/features/dashboard/org/lib/aiQuotaToast';
 
 import { supabase } from '@/lib/supabase/client';
 
@@ -446,6 +447,7 @@ export async function suggestInboxAiReply(
     body: JSON.stringify({ conversationId }),
   });
   const json = (await res.json()) as EdgeJson;
+  throwIfAiQuota(json, res);
   const payload = unwrapEdgePayload(json);
   if (typeof payload.suggestion !== 'string') {
     throw new Error('AI suggestion unavailable');
