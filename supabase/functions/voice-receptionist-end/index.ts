@@ -19,6 +19,7 @@ import {
   type VoiceReceptionistEndReason,
 } from '../_shared/voiceReceptionistService.ts';
 import { polishVoiceTranscriptTurns } from '../_shared/polishVoiceUtterance.ts';
+import { resolveOrganizationIdForProperty } from '../_shared/propertyScope.ts';
 
 const END_REASONS: VoiceReceptionistEndReason[] = [
   'guest_ended',
@@ -52,7 +53,11 @@ serveAuthenticated('voice-receptionist-end', async (req, user) => {
 
   if (session.conversationId && turns.length) {
     try {
-      const polishedTurns = await polishVoiceTranscriptTurns(turns);
+      const organizationId = await resolveOrganizationIdForProperty(session.propertyId);
+      const polishedTurns = await polishVoiceTranscriptTurns(turns, {
+        organizationId,
+        propertyId: session.propertyId,
+      });
       await writeVoiceTranscriptToConversation(
         session.id,
         session.conversationId,

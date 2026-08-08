@@ -25,7 +25,7 @@ import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('validate-booking-receipts', async (req) => {
   requireHttpMethod(req, 'POST');
-  const { property } = await resolveScopedPropertyAccess(req, 'bookings:edit');
+  const { property, org } = await resolveScopedPropertyAccess(req, 'bookings:edit');
   const propertyId = property.id;
   const body = await readJsonBody(req);
   const bookingId = String(body.bookingId ?? '').trim();
@@ -37,7 +37,8 @@ serveAuthenticated('validate-booking-receipts', async (req) => {
   if (!booking) throw new Error(`Booking not found: ${bookingId}`);
 
   const { validated, errors } = await backfillMissingReceiptAiVerdicts(
-    booking as Record<string, unknown>
+    booking as Record<string, unknown>,
+    { organizationId: org.id, propertyId }
   );
 
   if (validated.length > 0) {

@@ -11,7 +11,12 @@ import {
   isImportBatchStatus,
   type ImportBatchStatus,
 } from '../_shared/importBatchStatusMachine.ts';
-import { jsonError, jsonSuccess, readJsonBody, requireHttpMethod } from '../_shared/httpResponse.ts';
+import {
+  jsonError,
+  jsonSuccess,
+  readJsonBody,
+  requireHttpMethod,
+} from '../_shared/httpResponse.ts';
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
@@ -24,15 +29,10 @@ type ImportBatchRow = {
 
 function parseHeaders(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
-  return value
-    .map((header) => (typeof header === 'string' ? header.trim() : ''))
-    .filter(Boolean);
+  return value.map((header) => (typeof header === 'string' ? header.trim() : '')).filter(Boolean);
 }
 
-function buildSamplesByHeader(
-  headers: string[],
-  rows: ImportBatchRow[]
-): Record<string, string[]> {
+function buildSamplesByHeader(headers: string[], rows: ImportBatchRow[]): Record<string, string[]> {
   const samples: Record<string, string[]> = Object.fromEntries(
     headers.map((header) => [header, [] as string[]])
   );
@@ -140,6 +140,8 @@ serveAuthenticated('import-ai-map-columns', async (req) => {
   }
 
   const aiResult = await suggestImportColumnMappings({
+    organizationId: batch.organization_id as string,
+    propertyId: batch.property_id as string,
     headers,
     samplesByHeader: buildSamplesByHeader(headers, (sampleRows ?? []) as ImportBatchRow[]),
   });
@@ -173,9 +175,7 @@ serveAuthenticated('import-ai-map-columns', async (req) => {
   }
 
   const matchedCount = aiResult.mappings.filter((entry) => entry.status === 'matched').length;
-  const reviewCount = aiResult.mappings.filter(
-    (entry) => entry.status !== 'matched'
-  ).length;
+  const reviewCount = aiResult.mappings.filter((entry) => entry.status !== 'matched').length;
 
   console.log(
     `[import-ai-map-columns] batch ${batchId} — ${matchedCount} matched, ${reviewCount} need review (${aiResult.provider})`

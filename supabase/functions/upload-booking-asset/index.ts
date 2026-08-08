@@ -31,7 +31,9 @@ import {
   shouldPersistReceiptValidation,
   validateReceiptFile,
   validateValidIdFile,
+  type AiUsageContext,
 } from '../_shared/receiptValidationService.ts';
+import { resolveOrgIdForProperty } from '../_shared/aiUsageService.ts';
 import { notifyTelegramAdminBalanceReceiptUploaded } from '../_shared/telegramAdmin.ts';
 import { jsonSuccess, requireHttpMethod } from '../_shared/httpResponse.ts';
 import {
@@ -182,10 +184,12 @@ serveAuthenticated('upload-booking-asset', async (req) => {
   const docAiKind = documentAiKindForAssetType(assetType);
   if (docAiKind) {
     try {
+      const orgId = await resolveOrgIdForProperty(propertyId);
+      const aiUsage: AiUsageContext | null = orgId ? { organizationId: orgId, propertyId } : null;
       receiptValidation =
         docAiKind === 'valid_id'
-          ? await validateValidIdFile(file)
-          : await validateReceiptFile(file);
+          ? await validateValidIdFile(file, aiUsage)
+          : await validateReceiptFile(file, aiUsage);
       if (shouldPersistReceiptValidation(receiptValidation)) {
         Object.assign(workflowUpdate, dbPatchForDocumentAiValidation(docAiKind, receiptValidation));
       }

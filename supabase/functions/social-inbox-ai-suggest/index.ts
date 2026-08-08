@@ -3,9 +3,10 @@
  */
 
 import { suggestInboxReply } from '../_shared/socialInboxAiService.ts';
+import { isAiPlatformDisabledError, isAiQuotaError } from '../_shared/aiUsageService.ts';
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import { getConversationById, listMessages } from '../_shared/socialInboxService.ts';
-import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
+import { jsonError, jsonResponse, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
 import { resolveOrgAccessContext } from '../_shared/propertyScope.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
@@ -55,6 +56,12 @@ serveAuthenticated('social-inbox-ai-suggest', async (req) => {
       flagged: result.flagged,
     });
   } catch (e) {
+    if (isAiQuotaError(e)) {
+      return jsonResponse(req, { success: false, error: e.message, upgradeHook: true }, 429);
+    }
+    if (isAiPlatformDisabledError(e)) {
+      return jsonError(req, e.message, 503);
+    }
     return jsonError(req, (e as Error).message, 503);
   }
 });

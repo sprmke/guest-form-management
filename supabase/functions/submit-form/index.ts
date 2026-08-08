@@ -20,7 +20,9 @@ import {
   shouldPersistReceiptValidation,
   validateReceiptFile,
   validateValidIdFile,
+  type AiUsageContext,
 } from '../_shared/receiptValidationService.ts';
+import { resolveOrgIdForProperty } from '../_shared/aiUsageService.ts';
 import type { GuestSubmission } from '../_shared/types.ts';
 import { resolvePublicPropertyId } from '../_shared/propertyScope.ts';
 import { tryGetAuthenticatedUser } from '../_shared/orgAuth.ts';
@@ -232,6 +234,9 @@ serve(async (req) => {
       }
     }
 
+    const aiOrgId = await resolveOrgIdForProperty(propertyId);
+    const aiUsage: AiUsageContext | null = aiOrgId ? { organizationId: aiOrgId, propertyId } : null;
+
     // AI downpayment receipt check (non-blocking for guest submit).
     // Skipped for Airbnb bookings — no payment step.
     const bookingSource = (formData.get('bookingSource') as string)?.trim() || 'Facebook';
@@ -245,7 +250,7 @@ serve(async (req) => {
       paymentReceiptFile.size > 0
     ) {
       try {
-        const receiptValidation = await validateReceiptFile(paymentReceiptFile);
+        const receiptValidation = await validateReceiptFile(paymentReceiptFile, aiUsage);
         if (shouldPersistReceiptValidation(receiptValidation)) {
           const aiPatch = dbPatchForReceiptValidation('downpayment', receiptValidation);
           await DatabaseService.setWorkflowFields(submissionData.id, aiPatch);
@@ -280,7 +285,7 @@ serve(async (req) => {
       }
 
       try {
-        const validIdValidation = await validateValidIdFile(validIdFile);
+        const validIdValidation = await validateValidIdFile(validIdFile, aiUsage);
         if (persistKind && shouldPersistReceiptValidation(validIdValidation)) {
           const aiPatch = dbPatchForDocumentAiValidation(persistKind, validIdValidation);
           await DatabaseService.setWorkflowFields(submissionData.id, aiPatch);
