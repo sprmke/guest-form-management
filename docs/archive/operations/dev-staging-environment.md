@@ -2,12 +2,21 @@
 title: 'Dev / staging environment — setup & daily workflows'
 status: active
 tags: [operations, deployment, staging]
-updated: 2026-08-04
+updated: 2026-08-07
 ---
 
 # Dev / staging environment — setup & daily workflows
 
-Use this runbook to stand up a **separate dev Supabase project** (different account from production), wire **Vercel Preview** deployments to it, and work locally **without the full Docker stack** when you only need UI or edge-function iteration.
+Use this runbook to stand up a **separate dev Supabase project** (different account from production), wire **`kame-homes`** Vercel to it, and work locally **without the full Docker stack** when you only need UI or edge-function iteration.
+
+### Dual-track (multi-tenant WIP)
+
+| Track            | Git branch                                                 | Vercel project                                                                               | Supabase ref                 |
+| ---------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ---------------------------- |
+| **Live**         | `main`                                                     | [`guest-form-management-app`](https://vercel.com/sprmkes-projects/guest-form-management-app) | **LEGACY** `zftt…`           |
+| **Multi-tenant** | `feature/support-multi-users-and-properties` (→ `develop`) | [`kame-homes`](https://vercel.com/kame-works/kame-homes)                                     | **MULTI_TENANT_DEV** `fwor…` |
+
+Do **not** point Production env vars at multi-tenant Supabase or push multi-tenant schema to LEGACY until cutover. Canonical ref table: [`deployment.md`](../../architecture/deployment.md). Design/plan: [`ci-cd-dev-prod-design.md`](../../workflow/intake/ci-cd-dev-prod-design.md), [`ci-cd-dev-prod.md`](../../workflow/in-progress/ci-cd-dev-prod.md).
 
 | Doc                                                      | Role                                        |
 | -------------------------------------------------------- | ------------------------------------------- |
@@ -21,11 +30,12 @@ Use this runbook to stand up a **separate dev Supabase project** (different acco
 
 Three tiers:
 
-| Tier              | UI                                | Backend                                 | When to use                  |
-| ----------------- | --------------------------------- | --------------------------------------- | ---------------------------- |
-| **Production**    | Vercel Production (`main`)        | Prod Supabase account                   | Live users                   |
-| **Dev / Preview** | Vercel Preview (feature branches) | Dev Supabase account (separate account) | QA, demos, integration tests |
-| **Local**         | Vite `:5173`                      | Local Docker **or** hosted dev          | Day-to-day development       |
+| Tier                    | UI                                                                                                    | Backend                        | When to use              |
+| ----------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------ | ------------------------ |
+| **Production (live)**   | [`guest-form-management-app`](https://vercel.com/sprmkes-projects/guest-form-management-app) — `main` | **LEGACY** Supabase            | Live users               |
+| **Multi-tenant hosted** | [`kame-homes`](https://vercel.com/kame-works/kame-homes) — mt branch                                  | **MULTI_TENANT_DEV** Supabase  | Multi-tenant integration |
+| **Dev / Preview**       | `kame-homes` Preview (PRs) or local Vite                                                              | Multi-tenant dev Supabase      | QA, demos                |
+| **Local**               | Vite `:5173`                                                                                          | Local Docker **or** hosted dev | Day-to-day development   |
 
 ```mermaid
 flowchart TB
@@ -228,35 +238,37 @@ Skip this if this laptop never runs prod deploys.
 
 ---
 
-## 3. Step-by-step — wire Vercel Preview to dev Supabase
+## 3. Step-by-step — wire **`kame-homes`** to dev Supabase
 
-### Step 3.1 Add Preview environment variables
+### Step 3.1 Add **Production** environment variables on `kame-homes`
 
-Vercel → Project → **Settings → Environment Variables**.
+Open [`kame-homes`](https://vercel.com/kame-works/kame-homes) → **Settings → Environment Variables**.
 
-Add for **Preview** only (leave **Production** unchanged):
+Add for **Production** (this project's Production = multi-tenant integration app):
 
-| Variable                    | Preview value                                |
-| --------------------------- | -------------------------------------------- |
-| `VITE_NODE_ENV`             | `development`                                |
-| `VITE_SUPABASE_URL`         | `https://<DEV_REF>.supabase.co/functions/v1` |
-| `VITE_API_URL`              | Same as `VITE_SUPABASE_URL`                  |
-| `VITE_SUPABASE_ANON_KEY`    | Dev anon key                                 |
-| `VITE_ADMIN_ALLOWED_EMAILS` | Dev team emails (comma-separated)            |
+| Variable                    | Production value on `kame-homes`                        |
+| --------------------------- | ------------------------------------------------------- |
+| `VITE_NODE_ENV`             | `development`                                           |
+| `VITE_SUPABASE_URL`         | `https://fworvijbrwpyngycotbz.supabase.co/functions/v1` |
+| `VITE_API_URL`              | Same as `VITE_SUPABASE_URL`                             |
+| `VITE_SUPABASE_ANON_KEY`    | Dev anon key                                            |
+| `VITE_ADMIN_ALLOWED_EMAILS` | Dev team emails (comma-separated)                       |
 
-**Production** must still point at prod Supabase URLs and prod anon key.
+**Do not** change **Production** env on [`guest-form-management-app`](https://vercel.com/sprmkes-projects/guest-form-management-app) — that stays LEGACY.
 
-### Step 3.2 Deploy a preview branch
+Optional: duplicate the same five vars on **`kame-homes` Preview** for PRs.
+
+### Step 3.2 Deploy the multi-tenant branch
 
 ```bash
-git push -u origin your-feature-branch
+git push -u origin feature/support-multi-users-and-properties   # or develop
 ```
 
-Vercel builds automatically. Open the preview URL from the PR or Vercel dashboard.
+Vercel → **`kame-homes`** → open the **Production** deployment URL.
 
 ### Step 3.3 Register preview URL in Supabase Auth + Google
 
-Copy the preview origin, e.g. `https://guest-form-management-git-feature-xyz.vercel.app`.
+Copy the **`kame-homes`** production origin after deploy (e.g. `https://kame-homes.vercel.app`).
 
 Add to:
 
