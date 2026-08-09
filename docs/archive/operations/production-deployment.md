@@ -2,7 +2,7 @@
 title: 'Production deployment — checkout checklist'
 status: active
 tags: [operations, deployment]
-updated: 2026-08-07
+updated: 2026-08-09
 ---
 
 # Production deployment — checkout checklist
@@ -18,12 +18,13 @@ Ship **migrations**, **Edge Functions**, **Secrets**, **Google integrations**, *
 
 ### Dual-track during multi-tenant WIP (agents)
 
-| Track                 | Git                   | Vercel                                                                                                  | Supabase                                                  |
-| --------------------- | --------------------- | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| **Live users**        | `main`                | [`guest-form-management-app`](https://vercel.com/sprmkes-projects/guest-form-management-app) Production | **LEGACY** `zftt…` — no multi-tenant deploy until cutover |
-| **Multi-tenant work** | mt branch / `develop` | [`kame-homes`](https://vercel.com/kame-works/kame-homes) Production                                     | **MULTI_TENANT_DEV** `fwor…` — `deploy:supabase:dev`      |
+| Track                 | Git                       | Vercel                                                                                                  | Supabase                                                                     |
+| --------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| **Live users**        | `main`                    | [`guest-form-management-app`](https://vercel.com/sprmkes-projects/guest-form-management-app) Production | **LEGACY** `zftt…` — no multi-tenant deploy until cutover                    |
+| **Multi-tenant work** | **`develop`**             | [`kame-homes`](https://vercel.com/kame-works/kame-homes) **Preview**                                    | **MULTI_TENANT_DEV** `fwor…` — `deploy:supabase:dev`, `cd-dev.yml`           |
+| **Multi-tenant prod** | **`main`** _(at release)_ | [`kame-homes`](https://vercel.com/kame-works/kame-homes) **Production**                                 | **MULTI_TENANT_PROD** _(create at release)_ — legacy data migration required |
 
-Full design + actionable tasks: [`ci-cd-dev-prod-design.md`](../../workflow/intake/ci-cd-dev-prod-design.md), [`ci-cd-dev-prod.md`](../../workflow/in-progress/ci-cd-dev-prod.md). Architecture summary + ref inventory: [`docs/architecture/deployment.md`](../../architecture/deployment.md).
+Full design + actionable tasks: [`ci-cd-dev-prod-design.md`](../../workflow/in-progress/ci-cd-environments/ci-cd-dev-prod-design.md), [`ci-cd-dev-prod.md`](../../workflow/in-progress/ci-cd-environments/ci-cd-dev-prod.md). Architecture summary + ref inventory: [`docs/architecture/deployment.md`](../../architecture/deployment.md).
 
 ---
 

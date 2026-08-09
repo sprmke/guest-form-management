@@ -9,6 +9,8 @@ updated: 2026-08-02
 
 > **Production cutover (ordered backups → migrations → functions → secrets → Google → UI → cron):** see **[`docs/archive/operations/production-deployment.md`](./production-deployment.md)** for a single checklist with exact commands.
 >
+> **Legacy → multi-tenant prod data migration** (separate Supabase projects, Phase B release): see **[`legacy-to-mt-prod-migration.md`](./legacy-to-mt-prod-migration.md)** — not the same as schema migrations in this repo.
+>
 > Step-by-step apply + rollback instructions for the redesign in [[NEW_FLOW_PLAN|New Booking Flow — Implementation Plan]].
 > Every step is **additive and reversible** on Phase 0. Later phases (1–6) introduce behavior change and must be deployed in order.
 >
