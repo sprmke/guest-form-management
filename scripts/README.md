@@ -10,6 +10,7 @@ scripts/
   dev/           Local Supabase + edge functions env
   data/          Prod → local Postgres sync
   deploy/        Linked Supabase project deploy
+  migrate/       Legacy → mt-prod data migration (Phase B — stub)
   preview/       Email template preview from DB
   docs/          One-off docs/ vault migrations
 ```
@@ -66,6 +67,17 @@ Requires `pip3 install --user edge-tts`. Flags: `--voice` (default `en-US-AriaNe
 | `rollback-supabase.sh`   | `bun run rollback:supabase:dev` / `:prod`  | Restore most recent (or `--file`) backup via `psql`; prod is kamewave-gated                                    |
 | `rollback-functions.sh`  | `bun run rollback:functions:dev` / `:prod` | Redeploy Edge Functions from an older git ref via a throwaway `git worktree`; prod is kamewave-gated           |
 | `migration-status.sh`    | `bun run migrations:status:dev` / `:prod`  | Read-only `supabase migration list --linked` per environment                                                   |
+| `ci-deploy-lib.sh`       | (sourced)                                  | CI confirm, legacy ref deny-list, skip-backup guard                                                            |
+| `ci-deploy.sh`           | (CI / manual)                              | GitHub Actions entry → `deploy-supabase-dev.sh --allow-multi-tenancy` with env secrets                         |
+| `ci-smoke.sh`            | (CI / manual)                              | Post-deploy: functions list + edge OPTIONS smoke                                                               |
+
+GitHub Actions: `ci.yml`, `cd-dev.yml`, `cd-preprod.yml`, `cd-prod.yml`, `cd-rollback.yml`. Secrets: [`github-environments-setup.md`](../docs/archive/operations/github-environments-setup.md). **mt-dev (now) + mt-prod (at release):** [`multi-tenant-dev-prod-setup.md`](../docs/archive/operations/multi-tenant-dev-prod-setup.md) · status [`multi-tenant-dev-prod-environments.md`](../docs/workflow/in-progress/ci-cd-environments/multi-tenant-dev-prod-environments.md).
+
+## Migrate (`scripts/migrate/`)
+
+| Path                 | Status             | Purpose                                                                                                                                                |
+| -------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `legacy-to-mt-prod/` | **Stub** (Phase B) | Copy LEGACY Postgres + Storage → MULTI_TENANT_PROD — see [`legacy-to-mt-prod-migration.md`](../docs/archive/operations/legacy-to-mt-prod-migration.md) |
 
 Every deploy and rollback appends an audit line to `backups/deploy-log.csv` (timestamp, env, kind, git SHA/branch, OS user) via `log_deploy()` in `scripts/dev/check-linked-project.sh`.
 

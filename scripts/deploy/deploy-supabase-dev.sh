@@ -11,12 +11,15 @@ ENV_FILE="$ROOT/supabase/.env.dev.local"
 PROJECT_REF_FILE="$ROOT/supabase/.temp/project-ref"
 # shellcheck source=scripts/dev/check-linked-project.sh
 source "$ROOT/scripts/dev/check-linked-project.sh"
+# shellcheck source=scripts/deploy/ci-deploy-lib.sh
+source "$ROOT/scripts/deploy/ci-deploy-lib.sh"
 
 DB_ONLY=false
 FUNCTIONS_ONLY=false
 INCLUDE_ALL=false
 ALLOW_MULTI_TENANCY=false
 SKIP_BACKUP=false
+CI_MODE=false
 
 usage() {
   cat <<'EOF'
@@ -32,6 +35,7 @@ Options:
   --include-all          Pass --include-all to db push
   --allow-multi-tenancy  Skip multi-tenancy guard on function deploy
   --skip-backup          Skip the automatic pre-db-push backup (loud warning; not recommended)
+  --ci                   CI mode (requires DEPLOY_CONFIRM=dev; no interactive prompt)
   -h, --help             Show this help
 
 Examples:
@@ -48,6 +52,7 @@ while [[ $# -gt 0 ]]; do
     --include-all) INCLUDE_ALL=true; shift ;;
     --allow-multi-tenancy) ALLOW_MULTI_TENANCY=true; shift ;;
     --skip-backup) SKIP_BACKUP=true; shift ;;
+    --ci) CI_MODE=true; export CI=1; shift ;;
     -h | --help) usage; exit 0 ;;
     *)
       echo "Unknown option: $1" >&2
@@ -62,28 +67,48 @@ if [[ "$DB_ONLY" == true && "$FUNCTIONS_ONLY" == true ]]; then
   exit 1
 fi
 
-if [[ ! -f "$ENV_FILE" ]]; then
+ci_deploy_reject_skip_backup_in_ci "$SKIP_BACKUP"
+
+if ci_deploy_is_ci || [[ "$CI_MODE" == true ]]; then
+  export CI=1
+  if [[ -n "${SUPABASE_PROJECT_REF:-}" ]]; then
+    DEV_REF="$(tr -d '[:space:]' <<<"${SUPABASE_PROJECT_REF}")"
+    PROD_REF_GUARD="$(tr -d '[:space:]' <<<"${LEGACY_PROD_PROJECT_REF:-${PROD_PROJECT_REF:-}}")"
+  fi
+fi
+
+if [[ ! -f "$ENV_FILE" && -z "${DEV_REF:-}" ]]; then
   echo "Missing supabase/.env.dev.local" >&2
   echo "Copy supabase/.env.dev.example → supabase/.env.dev.local and set DEV_PROJECT_REF." >&2
   exit 1
 fi
 
-set -a
-# shellcheck source=/dev/null
-source "$ENV_FILE"
-set +a
+if [[ -f "$ENV_FILE" ]]; then
+  set -a
+  # shellcheck source=/dev/null
+  source "$ENV_FILE"
+  set +a
+fi
 
-DEV_REF="$(tr -d '[:space:]' <<<"${DEV_PROJECT_REF:-}")"
+if [[ -z "${DEV_REF:-}" ]]; then
+  DEV_REF="$(tr -d '[:space:]' <<<"${DEV_PROJECT_REF:-}")"
+fi
+if [[ -z "${PROD_REF_GUARD:-}" ]]; then
+  PROD_REF_GUARD="$(tr -d '[:space:]' <<<"${PROD_PROJECT_REF:-}")"
+fi
 if [[ -z "$DEV_REF" ]]; then
   echo "DEV_PROJECT_REF is empty in supabase/.env.dev.local" >&2
   exit 1
 fi
 
-PROD_REF_GUARD="$(tr -d '[:space:]' <<<"${PROD_PROJECT_REF:-}")"
 if [[ -n "$PROD_REF_GUARD" && "$DEV_REF" == "$PROD_REF_GUARD" ]]; then
   echo "Refusing dev deploy: DEV_PROJECT_REF matches PROD_PROJECT_REF in .env.dev.local." >&2
   echo "Use a separate Supabase project for dev." >&2
   exit 1
+fi
+
+if [[ "$ALLOW_MULTI_TENANCY" == true ]]; then
+  ci_deploy_assert_not_legacy_ref "$DEV_REF" "${LEGACY_PROD_PROJECT_REF:-$PROD_REF_GUARD}"
 fi
 
 print_linked_project
@@ -99,15 +124,15 @@ echo "  Project ref: $DEV_REF"
 echo "  See docs/archive/operations/dev-staging-environment.md"
 echo "════════════════════════════════════════════════════════════"
 echo ""
-echo "Type dev to confirm deploy to this project:"
-read -r confirm
-if [[ "$confirm" != "dev" ]]; then
-  echo "Aborted (expected: dev)."
-  exit 1
-fi
+ci_deploy_confirm "dev"
 
 echo "→ supabase link --project-ref $DEV_REF"
 "${SUPABASE[@]}" link --project-ref "$DEV_REF"
+
+LINKED_AFTER="$(tr -d '[:space:]' <"$PROJECT_REF_FILE")"
+if ci_deploy_is_ci; then
+  ci_deploy_assert_target_ref "$DEV_REF" "$LINKED_AFTER"
+fi
 
 assert_functions_match_db_schema() {
   if [[ "$ALLOW_MULTI_TENANCY" == true ]]; then
