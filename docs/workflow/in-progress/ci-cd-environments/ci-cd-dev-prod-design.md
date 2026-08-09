@@ -1,20 +1,21 @@
 ---
 title: 'CI/CD to dev and production (Supabase + Vercel)'
 status: active
-stage: intake
+stage: in-progress
 kind: design
-tags: [workflow, intake, deployment, ci-cd, supabase, vercel, operations, multi-tenancy]
-updated: 2026-08-07
+tags: [workflow, in-progress, deployment, ci-cd, supabase, vercel, operations, multi-tenancy]
+updated: 2026-08-09
 ---
 
 # CI/CD to dev and production — Design
 
 ## Status
 
-**Design + implementation plan written.** Awaiting `/workflow-start` then implementation.
+**In progress** — Phases A–C shipped in repo; Phase F (environments wiring) active; Phase B prod deferred.
 
 - Spec: this file.
-- **Actionable plan:** [`docs/workflow/in-progress/ci-cd-dev-prod.md`](../in-progress/ci-cd-dev-prod.md)
+- **Implementation plan:** [`ci-cd-dev-prod.md`](./ci-cd-dev-prod.md)
+- **Status + todos:** [`multi-tenant-dev-prod-environments.md`](./multi-tenant-dev-prod-environments.md)
 - Builds on: quality CI, Vercel Preview/Production, deploy guardrails, multi-tenancy deploy warnings in production-deployment §4.
 
 ### Branch rename FAQ
@@ -63,6 +64,14 @@ Your suggestion is directionally right (**long-lived develop + promote to main**
 | Point CI prod deploy at existing production Supabase  | **Blocked until cutover** — that project is LEGACY_PROD                                                                                                                                                    |
 | Use Supabase “DB branching” product as the only model | Optional later; we use **separate projects** (already in runbook / separate accounts) — clearer fail-closed refs                                                                                           |
 
+### Confirmed: phased Supabase projects (2026-08-09)
+
+**Decision:** **MULTI_TENANT_DEV** (`fwor…`) **now**; **MULTI_TENANT_PROD** (new project) **at prod release** — not Supabase branching.
+
+**Active plan:** [`multi-tenant-dev-prod-environments.md`](./multi-tenant-dev-prod-environments.md) · guide [`multi-tenant-dev-prod-setup.md`](../../../archive/operations/multi-tenant-dev-prod-setup.md).
+
+**No `production` git branch.** At release: merge **`develop` → `main`**, wire **`kame-homes`** Production to **`main`** + mt-prod. Legacy data migration: [`legacy-to-mt-prod-migration.md`](../../../archive/operations/legacy-to-mt-prod-migration.md).
+
 ### Confirmed answer to your branching question
 
 1. **Yes — long-lived `develop` for multi-tenant integration.**
@@ -91,12 +100,12 @@ Names used in docs and CI. **Project refs** (public in URLs) are listed in [`doc
 
 ### Supabase project inventory (target state)
 
-| Project                         | Project ref            | Account guidance                            | Purpose                                                                          |
-| ------------------------------- | ---------------------- | ------------------------------------------- | -------------------------------------------------------------------------------- |
-| **LEGACY_PROD**                 | `zfttdwtceyqszyeyhilc` | Existing prod account                       | Live bookings, Auth, Storage — **do not CI-deploy multi-tenant here**            |
-| **MULTI_TENANT_DEV**            | `fworvijbrwpyngycotbz` | Separate **dev** account (`.env.dev.local`) | Daily multi-tenant API + data for staging UI                                     |
-| **MULTI_TENANT_PREPROD** (rec.) | _(create later)_       | Same org as eventual mt-prod or isolated    | Dry-run promote, cutover dress rehearsals                                        |
-| **MULTI_TENANT_PROD**           | _(at cutover)_         | Eventual production multi-tenant host       | Cutover target (unless you upgrade LEGACY in place — choose at cutover planning) |
+| Project                         | Project ref                             | Account guidance                                         | Purpose                                                               |
+| ------------------------------- | --------------------------------------- | -------------------------------------------------------- | --------------------------------------------------------------------- |
+| **LEGACY_PROD**                 | `zfttdwtceyqszyeyhilc`                  | Existing prod account                                    | Live bookings, Auth, Storage — **do not CI-deploy multi-tenant here** |
+| **MULTI_TENANT_DEV**            | `fworvijbrwpyngycotbz`                  | Separate **dev** account (`.env.dev.local`)              | Daily multi-tenant API + data for staging UI                          |
+| **MULTI_TENANT_PREPROD** (rec.) | _(create later)_                        | Same org as eventual mt-prod or isolated                 | Dry-run promote, cutover dress rehearsals                             |
+| **MULTI_TENANT_PROD**           | _(create at release — see setup guide)_ | **`kame-homes`** Production URL (`**main**` after merge) | Prod backend for new app — after legacy data migration                |
 
 Informal alias **NEW_PROD** = **MULTI_TENANT_DEV** until cutover — not Vercel Production.
 
@@ -114,10 +123,10 @@ Informal alias **NEW_PROD** = **MULTI_TENANT_DEV** until cutover — not Vercel 
 
 ## Vercel — locked setup (two projects, same repo)
 
-| Vercel project                         | Dashboard                                                                         | Production branch                                                  | Production env → Supabase |
-| -------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------- |
-| **LEGACY** `guest-form-management-app` | [sprmkes-projects](https://vercel.com/sprmkes-projects/guest-form-management-app) | **`main`**                                                         | LEGACY `zftt…`            |
-| **NEW** `kame-homes`                   | [kame-works](https://vercel.com/kame-works/kame-homes)                            | **`feature/support-multi-users-and-properties`** (→ **`develop`**) | MULTI_TENANT_DEV `fwor…`  |
+| Vercel project                         | Dashboard                                                                         | Production branch                                              | Production env → Supabase                      |
+| -------------------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------- |
+| **LEGACY** `guest-form-management-app` | [sprmkes-projects](https://vercel.com/sprmkes-projects/guest-form-management-app) | **`main`**                                                     | LEGACY `zftt…`                                 |
+| **NEW** `kame-homes`                   | [kame-works](https://vercel.com/kame-works/kame-homes)                            | Preview: **`develop`** · Production: **`main`** _(at release)_ | Preview → **fwor…** · Production → **mt-prod** |
 
 Each project **Production** env holds that track's `VITE_*` vars. Multi-tenant deploys only via **`kame-homes`** until cutover.
 
@@ -340,4 +349,4 @@ Later cutover:
 ## Approval / next
 
 - Supersedes earlier “auto CD on `main` → dev” simplification with **auto CD on `develop` → mt-dev** and **main = legacy protect**.
-- **Next:** `/workflow-start ci-cd-dev-prod` when ready to implement; plan Tasks 0–10.
+- **Next:** finish Phase F in [`multi-tenant-dev-prod-environments.md`](./multi-tenant-dev-prod-environments.md); move this folder to `done/` when Phase B + legacy cutover are closed.

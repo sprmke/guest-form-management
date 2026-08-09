@@ -2,7 +2,7 @@
 title: 'Tasks To Prompt'
 status: archived
 tags: [planning]
-updated: 2026-08-07
+updated: 2026-08-09
 ---
 
 **Status legend:** ✅ done · 🚧 in progress · 📋 planned (plan doc written) · 🔵 pending / open · ❌ cancelled / won't do
@@ -139,7 +139,7 @@ The goal in the end is for us to deploy and see fully working application with o
 
 Also, another important setup I'd like to have is to point or use supabase deployed dev in our local so that we don't need to run docker from our local to test and work locally. Meaning, when we have any supabase related changes locally, and test our app, I still want to see our changes and fully working on it with our local frontend. Meaning, when we are working locally, we can still work on it without running docker and without deploying our backend/supabase related changes to dev. Then, once good, we can deploy our changes to dev. I'm not sure how is this possible but this is how we do it on other projects and I'd like to implement in our app
 
-→ **Runbook shipped; operator bootstrap pending:** [`../in-progress/dev-staging-environment.md`](../in-progress/dev-staging-environment.md)
+→ **Runbook shipped; operator bootstrap pending:** [`../in-progress/ci-cd-environments/dev-staging-environment.md`](../in-progress/ci-cd-environments/dev-staging-environment.md)
 
 ===
 
@@ -176,3 +176,25 @@ Shipped: [`../done/google-map-listing-view.md`](../done/google-map-listing-view.
 🔵 Generate more real world mock data
 
 Generate more real world and hundreds of mock data for different properties, developments, parking, and other type of place so that we can fully test and simulate real world test data and fully verify if our search, filters, lazy load, and any app performance optimization implementation are working properly.
+
+===
+
+🔵 Cleanup unused ui and backend env vars:
+EMAIL_TO / EMAIL_REPLY_TO
+
+===
+
+🔵 Update each page browser title to be dynamic.
+
+Public Pages - Kame Homes - ${page name}
+
+Property public pages - ${Property Name} - ${page name}
+
+Dashboard Org Level pages - ${Org Name} - ${page name}
+Dashboard App Level pages - ${App Name} - ${page name}
+
+Make sure we have a rule for this every time we update or create new pages.
+Update both dashboard and public pages.
+
+I'm sure there are other pages that we need to update to match exactly how we should update their name.
+Please list them down and if you have suggestion to name differently or grouped or scoped
