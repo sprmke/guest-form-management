@@ -2,7 +2,7 @@
 title: 'Claude To Plan'
 status: archived
 tags: [planning]
-updated: 2026-08-08
+updated: 2026-08-09
 ---
 
 **Status legend:** ✅ done · 🚧 in progress · 📋 planned (plan doc written) · 🔵 pending / open · ❌ cancelled / won't do
@@ -456,13 +456,20 @@ Shipped: [`../done/smart-ai-data-importer.md`](../done/smart-ai-data-importer.md
 
 ===
 
-📋 CI/CD to dev and production — design [`ci-cd-dev-prod-design.md`](./ci-cd-dev-prod-design.md) · plan [`../in-progress/ci-cd-dev-prod.md`](../in-progress/ci-cd-dev-prod.md)
+🚧 CI/CD + multi-tenant environments — [`multi-tenant-dev-prod-environments.md`](../in-progress/ci-cd-environments/multi-tenant-dev-prod-environments.md) · matrix [`ci-cd-environment-matrix.md`](../../archive/operations/ci-cd-environment-matrix.md)
 
-Dual-track: **`guest-form-management-app`**+`main`+**LEGACY** `zftt…`; **`kame-homes`**+mt branch+**MULTI_TENANT_DEV** `fwor…`. Same git repo, separate Vercel + Supabase stacks.
+**Now:** `develop` → `dev.kamehomes.space` → **fwor…** (`cd-dev.yml` + Vercel Preview). Legacy unchanged (`main` → `kamehomes.space` → **zftt…**).
 
-Make sure each command or deployment has guard rails, safety check, and can safely rollback changes anytime in case we have executed or did dangerous actions.
+**Pending at prod release (Phase B):**
 
-The end goal is that deployment to different env should be easy for us, and we implement safety measures, standard process. WE should have a solid and best implemenation for this.
+- Create **MULTI_TENANT_PROD** Supabase project
+- Implement **`scripts/migrate/legacy-to-mt-prod/`** — Postgres + Storage **`zftt…` → mt-prod**
+- Merge **`develop` → `main`**; **`kame-homes`** Production branch = **`main`** (not a `production` git branch)
+- Wire **`app.kamehomes.space`** + Vercel Production `VITE_*` → mt-prod
+- Google OAuth **prod** client + Auth on mt-prod
+- Enable GitHub **`production`** secrets + **`cd-prod.yml`**
+
+Design: [`ci-cd-dev-prod-design.md`](../in-progress/ci-cd-environments/ci-cd-dev-prod-design.md) · plan: [`ci-cd-dev-prod.md`](../in-progress/ci-cd-environments/ci-cd-dev-prod.md) · index [`ci-cd-environments/README.md`](../in-progress/ci-cd-environments/README.md)
 
 ===
 
