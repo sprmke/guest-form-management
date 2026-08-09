@@ -2,7 +2,7 @@
 title: 'Form validation and environment variables'
 status: active
 tags: [architecture]
-updated: 2026-08-02
+updated: 2026-08-09
 ---
 
 # Form validation and environment variables
@@ -25,6 +25,17 @@ Part of the [`docs/PROJECT.md`](../PROJECT.md) architecture split.
 ---
 
 ## 11. Environment variables
+
+### Secrets hygiene (what belongs in git)
+
+| Safe in git (`*.example`, docs)                                                         | Never commit                                                                    |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Placeholder names and fake values (`replace-with-…`, `you@example.com`)                 | `*.local`, `.env.development`, `.env.production` (real values)                  |
+| Supabase **project ref** in operator docs _(semi-public — visible in browser API URLs)_ | **Service role** key, **anon** key (real JWT), DB passwords, pooler URIs        |
+| Local Supabase demo anon JWT in `supabase/snippets/` _(public Supabase CLI default)_    | `SUPABASE_ACCESS_TOKEN` (PAT), Resend/Meta/Google secrets, OAuth client secrets |
+| GitHub **secret names** in workflow docs                                                | GitHub secret **values**                                                        |
+
+**Templates:** `ui/.env.example`, `supabase/.env.example`, `supabase/.env.dev.example`, `supabase/.env.prod.example` — placeholders only. Copy to gitignored targets (`ui/.env.development`, `supabase/.env.dev.local`, `supabase/.env.prod.local`). Root + `supabase/.gitignore` block `*.local`.
 
 **Production:** Hosted secrets (Supabase Dashboard), dual Google OAuth clients (GoTrue vs Gmail API), service-account Calendar/Sheets sharing, UI host **`VITE_*`**, and **`pg_cron`** setup are stepped in **[[migration-runbook|Migration Runbook — New Booking Flow]] §11**.
 
