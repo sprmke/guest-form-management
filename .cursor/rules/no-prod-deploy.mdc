@@ -16,7 +16,7 @@ Until multi-tenant cutover finishes:
 | **`main` + [`guest-form-management-app`](https://vercel.com/sprmkes-projects/guest-form-management-app) Production** | **LEGACY** `zfttdwtceyqszyeyhilc`           | Multi-tenant migrations/functions; flipping legacy Vercel env to `fwor…` |
 | **mt branch + [`kame-homes`](https://vercel.com/kame-works/kame-homes) Production**                                  | **MULTI_TENANT_DEV** `fworvijbrwpyngycotbz` | Pointing `kame-homes` at LEGACY, or multi-tenant schema push to LEGACY   |
 
-Authoritative design + plan: **`docs/workflow/intake/ci-cd-dev-prod-design.md`**, **`docs/workflow/in-progress/ci-cd-dev-prod.md`**. Ref inventory: **`docs/architecture/deployment.md`** § Supabase project inventory.
+Authoritative design + plan: **`docs/workflow/in-progress/ci-cd-environments/`** ([`README.md`](docs/workflow/in-progress/ci-cd-environments/README.md)). Ref inventory: **`docs/architecture/deployment.md`** § Supabase project inventory.
 
 - Prefer PRs into **`develop`** for multi-tenant work. Do **not** recommend merging multi-tenant-only trees into **`main`** until cutover.
 - Do **not** run or recommend multi-tenant `db push` / `functions deploy` against whatever Supabase project **Vercel Production** currently uses for live users.
@@ -89,5 +89,5 @@ Also **do not**:
 
 - **`docs/archive/operations/production-deployment.md`** — prod cutover checklist
 - **`docs/archive/operations/migration-runbook.md`** — § applying to production
-- **`docs/workflow/intake/ci-cd-dev-prod-design.md`** / **`docs/workflow/in-progress/ci-cd-dev-prod.md`** — dual-track CI/CD (`develop`/mt-dev vs `main`/legacy prod)
+- **`docs/workflow/in-progress/ci-cd-environments/`** — dual-track CI/CD (`develop`/mt-dev vs `main`/legacy prod; mt-prod at release)
 - **`docs/architecture/deployment.md`** — environment matrix
