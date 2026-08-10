@@ -1,8 +1,9 @@
 /**
  * BookingDetailPage — /bookings/:bookingId
  *
- * View mode: header + tabbed read-only panels (Overview / Guests / Stay / Pricing / Files).
- * Edit mode: `BookingEditForm` (real tabs — Guest / Stay / Parking / Pets / Docs / Workflow).
+ * View mode: header + tabbed read-only panels
+ * (Overview / Guests / Parking? / Pets? / Pricing? / Files).
+ * Edit mode: `BookingEditForm` (unchanged — Guest / Stay / Parking / Pets / Docs / Workflow).
  *
  * Mobile: compact summary strip; Progress stays above the fold; detail panels collapse.
  *
@@ -11,7 +12,7 @@
  * surface without a manual refresh — see `.claude/skills/admin-dashboard/SKILL.md`.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useParams, Link, useNavigate } from 'react-router-dom';
 
@@ -29,8 +30,9 @@ import {
   type BookingViewTab,
 } from '@/features/dashboard/bookings/components/booking-detail/BookingDetailTabs';
 import { getDocType } from '@/features/dashboard/bookings/components/booking-detail/BookingDocPreview';
+import type { BookingEditTabId } from '@/features/dashboard/bookings/components/booking-detail/edit/BookingEditTabs';
+import { AiValidationPanel } from '@/features/dashboard/bookings/components/booking-detail/panels/AiValidationPanel';
 import { DocumentsPanel } from '@/features/dashboard/bookings/components/booking-detail/panels/DocumentsPanel';
-import { GuestInfoPanel } from '@/features/dashboard/bookings/components/booking-detail/panels/GuestInfoPanel';
 import { GuestsPanel } from '@/features/dashboard/bookings/components/booking-detail/panels/GuestsPanel';
 import { OtherInfoPanel } from '@/features/dashboard/bookings/components/booking-detail/panels/OtherInfoPanel';
 import { ParkingPanel } from '@/features/dashboard/bookings/components/booking-detail/panels/ParkingPanel';
@@ -44,7 +46,10 @@ import { PayParkingModal } from '@/features/dashboard/bookings/components/PayPar
 import { PendingReviewWorkflowGate } from '@/features/dashboard/bookings/components/PendingReviewWorkflowGate';
 import { WorkflowPanel } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowPanel';
 import { bookingDetailQueryKey, useBooking } from '@/features/dashboard/bookings/hooks/useBooking';
+import { useBookingStayGuideLink } from '@/features/dashboard/bookings/hooks/useBookingStayGuideLink';
 import { useReceiptAiBackfill } from '@/features/dashboard/bookings/hooks/useReceiptAiBackfill';
+import { buildBookingDetailActions } from '@/features/dashboard/bookings/lib/bookingDetailActions';
+import { resolveBookingViewTab } from '@/features/dashboard/bookings/lib/resolveBookingViewTab';
 import {
   isStorageObjectNotFoundError,
   resolveAssetUrlForBrowser,
@@ -69,6 +74,7 @@ export function BookingDetailPage() {
   const { data: booking, isLoading, error } = useBooking(bookingId);
   const { isBackfilling: isReceiptAiBackfilling } = useReceiptAiBackfill(booking);
   const [editMode, setEditMode] = useState(false);
+  const [editInitialTab, setEditInitialTab] = useState<BookingEditTabId | undefined>(undefined);
   const [payParkingModalOpen, setPayParkingModalOpen] = useState(false);
   const [previewAsset, setPreviewAsset] = useState<{
     label: string;
@@ -94,8 +100,14 @@ export function BookingDetailPage() {
   useEffect(() => {
     setDetailsExpanded(false);
     setEditMode(false);
+    setEditInitialTab(undefined);
     setViewTab('overview');
   }, [bookingId]);
+
+  useEffect(() => {
+    if (!booking) return;
+    setViewTab((tab) => resolveBookingViewTab(tab, booking));
+  }, [booking]);
 
   useEffect(() => {
     if (editMode) setDetailsExpanded(true);
@@ -125,8 +137,14 @@ export function BookingDetailPage() {
     setDetailsExpanded((was) => !was);
   }, []);
 
-  const handleStartEdit = useCallback(() => {
+  const handleStartEdit = useCallback((tab?: BookingEditTabId) => {
+    setEditInitialTab(tab);
     setEditMode(true);
+  }, []);
+
+  const handleCloseEdit = useCallback(() => {
+    setEditMode(false);
+    setEditInitialTab(undefined);
   }, []);
 
   const handleOpenPayParking = useCallback(() => {
@@ -137,6 +155,21 @@ export function BookingDetailPage() {
     }
     setPayParkingModalOpen(true);
   }, [booking, navigate, propertySlug]);
+
+  const stayGuide = useBookingStayGuideLink(booking);
+
+  const hostActions = useMemo(
+    () =>
+      booking
+        ? buildBookingDetailActions({
+            booking,
+            onEdit: handleStartEdit,
+            onPayParking: handleOpenPayParking,
+            stayGuide,
+          })
+        : [],
+    [booking, handleStartEdit, handleOpenPayParking, stayGuide]
+  );
 
   const handlePreview = async (label: string, rawUrl: string) => {
     setPreviewLoading(true);
@@ -198,10 +231,10 @@ export function BookingDetailPage() {
                 booking={booking}
                 detailsExpanded={detailsExpanded}
                 onToggleDetails={handleToggleDetails}
-                onPayParking={handleOpenPayParking}
                 editMode={editMode}
-                onEdit={handleStartEdit}
-                onCancelEdit={() => setEditMode(false)}
+                onEdit={() => handleStartEdit()}
+                onCancelEdit={handleCloseEdit}
+                actions={hostActions}
               />
             )}
 
@@ -230,17 +263,19 @@ export function BookingDetailPage() {
               >
                 {editMode ? (
                   <BookingEditForm
+                    key={`${booking.id}-${editInitialTab ?? 'guest'}`}
                     booking={booking}
-                    onClose={() => setEditMode(false)}
-                    onSaved={() => setEditMode(false)}
+                    initialTab={editInitialTab}
+                    onClose={handleCloseEdit}
+                    onSaved={handleCloseEdit}
                     onPreview={handlePreview}
                   />
                 ) : (
                   <>
                     <BookingDetailHeader
                       booking={booking}
-                      onEdit={handleStartEdit}
-                      onPayParking={handleOpenPayParking}
+                      onEdit={() => handleStartEdit()}
+                      actions={hostActions}
                       className={cn(isMobileWorkflowFirst && 'hidden md:block')}
                     />
 
@@ -248,8 +283,17 @@ export function BookingDetailPage() {
 
                     {viewTab === 'overview' && (
                       <div className="space-y-4">
-                        <GuestInfoPanel booking={booking} onPreview={handlePreview} />
+                        <StayDetailsPanel booking={booking} />
+                        <AiValidationPanel
+                          booking={booking}
+                          onPreview={handlePreview}
+                          isDocumentAiBackfilling={isReceiptAiBackfilling}
+                        />
                         <OtherInfoPanel booking={booking} />
+                        <BookingMetaCard
+                          booking={booking}
+                          onCopyBookingId={() => void copyBookingIdToClipboard()}
+                        />
                       </div>
                     )}
                     {viewTab === 'guests' && (
@@ -259,17 +303,12 @@ export function BookingDetailPage() {
                         isDocumentAiBackfilling={isReceiptAiBackfilling}
                       />
                     )}
-                    {viewTab === 'stay' && (
-                      <div className="space-y-4">
-                        <StayDetailsPanel booking={booking} />
-                        {booking.need_parking && (
-                          <ParkingPanel booking={booking} onPreview={handlePreview} />
-                        )}
-                        {booking.has_pets && (
-                          <PetsPanel booking={booking} onPreview={handlePreview} />
-                        )}
-                      </div>
-                    )}
+                    {viewTab === 'parking' && booking.need_parking ? (
+                      <ParkingPanel booking={booking} onPreview={handlePreview} />
+                    ) : null}
+                    {viewTab === 'pets' && booking.has_pets ? (
+                      <PetsPanel booking={booking} onPreview={handlePreview} />
+                    ) : null}
                     {viewTab === 'pricing' && booking.status !== 'PENDING_REVIEW' && (
                       <PricingSummaryPanel
                         booking={booking}
@@ -286,21 +325,13 @@ export function BookingDetailPage() {
                     )}
                   </>
                 )}
-
-                {isMobileWorkflowFirst && (
-                  <BookingMetaCard
-                    booking={booking}
-                    onCopyBookingId={() => void copyBookingIdToClipboard()}
-                    className="md:hidden"
-                  />
-                )}
               </CollapsibleContent>
             </Collapsible>
 
             {/* ── Workflow / Progress (before fold on mobile when past review) ── */}
             <div
               className={cn(
-                'w-full md:w-[min(100%,20rem)] md:shrink-0 lg:sticky lg:top-5 lg:w-[min(100%,22.5rem)] lg:self-start xl:w-[370px]',
+                'w-full md:w-[min(100%,20rem)] md:shrink-0 lg:sticky lg:top-5 lg:w-[min(100%,24rem)] lg:self-start xl:w-[27rem]',
                 isMobileWorkflowFirst && (mobileDetailsBeforeWorkflow ? 'order-3' : 'order-2'),
                 isMobileWorkflowFirst && 'md:order-none'
               )}
@@ -308,12 +339,6 @@ export function BookingDetailPage() {
               <PendingReviewWorkflowGate booking={booking}>
                 <WorkflowPanel key={booking.id} booking={booking} />
               </PendingReviewWorkflowGate>
-
-              <BookingMetaCard
-                booking={booking}
-                onCopyBookingId={() => void copyBookingIdToClipboard()}
-                className={cn('mt-3', isMobileWorkflowFirst && 'hidden md:block')}
-              />
             </div>
           </div>
         )}
