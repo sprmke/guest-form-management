@@ -48,7 +48,9 @@ Flags: `bun run setup:ai-tooling -- --skip-agents-skills` · `--skip-playwright-
 | [Playwright CLI](https://github.com/microsoft/playwright-cli)       | skill `playwright-cli` + `bun x playwright-cli` (`@playwright/cli`)                                | `bun run setup:playwright-cli` |
 | [awesome-design-md](https://github.com/VoltAgent/awesome-design-md) | root `DESIGN.md` + `.agents/design-md/*` refs + skill `design-md`                                  | `bun run setup:design-md`      |
 
-**Intentionally user-scoped (do not commit):** `~/.cursor/mcp.json` (e.g. claude-mem), `~/.cursor/hooks.json` (claude-mem session hooks), `~/.claude/settings.json` (model, status line, extra plugins), `~/.config/opencode/opencode.json` (OpenCode providers/models), Cursor built-in `~/.cursor/skills-cursor/*`, marketplace plugins (Notion, Figma, Vercel) unless a task needs them.
+**Intentionally user-scoped (do not commit):** `~/.claude/settings.json` (model, status line, extra plugins), `~/.config/opencode/opencode.json` (OpenCode providers/models), Cursor built-in `~/.cursor/skills-cursor/*`, marketplace plugins (Notion, Figma, Vercel) unless a task needs them.
+
+**Do not install claude-mem** — use repo docs for session context. If present from an old setup: **`bun run cleanup:claude-mem`** (removes global Cursor MCP/hooks + disables Claude plugin).
 
 **Personal skill copies in `~/.claude/skills/`** (design, brand, ui-styling, …) are superseded by this repo's `.agent/skills/` — do not edit the home-directory copies when working here.
 
@@ -159,10 +161,17 @@ Do **not** spawn Explore / Plan subagents by default — see `ai-usage.mdc`.
 
 ## Hooks (`.cursor/hooks.json`)
 
-| Hook                   | Script                                                                          |
-| ---------------------- | ------------------------------------------------------------------------------- |
-| `afterFileEdit`        | `format-edited-file.sh`, `check-stack-terminology.sh`                           |
-| `beforeShellExecution` | `guard-shell.sh` (denies prod Supabase deploy unless **`kamewave`** in command) |
+| Hook                   | Script                                                                                           |
+| ---------------------- | ------------------------------------------------------------------------------------------------ |
+| `beforeSubmitPrompt`   | `superpowers-lean-mode.sh` (activates lean mode for any `/superpowers-*` command)                |
+| `subagentStart`        | `guard-superpowers-subagents.sh` (denies subagents while lean mode active)                       |
+| `stop`                 | `superpowers-lean-cleanup.sh` (clears lean mode marker)                                          |
+| `sessionStart`         | `session-superpowers-opt-in.sh`, `session-ai-tooling-sync.sh`, `session-workflow-in-progress.sh` |
+| `afterFileEdit`        | `format-edited-file.sh`, `check-stack-terminology.sh`                                            |
+| `beforeShellExecution` | `guard-shell.sh` (denies prod Supabase deploy unless **`kamewave`** in command)                  |
+| `preToolUse`           | `guard-shipped-migrations.sh` (StrReplace), impeccable hook when installed                       |
+
+Lean mode lib: `scripts/dev/superpowers-lean-lib.sh`. See `.agent/skills/superpowers/SKILL.md` § Lean mode.
 
 ## Token budget
 

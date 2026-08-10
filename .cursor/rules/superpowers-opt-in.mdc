@@ -18,7 +18,7 @@ The Superpowers Cursor plugin is installed, but its **automatic workflow is disa
 
 Only when the user runs **`/superpowers-*`** or explicitly asks for Superpowers.
 
-Then follow the referenced Superpowers skill **and** **`.agent/skills/superpowers/SKILL.md`** for save locations:
+Then follow the referenced Superpowers skill **and** **`.agent/skills/superpowers/SKILL.md`** for save locations and **§ Lean mode** (hooks block subagents for plan/brainstorm/debug):
 
 | Plugin default (ignore)   | Use instead                  |
 | ------------------------- | ---------------------------- |
@@ -27,7 +27,7 @@ Then follow the referenced Superpowers skill **and** **`.agent/skills/superpower
 
 Update `docs/workflow/planned/README.md` when adding a plan. Use `/workflow-start` before implementation.
 
-Prefer a **single** brainstorm/plan pass — no Explore subagent fan-out unless asked.
+Prefer a **single** brainstorm/plan pass — hooks enforce no subagent fan-out on all `/superpowers-*` commands (including execute).
 
 ## Precedence
 
