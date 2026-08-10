@@ -20,7 +20,6 @@ When invoked, perform a readonly audit. Your tool access does not include Edit/W
 - **Files / Storage**: `payment-receipts`, `pet-vaccinations`, `pet-images`, `parking-endorsements`, `approved-gafs`, `property-media`. Check bucket visibility (public vs signed URL) and MIME enforcement.
 - **Service credentials**:
   - `SUPABASE_SERVICE_ROLE_KEY` — server-only.
-  - `GOOGLE_SERVICE_ACCOUNT` (JSON) — calendar + sheets legacy fallback.
   - Gmail OAuth refresh tokens, Telegram bot tokens — encrypted at rest via `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`.
   - `RESEND_API_KEY`.
 - **Gmail listener** (`supabase/functions/gmail-listener/`): OAuth tokens, read-only scope, idempotency via `processed_emails`.
@@ -33,7 +32,7 @@ For each surface, look for:
 - Service role key ever imported into `ui/` or sent to the browser.
 - Missing or weak input validation (Zod schemas on form data, type coercion in edge functions).
 - SQL injection (this repo uses `@supabase/supabase-js`, but watch raw `.rpc` or string-built queries if any).
-- XSS: untrusted content written into HTML strings in `_shared/emailService.ts`, `_shared/calendarService.ts#createEventData` (the description is HTML), success page rendering.
+- XSS: untrusted content written into HTML strings in `_shared/emailService.ts`, success page rendering.
 - Missing authorization on admin endpoints (`list-bookings`, `transition-booking`, `cancel-booking`, `upload-booking-asset`, `parking-broadcast-email`).
 - Missing org/property scoping — a client-supplied UUID accepted without a membership check.
 - CORS: every response — including errors and OPTIONS preflight — includes `corsHeaders(req)`. Non-wildcard if credentials are sent.
@@ -44,7 +43,7 @@ For each surface, look for:
 
 ## 3. Specific red flags for THIS project
 
-- Any file under `ui/` that imports `SUPABASE_SERVICE_ROLE_KEY` or `GOOGLE_SERVICE_ACCOUNT`.
+- Any file under `ui/` that imports `SUPABASE_SERVICE_ROLE_KEY`.
 - Admin-only edge function that does not call `verifyAdminJwt` at the top of the handler.
 - `transition-booking` accepting a `toStatus` that is not validated against `statusMachine.ts` server-side.
 - `get-form` / `get-sd-form` returning a booking without the intended access check for that route.
