@@ -1,16 +1,15 @@
 ---
 name: integrations
-description: Google (Gmail, Calendar, Sheets), Telegram crons, Meta inbox, Resend. Use when connecting OAuth, webhooks, scheduled jobs, or integration settings UI.
+description: Google (Gmail), Telegram crons, Meta inbox, Resend. Use when connecting OAuth, webhooks, scheduled jobs, or integration settings UI.
 ---
 
 # Integrations (GFM)
 
 ## Google (per property)
 
-- OAuth: Settings → Connect Google — `google-mail-oauth-*` functions
+- OAuth: Settings → Connect Google — `google-mail-oauth-*` functions (Gmail `readonly` scope)
 - Stored: `gmail_mail_integration` encrypted refresh token
-- Calendar + Sheets IDs on `app_settings` — auto-provision on connect
-- Skills: `gmail-listener` | Rules: `booking-workflow.mdc` (calendar/sheet side effects)
+- Skills: `gmail-listener` | Rules: `booking-workflow.mdc`
 
 Env: `GMAIL_API_WEB_CLIENT_JSON`, `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`, `GMAIL_OAUTH_ALLOWED_RETURN_ORIGINS`
 

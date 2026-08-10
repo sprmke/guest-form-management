@@ -13,8 +13,6 @@ export const STRIPPED_GUEST_QUERY_KEYS = [
   'testing',
   'saveToDatabase',
   'saveImagesToStorage',
-  'updateGoogleCalendar',
-  'updateGoogleSheets',
   'sendEmail',
 ] as const;
 

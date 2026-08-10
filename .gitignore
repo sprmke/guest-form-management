@@ -90,6 +90,9 @@ docs/.obsidian/graph.json
 # Personal Claude Code overrides (team config is .claude/settings.json)
 .claude/settings.local.json
 
+# Superpowers lean mode session marker (hooks — local only)
+.cursor/.superpowers-lean-active
+
 # OpenCode local plugin install cache (committed config is opencode.json + .opencode/)
 .opencode/node_modules/
 .opencode/package-lock.json

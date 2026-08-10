@@ -314,8 +314,6 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
   const [devApiControls, setDevApiControls] = useState({
     saveToDatabase: true,
     saveImagesToStorage: true,
-    updateCalendar: true,
-    updateGoogleSheets: true,
     sendEmail: true,
   });
 
@@ -674,8 +672,6 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
         '⚠️ Are you sure you want to CANCEL this booking?\n\n' +
           'This will:\n' +
           '• Mark booking status as "Canceled" in database\n' +
-          '• Update Google Calendar event with [CANCELED] label (red color)\n' +
-          '• Update Google Sheets status to "Canceled"\n' +
           '• Free up the booked dates for new bookings\n\n' +
           'All booking data will be preserved for records.'
       )
@@ -843,8 +839,6 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
           'saveImagesToStorage',
           devApiControls.saveImagesToStorage ? 'true' : 'false'
         );
-        formData.append('updateGoogleCalendar', devApiControls.updateCalendar ? 'true' : 'false');
-        formData.append('updateGoogleSheets', devApiControls.updateGoogleSheets ? 'true' : 'false');
         formData.append('sendEmail', devApiControls.sendEmail ? 'true' : 'false');
       }
 
@@ -2283,44 +2277,6 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
                             className="flex-1 cursor-pointer text-sm font-medium"
                           >
                             Send email
-                          </label>
-                        </div>
-
-                        <div className="bg-muted/30 hover:bg-muted/50 flex items-center space-x-3 rounded-lg p-3 transition-colors">
-                          <Checkbox
-                            id="updateCalendar"
-                            checked={devApiControls.updateCalendar}
-                            onCheckedChange={(checked) =>
-                              setDevApiControls({
-                                ...devApiControls,
-                                updateCalendar: checked === true,
-                              })
-                            }
-                          />
-                          <label
-                            htmlFor="updateCalendar"
-                            className="flex-1 cursor-pointer text-sm font-medium"
-                          >
-                            Update Google Calendar
-                          </label>
-                        </div>
-
-                        <div className="bg-muted/30 hover:bg-muted/50 flex items-center space-x-3 rounded-lg p-3 transition-colors">
-                          <Checkbox
-                            id="updateGoogleSheets"
-                            checked={devApiControls.updateGoogleSheets}
-                            onCheckedChange={(checked) =>
-                              setDevApiControls({
-                                ...devApiControls,
-                                updateGoogleSheets: checked === true,
-                              })
-                            }
-                          />
-                          <label
-                            htmlFor="updateGoogleSheets"
-                            className="flex-1 cursor-pointer text-sm font-medium"
-                          >
-                            Update Google Sheets
                           </label>
                         </div>
                       </div>

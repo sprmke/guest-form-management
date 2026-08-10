@@ -2,7 +2,7 @@
 title: 'Claude To Plan'
 status: archived
 tags: [planning]
-updated: 2026-08-09
+updated: 2026-08-11
 ---
 
 **Status legend:** ✅ done · 🚧 in progress · 📋 planned (plan doc written) · 🔵 pending / open · ❌ cancelled / won't do
@@ -201,12 +201,15 @@ The end goal is to make sure that we don't miss any important step or process fo
 
 Do /impeccable critique, audit, review, harden & polish of our current e2e booking process and list down things that we can improve and create superpowers executable plan for it.
 
-🔵 Refine booking detail page, edit and workflow
+🚧 Refine booking detail page, edit and workflow
 
 - Improve UI/UX of entire booking detail page and edit form
 - Improve UI/UX and refine each elements, sections, modal, actions, process, status, logic and flow for booking e2e flow and make sure it's production ready
   - Update implementation for automated gmail listener to use resend reply/hooks to prevent the need of Google CASA approval
-  - Entirely remove or limit access for google calendar and sheets sync?
+  - Entirely remove or limit access for google calendar and sheets sync
+  - Check and refine all automation triggers for each step/status
+  - Update AI validation logic, display, etc
+  - Refine and improve UI/UX for each step/status
 
 ===
 

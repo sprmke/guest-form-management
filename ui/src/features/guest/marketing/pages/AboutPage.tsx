@@ -77,7 +77,7 @@ export function AboutPage() {
       <MarketingPublicPageContent>
         <MarketingPublicSectionHeading
           title="What the platform covers"
-          description="Guests book through property calendars and forms. Hosts and teams run each stay through a status workflow with email, calendar, and spreadsheet sync where configured."
+          description="Guests book through property calendars and forms. Hosts and teams run each stay through a status workflow with email automation where configured."
           className="mx-auto max-w-3xl"
         />
 
