@@ -4,7 +4,8 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    /* Canvas sits below white cards (mirrors dark: 7% bg / 10% card). Cool 220° harmonizes with teal primary. */
+    --background: 220 18% 97%;
     --foreground: 224 71% 4%;
 
     --card: 0 0% 100%;
@@ -580,11 +581,29 @@
   }
 
   .focus-ring {
-    @apply focus-visible:ring-primary/50 focus-visible:ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
+    @apply focus-visible:ring-primary/50 focus-visible:outline-none focus-visible:ring-2;
   }
 
   .focus-within-ring {
-    @apply focus-within:ring-primary/50 focus-within:ring-offset-background focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2;
+    @apply focus-within:ring-primary/50 focus-within:outline-none focus-within:ring-2;
+  }
+
+  /**
+   * Form control focus — inset ring, no ring-offset (avoids clipped/broken rings in overflow parents).
+   */
+  .field-focus {
+    @apply transition-[border-color,box-shadow] duration-200;
+  }
+
+  .field-focus:focus,
+  .field-focus:focus-visible,
+  .field-focus[data-state='open'] {
+    @apply border-primary/40 ring-ring/30 outline-none ring-2;
+  }
+
+  .field-focus-error:focus,
+  .field-focus-error:focus-visible {
+    @apply border-destructive/50 ring-destructive/30 outline-none ring-2;
   }
 
   .text-balance {
@@ -620,12 +639,12 @@
 
   /** Toolbar / filter selected state — neutral (matches PMA tabs / outline controls) */
   .interactive-primary {
-    @apply border-border bg-background text-foreground shadow-sm;
+    @apply border-border bg-card text-foreground shadow-sm;
   }
 
   /** Segmented control active segment */
   .interactive-primary-segment {
-    @apply bg-background text-foreground shadow-sm;
+    @apply bg-card text-foreground shadow-sm;
   }
 
   /** Radio, checkbox, pagination page — small filled neutral mark */
@@ -643,7 +662,7 @@
   }
 
   .segment-item-active {
-    @apply bg-background text-foreground shadow-sm;
+    @apply bg-card text-foreground shadow-sm;
   }
 
   .dark .app-shell {

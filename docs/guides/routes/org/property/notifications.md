@@ -47,7 +47,7 @@ Save **one** BotFather token at the top. It pre-fills each module’s bot token 
    - **Staff:** Schedule alerts · Message templates
    - **Operations:** Message templates (6 scenarios)
    - **Finance / Maintenance:** Reminder message (single template; module enable toggle only — no per-template switch)
-   - **Chat:** New message template for every inbound guest message (placeholders include `{{chat_source}}`, `{{chat_content}}`, attachment helpers, and `{{conversation_link}}` → `/org/:orgSlug/inbox?conversationId=…&platform=web|facebook|instagram`)
+   - **Chat:** New message template for every inbound guest message (placeholders include `{{chat_source}}`, `{{chat_content}}`, attachment helpers, and `{{conversation_link}}` → `/org/:orgSlug/property/:propertySlug/inbox?conversationId=…&platform=web|facebook|instagram`)
 
 ### Saving behavior
 

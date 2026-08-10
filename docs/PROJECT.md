@@ -2,7 +2,7 @@
 title: 'Guest Form Management — Project Documentation'
 status: active
 tags: [docs]
-updated: 2026-08-03
+updated: 2026-08-09
 ---
 
 # Guest Form Management — Project Documentation
@@ -26,6 +26,8 @@ This document is the entry point for the **guest-form-management** architecture 
 | Roadmap / gaps                                                                     | [`docs/architecture/roadmap.md`](architecture/roadmap.md)                       |
 
 For booking status/transition/side-effect specifics, start at `.cursor/rules/booking-workflow.mdc` instead — it supersedes this doc for anything already implemented per that spec. See [`docs/README.md`](README.md) for the full documentation index.
+
+**Admin status colors:** booking status badges, attention chips, resource/import/finance labels, and org dashboard chart fills share one palette in `ui/src/lib/status-tone-colors.ts` (`STATUS_TONE_HEX` — Tailwind 500 hex matching badge dots; `CHART_INCOME_COLOR` / `CHART_EXPENSE_COLOR` in `chartStyles.ts` derive from green/red tones). Primary pill component: `ui/src/features/dashboard/bookings/components/StatusBadge.tsx`.
 
 ---
 
@@ -59,6 +61,18 @@ Centralized Gemini usage for receipts, inbox drafts, marketing AI, import column
 | **Edge functions**      | `ai-platform-global-settings` (super-admin), `ai-platform-settings`, `ai-platform-usage` — see [`docs/architecture/edge-functions.md`](architecture/edge-functions.md).                                                                                                            |
 | **UI**                  | Org **Settings → AI usage** (`OrgAiPlatformSection`); super-admin kill switch on `/admin`. Upgrade CTA is a stub toast until Stripe billing ships.                                                                                                                                 |
 | **Ops**                 | Paid **`GEMINI_API_KEY`** on one billing project for hosted envs; multi-key rotation local-only — [`docs/archive/operations/ai-platform-billing.md`](archive/operations/ai-platform-billing.md), [`docs/architecture/validation-and-env.md`](architecture/validation-and-env.md).  |
+
+---
+
+## Operational guest branding (public property flows)
+
+Property-scoped operational routes (`/properties/:propertySlug/calendar`, `/form`, `/success`, `/sd-form`, `/guest-review`, `/parking/:bookingId`, stay-guide, property chat) share **`MainLayout`** chrome: org **brand-color header band**, **`GuestOperationalHeader`**, dynamic **`GuestFormBrandHeader`**, and residence-aware footer.
+
+| Concern          | Detail                                                                                                                                                                                                                                                                                                                                                                          |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Payload**      | `GET get-guest-payment-info?property=<slug>` — branding fields via **`_shared/guestFormSettings.ts`**: `propertyName`, `propertyEyebrow`, `propertyCoverImageUrl`, `residenceName`, `organizationName`, `emailLogoUrl`, org `brandColor`, plus guest-form toggles/times/capacity (see [`guest-form-configurable-sections`](workflow/done/guest-form-configurable-sections.md)). |
+| **UI helpers**   | `ui/src/features/guest/form/lib/guestFormBranding.ts` — residence-aware instructional copy (parking, pets, GAF, success, pay-parking warnings). Azure/Kame defaults when residence matches seeded dev property.                                                                                                                                                                 |
+| **Route guides** | [`calendar.md`](guides/routes/calendar.md), [`form.md`](guides/routes/form.md), [`success.md`](guides/routes/success.md), [`sd-form.md`](guides/routes/sd-form.md), [`bookings/parking.md`](guides/routes/bookings/parking.md). Shipped: [`workflow/done/public-operational-guest-pages-multi-tenant.md`](workflow/done/public-operational-guest-pages-multi-tenant.md).        |
 
 ---
 

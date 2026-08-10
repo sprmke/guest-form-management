@@ -2,7 +2,7 @@
 title: 'SD Refund Form — operator guide'
 status: active
 tags: [guides, routes, sd-refund]
-updated: 2026-08-02
+updated: 2026-08-09
 ---
 
 # SD Refund Form — operator guide
@@ -13,19 +13,20 @@ Route: `/properties/:propertySlug/sd-form?bookingId=` (legacy `/sd-form?property
 
 ## Progress overview
 
-| Section        | E2E save | Validation | Docs       | Notes                                  |
-| -------------- | -------- | ---------- | ---------- | -------------------------------------- |
-| Step 1 Review  | ✅       | ✅ Zod     | Documented | `submit-guest-review`                  |
-| Step 2 Voucher | ✅       | Server     | Documented | `claim-sd-voucher`; idempotent         |
-| Step 3 Refund  | ✅       | ✅ Zod     | Documented | `submit-sd-form` → workflow transition |
-| Balance gate   | ✅       | Server     | Documented | `awaiting_balance_settlement` polling  |
-| Airbnb variant | ✅       | —          | Documented | Standalone `/guest-review` route       |
+| Section        | E2E save | Validation | Docs       | Notes                                                              |
+| -------------- | -------- | ---------- | ---------- | ------------------------------------------------------------------ |
+| Brand shell    | ✅       | —          | Documented | `MainLayout` + `GuestFormBrandHeader` via `get-guest-payment-info` |
+| Step 1 Review  | ✅       | ✅ Zod     | Documented | `submit-guest-review`                                              |
+| Step 2 Voucher | ✅       | Server     | Documented | `claim-sd-voucher`; idempotent                                     |
+| Step 3 Refund  | ✅       | ✅ Zod     | Documented | `submit-sd-form` → workflow transition                             |
+| Balance gate   | ✅       | Server     | Documented | `awaiting_balance_settlement` polling                              |
+| Airbnb variant | ✅       | —          | Documented | Standalone `/guest-review` route                                   |
 
 ---
 
 ## Overview
 
-Three-step guest stepper shown once a stay is near or past check-out. The stepper reads its bootstrap payload from **`get-sd-form`**, which only returns data once the booking is `READY_FOR_CHECKOUT`, or `READY_FOR_CHECKIN` **and** the automated check-out email has already gone out (`sd_refund_form_emailed_at` set) — in the latter case the response flags `awaiting_balance_settlement: true` and the page shows a wait screen instead of the refund form until the stay is actually settled and moved to `READY_FOR_CHECKOUT`.
+Three-step guest stepper shown once a stay is near or past check-out. Full-page routes render inside **`MainLayout`** (org **brand-color band**, **`GuestOperationalHeader`**, **`GuestFormBrandHeader`** from **`get-guest-payment-info`**). The stepper reads its bootstrap payload from **`get-sd-form`**, which only returns data once the booking is `READY_FOR_CHECKOUT`, or `READY_FOR_CHECKIN` **and** the automated check-out email has already gone out (`sd_refund_form_emailed_at` set) — in the latter case the response flags `awaiting_balance_settlement: true` and the page shows a wait screen instead of the refund form until the stay is actually settled and moved to `READY_FOR_CHECKOUT`.
 
 | Step | Label          | Content                                                                                                                                       |
 | ---- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -148,7 +149,7 @@ A standalone **`/properties/:propertySlug/guest-review?bookingId=`** route (`Gue
 ## Related docs
 
 - [Route index](./README.md)
-- [Stays](./account/stays.md) — links here for `READY_FOR_CHECKOUT` / `PENDING_SD_REFUND` bookings
+- [Stays](./account/stays.md) — guest stay messaging hub (distinct from this form)
 - [`docs/PROJECT.md`](../PROJECT.md)
 - `.cursor/rules/booking-workflow.mdc` — transition graph, SD refund skip when `security_deposit = 0`
 
