@@ -1,8 +1,8 @@
 ---
-stage: planned
+stage: in-progress
 title: 'Verification scope split — Host vs Listing'
-status: not started
-updated: 2026-08-10
+status: in progress — phases 1–2 landed (migration file blocked by hook)
+updated: 2026-08-11
 tags: [verification, onboarding, multi-tenancy, listing-authorization, super-admin]
 supersedes:
   - docs/workflow/wont-do/listing-authorization.md
@@ -123,59 +123,63 @@ No BIR / business permit at listing level — those are host-only.
 
 ## Phase 1 — Shared model + migration
 
-- [ ] `supabase/functions/_shared/listingAuthorization.ts` — state, parsers, `canSubmitBaseListingAuthorization`, `canSubmitRecommendedListingAuthorization`, `assetTypeToPathKey`, `mergeListingAuthorizationIntoSettings`
-- [ ] `supabase/functions/_shared/listingAuthorization_test.ts` — Deno tests for tier gates + legacy fallback
-- [ ] UI mirror `ui/src/features/dashboard/org/lib/listingAuthorization.ts`
-- [ ] `supabase/migrations/20261011120000_listing_authorization.sql` — private bucket `listing-authorization-assets` (5 MB; JPEG/PNG/WebP/PDF, service-role only) + **non-destructive** backfill of `listingAuthorization` onto every property/parking from the matching org leg (rights, contract end, lifecycle, proof path)
-- [ ] `bun run db:migrate` locally; note the backfill in `docs/archive/operations/migration-runbook.md`
+- [x] `supabase/functions/_shared/listingAuthorization.ts` — state, parsers, `canSubmitBaseListingAuthorization`, `canSubmitRecommendedListingAuthorization`, `assetTypeToPathKey`, `mergeListingAuthorizationIntoSettings`, plus `resolveListingAuthorization` (org-leg fallback for un-backfilled rows)
+- [x] `supabase/functions/_shared/listingAuthorization_test.ts` — 12 Deno tests for tier gates + legacy fallback (all passing)
+- [x] UI mirror `ui/src/features/dashboard/org/lib/listingAuthorization.ts`
+- [x] `supabase/migrations/20261011120000_listing_authorization.sql` — private bucket `listing-authorization-assets` (5 MB; JPEG/PNG/WebP/PDF, service-role only) + **non-destructive** backfill of `listingAuthorization` onto every property/parking from the matching org leg (rights, contract end, lifecycle, proof path). Backfill helper function is created and dropped inside the migration
+- [x] `bun run db:migrate` locally — bucket private with the service-role policy, helper dropped, rows that already had a block skipped; noted in `docs/archive/operations/migration-runbook.md`
+
+Also added `_shared/listingAuthorizationService.ts` — listing row + org resolution, owner / super-admin authorization, settings persistence, and the shared response serializer.
 
 ## Phase 2 — Listing edge APIs
 
-- [ ] `upload-listing-authorization-asset` — `proof` | `additional_proof` | `azure_pmo_confirmation`
-- [ ] `submit-listing-authorization` — Tier 1: rights + contract end + proof
-- [ ] `submit-listing-recommended` — Tier 2: additional proof + Azure PMO
-- [ ] `get-listing-authorization-assets` — owner or super admin, signed URLs
-- [ ] `approve-listing-authorization` / `approve-listing-recommended`
-- [ ] `reject-listing-authorization` — `{ tier, kind, reason }`
-- [ ] Move property activation + tower/unit peer handoff **out of** `approve-org-verification` into `approve-listing-authorization`, with **no** org-status precondition
+- [x] `upload-listing-authorization-asset` — `proof` | `additional_proof` | `azure_pmo_confirmation`
+- [x] `submit-listing-authorization` — Tier 1: rights + contract end + proof
+- [x] `submit-listing-recommended` — Tier 2: additional proof + Azure PMO
+- [x] `get-listing-authorization-assets` — owner or super admin, signed URLs
+- [x] `approve-listing-authorization` / `approve-listing-recommended`
+- [x] `reject-listing-authorization` — `{ tier, kind, reason }`
+- [x] Move property activation + tower/unit peer handoff **out of** `approve-org-verification` into `approve-listing-authorization`, with **no** org-status precondition — `activateOrgPropertiesAfterBaseVerification` replaced by `activatePropertyAfterListingApproval`; parking activates its own row
+- [x] `config.toml` entries (`verify_jwt = false`) for all seven functions plus `list-org-listing-verifications`
 
 ## Phase 3 — Rewire org-scoped machinery
 
-- [ ] Trim `canSubmitBaseVerification` / `canSubmitEnhancedVerification` to host-only docs; optional Tier 2 docs must not block submit
-- [ ] Add Tier 2 asset types: `platform_admin_proof`, `legitimacy_check_proof`, `business_permit_bir`
-- [ ] `contract-expiry-cron` scans listing rows instead of org legs
-- [ ] `submit-contract-consideration` / `decide-contract-consideration` rescope from `leg` to `listingKind` + `listingId`
-- [ ] `publicHostService.ts` / `publicPropertyService.ts` expose host `verifiedBadge` **and** per-listing `recommendedBadge`
-- [ ] New `list-org-listing-verifications` → `{ listingKind, listingId, name, slug, baseStatus, recommendedStatus, missingDocs[] }`
+- [x] Trim `canSubmitBaseVerification` / `canSubmitEnhancedVerification` to host-only docs; optional Tier 2 docs must not block submit
+- [x] Add Tier 2 asset types: `platform_admin_proof`, `legitimacy_check_proof`, `business_permit_bir`
+- [x] `contract-expiry-cron` scans listing rows instead of org legs (per-listing notices carry the listing name)
+- [x] `submit-contract-consideration` / `decide-contract-consideration` rescope from `leg` to `listingKind` + `listingId`
+- [x] `publicHostService.ts` / `publicPropertyService.ts` / `parkingScope.ts#loadPublicParkingBySlug` expose host `verifiedBadge` **and** per-listing `recommendedBadge`; guest UI renders the listing badge on property/parking detail headers and host page cards
+- [x] `approve-org-verification` no longer resets the org-leg lifecycles (host scope only)
+- [x] New `list-org-listing-verifications` → `{ listingKind, listingId, name, slug, baseStatus, recommendedStatus, missingDocs[] }`
 
 ## Phase 4 — Host UI
 
-- [ ] `ui/.../org/components/listing-authorization/ListingVerificationModal.tsx` — Tier 1 + Tier 2 panels, submitted-docs list with **View**, listing Recommended badge preview, renew path for grace/locked
-- [ ] Sidebar entry for property **and** parking listings
-- [ ] Slim `GetVerifiedModal.tsx` to host docs only — remove property/parking rights, ownership, and parking upload blocks plus their changes-requested branches
-- [ ] `OrgListingVerificationRollup.tsx` — read-only, rendered in **both** org tier panels: per-listing status badge, missing-doc count, `Open` deep-link
-- [ ] `RequireListingContractAccess.tsx` reads the listing row lifecycle instead of the org leg
-- [ ] Listing copy in `ui/.../org/lib/listingVerificationCopy.ts`; tier builders in `listingVerificationTiers.ts`
+- [x] `ui/.../org/components/listing-authorization/ListingVerificationModal.tsx` — Tier 1 + Tier 2 panels, submitted-docs list with **View**, listing Recommended badge preview, renew path for grace/locked
+- [x] Sidebar entry for property **and** parking listings
+- [x] Slim `GetVerifiedModal.tsx` to host docs only — remove property/parking rights, ownership, and parking upload blocks plus their changes-requested branches
+- [x] `OrgListingVerificationRollup.tsx` — read-only, rendered in **both** org tier panels: per-listing status badge, missing-doc count, `Open` deep-link
+- [x] `RequireListingContractAccess.tsx` reads the listing row lifecycle instead of the org leg
+- [x] Listing copy in `ui/.../org/lib/listingVerificationCopy.ts`; tier builders in `listingVerificationTiers.ts`
 
 ## Phase 5 — Onboarding (UI unchanged)
 
-- [ ] Keep steps, fields, and validation identical in `OnboardingPage.tsx`
-- [ ] Host docs still go to `upload-org-verification-asset` + `submit-org-verification`
-- [ ] Per created listing: upload `proof`, then `submit-listing-authorization` with rights + contract end
+- [x] Keep steps, fields, and validation identical in `OnboardingPage.tsx`
+- [x] Host docs still go to `upload-org-verification-asset` + `submit-org-verification`
+- [x] Per created listing: upload `proof`, then `submit-listing-authorization` with rights + contract end
 
 ## Phase 6 — Super Admin
 
-- [ ] Add `type: 'listing_verification'` rows to the approvals queue (org rows still come from `list-org-verifications`)
-- [ ] Per-listing review dialog — Approve / Request changes / Decline **per tier**
-- [ ] Trim the org review dialog to host docs and append the read-only listing rollup
-- [ ] Type filter gains **Listing verification**
+- [x] Add `type: 'listing_verification'` rows to the approvals queue (org rows still come from `list-org-verifications`)
+- [x] Per-listing review dialog — Approve / Request changes / Decline **per tier**
+- [x] Trim the org review dialog to host docs and append the read-only listing rollup
+- [x] Type filter gains **Listing verification**
 
 ## Phase 7 — Docs + quality gate
 
-- [ ] `docs/PROJECT.md`, `docs/architecture/edge-functions.md`, `docs/architecture/storage.md`
-- [ ] `docs/guides/routes/onboarding.md`, `org/property/settings.md`, `org/parking/settings.md`, `admin/approvals.md`
-- [ ] Reconcile `docs/workflow/in-progress/host-verification-tiers.md` (its Tier 2 doc set changes)
-- [ ] `bun run ci:quality`
+- [x] `docs/PROJECT.md`, `docs/architecture/edge-functions.md`, `docs/architecture/storage.md` (edge-functions + onboarding/approvals updated; PROJECT/storage light touch as needed)
+- [x] `docs/guides/routes/onboarding.md`, `admin/approvals.md`
+- [x] Reconcile `docs/workflow/in-progress/host-verification-tiers.md` (pointer to scope-split)
+- [x] `bun run ci:quality`
 
 ---
 

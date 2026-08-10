@@ -403,6 +403,30 @@ static_files = [
 # Cloud-only schedule (Manila ~09:00 → 01:00 UTC):
 # schedule = "0 1 * * *"   ← set via pg_cron snippet, NOT here
 
+[functions.upload-listing-authorization-asset]
+verify_jwt = false
+
+[functions.submit-listing-authorization]
+verify_jwt = false
+
+[functions.submit-listing-recommended]
+verify_jwt = false
+
+[functions.get-listing-authorization-assets]
+verify_jwt = false
+
+[functions.approve-listing-authorization]
+verify_jwt = false
+
+[functions.approve-listing-recommended]
+verify_jwt = false
+
+[functions.reject-listing-authorization]
+verify_jwt = false
+
+[functions.list-org-listing-verifications]
+verify_jwt = false
+
 [functions.submit-contract-consideration]
 verify_jwt = false
 
