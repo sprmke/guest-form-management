@@ -20,6 +20,7 @@ import { recurrenceIntervalLabel } from '@/features/dashboard/finance/lib/recurr
 import type { FinanceBookingLedgerRow } from '@/features/dashboard/finance/lib/types';
 
 import { cn } from '@/lib/utils';
+import { toneIconWrapClasses } from '@/lib/status-tone-colors';
 import { formatMoney } from '@/utils/format/currency';
 
 type Props = {
@@ -94,8 +95,8 @@ export function FinanceLedgerTable({
                   <div className="flex items-center gap-3">
                     <div
                       className={cn(
-                        'flex size-9 shrink-0 items-center justify-center rounded-lg',
-                        isIncome ? 'bg-emerald-500/10' : 'bg-red-500/10'
+                        'size-9 shrink-0',
+                        toneIconWrapClasses(isIncome ? 'green' : 'red')
                       )}
                     >
                       {isIncome ? (

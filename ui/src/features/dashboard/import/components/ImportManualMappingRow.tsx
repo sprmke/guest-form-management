@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { compactStatusBadgeClasses } from '@/lib/status-tone-colors';
 
 const SKIP_VALUE = '__skip__';
 
@@ -39,14 +40,10 @@ const UNMATCHED_BADGE: StatusBadge = {
 };
 
 const STATUS_BADGE: Partial<Record<ImportColumnMappingEntry['status'], StatusBadge>> = {
-  matched: { label: 'Matched', className: 'border-primary/30 bg-primary/10 text-primary' },
-  confirmed: { label: 'Matched', className: 'border-primary/30 bg-primary/10 text-primary' },
-  likely_matched: { label: 'Likely match', className: 'border-border bg-muted text-foreground' },
-  ambiguous: {
-    label: 'Not sure',
-    className:
-      'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200',
-  },
+  matched: { label: 'Matched', className: compactStatusBadgeClasses('success') },
+  confirmed: { label: 'Matched', className: compactStatusBadgeClasses('success') },
+  likely_matched: { label: 'Likely match', className: compactStatusBadgeClasses('neutral') },
+  ambiguous: { label: 'Not sure', className: compactStatusBadgeClasses('warning') },
   skipped: { label: 'Skipped', className: 'border-border bg-transparent text-muted-foreground' },
   unmatched: UNMATCHED_BADGE,
 };

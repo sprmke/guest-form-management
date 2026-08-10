@@ -11,6 +11,7 @@ import type { FinanceBookingLedgerRow } from '@/features/dashboard/finance/lib/t
 
 import { FinanceStaysCardGridSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { cn } from '@/lib/utils';
+import { toneIconWrapClasses } from '@/lib/status-tone-colors';
 import { formatMoney } from '@/utils/format/currency';
 
 type Props = {
@@ -74,8 +75,8 @@ export function FinanceLedgerCardGrid({
                 <div className="flex min-w-0 items-center gap-2">
                   <div
                     className={cn(
-                      'flex size-8 shrink-0 items-center justify-center rounded-lg',
-                      isIncome ? 'bg-emerald-500/10' : 'bg-red-500/10'
+                      'size-8 shrink-0',
+                      toneIconWrapClasses(isIncome ? 'green' : 'red')
                     )}
                   >
                     {isIncome ? (

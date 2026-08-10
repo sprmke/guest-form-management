@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 
-import { BarChart3, PieChart as PieChartIcon } from 'lucide-react';
+import { Link } from 'react-router-dom';
+
+import { ArrowRight, BarChart3, PieChart as PieChartIcon } from 'lucide-react';
 import {
   Area,
   AreaChart,
@@ -40,10 +42,12 @@ type Props = {
   incomeBreakdown: FinanceCategoryBreakdown[];
   expenseBreakdown: FinanceCategoryBreakdown[];
   className?: string;
-  /** When true, children join a parent `lg:grid-cols-5` (dashboard layout). */
+  /** When true, children join a parent equal-column dashboard grid (`contents`). */
   embedded?: boolean;
   /** Show chart skeletons instead of empty states while data is loading. */
   isLoading?: boolean;
+  /** Period-scoped finance deep link (shows View on Cash flow when set). */
+  financeHref?: string;
 };
 
 type BreakdownFilter = 'all' | 'income' | 'expenses';
@@ -175,6 +179,43 @@ function BreakdownChartSkeleton() {
   );
 }
 
+function ChartEmptyState({
+  icon: Icon,
+  title,
+  description,
+  className,
+}: {
+  icon: typeof BarChart3;
+  title: string;
+  description: string;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        'border-border/60 flex min-h-0 flex-1 flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-10 text-center',
+        className
+      )}
+    >
+      <Icon className="text-muted-foreground/70 size-8" aria-hidden />
+      <p className="text-foreground text-sm font-semibold">{title}</p>
+      <p className="text-caption max-w-xs">{description}</p>
+    </div>
+  );
+}
+
+function FinanceViewLink({ href }: { href: string }) {
+  return (
+    <Link
+      to={href}
+      className="text-primary hover:bg-primary/10 inline-flex min-h-[44px] items-center gap-1 rounded-lg px-2 text-sm font-semibold transition-colors"
+    >
+      View
+      <ArrowRight className="size-4 shrink-0" aria-hidden />
+    </Link>
+  );
+}
+
 export function FinanceTransactionsChart({
   cashFlowData,
   incomeBreakdown,
@@ -182,6 +223,7 @@ export function FinanceTransactionsChart({
   className,
   embedded = false,
   isLoading = false,
+  financeHref,
 }: Props) {
   const isMobile = useIsBelowMd();
   const [pieChartType, setPieChartType] = useState<BreakdownFilter>('all');
@@ -207,10 +249,11 @@ export function FinanceTransactionsChart({
       )}
     >
       <FinanceChartCard
-        className="flex h-full flex-col lg:col-span-3"
+        className={cn('flex h-full min-h-0 flex-col', !embedded && 'lg:col-span-3')}
         icon={BarChart3}
         title="Cash flow"
         description="Stay net, transactions, and expenses over time"
+        action={financeHref ? <FinanceViewLink href={financeHref} /> : undefined}
       >
         {isLoading ? (
           <CashFlowChartSkeleton />
@@ -289,19 +332,17 @@ export function FinanceTransactionsChart({
             </div>
           </>
         ) : (
-          <div
-            className={`flex flex-col items-center justify-center gap-1.5 text-center ${CHART_HEIGHT_CLASS}`}
-          >
-            <p className="text-foreground text-sm font-semibold">No cash flow in this period</p>
-            <p className="text-caption max-w-xs">
-              Add transactions or widen the date range to see daily income and expenses.
-            </p>
-          </div>
+          <ChartEmptyState
+            icon={BarChart3}
+            title="No cash flow in this period"
+            description="Add transactions or widen the date range to see daily income and expenses."
+            className={CHART_HEIGHT_CLASS}
+          />
         )}
       </FinanceChartCard>
 
       <FinanceChartCard
-        className="flex h-full flex-col lg:col-span-2"
+        className={cn('flex h-full min-h-0 flex-col', !embedded && 'lg:col-span-2')}
         icon={PieChartIcon}
         title="Breakdown"
         description="By category"
@@ -376,13 +417,16 @@ export function FinanceTransactionsChart({
             </div>
           </div>
         ) : (
-          <div className="flex min-h-[200px] flex-1 items-center justify-center sm:min-h-[260px]">
-            <p className="text-muted-foreground text-sm">
-              {pieChartType === 'all'
+          <ChartEmptyState
+            icon={PieChartIcon}
+            title={
+              pieChartType === 'all'
                 ? 'No breakdown data available'
-                : `No ${pieChartType} data available`}
-            </p>
-          </div>
+                : `No ${pieChartType} data available`
+            }
+            description="Add transactions or widen the date range to see categories."
+            className="min-h-[200px] sm:min-h-[260px]"
+          />
         )}
       </FinanceChartCard>
     </div>

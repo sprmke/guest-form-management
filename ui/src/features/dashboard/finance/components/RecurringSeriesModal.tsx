@@ -50,6 +50,7 @@ import {
 } from '@/components/ui/responsive-modal';
 import { IsoDateInput } from '@/components/ui/iso-date-input';
 import { cn } from '@/lib/utils';
+import { compactStatusBadgeClasses } from '@/lib/status-tone-colors';
 import { formatIsoDate } from '@/utils/format/bookingDisplay';
 import { formatMoney } from '@/utils/format/currency';
 import { formatIsoDateForDisplay } from '@/utils/format/dates';
@@ -411,10 +412,8 @@ function SeriesSummaryGrid({
           value={
             <span
               className={cn(
-                'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide',
-                isIncome
-                  ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                  : 'bg-red-500/10 text-red-600 dark:text-red-400'
+                compactStatusBadgeClasses(isIncome ? 'success' : 'danger'),
+                'normal-case'
               )}
             >
               {kind}

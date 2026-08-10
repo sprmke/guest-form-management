@@ -84,9 +84,8 @@ export function CategoryCombobox({
             value={draft}
             placeholder={placeholder}
             className={cn(
-              'border-input bg-background text-foreground h-10 min-h-[44px] w-full rounded-lg border py-2 pl-3 pr-[5.5rem] text-sm transition-colors',
+              'border-input bg-card text-foreground field-focus h-10 min-h-[44px] w-full rounded-lg border py-2 pl-3 pr-[5.5rem] text-sm transition-colors',
               'placeholder:text-muted-foreground',
-              'focus:border-primary focus:ring-primary/20 focus:outline-none focus:ring-2',
               'disabled:cursor-not-allowed disabled:opacity-50'
             )}
             onChange={(e) => {

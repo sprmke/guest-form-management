@@ -30,6 +30,7 @@ import { IsoDateInput } from '@/components/ui/iso-date-input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
+import { statusToneSurfaceClasses } from '@/lib/status-tone-colors';
 
 const schema = z
   .object({
@@ -241,9 +242,12 @@ export function OperatingLineItemForm({
               className={cn(
                 'text-ui flex min-h-[44px] items-center justify-center gap-2 rounded-xl font-semibold capitalize transition-all',
                 active
-                  ? isIncome
-                    ? 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/25 dark:bg-emerald-500/15 dark:text-emerald-300'
-                    : 'bg-red-500/10 text-red-600 ring-1 ring-red-500/25 dark:bg-red-500/15 dark:text-red-400'
+                  ? cn(
+                      'border ring-1',
+                      isIncome
+                        ? `${statusToneSurfaceClasses('green').bgColor} ${statusToneSurfaceClasses('green').color} ${statusToneSurfaceClasses('green').borderColor}`
+                        : `${statusToneSurfaceClasses('red').bgColor} ${statusToneSurfaceClasses('red').color} ${statusToneSurfaceClasses('red').borderColor}`
+                    )
                   : 'border-border bg-muted/40 text-muted-foreground hover:bg-muted/60 border'
               )}
               onClick={() => reset({ ...watch(), kind: k })}
@@ -261,7 +265,7 @@ export function OperatingLineItemForm({
 
       <Field label="Label" required error={errors.label?.message}>
         <input
-          className="border-input bg-background text-foreground focus:border-primary focus:ring-primary/20 h-10 w-full rounded-lg border px-3 text-sm transition-colors focus:outline-none focus:ring-2"
+          className="border-input bg-card text-foreground field-focus h-10 w-full rounded-lg border px-3 text-sm transition-colors"
           placeholder="e.g. Monthly rent"
           {...register('label')}
         />
@@ -272,7 +276,7 @@ export function OperatingLineItemForm({
           type="number"
           step="0.01"
           min={0}
-          className="border-input bg-background text-foreground focus:border-primary focus:ring-primary/20 h-10 w-full rounded-lg border px-3 text-sm tabular-nums transition-colors focus:outline-none focus:ring-2"
+          className="border-input bg-card text-foreground field-focus h-10 w-full rounded-lg border px-3 text-sm tabular-nums transition-colors"
           placeholder="0.00"
           {...register('amount')}
         />
@@ -371,7 +375,7 @@ export function OperatingLineItemForm({
       <Field label="Notes" error={errors.notes?.message}>
         <textarea
           rows={7}
-          className="border-input bg-background text-foreground focus:border-primary focus:ring-primary/20 w-full rounded-lg border px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2"
+          className="border-input bg-card text-foreground field-focus w-full rounded-lg border px-3 py-2 text-sm transition-colors"
           placeholder="Optional notes…"
           {...register('notes')}
         />
@@ -411,7 +415,7 @@ export function OperatingLineItemForm({
                 type="number"
                 min={0}
                 max={90}
-                className="border-input bg-background text-foreground focus:border-primary focus:ring-primary/20 h-10 w-full rounded-lg border px-3 text-sm focus:outline-none focus:ring-2"
+                className="border-input bg-card text-foreground field-focus h-10 w-full rounded-lg border px-3 text-sm"
                 {...register('telegram_days_before', { valueAsNumber: true })}
               />
             </Field>
@@ -465,7 +469,7 @@ export function OperatingLineItemForm({
             <Field label="Message" error={errors.telegram_message_template?.message}>
               <textarea
                 rows={9}
-                className="border-input bg-background text-foreground focus:border-primary focus:ring-primary/20 w-full rounded-lg border px-3 py-2 font-mono text-xs focus:outline-none focus:ring-2"
+                className="border-input bg-card text-foreground field-focus w-full rounded-lg border px-3 py-2 font-mono text-xs"
                 {...register('telegram_message_template')}
               />
             </Field>

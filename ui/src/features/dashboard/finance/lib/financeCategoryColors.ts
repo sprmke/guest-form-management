@@ -1,31 +1,33 @@
 import { assignUniqueChartColors } from '@/lib/charts/chartPalette';
+import { CHART_EXPENSE_COLOR, CHART_INCOME_COLOR } from '@/lib/charts/chartStyles';
+import { STATUS_TONE_HEX } from '@/lib/status-tone-colors';
 
 /** Semantic category colors — may collide; charts run assignUniqueChartColors after. */
 const CATEGORY_COLOR_MAP: Record<string, string> = {
-  rent: '#10b981',
-  'base rate': '#10b981',
+  rent: CHART_INCOME_COLOR,
+  'base rate': CHART_INCOME_COLOR,
   amortization: '#6366f1',
-  utilities: '#f97316',
-  utility: '#f97316',
-  supplies: '#8b5cf6',
+  utilities: STATUS_TONE_HEX.orange,
+  utility: STATUS_TONE_HEX.orange,
+  supplies: STATUS_TONE_HEX.purple,
   maintenance: '#84cc16',
   marketing: '#ec4899',
   staff: '#06b6d4',
   commission: '#d946ef',
   cleaning: '#a855f7',
   'cleaning fee': '#a855f7',
-  parking: '#3b82f6',
-  'parking fee': '#3b82f6',
-  pet: '#f59e0b',
-  'pet fee': '#f59e0b',
-  'security deposit': '#14b8a6',
-  damage: '#ef4444',
-  'damage fee': '#ef4444',
+  parking: STATUS_TONE_HEX.blue,
+  'parking fee': STATUS_TONE_HEX.blue,
+  pet: STATUS_TONE_HEX.amber,
+  'pet fee': STATUS_TONE_HEX.amber,
+  'security deposit': STATUS_TONE_HEX.green,
+  damage: CHART_EXPENSE_COLOR,
+  'damage fee': CHART_EXPENSE_COLOR,
   refund: '#22c55e',
-  other: '#64748b',
-  'stay net': '#10b981',
-  'stay revenue': '#10b981',
-  income: '#10b981',
+  other: STATUS_TONE_HEX.neutral,
+  'stay net': CHART_INCOME_COLOR,
+  'stay revenue': CHART_INCOME_COLOR,
+  income: CHART_INCOME_COLOR,
 };
 
 function normalizeCategoryKey(category: string | null | undefined): string {
@@ -43,19 +45,19 @@ function getFinanceCategoryColor(category: string | null | undefined, index = 0)
   if (mapped) return mapped;
 
   const palette = [
-    '#10b981',
-    '#3b82f6',
-    '#8b5cf6',
-    '#f59e0b',
+    CHART_INCOME_COLOR,
+    STATUS_TONE_HEX.blue,
+    STATUS_TONE_HEX.purple,
+    STATUS_TONE_HEX.amber,
     '#06b6d4',
-    '#ef4444',
-    '#f97316',
+    CHART_EXPENSE_COLOR,
+    STATUS_TONE_HEX.orange,
     '#ec4899',
     '#6366f1',
-    '#14b8a6',
-    '#64748b',
+    STATUS_TONE_HEX.green,
+    STATUS_TONE_HEX.neutral,
   ];
-  return palette[index % palette.length] ?? '#64748b';
+  return palette[index % palette.length] ?? STATUS_TONE_HEX.neutral;
 }
 
 /** Ensure each breakdown slice in one chart gets a distinct color. */
