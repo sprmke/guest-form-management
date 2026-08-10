@@ -125,7 +125,7 @@ export function SlidingTabsList({
         {bounds ? (
           <SlidingActivePill
             bounds={bounds}
-            className={cn('bg-background rounded-md shadow', pillClassName)}
+            className={cn('bg-card rounded-md shadow', pillClassName)}
           />
         ) : null}
         {children}

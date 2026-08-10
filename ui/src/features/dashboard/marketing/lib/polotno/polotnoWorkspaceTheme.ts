@@ -21,7 +21,7 @@ export function polotnoWorkspaceChrome(isDark: boolean): PolotnoWorkspaceChrome 
   }
 
   return {
-    backgroundColor: 'hsl(220 14% 93%)',
+    backgroundColor: 'hsl(0 0% 100%)',
     pageBorderColor: 'hsl(220 13% 85%)',
     activePageBorderColor: 'hsl(168 65% 40%)',
     snapGuideStroke: 'hsl(168 65% 40%)',

@@ -32,9 +32,7 @@ const TabsList = React.forwardRef<
       )}
       {...props}
     >
-      {bounds ? (
-        <SlidingActivePill bounds={bounds} className="bg-background rounded-md shadow" />
-      ) : null}
+      {bounds ? <SlidingActivePill bounds={bounds} className="bg-card rounded-md shadow" /> : null}
       {children}
     </TabsPrimitive.List>
   );
