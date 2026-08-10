@@ -118,11 +118,7 @@ export type PropertySettingsCompletionResult = {
 function googleIntegrationReady(input: PropertySettingsCompletionInput): boolean {
   const integrations = input.appSettings?.propertyIntegrations;
   return (
-    input.gmailConnected &&
-    !input.gmailNeedsReconnect &&
-    Boolean(integrations?.googleCalendar.configured) &&
-    Boolean(integrations?.googleSpreadsheet.configured) &&
-    Boolean(integrations?.gmail.connected)
+    input.gmailConnected && !input.gmailNeedsReconnect && Boolean(integrations?.gmail.connected)
   );
 }
 
@@ -498,7 +494,7 @@ export function computePropertySettingsCompletion(
   if (!googleIntegrationReady(input)) {
     addSectionIssue(
       'integrations',
-      'Connect Google (Gmail, Calendar, and Spreadsheet) to automate bookings, calendar updates, and sheet sync.'
+      'Connect Google (Gmail) to automate GAF and pet approval intake.'
     );
   }
 

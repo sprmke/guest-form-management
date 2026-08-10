@@ -3,7 +3,8 @@
  *
  * View mode: header + tabbed read-only panels
  * (Overview / Guests / Parking? / Pets? / Pricing? / Files).
- * Edit mode: `BookingEditForm` (unchanged — Guest / Stay / Parking / Pets / Docs / Workflow).
+ * Edit mode: `BookingEditForm` — Guests / Stay / Parking / Pets / Files / Workflow
+ * (labels aligned with view tabs where domains overlap).
  *
  * Mobile: compact summary strip; Progress stays above the fold; detail panels collapse.
  *

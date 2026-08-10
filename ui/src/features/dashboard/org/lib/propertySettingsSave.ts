@@ -269,12 +269,7 @@ export function propertySettingsSectionDirty(
           ))
       );
     case 'workflow-documents':
-      return Boolean(
-        operationalDraft &&
-        operationalBaseline &&
-        (operationalDraft.syncCalendar !== operationalBaseline.syncCalendar ||
-          operationalDraft.syncSheets !== operationalBaseline.syncSheets)
-      );
+      return false;
     default:
       return false;
   }
@@ -499,20 +494,6 @@ function dirtyFieldIdsInSection(
       }
       break;
     case 'workflow-documents':
-      if (
-        operationalDraft &&
-        operationalBaseline &&
-        operationalDraft.syncCalendar !== operationalBaseline.syncCalendar
-      ) {
-        ids.push('sync-calendar');
-      }
-      if (
-        operationalDraft &&
-        operationalBaseline &&
-        operationalDraft.syncSheets !== operationalBaseline.syncSheets
-      ) {
-        ids.push('sync-sheets');
-      }
       break;
     default:
       break;
@@ -766,8 +747,6 @@ export type AppSettingsPatchBody = {
   externalReviews?: PropertyExternalReview[];
   superhostVerificationUrl?: string;
   superhostProofImageUrl?: string;
-  syncCalendar?: boolean;
-  syncSheets?: boolean;
 };
 
 export function buildAppSettingsPatchForSections(
@@ -806,10 +785,6 @@ export function buildAppSettingsPatchForSections(
     patch.sdRefundCronEmailLeadHours = draft.sdRefundCronEmailLeadHours;
     patch.sdRefundCronMaxCheckoutAgeDays = draft.sdRefundCronMaxCheckoutAgeDays;
     patch.automationToggles = draft.automationToggles;
-  }
-  if (sectionSet.has('workflow-documents')) {
-    patch.syncCalendar = draft.syncCalendar;
-    patch.syncSheets = draft.syncSheets;
   }
 
   return Object.keys(patch).length > 0 ? patch : null;
@@ -948,13 +923,6 @@ export function applySavedOperationalSections(
       sdRefundCronMaxCheckoutAgeDays: saved.sdRefundCronMaxCheckoutAgeDays,
       defaultParkingRateGuest: saved.defaultParkingRateGuest,
       automationToggles: saved.automationToggles,
-    };
-  }
-  if (sectionSet.has('workflow-documents')) {
-    next = {
-      ...next,
-      syncCalendar: saved.syncCalendar,
-      syncSheets: saved.syncSheets,
     };
   }
 

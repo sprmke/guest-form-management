@@ -151,13 +151,13 @@ export function PropertyOperationalSettingsSections({
         onAutomationToggleChange={onAutomationToggleChange}
       />
 
-      <PropertyWorkflowDocumentsSection draft={draft} disabled={disabled} onChange={onChange} />
+      <PropertyWorkflowDocumentsSection />
 
       <AdminSection
         id="integrations"
         title="Integrations"
         icon={Globe}
-        description="Gmail, Calendar, Sheets, and AI key status."
+        description="Gmail and AI key status."
       >
         {propertySettingsSectionBanner('integrations', sectionMessages) ? (
           <PropertySettingsSectionAlert
