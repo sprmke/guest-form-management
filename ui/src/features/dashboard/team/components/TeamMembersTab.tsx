@@ -144,7 +144,7 @@ export function TeamMembersTab({
             placeholder="Search members..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="h-10 pl-9"
+            className="h-10 pl-10"
             aria-label="Search team members"
           />
         </div>

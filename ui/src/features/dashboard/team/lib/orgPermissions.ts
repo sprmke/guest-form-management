@@ -35,7 +35,6 @@ export const ORG_NAV_VIEW_PERMISSION: Record<string, OrgPermissionId> = {
   Properties: 'org:properties:view',
   Parkings: 'org:parkings:view',
   Team: 'org:team:view',
-  Inbox: 'org:inbox:view',
   Settings: 'org:settings:view',
 };
 
@@ -46,7 +45,6 @@ export const ORG_SECTION_VIEW_PERMISSION = {
   properties: 'org:properties:view',
   parkings: 'org:parkings:view',
   team: 'org:team:view',
-  inbox: 'org:inbox:view',
   settings: 'org:settings:view',
 } as const satisfies Record<string, OrgPermissionId>;
 
@@ -64,8 +62,6 @@ export function orgSectionPath(orgSlug: string, section: OrgSection): string {
       return `/org/${orgSlug}/parkings`;
     case 'team':
       return `/org/${orgSlug}/team`;
-    case 'inbox':
-      return `/org/${orgSlug}/inbox`;
     case 'settings':
       return `/org/${orgSlug}/settings`;
   }

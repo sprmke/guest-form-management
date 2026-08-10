@@ -1,8 +1,10 @@
 import { Check, CircleOff } from 'lucide-react';
 
 import type { TeamMemberStatus } from '@/features/dashboard/team/types/propertyTeam';
+import { semanticBadgeClasses } from '@/lib/status-tone-colors';
 
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 type Props = {
   status: TeamMemberStatus;
@@ -13,7 +15,7 @@ export function TeamMemberStatusBadge({ status }: Props) {
     return (
       <Badge
         variant="outline"
-        className="border-green-600 text-green-600 dark:border-green-500 dark:text-green-400"
+        className={cn('border-transparent', semanticBadgeClasses('success'))}
       >
         <Check className="mr-1 size-3" aria-hidden />
         Active
@@ -23,7 +25,10 @@ export function TeamMemberStatusBadge({ status }: Props) {
 
   if (status === 'inactive') {
     return (
-      <Badge variant="outline" className="border-muted-foreground/40 text-muted-foreground">
+      <Badge
+        variant="outline"
+        className={cn('border-transparent', semanticBadgeClasses('neutral'))}
+      >
         <CircleOff className="mr-1 size-3" aria-hidden />
         Disabled
       </Badge>

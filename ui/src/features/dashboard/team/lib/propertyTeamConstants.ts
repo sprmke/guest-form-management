@@ -183,7 +183,7 @@ export const TEAM_PERMISSIONS: TeamPermission[] = [
   {
     id: 'inbox:manage',
     name: 'Manage Inbox',
-    description: 'Connect or disconnect Meta channels',
+    description: 'Connect channels, quick replies, and automation',
     category: 'Inbox',
     icon: Inbox,
   },

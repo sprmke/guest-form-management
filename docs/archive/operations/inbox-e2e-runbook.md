@@ -14,7 +14,7 @@ UI-only work can use mock mode (`VITE_INBOX_MOCK_DATA=true` or `?mock=true`). E2
 ## Prerequisites
 
 1. Migration **`20260910120000_social_inbox.sql`** applied (`supabase db reset` or push on staging).
-2. Signed-in user is org **Owner** or has **`org:inbox:view`**, **`org:inbox:reply`**, **`org:inbox:manage`**.
+2. Signed-in user has property **`inbox:view`**, **`inbox:reply`**, **`inbox:manage`** (org Owner/Admin inherit via property access).
 3. Edge secrets in **`supabase/.env.local`** (see **`supabase/.env.example`** → Guest Inbox section):
    - `META_APP_ID`, `META_APP_SECRET`
    - `META_INBOX_TOKEN_ENCRYPTION_KEY` (`openssl rand -hex 32`)
@@ -76,18 +76,18 @@ No tunnel needed; ensure secrets are set in Supabase Dashboard → Edge Function
 
 ## E2E test flow
 
-| Step | Action                                      | Expected                                                                                       |
-| ---- | ------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| 1    | Open `/org/:orgSlug/inbox` (no mock banner) | Empty list shows **Connect Meta** or thread list                                               |
-| 2    | **Channels** → **Connect**                  | Meta OAuth; single Page connects immediately; multiple Pages → **Choose Facebook Page** dialog |
-| 3    | Channels tab                                | Facebook + Instagram rows **connected** (webhook warning if subscribe failed)                  |
-| 4    | Send a Messenger or IG DM to the Page       | Webhook ingests; thread appears in list via Realtime                                           |
-| 5    | Open thread, reply in composer              | Message sends; appears outbound; guest receives on platform                                    |
-| 6    | **Suggest** (✨)                            | AI draft fills composer (needs Gemini/Groq)                                                    |
-| 7    | **Quick replies** modal                     | Create template; insert from composer                                                          |
-| 8    | **Automation**                              | Save instructions; optional **Send automatically** + platform toggles                          |
-| 9    | Mark read                                   | Opening thread clears unread badge                                                             |
-| 10   | **Disconnect** (Channels)                   | Tokens removed; threads stop updating                                                          |
+| Step | Action                                                             | Expected                                                                                       |
+| ---- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| 1    | Open `/org/:orgSlug/property/:propertySlug/inbox` (no mock banner) | Empty list shows **Connect Meta** or thread list                                               |
+| 2    | **Channels** → **Connect**                                         | Meta OAuth; single Page connects immediately; multiple Pages → **Choose Facebook Page** dialog |
+| 3    | Channels tab                                                       | Facebook + Instagram rows **connected** (webhook warning if subscribe failed)                  |
+| 4    | Send a Messenger or IG DM to the Page                              | Webhook ingests; thread appears in list via Realtime                                           |
+| 5    | Open thread, reply in composer                                     | Message sends; appears outbound; guest receives on platform                                    |
+| 6    | **Suggest** (✨)                                                   | AI draft fills composer (needs Gemini/Groq)                                                    |
+| 7    | **Quick replies** modal                                            | Create template; insert from composer                                                          |
+| 8    | **Automation**                                                     | Save instructions; optional **Send automatically** + platform toggles                          |
+| 9    | Mark read                                                          | Opening thread clears unread badge                                                             |
+| 10   | **Disconnect** (Channels)                                          | Tokens removed; threads stop updating                                                          |
 
 ### Comment threads (Phase 2)
 
@@ -122,5 +122,5 @@ No tunnel needed; ensure secrets are set in Supabase Dashboard → Edge Function
 ## Related
 
 - Route guide: **[[guides/routes/org/inbox]]**
-- Permissions: **`org:inbox:*`** in **`orgTeamPermissions.ts`**
+- Permissions: **`inbox:*`** in **`propertyTeamPermissions.ts`** / parking equivalents
 - Rule: **`.cursor/rules/social-inbox.mdc`**
