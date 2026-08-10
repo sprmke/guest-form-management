@@ -474,8 +474,9 @@ export function BookingsCalendarSkeleton({
   compact?: boolean;
 } = {}) {
   const cellClass = compact
-    ? 'aspect-square rounded-lg sm:min-h-[72px] sm:aspect-auto'
-    : 'aspect-square rounded-lg sm:min-h-[88px] sm:aspect-auto';
+    ? 'min-h-8 w-full rounded-md'
+    : 'aspect-square w-full rounded-lg sm:min-h-[88px] sm:aspect-auto';
+  const gridPad = compact ? 'gap-0.5 px-1.5 pb-1.5 pt-1 sm:px-2' : 'gap-1 px-2 pb-3 pt-3 sm:px-3';
 
   const grid = (
     <div
@@ -485,22 +486,22 @@ export function BookingsCalendarSkeleton({
           : 'border-border/50 bg-card overflow-hidden rounded-xl border shadow-sm lg:col-span-2 dark:shadow-none'
       }
     >
-      <div className="border-separator bg-muted/30 flex items-center justify-between border-b px-3 py-3 sm:px-4">
-        <Skeleton className="h-4 w-28" />
-        <div className="flex gap-1">
-          <Skeleton className="size-9 rounded-lg" />
-          <Skeleton className="h-9 w-14 rounded-lg" />
-          <Skeleton className="size-9 rounded-lg" />
+      {!gridOnly || !compact ? (
+        <div className="border-separator bg-muted/30 flex items-center justify-between border-b px-3 py-3 sm:px-4">
+          <Skeleton className="h-4 w-28" />
+          <div className="flex gap-1">
+            <Skeleton className="size-9 rounded-lg" />
+            <Skeleton className="h-9 w-14 rounded-lg" />
+            <Skeleton className="size-9 rounded-lg" />
+          </div>
         </div>
-      </div>
-      <div className="grid grid-cols-7 gap-1 px-2 pb-1 pt-3 sm:px-3">
+      ) : null}
+      <div className={cn('grid grid-cols-7', gridPad)}>
         {Array.from({ length: 7 }).map((_, i) => (
-          <Skeleton key={i} className="mx-auto h-3 w-6 rounded-full" />
+          <Skeleton key={`dow-${i}`} className="mx-auto h-3 w-6 rounded-full" />
         ))}
-      </div>
-      <div className="grid grid-cols-7 gap-1 px-2 pb-3 sm:px-3">
         {Array.from({ length: 35 }).map((_, i) => (
-          <Skeleton key={i} className={cellClass} />
+          <Skeleton key={`day-${i}`} className={cellClass} />
         ))}
       </div>
     </div>
@@ -536,21 +537,34 @@ export function BookingsCalendarSkeleton({
   );
 }
 
-function DashboardChartCardHeaderSkeleton({ showAction = false }: { showAction?: boolean }) {
+type DashboardCardHeaderAction = 'toggle' | 'view' | 'badge' | 'segment';
+
+function DashboardChartCardHeaderSkeleton({
+  action,
+  titleWidthClass = 'w-28',
+  descriptionWidthClass = 'w-40',
+}: {
+  action?: DashboardCardHeaderAction;
+  titleWidthClass?: string;
+  descriptionWidthClass?: string;
+}) {
   return (
     <div className="mb-2.5 flex flex-col gap-2 sm:mb-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
       <div className="flex min-w-0 items-center gap-2.5">
-        <Skeleton className="icon-well-sm size-8 shrink-0 rounded-lg lg:size-10 lg:rounded-xl" />
+        <Skeleton className="icon-well-sm !size-8 shrink-0 !rounded-lg lg:!size-10 lg:!rounded-xl" />
         <div className="min-w-0 space-y-1">
-          <Skeleton className="h-4 w-28 lg:h-5 lg:w-32" />
-          <Skeleton className="hidden h-3.5 w-40 max-w-full lg:block" />
+          <Skeleton className={cn('h-4 lg:h-5', titleWidthClass)} />
+          <Skeleton className={cn('hidden h-3 max-w-full lg:block', descriptionWidthClass)} />
         </div>
       </div>
-      {showAction ? (
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <Skeleton className="h-9 w-[7.5rem] rounded-lg" />
-          <Skeleton className="h-9 w-28 rounded-lg" />
-        </div>
+      {action === 'toggle' ? (
+        <Skeleton className="h-9 w-[7.25rem] shrink-0 rounded-lg" />
+      ) : action === 'view' ? (
+        <Skeleton className="h-9 w-14 shrink-0 rounded-lg" />
+      ) : action === 'badge' ? (
+        <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
+      ) : action === 'segment' ? (
+        <Skeleton className="h-9 w-36 shrink-0 rounded-lg" />
       ) : null}
     </div>
   );
@@ -560,73 +574,188 @@ function DashboardTrendStatCardSkeleton() {
   return <AdminMetricCardSkeleton showTrend />;
 }
 
+function DashboardListRowSkeleton({ tall = false }: { tall?: boolean }) {
+  return <Skeleton className={cn('w-full rounded-xl', tall ? 'h-14' : 'h-12')} />;
+}
+
 export function DashboardSkeleton() {
   return (
-    <div className="space-y-3 sm:space-y-4" aria-busy="true" aria-label="Loading dashboard">
+    <div
+      className="native-stagger flex min-w-0 flex-col gap-2.5 sm:gap-3 lg:gap-4"
+      aria-busy="true"
+      aria-label="Loading dashboard"
+    >
       <section aria-hidden>
-        <Skeleton className="section-eyebrow mb-3 h-3 w-28 px-0.5" />
-        <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4 lg:gap-4">
+        <Skeleton className="section-eyebrow mb-2 hidden h-3 w-28 px-0.5 sm:mb-3 lg:block" />
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4 lg:gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <DashboardTrendStatCardSkeleton key={`trend-${i}`} />
           ))}
         </div>
       </section>
 
-      <div className="min-w-0 space-y-3 sm:space-y-4">
-        <div className="grid min-w-0 items-stretch gap-3 lg:grid-cols-5 xl:gap-4">
-          <section className="surface-card flex min-w-0 flex-col p-3 sm:p-4 lg:col-span-3">
-            <DashboardChartCardHeaderSkeleton />
-            <div className="flex min-h-0 flex-1 flex-col">
-              <Skeleton className="h-[180px] w-full min-w-0 rounded-xl sm:h-[240px] lg:h-[300px]" />
-              <div className="mt-4 flex justify-center gap-6">
-                <Skeleton className="h-4 w-16" />
-                <Skeleton className="h-4 w-20" />
-              </div>
-            </div>
-          </section>
+      <div className="grid min-w-0 items-stretch gap-2.5 sm:gap-3 lg:grid-cols-2 lg:gap-4">
+        {/* Calendar | Needs attention */}
+        <section className="surface-card flex h-full min-w-0 flex-col overflow-hidden p-3 sm:p-4">
+          <DashboardChartCardHeaderSkeleton
+            action="toggle"
+            titleWidthClass="w-24"
+            descriptionWidthClass="w-52"
+          />
+          <div className="grid grid-cols-7 gap-0.5 px-0.5 pb-1 pt-1">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <Skeleton key={`dow-${i}`} className="mx-auto h-3 w-6 rounded-full" />
+            ))}
+            {Array.from({ length: 35 }).map((_, i) => (
+              <Skeleton key={`day-${i}`} className="min-h-8 w-full rounded-md" />
+            ))}
+          </div>
+        </section>
 
-          <section className="surface-card flex min-w-0 flex-col p-3 sm:p-4 lg:col-span-2">
-            <DashboardChartCardHeaderSkeleton showAction />
-            <div className="flex min-h-0 flex-1 flex-col">
-              <div className="flex min-h-0 flex-1 items-center justify-center px-2 pb-10">
-                <Skeleton className="size-40 shrink-0 rounded-full sm:size-48" />
+        <section className="surface-card flex h-full min-w-0 flex-col overflow-hidden p-3 sm:p-4">
+          <DashboardChartCardHeaderSkeleton
+            action="badge"
+            titleWidthClass="w-32"
+            descriptionWidthClass="w-44"
+          />
+          <div className="border-border/50 mb-3 flex flex-wrap gap-2">
+            <Skeleton className="h-7 w-20 rounded-full" />
+          </div>
+          <div className="border-border/50 overflow-hidden rounded-xl border">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div
+                key={`attn-${i}`}
+                className={cn('px-3 py-2.5', i > 0 && 'border-border/50 border-t')}
+              >
+                <Skeleton className="h-4 w-full" style={{ opacity: 1 - i * 0.1 }} />
               </div>
-              <div className="border-border/50 shrink-0 border-t pt-2">
-                <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <Skeleton key={`breakdown-legend-${i}`} className="h-4 w-full" />
-                  ))}
-                </div>
-              </div>
-            </div>
-          </section>
+            ))}
+          </div>
+        </section>
 
-          <section className="surface-card flex min-w-0 flex-col overflow-hidden p-3 sm:p-4 lg:col-span-3 lg:col-start-1 lg:row-start-2">
-            <DashboardChartCardHeaderSkeleton showAction />
-            <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
-              {Array.from({ length: 7 }).map((_, i) => (
-                <Skeleton key={`dow-${i}`} className="mx-auto h-3 w-6" />
-              ))}
-              {Array.from({ length: 35 }).map((_, i) => (
-                <Skeleton key={`day-${i}`} className="aspect-square w-full rounded-lg" />
-              ))}
-            </div>
-          </section>
+        {/* Cash flow | Breakdown */}
+        <section className="surface-card flex h-full min-w-0 flex-col p-3 sm:p-4">
+          <DashboardChartCardHeaderSkeleton
+            action="view"
+            titleWidthClass="w-24"
+            descriptionWidthClass="w-48"
+          />
+          <Skeleton className="h-[180px] w-full min-w-0 rounded-xl sm:h-[220px]" />
+        </section>
 
-          <section className="surface-card flex min-h-[280px] min-w-0 flex-col overflow-hidden p-3 sm:min-h-[320px] sm:p-4 lg:col-span-2 lg:col-start-4 lg:row-start-2">
-            <DashboardChartCardHeaderSkeleton showAction />
-            <div className="mb-3 flex flex-wrap gap-2">
-              <Skeleton className="h-7 w-16 rounded-full" />
-              <Skeleton className="h-7 w-24 rounded-full" />
-            </div>
-            <div className="min-h-0 flex-1 space-y-2">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={`txn-${i}`} className="h-[72px] rounded-xl" />
-              ))}
-            </div>
-          </section>
-        </div>
+        <section className="surface-card flex h-full min-w-0 flex-col p-3 sm:p-4">
+          <DashboardChartCardHeaderSkeleton action="segment" titleWidthClass="w-28" />
+          <div className="flex min-h-[180px] flex-1 items-center justify-center px-2 sm:min-h-[220px]">
+            <Skeleton className="size-36 shrink-0 rounded-full sm:size-44" />
+          </div>
+        </section>
+
+        {/* Maintenance | Transactions */}
+        <section className="surface-card flex h-full min-w-0 flex-col overflow-hidden p-3 sm:p-4">
+          <DashboardChartCardHeaderSkeleton
+            action="view"
+            titleWidthClass="w-28"
+            descriptionWidthClass="w-36"
+          />
+          <div className="mb-3 flex flex-wrap gap-2">
+            <Skeleton className="h-7 w-20 rounded-full" />
+            <Skeleton className="h-7 w-16 rounded-full" />
+          </div>
+          <div className="flex min-h-0 flex-1 flex-col space-y-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <DashboardListRowSkeleton key={`maint-${i}`} tall />
+            ))}
+          </div>
+        </section>
+
+        <section className="surface-card flex h-full min-w-0 flex-col overflow-hidden p-3 sm:p-4">
+          <DashboardChartCardHeaderSkeleton
+            action="view"
+            titleWidthClass="w-28"
+            descriptionWidthClass="w-40"
+          />
+          <div className="mb-3 flex flex-wrap gap-2">
+            <Skeleton className="h-7 w-16 rounded-full" />
+            <Skeleton className="h-7 w-24 rounded-full" />
+          </div>
+          <div className="flex min-h-0 flex-1 flex-col space-y-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <DashboardListRowSkeleton key={`txn-${i}`} tall />
+            ))}
+          </div>
+        </section>
       </div>
+    </div>
+  );
+}
+
+/** Org dashboard — KPI strip + 2×2 board + listings list. */
+export function OrgDashboardSkeleton() {
+  return (
+    <div
+      className="native-stagger flex min-w-0 flex-col gap-2.5 sm:gap-3 lg:gap-4"
+      aria-busy="true"
+      aria-label="Loading organization dashboard"
+    >
+      <section aria-hidden>
+        <Skeleton className="section-eyebrow mb-2 hidden h-3 w-28 px-0.5 sm:mb-3 lg:block" />
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4 lg:gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <DashboardTrendStatCardSkeleton key={`org-trend-${i}`} />
+          ))}
+        </div>
+      </section>
+
+      <div className="grid min-w-0 items-stretch gap-2.5 sm:gap-3 lg:grid-cols-2 lg:gap-4">
+        <section className="surface-card flex h-full min-w-0 flex-col p-3 sm:p-4">
+          <DashboardChartCardHeaderSkeleton action="segment" titleWidthClass="w-32" />
+          <Skeleton className="h-[180px] w-full min-w-0 rounded-xl sm:h-[220px]" />
+        </section>
+
+        <section className="surface-card flex h-full min-w-0 flex-col p-3 sm:p-4">
+          <DashboardChartCardHeaderSkeleton titleWidthClass="w-28" />
+          <div className="flex min-h-[220px] flex-1 items-center justify-center sm:min-h-[260px]">
+            <Skeleton className="size-40 shrink-0 rounded-full sm:size-48" />
+          </div>
+        </section>
+
+        <section className="surface-card flex h-full min-w-0 flex-col overflow-hidden p-3 sm:p-4">
+          <DashboardChartCardHeaderSkeleton action="view" titleWidthClass="w-32" />
+          <div className="border-border/50 overflow-hidden rounded-xl border">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div
+                key={`org-recent-${i}`}
+                className={cn('px-3 py-2.5', i > 0 && 'border-border/50 border-t')}
+              >
+                <Skeleton className="h-3.5 w-full" style={{ opacity: 1 - i * 0.1 }} />
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="surface-card flex h-full min-w-0 flex-col overflow-hidden p-3 sm:p-4">
+          <DashboardChartCardHeaderSkeleton action="view" titleWidthClass="w-28" />
+          <div className="border-border/50 overflow-hidden rounded-xl border">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div
+                key={`org-pending-${i}`}
+                className={cn('px-3 py-2.5', i > 0 && 'border-border/50 border-t')}
+              >
+                <Skeleton className="h-4 w-full" style={{ opacity: 1 - i * 0.1 }} />
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+
+      <section className="surface-card min-w-0 overflow-hidden p-3 sm:p-4">
+        <DashboardChartCardHeaderSkeleton action="segment" titleWidthClass="w-40" />
+        <div className="space-y-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <DashboardListRowSkeleton key={`org-listing-${i}`} tall />
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

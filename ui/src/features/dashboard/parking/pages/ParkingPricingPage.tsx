@@ -265,7 +265,7 @@ export function ParkingPricingPage() {
     return (
       <AdminMobilePage
         title="Pricing"
-        subtitle="Nightly rates for this parking slot."
+        subtitle="Manage pricing and availability."
         titleId="parking-pricing-heading"
       >
         <div className="flex min-h-[40vh] items-center justify-center">
@@ -279,7 +279,7 @@ export function ParkingPricingPage() {
     return (
       <AdminMobilePage
         title="Pricing"
-        subtitle="Nightly rates for this parking slot."
+        subtitle="Manage pricing and availability."
         titleId="parking-pricing-heading"
       >
         <FloatingPanel
@@ -296,7 +296,7 @@ export function ParkingPricingPage() {
     <>
       <AdminMobilePage
         title="Pricing"
-        subtitle="Nightly rates for this parking slot."
+        subtitle="Manage pricing and availability."
         titleId="parking-pricing-heading"
       >
         <ParkingPricingStatsRow

@@ -13,7 +13,7 @@ import {
   startOfToday,
   getDay,
 } from 'date-fns';
-import { Ban, ChevronLeft, ChevronRight, PenLine, Sparkles } from 'lucide-react';
+import { Ban, CalendarDays, ChevronLeft, ChevronRight, PenLine, Sparkles } from 'lucide-react';
 
 import {
   buildCalendarWeekRows,
@@ -31,6 +31,7 @@ import type { PropertyPricingCalendarBooking } from '@/features/dashboard/pricin
 
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { AdminSurfaceCardHeader } from '@/components/shared/AdminSurfaceCardHeader';
 import { cn } from '@/lib/utils';
 import { formatMoneyCompact } from '@/utils/format/currency';
 
@@ -119,40 +120,43 @@ export function PricingCalendarGrid({
 
   return (
     <section className="surface-card min-w-0 p-4 sm:p-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-foreground text-base font-semibold tracking-tight sm:text-lg">
-          Nightly rates
-        </h2>
-        <div className="flex items-center gap-1 self-end sm:self-auto">
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="size-10 shrink-0"
-            aria-label="Previous month"
-            onClick={() => onMonthChange(subMonths(currentMonth, 1))}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="min-w-[9.5rem] text-center text-sm font-semibold tabular-nums sm:text-base">
-            {format(currentMonth, 'MMMM yyyy')}
-          </span>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="size-10 shrink-0"
-            aria-label="Next month"
-            onClick={() => onMonthChange(addMonths(currentMonth, 1))}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+      <AdminSurfaceCardHeader
+        icon={CalendarDays}
+        title="Rates & availability"
+        description="Manage pricing and availability"
+        iconClassName="bg-muted/80"
+        action={
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="size-10 shrink-0"
+              aria-label="Previous month"
+              onClick={() => onMonthChange(subMonths(currentMonth, 1))}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="min-w-[9.5rem] text-center text-sm font-semibold tabular-nums sm:text-base">
+              {format(currentMonth, 'MMMM yyyy')}
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="size-10 shrink-0"
+              aria-label="Next month"
+              onClick={() => onMonthChange(addMonths(currentMonth, 1))}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        }
+      />
 
       <TooltipProvider delayDuration={200}>
         <div
-          className="mt-4 select-none"
+          className="select-none"
           onMouseUp={onSelectionEnd}
           onMouseLeave={onSelectionEnd}
           onTouchEnd={onSelectionEnd}
@@ -293,17 +297,14 @@ function PricingDayCell({
           type="button"
           className={cn(
             'border-border bg-card relative flex aspect-square min-h-[4.5rem] min-w-0 flex-col rounded-lg border p-1.5 text-left transition-colors sm:p-2',
-            isBooked &&
-              'bg-primary/[0.06] border-primary/25 hover:border-primary/50 cursor-pointer hover:shadow-sm',
             isPast && !isBooked && 'cursor-not-allowed opacity-45',
-            !isLocked &&
-              isBlocked &&
-              'bg-muted border-muted-foreground/20 hover:border-primary/50 cursor-pointer hover:shadow-sm',
-            !isLocked && !isBlocked && 'hover:border-primary/50 cursor-pointer hover:shadow-sm',
+            !isLocked && isBlocked && 'bg-muted border-muted-foreground/20',
+            (isBooked || (!isLocked && !isBlocked)) &&
+              'hover:border-primary/50 cursor-pointer hover:shadow-sm',
             isSelected &&
               !isLocked &&
               'border-primary bg-primary/10 ring-primary/30 opacity-100 ring-2',
-            isToday(day) && !isSelected && !isLocked && 'ring-primary/60 ring-1'
+            isToday(day) && !isSelected && !isPast && 'ring-primary/60 ring-1'
           )}
           onMouseDown={() => {
             if (!isBooked) onDateMouseDown(day);
@@ -329,27 +330,20 @@ function PricingDayCell({
           <span
             className={cn(
               'text-sm font-semibold leading-none',
-              isBooked && 'text-primary',
-              !isBooked && isBlocked && 'text-muted-foreground',
-              !isBooked && !isBlocked && isToday(day) && 'text-primary',
-              !isBooked && !isBlocked && !isToday(day) && 'text-foreground'
+              isBlocked && 'text-muted-foreground',
+              !isBlocked && isToday(day) && 'text-primary',
+              !isBlocked && !isToday(day) && 'text-foreground'
             )}
           >
             {format(day, 'd')}
           </span>
 
-          <div
-            className={cn(
-              'mt-auto flex w-full items-center justify-center rounded-md px-0.5 py-1',
-              isBooked ? 'bg-primary/15' : 'bg-muted/70 dark:bg-muted/50'
-            )}
-          >
+          <div className="bg-muted/70 dark:bg-muted/50 mt-auto flex w-full items-center justify-center rounded-md px-0.5 py-1">
             <span
               className={cn(
                 'w-full truncate text-center text-[11px] font-semibold tabular-nums leading-none sm:text-xs',
-                isBooked && 'text-primary',
-                !isBooked && (isPast || isBlocked) && 'text-muted-foreground',
-                !isBooked && !isPast && !isBlocked && 'text-foreground'
+                (isPast || isBlocked) && 'text-muted-foreground',
+                !isPast && !isBlocked && 'text-foreground'
               )}
             >
               {formatMoneyCompact(price)}

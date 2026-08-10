@@ -40,7 +40,7 @@ export function AdminMobileFilterButton({
         'native-press min-h-[48px] min-w-[48px]',
         active
           ? 'border-primary/30 bg-primary/10 text-primary'
-          : 'bg-muted/40 text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+          : 'bg-card text-muted-foreground hover:bg-muted/60 hover:text-foreground border-border',
         className
       )}
     >

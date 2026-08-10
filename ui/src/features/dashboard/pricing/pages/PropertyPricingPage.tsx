@@ -492,7 +492,7 @@ export function PropertyPricingPage() {
     <>
       <AdminMobilePage
         title="Calendar"
-        subtitle="Set rates and see booked stays."
+        subtitle="Manage pricing and availability."
         titleId="calendar-heading"
       >
         <PricingStatsRow
