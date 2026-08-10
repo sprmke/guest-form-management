@@ -92,7 +92,7 @@ const DialogContent = React.forwardRef<
           clearDialogBodyPointerEventsLock();
         }}
         className={cn(
-          'border-border/50 bg-background shadow-elevated-lg fixed left-1/2 top-1/2 z-[101] grid max-h-[min(90dvh,640px)] w-full max-w-[min(calc(100vw-1.5rem),28rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-xl border p-4 pb-[max(env(safe-area-inset-bottom,0px),1rem)] pt-[max(env(safe-area-inset-top,0px),0.75rem)] outline-none duration-200',
+          'border-border/50 bg-card shadow-elevated-lg fixed left-1/2 top-1/2 z-[101] grid max-h-[min(90dvh,640px)] w-full max-w-[min(calc(100vw-1.5rem),28rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-xl border p-4 pb-[max(env(safe-area-inset-bottom,0px),1rem)] pt-[max(env(safe-area-inset-top,0px),0.75rem)] outline-none duration-200',
           'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
           'sm:max-w-[min(90vw,28rem)] sm:p-6',
           className

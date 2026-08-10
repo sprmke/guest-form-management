@@ -114,8 +114,7 @@ const IsoDateInput = React.forwardRef<HTMLButtonElement, IsoDateInputProps>(
             aria-expanded={open}
             onBlur={onBlur}
             className={cn(
-              'border-input bg-background relative flex h-10 w-full items-center rounded-lg border pl-3 pr-10 text-left text-sm transition-colors',
-              'focus-visible:border-primary focus-visible:ring-primary/20 focus-visible:outline-none focus-visible:ring-2',
+              'border-input bg-card field-focus relative flex h-10 w-full items-center rounded-lg border pl-3 pr-10 text-left text-sm transition-colors',
               'disabled:cursor-not-allowed disabled:opacity-50',
               display ? 'text-foreground' : 'text-muted-foreground',
               wrapperClassName,

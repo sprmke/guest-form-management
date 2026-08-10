@@ -1,15 +1,14 @@
 /**
- * Resolve Guest Inbox access for org, property, or parking scope.
+ * Resolve Guest Inbox access for property or parking scope.
+ * Org-level Inbox UI was removed — callers must pass property_id or parking_id.
  */
 
 import { verifyParkingTeamAccess, verifyPropertyAccess, type OrgRow } from './orgAuth.ts';
-import type { OrgPermissionId } from './orgTeamPermissions.ts';
 import type { ParkingTeamPermissionId } from './parkingTeamPermissions.ts';
 import type { TeamPermissionId } from './propertyTeamPermissions.ts';
-import { resolveOrgAccessContext } from './propertyScope.ts';
 import type { InboxScopeFilter } from './socialInboxTypes.ts';
 
-export type InboxAccessKind = 'org' | 'property' | 'parking';
+export type InboxAccessKind = 'property' | 'parking';
 
 export type InboxAccessContext = {
   kind: InboxAccessKind;
@@ -18,12 +17,6 @@ export type InboxAccessContext = {
   propertyId: string | null;
   parkingId: string | null;
   scope: InboxScopeFilter;
-};
-
-const ORG_PERM: Record<'view' | 'reply' | 'manage', OrgPermissionId> = {
-  view: 'org:inbox:view',
-  reply: 'org:inbox:reply',
-  manage: 'org:inbox:manage',
 };
 
 const SCOPE_PERM: Record<'view' | 'reply' | 'manage', TeamPermissionId & ParkingTeamPermissionId> =
@@ -107,13 +100,11 @@ export async function resolveInboxAccess(
     };
   }
 
-  const orgCtx = await resolveOrgAccessContext(req, ORG_PERM[capability]);
-  return {
-    kind: 'org',
-    org: orgCtx.org,
-    orgId: orgCtx.org.id,
-    propertyId: null,
-    parkingId: null,
-    scope: {},
-  };
+  throw new Response(
+    JSON.stringify({
+      success: false,
+      error: 'property_id or parking_id is required',
+    }),
+    { status: 400, headers: { 'Content-Type': 'application/json' } }
+  );
 }

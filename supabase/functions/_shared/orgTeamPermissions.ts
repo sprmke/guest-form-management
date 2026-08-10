@@ -25,9 +25,6 @@ export const ORG_PERMISSION_IDS = [
   'org:team:view',
   'org:team:invite',
   'org:team:manage',
-  'org:inbox:view',
-  'org:inbox:reply',
-  'org:inbox:manage',
   'org:import:manage',
 ] as const;
 
@@ -48,8 +45,6 @@ export const ORG_ROLE_PERMISSIONS: Record<BuiltinOrgRole, OrgPermissionId[]> = {
     'org:team:view',
     'org:team:invite',
     'org:team:manage',
-    'org:inbox:view',
-    'org:inbox:reply',
     'org:import:manage',
   ],
 };

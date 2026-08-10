@@ -13,6 +13,7 @@ import {
   persistMetaPageConnection,
   type MetaPageAccount,
 } from './metaInboxGraph.ts';
+import { getOrgDefaultFacebookConnection } from './metaInboxScope.ts';
 import { ensureSocialInboxSettings, socialInboxDb } from './socialInboxService.ts';
 import { seedDefaultInboxQuickRepliesIfEmpty } from './inboxDefaultQuickReplies.ts';
 
@@ -66,8 +67,18 @@ export async function connectMetaInboxPage(
 
   await ensureSocialInboxSettings(orgId);
 
+  // First Meta connect from a property becomes the org default (no org Inbox UI).
+  let writePropertyId = propertyId;
+  let writeParkingId = parkingId;
   if (propertyId) {
-    await preparePropertyMetaInboxConnect(orgId, propertyId);
+    const orgDefault = await getOrgDefaultFacebookConnection(orgId);
+    if (!orgDefault || orgDefault.status !== 'connected') {
+      writePropertyId = null;
+      writeParkingId = null;
+      await prepareOrgMetaInboxConnect(orgId);
+    } else {
+      await preparePropertyMetaInboxConnect(orgId, propertyId);
+    }
   } else if (parkingId) {
     await prepareParkingMetaInboxConnect(orgId, parkingId);
   } else {
@@ -75,12 +86,12 @@ export async function connectMetaInboxPage(
   }
 
   const { facebook } = await persistMetaPageConnection(orgId, page, {
-    propertyId,
-    parkingId,
+    propertyId: writePropertyId,
+    parkingId: writeParkingId,
   });
   await resetBackfillForFacebookRow(facebook.id);
 
-  if (!propertyId && !parkingId) {
+  if (!writePropertyId && !writeParkingId) {
     await seedDefaultInboxQuickRepliesIfEmpty(orgId);
   }
 }

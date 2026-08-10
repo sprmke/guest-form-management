@@ -71,9 +71,7 @@ export async function maybeNotifyGuestOfHostWebReply(opts: {
     .maybeSingle();
 
   const appOrigin = resolvePublicGuestAppOrigin(null);
-  const messagesUrl = propertySlug
-    ? `${appOrigin}/account/messages`
-    : `${appOrigin}/account/messages`;
+  const messagesUrl = `${appOrigin}/account/stays`;
 
   const resendKey = Deno.env.get('RESEND_API_KEY')?.trim();
   const fromEmail = Deno.env.get('RESEND_FROM_EMAIL')?.trim();

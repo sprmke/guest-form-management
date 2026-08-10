@@ -1,18 +1,16 @@
 import type { ReactNode } from 'react';
 
-import { Route } from 'react-router-dom';
+import { Navigate, Route, useParams } from 'react-router-dom';
 
-import { OrgInboxPage } from '@/features/dashboard/inbox/pages/OrgInboxPage';
 import { ParkingInboxPage } from '@/features/dashboard/inbox/pages/ParkingInboxPage';
 import { PropertyInboxPage } from '@/features/dashboard/inbox/pages/PropertyInboxPage';
-import type {
-  OrgRouteFn,
-  ParkingRouteFn,
-  PropertyRouteFn,
-} from '@/features/dashboard/org/routes/guards';
+import { orgPropertiesPath } from '@/features/dashboard/org/lib/tenantPaths';
+import type { ParkingRouteFn, PropertyRouteFn } from '@/features/dashboard/org/routes/guards';
 
-export function orgInboxRoute(orgRoute: OrgRouteFn): ReactNode {
-  return <Route path="/org/:orgSlug/inbox" element={orgRoute('inbox', <OrgInboxPage />)} />;
+/** Legacy org inbox → properties (pick a property to open Guest Inbox). */
+export function OrgInboxRedirect() {
+  const { orgSlug } = useParams<{ orgSlug: string }>();
+  return <Navigate to={orgSlug ? orgPropertiesPath(orgSlug) : '/'} replace />;
 }
 
 export function propertyInboxRoute(propertyRoute: PropertyRouteFn): ReactNode {
