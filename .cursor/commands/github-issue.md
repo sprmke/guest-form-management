@@ -13,4 +13,6 @@ Work the **GitHub backlog** on **sprmke/kame-homes** — view, create, ship issu
 
 Default repo: **`-R sprmke/kame-homes`**.
 
+**QA / new teammates:** prefer **/kh-create-new-ticket** for filing (includes body template + sub-issues). See **/kh-help** for the full `/kh-*` set.
+
 This command is available in chat with **/github-issue**

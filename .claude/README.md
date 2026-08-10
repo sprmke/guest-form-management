@@ -65,6 +65,13 @@ Same as Cursor's `.cursor/commands/`; Claude Code commands and skills both creat
 
 | Command                 | Purpose                                                                                            |
 | ----------------------- | -------------------------------------------------------------------------------------------------- |
+| `/kh-help`              | Teammate cheat sheet for all `/kh-*` commands (QA / junior-friendly)                               |
+| `/kh-create-new-ticket` | Create GitHub issue or sub-issue with the standard ticket template                                 |
+| `/kh-start-work`        | Update `develop`, branch for issue #N, load ticket                                                 |
+| `/kh-pull-new-changes`  | Safely pull latest `develop`                                                                       |
+| `/kh-start-app`         | Run the app (default: UI → hosted multi-tenant dev)                                                |
+| `/kh-check-before-pr`   | Run `bun run ci:quality` before review                                                             |
+| `/kh-submit-for-review` | Push branch + open PR **into `develop`**                                                           |
 | `/fix-merge-conflicts`  | Resolve merge conflicts without breaking either side's changes                                     |
 | `/fix-migration-issues` | Apply pending **local** migrations (`bun run db:migrate`) — no reset/deploy by default             |
 | `/github-issue`         | View / create / update / ship issues on `sprmke/kame-homes` (backed by `scripts/dev/gh-issue.mjs`) |

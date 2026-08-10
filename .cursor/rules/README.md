@@ -130,6 +130,22 @@ Run **`bun run check:ai-tooling-sync`** after changing hooks, commands, agents, 
 
 **No dedicated skill yet** (fall back to `docs-first` + `docs/PROJECT.md` directly): Finance module, Maintenance module, Marketing Studio (AI captions/video/Meta publish), Guest Inbox AI suggestions, guest portal (authenticated guest profile/trips), pricing calendars, super-admin platform ops (`/admin/*`, developments, hosts), org verification (base/enhanced tiers). These are real, shipped parts of the app — don't assume they don't exist just because there's no skill card for them yet.
 
+## Commands (`.cursor/commands/` — also mirrored in Claude / OpenCode)
+
+**Teammate / QA set** (start with `/kh-help`):
+
+| Command                 | Purpose                                          |
+| ----------------------- | ------------------------------------------------ |
+| `/kh-help`              | Cheat sheet for all `/kh-*` commands             |
+| `/kh-create-new-ticket` | File issue or sub-issue (standard body template) |
+| `/kh-start-work`        | Branch from `develop` for issue #N               |
+| `/kh-pull-new-changes`  | Pull latest `develop` safely                     |
+| `/kh-start-app`         | Run app (default UI → hosted multi-tenant dev)   |
+| `/kh-check-before-pr`   | `bun run ci:quality` before review               |
+| `/kh-submit-for-review` | Push + open PR **into `develop`**                |
+
+Also: `/github-issue`, `/fix-merge-conflicts`, `/workflow-*`, `/superpowers-*` — see `.claude/README.md`.
+
 ## Subagents (`.cursor/agents/`)
 
 | Agent              | Model   | Use for                       |
