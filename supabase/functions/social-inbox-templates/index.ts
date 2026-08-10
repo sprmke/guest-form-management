@@ -1,23 +1,27 @@
 /**
- * Quick reply template CRUD for org inbox.
+ * Quick reply template CRUD for Guest Inbox (org-scoped data; property/parking manage ACL).
  */
 
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import { seedDefaultInboxQuickRepliesIfEmpty } from '../_shared/inboxDefaultQuickReplies.ts';
+import { resolveInboxAccess } from '../_shared/inboxAccess.ts';
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
-import { resolveOrgAccessContext } from '../_shared/propertyScope.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('social-inbox-templates', async (req) => {
-  const ctx = await resolveOrgAccessContext(req, 'org:inbox:manage');
+  const body =
+    req.method === 'GET' || req.method === 'DELETE'
+      ? null
+      : ((await readJsonBody(req)) as Record<string, unknown>);
+  const ctx = await resolveInboxAccess(req, 'manage', body);
   const sb = createServiceClient();
 
   if (req.method === 'GET') {
-    await seedDefaultInboxQuickRepliesIfEmpty(ctx.org.id);
+    await seedDefaultInboxQuickRepliesIfEmpty(ctx.orgId);
     const { data, error } = await sb
       .from('social_reply_templates')
       .select('*')
-      .eq('organization_id', ctx.org.id)
+      .eq('organization_id', ctx.orgId)
       .eq('is_active', true)
       .order('sort_order', { ascending: true });
     if (error) return jsonError(req, error.message, 500);
@@ -25,21 +29,20 @@ serveAuthenticated('social-inbox-templates', async (req) => {
   }
 
   if (req.method === 'POST') {
-    const body = await readJsonBody(req);
-    const title = String(body.title ?? '').trim();
-    const bodyText = String(body.bodyText ?? body.body_text ?? '').trim();
+    const title = String(body?.title ?? '').trim();
+    const bodyText = String(body?.bodyText ?? body?.body_text ?? '').trim();
     if (!title || !bodyText) {
       return jsonError(req, 'title and bodyText required', 400);
     }
     const { data, error } = await sb
       .from('social_reply_templates')
       .insert({
-        organization_id: ctx.org.id,
+        organization_id: ctx.orgId,
         title,
         body_text: bodyText,
-        platform: body.platform ?? null,
-        conversation_type: body.conversationType ?? 'all',
-        sort_order: Number(body.sortOrder ?? 0),
+        platform: body?.platform ?? null,
+        conversation_type: body?.conversationType ?? 'all',
+        sort_order: Number(body?.sortOrder ?? 0),
       })
       .select('*')
       .single();
@@ -48,21 +51,20 @@ serveAuthenticated('social-inbox-templates', async (req) => {
   }
 
   if (req.method === 'PATCH') {
-    const body = await readJsonBody(req);
-    const id = String(body.id ?? '').trim();
+    const id = String(body?.id ?? '').trim();
     if (!id) return jsonError(req, 'id required', 400);
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
-    if (typeof body.title === 'string') patch.title = body.title.trim();
-    if (typeof body.bodyText === 'string') patch.body_text = body.bodyText.trim();
-    if (typeof body.body_text === 'string') patch.body_text = body.body_text.trim();
-    if (body.platform !== undefined) patch.platform = body.platform;
-    if (body.conversationType !== undefined) patch.conversation_type = body.conversationType;
-    if (body.sortOrder !== undefined) patch.sort_order = Number(body.sortOrder);
-    if (body.isActive !== undefined) patch.is_active = Boolean(body.isActive);
+    if (typeof body?.title === 'string') patch.title = body.title.trim();
+    if (typeof body?.bodyText === 'string') patch.body_text = body.bodyText.trim();
+    if (typeof body?.body_text === 'string') patch.body_text = body.body_text.trim();
+    if (body?.platform !== undefined) patch.platform = body.platform;
+    if (body?.conversationType !== undefined) patch.conversation_type = body.conversationType;
+    if (body?.sortOrder !== undefined) patch.sort_order = Number(body.sortOrder);
+    if (body?.isActive !== undefined) patch.is_active = Boolean(body.isActive);
     const { data, error } = await sb
       .from('social_reply_templates')
       .update(patch)
-      .eq('organization_id', ctx.org.id)
+      .eq('organization_id', ctx.orgId)
       .eq('id', id)
       .select('*')
       .maybeSingle();
@@ -77,7 +79,7 @@ serveAuthenticated('social-inbox-templates', async (req) => {
     const { error } = await sb
       .from('social_reply_templates')
       .delete()
-      .eq('organization_id', ctx.org.id)
+      .eq('organization_id', ctx.orgId)
       .eq('id', id);
     if (error) return jsonError(req, error.message, 500);
     return jsonSuccess(req, { deleted: true });

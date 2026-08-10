@@ -3,11 +3,8 @@
  */
 
 import { resolveInboxAccess } from '../_shared/inboxAccess.ts';
-import {
-  resolveEffectiveMetaConnection,
-  listOrgDefaultMetaConnections,
-} from '../_shared/metaInboxScope.ts';
-import { metaBackfillHasMore, resolveMetaHasMore } from '../_shared/socialInboxService.ts';
+import { resolveEffectiveMetaConnection } from '../_shared/metaInboxScope.ts';
+import { metaBackfillHasMore } from '../_shared/socialInboxService.ts';
 import { jsonError, jsonSuccess } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
@@ -31,10 +28,8 @@ serveAuthenticated('meta-inbox-status', async (req) => {
   const ctx = await resolveInboxAccess(req, 'view');
   const effective = await resolveEffectiveMetaConnection(ctx.orgId, ctx.scope);
 
-  // Org Channels list shows org-default rows only (overrides managed at property/parking).
-  // Property/parking Channels show the effective Page (override or inherited org).
-  const connectionsForUi =
-    ctx.kind === 'org' ? await listOrgDefaultMetaConnections(ctx.orgId) : effective.connections;
+  // Property/parking Channels show the effective Page (override or inherited org default).
+  const connectionsForUi = effective.connections;
 
   const serialized = connectionsForUi.map((c) => ({
     id: c.id,
@@ -52,8 +47,7 @@ serveAuthenticated('meta-inbox-status', async (req) => {
 
   const facebook = effective.connection;
   const metaSyncInProgress = Boolean(facebook && !facebook.last_sync_at);
-  const metaHasMore =
-    ctx.kind === 'org' ? await resolveMetaHasMore(ctx.orgId) : metaBackfillHasMore(facebook);
+  const metaHasMore = metaBackfillHasMore(facebook);
 
   return jsonSuccess(req, {
     connections: serialized,
@@ -63,6 +57,6 @@ serveAuthenticated('meta-inbox-status', async (req) => {
     metaSyncError: null,
     metaHasMore,
     metaSource: effective.source,
-    usingOrgMeta: ctx.kind !== 'org' && effective.source === 'org',
+    usingOrgMeta: effective.source === 'org',
   });
 });

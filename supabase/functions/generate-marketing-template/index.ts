@@ -48,6 +48,26 @@ serveAdmin('generate-marketing-template', async (req, admin) => {
       ? body.availabilityText.trim()
       : undefined;
 
+  const preferencesRaw =
+    body.preferences && typeof body.preferences === 'object'
+      ? (body.preferences as Record<string, unknown>)
+      : {};
+  const preferences = {
+    layoutArchetype:
+      typeof preferencesRaw.layoutArchetype === 'string' &&
+      preferencesRaw.layoutArchetype !== 'auto'
+        ? preferencesRaw.layoutArchetype.trim()
+        : undefined,
+    fontPairing:
+      typeof preferencesRaw.fontPairing === 'string' && preferencesRaw.fontPairing !== 'auto'
+        ? preferencesRaw.fontPairing.trim()
+        : undefined,
+    backgroundMood:
+      typeof preferencesRaw.backgroundMood === 'string' && preferencesRaw.backgroundMood !== 'auto'
+        ? preferencesRaw.backgroundMood.trim()
+        : undefined,
+  };
+
   const sb = createServiceClient();
   const { data: propertyRow, error } = await sb
     .from('properties')
@@ -93,6 +113,7 @@ serveAdmin('generate-marketing-template', async (req, admin) => {
       amenitiesText: resolvedAmenities,
       availabilityText,
       hasPropertyPhoto,
+      preferences,
     });
 
     return jsonSuccess(req, result);

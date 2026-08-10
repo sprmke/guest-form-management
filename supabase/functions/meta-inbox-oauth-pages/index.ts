@@ -3,9 +3,12 @@
  */
 
 import type { MetaPagePickerOption } from '../_shared/metaInboxConnect.ts';
-import { createServiceClient } from '../_shared/orgAuth.ts';
+import {
+  createServiceClient,
+  verifyParkingTeamAccess,
+  verifyPropertyAccess,
+} from '../_shared/orgAuth.ts';
 import { jsonError, jsonSuccess } from '../_shared/httpResponse.ts';
-import { resolveOrgAccessContext } from '../_shared/propertyScope.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('meta-inbox-oauth-pages', async (req, user) => {
@@ -13,7 +16,6 @@ serveAuthenticated('meta-inbox-oauth-pages', async (req, user) => {
     return jsonError(req, 'Method not allowed', 405);
   }
 
-  const ctx = await resolveOrgAccessContext(req, 'org:inbox:manage');
   const picker = new URL(req.url).searchParams.get('picker')?.trim();
   if (!picker) {
     return jsonError(req, 'picker query param required', 400);
@@ -22,7 +24,9 @@ serveAuthenticated('meta-inbox-oauth-pages', async (req, user) => {
   const sb = createServiceClient();
   const { data, error } = await sb
     .from('meta_inbox_oauth_state')
-    .select('organization_id, user_id, expires_at, pending_pages, encrypted_user_token')
+    .select(
+      'organization_id, user_id, expires_at, pending_pages, encrypted_user_token, property_id, parking_id'
+    )
     .eq('state', picker)
     .maybeSingle();
 
@@ -31,8 +35,10 @@ serveAuthenticated('meta-inbox-oauth-pages', async (req, user) => {
   }
 
   const exp = new Date(data.expires_at as string).getTime();
+  const propertyId = (data.property_id as string | null) ?? null;
+  const parkingId = (data.parking_id as string | null) ?? null;
+
   if (
-    data.organization_id !== ctx.org.id ||
     data.user_id !== user.id ||
     Number.isNaN(exp) ||
     Date.now() > exp ||
@@ -40,6 +46,20 @@ serveAuthenticated('meta-inbox-oauth-pages', async (req, user) => {
     !data.encrypted_user_token
   ) {
     return jsonError(req, 'Picker session expired', 404);
+  }
+
+  if (propertyId) {
+    const ctx = await verifyPropertyAccess(req, propertyId, 'inbox:manage');
+    if (ctx.org.id !== data.organization_id) {
+      return jsonError(req, 'Picker session expired', 404);
+    }
+  } else if (parkingId) {
+    const ctx = await verifyParkingTeamAccess(req, parkingId, 'inbox:manage');
+    if (ctx.org.id !== data.organization_id) {
+      return jsonError(req, 'Picker session expired', 404);
+    }
+  } else {
+    return jsonError(req, 'Picker session missing scope', 404);
   }
 
   return jsonSuccess(req, {

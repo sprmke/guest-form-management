@@ -4,10 +4,10 @@
 
 import { suggestInboxReply } from '../_shared/socialInboxAiService.ts';
 import { isAiPlatformDisabledError, isAiQuotaError } from '../_shared/aiUsageService.ts';
+import { resolveInboxAccess } from '../_shared/inboxAccess.ts';
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import { getConversationById, listMessages } from '../_shared/socialInboxService.ts';
 import { jsonError, jsonResponse, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
-import { resolveOrgAccessContext } from '../_shared/propertyScope.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('social-inbox-ai-suggest', async (req) => {
@@ -15,29 +15,29 @@ serveAuthenticated('social-inbox-ai-suggest', async (req) => {
     return jsonError(req, 'Method not allowed', 405);
   }
 
-  const ctx = await resolveOrgAccessContext(req, 'org:inbox:reply');
-  const body = await readJsonBody(req);
+  const body = (await readJsonBody(req)) as Record<string, unknown>;
+  const ctx = await resolveInboxAccess(req, 'reply', body);
   const conversationId = String(body.conversationId ?? '').trim();
   if (!conversationId) {
     return jsonError(req, 'conversationId required', 400);
   }
 
-  const conv = await getConversationById(ctx.org.id, conversationId);
+  const conv = await getConversationById(ctx.orgId, conversationId);
   if (!conv) {
     return jsonError(req, 'Conversation not found', 404);
   }
 
-  const { messages } = await listMessages(ctx.org.id, conversationId, { limit: 20 });
+  const { messages } = await listMessages(ctx.orgId, conversationId, { limit: 20 });
   const sb = createServiceClient();
   const { data: settings } = await sb
     .from('social_inbox_settings')
     .select('ai_system_prompt')
-    .eq('organization_id', ctx.org.id)
+    .eq('organization_id', ctx.orgId)
     .maybeSingle();
 
   try {
     const result = await suggestInboxReply({
-      orgId: ctx.org.id,
+      orgId: ctx.orgId,
       platform: conv.platform,
       conversationType: conv.conversation_type,
       participantName: conv.participant_name,

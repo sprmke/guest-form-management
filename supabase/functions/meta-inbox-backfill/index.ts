@@ -5,8 +5,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
+import { resolveInboxAccess } from '../_shared/inboxAccess.ts';
 import { createServiceClient, verifyAuthenticatedUser } from '../_shared/orgAuth.ts';
-import { resolveOrgAccessContext } from '../_shared/propertyScope.ts';
 import { resolveSupabaseServiceRoleKey } from '../_shared/supabaseRuntimeEnv.ts';
 import type { SocialChannelConnectionRow } from '../_shared/socialInboxTypes.ts';
 
@@ -54,9 +54,9 @@ serve(async (req) => {
       if (!orgId) return jsonError(req, 'organizationId required', 400);
     } else {
       await verifyAuthenticatedUser(req);
-      const permission = light ? 'org:inbox:view' : 'org:inbox:manage';
-      const ctx = await resolveOrgAccessContext(req, permission);
-      orgId = ctx.org.id;
+      const permission = light ? 'view' : 'manage';
+      const ctx = await resolveInboxAccess(req, permission, body as Record<string, unknown>);
+      orgId = ctx.orgId;
     }
 
     const rawPhase = String(body.phase ?? 'messenger').trim();

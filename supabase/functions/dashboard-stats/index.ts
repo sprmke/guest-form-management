@@ -1,7 +1,7 @@
 /**
  * dashboard-stats — Admin home dashboard aggregates.
  * Property scope: ?property_id=…
- * Org scope: ?org_slug=… or ?org_id=… (aggregates all org properties)
+ * Org scope: ?org_slug=… or ?org_id=… (aggregates org properties + parking listings)
  */
 
 import { computeDashboardStats } from '../_shared/dashboardService.ts';

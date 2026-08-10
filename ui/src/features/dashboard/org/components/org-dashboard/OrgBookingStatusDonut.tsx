@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { PieChart as PieChartIcon } from 'lucide-react';
-import { Cell, Pie, PieChart, ResponsiveContainer, Sector, Tooltip } from 'recharts';
+import { Cell, Pie, PieChart, ResponsiveContainer, Sector } from 'recharts';
 
 import {
   DASHBOARD_STATUS_BREAKDOWN_ORDER,
@@ -53,6 +53,24 @@ function normalizeStatusSlices(slices: DashboardPipelineSlice[]): SliceRow[] {
   }));
 }
 
+const SLICE_EXPAND_PX = 6;
+const SLICE_EXPAND_MS = 220;
+
+function easeOutCubic(t: number) {
+  return 1 - (1 - t) ** 3;
+}
+
+function DonutTooltipContent({ label, count }: { label: string; count: number }) {
+  return (
+    <div className="border-border bg-card rounded-lg border px-2.5 py-1.5 shadow-lg">
+      <p className="text-sm font-medium">{label}</p>
+      <p className="text-muted-foreground text-sm tabular-nums">
+        {count} booking{count === 1 ? '' : 's'}
+      </p>
+    </div>
+  );
+}
+
 function ActiveSlice(props: {
   cx?: number;
   cy?: number;
@@ -71,12 +89,35 @@ function ActiveSlice(props: {
     endAngle = 0,
     fill,
   } = props;
+  const [expandedOuter, setExpandedOuter] = useState(outerRadius);
+
+  useEffect(() => {
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reducedMotion) {
+      setExpandedOuter(outerRadius + SLICE_EXPAND_PX);
+      return;
+    }
+
+    let frame = 0;
+    const start = performance.now();
+
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - start) / SLICE_EXPAND_MS);
+      setExpandedOuter(outerRadius + SLICE_EXPAND_PX * easeOutCubic(progress));
+      if (progress < 1) frame = requestAnimationFrame(tick);
+    };
+
+    setExpandedOuter(outerRadius);
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [outerRadius]);
+
   return (
     <Sector
       cx={cx}
       cy={cy}
       innerRadius={innerRadius}
-      outerRadius={outerRadius + 6}
+      outerRadius={expandedOuter}
       startAngle={startAngle}
       endAngle={endAngle}
       fill={fill}
@@ -140,24 +181,16 @@ export function OrgBookingStatusDonut({ slices, className }: Props) {
                     <Cell key={entry.status} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip
-                  content={({ active: tipActive, payload }) => {
-                    const entry = payload?.[0]?.payload as SliceRow | undefined;
-                    if (!tipActive || !entry) return null;
-                    return (
-                      <div className="border-border bg-card rounded-lg border px-2.5 py-1.5 shadow-lg">
-                        <p className="text-sm font-medium">{entry.label}</p>
-                        <p className="text-muted-foreground text-sm tabular-nums">
-                          {entry.count} booking{entry.count === 1 ? '' : 's'}
-                        </p>
-                      </div>
-                    );
-                  }}
-                />
               </PieChart>
             </ResponsiveContainer>
 
-            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+            {active ? (
+              <div className="pointer-events-none absolute left-1/2 top-[10%] z-20 -translate-x-1/2">
+                <DonutTooltipContent label={active.label} count={active.count} />
+              </div>
+            ) : null}
+
+            <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center px-6 text-center">
               {active ? (
                 <>
                   <p className="text-foreground text-2xl font-bold tabular-nums tracking-tight sm:text-3xl">

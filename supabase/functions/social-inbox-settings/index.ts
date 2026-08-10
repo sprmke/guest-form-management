@@ -1,23 +1,24 @@
 /**
- * Org inbox automation settings (AI auto-reply toggles).
+ * Inbox automation settings (AI auto-reply toggles) — org-scoped data; property/parking manage ACL.
  */
 
 import { ensureSocialInboxSettings, socialInboxDb } from '../_shared/socialInboxService.ts';
 import { checkInboxAiProviders } from '../_shared/socialInboxAiService.ts';
+import { resolveInboxAccess } from '../_shared/inboxAccess.ts';
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
-import { resolveOrgAccessContext } from '../_shared/propertyScope.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('social-inbox-settings', async (req) => {
-  const ctx = await resolveOrgAccessContext(req, 'org:inbox:manage');
-  await ensureSocialInboxSettings(ctx.org.id);
+  const body = req.method === 'GET' ? null : ((await readJsonBody(req)) as Record<string, unknown>);
+  const ctx = await resolveInboxAccess(req, 'manage', body);
+  await ensureSocialInboxSettings(ctx.orgId);
   const sb = socialInboxDb();
 
   if (req.method === 'GET') {
     const { data } = await sb
       .from('social_inbox_settings')
       .select('*')
-      .eq('organization_id', ctx.org.id)
+      .eq('organization_id', ctx.orgId)
       .maybeSingle();
     const aiStatus = await checkInboxAiProviders();
     return jsonSuccess(req, {
@@ -31,24 +32,23 @@ serveAuthenticated('social-inbox-settings', async (req) => {
   }
 
   if (req.method === 'PATCH') {
-    const body = await readJsonBody(req);
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
-    if (body.autoReplyEnabled !== undefined) {
+    if (body?.autoReplyEnabled !== undefined) {
       patch.auto_reply_enabled = Boolean(body.autoReplyEnabled);
     }
-    if (body.autoReplyMode === 'draft' || body.autoReplyMode === 'send') {
+    if (body?.autoReplyMode === 'draft' || body?.autoReplyMode === 'send') {
       patch.auto_reply_mode = body.autoReplyMode;
     }
-    if (typeof body.aiSystemPrompt === 'string') {
+    if (typeof body?.aiSystemPrompt === 'string') {
       patch.ai_system_prompt = body.aiSystemPrompt.trim() || null;
     }
-    if (body.platformToggles && typeof body.platformToggles === 'object') {
+    if (body?.platformToggles && typeof body.platformToggles === 'object') {
       patch.platform_toggles = body.platformToggles;
     }
     const { data, error } = await sb
       .from('social_inbox_settings')
       .update(patch)
-      .eq('organization_id', ctx.org.id)
+      .eq('organization_id', ctx.orgId)
       .select('*')
       .single();
     if (error) return jsonError(req, error.message, 500);
