@@ -46,6 +46,7 @@ Manual (once per machine, not scripted):
   - Export SUPABASE_ACCESS_TOKEN + SUPABASE_PROJECT_REF (Supabase MCP)
   - uv tool install markitdown-mcp  (or ensure markitdown-mcp on PATH)
   - Claude Code: /plugin marketplace add DietrichGebert/ponytail
+  - Do NOT install claude-mem — bun run cleanup:claude-mem if an old machine has it
 EOF
       exit 0
       ;;

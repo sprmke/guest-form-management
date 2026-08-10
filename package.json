@@ -22,6 +22,7 @@
     "check:workflow-scratchpads": "bash scripts/dev/check-workflow-scratchpads.sh",
     "sync:workflow-scratchpads": "bash scripts/dev/sync-workflow-scratchpads.sh",
     "setup:ai-tooling": "bash scripts/dev/setup-ai-tooling.sh",
+    "cleanup:claude-mem": "bash scripts/dev/cleanup-claude-mem.sh",
     "setup:agents-skills": "bash scripts/dev/setup-agents-skills.sh",
     "setup:impeccable": "bash scripts/dev/setup-impeccable.sh",
     "setup:playwright-cli": "bash scripts/dev/setup-playwright-cli.sh",

@@ -62,14 +62,14 @@ Root `bun run *:supabase` wrappers source `ui/.env.development` before invoking 
 ui/src/main.tsx → App.tsx → routes/index.tsx → merges guest/sd-form/pay-parking/dashboard routes
 ```
 
-| Path                   | Role                                                                                                                                                                                                                         |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ui/`                  | Vite SPA — guest flows, calendar, admin dashboard                                                                                                                                                                            |
-| `supabase/migrations/` | Postgres schema, RLS, storage policies — plain SQL, no ORM                                                                                                                                                                   |
-| `supabase/functions/`  | Deno edge functions; `_shared/` services (`databaseService`, `calendarService`, `sheetsService`, `emailService`, `pdfService`, `uploadService`, `statusMachine`, `workflowOrchestrator`, `auth`, `propertyScope`, `orgAuth`) |
-| `supabase/config.toml` | Local Supabase config + per-function JWT policy                                                                                                                                                                              |
-| `scripts/`             | Dev/deploy/data-sync — `scripts/README.md`                                                                                                                                                                                   |
-| `docs/`                | Doc index at `docs/README.md`                                                                                                                                                                                                |
+| Path                   | Role                                                                                                                                                                                     |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ui/`                  | Vite SPA — guest flows, calendar, admin dashboard                                                                                                                                        |
+| `supabase/migrations/` | Postgres schema, RLS, storage policies — plain SQL, no ORM                                                                                                                               |
+| `supabase/functions/`  | Deno edge functions; `_shared/` services (`databaseService`, `emailService`, `pdfService`, `uploadService`, `statusMachine`, `workflowOrchestrator`, `auth`, `propertyScope`, `orgAuth`) |
+| `supabase/config.toml` | Local Supabase config + per-function JWT policy                                                                                                                                          |
+| `scripts/`             | Dev/deploy/data-sync — `scripts/README.md`                                                                                                                                               |
+| `docs/`                | Doc index at `docs/README.md`                                                                                                                                                            |
 
 ### Frontend feature layout
 
