@@ -2,7 +2,7 @@
 title: 'Guest account — operator guide'
 status: active
 tags: [guides, routes, account]
-updated: 2026-08-02
+updated: 2026-08-09
 ---
 
 # Guest account — operator guide
@@ -11,21 +11,19 @@ Routes (authenticated explore mode):
 
 - `/account` → redirects to `/account/profile`
 - `/account/profile`
-- `/account/stays` (legacy `/account/trips` redirects here)
-- `/account/wishlist`
-- `/account/messages`
+- `/account/stays` (legacy `/account/messages` and `/account/trips` redirect here)
+- `/account/favorites` (legacy `/account/wishlist` redirects here)
 
-> **Status:** Documented — nav avatar + account shell + profile/stays/wishlist/messages.
+> **Status:** Documented — nav avatar + account shell + profile/stays/favorites.
 
 ## Progress overview
 
-| Section    | E2E save | Validation | Docs       | Notes                                        |
-| ---------- | -------- | ---------- | ---------- | -------------------------------------------- |
-| Nav avatar | —        | —          | Documented | Explore: guest menu; host: Dashboard avatar  |
-| Profile    | ✅       | Client     | Documented | `guest-profile` + avatar upload              |
-| Stays      | ✅       | —          | Documented | `guest-trips`; property rental bookings only |
-| Wishlist   | ✅       | —          | Documented | `guest_saved_properties`                     |
-| Messages   | ✅       | —          | Documented | Web chat threads → property messages URL     |
+| Section    | E2E save | Validation | Docs       | Notes                                          |
+| ---------- | -------- | ---------- | ---------- | ---------------------------------------------- |
+| Nav avatar | —        | —          | Documented | Explore: guest menu; host: Dashboard avatar    |
+| Profile    | ✅       | Client     | Documented | `guest-profile` + avatar upload                |
+| Stays      | ✅       | —          | Documented | Cross-property web chat hub (`guest-messages`) |
+| Favorites  | ✅       | —          | Documented | `guest_saved_properties`                       |
 
 ---
 
@@ -35,7 +33,7 @@ Signed-in guests see a **rounded avatar** in the marketing nav (explore pages on
 
 **Host marketing (`/for-hosts`):** signed-in hosts see the same pill + avatar pattern — **Explore** switches to guest mode; avatar menu opens **Dashboard**. Signed-out hosts see **Explore** + **Sign In**.
 
-Stays, Wishlist, and Messages each have their own dedicated guide — see [stays.md](./stays.md), [wishlist.md](./wishlist.md), [messages.md](./messages.md). This guide covers the account shell (nav + sidebar) and the Profile page in full detail.
+Stays and Favorites each have their own dedicated guide — see [stays.md](./stays.md), [favorites.md](./favorites.md). This guide covers the account shell (nav + sidebar) and the Profile page in full detail.
 
 ---
 
@@ -60,7 +58,7 @@ Explore account routes use a **dashboard-style sidebar** (not horizontal tabs):
 - Mobile: one marketing header menu (explore links) + **horizontal account nav strip** below the header — no second drawer or hamburger
 - Content sits below the fixed marketing nav (`pt-16 lg:pt-20`) so page titles no longer clash with the site header
 
-Sub-nav: Profile · Stays · Wishlist · Messages (log out in sidebar footer)
+Sub-nav: Profile · Stays · Favorites (log out in sidebar footer)
 
 ---
 
@@ -75,19 +73,13 @@ Sub-nav: Profile · Stays · Wishlist · Messages (log out in sidebar footer)
 
 ## Stays (`/account/stays`)
 
-Guest **property rental bookings** linked to the signed-in account. See [stays.md](./stays.md) for the full fields/API/behavior breakdown.
+Cross-property web chat inbox hub (nav label **Stays**). See [stays.md](./stays.md).
 
 ---
 
-## Wishlist (`/account/wishlist`)
+## Favorites (`/account/favorites`)
 
-Saved-properties grid (the guest's heart/favorites list). See [wishlist.md](./wishlist.md).
-
----
-
-## Messages (`/account/messages`)
-
-Cross-property web chat inbox hub. See [messages.md](./messages.md).
+Saved-properties grid (the guest's heart/favorites list). See [favorites.md](./favorites.md).
 
 ---
 
@@ -111,6 +103,6 @@ Cross-property web chat inbox hub. See [messages.md](./messages.md).
 ## Related
 
 - [index.md](./index.md) — `/account` redirect
-- [stays.md](./stays.md) · [wishlist.md](./wishlist.md) · [messages.md](./messages.md)
+- [stays.md](./stays.md) · [favorites.md](./favorites.md)
 - [auth.md](../auth.md) — checkout modal auth
-- [properties.md](../properties.md) — save heart / wishlist gate
+- [properties.md](../properties.md) — save heart / favorites gate

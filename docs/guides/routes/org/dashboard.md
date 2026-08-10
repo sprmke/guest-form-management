@@ -2,7 +2,7 @@
 title: 'Organization Dashboard — operator guide'
 status: active
 tags: [guides, routes, org]
-updated: 2026-08-04
+updated: 2026-08-09
 ---
 
 # Organization Dashboard — operator guide
@@ -13,24 +13,27 @@ Route: `/org/:orgSlug/dashboard`
 
 ## Progress overview
 
-| Section                  | E2E save | Validation | Docs | Notes                                    |
-| ------------------------ | -------- | ---------- | ---- | ---------------------------------------- |
-| Date range filter        | —        | —          | Done | Same presets as property dashboard       |
-| Stat cards               | —        | —          | Done | Revenue, bookings, occupancy, properties |
-| Revenue / bookings chart | —        | —          | Done | Working toggle                           |
-| Booking status donut     | —        | —          | Done | Canonical workflow statuses              |
-| Recent bookings          | —        | —          | Done | Links to property booking detail         |
-| Pending actions          | —        | —          | Done | From `dashboard-stats.attention`         |
-| Properties performance   | —        | —          | Done | Per-property period KPIs                 |
-| Add asset                | ✅       | ✅         | Done | Opens unified `AddEntityDialog`          |
+| Section                  | E2E save | Validation | Docs | Notes                                                      |
+| ------------------------ | -------- | ---------- | ---- | ---------------------------------------------------------- |
+| Date range filter        | —        | —          | Done | Same presets as property dashboard                         |
+| Stat cards               | —        | —          | Done | Revenue, bookings, occupancy, properties/listings          |
+| Revenue / bookings chart | —        | —          | Done | Working toggle; `AdminSurfaceCardHeader`                   |
+| Booking status donut     | —        | —          | Done | Large chart; labels via hover/tap (no legend list)         |
+| Recent bookings          | —        | —          | Done | Compact divided list; resource name + dates, no kind badge |
+| Pending actions          | —        | —          | Done | From `dashboard-stats.attention` (org bookings deep links) |
+| Listings performance     | —        | —          | Done | All/Properties/Parkings tabs only when org has both kinds  |
+| Add asset                | ✅       | ✅         | Done | Opens unified `AddEntityDialog`                            |
+| Loading skeleton         | —        | —          | Done | `OrgDashboardSkeleton` mirrors KPI + 2×2 board + listings  |
 
 ---
 
 ## Overview
 
-Org-level performance overview across **all properties** in the organization. Page title **Dashboard** with subtitle _Performance across all properties._ On **phone/tablet** (`max-lg`), the page uses the shared **brand hero** shell (`AdminMobilePage`): teal hero + title/subtitle, date range in an overlapping floating toolbar, and **Add asset** as a hero icon when permitted. Desktop (`lg+`) keeps the compact header with date filter + Add asset. The selected **`?from` / `?to`** range (Asia/Manila calendar days) drives KPIs, charts, recent bookings, and property performance rows.
+Org-level performance overview across **all properties** and, when present, **parking listings** in the organization. Layout matches the property dashboard density: KPI strip, then an equal-width `lg:grid-cols-2` board (`items-stretch`), then a full-width listings performance card.
 
-**Add asset** (visible when the signed-in user can create at least one property or parking in the org): opens the same unified modal as the workspace switcher **+** — property or parking, with development → tower → slot fields. Creating an asset navigates straight to its new dashboard.
+Page title **Dashboard**. Subtitle is _Performance across all properties._ or _Performance across all properties and parking._ when `parkingCount > 0`. On **phone/tablet** (`max-lg`), shared **brand hero** shell (`AdminMobilePage`): teal hero + title/subtitle, date range in overlapping floating toolbar, **Add asset** as hero icon when permitted. Desktop (`lg+`) keeps compact header with date filter + Add asset. Selected **`?from` / `?to`** (Asia/Manila) drives KPIs, charts, recent bookings, and listing performance.
+
+**Add asset** (when the user can create property and/or parking): same unified modal as the workspace switcher **+**. Creating an asset navigates to its dashboard.
 
 There is **no** New Booking button on this page.
 
@@ -38,7 +41,7 @@ There is **no** New Booking button on this page.
 
 ## Date range
 
-Uses **`BookingDateRangeFilter`** in the page header — same behavior as the property dashboard:
+Uses **`BookingDateRangeFilter`** — same behavior as the property dashboard:
 
 | Preset | Behavior                                               |
 | ------ | ------------------------------------------------------ |
@@ -53,64 +56,87 @@ URL params: `?from=YYYY-MM-DD&to=YYYY-MM-DD`.
 
 ## Stat cards
 
-| Card                 | Source                  | Notes                                                                            |
-| -------------------- | ----------------------- | -------------------------------------------------------------------------------- |
-| **Total Revenue**    | `kpis.netProfit`        | Operating host net for check-ins in range; trend vs previous equal-length period |
-| **Total Bookings**   | `kpis.checkInsInPeriod` | Count of non-cancelled stays with check-in in range                              |
-| **Occupancy Rate**   | `kpis.occupancyRate`    | Occupied nights ÷ period days, aggregated org-wide                               |
-| **Total Properties** | `propertyCount`         | All properties in the org                                                        |
+| Card                 | Source                         | Notes                                                                                  |
+| -------------------- | ------------------------------ | -------------------------------------------------------------------------------------- |
+| **Total Revenue**    | `kpis.netProfit`               | Host net for check-ins in range (property stays **and** parking reservations)          |
+| **Total Bookings**   | `kpis.checkInsInPeriod`        | Non-cancelled check-ins in range across properties + parking                           |
+| **Occupancy Rate**   | `kpis.occupancyRate`           | Occupied nights ÷ (period days × listing count); listing count = properties + parkings |
+| **Total Properties** | `propertyCount`                | Shown when the org has **no** parking listings                                         |
+| **Total Listings**   | `propertyCount + parkingCount` | Shown when `parkingCount > 0`; footer shows `N properties · M parking`                 |
+
+---
+
+## Board layout (`lg+`)
+
+Equal-width 2×2 grid (`items-stretch`), then listings card:
+
+1. **Revenue Overview** | **Booking Status**
+2. **Recent Bookings** | **Pending Actions**
+3. **Listings / Properties Performance** (full width)
 
 ---
 
 ## Revenue Overview chart
 
-Area chart from `trendSeries`:
+Area chart from `trendSeries` (property + parking bookings):
 
 | Toggle       | `dataKey`  | Y-axis                                                          |
 | ------------ | ---------- | --------------------------------------------------------------- |
 | **Revenue**  | `revenue`  | PHP (rated lodging allocated to occupied nights in each bucket) |
 | **Bookings** | `bookings` | Integer check-in count                                          |
 
-Buckets: **daily** when period ≤ 45 days; otherwise **monthly**.
+Card subtitle (desktop): **Revenue & bookings over time**. Buckets: **daily** when period ≤ 45 days; otherwise **monthly**.
 
 ---
 
 ## Booking Status
 
-Donut + legend from `statusBreakdown`. Legend lists six pipeline buckets (plus **Completed**) with **0** when empty. **Pending Documents** sums `PENDING_DOCUMENTS`, `PENDING_GAF`, `PENDING_PARKING_REQUEST`, and `PENDING_PET_REQUEST`. Donut slices render only for counts > 0. Counts are **current** non-cancelled bookings org-wide (not limited to the selected period).
+Large donut from `statusBreakdown` — **no vertical legend**. Card subtitle: **Active bookings by status** (counts are current pipeline, not period-scoped). Slice fills use **`STATUS_TONE_HEX`** from `@/lib/status-tone-colors` — same Tailwind 500 hues as booking status badge dots (rose, yellow, teal, amber, orange, sky, violet, slate). Slice labels and counts appear on **hover / tap** (tooltip + center label). Center shows total active count when no slice is active. Screen-reader list remains for accessibility.
+
+**Pending Documents** sums `PENDING_DOCUMENTS`, `PENDING_GAF`, `PENDING_PARKING_REQUEST`, and `PENDING_PET_REQUEST`. Donut slices render only for counts > 0. Counts are **current** non-cancelled bookings org-wide (property + parking; not limited to the selected period).
 
 ---
 
 ## Recent Bookings
 
-Up to **5** stays with check-in in the selected period, sorted by check-in descending. Each row shows guest, property name, stay dates, status badge, and amount. Tapping opens `/org/:orgSlug/property/:propertySlug/bookings/:bookingId` when the property slug is known.
+Up to **5** stays/reservations with check-in in the selected period, sorted by check-in descending. Card subtitle: **Check-ins · {period label}**. **Divided list** rows: guest name, compact status badge (sm+), resource name · stay dates on one meta line, amount on the right.
 
 ---
 
 ## Pending Actions
 
-Vertical list from `attention` (same server rules as property dashboard: pending review, awaiting documents, check-ins/outs today, SD refunds, unpaid guest balance). Links resolve to the org's **first property** bookings list with the same query filters (status / date). Multi-property orgs should switch property from the sidebar when needed.
+Same visual pattern as property **Needs attention**: divided list with severity dots, label + count, urgent summary chips when critical items exist, header **View** link, **View all (+N more)** when more than five items. Links resolve to the **org bookings** list with the same query filters (status / date). Subtitle: **Bookings & documents**.
+
+Empty state: dashed panel with **All clear**.
 
 ---
 
-## Properties Performance
+## Listings / Properties Performance
 
-Per-property rows for the selected period: check-ins in range, rated lodging revenue, occupancy %. Sorted by revenue descending. Row tap → property dashboard.
+| Org listings    | Card title             | Rows                               | Header control                                            |
+| --------------- | ---------------------- | ---------------------------------- | --------------------------------------------------------- |
+| Properties only | Properties Performance | Properties only                    | **View** → `/org/:orgSlug/properties`                     |
+| Parking only    | Parkings Performance   | Parking only                       | **View** → `/org/:orgSlug/parkings`                       |
+| Both            | Listings Performance   | Filtered by tab; sorted by revenue | **All** / **Properties** / **Parkings** segmented control |
+
+When the org has **both** properties and parking listings, header tabs filter the in-card list (default **All**). With only one kind, tabs are hidden and **View** opens the org properties or parkings index. Card subtitle: **Revenue & occupancy · {period label}**. Kind badges (Property / Parking) show only on **All** when both kinds exist. Each row: name, location, bookings count, occupancy %, revenue, occupancy bar. Row tap → that asset’s dashboard.
 
 ---
 
 ## Host-facing knowledge
 
-This is the landing page for an organization with more than one property — it rolls up revenue, bookings, and occupancy across everything you manage instead of just one property.
+This is the landing page for an organization — it rolls up revenue, bookings, and occupancy across every property you manage, and parking slots when you have them.
 
 **Common host questions**
 
 - Q: How is this different from a single property's dashboard?
-  A: This page combines every property in your organization into one view — the numbers, chart, and status breakdown all cover all of them together.
-- Q: Why doesn't a pending-action link take me straight to the right property?
-  A: When you manage several properties, these shortcuts open your first property's booking list by default — switch properties from the sidebar if the booking you need is elsewhere.
+  A: This page combines every property (and parking listing, if any) in your organization into one view.
+- Q: Why don’t I see Parking on the dashboard?
+  A: Parking labels and listing rows only appear after you add at least one parking listing to the organization.
+- Q: Where did the booking status list go?
+  A: Hover or tap a slice of the chart to see the status name and count.
 - Q: Can I create a new property or parking listing from here?
-  A: Yes, if you have permission to add assets to this organization you'll see an **Add asset** button in the header.
+  A: Yes, if you have permission — use **Add asset** in the header.
 
 ---
 
@@ -120,7 +146,7 @@ This is the landing page for an organization with more than one property — it 
 | ----------------- | ----- | --------------------------------------------- |
 | `dashboard-stats` | Org   | `GET ?org_slug=:slug&from=&to=` (or `org_id`) |
 
-Property scope remains `?property_id=…` without org params.
+Org scope returns `parkingCount`, `parkingPerformance`, and `recentBookings[].bookingKind` / parking fields. Property scope remains `?property_id=…` without org params (`parkingCount: 0`).
 
 ---
 
@@ -130,12 +156,13 @@ Property scope remains `?property_id=…` without org params.
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | Page                   | `ui/src/features/dashboard/org/pages/OrgDashboardPage.tsx`                                                                 |
 | Hook                   | `ui/src/features/dashboard/org/hooks/useOrgDashboardStats.ts`                                                              |
+| Skeleton               | `ui/src/components/skeletons/AdminSkeletons.tsx` → `OrgDashboardSkeleton`                                                  |
 | Stat cards             | `ui/src/features/dashboard/org/components/org-dashboard/OrgDashboardStatCards.tsx`                                         |
 | Revenue chart          | `ui/src/features/dashboard/org/components/org-dashboard/OrgRevenueBookingsChart.tsx`                                       |
 | Status donut           | `ui/src/features/dashboard/org/components/org-dashboard/OrgBookingStatusDonut.tsx`                                         |
 | Recent bookings        | `ui/src/features/dashboard/org/components/org-dashboard/OrgRecentBookingsList.tsx`                                         |
 | Pending actions        | `ui/src/features/dashboard/org/components/org-dashboard/OrgPendingActionsCard.tsx`                                         |
-| Properties performance | `ui/src/features/dashboard/org/components/org-dashboard/OrgPropertiesPerformanceCard.tsx`                                  |
+| Listings performance   | `ui/src/features/dashboard/org/components/org-dashboard/OrgPropertiesPerformanceCard.tsx`                                  |
 | Add asset dialog       | `ui/src/features/dashboard/org/components/AddEntityDialog.tsx`                                                             |
 | Aggregates             | `supabase/functions/_shared/dashboardService.ts`                                                                           |
 | Edge function          | `supabase/functions/dashboard-stats/index.ts`                                                                              |
@@ -147,5 +174,7 @@ Property scope remains `?property_id=…` without org params.
 
 - [Route index](../README.md)
 - [Organization properties](./properties.md)
+- [Organization parkings](./parkings.md)
+- [Org bookings](./bookings.md)
 - [Property dashboard](./property/dashboard.md)
 - [`docs/PROJECT.md`](../../../PROJECT.md)

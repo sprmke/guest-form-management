@@ -2,7 +2,7 @@
 title: 'Pay Parking — operator guide'
 status: active
 tags: [guides, routes, parking]
-updated: 2026-08-02
+updated: 2026-08-09
 ---
 
 # Pay Parking — operator guide
@@ -13,17 +13,18 @@ Route: `/properties/:propertySlug/parking/:bookingId` (legacy `/bookings/:bookin
 
 ## Progress overview
 
-| Section         | E2E save | Validation | Docs       | Notes                                          |
-| --------------- | -------- | ---------- | ---------- | ---------------------------------------------- |
-| Vehicle form    | ✅       | ✅ Zod     | Documented | plate / brand-model / color                    |
-| Owner broadcast | ✅       | Server     | Documented | BCC list or single owner email                 |
-| Admin mode      | ✅       | —          | Documented | `?admin=true` — extra broadcast choice dialogs |
+| Section         | E2E save | Validation | Docs       | Notes                                                                   |
+| --------------- | -------- | ---------- | ---------- | ----------------------------------------------------------------------- |
+| Brand shell     | ✅       | —          | Documented | `MainLayout` band + `GuestFormBrandHeader` via `get-guest-payment-info` |
+| Vehicle form    | ✅       | ✅ Zod     | Documented | plate / brand-model / color                                             |
+| Owner broadcast | ✅       | Server     | Documented | BCC list or single owner email                                          |
+| Admin mode      | ✅       | —          | Documented | `?admin=true` — extra broadcast choice dialogs                          |
 
 ---
 
 ## Overview
 
-Public, no-login form guests use to submit (or update) their parking vehicle details for a booking that requested paid parking. Scoped to the property slug in the URL. Admin **View pay parking** / copy-link uses `guestPayParkingPath(propertySlug, bookingId)`, optionally with **`?admin=true`** when an admin is filling it in on the guest's behalf.
+Public, no-login form guests use to submit (or update) their parking vehicle details for a booking that requested paid parking. Scoped to the property slug in the URL. Renders inside **`MainLayout`**: org **brand-color band**, **`GuestOperationalHeader`**, overlapping **`GuestFormBrandHeader`** (logo, dynamic eyebrow, title), then the vehicle form. Instructional copy (last-minute warning, contact hints) is residence-aware via **`guestFormBranding.ts`** + **`get-guest-payment-info`**. Admin **View pay parking** / copy-link uses `guestPayParkingPath(propertySlug, bookingId)`, optionally with **`?admin=true`** when an admin is filling it in on the guest's behalf.
 
 Legacy **`/bookings/:bookingId/parking`** resolves the booking's `property_slug` via `get-pay-parking` and redirects to the scoped route.
 

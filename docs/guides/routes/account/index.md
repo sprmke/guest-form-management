@@ -2,7 +2,7 @@
 title: 'Guest Account (index) — operator guide'
 status: active
 tags: [guides, routes, account]
-updated: 2026-08-02
+updated: 2026-08-09
 ---
 
 # Guest Account (index) — operator guide
@@ -21,7 +21,7 @@ Route: `/account`
 
 ## Overview
 
-`GuestAccountIndexPage` renders no UI — it immediately `<Navigate replace>`s to **`/account/profile`**. There is no account landing/dashboard page; the sidebar nav (Profile · Stays · Wishlist · Messages) is the entry point instead.
+`GuestAccountIndexPage` renders no UI — it immediately `<Navigate replace>`s to **`/account/profile`**. There is no account landing/dashboard page; the sidebar nav (Profile · Stays · Favorites) is the entry point instead.
 
 `/account/settings` also redirects to `/account/profile` (see [profile.md](./profile.md) § Settings).
 
@@ -34,7 +34,7 @@ Guests who tap their account avatar and land on the account area always see thei
 **Common host questions**
 
 - Q: A guest says they can't find an "Account" overview page — where does it go?
-  A: There isn't a separate overview page. Signing in and opening the account menu takes them straight to their Profile tab, with Stays, Wishlist, and Messages as other tabs in the same area.
+  A: There isn't a separate overview page. Signing in and opening the account menu takes them straight to their Profile tab, with Stays and Favorites as other tabs in the same area.
 
 ---
 
@@ -53,8 +53,7 @@ Guests who tap their account avatar and land on the account area always see thei
 - [Route index](../README.md)
 - [Profile](./profile.md)
 - [Stays](./stays.md)
-- [Wishlist](./wishlist.md)
-- [Messages](./messages.md)
+- [Favorites](./favorites.md)
 - [`docs/PROJECT.md`](../../PROJECT.md)
 
 ---
