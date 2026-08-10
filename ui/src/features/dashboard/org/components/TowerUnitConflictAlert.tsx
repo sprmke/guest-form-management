@@ -1,7 +1,8 @@
 import { AlertTriangle } from 'lucide-react';
 
-import type { PropertyTowerUnitConflict } from '@/features/dashboard/org/lib/propertyTowerUnitConflict';
 import { formatTowerAndUnit } from '@/features/dashboard/org/lib/propertyTowerUnit';
+import type { PropertyTowerUnitConflict } from '@/features/dashboard/org/lib/propertyTowerUnitConflict';
+
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -36,8 +37,13 @@ export function TowerUnitConflictAlert({ tower, unitNumber, conflict, className 
           <span className="font-medium">{orgLabel}</span>.
         </p>
         <p className="text-muted-foreground">
-          Continue if you are taking over management and will upload authorization documents. If you
-          only need dashboard access, ask the managing host to invite you from Team instead.
+          If you are taking over the management of this property, please continue. Submit the
+          authorization documents to verify your ownership or management authority. We will review
+          and confirm the transfer with the current management.
+        </p>
+        <p className="text-muted-foreground">
+          If you only need dashboard access, please ask the current managing host to invite you
+          through Team instead.
         </p>
       </div>
     </div>

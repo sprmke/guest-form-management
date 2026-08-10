@@ -35,6 +35,7 @@ import {
 } from '@/features/dashboard/org/lib/propertyTowerUnit';
 import type { Parking, Property } from '@/features/dashboard/org/types';
 
+import { AvailabilityCheckInput } from '@/components/AvailabilityCheckInput';
 import { Button } from '@/components/ui/button';
 import {
   ResponsiveModal,
@@ -55,6 +56,10 @@ import {
 } from '@/components/ui/select';
 import { SegmentedControl } from '@/components/ui/sliding-tabs';
 import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
+import {
+  resolveAsyncAvailabilityState,
+  resolveNameAvailabilityState,
+} from '@/lib/availabilityCheckState';
 import { cn } from '@/lib/utils';
 
 type AssetKind = 'property' | 'parking';
@@ -146,7 +151,11 @@ export function AddEntityDialog({
   const [propertyDisplayName, setPropertyDisplayName] = useState('');
   const [developmentName, setDevelopmentName] = useState(DEFAULT_DEVELOPMENT_NAME);
   const propertyTowerOptions = getPropertyTowersForDevelopment(developmentName);
-  const { conflict, hasActiveListing: propertyListed } = useTowerUnitConflict(tower, unitNumber);
+  const {
+    conflict,
+    hasActiveListing: propertyListed,
+    isChecking: towerUnitChecking,
+  } = useTowerUnitConflict(tower, unitNumber);
   const unitInvalid = unitTouched && unitNumber.length > 0 && !isValidUnitNumber(unitNumber);
   const towerUnitReady =
     isPropertyTowerForResidence(tower, developmentName) && isValidUnitNumber(unitNumber);
@@ -162,6 +171,17 @@ export function AddEntityDialog({
   const propertyNameBlockMessage = propertyNameBlocked
     ? (propertyNameCheck.data?.message ?? 'A property with this name already exists.')
     : null;
+  const propertyNameAvailabilityState = resolveNameAvailabilityState({
+    ready: propertyNameReady,
+    showChecking: propertyNameCheck.showChecking,
+    isUnavailable: propertyNameCheck.isUnavailable,
+    isFetched: propertyNameCheck.isFetched,
+  });
+  const unitAvailabilityState = resolveAsyncAvailabilityState({
+    ready: towerUnitReady,
+    isChecking: towerUnitChecking,
+    hasConflict: propertyListed,
+  });
   const propertyCanSubmit = towerUnitReady && !propertyNameBlocked;
 
   const [parkingTower, setParkingTower] = useState(DEFAULT_PARKING_TOWER);
@@ -175,14 +195,16 @@ export function AddEntityDialog({
     () => formatParkingCode(parkingTower, level, slotNumber),
     [parkingTower, level, slotNumber]
   );
-  const { hasDuplicate: parkingDuplicate } = useParkingSlotConflict(
-    parkingTower,
-    level,
-    slotNumber,
-    developmentName
-  );
-  const parkingCanSubmit =
-    Boolean(parkingTower && level && isValidParkingSlotNumber(slotNumber)) && !parkingDuplicate;
+  const { hasDuplicate: parkingDuplicate, isChecking: parkingSlotChecking } =
+    useParkingSlotConflict(parkingTower, level, slotNumber, developmentName);
+  const parkingSlotReady =
+    Boolean(parkingTower) && Boolean(level) && isValidParkingSlotNumber(slotNumber);
+  const parkingSlotAvailabilityState = resolveAsyncAvailabilityState({
+    ready: parkingSlotReady,
+    isChecking: parkingSlotChecking,
+    hasConflict: parkingDuplicate,
+  });
+  const parkingCanSubmit = parkingSlotReady && !parkingDuplicate;
 
   const parkingTowerOptions = getParkingTowersForDevelopment(developmentName);
   const parkingLevelOptions = getParkingLevelsForTower(parkingTower);
@@ -334,7 +356,7 @@ export function AddEntityDialog({
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="add-entity-property-unit">Unit</Label>
-                  <Input
+                  <AvailabilityCheckInput
                     id="add-entity-property-unit"
                     inputMode="numeric"
                     autoComplete="off"
@@ -345,6 +367,7 @@ export function AddEntityDialog({
                     maxLength={4}
                     aria-invalid={unitInvalid || undefined}
                     className={cn('h-10 tabular-nums', propertyFieldErrorClass)}
+                    checkState={unitAvailabilityState}
                   />
                   {unitInvalid ? (
                     <p role="alert" className="text-destructive text-xs">
@@ -360,7 +383,7 @@ export function AddEntityDialog({
 
               <div className="space-y-1.5">
                 <Label htmlFor="add-entity-property-name">Display name</Label>
-                <Input
+                <AvailabilityCheckInput
                   id="add-entity-property-name"
                   value={propertyDisplayName}
                   onChange={(e) => setPropertyDisplayName(e.target.value)}
@@ -373,13 +396,12 @@ export function AddEntityDialog({
                   autoComplete="off"
                   aria-invalid={Boolean(propertyNameBlockMessage)}
                   className={cn('h-10', propertyNameBlockMessage && 'border-destructive')}
+                  checkState={propertyNameAvailabilityState}
                 />
                 {propertyNameBlockMessage ? (
                   <p role="alert" className="text-destructive text-xs">
                     {propertyNameBlockMessage}
                   </p>
-                ) : propertyNameReady && propertyNameCheck.showChecking ? (
-                  <p className="text-muted-foreground text-xs">Checking availability…</p>
                 ) : null}
               </div>
             </>
@@ -426,7 +448,7 @@ export function AddEntityDialog({
 
               <div className="space-y-1.5">
                 <Label htmlFor="add-entity-slot-number">Slot number</Label>
-                <Input
+                <AvailabilityCheckInput
                   id="add-entity-slot-number"
                   inputMode="numeric"
                   autoComplete="off"
@@ -435,6 +457,8 @@ export function AddEntityDialog({
                   placeholder="26"
                   maxLength={4}
                   className={cn('h-10 tabular-nums', parkingDuplicate && 'border-destructive')}
+                  aria-invalid={Boolean(parkingDuplicate)}
+                  checkState={parkingSlotAvailabilityState}
                 />
                 {parkingDuplicate ? (
                   <p role="alert" className="text-destructive text-xs">

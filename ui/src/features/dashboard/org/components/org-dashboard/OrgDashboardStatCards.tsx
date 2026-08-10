@@ -1,4 +1,4 @@
-import { Building2, Calendar, DollarSign, Percent } from 'lucide-react';
+import { Building2, Calendar, DollarSign, Layers, Percent } from 'lucide-react';
 
 import { DashboardTrendStatCard } from '@/features/dashboard/property/components/DashboardTrendStatCard';
 import type { DashboardStats } from '@/features/dashboard/property/lib/types';
@@ -12,7 +12,9 @@ type Props = {
 };
 
 export function OrgDashboardStatCards({ stats, periodLabel }: Props) {
-  const { kpis, propertyCount } = stats;
+  const { kpis, propertyCount, parkingCount } = stats;
+  const hasParking = parkingCount > 0;
+  const listingCount = propertyCount + parkingCount;
 
   return (
     <section aria-label="Key metrics">
@@ -48,13 +50,30 @@ export function OrgDashboardStatCards({ stats, periodLabel }: Props) {
           iconClassName="text-rose-600 dark:text-rose-400"
           iconBgClassName="bg-rose-100 dark:bg-rose-900/30"
         />
-        <DashboardTrendStatCard
-          title="Total Properties"
-          value={String(propertyCount)}
-          icon={Building2}
-          iconClassName="text-violet-600 dark:text-violet-400"
-          iconBgClassName="bg-violet-100 dark:bg-violet-900/30"
-        />
+        {hasParking ? (
+          <DashboardTrendStatCard
+            title="Total Listings"
+            value={String(listingCount)}
+            icon={Layers}
+            iconClassName="text-violet-600 dark:text-violet-400"
+            iconBgClassName="bg-violet-100 dark:bg-violet-900/30"
+            footer={
+              <p className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] tabular-nums sm:text-xs">
+                <span>{propertyCount} properties</span>
+                <span aria-hidden>·</span>
+                <span>{parkingCount} parking</span>
+              </p>
+            }
+          />
+        ) : (
+          <DashboardTrendStatCard
+            title="Total Properties"
+            value={String(propertyCount)}
+            icon={Building2}
+            iconClassName="text-violet-600 dark:text-violet-400"
+            iconBgClassName="bg-violet-100 dark:bg-violet-900/30"
+          />
+        )}
       </div>
     </section>
   );

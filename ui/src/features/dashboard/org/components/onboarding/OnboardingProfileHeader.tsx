@@ -107,19 +107,11 @@ export function OnboardingProfileHeader({ name, email, avatarUrl }: Props) {
             aria-label="Account menu"
           >
             <div className="relative">
-              <div
-                className={cn(
-                  'ring-primary/15 ring-offset-background overflow-hidden rounded-full ring-2 ring-offset-2',
-                  'group-hover:ring-primary/30 group-data-[state=open]:ring-primary/40 transition-shadow'
-                )}
-              >
-                <ProfileAvatar avatarUrl={avatarUrl} initial={initial} size="lg" />
-              </div>
+              <ProfileAvatar avatarUrl={avatarUrl} initial={initial} size="lg" />
               <span
                 className={cn(
-                  'border-background bg-card text-muted-foreground absolute -bottom-0.5 -right-0.5',
-                  'flex size-7 items-center justify-center rounded-full border-2 shadow-sm',
-                  'group-data-[state=open]:bg-muted transition-colors'
+                  'border-background bg-card text-muted-foreground flex size-7 items-center justify-center rounded-full border-2 shadow-sm',
+                  'absolute -bottom-0.5 -right-0.5'
                 )}
                 aria-hidden
               >

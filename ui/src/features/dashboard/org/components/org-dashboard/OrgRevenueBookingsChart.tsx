@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 
+import { TrendingUp } from 'lucide-react';
 import {
   Area,
   AreaChart,
@@ -12,11 +13,13 @@ import {
 
 import type { DashboardTrendPoint } from '@/features/dashboard/property/lib/types';
 
+import { AdminSurfaceCardHeader } from '@/components/shared/AdminSurfaceCardHeader';
 import { SegmentedControl } from '@/components/ui/sliding-tabs';
 import { useIsBelowMd } from '@/hooks/useMediaQuery';
 import {
   CHART_HEIGHT_CLASS,
   CHART_INCOME_COLOR,
+  CHART_INFO_COLOR,
   defaultChartMargin,
   formatChartMoneyAxis,
 } from '@/lib/charts/chartStyles';
@@ -31,6 +34,7 @@ const EMPTY_REVENUE_AXIS_MAX = EMPTY_REVENUE_AXIS_TICKS.at(-1)!;
 type Props = {
   data: DashboardTrendPoint[];
   isLoading?: boolean;
+  className?: string;
 };
 
 function OrgTrendTooltip({
@@ -48,9 +52,7 @@ function OrgTrendTooltip({
     <div className="border-border bg-card rounded-lg border px-3 py-2 shadow-lg">
       <p className="text-foreground text-sm font-semibold">{point.label}</p>
       {metric === 'revenue' ? (
-        <p className="text-sm text-emerald-600 dark:text-emerald-400">
-          {formatMoney(point.revenue)}
-        </p>
+        <p className="text-sm text-teal-700 dark:text-teal-300">{formatMoney(point.revenue)}</p>
       ) : (
         <p className="text-sm text-sky-600 dark:text-sky-400">
           {point.bookings} booking{point.bookings === 1 ? '' : 's'}
@@ -60,33 +62,49 @@ function OrgTrendTooltip({
   );
 }
 
-export function OrgRevenueBookingsChart({ data, isLoading }: Props) {
+export function OrgRevenueBookingsChart({ data, isLoading, className }: Props) {
   const [metric, setMetric] = useState<ChartMetric>('revenue');
   const isBelowMd = useIsBelowMd();
-  const stroke = metric === 'revenue' ? CHART_INCOME_COLOR : '#0ea5e9';
+  const stroke = metric === 'revenue' ? CHART_INCOME_COLOR : CHART_INFO_COLOR;
   const gradientId = metric === 'revenue' ? 'orgRevenueFill' : 'orgBookingsFill';
 
   const hasRevenueData = useMemo(() => data.some((point) => point.revenue > 0), [data]);
   const useEmptyRevenueAxis = metric === 'revenue' && !hasRevenueData;
 
   return (
-    <section className="surface-card min-w-0 p-3 sm:p-4 lg:col-span-2">
-      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-section-title">Revenue Overview</p>
-        <SegmentedControl
-          value={metric}
-          onChange={setMetric}
-          listClassName="border p-0.5"
-          triggerClassName="min-h-[36px] px-3 text-xs font-semibold capitalize sm:min-h-[32px]"
-          aria-label="Chart metric"
-          options={[
-            { value: 'revenue', label: 'revenue' },
-            { value: 'bookings', label: 'bookings' },
-          ]}
-        />
-      </div>
+    <section
+      className={cn(
+        'surface-card flex h-full min-h-0 min-w-0 flex-col overflow-hidden p-3 sm:p-4',
+        className
+      )}
+    >
+      <AdminSurfaceCardHeader
+        icon={TrendingUp}
+        title="Revenue Overview"
+        description="Revenue & bookings over time"
+        iconClassName="bg-muted/80"
+        action={
+          <SegmentedControl
+            value={metric}
+            onChange={setMetric}
+            listClassName="border p-0.5"
+            triggerClassName="min-h-[36px] px-3 text-xs font-semibold capitalize sm:min-h-[32px]"
+            aria-label="Chart metric"
+            options={[
+              { value: 'revenue', label: 'revenue' },
+              { value: 'bookings', label: 'bookings' },
+            ]}
+          />
+        }
+      />
 
-      <div className={cn(CHART_HEIGHT_CLASS, isLoading && 'animate-pulse opacity-60')}>
+      <div
+        className={cn(
+          CHART_HEIGHT_CLASS,
+          'min-h-0 flex-1',
+          isLoading && 'animate-pulse opacity-60'
+        )}
+      >
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={defaultChartMargin(isBelowMd)}>
             <defs>
