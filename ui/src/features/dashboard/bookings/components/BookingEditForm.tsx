@@ -39,6 +39,7 @@ import { countParkingNights } from '@/features/guest/pay-parking/lib/payParkingH
 import { BookingEditStickyBar } from '@/features/dashboard/bookings/components/booking-detail/edit/BookingEditStickyBar';
 import {
   BookingEditTabs,
+  type BookingEditTabId,
   type BookingEditTabsHandle,
 } from '@/features/dashboard/bookings/components/booking-detail/edit/BookingEditTabs';
 import {
@@ -80,6 +81,8 @@ type Props = {
   onSaved: (updated: BookingRow) => void;
   /** Same handler as view-mode doc previews — opens in-page modal (resolved URL for private buckets). */
   onPreview: (label: string, rawUrl: string) => void | Promise<void>;
+  /** Open edit mode on a specific tab (Add parking / Add pets). */
+  initialTab?: BookingEditTabId;
 };
 
 export type BookingEditFormValues = FormValues;
@@ -294,7 +297,7 @@ function bookingToEditFormValues(booking: BookingRow): FormValues {
   };
 }
 
-export function BookingEditForm({ booking, onClose, onSaved, onPreview }: Props) {
+export function BookingEditForm({ booking, onClose, onSaved, onPreview, initialTab }: Props) {
   const guestEditRevertPipeline = shouldRevertGuestFieldEditsToPendingReview(booking.status);
   const updateMut = useUpdateBooking();
   const apiUrl = import.meta.env.VITE_API_URL;
@@ -589,6 +592,7 @@ export function BookingEditForm({ booking, onClose, onSaved, onPreview }: Props)
           errors={errors}
           showDocsTab={showDocsTab}
           sensitiveNoticeVisible={showSensitiveRevertHint}
+          initialTab={initialTab}
           tabs={{
             guest: (
               <GuestIdentityTab

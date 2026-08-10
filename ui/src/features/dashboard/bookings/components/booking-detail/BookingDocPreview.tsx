@@ -3,7 +3,9 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { ExternalLink, FileText, ImageIcon, Loader2 } from 'lucide-react';
 
 import {
+  formatReceiptAiVerdictLabel,
   ReceiptAiVerdictBadge,
+  ReceiptAiVerdictMark,
   type DocumentAiVerdictVariant,
   type ReceiptAiVerdict,
 } from '@/features/dashboard/bookings/components/ReceiptAiVerdictBadge';
@@ -22,7 +24,8 @@ export function getDocType(url: string): 'image' | 'pdf' | 'file' {
   return 'file';
 }
 
-function docPreviewOuterWidth() {
+function docPreviewOuterWidth(compact?: boolean) {
+  if (compact) return 'size-14 shrink-0 sm:size-16';
   return 'min-w-0 w-full max-w-full lg:max-w-[255px]';
 }
 
@@ -61,6 +64,8 @@ export function DocPreview({
   receiptAiVerdict,
   receiptAiLoading = false,
   receiptAiVariant = 'receipt',
+  /** Square thumbnail for dense guest-roster rows (no caption chrome). */
+  compact = false,
 }: {
   label: string;
   url: string;
@@ -68,6 +73,7 @@ export function DocPreview({
   receiptAiVerdict?: ReceiptAiVerdict;
   receiptAiLoading?: boolean;
   receiptAiVariant?: DocumentAiVerdictVariant;
+  compact?: boolean;
 }) {
   const normalized = normalizeStoragePublicUrl(url) ?? url;
   const parsed = parseStorageUrl(normalized);
@@ -114,11 +120,85 @@ export function DocPreview({
   }, [url]);
 
   const hrefForOpen = displayUrl ?? normalized;
+  const widthClass = docPreviewOuterWidth(compact);
+
+  if (compact) {
+    const hasVerdict =
+      !receiptAiLoading &&
+      receiptAiVerdict &&
+      String(receiptAiVerdict).toLowerCase() !== 'skipped' &&
+      ['valid', 'likely_valid', 'unclear', 'invalid'].includes(
+        String(receiptAiVerdict).toLowerCase()
+      );
+    const compactAriaLabel = receiptAiLoading
+      ? `Open ${label} — checking`
+      : hasVerdict
+        ? `Open ${label} — AI: ${formatReceiptAiVerdictLabel(receiptAiVerdict)}`
+        : `Open ${label}`;
+
+    if (needsSignedUrl && !displayUrl && !missingInStorage) {
+      return (
+        <div
+          className={`border-border bg-muted flex items-center justify-center overflow-hidden rounded-lg border ${widthClass}`}
+          aria-label={label}
+        >
+          <Loader2 className="text-muted-foreground size-4 animate-spin" aria-hidden />
+        </div>
+      );
+    }
+
+    if (missingInStorage || (layoutType === 'image' && imgError)) {
+      return (
+        <div
+          className={`border-border bg-muted/50 text-muted-foreground flex items-center justify-center overflow-hidden rounded-lg border border-dashed ${widthClass}`}
+          title={missingInStorage ? 'File missing from storage' : 'Preview unavailable'}
+          aria-label={label}
+        >
+          <ImageIcon className="size-4" aria-hidden />
+        </div>
+      );
+    }
+
+    return (
+      <button
+        type="button"
+        onClick={() => onPreview(label, url)}
+        aria-label={compactAriaLabel}
+        className={`border-border hover:border-primary/50 group relative flex cursor-pointer items-center justify-center overflow-hidden rounded-lg border transition-colors ${widthClass}`}
+      >
+        {layoutType === 'image' && !imgError ? (
+          <img
+            src={hrefForOpen}
+            alt=""
+            className="size-full object-cover"
+            onError={() => setImgError(true)}
+          />
+        ) : layoutType === 'pdf' ? (
+          <span className="flex size-full items-center justify-center bg-rose-100 dark:bg-rose-500/20">
+            <FileText className="size-5 text-rose-500" aria-hidden />
+          </span>
+        ) : (
+          <span className="bg-muted flex size-full items-center justify-center">
+            <ExternalLink className="text-muted-foreground size-4" aria-hidden />
+          </span>
+        )}
+        {receiptAiLoading ? (
+          <span className="bg-card/95 absolute right-1 top-1 flex size-5 items-center justify-center rounded-full shadow-sm ring-1 ring-black/5 dark:ring-white/10">
+            <Loader2 className="text-muted-foreground size-3 animate-spin" aria-hidden />
+          </span>
+        ) : hasVerdict ? (
+          <span className="absolute right-1 top-1">
+            <ReceiptAiVerdictMark verdict={receiptAiVerdict} size="sm" />
+          </span>
+        ) : null}
+      </button>
+    );
+  }
 
   if (needsSignedUrl && !displayUrl && !missingInStorage) {
     return (
       <div
-        className={`border-border bg-card flex flex-col overflow-hidden rounded-xl border ${docPreviewOuterWidth()}`}
+        className={`border-border bg-card flex flex-col overflow-hidden rounded-xl border ${widthClass}`}
       >
         <div className="bg-muted relative flex aspect-video items-center justify-center">
           <Loader2 className="text-muted-foreground size-8 animate-spin" aria-hidden />
@@ -139,7 +219,7 @@ export function DocPreview({
   if (missingInStorage) {
     return (
       <div
-        className={`border-border bg-muted/40 flex flex-col overflow-hidden rounded-xl border border-dashed ${docPreviewOuterWidth()}`}
+        className={`border-border bg-muted/40 flex flex-col overflow-hidden rounded-xl border border-dashed ${widthClass}`}
       >
         <div className="bg-muted relative flex aspect-video items-center justify-center px-3 text-center">
           <p className="text-muted-foreground text-[11px] leading-snug">
@@ -166,7 +246,7 @@ export function DocPreview({
   if (layoutType === 'image' && imgError) {
     return (
       <div
-        className={`border-border bg-muted/40 flex flex-col overflow-hidden rounded-xl border border-dashed ${docPreviewOuterWidth()}`}
+        className={`border-border bg-muted/40 flex flex-col overflow-hidden rounded-xl border border-dashed ${widthClass}`}
       >
         <div className="bg-muted relative flex aspect-video items-center justify-center px-3 text-center">
           <p className="text-muted-foreground text-[11px] leading-snug">Preview unavailable</p>
@@ -194,7 +274,7 @@ export function DocPreview({
           e.preventDefault();
           onPreview(label, url);
         }}
-        className={`border-border hover:border-primary/40 group flex flex-col overflow-hidden rounded-xl border transition-all hover:shadow-md ${docPreviewOuterWidth()}`}
+        className={`border-border hover:border-primary/40 group flex flex-col overflow-hidden rounded-xl border transition-all hover:shadow-md ${widthClass}`}
       >
         <div className="bg-muted relative aspect-video overflow-hidden">
           <img
@@ -231,7 +311,7 @@ export function DocPreview({
           e.preventDefault();
           onPreview(label, url);
         }}
-        className={`border-border hover:border-primary/40 group flex flex-col overflow-hidden rounded-xl border transition-all hover:shadow-md ${docPreviewOuterWidth()}`}
+        className={`border-border hover:border-primary/40 group flex flex-col overflow-hidden rounded-xl border transition-all hover:shadow-md ${widthClass}`}
       >
         <div className="bg-muted relative aspect-video overflow-hidden">
           <div className="absolute inset-0 flex items-center justify-center bg-rose-100">
@@ -261,7 +341,7 @@ export function DocPreview({
         e.preventDefault();
         onPreview(label, url);
       }}
-      className={`border-border bg-muted/50 hover:bg-muted flex items-center gap-2 rounded-xl border px-3 py-2.5 transition-colors ${docPreviewOuterWidth()}`}
+      className={`border-border bg-muted/50 hover:bg-muted flex items-center gap-2 rounded-xl border px-3 py-2.5 transition-colors ${widthClass}`}
     >
       <ExternalLink className="text-muted-foreground size-4 shrink-0" />
       <span className="text-foreground truncate text-xs font-medium">{label}</span>

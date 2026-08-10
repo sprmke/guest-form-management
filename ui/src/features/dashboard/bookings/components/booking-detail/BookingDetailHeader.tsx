@@ -1,9 +1,9 @@
 import { Calendar, Edit2, Users } from 'lucide-react';
 
-import { BookingDetailFlagChips } from '@/features/dashboard/bookings/components/BookingDetailFlagChips';
+import { BookingDetailActionsMenu } from '@/features/dashboard/bookings/components/booking-detail/BookingDetailActionsMenu';
 import { occupiedNightsFromStay } from '@/features/dashboard/bookings/components/calendar/calendarStayAmounts';
-import { PayParkingHeaderButton } from '@/features/dashboard/bookings/components/PayParkingModal';
 import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
+import type { BookingDetailAction } from '@/features/dashboard/bookings/lib/bookingDetailActions';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
 import { Button } from '@/components/ui/button';
@@ -14,16 +14,13 @@ import { formatBookingDate } from '@/utils/format/bookingDisplay';
 type Props = {
   booking: BookingRow;
   onEdit: () => void;
-  onPayParking: () => void;
+  /** Secondary actions (parking / pets / pay parking) behind one overflow trigger. */
+  actions: BookingDetailAction[];
   className?: string;
 };
 
-/**
- * View-mode header — reservation summary strip (not used in edit mode).
- * Bespoke card (not `BookingDetailCard`, which is row/panel-shaped), but shares the
- * same surface/typography language so it reads as part of the same system.
- */
-export function BookingDetailHeader({ booking, onEdit, onPayParking, className }: Props) {
+/** View-mode header — booking identity plus the page's single primary action. */
+export function BookingDetailHeader({ booking, onEdit, actions, className }: Props) {
   const pax = (booking.number_of_adults ?? 0) + (booking.number_of_children ?? 0);
   const nights = occupiedNightsFromStay(
     booking.check_in_date,
@@ -40,18 +37,16 @@ export function BookingDetailHeader({ booking, onEdit, onPayParking, className }
   return (
     <header
       className={cn(
-        'surface-card from-card via-card to-muted/30 relative overflow-hidden rounded-2xl bg-gradient-to-br p-5 sm:p-6',
+        'surface-card border-border/80 rounded-2xl border px-4 py-4 sm:px-5',
         className
       )}
     >
-      <div
-        className="bg-primary/8 pointer-events-none absolute -right-8 -top-8 size-40 rounded-full blur-2xl"
-        aria-hidden
-      />
-
-      <div className="relative flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0 space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-5">
+        <div className="min-w-0 space-y-1.5">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
+            <h1 className="text-foreground min-w-0 break-words text-xl font-bold leading-tight tracking-tight sm:text-2xl">
+              {heading}
+            </h1>
             <StatusBadge status={booking.status} />
             <span
               className={cn(
@@ -65,45 +60,39 @@ export function BookingDetailHeader({ booking, onEdit, onPayParking, className }
             </span>
           </div>
 
-          <div>
-            <h1 className="text-foreground text-xl font-bold leading-tight tracking-tight sm:text-2xl">
-              {heading}
-            </h1>
-            {showPrimarySubtitle ? (
-              <p className="text-muted-foreground mt-1 text-sm font-medium">{primary}</p>
-            ) : null}
-          </div>
+          {showPrimarySubtitle ? (
+            <p className="text-muted-foreground truncate text-sm font-medium">{primary}</p>
+          ) : null}
 
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="border-border/70 bg-background/80 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold shadow-sm">
-              <Calendar className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
-              <span>
+          <p className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium">
+            <span className="inline-flex min-w-0 items-center gap-1.5">
+              <Calendar className="size-3.5 shrink-0 opacity-70" aria-hidden />
+              <span className="min-w-0 break-words">
                 {formatBookingDate(booking.check_in_date)}
-                <span className="text-muted-foreground/60 mx-1.5" aria-hidden>
+                <span className="text-muted-foreground/50 mx-1" aria-hidden>
                   →
                 </span>
                 {formatBookingDate(booking.check_out_date)}
               </span>
             </span>
-            <span className="border-border/70 bg-background/80 inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold shadow-sm">
-              <Users className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
+            <span className="inline-flex items-center gap-1.5">
+              <Users className="size-3.5 shrink-0 opacity-70" aria-hidden />
               {pax} pax · {nights} {nights === 1 ? 'night' : 'nights'}
             </span>
-          </div>
-
-          <BookingDetailFlagChips booking={booking} />
+          </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 lg:shrink-0 lg:justify-end">
-          <PayParkingHeaderButton
-            booking={booking}
-            onOpenModal={onPayParking}
-            onViewParking={onPayParking}
-          />
-          <Button type="button" onClick={onEdit} size="sm" className="min-h-[44px] gap-1.5 px-5">
-            <Edit2 className="size-4" aria-hidden />
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            onClick={onEdit}
+            className="h-11 flex-1 gap-1.5 text-[13px] sm:flex-none lg:h-9"
+          >
+            <Edit2 className="size-4 shrink-0" aria-hidden />
             Edit booking
           </Button>
+          <BookingDetailActionsMenu actions={actions} />
         </div>
       </div>
     </header>

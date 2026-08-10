@@ -1,4 +1,8 @@
 import {
+  BookingDetailRow,
+  BookingDetailRowGroup,
+} from '@/features/dashboard/bookings/components/booking-detail/primitives/BookingDetailRow';
+import {
   buildHostNetBreakdown,
   computeBookingFinancials,
   type HostNetBreakdown,
@@ -86,9 +90,6 @@ export function BookingPricingSummary({
   const hostNetBreakdown = buildHostNetBreakdown(booking, isCompleted);
   const showGuestSettlement = totalGuestBalance != null && unpaidCents != null && unpaidCents > 0;
 
-  const ratesGridClass =
-    layout === 'page' ? 'grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2 md:grid-cols-3' : '';
-
   if (layout === 'modal') {
     return (
       <div className={cn('space-y-3', className)}>
@@ -107,68 +108,99 @@ export function BookingPricingSummary({
     );
   }
 
+  const additionalGuestFee = Number(booking.guest_additional_fee ?? 0);
+  const hasParking = booking.need_parking === true;
+
+  /**
+   * Ledger order: what the stay costs, how it was split, then the optional add-ons.
+   * Rows with no recorded amount are dropped rather than shown as a dash or ₱0.00.
+   */
+  const rateRows = [
+    { key: 'rate', label: 'Booking rate', value: formatMoney(booking.booking_rate as number) },
+    { key: 'down', label: 'Down payment', value: formatMoney(booking.down_payment as number) },
+    {
+      key: 'balance',
+      label: 'Balance after down payment',
+      value: formatMoney(booking.balance as number),
+    },
+    {
+      key: 'deposit',
+      label: 'Security deposit',
+      value: formatMoney(booking.security_deposit as number),
+    },
+    {
+      key: 'pet',
+      label: 'Pet fee',
+      value: booking.has_pets === true ? formatMoney(booking.pet_fee as number) : '—',
+    },
+    {
+      key: 'additional',
+      label: 'Additional guest fee',
+      value: additionalGuestFee > 0 ? formatMoney(additionalGuestFee) : '—',
+    },
+  ].filter((row) => row.value !== '—');
+
+  /**
+   * Parking sits in its own section because it never counts toward the guest
+   * balance below (`computeTotalGuestBalance` excludes it) — grouping it with the
+   * stay rates makes the settlement total look like it fails to add up.
+   */
+  const parkingRows = (
+    hasParking
+      ? [
+          {
+            key: 'parking-guest',
+            label: 'Charged to guest',
+            value: formatMoney(booking.parking_rate_guest as number),
+          },
+          {
+            key: 'parking-owner',
+            label: 'Paid to parking owner',
+            value: formatMoney(booking.parking_rate_paid as number),
+          },
+        ]
+      : []
+  ).filter((row) => row.value !== '—');
+
   return (
-    <div className={cn('space-y-3', className)}>
-      {!isCompleted ? (
-        <div>
-          <p className="text-overline mb-2">Rates &amp; fees</p>
-          <div className={ratesGridClass}>
-            <PricingInfoField
-              label="Booking rate"
-              value={formatMoney(booking.booking_rate as number)}
-            />
-            <PricingInfoField
-              label="Down payment"
-              value={formatMoney(booking.down_payment as number)}
-            />
-            <PricingInfoField
-              label="Security deposit"
-              value={formatMoney(booking.security_deposit as number)}
-            />
-            <PricingInfoField
-              label="Balance after down (recorded)"
-              value={formatMoney(booking.balance as number)}
-            />
-            <PricingInfoField
-              label="Pet fee"
-              value={booking.has_pets === true ? formatMoney(booking.pet_fee as number) : '—'}
-            />
-            <PricingInfoField
-              label="Parking fee (guest)"
-              value={
-                booking.need_parking === true
-                  ? formatMoney(booking.parking_rate_guest as number)
-                  : '—'
-              }
-            />
-            <PricingInfoField
-              label="Parking Owner Rate"
-              value={formatMoney(booking.parking_rate_paid as number)}
-            />
-            <PricingInfoField
-              label="Additional guest fee"
-              value={formatMoney(booking.guest_additional_fee as number)}
-            />
-          </div>
-        </div>
+    <div className={cn('space-y-5', className)}>
+      {!isCompleted && rateRows.length > 0 ? (
+        <PricingSection title="Rates & fees">
+          <BookingDetailRowGroup>
+            {rateRows.map((row) => (
+              <BookingDetailRow numeric key={row.key} label={row.label} value={row.value} />
+            ))}
+          </BookingDetailRowGroup>
+        </PricingSection>
+      ) : null}
+
+      {!isCompleted && parkingRows.length > 0 ? (
+        <PricingSection title="Parking">
+          <BookingDetailRowGroup>
+            {parkingRows.map((row) => (
+              <BookingDetailRow numeric key={row.key} label={row.label} value={row.value} />
+            ))}
+          </BookingDetailRowGroup>
+          <p className="text-caption mt-1.5">Collected on the Parking Request step.</p>
+        </PricingSection>
       ) : null}
 
       {showGuestSettlement ? (
-        <div className="border-border/50 overflow-hidden rounded-lg border">
-          <p className="bg-muted/50 text-overline px-4 py-1.5">Guest settlement</p>
-          <div className="divide-separator bg-card divide-y">
-            <PricingMiniRow label="Total guest balance" value={formatMoney(totalGuestBalance)} />
-            <PricingMiniRow
-              label="Balance paid"
-              value={paidTowardBalance > 0 ? formatMoney(paidTowardBalance) : '—'}
+        <PricingSection title="Guest settlement">
+          <BookingDetailRowGroup>
+            <BookingDetailRow
+              numeric
+              label="Total guest balance"
+              value={formatMoney(totalGuestBalance)}
             />
-            <PricingMiniRow
-              label="Unpaid"
-              value={formatMoney(unpaidCents / 100)}
-              valueClass="text-amber-800 dark:text-amber-300"
-            />
-          </div>
-        </div>
+            <BookingDetailRow numeric label="Balance paid" value={formatMoney(paidTowardBalance)} />
+            <BookingDetailRow label="Unpaid">
+              <span className="ml-auto text-sm font-bold tabular-nums text-amber-800 dark:text-amber-300">
+                {formatMoney(unpaidCents / 100)}
+              </span>
+            </BookingDetailRow>
+          </BookingDetailRowGroup>
+        </PricingSection>
       ) : null}
 
       {isCompleted ? (
@@ -238,9 +270,7 @@ function SdRefundSummaryCard({ booking }: { booking: BookingPricingSummarySource
       <p className="bg-muted/50 text-overline px-4 py-1.5">Security deposit refund</p>
 
       <div className="border-separator bg-card border-b">
-        <p className="text-muted-foreground px-4 pt-2.5 text-[10px] font-bold uppercase tracking-wider">
-          Timeline
-        </p>
+        <p className="text-overline px-4 pt-2.5">Timeline</p>
         <div className="grid grid-cols-1 gap-2 px-4 py-2.5 sm:grid-cols-3">
           {milestones.map((milestone) => (
             <SdRefundMilestone key={milestone.label} {...milestone} />
@@ -250,9 +280,7 @@ function SdRefundSummaryCard({ booking }: { booking: BookingPricingSummarySource
 
       {hasRefundDetails ? (
         <div className="divide-separator border-separator bg-card divide-y border-b">
-          <p className="text-muted-foreground px-4 pt-2.5 text-[10px] font-bold uppercase tracking-wider">
-            Refund details
-          </p>
+          <p className="text-overline px-4 pt-2.5">Refund details</p>
           <div className="divide-separator divide-y">
             {refundMethodLabel ? <PricingMiniRow label="Method" value={refundMethodLabel} /> : null}
 
@@ -272,9 +300,7 @@ function SdRefundSummaryCard({ booking }: { booking: BookingPricingSummarySource
 
             {guestFeedback ? (
               <div className="px-4 py-2.5">
-                <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-wider">
-                  Guest feedback
-                </p>
+                <p className="text-overline">Guest feedback</p>
                 <p className="text-foreground mt-1 text-sm leading-relaxed">{guestFeedback}</p>
               </div>
             ) : null}
@@ -431,6 +457,16 @@ function HostNetBreakdownRow({ line }: { line: HostNetBreakdownLine }) {
   );
 }
 
+/** Section head + body inside the Pricing card — one uppercase level per panel, on the head only. */
+function PricingSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="min-w-0">
+      <h4 className="text-overline mb-1">{title}</h4>
+      {children}
+    </section>
+  );
+}
+
 function PricingMiniRow({
   label,
   value,
@@ -448,8 +484,8 @@ function PricingMiniRow({
     <div className="flex items-center justify-between gap-4 px-4 py-2">
       <span
         className={cn(
-          'text-xs uppercase tracking-wider',
-          bold ? 'text-foreground font-bold' : 'text-muted-foreground font-medium'
+          'min-w-0 text-xs',
+          bold ? 'text-foreground font-semibold' : 'text-muted-foreground font-medium'
         )}
       >
         {label}
@@ -465,24 +501,6 @@ function PricingMiniRow({
           {value}
         </span>
       )}
-    </div>
-  );
-}
-
-function PricingInfoField({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | number | null | undefined;
-}) {
-  if (value === null || value === undefined || value === '' || value === '—') {
-    return null;
-  }
-  return (
-    <div className="flex min-w-0 flex-col gap-0.5">
-      <span className="text-overline">{label}</span>
-      <span className="text-foreground text-sm">{String(value)}</span>
     </div>
   );
 }

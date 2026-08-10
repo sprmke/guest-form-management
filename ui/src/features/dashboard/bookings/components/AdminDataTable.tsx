@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 
 import { Link } from 'react-router-dom';
 
-import { ArrowUpRight, Car, Dog, PartyPopper } from 'lucide-react';
+import { ArrowUpRight, Car, Dog, PartyPopper, X } from 'lucide-react';
 
 import { GuestAvatar } from '@/features/dashboard/bookings/components/GuestAvatar';
 import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
@@ -281,9 +281,7 @@ export function AdminTableFlagsCell({
           aria-label="AI detected invalid payment receipt"
           className={cn('size-7', bookingFlagIconChipClass.invalidReceipt)}
         >
-          <span className="text-sm font-black leading-none" aria-hidden>
-            !
-          </span>
+          <X className="size-3.5" strokeWidth={2.75} aria-hidden />
         </span>
       ) : null}
       {!hasAny ? (

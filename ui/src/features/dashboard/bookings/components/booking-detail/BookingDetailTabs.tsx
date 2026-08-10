@@ -1,8 +1,9 @@
+import type { BookingViewTab } from '@/features/dashboard/bookings/lib/resolveBookingViewTab';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
 import { SegmentedControl } from '@/components/ui/sliding-tabs';
 
-export type BookingViewTab = 'overview' | 'guests' | 'stay' | 'pricing' | 'files';
+export type { BookingViewTab };
 
 type Props = {
   value: BookingViewTab;
@@ -18,12 +19,12 @@ export function BookingDetailTabs({ value, onChange, booking }: Props) {
       onChange={onChange}
       size="compact"
       aria-label="Booking detail sections"
-      className="w-full max-w-full"
-      listClassName="w-full max-w-full"
+      className="max-w-full"
       options={[
         { value: 'overview', label: 'Overview' },
         { value: 'guests', label: 'Guests' },
-        { value: 'stay', label: 'Stay' },
+        ...(booking.need_parking ? [{ value: 'parking' as const, label: 'Parking' }] : []),
+        ...(booking.has_pets ? [{ value: 'pets' as const, label: 'Pets' }] : []),
         ...(booking.status !== 'PENDING_REVIEW'
           ? [{ value: 'pricing' as const, label: 'Pricing' }]
           : []),
