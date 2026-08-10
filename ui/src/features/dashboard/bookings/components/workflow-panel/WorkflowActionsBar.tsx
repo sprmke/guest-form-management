@@ -3,24 +3,23 @@
  *
  * Three tiers, top to bottom:
  * 1. A back/forward pair on one axis — matched height, radius and type scale,
- *    with a left arrow on back and a right arrow on the primary so the row reads
+ *    with a left arrow on return and a right arrow on the primary so the row reads
  *    as a single direction control. These commit real status changes, unlike the
  *    deck header's arrows which only move the view, so they are deliberately a
  *    different shape and sit in their own footer.
  * 2. The step-scoped undo ("mark … incomplete"), quiet and full width.
- * 3. Cancel booking, below a rule, on a soft rose wash so it names itself as
- *    destructive at rest without competing with the primary CTA — booking-scoped,
- *    so it stays put regardless of which stage is on screen, and disappears for
- *    good once the guest has checked in (`canCancelBookingAtStatus`).
+ * 3. Cancel booking, below a rule, on a soft rose wash — shown only on the live
+ *    step (or in the kanban modal), same as return/proceed; hidden while browsing
+ *    earlier completed stages. Disappears for good once the guest has checked in
+ *    (`canCancelBookingAtStatus`).
  *
  * The eligibility booleans still come from `useWorkflowActions`; only the
- * presentation is re-ranked. While the rail browses a passed stage, the two
- * transition tiers hide and Cancel is all that remains.
+ * presentation is re-ranked. While the rail browses a passed stage, the whole
+ * footer hides when there is nothing to act on.
  */
 
 import { ArrowLeft, ArrowRight, Loader2, RotateCcw } from 'lucide-react';
 
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   canCancelBookingAtStatus,
   statusLabel,
@@ -31,11 +30,14 @@ import {
   type PendingDocNestedKey,
 } from '@/features/dashboard/bookings/lib/workflow';
 import {
+  workflowActionLabelGroupClass,
+  workflowActionLabelTextClass,
   workflowBackActionClass,
   workflowPrimaryActionClass,
 } from '@/features/dashboard/bookings/lib/workflowActionButtonStyles';
 import { shortDocStepLabel } from '@/features/dashboard/bookings/lib/workflowStageDeck';
 
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -103,26 +105,28 @@ function PrimaryCta({
       onClick={onSelect}
       aria-busy={busy || undefined}
       aria-label={blockedHint ? `${label}. ${blockedHint}` : undefined}
-      className={cn(workflowPrimaryActionClass(!disabled), 'w-full min-w-0')}
+      className={cn(workflowPrimaryActionClass(!disabled), 'w-full min-w-0 text-center')}
     >
-      <span className="min-w-0 leading-snug">{label}</span>
-      {busy ? (
-        <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
-      ) : (
-        <ArrowRight className="size-4 shrink-0" aria-hidden />
-      )}
+      <span className={cn(workflowActionLabelGroupClass, 'gap-2')}>
+        <span className={workflowActionLabelTextClass}>{label}</span>
+        {busy ? (
+          <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+        ) : (
+          <ArrowRight className="size-4 shrink-0" aria-hidden />
+        )}
+      </span>
     </button>
   );
 
   if (!blockedHint) {
-    return <div className="min-w-0 flex-1">{button}</div>;
+    return <div className="w-full min-w-0">{button}</div>;
   }
 
   return (
     <TooltipProvider delayDuration={200}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className="min-w-0 flex-1">{button}</span>
+          <span className="block w-full min-w-0">{button}</span>
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-[220px] text-center">
           {blockedHint}
@@ -162,7 +166,7 @@ export function WorkflowActionsBar({
 }: Props) {
   if (isTerminal) return null;
 
-  const showCancel = canCancelBookingAtStatus(status);
+  const showCancel = canCancelBookingAtStatus(status) && (isLiveView || isModal);
   const showTransitions = isLiveView || isModal;
   const inDocStep = inPendingDocuments && viewingPendingDocSub;
   const activeDocShortLabel = shortDocStepLabel(activePendingDocLabel);
@@ -197,7 +201,7 @@ export function WorkflowActionsBar({
       label: `Proceed to ${statusLabel(next)}`,
       enabled: !isTransitionDisabled(next),
       onSelect: () => onOpenForwardProceedConfirm(next, `Proceed to ${statusLabel(next)}`),
-      blockedHint: 'Complete the details above to continue.',
+      blockedHint: 'Fill in the required fields to continue.',
     };
   }
 
@@ -209,6 +213,7 @@ export function WorkflowActionsBar({
 
   const showMarkIncomplete = showTransitions && inDocStep && selectedPendingDocCanMarkIncomplete;
   const showTransitionRow = showTransitions && (primary !== null || backTo !== null);
+  const pairedTransitionActions = backTo !== null && primary !== null;
   const showNotRequiredNote = showTransitions && docStepNotRequired && primary === null;
   const showDeadEndNote =
     showTransitions && !showTransitionRow && !showNotRequiredNote && !showMarkIncomplete;
@@ -231,18 +236,26 @@ export function WorkflowActionsBar({
       ) : null}
 
       {showTransitionRow ? (
-        <div className="flex items-stretch gap-2">
+        <div
+          className={cn(
+            'grid items-stretch gap-2',
+            pairedTransitionActions ? 'grid-cols-2' : 'grid-cols-1'
+          )}
+        >
           {backTo ? (
             <button
               type="button"
               disabled={actionsBusy}
               onClick={() => onOpenBackConfirm(backTo)}
-              aria-label={`Move back to ${statusLabel(backTo)}`}
-              title={`Move back to ${statusLabel(backTo)}`}
-              className={cn(workflowBackActionClass, primary ? undefined : 'flex-1')}
+              aria-label={`Return booking to ${statusLabel(backTo)}`}
+              className={cn(workflowBackActionClass, 'w-full min-w-0')}
             >
-              <ArrowLeft className="size-4 shrink-0" aria-hidden />
-              {primary ? 'Back' : `Back to ${statusLabel(backTo)}`}
+              <span className={workflowActionLabelGroupClass}>
+                <ArrowLeft className="size-4 shrink-0" aria-hidden />
+                <span className={workflowActionLabelTextClass}>
+                  Return to {statusLabel(backTo)}
+                </span>
+              </span>
             </button>
           ) : null}
 

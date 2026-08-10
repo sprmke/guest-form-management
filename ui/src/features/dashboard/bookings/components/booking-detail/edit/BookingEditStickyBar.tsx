@@ -26,7 +26,7 @@ function EditActions({
         type="button"
         onClick={onCancel}
         disabled={cancelDisabled}
-        className="border-border text-muted-foreground hover:bg-muted/50 inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border px-4 text-sm font-medium transition-colors disabled:opacity-50"
+        className="border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground inline-flex min-h-[44px] cursor-pointer items-center gap-1.5 rounded-lg border px-4 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
       >
         <X className="size-3.5" aria-hidden />
         Cancel
@@ -87,10 +87,7 @@ export function BookingEditStickyBar({
 
   return (
     <div
-      className={cn(
-        'border-border/70 bg-background/95 border-t px-3 py-3 backdrop-blur-sm sm:px-5',
-        'sticky bottom-0 z-0'
-      )}
+      className={cn('border-border/70 bg-card border-t px-3 py-3 sm:px-5', 'sticky bottom-0 z-0')}
     >
       {actions}
     </div>
