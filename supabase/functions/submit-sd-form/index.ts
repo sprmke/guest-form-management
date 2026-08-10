@@ -104,8 +104,6 @@ serve(async (req) => {
       payload,
       {
         saveToDatabase: true,
-        updateGoogleCalendar: true,
-        updateGoogleSheets: true,
         sendGafRequestEmail: false,
         sendParkingBroadcastEmail: false,
         sendPetRequestEmail: false,

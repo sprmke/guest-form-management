@@ -12,16 +12,9 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { DatabaseService } from '../_shared/databaseService.ts';
-import { CalendarService } from '../_shared/calendarService.ts';
-import { SheetsService } from '../_shared/sheetsService.ts';
 import { sendParkingBroadcast } from '../_shared/emailService.ts';
 import { propertyAutomationEnabled } from '../_shared/propertyAutomationToggles.ts';
-import {
-  isBookingStatus,
-  isPostPendingDocumentsStatus,
-  STATUS_HUMAN_LABEL,
-  type BookingStatus,
-} from '../_shared/statusMachine.ts';
+import { isBookingStatus, isPostPendingDocumentsStatus } from '../_shared/statusMachine.ts';
 
 type SubmitBody = {
   bookingId?: string;
@@ -51,15 +44,6 @@ function validateBody(body: SubmitBody): string | null {
   if (!brand) return 'Car brand and model is required';
   if (!color) return 'Car color is required';
   return null;
-}
-
-function buildPaxNights(booking: Record<string, unknown>): {
-  pax: number;
-  nights: number;
-} {
-  const pax = (Number(booking.number_of_adults) || 1) + (Number(booking.number_of_children) || 0);
-  const nights = Number(booking.number_of_nights) || 1;
-  return { pax, nights };
 }
 
 serve(async (req) => {
@@ -143,27 +127,6 @@ serve(async (req) => {
       throw new Error(
         'Parking details were saved but the owner broadcast email failed. Please ask your host to resend from the admin dashboard.'
       );
-    }
-
-    const rawStatusAfter = updated.status as string;
-    if (isBookingStatus(rawStatusAfter)) {
-      const status = rawStatusAfter as BookingStatus;
-      const { pax, nights } = buildPaxNights(updated as Record<string, unknown>);
-      const guestName = String(updated.guest_facebook_name ?? '');
-      const statusLabel = STATUS_HUMAN_LABEL[status];
-      try {
-        await CalendarService.updateCalendarEventStatus(
-          bookingId,
-          status,
-          pax,
-          nights,
-          guestName,
-          updated
-        );
-        await SheetsService.syncFullRowFromDbBooking(updated, statusLabel);
-      } catch (syncErr) {
-        console.warn('[submit-pay-parking] Calendar/sheet sync failed (non-fatal):', syncErr);
-      }
     }
 
     return new Response(

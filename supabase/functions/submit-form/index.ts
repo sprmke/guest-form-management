@@ -1,8 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { DatabaseService } from '../_shared/databaseService.ts';
-import { CalendarService } from '../_shared/calendarService.ts';
-import { SheetsService } from '../_shared/sheetsService.ts';
 import { sendNewBookingRequestNotify } from '../_shared/emailService.ts';
 import { propertyAutomationEnabled } from '../_shared/propertyAutomationToggles.ts';
 import { notifyTelegramNewBookingRequest } from '../_shared/telegramMarketing.ts';
@@ -66,8 +64,6 @@ serve(async (req) => {
 
     const isSaveToDatabaseEnabled = readSubmitFlag('saveToDatabase', true);
     const isSaveImagesToStorageEnabled = readSubmitFlag('saveImagesToStorage', true);
-    const isCalendarUpdateEnabled = readSubmitFlag('updateGoogleCalendar', true);
-    const isSheetsUpdateEnabled = readSubmitFlag('updateGoogleSheets', true);
     /** New Booking Request → `EMAIL_REPLY_TO`; guest form dev panel sends explicit `sendEmail=false` when unchecked. */
     const isSendEmailEnabled = readSubmitFlag('sendEmail', true);
 
@@ -83,8 +79,6 @@ serve(async (req) => {
     console.log(
       `  New Booking Request email (EMAIL_REPLY_TO): ${isSendEmailEnabled ? '✅' : '❌'} (FormData/sendEmail, default on — only sent after a DB save with an id; not this flag alone)`
     );
-    console.log(`  Update Calendar: ${isCalendarUpdateEnabled ? '✅' : '❌'}`);
-    console.log(`  Update Google Sheets: ${isSheetsUpdateEnabled ? '✅' : '❌'}`);
     console.log('---');
 
     // Extract check-in and check-out dates and booking ID to check for overlaps
@@ -354,30 +348,6 @@ serve(async (req) => {
           staffTgErr
         );
       }
-    }
-
-    // Create or update calendar event if enabled
-    if (isCalendarUpdateEnabled) {
-      await CalendarService.createOrUpdateCalendarEvent(
-        data,
-        validIdUrl,
-        paymentReceiptUrl,
-        petVaccinationUrl,
-        petImageUrl,
-        submissionData.id
-      );
-    }
-
-    // Append to Google Sheet if enabled
-    if (isSheetsUpdateEnabled) {
-      await SheetsService.appendToSheet(
-        data,
-        validIdUrl,
-        paymentReceiptUrl,
-        petVaccinationUrl,
-        petImageUrl,
-        submissionData.id
-      );
     }
 
     console.log('Form submission process completed successfully');

@@ -7,12 +7,8 @@ import { decryptGmailRefreshToken } from './gmailMailOAuthCrypto.ts';
 
 export const GMAIL_READONLY_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
 
-/** Scopes for Settings → Connect Google (Gmail listener + Calendar + Sheets). */
-export const GOOGLE_CONNECT_OAUTH_SCOPES = [
-  GMAIL_READONLY_SCOPE,
-  'https://www.googleapis.com/auth/calendar',
-  'https://www.googleapis.com/auth/spreadsheets',
-].join(' ');
+/** Scopes for Settings → Connect Google (Gmail listener only). Re-consent required for narrower scope. */
+export const GOOGLE_CONNECT_OAUTH_SCOPES = [GMAIL_READONLY_SCOPE].join(' ');
 
 export type WebClientCredentials = { clientId: string; clientSecret: string };
 

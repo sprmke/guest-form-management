@@ -339,13 +339,6 @@ serveAuthenticated('app-settings', async (req) => {
       patch.automation_toggles = { ...existing, ...automationPatch };
     }
 
-    if (typeof body.syncCalendar === 'boolean') {
-      patch.sync_calendar = body.syncCalendar;
-    }
-    if (typeof body.syncSheets === 'boolean') {
-      patch.sync_sheets = body.syncSheets;
-    }
-
     if (Object.keys(patch).length === 0) {
       return jsonError(req, 'No valid fields to update');
     }

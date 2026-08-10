@@ -5,7 +5,6 @@
  *   • Status enum literals (must match CHECK constraint in DB migration)
  *   • Allowed transition graph (automation + normal admin clicks)
  *   • Admin-only "force advance" edges (manual override / automation catch-up)
- *   • Google Calendar colorId + summary label map
  *
  * Mirror: ui/src/features/dashboard/bookings/lib/workflow.ts (kept in sync manually).
  * Rule:   .cursor/rules/booking-workflow.mdc
@@ -247,39 +246,14 @@ export function availableTransitions(from: BookingStatus, ctx: TransitionContext
   return primary;
 }
 
-// ─── Calendar color + summary label map ──────────────────────────────────────
-// colorId values are Google Calendar API integers.
-// Summary label is the first segment of the event title (no brackets in production).
-// See: docs/planning/NEW_FLOW_PLAN.md §1.4, .cursor/rules/booking-workflow.mdc §4
+// ─── Document completion (PENDING_DOCUMENTS nested steps) ───────────────────
 
-export type CalendarStatusMeta = {
-  /** Google Calendar API colorId. */
-  colorId: string;
-  /** First segment of the calendar event summary (e.g. "PENDING REVIEW"). */
-  label: string;
-};
-
-export const STATUS_CALENDAR_META: Record<BookingStatus, CalendarStatusMeta> = {
-  PENDING_REVIEW: { colorId: '11', label: 'PENDING REVIEW' },
-  PENDING_DOCUMENTS: { colorId: '5', label: 'PENDING DOCUMENTS' },
-  PENDING_GAF: { colorId: '5', label: 'PENDING GAF' },
-  PENDING_PARKING_REQUEST: { colorId: '5', label: 'PENDING PARKING REQUEST' },
-  PENDING_PET_REQUEST: { colorId: '5', label: 'PENDING PET REQUEST' },
-  READY_FOR_CHECKIN: { colorId: '10', label: 'READY FOR CHECK-IN' },
-  READY_FOR_CHECKOUT: { colorId: '6', label: 'READY FOR CHECK-OUT' },
-  PENDING_SD_REFUND: { colorId: '6', label: 'PENDING SD REFUND' },
-  COMPLETED: { colorId: '9', label: 'COMPLETED' },
-  CANCELLED: { colorId: '3', label: 'CANCELED' },
-  IMPORTED: { colorId: '8', label: 'IMPORTED' },
-};
-
-/** DB fields used to derive nested “what is still pending” under PENDING_DOCUMENTS (calendar). */
-export type PendingDocumentsCalendarBooking = {
+/** DB fields used to derive nested document completion under PENDING_DOCUMENTS. */
+type PendingDocumentsBookingFields = {
   need_parking?: boolean | null | string;
   has_pets?: boolean | null | string;
   /**
-   * When true, Google Calendar `summary` gets a leading 🎉 (see `buildCalendarSummary`).
-   * `has_pets` / `need_parking` add 🐶 / 🚗 in the same prefix when applicable.
+   * When true, the booking requested surprise decor setup.
    */
   guest_requests_surprise_decor?: boolean | null | string;
   gaf_completed_at?: string | null;
@@ -327,7 +301,7 @@ function parseCompletionsMap(raw: unknown): DocumentCompletionsMap {
  * before a caller has started writing the JSONB map for that id).
  */
 export function readDocumentCompletions(
-  booking: PendingDocumentsCalendarBooking & { document_requirement_completions?: unknown }
+  booking: PendingDocumentsBookingFields & { document_requirement_completions?: unknown }
 ): DocumentCompletionsMap {
   const map = parseCompletionsMap(booking.document_requirement_completions);
   if (!map.gaf) {
@@ -386,7 +360,7 @@ function isCompletionDone(completion: DocumentRequirementCompletion | undefined)
  * to `true` (non-blocking) when that id isn't part of the resolved `requirements`.
  */
 export function getPendingDocumentsNestedCompletion(
-  booking: PendingDocumentsCalendarBooking & { document_requirement_completions?: unknown },
+  booking: PendingDocumentsBookingFields & { document_requirement_completions?: unknown },
   requirements: DocumentRequirement[]
 ): {
   needParking: boolean;
@@ -423,119 +397,6 @@ export function getPendingDocumentsNestedCompletion(
     byRequirementId,
     allConfigurableDocsDone,
   };
-}
-
-/**
- * First segment of the Google Calendar `summary` when `status === PENDING_DOCUMENTS`.
- * Lists every incomplete applicable requirement (sorted by `order`) using
- * `id.toUpperCase()`, e.g. `PENDING_GAF_PARKING_PET_DOCS`, `PENDING_PARKING_DOCS`.
- * PARKING is inserted just before the first `has_pets`-triggered requirement to
- * preserve today's Azure GAF → PARKING → PET ordering (or appended at the end when
- * no such requirement is configured/applicable). When nothing is left — including
- * the edge case of an empty applicable list — falls back to `PENDING DOCUMENTS`.
- */
-export function buildPendingDocumentsCalendarSummaryPrefix(
-  booking: PendingDocumentsCalendarBooking & { document_requirement_completions?: unknown },
-  requirements: DocumentRequirement[]
-): string {
-  const { needParking, parkingDone, byRequirementId } = getPendingDocumentsNestedCompletion(
-    booking,
-    requirements
-  );
-
-  const applicable = [...requirements]
-    .sort((a, b) => a.order - b.order)
-    .filter((req) => requirementApplies(req, booking));
-
-  const segments: string[] = [];
-  let parkingInserted = false;
-  const insertParkingIfNeeded = () => {
-    if (parkingInserted) return;
-    parkingInserted = true;
-    if (needParking && !parkingDone) segments.push('PARKING');
-  };
-
-  for (const req of applicable) {
-    if (req.triggerCondition === 'has_pets') insertParkingIfNeeded();
-    if (!byRequirementId[req.id]) segments.push(req.id.toUpperCase());
-  }
-  insertParkingIfNeeded();
-
-  if (segments.length === 0) return STATUS_CALENDAR_META.PENDING_DOCUMENTS.label;
-  return `PENDING_${segments.join('_')}_DOCS`;
-}
-
-/**
- * Leading emoji prefix for Google Calendar `summary` (at-a-glance in month view).
- * Order: surprise decor → pets → parking. Each flag is independent.
- */
-function buildCalendarSummaryIconPrefix(booking: PendingDocumentsCalendarBooking): string {
-  const icons: string[] = [];
-  if (bookingFlagTrue(booking.guest_requests_surprise_decor)) icons.push('🎉');
-  if (bookingFlagTrue(booking.has_pets)) icons.push('🐶');
-  if (bookingFlagTrue(booking.need_parking)) icons.push('🚗');
-  if (icons.length === 0) return '';
-  return `${icons.join(' ')} `;
-}
-
-/**
- * Builds the Google Calendar event `summary` for a given booking.
- *
- * Format: `{STATUS LABEL} - {pax}pax {nights}night(s) - {guestFacebookName}`
- *
- * Optional leading icons when `booking` is passed: **`🎉`** if surprise decor,
- * **`🐶`** if `has_pets`, **`🚗`** if `need_parking` (space-separated, then the core title).
- *
- * When `status === PENDING_DOCUMENTS'` and `booking` is passed, the first segment is
- * built from outstanding document sub-steps (see `buildPendingDocumentsCalendarSummaryPrefix`).
- *
- * `requirements` defaults to `DEFAULT_DOCUMENT_REQUIREMENTS` (GAF + pet) so existing
- * callers keep today's behavior until they're wired to resolve per-property lists.
- */
-export function buildCalendarSummary(
-  status: BookingStatus,
-  pax: number,
-  nights: number,
-  guestName: string,
-  booking?:
-    (PendingDocumentsCalendarBooking & { document_requirement_completions?: unknown }) | null,
-  requirements: DocumentRequirement[] = DEFAULT_DOCUMENT_REQUIREMENTS
-): string {
-  const label =
-    status === 'PENDING_DOCUMENTS' && booking != null
-      ? buildPendingDocumentsCalendarSummaryPrefix(booking, requirements)
-      : STATUS_CALENDAR_META[status].label;
-  const nightsText = `${nights}${nights === 1 ? 'night' : 'nights'}`;
-  const core = `${label} - ${pax}pax ${nightsText} - ${guestName}`;
-  if (booking != null) {
-    const iconPrefix = buildCalendarSummaryIconPrefix(booking);
-    if (!!iconPrefix.trim()) return `${iconPrefix}| ${core}`;
-  }
-  return core;
-}
-
-/**
- * For calendar titles, PENDING_DOCUMENTS should display the currently pending
- * nested stage so operations can immediately see what is still blocked.
- */
-export function resolveCalendarSummaryStatus(
-  status: BookingStatus,
-  booking?:
-    (PendingDocumentsCalendarBooking & { document_requirement_completions?: unknown }) | null,
-  requirements: DocumentRequirement[] = DEFAULT_DOCUMENT_REQUIREMENTS
-): BookingStatus {
-  if (status !== 'PENDING_DOCUMENTS' || !booking) return status;
-
-  const { needParking, hasPets, gafDone, parkingDone, petDone } =
-    getPendingDocumentsNestedCompletion(booking, requirements);
-
-  if (!gafDone) return 'PENDING_GAF';
-  if (!parkingDone) return 'PENDING_PARKING_REQUEST';
-  if (!petDone) return 'PENDING_PET_REQUEST';
-
-  // Fallback if all nested steps are already complete but parent status has
-  // not yet been advanced to READY_FOR_CHECKIN.
-  return 'PENDING_DOCUMENTS';
 }
 
 // ─── Human labels (for admin UI display) ─────────────────────────────────────

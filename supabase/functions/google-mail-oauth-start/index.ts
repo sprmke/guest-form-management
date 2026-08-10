@@ -1,5 +1,5 @@
 /**
- * Admin-only: returns a Google OAuth URL to connect Google (Gmail + Calendar + Sheets) for this property.
+ * Admin-only: returns a Google OAuth URL to connect Gmail for this property.
  *
  * Env: GMAIL_API_WEB_CLIENT_JSON, GMAIL_OAUTH_ALLOWED_RETURN_ORIGINS (optional)
  */

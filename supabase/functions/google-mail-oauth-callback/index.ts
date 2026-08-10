@@ -13,10 +13,6 @@ import {
 } from '../_shared/gmailMailOAuthAccess.ts';
 import { encryptGmailRefreshToken } from '../_shared/gmailMailOAuthCrypto.ts';
 import { upsertPropertyGmailIntegration } from '../_shared/gmailMailIntegrationUpsert.ts';
-import {
-  persistProvisionedGoogleIds,
-  provisionPropertyGoogleResources,
-} from '../_shared/propertyGoogleOAuthProvision.ts';
 import { ensurePropertySettings } from '../_shared/propertySettingsSeed.ts';
 import {
   buildErrorRedirect,
@@ -133,35 +129,8 @@ serve(async (req) => {
 
     try {
       await ensurePropertySettings(propertyId);
-
-      const { data: appRow } = await sb
-        .from('app_settings')
-        .select('google_calendar_id, google_spreadsheet_id')
-        .eq('property_id', propertyId)
-        .maybeSingle();
-
-      const calendarId = String(appRow?.google_calendar_id ?? '').trim();
-      const spreadsheetId = String(appRow?.google_spreadsheet_id ?? '').trim();
-      const createCalendar = !calendarId;
-      const createSpreadsheet = !spreadsheetId;
-
-      if (createCalendar || createSpreadsheet) {
-        const { data: propRow } = await sb
-          .from('properties')
-          .select('name')
-          .eq('id', propertyId)
-          .maybeSingle();
-        const propertyName = String(propRow?.name ?? '').trim() || 'Property';
-
-        const provisioned = await provisionPropertyGoogleResources(
-          tokens.access_token,
-          propertyName,
-          { createCalendar, createSpreadsheet }
-        );
-        await persistProvisionedGoogleIds(propertyId, provisioned);
-      }
-    } catch (provisionErr) {
-      console.error('[google-mail-oauth-callback] Google resource provision:', provisionErr);
+    } catch (settingsErr) {
+      console.error('[google-mail-oauth-callback] ensurePropertySettings:', settingsErr);
     }
 
     await sb.from('gmail_mail_oauth_state').delete().eq('state', state);

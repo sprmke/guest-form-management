@@ -40,8 +40,6 @@ import { getGmailApprovalSenderAllowList } from '../_shared/appSettings.ts';
 const GMAIL_LISTENER_DEV_CONTROLS = {
   saveToDatabase: true,
   generatePdf: false,
-  updateGoogleCalendar: true,
-  updateGoogleSheets: true,
   sendGafRequestEmail: false,
   sendParkingBroadcastEmail: false,
   sendPetRequestEmail: false,

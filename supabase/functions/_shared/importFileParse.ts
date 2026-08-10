@@ -35,7 +35,7 @@ function cellToString(value: unknown): string {
 }
 
 export function parseImportCsvText(text: string): ParsedImportTable {
-  // Excel and Google Sheets both prepend a UTF-8 BOM, which would otherwise ride
+  // Excel exports often prepend a UTF-8 BOM, which would otherwise ride
   // along on the first header and break column matching.
   const result = Papa.parse<Record<string, string>>(text.replace(/^\uFEFF/, ''), {
     header: true,

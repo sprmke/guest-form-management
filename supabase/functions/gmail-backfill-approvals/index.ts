@@ -21,7 +21,6 @@ import {
   verifyBookingBelongsToProperty,
 } from '../_shared/propertyScope.ts';
 import { DatabaseService } from '../_shared/databaseService.ts';
-import { SheetsService } from '../_shared/sheetsService.ts';
 import { WorkflowOrchestrator } from '../_shared/workflowOrchestrator.ts';
 import { BookingStatus } from '../_shared/statusMachine.ts';
 import { formatDateForEmail, formatPublicUrl } from '../_shared/utils.ts';
@@ -52,8 +51,6 @@ const WORKFLOW_BACKFILL_STATUSES: BookingStatus[] = [
 const BACKFILL_DEV_CONTROLS = {
   saveToDatabase: true,
   generatePdf: false,
-  updateGoogleCalendar: true,
-  updateGoogleSheets: true,
   sendGafRequestEmail: false,
   sendParkingBroadcastEmail: false,
   sendPetRequestEmail: false,
@@ -410,11 +407,6 @@ async function persistApprovedPdfOnly(params: {
       : { approved_pet_pdf_url: params.pdfUrl, pet_manual_incomplete: false };
 
   await DatabaseService.setWorkflowFields(params.bookingId, fields);
-
-  const booking = await DatabaseService.getBookingById(params.bookingId);
-  if (booking) {
-    await SheetsService.syncFullRowFromDbBooking(booking);
-  }
 }
 
 async function applyBackfillApproval(params: { task: BookingTask; pdfUrl: string }): Promise<void> {

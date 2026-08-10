@@ -190,9 +190,6 @@ static_files = [
   "./functions/_shared/email-assets/kame-home-gcash-qr-payment.jpg",
 ]
 
-[functions.sync-booking-integrations]
-verify_jwt = false
-
 [functions.upload-booking-asset]
 verify_jwt = false
 
@@ -242,9 +239,6 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.google-mail-oauth-disconnect]
-verify_jwt = false
-
-[functions.backfill-calendar-event-dates]
 verify_jwt = false
 
 [functions.gmail-backfill-approvals]

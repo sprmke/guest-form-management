@@ -2,8 +2,7 @@
  * Workflow Orchestrator — single source of truth for booking transition side effects.
  *
  * ALL transitions (from UI, Gmail listener, or cron) must go through
- * `WorkflowOrchestrator.transition()`. Never call calendarService, sheetsService,
- * or emailService directly from a handler.
+ * `WorkflowOrchestrator.transition()`. Never call emailService directly from a handler.
  *
  * Rules:  .cursor/rules/booking-workflow.mdc §3, §5 (side-effect matrix)
  * Plan:   docs/planning/NEW_FLOW_PLAN.md §3.3
@@ -17,8 +16,6 @@ import {
   guestBalancePaymentReceiptRequired,
 } from './totalGuestBalance.ts';
 import { receiptVerdictBlocksAdminTransition } from './receiptValidationService.ts';
-import { CalendarService } from './calendarService.ts';
-import { SheetsService } from './sheetsService.ts';
 import { generatePDF, generatePetPDF } from './pdfService.ts';
 import { UploadService } from './uploadService.ts';
 import { bookingAssetStorageKey } from './bookingStoragePaths.ts';
@@ -51,10 +48,6 @@ import {
   type DocumentRequirement,
   type DocumentRequirementCompletion,
 } from './documentRequirements.ts';
-import {
-  DEFAULT_PROPERTY_SYNC_TOGGLES,
-  resolvePropertySyncToggles,
-} from './propertySyncToggles.ts';
 import type { SdRefundBank } from './sdRefundBank.ts';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -132,8 +125,6 @@ export type DevControlFlags = {
   saveToDatabase?: boolean;
   /** Filled GAF (+ pet request PDF if pets) generate + optional Storage upload on PENDING_REVIEW → initial docs. */
   generatePdf?: boolean;
-  updateGoogleCalendar?: boolean;
-  updateGoogleSheets?: boolean;
   sendGafRequestEmail?: boolean;
   sendParkingBroadcastEmail?: boolean;
   sendPetRequestEmail?: boolean;
@@ -147,8 +138,6 @@ export type TransitionResult = {
   success: boolean;
   booking: any;
   sideEffects: {
-    calendar: boolean;
-    sheet: boolean;
     emails: string[];
   };
 };
@@ -163,12 +152,6 @@ function flag(flags: DevControlFlags, key: keyof DevControlFlags): boolean {
 function computeBalance(bookingRate?: number | null, downPayment?: number | null): number | null {
   if (bookingRate == null || downPayment == null) return null;
   return bookingRate - downPayment;
-}
-
-function buildPaxNights(booking: any): { pax: number; nights: number } {
-  const pax = (booking.number_of_adults || 1) + (booking.number_of_children || 0);
-  const nights = booking.number_of_nights || 1;
-  return { pax, nights };
 }
 
 /**
@@ -757,82 +740,8 @@ export class WorkflowOrchestrator {
     }
     // ─────────────────────────────────────────────────────────────────────────
 
-    const { pax, nights } = buildPaxNights(updatedBooking);
-    const guestName = updatedBooking.guest_facebook_name as string;
-
     let gafPdfBuffer: Uint8Array | null = null;
     let petPdfBuffer: Uint8Array | null = null;
-
-    // Property-level Calendar/Sheets master switches — an additional gate on top of
-    // the per-request DevControlFlags (both must allow for the sync to run).
-    const syncToggles = propertyId
-      ? await resolvePropertySyncToggles(propertyId)
-      : DEFAULT_PROPERTY_SYNC_TOGGLES;
-
-    // 6. Google Calendar update
-    let calendarOk = true;
-    const calendarEnabled = flag(devControls, 'updateGoogleCalendar') && syncToggles.syncCalendar;
-    if (calendarEnabled) {
-      try {
-        const result = await CalendarService.updateCalendarEventStatus(
-          bookingId,
-          toStatus,
-          pax,
-          nights,
-          guestName,
-          updatedBooking,
-          documentRequirements
-        );
-        calendarOk = result.success;
-      } catch (err) {
-        console.error('[orchestrator] Calendar update failed (non-fatal):', err);
-        calendarOk = false;
-      }
-    } else {
-      console.log(
-        `[orchestrator] Calendar update skipped (flag=${flag(devControls, 'updateGoogleCalendar')}, syncCalendar=${syncToggles.syncCalendar})`
-      );
-    }
-
-    // 7. Google Sheets update
-    let sheetOk = true;
-    const sheetsEnabled = flag(devControls, 'updateGoogleSheets') && syncToggles.syncSheets;
-    if (sheetsEnabled) {
-      try {
-        const result = await SheetsService.updateSheetWorkflowStatus(
-          bookingId,
-          STATUS_HUMAN_LABEL[toStatus],
-          {
-            booking_rate: updatedBooking.booking_rate,
-            down_payment: updatedBooking.down_payment,
-            balance: updatedBooking.balance,
-            security_deposit: updatedBooking.security_deposit,
-            parking_rate_guest: updatedBooking.parking_rate_guest,
-            parking_rate_paid: updatedBooking.parking_rate_paid,
-            pet_fee: updatedBooking.pet_fee,
-            approved_gaf_pdf_url: updatedBooking.approved_gaf_pdf_url,
-            approved_pet_pdf_url: updatedBooking.approved_pet_pdf_url,
-            sd_refund_amount: updatedBooking.sd_refund_amount,
-            sd_refund_receipt_url: updatedBooking.sd_refund_receipt_url,
-            guest_additional_fee: updatedBooking.guest_additional_fee,
-            guest_balance_paid_amount: updatedBooking.guest_balance_paid_amount,
-            guest_balance_payment_receipt_url: updatedBooking.guest_balance_payment_receipt_url,
-            status_updated_at: updatedBooking.status_updated_at,
-          },
-          updatedBooking
-        );
-        sheetOk = result.success;
-      } catch (err) {
-        console.error('[orchestrator] Sheet update failed (non-fatal):', err);
-        sheetOk = false;
-      }
-    } else {
-      console.log(
-        `[orchestrator] Sheet update skipped (flag=${flag(devControls, 'updateGoogleSheets')}, syncSheets=${syncToggles.syncSheets})`
-      );
-    }
-
-    // 7b. Filled GAF / pet request PDFs (for Azure emails + optional Storage) — same transition as §3 PENDING_REVIEW → docs
     // Skipped entirely when requirements are empty (D2) or the admin skipped straight
     // to READY_FOR_CHECKIN; gated per-requirement so a property without "gaf" (or "pet")
     // never gets that PDF even when the other one is configured.
@@ -1049,8 +958,6 @@ export class WorkflowOrchestrator {
     }
 
     console.log(`[orchestrator] Transition complete: ${fromStatus} → ${toStatus}`, {
-      calendarOk,
-      sheetOk,
       emailsSent,
     });
 
@@ -1058,8 +965,6 @@ export class WorkflowOrchestrator {
       success: true,
       booking: updatedBooking,
       sideEffects: {
-        calendar: calendarOk,
-        sheet: sheetOk,
         emails: emailsSent,
       },
     };
