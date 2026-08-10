@@ -1,7 +1,4 @@
-import {
-  orgPropertyLocationLine,
-  orgPropertyTypeLabel,
-} from '@/features/dashboard/org/lib/orgPropertyDisplay';
+import { DEFAULT_RESIDENCE_NAME } from '@/features/dashboard/org/lib/propertyDisplay';
 import {
   propertyCardTitle,
   propertyTowerUnitLine,
@@ -13,12 +10,8 @@ import type { Property } from '@/features/dashboard/org/types';
 export type OrgPropertyCardModel = {
   title: string;
   subtitle: string | null;
-  typeLabel: string;
   description: string | null;
   locationLine: string;
-  bedrooms: number | null;
-  bathrooms: number | null;
-  maxGuests: number | null;
   imageUrls: string[];
   thumbnailUrl: string | null;
 };
@@ -29,31 +22,21 @@ export function orgPropertyCardModel(property: Property): OrgPropertyCardModel {
   const imageUrls = images.map((item) => item.url);
   const thumbnailUrl = images.find((item) => item.isPrimary)?.url ?? images[0]?.url ?? null;
 
+  const residence = property.residenceName?.trim() || DEFAULT_RESIDENCE_NAME;
   const city = draft.city.trim();
   const province = draft.province.trim();
-  const locationLine =
-    [city, province].filter(Boolean).join(', ') || orgPropertyLocationLine(property);
+  const locationLine = [residence, city, province].filter(Boolean).join(', ');
 
   const title = propertyCardTitle(property);
   const towerUnit = propertyTowerUnitLine(property);
   const subtitle =
     towerUnit && towerUnit.trim().toLowerCase() !== title.trim().toLowerCase() ? towerUnit : null;
-  const maxGuests =
-    property.maxGuests && property.maxGuests > 0
-      ? property.maxGuests
-      : draft.maxGuests > 0
-        ? draft.maxGuests
-        : null;
 
   return {
     title,
     subtitle,
-    typeLabel: orgPropertyTypeLabel(property.type),
     description: draft.description.trim() || null,
     locationLine,
-    bedrooms: draft.bedrooms > 0 ? draft.bedrooms : null,
-    bathrooms: draft.bathrooms > 0 ? draft.bathrooms : null,
-    maxGuests,
     imageUrls,
     thumbnailUrl,
   };

@@ -41,7 +41,22 @@ async function fetchOrgDashboardStats(
   if (!res.ok || !json.success) {
     throw new Error(json.error ?? 'Failed to load org dashboard');
   }
-  return json.data as DashboardStats;
+  const data = json.data as DashboardStats;
+  return {
+    ...data,
+    parkingCount: data.parkingCount ?? 0,
+    parkingPerformance: data.parkingPerformance ?? [],
+    recentBookings: (data.recentBookings ?? []).map((booking) => ({
+      ...booking,
+      bookingKind: booking.bookingKind ?? (booking.parkingId ? 'parking' : 'property'),
+      parkingId: booking.parkingId ?? '',
+      parkingName: booking.parkingName ?? '',
+      parkingSlug: booking.parkingSlug ?? '',
+      propertyId: booking.propertyId ?? '',
+      propertyName: booking.propertyName ?? '',
+      propertySlug: booking.propertySlug ?? '',
+    })),
+  };
 }
 
 export function useOrgDashboardStats() {

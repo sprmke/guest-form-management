@@ -1,5 +1,6 @@
 import { Bike, Car } from 'lucide-react';
 
+import { parkingLocationDraftFromSettings } from '@/features/dashboard/parking/lib/parkingSettingsForm';
 import { formatOrgPropertyCurrency } from '@/features/dashboard/org/lib/orgPropertyDisplay';
 import {
   DEFAULT_PARKING_RESIDENCE_NAME,
@@ -49,8 +50,23 @@ export function orgParkingStatsOrEmpty(parking: Parking) {
   );
 }
 
-export function orgParkingLocationLine(parking: Parking): string {
+export function orgParkingResidenceLine(parking: Parking): string {
   return parking.residenceName?.trim() || DEFAULT_PARKING_RESIDENCE_NAME;
+}
+
+/** City/province (or street address fallback) for card meta — shown below residence. */
+export function orgParkingAddressLine(parking: Parking): string {
+  const draft = parkingLocationDraftFromSettings(parking.settings, parking.residenceName);
+  const city = draft.city.trim();
+  const province = draft.province.trim();
+  const region = [city, province].filter(Boolean).join(', ');
+  if (region) return region;
+  return draft.address.trim();
+}
+
+/** @deprecated Prefer orgParkingResidenceLine + orgParkingAddressLine on listing cards. */
+export function orgParkingLocationLine(parking: Parking): string {
+  return orgParkingResidenceLine(parking);
 }
 
 export function orgParkingSearchHaystack(parking: Parking): string {

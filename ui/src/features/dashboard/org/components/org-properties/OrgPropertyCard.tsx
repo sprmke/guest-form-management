@@ -1,17 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 
-import {
-  Bath,
-  Bed,
-  Building2,
-  Calendar,
-  Copy,
-  ExternalLink,
-  MapPin,
-  MoreHorizontal,
-  Settings,
-  Users,
-} from 'lucide-react';
+import { Building2, Calendar, Copy, ExternalLink, MoreHorizontal, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { OrgPropertyImageCarousel } from '@/features/dashboard/org/components/org-properties/OrgPropertyImageCarousel';
@@ -21,7 +10,6 @@ import { orgPropertyCardModel } from '@/features/dashboard/org/lib/orgPropertyCa
 import {
   formatOrgPropertyCurrency,
   orgPropertyStatsOrEmpty,
-  orgPropertyTypeIcon,
 } from '@/features/dashboard/org/lib/orgPropertyDisplay';
 import { propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
 import type { Property } from '@/features/dashboard/org/types';
@@ -60,77 +48,43 @@ async function copyGuestLink(propertySlug: string) {
   }
 }
 
-function OrgPropertyDetailChips({
-  bedrooms,
-  bathrooms,
-  maxGuests,
-}: {
-  bedrooms: number | null;
-  bathrooms: number | null;
-  maxGuests: number | null;
-}) {
-  if (!bedrooms && !bathrooms && !maxGuests) return null;
-
-  return (
-    <div className="text-foreground flex flex-wrap gap-3 text-sm">
-      {bedrooms ? (
-        <div className="inline-flex items-center gap-1.5">
-          <Bed className="text-muted-foreground size-4" aria-hidden />
-          <span>
-            {bedrooms} {bedrooms === 1 ? 'Bed' : 'Beds'}
-          </span>
-        </div>
-      ) : null}
-      {bathrooms ? (
-        <div className="inline-flex items-center gap-1.5">
-          <Bath className="text-muted-foreground size-4" aria-hidden />
-          <span>
-            {bathrooms} {bathrooms === 1 ? 'Bath' : 'Baths'}
-          </span>
-        </div>
-      ) : null}
-      {maxGuests ? (
-        <div className="inline-flex items-center gap-1.5">
-          <Users className="text-muted-foreground size-4" aria-hidden />
-          <span>{maxGuests} Guests</span>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 function OrgPropertyPlatformContext({
   organizationName,
   developmentName,
   developmentHref,
-  residenceName,
 }: {
   organizationName?: string | null;
   developmentName?: string | null;
   developmentHref?: string | null;
-  residenceName?: string | null;
 }) {
-  const residence = developmentName?.trim() || residenceName?.trim() || null;
-  if (!organizationName?.trim() && !residence) return null;
+  const development = developmentName?.trim() || null;
+  if (!organizationName?.trim() && !development) return null;
 
   return (
     <div className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs">
       {organizationName?.trim() ? (
         <span className="truncate">{organizationName.trim()}</span>
       ) : null}
-      {organizationName?.trim() && residence ? <span aria-hidden>·</span> : null}
-      {developmentHref && developmentName ? (
+      {organizationName?.trim() && development ? <span aria-hidden>·</span> : null}
+      {developmentHref && development ? (
         <Link
           to={developmentHref}
           className="text-primary pointer-events-auto relative z-[3] truncate hover:underline"
         >
-          {developmentName}
+          {development}
         </Link>
-      ) : residence ? (
-        <span className="truncate">{residence}</span>
+      ) : development ? (
+        <span className="truncate">{development}</span>
       ) : null}
     </div>
   );
+}
+
+function OrgPropertyLocationLine({ locationLine }: { locationLine: string }) {
+  const line = locationLine.trim();
+  if (!line) return null;
+
+  return <p className="text-muted-foreground line-clamp-1 text-xs">{line}</p>;
 }
 
 function OrgPropertyStatsRow({ property }: { property: Property }) {
@@ -232,7 +186,6 @@ export function OrgPropertyCard({
 }: Props) {
   const navigate = useNavigate();
   const model = orgPropertyCardModel(property);
-  const TypeIcon = orgPropertyTypeIcon(property.type);
   const dashboardHref = propertySectionPath(orgSlug, property.slug, 'dashboard');
   const settingsHref = propertySectionPath(orgSlug, property.slug, 'settings');
   const guestHref = absoluteGuestCalendarUrl(property.slug);
@@ -267,7 +220,7 @@ export function OrgPropertyCard({
 
       <div className="pointer-events-none relative z-[2] space-y-2.5 p-3 sm:space-y-3 sm:p-4">
         <div className="min-w-0 space-y-1">
-          <p className="text-foreground group-hover:text-primary line-clamp-1 text-sm font-semibold transition-colors sm:text-base lg:text-lg">
+          <p className="text-foreground group-hover:text-primary lg:text-md line-clamp-1 text-sm font-semibold transition-colors sm:text-base">
             {model.title}
           </p>
           {model.subtitle ? (
@@ -277,24 +230,9 @@ export function OrgPropertyCard({
             organizationName={organizationName}
             developmentName={developmentName}
             developmentHref={developmentHref}
-            residenceName={property.residenceName}
           />
-          <div className="text-muted-foreground flex items-center gap-2 text-sm">
-            <TypeIcon className="size-4 shrink-0" aria-hidden />
-            <span>{model.typeLabel}</span>
-          </div>
+          <OrgPropertyLocationLine locationLine={model.locationLine} />
         </div>
-
-        <div className="text-muted-foreground flex items-center gap-1.5 text-sm">
-          <MapPin className="size-4 shrink-0" aria-hidden />
-          <span className="line-clamp-1">{model.locationLine}</span>
-        </div>
-
-        <OrgPropertyDetailChips
-          bedrooms={model.bedrooms}
-          bathrooms={model.bathrooms}
-          maxGuests={model.maxGuests}
-        />
 
         {hideStats ? null : <OrgPropertyStatsRow property={property} />}
       </div>
@@ -312,7 +250,6 @@ export function OrgPropertyListRow({
 }: Props) {
   const navigate = useNavigate();
   const model = orgPropertyCardModel(property);
-  const TypeIcon = orgPropertyTypeIcon(property.type);
   const stats = orgPropertyStatsOrEmpty(property);
   const dashboardHref = propertySectionPath(orgSlug, property.slug, 'dashboard');
   const settingsHref = propertySectionPath(orgSlug, property.slug, 'settings');
@@ -353,21 +290,8 @@ export function OrgPropertyListRow({
                   organizationName={organizationName}
                   developmentName={developmentName}
                   developmentHref={developmentHref}
-                  residenceName={property.residenceName}
                 />
-                <div className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-                  <span className="inline-flex items-center gap-1.5">
-                    <TypeIcon className="size-3.5 shrink-0" aria-hidden />
-                    {model.typeLabel}
-                  </span>
-                  <span className="text-border hidden sm:inline" aria-hidden>
-                    •
-                  </span>
-                  <span className="inline-flex min-w-0 items-center gap-1.5">
-                    <MapPin className="size-3.5 shrink-0" aria-hidden />
-                    <span className="line-clamp-1">{model.locationLine}</span>
-                  </span>
-                </div>
+                <OrgPropertyLocationLine locationLine={model.locationLine} />
               </div>
 
               <div className="pointer-events-auto relative z-[3] shrink-0">
@@ -385,36 +309,28 @@ export function OrgPropertyListRow({
             ) : null}
           </div>
 
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <OrgPropertyDetailChips
-              bedrooms={model.bedrooms}
-              bathrooms={model.bathrooms}
-              maxGuests={model.maxGuests}
-            />
-
-            {hideStats ? null : (
-              <div className="flex flex-wrap gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Bookings: </span>
-                  <span className="text-foreground font-semibold tabular-nums">
-                    {stats.activeBookings}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Revenue: </span>
-                  <span className="text-foreground font-semibold tabular-nums">
-                    {formatOrgPropertyCurrency(stats.monthlyRevenue)}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Occupancy: </span>
-                  <span className="text-foreground font-semibold tabular-nums">
-                    {stats.occupancyRate}%
-                  </span>
-                </div>
+          {hideStats ? null : (
+            <div className="flex flex-wrap gap-4 text-sm">
+              <div>
+                <span className="text-muted-foreground">Bookings: </span>
+                <span className="text-foreground font-semibold tabular-nums">
+                  {stats.activeBookings}
+                </span>
               </div>
-            )}
-          </div>
+              <div>
+                <span className="text-muted-foreground">Revenue: </span>
+                <span className="text-foreground font-semibold tabular-nums">
+                  {formatOrgPropertyCurrency(stats.monthlyRevenue)}
+                </span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Occupancy: </span>
+                <span className="text-foreground font-semibold tabular-nums">
+                  {stats.occupancyRate}%
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </article>

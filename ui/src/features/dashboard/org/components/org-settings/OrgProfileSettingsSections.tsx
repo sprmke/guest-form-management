@@ -15,6 +15,7 @@ import {
   ORG_TAGLINE_MAX_LENGTH,
 } from '@/features/dashboard/org/lib/orgSettingsValidation';
 
+import { AvailabilityCheckInput } from '@/components/AvailabilityCheckInput';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -22,6 +23,7 @@ import { storedOrgSettingsMediaUrl } from '@/features/dashboard/lib/storedMediaD
 
 import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
 import { DEFAULT_ORG_BRAND_COLOR } from '@/lib/theme/brandColor';
+import type { AvailabilityCheckState } from '@/lib/availabilityCheckState';
 import { cn } from '@/lib/utils';
 
 export function OrgBasicInformationSection({
@@ -33,7 +35,7 @@ export function OrgBasicInformationSection({
   logoUrl,
   nameUnavailable,
   nameConflictMessage,
-  nameChecking,
+  nameAvailabilityState = 'idle',
   resolveFieldError,
   markFieldInteracted,
   onChange,
@@ -46,7 +48,7 @@ export function OrgBasicInformationSection({
   logoUrl: string;
   nameUnavailable?: boolean;
   nameConflictMessage?: string | null;
-  nameChecking?: boolean;
+  nameAvailabilityState?: AvailabilityCheckState;
   resolveFieldError: (fieldId: string) => string | null;
   markFieldInteracted: (fieldId: string) => void;
   onChange: <K extends keyof OrgSettingsDraft>(key: K, value: OrgSettingsDraft[K]) => void;
@@ -86,7 +88,7 @@ export function OrgBasicInformationSection({
 
         <OrgSettingsFieldSpan>
           <OrgSettingsField id="org-name" label="Organization name" required>
-            <Input
+            <AvailabilityCheckInput
               id="org-name"
               value={draft.name}
               onChange={(event) => {
@@ -99,6 +101,7 @@ export function OrgBasicInformationSection({
               className={cn('h-10', (nameUnavailable || nameError) && 'border-destructive')}
               maxLength={120}
               aria-invalid={Boolean(nameUnavailable || nameError)}
+              checkState={nameAvailabilityState}
             />
             {nameError ? (
               <p className="text-destructive text-xs">{nameError}</p>
@@ -106,8 +109,6 @@ export function OrgBasicInformationSection({
               <p className="text-destructive text-xs">
                 {nameConflictMessage ?? 'An organization with this name already exists.'}
               </p>
-            ) : nameChecking ? (
-              <p className="text-muted-foreground text-xs">Checking availability…</p>
             ) : (
               <p className="text-muted-foreground text-xs">
                 This is the name displayed to your team and in reports.

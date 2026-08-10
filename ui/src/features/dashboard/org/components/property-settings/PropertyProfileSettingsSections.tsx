@@ -75,6 +75,7 @@ import {
   ResponsiveModalHeader,
   ResponsiveModalTitle,
 } from '@/components/ui/responsive-modal';
+import { AvailabilityCheckInput } from '@/components/AvailabilityCheckInput';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -84,6 +85,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import type { AvailabilityCheckState } from '@/lib/availabilityCheckState';
 import { cn } from '@/lib/utils';
 
 function FieldGrid({ children }: { children: React.ReactNode }) {
@@ -99,7 +101,7 @@ type ProfileSectionsProps = {
   towerConflict: PropertyTowerUnitConflict | null;
   nameUnavailable?: boolean;
   nameConflictMessage?: string | null;
-  nameChecking?: boolean;
+  nameAvailabilityState?: AvailabilityCheckState;
   newCustomAmenityInputs: Record<string, string>;
   onNewCustomAmenityInputChange: (categoryId: string, value: string) => void;
   newCustomHouseRuleInputs: Record<string, string>;
@@ -124,7 +126,7 @@ export function PropertyProfileMainSections({
   towerConflict,
   nameUnavailable = false,
   nameConflictMessage = null,
-  nameChecking = false,
+  nameAvailabilityState = 'idle',
   newCustomAmenityInputs,
   onNewCustomAmenityInputChange,
   newCustomHouseRuleInputs,
@@ -275,14 +277,12 @@ export function PropertyProfileMainSections({
               : null)
           }
           hintBelow={
-            !fieldError('property-name') && !nameUnavailable && !nameChecking
+            !fieldError('property-name') && !nameUnavailable
               ? 'This is the name guests will see when searching for your property.'
-              : nameChecking
-                ? 'Checking availability…'
-                : undefined
+              : undefined
           }
         >
-          <Input
+          <AvailabilityCheckInput
             id="property-name"
             value={draft.name}
             onChange={(event) => setField('name', event.target.value, 'property-name')}
@@ -291,6 +291,7 @@ export function PropertyProfileMainSections({
             maxLength={120}
             aria-invalid={Boolean(fieldError('property-name') || nameUnavailable)}
             className={cn((fieldError('property-name') || nameUnavailable) && 'border-destructive')}
+            checkState={nameAvailabilityState}
           />
         </SettingsField>
 
@@ -1186,7 +1187,9 @@ export function PropertyDangerZoneSection({
       <ResponsiveModal open={deleteOpen} onOpenChange={setDeleteOpen}>
         <ResponsiveModalContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
           <ResponsiveModalHeader>
-            <ResponsiveModalTitle className="text-destructive">Delete {propertyName}?</ResponsiveModalTitle>
+            <ResponsiveModalTitle className="text-destructive">
+              Delete {propertyName}?
+            </ResponsiveModalTitle>
             <ResponsiveModalDescription asChild>
               <div className="text-muted-foreground space-y-2 text-sm">
                 <p>

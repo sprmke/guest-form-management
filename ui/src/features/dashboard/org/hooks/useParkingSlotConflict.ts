@@ -9,7 +9,8 @@ export function useParkingSlotConflict(
   tower: string,
   level: string,
   slotLabel: string,
-  residenceName: string = DEFAULT_PARKING_RESIDENCE_NAME
+  residenceName: string = DEFAULT_PARKING_RESIDENCE_NAME,
+  excludeParkingId?: string
 ) {
   const { data: orgData, isLoading: orgsLoading } = useOrganizations();
   const organizations = orgData?.organizations ?? [];
@@ -28,8 +29,9 @@ export function useParkingSlotConflict(
   );
 
   const conflict = useMemo(
-    () => findParkingSlotConflict(parkings, residenceName, tower, level, slotLabel),
-    [parkings, residenceName, tower, level, slotLabel]
+    () =>
+      findParkingSlotConflict(parkings, residenceName, tower, level, slotLabel, excludeParkingId),
+    [parkings, residenceName, tower, level, slotLabel, excludeParkingId]
   );
 
   return {

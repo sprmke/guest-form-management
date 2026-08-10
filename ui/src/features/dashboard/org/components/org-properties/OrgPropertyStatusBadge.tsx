@@ -1,4 +1,5 @@
 import { ORG_PROPERTY_STATUSES } from '@/features/dashboard/org/lib/orgPropertyDisplay';
+import { semanticBadgeClasses, semanticBadgeDotClasses } from '@/lib/status-tone-colors';
 
 import { cn } from '@/lib/utils';
 
@@ -13,12 +14,18 @@ export function OrgPropertyStatusBadge({ status, className }: Props) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold',
-        config?.badgeClassName ?? 'bg-muted text-muted-foreground',
+        'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide',
+        config?.badgeClassName ?? semanticBadgeClasses('neutral'),
         className
       )}
     >
-      <span className="size-1.5 rounded-full bg-white/90" aria-hidden />
+      <span
+        className={cn(
+          'size-1.5 rounded-full',
+          config?.dotClassName ?? semanticBadgeDotClasses('neutral')
+        )}
+        aria-hidden
+      />
       {config?.label ?? status}
     </span>
   );

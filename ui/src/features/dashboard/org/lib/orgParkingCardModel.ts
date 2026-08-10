@@ -1,18 +1,13 @@
 import {
-  orgParkingLocationLine,
-  orgParkingTypeLabel,
+  orgParkingAddressLine,
+  orgParkingResidenceLine,
 } from '@/features/dashboard/org/lib/orgParkingDisplay';
-import { formatParkingCode } from '@/features/dashboard/org/lib/parkingSlotDisplay';
 import type { Parking } from '@/features/dashboard/org/types';
 
 export type OrgParkingCardModel = {
   title: string;
-  subtitle: string | null;
-  typeLabel: string;
-  locationLine: string;
-  tower: string | null;
-  level: string | null;
-  slotLabel: string;
+  residenceLine: string;
+  addressLine: string;
   ratePerNight: number | null;
   imageUrls: string[];
   thumbnailUrl: string | null;
@@ -22,16 +17,11 @@ export function orgParkingCardModel(parking: Parking): OrgParkingCardModel {
   const coverImage =
     typeof parking.settings.coverImage === 'string' ? parking.settings.coverImage.trim() : '';
   const imageUrls = coverImage ? [coverImage] : [];
-  const code = formatParkingCode(parking.tower ?? '', parking.level ?? '', parking.slotLabel ?? '');
 
   return {
     title: parking.name,
-    subtitle: code && code !== parking.name ? code : null,
-    typeLabel: orgParkingTypeLabel(parking.parkingType),
-    locationLine: orgParkingLocationLine(parking),
-    tower: parking.tower,
-    level: parking.level,
-    slotLabel: parking.slotLabel,
+    residenceLine: orgParkingResidenceLine(parking),
+    addressLine: orgParkingAddressLine(parking),
     ratePerNight: parking.ratePerNight,
     imageUrls,
     thumbnailUrl: imageUrls[0] ?? null,
