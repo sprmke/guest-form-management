@@ -22,7 +22,7 @@ export function PropertyInboxPage() {
       }
       canReply={hasPropertyPermission(access?.permissions, 'inbox:reply')}
       canManage={hasPropertyPermission(access?.permissions, 'inbox:manage')}
-      showOrgManageTabs={false}
+      showSettingsManageTabs
       scope={propertyId ? { propertyId } : null}
       orgSlug={orgSlug}
       orgId={orgId}

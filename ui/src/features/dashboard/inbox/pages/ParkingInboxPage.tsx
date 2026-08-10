@@ -14,7 +14,7 @@ export function ParkingInboxPage() {
       returnPath={parkingInboxPath(orgSlug, parkingSlug)}
       canReply={hasParkingPermission(access?.permissions, 'inbox:reply')}
       canManage={hasParkingPermission(access?.permissions, 'inbox:manage')}
-      showOrgManageTabs={false}
+      showSettingsManageTabs={false}
       scope={{ parkingId: parking.id }}
       orgSlug={orgSlug}
       orgId={org.id}

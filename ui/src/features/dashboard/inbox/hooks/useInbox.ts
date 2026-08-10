@@ -177,7 +177,8 @@ const metaSyncAbortByOrg = new Map<string, AbortController>();
 export function useMetaInboxSync(
   orgSlug: string | null,
   orgId: string | null,
-  metaSyncInProgress: boolean
+  metaSyncInProgress: boolean,
+  scope?: InboxApiScope | null
 ): { active: boolean } {
   const qc = useQueryClient();
 
@@ -191,9 +192,11 @@ export function useMetaInboxSync(
     void (async () => {
       try {
         if (abort.signal.aborted) return;
-        await runMetaInboxBackfillChunk(orgSlug, orgId);
+        await runMetaInboxBackfillChunk(orgSlug, orgId, undefined, scope);
       } catch {
-        await runMetaInboxBackfillChunk(orgSlug, orgId, { finalize: true }).catch(() => undefined);
+        await runMetaInboxBackfillChunk(orgSlug, orgId, { finalize: true }, scope).catch(
+          () => undefined
+        );
       } finally {
         if (metaSyncAbortByOrg.get(orgId) === abort) {
           metaSyncAbortByOrg.delete(orgId);
@@ -211,7 +214,7 @@ export function useMetaInboxSync(
         metaSyncAbortByOrg.delete(orgId);
       }
     };
-  }, [metaSyncInProgress, orgId, orgSlug, qc]);
+  }, [metaSyncInProgress, orgId, orgSlug, qc, scope?.propertyId, scope?.parkingId]);
 
   return { active: metaSyncInProgress };
 }
@@ -316,7 +319,7 @@ export function useInboxMutations(
     mutationFn: (conversationId: string) =>
       mockMode
         ? mockAiSuggest(conversationId)
-        : suggestInboxAiReply(orgSlug, orgId, conversationId),
+        : suggestInboxAiReply(orgSlug, orgId, conversationId, scope),
   });
 
   const editMessage = useMutation({
@@ -347,19 +350,28 @@ export function useInboxMutations(
 export function useMetaOAuthPagePicker(
   orgSlug: string | null,
   orgId: string | null,
-  pickerState: string | null
+  pickerState: string | null,
+  scope?: InboxApiScope | null
 ) {
   const qc = useQueryClient();
 
   const pagesQuery = useQuery({
-    queryKey: [META_OAUTH_PAGES_KEY, orgSlug, orgId, pickerState, mockMode],
+    queryKey: [
+      META_OAUTH_PAGES_KEY,
+      orgSlug,
+      orgId,
+      pickerState,
+      ...inboxScopeKey(scope),
+      mockMode,
+    ],
     queryFn: () => fetchMetaOAuthPages(orgSlug, orgId, pickerState!),
     enabled: !mockMode && !!(orgSlug || orgId) && !!pickerState,
     retry: false,
   });
 
   const complete = useMutation({
-    mutationFn: (pageId: string) => completeMetaOAuthPage(orgSlug, orgId, pickerState!, pageId),
+    mutationFn: (pageId: string) =>
+      completeMetaOAuthPage(orgSlug, orgId, pickerState!, pageId, scope),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: [INBOX_CONNECTIONS_KEY] });
       void qc.invalidateQueries({ queryKey: [INBOX_THREADS_KEY] });
@@ -394,7 +406,7 @@ export function useInboxThreads(
       let metaHasMore = false;
       let syncedInChunk = 0;
       if (isSyncPage) {
-        const backfill = await runMetaInboxBackfillChunk(orgSlug, orgId, { light: true });
+        const backfill = await runMetaInboxBackfillChunk(orgSlug, orgId, { light: true }, scope);
         metaHasMore = backfill.metaHasMore;
         syncedInChunk = backfill.syncedInChunk;
         void qc.invalidateQueries({ queryKey: [INBOX_CONNECTIONS_KEY] });
@@ -683,23 +695,28 @@ export function useInboxRealtime(orgId: string | null) {
   }, [orgId, qc]);
 }
 
-export function useInboxTemplates(orgSlug: string | null, orgId: string | null) {
+export function useInboxTemplates(
+  orgSlug: string | null,
+  orgId: string | null,
+  scope?: InboxApiScope | null,
+  enabled = true
+) {
   const qc = useQueryClient();
   const query = useQuery({
-    queryKey: [INBOX_TEMPLATES_KEY, orgSlug, orgId, mockMode],
-    queryFn: () => (mockMode ? mockFetchTemplates() : fetchInboxTemplates(orgSlug, orgId)),
-    enabled: mockMode || !!(orgSlug || orgId),
+    queryKey: [INBOX_TEMPLATES_KEY, orgSlug, orgId, ...inboxScopeKey(scope), mockMode],
+    queryFn: () => (mockMode ? mockFetchTemplates() : fetchInboxTemplates(orgSlug, orgId, scope)),
+    enabled: enabled && (mockMode || !!(orgSlug || orgId)),
   });
 
   const save = useMutation({
     mutationFn: (payload: SaveInboxTemplatePayload) =>
-      mockMode ? mockSaveTemplate(payload) : saveInboxTemplate(orgSlug, orgId, payload),
+      mockMode ? mockSaveTemplate(payload) : saveInboxTemplate(orgSlug, orgId, payload, scope),
     onSuccess: () => void qc.invalidateQueries({ queryKey: [INBOX_TEMPLATES_KEY] }),
   });
 
   const remove = useMutation({
     mutationFn: (id: string) =>
-      mockMode ? mockDeleteTemplate(id) : deleteInboxTemplate(orgSlug, orgId, id),
+      mockMode ? mockDeleteTemplate(id) : deleteInboxTemplate(orgSlug, orgId, id, scope),
     onSuccess: () => void qc.invalidateQueries({ queryKey: [INBOX_TEMPLATES_KEY] }),
   });
 
@@ -709,19 +726,22 @@ export function useInboxTemplates(orgSlug: string | null, orgId: string | null) 
 export function useInboxAutomationSettings(
   orgSlug: string | null,
   orgId: string | null,
+  scope?: InboxApiScope | null,
   enabled = true
 ) {
   const qc = useQueryClient();
   const query = useQuery({
-    queryKey: [INBOX_SETTINGS_KEY, orgSlug, orgId, mockMode],
+    queryKey: [INBOX_SETTINGS_KEY, orgSlug, orgId, ...inboxScopeKey(scope), mockMode],
     queryFn: () =>
-      mockMode ? mockFetchAutomation() : fetchInboxAutomationSettings(orgSlug, orgId),
+      mockMode ? mockFetchAutomation() : fetchInboxAutomationSettings(orgSlug, orgId, scope),
     enabled: enabled && (mockMode || !!(orgSlug || orgId)),
   });
 
   const patch = useMutation({
     mutationFn: (patch: Parameters<typeof patchInboxAutomationSettings>[2]) =>
-      mockMode ? mockPatchAutomation(patch) : patchInboxAutomationSettings(orgSlug, orgId, patch),
+      mockMode
+        ? mockPatchAutomation(patch)
+        : patchInboxAutomationSettings(orgSlug, orgId, patch, scope),
     onSuccess: () => void qc.invalidateQueries({ queryKey: [INBOX_SETTINGS_KEY] }),
   });
 

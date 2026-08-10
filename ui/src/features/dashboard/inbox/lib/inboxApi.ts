@@ -172,7 +172,8 @@ export async function completeMetaOAuthPage(
   orgSlug: string | null,
   orgId: string | null,
   pickerState: string,
-  pageId: string
+  pageId: string,
+  scope?: InboxApiScope | null
 ): Promise<{ pageName: string }> {
   const jwt = await getJwt();
   const res = await fetch(orgUrl('/meta-inbox-oauth-complete', orgSlug, orgId), {
@@ -181,7 +182,7 @@ export async function completeMetaOAuthPage(
       Authorization: `Bearer ${jwt}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ pickerState, pageId }),
+    body: JSON.stringify({ pickerState, pageId, ...inboxScopeBody(scope) }),
   });
   const json = (await res.json()) as EdgeJson;
   const payload = unwrapEdgePayload(json);
@@ -206,7 +207,8 @@ export async function runMetaInboxBackfillChunk(
     nextUrl?: string | null;
     finalize?: boolean;
     light?: boolean;
-  }
+  },
+  scope?: InboxApiScope | null
 ): Promise<MetaBackfillChunkResult> {
   const jwt = await getJwt();
   const res = await fetch(orgUrl('/meta-inbox-backfill', orgSlug, orgId), {
@@ -220,6 +222,7 @@ export async function runMetaInboxBackfillChunk(
       nextUrl: state?.nextUrl ?? null,
       finalize: state?.finalize === true,
       light: state?.light === true,
+      ...inboxScopeBody(scope),
     }),
   });
   const json = (await res.json()) as EdgeJson;
@@ -386,12 +389,16 @@ export async function unsendInboxMessage(
 
 export async function fetchInboxTemplates(
   orgSlug: string | null,
-  orgId: string | null
+  orgId: string | null,
+  scope?: InboxApiScope | null
 ): Promise<InboxTemplate[]> {
   const jwt = await getJwt();
-  const res = await fetch(orgUrl('/social-inbox-templates', orgSlug, orgId), {
-    headers: { Authorization: `Bearer ${jwt}` },
-  });
+  const res = await fetch(
+    withInboxScope(orgUrl('/social-inbox-templates', orgSlug, orgId), scope),
+    {
+      headers: { Authorization: `Bearer ${jwt}` },
+    }
+  );
   const json = (await res.json()) as EdgeJson;
   const payload = unwrapEdgePayload(json);
   return (payload.templates as InboxTemplate[] | undefined) ?? [];
@@ -400,18 +407,22 @@ export async function fetchInboxTemplates(
 export async function saveInboxTemplate(
   orgSlug: string | null,
   orgId: string | null,
-  payload: SaveInboxTemplatePayload
+  payload: SaveInboxTemplatePayload,
+  scope?: InboxApiScope | null
 ): Promise<InboxTemplate> {
   const jwt = await getJwt();
   const method = payload.id ? 'PATCH' : 'POST';
-  const res = await fetch(orgUrl('/social-inbox-templates', orgSlug, orgId), {
-    method,
-    headers: {
-      Authorization: `Bearer ${jwt}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
+  const res = await fetch(
+    withInboxScope(orgUrl('/social-inbox-templates', orgSlug, orgId), scope),
+    {
+      method,
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ ...payload, ...inboxScopeBody(scope) }),
+    }
+  );
   const json = (await res.json()) as EdgeJson;
   const data = unwrapEdgePayload(json);
   return data.template as InboxTemplate;
@@ -420,10 +431,11 @@ export async function saveInboxTemplate(
 export async function deleteInboxTemplate(
   orgSlug: string | null,
   orgId: string | null,
-  id: string
+  id: string,
+  scope?: InboxApiScope | null
 ): Promise<void> {
   const jwt = await getJwt();
-  const base = orgUrl('/social-inbox-templates', orgSlug, orgId);
+  const base = withInboxScope(orgUrl('/social-inbox-templates', orgSlug, orgId), scope);
   const res = await fetch(`${base}&id=${encodeURIComponent(id)}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${jwt}` },
@@ -435,17 +447,21 @@ export async function deleteInboxTemplate(
 export async function suggestInboxAiReply(
   orgSlug: string | null,
   orgId: string | null,
-  conversationId: string
+  conversationId: string,
+  scope?: InboxApiScope | null
 ): Promise<{ suggestion: string; flagged: boolean }> {
   const jwt = await getJwt();
-  const res = await fetch(orgUrl('/social-inbox-ai-suggest', orgSlug, orgId), {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${jwt}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ conversationId }),
-  });
+  const res = await fetch(
+    withInboxScope(orgUrl('/social-inbox-ai-suggest', orgSlug, orgId), scope),
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ conversationId, ...inboxScopeBody(scope) }),
+    }
+  );
   const json = (await res.json()) as EdgeJson;
   throwIfAiQuota(json, res);
   const payload = unwrapEdgePayload(json);
@@ -477,10 +493,11 @@ function parseAutomationSettings(payload: Record<string, unknown>): InboxAutomat
 
 export async function fetchInboxAutomationSettings(
   orgSlug: string | null,
-  orgId: string | null
+  orgId: string | null,
+  scope?: InboxApiScope | null
 ): Promise<InboxAutomationSettings> {
   const jwt = await getJwt();
-  const res = await fetch(orgUrl('/social-inbox-settings', orgSlug, orgId), {
+  const res = await fetch(withInboxScope(orgUrl('/social-inbox-settings', orgSlug, orgId), scope), {
     headers: { Authorization: `Bearer ${jwt}` },
   });
   const json = (await res.json()) as EdgeJson;
@@ -490,16 +507,17 @@ export async function fetchInboxAutomationSettings(
 export async function patchInboxAutomationSettings(
   orgSlug: string | null,
   orgId: string | null,
-  patch: Partial<InboxAutomationSettings>
+  patch: Partial<InboxAutomationSettings>,
+  scope?: InboxApiScope | null
 ): Promise<InboxAutomationSettings> {
   const jwt = await getJwt();
-  const res = await fetch(orgUrl('/social-inbox-settings', orgSlug, orgId), {
+  const res = await fetch(withInboxScope(orgUrl('/social-inbox-settings', orgSlug, orgId), scope), {
     method: 'PATCH',
     headers: {
       Authorization: `Bearer ${jwt}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(patch),
+    body: JSON.stringify({ ...patch, ...inboxScopeBody(scope) }),
   });
   const json = (await res.json()) as EdgeJson;
   return parseAutomationSettings(unwrapEdgePayload(json));

@@ -3,6 +3,7 @@ import { formatInboxTime, platformLabel } from '@/features/dashboard/inbox/lib/i
 import type { InboxConversation } from '@/features/dashboard/inbox/types/inbox';
 
 import { cn } from '@/lib/utils';
+import { softBadgeClasses, toneBadgeClasses } from '@/lib/status-tone-colors';
 import { formatIsoDateForDisplay } from '@/utils/format/dates';
 
 type Props = {
@@ -57,7 +58,12 @@ export function InboxThreadRow({ conversation, selected, showPlatform, onSelect 
         </p>
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
           {conversation.platform === 'web' && conversation.property_name ? (
-            <span className="rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-800 dark:text-emerald-200">
+            <span
+              className={cn(
+                'border px-1.5 py-0.5 text-[10px] font-medium',
+                toneBadgeClasses('green')
+              )}
+            >
               {conversation.property_name}
             </span>
           ) : null}
@@ -80,7 +86,9 @@ export function InboxThreadRow({ conversation, selected, showPlatform, onSelect 
             </span>
           )}
           {pending && (
-            <span className="rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:text-amber-200">
+            <span
+              className={cn('px-1.5 py-0.5 text-[10px] font-medium', softBadgeClasses('pending'))}
+            >
               Pending
             </span>
           )}

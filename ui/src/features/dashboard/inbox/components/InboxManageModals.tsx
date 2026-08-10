@@ -35,7 +35,7 @@ type Props = {
   open: InboxManageModal;
   onOpenChange: (open: InboxManageModal) => void;
   canManage: boolean;
-  showOrgManageTabs?: boolean;
+  showSettingsManageTabs?: boolean;
   usingOrgMeta?: boolean;
   connections: InboxConnection[];
   comingSoon: ComingSoonPlatform[];
@@ -57,7 +57,7 @@ type Props = {
 };
 
 function buildInboxManageItems(
-  showOrgManageTabs: boolean,
+  showSettingsManageTabs: boolean,
   onOpen: (modal: InboxManageModal) => void
 ): MobileHeroActionMenuItem[] {
   const items: MobileHeroActionMenuItem[] = [
@@ -68,7 +68,7 @@ function buildInboxManageItems(
       onSelect: () => onOpen('channels'),
     },
   ];
-  if (showOrgManageTabs) {
+  if (showSettingsManageTabs) {
     items.push(
       {
         key: 'quick-replies',
@@ -89,18 +89,18 @@ function buildInboxManageItems(
 
 export function InboxManageToolbar({
   canManage,
-  showOrgManageTabs = true,
+  showSettingsManageTabs = true,
   onOpen,
   variant = 'default',
 }: {
   canManage: boolean;
-  showOrgManageTabs?: boolean;
+  showSettingsManageTabs?: boolean;
   onOpen: (modal: InboxManageModal) => void;
   variant?: 'default' | 'hero';
 }) {
   if (!canManage) return null;
 
-  const items = buildInboxManageItems(showOrgManageTabs, onOpen);
+  const items = buildInboxManageItems(showSettingsManageTabs, onOpen);
 
   if (variant === 'hero') {
     return <MobileHeroActionMenu items={items} label="Inbox actions" />;
@@ -160,7 +160,7 @@ export function InboxManageModals({
   open,
   onOpenChange,
   canManage,
-  showOrgManageTabs = true,
+  showSettingsManageTabs = true,
   usingOrgMeta = false,
   connections,
   comingSoon,
@@ -207,7 +207,7 @@ export function InboxManageModals({
         </ResponsiveModalContent>
       </ResponsiveModal>
 
-      {showOrgManageTabs ? (
+      {showSettingsManageTabs ? (
         <>
           <ResponsiveModal
             open={open === 'quick-replies'}

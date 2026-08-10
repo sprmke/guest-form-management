@@ -5,6 +5,7 @@ import { MessageCircle } from 'lucide-react';
 import type { SocialPlatform } from '@/features/dashboard/inbox/types/inbox';
 
 import { cn } from '@/lib/utils';
+import { statusToneSurfaceClasses } from '@/lib/status-tone-colors';
 
 type PlatformLogoProps = {
   platform: SocialPlatform;
@@ -28,7 +29,11 @@ const PLATFORM_SHELL: Record<SocialPlatform, string> = {
     'rounded-lg bg-gradient-to-br from-purple-500/10 via-pink-500/10 to-orange-500/10 ring-1 ring-inset ring-pink-500/15',
   tiktok: 'rounded-lg bg-foreground/[0.06] ring-1 ring-inset ring-border/70',
   airbnb: 'rounded-lg bg-[#FF385C]/10 ring-1 ring-inset ring-[#FF385C]/20',
-  web: 'rounded-lg bg-emerald-500/10 ring-1 ring-inset ring-emerald-500/20',
+  web: cn(
+    'rounded-lg border ring-1 ring-inset',
+    statusToneSurfaceClasses('green').bgColor,
+    statusToneSurfaceClasses('green').borderColor
+  ),
 };
 
 const PLATFORM_ICON: Record<SocialPlatform, string> = {
@@ -36,7 +41,7 @@ const PLATFORM_ICON: Record<SocialPlatform, string> = {
   instagram: 'text-pink-600 dark:text-pink-400',
   tiktok: 'text-foreground',
   airbnb: 'text-[#FF385C]',
-  web: 'text-emerald-600 dark:text-emerald-400',
+  web: statusToneSurfaceClasses('green').color,
 };
 
 function FacebookIcon({ className }: { className?: string }) {

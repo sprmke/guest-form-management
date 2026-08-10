@@ -1,6 +1,6 @@
 /**
  * Enable inbox UI preview with mock data.
- * - URL: ?mock=true on /org/:slug/inbox
+ * - URL: ?mock=true on /org/:slug/property/:propertySlug/inbox
  * - Env: VITE_INBOX_MOCK_DATA=true
  */
 export function isInboxMockMode(): boolean {

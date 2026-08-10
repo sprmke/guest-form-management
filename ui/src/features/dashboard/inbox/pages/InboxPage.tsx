@@ -40,12 +40,12 @@ import type {
 import { cn } from '@/lib/utils';
 
 export type InboxPageProps = {
-  kind: 'org' | 'property' | 'parking';
+  kind: 'property' | 'parking';
   returnPath: string;
   canReply: boolean;
   canManage: boolean;
-  /** Quick replies + Automation — org only */
-  showOrgManageTabs: boolean;
+  /** Quick replies + Automation (property); parking is Channels-only */
+  showSettingsManageTabs: boolean;
   scope?: InboxApiScope | null;
   orgSlug: string | null;
   orgId: string | null;
@@ -55,7 +55,7 @@ export function InboxPage({
   returnPath,
   canReply,
   canManage,
-  showOrgManageTabs,
+  showSettingsManageTabs,
   scope,
   orgSlug,
   orgId,
@@ -112,7 +112,7 @@ export function InboxPage({
     isError: connectionsError,
   } = useInboxConnections(orgSlug, orgId, scope);
   const metaSyncInProgress = connectionsData?.metaSyncInProgress ?? false;
-  useMetaInboxSync(orgSlug, orgId, metaSyncInProgress);
+  useMetaInboxSync(orgSlug, orgId, metaSyncInProgress, scope);
   const {
     data: threadsData,
     isLoading: threadsLoading,
@@ -139,9 +139,9 @@ export function InboxPage({
   } = useInboxMessages(orgSlug, orgId, selectedId, scope);
   const { connectMeta, disconnectMeta, sendReply, editMessage, unsendMessage, aiSuggest } =
     useInboxMutations(orgSlug, orgId, scope);
-  const templatesQuery = useInboxTemplates(orgSlug, orgId);
-  const automationQuery = useInboxAutomationSettings(orgSlug, orgId, showOrgManageTabs);
-  const pagePicker = useMetaOAuthPagePicker(orgSlug, orgId, pagePickerState);
+  const templatesQuery = useInboxTemplates(orgSlug, orgId, scope, showSettingsManageTabs);
+  const automationQuery = useInboxAutomationSettings(orgSlug, orgId, scope, showSettingsManageTabs);
+  const pagePicker = useMetaOAuthPagePicker(orgSlug, orgId, pagePickerState, scope);
 
   const conversations = useMemo(() => {
     const seen = new Set<string>();
@@ -238,7 +238,7 @@ export function InboxPage({
       heroTrailing={
         <InboxManageToolbar
           canManage={canManage}
-          showOrgManageTabs={showOrgManageTabs}
+          showSettingsManageTabs={showSettingsManageTabs}
           onOpen={setManageModal}
           variant="hero"
         />
@@ -246,7 +246,7 @@ export function InboxPage({
       desktopActions={
         <InboxManageToolbar
           canManage={canManage}
-          showOrgManageTabs={showOrgManageTabs}
+          showSettingsManageTabs={showSettingsManageTabs}
           onOpen={setManageModal}
         />
       }
@@ -356,7 +356,7 @@ export function InboxPage({
           open={manageModal}
           onOpenChange={setManageModal}
           canManage={canManage}
-          showOrgManageTabs={showOrgManageTabs}
+          showSettingsManageTabs={showSettingsManageTabs}
           usingOrgMeta={connectionsData?.usingOrgMeta}
           connections={connectionsData?.connections ?? []}
           comingSoon={connectionsData?.comingSoon ?? []}
