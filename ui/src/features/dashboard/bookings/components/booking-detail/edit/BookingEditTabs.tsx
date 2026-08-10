@@ -128,6 +128,8 @@ type Props = {
   /** Content for each tab, built by `BookingEditForm.tsx` from the shared `useForm` instance. */
   tabs: Partial<Record<BookingEditTabId, ReactNode>>;
   footer: ReactNode;
+  /** Open on a specific tab (e.g. Add parking → parking). */
+  initialTab?: BookingEditTabId;
 };
 
 export const BookingEditTabs = forwardRef<BookingEditTabsHandle, Props>(function BookingEditTabs(
@@ -140,6 +142,7 @@ export const BookingEditTabs = forwardRef<BookingEditTabsHandle, Props>(function
     sensitiveNoticeVisible,
     tabs,
     footer,
+    initialTab = 'guest',
   },
   ref
 ) {
@@ -147,7 +150,9 @@ export const BookingEditTabs = forwardRef<BookingEditTabsHandle, Props>(function
     () => TAB_ORDER.filter((id) => id !== 'docs' || showDocsTab),
     [showDocsTab]
   );
-  const [activeTab, setActiveTab] = useState<BookingEditTabId>('guest');
+  const [activeTab, setActiveTab] = useState<BookingEditTabId>(() =>
+    orderedTabs.includes(initialTab) ? initialTab : 'guest'
+  );
   const pendingScrollErrorsRef = useRef<FieldErrors<BookingEditFormValues> | null>(null);
 
   // Docs tab can appear/disappear as the admin edits booking source / pets — keep the active tab valid.
@@ -241,7 +246,7 @@ export const BookingEditTabs = forwardRef<BookingEditTabsHandle, Props>(function
           title={TAB_META[activeTab].label}
           icon={TAB_META[activeTab].icon}
           tone="edit"
-          bodyClassName="space-y-4 py-4 sm:space-y-5 sm:py-5"
+          bodyClassName="space-y-4 pb-5 pt-4 sm:space-y-5 sm:pb-6 sm:pt-5"
         >
           {tabs[activeTab]}
         </BookingDetailCard>

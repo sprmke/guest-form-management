@@ -24,7 +24,7 @@ function NextStayVoucherBlock({ booking }: { booking: BookingRow }) {
 
   return (
     <BookingDetailRowBlock className="border-border/60 border-t">
-      <p className="text-muted-foreground mb-2 text-xs font-medium">Next-stay voucher</p>
+      <p className="text-overline mb-2">Next-stay voucher</p>
       <div className="relative overflow-hidden rounded-xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50 via-white to-emerald-50/60 px-4 py-3 ring-1 ring-emerald-100/80">
         <Sparkles className="absolute right-3 top-3 size-4 text-emerald-500/70" aria-hidden />
         <div className="flex items-center gap-3">
@@ -78,7 +78,7 @@ export function PricingSummaryPanel({
 
       {(hasPaymentReceipt || hasBalanceReceipt) && (
         <BookingDetailRowBlock className="border-border/60 border-t">
-          <p className="text-muted-foreground mb-2 text-xs font-medium">Payment receipts</p>
+          <p className="text-overline mb-2">Payment receipts</p>
           <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {hasPaymentReceipt ? (
               <DocPreview
@@ -116,7 +116,7 @@ export function PricingSummaryPanel({
 
       {isCompleted && booking.sd_refund_receipt_url ? (
         <BookingDetailRowBlock className="border-border/60 border-t">
-          <p className="text-muted-foreground mb-2 text-xs font-medium">Refund receipt</p>
+          <p className="text-overline mb-2">Refund receipt</p>
           <DocPreview
             label="SD refund receipt"
             url={booking.sd_refund_receipt_url}

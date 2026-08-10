@@ -13,17 +13,23 @@ export function BookingDetailRowGroup({
   return <div className={cn('divide-border/60 divide-y', className)}>{children}</div>;
 }
 
-/** PMS-style label ↔ value row for view mode (not a form field). */
+/**
+ * PMS-style label ↔ value row for view mode (not a form field).
+ * Long values wrap; empty values omit the row.
+ */
 export function BookingDetailRow({
   label,
   value,
   icon,
+  numeric,
   children,
   className,
 }: {
   label: string;
   value?: string | number | null;
   icon?: ReactNode;
+  /** Money/count values — keeps digits on a fixed advance so stacked rows align. */
+  numeric?: boolean;
   children?: ReactNode;
   className?: string;
 }) {
@@ -33,15 +39,20 @@ export function BookingDetailRow({
   return (
     <div
       className={cn(
-        'flex flex-col gap-1 py-3.5 sm:flex-row sm:items-start sm:justify-between sm:gap-6',
+        'flex flex-col gap-1 py-2.5 sm:flex-row sm:items-start sm:justify-between sm:gap-6',
         className
       )}
     >
       <span className="text-muted-foreground shrink-0 text-xs font-medium">{label}</span>
       {children ?? (
-        <span className="text-foreground flex min-w-0 items-center justify-end gap-1.5 text-right text-sm font-semibold leading-snug sm:max-w-[68%]">
+        <span
+          className={cn(
+            'text-foreground flex min-w-0 items-center justify-end gap-1.5 text-right text-sm font-semibold leading-snug sm:max-w-[68%]',
+            numeric && 'tabular-nums'
+          )}
+        >
           {icon}
-          <span className="min-w-0 break-words">{String(value)}</span>
+          <span className="min-w-0 [overflow-wrap:anywhere]">{String(value)}</span>
         </span>
       )}
     </div>
@@ -55,5 +66,5 @@ export function BookingDetailRowBlock({
   children: ReactNode;
   className?: string;
 }) {
-  return <div className={cn('py-3.5', className)}>{children}</div>;
+  return <div className={cn('py-2.5', className)}>{children}</div>;
 }

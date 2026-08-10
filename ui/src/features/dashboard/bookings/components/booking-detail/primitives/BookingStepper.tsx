@@ -1,5 +1,6 @@
 import { Check } from 'lucide-react';
 
+import { statusToneStyle } from '@/features/dashboard/bookings/components/StatusBadge';
 import { statusLabel, type BookingStatus } from '@/features/dashboard/bookings/lib/bookingStatus';
 import type { DocumentRequirement } from '@/features/dashboard/bookings/lib/documentRequirements';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
@@ -65,6 +66,9 @@ export function BookingStepper({
         const isLast = i === pipeline.length - 1;
         const isReachable = isCompleted || isCurrent;
         const isSelected = isPipelineStepSelected(step, viewedStep);
+        // The live step wears its own status tone here for the same reason the
+        // rail's track does — one color language for "where the booking is".
+        const tone = statusToneStyle(step);
 
         const labelClass = cn(
           compact ? 'text-xs' : 'text-sm',
@@ -84,7 +88,7 @@ export function BookingStepper({
                   className={cn(
                     'flex items-center justify-center rounded-full transition-all',
                     isCurrent
-                      ? 'bg-primary/10 ring-primary shadow-primary-glow size-6 ring-2'
+                      ? cn('size-6 border', tone.badge)
                       : isCompleted
                         ? 'gradient-primary text-primary-foreground size-5'
                         : 'bg-card ring-border/60 size-5 ring-1'
@@ -93,7 +97,13 @@ export function BookingStepper({
                   {isCompleted ? (
                     <Check className="size-3" strokeWidth={3} />
                   ) : isCurrent ? (
-                    <span className="gradient-primary size-2 rounded-full motion-safe:animate-pulse" />
+                    <span
+                      className={cn(
+                        'size-2 rounded-full',
+                        tone.dot,
+                        tone.pulse && 'motion-safe:animate-pulse'
+                      )}
+                    />
                   ) : null}
                 </div>
               </div>
