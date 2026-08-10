@@ -13,26 +13,24 @@ import type { ApprovalQueueItem } from '@/features/dashboard/super-admin/types/a
 
 import { AdminCardGrid, AdminCardRow } from '@/components/mobile/AdminCardGrid';
 import { cn } from '@/lib/utils';
+import { softBadgeClasses, toneBadgeClasses } from '@/lib/status-tone-colors';
 
 function SuccessionBadge() {
-  return (
-    <span className="inline-flex shrink-0 items-center rounded-md bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-800">
-      Succession
-    </span>
-  );
+  return <span className={softBadgeClasses('warning')}>Succession</span>;
 }
 
 function ConsiderationBadge() {
-  return (
-    <span className="inline-flex shrink-0 items-center rounded-md bg-sky-500/10 px-2 py-0.5 text-[11px] font-medium text-sky-800">
-      Consideration
-    </span>
-  );
+  return <span className={softBadgeClasses('info')}>Consideration</span>;
 }
 
 function ReviewBadge() {
   return (
-    <span className="inline-flex shrink-0 items-center rounded-md bg-violet-500/10 px-2 py-0.5 text-[11px] font-medium text-violet-800 dark:text-violet-300">
+    <span
+      className={cn(
+        'inline-flex shrink-0 items-center rounded-md border px-2 py-0.5 text-[11px] font-medium',
+        toneBadgeClasses('purple')
+      )}
+    >
       Review
     </span>
   );

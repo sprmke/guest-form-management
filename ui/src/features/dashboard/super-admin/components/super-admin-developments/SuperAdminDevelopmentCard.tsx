@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 
-import { Building2, Car, Landmark, MapPin, MoreHorizontal, Settings } from 'lucide-react';
+import { Building2, Car, Landmark, MoreHorizontal, Settings } from 'lucide-react';
 
 import { OrgPropertyImageCarousel } from '@/features/dashboard/org/components/org-properties/OrgPropertyImageCarousel';
 import { superAdminDevelopmentCardModel } from '@/features/dashboard/super-admin/lib/superAdminDevelopmentsFilters';
@@ -16,7 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { cn } from '@/lib/utils';
+import { listingStatusBadgeClasses, listingStatusDotClasses } from '@/lib/status-tone-colors';
 
 const CARD_CLASS =
   'relative block rounded-xl border border-border/50 bg-card text-card-foreground shadow-card overflow-hidden transition-[box-shadow,border-color] duration-200 hover:border-primary/30 hover:shadow-lg dark:border-[hsl(0_0%_100%_/_0.06)]';
@@ -27,14 +27,8 @@ const CARD_LINK_CLASS =
 function DevelopmentStatusBadge({ status }: { status: string }) {
   const active = status === 'ACTIVE';
   return (
-    <span
-      className={cn(
-        'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide',
-        active
-          ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
-          : 'bg-muted text-muted-foreground'
-      )}
-    >
+    <span className={listingStatusBadgeClasses(active)}>
+      <span className={listingStatusDotClasses(active)} aria-hidden />
       {active ? 'Active' : 'Inactive'}
     </span>
   );
@@ -128,9 +122,8 @@ export function SuperAdminDevelopmentCard({ development }: Props) {
           <p className="text-muted-foreground text-xs">{model.typeLabel}</p>
         </div>
 
-        <div className="text-muted-foreground flex items-center gap-1.5 text-xs sm:text-sm">
-          <MapPin className="size-3.5 shrink-0" aria-hidden />
-          <span className="truncate">{model.locationLine}</span>
+        <div className="text-muted-foreground text-xs">
+          <span className="line-clamp-1">{model.locationLine}</span>
         </div>
 
         <div className="border-border/50 grid grid-cols-2 gap-2 border-t pt-2.5 text-center text-xs sm:text-sm">

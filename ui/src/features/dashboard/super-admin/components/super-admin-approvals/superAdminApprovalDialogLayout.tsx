@@ -1,6 +1,7 @@
 import type { ExternalReviewSource } from '@/features/dashboard/org/lib/propertyExternalReviews';
 
 import { cn } from '@/lib/utils';
+import { toneBadgeClasses } from '@/lib/status-tone-colors';
 
 export const superAdminApprovalDialogContentClass = cn(
   'flex h-[min(90dvh,44rem)] max-h-[min(90dvh,44rem)] w-[min(calc(100vw-1.5rem),40rem)] max-w-none flex-col gap-0 overflow-hidden p-0',
@@ -50,10 +51,8 @@ export function SuperAdminExternalReviewSourceBadge({ source }: { source: Extern
   return (
     <span
       className={cn(
-        'inline-flex shrink-0 items-center rounded-md px-2 py-0.5 text-[11px] font-medium',
-        source === 'airbnb'
-          ? 'bg-rose-500/10 text-rose-800 dark:text-rose-300'
-          : 'bg-blue-500/10 text-blue-800 dark:text-blue-300'
+        'inline-flex shrink-0 items-center rounded-md border px-2 py-0.5 text-[11px] font-medium',
+        source === 'airbnb' ? toneBadgeClasses('red') : toneBadgeClasses('blue')
       )}
     >
       {label}

@@ -18,18 +18,13 @@ import { superAdminPaths } from '@/features/dashboard/super-admin/lib/superAdmin
 import type { Development } from '@/features/dashboard/super-admin/types/development';
 
 import { cn } from '@/lib/utils';
+import { listingStatusBadgeClasses, listingStatusDotClasses } from '@/lib/status-tone-colors';
 
 function DevelopmentStatusBadge({ status }: { status: string }) {
   const active = status === 'ACTIVE';
   return (
-    <span
-      className={cn(
-        'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide',
-        active
-          ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
-          : 'bg-muted text-muted-foreground'
-      )}
-    >
+    <span className={listingStatusBadgeClasses(active)}>
+      <span className={listingStatusDotClasses(active)} aria-hidden />
       {developmentStatusLabel(status as Development['status'])}
     </span>
   );
