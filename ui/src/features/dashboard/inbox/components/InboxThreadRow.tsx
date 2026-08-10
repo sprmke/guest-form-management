@@ -3,7 +3,7 @@ import { formatInboxTime, platformLabel } from '@/features/dashboard/inbox/lib/i
 import type { InboxConversation } from '@/features/dashboard/inbox/types/inbox';
 
 import { cn } from '@/lib/utils';
-import { softBadgeClasses, toneBadgeClasses } from '@/lib/status-tone-colors';
+import { softBadgeClasses, toneBadgeClasses } from '@/lib/statusToneColors';
 import { formatIsoDateForDisplay } from '@/utils/format/dates';
 
 type Props = {

@@ -50,7 +50,7 @@ import {
 } from '@/components/ui/responsive-modal';
 import { IsoDateInput } from '@/components/ui/iso-date-input';
 import { cn } from '@/lib/utils';
-import { compactStatusBadgeClasses } from '@/lib/status-tone-colors';
+import { compactStatusBadgeClasses } from '@/lib/statusToneColors';
 import { formatIsoDate } from '@/utils/format/bookingDisplay';
 import { formatMoney } from '@/utils/format/currency';
 import { formatIsoDateForDisplay } from '@/utils/format/dates';

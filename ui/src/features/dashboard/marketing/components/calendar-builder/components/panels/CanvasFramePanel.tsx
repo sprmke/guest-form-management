@@ -8,7 +8,7 @@ import {
   StyleSection,
   StyleSubSection,
 } from '@/features/dashboard/marketing/components/calendar-builder/components/panels/StyleSection';
-import { useCalendarBuilderStore } from '@/features/dashboard/marketing/components/calendar-builder/stores/calendar-builder-store';
+import { useCalendarBuilderStore } from '@/features/dashboard/marketing/components/calendar-builder/stores/calendarBuilderStore';
 import { normalizeCalendarCanvasFrame } from '@/features/dashboard/marketing/lib/calendarCanvasFormats';
 
 export function CanvasFramePanel() {

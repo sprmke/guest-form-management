@@ -18,7 +18,7 @@ import { superAdminPaths } from '@/features/dashboard/super-admin/lib/superAdmin
 import type { Development } from '@/features/dashboard/super-admin/types/development';
 
 import { cn } from '@/lib/utils';
-import { listingStatusBadgeClasses, listingStatusDotClasses } from '@/lib/status-tone-colors';
+import { listingStatusBadgeClasses, listingStatusDotClasses } from '@/lib/statusToneColors';
 
 function DevelopmentStatusBadge({ status }: { status: string }) {
   const active = status === 'ACTIVE';

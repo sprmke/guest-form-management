@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { MarketingBuilderHeader } from '@/features/dashboard/marketing/components/shared/MarketingBuilderHeader';
-import { MarketingStudioHeaderActionsSlot } from '@/features/dashboard/marketing/components/shared/marketingStudioHeaderActions';
+import { MarketingStudioHeaderActionsSlot } from '@/features/dashboard/marketing/components/shared/MarketingStudioHeaderActions';
 
 type Props = {
   tabs: ReactNode;

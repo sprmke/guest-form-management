@@ -1,6 +1,6 @@
 import { Grid3X3 } from 'lucide-react';
 
-import { useCalendarBuilderStore } from '../../stores/calendar-builder-store';
+import { useCalendarBuilderStore } from '../../stores/calendarBuilderStore';
 import { BackgroundControl, BorderControl, SpacingControl, NumberSlider } from '../controls';
 import { StyleSection, StyleSubSection } from './StyleSection';
 

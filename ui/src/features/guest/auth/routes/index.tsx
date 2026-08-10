@@ -8,7 +8,7 @@ import {
   HostRegisterPage,
   HostResetPasswordPage,
   HostVerifyEmailPage,
-} from '@/features/guest/auth/pages';
+} from '@/features/guest/auth/pages/HostAuthPages';
 
 /** Host auth pages. Guest auth is modal-only at booking checkout — `/for-guests/*` redirects home. */
 export const guestAuthRoutes = [

@@ -4,7 +4,7 @@ import { recurrenceIntervalLabel } from '@/features/dashboard/finance/lib/recurr
 import type { MaintenanceItem } from '@/features/dashboard/maintenance/lib/types';
 
 import { FinanceStaysCardGridSkeleton } from '@/components/skeletons/AdminSkeletons';
-import { compactStatusBadgeClasses } from '@/lib/status-tone-colors';
+import { compactStatusBadgeClasses } from '@/lib/statusToneColors';
 import { cn } from '@/lib/utils';
 import { formatIsoDate } from '@/utils/format/bookingDisplay';
 

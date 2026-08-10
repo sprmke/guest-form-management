@@ -25,7 +25,7 @@ import {
   ResponsiveModalTitle,
 } from '@/components/ui/responsive-modal';
 import { cn } from '@/lib/utils';
-import { toneIconWrapClasses } from '@/lib/status-tone-colors';
+import { toneIconWrapClasses } from '@/lib/statusToneColors';
 
 type TelegramChannel = {
   id: 'marketing' | 'staff' | 'operations' | 'finance' | 'maintenance' | 'parking' | 'chat';

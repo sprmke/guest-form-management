@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-import { useCalendarBuilderStore } from '../../stores/calendar-builder-store';
+import { useCalendarBuilderStore } from '../../stores/calendarBuilderStore';
 import { FontSelector, ColorPicker, NumberSlider } from '../controls';
 import { StyleSection, StyleSubSection } from './StyleSection';
 

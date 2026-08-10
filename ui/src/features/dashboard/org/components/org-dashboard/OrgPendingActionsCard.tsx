@@ -4,7 +4,7 @@ import { AlertTriangle, ArrowRight, Bell, CheckCircle2, ChevronRight } from 'luc
 
 import { orgBookingsPath } from '@/features/dashboard/org/lib/tenantPaths';
 import type { DashboardAttentionItem } from '@/features/dashboard/property/lib/types';
-import { ATTENTION_SEVERITY_STYLES } from '@/lib/status-tone-colors';
+import { ATTENTION_SEVERITY_STYLES } from '@/lib/statusToneColors';
 
 import { AdminSurfaceCardHeader } from '@/components/shared/AdminSurfaceCardHeader';
 import { cn } from '@/lib/utils';

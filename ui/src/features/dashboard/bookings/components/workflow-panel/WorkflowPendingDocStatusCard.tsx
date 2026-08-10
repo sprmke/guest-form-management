@@ -27,7 +27,7 @@ import {
 import { workflowInlineLink } from '@/features/dashboard/bookings/lib/workflowActionButtonStyles';
 
 import { cn } from '@/lib/utils';
-import { semanticBadgeClasses, softBadgeClasses } from '@/lib/status-tone-colors';
+import { semanticBadgeClasses, softBadgeClasses } from '@/lib/statusToneColors';
 
 export function PendingDocSubStatusCard({
   booking,

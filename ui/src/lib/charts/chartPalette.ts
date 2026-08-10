@@ -1,4 +1,4 @@
-import { STATUS_TONE_HEX } from '@/lib/status-tone-colors';
+import { STATUS_TONE_HEX } from '@/lib/statusToneColors';
 
 /** Distinct segment colors for pie / breakdown charts — tone-aligned first, then extras. */
 const CHART_SEGMENT_PALETTE = [

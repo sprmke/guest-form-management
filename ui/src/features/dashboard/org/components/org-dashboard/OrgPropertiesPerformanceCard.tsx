@@ -19,7 +19,7 @@ import type {
 import { AdminSurfaceCardHeader } from '@/components/shared/AdminSurfaceCardHeader';
 import { SegmentedControl } from '@/components/ui/sliding-tabs';
 import { cn } from '@/lib/utils';
-import { resourceKindBadgeClasses } from '@/lib/status-tone-colors';
+import { resourceKindBadgeClasses } from '@/lib/statusToneColors';
 
 type AssetRow = {
   kind: 'property' | 'parking';

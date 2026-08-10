@@ -1,5 +1,5 @@
 import type { FinanceLedgerStatus } from '@/features/dashboard/finance/lib/types';
-import { compactStatusBadgeClasses } from '@/lib/status-tone-colors';
+import { compactStatusBadgeClasses } from '@/lib/statusToneColors';
 
 import { cn } from '@/lib/utils';
 

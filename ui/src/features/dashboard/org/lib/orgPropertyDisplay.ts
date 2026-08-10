@@ -4,7 +4,7 @@ import {
   DEFAULT_RESIDENCE_NAME,
   propertySidebarLabel,
 } from '@/features/dashboard/org/lib/propertyDisplay';
-import { LISTING_STATUS_STYLES } from '@/lib/status-tone-colors';
+import { LISTING_STATUS_STYLES } from '@/lib/statusToneColors';
 import type { Property } from '@/features/dashboard/org/types';
 
 import type { LucideIcon } from 'lucide-react';

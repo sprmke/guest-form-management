@@ -28,7 +28,7 @@ import { MarketingEditorHistoryControls } from '@/features/dashboard/marketing/c
 import { MarketingEditorSidebar } from '@/features/dashboard/marketing/components/shared/MarketingEditorSidebar';
 import { MarketingPreviewHeader } from '@/features/dashboard/marketing/components/shared/MarketingPreviewHeader';
 import { marketingEditorWorkspaceClassName } from '@/features/dashboard/marketing/lib/marketingEditorWorkspace';
-import { useMarketingStudioHeaderActions } from '@/features/dashboard/marketing/components/shared/marketingStudioHeaderActions';
+import { useMarketingStudioHeaderActions } from '@/features/dashboard/marketing/components/shared/MarketingStudioHeaderActions';
 import { SaveMarketingTemplateButton } from '@/features/dashboard/marketing/components/shared/SaveMarketingTemplateButton';
 import { useCalendarTemplateDedupe } from '@/features/dashboard/marketing/hooks/useCalendarTemplateDedupe';
 import { useGenerateMarketingTemplate } from '@/features/dashboard/marketing/hooks/useGenerateMarketingTemplate';
@@ -97,12 +97,12 @@ import {
   LegendPanel,
   WatermarkPanel,
 } from './panels';
-import { useCalendarTemplates } from '../hooks/use-calendar-templates';
+import { useCalendarTemplates } from '../hooks/useCalendarTemplates';
 import {
   MOCK_BLOCKED_DAYS,
   MOCK_PREVIEW_BOOKINGS,
   useCalendarBuilderStore,
-} from '../stores/calendar-builder-store';
+} from '../stores/calendarBuilderStore';
 import { normalizeCalendarStyles, type CalendarStyles, type PreviewBooking } from '../types';
 
 interface CalendarBuilderProps {

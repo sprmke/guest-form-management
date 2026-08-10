@@ -9,7 +9,7 @@ import {
   type PublishMedia,
 } from '@/features/dashboard/marketing/components/publishing/PublishDialog';
 import { PublishHistory } from '@/features/dashboard/marketing/components/publishing/PublishHistory';
-import { MarketingStudioHeaderActionsProvider } from '@/features/dashboard/marketing/components/shared/marketingStudioHeaderActions';
+import { MarketingStudioHeaderActionsProvider } from '@/features/dashboard/marketing/components/shared/MarketingStudioHeaderActions';
 import { MarketingStudioModeTabs } from '@/features/dashboard/marketing/components/shared/MarketingStudioModeTabs';
 import { SlidingTabs } from '@/features/dashboard/marketing/components/shared/MarketingStudioModeTabs';
 import { MarketingStudioShell } from '@/features/dashboard/marketing/components/shared/MarketingStudioShell';

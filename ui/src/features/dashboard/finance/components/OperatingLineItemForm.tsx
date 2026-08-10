@@ -30,7 +30,7 @@ import { IsoDateInput } from '@/components/ui/iso-date-input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
-import { statusToneSurfaceClasses } from '@/lib/status-tone-colors';
+import { statusToneSurfaceClasses } from '@/lib/statusToneColors';
 
 const schema = z
   .object({

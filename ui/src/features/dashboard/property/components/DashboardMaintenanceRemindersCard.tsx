@@ -15,7 +15,7 @@ import {
 import { AdminSurfaceCardHeader } from '@/components/shared/AdminSurfaceCardHeader';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ATTENTION_SEVERITY_STYLES } from '@/lib/status-tone-colors';
+import { ATTENTION_SEVERITY_STYLES } from '@/lib/statusToneColors';
 import { cn } from '@/lib/utils';
 import { formatIsoDate } from '@/utils/format/bookingDisplay';
 

@@ -4,7 +4,7 @@ import { toBlob } from 'html-to-image';
 
 import { CalendarCanvasFrame } from '@/features/dashboard/marketing/components/calendar-builder/components/CalendarCanvasFrame';
 import { CalendarPreview } from '@/features/dashboard/marketing/components/calendar-builder/components/CalendarPreview';
-import { resolveCalendarPresetStylesForFormat } from '@/features/dashboard/marketing/components/calendar-builder/stores/calendar-builder-store';
+import { resolveCalendarPresetStylesForFormat } from '@/features/dashboard/marketing/components/calendar-builder/stores/calendarBuilderStore';
 import type {
   CalendarStyles,
   PreviewBooking,

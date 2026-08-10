@@ -31,7 +31,7 @@ import {
   isSubStatusRequired,
   type PendingDocumentSubStatus,
 } from '@/features/dashboard/bookings/lib/workflow';
-import { statusToneSurfaceClasses } from '@/lib/status-tone-colors';
+import { statusToneSurfaceClasses } from '@/lib/statusToneColors';
 
 import type { LucideIcon } from 'lucide-react';
 

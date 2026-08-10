@@ -20,7 +20,7 @@ import { recurrenceIntervalLabel } from '@/features/dashboard/finance/lib/recurr
 import type { FinanceBookingLedgerRow } from '@/features/dashboard/finance/lib/types';
 
 import { cn } from '@/lib/utils';
-import { toneIconWrapClasses } from '@/lib/status-tone-colors';
+import { toneIconWrapClasses } from '@/lib/statusToneColors';
 import { formatMoney } from '@/utils/format/currency';
 
 type Props = {

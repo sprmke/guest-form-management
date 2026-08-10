@@ -11,7 +11,7 @@ import { MarketingImage as Image } from '@/features/guest/marketing/shared/compo
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { DEVELOPMENT_TYPE_BADGE } from '@/lib/status-tone-colors';
+import { DEVELOPMENT_TYPE_BADGE } from '@/lib/statusToneColors';
 
 const TYPE_CONFIG: Record<
   DevelopmentType,

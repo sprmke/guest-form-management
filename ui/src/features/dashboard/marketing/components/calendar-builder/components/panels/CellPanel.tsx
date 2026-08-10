@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-import { useCalendarBuilderStore } from '../../stores/calendar-builder-store';
+import { useCalendarBuilderStore } from '../../stores/calendarBuilderStore';
 import {
   BackgroundControl,
   BorderControl,

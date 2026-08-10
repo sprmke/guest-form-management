@@ -13,7 +13,7 @@ import {
   useCalendarBuilderStore,
   MOCK_BLOCKED_DAYS,
   MOCK_PREVIEW_BOOKINGS,
-} from '../stores/calendar-builder-store';
+} from '../stores/calendarBuilderStore';
 import {
   type CalendarStyles,
   type PreviewBooking,

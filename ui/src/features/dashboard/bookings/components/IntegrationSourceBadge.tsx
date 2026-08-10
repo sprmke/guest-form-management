@@ -1,5 +1,5 @@
 import type { IntegrationFieldSource } from '@/features/dashboard/bookings/hooks/useAppSettings';
-import { compactStatusBadgeClasses } from '@/lib/status-tone-colors';
+import { compactStatusBadgeClasses } from '@/lib/statusToneColors';
 
 import { cn } from '@/lib/utils';
 

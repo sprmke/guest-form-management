@@ -1,6 +1,6 @@
 import { assignUniqueChartColors } from '@/lib/charts/chartPalette';
 import { CHART_EXPENSE_COLOR, CHART_INCOME_COLOR } from '@/lib/charts/chartStyles';
-import { STATUS_TONE_HEX } from '@/lib/status-tone-colors';
+import { STATUS_TONE_HEX } from '@/lib/statusToneColors';
 
 /** Semantic category colors — may collide; charts run assignUniqueChartColors after. */
 const CATEGORY_COLOR_MAP: Record<string, string> = {

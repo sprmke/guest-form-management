@@ -1,5 +1,5 @@
 import type { BookingKind, BookingRow } from '@/features/dashboard/bookings/lib/types';
-import { resourceKindBadgeClasses } from '@/lib/status-tone-colors';
+import { resourceKindBadgeClasses } from '@/lib/statusToneColors';
 
 import { cn } from '@/lib/utils';
 

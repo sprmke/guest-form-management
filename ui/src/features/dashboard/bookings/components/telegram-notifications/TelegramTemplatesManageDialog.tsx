@@ -10,7 +10,7 @@ import {
 } from '@/features/dashboard/bookings/lib/telegramPreviewSamples';
 
 import { cn } from '@/lib/utils';
-import { compactStatusBadgeClasses } from '@/lib/status-tone-colors';
+import { compactStatusBadgeClasses } from '@/lib/statusToneColors';
 
 export type TelegramTemplateTab = {
   id: string;

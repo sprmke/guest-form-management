@@ -16,7 +16,7 @@ import { AdminSurfaceCardHeader } from '@/components/shared/AdminSurfaceCardHead
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { DatePreset } from '@/lib/date/navigation';
-import { ATTENTION_SEVERITY_STYLES, compactStatusBadgeClasses } from '@/lib/status-tone-colors';
+import { ATTENTION_SEVERITY_STYLES, compactStatusBadgeClasses } from '@/lib/statusToneColors';
 import { cn } from '@/lib/utils';
 import { formatIsoDate } from '@/utils/format/bookingDisplay';
 import { formatMoney } from '@/utils/format/currency';

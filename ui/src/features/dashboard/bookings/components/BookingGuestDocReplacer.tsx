@@ -16,7 +16,7 @@ import {
 import { normalizeStoragePublicUrl } from '@/features/dashboard/bookings/lib/storageUrls';
 
 import { cn } from '@/lib/utils';
-import { softBadgeClasses } from '@/lib/status-tone-colors';
+import { softBadgeClasses } from '@/lib/statusToneColors';
 
 export type BookingGuestDocDef = {
   assetType: GuestDocAssetType;

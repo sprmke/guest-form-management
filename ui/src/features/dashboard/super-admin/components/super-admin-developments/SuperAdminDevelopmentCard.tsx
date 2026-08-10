@@ -16,7 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { listingStatusBadgeClasses, listingStatusDotClasses } from '@/lib/status-tone-colors';
+import { listingStatusBadgeClasses, listingStatusDotClasses } from '@/lib/statusToneColors';
 
 const CARD_CLASS =
   'relative block rounded-xl border border-border/50 bg-card text-card-foreground shadow-card overflow-hidden transition-[box-shadow,border-color] duration-200 hover:border-primary/30 hover:shadow-lg dark:border-[hsl(0_0%_100%_/_0.06)]';

@@ -7,7 +7,7 @@ import { MarketingImage as Image } from '@/features/guest/marketing/shared/compo
 import { resolveListingCoverImage } from '@/features/guest/marketing/shared/lib/mockListingImages';
 
 import { cn } from '@/lib/utils';
-import { DEVELOPMENT_TYPE_BADGE } from '@/lib/status-tone-colors';
+import { DEVELOPMENT_TYPE_BADGE } from '@/lib/statusToneColors';
 
 import type { Development, DevelopmentType } from '../types';
 

@@ -3,8 +3,8 @@ import { useMemo, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 
 import { CalendarBuilder } from '@/features/dashboard/marketing/components/calendar-builder/components/CalendarBuilder';
-import { useCalendarExport } from '@/features/dashboard/marketing/components/calendar-builder/hooks/use-calendar-export';
-import { useCalendarBuilderStore } from '@/features/dashboard/marketing/components/calendar-builder/stores/calendar-builder-store';
+import { useCalendarExport } from '@/features/dashboard/marketing/components/calendar-builder/hooks/useCalendarExport';
+import { useCalendarBuilderStore } from '@/features/dashboard/marketing/components/calendar-builder/stores/calendarBuilderStore';
 import { useMarketingBookedDates } from '@/features/dashboard/marketing/hooks/useMarketingBookedDates';
 import { bookedDatesToPreviewBookings } from '@/features/dashboard/marketing/lib/marketingBookedDates';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';

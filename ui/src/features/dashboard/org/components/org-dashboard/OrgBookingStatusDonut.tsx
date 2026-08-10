@@ -10,7 +10,7 @@ import {
   statusTone,
 } from '@/features/dashboard/bookings/lib/bookingStatus';
 import type { DashboardPipelineSlice } from '@/features/dashboard/property/lib/types';
-import { statusToneChartHex } from '@/lib/status-tone-colors';
+import { statusToneChartHex } from '@/lib/statusToneColors';
 
 import { AdminSurfaceCardHeader } from '@/components/shared/AdminSurfaceCardHeader';
 import { cn } from '@/lib/utils';

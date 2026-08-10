@@ -157,7 +157,7 @@ export const CALENDAR_DESIGNER_PRESET_IDS = CALENDAR_PRESET_CATEGORIES.flatMap((
 
 const d = createDefaultStyles;
 
-/** Designer preset style partials — merged in calendar-builder-store resolveCalendarPresetStyles. */
+/** Designer preset style partials — merged in calendarBuilderStore resolveCalendarPresetStyles. */
 export const CALENDAR_PRESET_STYLES: Record<string, Partial<CalendarStyles>> = {
   // ── Bubble Pop — circular day dots, centered header, lavender pastel ──
   'social-availability': {

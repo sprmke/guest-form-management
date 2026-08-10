@@ -50,7 +50,7 @@ import {
   superAdminApprovalFooterButtonClass,
   superAdminApprovalSectionTitleClass,
   SuperAdminApprovalInfoRow,
-} from '@/features/dashboard/super-admin/components/super-admin-approvals/superAdminApprovalDialogLayout';
+} from '@/features/dashboard/super-admin/components/super-admin-approvals/SuperAdminApprovalDialogLayout';
 import type {
   OrgApprovalSummary,
   OrgApprovalUnitConflict,

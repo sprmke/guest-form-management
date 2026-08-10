@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { AlertTriangle, ArrowRight, Bell, CheckCircle2, ChevronRight } from 'lucide-react';
 
 import type { DashboardAttentionItem } from '@/features/dashboard/property/lib/types';
-import { ATTENTION_SEVERITY_STYLES } from '@/lib/status-tone-colors';
+import { ATTENTION_SEVERITY_STYLES } from '@/lib/statusToneColors';
 
 import { AdminSurfaceCardHeader } from '@/components/shared/AdminSurfaceCardHeader';
 import { Skeleton } from '@/components/ui/skeleton';

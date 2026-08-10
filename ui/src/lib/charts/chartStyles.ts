@@ -1,4 +1,4 @@
-import { STATUS_TONE_HEX } from '@/lib/status-tone-colors';
+import { STATUS_TONE_HEX } from '@/lib/statusToneColors';
 
 /** Income / positive series — matches booking **green** tone (teal-500). */
 export const CHART_INCOME_COLOR = STATUS_TONE_HEX.green;

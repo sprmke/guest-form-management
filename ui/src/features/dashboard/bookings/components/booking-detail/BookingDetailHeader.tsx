@@ -8,7 +8,7 @@ import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { toneBadgeClasses } from '@/lib/status-tone-colors';
+import { toneBadgeClasses } from '@/lib/statusToneColors';
 import { formatBookingDate } from '@/utils/format/bookingDisplay';
 
 type Props = {

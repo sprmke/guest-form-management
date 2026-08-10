@@ -13,7 +13,7 @@ import type { ApprovalQueueItem } from '@/features/dashboard/super-admin/types/a
 
 import { AdminCardGrid, AdminCardRow } from '@/components/mobile/AdminCardGrid';
 import { cn } from '@/lib/utils';
-import { softBadgeClasses, toneBadgeClasses } from '@/lib/status-tone-colors';
+import { softBadgeClasses, toneBadgeClasses } from '@/lib/statusToneColors';
 
 function SuccessionBadge() {
   return <span className={softBadgeClasses('warning')}>Succession</span>;

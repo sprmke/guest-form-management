@@ -2,7 +2,7 @@ import { AlertTriangle, CheckCircle2, HelpCircle, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { cn } from '@/lib/utils';
-import { softBadgeClasses, softSurfaceClasses } from '@/lib/status-tone-colors';
+import { softBadgeClasses, softSurfaceClasses } from '@/lib/statusToneColors';
 
 /** Dedupes AI service failure toasts (backfill + upload). */
 const DOCUMENT_AI_ERROR_TOAST_ID = 'document-ai-error';

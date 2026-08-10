@@ -1,7 +1,7 @@
 import { Check, CircleOff } from 'lucide-react';
 
 import type { TeamMemberStatus } from '@/features/dashboard/team/types/propertyTeam';
-import { semanticBadgeClasses } from '@/lib/status-tone-colors';
+import { semanticBadgeClasses } from '@/lib/statusToneColors';
 
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';

@@ -1,4 +1,4 @@
-import { resolveCalendarPresetStyles } from '@/features/dashboard/marketing/components/calendar-builder/stores/calendar-builder-store';
+import { resolveCalendarPresetStyles } from '@/features/dashboard/marketing/components/calendar-builder/stores/calendarBuilderStore';
 import {
   normalizeCalendarStyles,
   type CalendarStyles,

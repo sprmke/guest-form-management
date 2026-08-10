@@ -21,7 +21,7 @@ import {
   superAdminApprovalSectionTitleClass,
   SuperAdminApprovalInfoRow,
   SuperAdminExternalReviewSourceBadge,
-} from '@/features/dashboard/super-admin/components/super-admin-approvals/superAdminApprovalDialogLayout';
+} from '@/features/dashboard/super-admin/components/super-admin-approvals/SuperAdminApprovalDialogLayout';
 import {
   useExternalReviewAssets,
   useModerateExternalReview,

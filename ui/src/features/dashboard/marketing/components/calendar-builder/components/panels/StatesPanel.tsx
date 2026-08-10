@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/select';
 
 import { StyleSection, StyleSubSection } from './StyleSection';
-import { useCalendarBuilderStore } from '../../stores/calendar-builder-store';
+import { useCalendarBuilderStore } from '../../stores/calendarBuilderStore';
 import { type BookedStateStyles } from '../../types';
 import {
   BackgroundControl,

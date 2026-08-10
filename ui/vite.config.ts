@@ -101,11 +101,11 @@ export default defineConfig({
       'use-sync-external-store/shim/index.js': path.join(useSyncExternalStoreShimRoot, 'index.ts'),
       'use-sync-external-store/shim/with-selector.js': path.join(
         useSyncExternalStoreShimRoot,
-        'with-selector.ts'
+        'withSelector.ts'
       ),
       'use-sync-external-store/shim/with-selector': path.join(
         useSyncExternalStoreShimRoot,
-        'with-selector.ts'
+        'withSelector.ts'
       ),
       'use-sync-external-store/shim': path.join(useSyncExternalStoreShimRoot, 'index.ts'),
     },

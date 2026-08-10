@@ -1,5 +1,5 @@
 import { statusLabel, statusTone } from '@/features/dashboard/bookings/lib/bookingStatus';
-import { STATUS_TONE_STYLES, type StatusToneStyle } from '@/lib/status-tone-colors';
+import { STATUS_TONE_STYLES, type StatusToneStyle } from '@/lib/statusToneColors';
 import { cn } from '@/lib/utils';
 
 export { STATUS_TONE_STYLES, type StatusToneStyle };

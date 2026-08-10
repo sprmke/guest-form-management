@@ -1,4 +1,4 @@
-import { useCalendarBuilderStore } from '@/features/dashboard/marketing/components/calendar-builder/stores/calendar-builder-store';
+import { useCalendarBuilderStore } from '@/features/dashboard/marketing/components/calendar-builder/stores/calendarBuilderStore';
 import { MarketingFormatPicker } from '@/features/dashboard/marketing/components/shared/MarketingFormatPicker';
 import {
   CALENDAR_FORMAT_OPTIONS,
