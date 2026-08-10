@@ -1,45 +1,32 @@
 /**
  * Shared layout primitives for BookingEditForm and progress-form edit sections.
+ *
+ * Prefer `booking-detail/edit/BookingEditFields.tsx` for new edit-tab work.
+ * This file re-exports the same field primitives so WorkflowFormShell /
+ * GuestSdRefund* stay in sync with the booking edit visual language.
  */
 
 import React from 'react';
 
 import { ChevronDown, Save, X } from 'lucide-react';
 
+export {
+  CheckboxOption,
+  Field,
+  fieldAriaProps,
+  fieldControlClass,
+  fieldErrorId,
+  fieldErrorMessage,
+  Input,
+  inputClass,
+  Row2,
+  Row3,
+  Section,
+} from '@/features/dashboard/bookings/components/booking-detail/edit/BookingEditFields';
+
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Input as ShadcnInput } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-
-/** Matches shadcn Input — edit workspace fields (high contrast vs view rows). */
-export const fieldControlClass =
-  'flex w-full rounded-lg border-2 border-border/70 bg-card px-4 py-2.5 text-sm font-medium text-foreground transition-colors placeholder:text-muted-foreground/70 disabled:cursor-not-allowed disabled:opacity-50 hover:border-primary/35 field-focus';
-
-/** @deprecated Prefer `fieldControlClass` — kept for textarea in BookingEditForm. */
-export const inputClass = cn(fieldControlClass, 'resize-none');
-
-export const Input = ShadcnInput;
-
-export function fieldErrorId(fieldId: string): string {
-  return `${fieldId}-error`;
-}
-
-export function fieldAriaProps(
-  fieldId: string,
-  error?: string
-): {
-  id: string;
-  'aria-invalid'?: true;
-  'aria-describedby'?: string;
-} {
-  if (!error) return { id: fieldId };
-  return {
-    id: fieldId,
-    'aria-invalid': true,
-    'aria-describedby': fieldErrorId(fieldId),
-  };
-}
 
 export function CollapsibleGroup({
   id,
@@ -71,7 +58,7 @@ export function CollapsibleGroup({
       <CollapsibleTrigger
         type="button"
         className={cn(
-          'flex min-h-[48px] w-full items-center gap-3 px-4 py-3 text-left sm:px-5',
+          'flex min-h-[48px] w-full cursor-pointer items-center gap-3 px-4 py-3 text-left sm:px-5',
           'hover:bg-muted/45 focus-visible:ring-ring focus-visible:ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
           isNested
             ? 'border-border/60 bg-muted/20 border-b group-data-[state=closed]/collapse:border-b-0'
@@ -79,8 +66,7 @@ export function CollapsibleGroup({
         )}
         aria-controls={`${id}-panel`}
       >
-        <span className="bg-primary h-5 w-1 shrink-0 rounded-full" aria-hidden />
-        <span className="text-foreground min-w-0 flex-1 text-sm font-bold tracking-tight">
+        <span className="text-card-title min-w-0 flex-1 !text-sm font-semibold tracking-tight">
           {title}
         </span>
         <ChevronDown
@@ -91,91 +77,12 @@ export function CollapsibleGroup({
       <CollapsibleContent>
         <div
           id={`${id}-panel`}
-          className={cn(
-            'space-y-4 px-3 py-4 sm:space-y-5 sm:px-5 sm:py-5',
-            isNested ? 'bg-card' : 'from-card to-muted/15 bg-gradient-to-b'
-          )}
+          className={cn('space-y-4 px-3 py-4 sm:space-y-5 sm:px-5 sm:py-5', 'bg-card')}
         >
           {children}
         </div>
       </CollapsibleContent>
     </Collapsible>
-  );
-}
-
-export function Section({
-  id,
-  title,
-  children,
-  className,
-}: {
-  id?: string;
-  title: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <section
-      id={id}
-      className={cn(
-        'border-border/50 space-y-3.5 border-t pt-4 first:border-t-0 first:pt-0',
-        className
-      )}
-    >
-      <div className="flex items-center gap-2">
-        <span className="bg-primary/70 h-4 w-0.5 shrink-0 rounded-full" aria-hidden />
-        <h3 className="text-foreground/80 text-[11px] font-bold uppercase tracking-[0.14em]">
-          {title}
-        </h3>
-      </div>
-      {children}
-    </section>
-  );
-}
-
-export function Row2({ children }: { children: React.ReactNode }) {
-  return <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">{children}</div>;
-}
-
-export function Row3({ children }: { children: React.ReactNode }) {
-  return <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">{children}</div>;
-}
-
-export function Field({
-  label,
-  required,
-  error,
-  htmlFor,
-  fieldKey,
-  children,
-}: {
-  label: string;
-  required?: boolean;
-  error?: string;
-  htmlFor?: string;
-  /** Used for scroll-to-error (`data-field`) when htmlFor is absent. */
-  fieldKey?: string;
-  children: React.ReactNode;
-}) {
-  const errorId = htmlFor ? fieldErrorId(htmlFor) : fieldKey ? fieldErrorId(fieldKey) : undefined;
-
-  return (
-    <div className="flex flex-col gap-1.5" data-field={fieldKey ?? htmlFor}>
-      <label htmlFor={htmlFor} className="text-foreground/75 text-xs font-semibold">
-        {label}
-        {required && (
-          <span className="text-destructive ml-0.5" aria-hidden>
-            *
-          </span>
-        )}
-      </label>
-      {children}
-      {error ? (
-        <p id={errorId} role="alert" className="text-destructive text-xs leading-snug">
-          {error}
-        </p>
-      ) : null}
-    </div>
   );
 }
 
@@ -201,7 +108,7 @@ export function EditSectionJumpNav({
           type="button"
           onClick={() => scrollTo(section.id)}
           className={cn(
-            'border-border/60 bg-muted/30 text-foreground/80 hover:border-primary/30 hover:bg-muted/50 shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors',
+            'border-border/60 bg-muted/30 text-foreground/80 hover:border-primary/30 hover:bg-muted/50 shrink-0 cursor-pointer rounded-lg border px-3 py-2 text-xs font-semibold transition-colors',
             'focus-visible:ring-ring min-h-[44px] focus-visible:outline-none focus-visible:ring-2'
           )}
         >
@@ -240,7 +147,7 @@ export function EditStickyBar({
           type="button"
           onClick={onCancel}
           disabled={cancelDisabled}
-          className="border-border text-muted-foreground hover:bg-muted/50 inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border px-4 text-sm font-medium transition-colors disabled:opacity-50"
+          className="border-border text-muted-foreground hover:bg-muted/50 inline-flex min-h-[44px] cursor-pointer items-center gap-1.5 rounded-lg border px-4 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
         >
           <X className="size-3.5" aria-hidden />
           Cancel
@@ -257,50 +164,5 @@ export function EditStickyBar({
         </Button>
       </div>
     </div>
-  );
-}
-
-export function CheckboxOption({
-  label,
-  className,
-  checkboxClassName,
-  checked,
-  onCheckedChange,
-  disabled,
-  id,
-  name,
-  onBlur,
-}: {
-  label: React.ReactNode;
-  className?: string;
-  checkboxClassName?: string;
-  checked: boolean;
-  onCheckedChange: (checked: boolean) => void;
-  disabled?: boolean;
-  id?: string;
-  name?: string;
-  onBlur?: React.FocusEventHandler<HTMLButtonElement>;
-}) {
-  return (
-    <label
-      htmlFor={id}
-      className={cn(
-        'border-border/55 bg-muted/25 flex min-h-[44px] cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-2.5',
-        'hover:border-primary/25 hover:bg-muted/40 transition-colors',
-        checked && 'border-primary/35 bg-primary/5',
-        className
-      )}
-    >
-      <Checkbox
-        id={id}
-        name={name}
-        checked={checked}
-        onCheckedChange={(value) => onCheckedChange(value === true)}
-        disabled={disabled}
-        onBlur={onBlur}
-        className={checkboxClassName}
-      />
-      <span className="text-foreground text-sm font-medium leading-snug">{label}</span>
-    </label>
   );
 }

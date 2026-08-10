@@ -3,7 +3,7 @@ import { useState } from 'react';
 
 import { Link } from 'react-router-dom';
 
-import { Calendar, Check, ChevronRight, Mail, Table2 } from 'lucide-react';
+import { Check, ChevronRight, Mail } from 'lucide-react';
 
 import { AiIntegrationCard } from '@/features/dashboard/bookings/components/AiIntegrationCard';
 import { GmailMailIntegrationCard } from '@/features/dashboard/bookings/components/GmailMailIntegrationCard';
@@ -287,16 +287,6 @@ function GoogleIntegrationBlock({
             label="Gmail inbox"
             configured={status.gmail.connected}
             detail={status.gmail.googleAccountEmail}
-          />
-          <GoogleServiceRow
-            icon={Calendar}
-            label="Google Calendar"
-            configured={status.googleCalendar.configured}
-          />
-          <GoogleServiceRow
-            icon={Table2}
-            label="Google Spreadsheet"
-            configured={status.googleSpreadsheet.configured}
           />
         </div>
       ) : null}

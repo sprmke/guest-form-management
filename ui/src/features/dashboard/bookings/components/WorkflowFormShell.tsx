@@ -4,7 +4,7 @@
 
 import type { ReactNode } from 'react';
 
-import { Section } from '@/features/dashboard/bookings/components/BookingEditLayout';
+import { Section } from '@/features/dashboard/bookings/components/booking-detail/edit/BookingEditFields';
 import { WorkflowSubFormCard } from '@/features/dashboard/bookings/components/WorkflowSubFormCard';
 
 import { cn } from '@/lib/utils';

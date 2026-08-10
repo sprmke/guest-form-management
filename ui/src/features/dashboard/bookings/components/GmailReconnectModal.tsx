@@ -48,8 +48,8 @@ export function GmailReconnectModal({ open, onOpenChange, mode }: Props) {
 
         <p className="text-muted-foreground text-sm leading-snug">
           {isReconnect
-            ? 'Your Google connection expired or was revoked. Reconnect to restore Gmail, Calendar, and Sheets sync.'
-            : 'Connect Google for Gmail approvals, Calendar events, and booking spreadsheet sync.'}
+            ? 'Your Google connection expired or was revoked. Reconnect to restore Gmail approval intake.'
+            : 'Connect Google for Gmail-based GAF and pet approval automation.'}
         </p>
 
         <DialogFooter className="gap-1 pt-2">

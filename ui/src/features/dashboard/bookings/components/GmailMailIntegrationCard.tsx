@@ -145,8 +145,7 @@ export function GmailMailIntegrationCard({ variant = 'card' }: Props) {
         <ResponsiveModalHeader>
           <ResponsiveModalTitle>Disconnect Google?</ResponsiveModalTitle>
           <ResponsiveModalDescription>
-            Gmail, Calendar, and Spreadsheet sync will stop for this property until you connect
-            again.
+            Gmail approval intake will stop for this property until you connect again. again.
           </ResponsiveModalDescription>
         </ResponsiveModalHeader>
         <ResponsiveModalFooter className="flex-col gap-2 sm:flex-row">

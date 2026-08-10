@@ -131,11 +131,11 @@ export function BookingDetailMobileSummary({
           <button
             type="button"
             onClick={onCancelEdit}
-            aria-label="Discard edits and return to view"
+            aria-label="Cancel editing and return to view"
             className="border-border bg-card text-muted-foreground hover:bg-muted/50 inline-flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-lg border px-4 text-[13px] font-semibold shadow-sm transition-colors"
           >
             <X className="size-4 shrink-0" aria-hidden />
-            Discard
+            Cancel
           </button>
         ) : (
           detailsExpanded && (

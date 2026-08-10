@@ -116,10 +116,8 @@ export function BookingGuestDocReplacer({
   const showImageThumb = docType === 'image' && !thumbFailed;
 
   return (
-    <div className="border-border/60 bg-muted/20 ring-border/20 flex flex-col gap-2.5 rounded-xl border p-3.5 ring-1">
-      <p className="text-foreground/70 text-[11px] font-bold uppercase tracking-[0.12em]">
-        {label}
-      </p>
+    <div className="border-border/60 bg-muted/15 flex min-w-0 flex-col gap-2.5 rounded-xl border p-3.5">
+      <p className="text-overline">{label}</p>
 
       {currentUrl ? (
         <WorkflowAssetPreviewWithRemove
@@ -132,7 +130,7 @@ export function BookingGuestDocReplacer({
               type="button"
               aria-label={`Preview ${label}`}
               onClick={() => void onPreview(label, currentUrl)}
-              className="border-border/55 bg-card hover:border-primary/30 hover:bg-muted/20 group flex min-h-[44px] w-full items-center gap-2 overflow-hidden rounded-lg border p-2 text-left transition-colors"
+              className="border-border/55 bg-card hover:border-primary/30 hover:bg-muted/20 group flex min-h-[44px] w-full min-w-0 cursor-pointer items-center gap-2 overflow-hidden rounded-lg border p-2 text-left transition-colors"
             >
               {showImageThumb ? (
                 <div className="bg-muted h-14 w-14 shrink-0 overflow-hidden rounded-md">
@@ -176,7 +174,7 @@ export function BookingGuestDocReplacer({
         disabled={isLoading || isRemoving}
         onClick={() => inputRef.current?.click()}
         className={cn(
-          'flex min-h-[36px] items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
+          'flex min-h-[44px] cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
           justUploaded
             ? softBadgeClasses('success')
             : 'bg-card text-foreground ring-border/50 hover:bg-muted/40 hover:ring-primary/20 dark:ring-border/60 ring-1',
@@ -191,7 +189,7 @@ export function BookingGuestDocReplacer({
         ) : justUploaded ? (
           <>
             <CheckCircle2 className="size-3.5" />
-            Uploaded!
+            Uploaded
           </>
         ) : (
           <>

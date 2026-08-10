@@ -73,7 +73,7 @@ import { normalizeDateString, type BookedDateRange } from '@/utils/format/dates'
 
 /** Shared date-picker input styling for the edit tabs (Stay + Pet vaccination date). */
 export const bookingEditDatePickerClass =
-  'h-11 border-2 border-border/70 bg-card font-medium hover:border-primary/35 field-focus';
+  'h-11 border border-border/70 bg-card font-medium hover:border-primary/30 field-focus';
 
 type Props = {
   booking: BookingRow;
