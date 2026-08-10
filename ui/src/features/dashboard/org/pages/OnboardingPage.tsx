@@ -78,6 +78,7 @@ import {
 
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { Button } from '@/components/ui/button';
+import { AvailabilityCheckInput } from '@/components/AvailabilityCheckInput';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -88,6 +89,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
+import {
+  resolveAsyncAvailabilityState,
+  resolveNameAvailabilityState,
+} from '@/lib/availabilityCheckState';
 import { cn } from '@/lib/utils';
 import {
   validateFullPersonName,
@@ -281,6 +286,8 @@ export function OnboardingPage() {
     hasActiveListing: towerUnitListed,
     isChecking: towerUnitChecking,
   } = useTowerUnitConflict(tower, unitNumber);
+  const towerUnitReady =
+    isPropertyTowerForResidence(tower, DEFAULT_RESIDENCE_NAME) && isValidUnitNumber(unitNumber);
   const unitFieldError = unitInvalid ? 'Enter a 4-digit unit number' : null;
   const towerMissing = unitTouched && !isPropertyTowerForResidence(tower, DEFAULT_RESIDENCE_NAME);
   const propertyNameMissing = showPropertyBlock && unitTouched && propertyNameTrimmed.length < 2;
@@ -291,11 +298,38 @@ export function OnboardingPage() {
       Boolean(parkingLevel) &&
       isValidParkingSlotNumber(slotNumber) &&
       Boolean(parkingDisplayName));
-  const { conflict: parkingConflict, hasDuplicate: parkingSlotDuplicate } = useParkingSlotConflict(
-    parkingTower,
-    parkingLevel,
-    slotNumber
-  );
+  const {
+    conflict: parkingConflict,
+    hasDuplicate: parkingSlotDuplicate,
+    isChecking: parkingSlotChecking,
+  } = useParkingSlotConflict(parkingTower, parkingLevel, slotNumber);
+
+  const orgNameAvailabilityState = resolveNameAvailabilityState({
+    ready: orgNameReady,
+    showChecking: orgNameCheck.showChecking,
+    isUnavailable: orgNameUnavailable,
+    isFetched: orgNameCheck.isFetched,
+  });
+  const unitAvailabilityState = resolveAsyncAvailabilityState({
+    ready: towerUnitReady,
+    isChecking: towerUnitChecking,
+    hasConflict: towerUnitListed,
+  });
+  const propertyNameAvailabilityState = resolveNameAvailabilityState({
+    ready: showPropertyBlock && propertyNameTrimmed.length >= 2,
+    showChecking: propertyNameCheck.showChecking,
+    isUnavailable: propertyNameUnavailable,
+    isFetched: propertyNameCheck.isFetched,
+  });
+  const parkingSlotAvailabilityState = resolveAsyncAvailabilityState({
+    ready:
+      showParkingBlock &&
+      Boolean(parkingTower) &&
+      Boolean(parkingLevel) &&
+      isValidParkingSlotNumber(slotNumber),
+    isChecking: parkingSlotChecking,
+    hasConflict: parkingSlotDuplicate,
+  });
 
   const canAdvanceStep2 =
     hostModeReady &&
@@ -592,7 +626,7 @@ export function OnboardingPage() {
                           Organization name
                           <RequiredMark />
                         </Label>
-                        <Input
+                        <AvailabilityCheckInput
                           id="org-name"
                           name="organizationName"
                           value={orgName}
@@ -604,13 +638,12 @@ export function OnboardingPage() {
                           autoComplete="organization"
                           className={cn('h-10', orgNameBlockMessage && 'border-destructive')}
                           aria-invalid={Boolean(orgNameBlockMessage)}
+                          checkState={orgNameAvailabilityState}
                         />
                         {orgNameBlockMessage ? (
                           <p role="alert" className="text-destructive text-xs">
                             {orgNameBlockMessage}
                           </p>
-                        ) : orgNameCheck.showChecking ? (
-                          <p className="text-muted-foreground text-xs">Checking availability…</p>
                         ) : null}
                       </div>
                       <div className="space-y-1.5">
@@ -753,7 +786,7 @@ export function OnboardingPage() {
                                 Unit
                                 <RequiredMark />
                               </Label>
-                              <Input
+                              <AvailabilityCheckInput
                                 id="unit-number"
                                 inputMode="numeric"
                                 value={unitNumber}
@@ -769,14 +802,11 @@ export function OnboardingPage() {
                                   'h-10 tabular-nums',
                                   unitFieldError && 'border-destructive'
                                 )}
+                                checkState={unitAvailabilityState}
                               />
                               {unitFieldError ? (
                                 <p role="alert" className="text-destructive text-xs">
                                   {unitFieldError}
-                                </p>
-                              ) : towerUnitChecking ? (
-                                <p className="text-muted-foreground text-xs">
-                                  Checking availability…
                                 </p>
                               ) : null}
                             </div>
@@ -793,7 +823,7 @@ export function OnboardingPage() {
                               Property name
                               <RequiredMark />
                             </Label>
-                            <Input
+                            <AvailabilityCheckInput
                               id="property-name"
                               value={propertyName}
                               onChange={(e) => {
@@ -816,6 +846,7 @@ export function OnboardingPage() {
                                 (propertyNameBlockMessage || propertyNameMissing) &&
                                   'border-destructive'
                               )}
+                              checkState={propertyNameAvailabilityState}
                             />
                             {propertyNameBlockMessage ? (
                               <p role="alert" className="text-destructive text-xs">
@@ -824,10 +855,6 @@ export function OnboardingPage() {
                             ) : propertyNameMissing ? (
                               <p role="alert" className="text-destructive text-xs">
                                 Enter a property name
-                              </p>
-                            ) : propertyNameCheck.showChecking ? (
-                              <p className="text-muted-foreground text-xs">
-                                Checking availability…
                               </p>
                             ) : null}
                           </div>
@@ -897,7 +924,7 @@ export function OnboardingPage() {
                               Slot number
                               <RequiredMark />
                             </Label>
-                            <Input
+                            <AvailabilityCheckInput
                               id="slot-number"
                               inputMode="numeric"
                               autoComplete="off"
@@ -907,7 +934,12 @@ export function OnboardingPage() {
                               }
                               placeholder="26"
                               maxLength={4}
-                              className="h-10 tabular-nums"
+                              className={cn(
+                                'h-10 tabular-nums',
+                                parkingSlotDuplicate && 'border-destructive'
+                              )}
+                              aria-invalid={Boolean(parkingSlotDuplicate)}
+                              checkState={parkingSlotAvailabilityState}
                             />
                             {parkingSlotDuplicate ? (
                               <p role="alert" className="text-destructive text-xs">

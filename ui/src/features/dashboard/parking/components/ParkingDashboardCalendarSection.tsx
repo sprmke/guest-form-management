@@ -7,6 +7,7 @@ import {
   BookingCalendarPillLabelToggle,
   type BookingCalendarPillLabelMode,
 } from '@/features/dashboard/bookings/components/calendar/BookingCalendarPillLabelToggle';
+import { calendarSupportsPillLabelToggle } from '@/features/dashboard/bookings/components/calendar/calendarDateUtils';
 import { FinanceTransactionsChart } from '@/features/dashboard/finance/components/FinanceTransactionsChart';
 import { buildFinanceChartData } from '@/features/dashboard/finance/lib/financeChartData';
 import { DashboardTransactionsDueCard } from '@/features/dashboard/property/components/DashboardTransactionsDueCard';
@@ -34,6 +35,10 @@ export function ParkingDashboardCalendarSection({ from, to, datePreset }: Props)
   const [calendarCardHeight, setCalendarCardHeight] = useState<number>();
   const [calendarPillLabelMode, setCalendarPillLabelMode] =
     useState<BookingCalendarPillLabelMode>('name');
+  const showPillLabelToggle = useMemo(
+    () => calendarSupportsPillLabelToggle(datePreset, rangeFrom, rangeTo),
+    [datePreset, rangeFrom, rangeTo]
+  );
 
   useLayoutEffect(() => {
     if (isBelowLg) {
@@ -86,10 +91,12 @@ export function ParkingDashboardCalendarSection({ from, to, datePreset }: Props)
             title="Calendar"
             description={`Tap a date to open reservation details · ${rangeLabel}`}
             action={
-              <BookingCalendarPillLabelToggle
-                value={calendarPillLabelMode}
-                onChange={setCalendarPillLabelMode}
-              />
+              showPillLabelToggle ? (
+                <BookingCalendarPillLabelToggle
+                  value={calendarPillLabelMode}
+                  onChange={setCalendarPillLabelMode}
+                />
+              ) : undefined
             }
           />
 

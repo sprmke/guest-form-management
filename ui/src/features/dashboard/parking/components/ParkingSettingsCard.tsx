@@ -38,9 +38,11 @@ import {
   PARKING_TYPES,
   type ParkingType,
 } from '@/features/dashboard/org/lib/parkingResidences';
+import { useParkingSlotConflict } from '@/features/dashboard/org/hooks/useParkingSlotConflict';
 import {
   formatParkingCode,
   formatParkingDisplayName,
+  isValidParkingSlotNumber,
   sanitizeParkingSlotNumber,
 } from '@/features/dashboard/org/lib/parkingSlotDisplay';
 import {
@@ -89,6 +91,7 @@ import {
   type ParkingProfileDraft,
 } from '@/features/dashboard/parking/lib/parkingSettingsForm';
 
+import { AvailabilityCheckInput } from '@/components/AvailabilityCheckInput';
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
 import { AppSettingsCardSkeleton } from '@/components/skeletons/AdminSkeletons';
@@ -111,7 +114,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { resolveAsyncAvailabilityState } from '@/lib/availabilityCheckState';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
+import { cn } from '@/lib/utils';
 
 const SECTIONS: AdminSectionNavItem[] = [
   { id: 'basic', label: 'Basic Information', icon: Info },
@@ -275,12 +280,46 @@ export function ParkingSettingsCard() {
   const isDirty =
     profileDirty || operationalDirty || featuresDirty || locationDirty || detailsDirty;
 
+  const slotIdentityChanged =
+    profileDraft.tower !== profileBaseline.tower ||
+    profileDraft.level !== profileBaseline.level ||
+    profileDraft.slotNumber !== profileBaseline.slotNumber ||
+    profileDraft.residenceName.trim() !== profileBaseline.residenceName.trim();
+  const slotReady =
+    slotIdentityChanged &&
+    Boolean(profileDraft.tower) &&
+    Boolean(profileDraft.level) &&
+    isValidParkingSlotNumber(profileDraft.slotNumber);
+  const residenceNameForConflict =
+    profileDraft.residenceName.trim() || DEFAULT_PARKING_RESIDENCE_NAME;
+  const {
+    conflict: slotConflict,
+    hasDuplicate: slotDuplicate,
+    isChecking: slotChecking,
+  } = useParkingSlotConflict(
+    profileDraft.tower,
+    profileDraft.level,
+    profileDraft.slotNumber,
+    residenceNameForConflict,
+    parking.id
+  );
+  const slotBlocked = slotReady && slotDuplicate;
+  const slotAvailabilityState = resolveAsyncAvailabilityState({
+    ready: slotReady,
+    isChecking: slotChecking,
+    hasConflict: slotDuplicate,
+  });
+  const slotBlockMessage = slotBlocked
+    ? `Slot taken${slotConflict?.orgName ? ` — ${slotConflict.orgName}` : ''}`
+    : null;
+
   const busy =
     settingsLoading ||
     updateParking.isPending ||
     updateSettings.isPending ||
     deleteParking.isPending ||
     uploadQr.isPending;
+  const saveDisabled = busy || slotBlocked || (slotReady && slotChecking);
 
   const setProfileField = <K extends keyof ParkingProfileDraft>(
     key: K,
@@ -306,6 +345,7 @@ export function ParkingSettingsCard() {
 
   const handleSave = async () => {
     if (!operationalDraft || !operationalBaseline) return;
+    if (slotBlocked || (slotReady && slotChecking)) return;
 
     if (!isDirty) {
       toast.message('No changes to save');
@@ -415,7 +455,7 @@ export function ParkingSettingsCard() {
         isDirty ? (
           <MobileHeroActionButton
             aria-label={busy ? 'Saving' : 'Save changes'}
-            disabled={busy}
+            disabled={saveDisabled}
             onClick={() => void handleSave()}
           >
             <Save className="size-5" aria-hidden />
@@ -427,7 +467,7 @@ export function ParkingSettingsCard() {
           <Button
             type="button"
             onClick={() => void handleSave()}
-            disabled={busy}
+            disabled={saveDisabled}
             className="min-h-[44px] gap-1.5"
           >
             <Save className="size-4" aria-hidden />
@@ -452,7 +492,7 @@ export function ParkingSettingsCard() {
                 <Button
                   type="button"
                   onClick={() => void handleSave()}
-                  disabled={busy}
+                  disabled={saveDisabled}
                   className="min-h-[44px] w-full sm:w-auto"
                   size="sm"
                 >
@@ -603,8 +643,8 @@ export function ParkingSettingsCard() {
             </SettingsField>
           </div>
 
-          <SettingsField id="settings-slot" label="Slot number">
-            <Input
+          <SettingsField id="settings-slot" label="Slot number" error={slotBlockMessage}>
+            <AvailabilityCheckInput
               id="settings-slot"
               inputMode="numeric"
               autoComplete="off"
@@ -614,7 +654,9 @@ export function ParkingSettingsCard() {
               }
               maxLength={4}
               disabled={busy}
-              className="h-10 tabular-nums"
+              aria-invalid={Boolean(slotBlockMessage)}
+              className={cn('h-10 tabular-nums', slotBlockMessage && 'border-destructive')}
+              checkState={slotAvailabilityState}
             />
           </SettingsField>
 

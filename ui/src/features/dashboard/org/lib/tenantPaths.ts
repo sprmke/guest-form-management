@@ -66,6 +66,7 @@ export function orgTeamPath(orgSlug: string) {
 }
 
 export function orgInboxPath(orgSlug: string) {
+  /** @deprecated Org Guest Inbox removed — redirects to properties. Prefer propertyInboxPath. */
   return `/org/${orgSlug}/inbox`;
 }
 

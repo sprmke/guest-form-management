@@ -49,6 +49,7 @@ import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
 import { Button } from '@/components/ui/button';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
+import { resolveNameAvailabilityState } from '@/lib/availabilityCheckState';
 
 const SETTINGS_SECTIONS: AdminSectionNavItem[] = [
   { id: 'basic', label: 'Basic information', icon: Info },
@@ -136,6 +137,13 @@ export function OrgSettingsPage() {
 
   const nameUnavailable = nameChanged && nameCheck.isUnavailable;
   const nameConflictMessage = nameUnavailable ? (nameCheck.data?.message ?? null) : null;
+  const nameChecking = nameChanged && nameCheck.showChecking;
+  const nameAvailabilityState = resolveNameAvailabilityState({
+    ready: Boolean(profileDraft && nameChanged && profileDraft.name.trim().length >= 2),
+    showChecking: nameCheck.showChecking,
+    isUnavailable: nameCheck.isUnavailable,
+    isFetched: nameCheck.isFetched,
+  });
 
   const busy =
     updateOrganization.isPending || updateOrgSettings.isPending || deleteOrganization.isPending;
@@ -305,7 +313,7 @@ export function OrgSettingsPage() {
           isDirty && profileDraft ? (
             <MobileHeroActionButton
               aria-label={busy ? 'Saving' : 'Save changes'}
-              disabled={busy || nameUnavailable}
+              disabled={busy || nameUnavailable || nameChecking}
               onClick={() => void handleSave()}
             >
               <Save className="size-5" aria-hidden />
@@ -317,7 +325,7 @@ export function OrgSettingsPage() {
             <Button
               type="button"
               onClick={() => void handleSave()}
-              disabled={busy || nameUnavailable}
+              disabled={busy || nameUnavailable || nameChecking}
               className="min-h-[44px] gap-1.5"
             >
               <Save className="size-4" aria-hidden />
@@ -348,7 +356,7 @@ export function OrgSettingsPage() {
                   <Button
                     type="button"
                     onClick={() => void handleSave()}
-                    disabled={busy || nameUnavailable}
+                    disabled={busy || nameUnavailable || nameChecking}
                     className="min-h-[44px] w-full sm:w-auto"
                   >
                     {busy ? 'Saving…' : 'Save changes'}
@@ -372,7 +380,7 @@ export function OrgSettingsPage() {
               logoUrl={operatorData.emailLogoUrl}
               nameUnavailable={nameUnavailable}
               nameConflictMessage={nameConflictMessage}
-              nameChecking={nameChanged && nameCheck.showChecking}
+              nameAvailabilityState={nameAvailabilityState}
               resolveFieldError={resolveFieldError}
               markFieldInteracted={markFieldInteracted}
               onChange={setProfileField}

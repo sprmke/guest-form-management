@@ -12,13 +12,15 @@ export function findParkingSlotConflict(
   residenceName: string,
   tower: string,
   level: string,
-  slotLabel: string
+  slotLabel: string,
+  excludeParkingId?: string
 ): ParkingSlotConflict | null {
   const normalizedLabel = slotLabel.trim();
   if (!tower || !level || !normalizedLabel) return null;
 
   const match = parkings.find(
     (p) =>
+      p.id !== excludeParkingId &&
       (p.residenceName ?? '') === residenceName &&
       p.tower === tower &&
       p.level === level &&

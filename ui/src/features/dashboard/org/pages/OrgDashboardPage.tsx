@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
-import { Loader2, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 
 import { BookingDateRangeFilter } from '@/features/dashboard/bookings/components/BookingDateRangeFilter';
 import { RequireAdmin } from '@/features/dashboard/bookings/components/RequireAdmin';
@@ -17,7 +17,7 @@ import { OrgPendingActionsCard } from '@/features/dashboard/org/components/org-d
 import { OrgPropertiesPerformanceCard } from '@/features/dashboard/org/components/org-dashboard/OrgPropertiesPerformanceCard';
 import { OrgRecentBookingsList } from '@/features/dashboard/org/components/org-dashboard/OrgRecentBookingsList';
 import { OrgRevenueBookingsChart } from '@/features/dashboard/org/components/org-dashboard/OrgRevenueBookingsChart';
-import { useOrganizations, useProperties } from '@/features/dashboard/org/hooks/useOrganizations';
+import { useOrganizations } from '@/features/dashboard/org/hooks/useOrganizations';
 import { useOrgDashboardStats } from '@/features/dashboard/org/hooks/useOrgDashboardStats';
 import {
   canCreateParkingsInOrg,
@@ -35,13 +35,21 @@ import {
   writeDashboardPeriodParams,
 } from '@/features/dashboard/property/lib/dashboardPeriod';
 
-import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { FloatingPanel, FloatingToolbar } from '@/components/mobile/FloatingPanel';
+import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
+import { OrgDashboardSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 import { useIsBelowMd } from '@/hooks/useMediaQuery';
-import { detectPresetFromRange, fromIsoDate } from '@/lib/date/navigation';
+import { detectPresetFromRange, formatDateRangeDisplay, fromIsoDate } from '@/lib/date/navigation';
 
+/**
+ * THESIS: Org rollup — KPIs then equal board for chart/status/lists/assets.
+ * OWN-WORLD: Same surface-card peers as property dashboard; parking-aware when present.
+ * STORY: Scan period performance across properties (+ parking), then drill in.
+ * FIRST VIEWPORT: KPI strip, then Revenue | Booking status.
+ * FORM: equal-width board aligned with property dashboard (Aug 2026).
+ */
 export function OrgDashboardPage() {
   const navigate = useNavigate();
   const { orgSlug } = useParams<{ orgSlug: string }>();
@@ -49,12 +57,9 @@ export function OrgDashboardPage() {
   const [addAssetOpen, setAddAssetOpen] = useState(false);
   const isBelowMd = useIsBelowMd();
   const { data: orgsData } = useOrganizations();
-  const { data: propsData } = useProperties(orgSlug);
   const { data, isLoading, error, refetch } = useOrgDashboardStats();
 
   const org = orgsData?.organizations.find((o) => o.slug === orgSlug);
-  const properties = propsData?.properties ?? [];
-  const defaultPropertySlug = properties[0]?.slug ?? null;
   const canAddProperty = canCreatePropertiesInOrg(org?.accessKind);
   const canAddParking = canCreateParkingsInOrg(org?.accessKind);
   const canAddAsset = Boolean(org && (canAddProperty || canAddParking));
@@ -94,6 +99,16 @@ export function OrgDashboardPage() {
   }, [dateNav]);
 
   const trendLabel = data?.trendWindow.label ?? '';
+  const rangeLabel = useMemo(() => {
+    const from = fromIsoDate(period.from);
+    const to = fromIsoDate(period.to);
+    if (!from || !to) return '';
+    return formatDateRangeDisplay(from, to, dateNav.datePreset);
+  }, [dateNav.datePreset, period.from, period.to]);
+  const hasParking = (data?.parkingCount ?? 0) > 0;
+  const subtitle = hasParking
+    ? 'Performance across all properties and parking.'
+    : 'Performance across all properties.';
 
   const desktopActions = (
     <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
@@ -132,7 +147,7 @@ export function OrgDashboardPage() {
     <RequireAdmin>
       <AdminMobilePage
         title="Dashboard"
-        subtitle="Performance across all properties."
+        subtitle={subtitle}
         titleId="org-dashboard-heading"
         heroTrailing={heroAddAction}
         overlap={overlapControls}
@@ -142,9 +157,7 @@ export function OrgDashboardPage() {
         className="min-w-0 max-w-full"
       >
         {isLoading && !data ? (
-          <div className="flex justify-center py-16">
-            <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-          </div>
+          <OrgDashboardSkeleton />
         ) : error ? (
           <FloatingPanel
             padding="lg"
@@ -163,25 +176,29 @@ export function OrgDashboardPage() {
             </button>
           </FloatingPanel>
         ) : data && orgSlug ? (
-          <>
+          <div className="native-stagger flex min-w-0 flex-col gap-2.5 sm:gap-3 lg:gap-4">
             <OrgDashboardStatCards stats={data} periodLabel={trendLabel} />
 
-            <div className="grid min-w-0 gap-3 lg:grid-cols-3 lg:gap-4">
+            <div className="grid min-w-0 items-stretch gap-2.5 sm:gap-3 lg:grid-cols-2 lg:gap-4">
               <OrgRevenueBookingsChart data={data.trendSeries} isLoading={isLoading} />
               <OrgBookingStatusDonut slices={data.statusBreakdown} />
-            </div>
-
-            <div className="grid min-w-0 gap-3 lg:grid-cols-3 lg:gap-4">
-              <OrgRecentBookingsList orgSlug={orgSlug} bookings={data.recentBookings} />
-              <OrgPendingActionsCard
+              <OrgRecentBookingsList
                 orgSlug={orgSlug}
-                defaultPropertySlug={defaultPropertySlug}
-                items={data.attention}
+                bookings={data.recentBookings}
+                rangeLabel={rangeLabel}
               />
+              <OrgPendingActionsCard orgSlug={orgSlug} items={data.attention} />
             </div>
 
-            <OrgPropertiesPerformanceCard orgSlug={orgSlug} properties={data.propertyPerformance} />
-          </>
+            <OrgPropertiesPerformanceCard
+              orgSlug={orgSlug}
+              properties={data.propertyPerformance}
+              parkings={data.parkingPerformance}
+              propertyCount={data.propertyCount}
+              parkingCount={data.parkingCount}
+              rangeLabel={rangeLabel}
+            />
+          </div>
         ) : !org ? (
           <p className="text-muted-foreground text-sm">Organization not found.</p>
         ) : null}

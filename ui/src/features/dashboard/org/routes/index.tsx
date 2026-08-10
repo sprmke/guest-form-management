@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 
 import { Route } from 'react-router-dom';
 
-import { OrgInboxPage } from '@/features/dashboard/inbox/pages/OrgInboxPage';
+import { OrgInboxRedirect } from '@/features/dashboard/inbox/routes';
 import { LegacyAdminRedirect } from '@/features/dashboard/org/components/LegacyAdminRedirect';
 import { OrgAdminShell } from '@/features/dashboard/org/components/OrgAdminShell';
 import { ParkingAdminShell } from '@/features/dashboard/org/components/ParkingAdminShell';
@@ -35,7 +35,7 @@ export function orgAdminRoutes(orgRoute: OrgRouteFn): ReactNode {
       <Route path="properties" element={orgRoute('properties', <OrgPropertiesPage />)} />
       <Route path="parkings" element={orgRoute('parkings', <OrgParkingsPage />)} />
       <Route path="team" element={orgRoute('team', <OrgTeamPage />)} />
-      <Route path="inbox" element={orgRoute('inbox', <OrgInboxPage />)} />
+      <Route path="inbox" element={<OrgInboxRedirect />} />
     </Route>
   );
 }

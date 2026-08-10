@@ -4,6 +4,7 @@ import {
   DEFAULT_RESIDENCE_NAME,
   propertySidebarLabel,
 } from '@/features/dashboard/org/lib/propertyDisplay';
+import { LISTING_STATUS_STYLES } from '@/lib/status-tone-colors';
 import type { Property } from '@/features/dashboard/org/types';
 
 import type { LucideIcon } from 'lucide-react';
@@ -14,16 +15,19 @@ export const ORG_PROPERTY_STATUSES: {
   value: OrgPropertyStatus;
   label: string;
   badgeClassName: string;
+  dotClassName: string;
 }[] = [
   {
     value: 'ACTIVE',
-    label: 'Active',
-    badgeClassName: 'bg-emerald-600 text-white dark:bg-emerald-500',
+    label: LISTING_STATUS_STYLES.ACTIVE.label,
+    badgeClassName: LISTING_STATUS_STYLES.ACTIVE.badge,
+    dotClassName: LISTING_STATUS_STYLES.ACTIVE.dot,
   },
   {
     value: 'INACTIVE',
-    label: 'Inactive',
-    badgeClassName: 'bg-muted-foreground/70 text-white',
+    label: LISTING_STATUS_STYLES.INACTIVE.label,
+    badgeClassName: LISTING_STATUS_STYLES.INACTIVE.badge,
+    dotClassName: LISTING_STATUS_STYLES.INACTIVE.dot,
   },
 ];
 

@@ -56,9 +56,11 @@ export function buildEmptyParkingDashboardStats(
       nightsBooked: { value: 0, periodDays },
     },
     propertyCount: 1,
+    parkingCount: 0,
     trendSeries: [],
     recentBookings: [],
     propertyPerformance: [],
+    parkingPerformance: [],
     statusBreakdown: [],
   };
 }
