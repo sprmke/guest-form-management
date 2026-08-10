@@ -68,6 +68,8 @@ export async function sendContractLifecycleNoticeEmail(opts: {
   leg: ContractLeg;
   contractEndYmd: string;
   milestone: keyof typeof MILESTONE_COPY;
+  /** Names the affected listing — expiry is per listing, so an org can have several. */
+  listingName?: string | null;
 }): Promise<void> {
   const owner = await loadAuthUserProfile(opts.supabase, opts.ownerId);
   if (!owner.email?.trim()) {
@@ -83,7 +85,8 @@ export async function sendContractLifecycleNoticeEmail(opts: {
   }
 
   const copy = MILESTONE_COPY[opts.milestone];
-  const legLabel = opts.leg === 'parking' ? 'Parking' : 'Property';
+  const kindLabel = opts.leg === 'parking' ? 'Parking' : 'Property';
+  const legLabel = opts.listingName?.trim() || kindLabel;
   const appOrigin = resolvePublicGuestAppOrigin(null);
   const dashboardUrl = `${appOrigin}/org`;
 

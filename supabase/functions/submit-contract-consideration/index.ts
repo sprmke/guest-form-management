@@ -1,19 +1,20 @@
 /**
- * submit-contract-consideration — Org owner requests temporary access during grace.
- * Auth: verifyOrgOwner. Anti-abuse: 1 self-serve per cycle, grace only, 14-day expectedDate.
+ * submit-contract-consideration — Listing owner requests temporary access during grace.
+ * Scoped per listing (listingKind + listingId), not per org leg.
+ * Auth: listing owner. Anti-abuse: 1 self-serve per cycle, grace only, 14-day expectedDate.
  */
 
-import { verifyOrgOwner, createServiceClient } from '../_shared/orgAuth.ts';
+import { createServiceClient } from '../_shared/orgAuth.ts';
 import {
   appendConsiderationAudit,
   canOwnerSubmitConsideration,
-  type ContractLeg,
   validateGrantedUntil,
 } from '../_shared/contractLifecycle.ts';
 import {
-  orgVerificationToSettingsValue,
-  readOrgVerificationFromSettings,
-} from '../_shared/orgVerification.ts';
+  parseListingKind,
+  saveListingAuthorization,
+  verifyListingOwner,
+} from '../_shared/listingAuthorizationService.ts';
 import {
   jsonError,
   jsonSuccess,
@@ -26,9 +27,8 @@ serveAuthenticated('submit-contract-consideration', async (req, user) => {
   requireHttpMethod(req, 'POST');
   const body = await readJsonBody(req);
 
-  const orgId = typeof body.orgId === 'string' ? body.orgId.trim() : '';
-  const legRaw = typeof body.leg === 'string' ? body.leg.trim() : '';
-  const leg: ContractLeg | null = legRaw === 'property' || legRaw === 'parking' ? legRaw : null;
+  const listingKind = parseListingKind(body.listingKind ?? body.leg);
+  const listingId = typeof body.listingId === 'string' ? body.listingId.trim() : '';
   const note = typeof body.note === 'string' ? body.note.trim() : '';
   const expectedDate = typeof body.expectedDate === 'string' ? body.expectedDate.trim() : '';
   const proofRaw = body.proofPaths;
@@ -38,32 +38,25 @@ serveAuthenticated('submit-contract-consideration', async (req, user) => {
         .map((p) => p.trim())
     : [];
 
-  if (!orgId) return jsonError(req, 'orgId is required');
-  if (!leg) return jsonError(req, 'leg must be property or parking');
+  if (!listingKind) return jsonError(req, 'listingKind must be property or parking');
+  if (!listingId) return jsonError(req, 'listingId is required');
   if (!note) return jsonError(req, 'note is required');
   if (note.length > 2000) return jsonError(req, 'note is too long');
   const dateError = validateGrantedUntil(expectedDate);
   if (dateError) return jsonError(req, dateError);
   if (proofPaths.length < 1) return jsonError(req, 'At least one proof is required');
+
+  const context = await verifyListingOwner(req, listingKind, listingId);
   for (const path of proofPaths) {
-    if (!path.startsWith(`org/${orgId}/`)) {
+    if (!path.startsWith(`org/${context.org.id}/`)) {
       return jsonError(req, 'Invalid proof path');
     }
   }
 
-  const { org } = await verifyOrgOwner(req, orgId);
-  const supabase = createServiceClient();
+  const { authorization } = context;
+  const life = authorization.lifecycle;
 
-  const currentSettings =
-    org.settings && typeof org.settings === 'object' && !Array.isArray(org.settings)
-      ? (org.settings as Record<string, unknown>)
-      : {};
-  let verification = readOrgVerificationFromSettings(currentSettings);
-  const contractEnd =
-    leg === 'parking' ? verification.parkingContractEndDate : verification.propertyContractEndDate;
-  const life = leg === 'parking' ? verification.parkingLifecycle : verification.propertyLifecycle;
-
-  const gate = canOwnerSubmitConsideration(life, contractEnd);
+  const gate = canOwnerSubmitConsideration(life, authorization.contractEndDate);
   if (!gate.ok) return jsonError(req, gate.reason, 409);
 
   const consideration = appendConsiderationAudit(
@@ -83,21 +76,15 @@ serveAuthenticated('submit-contract-consideration', async (req, user) => {
     }
   );
 
-  const nextLife = { ...life, consideration };
-  verification =
-    leg === 'parking'
-      ? { ...verification, parkingLifecycle: nextLife }
-      : { ...verification, propertyLifecycle: nextLife };
-
-  const settings = {
-    ...currentSettings,
-    verification: orgVerificationToSettingsValue(verification),
-  };
-  const { error } = await supabase.from('organizations').update({ settings }).eq('id', orgId);
-  if (error) return jsonError(req, error.message, 500);
+  const supabase = createServiceClient();
+  await saveListingAuthorization(supabase, context, {
+    ...authorization,
+    lifecycle: { ...life, consideration },
+  });
 
   return jsonSuccess(req, {
-    leg,
+    listingKind,
+    listingId,
     consideration: {
       status: consideration.status,
       expectedDate: consideration.expectedDate,

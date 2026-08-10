@@ -19,6 +19,7 @@ import {
   readParkingSpaceWidthM,
 } from './parkingDimensionDefaults.ts';
 import { formatCheckTime12h } from './publicPropertyService.ts';
+import { isListingRecommendedBadge, resolveListingAuthorization } from './listingAuthorization.ts';
 import type { OrgPermissionId } from './orgTeamPermissions.ts';
 
 export type ParkingAccessContext = OrgAccessContext & {
@@ -164,7 +165,7 @@ export async function loadPublicParkingBySlug(slug: string) {
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from('parkings')
-    .select('*, organizations!inner(slug, name)')
+    .select('*, organizations!inner(slug, name, settings)')
     .eq('slug', slug)
     .eq('status', 'ACTIVE')
     .maybeSingle();
@@ -174,7 +175,11 @@ export async function loadPublicParkingBySlug(slug: string) {
   const parkingId = data.id as string;
   const pricing = await loadParkingPricing(parkingId);
 
-  const org = data.organizations as { slug: string; name: string };
+  const org = data.organizations as { slug: string; name: string; settings?: unknown };
+  const orgSettings =
+    org.settings && typeof org.settings === 'object' && !Array.isArray(org.settings)
+      ? (org.settings as Record<string, unknown>)
+      : {};
   const settings = (data.settings ?? {}) as Record<string, unknown>;
   const images = Array.isArray(settings.images) ? settings.images : [];
   const features = Array.isArray(settings.features) ? settings.features : [];
@@ -233,5 +238,8 @@ export async function loadPublicParkingBySlug(slug: string) {
     placeId: readString('placeId') || null,
     orgSlug: org.slug,
     orgName: org.name,
+    recommendedBadge: isListingRecommendedBadge(
+      resolveListingAuthorization(settings, orgSettings, 'parking')
+    ),
   };
 }

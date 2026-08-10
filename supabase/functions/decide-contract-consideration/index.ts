@@ -1,6 +1,7 @@
 /**
  * decide-contract-consideration — Super Admin grant / deny / request changes.
- * Grant: temp ACTIVE until grantedUntil (≤14d) after Phase A conflict check.
+ * Scoped per listing (listingKind + listingId): grant reactivates that listing only, after the
+ * tower+unit conflict check; deny archives that listing only.
  */
 
 import { createServiceClient } from '../_shared/orgAuth.ts';
@@ -8,13 +9,14 @@ import {
   appendConsiderationAudit,
   maxGrantedUntilYmd,
   validateGrantedUntil,
-  type ContractLeg,
 } from '../_shared/contractLifecycle.ts';
 import { manilaTodayYmd } from '../_shared/calendarAvailabilityManila.ts';
+import { listingTableForKind } from '../_shared/listingAuthorization.ts';
 import {
-  orgVerificationToSettingsValue,
-  readOrgVerificationFromSettings,
-} from '../_shared/orgVerification.ts';
+  loadListingContext,
+  parseListingKind,
+  saveListingAuthorization,
+} from '../_shared/listingAuthorizationService.ts';
 import { collectUnitConflictsForOrgProperties } from '../_shared/propertyTowerUnit.ts';
 import {
   jsonError,
@@ -28,9 +30,8 @@ serveSuperAdmin('decide-contract-consideration', async (req, user) => {
   requireHttpMethod(req, 'POST');
   const body = await readJsonBody(req);
 
-  const orgId = typeof body.orgId === 'string' ? body.orgId.trim() : '';
-  const legRaw = typeof body.leg === 'string' ? body.leg.trim() : '';
-  const leg: ContractLeg | null = legRaw === 'property' || legRaw === 'parking' ? legRaw : null;
+  const listingKind = parseListingKind(body.listingKind ?? body.leg);
+  const listingId = typeof body.listingId === 'string' ? body.listingId.trim() : '';
   const decisionRaw = typeof body.decision === 'string' ? body.decision.trim() : '';
   const decision =
     decisionRaw === 'grant' || decisionRaw === 'deny' || decisionRaw === 'changes'
@@ -40,30 +41,21 @@ serveSuperAdmin('decide-contract-consideration', async (req, user) => {
   const grantedUntilRaw = typeof body.grantedUntil === 'string' ? body.grantedUntil.trim() : '';
   const allowOverride = body.allowConsiderationOverride === true;
 
-  if (!orgId) return jsonError(req, 'orgId is required');
-  if (!leg) return jsonError(req, 'leg must be property or parking');
+  if (!listingKind) return jsonError(req, 'listingKind must be property or parking');
+  if (!listingId) return jsonError(req, 'listingId is required');
   if (!decision) return jsonError(req, 'decision must be grant, deny, or changes');
 
   const supabase = createServiceClient();
-  const { data: orgRow, error: orgError } = await supabase
-    .from('organizations')
-    .select('id, name, settings')
-    .eq('id', orgId)
-    .single();
-  if (orgError || !orgRow) return jsonError(req, 'Organization not found', 404);
-
-  const currentSettings =
-    orgRow.settings && typeof orgRow.settings === 'object' && !Array.isArray(orgRow.settings)
-      ? (orgRow.settings as Record<string, unknown>)
-      : {};
-  let verification = readOrgVerificationFromSettings(currentSettings);
-  let life = leg === 'parking' ? verification.parkingLifecycle : verification.propertyLifecycle;
+  const context = await loadListingContext(supabase, listingKind, listingId);
+  const { authorization } = context;
+  let life = authorization.lifecycle;
 
   if (life.consideration.status !== 'pending' && !allowOverride) {
-    return jsonError(req, 'No pending consideration for this leg', 409);
+    return jsonError(req, 'No pending consideration for this listing', 409);
   }
 
   const today = manilaTodayYmd();
+  const table = listingTableForKind(listingKind);
   let archivedCount = 0;
   let activatedCount = 0;
 
@@ -75,16 +67,19 @@ serveSuperAdmin('decide-contract-consideration', async (req, user) => {
       return jsonError(req, 'Grant cannot exceed 14 days');
     }
 
-    if (leg === 'property') {
-      const { data: props, error: propsError } = await supabase
+    if (listingKind === 'property') {
+      const { data: property, error: propError } = await supabase
         .from('properties')
         .select('id, tower, unit_number, status')
-        .eq('organization_id', orgId);
-      if (propsError) return jsonError(req, propsError.message, 500);
+        .eq('id', listingId)
+        .maybeSingle();
+      if (propError) return jsonError(req, propError.message, 500);
+      if (!property) return jsonError(req, 'Property not found', 404);
+
       const { hasActiveUnitConflict, unitConflicts } = await collectUnitConflictsForOrgProperties(
         supabase,
-        orgId,
-        props ?? []
+        context.org.id,
+        [property]
       );
       if (hasActiveUnitConflict) {
         return jsonError(
@@ -93,24 +88,16 @@ serveSuperAdmin('decide-contract-consideration', async (req, user) => {
           409
         );
       }
-      const { error: actError, data: activated } = await supabase
-        .from('properties')
-        .update({ status: 'ACTIVE' })
-        .eq('organization_id', orgId)
-        .eq('status', 'INACTIVE')
-        .select('id');
-      if (actError) return jsonError(req, actError.message, 500);
-      activatedCount = activated?.length ?? 0;
-    } else {
-      const { error: actError, data: activated } = await supabase
-        .from('parkings')
-        .update({ status: 'ACTIVE' })
-        .eq('organization_id', orgId)
-        .eq('status', 'INACTIVE')
-        .select('id');
-      if (actError) return jsonError(req, actError.message, 500);
-      activatedCount = activated?.length ?? 0;
     }
+
+    const { error: actError, data: activated } = await supabase
+      .from(table)
+      .update({ status: 'ACTIVE' })
+      .eq('id', listingId)
+      .eq('status', 'INACTIVE')
+      .select('id');
+    if (actError) return jsonError(req, actError.message, 500);
+    activatedCount = activated?.length ?? 0;
 
     life = {
       ...life,
@@ -126,11 +113,10 @@ serveSuperAdmin('decide-contract-consideration', async (req, user) => {
       ),
     };
   } else if (decision === 'deny') {
-    const table = leg === 'parking' ? 'parkings' : 'properties';
     const { data: archived, error: archError } = await supabase
       .from(table)
       .update({ status: 'INACTIVE' })
-      .eq('organization_id', orgId)
+      .eq('id', listingId)
       .eq('status', 'ACTIVE')
       .select('id');
     if (archError) return jsonError(req, archError.message, 500);
@@ -166,23 +152,11 @@ serveSuperAdmin('decide-contract-consideration', async (req, user) => {
     };
   }
 
-  verification =
-    leg === 'parking'
-      ? { ...verification, parkingLifecycle: life }
-      : { ...verification, propertyLifecycle: life };
-
-  const settings = {
-    ...currentSettings,
-    verification: orgVerificationToSettingsValue(verification),
-  };
-  const { error: saveError } = await supabase
-    .from('organizations')
-    .update({ settings })
-    .eq('id', orgId);
-  if (saveError) return jsonError(req, saveError.message, 500);
+  await saveListingAuthorization(supabase, context, { ...authorization, lifecycle: life });
 
   return jsonSuccess(req, {
-    leg,
+    listingKind,
+    listingId,
     decision,
     activatedCount,
     archivedCount,

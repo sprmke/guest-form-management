@@ -29,6 +29,7 @@ import {
 import { loadGuestFacingContactInfo } from './guestContactInfo.ts';
 import { resolveAppSettings } from './appSettings.ts';
 import { isOrgVerifiedBadge, readOrgVerificationFromSettings } from './orgVerification.ts';
+import { isListingRecommendedBadge, resolveListingAuthorization } from './listingAuthorization.ts';
 
 export type PublicPropertyMediaDto = {
   id: string;
@@ -95,7 +96,10 @@ export type PublicPropertyDetailDto = {
   reviewCount: number;
   guestReviews: PublicGuestReviewDto[];
   isSuperhost: boolean;
+  /** Host-wide Recommended badge (org Tier 2). */
   verifiedBadge: boolean;
+  /** This listing's Recommended badge (listing Tier 2) — independent of the host badge. */
+  recommendedBadge: boolean;
   updatedAt: string;
 };
 
@@ -353,6 +357,9 @@ export async function loadPublicPropertyById(
       ? (org.settings as Record<string, unknown>)
       : {};
   const verifiedBadge = isOrgVerifiedBadge(readOrgVerificationFromSettings(orgSettings));
+  const recommendedBadge = isListingRecommendedBadge(
+    resolveListingAuthorization(settings, orgSettings, 'property')
+  );
   const organizationName = org?.name?.trim() || contact.contactName || 'Host';
   const orgLogoUrl = orgSettingsResolved.emailLogoUrl.trim() || org?.logo_url?.trim() || null;
   const unitName = resolvePublicUnitName(row);
@@ -434,6 +441,7 @@ export async function loadPublicPropertyById(
     guestReviews: mergedReviews,
     isSuperhost,
     verifiedBadge,
+    recommendedBadge,
     updatedAt: row.updated_at,
   };
 }

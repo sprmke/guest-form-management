@@ -5,11 +5,17 @@
 import { loadAuthUserProfile } from './authUserProfile.ts';
 import { createServiceClient } from './orgAuth.ts';
 import { isOrgVerifiedBadge, readOrgVerificationFromSettings } from './orgVerification.ts';
+import { isListingRecommendedBadge, resolveListingAuthorization } from './listingAuthorization.ts';
 import { resolveOrgSettings } from './orgSettings.ts';
 import { resolveOrgBrandColorFromSettings } from './orgSettingsValidation.ts';
 import { loadParkingPricing } from './parkingPricing.ts';
 import { loadPropertyPricing } from './propertyPricing.ts';
 import { normalizePropertyMediaItems } from './propertyMedia.ts';
+
+/** Per-listing Recommended badge (listing Tier 2) — independent of the host badge. */
+export type PublicListingBadgeDto = {
+  recommendedBadge: boolean;
+};
 
 export type PublicHostPropertyCardDto = {
   slug: string;
@@ -18,6 +24,7 @@ export type PublicHostPropertyCardDto = {
   locationLabel: string;
   imageUrl: string | null;
   weekdayNightlyRate: number;
+  recommendedBadge: boolean;
 };
 
 export type PublicHostParkingCardDto = {
@@ -27,6 +34,7 @@ export type PublicHostParkingCardDto = {
   locationLabel: string;
   imageUrl: string | null;
   weekdayNightlyRate: number;
+  recommendedBadge: boolean;
 };
 
 export type PublicHostSocialLinksDto = {
@@ -45,6 +53,7 @@ export type PublicHostProfileDto = {
   description: string | null;
   ownerName: string;
   ownerAvatarUrl: string | null;
+  /** Host-wide Recommended badge (org Tier 2). Listings carry their own `recommendedBadge`. */
   verifiedBadge: boolean;
   socialLinks: PublicHostSocialLinksDto;
   properties: PublicHostPropertyCardDto[];
@@ -233,6 +242,9 @@ export async function loadPublicHostByOrgSlug(
           locationLabel: buildLocationLabel(city, province, country),
           imageUrl: images[0] ?? null,
           weekdayNightlyRate: pricing.weekdayNightlyRate,
+          recommendedBadge: isListingRecommendedBadge(
+            resolveListingAuthorization(settings, orgSettings, 'property')
+          ),
         } satisfies PublicHostPropertyCardDto;
       })
     ),
@@ -251,6 +263,9 @@ export async function loadPublicHostByOrgSlug(
           locationLabel: buildParkingLocationLabel(settings, row),
           imageUrl: firstParkingImageUrl(settings),
           weekdayNightlyRate: pricing.weekdayNightlyRate,
+          recommendedBadge: isListingRecommendedBadge(
+            resolveListingAuthorization(settings, orgSettings, 'parking')
+          ),
         } satisfies PublicHostParkingCardDto;
       })
     ),

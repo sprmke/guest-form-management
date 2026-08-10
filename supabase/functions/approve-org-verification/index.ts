@@ -1,19 +1,14 @@
 /**
- * approve-org-verification — Super admin approves a pending org verification tier.
- * Base tier: archive peer ACTIVE tower+unit listings, then activate this org's matching properties.
- * Enhanced tier: verification only (no property status change).
+ * approve-org-verification — Super admin approves a pending host (org) verification tier.
+ * Host scope only — no listing status changes. Listing activation and the tower+unit peer
+ * handoff live in approve-listing-authorization (verification scope split).
  */
 
 import { createServiceClient, serializeOrganization, type OrgRow } from '../_shared/orgAuth.ts';
-import { emptyContractLegLifecycle } from '../_shared/contractLifecycle.ts';
 import {
   orgVerificationToSettingsValue,
   readOrgVerificationFromSettings,
 } from '../_shared/orgVerification.ts';
-import {
-  activateOrgPropertiesAfterBaseVerification,
-  type UnitConflict,
-} from '../_shared/propertyTowerUnit.ts';
 import {
   jsonError,
   jsonSuccess,
@@ -63,8 +58,6 @@ serveAuthenticated('approve-org-verification', async (req) => {
       baseRejectionReason: null,
       baseRejectionKind: null,
       baseChangesRequestedDocs: [],
-      propertyLifecycle: emptyContractLegLifecycle(),
-      parkingLifecycle: emptyContractLegLifecycle(),
     };
   } else {
     if (verification.enhancedStatus !== 'pending') {
@@ -76,21 +69,6 @@ serveAuthenticated('approve-org-verification', async (req) => {
       enhancedRejectionReason: null,
       enhancedRejectionKind: null,
     };
-  }
-
-  // Base handoff before writing approved — if swap fails, status stays pending for retry.
-  let activatedPropertyIds: string[] | undefined;
-  let archivedPeers: UnitConflict[] | undefined;
-  if (tier === 'base') {
-    try {
-      const handoff = await activateOrgPropertiesAfterBaseVerification(supabase, orgId);
-      activatedPropertyIds = handoff.activatedPropertyIds;
-      archivedPeers = handoff.archivedPeers;
-    } catch (e) {
-      const message = e instanceof Error ? e.message : 'Unit handoff failed';
-      console.error('[approve-org-verification] handoff:', message);
-      return jsonError(req, message, 500);
-    }
   }
 
   const { data, error: updateError } = await supabase
@@ -108,14 +86,6 @@ serveAuthenticated('approve-org-verification', async (req) => {
   if (updateError || !data) {
     console.error('[approve-org-verification]', updateError?.message);
     return jsonError(req, 'Failed to approve verification', 500);
-  }
-
-  if (tier === 'base') {
-    return jsonSuccess(req, {
-      organization: serializeOrganization(data as OrgRow),
-      activatedPropertyIds,
-      archivedPeers,
-    });
   }
 
   return jsonSuccess(req, { organization: serializeOrganization(data as OrgRow) });

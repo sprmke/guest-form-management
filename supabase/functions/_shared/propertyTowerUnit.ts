@@ -268,99 +268,87 @@ export async function collectUnitConflictsForOrgProperties(
   };
 }
 
-export type ActivateOrgPropertiesResult = {
+export type ActivatePropertyResult = {
   activatedPropertyIds: string[];
   archivedPeers: UnitConflict[];
 };
 
 /**
- * Base-tier approve handoff: archive other ACTIVE listings for each tower+unit,
- * then set this org's matching property ACTIVE. Ordering satisfies the partial unique index.
+ * Listing Tier 1 approve handoff: archive other ACTIVE listings sharing this property's
+ * tower+unit, then set this property ACTIVE. Ordering satisfies the partial unique index.
  */
-export async function activateOrgPropertiesAfterBaseVerification(
+export async function activatePropertyAfterListingApproval(
   supabase: SupabaseClient,
-  organizationId: string
-): Promise<ActivateOrgPropertiesResult> {
+  propertyId: string
+): Promise<ActivatePropertyResult> {
   const { data, error } = await supabase
     .from('properties')
     .select('id, tower, unit_number, status')
-    .eq('organization_id', organizationId);
+    .eq('id', propertyId)
+    .maybeSingle();
 
   if (error) {
-    console.error('[propertyTowerUnit] load org properties:', error.message);
-    throw new Error('Failed to load organization properties');
+    console.error('[propertyTowerUnit] load property:', error.message);
+    throw new Error('Failed to load property');
   }
+  if (!data) throw new Error('Property not found');
 
-  type PropRow = { id: string; tower: string; unit_number: string; status: string };
-  const withUnit: PropRow[] = [];
-  for (const row of data ?? []) {
-    const tower = typeof row.tower === 'string' ? row.tower.trim() : '';
-    const unitNumber = typeof row.unit_number === 'string' ? row.unit_number.trim() : '';
-    if (!tower || !unitNumber) continue;
-    withUnit.push({
-      id: row.id as string,
-      tower,
-      unit_number: unitNumber,
-      status: String(row.status ?? ''),
-    });
-  }
+  const tower = typeof data.tower === 'string' ? data.tower.trim() : '';
+  const unitNumber = typeof data.unit_number === 'string' ? data.unit_number.trim() : '';
+  const status = String(data.status ?? '');
 
-  const groups = new Map<string, PropRow[]>();
-  for (const prop of withUnit) {
-    const key = `${prop.tower}\0${prop.unit_number}`;
-    const list = groups.get(key) ?? [];
-    list.push(prop);
-    groups.set(key, list);
-  }
-
-  const activatedPropertyIds: string[] = [];
-  const archivedPeers: UnitConflict[] = [];
-  const archivedIds = new Set<string>();
-
-  for (const props of groups.values()) {
-    const primary = props.find((p) => p.status === 'ACTIVE') ?? props[0]!;
-    const { tower, unit_number: unitNumber } = primary;
-
-    const peers = await listPropertyTowerUnitPeers(supabase, tower, unitNumber, primary.id);
-    for (const peer of peers) {
-      if (peer.status !== 'ACTIVE') continue;
-      if (archivedIds.has(peer.id)) continue;
-
-      const { error: archiveError } = await supabase
-        .from('properties')
-        .update({ status: 'INACTIVE' })
-        .eq('id', peer.id)
-        .eq('status', 'ACTIVE');
-
-      if (archiveError) {
-        console.error('[propertyTowerUnit] archive peer:', archiveError.message);
-        throw new Error('Failed to archive peer property for unit handoff');
-      }
-
-      archivedIds.add(peer.id);
-      const archived = peerToUnitConflict(peer, tower, unitNumber, 'INACTIVE');
-      if (archived) archivedPeers.push(archived);
-    }
-
-    if (primary.status !== 'ACTIVE') {
+  // No tower+unit identity to contest — activate directly.
+  if (!tower || !unitNumber) {
+    if (status !== 'ACTIVE') {
       const { error: activateError } = await supabase
         .from('properties')
         .update({ status: 'ACTIVE' })
-        .eq('id', primary.id);
-
+        .eq('id', propertyId);
       if (activateError) {
-        if (activateError.code === '23505') {
-          throw new Error(DUPLICATE_TOWER_UNIT_MESSAGE);
-        }
         console.error('[propertyTowerUnit] activate property:', activateError.message);
         throw new Error('Failed to activate property after verification approve');
       }
     }
-
-    activatedPropertyIds.push(primary.id);
+    return { activatedPropertyIds: [propertyId], archivedPeers: [] };
   }
 
-  return { activatedPropertyIds, archivedPeers };
+  const archivedPeers: UnitConflict[] = [];
+  const peers = await listPropertyTowerUnitPeers(supabase, tower, unitNumber, propertyId);
+
+  for (const peer of peers) {
+    if (peer.status !== 'ACTIVE') continue;
+
+    const { error: archiveError } = await supabase
+      .from('properties')
+      .update({ status: 'INACTIVE' })
+      .eq('id', peer.id)
+      .eq('status', 'ACTIVE');
+
+    if (archiveError) {
+      console.error('[propertyTowerUnit] archive peer:', archiveError.message);
+      throw new Error('Failed to archive peer property for unit handoff');
+    }
+
+    const archived = peerToUnitConflict(peer, tower, unitNumber, 'INACTIVE');
+    if (archived) archivedPeers.push(archived);
+  }
+
+  if (status !== 'ACTIVE') {
+    const { error: activateError } = await supabase
+      .from('properties')
+      .update({ status: 'ACTIVE' })
+      .eq('id', propertyId);
+
+    if (activateError) {
+      if (activateError.code === '23505') {
+        throw new Error(DUPLICATE_TOWER_UNIT_MESSAGE);
+      }
+      console.error('[propertyTowerUnit] activate property:', activateError.message);
+      throw new Error('Failed to activate property after verification approve');
+    }
+  }
+
+  return { activatedPropertyIds: [propertyId], archivedPeers };
 }
 
 export const DUPLICATE_TOWER_UNIT_MESSAGE =

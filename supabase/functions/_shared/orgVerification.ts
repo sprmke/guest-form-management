@@ -79,10 +79,17 @@ export function validateParkingContractEndDate(value: string): string | null {
 export const ORG_VERIFICATION_ASSET_TYPES = [
   'valid_id',
   'social_proof',
-  'property_ownership_proof',
-  'parking_social_proof',
   'selfie_with_id',
+  'platform_admin_proof',
+  'legitimacy_check_proof',
+  'business_permit_bir',
+  /** @deprecated listing-scoped — see _shared/listingAuthorization.ts */
+  'property_ownership_proof',
+  /** @deprecated listing-scoped — see _shared/listingAuthorization.ts */
+  'parking_social_proof',
+  /** @deprecated listing-scoped — see _shared/listingAuthorization.ts */
   'ownership_proof',
+  /** @deprecated listing-scoped — see _shared/listingAuthorization.ts */
   'azure_pmo_confirmation',
   /** @deprecated use azure_pmo_confirmation */
   'ops_proof',
@@ -92,25 +99,32 @@ export const ORG_VERIFICATION_ASSET_TYPES = [
 export type OrgVerificationAssetType = (typeof ORG_VERIFICATION_ASSET_TYPES)[number];
 
 export type OrgVerificationAssets = {
+  /** Tier 1 — government-issued ID. */
   validIdPath: string | null;
+  /** Tier 1 — Facebook Page screenshot (platform is pinned to Facebook). */
   socialProofPath: string | null;
-  propertyOwnershipProofPath: string | null;
-  parkingSocialProofPath: string | null;
+  /** Tier 2 — selfie holding the valid ID. */
   selfieWithIdPath: string | null;
+  /** Tier 2 — admin/owner screenshot on a second platform (see platformAdminPlatform). */
+  platformAdminProofPath: string | null;
+  /** Tier 2, optional — any extra proof of business legitimacy. */
+  legitimacyCheckProofPath: string | null;
+  /** Tier 2, optional — business permit or BIR registration. Host scope only, never per listing. */
+  businessPermitOrBirPath: string | null;
+  /** @deprecated listing-scoped; kept as a backfill read fallback. */
+  propertyOwnershipProofPath: string | null;
+  /** @deprecated listing-scoped; kept as a backfill read fallback. */
+  parkingSocialProofPath: string | null;
+  /** @deprecated listing-scoped; kept as a backfill read fallback. */
   ownershipProofPath: string | null;
-  /** Azure Property Management email confirmation — e.g. approved GAF, gate pass, building pass. */
+  /** @deprecated listing-scoped; kept as a backfill read fallback. */
   azurePmoConfirmationPath: string | null;
   /** @deprecated read fallback — use azurePmoConfirmationPath */
   pmoEmailPaths: string[];
 };
 
 /** Docs Super Admin can flag for re-upload on “Request changes”. */
-export const ORG_VERIFICATION_CHANGE_DOC_IDS = [
-  'validId',
-  'socialProof',
-  'propertyOwnership',
-  'parkingProof',
-] as const;
+export const ORG_VERIFICATION_CHANGE_DOC_IDS = ['validId', 'socialProof'] as const;
 export type OrgVerificationChangeDocId = (typeof ORG_VERIFICATION_CHANGE_DOC_IDS)[number];
 
 function asChangeDocId(value: unknown): OrgVerificationChangeDocId | null {
@@ -136,8 +150,13 @@ export function asChangesRequestedDocs(value: unknown): OrgVerificationChangeDoc
 export type OrgVerificationState = {
   baseStatus: OrgVerificationStatus;
   enhancedStatus: OrgVerificationStatus;
+  /** @deprecated Tier 1 is pinned to Facebook; kept for legacy reads. */
   socialPlatform: OrgSocialProofPlatform | null;
+  /** Tier 2 — which platform the admin/owner screenshot came from. */
+  platformAdminPlatform: OrgSocialProofPlatform | null;
+  /** @deprecated listing-scoped; kept as a backfill read fallback. */
   parkingSocialPlatform: OrgSocialProofPlatform | null;
+  /** @deprecated listing-scoped; kept as a backfill read fallback. */
   propertyRelationship: OrgVerificationRights | null;
   propertyContractEndDate: string | null;
   parkingRelationship: OrgVerificationRights | null;
@@ -160,9 +179,12 @@ export type OrgVerificationState = {
 const EMPTY_ASSETS: OrgVerificationAssets = {
   validIdPath: null,
   socialProofPath: null,
+  selfieWithIdPath: null,
+  platformAdminProofPath: null,
+  legitimacyCheckProofPath: null,
+  businessPermitOrBirPath: null,
   propertyOwnershipProofPath: null,
   parkingSocialProofPath: null,
-  selfieWithIdPath: null,
   ownershipProofPath: null,
   azurePmoConfirmationPath: null,
   pmoEmailPaths: [],
@@ -173,6 +195,7 @@ export function emptyOrgVerificationState(): OrgVerificationState {
     baseStatus: 'none',
     enhancedStatus: 'none',
     socialPlatform: null,
+    platformAdminPlatform: null,
     parkingSocialPlatform: null,
     propertyRelationship: null,
     propertyContractEndDate: null,
@@ -262,6 +285,7 @@ export function readOrgVerificationFromSettings(
     baseStatus: asStatus(v.baseStatus),
     enhancedStatus: asStatus(v.enhancedStatus),
     socialPlatform: asPlatform(v.socialPlatform),
+    platformAdminPlatform: asPlatform(v.platformAdminPlatform),
     parkingSocialPlatform: asPlatform(v.parkingSocialPlatform),
     propertyRelationship: asVerificationRights(v.propertyRelationship),
     propertyContractEndDate: asPath(v.propertyContractEndDate),
@@ -286,9 +310,12 @@ export function readOrgVerificationFromSettings(
     assets: {
       validIdPath: asPath(assetsRaw.validIdPath),
       socialProofPath: asPath(assetsRaw.socialProofPath),
+      selfieWithIdPath: asPath(assetsRaw.selfieWithIdPath),
+      platformAdminProofPath: asPath(assetsRaw.platformAdminProofPath),
+      legitimacyCheckProofPath: asPath(assetsRaw.legitimacyCheckProofPath),
+      businessPermitOrBirPath: asPath(assetsRaw.businessPermitOrBirPath),
       propertyOwnershipProofPath: asPath(assetsRaw.propertyOwnershipProofPath),
       parkingSocialProofPath: asPath(assetsRaw.parkingSocialProofPath),
-      selfieWithIdPath: asPath(assetsRaw.selfieWithIdPath),
       ownershipProofPath: asPath(assetsRaw.ownershipProofPath),
       azurePmoConfirmationPath,
       pmoEmailPaths,
@@ -305,6 +332,7 @@ export function orgVerificationToSettingsValue(
     baseStatus: state.baseStatus,
     enhancedStatus: state.enhancedStatus,
     socialPlatform: state.socialPlatform,
+    platformAdminPlatform: state.platformAdminPlatform,
     parkingSocialPlatform: state.parkingSocialPlatform,
     propertyRelationship: state.propertyRelationship,
     propertyContractEndDate: state.propertyContractEndDate,
@@ -320,9 +348,12 @@ export function orgVerificationToSettingsValue(
     assets: {
       validIdPath: state.assets.validIdPath,
       socialProofPath: state.assets.socialProofPath,
+      selfieWithIdPath: state.assets.selfieWithIdPath,
+      platformAdminProofPath: state.assets.platformAdminProofPath,
+      legitimacyCheckProofPath: state.assets.legitimacyCheckProofPath,
+      businessPermitOrBirPath: state.assets.businessPermitOrBirPath,
       propertyOwnershipProofPath: state.assets.propertyOwnershipProofPath,
       parkingSocialProofPath: state.assets.parkingSocialProofPath,
-      selfieWithIdPath: state.assets.selfieWithIdPath,
       ownershipProofPath: state.assets.ownershipProofPath,
       azurePmoConfirmationPath: state.assets.azurePmoConfirmationPath,
       pmoEmailPaths: state.assets.pmoEmailPaths,
@@ -332,53 +363,30 @@ export function orgVerificationToSettingsValue(
   };
 }
 
+/** Host-wide Recommended badge (org Tier 2). Per-listing badges live in listingAuthorization. */
 export function isOrgVerifiedBadge(state: OrgVerificationState): boolean {
   return state.enhancedStatus === 'approved';
 }
 
-function rightsReady(
-  rights: OrgVerificationRights | null,
-  contractEndDate: string | null
-): boolean {
-  if (!rights) return false;
-  if (verificationRightsNeedsContractEnd(rights) && !contractEndDate) return false;
-  return true;
+/**
+ * Tier 1 (host identity) — valid ID plus the Facebook Page screenshot.
+ * Listing authority moved to _shared/listingAuthorization.ts, so `hostModes` no longer
+ * changes what Tier 1 requires.
+ */
+export function canSubmitBaseVerification(state: OrgVerificationState): boolean {
+  return Boolean(state.assets.validIdPath && state.assets.socialProofPath);
 }
 
-export function canSubmitBaseVerification(
-  state: OrgVerificationState,
-  hostModes: readonly string[] = ['property']
-): boolean {
-  if (!state.assets.validIdPath) return false;
-
-  const modes = hostModes.length > 0 ? hostModes : ['property'];
-  const needsProperty = modes.includes('property');
-  const needsParking = modes.includes('parking');
-
-  if (
-    needsProperty &&
-    (!state.assets.socialProofPath ||
-      !state.assets.propertyOwnershipProofPath ||
-      !state.socialPlatform ||
-      !rightsReady(state.propertyRelationship, state.propertyContractEndDate))
-  ) {
-    return false;
-  }
-  if (
-    needsParking &&
-    (!state.assets.parkingSocialProofPath ||
-      !rightsReady(state.parkingRelationship, state.parkingContractEndDate))
-  ) {
-    return false;
-  }
-  return true;
-}
-
+/**
+ * Tier 2 (host Recommended) — selfie with ID plus a second-platform admin screenshot and
+ * its platform. The legitimacy proof and business permit / BIR are optional and must never
+ * block submit.
+ */
 export function canSubmitEnhancedVerification(state: OrgVerificationState): boolean {
   return Boolean(
     state.assets.selfieWithIdPath &&
-    state.assets.ownershipProofPath &&
-    state.assets.azurePmoConfirmationPath
+    state.assets.platformAdminProofPath &&
+    state.platformAdminPlatform
   );
 }
 
@@ -390,12 +398,18 @@ export function assetTypeToPathKey(
       return 'validIdPath';
     case 'social_proof':
       return 'socialProofPath';
+    case 'selfie_with_id':
+      return 'selfieWithIdPath';
+    case 'platform_admin_proof':
+      return 'platformAdminProofPath';
+    case 'legitimacy_check_proof':
+      return 'legitimacyCheckProofPath';
+    case 'business_permit_bir':
+      return 'businessPermitOrBirPath';
     case 'property_ownership_proof':
       return 'propertyOwnershipProofPath';
     case 'parking_social_proof':
       return 'parkingSocialProofPath';
-    case 'selfie_with_id':
-      return 'selfieWithIdPath';
     case 'ownership_proof':
       return 'ownershipProofPath';
     case 'azure_pmo_confirmation':
