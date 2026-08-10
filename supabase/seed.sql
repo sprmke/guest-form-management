@@ -2,6 +2,9 @@
 -- Goal: typing `azure` returns ≥4 properties, ≥4 parkings, ≥3 developments
 -- so the typeahead preview (max 3) shows **See all**.
 -- Safe to re-run: ON CONFLICT / fixed UUIDs.
+--
+-- Dashboard demo (bookings / finance / maintenance): also loaded on db reset via
+-- `supabase/config.toml` → `../scripts/dev/seed-dashboard-demo-data.sql`.
 
 -- ── Developments (name unique globally) ──────────────────────────────
 INSERT INTO developments (

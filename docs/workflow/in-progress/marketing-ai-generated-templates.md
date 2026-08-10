@@ -3,7 +3,7 @@ stage: in-progress
 title: 'Marketing 4: AI-Generated Marketing Calendar, Design & Video Templates — Implementation Plan'
 status: in-progress
 tags: [planning, planned-modules, marketing, templates]
-updated: 2026-08-07
+updated: 2026-08-10
 ---
 
 # Marketing 4: AI-Generated Marketing Calendar, Design & Video Templates — Implementation Plan
@@ -16,6 +16,21 @@ updated: 2026-08-07
 - Modal: outcome line for three formats, Look label, Check on include chips, reset on close, dismiss locked while generating, `Generating…` busy state
 - Saves use `Promise.allSettled` with partial-success toast; undo snapshots pre-AI styles
 - Impeccable audit/critique: detector clean; remaining Marketing 4 work is Design/Video
+
+### Calendar readability (2026-08-09)
+
+- Root cause of washed-out AI calendars: pastel recolor remapped day-number ink onto light fills with no contrast check
+- Client compiler (`calendarAiTokens.ts`) now sanitizes primary/secondary/accent roles and runs `ensureReadableCalendarContrast` (≥4.5:1 date numbers, ≥3:1 meta) after recolor
+- Edge prompt updated: mid-depth primary, near-white secondary, punchy accent; readability called out as non-negotiable
+
+### Generate modal UX (2026-08-09)
+
+- 12 pastel Instagrammable suggestions (`calendarAiGenerateOptions.ts`); modal shows 4 by default with **View more** / **Show less**; each card has a mini palette preview
+- Layout / Type / Background use visual choice buttons (layout/background thumbnails, type sample glyph) with Auto default; prefs sent to edge + applied as token locks client-side
+- Include chips always visible; unavailable photo/amenities disabled with title hint
+- Header: “Creates Square, Portrait, and Landscape — edit any format after”
+- Advanced settings (collapsed): show/hide calendar chrome + optional context (photo/amenities/availability); element toggles apply via `applyCalendarAiElementsToStyles`
+- AI saves share `aiGenerationId`; removing one Custom card deletes Square/Portrait/Landscape siblings
 
 ## Calendar MVP decisions (session 2026-08-04)
 

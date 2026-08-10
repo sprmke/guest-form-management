@@ -1,5 +1,5 @@
 ---
-description: Org-level Guest Inbox — Meta messaging, webhooks, permissions, AI auto-reply invariants
+description: Property and parking Guest Inbox — Meta messaging, webhooks, permissions, AI auto-reply invariants
 globs:
   - supabase/functions/**/meta-inbox-*/**
   - supabase/functions/**/social-inbox-*/**
@@ -19,35 +19,37 @@ globs:
 
 # Social Guest Inbox — agent reference
 
-Guest Inbox at **org**, **property**, and **parking** scopes. Phase 1 ships **Meta** (Facebook Messenger + Instagram DMs + comments) and **Web** (on-site guest chat from property pages). TikTok and Airbnb are **Coming soon** — never fake connectivity.
+Guest Inbox at **property** and **parking** scopes (org-level Inbox UI removed). Phase 1 ships **Meta** (Facebook Messenger + Instagram DMs + comments) and **Web** (on-site guest chat from property pages). TikTok and Airbnb are **Coming soon** — never fake connectivity.
 
 ## Routes
 
 | Scope    | Path                                         |
 | -------- | -------------------------------------------- |
-| Org      | `/org/:orgSlug/inbox`                        |
 | Property | `/org/:orgSlug/property/:propertySlug/inbox` |
 | Parking  | `/org/:orgSlug/parking/:parkingSlug/inbox`   |
 
+`/org/:orgSlug/inbox` redirects to Properties.
+
 ## Permissions
 
-| Org                | Property / parking | Capability                                         |
-| ------------------ | ------------------ | -------------------------------------------------- |
-| `org:inbox:view`   | `inbox:view`       | Read threads and messages                          |
-| `org:inbox:reply`  | `inbox:reply`      | Send replies                                       |
-| `org:inbox:manage` | `inbox:manage`     | Connect channels (org: + quick replies/automation) |
+| Property / parking | Capability                                            |
+| ------------------ | ----------------------------------------------------- |
+| `inbox:view`       | Read threads and messages                             |
+| `inbox:reply`      | Send replies                                          |
+| `inbox:manage`     | Channels + (property only) quick replies / automation |
 
-Keep in sync: `_shared/orgTeamPermissions.ts`, `propertyTeamPermissions.ts`, `parkingTeamPermissions.ts` and UI team constants.
+Keep in sync: `propertyTeamPermissions.ts`, `parkingTeamPermissions.ts` and UI team constants. Org `org:inbox:*` permissions were removed.
 
 ## Data scope
 
-- Every row keyed by `organization_id`. Use `resolveInboxAccess(req, capability)` — org JWT + `org:inbox:*`, or `property_id`/`parking_id` + `inbox:*`.
+- Every row keyed by `organization_id`. Use `resolveInboxAccess(req, capability)` — requires `property_id` or `parking_id` + `inbox:*`.
 - Org Meta default: `social_channel_connections` with `property_id`/`parking_id` null. Overrides set one of those FKs.
+- **First Meta connect from a property** (no org-default yet) writes the **org-default** row so Marketing and other units can inherit.
 - Effective Meta = override if connected, else org default (`metaInboxScope.ts`). Inherited Meta threads = full Page inbox (1A).
 - Webhook handler is public but **must** verify `X-Hub-Signature-256` and dedupe via `social_webhook_events`. Resolve by `meta_page_id` to the owning connection row.
 - Tokens encrypted with `META_INBOX_TOKEN_ENCRYPTION_KEY`.
 - Org reconnect/disconnect must **not** delete property/parking override rows (`metaInboxLifecycle.ts`).
-- Marketing publish uses **org-default** Meta only.
+- Marketing publish uses **org-default** Meta (first property connect establishes it).
 
 ## Meta messaging rules
 
@@ -59,7 +61,7 @@ Keep in sync: `_shared/orgTeamPermissions.ts`, `propertyTeamPermissions.ts`, `pa
 ## AI auto-reply
 
 - No auto-fill-on-open — operators trigger AI drafts manually via the composer's **Suggest** (sparkles) button on any thread. There is no `auto_reply_mode = draft` UI path; the column stays in `social_inbox_settings` for backward compat but is not surfaced.
-- Auto-send (`send`, `auto_reply_mode = 'send'`) requires explicit org opt-in in Automation tab.
+- Auto-send (`send`, `auto_reply_mode = 'send'`) requires explicit org opt-in in Automation tab (property Manage → Automation).
 - Never auto-reply outside Meta messaging window (**Meta only** — web chat has no 24h window).
 - Platform toggles under auto-send: Facebook, Instagram, **Chat** (`platform_toggles.web`).
 - Web auto-send runs from `guest-web-chat-messages` POST via `webInboxAutoReply.ts` after guest inbound.

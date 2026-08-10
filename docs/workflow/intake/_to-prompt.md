@@ -2,7 +2,7 @@
 title: 'Tasks To Prompt'
 status: archived
 tags: [planning]
-updated: 2026-08-09
+updated: 2026-08-10
 ---
 
 **Status legend:** ✅ done · 🚧 in progress · 📋 planned (plan doc written) · 🔵 pending / open · ❌ cancelled / won't do
@@ -153,9 +153,9 @@ Also, another thing that we need to improve is that we should display or redesig
 
 ===
 
-🚧 Refine all property public pages
+✅ Refine all property public pages
 
-→ **In progress:** [`../in-progress/public-operational-guest-pages-multi-tenant.md`](../in-progress/public-operational-guest-pages-multi-tenant.md)
+→ **Done:** [`../done/public-operational-guest-pages-multi-tenant.md`](../done/public-operational-guest-pages-multi-tenant.md)
 
 ===
 
@@ -198,3 +198,12 @@ Update both dashboard and public pages.
 
 I'm sure there are other pages that we need to update to match exactly how we should update their name.
 Please list them down and if you have suggestion to name differently or grouped or scoped
+
+===
+
+🔵 UI/UX improvements
+
+- Improve dashboard search, filter, sort and action buttons. Notice how we simplify it on mobile, maybe apply for desktop
+- Improve pagination UI/UX
+- Add table column sort
+- Update modal to be scrollable inside modal content;
