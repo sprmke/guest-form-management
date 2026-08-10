@@ -8,6 +8,8 @@ import {
   extractGeminiUsage,
   getGeminiApiKeys,
   getGroqApiKey,
+  nextGeminiKeyStartIndex,
+  shouldTryNextProvider,
 } from './aiGeminiKeys.ts';
 import { geminiGenerateContentUrl, getModelConfig } from './aiModelRouter.ts';
 import { assertOrgAiQuota, recordAiUsage } from './aiUsageService.ts';
@@ -18,10 +20,59 @@ const GEMINI_URL = geminiGenerateContentUrl(GEMINI_MODEL);
 const GROQ_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
-function stripJsonFence(text: string): string {
+const CALENDAR_RESPONSE_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    layoutArchetype: { type: 'STRING' },
+    palette: {
+      type: 'OBJECT',
+      properties: {
+        primary: { type: 'STRING' },
+        secondary: { type: 'STRING' },
+        accent: { type: 'STRING' },
+      },
+      required: ['primary', 'secondary', 'accent'],
+    },
+    fontPairing: { type: 'STRING' },
+    backgroundMood: { type: 'STRING' },
+    subtitle: { type: 'STRING' },
+    label: { type: 'STRING' },
+  },
+  required: ['layoutArchetype', 'palette', 'fontPairing', 'backgroundMood', 'subtitle', 'label'],
+} as const;
+
+function parseAiJsonPayload(text: string): unknown {
+  const attempts: string[] = [];
   const trimmed = text.trim();
-  const fenced = /^```(?:json)?\s*([\s\S]*?)```$/i.exec(trimmed);
-  return fenced?.[1]?.trim() ?? trimmed;
+  if (trimmed) attempts.push(trimmed);
+
+  const fullFence = /^```(?:json)?\s*([\s\S]*?)```$/i.exec(trimmed);
+  if (fullFence?.[1]?.trim()) attempts.push(fullFence[1].trim());
+
+  const embeddedFence = /```(?:json)?\s*([\s\S]*?)```/i.exec(trimmed);
+  if (embeddedFence?.[1]?.trim()) attempts.push(embeddedFence[1].trim());
+
+  const jsonMatch = trimmed.match(/\{[\s\S]*\}/);
+  if (jsonMatch?.[0]) attempts.push(jsonMatch[0]);
+
+  for (const candidate of attempts) {
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      /* try next candidate */
+    }
+  }
+
+  throw new Error('AI generation returned unreadable JSON');
+}
+
+function isValidAiJsonText(text: string): boolean {
+  try {
+    parseAiJsonPayload(text);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export type MarketingTemplateContentType = 'calendar' | 'design' | 'video';
@@ -64,6 +115,11 @@ export type GenerateMarketingTemplateInput = {
   amenitiesText?: string;
   availabilityText?: string;
   hasPropertyPhoto?: boolean;
+  preferences?: {
+    layoutArchetype?: string;
+    fontPairing?: string;
+    backgroundMood?: string;
+  };
 };
 
 const CALENDAR_ARCHETYPES: CalendarLayoutArchetype[] = [
@@ -148,7 +204,7 @@ export function parseCalendarTemplateTokens(raw: unknown): CalendarTemplateToken
 
 function calendarSystemPrompt(): string {
   return [
-    'You design vacation-rental availability calendar templates for Instagram/Facebook.',
+    'You design vacation-rental availability calendar templates for Instagram/Facebook Stories & feed.',
     'Return ONLY JSON matching this schema (no markdown):',
     '{',
     '  "layoutArchetype": "bubble|widget|type-forward|geo-pattern|botanical|photo-wash|dusk-gradient",',
@@ -159,9 +215,12 @@ function calendarSystemPrompt(): string {
     '  "label": "short template name under 40 chars"',
     '}',
     'Rules:',
-    '- Soft pastel vacation aesthetic (lavender, mint, blush, butter, periwinkle) — Instagrammable, not neon or corporate.',
-    '- primary = main tint; secondary = light wash; accent = today/highlight — all distinct #rrggbb hex.',
-    '- Prefer secondary as a very light tint of primary.',
+    '- Instagrammable soft-pastel hospitality look (lavender, mint, blush, butter, periwinkle) — elegant, not neon or corporate.',
+    '- READABILITY IS NON-NEGOTIABLE: date numbers and labels must stay readable. Never pick near-white or ice-pale colors for primary/accent.',
+    '- primary = mid-depth pastel fill for available days (saturated enough that dark ink can sit on it OR light ink on a deeper fill). Avoid #eaf4f4-style washed tints.',
+    '- secondary = very light wash for the card background (near-white tint of primary, e.g. #f7f4ff).',
+    '- accent = warmer/punchier today highlight, clearly distinct from primary (blush, peach, coral) — not the same hue family washed out.',
+    '- Prefer secondary luminance very high; primary clearly deeper than secondary; accent saturated enough to pop as "today".',
     '- Use photo-wash backgroundMood only when a property photo is available or the prompt asks for photo.',
     '- label should be memorable and specific to the prompt vibe (not "AI calendar").',
     '- Do not invent layout fields outside the schema.',
@@ -177,6 +236,13 @@ function buildUserPrompt(input: GenerateMarketingTemplateInput): string {
   if (input.amenitiesText) lines.push(`Amenities: ${input.amenitiesText}`);
   if (input.availabilityText) lines.push(`Availability: ${input.availabilityText}`);
   if (input.hasPropertyPhoto) lines.push('Property photo: available');
+  const prefs = input.preferences ?? {};
+  if (prefs.layoutArchetype) lines.push(`Preferred layoutArchetype: ${prefs.layoutArchetype}`);
+  if (prefs.fontPairing) lines.push(`Preferred fontPairing: ${prefs.fontPairing}`);
+  if (prefs.backgroundMood) lines.push(`Preferred backgroundMood: ${prefs.backgroundMood}`);
+  lines.push(
+    'Hard requirement: date numbers and labels must stay high-contrast and readable on every day cell.'
+  );
   lines.push('Emit one calendar token object as JSON.');
   return lines.join('\n');
 }
@@ -190,8 +256,11 @@ async function generateJsonText(
   let geminiSawKeys = keys.length > 0;
   let geminiQuotaHit = false;
   let geminiLastStatus: number | null = null;
+  let geminiParseFailures = 0;
 
-  for (const apiKey of keys) {
+  const startIdx = nextGeminiKeyStartIndex(keys.length);
+  for (let attempt = 0; attempt < keys.length; attempt++) {
+    const apiKey = keys[(startIdx + attempt) % keys.length]!;
     try {
       const res = await fetch(`${GEMINI_URL}?key=${encodeURIComponent(apiKey)}`, {
         method: 'POST',
@@ -201,8 +270,10 @@ async function generateJsonText(
           contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
           generationConfig: {
             temperature: 0.85,
-            maxOutputTokens: 512,
+            maxOutputTokens: 1024,
             responseMimeType: 'application/json',
+            responseSchema: CALENDAR_RESPONSE_SCHEMA,
+            thinkingConfig: { thinkingBudget: 0 },
           },
         }),
       });
@@ -211,10 +282,16 @@ async function generateJsonText(
         geminiQuotaHit = true;
         continue;
       }
-      if (!res.ok) continue;
+      if (!res.ok) {
+        if (shouldTryNextProvider(res.status)) continue;
+        break;
+      }
       const json = await res.json();
+      const finishReason =
+        (json as { candidates?: Array<{ finishReason?: string }> }).candidates?.[0]?.finishReason ??
+        '';
       const text = extractGeminiText(json);
-      if (text) {
+      if (text && finishReason !== 'MAX_TOKENS' && isValidAiJsonText(text)) {
         const tokenUsage = extractGeminiUsage(json);
         await recordAiUsage({
           organizationId: usage.organizationId,
@@ -227,6 +304,7 @@ async function generateJsonText(
         });
         return text;
       }
+      if (text) geminiParseFailures += 1;
     } catch {
       /* try next key */
     }
@@ -260,7 +338,7 @@ async function generateJsonText(
           usage?: { prompt_tokens?: number; completion_tokens?: number };
         };
         const text = json.choices?.[0]?.message?.content?.trim();
-        if (text) {
+        if (text && isValidAiJsonText(text)) {
           await recordAiUsage({
             organizationId: usage.organizationId,
             propertyId: usage.propertyId,
@@ -280,6 +358,9 @@ async function generateJsonText(
 
   if (!geminiSawKeys && !groq) {
     throw new Error('AI generation unavailable — configure GEMINI_API_KEYS or GROQ_API_KEY');
+  }
+  if (geminiParseFailures > 0) {
+    throw new Error('AI generation returned unreadable JSON');
   }
   if (geminiQuotaHit) {
     throw new Error(
@@ -309,12 +390,7 @@ export async function generateMarketingTemplateTokens(
     organizationId: input.organizationId,
     propertyId: input.propertyId,
   });
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(stripJsonFence(rawText));
-  } catch {
-    throw new Error('AI generation returned unreadable JSON');
-  }
+  const parsed = parseAiJsonPayload(rawText);
 
   return {
     contentType: 'calendar',

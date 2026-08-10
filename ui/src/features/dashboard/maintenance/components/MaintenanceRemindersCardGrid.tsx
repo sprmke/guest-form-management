@@ -4,6 +4,7 @@ import { recurrenceIntervalLabel } from '@/features/dashboard/finance/lib/recurr
 import type { MaintenanceItem } from '@/features/dashboard/maintenance/lib/types';
 
 import { FinanceStaysCardGridSkeleton } from '@/components/skeletons/AdminSkeletons';
+import { compactStatusBadgeClasses } from '@/lib/status-tone-colors';
 import { cn } from '@/lib/utils';
 import { formatIsoDate } from '@/utils/format/bookingDisplay';
 
@@ -217,7 +218,7 @@ function CardIconAction({
 export function MaintenanceStatusBadge({ isComplete }: { isComplete: boolean }) {
   if (isComplete) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
+      <span className={cn('inline-flex items-center gap-1', compactStatusBadgeClasses('success'))}>
         <CheckCircle2 className="size-3 shrink-0" aria-hidden />
         Done
       </span>
@@ -225,7 +226,7 @@ export function MaintenanceStatusBadge({ isComplete }: { isComplete: boolean }) 
   }
 
   return (
-    <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:text-amber-300">
+    <span className={cn('inline-flex items-center gap-1', compactStatusBadgeClasses('pending'))}>
       <Clock3 className="size-3 shrink-0" aria-hidden />
       Pending
     </span>

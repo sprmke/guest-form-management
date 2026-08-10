@@ -180,6 +180,14 @@ async function resolvePropertyName(propertyId: string | null | undefined): Promi
   return name || 'Property';
 }
 
+async function resolvePropertySlug(propertyId: string | null | undefined): Promise<string | null> {
+  if (!propertyId) return null;
+  const sb = getSupabase();
+  const { data } = await sb.from('properties').select('slug').eq('id', propertyId).maybeSingle();
+  const slug = typeof data?.slug === 'string' ? data.slug.trim() : '';
+  return slug || null;
+}
+
 function appOrigin(): string {
   const fromEnv = Deno.env.get('PUBLIC_GUEST_APP_ORIGIN')?.trim();
   if (fromEnv) return fromEnv.replace(/\/$/, '');
@@ -216,11 +224,15 @@ function inboxPlatformQueryParam(platform: SocialPlatform | string): string {
 export function buildConversationInboxLink(
   orgSlug: string,
   conversationId: string,
-  platform: SocialPlatform | string
+  platform: SocialPlatform | string,
+  propertySlug?: string | null
 ): string {
   const platformParam = inboxPlatformQueryParam(platform);
+  const inboxBase = propertySlug
+    ? `${appOrigin()}/org/${encodeURIComponent(orgSlug)}/property/${encodeURIComponent(propertySlug)}/inbox`
+    : `${appOrigin()}/org/${encodeURIComponent(orgSlug)}/properties`;
   return (
-    `${appOrigin()}/org/${encodeURIComponent(orgSlug)}/inbox` +
+    `${inboxBase}` +
     `?conversationId=${encodeURIComponent(conversationId)}&platform=${encodeURIComponent(platformParam)}`
   );
 }
@@ -302,7 +314,7 @@ export function buildChatPreviewSamplePlaceholders(propertyName?: string): Recor
     chatSource: 'Web chat',
     text: 'Hi! Is June 18–20 still available for 2 guests?',
     attachments: [],
-    conversationLink: `${appOrigin()}/org/demo/inbox?conversationId=00000000-0000-4000-8000-000000000001&platform=web`,
+    conversationLink: `${appOrigin()}/org/demo/property/demo-unit/inbox?conversationId=00000000-0000-4000-8000-000000000001&platform=web`,
     checkIn: '2026-06-18',
     checkOut: '2026-06-20',
     sentAt: new Date().toISOString(),
@@ -395,14 +407,14 @@ export async function notifyTelegramChatInbound(input: {
     return { sent: false, skipped: 'no_org_slug' };
   }
 
-  const propertyName = input.conversation.property_id
-    ? await resolvePropertyName(input.conversation.property_id)
-    : '—';
+  const propertyName = await resolvePropertyName(propertyId);
+  const propertySlug = await resolvePropertySlug(propertyId);
 
   const conversationLink = buildConversationInboxLink(
     orgSlug,
     input.conversation.id,
-    input.conversation.platform
+    input.conversation.platform,
+    propertySlug
   );
 
   const placeholders = buildChatMessagePlaceholders({

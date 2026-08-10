@@ -225,7 +225,7 @@ export function MaintenanceItemForm({
     <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
       <Field label="Label" required error={errors.label?.message}>
         <input
-          className="border-input bg-background text-foreground focus:border-primary focus:ring-primary/20 h-10 w-full rounded-lg border px-3 text-sm transition-colors focus:outline-none focus:ring-2"
+          className="border-input bg-card text-foreground field-focus h-10 w-full rounded-lg border px-3 text-sm transition-colors"
           {...register('label')}
         />
       </Field>
@@ -323,7 +323,7 @@ export function MaintenanceItemForm({
       <Field label="Notes" error={errors.notes?.message}>
         <textarea
           rows={7}
-          className="border-input bg-background text-foreground focus:border-primary focus:ring-primary/20 w-full rounded-lg border px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2"
+          className="border-input bg-card text-foreground field-focus w-full rounded-lg border px-3 py-2 text-sm transition-colors"
           {...register('notes')}
         />
       </Field>
@@ -357,7 +357,7 @@ export function MaintenanceItemForm({
                 type="number"
                 min={0}
                 max={90}
-                className="border-input bg-background text-foreground focus:border-primary focus:ring-primary/20 h-10 w-full rounded-lg border px-3 text-sm focus:outline-none focus:ring-2"
+                className="border-input bg-card text-foreground field-focus h-10 w-full rounded-lg border px-3 text-sm"
                 {...register('telegram_days_before', { valueAsNumber: true })}
               />
             </Field>
@@ -411,7 +411,7 @@ export function MaintenanceItemForm({
             <Field label="Message" error={errors.telegram_message_template?.message}>
               <textarea
                 rows={9}
-                className="border-input bg-background text-foreground focus:border-primary focus:ring-primary/20 w-full rounded-lg border px-3 py-2 font-mono text-xs focus:outline-none focus:ring-2"
+                className="border-input bg-card text-foreground field-focus w-full rounded-lg border px-3 py-2 font-mono text-xs"
                 {...register('telegram_message_template')}
               />
             </Field>

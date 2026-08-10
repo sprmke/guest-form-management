@@ -75,12 +75,16 @@ export type DashboardStats = {
   };
   /** Org dashboard — count of properties in scope. */
   propertyCount: number;
+  /** Org dashboard — count of parking listings in scope (0 when none / property scope). */
+  parkingCount: number;
   /** Org dashboard — time-series for revenue / bookings chart. */
   trendSeries: DashboardTrendPoint[];
-  /** Org dashboard — latest stays with property context. */
+  /** Org dashboard — latest stays with property / parking context. */
   recentBookings: DashboardRecentBooking[];
   /** Org dashboard — per-property KPIs for the selected period. */
   propertyPerformance: DashboardPropertyPerformance[];
+  /** Org dashboard — per-parking KPIs for the selected period. */
+  parkingPerformance: DashboardParkingPerformance[];
   /** Current status distribution (non-cancelled, org/property scope). */
   statusBreakdown: DashboardPipelineSlice[];
 };
@@ -94,9 +98,13 @@ export type DashboardTrendPoint = {
 export type DashboardRecentBooking = {
   id: string;
   guestName: string;
+  bookingKind: 'property' | 'parking';
   propertyId: string;
   propertyName: string;
   propertySlug: string;
+  parkingId: string;
+  parkingName: string;
+  parkingSlug: string;
   checkInIso: string;
   checkOutIso: string;
   status: string;
@@ -104,6 +112,16 @@ export type DashboardRecentBooking = {
 };
 
 export type DashboardPropertyPerformance = {
+  id: string;
+  name: string;
+  slug: string;
+  location: string | null;
+  bookings: number;
+  revenue: number;
+  occupancy: number;
+};
+
+export type DashboardParkingPerformance = {
   id: string;
   name: string;
   slug: string;
@@ -164,7 +182,7 @@ function statusForBreakdown(
   return null;
 }
 
-type PropertyMeta = {
+type AssetMeta = {
   id: string;
   name: string;
   slug: string;
@@ -230,6 +248,15 @@ function propertyLocationFromRow(row: Record<string, unknown>): string | null {
   }
   const address = String(row.address ?? '').trim();
   return address || null;
+}
+
+function parkingLocationFromRow(row: Record<string, unknown>): string | null {
+  const residence = String(row.residence_name ?? '').trim();
+  const tower = String(row.tower ?? '').trim();
+  const level = String(row.level ?? '').trim();
+  const slot = String(row.slot_label ?? '').trim();
+  const parts = [residence, tower, level, slot].filter(Boolean);
+  return parts.length > 0 ? parts.join(' · ') : null;
 }
 
 function getSupabase() {
@@ -436,16 +463,31 @@ export async function computeDashboardStats(
   const supabase = getSupabase();
 
   let propertyIds: string[] | null = null;
-  const propertyMetaById = new Map<string, PropertyMeta>();
+  let parkingIds: string[] | null = null;
+  const propertyMetaById = new Map<string, AssetMeta>();
+  const parkingMetaById = new Map<string, AssetMeta>();
 
   if (params.orgId) {
-    const { data: propertyRows, error: propertiesError } = await supabase
-      .from('properties')
-      .select('id, name, slug, address, settings')
-      .eq('organization_id', params.orgId)
-      .order('name', { ascending: true });
+    const [
+      { data: propertyRows, error: propertiesError },
+      { data: parkingRows, error: parkingsError },
+    ] = await Promise.all([
+      supabase
+        .from('properties')
+        .select('id, name, slug, address, settings')
+        .eq('organization_id', params.orgId)
+        .order('name', { ascending: true }),
+      supabase
+        .from('parkings')
+        .select('id, name, slug, residence_name, tower, level, slot_label')
+        .eq('organization_id', params.orgId)
+        .order('name', { ascending: true }),
+    ]);
     if (propertiesError) {
       throw new Error(`dashboard properties query failed: ${propertiesError.message}`);
+    }
+    if (parkingsError) {
+      throw new Error(`dashboard parkings query failed: ${parkingsError.message}`);
     }
     propertyIds = (propertyRows ?? []).map((row) => String(row.id));
     for (const row of propertyRows ?? []) {
@@ -456,15 +498,25 @@ export async function computeDashboardStats(
         location: propertyLocationFromRow(row as Record<string, unknown>),
       });
     }
+    parkingIds = (parkingRows ?? []).map((row) => String(row.id));
+    for (const row of parkingRows ?? []) {
+      parkingMetaById.set(String(row.id), {
+        id: String(row.id),
+        name: String(row.name ?? 'Parking'),
+        slug: String(row.slug ?? ''),
+        location: parkingLocationFromRow(row as Record<string, unknown>),
+      });
+    }
   }
 
   let bookingsQuery = supabase.from('guest_submissions').select('*');
   if (params.propertyId) {
     bookingsQuery = bookingsQuery.eq('property_id', params.propertyId);
-  } else if (propertyIds) {
-    if (propertyIds.length === 0) {
+  } else if (propertyIds !== null || parkingIds !== null) {
+    const propIds = propertyIds ?? [];
+    const parkIds = parkingIds ?? [];
+    if (propIds.length === 0 && parkIds.length === 0) {
       const periodDays = daysInclusive(from, to);
-      const prevRange = previousPeriodRange(from, to);
       return {
         manilaDate: today,
         attention: [],
@@ -494,6 +546,7 @@ export async function computeDashboardStats(
           nightsBooked: { value: 0, periodDays },
         },
         propertyCount: 0,
+        parkingCount: 0,
         trendSeries: buildTrendBuckets(from, to).map((bucket) => ({
           label: bucket.label,
           revenue: 0,
@@ -501,13 +554,21 @@ export async function computeDashboardStats(
         })),
         recentBookings: [],
         propertyPerformance: [],
+        parkingPerformance: [],
         statusBreakdown: STATUS_BREAKDOWN_DISPLAY_STATUSES.map((status) => ({
           status,
           count: 0,
         })),
       };
     }
-    bookingsQuery = bookingsQuery.in('property_id', propertyIds);
+    const orParts: string[] = [];
+    if (propIds.length > 0) {
+      orParts.push(`property_id.in.(${propIds.join(',')})`);
+    }
+    if (parkIds.length > 0) {
+      orParts.push(`parking_id.in.(${parkIds.join(',')})`);
+    }
+    bookingsQuery = bookingsQuery.or(orParts.join(','));
   }
   const { data, error } = await bookingsQuery;
   if (error) {
@@ -554,6 +615,10 @@ export async function computeDashboardStats(
     string,
     { bookings: number; revenue: number; occupiedNights: number }
   >();
+  const performanceByParking = new Map<
+    string,
+    { bookings: number; revenue: number; occupiedNights: number }
+  >();
 
   for (const row of rows) {
     const status = String(row.status ?? '');
@@ -572,6 +637,8 @@ export async function computeDashboardStats(
     if (!checkInIso) continue;
 
     const propertyId = String(row.property_id ?? '').trim();
+    const parkingId = String(row.parking_id ?? '').trim();
+    const bookingKind: 'property' | 'parking' = parkingId ? 'parking' : 'property';
     const numberOfNights = Number(row.number_of_nights ?? 0) || 0;
     const checkInInRange = checkInIso >= from && checkInIso <= to;
     const fin = computeBookingFinancials(row);
@@ -583,8 +650,11 @@ export async function computeDashboardStats(
       to
     );
 
-    if (propertyId && nightsInRange > 0) {
-      const perf = performanceByProperty.get(propertyId) ?? {
+    const performanceMap = bookingKind === 'parking' ? performanceByParking : performanceByProperty;
+    const assetId = bookingKind === 'parking' ? parkingId : propertyId;
+
+    if (assetId && nightsInRange > 0) {
+      const perf = performanceMap.get(assetId) ?? {
         bookings: 0,
         revenue: 0,
         occupiedNights: 0,
@@ -593,7 +663,7 @@ export async function computeDashboardStats(
       perf.revenue = roundMoney(
         perf.revenue + bookingRateLodgingInRange(row, numberOfNights, nightsInRange)
       );
-      performanceByProperty.set(propertyId, perf);
+      performanceMap.set(assetId, perf);
 
       for (const nightIso of occupiedNightIsoDatesForRow(checkInIso, checkOutIso, numberOfNights)) {
         const bucketKey = bucketKeyForDate(nightIso, from, to);
@@ -612,14 +682,14 @@ export async function computeDashboardStats(
         trendBookingsByKey.set(bucketKey, (trendBookingsByKey.get(bucketKey) ?? 0) + 1);
       }
 
-      if (propertyId) {
-        const perf = performanceByProperty.get(propertyId) ?? {
+      if (assetId) {
+        const perf = performanceMap.get(assetId) ?? {
           bookings: 0,
           revenue: 0,
           occupiedNights: 0,
         };
         perf.bookings += 1;
-        performanceByProperty.set(propertyId, perf);
+        performanceMap.set(assetId, perf);
       }
 
       totalBookings += 1;
@@ -636,13 +706,18 @@ export async function computeDashboardStats(
         guestRequestsSurpriseDecor: flagTrue(row.guest_requests_surprise_decor),
       });
 
-      const meta = propertyMetaById.get(propertyId);
+      const propertyMeta = propertyMetaById.get(propertyId);
+      const parkingMeta = parkingMetaById.get(parkingId);
       recentBookingCandidates.push({
         id: String(row.id),
         guestName: guestDisplayName(row),
+        bookingKind,
         propertyId,
-        propertyName: meta?.name ?? 'Property',
-        propertySlug: meta?.slug ?? '',
+        propertyName: propertyMeta?.name ?? (bookingKind === 'property' ? 'Property' : ''),
+        propertySlug: propertyMeta?.slug ?? '',
+        parkingId,
+        parkingName: parkingMeta?.name ?? (bookingKind === 'parking' ? 'Parking' : ''),
+        parkingSlug: parkingMeta?.slug ?? '',
         checkInIso,
         checkOutIso,
         status,
@@ -764,21 +839,14 @@ export async function computeDashboardStats(
     }
   }
 
+  const orgUnitCount = params.orgId ? Math.max(1, propertyMetaById.size + parkingMetaById.size) : 1;
   const occupancyRate =
     currentKpis.periodDays > 0
-      ? Math.round(
-          (currentKpis.occupiedNights /
-            (currentKpis.periodDays * Math.max(1, params.orgId ? propertyMetaById.size : 1))) *
-            100
-        )
+      ? Math.round((currentKpis.occupiedNights / (currentKpis.periodDays * orgUnitCount)) * 100)
       : 0;
   const prevOccupancyRate =
     previousKpis.periodDays > 0
-      ? Math.round(
-          (previousKpis.occupiedNights /
-            (previousKpis.periodDays * Math.max(1, params.orgId ? propertyMetaById.size : 1))) *
-            100
-        )
+      ? Math.round((previousKpis.occupiedNights / (previousKpis.periodDays * orgUnitCount)) * 100)
       : 0;
   const avgNightlyRate =
     currentKpis.ratedNights > 0
@@ -800,6 +868,7 @@ export async function computeDashboardStats(
 
   const periodDaysForOccupancy = daysInclusive(from, to);
   const propertyPerformance: DashboardPropertyPerformance[] = [];
+  const parkingPerformance: DashboardParkingPerformance[] = [];
 
   if (params.orgId) {
     for (const meta of propertyMetaById.values()) {
@@ -822,6 +891,27 @@ export async function computeDashboardStats(
       });
     }
     propertyPerformance.sort((a, b) => b.revenue - a.revenue);
+
+    for (const meta of parkingMetaById.values()) {
+      const perf = performanceByParking.get(meta.id) ?? {
+        bookings: 0,
+        revenue: 0,
+        occupiedNights: 0,
+      };
+      parkingPerformance.push({
+        id: meta.id,
+        name: meta.name,
+        slug: meta.slug,
+        location: meta.location,
+        bookings: perf.bookings,
+        revenue: perf.revenue,
+        occupancy:
+          periodDaysForOccupancy > 0
+            ? Math.round((perf.occupiedNights / periodDaysForOccupancy) * 100)
+            : 0,
+      });
+    }
+    parkingPerformance.sort((a, b) => b.revenue - a.revenue);
   }
 
   const statusBreakdown: DashboardPipelineSlice[] = STATUS_BREAKDOWN_DISPLAY_STATUSES.map(
@@ -885,9 +975,11 @@ export async function computeDashboardStats(
       },
     },
     propertyCount: params.orgId ? propertyMetaById.size : 1,
+    parkingCount: params.orgId ? parkingMetaById.size : 0,
     trendSeries,
     recentBookings,
     propertyPerformance,
+    parkingPerformance,
     statusBreakdown,
   };
 }

@@ -10,7 +10,6 @@ import {
   useDateNavigation,
   useSyncDateRangeWithQuery,
 } from '@/features/dashboard/bookings/hooks/useDateNavigation';
-import { MaintenanceByCategoryCard } from '@/features/dashboard/maintenance/components/MaintenanceByCategoryCard';
 import {
   MaintenanceExportMenu,
   maintenanceAddReminderAction,
@@ -195,8 +194,6 @@ export function MaintenancePage() {
           <p className="text-section-title text-foreground font-bold">No data for this period</p>
         </div>
       )}
-
-      {summary ? <MaintenanceByCategoryCard rows={summary.byCategory} /> : null}
 
       <FloatingToolbar>
         <MaintenanceRemindersToolbar
