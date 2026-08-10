@@ -415,21 +415,6 @@ Master switches in `app_settings.automation_toggles` (JSONB). Missing keys defau
 
 ---
 
-## Booking Workflow
-
-Per-property Calendar/Sheets sync switches in `app_settings` (document requirements are configured on the development — see [`/admin/developments/:slug`](../../admin/development-detail.md) § Document Requirements).
-
-| Field                | Column          | Notes                                                                     |
-| -------------------- | --------------- | ------------------------------------------------------------------------- |
-| Sync Google Calendar | `sync_calendar` | Off skips Calendar event writes on workflow transitions for this property |
-| Sync Google Sheets   | `sync_sheets`   | Off skips Sheet row writes on workflow transitions for this property      |
-
-Save path: **Save Changes** → `app-settings` PATCH (dirty `workflow-documents` section).
-
-Implementation: `PropertyWorkflowDocumentsSection.tsx`; edge gating: `supabase/functions/_shared/propertySyncToggles.ts`.
-
----
-
 ## Integrations
 
 Read-only status on this page. Connect/disconnect via cards linking to dedicated settings flows.

@@ -30,7 +30,7 @@ The page auto-refreshes the booking every **60 seconds** while the tab is visibl
 **View mode** and **edit mode** are visually distinct on the same route (no modal):
 
 - **View:** `BookingDetailHeader` (identity + quiet stay line + **Edit booking** and `⋯`) + `BookingDetailTabs` (`SegmentedControl`) — Overview, Guests, Parking (when `need_parking`), Pets (when `has_pets`), Pricing (hidden while `PENDING_REVIEW`), Files. Content renders through read-only panel components in `booking-detail/panels/`.
-- **Edit:** `BookingEditTabs` — a ring-highlighted "Editing booking" shell with its own real tab strip (Guest / Stay / Parking / Pets / Docs / Workflow). Hero and view tabs are hidden while editing.
+- **Edit:** `BookingEditTabs` — quiet bordered shell (same card language as view) with an "Editing booking" header + **Cancel**, then a `SegmentedControl` strip whose labels align with view where domains overlap (**Guests** / **Stay** / **Parking** / **Pets** / **Files** / **Workflow**). Each tab owns its own `BookingDetailCard tone="edit"` panel(s). Hero and view tabs are hidden while editing. **Save** lives only on the sticky footer (with a matching **Cancel**).
 
 **Edit booking** on the header (desktop) or mobile summary opens edit mode inline in the left column.
 
@@ -66,7 +66,7 @@ Conditional tabs fall back to Overview via `resolveBookingViewTab` (`lib/resolve
 
 Document thumbnails (`BookingDocPreview`) open `BookingDetailAssetPreviewModal` — an in-page preview using signed URLs resolved via `resolveAssetUrlForBrowser` for private storage buckets. The Guest list table and **Document checks** rows use `DocPreview` with `compact` for square thumbs; in Document checks the thumb is passed **no** verdict so the row mark stays the single verdict signal, and a row whose file is gone renders a dashed `ImageOff` tile to keep the column aligned. Compact AI results (`ReceiptAiVerdictMark` / `ReceiptAiVerdictBadge` with `compact`) are an icon-only chip whose glyph is the verdict (`receiptAiVerdictGlyph`): teal check for valid / likely valid, rose cross for invalid, amber triangle for unclear — shape first, color as reinforcement, with the full "AI: …" wording on `aria-label`/`title`. Full-width notice cards on workflow upload forms keep the longer "Looks like…" copy. The preview modal carries **no** mark in its title row — the verdict is a tinted **result banner** (`ReceiptAiVerdictBanner`) directly under the header, reading verdict first (`Invalid`), then the quiet `AI document check` attribution, then the summary sentence, all in the verdict's own hue (`receiptAiMetaForPreviewAsset` resolves verdict + summary by label or stored URL). The banner also renders while a check is in flight (neutral tone, spinner, `Checking document`) and when a verdict has no summary; it renders nothing for `skipped`/absent verdicts. A summary is capped at four lines and scrolls, and only becomes a tab stop when it actually overflows (measured with `ResizeObserver`). A shared **AI document backfill** (`useReceiptAiBackfill`) silently re-validates receipts/valid IDs that predate AI verdicts (skipped once `status` is `COMPLETED` or `CANCELLED`); panels show a loading state on the specific document being backfilled.
 
-**Mobile summary** (`BookingDetailMobileSummary`): name + status + source + quiet stay line; **Details** expand toggle in view mode; primary ring + **Editing** pill + **Discard** button in edit mode (Details toggle hidden while editing).
+**Mobile summary** (`BookingDetailMobileSummary`): name + status + source + quiet stay line; **Details** expand toggle in view mode; primary ring + **Editing** pill + **Cancel** button in edit mode (Details toggle hidden while editing).
 
 **Booking Meta** (`BookingMetaCard` — id, created, updated, copy-id) lives on the **Overview** tab in the main column (not under the Progress rail).
 
@@ -90,16 +90,16 @@ Triggered by **Edit booking** on the header (desktop) or mobile summary once det
 
 ### Layout
 
-`BookingEditTabs` renders a ring-highlighted container with an "Editing booking" banner + **Discard**, a `SegmentedControl` tab strip, and one tab's fields inside `BookingDetailCard tone="edit"` (same primitive view-mode panels use, so edit/view read as one visual system):
+`BookingEditTabs` renders a quiet bordered container with an "Editing booking" header + **Cancel**, a compact `SegmentedControl` (same control as view), and tab bodies that each use `BookingDetailCard tone="edit"` — the same primitive view-mode panels use:
 
-| Tab      | Component            | Notes                                                                    |
-| -------- | -------------------- | ------------------------------------------------------------------------ |
-| Guest    | `GuestIdentityTab`   | Identity, additional guest slots (add/remove), decor, referral, requests |
-| Stay     | `StayDetailsTab`     | Dates/times; adults/children/nights are derived, not directly editable   |
-| Parking  | `ParkingTab`         | Toggle + plate/brand/color when `need_parking`                           |
-| Pets     | `PetsTab`            | Toggle + pet fields when `has_pets`                                      |
-| Docs     | `DocumentsTab`       | Shown only when `shouldShowDocumentsTab(...)` (booking source / pets)    |
-| Workflow | `WorkflowDetailsTab` | Pricing/settlement fields via `progressFormPayloadFromState`             |
+| Tab (label) | Id         | Component            | Notes                                                                                          |
+| ----------- | ---------- | -------------------- | ---------------------------------------------------------------------------------------------- |
+| Guests      | `guest`    | `GuestIdentityTab`   | Cards: Primary Guest, Guest list (add/remove), Notes & source — mirrors `GuestsPanel` split    |
+| Stay        | `stay`     | `StayDetailsTab`     | Dates/times; adults/children/nights are derived, not directly editable                         |
+| Parking     | `parking`  | `ParkingTab`         | Always available in edit (toggle on/off); plate/brand/color when enabled                       |
+| Pets        | `pets`     | `PetsTab`            | Always available in edit (toggle on/off); pet fields when enabled                              |
+| Files       | `docs`     | `DocumentsTab`       | Shown only when `shouldShowDocumentsTab(...)` (booking source / pets); labels match view Files |
+| Workflow    | `workflow` | `WorkflowDetailsTab` | Pricing/settlement fields via `progressFormPayloadFromState`                                   |
 
 A single `useForm` instance lives in `BookingEditForm.tsx` (not per-tab) so React Hook Form keeps every field's value even while its tab isn't mounted. A sticky footer (`BookingEditStickyBar`) holds **Cancel** + **Save**; Save is disabled until the guest form or the Workflow tab is dirty.
 
@@ -121,7 +121,7 @@ Non-sensitive edits (e.g. special requests only) do not revert status.
 ### Save path
 
 1. `useUpdateBooking` → authenticated `guest_submissions` patch via Supabase client (direct table update, not an edge function).
-2. On success: refreshes the booking + bookings-list caches, then calls **`sync-booking-integrations`** (Google Calendar + Sheets refresh from the saved row — no workflow emails, no orchestrator).
+2. On success: refreshes the booking + bookings-list caches.
 
 ---
 
@@ -134,7 +134,7 @@ Non-sensitive edits (e.g. special requests only) do not revert status.
   - **Color = the booking's position.** The live stage's dot wears that status's own tone (`statusToneStyle` — the same rose / yellow / teal / amber / orange / sky language as `StatusBadge` and the calendar) inside a tinted halo, and pulses for `PENDING_REVIEW`. It does not move while the host browses. The halo is sized larger than the other dots on purpose: `READY_FOR_CHECKIN`'s tone is the same teal a completed dot already uses, so hue alone cannot carry the signal.
   - **Ring + name = what is on screen.** The viewed dot takes a neutral ring, and the stage name shows a teal check when the stage is behind the live one. The ring is suppressed while the two coincide, so the resting rail shows one marker and only splits into two once the host actually navigates away.
 - **Track dots are buttons** — any reached stage is one click away, so browsing no longer means walking the arrows, and each dot names itself (`Ready for Check-out — Completed`) on `aria-label`/`title`. Not-yet-reached stages render as a `role="img"` span rather than a disabled button: they are not actionable, but they still announce and still show their name on hover. Dots are a precision affordance — the 44px arrows, swipe, and the full map remain the touch paths.
-- **Browsing mode** — while `viewedStep` is behind the live status, `WorkflowActionsBar` hides its transition controls so actions can never target a stage the host is only previewing. Cancel booking is booking-scoped and stays.
+- **Browsing mode** — while `viewedStep` is behind the live status, `WorkflowActionsBar` hides return/proceed, mark incomplete, automation triggers, and **Cancel booking** so the rail is read-only until the host returns to the live step.
 - **Stage slide** (`WorkflowStageSlide`) — a native-style **push**, not a fade. For one 320ms beat both stages are on screen: the departing one translates out while the arriving one slides in from the opposite edge over it. Details that matter if you touch this:
   - Both layers use the same distance (38% of the rail), duration and curve (`cubic-bezier(0.22, 0.61, 0.36, 1)`), so the gap between them stays constant and the pair reads as one strip. A sharper expo-out is ~90% finished within 100ms, which is what made the earlier version look like a fade with a nudge.
   - Motion is **pure translation with no cross-fade**. The arriving layer is opaque (`bg-card`, matching the rail) and takes `relative z-10` to beat the absolutely positioned outgoing layer in paint order. Fading both instead lets text ghost through.
@@ -147,15 +147,15 @@ Non-sensitive edits (e.g. special requests only) do not revert status.
 - **Nested document sub-steps** (`WorkflowDocStepTabs`) — Pending Documents is the one stage with children, so its sub-steps are a tab strip inside the single deck slide instead of a second navigation axis. The strip spans the rail with each tab at `flex-1`, so two steps split it in half and three split it in thirds. Each tab carries a completion icon; labels are shortened for the width (`shortDocStepLabel` strips a leading "Pending " and a trailing " Request"/" Approval") and truncate rather than overflow, with the full label plus completion state on the tab's `aria-label`/`title` (`SegmentedControlOption.ariaLabel`). The strip is hidden when only one sub-step applies. The stage opens on the **first incomplete** sub-step (`defaultPendingDocNestedKey`).
 - **Stage sub-form** (`WorkflowSubFormHost`) — pricing, parking settlement, guest balance, SD refund, surprise-decor staff ack, depending on the viewed step.
 - **Completed stage** (`WorkflowCompletedSummaryCard`, content kind `completed_summary`) — the terminal stage has no form and no actions bar, so instead of an empty rail it shows a **Closing summary**: completion date (`status_updated_at`, falling back to `updated_at`, formatted in Asia/Manila), balance collected (`guestBalancePaidRecorded`, only when above zero), deposit returned (`sd_refund_amount`), and a link to the refund receipt when one was uploaded. Refund method, bank details and guest feedback are **not** repeated here — those stay on the Pricing tab's SD refund card. The "completed steps are read-only" banner is suppressed for this card since it is a record, not a disabled form.
-- **Automation triggers** (collapsible) — manual "Run Gmail poll", "Run check-out automation" (sd-refund-cron), "Resend SD refund form email", shown only for the statuses where each applies.
+- **Automation triggers** (collapsible) — manual "Run Gmail poll", "Run check-out automation" (sd-refund-cron), "Resend SD refund form email", shown only on the **live** workflow step (hidden while browsing earlier stages, and hidden when status is **Completed** or **Cancelled**) and only for the statuses where each applies.
 - **Transition actions bar** (`WorkflowActionsBar`) — three tiers, top to bottom:
-  1. A **back/forward pair** on one axis: a bordered "Back" on the left (its `aria-label`/`title` and the confirm modal name the destination) and exactly one primary CTA on the right (mark the active document complete → proceed to Ready for Check-in → proceed to the next stage). The two share height, radius and type scale, and use the same icon family — `ArrowLeft` on Back, `ArrowRight` on the CTA — so the row reads as a single direction control rather than two unrelated buttons. The CTA centres its label and arrow as one group: at rail width `justify-between` strands the arrow against the far edge. With no primary, Back expands full width and shows "Back to \<status\>". A disabled CTA takes a solid `bg-muted` fill (not the Back button's card fill, which would make the two indistinguishable); its unblock reason is a hover/focus tooltip on the button rather than a permanent caption under the row. These commit real status changes, so they are deliberately shaped and placed differently from the deck header's view-only arrows.
+  1. A **return/proceed pair** on one axis: a bordered **Return to \<status\>** on the left and exactly one primary CTA on the right — **equal 50% width** when both show (`grid-cols-2`); either alone is full width. Labels wrap to multiple lines when needed. The two share height, radius and type scale, and use the same icon family — `ArrowLeft` on return, `ArrowRight` on the CTA — so the row reads as a single direction control rather than two unrelated buttons.
   2. The **step-scoped undo** ("Mark … incomplete") — quiet, full width, only while an applicable document sub-step is complete.
-  3. **Cancel booking** — full-width on a soft rose wash (rose text on a 10% rose fill, deepening on hover) below a hairline, always present while allowed. Eligibility is `canCancelBookingAtStatus` (`bookingStatus.ts`): Pending Review through **Ready for Check-in** only. From Ready for Check-out onward the stay has happened, so the booking is settled or refunded rather than cancelled, and the control is gone.
+  3. **Cancel booking** — full-width on a soft rose wash (rose text on a 10% rose fill, deepening on hover) below a hairline, on the **live** step only (hidden while browsing earlier stages). Eligibility is `canCancelBookingAtStatus` (`bookingStatus.ts`): Pending Review through **Ready for Check-in** only. From Ready for Check-out onward the stay has happened, so the booking is settled or refunded rather than cancelled, and the control is gone.
 
   While any of these mutations is in flight the **whole footer** is disabled (`actionsBusy = transitionPending || cancelPending`), not just the button that was pressed — a cancel racing a transition would land the booking somewhere neither host intended. The running control keeps a spinner and `aria-busy`.
 
-  Every transition and the cancel sit behind a confirm modal with dev-control checkboxes (session-persisted per booking; see `admin-auth.mdc` §5 and `workflowDevControls.ts`). Dev-control resend checkboxes (GAF/pet request emails, generate PDF) only appear when the property's resolved requirements include the matching `gaf`/`pet` id.
+  Every transition and cancel sits behind a confirm modal: a one-line status change summary plus short bullets for what will happen (emails, documents saved, stay guide, and so on). Outbound emails respect **Property Settings → Email automations** — bullets only list emails that will actually send.
 
 - Mark-complete/incomplete calls send the requirement id (or the legacy `PENDING_PARKING_REQUEST` literal for parking) as `document_completion_target`/`document_completion_clear_target` — see `useTransitionBooking.ts`.
 
@@ -204,7 +204,7 @@ This is the page a host opens to manage one specific booking end to end — gues
 - Q: The guest submitted their check-out refund form — why doesn't it show yet?
   A: The page checks for updates automatically every minute, but you can also use "Check for guest submission" to refresh right away.
 - Q: Can I go back a step if I made a mistake?
-  A: Yes — the **Back** button at the bottom left of the progress panel returns the booking to the previous step without losing the guest's data. It asks you to confirm and names the step you're moving to.
+  A: Yes — **Return to \<step\>** at the bottom left moves the booking to that earlier step without losing the guest's data. It always names the step you're moving to, asks you to confirm, and explains that no emails will be sent.
 - Q: What do the dots under the step name mean?
   A: One dot per step, left to right. The bigger colored dot is where the booking actually is right now, in that status's own color — the same colors you see on the bookings list and calendar. Solid teal dots are steps already done, hollow ones haven't been reached. Hover any dot to see its name and state, and tap a done dot to jump straight to it.
 - Q: The progress panel only shows one step now — where did the full list go?
@@ -214,7 +214,7 @@ This is the page a host opens to manage one specific booking end to end — gues
 - Q: The booking is finished — what does the progress panel show now?
   A: A closing summary: the date it was completed, how much the guest settled at check-out, and how much of the deposit went back to them, plus a link to the refund receipt if you uploaded one. There are no step buttons because there is nothing left to move. The full refund details — method, bank, and the guest's feedback — are on the Pricing tab.
 - Q: The arrows by the step name and the buttons at the bottom both point left and right — what's the difference?
-  A: The arrows next to the step name only change what you're looking at; nothing happens to the booking. The buttons at the bottom actually move the booking forward or back, and always ask you to confirm first.
+  A: The arrows next to the step name only change what you're looking at; nothing happens to the booking. **Return to …** and **Proceed to …** at the bottom actually move the booking, and always ask you to confirm first.
 - Q: Why can't I cancel this booking?
   A: Cancelling is only available up to Ready for Check-in. Once a booking reaches Ready for Check-out the stay has already happened, so it gets finished or refunded instead of cancelled.
 - Q: Where is the stay guide link?
@@ -254,7 +254,8 @@ This is the page a host opens to manage one specific booking end to end — gues
 | Receipt AI backfill                    | `ui/src/features/dashboard/bookings/hooks/useReceiptAiBackfill.ts`                                                                                                                      |
 | Revert rules                           | `ui/src/features/dashboard/bookings/lib/workflowSensitiveGuestDiff.ts`, `ui/src/features/dashboard/bookings/lib/bookingStatus.ts`                                                       |
 | Configurable document requirements     | `ui/src/features/dashboard/bookings/lib/documentRequirements.ts` (types + defaults), `ui/src/features/dashboard/bookings/lib/workflow.ts` (nested-item/completion helpers, D2 skip)     |
-| Dev-control visibility rules           | `ui/src/features/dashboard/bookings/lib/workflowDevControls.ts`                                                                                                                         |
+| Property email automation toggles      | `ui/src/features/dashboard/org/components/property-settings/PropertyEmailAutomationsSection.tsx`, `ui/src/features/dashboard/org/lib/propertyEmailAutomation.ts`                        |
+| Transition confirm effect copy         | `ui/src/features/dashboard/bookings/lib/workflowTransitionEffectsCopy.ts`                                                                                                               |
 | Status machine + orchestrator (server) | `supabase/functions/_shared/statusMachine.ts`, `supabase/functions/_shared/workflowOrchestrator.ts`                                                                                     |
 
 ---
@@ -265,7 +266,6 @@ This is the page a host opens to manage one specific booking end to end — gues
 | ----------------------------------- | --------------------------------------------------- |
 | Load booking                        | Supabase `guest_submissions` select (admin session) |
 | Save edit-form fields               | Supabase `guest_submissions` update (admin session) |
-| Refresh Calendar + Sheet after save | `POST sync-booking-integrations`                    |
 | Advance/back a workflow step        | `POST transition-booking`                           |
 | Cancel booking                      | `POST cancel-booking`                               |
 | Upload/replace a guest document     | `POST upload-booking-asset`                         |
@@ -282,5 +282,5 @@ This is the page a host opens to manage one specific booking end to end — gues
 - [Bookings list](./bookings.md)
 - [Route index](../../README.md)
 - [`.cursor/rules/booking-workflow.mdc`](../../../../../.cursor/rules/booking-workflow.mdc) — canonical status enum, transition graph, side-effect matrix
-- [`.cursor/rules/admin-auth.mdc`](../../../../../.cursor/rules/admin-auth.mdc) §5 — dev-control checkboxes
+- [`.cursor/rules/admin-auth.mdc`](../../../../../.cursor/rules/admin-auth.mdc) §5 — workflow side effects + property email automations
 - [`docs/archive/planning/NEW_FLOW_PLAN.md`](../../../../archive/planning/NEW_FLOW_PLAN.md) §3.1

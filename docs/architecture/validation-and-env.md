@@ -37,7 +37,7 @@ Part of the [`docs/PROJECT.md`](../PROJECT.md) architecture split.
 
 **Templates:** `ui/.env.example`, `supabase/.env.example`, `supabase/.env.dev.example`, `supabase/.env.prod.example` — placeholders only. Copy to gitignored targets (`ui/.env.development`, `supabase/.env.dev.local`, `supabase/.env.prod.local`). Root + `supabase/.gitignore` block `*.local`.
 
-**Production:** Hosted secrets (Supabase Dashboard), dual Google OAuth clients (GoTrue vs Gmail API), service-account Calendar/Sheets sharing, UI host **`VITE_*`**, and **`pg_cron`** setup are stepped in **[[migration-runbook|Migration Runbook — New Booking Flow]] §11**.
+**Production:** Hosted secrets (Supabase Dashboard), dual Google OAuth clients (GoTrue vs Gmail API), UI host **`VITE_*`**, and **`pg_cron`** setup are stepped in **[[migration-runbook|Migration Runbook — New Booking Flow]] §11**.
 
 ### UI (`ui/.env` / Vite)
 
@@ -52,7 +52,7 @@ Part of the [`docs/PROJECT.md`](../PROJECT.md) architecture split.
 
 ### Edge (`supabase/.env.local` / hosted secrets)
 
-**Operator config (non-secrets):** **`org_settings`** (one row per organization — social links, team logo; **Org → Settings**) and **`app_settings`** (one row per property — payment, GAF, **email routing**, automation toggles, **workflow document requirements** (`document_requirements_override`, `sync_calendar`, `sync_sheets`), integration IDs; **Property → Settings**). Edge code merges org branding + property operational fields via **`resolveAppSettings(propertyId)`** (`_shared/appSettings.ts` + `_shared/orgSettings.ts`). Document requirement lists resolve via **`documentRequirements.ts#resolveDocumentRequirements`** (override → `developments.settings.workflowDefaults` → defaults); Calendar/Sheets sync via **`propertySyncToggles.ts#resolvePropertySyncToggles`**. Secrets **never** go in these tables.
+**Operator config (non-secrets):** **`org_settings`** (one row per organization — social links, team logo; **Org → Settings**) and **`app_settings`** (one row per property — payment, GAF, **email routing**, automation toggles, **workflow document requirements** (`document_requirements_override`); **Property → Settings**). Edge code merges org branding + property operational fields via **`resolveAppSettings(propertyId)`** (`_shared/appSettings.ts` + `_shared/orgSettings.ts`). Document requirement lists resolve via **`documentRequirements.ts#resolveDocumentRequirements`** (override → `developments.settings.workflowDefaults` → defaults). Secrets **never** go in these tables.
 
 | Settings UI                                                                                 | Table              | Scope        |
 | ------------------------------------------------------------------------------------------- | ------------------ | ------------ |
@@ -96,7 +96,6 @@ Part of the [`docs/PROJECT.md`](../PROJECT.md) architecture split.
 - `SUPABASE_PUBLIC_URL` _(optional, local Gmail OAuth)_ — Public Supabase API origin (e.g. `http://127.0.0.1:54321`) used only to build **`google-mail-oauth-callback`** `redirect_uri` for Google. When local Edge exposes internal `http://kong:8000` as `SUPABASE_URL`, set this **or** rely on the automatic `kong` → `127.0.0.1:54321` fallback in `gmailMailOAuthAccess.ts`. Add matching **Authorized redirect URI** in Google Cloud: `{that origin}/functions/v1/google-mail-oauth-callback`.
 - `RESEND_API_KEY`
 - `RESEND_FROM_EMAIL` _(optional)_ — Verified Resend **From** address for workflow emails (e.g. `mail@yourdomain.com`). When unset, falls back to property **`emailReplyTo`** from **`app_settings`**. Display name is built from unit + org/property labels (`propertyEmailBranding.ts`).
-- `GOOGLE_SERVICE_ACCOUNT` (JSON string), `GOOGLE_CALENDAR_ID`, `GOOGLE_SPREADSHEET_ID`
 - `ADMIN_ALLOWED_EMAILS` — comma-separated allow list, server-enforced (e.g. `kamehome.azurenorth@gmail.com`)
 - `GMAIL_API_WEB_CLIENT_JSON` _(optional)_ — OAuth **Web application** client JSON for in-app Gmail connect (**Admin → Settings** → **Connect Gmail**). Redirect URI in Google Cloud must be `{SUPABASE_URL}/functions/v1/google-mail-oauth-callback`. Pair with `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY` and `GMAIL_OAUTH_ALLOWED_RETURN_ORIGINS` (comma-separated SPA origins, e.g. `http://127.0.0.1:5173`).
 - `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY` _(optional)_ — 32-byte key as **64 hex** chars or base64; encrypts Gmail refresh token at rest in `gmail_mail_integration`.
