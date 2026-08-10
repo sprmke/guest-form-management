@@ -28,7 +28,7 @@ export function GuestAccountMobileNav({ pathname, className }: GuestAccountMobil
       )}
       aria-label="Account"
     >
-      <div ref={containerRef} className="relative grid grid-cols-4 gap-0.5 px-2 py-1.5">
+      <div ref={containerRef} className="relative grid grid-cols-3 gap-0.5 px-2 py-1.5">
         {bounds ? (
           <SlidingActivePill bounds={bounds} className="bg-primary rounded-xl shadow-sm" />
         ) : null}

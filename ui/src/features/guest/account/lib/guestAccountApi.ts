@@ -76,17 +76,6 @@ export type GuestProfileDto = {
   email: string;
 };
 
-export type GuestTripDto = {
-  id: string;
-  status: string;
-  checkInDate: string;
-  checkOutDate: string;
-  propertySlug: string | null;
-  propertyName: string | null;
-  imageUrl: string | null;
-  guestFacebookName: string | null;
-};
-
 export type GuestMessageThreadDto = {
   conversationId: string;
   propertySlug: string | null;
@@ -103,7 +92,6 @@ export type GuestMessageThreadDto = {
 };
 
 export const GUEST_PROFILE_QUERY_KEY = ['guest-profile'] as const;
-export const GUEST_TRIPS_QUERY_KEY = ['guest-trips'] as const;
 export const GUEST_MESSAGES_QUERY_KEY = ['guest-messages'] as const;
 
 export async function fetchGuestProfile(): Promise<GuestProfileDto> {
@@ -130,13 +118,6 @@ export async function uploadGuestProfileAvatar(file: File): Promise<{ avatarUrl:
   formData.append('fileName', file.name);
   const payload = await guestEdgePostForm('upload-guest-profile-asset', formData);
   return { avatarUrl: String(payload.avatarUrl ?? '') };
-}
-
-export async function fetchGuestTrips(): Promise<{ trips: GuestTripDto[] }> {
-  const payload = await guestEdgeGet('guest-trips');
-  return {
-    trips: (payload.trips as GuestTripDto[] | undefined) ?? [],
-  };
 }
 
 export async function fetchGuestMessages(): Promise<{ threads: GuestMessageThreadDto[] }> {

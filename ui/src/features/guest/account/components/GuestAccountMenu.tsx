@@ -9,12 +9,7 @@ import {
   resolveGuestAvatarUrl,
   resolveGuestDisplayName,
 } from '@/features/guest/account/lib/guestAccountIdentity';
-import {
-  GUEST_ACCOUNT_MESSAGES_PATH,
-  GUEST_ACCOUNT_PROFILE_PATH,
-  GUEST_ACCOUNT_STAYS_PATH,
-  GUEST_ACCOUNT_WISHLIST_PATH,
-} from '@/features/guest/account/lib/guestAccountPaths';
+import { GUEST_ACCOUNT_NAV_ITEMS } from '@/features/guest/account/lib/guestAccountNav';
 import { useGuestSession } from '@/features/guest/auth/hooks/useGuestSession';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -26,13 +21,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-
-const menuLinks = [
-  { href: GUEST_ACCOUNT_PROFILE_PATH, label: 'Profile' },
-  { href: GUEST_ACCOUNT_STAYS_PATH, label: 'Stays' },
-  { href: GUEST_ACCOUNT_WISHLIST_PATH, label: 'Wishlist' },
-  { href: GUEST_ACCOUNT_MESSAGES_PATH, label: 'Messages' },
-] as const;
 
 export function GuestAccountMenu() {
   const { status, session } = useGuestSession();
@@ -67,7 +55,7 @@ export function GuestAccountMenu() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="z-[60] w-52">
-        {menuLinks.map((item) => (
+        {GUEST_ACCOUNT_NAV_ITEMS.map((item) => (
           <DropdownMenuItem key={item.href} asChild>
             <Link to={item.href}>{item.label}</Link>
           </DropdownMenuItem>

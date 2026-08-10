@@ -1,10 +1,9 @@
-import { Bed, Heart, MessageSquare, User, type LucideIcon } from 'lucide-react';
+import { Heart, MessageSquare, User, type LucideIcon } from 'lucide-react';
 
 import {
-  GUEST_ACCOUNT_MESSAGES_PATH,
+  GUEST_ACCOUNT_FAVORITES_PATH,
   GUEST_ACCOUNT_PROFILE_PATH,
   GUEST_ACCOUNT_STAYS_PATH,
-  GUEST_ACCOUNT_WISHLIST_PATH,
 } from '@/features/guest/account/lib/guestAccountPaths';
 
 export type GuestAccountNavItem = {
@@ -23,17 +22,12 @@ export const GUEST_ACCOUNT_NAV_ITEMS: GuestAccountNavItem[] = [
   {
     href: GUEST_ACCOUNT_STAYS_PATH,
     label: 'Stays',
-    Icon: Bed,
-  },
-  {
-    href: GUEST_ACCOUNT_WISHLIST_PATH,
-    label: 'Wishlist',
-    Icon: Heart,
-  },
-  {
-    href: GUEST_ACCOUNT_MESSAGES_PATH,
-    label: 'Messages',
     Icon: MessageSquare,
+  },
+  {
+    href: GUEST_ACCOUNT_FAVORITES_PATH,
+    label: 'Favorites',
+    Icon: Heart,
   },
 ];
 
