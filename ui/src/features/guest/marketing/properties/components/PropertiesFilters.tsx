@@ -436,7 +436,7 @@ export function PropertiesFilters({
             animate={motionProps.sheetAnimate}
             exit={motionProps.sheetExit}
             transition={motionProps.sheetTransition}
-            className="bg-background fixed inset-x-0 bottom-0 z-50 max-h-[85vh] overflow-hidden rounded-t-3xl lg:hidden"
+            className="bg-card fixed inset-x-0 bottom-0 z-50 max-h-[85vh] overflow-hidden rounded-t-3xl lg:hidden"
             role="dialog"
             aria-modal="true"
             aria-label={sheetTitle}

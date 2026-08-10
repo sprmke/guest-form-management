@@ -7,6 +7,7 @@ import { MarketingImage as Image } from '@/features/guest/marketing/shared/compo
 import { resolveListingCoverImage } from '@/features/guest/marketing/shared/lib/mockListingImages';
 
 import { cn } from '@/lib/utils';
+import { DEVELOPMENT_TYPE_BADGE } from '@/lib/status-tone-colors';
 
 import type { Development, DevelopmentType } from '../types';
 
@@ -18,31 +19,31 @@ const TYPE_CONFIG: Record<
     label: 'Condominium',
     shortLabel: 'Condo',
     icon: Building2,
-    color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+    color: DEVELOPMENT_TYPE_BADGE.CONDOMINIUM,
   },
   SUBDIVISION: {
     label: 'Subdivision',
     shortLabel: 'Subdivision',
     icon: Home,
-    color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+    color: DEVELOPMENT_TYPE_BADGE.SUBDIVISION,
   },
   MIXED_USE: {
     label: 'Mixed-Use',
     shortLabel: 'Mixed-Use',
     icon: Layers,
-    color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
+    color: DEVELOPMENT_TYPE_BADGE.MIXED_USE,
   },
   TOWNHOUSE: {
     label: 'Townhouse',
     shortLabel: 'Townhouse',
     icon: Home,
-    color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+    color: DEVELOPMENT_TYPE_BADGE.TOWNHOUSE,
   },
   COMMERCIAL: {
     label: 'Commercial',
     shortLabel: 'Commercial',
     icon: Building2,
-    color: 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
+    color: DEVELOPMENT_TYPE_BADGE.COMMERCIAL,
   },
 };
 

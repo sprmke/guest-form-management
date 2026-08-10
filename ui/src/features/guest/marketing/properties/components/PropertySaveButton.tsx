@@ -133,7 +133,7 @@ export function PropertySaveButton({
         onClick={(event) => event.stopPropagation()}
       >
         <AlertDialogHeader>
-          <AlertDialogTitle>Remove from wishlist?</AlertDialogTitle>
+          <AlertDialogTitle>Remove from favorites?</AlertDialogTitle>
           {propertyName ? (
             <AlertDialogDescription>
               {propertyName} will be removed from your saved properties.

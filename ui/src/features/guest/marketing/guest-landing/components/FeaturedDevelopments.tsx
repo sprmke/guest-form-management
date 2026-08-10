@@ -11,6 +11,7 @@ import { MarketingImage as Image } from '@/features/guest/marketing/shared/compo
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { DEVELOPMENT_TYPE_BADGE } from '@/lib/status-tone-colors';
 
 const TYPE_CONFIG: Record<
   DevelopmentType,
@@ -18,27 +19,27 @@ const TYPE_CONFIG: Record<
 > = {
   CONDOMINIUM: {
     label: 'Condo',
-    color: 'bg-blue-500/15 text-blue-600 dark:text-blue-400',
+    color: DEVELOPMENT_TYPE_BADGE.CONDOMINIUM,
     icon: Building2,
   },
   SUBDIVISION: {
     label: 'Subdivision',
-    color: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+    color: DEVELOPMENT_TYPE_BADGE.SUBDIVISION,
     icon: Home,
   },
   MIXED_USE: {
     label: 'Mixed-Use',
-    color: 'bg-purple-500/15 text-purple-600 dark:text-purple-400',
+    color: DEVELOPMENT_TYPE_BADGE.MIXED_USE,
     icon: Layers,
   },
   TOWNHOUSE: {
     label: 'Townhouse',
-    color: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
+    color: DEVELOPMENT_TYPE_BADGE.TOWNHOUSE,
     icon: Home,
   },
   COMMERCIAL: {
     label: 'Commercial',
-    color: 'bg-rose-500/15 text-rose-600 dark:text-rose-400',
+    color: DEVELOPMENT_TYPE_BADGE.COMMERCIAL,
     icon: Building2,
   },
 };
