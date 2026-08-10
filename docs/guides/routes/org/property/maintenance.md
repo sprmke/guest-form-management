@@ -13,12 +13,11 @@ Route: `/org/:orgSlug/property/:propertySlug/maintenance`
 
 ## Progress overview
 
-| Section        | E2E save | Validation | Docs       | Notes                               |
-| -------------- | -------- | ---------- | ---------- | ----------------------------------- |
-| Summary cards  | —        | —          | Documented | Total, Telegram, completed, pending |
-| By category    | —        | —          | Documented | When summary has categories         |
-| Reminders CRUD | ✅       | ✅         | Documented | `maintenance_items`                 |
-| Export report  | ✅       | —          | Documented | PDF menu (header)                   |
+| Section        | E2E save | Validation | Docs       | Notes                                             |
+| -------------- | -------- | ---------- | ---------- | ------------------------------------------------- |
+| Summary cards  | —        | —          | Documented | Total, Telegram, completed, pending               |
+| Reminders CRUD | ✅       | ✅         | Documented | `maintenance_items`                               |
+| Export report  | ✅       | —          | Documented | PDF menu (header); includes by-category breakdown |
 
 ---
 
@@ -29,8 +28,6 @@ Single-page maintenance view (no tabs), structured like Finance.
 **Header (top right):** date range filter, **Export report**, **Add reminder**. On **phone/tablet**, Add + export options live in one hero ··· menu; the overlap toolbar is date range only.
 
 **Summary cards:** Total, Telegram enabled, Completed, Pending — `AdminMetricCard` styling (matches Finance/Bookings).
-
-**By category:** Optional list card when the period summary includes category breakdown.
 
 **Reminders toolbar** (`MaintenanceRemindersToolbar`):
 

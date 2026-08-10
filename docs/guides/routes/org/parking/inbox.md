@@ -22,22 +22,22 @@ Route: `/org/:orgSlug/parking/:parkingSlug/inbox`
 
 Parking operators open Guest Inbox for this slot. **Meta** uses the effective Page (parking override or org default with **Using org Meta**). **Web** is scoped by `parking_id` — guest parking web chat is not shipped yet, so the Web tab stays empty until that surface exists.
 
-Quick replies and Automation remain **org-only**.
+Quick replies and Automation are managed on a **property** Guest Inbox (org-scoped data), not on parking.
 
 ---
 
 ## Host-facing knowledge
 
-Parking **Guest Inbox** lets you answer Facebook (and Instagram when connected) messages for this slot. By default you inherit the organization’s connected Facebook Page; you can connect a different Page here if this parking listing should have its own Messenger inbox. **Website chat for parking guests is not available yet**, so the Web tab will stay empty for now. Saved quick replies and AI automation are managed at the **organization** inbox, not per parking slot.
+Parking **Guest Inbox** lets you answer Facebook (and Instagram when connected) messages for this slot. By default you inherit the organization’s connected Facebook Page; you can connect a different Page here if this parking listing should have its own Messenger inbox. **Website chat for parking guests is not available yet**, so the Web tab will stay empty for now. Saved quick replies and AI automation are managed from a **property** inbox under Manage.
 
 **Common host questions**
 
-- Q: Will I see the same Facebook messages as the org inbox?
+- Q: Will I see the same Facebook messages as other properties using the shared Page?
   A: If you use the org’s Page (shown as “Using org Meta”), yes — it’s the same Page inbox. Connecting a different Page here gives this slot its own thread list.
 - Q: Why is the Web tab empty?
   A: On-site chat for parking listings is not shipped yet. Messenger is the live channel today when Meta is connected.
 - Q: Where do I edit canned replies or turn on auto-reply?
-  A: Open the **organization** Guest Inbox → **Quick replies** or **Automation**. Those settings apply org-wide.
+  A: Open any **property** Guest Inbox → **Manage** → Quick replies or Automation. Those settings apply org-wide.
 
 ---
 

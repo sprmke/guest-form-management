@@ -56,7 +56,7 @@ Three KPI chips: weekday base rate, weekend premium %, count of custom calendar 
 
 ### Calendar
 
-- Month grid titled **Nightly rates**; legend under the grid.
+- Month grid titled **Rates & availability** (_Manage pricing and availability_ on desktop); legend under the grid.
 - Legend: **Available**, **Custom** (pen icon), **Booked** (disabled when inventory exists), **Selected**.
 - Click or drag future available dates → **Set nightly rate** modal (**Reset** / **Apply**; close via X).
   **Apply** skips storing an override when the amount matches the weekday/weekend base for that night.

@@ -30,11 +30,11 @@ Paginated booking list with PMA-style **stage summary cards** and four view mode
 
 Layout (top → bottom):
 
-1. **Mobile (`max-lg`):** brand hero with tenant switcher + **Import** icon + **New booking** icon (property scope); overlapping floating toolbar with date range (property scope) + filters; layout frosted header hidden on this route.
+1. **Mobile (`max-lg`):** brand hero with tenant switcher + **Import** icon + **New booking** icon (property scope); overlapping floating toolbar with **date range** only (same as Finance / Maintenance); layout frosted header hidden on this route.
 2. **Desktop (`lg+`):** page header — **date range** (top right) + **Import** (outline) + **New booking** → `/properties/:propertySlug/form`
 3. **Summary cards** — Action Required, Pending Docs, Confirmed Stays, History (Finance-style `surface-card`; count + inline status hints; click toggles `?stage=` filter)
-4. **Toolbar** (`BookingFilters`):
-   - **Mobile (`max-lg`):** search + refine icon (opens sheet for status / more filters / sort / per-page) + view toggle. Date range stays above when shown.
+4. **Toolbar** (`BookingFilters` in page body — always visible, matches Finance / Maintenance):
+   - **Mobile (`max-lg`):** search + refine icon (opens sheet for status / more filters / sort / per-page) + view toggle
    - **Desktop (`lg+`):** Row 1: search + Status + More filters + Clear; Row 2: sort + per-page | view toggle
 5. Active view content + pagination (table/card only)
 

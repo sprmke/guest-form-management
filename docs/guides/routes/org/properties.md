@@ -35,7 +35,7 @@ Org-level inventory of all properties. On **phone/tablet**, uses the shared **br
 
 ## Host-facing knowledge
 
-This page is the catalog of every rental you operate under the organization. Summary cards at the top show how many properties you have and how they’re performing this month; each property card shows photos, location, capacity, and booking stats. Use it to jump into a property dashboard, open settings, or copy the guest booking link.
+This page is the catalog of every rental you operate under the organization. Summary cards at the top show how many properties you have and how they’re performing this month; each property card shows photos, location, and booking stats. Use it to jump into a property dashboard, open settings, or copy the guest booking link.
 
 **Common host questions**
 
@@ -79,13 +79,14 @@ All revenue and occupancy figures on this page use the **current calendar month 
 | Card navigation         | Stretched link behind card body; carousel and **⋯** menu sit above it and do not trigger navigation   |
 | **Title**               | `properties.name`                                                                                     |
 | **Subtitle**            | Tower + unit (`properties.tower` + `properties.unit_number`, or legacy `tower_and_unit`) when present |
-| Type                    | `properties.type`                                                                                     |
-| Location                | `settings.city`, `settings.province`; fallback residence + address                                    |
-| Beds / baths / guests   | `settings.bedrooms`, `settings.bathrooms`, `properties.max_guests`                                    |
+| **Residence**           | Org / development — `text-xs` meta line when `developmentName` or org name is passed                  |
+| **Location**            | `{residence}, {city}, {province}` comma-separated on one `text-xs` line (no map icon)                 |
 | Description (list only) | `settings.description`                                                                                |
 | **Bookings**            | Active pipeline count (see table above)                                                               |
 | **Revenue**             | Current-month lodging revenue for this property                                                       |
 | **Occupancy**           | Current-month occupancy % for this property                                                           |
+
+Cards omit type and bed/bath/guest chips (type remains available via the toolbar filter; capacity lives in property settings).
 
 ---
 

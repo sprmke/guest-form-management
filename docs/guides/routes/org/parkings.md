@@ -34,13 +34,13 @@ This is your parking inventory hub — every slot your organization offers, with
 
 ## Page sections
 
-| Section       | Property equivalent                                             | Parking notes                                                                                                                |
-| ------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Summary cards | Total properties, revenue, avg revenue, avg occupancy           | **Total parkings**; stats from `list-parkings` (`activeReservations`, `monthlyRevenue`, `occupancyRate`)                     |
-| Toolbar       | Search, status, type, grid/list                                 | Type filter: inside tower / outside tower / motorcycle                                                                       |
-| Card          | Image carousel, title, type, location, beds/baths/guests, stats | Cover image from `settings.coverImage`; **code** subtitle (e.g. `ML2S26`); tower / level / slot chips; **Reservations** stat |
-| Actions menu  | Dashboard, Settings, Guest calendar, Copy link                  | **View parking** (public `/parkings/:slug`), **Copy public link**                                                            |
-| Empty state   | Filtered vs no slots                                            | Same pattern as properties                                                                                                   |
+| Section       | Property equivalent                                    | Parking notes                                                                                                                                                  |
+| ------------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Summary cards | Total properties, revenue, avg revenue, avg occupancy  | **Total parkings**; stats from `list-parkings` (`activeReservations`, `monthlyRevenue`, `occupancyRate`)                                                       |
+| Toolbar       | Search, status, type, grid/list                        | Type filter: inside tower / outside tower / motorcycle                                                                                                         |
+| Card          | Image carousel, title, residence + address meta, stats | Cover image from `settings.coverImage`; title is display name (tower · level · slot); residence on first meta line, city/province below; **Reservations** stat |
+| Actions menu  | Dashboard, Settings, Guest calendar, Copy link         | **View parking** (public `/parkings/:slug`), **Copy public link**                                                                                              |
+| Empty state   | Filtered vs no slots                                   | Same pattern as properties                                                                                                                                     |
 
 ---
 

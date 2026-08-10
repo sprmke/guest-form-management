@@ -74,7 +74,7 @@ dates that should not be available to guests.
 
 ## Calendar grid
 
-Month grid titled **Nightly rates**, with the legend under the grid. Close the date
+Month grid titled **Rates & availability** (_Manage pricing and availability_ on desktop), with the legend under the grid. Close the date
 modal with the X or Escape (no Cancel button).
 
 ### Available nights
@@ -89,7 +89,10 @@ modal with the X or Escape (no Cancel button).
 
 ### Booked nights
 
-- Occupied nights `[check-in, check-out)` render a nightly amount in the day cell: the saved
+- Day cells keep the same neutral styling as available nights (white card, muted price
+  badge, default date ink). **Booked** is shown only by the spanning stay pill — not by
+  tinting the cell, date, or price.
+- Occupied nights `[check-in, check-out)` still show a nightly amount in the day cell: the saved
   booking rate ÷ nights when set; otherwise the property default for that night (same source
   as Review Pricing). New **Pending Review** stays therefore show weekday/weekend/holiday rates
   instead of ₱0.
