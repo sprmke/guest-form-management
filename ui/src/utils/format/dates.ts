@@ -53,6 +53,14 @@ export const formatDateToLongFormat = (dateString: string): string => {
   }
 };
 
+/** Timestamp → `MMM D, YYYY` in Asia/Manila, for record lines like "Completed". */
+export const formatManilaLongDate = (iso: string | null | undefined): string => {
+  if (!iso) return '';
+  const d = dayjs(iso);
+  if (!d.isValid()) return '';
+  return d.tz('Asia/Manila').format('MMM D, YYYY');
+};
+
 /** User-facing 12-hour time (e.g. `2:00 PM`). Accepts DB `HH:mm` or legacy `h:mm A`. */
 export const formatTimeToAMPM = (time: string, isCheckIn: boolean = false): string => {
   const fallback = isCheckIn ? '2:00 PM' : '11:00 AM';

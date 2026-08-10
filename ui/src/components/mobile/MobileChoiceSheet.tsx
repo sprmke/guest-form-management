@@ -96,8 +96,8 @@ export function MobileChoiceItem({
       <span className="min-w-0 flex-1">
         <span
           className={cn(
-            'block text-[15px] leading-tight',
-            selected ? 'text-foreground font-semibold' : 'text-foreground font-medium'
+            'text-foreground block text-[15px] leading-tight',
+            selected ? 'font-semibold' : 'font-medium'
           )}
         >
           {label}
