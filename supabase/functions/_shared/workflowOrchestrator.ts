@@ -181,10 +181,90 @@ const LEGACY_DOC_TARGET_TO_REQUIREMENT_ID: Record<string, string> = {
   PENDING_PET_REQUEST: 'pet',
 };
 
-function docTargetMatchesRequirement(target: string | undefined, requirementId: string): boolean {
-  if (!target) return false;
-  const normalized = LEGACY_DOC_TARGET_TO_REQUIREMENT_ID[target] ?? target;
-  return normalized === requirementId;
+type ResolvedDocTarget = {
+  /** Requirement id whose `document_requirement_completions` entry gets written. */
+  requirementId: string;
+  /** False when the id is not in this property's resolved list (legacy caller fallback). */
+  configured: boolean;
+};
+
+/**
+ * Resolve a doc-completion target to the requirement id to write. Admin clients send
+ * the requirement id straight from the stepper (`gaf`, `custom-2`, …); `gmail-listener`
+ * still sends the legacy `PENDING_GAF` / `PENDING_PET_REQUEST` literals, matched to a
+ * renamed requirement via `pdfTemplateId`. Returns `null` when this property has no
+ * matching requirement — callers must throw instead of writing nothing.
+ */
+function resolveDocTarget(
+  target: string,
+  requirements: DocumentRequirement[]
+): ResolvedDocTarget | null {
+  const legacyId = LEGACY_DOC_TARGET_TO_REQUIREMENT_ID[target];
+  const normalized = legacyId ?? target;
+
+  if (requirements.some((req) => req.id === normalized)) {
+    return { requirementId: normalized, configured: true };
+  }
+  if (legacyId) {
+    const byTemplate = requirements.find((req) => req.pdfTemplateId === legacyId);
+    if (byTemplate) return { requirementId: byTemplate.id, configured: true };
+  }
+  // A property may have renamed or dropped `gaf`/`pet`; keep writing their named
+  // columns so `gmail-listener` never hard-fails on a legacy literal.
+  if (normalized === 'gaf' || normalized === 'pet') {
+    return { requirementId: normalized, configured: false };
+  }
+  return null;
+}
+
+/** Requirement id a legacy `PENDING_GAF` / `PENDING_PET_REQUEST` literal writes to. */
+function resolveLegacyCompletionId(
+  legacyTarget: 'PENDING_GAF' | 'PENDING_PET_REQUEST',
+  requirements: DocumentRequirement[]
+): string {
+  return (
+    resolveDocTarget(legacyTarget, requirements)?.requirementId ??
+    LEGACY_DOC_TARGET_TO_REQUIREMENT_ID[legacyTarget]
+  );
+}
+
+/**
+ * Same as `resolveDocTarget`, but throws for an unmatched target so a mark-complete /
+ * mark-incomplete call can never report success after writing nothing.
+ */
+function requireResolvedDocTarget(
+  field: 'document_completion_target' | 'document_completion_clear_target',
+  target: string,
+  requirements: DocumentRequirement[]
+): ResolvedDocTarget {
+  const resolved = resolveDocTarget(target, requirements);
+  const configuredIds = requirements.map((req) => req.id).join(', ') || 'none';
+  if (!resolved) {
+    throw new Error(
+      `${field} "${target}" does not match any document requirement for this property (configured: ${configuredIds})`
+    );
+  }
+  if (!resolved.configured) {
+    console.warn(
+      `[orchestrator] ${field} "${target}" is not in this property's document requirements (${configuredIds}) — writing legacy ${resolved.requirementId} columns only. Set that requirement's pdfTemplateId to "${resolved.requirementId}" so the sub-step tracks it.`
+    );
+  }
+  return resolved;
+}
+
+/** Dual-write the legacy named columns for the two requirement ids that still have them. */
+function applyLegacyCompletionColumns(
+  fields: Record<string, unknown>,
+  requirementId: string,
+  patch: { completedAt: string | null; manualIncomplete: boolean }
+): void {
+  if (requirementId === 'gaf') {
+    fields.gaf_completed_at = patch.completedAt;
+    fields.gaf_manual_incomplete = patch.manualIncomplete;
+  } else if (requirementId === 'pet') {
+    fields.pet_completed_at = patch.completedAt;
+    fields.pet_manual_incomplete = patch.manualIncomplete;
+  }
 }
 
 function assertParkingPaymentReceiptIfRequired(
@@ -255,8 +335,15 @@ export class WorkflowOrchestrator {
     // proceed attempt — e.g. same-status document_completion_target marks, or legacy
     // PENDING_GAF/PENDING_PARKING_REQUEST/PENDING_PET_REQUEST → PENDING_DOCUMENTS edges)
     // so the calendar prefix (§4.5) always reflects this property's actual list.
+    // Doc-completion targets also need the real list: their requirement id is looked
+    // up in it (late parking at RFCI+ keeps `toStatus` off PENDING_DOCUMENTS).
     let documentRequirements: DocumentRequirement[] = DEFAULT_DOCUMENT_REQUIREMENTS;
-    if (isReviewProceedAttempt || toStatus === 'PENDING_DOCUMENTS') {
+    if (
+      isReviewProceedAttempt ||
+      toStatus === 'PENDING_DOCUMENTS' ||
+      payload.document_completion_target ||
+      payload.document_completion_clear_target
+    ) {
       documentRequirements = propertyId
         ? await resolveDocumentRequirements(propertyId)
         : DEFAULT_DOCUMENT_REQUIREMENTS;
@@ -368,9 +455,15 @@ export class WorkflowOrchestrator {
 
     if (isReviewProceedAttempt) {
       // Mirror pendingDocumentsClearPatchForGuestEditRevert()'s named-column reset in
-      // the JSONB map so dual-read doesn't show a substep "done" from a prior cycle.
-      patchCompletion('gaf', { completedAt: null, approvedPdfUrl: null, manualIncomplete: false });
-      patchCompletion('pet', { completedAt: null, approvedPdfUrl: null, manualIncomplete: false });
+      // the JSONB map so dual-read doesn't show a substep "done" from a prior cycle —
+      // every id, not just gaf/pet, or a renamed requirement keeps last cycle's tick.
+      const idsToReset = new Set([
+        ...Object.keys(completionsMap),
+        ...documentRequirements.map((req) => req.id),
+      ]);
+      for (const id of idsToReset) {
+        patchCompletion(id, { completedAt: null, approvedPdfUrl: null, manualIncomplete: false });
+      }
     }
 
     // Approved GAF: Gmail listener uses PENDING_DOCUMENTS → PENDING_DOCUMENTS; forward
@@ -384,7 +477,9 @@ export class WorkflowOrchestrator {
       ) {
         workflowFields.approved_gaf_pdf_url = payload.approved_gaf_pdf_url;
         workflowFields.gaf_manual_incomplete = false;
-        patchCompletion('gaf', {
+        // The map entry follows this property's GAF requirement id, which may be a
+        // renamed one (matched on pdfTemplateId) rather than a literal `gaf`.
+        patchCompletion(resolveLegacyCompletionId('PENDING_GAF', documentRequirements), {
           approvedPdfUrl: payload.approved_gaf_pdf_url,
           manualIncomplete: false,
         });
@@ -399,7 +494,7 @@ export class WorkflowOrchestrator {
       ) {
         workflowFields.approved_pet_pdf_url = payload.approved_pet_pdf_url;
         workflowFields.pet_manual_incomplete = false;
-        patchCompletion('pet', {
+        patchCompletion(resolveLegacyCompletionId('PENDING_PET_REQUEST', documentRequirements), {
           approvedPdfUrl: payload.approved_pet_pdf_url,
           manualIncomplete: false,
         });
@@ -437,16 +532,19 @@ export class WorkflowOrchestrator {
         docClear === 'PENDING_PARKING_REQUEST';
 
       if (fromStatus === 'PENDING_DOCUMENTS' && toStatus === 'PENDING_DOCUMENTS') {
-        if (docTargetMatchesRequirement(docClear, 'gaf')) {
-          workflowFields.gaf_completed_at = null;
-          workflowFields.gaf_manual_incomplete = true;
-          patchCompletion('gaf', { completedAt: null, manualIncomplete: true });
-        } else if (docClear === 'PENDING_PARKING_REQUEST') {
+        if (docClear === 'PENDING_PARKING_REQUEST') {
           workflowFields.parking_completed_at = null;
-        } else if (docTargetMatchesRequirement(docClear, 'pet')) {
-          workflowFields.pet_completed_at = null;
-          workflowFields.pet_manual_incomplete = true;
-          patchCompletion('pet', { completedAt: null, manualIncomplete: true });
+        } else {
+          const resolved = requireResolvedDocTarget(
+            'document_completion_clear_target',
+            docClear,
+            documentRequirements
+          );
+          patchCompletion(resolved.requirementId, { completedAt: null, manualIncomplete: true });
+          applyLegacyCompletionColumns(workflowFields, resolved.requirementId, {
+            completedAt: null,
+            manualIncomplete: true,
+          });
         }
       } else if (lateParkingClear) {
         workflowFields.parking_completed_at = null;
@@ -468,16 +566,19 @@ export class WorkflowOrchestrator {
       }
 
       if (fromStatus === 'PENDING_DOCUMENTS' && toStatus === 'PENDING_DOCUMENTS') {
-        if (docTargetMatchesRequirement(docComplete, 'gaf')) {
-          workflowFields.gaf_completed_at = now;
-          workflowFields.gaf_manual_incomplete = false;
-          patchCompletion('gaf', { completedAt: now, manualIncomplete: false });
-        } else if (docComplete === 'PENDING_PARKING_REQUEST') {
+        if (docComplete === 'PENDING_PARKING_REQUEST') {
           workflowFields.parking_completed_at = now;
-        } else if (docTargetMatchesRequirement(docComplete, 'pet')) {
-          workflowFields.pet_completed_at = now;
-          workflowFields.pet_manual_incomplete = false;
-          patchCompletion('pet', { completedAt: now, manualIncomplete: false });
+        } else {
+          const resolved = requireResolvedDocTarget(
+            'document_completion_target',
+            docComplete,
+            documentRequirements
+          );
+          patchCompletion(resolved.requirementId, { completedAt: now, manualIncomplete: false });
+          applyLegacyCompletionColumns(workflowFields, resolved.requirementId, {
+            completedAt: now,
+            manualIncomplete: false,
+          });
         }
       } else if (lateParkingComplete) {
         workflowFields.parking_completed_at = now;

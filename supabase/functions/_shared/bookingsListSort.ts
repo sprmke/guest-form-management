@@ -55,20 +55,13 @@ export function manilaTodayIso(): string {
     .slice(0, 10);
 }
 
-/** Statuses that stay visible when the admin month/range filter would hide them. */
-const PIN_ABOVE_DATE_RANGE_STATUSES = new Set(['PENDING_REVIEW']);
-
-/**
- * Check-in range filter for `/bookings`. Rows in range pass; `PENDING_REVIEW`
- * always passes so new submissions are never hidden by month.
- */
+/** Check-in range filter for `/bookings` — applies to every status. */
 export function passesListCheckInDateRangeFilter(
-  row: { status: string; check_in_date: string },
+  row: { check_in_date: string },
   from: string | null,
   to: string | null
 ): boolean {
   if (!from && !to) return true;
-  if (PIN_ABOVE_DATE_RANGE_STATUSES.has(row.status)) return true;
   const iso = checkInDateToIso(row.check_in_date);
   if (from && iso < from) return false;
   if (to && iso > to) return false;

@@ -817,7 +817,7 @@ export class DatabaseService {
 
     let rows = (allData ?? []) as any[];
 
-    // Date-range filter — PENDING_REVIEW always included (see passesListCheckInDateRangeFilter)
+    // Check-in date-range filter (all statuses)
     if (from || to) {
       rows = rows.filter((r) => passesListCheckInDateRangeFilter(r, from, to));
     }

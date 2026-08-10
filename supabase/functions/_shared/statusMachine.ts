@@ -348,9 +348,11 @@ export function readDocumentCompletions(
 }
 
 /**
- * Merges the guest-edit-revert gaf/pet reset into the row's *current*
- * `document_requirement_completions` JSONB map, preserving any other ids
- * (e.g. future configurable-doc entries). Every caller of
+ * Merges the guest-edit-revert completion reset into the row's *current*
+ * `document_requirement_completions` JSONB map. Every id present is cleared —
+ * a renamed requirement (e.g. `custom-2` instead of `gaf`) must not keep the
+ * previous cycle's tick — and `gaf`/`pet` are always written so a row whose map
+ * is still empty can't dual-read stale named columns. Every caller of
  * `pendingDocumentsClearPatchForGuestEditRevert()` that also intends to write
  * `document_requirement_completions` must call this with the pre-update value
  * of that column — never write a bare `{ gaf, pet }` object over the column,
@@ -362,8 +364,9 @@ export function pendingDocumentsClearCompletionsJsonbPatch(
   existingCompletions: unknown
 ): DocumentCompletionsMap {
   const map = parseCompletionsMap(existingCompletions);
-  map.gaf = { completedAt: null, approvedPdfUrl: null, manualIncomplete: false };
-  map.pet = { completedAt: null, approvedPdfUrl: null, manualIncomplete: false };
+  for (const id of [...Object.keys(map), 'gaf', 'pet']) {
+    map[id] = { completedAt: null, approvedPdfUrl: null, manualIncomplete: false };
+  }
   return map;
 }
 
