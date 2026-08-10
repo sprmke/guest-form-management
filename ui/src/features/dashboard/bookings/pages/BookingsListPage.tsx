@@ -413,46 +413,18 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
       </>
     );
 
-  const dateFilter =
+  /** Mobile float — date only (same pattern as Finance / Maintenance). */
+  const overlapControls =
     scope !== 'org' ? (
-      <BookingDateRangeFilter
-        {...dateNav}
-        isActive={Boolean(query.from || query.to)}
-        onClear={handleClearDate}
-        fullWidth
-      />
-    ) : null;
-
-  const filterControls = (
-    <BookingFilters
-      query={query}
-      onChange={patch}
-      onReset={resetFilters}
-      sort={query.sort}
-      onSortChange={handleStaySortChange}
-      view={view}
-      onViewChange={setView}
-      hideTableView={isMobileLayout}
-      hideKanbanView={hideKanban}
-      showBookingKindFilter={scope === 'org'}
-      showPerPage={view !== 'calendar' && view !== 'kanban'}
-    />
-  );
-
-  const moreFiltersCount =
-    (scope === 'org' && query.bookingKind ? 1 : 0) +
-    (query.hasPets !== null ? 1 : 0) +
-    (query.needParking !== null ? 1 : 0);
-  const stickyMoreActiveCount = query.status.length + moreFiltersCount;
-
-  const overlapControls = (
-    <FloatingToolbar>
-      <div className="flex w-full flex-col gap-2.5">
-        {dateFilter}
-        {filterControls}
-      </div>
-    </FloatingToolbar>
-  );
+      <FloatingToolbar>
+        <BookingDateRangeFilter
+          {...dateNav}
+          isActive={Boolean(query.from || query.to)}
+          onClear={handleClearDate}
+          fullWidth
+        />
+      </FloatingToolbar>
+    ) : undefined;
 
   return (
     <>
@@ -462,15 +434,28 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
         titleId="bookings-heading"
         heroTrailing={heroNewBooking}
         overlap={overlapControls}
-        stickyPrimary={dateFilter ?? undefined}
-        stickyMore={filterControls}
-        stickyMoreActiveCount={stickyMoreActiveCount}
-        stickyMoreAriaLabel="Refine bookings"
         desktopActions={bookingActions}
         desktopActionsClassName="w-full sm:w-auto"
         dense
       >
         <BookingsSummaryCards counts={stageCounts} activeStage={stage} onStageChange={setStage} />
+
+        <FloatingToolbar>
+          <BookingFilters
+            query={query}
+            onChange={patch}
+            onReset={resetFilters}
+            sort={query.sort}
+            onSortChange={handleStaySortChange}
+            view={view}
+            onViewChange={setView}
+            hideTableView={isMobileLayout}
+            hideKanbanView={hideKanban}
+            showBookingKindFilter={scope === 'org'}
+            showPerPage={view !== 'calendar' && view !== 'kanban'}
+          />
+        </FloatingToolbar>
+
         {/* Active view */}
         {showTableView && (
           <BookingTable

@@ -1,5 +1,13 @@
-export const CHART_INCOME_COLOR = '#10b981';
-export const CHART_EXPENSE_COLOR = '#ef4444';
+import { STATUS_TONE_HEX } from '@/lib/status-tone-colors';
+
+/** Income / positive series — matches booking **green** tone (teal-500). */
+export const CHART_INCOME_COLOR = STATUS_TONE_HEX.green;
+
+/** Expense / negative series — matches booking **red** tone (rose-500). */
+export const CHART_EXPENSE_COLOR = STATUS_TONE_HEX.red;
+
+/** Secondary metric series (e.g. bookings count) — matches **blue** tone (sky-500). */
+export const CHART_INFO_COLOR = STATUS_TONE_HEX.blue;
 
 export function formatChartMoneyAxis(value: number): string {
   if (value >= 1_000_000) return `₱${(value / 1_000_000).toFixed(1)}M`;

@@ -1,23 +1,25 @@
-/** Distinct segment colors for pie / breakdown charts (dark + light friendly). */
+import { STATUS_TONE_HEX } from '@/lib/status-tone-colors';
+
+/** Distinct segment colors for pie / breakdown charts — tone-aligned first, then extras. */
 const CHART_SEGMENT_PALETTE = [
-  '#10b981',
+  STATUS_TONE_HEX.green,
+  STATUS_TONE_HEX.blue,
+  STATUS_TONE_HEX.orange,
+  STATUS_TONE_HEX.purple,
+  STATUS_TONE_HEX.amber,
   '#6366f1',
-  '#f97316',
-  '#8b5cf6',
+  STATUS_TONE_HEX.red,
+  '#ec4899',
   '#84cc16',
   '#06b6d4',
-  '#ef4444',
-  '#ec4899',
-  '#3b82f6',
-  '#14b8a6',
-  '#f59e0b',
-  '#a855f7',
-  '#64748b',
-  '#eab308',
+  STATUS_TONE_HEX.yellow,
   '#d946ef',
+  STATUS_TONE_HEX.neutral,
   '#22c55e',
-  '#0ea5e9',
   '#f43f5e',
+  '#a855f7',
+  '#0ea5e9',
+  '#14b8a6',
 ] as const;
 
 function normalizeColorKey(color: string): string {

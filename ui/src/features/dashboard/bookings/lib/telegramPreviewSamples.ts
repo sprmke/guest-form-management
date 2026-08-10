@@ -106,7 +106,7 @@ const CHAT_SAMPLES: Record<string, string> = {
   attachment_summary: '1 image',
   attachment_line: '\n📎 Photo',
   conversation_link:
-    'https://kamehomes.space/org/demo/inbox?conversationId=00000000-0000-4000-8000-000000000001&platform=web',
+    'https://kamehomes.space/org/demo/property/demo-unit/inbox?conversationId=00000000-0000-4000-8000-000000000001&platform=web',
   check_in_date: 'June 18, 2026',
   check_out_date: 'June 20, 2026',
   sent_at: 'Jun 15, 2026, 3:42 PM',
