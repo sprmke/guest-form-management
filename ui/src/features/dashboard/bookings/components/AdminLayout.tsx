@@ -50,6 +50,7 @@ import { SectionNavIssueDot } from '@/features/dashboard/org/components/property
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useOptionalParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
 import { SidebarTenantScope } from '@/features/dashboard/org/components/TenantSwitchers';
+import { ListingVerificationSidebarCta } from '@/features/dashboard/org/components/listing-authorization/ListingVerificationSidebarCta';
 import {
   GetVerifiedSidebarCta,
   HostVerificationChangesGate,
@@ -595,7 +596,13 @@ function AdminSidebarContent({
         </div>
       </nav>
 
-      {!superAdmin ? <GetVerifiedSidebarCta collapsed={collapsed} /> : null}
+      {!superAdmin ? (
+        isPropertyAdminPath(pathname) || isParkingAdminPath(pathname) ? (
+          <ListingVerificationSidebarCta collapsed={collapsed} />
+        ) : (
+          <GetVerifiedSidebarCta collapsed={collapsed} />
+        )
+      ) : null}
 
       <AdminProfileFooter
         collapsed={collapsed}

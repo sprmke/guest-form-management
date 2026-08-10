@@ -4,15 +4,16 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Lock } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { listingAuthorizationAssetsQueryKey } from '@/features/dashboard/org/hooks/useListingAuthorization';
 import { ORGANIZATIONS_QUERY_KEY } from '@/features/dashboard/org/hooks/useOrganizations';
 import {
   hasActiveConsiderationGrant,
   isInGracePeriod,
   isListingAccessLocked,
-  type ContractLeg,
   type ContractLegLifecycle,
 } from '@/features/dashboard/org/lib/contractLifecycle';
 import { callEdgeFunction, getSessionJwt } from '@/features/dashboard/org/lib/edgeClient';
+import type { ListingKind } from '@/features/dashboard/org/lib/listingAuthorization';
 import {
   todayManilaYmd,
   validateVerificationFile,
@@ -43,7 +44,7 @@ function canSubmitClient(
 
 async function uploadConsiderationProof(
   orgId: string,
-  leg: ContractLeg,
+  listingKind: ListingKind,
   file: File
 ): Promise<string> {
   const jwt = await getSessionJwt();
@@ -51,7 +52,7 @@ async function uploadConsiderationProof(
   body.append('orgId', orgId);
   body.append(
     'assetType',
-    leg === 'parking' ? 'parking_consideration_proof' : 'property_consideration_proof'
+    listingKind === 'parking' ? 'parking_consideration_proof' : 'property_consideration_proof'
   );
   body.append('file', file);
   body.append('fileName', file.name);
@@ -73,12 +74,15 @@ async function uploadConsiderationProof(
 }
 
 type Props = {
-  leg: ContractLeg;
+  listingKind: ListingKind;
+  listingId: string;
   orgId: string;
   contractEndYmd: string | null;
   lifecycle: ContractLegLifecycle;
   isOwner: boolean;
   children: React.ReactNode;
+  /** Opens listing verification modal for renewal. */
+  onRenewVerification?: () => void;
 };
 
 /**
@@ -86,12 +90,14 @@ type Props = {
  * Grace period still renders children with a thin banner (owner can act later).
  */
 export function RequireListingContractAccess({
-  leg,
+  listingKind,
+  listingId,
   orgId,
   contractEndYmd,
   lifecycle,
   isOwner,
   children,
+  onRenewVerification,
 }: Props) {
   const today = todayManilaYmd();
   const qc = useQueryClient();
@@ -111,14 +117,14 @@ export function RequireListingContractAccess({
     mutationFn: async () => {
       let path = proofPath.trim();
       if (proofFile) {
-        path = await uploadConsiderationProof(orgId, leg, proofFile);
+        path = await uploadConsiderationProof(orgId, listingKind, proofFile);
       }
       if (!path) throw new Error('Proof is required');
       await callEdgeFunction('submit-contract-consideration', {
         method: 'POST',
         body: JSON.stringify({
-          orgId,
-          leg,
+          listingKind,
+          listingId,
           note,
           expectedDate,
           proofPaths: [path],
@@ -133,6 +139,9 @@ export function RequireListingContractAccess({
       setProofPath('');
       if (fileRef.current) fileRef.current.value = '';
       await qc.invalidateQueries({ queryKey: ORGANIZATIONS_QUERY_KEY });
+      await qc.invalidateQueries({
+        queryKey: listingAuthorizationAssetsQueryKey(listingKind, listingId),
+      });
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -142,12 +151,19 @@ export function RequireListingContractAccess({
       <div className="mx-auto flex min-h-[50vh] max-w-md flex-col items-center justify-center gap-3 p-6 text-center">
         <Lock className="text-muted-foreground size-8" aria-hidden />
         <p className="text-foreground text-base font-semibold">
-          {leg === 'parking' ? 'Parking' : 'Property'} access locked
+          {listingKind === 'parking' ? 'Parking' : 'Property'} access locked
         </p>
         {isOwner ? (
-          <p className="text-muted-foreground text-sm">
-            Submit a full contract renewal for Super Admin review.
-          </p>
+          <>
+            <p className="text-muted-foreground text-sm">
+              Renew listing verification for Super Admin review.
+            </p>
+            {onRenewVerification ? (
+              <Button type="button" className="min-h-[44px]" onClick={onRenewVerification}>
+                Renew verification
+              </Button>
+            ) : null}
+          </>
         ) : (
           <p className="text-muted-foreground text-sm">Contact the organization owner.</p>
         )}
@@ -206,14 +222,26 @@ export function RequireListingContractAccess({
                   setProofPath('');
                 }}
               />
-              <Button
-                type="button"
-                className="min-h-[44px] w-full sm:w-auto"
-                disabled={submitMutation.isPending || !note.trim() || !expectedDate || !proofFile}
-                onClick={() => submitMutation.mutate()}
-              >
-                Request consideration
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                {onRenewVerification ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="min-h-[44px] w-full sm:w-auto"
+                    onClick={onRenewVerification}
+                  >
+                    Renew verification
+                  </Button>
+                ) : null}
+                <Button
+                  type="button"
+                  className="min-h-[44px] w-full sm:w-auto"
+                  disabled={submitMutation.isPending || !note.trim() || !expectedDate || !proofFile}
+                  onClick={() => submitMutation.mutate()}
+                >
+                  Request consideration
+                </Button>
+              </div>
             </div>
           ) : null}
         </div>

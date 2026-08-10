@@ -7,10 +7,12 @@ import { ModeSwitcher } from '@/features/guest/marketing/shared/components/ModeS
 import type { SidebarNavItem } from '@/features/dashboard/bookings/lib/adminSidebarNav';
 import {
   isOrgAdminPath,
+  isParkingAdminPath,
   isPropertyAdminPath,
 } from '@/features/dashboard/bookings/lib/adminSidebarNav';
 import { SectionNavIssueDot } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import { GetVerifiedSidebarCta } from '@/features/dashboard/org/components/verification/GetVerifiedModal';
+import { ListingVerificationSidebarCta } from '@/features/dashboard/org/components/listing-authorization/ListingVerificationSidebarCta';
 
 import { scrollAdminViewToTop } from '@/components/navigation/ScrollToTop';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
@@ -136,7 +138,13 @@ export function AdminMoreSheet({
                 </p>
               ) : null}
             </div>
-            {!superAdmin ? <GetVerifiedSidebarCta variant="icon" /> : null}
+            {!superAdmin ? (
+              isPropertyAdminPath(pathname) || isParkingAdminPath(pathname) ? (
+                <ListingVerificationSidebarCta variant="icon" />
+              ) : (
+                <GetVerifiedSidebarCta variant="icon" />
+              )
+            ) : null}
           </div>
 
           <button

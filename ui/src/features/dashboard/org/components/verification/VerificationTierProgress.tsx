@@ -23,7 +23,7 @@ function rejectionKindFor(
   verifiedKind: OrgVerificationRejectionKind | null | undefined
 ): OrgVerificationRejectionKind | null {
   if (tier.status !== 'rejected') return null;
-  return tier.id === 'host' ? (hostKind ?? null) : (verifiedKind ?? null);
+  return tier.level === 1 ? (hostKind ?? null) : (verifiedKind ?? null);
 }
 
 /** Suggested initial step when the modal opens. */
@@ -90,7 +90,7 @@ export function VerificationTierProgress({
         {tiers.map((tier, index) => {
           const kind = rejectionKindFor(tier, hostRejectionKind, verifiedRejectionKind);
           const selected = index === activeStep;
-          const isHostTier = tier.id === 'host';
+          const isHostTier = tier.level === 1;
           const approved = tier.status === 'approved';
 
           return (
@@ -136,8 +136,9 @@ export function VerificationTierProgress({
                       )}
                     </div>
                     <p className="text-muted-foreground truncate text-[11px] leading-none">
-                      Tier {tier.level}
-                      {isHostTier ? ' · Required to host' : ' · Optional badge'}
+                      Tier {tier.level} ·{' '}
+                      {tier.requirementLabel ??
+                        (isHostTier ? 'Required to host' : 'Optional badge')}
                     </p>
                   </div>
                 </div>

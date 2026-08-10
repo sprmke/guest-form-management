@@ -40,6 +40,8 @@ function previewUrlForItem(
   switch (id) {
     case 'valid-id':
       return assetUrls.validIdUrl;
+    case 'facebook-page':
+      return assetUrls.socialProofUrl;
     case 'property-ownership':
       return assetUrls.propertyOwnershipProofUrl;
     case 'property-access':
@@ -48,6 +50,12 @@ function previewUrlForItem(
       return assetUrls.parkingSocialProofUrl;
     case 'selfie':
       return assetUrls.selfieWithIdUrl;
+    case 'platform-admin':
+      return assetUrls.platformAdminProofUrl;
+    case 'legitimacy-check':
+      return assetUrls.legitimacyCheckProofUrl;
+    case 'business-permit':
+      return assetUrls.businessPermitOrBirUrl;
     case 'ownership':
       return assetUrls.ownershipProofUrl;
     case 'azure-pmo-confirmation':

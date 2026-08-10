@@ -1,14 +1,17 @@
-import { useEffect, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
-import { useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 
 import { useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, BadgeCheck, Check, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { OnboardingHostAccessVerificationSection } from '@/features/dashboard/org/components/onboarding/OnboardingHostAccessVerificationSection';
+import {
+  isParkingAdminPath,
+  isPropertyAdminPath,
+} from '@/features/dashboard/bookings/lib/adminSidebarNav';
+import { OrgListingVerificationRollup } from '@/features/dashboard/org/components/listing-authorization/OrgListingVerificationRollup';
 import { OnboardingHostVerificationSection } from '@/features/dashboard/org/components/onboarding/OnboardingHostVerificationSection';
-import { OnboardingParkingVerificationSection } from '@/features/dashboard/org/components/onboarding/OnboardingParkingVerificationSection';
 import { OnboardingProofUpload } from '@/features/dashboard/org/components/onboarding/OnboardingProofUpload';
 import { VerificationFieldLabel } from '@/features/dashboard/org/components/onboarding/VerificationFieldLabel';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
@@ -27,16 +30,10 @@ import { callEdgeFunction, getSessionJwt } from '@/features/dashboard/org/lib/ed
 import {
   ORG_SOCIAL_PROOF_PLATFORMS,
   propertyAccessScreenshotHelp,
-  todayManilaYmd,
-  validateVerificationContractEndDate,
   validateVerificationFile,
-  verificationRightsNeedsContractEnd,
-  verificationRightsProofHelp,
   shouldShowGetVerifiedCta,
   type OrgSocialProofPlatform,
-  type OrgVerificationRights,
   type OrgVerificationStatus,
-  type VerificationSectionKind,
 } from '@/features/dashboard/org/lib/orgVerification';
 import {
   buildHostTierChecklist,
@@ -144,29 +141,6 @@ function slotRequiredError(touched: boolean, submitting: boolean, slot: ProofSlo
   return 'Required';
 }
 
-function verificationRightsError(
-  value: OrgVerificationRights | '',
-  kind: VerificationSectionKind
-): string | null {
-  if (!value) {
-    return kind === 'parking' ? 'Select parking rights' : 'Select property rights';
-  }
-  return null;
-}
-
-function handleVerificationRightsChange(
-  value: OrgVerificationRights,
-  setRights: (value: OrgVerificationRights) => void,
-  setContractEndDate: Dispatch<SetStateAction<string>>
-) {
-  setRights(value);
-  if (verificationRightsNeedsContractEnd(value)) {
-    setContractEndDate((prev) => prev || todayManilaYmd());
-  } else {
-    setContractEndDate('');
-  }
-}
-
 function VerificationPendingNote() {
   return (
     <p className="text-muted-foreground text-xs leading-relaxed">{VERIFICATION_REVIEW_TIMELINE}</p>
@@ -216,6 +190,21 @@ function VerificationFeedbackAlert({
   );
 }
 
+function ListingVerificationRollupSection({
+  orgId,
+  orgSlug,
+  modalOpen,
+}: {
+  orgId?: string;
+  orgSlug?: string;
+  modalOpen?: boolean;
+}) {
+  if (!orgId || !orgSlug) return null;
+  return (
+    <OrgListingVerificationRollup orgId={orgId} orgSlug={orgSlug} enabled={Boolean(modalOpen)} />
+  );
+}
+
 function VerifiedTierStepPanel({
   tier,
   checklist,
@@ -224,6 +213,7 @@ function VerifiedTierStepPanel({
   rejectionKind,
   changesResubmit = false,
   orgId,
+  orgSlug,
   modalOpen,
   showSubmittedDocs,
   children,
@@ -236,6 +226,7 @@ function VerifiedTierStepPanel({
   /** Streamlined layout for forced Tier 1 changes-requested resubmit. */
   changesResubmit?: boolean;
   orgId?: string;
+  orgSlug?: string;
   modalOpen?: boolean;
   showSubmittedDocs?: boolean;
   children?: ReactNode;
@@ -278,6 +269,7 @@ function VerifiedTierStepPanel({
             {submittedDocsSection}
           </div>
         ) : null}
+        <ListingVerificationRollupSection orgId={orgId} orgSlug={orgSlug} modalOpen={modalOpen} />
       </section>
     );
   }
@@ -297,6 +289,7 @@ function VerifiedTierStepPanel({
         ) : null}
         {children}
         {submittedDocsSection}
+        <ListingVerificationRollupSection orgId={orgId} orgSlug={orgSlug} modalOpen={modalOpen} />
       </section>
     );
   }
@@ -339,6 +332,8 @@ function VerifiedTierStepPanel({
           message={rejectionReason}
         />
       ) : null}
+
+      <ListingVerificationRollupSection orgId={orgId} orgSlug={orgSlug} modalOpen={modalOpen} />
     </section>
   );
 }
@@ -397,6 +392,7 @@ function RecommendedTierStepPanel({
   tier,
   orgName,
   orgId,
+  orgSlug,
   modalOpen,
   checklist,
   showSubmittedDocs,
@@ -406,16 +402,21 @@ function RecommendedTierStepPanel({
   enhancedRejectionKind,
   enhancedRejectionReason,
   selfie,
-  ownership,
-  azurePmoConfirmation,
+  platformAdmin,
+  platformAdminPlatform,
+  legitimacyCheck,
+  businessPermit,
   verifiedTouched,
   onSelfieChange,
-  onOwnershipChange,
-  onAzurePmoConfirmationChange,
+  onPlatformAdminChange,
+  onPlatformAdminPlatformChange,
+  onLegitimacyCheckChange,
+  onBusinessPermitChange,
 }: {
   tier: VerificationTierDefinition;
   orgName?: string | null;
   orgId?: string;
+  orgSlug?: string;
   modalOpen: boolean;
   checklist: ReturnType<typeof buildVerifiedTierChecklist>;
   showSubmittedDocs: boolean;
@@ -425,12 +426,16 @@ function RecommendedTierStepPanel({
   enhancedRejectionKind: 'changes' | 'rejected' | null;
   enhancedRejectionReason: string | null;
   selfie: ProofSlot;
-  ownership: ProofSlot;
-  azurePmoConfirmation: ProofSlot;
+  platformAdmin: ProofSlot;
+  platformAdminPlatform: OrgSocialProofPlatform | '';
+  legitimacyCheck: ProofSlot;
+  businessPermit: ProofSlot;
   verifiedTouched: boolean;
   onSelfieChange: (file: File | null, previewUrl: string | null) => void;
-  onOwnershipChange: (file: File | null, previewUrl: string | null) => void;
-  onAzurePmoConfirmationChange: (file: File | null, previewUrl: string | null) => void;
+  onPlatformAdminChange: (file: File | null, previewUrl: string | null) => void;
+  onPlatformAdminPlatformChange: (value: OrgSocialProofPlatform) => void;
+  onLegitimacyCheckChange: (file: File | null, previewUrl: string | null) => void;
+  onBusinessPermitChange: (file: File | null, previewUrl: string | null) => void;
 }) {
   const submittedDocsSection =
     showSubmittedDocs && orgId ? (
@@ -462,6 +467,7 @@ function RecommendedTierStepPanel({
         ) : (
           <p className="text-foreground text-sm leading-relaxed">{VERIFICATION_TIER2_APPROVED}</p>
         )}
+        <ListingVerificationRollupSection orgId={orgId} orgSlug={orgSlug} modalOpen={modalOpen} />
       </section>
     );
   }
@@ -476,6 +482,7 @@ function RecommendedTierStepPanel({
           Recommended
         </h3>
         {submittedDocsSection ?? <VerificationPendingNote />}
+        <ListingVerificationRollupSection orgId={orgId} orgSlug={orgSlug} modalOpen={modalOpen} />
       </section>
     );
   }
@@ -547,26 +554,43 @@ function RecommendedTierStepPanel({
             error={verifiedTouched && !slotReady(selfie) ? 'Required' : null}
             onFileChange={onSelfieChange}
           />
-          <OnboardingProofUpload
-            id="enhanced-ownership"
-            label={VERIFICATION_TIER2_DOC_LABELS.ownership}
-            help={VERIFICATION_TIER2_DOC_HELP.ownership}
-            file={ownership.file}
-            previewUrl={ownership.previewUrl}
-            error={verifiedTouched && !slotReady(ownership) ? 'Required' : null}
-            onFileChange={onOwnershipChange}
+          <SocialPlatformSelect
+            id="enhanced-platform-admin-platform"
+            label="Platform"
+            help="Choose the platform shown in your admin or host screenshot."
+            value={platformAdminPlatform}
+            onChange={onPlatformAdminPlatformChange}
+            error={verifiedTouched && !platformAdminPlatform ? 'Select a platform' : null}
           />
           <OnboardingProofUpload
-            id="enhanced-azure-pmo-confirmation"
-            label={VERIFICATION_TIER2_DOC_LABELS.azurePmoConfirmation}
-            help={VERIFICATION_TIER2_DOC_HELP.azurePmoConfirmation}
-            file={azurePmoConfirmation.file}
-            previewUrl={azurePmoConfirmation.previewUrl}
-            error={verifiedTouched && !slotReady(azurePmoConfirmation) ? 'Required' : null}
-            onFileChange={onAzurePmoConfirmationChange}
+            id="enhanced-platform-admin"
+            label={VERIFICATION_TIER2_DOC_LABELS.platformAdmin}
+            help={VERIFICATION_TIER2_DOC_HELP.platformAdmin}
+            file={platformAdmin.file}
+            previewUrl={platformAdmin.previewUrl}
+            error={verifiedTouched && !slotReady(platformAdmin) ? 'Required' : null}
+            onFileChange={onPlatformAdminChange}
+          />
+          <OnboardingProofUpload
+            id="enhanced-legitimacy-check"
+            label={VERIFICATION_TIER2_DOC_LABELS.legitimacyCheck}
+            help={VERIFICATION_TIER2_DOC_HELP.legitimacyCheck}
+            file={legitimacyCheck.file}
+            previewUrl={legitimacyCheck.previewUrl}
+            onFileChange={onLegitimacyCheckChange}
+          />
+          <OnboardingProofUpload
+            id="enhanced-business-permit"
+            label={VERIFICATION_TIER2_DOC_LABELS.businessPermit}
+            help={VERIFICATION_TIER2_DOC_HELP.businessPermit}
+            file={businessPermit.file}
+            previewUrl={businessPermit.previewUrl}
+            onFileChange={onBusinessPermitChange}
           />
         </div>
       </div>
+
+      <ListingVerificationRollupSection orgId={orgId} orgSlug={orgSlug} modalOpen={modalOpen} />
     </section>
   );
 }
@@ -577,39 +601,28 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
   const detail = readOrgVerificationDetail(org?.settings);
   const hostModes = resolveHostModes(org);
   const tiers = buildVerificationTiers(detail);
-  const hostChecklist = buildHostTierChecklist(detail, hostModes);
+  const hostChecklist = buildHostTierChecklist(detail);
   const verifiedChecklist = buildVerifiedTierChecklist(detail);
 
-  const needsProperty = hostModes.includes('property');
-  const needsParking = hostModes.includes('parking');
   const hostRejected = detail.baseStatus === 'rejected';
   const hostChangesRequested = isHostVerificationChangesRequestedFromDetail(detail);
   const hostHardRejected = isHostVerificationHardRejectedFromDetail(detail);
   const blockDismiss = forced || hostChangesRequested;
-  const changesDocs = hostChangesRequested
+  const rawChangesDocs = hostChangesRequested
     ? resolveHostChangesRequestedDocs({
         stored: detail.baseChangesRequestedDocs,
         reason: detail.baseRejectionReason,
         hostModes,
       })
     : ([] as OrgVerificationChangeDocId[]);
+  const changesDocs = rawChangesDocs.filter(
+    (id): id is OrgVerificationChangeDocId => id === 'validId' || id === 'socialProof'
+  );
   /** Empty list = legacy full form; otherwise only those docs. */
   const showAllChangeDocs = hostChangesRequested && changesDocs.length === 0;
   const fixValidId = hostChangesRequested && (showAllChangeDocs || changesDocs.includes('validId'));
   const fixSocialProof =
-    hostChangesRequested &&
-    needsProperty &&
-    (showAllChangeDocs || changesDocs.includes('socialProof'));
-  const fixPropertyOwnership =
-    hostChangesRequested &&
-    needsProperty &&
-    (showAllChangeDocs || changesDocs.includes('propertyOwnership'));
-  const fixParkingProof =
-    hostChangesRequested &&
-    needsParking &&
-    (showAllChangeDocs || changesDocs.includes('parkingProof'));
-  const showFullPropertyResubmit = showAllChangeDocs || (fixSocialProof && fixPropertyOwnership);
-  const showFullParkingResubmit = showAllChangeDocs && fixParkingProof;
+    hostChangesRequested && (showAllChangeDocs || changesDocs.includes('socialProof'));
 
   const showTier1SubmittedDocs = detail.baseStatus !== 'none';
   const showTier2SubmittedDocs = detail.enhancedStatus !== 'none';
@@ -621,17 +634,14 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
 
   const [validId, setValidId] = useState<ProofSlot>(emptySlot);
   const [socialProof, setSocialProof] = useState<ProofSlot>(emptySlot);
-  const [propertyOwnership, setPropertyOwnership] = useState<ProofSlot>(emptySlot);
-  const [parkingProof, setParkingProof] = useState<ProofSlot>(emptySlot);
-  const [socialPlatform, setSocialPlatform] = useState<OrgSocialProofPlatform | ''>('');
-  const [propertyRights, setPropertyRights] = useState<OrgVerificationRights | ''>('');
-  const [propertyContractEndDate, setPropertyContractEndDate] = useState('');
-  const [parkingRights, setParkingRights] = useState<OrgVerificationRights | ''>('');
-  const [parkingContractEndDate, setParkingContractEndDate] = useState('');
 
   const [selfie, setSelfie] = useState<ProofSlot>(emptySlot);
-  const [ownership, setOwnership] = useState<ProofSlot>(emptySlot);
-  const [azurePmoConfirmation, setAzurePmoConfirmation] = useState<ProofSlot>(emptySlot);
+  const [platformAdmin, setPlatformAdmin] = useState<ProofSlot>(emptySlot);
+  const [platformAdminPlatform, setPlatformAdminPlatform] = useState<OrgSocialProofPlatform | ''>(
+    ''
+  );
+  const [legitimacyCheck, setLegitimacyCheck] = useState<ProofSlot>(emptySlot);
+  const [businessPermit, setBusinessPermit] = useState<ProofSlot>(emptySlot);
   const [submitting, setSubmitting] = useState<'base' | 'enhanced' | null>(null);
   const [activeStep, setActiveStep] = useState(0);
   const [hostTouched, setHostTouched] = useState(false);
@@ -647,13 +657,11 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
           stored: next.baseChangesRequestedDocs,
           reason: next.baseRejectionReason,
           hostModes: modes,
-        })
+        }).filter((id) => id === 'validId' || id === 'socialProof')
       : [];
     const showAll = isHostVerificationChangesRequestedFromDetail(next) && docs.length === 0;
     const clearValidId = showAll || docs.includes('validId');
     const clearSocial = showAll || docs.includes('socialProof');
-    const clearOwnership = showAll || docs.includes('propertyOwnership');
-    const clearParking = showAll || docs.includes('parkingProof');
 
     setValidId({
       file: null,
@@ -665,27 +673,22 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
       previewUrl: null,
       path: clearSocial ? null : next.assets.socialProofPath,
     });
-    setPropertyOwnership({
-      file: null,
-      previewUrl: null,
-      path: clearOwnership ? null : next.assets.propertyOwnershipProofPath,
-    });
-    setParkingProof({
-      file: null,
-      previewUrl: null,
-      path: clearParking ? null : next.assets.parkingSocialProofPath,
-    });
-    setSocialPlatform(next.socialPlatform ?? '');
-    setPropertyRights(next.propertyRelationship ?? '');
-    setPropertyContractEndDate(next.propertyContractEndDate ?? '');
-    setParkingRights(next.parkingRelationship ?? '');
-    setParkingContractEndDate(next.parkingContractEndDate ?? '');
     setSelfie({ file: null, previewUrl: null, path: next.assets.selfieWithIdPath });
-    setOwnership({ file: null, previewUrl: null, path: next.assets.ownershipProofPath });
-    setAzurePmoConfirmation({
+    setPlatformAdmin({
       file: null,
       previewUrl: null,
-      path: next.assets.azurePmoConfirmationPath,
+      path: next.assets.platformAdminProofPath,
+    });
+    setPlatformAdminPlatform(next.platformAdminPlatform ?? '');
+    setLegitimacyCheck({
+      file: null,
+      previewUrl: null,
+      path: next.assets.legitimacyCheckProofPath,
+    });
+    setBusinessPermit({
+      file: null,
+      previewUrl: null,
+      path: next.assets.businessPermitOrBirPath,
     });
     setHostTouched(false);
     setVerifiedTouched(false);
@@ -703,17 +706,8 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
     detail,
     hostModes,
     {
-      // After upload, file is cleared and path is set — treat path as ready so Resubmit
-      // stays enabled if submit fails (modal open still clears flagged paths on open).
       validId: slotReady(validId),
       socialProof: slotReady(socialProof),
-      propertyOwnership: slotReady(propertyOwnership),
-      parkingProof: slotReady(parkingProof),
-      socialPlatform,
-      propertyRights,
-      propertyContractEndDate,
-      parkingRights,
-      parkingContractEndDate,
     },
     hostChangesRequested && changesDocs.length > 0
       ? { changesRequestedDocs: changesDocs }
@@ -722,18 +716,9 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
 
   const canSubmitVerified = canSubmitVerifiedTier(detail, {
     selfie: slotReady(selfie),
-    ownership: slotReady(ownership),
-    azurePmoConfirmation: slotReady(azurePmoConfirmation),
+    platformAdmin: slotReady(platformAdmin),
+    platformAdminPlatform,
   });
-
-  const propertyContractEndError =
-    hostTouched && needsProperty && verificationRightsNeedsContractEnd(propertyRights)
-      ? validateVerificationContractEndDate(propertyContractEndDate)
-      : null;
-  const parkingContractEndError =
-    hostTouched && needsParking && verificationRightsNeedsContractEnd(parkingRights)
-      ? validateVerificationContractEndDate(parkingContractEndDate)
-      : null;
 
   const setSlot = (setter: typeof setSelfie) => (file: File | null, previewUrl: string | null) => {
     if (file) {
@@ -757,29 +742,9 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
         const uploaded = await uploadVerificationAsset(org.id, 'valid_id', validId.file);
         setValidId({ file: null, previewUrl: uploaded.previewUrl, path: uploaded.path });
       }
-      if (needsProperty && socialProof.file) {
+      if (socialProof.file) {
         const uploaded = await uploadVerificationAsset(org.id, 'social_proof', socialProof.file);
         setSocialProof({ file: null, previewUrl: uploaded.previewUrl, path: uploaded.path });
-      }
-      if (needsProperty && propertyOwnership.file) {
-        const uploaded = await uploadVerificationAsset(
-          org.id,
-          'property_ownership_proof',
-          propertyOwnership.file
-        );
-        setPropertyOwnership({
-          file: null,
-          previewUrl: uploaded.previewUrl,
-          path: uploaded.path,
-        });
-      }
-      if (needsParking && parkingProof.file) {
-        const uploaded = await uploadVerificationAsset(
-          org.id,
-          'parking_social_proof',
-          parkingProof.file
-        );
-        setParkingProof({ file: null, previewUrl: uploaded.previewUrl, path: uploaded.path });
       }
 
       await callEdgeFunction('submit-org-verification', {
@@ -787,19 +752,6 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
         body: JSON.stringify({
           orgId: org.id,
           tier: 'base',
-          ...(needsProperty && {
-            socialPlatform,
-            propertyRelationship: propertyRights,
-            ...(verificationRightsNeedsContractEnd(propertyRights) && {
-              propertyContractEndDate,
-            }),
-          }),
-          ...(needsParking && {
-            parkingRelationship: parkingRights,
-            ...(verificationRightsNeedsContractEnd(parkingRights) && {
-              parkingContractEndDate,
-            }),
-          }),
         }),
       });
       await queryClient.invalidateQueries({ queryKey: ORGANIZATIONS_QUERY_KEY });
@@ -821,26 +773,38 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
         const uploaded = await uploadVerificationAsset(org.id, 'selfie_with_id', selfie.file);
         setSelfie({ file: null, previewUrl: uploaded.previewUrl, path: uploaded.path });
       }
-      if (ownership.file) {
-        const uploaded = await uploadVerificationAsset(org.id, 'ownership_proof', ownership.file);
-        setOwnership({ file: null, previewUrl: uploaded.previewUrl, path: uploaded.path });
-      }
-      if (azurePmoConfirmation.file) {
+      if (platformAdmin.file) {
         const uploaded = await uploadVerificationAsset(
           org.id,
-          'azure_pmo_confirmation',
-          azurePmoConfirmation.file
+          'platform_admin_proof',
+          platformAdmin.file
         );
-        setAzurePmoConfirmation({
-          file: null,
-          previewUrl: uploaded.previewUrl,
-          path: uploaded.path,
-        });
+        setPlatformAdmin({ file: null, previewUrl: uploaded.previewUrl, path: uploaded.path });
+      }
+      if (legitimacyCheck.file) {
+        const uploaded = await uploadVerificationAsset(
+          org.id,
+          'legitimacy_check_proof',
+          legitimacyCheck.file
+        );
+        setLegitimacyCheck({ file: null, previewUrl: uploaded.previewUrl, path: uploaded.path });
+      }
+      if (businessPermit.file) {
+        const uploaded = await uploadVerificationAsset(
+          org.id,
+          'business_permit_bir',
+          businessPermit.file
+        );
+        setBusinessPermit({ file: null, previewUrl: uploaded.previewUrl, path: uploaded.path });
       }
 
       await callEdgeFunction('submit-org-verification', {
         method: 'POST',
-        body: JSON.stringify({ orgId: org.id, tier: 'enhanced' }),
+        body: JSON.stringify({
+          orgId: org.id,
+          tier: 'enhanced',
+          platformAdminPlatform,
+        }),
       });
       await queryClient.invalidateQueries({ queryKey: ORGANIZATIONS_QUERY_KEY });
       toast.success('Recommended tier submitted');
@@ -920,6 +884,7 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
                 rejectionKind={hostRejected ? detail.baseRejectionKind : null}
                 changesResubmit={hostChangesRequested}
                 orgId={org?.id}
+                orgSlug={org?.slug}
                 modalOpen={open}
                 showSubmittedDocs={showTier1SubmittedDocs}
               >
@@ -943,180 +908,14 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
                         }}
                       />
                     ) : null}
-                    {showFullPropertyResubmit ? (
-                      <OnboardingHostAccessVerificationSection
-                        sectionId="host-resubmit-property"
-                        title="Property verification"
-                        subtitle="Update the docs that need fixing."
-                        rights={propertyRights}
-                        onRightsChange={(value) =>
-                          handleVerificationRightsChange(
-                            value,
-                            setPropertyRights,
-                            setPropertyContractEndDate
-                          )
-                        }
-                        rightsError={
-                          hostTouched ? verificationRightsError(propertyRights, 'property') : null
-                        }
-                        contractEndDate={propertyContractEndDate}
-                        onContractEndDateChange={setPropertyContractEndDate}
-                        contractEndDateError={propertyContractEndError}
-                        proofFile={propertyOwnership.file}
-                        proofPreview={propertyOwnership.previewUrl}
-                        proofError={slotRequiredError(
-                          hostTouched,
-                          submitting !== null,
-                          propertyOwnership
-                        )}
-                        onProofChange={(file, preview) => {
-                          setPropertyOwnership({
-                            file,
-                            previewUrl: preview,
-                            path: file ? null : propertyOwnership.path,
-                          });
-                        }}
-                        platformLabel="Property platform"
-                        platformHelp="Choose where you market your property."
-                        platformValue={socialPlatform}
-                        onPlatformChange={setSocialPlatform}
-                        platformError={hostTouched && !socialPlatform ? 'Select a platform' : null}
-                        screenshotFile={socialProof.file}
-                        screenshotPreview={socialProof.previewUrl}
-                        screenshotError={slotRequiredError(
-                          hostTouched,
-                          submitting !== null,
-                          socialProof
-                        )}
-                        onScreenshotChange={(file, preview) => {
-                          setSocialProof({
-                            file,
-                            previewUrl: preview,
-                            path: file ? null : socialProof.path,
-                          });
-                        }}
-                        onUploadError={(message) => {
-                          setUploadError(message);
-                          if (message) toast.error(message);
-                        }}
-                      />
-                    ) : (
-                      <>
-                        {fixPropertyOwnership ? (
-                          <OnboardingProofUpload
-                            id="host-resubmit-property-ownership"
-                            label="Ownership / management"
-                            help={verificationRightsProofHelp(propertyRights || '', 'property')}
-                            file={propertyOwnership.file}
-                            previewUrl={propertyOwnership.previewUrl}
-                            error={slotRequiredError(
-                              hostTouched,
-                              submitting !== null,
-                              propertyOwnership
-                            )}
-                            onFileChange={(file, preview) => {
-                              if (file) {
-                                const err = validateVerificationFile(file);
-                                if (err) {
-                                  setUploadError(err);
-                                  toast.error(err);
-                                  return;
-                                }
-                              }
-                              setUploadError(null);
-                              setPropertyOwnership({
-                                file,
-                                previewUrl: preview,
-                                path: file ? null : propertyOwnership.path,
-                              });
-                            }}
-                          />
-                        ) : null}
-                        {fixSocialProof ? (
-                          <div className="space-y-4">
-                            <SocialPlatformSelect
-                              id="host-resubmit-platform"
-                              label="Property platform"
-                              help="Choose where you market your property."
-                              value={socialPlatform}
-                              onChange={setSocialPlatform}
-                              error={hostTouched && !socialPlatform ? 'Select a platform' : null}
-                            />
-                            <OnboardingProofUpload
-                              id="host-resubmit-social-proof"
-                              label="Listing access"
-                              help={propertyAccessScreenshotHelp(socialPlatform, 'property')}
-                              file={socialProof.file}
-                              previewUrl={socialProof.previewUrl}
-                              error={slotRequiredError(
-                                hostTouched,
-                                submitting !== null,
-                                socialProof
-                              )}
-                              onFileChange={(file, preview) => {
-                                if (file) {
-                                  const err = validateVerificationFile(file);
-                                  if (err) {
-                                    setUploadError(err);
-                                    toast.error(err);
-                                    return;
-                                  }
-                                }
-                                setUploadError(null);
-                                setSocialProof({
-                                  file,
-                                  previewUrl: preview,
-                                  path: file ? null : socialProof.path,
-                                });
-                              }}
-                            />
-                          </div>
-                        ) : null}
-                      </>
-                    )}
-                    {showFullParkingResubmit ? (
-                      <OnboardingParkingVerificationSection
-                        rights={parkingRights}
-                        onRightsChange={(value) =>
-                          handleVerificationRightsChange(
-                            value,
-                            setParkingRights,
-                            setParkingContractEndDate
-                          )
-                        }
-                        rightsError={
-                          hostTouched ? verificationRightsError(parkingRights, 'parking') : null
-                        }
-                        contractEndDate={parkingContractEndDate}
-                        onContractEndDateChange={setParkingContractEndDate}
-                        contractEndDateError={parkingContractEndError}
-                        proofFile={parkingProof.file}
-                        proofPreview={parkingProof.previewUrl}
-                        proofError={slotRequiredError(
-                          hostTouched,
-                          submitting !== null,
-                          parkingProof
-                        )}
-                        onProofChange={(file, preview) => {
-                          setParkingProof({
-                            file,
-                            previewUrl: preview,
-                            path: file ? null : parkingProof.path,
-                          });
-                        }}
-                        onUploadError={(message) => {
-                          setUploadError(message);
-                          if (message) toast.error(message);
-                        }}
-                      />
-                    ) : fixParkingProof ? (
+                    {fixSocialProof ? (
                       <OnboardingProofUpload
-                        id="host-resubmit-parking-proof"
-                        label="Parking ownership / management"
-                        help={verificationRightsProofHelp(parkingRights || '', 'parking')}
-                        file={parkingProof.file}
-                        previewUrl={parkingProof.previewUrl}
-                        error={slotRequiredError(hostTouched, submitting !== null, parkingProof)}
+                        id="host-resubmit-facebook-page"
+                        label="Facebook Page screenshot"
+                        help={propertyAccessScreenshotHelp('facebook')}
+                        file={socialProof.file}
+                        previewUrl={socialProof.previewUrl}
+                        error={slotRequiredError(hostTouched, submitting !== null, socialProof)}
                         onFileChange={(file, preview) => {
                           if (file) {
                             const err = validateVerificationFile(file);
@@ -1127,10 +926,10 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
                             }
                           }
                           setUploadError(null);
-                          setParkingProof({
+                          setSocialProof({
                             file,
                             previewUrl: preview,
-                            path: file ? null : parkingProof.path,
+                            path: file ? null : socialProof.path,
                           });
                         }}
                       />
@@ -1153,6 +952,7 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
                 tier={verifiedTier}
                 orgName={org?.name}
                 orgId={org?.id}
+                orgSlug={org?.slug}
                 modalOpen={open}
                 checklist={verifiedChecklist}
                 showSubmittedDocs={showTier2SubmittedDocs}
@@ -1162,12 +962,16 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
                 enhancedRejectionKind={detail.enhancedRejectionKind}
                 enhancedRejectionReason={detail.enhancedRejectionReason}
                 selfie={selfie}
-                ownership={ownership}
-                azurePmoConfirmation={azurePmoConfirmation}
+                platformAdmin={platformAdmin}
+                platformAdminPlatform={platformAdminPlatform}
+                legitimacyCheck={legitimacyCheck}
+                businessPermit={businessPermit}
                 verifiedTouched={verifiedTouched}
                 onSelfieChange={setSlot(setSelfie)}
-                onOwnershipChange={setSlot(setOwnership)}
-                onAzurePmoConfirmationChange={setSlot(setAzurePmoConfirmation)}
+                onPlatformAdminChange={setSlot(setPlatformAdmin)}
+                onPlatformAdminPlatformChange={setPlatformAdminPlatform}
+                onLegitimacyCheckChange={setSlot(setLegitimacyCheck)}
+                onBusinessPermitChange={setSlot(setBusinessPermit)}
               />
             )}
           </div>
@@ -1232,9 +1036,15 @@ export function GetVerifiedSidebarCta({
   variant?: 'sidebar' | 'icon';
 }) {
   const [open, setOpen] = useState(false);
+  const location = useLocation();
   const org = useCurrentOrganization();
   const detail = readOrgVerificationDetail(org?.settings);
   const forced = isHostVerificationChangesRequestedFromDetail(detail);
+
+  // Host/org verification lives on org routes only — listing shells use ListingVerificationSidebarCta.
+  if (isPropertyAdminPath(location.pathname) || isParkingAdminPath(location.pathname)) {
+    return null;
+  }
 
   if (!org || !shouldShowGetVerifiedCta(detail)) return null;
 

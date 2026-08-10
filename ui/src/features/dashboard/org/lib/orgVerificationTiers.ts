@@ -7,8 +7,6 @@ import {
   ORG_SOCIAL_PROOF_PLATFORMS,
   ORG_VERIFICATION_RIGHTS,
   ORG_VERIFICATION_STATUSES,
-  validateVerificationContractEndDate,
-  verificationRightsNeedsContractEnd,
   type OrgSocialProofPlatform,
   type OrgVerificationRights,
   type OrgVerificationStatus,
@@ -25,10 +23,17 @@ export type OrgVerificationRejectionKind = 'changes' | 'rejected';
 export type OrgVerificationAssets = {
   validIdPath: string | null;
   socialProofPath: string | null;
-  propertyOwnershipProofPath: string | null;
-  parkingSocialProofPath: string | null;
   selfieWithIdPath: string | null;
+  platformAdminProofPath: string | null;
+  legitimacyCheckProofPath: string | null;
+  businessPermitOrBirPath: string | null;
+  /** @deprecated listing-scoped; kept as a backfill read fallback. */
+  propertyOwnershipProofPath: string | null;
+  /** @deprecated listing-scoped; kept as a backfill read fallback. */
+  parkingSocialProofPath: string | null;
+  /** @deprecated listing-scoped; kept as a backfill read fallback. */
   ownershipProofPath: string | null;
+  /** @deprecated listing-scoped; kept as a backfill read fallback. */
   azurePmoConfirmationPath: string | null;
   pmoEmailPaths: string[];
 };
@@ -37,6 +42,8 @@ export type OrgVerificationDetail = {
   baseStatus: OrgVerificationStatus;
   enhancedStatus: OrgVerificationStatus;
   socialPlatform: OrgSocialProofPlatform | null;
+  platformAdminPlatform: OrgSocialProofPlatform | null;
+  /** @deprecated listing-scoped */
   propertyRelationship: OrgVerificationRights | null;
   propertyContractEndDate: string | null;
   parkingRelationship: OrgVerificationRights | null;
@@ -55,15 +62,9 @@ export type OrgVerificationDetail = {
   verifiedBadge: boolean;
 };
 
-export type OrgVerificationChangeDocId =
-  'validId' | 'socialProof' | 'propertyOwnership' | 'parkingProof';
+export type OrgVerificationChangeDocId = 'validId' | 'socialProof';
 
-const CHANGE_DOC_IDS: readonly OrgVerificationChangeDocId[] = [
-  'validId',
-  'socialProof',
-  'propertyOwnership',
-  'parkingProof',
-];
+const CHANGE_DOC_IDS: readonly OrgVerificationChangeDocId[] = ['validId', 'socialProof'];
 
 function asChangesRequestedDocs(value: unknown): OrgVerificationChangeDocId[] {
   if (!Array.isArray(value)) return [];
@@ -88,18 +89,14 @@ export type VerificationChecklistItem = {
 };
 
 /** Host Tier 1 checklist rows backed by an uploaded file (submitted-docs list + count). */
-const HOST_TIER_DOCUMENT_ITEM_IDS = new Set([
-  'valid-id',
-  'property-ownership',
-  'property-access',
-  'parking-proof',
-]);
+const HOST_TIER_DOCUMENT_ITEM_IDS = new Set(['valid-id', 'facebook-page']);
 
 /** Recommended Tier 2 checklist rows backed by an uploaded file. */
 const RECOMMENDED_TIER_DOCUMENT_ITEM_IDS = new Set([
   'selfie',
-  'ownership',
-  'azure-pmo-confirmation',
+  'platform-admin',
+  'legitimacy-check',
+  'business-permit',
 ]);
 
 export function hostTierDocumentChecklistItems(
@@ -115,11 +112,13 @@ export function recommendedTierDocumentChecklistItems(
 }
 
 export type VerificationTierDefinition = {
-  id: 'host' | 'verified';
+  id: 'host' | 'verified' | 'listing_base' | 'listing_recommended';
   level: number;
   title: string;
   benefit: string;
   status: OrgVerificationStatus;
+  /** Overrides the default "Required to host" / "Optional badge" sublabel. */
+  requirementLabel?: string;
 };
 
 const LEGACY_RIGHTS_MAP: Record<string, OrgVerificationRights> = {
@@ -169,9 +168,12 @@ function asRights(value: unknown): OrgVerificationRights | null {
 const EMPTY_ASSETS: OrgVerificationAssets = {
   validIdPath: null,
   socialProofPath: null,
+  selfieWithIdPath: null,
+  platformAdminProofPath: null,
+  legitimacyCheckProofPath: null,
+  businessPermitOrBirPath: null,
   propertyOwnershipProofPath: null,
   parkingSocialProofPath: null,
-  selfieWithIdPath: null,
   ownershipProofPath: null,
   azurePmoConfirmationPath: null,
   pmoEmailPaths: [],
@@ -186,6 +188,7 @@ export function readOrgVerificationDetail(
       baseStatus: 'none',
       enhancedStatus: 'none',
       socialPlatform: null,
+      platformAdminPlatform: null,
       propertyRelationship: null,
       propertyContractEndDate: null,
       parkingRelationship: null,
@@ -228,6 +231,7 @@ export function readOrgVerificationDetail(
     baseStatus,
     enhancedStatus,
     socialPlatform: asPlatform(v.socialPlatform),
+    platformAdminPlatform: asPlatform(v.platformAdminPlatform),
     propertyRelationship: asRights(v.propertyRelationship),
     propertyContractEndDate: asPath(v.propertyContractEndDate),
     parkingRelationship: asRights(v.parkingRelationship),
@@ -249,9 +253,12 @@ export function readOrgVerificationDetail(
     assets: {
       validIdPath: asPath(assetsRaw.validIdPath),
       socialProofPath: asPath(assetsRaw.socialProofPath),
+      selfieWithIdPath: asPath(assetsRaw.selfieWithIdPath),
+      platformAdminProofPath: asPath(assetsRaw.platformAdminProofPath),
+      legitimacyCheckProofPath: asPath(assetsRaw.legitimacyCheckProofPath),
+      businessPermitOrBirPath: asPath(assetsRaw.businessPermitOrBirPath),
       propertyOwnershipProofPath: asPath(assetsRaw.propertyOwnershipProofPath),
       parkingSocialProofPath: asPath(assetsRaw.parkingSocialProofPath),
-      selfieWithIdPath: asPath(assetsRaw.selfieWithIdPath),
       ownershipProofPath: asPath(assetsRaw.ownershipProofPath),
       azurePmoConfirmationPath,
       pmoEmailPaths,
@@ -262,89 +269,24 @@ export function readOrgVerificationDetail(
   };
 }
 
-function rightsLabel(value: OrgVerificationRights | null): string | null {
-  if (!value) return null;
-  return ORG_VERIFICATION_RIGHTS.find((entry) => entry.value === value)?.label ?? null;
-}
-
-function platformLabel(value: OrgSocialProofPlatform | null): string | null {
-  if (!value) return null;
-  return ORG_SOCIAL_PROOF_PLATFORMS.find((entry) => entry.value === value)?.label ?? null;
-}
-
 export function resolveHostModes(org: { hostModes?: string[] } | null): string[] {
   const modes = org?.hostModes?.filter((m) => m === 'property' || m === 'parking') ?? [];
   return modes.length > 0 ? modes : ['property'];
 }
 
-export function buildHostTierChecklist(
-  detail: OrgVerificationDetail,
-  hostModes: string[]
-): VerificationChecklistItem[] {
-  const needsProperty = hostModes.includes('property');
-  const needsParking = hostModes.includes('parking');
-  const items: VerificationChecklistItem[] = [
+export function buildHostTierChecklist(detail: OrgVerificationDetail): VerificationChecklistItem[] {
+  return [
     {
       id: 'valid-id',
       label: 'Valid ID',
       complete: Boolean(detail.assets.validIdPath),
     },
+    {
+      id: 'facebook-page',
+      label: 'Facebook Page screenshot',
+      complete: Boolean(detail.assets.socialProofPath),
+    },
   ];
-
-  if (needsProperty) {
-    const rights = rightsLabel(detail.propertyRelationship);
-    items.push(
-      {
-        id: 'property-rights',
-        label: rights ? `Property rights · ${rights}` : 'Property rights',
-        complete: Boolean(detail.propertyRelationship),
-      },
-      {
-        id: 'property-ownership',
-        label: 'Property ownership or management proof',
-        complete: Boolean(detail.assets.propertyOwnershipProofPath),
-      },
-      {
-        id: 'property-access',
-        label: platformLabel(detail.socialPlatform)
-          ? `${platformLabel(detail.socialPlatform)} access screenshot`
-          : 'Listing access screenshot',
-        complete: Boolean(detail.assets.socialProofPath),
-      }
-    );
-    if (detail.propertyContractEndDate) {
-      items.push({
-        id: 'property-contract',
-        label: `Property contract end · ${detail.propertyContractEndDate}`,
-        complete: true,
-      });
-    }
-  }
-
-  if (needsParking) {
-    const rights = rightsLabel(detail.parkingRelationship);
-    items.push(
-      {
-        id: 'parking-rights',
-        label: rights ? `Parking rights · ${rights}` : 'Parking rights',
-        complete: Boolean(detail.parkingRelationship),
-      },
-      {
-        id: 'parking-proof',
-        label: 'Parking ownership or management proof',
-        complete: Boolean(detail.assets.parkingSocialProofPath),
-      }
-    );
-    if (detail.parkingContractEndDate) {
-      items.push({
-        id: 'parking-contract',
-        label: `Parking contract end · ${detail.parkingContractEndDate}`,
-        complete: true,
-      });
-    }
-  }
-
-  return items;
 }
 
 export function buildVerifiedTierChecklist(
@@ -357,14 +299,21 @@ export function buildVerifiedTierChecklist(
       complete: Boolean(detail.assets.selfieWithIdPath),
     },
     {
-      id: 'ownership',
-      label: VERIFICATION_TIER2_DOC_LABELS.ownership,
-      complete: Boolean(detail.assets.ownershipProofPath),
+      id: 'platform-admin',
+      label: VERIFICATION_TIER2_DOC_LABELS.platformAdmin,
+      complete: Boolean(detail.assets.platformAdminProofPath && detail.platformAdminPlatform),
     },
     {
-      id: 'azure-pmo-confirmation',
-      label: VERIFICATION_TIER2_DOC_LABELS.azurePmoConfirmation,
-      complete: Boolean(detail.assets.azurePmoConfirmationPath),
+      id: 'legitimacy-check',
+      label: VERIFICATION_TIER2_DOC_LABELS.legitimacyCheck,
+      complete: Boolean(detail.assets.legitimacyCheckProofPath),
+      optional: true,
+    },
+    {
+      id: 'business-permit',
+      label: VERIFICATION_TIER2_DOC_LABELS.businessPermit,
+      complete: Boolean(detail.assets.businessPermitOrBirPath),
+      optional: true,
     },
   ];
 }
@@ -456,85 +405,40 @@ export function canSubmitVerifiedTier(
   detail: OrgVerificationDetail,
   slots: {
     selfie: boolean;
-    ownership: boolean;
-    azurePmoConfirmation: boolean;
+    platformAdmin: boolean;
+    platformAdminPlatform: OrgSocialProofPlatform | '';
   }
 ): boolean {
   if (detail.enhancedStatus === 'approved' || detail.enhancedStatus === 'pending') {
     return false;
   }
-  return slots.selfie && slots.ownership && slots.azurePmoConfirmation;
+  return slots.selfie && slots.platformAdmin && Boolean(slots.platformAdminPlatform);
 }
 
-/** Client-side gate for Tier 1 resubmit after rejection (mirrors server `canSubmitBaseVerification`). */
+/** Client-side gate for Tier 1 — host identity only (mirrors server `canSubmitBaseVerification`). */
 export function canSubmitHostTier(
   detail: OrgVerificationDetail,
-  hostModes: string[],
+  _hostModes: string[],
   slots: {
     validId: boolean;
     socialProof: boolean;
-    propertyOwnership: boolean;
-    parkingProof: boolean;
-    socialPlatform: OrgSocialProofPlatform | '';
-    propertyRights: OrgVerificationRights | '';
-    propertyContractEndDate: string;
-    parkingRights: OrgVerificationRights | '';
-    parkingContractEndDate: string;
   },
   options?: { changesRequestedDocs?: OrgVerificationChangeDocId[] | null }
 ): boolean {
   if (detail.baseStatus === 'approved' || detail.baseStatus === 'pending') {
     return false;
   }
-  // Hard reject: host must start a new application — no in-app resubmit.
   if (isHostVerificationHardRejectedFromDetail(detail)) {
     return false;
   }
 
-  const modes = hostModes.length > 0 ? hostModes : ['property'];
-  const needsProperty = modes.includes('property');
-  const needsParking = modes.includes('parking');
   const docs = options?.changesRequestedDocs?.filter(Boolean) ?? [];
 
-  // Soft reject with a specific doc list — only those uploads are required.
   if (docs.length > 0) {
     if (docs.includes('validId') && !slots.validId) return false;
-    if (docs.includes('socialProof')) {
-      if (!slots.socialProof || !slots.socialPlatform) return false;
-    }
-    if (docs.includes('propertyOwnership') && !slots.propertyOwnership) return false;
-    if (docs.includes('parkingProof') && !slots.parkingProof) return false;
+    if (docs.includes('socialProof') && !slots.socialProof) return false;
     return true;
   }
 
-  if (!slots.validId) return false;
-
-  if (needsProperty) {
-    if (
-      !slots.socialProof ||
-      !slots.propertyOwnership ||
-      !slots.socialPlatform ||
-      !slots.propertyRights
-    ) {
-      return false;
-    }
-    if (
-      verificationRightsNeedsContractEnd(slots.propertyRights) &&
-      validateVerificationContractEndDate(slots.propertyContractEndDate) !== null
-    ) {
-      return false;
-    }
-  }
-
-  if (needsParking) {
-    if (!slots.parkingProof || !slots.parkingRights) return false;
-    if (
-      verificationRightsNeedsContractEnd(slots.parkingRights) &&
-      validateVerificationContractEndDate(slots.parkingContractEndDate) !== null
-    ) {
-      return false;
-    }
-  }
-
-  return true;
+  return Boolean(slots.validId && slots.socialProof);
 }

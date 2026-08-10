@@ -12,6 +12,7 @@ import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSes
 import { OnboardingHostAccessVerificationSection } from '@/features/dashboard/org/components/onboarding/OnboardingHostAccessVerificationSection';
 import { OnboardingHostVerificationSection } from '@/features/dashboard/org/components/onboarding/OnboardingHostVerificationSection';
 import { OnboardingParkingVerificationSection } from '@/features/dashboard/org/components/onboarding/OnboardingParkingVerificationSection';
+import { OnboardingProofUpload } from '@/features/dashboard/org/components/onboarding/OnboardingProofUpload';
 import {
   OnboardingProfileHeader,
   readGoogleAvatarUrl,
@@ -30,6 +31,10 @@ import {
 import { useParkingSlotConflict } from '@/features/dashboard/org/hooks/useParkingSlotConflict';
 import { useTowerUnitConflict } from '@/features/dashboard/org/hooks/useTowerUnitConflict';
 import { callEdgeFunction, getSessionJwt } from '@/features/dashboard/org/lib/edgeClient';
+import {
+  submitListingAuthorization,
+  uploadListingAuthorizationAsset,
+} from '@/features/dashboard/org/lib/listingAuthorizationApi';
 import { resolveOrgLandingPath } from '@/features/dashboard/org/lib/orgLanding';
 import { DUPLICATE_ORGANIZATION_NAME_MESSAGE } from '@/features/dashboard/org/lib/orgSettingsValidation';
 import {
@@ -344,20 +349,21 @@ export function OnboardingPage() {
     verificationTouched && verificationRightsNeedsContractEnd(propertyRights)
       ? validateVerificationContractEndDate(propertyContractEndDate)
       : null;
-  const propertyVerificationReady =
+  const propertyListingReady =
     !showPropertyBlock ||
-    (Boolean(socialProofFile && propertyOwnershipProofFile && socialPlatform && propertyRights) &&
+    (Boolean(propertyOwnershipProofFile && propertyRights) &&
       (!verificationRightsNeedsContractEnd(propertyRights) || !propertyContractEndError));
   const parkingContractEndError =
     verificationTouched && verificationRightsNeedsContractEnd(parkingRights)
       ? validateVerificationContractEndDate(parkingContractEndDate)
       : null;
-  const parkingVerificationReady =
+  const parkingListingReady =
     !showParkingBlock ||
     (Boolean(parkingSocialProofFile && parkingRights) &&
       (!verificationRightsNeedsContractEnd(parkingRights) || !parkingContractEndError));
-  const verificationReady =
-    Boolean(validIdFile) && propertyVerificationReady && parkingVerificationReady;
+  /** Host Tier 1 always needs Valid ID + Facebook Page screenshot (org scope). */
+  const hostVerificationReady = Boolean(validIdFile && socialProofFile);
+  const verificationReady = hostVerificationReady && propertyListingReady && parkingListingReady;
 
   const canAdvance =
     (step === 1 && orgNameReady && orgContactReady && !orgNameUnavailable && !orgNameChecking) ||
@@ -486,51 +492,58 @@ export function OnboardingPage() {
     try {
       const data = await callEdgeFunction<{
         organization: { id: string; slug: string };
-        property: { slug: string } | null;
-        parking: { slug: string } | null;
+        property: { id: string; slug: string } | null;
+        parking: { id: string; slug: string } | null;
       }>('create-organization', {
         method: 'POST',
         body: JSON.stringify(body),
       });
 
+      // Host Tier 1 — identity only (org scope).
       await uploadVerificationAsset(data.organization.id, 'valid_id', validIdFile!);
-      if (showPropertyBlock && socialProofFile) {
-        await uploadVerificationAsset(data.organization.id, 'social_proof', socialProofFile);
-      }
-      if (showPropertyBlock && propertyOwnershipProofFile) {
-        await uploadVerificationAsset(
-          data.organization.id,
-          'property_ownership_proof',
-          propertyOwnershipProofFile
-        );
-      }
-      if (showParkingBlock && parkingSocialProofFile) {
-        await uploadVerificationAsset(
-          data.organization.id,
-          'parking_social_proof',
-          parkingSocialProofFile
-        );
-      }
+      await uploadVerificationAsset(data.organization.id, 'social_proof', socialProofFile!);
       await callEdgeFunction('submit-org-verification', {
         method: 'POST',
         body: JSON.stringify({
           orgId: data.organization.id,
           tier: 'base',
-          ...(showPropertyBlock && {
-            socialPlatform,
-            propertyRelationship: propertyRights,
-            ...(verificationRightsNeedsContractEnd(propertyRights) && {
-              propertyContractEndDate,
-            }),
-          }),
-          ...(showParkingBlock && {
-            parkingRelationship: parkingRights,
-            ...(verificationRightsNeedsContractEnd(parkingRights) && {
-              parkingContractEndDate,
-            }),
-          }),
         }),
       });
+
+      // Listing Tier 1 — authority per created property/parking (listing scope).
+      if (showPropertyBlock && data.property?.id && propertyOwnershipProofFile && propertyRights) {
+        await uploadListingAuthorizationAsset({
+          listingKind: 'property',
+          listingId: data.property.id,
+          assetType: 'proof',
+          file: propertyOwnershipProofFile,
+        });
+        await submitListingAuthorization({
+          listingKind: 'property',
+          listingId: data.property.id,
+          relationship: propertyRights,
+          ...(verificationRightsNeedsContractEnd(propertyRights)
+            ? { contractEndDate: propertyContractEndDate }
+            : {}),
+        });
+      }
+
+      if (showParkingBlock && data.parking?.id && parkingSocialProofFile && parkingRights) {
+        await uploadListingAuthorizationAsset({
+          listingKind: 'parking',
+          listingId: data.parking.id,
+          assetType: 'proof',
+          file: parkingSocialProofFile,
+        });
+        await submitListingAuthorization({
+          listingKind: 'parking',
+          listingId: data.parking.id,
+          relationship: parkingRights,
+          ...(verificationRightsNeedsContractEnd(parkingRights)
+            ? { contractEndDate: parkingContractEndDate }
+            : {}),
+        });
+      }
 
       await queryClient.invalidateQueries({ queryKey: ORGANIZATIONS_QUERY_KEY });
 
@@ -1004,6 +1017,29 @@ export function OnboardingPage() {
                             }}
                             onUploadError={setError}
                           />
+                          {!showPropertyBlock ? (
+                            <OnboardingProofUpload
+                              id="host-facebook-page"
+                              label="Facebook Page screenshot"
+                              file={socialProofFile}
+                              previewUrl={socialProofPreview}
+                              error={verificationTouched && !socialProofFile ? 'Required' : null}
+                              onFileChange={(file, preview) => {
+                                if (file) {
+                                  const err = validateVerificationFile(file);
+                                  if (err) {
+                                    setError(err);
+                                    setSocialProofFile(null);
+                                    setSocialProofPreview(null);
+                                    return;
+                                  }
+                                }
+                                setError(null);
+                                setSocialProofFile(file);
+                                setSocialProofPreview(preview);
+                              }}
+                            />
+                          ) : null}
                           {showPropertyBlock ? (
                             <OnboardingHostAccessVerificationSection
                               sectionId="property-verification"
