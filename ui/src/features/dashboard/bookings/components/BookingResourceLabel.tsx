@@ -1,4 +1,5 @@
 import type { BookingKind, BookingRow } from '@/features/dashboard/bookings/lib/types';
+import { resourceKindBadgeClasses } from '@/lib/status-tone-colors';
 
 import { cn } from '@/lib/utils';
 
@@ -30,14 +31,7 @@ export function BookingResourceLabel({ row, showKindBadge = false, className }: 
   return (
     <div className={cn('flex min-w-0 items-center gap-1.5', className)}>
       {showKindBadge ? (
-        <span
-          className={cn(
-            'shrink-0 rounded px-1 py-0.5 text-[10px] font-bold uppercase tracking-wide',
-            kind === 'parking'
-              ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
-              : 'bg-primary/10 text-primary'
-          )}
-        >
+        <span className={resourceKindBadgeClasses(kind)}>
           {kind === 'parking' ? 'Parking' : 'Property'}
         </span>
       ) : null}

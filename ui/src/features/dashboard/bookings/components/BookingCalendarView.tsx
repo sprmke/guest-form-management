@@ -6,7 +6,10 @@ import { bookingResourceName } from '@/features/dashboard/bookings/components/Bo
 import type { BookingCalendarPillLabelMode } from '@/features/dashboard/bookings/components/calendar/BookingCalendarPillLabelToggle';
 import { calendarOccupancySpanPosition } from '@/features/dashboard/bookings/components/calendar/calendarDateUtils';
 import { CalendarDayBookingCard } from '@/features/dashboard/bookings/components/calendar/CalendarDayBookingCard';
-import { amountPerOccupiedNight } from '@/features/dashboard/bookings/components/calendar/calendarStayAmounts';
+import {
+  amountPerOccupiedNight,
+  stayTotalAmount,
+} from '@/features/dashboard/bookings/components/calendar/calendarStayAmounts';
 import {
   CalendarOccupancyPill,
   OccupancyCalendarView,
@@ -45,15 +48,29 @@ function bookingPillLabel(row: BookingRow): string {
   return row.primary_guest_name?.split(' ')[0] || row.guest_facebook_name?.split(' ')[0] || 'Guest';
 }
 
+/** Price mode shows the full stay total (sum of nights), not the per-night split. */
 function bookingPillPriceLabel(row: BookingRow): string {
+  const stayTotal = stayTotalAmount(row.booking_rate);
+  if (stayTotal == null) return '—';
+  return formatMoneyCompact(stayTotal);
+}
+
+function bookingPillTitle(row: BookingRow, resourceSuffix: string): string {
+  const guestName = bookingListDisplayName(row);
+  const stayTotal = stayTotalAmount(row.booking_rate);
   const perNight = amountPerOccupiedNight(
     row.booking_rate,
     row.number_of_nights,
     row.check_in_date,
     row.check_out_date
   );
-  if (perNight == null) return '—';
-  return formatMoneyCompact(perNight);
+  const stayPart =
+    stayTotal == null
+      ? '—'
+      : perNight == null
+        ? formatMoneyCompact(stayTotal)
+        : `${formatMoneyCompact(stayTotal)} stay (${formatMoneyCompact(perNight)}/night)`;
+  return `${guestName}${resourceSuffix} · ${stayPart} · ${statusLabel(row.status)}`;
 }
 
 export function BookingCalendarView({
@@ -107,7 +124,6 @@ export function BookingCalendarView({
       getItemKey={(row) => row.id}
       getItemStatus={(row) => row.status}
       renderPill={(row) => {
-        const guestName = bookingListDisplayName(row);
         const priceLabel = bookingPillPriceLabel(row);
         const label = pillLabelMode === 'price' ? priceLabel : bookingPillLabel(row);
         const resourceSuffix =
@@ -117,14 +133,14 @@ export function BookingCalendarView({
           <CalendarOccupancyPill
             status={row.status}
             label={label}
-            title={`${guestName}${resourceSuffix} · ${priceLabel}/night · ${statusLabel(row.status)}`}
+            compact={mini}
+            title={bookingPillTitle(row, resourceSuffix)}
             labelClassName={pillLabelMode === 'price' ? 'tabular-nums' : undefined}
           />
         );
       }}
       renderOccupancySegment={(segment) => {
         const row = segment.item;
-        const guestName = bookingListDisplayName(row);
         const priceLabel = bookingPillPriceLabel(row);
         const label = pillLabelMode === 'price' ? priceLabel : bookingPillLabel(row);
         const resourceSuffix =
@@ -153,14 +169,15 @@ export function BookingCalendarView({
             }
             role={mini ? 'link' : undefined}
             tabIndex={mini ? 0 : undefined}
-            className={cn(mini && 'h-full cursor-pointer')}
+            className={cn(mini && 'h-full cursor-pointer outline-none')}
           >
             <CalendarOccupancyPill
               status={row.status}
               label={label}
+              compact={mini}
               showLabel={segment.showLabel}
               spanPosition={calendarOccupancySpanPosition(segment)}
-              title={`${guestName}${resourceSuffix} · ${priceLabel}/night · ${statusLabel(row.status)}`}
+              title={bookingPillTitle(row, resourceSuffix)}
               labelClassName={pillLabelMode === 'price' ? 'tabular-nums' : undefined}
             />
           </div>

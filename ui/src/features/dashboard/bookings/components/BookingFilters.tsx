@@ -425,11 +425,10 @@ function BookingsSearchField({
         placeholder={placeholder}
         aria-label="Search bookings"
         className={cn(
-          'border-border bg-card text-foreground shadow-soft h-12 min-h-[48px] w-full rounded-2xl border py-2.5 pl-10 text-[15px] sm:h-10 sm:min-h-[44px] sm:rounded-xl sm:pl-9 sm:text-[13px] sm:shadow-none',
-          'bg-muted/40 sm:bg-muted/50',
+          'border-border bg-card text-foreground shadow-soft field-focus h-12 min-h-[48px] w-full rounded-2xl border py-2.5 pl-11 text-[15px]',
+          'sm:h-10 sm:min-h-[44px] sm:rounded-xl sm:pl-10 sm:text-[13px] sm:shadow-none',
           value ? 'pr-11' : 'pr-3.5',
-          'placeholder:text-muted-foreground',
-          'focus:border-primary/40 focus:bg-card focus:ring-primary/20 focus:outline-none focus:ring-2'
+          'placeholder:text-muted-foreground'
         )}
         value={value}
         onChange={(e) => onChange(e.target.value)}

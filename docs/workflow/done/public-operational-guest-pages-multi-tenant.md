@@ -1,9 +1,9 @@
 ---
 title: 'Public operational guest pages — multi-tenant readiness'
-status: in-progress
-tags: [workflow, in-progress, guest-form, multi-tenancy, public-ui]
-updated: 2026-08-04
-stage: in-progress
+status: done
+tags: [workflow, done, guest-form, multi-tenancy, public-ui]
+updated: 2026-08-09
+stage: done
 kind: plan
 ---
 
@@ -54,16 +54,16 @@ Guest form **logic** was generalized in guest-form-configurable-sections (sectio
 
 ## File map
 
-| File                                                               | Role                                     |
-| ------------------------------------------------------------------ | ---------------------------------------- |
-| `supabase/migrations/20261003170000_drop_org_guest_hero_image.sql` | Drop unused `guest_hero_image_url`       |
-| `supabase/functions/_shared/guestFormSettings.ts`                  | Branding resolver (property + org join)  |
-| `supabase/functions/_shared/orgSettings.ts`                        | Org operator settings                    |
-| `supabase/functions/_shared/appSettings.ts`                        | Extend `GuestPaymentInfoDto`             |
-| `ui/src/components/branding/GuestFormBrandHeader.tsx`              | Dynamic header props                     |
-| `ui/src/layouts/MainLayout.tsx`                                    | Brand-color header band + dynamic footer |
-| Guest form / success / sd / pay-parking components                 | Wire branding + copy                     |
-| Route guides + `docs/PROJECT.md`                                   | Docs                                     |
+| File                                                  | Role                                     |
+| ----------------------------------------------------- | ---------------------------------------- |
+| `supabase/functions/_shared/guestFormSettings.ts`     | Branding resolver (property + org join)  |
+| `supabase/functions/_shared/orgSettings.ts`           | Org operator settings                    |
+| `supabase/functions/_shared/appSettings.ts`           | Extend `GuestPaymentInfoDto`             |
+| `ui/src/components/branding/GuestFormBrandHeader.tsx` | Dynamic header props                     |
+| `ui/src/layouts/MainLayout.tsx`                       | Brand-color header band + dynamic footer |
+| `ui/src/features/guest/form/lib/guestFormBranding.ts` | Residence-aware instructional copy       |
+| Guest form / success / sd / pay-parking components    | Wire branding + copy                     |
+| Route guides + `docs/PROJECT.md`                      | Docs                                     |
 
 ---
 
@@ -74,7 +74,7 @@ Guest form **logic** was generalized in guest-form-configurable-sections (sectio
 - [x] Task 3: `GuestFormBrandHeader` + `MainLayout`
 - [x] Task 4: Guest form copy + tower default + contact labels
 - [x] Task 5: Success, SD form, pay-parking + booking endpoints
-- [ ] Task 6: Docs + `type-check` / `lint` / `build` + manual smoke
+- [x] Task 6: Docs + `type-check` / `lint` / `build` + manual smoke
 
 ---
 
@@ -82,14 +82,22 @@ Guest form **logic** was generalized in guest-form-configurable-sections (sectio
 
 1. Kame Home / Azure: visual parity when copy overrides unset (Azure dev defaults seeded in code).
 2. Second test property: eyebrow shows property + residence; no Monaco strings.
-3. Org hero upload updates all operational pages under that org's properties.
+3. Org brand color updates all operational pages under that org's properties.
 4. Pay parking: dynamic eyebrow + org hero (screenshot case fixed).
 5. `curl get-guest-payment-info?property=<slug>` returns branding fields.
+
+All verified 2026-08-09 (`bun run type-check`, `lint`, `build`; route guides + `docs/PROJECT.md` updated; loading skeletons no longer use legacy `KameFormBrandHeader`).
 
 ---
 
 ## Completion status
 
-**In progress** — started 2026-08-03.
+**Done** — shipped 2026-08-03 through 2026-08-09 (Task 6 closed 2026-08-09).
 
 **Restore note (2026-08-03):** After a shell-redesign attempt + revert wiped chrome, operational branding was re-applied on the existing `MainLayout` path (brand-color band, no cover image / texture, `GuestFormBrandHeader` + dynamic footer). The separate shell redesign plan remains in `docs/workflow/planned/property-public-pages-shell-redesign.md` and was **not** re-executed in that restore.
+
+### Post-ship delta (2026-08-09)
+
+- **Task 6:** Route guides updated (`sd-form.md`, `bookings/parking.md`); `docs/PROJECT.md` operational branding section; `GuestPageSkeletons` uses neutral header skeleton (removed legacy `KameFormBrandHeader.tsx`).
+- **D5 (`guestFormCopy`):** Per-property JSONB override not shipped — instructional copy uses **`guestFormBranding.ts`** templates keyed off `residenceName` / org name from **`get-guest-payment-info`** (Azure/Kame parity when residence matches seeded defaults).
+- **Hero image migration:** `guest_hero_image_url` was never added; brand-color band only — no migration required.

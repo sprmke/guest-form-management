@@ -644,7 +644,7 @@ export function ParkingRequestForm({
 function inputClass(hasError: boolean, readOnly = false) {
   return [
     'h-10 w-full rounded-md border px-3 text-sm',
-    'focus:outline-none focus:ring-2 focus:ring-ring/40',
+    'field-focus',
     readOnly
       ? 'cursor-default border-border bg-muted/50 text-foreground'
       : hasError

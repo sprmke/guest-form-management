@@ -16,6 +16,7 @@ import {
 import { normalizeStoragePublicUrl } from '@/features/dashboard/bookings/lib/storageUrls';
 
 import { cn } from '@/lib/utils';
+import { softBadgeClasses } from '@/lib/status-tone-colors';
 
 export type BookingGuestDocDef = {
   assetType: GuestDocAssetType;
@@ -177,7 +178,7 @@ export function BookingGuestDocReplacer({
         className={cn(
           'flex min-h-[36px] items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
           justUploaded
-            ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/30'
+            ? softBadgeClasses('success')
             : 'bg-card text-foreground ring-border/50 hover:bg-muted/40 hover:ring-primary/20 dark:ring-border/60 ring-1',
           (isLoading || isRemoving) && 'cursor-not-allowed opacity-60'
         )}

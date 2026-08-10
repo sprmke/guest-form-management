@@ -18,8 +18,14 @@ import { propertyNotificationsPath } from '@/features/dashboard/org/lib/tenantPa
 
 import { GoogleMark } from '@/components/branding/GoogleMark';
 import { TelegramMark } from '@/components/branding/TelegramMark';
-import { ResponsiveModal, ResponsiveModalContent, ResponsiveModalHeader, ResponsiveModalTitle } from '@/components/ui/responsive-modal';
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { cn } from '@/lib/utils';
+import { toneIconWrapClasses } from '@/lib/status-tone-colors';
 
 type TelegramChannel = {
   id: 'marketing' | 'staff' | 'operations' | 'finance' | 'maintenance' | 'parking' | 'chat';
@@ -42,10 +48,10 @@ function GoogleServiceRow({
     <div className="border-border/60 bg-background/80 flex min-h-[44px] items-center gap-3 rounded-lg border px-3 py-2.5">
       <div
         className={cn(
-          'flex size-9 shrink-0 items-center justify-center rounded-lg',
+          'size-9 shrink-0',
           configured
-            ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-            : 'bg-muted text-muted-foreground'
+            ? toneIconWrapClasses('green')
+            : 'bg-muted text-muted-foreground flex items-center justify-center rounded-lg'
         )}
       >
         <Icon className="size-4" aria-hidden />
@@ -56,7 +62,10 @@ function GoogleServiceRow({
       </div>
       {configured ? (
         <span
-          className="flex size-9 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+          className={cn(
+            'flex size-9 shrink-0 items-center justify-center',
+            toneIconWrapClasses('green', 'rounded-full')
+          )}
           aria-label="Connected"
           title="Connected"
         >
