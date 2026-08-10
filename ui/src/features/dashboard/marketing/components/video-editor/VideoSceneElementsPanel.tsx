@@ -351,7 +351,7 @@ function LayerRow({
               }
               rows={4}
               aria-label={label}
-              className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-[88px] w-full rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+              className="border-input bg-card placeholder:text-muted-foreground field-focus flex min-h-[88px] w-full rounded-md border px-3 py-2 text-sm"
             />
           ) : layer.kind === 'text' || layer.kind === 'cta' ? (
             <VideoTextStyleControls

@@ -71,7 +71,7 @@ export function MarketingEditorSidebar({ layoutKey, header, children, footer, cl
   return (
     <div
       className={cn(
-        'border-border bg-background relative flex min-h-0 min-w-0 shrink-0 flex-col border-b lg:h-full lg:max-h-none lg:max-w-[480px] lg:border-b-0 lg:border-r',
+        'border-border bg-card relative flex min-h-0 min-w-0 shrink-0 flex-col border-b lg:h-full lg:max-h-none lg:max-w-[480px] lg:border-b-0 lg:border-r',
         isBelowLg
           ? 'w-full max-w-full flex-1 basis-0'
           : 'hidden lg:flex lg:flex-none lg:basis-auto',
@@ -85,7 +85,7 @@ export function MarketingEditorSidebar({ layoutKey, header, children, footer, cl
           type="button"
           variant="outline"
           size="icon"
-          className="bg-background absolute right-0 top-4 z-50 size-9 min-h-[44px] min-w-[44px] translate-x-1/2 rounded-full shadow-md transition-transform duration-300 ease-out hover:scale-105"
+          className="bg-card absolute right-0 top-4 z-50 size-9 min-h-[44px] min-w-[44px] translate-x-1/2 rounded-full shadow-md transition-transform duration-300 ease-out hover:scale-105"
           aria-label={isDesktopCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           aria-expanded={!isDesktopCollapsed}
           onClick={handleToggle}

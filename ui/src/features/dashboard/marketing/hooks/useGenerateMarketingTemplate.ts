@@ -18,6 +18,12 @@ export type GenerateMarketingTemplatePayload = {
   };
   amenitiesText?: string;
   availabilityText?: string;
+  /** Calendar style locks — folded into the model prompt server-side. */
+  preferences?: {
+    layoutArchetype?: string;
+    fontPairing?: string;
+    backgroundMood?: string;
+  };
 };
 
 export type GenerateMarketingTemplateResult = {

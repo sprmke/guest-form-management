@@ -35,6 +35,8 @@ import {
 import { resolveVideoTypographyContext } from '@/features/dashboard/marketing/lib/video/videoTemplateTypography';
 import { scaleForVideoFormat } from '@/features/dashboard/marketing/lib/video/videoTextSlotContent';
 
+import { marketingEditorWorkspaceClassName } from '@/features/dashboard/marketing/lib/marketingEditorWorkspace';
+
 import { cn } from '@/lib/utils';
 
 import type { PlayerRef } from '@remotion/player';
@@ -300,9 +302,10 @@ export const VideoPreviewWorkspace = forwardRef<VideoPreviewWorkspaceHandle, Pro
       <div
         ref={shellRef}
         className={cn(
-          'bg-muted/40 flex min-h-0 flex-1 flex-col overflow-hidden',
+          marketingEditorWorkspaceClassName,
+          'flex min-h-0 flex-1 flex-col overflow-hidden',
           !isFullscreen && VIDEO_PREVIEW_SHELL_MIN_HEIGHT_CLASS,
-          isFullscreen && 'bg-muted h-dvh w-dvw'
+          isFullscreen && 'h-dvh w-dvw'
         )}
       >
         {/* Scrollable workspace — pan via drag; scrollbars hidden. */}

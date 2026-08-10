@@ -25,7 +25,7 @@ export function MarketingFormatPicker({ options, value, onChange }: Props) {
       <SlidingTabsList
         size="compact"
         className="bg-muted/40 !flex h-auto w-full max-w-full gap-1 overflow-visible p-1.5"
-        pillClassName="rounded-md shadow-sm"
+        pillClassName="bg-card rounded-md shadow-sm"
         aria-label="Canvas size"
         remeasureDeps={[options.length, value]}
       >

@@ -171,7 +171,7 @@ export function MarketingTemplateCard({
             }}
             aria-label={`Customize ${name}`}
             title="Settings"
-            className="bg-background/95 text-foreground flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md shadow-sm backdrop-blur-sm transition-colors hover:bg-white sm:min-h-[32px] sm:min-w-[32px]"
+            className="bg-card/95 text-foreground flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md shadow-sm backdrop-blur-sm transition-colors hover:bg-white sm:min-h-[32px] sm:min-w-[32px]"
           >
             <Settings2 className="size-3.5" aria-hidden />
           </button>
@@ -183,7 +183,7 @@ export function MarketingTemplateCard({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="bg-background/90 size-7 min-h-[28px] min-w-[28px] rounded-md shadow-sm backdrop-blur-sm"
+                className="bg-card/90 size-7 min-h-[28px] min-w-[28px] rounded-md shadow-sm backdrop-blur-sm"
                 aria-label={`${name} options`}
                 onClick={(event) => event.stopPropagation()}
               >

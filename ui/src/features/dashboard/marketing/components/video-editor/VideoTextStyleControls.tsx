@@ -79,7 +79,7 @@ export function VideoTextStyleControls({ layer, templateTypography, onChange }: 
         onChange={(event) => onChange({ text: event.target.value })}
         rows={2}
         aria-label="Text content"
-        className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-[72px] w-full resize-none rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        className="border-input bg-card placeholder:text-muted-foreground field-focus flex min-h-[72px] w-full resize-none rounded-md border px-3 py-2 text-sm"
       />
 
       {!isCta ? (

@@ -87,6 +87,67 @@ export function planCalendarDefaultAutosaveCleanup(templates: MarketingTemplateR
     .map((template) => template.id);
 }
 
+/**
+ * Related custom calendar rows (Square / Portrait / Landscape) for remove/rename.
+ * Prefers `aiGenerationId`, then legacy AI token match, then same custom name.
+ */
+export function planCalendarRelatedCustomIds(
+  templates: MarketingTemplateRecord[],
+  targetId: string
+): string[] {
+  const target = templates.find(
+    (template) => template.id === targetId && template.contentType === 'calendar'
+  );
+  if (!target) return [targetId];
+
+  const designJson = target.designJson ?? {};
+  const generationId =
+    typeof designJson.aiGenerationId === 'string' && designJson.aiGenerationId.trim()
+      ? designJson.aiGenerationId.trim()
+      : null;
+  const aiGenerated = designJson.aiGenerated === true;
+  const targetIsCustom = isCalendarCustomPreset(readCalendarSourcePreset(designJson));
+
+  if (generationId || aiGenerated) {
+    const targetTokens = JSON.stringify(designJson.aiTokens ?? null);
+    const related = templates.filter((template) => {
+      if (template.contentType !== 'calendar') return false;
+      const json = template.designJson ?? {};
+      if (generationId) {
+        return (
+          typeof json.aiGenerationId === 'string' && json.aiGenerationId.trim() === generationId
+        );
+      }
+      if (json.aiGenerated !== true) return false;
+      if (template.name !== target.name) return false;
+      if (!isCalendarCustomPreset(readCalendarSourcePreset(json))) return false;
+      return JSON.stringify(json.aiTokens ?? null) === targetTokens;
+    });
+    const ids = related.map((template) => template.id);
+    if (ids.length > 0) return [...new Set(ids)];
+  }
+
+  if (targetIsCustom && target.name.trim()) {
+    const sameName = templates.filter((template) => {
+      if (template.contentType !== 'calendar') return false;
+      if (template.name !== target.name) return false;
+      return isCalendarCustomPreset(readCalendarSourcePreset(template.designJson));
+    });
+    const ids = sameName.map((template) => template.id);
+    if (ids.length > 0) return [...new Set(ids)];
+  }
+
+  return [targetId];
+}
+
+/** @see planCalendarRelatedCustomIds */
+export function planCalendarRelatedCustomRemoval(
+  templates: MarketingTemplateRecord[],
+  targetId: string
+): string[] {
+  return planCalendarRelatedCustomIds(templates, targetId);
+}
+
 /** Keep the newest row per preset+format group; return ids to delete. */
 export function planCalendarTemplateDedupe(templates: MarketingTemplateRecord[]): string[] {
   const calendarTemplates = templates.filter((template) => template.contentType === 'calendar');
