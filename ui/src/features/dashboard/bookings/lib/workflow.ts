@@ -324,38 +324,6 @@ export function getPendingDocumentsNestedCompletion(
   };
 }
 
-/** Mirrors `statusMachine.ts#buildPendingDocumentsCalendarSummaryPrefix`. */
-export function buildPendingDocumentsCalendarSummaryPrefix(
-  booking: ConfigurableDocsBooking,
-  requirements: DocumentRequirement[]
-): string {
-  const { needParking, parkingDone, byRequirementId } = getPendingDocumentsNestedCompletion(
-    booking,
-    requirements
-  );
-
-  const applicable = [...requirements]
-    .sort((a, b) => a.order - b.order)
-    .filter((req) => requirementApplies(req, booking));
-
-  const segments: string[] = [];
-  let parkingInserted = false;
-  const insertParkingIfNeeded = () => {
-    if (parkingInserted) return;
-    parkingInserted = true;
-    if (needParking && !parkingDone) segments.push('PARKING');
-  };
-
-  for (const req of applicable) {
-    if (req.triggerCondition === 'has_pets') insertParkingIfNeeded();
-    if (!byRequirementId[req.id]) segments.push(req.id.toUpperCase());
-  }
-  insertParkingIfNeeded();
-
-  if (segments.length === 0) return 'PENDING DOCUMENTS';
-  return `PENDING_${segments.join('_')}_DOCS`;
-}
-
 // ─── Generalized nested-doc stepper keys (Task 7) ────────────────────────────
 //
 // `PendingDocumentSubStatus` above stays for Kanban + the legacy GAF/parking/pet
@@ -379,7 +347,7 @@ export type PendingDocNestedItem = {
 /**
  * Ordered nested items under Pending Documents: `requirements.filter(requirementApplies)`
  * sorted by `order`, with the parking subtree inserted where a `has_pets`-triggered
- * requirement would land (same insertion point as `buildPendingDocumentsCalendarSummaryPrefix`).
+ * requirement would land (GAF → parking → pet display order when using defaults).
  * Empty requirements + no parking → empty list (D2: no nested tree to show).
  */
 export function pendingDocumentsNestedItems(

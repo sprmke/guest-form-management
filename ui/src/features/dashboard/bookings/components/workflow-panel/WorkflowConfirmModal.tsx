@@ -1,7 +1,5 @@
 /**
- * `ConfirmModal` — ported verbatim from the pre-decomposition `WorkflowPanel.tsx`.
- * Renders the Proceed/Back/Cancel confirmation dialog, including the
- * dev-controls checklist injection (`WorkflowDevControlsChecklist`).
+ * Confirm dialog for workflow Proceed / Back / Cancel actions.
  */
 
 import type { ReactNode } from 'react';
@@ -9,19 +7,13 @@ import type { ReactNode } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
-import { WorkflowDevControlsChecklist } from '@/features/dashboard/bookings/components/WorkflowDevControlsChecklist';
-import type { DevControlFlags } from '@/features/dashboard/bookings/hooks/useTransitionBooking';
-import type { WorkflowDevControlDef } from '@/features/dashboard/bookings/lib/workflowDevControls';
-
 import { cn } from '@/lib/utils';
 
 export function WorkflowConfirmModal({
   title,
   description,
+  effectLines,
   banner,
-  devControls = [],
-  devControlValues,
-  onDevControlToggle,
   secondaryLabel = 'Back',
   onConfirm,
   onCancel,
@@ -30,10 +22,9 @@ export function WorkflowConfirmModal({
 }: {
   title: string;
   description: string;
+  /** Short host-facing bullets describing what will happen on confirm. */
+  effectLines?: string[];
   banner?: ReactNode;
-  devControls?: WorkflowDevControlDef[];
-  devControlValues?: DevControlFlags;
-  onDevControlToggle?: (key: keyof DevControlFlags) => void;
   /** Dismiss control (e.g. `Cancel` for transitions, `Keep booking` when cancelling a booking). */
   secondaryLabel?: string;
   onConfirm: () => void;
@@ -42,8 +33,6 @@ export function WorkflowConfirmModal({
   destructive?: boolean;
 }) {
   if (typeof document === 'undefined') return null;
-
-  const showDevControls = devControls.length > 0 && devControlValues && onDevControlToggle;
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-3 backdrop-blur-[2px] sm:p-4">
@@ -59,18 +48,22 @@ export function WorkflowConfirmModal({
               <h3 className="text-foreground text-lg font-semibold sm:text-xl">{title}</h3>
               {banner ? <div className="mt-3">{banner}</div> : null}
               <p className="text-muted-foreground mt-2 text-sm leading-relaxed">{description}</p>
-              {showDevControls ? (
-                <WorkflowDevControlsChecklist
-                  controls={devControls}
-                  values={devControlValues}
-                  onToggle={onDevControlToggle}
-                  disabled={isLoading}
-                />
+              {effectLines && effectLines.length > 0 ? (
+                <>
+                  <p className="text-muted-foreground mt-3 text-sm">
+                    This action will do the following items:
+                  </p>
+                  <ul className="text-muted-foreground mt-1.5 list-disc space-y-1 pl-4 text-sm leading-relaxed">
+                    {effectLines.map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                </>
               ) : null}
             </div>
           </div>
         </div>
-        <div className="border-separator mt-5 flex shrink-0 justify-end gap-2 border-t pt-4">
+        <div className="mt-5 flex shrink-0 justify-end gap-2">
           <button
             type="button"
             onClick={onCancel}

@@ -22,7 +22,13 @@ const workflowActionPrimaryDisabled =
 
 /** Secondary sibling of the primary CTA — same height, radius and type scale. */
 export const workflowBackActionClass =
-  'focus-ring border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors motion-safe:active:scale-[0.99] disabled:pointer-events-none disabled:opacity-40';
+  'focus-ring border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground flex min-h-[44px] min-w-0 items-center justify-center rounded-xl border px-4 py-2.5 text-center text-sm font-semibold transition-colors motion-safe:active:scale-[0.99] disabled:pointer-events-none disabled:opacity-40';
+
+/** Icon + wrapped label, centred as one unit inside paired workflow CTAs. */
+export const workflowActionLabelGroupClass =
+  'inline-flex min-w-0 max-w-full items-center justify-center gap-1.5';
+
+export const workflowActionLabelTextClass = 'min-w-0 text-pretty text-center leading-snug';
 
 const workflowActionWarning =
   'border border-amber-500/25 bg-amber-500/[0.08] text-amber-800 hover:bg-amber-500/[0.12] hover:border-amber-500/35 dark:text-amber-300';

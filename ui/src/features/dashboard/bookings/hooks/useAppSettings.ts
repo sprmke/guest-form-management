@@ -52,8 +52,6 @@ export type PropertyGmailIntegrationStatus = {
 };
 
 export type PropertyIntegrationStatus = {
-  googleCalendar: IntegrationFieldStatus;
-  googleSpreadsheet: IntegrationFieldStatus;
   gmail: PropertyGmailIntegrationStatus;
   telegram: {
     marketing: PropertyTelegramCredentialsStatus;
@@ -67,7 +65,6 @@ export type PropertyIntegrationStatus = {
 
 export type PlatformSecretsStatus = {
   resendApiKeyConfigured: boolean;
-  googleServiceAccountConfigured: boolean;
   gmailEncryptionKeyConfigured: boolean;
   gmailWebClientConfigured: boolean;
   geminiApiKeyConfigured: boolean;
@@ -144,8 +141,6 @@ export type AppSettingsDto = {
   resolvedDocumentRequirements: DocumentRequirement[];
   /** Residence-type default → `DEFAULT_DOCUMENT_REQUIREMENTS` — ignores property override. */
   residenceDefaultDocumentRequirements: DocumentRequirement[];
-  syncCalendar: boolean;
-  syncSheets: boolean;
 };
 
 export type AppSettingsFormValues = {
@@ -174,8 +169,6 @@ export type AppSettingsFormValues = {
   superhostVerificationUrl: string;
   /** `null` inherits the residence default; `[]` is a valid explicit empty override. */
   documentRequirementsOverride: DocumentRequirement[] | null;
-  syncCalendar: boolean;
-  syncSheets: boolean;
 };
 
 function sdRefundLeadMinutesToHours(minutes: number): number {
@@ -222,8 +215,6 @@ export function appSettingsToFormValues(data: AppSettingsDto): AppSettingsFormVa
     externalReviews: normalizeExternalReviewsDraft(data.externalReviews),
     superhostVerificationUrl: data.superhostVerificationUrl,
     documentRequirementsOverride: data.documentRequirementsOverride,
-    syncCalendar: data.syncCalendar,
-    syncSheets: data.syncSheets,
   };
 }
 
@@ -315,9 +306,7 @@ export function operationalFormIsDirty(
     draft.tiktokUrl.trim() !== baseline.tiktokUrl.trim() ||
     draft.mainSocialPlatform.trim() !== baseline.mainSocialPlatform.trim() ||
     !externalReviewsEqual(draft.externalReviews, baseline.externalReviews) ||
-    draft.superhostVerificationUrl.trim() !== baseline.superhostVerificationUrl.trim() ||
-    draft.syncCalendar !== baseline.syncCalendar ||
-    draft.syncSheets !== baseline.syncSheets
+    draft.superhostVerificationUrl.trim() !== baseline.superhostVerificationUrl.trim()
   );
 }
 

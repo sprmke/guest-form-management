@@ -1,30 +1,30 @@
 /**
  * WorkflowPanel — Right-side rail on the booking detail page.
  *
- * Orchestrator only: owns confirm-modal state, dev-controls state, `viewedStep`
- * state, calls `useWorkflowActions`/`useWorkflowSubFormDrafts` for derived
- * state, calls all mutation hooks, keeps the Gmail-poll-on-load auto-trigger,
- * and composes the decomposed children below. `variant`/`isModal` is passed
- * down so each child branches internally rather than this file building two
- * separate trees.
+ * Orchestrator only: owns confirm-modal state, `viewedStep` state, calls
+ * `useWorkflowActions`/`useWorkflowSubFormDrafts` for derived state, calls all
+ * mutation hooks, keeps the Gmail-poll-on-load auto-trigger, and composes the
+ * decomposed children below. `variant`/`isModal` is passed down so each child
+ * branches internally rather than this file building two separate trees.
  *
  * Shows:
  * - Stage deck: `WorkflowStageDeckHeader` (one stage at a time, arrows + progress
  *   track) with the full `BookingStepper` behind `WorkflowProgressMapModal`
  * - Stage-specific sub-form (`WorkflowSubFormHost`) inside `WorkflowStageSlide`,
  *   with nested Pending Documents sub-steps as `WorkflowDocStepTabs`
- * - Dev-control checkboxes on Proceed/Back/Cancel confirm modals (session-persisted)
  * - Automation triggers (collapsible), transition actions bar
- * - Cancel booking (non-terminal; dev-control flags apply)
+ * - Cancel booking (non-terminal)
+ *
+ * Side effects (emails, PDFs, DB) run from server defaults on every transition;
+ * per-property email automations are configured under Property Settings.
  *
  * The guest stay-guide link is deliberately **not** here — it is a booking-scoped
  * share action, so it lives in the header action menu (`useBookingStayGuideLink`).
  *
  * Plan: docs/planning/NEW_FLOW_PLAN.md §3.1, admin-dashboard.mdc §WorkflowPanel
- * Auth: admin-auth.mdc §5 (Dev controls panel)
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -50,7 +50,6 @@ import {
   useRunGmailPoll,
   useRunSdRefundCron,
   useResendSdRefundFormEmail,
-  type DevControlFlags,
   type TransitionPayload,
 } from '@/features/dashboard/bookings/hooks/useTransitionBooking';
 import { useWorkflowActions } from '@/features/dashboard/bookings/hooks/useWorkflowActions';
@@ -70,16 +69,11 @@ import {
   type PendingDocNestedKey,
   type ViewedWorkflowStep,
 } from '@/features/dashboard/bookings/lib/workflow';
-import {
-  DEFAULT_PROPERTY_SYNC_TOGGLES,
-  loadPersistedWorkflowDevControls,
-  mergeWorkflowDevControlsWithDefaults,
-  persistWorkflowDevControls,
-  sanitizeDevControlsForPropertySync,
-  workflowDevControlsForCancel,
-  workflowDevControlsForTransition,
-} from '@/features/dashboard/bookings/lib/workflowDevControls';
 import { buildWorkflowStageDeck } from '@/features/dashboard/bookings/lib/workflowStageDeck';
+import {
+  workflowCancelEffectLines,
+  workflowTransitionEffectLines,
+} from '@/features/dashboard/bookings/lib/workflowTransitionEffectsCopy';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { usePropertyPricingDefaults } from '@/features/dashboard/pricing/hooks/usePropertyPricing';
 
@@ -102,6 +96,7 @@ function buildGmailPollSuccessMessage(
 type ConfirmState = {
   toStatus: BookingStatus;
   label: string;
+  direction: 'forward' | 'back';
   /** Extra banner when stay dates are before today (Manila) for early pipeline statuses. */
   pastStayWarning?: boolean;
 } | null;
@@ -129,38 +124,9 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
   const { data: appSettings } = useAppSettings();
   const documentRequirements =
     appSettings?.resolvedDocumentRequirements ?? DEFAULT_DOCUMENT_REQUIREMENTS;
-  const propertySyncToggles = useMemo(
-    () => ({
-      syncCalendar: appSettings?.syncCalendar ?? DEFAULT_PROPERTY_SYNC_TOGGLES.syncCalendar,
-      syncSheets: appSettings?.syncSheets ?? DEFAULT_PROPERTY_SYNC_TOGGLES.syncSheets,
-    }),
-    [appSettings?.syncCalendar, appSettings?.syncSheets]
-  );
 
   const [automationHelpOpen, setAutomationHelpOpen] = useState(false);
   const [progressMapOpen, setProgressMapOpen] = useState(false);
-
-  // Dev controls — session-persisted per booking; defaults all checked.
-  const [sessionDevControls, setSessionDevControls] = useState<DevControlFlags>(() =>
-    mergeWorkflowDevControlsWithDefaults(loadPersistedWorkflowDevControls(booking.id))
-  );
-  const [modalDevControls, setModalDevControls] = useState<DevControlFlags>(sessionDevControls);
-
-  useEffect(() => {
-    setSessionDevControls(
-      mergeWorkflowDevControlsWithDefaults(loadPersistedWorkflowDevControls(booking.id))
-    );
-  }, [booking.id]);
-
-  const commitModalDevControls = useCallback((): DevControlFlags => {
-    persistWorkflowDevControls(booking.id, modalDevControls);
-    setSessionDevControls(modalDevControls);
-    return sanitizeDevControlsForPropertySync(modalDevControls, propertySyncToggles);
-  }, [booking.id, modalDevControls, propertySyncToggles]);
-
-  const toggleModalDevControl = useCallback((key: keyof DevControlFlags) => {
-    setModalDevControls((prev) => ({ ...prev, [key]: !prev[key] }));
-  }, []);
 
   // Sub-form draft state (pricing/parking/sd-refund/guest-balance/surprise-decor ack).
   const subFormDrafts = useWorkflowSubFormDrafts(booking, status);
@@ -227,11 +193,6 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
   const [confirm, setConfirm] = useState<ConfirmState>(null);
   const [cancelConfirm, setCancelConfirm] = useState(false);
 
-  useEffect(() => {
-    if (!confirm && !cancelConfirm) return;
-    setModalDevControls(sessionDevControls);
-  }, [confirm, cancelConfirm, sessionDevControls]);
-
   const transitionMut = useTransitionBooking();
   const cancelMut = useCancelBooking();
   const { handleGmailError } = useGmailReconnectPrompt();
@@ -252,11 +213,17 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
     [handleGmailError]
   );
 
-  // Which automation triggers are relevant for this status (Q6.6)
+  // Which automation triggers are relevant — only on the live, non-terminal step.
+  const automationTriggersForLiveStep = workflowActions.isLiveView && !workflowActions.isTerminal;
   const showGmailPoll =
-    status === 'PENDING_DOCUMENTS' || status === 'PENDING_GAF' || status === 'PENDING_PET_REQUEST';
-  const showSdCron = status === 'READY_FOR_CHECKIN';
-  const showSdFormResend = status === 'READY_FOR_CHECKOUT' || status === 'READY_FOR_CHECKIN';
+    automationTriggersForLiveStep &&
+    (status === 'PENDING_DOCUMENTS' ||
+      status === 'PENDING_GAF' ||
+      status === 'PENDING_PET_REQUEST');
+  const showSdCron = automationTriggersForLiveStep && status === 'READY_FOR_CHECKIN';
+  const showSdFormResend =
+    automationTriggersForLiveStep &&
+    (status === 'READY_FOR_CHECKOUT' || status === 'READY_FOR_CHECKIN');
   const sdGuestFormUrl = `${window.location.origin}${guestSdFormPath(propertySlug, booking.id)}`;
 
   const [recheckSdGuestSubmitPending, setRecheckSdGuestSubmitPending] = useState(false);
@@ -368,40 +335,28 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
     }
   }
 
-  const transitionConfirmDevControls = confirm
-    ? workflowDevControlsForTransition(
-        status,
-        confirm.toStatus,
-        booking,
-        documentRequirements,
-        propertySyncToggles
-      )
-    : [];
-  const cancelConfirmDevControls = workflowDevControlsForCancel(propertySyncToggles);
-
   // ─── Handlers ────────────────────────────────────────────────────────────
 
   function openForwardProceedConfirm(toStatus: BookingStatus, label: string) {
     setConfirm({
       toStatus,
       label,
+      direction: 'forward',
       pastStayWarning: shouldWarnPastBookingStayForProceed(status, booking),
     });
   }
 
   function openBackConfirm(toStatus: BookingStatus) {
-    setConfirm({ toStatus, label: `Back to ${statusLabel(toStatus)}` });
+    setConfirm({ toStatus, label: `Return to ${statusLabel(toStatus)}`, direction: 'back' });
   }
 
   async function handleTransition(toStatus: BookingStatus) {
-    const flags = commitModalDevControls();
     setConfirm(null);
     try {
       await transitionMut.mutateAsync({
         bookingId: booking.id,
         toStatus,
         payload: subFormDrafts.buildPayload(toStatus),
-        devControls: flags,
         manual: true,
       });
       toast.success(`Moved to ${statusLabel(toStatus)}`);
@@ -435,7 +390,6 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
         bookingId: booking.id,
         toStatus: workflowActions.inPendingDocuments ? 'PENDING_DOCUMENTS' : status,
         payload,
-        devControls: sanitizeDevControlsForPropertySync(sessionDevControls, propertySyncToggles),
         manual: true,
       });
       toast.success(`Marked ${label} as complete`);
@@ -454,7 +408,6 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
         bookingId: booking.id,
         toStatus: workflowActions.inPendingDocuments ? 'PENDING_DOCUMENTS' : status,
         payload: { document_completion_clear_target: subStatus },
-        devControls: sanitizeDevControlsForPropertySync(sessionDevControls, propertySyncToggles),
         manual: true,
       });
       toast.success(`Marked ${label} as incomplete`);
@@ -464,13 +417,9 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
   }
 
   async function handleCancel() {
-    const flags = commitModalDevControls();
     setCancelConfirm(false);
     try {
-      await cancelMut.mutateAsync({
-        bookingId: booking.id,
-        devControls: flags,
-      });
+      await cancelMut.mutateAsync({ bookingId: booking.id });
       toast.success('Booking cancelled');
     } catch (err: any) {
       toast.error(friendlyToastError(err, 'Could not cancel booking'));
@@ -662,10 +611,15 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
               </div>
             ) : null
           }
-          description={`Move from "${statusLabel(status)}" to "${statusLabel(confirm.toStatus)}". Uncheck side effects to skip.`}
-          devControls={transitionConfirmDevControls}
-          devControlValues={modalDevControls}
-          onDevControlToggle={toggleModalDevControl}
+          description={`Move from "${statusLabel(status)}" to "${statusLabel(confirm.toStatus)}".`}
+          effectLines={workflowTransitionEffectLines({
+            fromStatus: status,
+            toStatus: confirm.toStatus,
+            direction: confirm.direction,
+            booking,
+            documentRequirements,
+            automationToggles: appSettings?.automationToggles,
+          })}
           onConfirm={() => handleTransition(confirm.toStatus)}
           onCancel={() => setConfirm(null)}
           isLoading={transitionMut.isPending}
@@ -676,10 +630,8 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
         <WorkflowConfirmModal
           title="Cancel Booking"
           secondaryLabel="Keep booking"
-          description="Marks booking CANCELLED. Uncheck integrations to skip. Guest data stays. Cannot be undone."
-          devControls={cancelConfirmDevControls}
-          devControlValues={modalDevControls}
-          onDevControlToggle={toggleModalDevControl}
+          description="This cannot be undone."
+          effectLines={workflowCancelEffectLines()}
           onConfirm={handleCancel}
           onCancel={() => setCancelConfirm(false)}
           isLoading={cancelMut.isPending}

@@ -61,7 +61,7 @@ export const DASHBOARD_STATUS_BREAKDOWN_ORDER = [
  * Application code uses the canonical enum only.
  */
 
-/** Human labels for display (matches calendar summary conventions in `NEW_FLOW_PLAN.md §1.4`). */
+/** Human labels for display (matches workflow status naming in `NEW_FLOW_PLAN.md`). */
 export const STATUS_LABELS: Record<BookingStatus, string> = {
   PENDING_REVIEW: 'Pending Review',
   PENDING_DOCUMENTS: 'Pending Documents',
@@ -77,9 +77,8 @@ export const STATUS_LABELS: Record<BookingStatus, string> = {
 };
 
 /**
- * Tailwind-friendly color intent for each status. We keep the mapping aligned with the
- * Google Calendar colorId intent (red/yellow/green/orange/blue/purple). Concrete HSL
- * values resolve to the project's design tokens — no hardcoded hexes.
+ * Tailwind-friendly color intent for each status. Concrete HSL values resolve to the
+ * project's design tokens — no hardcoded hexes.
  */
 export type StatusTone =
   'red' | 'yellow' | 'green' | 'amber' | 'orange' | 'blue' | 'purple' | 'neutral';

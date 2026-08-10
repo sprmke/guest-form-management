@@ -56,24 +56,10 @@ export type TransitionPayload = {
   document_completion_clear_target?: string | null;
 };
 
-export type DevControlFlags = {
-  saveToDatabase?: boolean;
-  generatePdf?: boolean;
-  updateGoogleCalendar?: boolean;
-  updateGoogleSheets?: boolean;
-  sendGafRequestEmail?: boolean;
-  sendParkingBroadcastEmail?: boolean;
-  sendPetRequestEmail?: boolean;
-  sendBookingAcknowledgementEmail?: boolean;
-  sendReadyForCheckinEmail?: boolean;
-  sendSdRefundFormEmail?: boolean;
-};
-
 type TransitionInput = {
   bookingId: string;
   toStatus: BookingStatus;
   payload?: TransitionPayload;
-  devControls?: DevControlFlags;
   manual?: boolean;
 };
 
@@ -81,8 +67,6 @@ type TransitionResult = {
   success: boolean;
   booking: BookingRow;
   sideEffects?: {
-    calendar?: boolean;
-    sheet?: boolean;
     emails?: string[];
   };
 };
@@ -107,7 +91,6 @@ async function callTransitionBooking(input: TransitionInput, propertyId: string 
       bookingId: input.bookingId,
       toStatus: input.toStatus,
       payload: input.payload ?? {},
-      devControls: input.devControls ?? {},
       manual: input.manual ?? true,
     }),
   });
@@ -155,13 +138,7 @@ export function useCancelBooking() {
   const propertyId = usePropertyIdParam();
 
   return useMutation({
-    mutationFn: async ({
-      bookingId,
-      devControls = {},
-    }: {
-      bookingId: string;
-      devControls?: DevControlFlags;
-    }) => {
+    mutationFn: async ({ bookingId }: { bookingId: string }) => {
       const jwt = await getAdminJwt();
 
       const res = await fetch(scopedFunctionsUrl('/cancel-booking', propertyId), {
@@ -170,7 +147,7 @@ export function useCancelBooking() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${jwt}`,
         },
-        body: JSON.stringify({ bookingId, confirm: true, devControls }),
+        body: JSON.stringify({ bookingId, confirm: true }),
       });
 
       const json = await res.json();

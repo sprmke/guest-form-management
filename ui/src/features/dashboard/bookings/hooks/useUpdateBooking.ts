@@ -16,13 +16,9 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
 
 import type { SdBank } from '@/features/guest/sd-form/lib/sdFormSchema';
 
-import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
-
-import { friendlyToastError } from '@/lib/feedback/toastMessages';
 import { supabase } from '@/lib/supabase/client';
 import { toGuestSubmissionDate, toGuestSubmissionTime } from '@/utils/format/dates';
 
@@ -55,63 +51,6 @@ function patchGuestSubmissionForDb(patch: Record<string, unknown>): Record<strin
 function computeBalance(bookingRate?: number | null, downPayment?: number | null): number | null {
   if (bookingRate == null || downPayment == null) return null;
   return Math.round((bookingRate - downPayment) * 100) / 100;
-}
-
-const FUNCTIONS_URL = (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? '';
-
-/**
- * Refreshes Google Calendar + Sheets from the saved row (edge: `sync-booking-integrations`).
- * Best-effort: DB save already succeeded; warns when Google returns a hard failure.
- */
-async function syncBookingIntegrationsAfterSave(
-  bookingId: string,
-  propertyId: string | null
-): Promise<void> {
-  if (!FUNCTIONS_URL.trim()) return;
-
-  const { data: sessionData } = await supabase.auth.getSession();
-  const jwt = sessionData.session?.access_token;
-  if (!jwt) return;
-
-  try {
-    const res = await fetch(scopedFunctionsUrl('/sync-booking-integrations', propertyId), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${jwt}`,
-      },
-      body: JSON.stringify({ bookingId }),
-    });
-
-    const json = (await res.json().catch(() => ({}))) as {
-      success?: boolean;
-      error?: string;
-      data?: {
-        calendar?: { success?: boolean; skipped?: boolean };
-        sheet?: { success?: boolean; skipped?: boolean };
-      };
-    };
-
-    if (!res.ok || json.success !== true) {
-      toast.warning(
-        friendlyToastError(
-          new Error(json.error),
-          'Booking saved, but Calendar or Sheets could not be updated'
-        )
-      );
-      return;
-    }
-
-    const cal = json.data?.calendar;
-    const sh = json.data?.sheet;
-    const calOk = cal?.skipped || cal?.success;
-    const shOk = sh?.skipped || sh?.success;
-    if (!calOk || !shOk) {
-      toast.warning('Booking saved, but Calendar or Sheets reported an error');
-    }
-  } catch {
-    toast.warning('Booking saved, but Calendar or Sheets could not be refreshed');
-  }
 }
 
 export type UpdateBookingPayload = {
@@ -215,7 +154,6 @@ type MutationArgs = {
 
 export function useUpdateBooking() {
   const qc = useQueryClient();
-  const propertyId = usePropertyIdParam();
 
   return useMutation({
     mutationFn: async ({
@@ -271,7 +209,6 @@ export function useUpdateBooking() {
     onSuccess: async (updated, { bookingId }) => {
       qc.setQueryData(BOOKING_QUERY_KEY(bookingId), updated);
       await qc.invalidateQueries({ queryKey: ['bookings'] });
-      await syncBookingIntegrationsAfterSave(bookingId, propertyId);
     },
   });
 }
