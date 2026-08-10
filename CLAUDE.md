@@ -153,7 +153,7 @@ Doc index: `docs/README.md`. Full rules/skills index: `.cursor/rules/README.md`.
 
 ## Agent tooling
 
-Full index: `.claude/README.md` (Claude Code) · `.cursor/rules/README.md` (Cursor) · **`.opencode/README.md`** (OpenCode) · root **`opencode.json`**. Skills (mirrors `.cursor/skills/` + Claude-only `verify`), subagents (`security-auditor`, `debugger`, `test-runner`, `verifier`), commands (`/fix-merge-conflicts`, `/github-issue`, `/workflow-*`, `/superpowers-*`), hooks (auto-format, wrong-stack warning, shell/migration guards — OpenCode via `.opencode/plugins/gfm-ai-tooling.ts`), and MCP servers (`supabase`, `playwright`, `context7`, `markitdown` — need `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_REF` exported locally, never committed). Check those indexes before re-deriving conventions.
+Full index: `.claude/README.md` (Claude Code) · `.cursor/rules/README.md` (Cursor) · **`.opencode/README.md`** (OpenCode) · root **`opencode.json`**. Skills (mirrors `.cursor/skills/` + Claude-only `verify`), subagents (`security-auditor`, `debugger`, `test-runner`, `verifier`), commands (`/kh-*` teammate helpers — start with `/kh-help`, `/fix-merge-conflicts`, `/github-issue`, `/workflow-*`, `/superpowers-*`), hooks (auto-format, wrong-stack warning, shell/migration guards — OpenCode via `.opencode/plugins/gfm-ai-tooling.ts`), and MCP servers (`supabase`, `playwright`, `context7`, `markitdown` — need `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_REF` exported locally, never committed). Check those indexes before re-deriving conventions.
 
 ## Don'ts
 

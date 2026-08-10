@@ -34,6 +34,8 @@ bun scripts/dev/gh-issue.mjs update --github 32 --body "…"
 bun scripts/dev/gh-issue.mjs ship --github 32 --notes "What changed; key files"
 ```
 
+**New teammates / QA:** prefer slash command **`/kh-create-new-ticket`** (short body template + sub-issue `--parent`). Related: `/kh-start-work`, `/kh-help`.
+
 Raw `gh` works too; prefer **`gh-issue.mjs ship`** over bare `gh issue close` to archive in repo.
 
 ## Agent checklist
