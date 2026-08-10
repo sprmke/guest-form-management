@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { CalendarDays } from 'lucide-react';
 
@@ -7,6 +7,7 @@ import {
   BookingCalendarPillLabelToggle,
   type BookingCalendarPillLabelMode,
 } from '@/features/dashboard/bookings/components/calendar/BookingCalendarPillLabelToggle';
+import { calendarSupportsPillLabelToggle } from '@/features/dashboard/bookings/components/calendar/calendarDateUtils';
 import { useBookings } from '@/features/dashboard/bookings/hooks/useBookings';
 import {
   DEFAULT_BOOKINGS_QUERY,
@@ -18,19 +19,28 @@ import { useFinanceLineItems } from '@/features/dashboard/finance/hooks/useFinan
 import { buildFinanceChartData } from '@/features/dashboard/finance/lib/financeChartData';
 import { FINANCE_CHART_BOOKINGS_LIMIT } from '@/features/dashboard/finance/lib/financePeriod';
 import { DEFAULT_FINANCE_QUERY, type FinanceQuery } from '@/features/dashboard/finance/lib/types';
+import { DashboardAttentionCard } from '@/features/dashboard/property/components/DashboardAttentionCard';
+import { DashboardMaintenanceRemindersCard } from '@/features/dashboard/property/components/DashboardMaintenanceRemindersCard';
 import { DashboardTransactionsDueCard } from '@/features/dashboard/property/components/DashboardTransactionsDueCard';
+import type { DashboardAttentionItem } from '@/features/dashboard/property/lib/types';
 
 import { AdminSurfaceCardHeader } from '@/components/shared/AdminSurfaceCardHeader';
-import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { formatDateRangeDisplay, fromIsoDate, type DatePreset } from '@/lib/date/navigation';
 
 type Props = {
   from: string;
   to: string;
   datePreset: DatePreset;
+  attentionItems: DashboardAttentionItem[];
 };
 
-export function DashboardFinanceCalendarSection({ from, to, datePreset }: Props) {
+/**
+ * Equal-width 2×3 board after KPIs:
+ * Calendar         | Needs attention
+ * Cash flow        | Breakdown
+ * Maintenance      | Transactions
+ */
+export function DashboardFinanceCalendarSection({ from, to, datePreset, attentionItems }: Props) {
   const rangeFrom = fromIsoDate(from);
   const rangeTo = fromIsoDate(to);
   const rangeLabel =
@@ -78,92 +88,72 @@ export function DashboardFinanceCalendarSection({ from, to, datePreset }: Props)
   );
 
   const financeChartsLoading = lineItemsQuery.isPending || financeBookingsQuery.isPending;
-
-  const isBelowLg = useIsBelowLg();
-  const calendarCardRef = useRef<HTMLElement>(null);
-  const [calendarCardHeight, setCalendarCardHeight] = useState<number>();
   const [calendarPillLabelMode, setCalendarPillLabelMode] =
     useState<BookingCalendarPillLabelMode>('name');
+  const showPillLabelToggle = useMemo(
+    () => calendarSupportsPillLabelToggle(datePreset, rangeFrom, rangeTo),
+    [datePreset, rangeFrom, rangeTo]
+  );
 
-  useLayoutEffect(() => {
-    if (isBelowLg) {
-      setCalendarCardHeight(undefined);
-      return;
-    }
-
-    const node = calendarCardRef.current;
-    if (!node) return;
-
-    const syncHeight = () => {
-      setCalendarCardHeight(node.getBoundingClientRect().height);
-    };
-
-    syncHeight();
-    const observer = new ResizeObserver(syncHeight);
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [
-    isBelowLg,
-    from,
-    to,
-    datePreset,
-    bookingsQueryResult.isLoading,
-    bookingsQueryResult.isFetching,
-    lineItemsQuery.isLoading,
-  ]);
+  const financeHref = `/finance?from=${from}&to=${to}`;
 
   return (
-    <div className="min-w-0 space-y-3 sm:space-y-4">
-      <div className="grid min-w-0 items-stretch gap-3 lg:grid-cols-5 xl:gap-4">
-        <FinanceTransactionsChart
-          embedded
-          isLoading={financeChartsLoading}
-          cashFlowData={chartData.cashFlowData}
-          incomeBreakdown={chartData.incomeBreakdown}
-          expenseBreakdown={chartData.expenseBreakdown}
-        />
-
-        <DashboardTransactionsDueCard
-          items={lineItemsQuery.data ?? []}
-          from={from}
-          to={to}
-          rangeLabel={rangeLabel}
-          datePreset={datePreset}
-          syncedHeight={calendarCardHeight}
-          isLoading={lineItemsQuery.isLoading}
-          isRefreshing={lineItemsQuery.isFetching}
-          className="lg:col-span-2 lg:col-start-4 lg:row-start-2"
-        />
-
-        <section
-          ref={calendarCardRef}
-          className="surface-card flex min-w-0 flex-col overflow-hidden p-3 sm:p-4 lg:col-span-3 lg:col-start-1 lg:row-start-2"
-        >
-          <AdminSurfaceCardHeader
-            icon={CalendarDays}
-            title="Calendar"
-            description={`Tap a date to open booking details · ${rangeLabel}`}
-            action={
+    <div className="grid min-w-0 items-stretch gap-2.5 sm:gap-3 lg:grid-cols-2 lg:gap-4">
+      <section className="surface-card flex h-full min-w-0 flex-col overflow-hidden p-3 sm:p-4">
+        <AdminSurfaceCardHeader
+          icon={CalendarDays}
+          title="Calendar"
+          description={`Tap a date to open booking details · ${rangeLabel}`}
+          iconClassName="bg-muted/80"
+          action={
+            showPillLabelToggle ? (
               <BookingCalendarPillLabelToggle
                 value={calendarPillLabelMode}
                 onChange={setCalendarPillLabelMode}
               />
-            }
-          />
+            ) : undefined
+          }
+        />
 
-          <BookingCalendarView
-            rows={bookingsQueryResult.data?.rows ?? []}
-            isLoading={bookingsQueryResult.isLoading}
-            error={bookingsQueryResult.error ? (bookingsQueryResult.error as Error).message : null}
-            isRefreshing={bookingsQueryResult.isFetching}
-            variant="mini"
-            rangeFrom={from}
-            rangeTo={to}
-            datePreset={datePreset}
-            pillLabelMode={calendarPillLabelMode}
-          />
-        </section>
-      </div>
+        <BookingCalendarView
+          rows={bookingsQueryResult.data?.rows ?? []}
+          isLoading={bookingsQueryResult.isLoading}
+          error={bookingsQueryResult.error ? (bookingsQueryResult.error as Error).message : null}
+          isRefreshing={bookingsQueryResult.isFetching}
+          variant="mini"
+          rangeFrom={from}
+          rangeTo={to}
+          datePreset={datePreset}
+          pillLabelMode={calendarPillLabelMode}
+        />
+      </section>
+
+      <DashboardAttentionCard
+        className="h-full"
+        items={attentionItems}
+        viewAllHref={`/bookings?from=${from}&to=${to}`}
+      />
+
+      <FinanceTransactionsChart
+        embedded
+        isLoading={financeChartsLoading}
+        cashFlowData={chartData.cashFlowData}
+        incomeBreakdown={chartData.incomeBreakdown}
+        expenseBreakdown={chartData.expenseBreakdown}
+        financeHref={financeHref}
+      />
+
+      <DashboardMaintenanceRemindersCard from={from} to={to} rangeLabel={rangeLabel} />
+
+      <DashboardTransactionsDueCard
+        items={lineItemsQuery.data ?? []}
+        from={from}
+        to={to}
+        rangeLabel={rangeLabel}
+        datePreset={datePreset}
+        isLoading={lineItemsQuery.isLoading}
+        isRefreshing={lineItemsQuery.isFetching}
+      />
     </div>
   );
 }

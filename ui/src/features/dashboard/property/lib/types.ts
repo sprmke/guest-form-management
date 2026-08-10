@@ -43,9 +43,13 @@ export type DashboardTrendPoint = {
 export type DashboardRecentBooking = {
   id: string;
   guestName: string;
+  bookingKind: 'property' | 'parking';
   propertyId: string;
   propertyName: string;
   propertySlug: string;
+  parkingId: string;
+  parkingName: string;
+  parkingSlug: string;
   checkInIso: string;
   checkOutIso: string;
   status: string;
@@ -53,6 +57,16 @@ export type DashboardRecentBooking = {
 };
 
 export type DashboardPropertyPerformance = {
+  id: string;
+  name: string;
+  slug: string;
+  location: string | null;
+  bookings: number;
+  revenue: number;
+  occupancy: number;
+};
+
+export type DashboardParkingPerformance = {
   id: string;
   name: string;
   slug: string;
@@ -91,8 +105,10 @@ export type DashboardStats = {
     nightsBooked: { value: number; periodDays: number };
   };
   propertyCount: number;
+  parkingCount: number;
   trendSeries: DashboardTrendPoint[];
   recentBookings: DashboardRecentBooking[];
   propertyPerformance: DashboardPropertyPerformance[];
+  parkingPerformance: DashboardParkingPerformance[];
   statusBreakdown: DashboardPipelineSlice[];
 };

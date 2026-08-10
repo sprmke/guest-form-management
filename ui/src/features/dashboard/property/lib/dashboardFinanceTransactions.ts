@@ -22,11 +22,9 @@ function occurredInPeriod(item: FinanceLineItem, from: string, to: string): bool
   return item.occurred_on >= from && item.occurred_on <= to;
 }
 
-/** Year filters can surface many recurring rows; shorter presets stay compact. */
-export function dashboardTransactionMaxRows(datePreset: DatePreset): number {
-  if (datePreset === 'year') return 10;
-  if (datePreset === 'week') return 5;
-  return 6;
+/** Dashboard board list cards share a 5-row cap (+ View all). */
+export function dashboardTransactionMaxRows(_datePreset: DatePreset): number {
+  return 5;
 }
 
 /** Same scope as Finance → Transactions: occurred_on in the selected range. */

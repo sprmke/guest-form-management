@@ -11,7 +11,6 @@ import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgCon
 import { usePropertyGoogleAttentionItem } from '@/features/dashboard/org/hooks/usePropertyGoogleAttentionItem';
 import { usePropertyRejectedExternalReviewsAttentionItem } from '@/features/dashboard/org/hooks/usePropertyRejectedExternalReviewsAttentionItem';
 import type { DashboardAttentionItem } from '@/features/dashboard/property/lib/types';
-import { DashboardAttentionStrip } from '@/features/dashboard/property/components/DashboardAttentionStrip';
 import { PropertyGuestPagesMenu } from '@/features/dashboard/property/components/PropertyGuestPagesMenu';
 import { DashboardFinanceCalendarSection } from '@/features/dashboard/property/components/DashboardFinanceCalendarSection';
 import { DashboardStatCards } from '@/features/dashboard/property/components/DashboardStatCards';
@@ -28,6 +27,13 @@ import { DashboardSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { useIsBelowMd } from '@/hooks/useMediaQuery';
 import { detectPresetFromRange, fromIsoDate } from '@/lib/date/navigation';
 
+/**
+ * THESIS: KPIs lead; equal 2×3 board for ops + money + calendar.
+ * OWN-WORLD: Kame surface-card peers, Plus Jakarta admin density.
+ * STORY: Scan period stats, then attention/calendar, cash, maintenance/transactions.
+ * FIRST VIEWPORT: KPI strip, then Calendar | Needs attention.
+ * FORM: equal-width board (user 2026-08-09).
+ */
 export function DashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const isBelowMd = useIsBelowMd();
@@ -135,9 +141,7 @@ export function DashboardPage() {
           </button>
         </FloatingPanel>
       ) : data ? (
-        <>
-          <DashboardAttentionStrip items={attentionItems} />
-
+        <div className="native-stagger flex min-w-0 flex-col gap-2.5 sm:gap-3 lg:gap-4">
           <DashboardStatCards stats={data} periodLabel={trendLabel} />
 
           {period.from && period.to ? (
@@ -145,9 +149,10 @@ export function DashboardPage() {
               from={period.from}
               to={period.to}
               datePreset={dateNav.datePreset}
+              attentionItems={attentionItems}
             />
           ) : null}
-        </>
+        </div>
       ) : null}
     </AdminMobilePage>
   );

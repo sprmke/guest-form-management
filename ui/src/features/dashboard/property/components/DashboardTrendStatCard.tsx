@@ -1,7 +1,8 @@
+import type { ReactNode } from 'react';
+
 import { TrendingDown, TrendingUp } from 'lucide-react';
 
 import { StatCard, type StatCardProps } from '@/components/shared/StatCard';
-
 import { cn } from '@/lib/utils';
 
 import type { LucideIcon } from 'lucide-react';
@@ -17,6 +18,7 @@ type Props = {
   iconBgClassName: string;
   valueClassName?: string;
   className?: string;
+  footer?: ReactNode;
 };
 
 export function DashboardTrendStatCard(props: Props) {

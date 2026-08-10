@@ -13,8 +13,10 @@ import {
 } from '@/features/dashboard/property/lib/dashboardFinanceTransactions';
 
 import { AdminSurfaceCardHeader } from '@/components/shared/AdminSurfaceCardHeader';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { DatePreset } from '@/lib/date/navigation';
+import { ATTENTION_SEVERITY_STYLES, compactStatusBadgeClasses } from '@/lib/status-tone-colors';
 import { cn } from '@/lib/utils';
 import { formatIsoDate } from '@/utils/format/bookingDisplay';
 import { formatMoney } from '@/utils/format/currency';
@@ -66,11 +68,26 @@ export function DashboardTransactionsDueCard({
         title="Transactions"
         description={`Due dates & recurring · ${rangeLabel}`}
         iconClassName="bg-muted/80"
+        action={
+          <Link
+            to={transactionsHref}
+            className="text-primary hover:bg-primary/10 inline-flex min-h-[44px] items-center gap-1 rounded-lg px-2 text-sm font-semibold transition-colors"
+          >
+            View
+            <ArrowRight className="size-4 shrink-0" aria-hidden />
+          </Link>
+        }
       />
 
       {!isLoading ? (
         <div className="mb-3 flex flex-wrap gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/25 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-800 dark:text-amber-300">
+          <span
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-semibold normal-case',
+              ATTENTION_SEVERITY_STYLES.warning.chip,
+              'text-amber-900 dark:text-amber-100'
+            )}
+          >
             <CalendarClock className="size-3 shrink-0" aria-hidden />
             {dueCount} due
           </span>
@@ -93,8 +110,16 @@ export function DashboardTransactionsDueCard({
             aria-busy="true"
             aria-label="Loading transactions"
           >
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-[72px] rounded-xl" />
+            <div className="mb-1 flex flex-wrap gap-2">
+              <Skeleton className="h-7 w-16 rounded-full" />
+              <Skeleton className="h-7 w-24 rounded-full" />
+            </div>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton
+                key={i}
+                className="h-12 w-full rounded-xl"
+                style={{ opacity: 1 - i * 0.12 }}
+              />
             ))}
           </div>
         ) : visibleRows.length === 0 ? (
@@ -104,6 +129,9 @@ export function DashboardTransactionsDueCard({
             <p className="text-caption max-w-xs">
               Recurring bills and payment due dates for {rangeLabel} will show here.
             </p>
+            <Button asChild variant="outline-primary" size="sm" className="mt-1 min-h-[44px]">
+              <Link to={transactionsHref}>Add Transaction</Link>
+            </Button>
           </div>
         ) : (
           <>
@@ -142,12 +170,9 @@ function TransactionRow({
   const { item, dueDate, isRecurring, recurrenceLabel, isOverdue, isDueToday, isPaid } = row;
 
   return (
-    <div className="border-border/50 bg-muted/20 rounded-xl border px-3 py-2.5">
+    <div className="border-border/50 bg-muted/20 rounded-xl border px-3 py-2">
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-foreground truncate text-sm font-semibold">{item.label}</p>
-          {item.category ? <p className="text-caption mt-0.5 truncate">{item.category}</p> : null}
-        </div>
+        <p className="text-foreground min-w-0 truncate text-sm font-semibold">{item.label}</p>
         <p
           className={cn(
             'shrink-0 text-sm font-bold tabular-nums',
@@ -161,32 +186,39 @@ function TransactionRow({
         </p>
       </div>
 
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        <span className="text-muted-foreground inline-flex items-center gap-1 text-[11px] font-medium">
+      <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+        {item.category ? (
+          <span className="text-muted-foreground min-w-0 truncate text-[11px] font-medium">
+            {item.category}
+          </span>
+        ) : null}
+
+        <span className="text-muted-foreground inline-flex shrink-0 items-center gap-1 text-[11px] font-medium">
           <CalendarClock className="size-3 shrink-0" aria-hidden />
           Due {formatIsoDate(dueDate)}
         </span>
 
         {isRecurring && recurrenceLabel ? (
-          <span className="border-border/50 bg-card text-muted-foreground inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+          <span className="border-border/50 bg-card text-muted-foreground inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
             <Repeat className="size-3 shrink-0" aria-hidden />
             {recurrenceLabel}
           </span>
         ) : null}
 
         {isPaid ? (
-          <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/25 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
+          <span
+            className={cn(
+              'inline-flex items-center gap-1 normal-case',
+              compactStatusBadgeClasses('success')
+            )}
+          >
             <CheckCircle2 className="size-3 shrink-0" aria-hidden />
             Paid
           </span>
         ) : isOverdue ? (
-          <span className="inline-flex items-center rounded-md border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700 dark:text-rose-300">
-            Overdue
-          </span>
+          <span className={cn('normal-case', compactStatusBadgeClasses('danger'))}>Overdue</span>
         ) : isDueToday ? (
-          <span className="inline-flex items-center rounded-md border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 dark:text-amber-300">
-            Due today
-          </span>
+          <span className={cn('normal-case', compactStatusBadgeClasses('warning'))}>Due today</span>
         ) : null}
       </div>
     </div>
