@@ -304,7 +304,7 @@ export function ReviewPricingForm({
 function inputClass(hasError: boolean, disabled = false, readOnly = false) {
   return [
     'w-full rounded-md border px-3 py-1.5 text-sm',
-    'focus:outline-none focus:ring-2 focus:ring-ring/40',
+    'field-focus',
     disabled || readOnly
       ? 'cursor-not-allowed border-border bg-muted text-foreground'
       : hasError

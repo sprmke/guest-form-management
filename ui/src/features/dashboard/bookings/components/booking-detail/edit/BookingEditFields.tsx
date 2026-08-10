@@ -10,7 +10,6 @@
 
 import type { ReactNode, FocusEventHandler } from 'react';
 
-
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input as ShadcnInput } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -19,7 +18,7 @@ import type { FieldError } from 'react-hook-form';
 
 /** Matches shadcn Input — edit workspace fields (high contrast vs view rows). */
 export const fieldControlClass =
-  'flex w-full rounded-lg border-2 border-border/70 bg-background px-4 py-2.5 text-sm font-medium text-foreground ring-offset-background transition-colors placeholder:text-muted-foreground/70 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-50 hover:border-primary/35';
+  'flex w-full rounded-lg border-2 border-border/70 bg-card px-4 py-2.5 text-sm font-medium text-foreground transition-colors placeholder:text-muted-foreground/70 disabled:cursor-not-allowed disabled:opacity-50 hover:border-primary/35 field-focus';
 
 /** @deprecated Prefer `fieldControlClass` — kept for textarea in tab files. */
 export const inputClass = cn(fieldControlClass, 'resize-none');

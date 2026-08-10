@@ -8,6 +8,7 @@ import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { toneBadgeClasses } from '@/lib/status-tone-colors';
 import { formatBookingDate } from '@/utils/format/bookingDisplay';
 
 type Props = {
@@ -56,7 +57,7 @@ export function BookingDetailHeader({ booking, onEdit, onPayParking, className }
               className={cn(
                 'inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
                 isAirbnb
-                  ? 'border-orange-500/25 bg-orange-500/10 text-orange-700 dark:text-orange-300'
+                  ? toneBadgeClasses('orange')
                   : 'border-primary/25 bg-primary/10 text-primary'
               )}
             >

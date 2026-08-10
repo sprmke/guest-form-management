@@ -101,6 +101,7 @@ import { AppSettingsCardSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
+import { resolveNameAvailabilityState } from '@/lib/availabilityCheckState';
 import { propertyBrandColorStoredValue } from '@/lib/theme/brandColor';
 
 const SETTINGS_SECTIONS: AdminSectionNavItem[] = [
@@ -254,6 +255,13 @@ export function PropertySettingsCard() {
 
   const nameUnavailable = nameChanged && nameCheck.isUnavailable;
   const nameConflictMessage = nameUnavailable ? (nameCheck.data?.message ?? null) : null;
+  const nameChecking = nameChanged && nameCheck.showChecking;
+  const nameAvailabilityState = resolveNameAvailabilityState({
+    ready: nameChanged && profileDraft.name.trim().length >= 2,
+    showChecking: nameCheck.showChecking,
+    isUnavailable: nameCheck.isUnavailable,
+    isFetched: nameCheck.isFetched,
+  });
 
   const { conflict: towerConflictDetail, hasActiveListing: towerUnitListed } = useTowerUnitConflict(
     profileDraft.tower,
@@ -626,7 +634,7 @@ export function PropertySettingsCard() {
         isDirty ? (
           <MobileHeroActionButton
             aria-label={busy ? 'Saving' : 'Save changes'}
-            disabled={busy || Boolean(towerConflict) || nameUnavailable}
+            disabled={busy || Boolean(towerConflict) || nameUnavailable || nameChecking}
             onClick={() => void handleSave()}
           >
             <Save className="size-5" aria-hidden />
@@ -638,7 +646,7 @@ export function PropertySettingsCard() {
           <Button
             type="button"
             onClick={() => void handleSave()}
-            disabled={busy || Boolean(towerConflict) || nameUnavailable}
+            disabled={busy || Boolean(towerConflict) || nameUnavailable || nameChecking}
             className="min-h-[44px] gap-1.5"
           >
             <Save className="size-4" aria-hidden />
@@ -682,7 +690,7 @@ export function PropertySettingsCard() {
                   <Button
                     type="button"
                     onClick={() => void handleSave()}
-                    disabled={busy || Boolean(towerConflict) || nameUnavailable}
+                    disabled={busy || Boolean(towerConflict) || nameUnavailable || nameChecking}
                     className="min-h-[44px] w-full sm:w-auto"
                     size="sm"
                   >
@@ -702,7 +710,7 @@ export function PropertySettingsCard() {
             towerConflict={towerConflict}
             nameUnavailable={nameUnavailable}
             nameConflictMessage={nameConflictMessage}
-            nameChecking={nameChanged && nameCheck.showChecking}
+            nameAvailabilityState={nameAvailabilityState}
             newCustomAmenityInputs={newCustomAmenityInputs}
             onNewCustomAmenityInputChange={(categoryId, value) =>
               setNewCustomAmenityInputs((current) => ({

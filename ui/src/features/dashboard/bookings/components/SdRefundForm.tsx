@@ -462,7 +462,7 @@ function LineListSection({
             placeholder={labelPlaceholder}
             readOnly={readOnly}
             className={cn(
-              'border-border bg-card focus:ring-ring/40 h-9 min-w-0 flex-1 rounded-md border px-2 py-1 text-[13px] leading-tight focus:outline-none focus:ring-2',
+              'border-border bg-card field-focus h-9 min-w-0 flex-1 rounded-md border px-2 py-1 text-[13px] leading-tight',
               readOnly && 'bg-muted/40 text-foreground cursor-default'
             )}
           />
@@ -481,7 +481,7 @@ function LineListSection({
               placeholder={amountPlaceholder}
               readOnly={readOnly}
               className={cn(
-                'border-border bg-card focus:ring-ring/40 h-9 w-full min-w-0 flex-1 rounded-md border px-2 py-1 text-[13px] leading-tight focus:outline-none focus:ring-2 sm:w-24 sm:min-w-[5.5rem] sm:flex-none',
+                'border-border bg-card field-focus h-9 w-full min-w-0 flex-1 rounded-md border px-2 py-1 text-[13px] leading-tight sm:w-24 sm:min-w-[5.5rem] sm:flex-none',
                 readOnly && 'bg-muted/40 text-foreground cursor-default'
               )}
             />

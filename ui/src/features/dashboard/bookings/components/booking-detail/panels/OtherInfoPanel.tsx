@@ -8,6 +8,7 @@ import {
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
 import { cn } from '@/lib/utils';
+import { semanticBadgeClasses, toneBadgeClasses } from '@/lib/status-tone-colors';
 
 export function OtherInfoPanel({ booking }: { booking: BookingRow }) {
   const source = booking.booking_source || 'Direct';
@@ -20,9 +21,7 @@ export function OtherInfoPanel({ booking }: { booking: BookingRow }) {
           <span
             className={cn(
               'inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold',
-              isAirbnb
-                ? 'border-orange-500/25 bg-orange-500/10 text-orange-700'
-                : 'border-primary/25 bg-primary/10 text-primary'
+              isAirbnb ? toneBadgeClasses('orange') : 'border-primary/25 bg-primary/10 text-primary'
             )}
           >
             {source}
@@ -33,8 +32,8 @@ export function OtherInfoPanel({ booking }: { booking: BookingRow }) {
             className={cn(
               'inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold',
               booking.guest_requests_surprise_decor
-                ? 'border-violet-500/25 bg-violet-500/10 text-violet-800'
-                : 'border-border bg-muted/50 text-muted-foreground'
+                ? toneBadgeClasses('purple')
+                : semanticBadgeClasses('neutral')
             )}
           >
             {booking.guest_requests_surprise_decor ? 'Requested' : 'Not requested'}

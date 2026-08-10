@@ -125,12 +125,22 @@ export function CalendarMonthGrid<T>({
 
   const dayCount = calendarGrid.days.length;
   const dense = compact && dayCount > 31;
-  const cellMinHeight = dense ? 'sm:min-h-[48px]' : compact ? 'sm:min-h-[72px]' : 'sm:min-h-[88px]';
-  const padCellMinHeight = cellMinHeight;
+  /** Mini embed: short date strip (pills sit in the week track below). */
+  const cellMinHeight = dense
+    ? 'min-h-7'
+    : compact
+      ? 'min-h-8'
+      : 'aspect-square sm:aspect-auto sm:min-h-[88px]';
+  const padCellMinHeight = dense
+    ? 'min-h-7'
+    : compact
+      ? 'min-h-8'
+      : 'aspect-square sm:aspect-auto sm:min-h-[88px]';
   /** Full calendar: pills on sm+; compact embed: pills unless range is dense (year-style). */
   const showPillLabels = !compact || !dense;
   const showWeekdayHeaders = true;
   const spanLaneCap = maxSpanLanes ?? (compact ? 1 : 2);
+  const spanLaneHeightPx = dense ? 12 : compact ? 18 : 18;
 
   const renderDayCell = (day: Date) => {
     const key = format(day, 'yyyy-MM-dd');
@@ -159,11 +169,12 @@ export function CalendarMonthGrid<T>({
             : `no ${entityLabel}s`
         }`}
         className={cn(
-          'relative flex flex-col items-stretch justify-start rounded-lg p-1.5 transition-all duration-100',
-          'aspect-square outline-none sm:aspect-auto',
+          'relative flex flex-col justify-start outline-none transition-colors duration-150',
+          compact ? 'items-center rounded-md px-0.5 py-0.5' : 'items-stretch rounded-lg p-1.5',
           cellMinHeight,
+          compact && hasItems && !todayFlag && !isSelected && 'bg-muted/35',
           navigable &&
-            'hover:bg-muted/50 focus-visible:ring-sidebar-primary/40 cursor-pointer focus-visible:ring-2',
+            'hover:bg-muted/55 focus-visible:ring-sidebar-primary/40 cursor-pointer focus-visible:ring-2',
           !navigable &&
             !onDayClick &&
             'hover:bg-muted/50 focus-visible:ring-sidebar-primary/40 focus-visible:ring-2',
@@ -172,28 +183,37 @@ export function CalendarMonthGrid<T>({
           !isCurrentMonth && 'opacity-35'
         )}
       >
-        <div className="flex min-h-[20px] items-center justify-between gap-1">
+        <div
+          className={cn(
+            'relative flex w-full items-center justify-center',
+            compact ? 'min-h-6' : 'min-h-[20px]'
+          )}
+        >
           <span
             className={cn(
-              'text-[12px] font-semibold leading-none',
+              'font-semibold tabular-nums leading-none',
+              compact ? 'text-[11px]' : 'text-[12px]',
               todayFlag
-                ? 'gradient-primary text-primary-foreground inline-flex size-5 items-center justify-center rounded-full'
-                : 'text-foreground px-1'
+                ? cn(
+                    'gradient-primary text-primary-foreground inline-flex items-center justify-center rounded-full',
+                    compact ? 'size-6 text-[11px]' : 'size-5'
+                  )
+                : 'text-foreground'
             )}
           >
             {format(day, 'd')}
           </span>
-          {hasItems && (
-            <span className="text-muted-foreground text-[9px] font-black tabular-nums">
+          {hasItems && !compact ? (
+            <span className="text-muted-foreground absolute right-0 top-1/2 -translate-y-1/2 text-[9px] font-black tabular-nums">
               {dayItems.length}
             </span>
-          )}
+          ) : null}
         </div>
 
         {hasItems && showPillLabels && !spanMode && (
           <div
             className={cn(
-              'mt-1.5 flex flex-col gap-0.5 overflow-hidden',
+              'mt-1.5 flex w-full flex-col gap-0.5 overflow-hidden',
               !compact && 'hidden sm:flex'
             )}
           >
@@ -322,32 +342,41 @@ export function CalendarMonthGrid<T>({
         </div>
       ) : null}
 
-      {showWeekdayHeaders ? (
-        <div className="grid grid-cols-7 px-2 pb-1 pt-3 sm:px-3">
-          {CALENDAR_WEEKDAYS.map((day) => (
-            <div
-              key={day}
-              className="text-muted-foreground py-1 text-center text-[10px] font-bold uppercase tracking-wider"
-            >
-              {day}
-            </div>
-          ))}
-        </div>
-      ) : null}
-
       {spanMode ? (
-        <div className="flex flex-col gap-1 px-2 pb-3 sm:px-3">
+        <div
+          className={cn(
+            'flex flex-col',
+            compact ? 'gap-0.5 px-1.5 pb-1.5 pt-1 sm:px-2' : 'gap-1 px-2 pb-3 pt-3 sm:px-3'
+          )}
+        >
+          {showWeekdayHeaders ? (
+            <div className={cn('grid grid-cols-7 gap-1', compact ? 'pb-0.5' : 'pb-1')}>
+              {CALENDAR_WEEKDAYS.map((day) => (
+                <div
+                  key={day}
+                  className={cn(
+                    'text-muted-foreground text-center font-semibold uppercase',
+                    compact
+                      ? 'py-0.5 text-[9px] tracking-[0.08em]'
+                      : 'py-1 text-[10px] font-bold tracking-wider'
+                  )}
+                >
+                  {day}
+                </div>
+              ))}
+            </div>
+          ) : null}
           {weeks.map((week) => (
-            <div key={week.weekIndex}>
-              <div className="grid grid-cols-7 gap-1">
+            <div
+              key={week.weekIndex}
+              className={cn(compact && 'even:bg-muted/20 rounded-lg px-0.5 py-0.5')}
+            >
+              <div className={cn('grid grid-cols-7', compact ? 'gap-0.5' : 'gap-1')}>
                 {week.days.map((day, colIdx) =>
                   day ? (
                     renderDayCell(day)
                   ) : (
-                    <div
-                      key={`pad-${week.weekIndex}-${colIdx}`}
-                      className={cn('aspect-square', padCellMinHeight)}
-                    />
+                    <div key={`pad-${week.weekIndex}-${colIdx}`} className={padCellMinHeight} />
                   )
                 )}
               </div>
@@ -359,6 +388,8 @@ export function CalendarMonthGrid<T>({
                   }
                   renderSegment={renderOccupancySegment}
                   maxLanes={spanLaneCap}
+                  laneHeightPx={spanLaneHeightPx}
+                  className={cn(compact && 'mt-0')}
                   hiddenClassName={cn(!compact && 'hidden sm:grid', compact && dense && 'hidden')}
                 />
               ) : null}
@@ -366,9 +397,28 @@ export function CalendarMonthGrid<T>({
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-7 gap-1 px-2 pb-3 sm:px-3">
+        <div
+          className={cn(
+            'grid grid-cols-7',
+            compact ? 'gap-1 px-1.5 pb-2 pt-2 sm:px-2' : 'gap-1 px-2 pb-3 pt-3 sm:px-3'
+          )}
+        >
+          {showWeekdayHeaders
+            ? CALENDAR_WEEKDAYS.map((day) => (
+                <div
+                  key={day}
+                  className={cn(
+                    'text-muted-foreground text-center font-bold uppercase',
+                    compact ? 'py-1 text-[9px] tracking-wide' : 'py-1 text-[10px] tracking-wider'
+                  )}
+                >
+                  {day}
+                </div>
+              ))
+            : null}
+
           {Array.from({ length: calendarGrid.paddingStart }).map((_, idx) => (
-            <div key={`pad-${idx}`} className={cn('aspect-square', padCellMinHeight)} />
+            <div key={`pad-${idx}`} className={padCellMinHeight} />
           ))}
 
           {calendarGrid.days.map((day) => renderDayCell(day))}

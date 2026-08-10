@@ -82,7 +82,7 @@ export function TelegramPlaceholdersReference({
           className={cn(
             'border-border/70 bg-card text-foreground h-9 w-full rounded-lg border py-1.5 pl-8 pr-2.5 text-xs',
             'placeholder:text-muted-foreground/70 shadow-[inset_0_1px_2px_hsl(240_6%_10%_/0.04)]',
-            'focus:border-primary/40 focus:ring-ring/30 transition-colors focus:outline-none focus:ring-2',
+            'field-focus transition-colors',
             'dark:border-border/50 dark:bg-muted/30 dark:shadow-none'
           )}
         />
