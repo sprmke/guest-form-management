@@ -18,6 +18,8 @@ export interface SavedCalendarTemplate {
   aspectPreset: string | null;
   createdAt: string;
   thumbnailDataUrl?: string;
+  aiGenerated?: boolean;
+  aiGenerationId?: string | null;
 }
 
 export function useCalendarTemplates(_propertySlug: string) {
@@ -41,6 +43,9 @@ export function useCalendarTemplates(_propertySlug: string) {
           typeof row.designJson?.thumbnailDataUrl === 'string'
             ? row.designJson.thumbnailDataUrl
             : undefined,
+        aiGenerated: row.designJson?.aiGenerated === true,
+        aiGenerationId:
+          typeof row.designJson?.aiGenerationId === 'string' ? row.designJson.aiGenerationId : null,
       });
     }
     return rows;
@@ -70,12 +75,39 @@ export function useCalendarTemplates(_propertySlug: string) {
     [propertyId, queryClient]
   );
 
+  const renameTemplate = useCallback(
+    async (id: string, name: string): Promise<boolean> => {
+      const trimmed = name.trim();
+      if (!trimmed) return false;
+      try {
+        const jwt = await getSessionJwt();
+        const res = await fetch(scopedFunctionsUrl('marketing-templates', propertyId), {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${jwt}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ id, name: trimmed }),
+        });
+        const json = (await res.json()) as { success?: boolean; error?: string };
+        if (!res.ok || !json.success) throw new Error(json.error ?? 'Rename failed');
+        void queryClient.invalidateQueries({ queryKey: ['marketing-templates', propertyId] });
+        return true;
+      } catch (error) {
+        toast.error((error as Error).message);
+        return false;
+      }
+    },
+    [propertyId, queryClient]
+  );
+
   return useMemo(
     () => ({
       apiTemplates,
       savedTemplates,
       deleteTemplate,
+      renameTemplate,
     }),
-    [apiTemplates, savedTemplates, deleteTemplate]
+    [apiTemplates, savedTemplates, deleteTemplate, renameTemplate]
   );
 }

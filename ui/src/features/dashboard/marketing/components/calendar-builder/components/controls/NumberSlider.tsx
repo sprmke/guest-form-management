@@ -53,18 +53,18 @@ export function NumberSlider({
   };
 
   return (
-    <div className="space-y-2">
+    <div className="min-w-0 space-y-2">
       {label && (
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <Label className="text-muted-foreground text-xs">{label}</Label>
-          <span className="text-muted-foreground text-xs">
+          <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
             {value}
             {unit}
           </span>
         </div>
       )}
 
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 items-center gap-2">
         <input
           type="range"
           min={min}
@@ -72,10 +72,10 @@ export function NumberSlider({
           step={step}
           value={value}
           onChange={handleSliderChange}
-          className="bg-muted [&::-webkit-slider-thumb]:bg-primary h-1.5 flex-1 cursor-pointer appearance-none rounded-full [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-sm [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-110"
+          className="bg-muted [&::-webkit-slider-thumb]:bg-primary h-1.5 min-w-0 flex-1 cursor-pointer appearance-none rounded-full [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-sm [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-110"
         />
 
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1">
           <Input
             type="number"
             value={inputValue}
@@ -84,9 +84,10 @@ export function NumberSlider({
             min={min}
             max={max}
             step={step}
-            className="h-8 w-16 text-center text-xs"
+            className="h-8 w-14 text-center text-xs"
+            aria-label={label ? `${label} value` : 'Numeric value'}
           />
-          {unit && <span className="text-muted-foreground text-xs">{unit}</span>}
+          {unit ? <span className="text-muted-foreground w-5 text-xs">{unit}</span> : null}
         </div>
       </div>
     </div>

@@ -62,41 +62,39 @@ export function FontSelector({ label, value, onChange, showAdvanced = false }: F
         </Select>
       </div>
 
-      {/* Size and Weight Row */}
-      <div className="grid grid-cols-2 gap-3">
-        <NumberSlider
-          label="Size"
-          value={value.size}
-          onChange={(v) => updateFont('size', v)}
-          min={8}
-          max={72}
-          step={1}
-        />
+      {/* Size + Weight — stacked so the slider isn't crushed in narrow panels */}
+      <NumberSlider
+        label="Size"
+        value={value.size}
+        onChange={(v) => updateFont('size', v)}
+        min={8}
+        max={72}
+        step={1}
+      />
 
-        <div className="space-y-1.5">
-          <Label className="text-muted-foreground text-xs">Weight</Label>
-          <Select
-            value={value.weight.toString()}
-            onValueChange={(v) => updateFont('weight', parseInt(v) as FontConfig['weight'])}
-          >
-            <SelectTrigger className="h-9">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {FONT_WEIGHTS.map((weight) => (
-                <SelectItem key={weight.value} value={weight.value.toString()}>
-                  {weight.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="space-y-1.5">
+        <Label className="text-muted-foreground text-xs">Weight</Label>
+        <Select
+          value={value.weight.toString()}
+          onValueChange={(v) => updateFont('weight', parseInt(v) as FontConfig['weight'])}
+        >
+          <SelectTrigger className="h-9">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {FONT_WEIGHTS.map((weight) => (
+              <SelectItem key={weight.value} value={weight.value.toString()}>
+                {weight.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Advanced Options */}
       {showAdvanced && (
         <>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-3">
             <NumberSlider
               label="Line Height"
               value={value.lineHeight}

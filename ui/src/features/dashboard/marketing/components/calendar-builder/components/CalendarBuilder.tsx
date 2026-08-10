@@ -19,11 +19,15 @@ import { usePublicPropertyDetail } from '@/features/guest/marketing/properties/h
 import { useAppSettings } from '@/features/dashboard/bookings/hooks/useAppSettings';
 import { CalendarPropertyMediaProvider } from '@/features/dashboard/marketing/components/calendar-builder/components/CalendarPropertyMediaProvider';
 import { CalendarThumbnailsProvider } from '@/features/dashboard/marketing/components/calendar-builder/components/CalendarThumbnailsProvider';
-import { MarketingAiGeneratePanel } from '@/features/dashboard/marketing/components/shared/MarketingAiGeneratePanel';
+import {
+  MarketingAiGeneratePanel,
+  type MarketingAiGenerateInput,
+} from '@/features/dashboard/marketing/components/shared/MarketingAiGeneratePanel';
 import { MarketingAutoSaveStatus } from '@/features/dashboard/marketing/components/shared/MarketingAutoSaveStatus';
 import { MarketingEditorHistoryControls } from '@/features/dashboard/marketing/components/shared/MarketingEditorHistoryControls';
 import { MarketingEditorSidebar } from '@/features/dashboard/marketing/components/shared/MarketingEditorSidebar';
 import { MarketingPreviewHeader } from '@/features/dashboard/marketing/components/shared/MarketingPreviewHeader';
+import { marketingEditorWorkspaceClassName } from '@/features/dashboard/marketing/lib/marketingEditorWorkspace';
 import { useMarketingStudioHeaderActions } from '@/features/dashboard/marketing/components/shared/marketingStudioHeaderActions';
 import { SaveMarketingTemplateButton } from '@/features/dashboard/marketing/components/shared/SaveMarketingTemplateButton';
 import { useCalendarTemplateDedupe } from '@/features/dashboard/marketing/hooks/useCalendarTemplateDedupe';
@@ -39,8 +43,14 @@ import {
   isCalendarBlankPreset,
   isCalendarCustomPreset,
   isCalendarPresetAutosave,
+  planCalendarRelatedCustomIds,
+  planCalendarRelatedCustomRemoval,
   CALENDAR_CUSTOM_PRESET_ID,
 } from '@/features/dashboard/marketing/lib/calendarAutosave';
+import {
+  applyCalendarAiElementsToStyles,
+  applyCalendarAiPreferencesToTokens,
+} from '@/features/dashboard/marketing/lib/calendarAiGenerateOptions';
 import { resolveAiGeneratedCalendarStylesForAllFormats } from '@/features/dashboard/marketing/lib/calendarAiTokens';
 import { applyBrandAccentToCalendarStyles } from '@/features/dashboard/marketing/lib/calendarBrandColors';
 import {
@@ -67,6 +77,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { resolveOrgBrandHex } from '@/lib/theme/brandColor';
+import { cn } from '@/lib/utils';
 
 import { CalendarFormatPicker } from './CalendarFormatPicker';
 import { CalendarPreview } from './CalendarPreview';
@@ -185,7 +196,8 @@ export function CalendarBuilder({
   const generateTemplate = useGenerateMarketingTemplate();
   const { data: bookedDates = [] } = useMarketingBookedDates();
 
-  const { apiTemplates, savedTemplates, deleteTemplate } = useCalendarTemplates(propertySlug);
+  const { apiTemplates, savedTemplates, deleteTemplate, renameTemplate } =
+    useCalendarTemplates(propertySlug);
   useCalendarTemplateDedupe(true);
 
   const calendarPresetIds = useMemo(() => ['default', ...CALENDAR_DESIGNER_PRESET_IDS], []);
@@ -749,14 +761,52 @@ export function CalendarBuilder({
 
   const handleRemoveCustom = useCallback(
     async (id: string) => {
-      const removed = await deleteTemplate(id);
-      if (!removed) return;
-      if (activeCustomTemplateId === id || selectedTemplateKey === `custom:${id}`) {
+      const removeIds = planCalendarRelatedCustomRemoval(apiTemplates, id);
+      const results = await Promise.all(removeIds.map((templateId) => deleteTemplate(templateId)));
+      if (!results.some(Boolean)) return;
+
+      const removedActive = removeIds.some(
+        (templateId) =>
+          activeCustomTemplateId === templateId || selectedTemplateKey === `custom:${templateId}`
+      );
+      if (removedActive) {
         loadPresetEditorState('default');
       }
-      toast.success('Template removed');
+
+      const removedCount = results.filter(Boolean).length;
+      toast.success(
+        removedCount > 1
+          ? `Removed ${removedCount} formats (Square, Portrait, Landscape)`
+          : 'Template removed'
+      );
     },
-    [activeCustomTemplateId, deleteTemplate, loadPresetEditorState, selectedTemplateKey]
+    [
+      activeCustomTemplateId,
+      apiTemplates,
+      deleteTemplate,
+      loadPresetEditorState,
+      selectedTemplateKey,
+    ]
+  );
+
+  const handleRenameCustom = useCallback(
+    async (id: string, name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed) return;
+      const renameIds = planCalendarRelatedCustomIds(apiTemplates, id);
+      const results = await Promise.all(
+        renameIds.map((templateId) => renameTemplate(templateId, trimmed))
+      );
+      if (!results.some(Boolean)) return;
+
+      const renamedCount = results.filter(Boolean).length;
+      toast.success(
+        renamedCount > 1
+          ? `Renamed ${renamedCount} formats (Square, Portrait, Landscape)`
+          : 'Template renamed'
+      );
+    },
+    [apiTemplates, renameTemplate]
   );
 
   const availabilityText = useMemo(() => {
@@ -770,14 +820,7 @@ export function CalendarBuilder({
   }, [publicProperty?.amenities]);
 
   const handleAiGenerate = useCallback(
-    async (input: {
-      prompt: string;
-      includeContext: {
-        propertyPhoto: boolean;
-        amenities: boolean;
-        availability: boolean;
-      };
-    }) => {
+    async (input: MarketingAiGenerateInput) => {
       setAiGenerateBusy(true);
       beginAutoSaveSuspension();
       let aiSucceeded = false;
@@ -788,26 +831,40 @@ export function CalendarBuilder({
           includeContext: input.includeContext,
           amenitiesText: input.includeContext.amenities ? amenitiesText : undefined,
           availabilityText: input.includeContext.availability ? availabilityText : undefined,
+          preferences: {
+            layoutArchetype: input.preferences.layoutArchetype,
+            fontPairing: input.preferences.fontPairing,
+            backgroundMood: input.preferences.backgroundMood,
+          },
         });
         aiSucceeded = true;
 
+        const tokens = applyCalendarAiPreferencesToTokens(result.tokens, input.preferences);
         const photoUrl = input.includeContext.propertyPhoto ? propertyPhotoUrl : undefined;
-        const variants = resolveAiGeneratedCalendarStylesForAllFormats(result.tokens, {
+        const variants = resolveAiGeneratedCalendarStylesForAllFormats(tokens, {
           brandColor,
           propertyPhotoUrl: photoUrl,
-        });
+        }).map((variant) => ({
+          ...variant,
+          styles: applyCalendarAiElementsToStyles(variant.styles, input.preferences.elements),
+        }));
+        const aiGenerationId =
+          typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+            ? crypto.randomUUID()
+            : `ai-${Date.now()}`;
 
         const settled = await Promise.allSettled(
           variants.map((variant) =>
             saveMarketingTemplate(propertyId, {
-              name: result.tokens.label,
+              name: tokens.label,
               contentType: 'calendar',
               aspectPreset: variant.aspectPreset,
               designJson: {
                 styles: JSON.parse(JSON.stringify(variant.styles)),
                 sourcePresetId: CALENDAR_CUSTOM_PRESET_ID,
                 aiGenerated: true,
-                aiTokens: result.tokens,
+                aiGenerationId,
+                aiTokens: tokens,
               },
             })
           )
@@ -1004,6 +1061,7 @@ export function CalendarBuilder({
                     onCustomizeBlank={handleCustomizeBlank}
                     onSelectCustom={handleSelectCustom}
                     onCustomizeCustom={handleCustomizeCustom}
+                    onRenameCustom={handleRenameCustom}
                     onRemoveCustom={handleRemoveCustom}
                     onOpenAiGenerate={() => setAiGenerateOpen(true)}
                     aiGenerateBusy={aiGenerateBusy || generateTemplate.isPending}
@@ -1013,7 +1071,12 @@ export function CalendarBuilder({
             </MarketingEditorSidebar>
 
             {/* Right Side - Preview */}
-            <div className="bg-muted/30 flex min-h-0 min-w-0 flex-1 basis-0 flex-col overflow-hidden">
+            <div
+              className={cn(
+                marketingEditorWorkspaceClassName,
+                'flex min-h-0 min-w-0 flex-1 basis-0 flex-col overflow-hidden'
+              )}
+            >
               <MarketingPreviewHeader
                 leading={
                   <MarketingEditorHistoryControls
@@ -1266,7 +1329,10 @@ export function CalendarBuilder({
               {/* Fullscreen Preview Area */}
               <div
                 ref={fullscreenContainerRef}
-                className="bg-muted/20 flex flex-1 items-center justify-center overflow-auto p-6 sm:p-8"
+                className={cn(
+                  marketingEditorWorkspaceClassName,
+                  'flex flex-1 items-center justify-center overflow-auto p-6 sm:p-8'
+                )}
               >
                 <CalendarPreviewScaledFrame
                   styles={styles}

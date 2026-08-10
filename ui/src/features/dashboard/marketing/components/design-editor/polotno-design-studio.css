@@ -338,6 +338,11 @@
 }
 
 /* Canvas workspace — OpenPolotno sets inline backgroundColor; KamePolotnoEditor passes theme props */
+.polotno-studio-root .raeditor-workspace-wrap,
+.polotno-studio-root .raeditor-workspace-container {
+  background: hsl(var(--card));
+}
+
 .polotno-studio-root .raeditor-workspace-inner {
   background: transparent;
 }

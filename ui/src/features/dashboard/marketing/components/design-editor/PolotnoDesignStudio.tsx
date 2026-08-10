@@ -45,6 +45,7 @@ import {
   marketingDesignSidebarRecords,
   marketingSavedTemplateCategoryId,
 } from '@/features/dashboard/marketing/lib/marketingSavedTemplates';
+import { marketingEditorWorkspaceClassName } from '@/features/dashboard/marketing/lib/marketingEditorWorkspace';
 import { ensurePolotnoConfigured } from '@/features/dashboard/marketing/lib/polotno/initPolotno';
 import { buildPolotnoCampaignDocument } from '@/features/dashboard/marketing/lib/polotno/polotnoCampaignDocuments';
 import {
@@ -61,6 +62,7 @@ import { useOrgSettings } from '@/features/dashboard/org/hooks/useOrgSettings';
 
 import { Button } from '@/components/ui/button';
 import { formatMoneyCompact } from '@/utils/format/currency';
+import { cn } from '@/lib/utils';
 
 /* Blueprint CSS is scoped to .polotno-studio-root via postcss.config.js + vite plugin */
 import '@/features/dashboard/marketing/styles/polotno-blueprint.css';
@@ -536,7 +538,12 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
         />
       </MarketingEditorSidebar>
 
-      <div className="polotno-studio-root relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <div
+        className={cn(
+          'polotno-studio-root relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
+          marketingEditorWorkspaceClassName
+        )}
+      >
         <div className="relative min-h-0 flex-1">
           {storeReady && store ? (
             <KamePolotnoEditor

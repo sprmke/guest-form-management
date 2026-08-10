@@ -7,6 +7,7 @@ import type { SavedCalendarTemplate } from '@/features/dashboard/marketing/compo
 import { MARKETING_SIDEBAR_GRID } from '@/features/dashboard/marketing/components/shared/marketingSidebarLayout';
 import type { MarketingSidebarMenuItem } from '@/features/dashboard/marketing/components/shared/MarketingSidebarSection';
 import { MarketingSidebarSection } from '@/features/dashboard/marketing/components/shared/MarketingSidebarSection';
+import { MarketingNameDialog } from '@/features/dashboard/marketing/components/shared/MarketingNameDialog';
 import { MarketingTemplateCard } from '@/features/dashboard/marketing/components/shared/MarketingTemplateCard';
 import {
   CALENDAR_CANVAS_DIMENSIONS,
@@ -47,6 +48,7 @@ type Props = {
   onCustomizeBlank: () => void;
   onSelectCustom: (id: string) => void;
   onCustomizeCustom: (id: string) => void;
+  onRenameCustom: (id: string, name: string) => void | Promise<void>;
   onRemoveCustom: (id: string) => void | Promise<void>;
   onOpenAiGenerate?: () => void;
   aiGenerateBusy?: boolean;
@@ -63,12 +65,14 @@ export const CalendarTemplateSidebar = memo(function CalendarTemplateSidebar({
   onCustomizeBlank,
   onSelectCustom,
   onCustomizeCustom,
+  onRenameCustom,
   onRemoveCustom,
   onOpenAiGenerate,
   aiGenerateBusy = false,
 }: Props) {
   const { getThumbnailUrl, isThumbnailLoading, requestThumbnail } = useCalendarThumbnails();
   const [removeTarget, setRemoveTarget] = useState<SavedCalendarTemplate | null>(null);
+  const [renameTarget, setRenameTarget] = useState<SavedCalendarTemplate | null>(null);
 
   const dims = CALENDAR_CANVAS_DIMENSIONS[canvasFormat];
   const calendarThumbProps = {
@@ -82,7 +86,12 @@ export const CalendarTemplateSidebar = memo(function CalendarTemplateSidebar({
           : ('square' as const),
   };
 
-  const customRemoveMenu = (template: SavedCalendarTemplate): MarketingSidebarMenuItem[] => [
+  const customMenu = (template: SavedCalendarTemplate): MarketingSidebarMenuItem[] => [
+    {
+      id: 'rename',
+      label: 'Rename',
+      onSelect: () => setRenameTarget(template),
+    },
     {
       id: 'remove',
       label: 'Remove',
@@ -118,19 +127,19 @@ export const CalendarTemplateSidebar = memo(function CalendarTemplateSidebar({
 
   return (
     <>
+      {onOpenAiGenerate ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="mb-2 min-h-[44px] w-full gap-2"
+          disabled={aiGenerateBusy}
+          onClick={onOpenAiGenerate}
+        >
+          <Sparkles className="size-4" aria-hidden />
+          {aiGenerateBusy ? 'Generating…' : 'Generate with AI'}
+        </Button>
+      ) : null}
       <MarketingSidebarSection title="Custom" collapsible={false}>
-        {onOpenAiGenerate ? (
-          <Button
-            type="button"
-            variant="outline"
-            className="mb-3 min-h-[44px] w-full gap-2"
-            disabled={aiGenerateBusy}
-            onClick={onOpenAiGenerate}
-          >
-            <Sparkles className="size-4" aria-hidden />
-            {aiGenerateBusy ? 'Generating…' : 'Generate with AI'}
-          </Button>
-        ) : null}
         <ul className={MARKETING_SIDEBAR_GRID}>
           <li className="min-w-0">
             <MarketingTemplateCard
@@ -161,7 +170,7 @@ export const CalendarTemplateSidebar = memo(function CalendarTemplateSidebar({
                   selected={selectedKey === `custom:${template.id}`}
                   onClick={() => onSelectCustom(template.id)}
                   onCustomize={() => onCustomizeCustom(template.id)}
-                  menuItems={customRemoveMenu(template)}
+                  menuItems={customMenu(template)}
                   {...calendarThumbProps}
                 />
               </li>
@@ -178,6 +187,21 @@ export const CalendarTemplateSidebar = memo(function CalendarTemplateSidebar({
         </MarketingSidebarSection>
       ))}
 
+      <MarketingNameDialog
+        open={Boolean(renameTarget)}
+        onOpenChange={(open) => {
+          if (!open) setRenameTarget(null);
+        }}
+        title="Rename template"
+        defaultValue={renameTarget?.name ?? ''}
+        confirmLabel="Save"
+        onConfirm={async (name) => {
+          if (!renameTarget) return;
+          await onRenameCustom(renameTarget.id, name);
+          setRenameTarget(null);
+        }}
+      />
+
       <AlertDialog
         open={Boolean(removeTarget)}
         onOpenChange={(open) => {
@@ -189,7 +213,9 @@ export const CalendarTemplateSidebar = memo(function CalendarTemplateSidebar({
             <AlertDialogTitle>Remove?</AlertDialogTitle>
             <AlertDialogDescription>
               {removeTarget
-                ? `"${removeTarget.name}" will be deleted permanently.`
+                ? removeTarget.aiGenerated
+                  ? `"${removeTarget.name}" will be deleted for all formats (Square, Portrait, Landscape).`
+                  : `"${removeTarget.name}" will be deleted permanently.`
                 : 'This cannot be undone.'}
             </AlertDialogDescription>
           </AlertDialogHeader>

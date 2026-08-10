@@ -23,7 +23,7 @@ import {
   useOrgSlugParam,
   usePropertyIdParam,
 } from '@/features/dashboard/org/lib/adminApiScope';
-import { orgInboxPath } from '@/features/dashboard/org/lib/tenantPaths';
+import { propertyInboxPath } from '@/features/dashboard/org/lib/tenantPaths';
 
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -96,9 +96,10 @@ export function PublishDialog({ open, onOpenChange, media }: Props) {
   const { data: bookedDates } = useMarketingBookedDates();
 
   const connectionsQuery = useQuery({
-    queryKey: ['meta-publish-connections', routeOrgSlug ?? orgSlug, orgId],
-    queryFn: () => fetchInboxConnections(routeOrgSlug ?? orgSlug, orgId),
-    enabled: open,
+    queryKey: ['meta-publish-connections', routeOrgSlug ?? orgSlug, orgId, propertyId],
+    queryFn: () =>
+      fetchInboxConnections(routeOrgSlug ?? orgSlug, orgId, propertyId ? { propertyId } : null),
+    enabled: open && !!propertyId,
     staleTime: 30_000,
   });
 
@@ -200,7 +201,7 @@ export function PublishDialog({ open, onOpenChange, media }: Props) {
           <p className="text-muted-foreground text-sm">
             Connect Facebook or Instagram in{' '}
             <Link
-              to={orgInboxPath(orgSlug)}
+              to={propertyInboxPath(orgSlug, property.slug)}
               className="text-primary underline-offset-4 hover:underline"
               onClick={() => onOpenChange(false)}
             >
