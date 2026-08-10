@@ -2,7 +2,7 @@
 title: 'Host verification tiers'
 stage: in-progress
 status: in-progress
-updated: 2026-08-07
+updated: 2026-08-10
 tags: [workflow, in-progress, verification, onboarding]
 ---
 
@@ -11,6 +11,8 @@ tags: [workflow, in-progress, verification, onboarding]
 **Status: Phase 1–2 shipped (2026-08-04). Phase 3 partial — admin queue priority shipped; browse search boost deferred until public property listings API.**
 
 **Tier naming (2026-08-04):** Tier 1 is **Verified**, Tier 2 is **Recommended**. Two tiers only — a third tier was considered and dropped.
+
+> **Scope change pending (2026-08-10):** [`../planned/verification-scope-split.md`](../planned/verification-scope-split.md) splits verification into independent **Host/Org** and **Listing** scopes. The tier _names_ and the `base` / `enhanced` server keys below stay, but the Tier 1 and Tier 2 **document sets** on this page describe the pre-split model — listing-scoped docs (property/parking ownership proof, additional ownership proof, Azure PMO) move to the listing row. Re-read that plan before changing verification documents.
 
 ## Decisions locked
 
