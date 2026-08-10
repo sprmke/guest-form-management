@@ -126,6 +126,8 @@ When a stage is active, the list query sends the matching `status[]` values to `
 
 Existing params unchanged: `q`, `status`, `from`, `to`, `hasPets`, `needParking`, `sort`, `page`, `limit`, `view`.
 
+`from` / `to` filter on **check-in date** and apply to **every status** — navigating to a month with no check-ins shows an empty list. (Pending Review rows used to be exempt so new submissions were never hidden; that made month navigation look broken and was removed.) No range is applied until the host picks one, so the default landing view still lists all active bookings.
+
 `showCompletedBookings` remains supported for calendar/kanban (auto-enabled in those views); there is no UI toggle — use the **History** stage card or status filter for completed rows.
 
 New: `stage` (see above).
