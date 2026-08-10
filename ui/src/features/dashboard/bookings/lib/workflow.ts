@@ -449,12 +449,18 @@ export function nestedKeyLabel(
   return requirements.find((req) => req.id === key)?.label ?? key;
 }
 
-/** First applicable nested doc key for the Pending Documents preview, or `null` when none apply (D2). */
+/**
+ * Nested doc key the Pending Documents view should open on, or `null` when none
+ * apply (D2). Prefers the first *incomplete* step so the rail lands on the work
+ * that is actually outstanding; falls back to the first step once all are done.
+ */
 export function defaultPendingDocNestedKey(
   booking: ConfigurableDocsBooking,
   requirements: DocumentRequirement[]
 ): PendingDocNestedKey | null {
-  return pendingDocumentsNestedItems(booking, requirements)[0]?.key ?? null;
+  const items = pendingDocumentsNestedItems(booking, requirements);
+  if (items.length === 0) return null;
+  return (items.find((item) => !item.completed) ?? items[0]).key;
 }
 
 /**
@@ -685,7 +691,12 @@ export function requiredSubForm(from: string, to: BookingStatus): SubFormKind {
 
 // ─── Progress stepper — read-only preview ─────────────────────────────────────
 
-export type WorkflowViewContent = SubFormKind | 'sd_guest_info' | 'doc_sub_status';
+export type WorkflowViewContent =
+  | SubFormKind
+  | 'sd_guest_info'
+  | 'doc_sub_status'
+  /** Terminal stage has no form — the rail shows what the booking closed with. */
+  | 'completed_summary';
 
 export type ViewedWorkflowStep =
   | { kind: 'pipeline'; status: BookingStatus }
@@ -729,7 +740,7 @@ export function workflowContentForView(
     case 'PENDING_SD_REFUND':
       return 'sd_refund';
     case 'COMPLETED':
-      return null;
+      return 'completed_summary';
     default:
       return null;
   }

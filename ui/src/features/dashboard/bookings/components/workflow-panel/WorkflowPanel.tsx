@@ -3,17 +3,22 @@
  *
  * Orchestrator only: owns confirm-modal state, dev-controls state, `viewedStep`
  * state, calls `useWorkflowActions`/`useWorkflowSubFormDrafts` for derived
- * state, calls all mutation hooks, keeps the two auto-trigger `useEffect`s
- * (Gmail poll on load, stay-guide auto-issue), and composes the decomposed
- * children below. `variant`/`isModal` is passed down so each child branches
- * internally rather than this file building two separate trees.
+ * state, calls all mutation hooks, keeps the Gmail-poll-on-load auto-trigger,
+ * and composes the decomposed children below. `variant`/`isModal` is passed
+ * down so each child branches internally rather than this file building two
+ * separate trees.
  *
  * Shows:
- * - Progress card: **StatusBadge** in the header row + `BookingStepper` (per-step timing)
- * - Stage-specific sub-form (`WorkflowSubFormHost`)
+ * - Stage deck: `WorkflowStageDeckHeader` (one stage at a time, arrows + progress
+ *   track) with the full `BookingStepper` behind `WorkflowProgressMapModal`
+ * - Stage-specific sub-form (`WorkflowSubFormHost`) inside `WorkflowStageSlide`,
+ *   with nested Pending Documents sub-steps as `WorkflowDocStepTabs`
  * - Dev-control checkboxes on Proceed/Back/Cancel confirm modals (session-persisted)
- * - Stay-guide link block, automation triggers (collapsible), transition actions bar
+ * - Automation triggers (collapsible), transition actions bar
  * - Cancel booking (non-terminal; dev-control flags apply)
+ *
+ * The guest stay-guide link is deliberately **not** here — it is a booking-scoped
+ * share action, so it lives in the header action menu (`useBookingStayGuideLink`).
  *
  * Plan: docs/planning/NEW_FLOW_PLAN.md §3.1, admin-dashboard.mdc §WorkflowPanel
  * Auth: admin-auth.mdc §5 (Dev controls panel)
@@ -24,16 +29,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-import { guestSdFormPath, guestStayGuidePath } from '@/features/guest/lib/guestPublicPaths';
+import { guestSdFormPath } from '@/features/guest/lib/guestPublicPaths';
 
-import { BookingStepper } from '@/features/dashboard/bookings/components/booking-detail/primitives/BookingStepper';
 import { useGmailReconnectPrompt } from '@/features/dashboard/bookings/components/GmailReconnectProvider';
 import { isParkingRequestDraftComplete } from '@/features/dashboard/bookings/components/ParkingRequestForm';
 import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
 import { WorkflowActionsBar } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowActionsBar';
 import { WorkflowAutomationTriggers } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowAutomationTriggers';
 import { WorkflowConfirmModal } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowConfirmModal';
-import { WorkflowStayGuideBlock } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowStayGuideBlock';
+import { WorkflowDocStepTabs } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowDocStepTabs';
+import { WorkflowProgressMapModal } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowProgressMapModal';
+import { WorkflowStageDeckHeader } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowStageDeckHeader';
+import { WorkflowStageSlide } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowStageSlide';
 import { WorkflowSubFormHost } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowSubFormHost';
 import { useAppSettings } from '@/features/dashboard/bookings/hooks/useAppSettings';
 import { BOOKING_QUERY_KEY } from '@/features/dashboard/bookings/hooks/useBooking';
@@ -43,7 +50,6 @@ import {
   useRunGmailPoll,
   useRunSdRefundCron,
   useResendSdRefundFormEmail,
-  useIssueGuestStayGuideToken,
   type DevControlFlags,
   type TransitionPayload,
 } from '@/features/dashboard/bookings/hooks/useTransitionBooking';
@@ -51,11 +57,7 @@ import { useWorkflowActions } from '@/features/dashboard/bookings/hooks/useWorkf
 import { useWorkflowSubFormDrafts } from '@/features/dashboard/bookings/hooks/useWorkflowSubFormDrafts';
 import { resolveBookingPropertySlug } from '@/features/dashboard/bookings/lib/bookingListNavigation';
 import { shouldWarnPastBookingStayForProceed } from '@/features/dashboard/bookings/lib/bookingPastPipelineManila';
-import {
-  isStayGuideEligibleStatus,
-  statusLabel,
-  type BookingStatus,
-} from '@/features/dashboard/bookings/lib/bookingStatus';
+import { statusLabel, type BookingStatus } from '@/features/dashboard/bookings/lib/bookingStatus';
 import { DEFAULT_DOCUMENT_REQUIREMENTS } from '@/features/dashboard/bookings/lib/documentRequirements';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import {
@@ -63,6 +65,7 @@ import {
   defaultPendingDocNestedKey,
   initialViewedWorkflowStep,
   nestedKeyLabel,
+  pendingDocumentsNestedItemsForStepper,
   PARKING_NESTED_KEY,
   type PendingDocNestedKey,
   type ViewedWorkflowStep,
@@ -76,6 +79,7 @@ import {
   workflowDevControlsForCancel,
   workflowDevControlsForTransition,
 } from '@/features/dashboard/bookings/lib/workflowDevControls';
+import { buildWorkflowStageDeck } from '@/features/dashboard/bookings/lib/workflowStageDeck';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { usePropertyPricingDefaults } from '@/features/dashboard/pricing/hooks/usePropertyPricing';
 
@@ -134,6 +138,7 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
   );
 
   const [automationHelpOpen, setAutomationHelpOpen] = useState(false);
+  const [progressMapOpen, setProgressMapOpen] = useState(false);
 
   // Dev controls — session-persisted per booking; defaults all checked.
   const [sessionDevControls, setSessionDevControls] = useState<DevControlFlags>(() =>
@@ -200,9 +205,23 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
     documentRequirements
   );
 
-  const returnToLiveStep = useCallback(() => {
-    setViewedStep(initialViewedWorkflowStep(status, booking, documentRequirements));
-  }, [status, booking, documentRequirements]);
+  // ─── Stage deck ──────────────────────────────────────────────────────────
+  // One pipeline stage on screen at a time; `viewedStep` stays the source of
+  // truth so the map modal, sub-forms, and actions all read the same selection.
+  const deck = buildWorkflowStageDeck(booking, status, viewedStep, documentRequirements);
+  const deckStage = deck.stages[deck.viewedIndex] ?? null;
+  /** Off-pipeline rows (CANCELLED, IMPORTED) get a plain status card, not a deck. */
+  const showStageDeck = deck.currentIndex >= 0 && deckStage !== null;
+
+  const goToDeckIndex = useCallback(
+    (index: number) => {
+      const stage = deck.stages[index];
+      if (stage) selectPipelineStep(stage);
+    },
+    [deck.stages, selectPipelineStep]
+  );
+
+  const pendingDocTabItems = pendingDocumentsNestedItemsForStepper(booking, documentRequirements);
 
   // Confirm modals
   const [confirm, setConfirm] = useState<ConfirmState>(null);
@@ -223,9 +242,6 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
   const pendingDocsAutoGmailPollRef = useRef<string | null>(null);
   const sdCronMut = useRunSdRefundCron(booking.id);
   const resendSdFormMut = useResendSdRefundFormEmail(booking.id);
-  const issueStayGuideMut = useIssueGuestStayGuideToken(booking.id);
-  /** One-shot legacy fallback when RFCI+ row predates auto-issue on transition. */
-  const stayGuideAutoIssueRef = useRef<string | null>(null);
 
   const toastUnlessGmailReconnect = useCallback(
     (err: unknown, fallback: string) => {
@@ -241,12 +257,6 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
     status === 'PENDING_DOCUMENTS' || status === 'PENDING_GAF' || status === 'PENDING_PET_REQUEST';
   const showSdCron = status === 'READY_FOR_CHECKIN';
   const showSdFormResend = status === 'READY_FOR_CHECKOUT' || status === 'READY_FOR_CHECKIN';
-  const showStayGuide = isStayGuideEligibleStatus(status);
-  const stayGuideToken = booking.stay_guide_token?.trim() ?? '';
-  const stayGuideUrl =
-    stayGuideToken && propertySlug
-      ? `${window.location.origin}${guestStayGuidePath(propertySlug, stayGuideToken)}`
-      : '';
   const sdGuestFormUrl = `${window.location.origin}${guestSdFormPath(propertySlug, booking.id)}`;
 
   const [recheckSdGuestSubmitPending, setRecheckSdGuestSubmitPending] = useState(false);
@@ -258,22 +268,6 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
       toast.error('Could not copy to clipboard');
     }
   }, [sdGuestFormUrl]);
-
-  const copyStayGuideUrl = useCallback(async () => {
-    if (!stayGuideUrl) return;
-    try {
-      await navigator.clipboard.writeText(stayGuideUrl);
-    } catch {
-      toast.error('Could not copy to clipboard');
-    }
-  }, [stayGuideUrl]);
-
-  useEffect(() => {
-    if (!showStayGuide || stayGuideToken || issueStayGuideMut.isPending) return;
-    if (stayGuideAutoIssueRef.current === booking.id) return;
-    stayGuideAutoIssueRef.current = booking.id;
-    void issueStayGuideMut.mutateAsync().catch(() => {});
-  }, [showStayGuide, stayGuideToken, booking.id, issueStayGuideMut.mutateAsync]);
 
   const recheckGuestSdSubmission = useCallback(async () => {
     const before = booking.status;
@@ -494,69 +488,102 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
           : 'border-border bg-card gap-0 overflow-hidden rounded-xl border shadow-sm'
       )}
     >
-      {/* ── Pipeline stepper (detail rail only) ───────────────────────────── */}
-      {!isModal && workflowActions.pipeline.length > 0 && status !== 'CANCELLED' ? (
-        <div className="border-separator border-b px-4 py-5">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-overline">Progress</p>
-            <StatusBadge status={booking.status} />
-          </div>
-          <BookingStepper
-            booking={booking}
-            documentRequirements={documentRequirements}
-            currentStatus={status}
-            statusUpdatedAt={booking.status_updated_at}
-            viewedStep={viewedStep}
-            onSelectStep={selectPipelineStep}
-            onSelectSubStep={focusPendingDocSubView}
-            disabled={transitionMut.isPending}
-          />
-        </div>
-      ) : !isModal && status === 'CANCELLED' ? (
+      {/* ── Stage deck navigator (detail rail only) ───────────────────────── */}
+      {!isModal && !showStageDeck ? (
         <div className="border-separator border-b px-4 py-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-overline">Status</p>
             <StatusBadge status={booking.status} />
           </div>
         </div>
+      ) : !isModal ? (
+        <WorkflowStageDeckHeader
+          stages={deck.stages}
+          viewedIndex={deck.viewedIndex}
+          currentIndex={deck.currentIndex}
+          canGoPrev={deck.canGoPrev}
+          canGoNext={deck.canGoNext}
+          disabled={transitionMut.isPending}
+          onPrev={() => goToDeckIndex(deck.viewedIndex - 1)}
+          onNext={() => goToDeckIndex(deck.viewedIndex + 1)}
+          onSelectIndex={goToDeckIndex}
+          onOpenMap={() => setProgressMapOpen(true)}
+        />
       ) : null}
 
       {/* ── Stage-specific sub-form ───────────────────────────────────────── */}
-      <WorkflowSubFormHost
-        isModal={isModal}
-        booking={booking}
-        viewedContent={workflowActions.viewedContent}
-        contentReadOnly={workflowActions.contentReadOnly}
-        activePendingDocSubStatus={workflowActions.activePendingDocSubStatus}
-        documentRequirements={documentRequirements}
-        pricingValues={subFormDrafts.pricingValues}
-        onPricingChange={subFormDrafts.setPricingValues}
-        propertyPricingLoaded={propertyPricingLoaded}
-        propertyPricingDefaults={propertyPricingDefaults}
-        propertyPricingDateOverrides={propertyPricingData?.dateOverrides}
-        propertyPricingHolidayRules={propertyPricingData?.holidayRules}
-        surpriseDecorStaffAck={subFormDrafts.surpriseDecorStaffAck}
-        onSurpriseDecorStaffAckChange={subFormDrafts.setSurpriseDecorStaffAck}
-        parkingValues={subFormDrafts.parkingValues}
-        onParkingChange={subFormDrafts.setParkingValues}
-        guestBalanceValues={subFormDrafts.guestBalanceValues}
-        onGuestBalanceChange={subFormDrafts.setGuestBalanceValues}
-        sdRefundValues={subFormDrafts.sdRefundValues}
-        onSdRefundChange={subFormDrafts.setSdRefundValues}
-        sdGuestFormUrl={sdGuestFormUrl}
-        onCopySdGuestFormUrl={() => void copySdGuestFormUrl()}
-        recheckSdGuestSubmitPending={recheckSdGuestSubmitPending}
-        onRecheckGuestSdSubmission={() => void recheckGuestSdSubmission()}
-      />
-
-      {/* ── Stay guide (detail rail only) ──────────────────────────────────── */}
-      <WorkflowStayGuideBlock
-        isModal={isModal}
-        showStayGuide={showStayGuide}
-        stayGuideUrl={stayGuideUrl}
-        pending={transitionMut.isPending || issueStayGuideMut.isPending}
-        onCopy={() => void copyStayGuideUrl()}
-      />
+      {isModal ? (
+        <WorkflowSubFormHost
+          isModal
+          booking={booking}
+          viewedContent={workflowActions.viewedContent}
+          contentReadOnly={workflowActions.contentReadOnly}
+          activePendingDocSubStatus={workflowActions.activePendingDocSubStatus}
+          documentRequirements={documentRequirements}
+          pricingValues={subFormDrafts.pricingValues}
+          onPricingChange={subFormDrafts.setPricingValues}
+          propertyPricingLoaded={propertyPricingLoaded}
+          propertyPricingDefaults={propertyPricingDefaults}
+          propertyPricingDateOverrides={propertyPricingData?.dateOverrides}
+          propertyPricingHolidayRules={propertyPricingData?.holidayRules}
+          surpriseDecorStaffAck={subFormDrafts.surpriseDecorStaffAck}
+          onSurpriseDecorStaffAckChange={subFormDrafts.setSurpriseDecorStaffAck}
+          parkingValues={subFormDrafts.parkingValues}
+          onParkingChange={subFormDrafts.setParkingValues}
+          guestBalanceValues={subFormDrafts.guestBalanceValues}
+          onGuestBalanceChange={subFormDrafts.setGuestBalanceValues}
+          sdRefundValues={subFormDrafts.sdRefundValues}
+          onSdRefundChange={subFormDrafts.setSdRefundValues}
+          sdGuestFormUrl={sdGuestFormUrl}
+          onCopySdGuestFormUrl={() => void copySdGuestFormUrl()}
+          recheckSdGuestSubmitPending={recheckSdGuestSubmitPending}
+          onRecheckGuestSdSubmission={() => void recheckGuestSdSubmission()}
+        />
+      ) : (
+        <WorkflowStageSlide
+          stageKey={deckStage ?? 'no-stage'}
+          index={deck.viewedIndex}
+          onSwipePrev={deck.canGoPrev ? () => goToDeckIndex(deck.viewedIndex - 1) : undefined}
+          onSwipeNext={deck.canGoNext ? () => goToDeckIndex(deck.viewedIndex + 1) : undefined}
+        >
+          {workflowActions.viewingPendingDocSub && pendingDocTabItems.length > 1 ? (
+            <div className="border-separator border-b px-4 py-3">
+              <WorkflowDocStepTabs
+                items={pendingDocTabItems}
+                value={workflowActions.activePendingDocSubStatus}
+                onChange={focusPendingDocSubView}
+                disabled={transitionMut.isPending}
+              />
+            </div>
+          ) : null}
+          <WorkflowSubFormHost
+            isModal={false}
+            booking={booking}
+            viewedContent={workflowActions.viewedContent}
+            contentReadOnly={workflowActions.contentReadOnly}
+            activePendingDocSubStatus={workflowActions.activePendingDocSubStatus}
+            documentRequirements={documentRequirements}
+            pricingValues={subFormDrafts.pricingValues}
+            onPricingChange={subFormDrafts.setPricingValues}
+            propertyPricingLoaded={propertyPricingLoaded}
+            propertyPricingDefaults={propertyPricingDefaults}
+            propertyPricingDateOverrides={propertyPricingData?.dateOverrides}
+            propertyPricingHolidayRules={propertyPricingData?.holidayRules}
+            surpriseDecorStaffAck={subFormDrafts.surpriseDecorStaffAck}
+            onSurpriseDecorStaffAckChange={subFormDrafts.setSurpriseDecorStaffAck}
+            parkingValues={subFormDrafts.parkingValues}
+            onParkingChange={subFormDrafts.setParkingValues}
+            guestBalanceValues={subFormDrafts.guestBalanceValues}
+            onGuestBalanceChange={subFormDrafts.setGuestBalanceValues}
+            sdRefundValues={subFormDrafts.sdRefundValues}
+            onSdRefundChange={subFormDrafts.setSdRefundValues}
+            sdGuestFormUrl={sdGuestFormUrl}
+            onCopySdGuestFormUrl={() => void copySdGuestFormUrl()}
+            recheckSdGuestSubmitPending={recheckSdGuestSubmitPending}
+            onRecheckGuestSdSubmission={() => void recheckGuestSdSubmission()}
+          />
+        </WorkflowStageSlide>
+      )}
 
       {/* ── Automation triggers (detail rail only) ─────────────────────────── */}
       <WorkflowAutomationTriggers
@@ -577,10 +604,9 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
       {/* ── Transition actions ────────────────────────────────────────────── */}
       <WorkflowActionsBar
         isModal={isModal}
+        status={status}
         isTerminal={workflowActions.isTerminal}
         isLiveView={workflowActions.isLiveView}
-        status={status}
-        onReturnToLiveStep={returnToLiveStep}
         transitionPending={transitionMut.isPending}
         inPendingDocuments={workflowActions.inPendingDocuments}
         viewingPendingDocSub={workflowActions.viewingPendingDocSub}
@@ -590,6 +616,7 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
         selectedPendingDocCanMarkIncomplete={workflowActions.selectedPendingDocCanMarkIncomplete}
         selectedPendingDocCanMarkComplete={workflowActions.selectedPendingDocCanMarkComplete}
         selectedPendingDocRequired={workflowActions.selectedPendingDocRequired}
+        selectedPendingDocCompleted={workflowActions.selectedPendingDocCompleted}
         activePendingDocSubStatus={workflowActions.activePendingDocSubStatus}
         activePendingDocLabel={workflowActions.activePendingDocLabel}
         onMarkPendingDocSubStatusIncomplete={handleMarkPendingDocSubStatusIncomplete}
@@ -603,6 +630,21 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
         cancelPending={cancelMut.isPending}
         onOpenCancelConfirm={() => setCancelConfirm(true)}
       />
+
+      {/* ── Full progress map (on demand) ────────────────────────────────── */}
+      {!isModal && showStageDeck ? (
+        <WorkflowProgressMapModal
+          open={progressMapOpen}
+          onOpenChange={setProgressMapOpen}
+          booking={booking}
+          currentStatus={status}
+          documentRequirements={documentRequirements}
+          viewedStep={viewedStep}
+          disabled={transitionMut.isPending}
+          onSelectStep={selectPipelineStep}
+          onSelectSubStep={focusPendingDocSubView}
+        />
+      ) : null}
 
       {/* ── Confirm transition modal ─────────────────────────────────────── */}
       {confirm && (

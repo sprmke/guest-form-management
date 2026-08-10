@@ -4,14 +4,25 @@ import { cn } from '@/lib/utils';
 const workflowActionBtnBase =
   'flex min-h-[44px] w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all duration-200 motion-safe:active:scale-[0.99] disabled:opacity-50';
 
-const workflowActionBack =
-  'border border-border/60 bg-background/80 text-muted-foreground shadow-elevated hover:border-primary/25 hover:bg-muted/60 hover:text-foreground';
+/**
+ * The rail's forward CTA. Label and arrow are one centred group rather than
+ * pinned to opposite edges — at rail width `justify-between` strands the arrow
+ * against the far edge and the button stops reading as a single control.
+ */
+const workflowPrimaryBase =
+  'focus-ring flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 motion-safe:active:scale-[0.99]';
 
 const workflowActionPrimaryEnabled =
   'gradient-primary border border-transparent text-primary-foreground shadow-soft hover:brightness-[1.03] hover:shadow-primary-glow';
 
+// Solid fill, not the back button's card fill — a disabled CTA still has to be
+// distinguishable from the secondary sitting right next to it.
 const workflowActionPrimaryDisabled =
-  'cursor-not-allowed border border-border/50 bg-muted/50 font-medium text-muted-foreground shadow-none';
+  'cursor-not-allowed border border-border/60 bg-muted text-muted-foreground shadow-none';
+
+/** Secondary sibling of the primary CTA — same height, radius and type scale. */
+export const workflowBackActionClass =
+  'focus-ring border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors motion-safe:active:scale-[0.99] disabled:pointer-events-none disabled:opacity-40';
 
 const workflowActionWarning =
   'border border-amber-500/25 bg-amber-500/[0.08] text-amber-800 hover:bg-amber-500/[0.12] hover:border-amber-500/35 dark:text-amber-300';
@@ -24,13 +35,9 @@ const workflowActionNeutral =
 
 export function workflowPrimaryActionClass(enabled: boolean): string {
   return cn(
-    workflowActionBtnBase,
+    workflowPrimaryBase,
     enabled ? workflowActionPrimaryEnabled : workflowActionPrimaryDisabled
   );
-}
-
-export function workflowBackActionClass(): string {
-  return cn(workflowActionBtnBase, workflowActionBack);
 }
 
 export function workflowWarningActionClass(): string {

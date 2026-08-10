@@ -2,7 +2,7 @@
  * Shared booleans for booking list / card / calendar flag chips.
  */
 
-import { flagIconChipClasses, flagLabelChipClasses } from '@/lib/statusToneColors';
+import { flagIconChipClasses } from '@/lib/statusToneColors';
 
 /** Guest requested surprise decor / room setup (DB may use bool or legacy string). */
 export function bookingRequestsSurpriseDecor(value: unknown): boolean {
@@ -36,11 +36,4 @@ export const bookingFlagIconChipClass = {
   pet: flagIconChipClasses('pet'),
   decor: flagIconChipClasses('decor'),
   invalidReceipt: flagIconChipClasses('invalidReceipt'),
-} as const;
-
-/** Compact labeled flag chips (mobile summary, detail header). */
-export const bookingFlagLabelChipClass = {
-  parking: flagLabelChipClasses('parking'),
-  pet: flagLabelChipClasses('pet'),
-  decor: flagLabelChipClasses('decor'),
 } as const;

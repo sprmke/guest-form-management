@@ -101,6 +101,25 @@ export const STATUS_TONE: Record<BookingStatus, StatusTone> = {
 /** Terminal statuses — no further transitions are valid. */
 export const TERMINAL_STATUSES: ReadonlySet<BookingStatus> = new Set(['COMPLETED', 'CANCELLED']);
 
+/**
+ * Cancelling stops being an option once the guest has checked in — from
+ * Ready for Check-out onward the stay happened, so the booking is settled
+ * (or refunded) rather than cancelled. `IMPORTED` rows are outside the
+ * pipeline and are not cancellable here.
+ */
+const CANCELLABLE_STATUSES: ReadonlySet<BookingStatus> = new Set([
+  'PENDING_REVIEW',
+  'PENDING_DOCUMENTS',
+  'PENDING_GAF',
+  'PENDING_PARKING_REQUEST',
+  'PENDING_PET_REQUEST',
+  'READY_FOR_CHECKIN',
+]);
+
+export function canCancelBookingAtStatus(status: string | null | undefined): boolean {
+  return CANCELLABLE_STATUSES.has(String(status ?? '').trim() as BookingStatus);
+}
+
 export function isBookingStatus(value: string): value is BookingStatus {
   return (BOOKING_STATUSES as ReadonlyArray<string>).includes(value);
 }
@@ -134,10 +153,13 @@ function parseCompletionsMap(raw: unknown): DocumentCompletionsMap {
 }
 
 /**
- * Merges the guest-edit-revert gaf/pet reset into the booking's *current*
- * `document_requirement_completions` JSONB map, preserving any other ids.
- * Callers must pass the currently-loaded row's column value — never write a
- * bare `{ gaf, pet }` object over the column, that drops unrelated ids.
+ * Merges the guest-edit-revert completion reset into the booking's *current*
+ * `document_requirement_completions` JSONB map. Every id present is cleared (a
+ * renamed requirement such as `custom-2` must not keep the previous cycle's
+ * tick), and `gaf`/`pet` are always written so an empty map can't dual-read
+ * stale named columns. Callers must pass the currently-loaded row's column
+ * value — never write a bare `{ gaf, pet }` object over the column, that drops
+ * unrelated ids.
  *
  * Mirror: `supabase/functions/_shared/statusMachine.ts#pendingDocumentsClearCompletionsJsonbPatch`.
  */
@@ -145,8 +167,9 @@ export function pendingDocumentsClearCompletionsJsonbPatch(
   existingCompletions: unknown
 ): DocumentCompletionsMap {
   const map = parseCompletionsMap(existingCompletions);
-  map.gaf = { completedAt: null, approvedPdfUrl: null, manualIncomplete: false };
-  map.pet = { completedAt: null, approvedPdfUrl: null, manualIncomplete: false };
+  for (const id of [...Object.keys(map), 'gaf', 'pet']) {
+    map[id] = { completedAt: null, approvedPdfUrl: null, manualIncomplete: false };
+  }
   return map;
 }
 

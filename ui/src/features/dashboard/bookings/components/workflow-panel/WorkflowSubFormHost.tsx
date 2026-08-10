@@ -17,6 +17,7 @@ import type { ReviewPricingFormValues } from '@/features/dashboard/bookings/comp
 import { SdRefundForm } from '@/features/dashboard/bookings/components/SdRefundForm';
 import type { SdRefundValues } from '@/features/dashboard/bookings/components/SdRefundForm';
 import { SurpriseDecorAckCard } from '@/features/dashboard/bookings/components/SurpriseDecorAckCard';
+import { WorkflowCompletedSummaryCard } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowCompletedSummaryCard';
 import { PendingDocSubStatusCard } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowPendingDocStatusCard';
 import { WorkflowSubFormCard } from '@/features/dashboard/bookings/components/WorkflowSubFormCard';
 import type { DocumentRequirement } from '@/features/dashboard/bookings/lib/documentRequirements';
@@ -103,13 +104,15 @@ export function WorkflowSubFormHost({
   const needsGuestBalance = viewedContent === 'guest_balance';
   const needsDocSubStatus = viewedContent === 'doc_sub_status';
   const showSdGuestInfoCard = viewedContent === 'sd_guest_info';
+  const showCompletedSummary = viewedContent === 'completed_summary';
   const showStageContent =
     needsPricing ||
     needsParking ||
     needsSdRefund ||
     needsGuestBalance ||
     needsDocSubStatus ||
-    showSdGuestInfoCard;
+    showSdGuestInfoCard ||
+    showCompletedSummary;
 
   if (!showStageContent) return null;
 
@@ -123,7 +126,7 @@ export function WorkflowSubFormHost({
           : 'border-separator space-y-6 border-b px-4 py-4'
       )}
     >
-      {contentReadOnly && !isModal ? (
+      {contentReadOnly && !isModal && !showCompletedSummary ? (
         <div
           role="status"
           className="border-primary/25 bg-primary/5 dark:border-primary/30 dark:bg-primary/10 flex gap-2.5 rounded-xl border px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3"
@@ -178,6 +181,7 @@ export function WorkflowSubFormHost({
           </button>
         </WorkflowSubFormCard>
       )}
+      {showCompletedSummary && <WorkflowCompletedSummaryCard booking={booking} plain={isModal} />}
       {needsDocSubStatus && (
         <PendingDocSubStatusCard
           booking={booking}
