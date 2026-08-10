@@ -6,8 +6,8 @@ import { MapPin, Star, Building2, Home, Layers, ArrowRight } from 'lucide-react'
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
 import { resolveListingCoverImage } from '@/features/guest/marketing/shared/lib/mockListingImages';
 
-import { cn } from '@/lib/utils';
 import { DEVELOPMENT_TYPE_BADGE } from '@/lib/statusToneColors';
+import { cn } from '@/lib/utils';
 
 import type { Development, DevelopmentType } from '../types';
 

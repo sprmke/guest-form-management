@@ -48,8 +48,8 @@ import { planOrgSettingsSave } from '@/features/dashboard/org/lib/orgSettingsSav
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
 import { Button } from '@/components/ui/button';
-import { friendlyToastError } from '@/lib/feedback/toastMessages';
 import { resolveNameAvailabilityState } from '@/lib/availabilityCheckState';
+import { friendlyToastError } from '@/lib/feedback/toastMessages';
 
 const SETTINGS_SECTIONS: AdminSectionNavItem[] = [
   { id: 'basic', label: 'Basic information', icon: Info },

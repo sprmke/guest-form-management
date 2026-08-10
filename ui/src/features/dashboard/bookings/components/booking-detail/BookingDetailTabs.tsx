@@ -2,7 +2,6 @@ import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
 import { SegmentedControl } from '@/components/ui/sliding-tabs';
 
-
 export type BookingViewTab = 'overview' | 'guests' | 'stay' | 'pricing' | 'files';
 
 type Props = {

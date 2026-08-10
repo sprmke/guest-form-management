@@ -1,6 +1,6 @@
 import type { BookingKind, BookingRow } from '@/features/dashboard/bookings/lib/types';
-import { resourceKindBadgeClasses } from '@/lib/statusToneColors';
 
+import { resourceKindBadgeClasses } from '@/lib/statusToneColors';
 import { cn } from '@/lib/utils';
 
 export function isParkingBooking(row: Pick<BookingRow, 'booking_kind' | 'parking_id'>): boolean {

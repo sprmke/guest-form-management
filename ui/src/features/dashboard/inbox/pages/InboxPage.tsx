@@ -5,8 +5,6 @@ import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { useAdminLayoutFillMain } from '@/features/dashboard/bookings/components/AdminLayout';
-import { bottomTabBarOffsetClassName } from '@/components/mobile/BottomTabBar';
-import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { InboxConversationView } from '@/features/dashboard/inbox/components/InboxConversationView';
 import {
   InboxManageModals,
@@ -37,6 +35,8 @@ import type {
   ThreadTypeFilter,
 } from '@/features/dashboard/inbox/types/inbox';
 
+import { bottomTabBarOffsetClassName } from '@/components/mobile/BottomTabBar';
+import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { cn } from '@/lib/utils';
 
 export type InboxPageProps = {

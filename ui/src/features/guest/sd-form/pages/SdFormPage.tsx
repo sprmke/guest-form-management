@@ -6,6 +6,16 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { Check, Loader2, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { GuestFormStepper } from '@/features/guest/form/components/GuestFormStepper';
+import {
+  DEFAULT_GUEST_PAYMENT_INFO,
+  useGuestPaymentInfo,
+} from '@/features/guest/form/hooks/useGuestPaymentInfo';
+import {
+  formatGuestFarewell,
+  formatGuestStayThanks,
+  pickGuestBrandHeaderProps,
+} from '@/features/guest/form/lib/guestFormBranding';
 import { SdFormReviewSection } from '@/features/guest/sd-form/components/SdFormReviewSection';
 import { VoucherReveal } from '@/features/guest/sd-form/components/VoucherReveal';
 import {
@@ -22,23 +32,14 @@ import {
   type RefundBodyValues,
   type SdBank,
 } from '@/features/guest/sd-form/lib/sdFormSchema';
+import { SD_FORM_STEPS } from '@/features/guest/sd-form/lib/sdFormSteps';
 import {
   findVoucher,
   VOUCHER_DISCOUNT_MAX,
   type Voucher,
 } from '@/features/guest/sd-form/lib/voucher';
 
-import {
-  DEFAULT_GUEST_PAYMENT_INFO,
-  useGuestPaymentInfo,
-} from '@/features/guest/form/hooks/useGuestPaymentInfo';
-import {
-  formatGuestFarewell,
-  formatGuestStayThanks,
-  pickGuestBrandHeaderProps,
-} from '@/features/guest/form/lib/guestFormBranding';
-import { GuestFormStepper } from '@/features/guest/form/components/GuestFormStepper';
-import { SD_FORM_STEPS } from '@/features/guest/sd-form/lib/sdFormSteps';
+
 import { GuestFormBrandHeader } from '@/components/branding/GuestFormBrandHeader';
 import { SdFormPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
 import { Button } from '@/components/ui/button';

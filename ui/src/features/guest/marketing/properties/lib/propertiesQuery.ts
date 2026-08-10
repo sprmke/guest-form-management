@@ -124,7 +124,7 @@ export function parsePropertiesQuery(sp: URLSearchParams): PropertiesListingQuer
   const adultsRaw = sp.get('adults');
   const childrenRaw = sp.get('children');
   let adults = parseNonNegInt(adultsRaw, 0);
-  let children = parseNonNegInt(childrenRaw, 0);
+  const children = parseNonNegInt(childrenRaw, 0);
   // Legacy collapsed guests → adults when adults/children absent
   if (adultsRaw == null && childrenRaw == null && guestsLegacy > 0) {
     adults = guestsLegacy;

@@ -19,6 +19,7 @@ import {
 import { toast } from 'sonner';
 
 import { AdminSection } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
+import { findUnitTypeById } from '@/features/dashboard/bookings/lib/unitTypes';
 import { PropertyCancellationPolicySection } from '@/features/dashboard/org/components/property-settings/PropertyCancellationPolicySection';
 import { PropertyGuestFormSettingsSection } from '@/features/dashboard/org/components/property-settings/PropertyGuestFormSettingsSection';
 import { PropertyLocationPicker } from '@/features/dashboard/org/components/property-settings/PropertyLocationPicker';
@@ -31,7 +32,6 @@ import {
 import { BrandColorField } from '@/features/dashboard/org/components/settings/BrandColorField';
 import { TowerUnitConflictAlert } from '@/features/dashboard/org/components/TowerUnitConflictAlert';
 import { useResidenceUnitTypes } from '@/features/dashboard/org/hooks/useResidenceUnitTypes';
-import { findUnitTypeById } from '@/features/dashboard/bookings/lib/unitTypes';
 import { DEFAULT_RESIDENCE_NAME } from '@/features/dashboard/org/lib/propertyDisplay';
 import {
   HOUSE_RULE_CATEGORIES,
@@ -64,9 +64,11 @@ import {
 import { isValidUnitNumber } from '@/features/dashboard/org/lib/propertyTowerUnit';
 import type { PropertyTowerUnitConflict } from '@/features/dashboard/org/lib/propertyTowerUnitConflict';
 
+import { AvailabilityCheckInput } from '@/components/AvailabilityCheckInput';
 import { Button } from '@/components/ui/button';
 import { Checkbox, CheckboxDisplay } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Input } from '@/components/ui/input';
 import {
   ResponsiveModal,
   ResponsiveModalContent,
@@ -75,8 +77,6 @@ import {
   ResponsiveModalHeader,
   ResponsiveModalTitle,
 } from '@/components/ui/responsive-modal';
-import { AvailabilityCheckInput } from '@/components/AvailabilityCheckInput';
-import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,

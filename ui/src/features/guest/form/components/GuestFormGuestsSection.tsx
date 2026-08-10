@@ -1,10 +1,7 @@
 import { useEffect, useState } from 'react';
-import type { UseFormReturn } from 'react-hook-form';
+
 import { Minus, Plus, UserRound } from 'lucide-react';
-import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import type { GuestFormData } from '@/features/guest/form/schemas/guestFormSchema';
+
 import { GuestFormValidIdUpload } from '@/features/guest/form/components/GuestFormValidIdUpload';
 import { PropertyGuestLimitReminder } from '@/features/guest/form/components/PropertyGuestLimitReminder';
 import {
@@ -24,8 +21,15 @@ import {
   type PropertyGuestCapacity,
   DEFAULT_PROPERTY_GUEST_CAPACITY,
 } from '@/features/guest/form/lib/guestCounts';
-import { handleNameInputChange } from '@/utils/text/helpers';
+import type { GuestFormData } from '@/features/guest/form/schemas/guestFormSchema';
+
+import { Button } from '@/components/ui/button';
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import { toCapitalCase } from '@/utils/text/formatters';
+import { handleNameInputChange } from '@/utils/text/helpers';
+
+import type { UseFormReturn } from 'react-hook-form';
 
 type GuestNameField =
   'primaryGuestName' | 'guest2Name' | 'guest3Name' | 'guest4Name' | 'guest5Name';

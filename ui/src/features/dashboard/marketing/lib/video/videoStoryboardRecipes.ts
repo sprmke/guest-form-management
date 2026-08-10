@@ -1,9 +1,9 @@
 import type { VideoCategory } from '@/features/dashboard/marketing/lib/video/videoCategories';
+import type { VideoMotionOverride } from '@/features/dashboard/marketing/lib/video/videoMotionProfiles';
 import type {
   VideoSceneKind,
   VideoTransition,
 } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
-import type { VideoMotionOverride } from '@/features/dashboard/marketing/lib/video/videoMotionProfiles';
 
 export type VideoOverlayMode = 'none' | 'soft-scrim' | 'bottom-band' | 'top-band';
 

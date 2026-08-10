@@ -13,13 +13,13 @@ import {
 } from 'lucide-react';
 
 import { AdminSection } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
-import { DevelopmentDocumentRequirementsSection } from '@/features/dashboard/super-admin/components/super-admin-development-settings/DevelopmentDocumentRequirementsSection';
-import { DevelopmentUnitTypesSection } from '@/features/dashboard/super-admin/components/super-admin-development-settings/DevelopmentUnitTypesSection';
 import { PropertyLocationPicker } from '@/features/dashboard/org/components/property-settings/PropertyLocationPicker';
 import { PropertyMediaUpload } from '@/features/dashboard/org/components/property-settings/PropertyMediaUpload';
 import { SettingsField } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import type { PropertyLocationFields } from '@/features/dashboard/org/lib/propertyLocation';
 import type { PropertyMediaItem } from '@/features/dashboard/org/lib/propertySettingsConstants';
+import { DevelopmentDocumentRequirementsSection } from '@/features/dashboard/super-admin/components/super-admin-development-settings/DevelopmentDocumentRequirementsSection';
+import { DevelopmentUnitTypesSection } from '@/features/dashboard/super-admin/components/super-admin-development-settings/DevelopmentUnitTypesSection';
 import {
   shouldAutoUpdateDevelopmentLocationLine,
   suggestDevelopmentLocationLine,

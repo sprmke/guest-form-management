@@ -3,13 +3,13 @@ import { persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 
 import { applyBrandAccentToCalendarStyles } from '@/features/dashboard/marketing/lib/calendarBrandColors';
-import { applyPropertyPhotoToCalendarStyles } from '@/features/dashboard/marketing/lib/calendarPropertyPhoto';
-import { CALENDAR_PRESET_STYLES } from '@/features/dashboard/marketing/lib/calendarPresets';
 import {
   canvasFrameDefaultsForFormat,
   canvasFrameBackgroundForFormat,
   type CalendarCanvasFormat,
 } from '@/features/dashboard/marketing/lib/calendarCanvasFormats';
+import { CALENDAR_PRESET_STYLES } from '@/features/dashboard/marketing/lib/calendarPresets';
+import { applyPropertyPhotoToCalendarStyles } from '@/features/dashboard/marketing/lib/calendarPropertyPhoto';
 
 import {
   type CalendarStyles,

@@ -9,12 +9,12 @@ import {
   DEFAULT_GUEST_PAYMENT_INFO,
   useGuestPaymentInfo,
 } from '@/features/guest/form/hooks/useGuestPaymentInfo';
+import { bookingSourceFromUrlSearchParams } from '@/features/guest/form/lib/bookingSourceFromSearchParams';
 import {
   formatGuestMessengerReturn,
   formatGuestSuccessAdministration,
   pickGuestBrandHeaderProps,
 } from '@/features/guest/form/lib/guestFormBranding';
-import { bookingSourceFromUrlSearchParams } from '@/features/guest/form/lib/bookingSourceFromSearchParams';
 import { useGuestPropertySlug } from '@/features/guest/hooks/useGuestPropertySlug';
 import { guestCalendarPath } from '@/features/guest/lib/guestPublicPaths';
 import { GuestStayDateRangeDisplay } from '@/features/guest/property/components/GuestStayDateRangeDisplay';

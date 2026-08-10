@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { Link } from 'react-router-dom';
+
 import {
   ArrowLeft,
   Loader2,
@@ -13,7 +14,6 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { handleAiMutationError, isAiQuotaError } from '@/features/dashboard/org/lib/aiQuotaToast';
 import {
   InboxMediaPreviewDialog,
   InboxMessageMediaTile,
@@ -29,7 +29,6 @@ import {
   type InboxAttachmentPreview,
 } from '@/features/dashboard/inbox/lib/inboxMessageAttachments';
 import { templatesForConversationPlatform } from '@/features/dashboard/inbox/lib/quickReplyGroups';
-import { propertyDashboardPath } from '@/features/dashboard/org/lib/tenantPaths';
 import {
   type InboxConversation,
   type InboxMessage,
@@ -37,6 +36,8 @@ import {
   canHostEditMessage,
   canHostUnsendMessage,
 } from '@/features/dashboard/inbox/types/inbox';
+import { handleAiMutationError, isAiQuotaError } from '@/features/dashboard/org/lib/aiQuotaToast';
+import { propertyDashboardPath } from '@/features/dashboard/org/lib/tenantPaths';
 
 import { ChatComposerContextBar } from '@/components/chat/ChatComposerContextBar';
 import {

@@ -1,6 +1,6 @@
 import type { FinanceLedgerStatus } from '@/features/dashboard/finance/lib/types';
-import { compactStatusBadgeClasses } from '@/lib/statusToneColors';
 
+import { compactStatusBadgeClasses } from '@/lib/statusToneColors';
 import { cn } from '@/lib/utils';
 
 const STATUS_VARIANT: Record<

@@ -16,8 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
 import { compactStatusBadgeClasses } from '@/lib/statusToneColors';
+import { cn } from '@/lib/utils';
 
 const SKIP_VALUE = '__skip__';
 

@@ -1,10 +1,11 @@
-import { cn } from '@/lib/utils';
 import {
   SOCIAL_PLATFORM_LABELS,
   SOCIAL_PLATFORMS,
   type SocialPlatform,
   type SocialUrlMap,
 } from '@/features/dashboard/org/lib/socialPlatformTypes';
+
+import { cn } from '@/lib/utils';
 
 type Props = {
   id: string;

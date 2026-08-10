@@ -7,6 +7,11 @@ import { motion } from 'framer-motion';
 import { useGuestAuth } from '@/features/guest/auth/context/GuestAuthContext';
 import { ContactHostSheet } from '@/features/guest/chat/components/ContactHostSheet';
 import {
+  clampBookingGuestCounts,
+  resolveListingGuestCapacity,
+  type BookingGuestCounts,
+} from '@/features/guest/form/lib/guestCounts';
+import {
   PropertyGallery,
   PropertyOverview,
   PropertyAmenities,
@@ -25,11 +30,6 @@ import { usePublicPropertyDetail } from '@/features/guest/marketing/properties/h
 import { GuestPublicBrandShell } from '@/features/guest/marketing/shared/components/GuestPublicBrandShell';
 import type { ListingHostInfo } from '@/features/guest/marketing/shared/components/ListingHostCard';
 import { useMarketingBrandColor } from '@/features/guest/marketing/shared/context/ModeSwitchTransitionContext';
-import {
-  clampBookingGuestCounts,
-  resolveListingGuestCapacity,
-  type BookingGuestCounts,
-} from '@/features/guest/form/lib/guestCounts';
 
 import { Button } from '@/components/ui/button';
 import { parseGuestInquiryDateRange, formatDateToYYYYMMDD } from '@/utils/format/dates';

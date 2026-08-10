@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { callEdgeFunction } from '@/features/dashboard/org/lib/edgeClient';
 import {
   defaultUnitTypesForResidence,
   type DevelopmentUnitType,
 } from '@/features/dashboard/bookings/lib/unitTypes';
+import { callEdgeFunction } from '@/features/dashboard/org/lib/edgeClient';
 
 export function residenceUnitTypesQueryKey(residenceName: string) {
   return ['residence-unit-types', residenceName.trim()] as const;

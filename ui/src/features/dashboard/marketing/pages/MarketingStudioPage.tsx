@@ -1,6 +1,5 @@
 import { useState } from 'react';
 
-import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { MarketingCalendarSection } from '@/features/dashboard/marketing/components/calendar-builder/MarketingCalendarSection';
 import { DesignEditor } from '@/features/dashboard/marketing/components/design-editor/DesignEditor';
 import type { DesignExportPayload } from '@/features/dashboard/marketing/components/design-editor/DesignEditor';
@@ -16,6 +15,7 @@ import { MarketingStudioShell } from '@/features/dashboard/marketing/components/
 import { VideoEditor } from '@/features/dashboard/marketing/components/video-editor/VideoEditor';
 import type { VideoExportPayload } from '@/features/dashboard/marketing/components/video-editor/VideoEditor';
 
+import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { SlidingTabsContent } from '@/components/ui/sliding-tabs';
 
 export function MarketingStudioPage() {

@@ -19,8 +19,8 @@ import {
 import { OnboardingStepHeader } from '@/features/dashboard/org/components/onboarding/OnboardingStepHeader';
 import { OnboardingTrustNotice } from '@/features/dashboard/org/components/onboarding/OnboardingTrustNotice';
 import { VerificationFieldLabel } from '@/features/dashboard/org/components/onboarding/VerificationFieldLabel';
-import { DUPLICATE_ORGANIZATION_NAME_MESSAGE } from '@/features/dashboard/org/lib/orgSettingsValidation';
 import { RequiredMark } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
+import { TowerUnitConflictAlert } from '@/features/dashboard/org/components/TowerUnitConflictAlert';
 import { useCheckOrganizationName } from '@/features/dashboard/org/hooks/useCheckOrganizationName';
 import { useCheckPropertyName } from '@/features/dashboard/org/hooks/useCheckPropertyName';
 import {
@@ -29,9 +29,9 @@ import {
 } from '@/features/dashboard/org/hooks/useOrganizations';
 import { useParkingSlotConflict } from '@/features/dashboard/org/hooks/useParkingSlotConflict';
 import { useTowerUnitConflict } from '@/features/dashboard/org/hooks/useTowerUnitConflict';
-import { TowerUnitConflictAlert } from '@/features/dashboard/org/components/TowerUnitConflictAlert';
 import { callEdgeFunction, getSessionJwt } from '@/features/dashboard/org/lib/edgeClient';
 import { resolveOrgLandingPath } from '@/features/dashboard/org/lib/orgLanding';
+import { DUPLICATE_ORGANIZATION_NAME_MESSAGE } from '@/features/dashboard/org/lib/orgSettingsValidation';
 import {
   type OrgSocialProofPlatform,
   type OrgVerificationRights,
@@ -76,9 +76,9 @@ import {
   setLastTenantContext,
 } from '@/features/dashboard/org/lib/tenantPaths';
 
+import { AvailabilityCheckInput } from '@/components/AvailabilityCheckInput';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { Button } from '@/components/ui/button';
-import { AvailabilityCheckInput } from '@/components/AvailabilityCheckInput';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -88,11 +88,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
 import {
   resolveAsyncAvailabilityState,
   resolveNameAvailabilityState,
 } from '@/lib/availabilityCheckState';
+import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
 import { cn } from '@/lib/utils';
 import {
   validateFullPersonName,

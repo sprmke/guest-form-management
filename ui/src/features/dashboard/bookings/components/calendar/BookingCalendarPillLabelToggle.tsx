@@ -1,5 +1,4 @@
 import { SegmentedControl } from '@/components/ui/sliding-tabs';
-
 import { cn } from '@/lib/utils';
 
 export type BookingCalendarPillLabelMode = 'name' | 'price';

@@ -24,17 +24,14 @@ export function useAiMapColumns() {
       if (!propertyId) throw new Error('Property context is required');
 
       const jwt = await getSessionJwt();
-      const res = await fetch(
-        scopedFunctionsUrl('/import-ai-map-columns', propertyId),
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${jwt}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ batchId }),
-        }
-      );
+      const res = await fetch(scopedFunctionsUrl('/import-ai-map-columns', propertyId), {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${jwt}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ batchId }),
+      });
 
       const json = (await res.json()) as {
         success?: boolean;

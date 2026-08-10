@@ -1,6 +1,5 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
-import { publicListingFetch } from '@/features/guest/marketing/shared/lib/publicListingFetch';
 import {
   EMPTY_DEVELOPMENTS_FACETS,
   writeDevelopmentsQuery,
@@ -8,6 +7,7 @@ import {
   type DevelopmentsListingQuery,
   type PublicDevelopmentListItem,
 } from '@/features/guest/marketing/developments/lib/developmentsQuery';
+import { publicListingFetch } from '@/features/guest/marketing/shared/lib/publicListingFetch';
 
 export const PUBLIC_DEVELOPMENTS_QUERY_KEY = ['list-public-developments'] as const;
 

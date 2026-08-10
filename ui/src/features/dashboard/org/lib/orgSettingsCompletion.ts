@@ -5,13 +5,13 @@ import {
   validateOrgDescription,
   validateOrgTagline,
 } from '@/features/dashboard/org/lib/orgSettingsValidation';
-
-import { validateOptionalAdminUrl } from '@/lib/validation/adminSettings';
-import { getReservedDisplayNameViolation } from '@/lib/validation/reservedDisplayNames';
 import {
   countFilledSocialUrls,
   socialUrlMapFromLinks,
 } from '@/features/dashboard/org/lib/propertySocialLinks';
+
+import { validateOptionalAdminUrl } from '@/lib/validation/adminSettings';
+import { getReservedDisplayNameViolation } from '@/lib/validation/reservedDisplayNames';
 
 export const ORG_NAME_MAX_LENGTH = 120;
 

@@ -12,7 +12,12 @@ import {
   type ImportBatchStatus,
 } from '../_shared/importBatchStatusMachine.ts';
 import { isBookingImportTargetFieldId } from '../_shared/importTargetSchemas.ts';
-import { jsonError, jsonSuccess, readJsonBody, requireHttpMethod } from '../_shared/httpResponse.ts';
+import {
+  jsonError,
+  jsonSuccess,
+  readJsonBody,
+  requireHttpMethod,
+} from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 /** Statuses that allow saving/overwriting a column mapping. */
@@ -46,7 +51,10 @@ serveAuthenticated('import-save-mapping', async (req) => {
 
   const columnMapping = validateColumnMapping(body.columnMapping);
   if (!columnMapping) {
-    return jsonError(req, 'columnMapping must be an object mapping raw headers to valid target field ids or null');
+    return jsonError(
+      req,
+      'columnMapping must be an object mapping raw headers to valid target field ids or null'
+    );
   }
 
   const supabase = createServiceClient();
@@ -75,7 +83,7 @@ serveAuthenticated('import-save-mapping', async (req) => {
   // Merge with existing AI mapping if present, updating only provided entries.
   const existingMapping = (batch.column_mapping as Record<string, unknown> | null) ?? {};
   const existingMappings = Array.isArray((existingMapping as { mappings?: unknown }).mappings)
-    ? ((existingMapping as { mappings: Array<Record<string, unknown>> }).mappings)
+    ? (existingMapping as { mappings: Array<Record<string, unknown>> }).mappings
     : [];
 
   // Build updated mappings list: update suggestedTarget from user overrides.

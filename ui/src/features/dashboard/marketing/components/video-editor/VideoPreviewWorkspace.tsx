@@ -15,6 +15,7 @@ import type { VideoCompositionProps } from '@/features/dashboard/marketing/compo
 import { VideoPlaybackControls } from '@/features/dashboard/marketing/components/video-editor/VideoPlaybackControls';
 import { VideoRemotionPlayer } from '@/features/dashboard/marketing/components/video-editor/VideoRemotionPlayer';
 import { VideoTextPositionOverlay } from '@/features/dashboard/marketing/components/video-editor/VideoTextPositionOverlay';
+import { marketingEditorWorkspaceClassName } from '@/features/dashboard/marketing/lib/marketingEditorWorkspace';
 import {
   VIDEO_FORMAT_DIMENSIONS,
   VIDEO_PREVIEW_SHELL_MIN_HEIGHT_CLASS,
@@ -35,7 +36,6 @@ import {
 import { resolveVideoTypographyContext } from '@/features/dashboard/marketing/lib/video/videoTemplateTypography';
 import { scaleForVideoFormat } from '@/features/dashboard/marketing/lib/video/videoTextSlotContent';
 
-import { marketingEditorWorkspaceClassName } from '@/features/dashboard/marketing/lib/marketingEditorWorkspace';
 
 import { cn } from '@/lib/utils';
 

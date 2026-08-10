@@ -1,17 +1,19 @@
 import { useState } from 'react';
 
-import { ExternalLink, Loader2, MessageSquare, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
+
+import { ExternalLink, Loader2, MessageSquare, Star } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { VerificationStatusBadge } from '@/features/dashboard/org/components/verification/VerificationStatusBadge';
+import { guestPropertyPath } from '@/features/guest/lib/guestPublicPaths';
+
 import {
   VerificationDocFullViewDialog,
   VerificationDocPreviewCard,
   type VerificationPreviewAsset,
 } from '@/features/dashboard/org/components/verification/VerificationDocPreview';
+import { VerificationStatusBadge } from '@/features/dashboard/org/components/verification/VerificationStatusBadge';
 import { externalReviewSourceLabel } from '@/features/dashboard/org/lib/propertyExternalReviews';
-import { guestPropertyPath } from '@/features/guest/lib/guestPublicPaths';
 import {
   formatSuperAdminApprovalDate,
   superAdminApprovalDialogBodyClass,

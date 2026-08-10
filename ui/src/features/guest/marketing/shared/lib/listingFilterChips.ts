@@ -1,4 +1,3 @@
-import type { ListingFilterChip } from '@/features/guest/marketing/shared/components/ListingActiveFilterChips';
 import type {
   DevelopmentsFacets,
   DevelopmentsListingQuery,
@@ -15,6 +14,7 @@ import type {
   PropertiesFacets,
   PropertiesListingQuery,
 } from '@/features/guest/marketing/properties/lib/propertiesQuery';
+import type { ListingFilterChip } from '@/features/guest/marketing/shared/components/ListingActiveFilterChips';
 
 function formatPriceChip(min: number | null, max: number | null): string {
   if (min != null && max != null) return `₱${min.toLocaleString()}–₱${max.toLocaleString()}`;

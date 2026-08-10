@@ -1,10 +1,10 @@
+import type { ConsiderationStatus } from '@/features/dashboard/org/lib/contractLifecycle';
 import type {
   OrgVerificationRights,
   OrgVerificationStatus,
   OrgSocialProofPlatform,
 } from '@/features/dashboard/org/lib/orgVerification';
 import type { OrgVerificationRejectionKind } from '@/features/dashboard/org/lib/orgVerificationTiers';
-import type { ConsiderationStatus } from '@/features/dashboard/org/lib/contractLifecycle';
 import type {
   ExternalReviewModerationStatus,
   ExternalReviewSource,

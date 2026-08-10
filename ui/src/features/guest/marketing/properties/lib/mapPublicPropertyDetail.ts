@@ -4,6 +4,7 @@ import type {
   PublicPropertyDetailDto,
   ResolvedPropertyDetail,
 } from '@/features/guest/marketing/properties/types/publicProperty';
+import { MOCK_HOST_AVATAR_URL } from '@/features/guest/marketing/shared/lib/mockListingImages';
 
 import {
   DEFAULT_CANCELLATION_POLICY,
@@ -13,7 +14,6 @@ import {
   INITIAL_ENABLED_HOUSE_RULES,
   resolveHouseRulesForDisplay,
 } from '@/features/dashboard/org/lib/propertyHouseRulesConstants';
-import { MOCK_HOST_AVATAR_URL } from '@/features/guest/marketing/shared/lib/mockListingImages';
 
 /** Same default as guest forms / org settings preview */
 export const DEFAULT_ORG_LOGO_URL = '/images/logo.png';

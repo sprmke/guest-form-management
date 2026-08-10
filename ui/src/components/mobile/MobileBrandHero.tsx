@@ -7,13 +7,13 @@ import {
   type RefObject,
 } from 'react';
 
-import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import { useAdminLayoutIsFillMain } from '@/features/dashboard/bookings/components/AdminLayout';
+import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import { SidebarTenantScope } from '@/features/dashboard/org/components/TenantSwitchers';
 import { SuperAdminSidebarScope } from '@/features/dashboard/super-admin/components/SuperAdminSidebarScope';
 
-import { MobilePageStack } from '@/components/mobile/FloatingPanel';
 import { useAdminMobileHeroContext } from '@/components/mobile/AdminMobileHeroContext';
+import { MobilePageStack } from '@/components/mobile/FloatingPanel';
 import { MobileStickyChrome } from '@/components/mobile/MobileStickyChrome';
 import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { useMobileHeroCollapseProgress } from '@/hooks/useMobileHeroCollapseProgress';

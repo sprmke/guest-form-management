@@ -41,11 +41,11 @@ import {
   availabilityTextForMonth,
   openSlotDatesForMonth,
 } from '@/features/dashboard/marketing/lib/marketingBookedDates';
+import { marketingEditorWorkspaceClassName } from '@/features/dashboard/marketing/lib/marketingEditorWorkspace';
 import {
   marketingDesignSidebarRecords,
   marketingSavedTemplateCategoryId,
 } from '@/features/dashboard/marketing/lib/marketingSavedTemplates';
-import { marketingEditorWorkspaceClassName } from '@/features/dashboard/marketing/lib/marketingEditorWorkspace';
 import { ensurePolotnoConfigured } from '@/features/dashboard/marketing/lib/polotno/initPolotno';
 import { buildPolotnoCampaignDocument } from '@/features/dashboard/marketing/lib/polotno/polotnoCampaignDocuments';
 import {
@@ -61,8 +61,8 @@ import { useOrgBrandColor } from '@/features/dashboard/org/hooks/useOrgBrandColo
 import { useOrgSettings } from '@/features/dashboard/org/hooks/useOrgSettings';
 
 import { Button } from '@/components/ui/button';
-import { formatMoneyCompact } from '@/utils/format/currency';
 import { cn } from '@/lib/utils';
+import { formatMoneyCompact } from '@/utils/format/currency';
 
 /* Blueprint CSS is scoped to .polotno-studio-root via postcss.config.js + vite plugin */
 import '@/features/dashboard/marketing/styles/polotno-blueprint.css';

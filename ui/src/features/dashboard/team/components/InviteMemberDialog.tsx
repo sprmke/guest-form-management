@@ -19,6 +19,8 @@ import type {
 } from '@/features/dashboard/team/types/propertyTeam';
 
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   ResponsiveModal,
   ResponsiveModalContent,
@@ -26,8 +28,6 @@ import {
   ResponsiveModalHeader,
   ResponsiveModalTitle,
 } from '@/components/ui/responsive-modal';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
 import { cn } from '@/lib/utils';

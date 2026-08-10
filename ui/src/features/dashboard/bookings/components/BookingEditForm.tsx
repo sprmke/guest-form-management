@@ -36,7 +36,6 @@ import {
 import { guestBookedDatesUrl } from '@/features/guest/form/lib/guestPropertyScope';
 import { countParkingNights } from '@/features/guest/pay-parking/lib/payParkingHelpers';
 
-import { BookingEditSaveChoiceDialog } from '@/features/dashboard/bookings/components/BookingEditSaveChoiceDialog';
 import { BookingEditStickyBar } from '@/features/dashboard/bookings/components/booking-detail/edit/BookingEditStickyBar';
 import {
   BookingEditTabs,
@@ -51,6 +50,7 @@ import { ParkingTab } from '@/features/dashboard/bookings/components/booking-det
 import { PetsTab } from '@/features/dashboard/bookings/components/booking-detail/edit/tabs/PetsTab';
 import { StayDetailsTab } from '@/features/dashboard/bookings/components/booking-detail/edit/tabs/StayDetailsTab';
 import { WorkflowDetailsTab } from '@/features/dashboard/bookings/components/booking-detail/edit/tabs/WorkflowDetailsTab';
+import { BookingEditSaveChoiceDialog } from '@/features/dashboard/bookings/components/BookingEditSaveChoiceDialog';
 import { useAppSettings } from '@/features/dashboard/bookings/hooks/useAppSettings';
 import {
   useUpdateBooking,

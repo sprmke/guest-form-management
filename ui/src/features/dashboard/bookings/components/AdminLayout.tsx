@@ -70,13 +70,13 @@ import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermiss
 import { useParkingPermissions } from '@/features/dashboard/team/hooks/useParkingPermissions';
 import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
 
-import { BottomBarSlotProvider } from '@/components/mobile/BottomBarSlot';
-import { BottomTabBar } from '@/components/mobile/BottomTabBar';
-import { MobileAppShell } from '@/components/mobile/ContextualActionBar';
 import {
   AdminMobileHeroProvider,
   useAdminMobileHeroOwned,
 } from '@/components/mobile/AdminMobileHeroContext';
+import { BottomBarSlotProvider } from '@/components/mobile/BottomBarSlot';
+import { BottomTabBar } from '@/components/mobile/BottomTabBar';
+import { MobileAppShell } from '@/components/mobile/ContextualActionBar';
 import { PageTransition } from '@/components/mobile/PageTransition';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { SlidingActivePill } from '@/components/ui/SlidingActivePill';

@@ -17,8 +17,8 @@ import { superAdminDevelopmentCardModel } from '@/features/dashboard/super-admin
 import { superAdminPaths } from '@/features/dashboard/super-admin/lib/superAdminPaths';
 import type { Development } from '@/features/dashboard/super-admin/types/development';
 
-import { cn } from '@/lib/utils';
 import { listingStatusBadgeClasses, listingStatusDotClasses } from '@/lib/statusToneColors';
+import { cn } from '@/lib/utils';
 
 function DevelopmentStatusBadge({ status }: { status: string }) {
   const active = status === 'ACTIVE';

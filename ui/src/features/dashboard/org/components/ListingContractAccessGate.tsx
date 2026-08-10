@@ -1,9 +1,10 @@
+import { useParams } from 'react-router-dom';
+
 import { RequireListingContractAccess } from '@/features/dashboard/org/components/RequireListingContractAccess';
 import { useOrganizations } from '@/features/dashboard/org/hooks/useOrganizations';
 import type { ContractLeg } from '@/features/dashboard/org/lib/contractLifecycle';
 import { emptyContractLegLifecycle } from '@/features/dashboard/org/lib/contractLifecycle';
 import { readOrgVerificationDetail } from '@/features/dashboard/org/lib/orgVerificationTiers';
-import { useParams } from 'react-router-dom';
 
 type Props = {
   leg: ContractLeg;

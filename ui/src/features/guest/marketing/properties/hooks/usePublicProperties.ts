@@ -1,6 +1,5 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
-import { publicListingFetch } from '@/features/guest/marketing/shared/lib/publicListingFetch';
 import {
   EMPTY_PROPERTIES_FACETS,
   writePropertiesQuery,
@@ -8,6 +7,7 @@ import {
   type PropertiesListingQuery,
   type PublicPropertyListItem,
 } from '@/features/guest/marketing/properties/lib/propertiesQuery';
+import { publicListingFetch } from '@/features/guest/marketing/shared/lib/publicListingFetch';
 
 export const PUBLIC_PROPERTIES_QUERY_KEY = ['list-public-properties'] as const;
 

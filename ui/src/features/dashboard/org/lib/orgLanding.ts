@@ -1,5 +1,5 @@
-import { getLastOrgSlug, orgDashboardPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { isHostVerificationHardRejected } from '@/features/dashboard/org/lib/orgVerificationTiers';
+import { getLastOrgSlug, orgDashboardPath } from '@/features/dashboard/org/lib/tenantPaths';
 
 export const HOST_VERIFICATION_REJECTED_PATH = '/verification-rejected';
 

@@ -1,9 +1,9 @@
 import { Check, CircleOff } from 'lucide-react';
 
 import type { TeamMemberStatus } from '@/features/dashboard/team/types/propertyTeam';
-import { semanticBadgeClasses } from '@/lib/statusToneColors';
 
 import { Badge } from '@/components/ui/badge';
+import { semanticBadgeClasses } from '@/lib/statusToneColors';
 import { cn } from '@/lib/utils';
 
 type Props = {

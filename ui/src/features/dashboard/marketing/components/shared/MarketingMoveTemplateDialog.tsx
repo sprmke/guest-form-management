@@ -1,7 +1,12 @@
 import type { MarketingCategoryItem } from '@/features/dashboard/marketing/hooks/useMarketingCatalog';
 
 import { Button } from '@/components/ui/button';
-import { ResponsiveModal, ResponsiveModalContent, ResponsiveModalHeader, ResponsiveModalTitle } from '@/components/ui/responsive-modal';
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 
 type Props = {
   open: boolean;

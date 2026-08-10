@@ -1,6 +1,7 @@
 import { ArrowUpRight, Car, Dog, PartyPopper } from 'lucide-react';
 
 import { BookingResourceLabel } from '@/features/dashboard/bookings/components/BookingResourceLabel';
+import { occupiedNightsFromStay } from '@/features/dashboard/bookings/components/calendar/calendarStayAmounts';
 import { GuestAvatar } from '@/features/dashboard/bookings/components/GuestAvatar';
 import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
 import { hostNetToneClass } from '@/features/dashboard/bookings/lib/bookingFinance';
@@ -9,7 +10,6 @@ import {
   bookingFlagIconChipClass,
 } from '@/features/dashboard/bookings/lib/bookingFlags';
 
-import { occupiedNightsFromStay } from '@/features/dashboard/bookings/components/calendar/calendarStayAmounts';
 
 import { cn } from '@/lib/utils';
 import { formatBookingDate } from '@/utils/format/bookingDisplay';

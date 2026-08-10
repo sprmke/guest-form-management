@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
-import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { useOptionalParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
+import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 
 import { supabase } from '@/lib/supabase/client';
 

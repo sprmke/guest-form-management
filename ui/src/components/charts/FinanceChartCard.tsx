@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
 
-import type { LucideIcon } from 'lucide-react';
 
 import { AdminSurfaceCardHeader } from '@/components/shared/AdminSurfaceCardHeader';
 import { cn } from '@/lib/utils';
+
+import type { LucideIcon } from 'lucide-react';
 
 type Props = {
   icon: LucideIcon;

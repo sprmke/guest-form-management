@@ -32,8 +32,8 @@ import {
 import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermissions';
 import { hasOrgPermission } from '@/features/dashboard/team/lib/orgPermissions';
 
-import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { FloatingToolbar } from '@/components/mobile/FloatingPanel';
+import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
 import { Button } from '@/components/ui/button';
 

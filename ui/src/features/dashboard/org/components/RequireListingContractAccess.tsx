@@ -4,11 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Lock } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { ORGANIZATIONS_QUERY_KEY } from '@/features/dashboard/org/hooks/useOrganizations';
-import { callEdgeFunction, getSessionJwt } from '@/features/dashboard/org/lib/edgeClient';
 import {
   hasActiveConsiderationGrant,
   isInGracePeriod,
@@ -16,11 +12,16 @@ import {
   type ContractLeg,
   type ContractLegLifecycle,
 } from '@/features/dashboard/org/lib/contractLifecycle';
+import { callEdgeFunction, getSessionJwt } from '@/features/dashboard/org/lib/edgeClient';
 import {
   todayManilaYmd,
   validateVerificationFile,
   VERIFICATION_ACCEPT,
 } from '@/features/dashboard/org/lib/orgVerification';
+
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
 

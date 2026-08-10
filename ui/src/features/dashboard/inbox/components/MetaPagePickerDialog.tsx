@@ -6,8 +6,13 @@ import { PlatformLogo } from '@/features/dashboard/inbox/components/PlatformLogo
 import type { MetaPagePickerOption } from '@/features/dashboard/inbox/types/inbox';
 
 import { Button } from '@/components/ui/button';
-import { ResponsiveModal, ResponsiveModalContent, ResponsiveModalHeader, ResponsiveModalTitle } from '@/components/ui/responsive-modal';
 import { RadioGroupDisplay } from '@/components/ui/radio-group';
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { cn } from '@/lib/utils';
 
 type Props = {

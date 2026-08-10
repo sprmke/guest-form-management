@@ -5,11 +5,11 @@ import type {
   ParkingType,
 } from '@/features/guest/marketing/developments/types';
 import type { Property } from '@/features/guest/marketing/properties/components/PropertyCard';
-import { formatAmenityLabels } from '@/features/guest/search/lib/amenityLabels';
 import {
   resolveListingCoverImage,
   resolveListingImages,
 } from '@/features/guest/marketing/shared/lib/mockListingImages';
+import { formatAmenityLabels } from '@/features/guest/search/lib/amenityLabels';
 import type {
   DevelopmentSearchSummary,
   ParkingSearchSummary,

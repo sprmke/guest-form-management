@@ -1,5 +1,5 @@
-import { slugifyOrgName } from '@/features/dashboard/org/lib/orgSettingsForm';
 import { legacyGcashQrForPaymentMethods } from '@/features/dashboard/lib/storedMediaDisplay';
+import { slugifyOrgName } from '@/features/dashboard/org/lib/orgSettingsForm';
 import {
   DEFAULT_PARKING_RESIDENCE_NAME,
   normalizeParkingLevel,

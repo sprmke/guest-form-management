@@ -3,7 +3,6 @@ import { toast } from 'sonner';
 
 import { AdminSection } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
 import { BuildingFormsSettingsSection } from '@/features/dashboard/bookings/components/BuildingFormsSettingsSection';
-import { storedAppSettingsMediaUrl } from '@/features/dashboard/lib/storedMediaDisplay';
 import { PropertyIntegrationsPanel } from '@/features/dashboard/bookings/components/PropertyIntegrationsPanel';
 import {
   operationalFormIsDirty,
@@ -11,12 +10,13 @@ import {
   type AppSettingsFormValues,
 } from '@/features/dashboard/bookings/hooks/useAppSettings';
 import { useUploadAppSettingsAsset } from '@/features/dashboard/bookings/hooks/useUploadAppSettingsAsset';
+import type { VoiceReceptionistFormValues } from '@/features/dashboard/bookings/hooks/useVoiceReceptionistSettings';
+import { storedAppSettingsMediaUrl } from '@/features/dashboard/lib/storedMediaDisplay';
 import { PropertyEmailAutomationsSection } from '@/features/dashboard/org/components/property-settings/PropertyEmailAutomationsSection';
 import { PropertyPaymentMethodsSection } from '@/features/dashboard/org/components/property-settings/PropertyPaymentMethodsSection';
 import { PropertySettingsSectionAlert } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import { PropertyVoiceReceptionistSection } from '@/features/dashboard/org/components/property-settings/PropertyVoiceReceptionistSection';
 import { PropertyWorkflowDocumentsSection } from '@/features/dashboard/org/components/property-settings/PropertyWorkflowDocumentsSection';
-import type { VoiceReceptionistFormValues } from '@/features/dashboard/bookings/hooks/useVoiceReceptionistSettings';
 import {
   syncLegacyPaymentFieldsFromMethods,
   type PropertyPaymentMethod,

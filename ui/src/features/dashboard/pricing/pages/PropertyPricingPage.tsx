@@ -4,7 +4,6 @@ import { format, eachDayOfInterval, isSameDay, isBefore, startOfToday } from 'da
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { buildOccupancyByDay } from '@/features/dashboard/bookings/components/calendar/calendarDateUtils';
 import { PricingCalendarBookingModal } from '@/features/dashboard/pricing/components/PricingCalendarBookingModal';
 import { PricingCalendarGrid } from '@/features/dashboard/pricing/components/PricingCalendarGrid';
@@ -31,10 +30,6 @@ import {
   resolveHolidayRules,
   type PropertyPricingDefaults,
 } from '@/features/dashboard/pricing/lib/pricingCompute';
-import type {
-  PropertyPricingCalendarBooking,
-  PropertyPricingDto,
-} from '@/features/dashboard/pricing/lib/propertyPricingApi';
 import {
   DEFAULT_WEEKDAY_NIGHTLY_RATE,
   DEFAULT_WEEKEND_NIGHTLY_RATE,
@@ -53,8 +48,14 @@ import {
   type PricingFormBaseline,
   type PricingSaveOptions,
 } from '@/features/dashboard/pricing/lib/pricingSave';
+import type {
+  PropertyPricingCalendarBooking,
+  PropertyPricingDto,
+} from '@/features/dashboard/pricing/lib/propertyPricingApi';
 import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
 import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
+
+import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { formatMoneyCompact } from '@/utils/format/currency';
 
 export function PropertyPricingPage() {

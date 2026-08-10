@@ -16,8 +16,8 @@ import {
   KAME_POLOTNO_DEFAULT_SHAPE_FILL,
   type KamePolotnoShape,
 } from '@/features/dashboard/marketing/lib/polotno/kamePolotnoShapes';
-import { roundedOutlineSvgUrl } from '@/features/dashboard/marketing/lib/polotno/roundedOutlineSvg';
 import type { PolotnoStore } from '@/features/dashboard/marketing/lib/polotno/polotnoStore';
+import { roundedOutlineSvgUrl } from '@/features/dashboard/marketing/lib/polotno/roundedOutlineSvg';
 
 type LineStyleItem = { preview: string; data: Record<string, unknown> };
 type GridPosition = { x: number; y: number };

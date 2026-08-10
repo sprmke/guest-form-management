@@ -1,6 +1,6 @@
-import type { OrgApprovalDetail } from '@/features/dashboard/super-admin/types/approval';
 import { ORG_SOCIAL_PROOF_PLATFORMS } from '@/features/dashboard/org/lib/orgVerification';
 import type { OrgVerificationChangeDocId } from '@/features/dashboard/org/lib/orgVerificationTiers';
+import type { OrgApprovalDetail } from '@/features/dashboard/super-admin/types/approval';
 
 export type ChangeDocId = OrgVerificationChangeDocId;
 

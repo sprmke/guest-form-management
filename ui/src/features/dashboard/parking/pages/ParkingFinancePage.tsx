@@ -46,8 +46,8 @@ import {
 } from '@/features/dashboard/finance/lib/financeSummaryStats';
 import type { FinanceLineItem, FinanceQuery } from '@/features/dashboard/finance/lib/types';
 
-import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { FloatingPanel, FloatingToolbar } from '@/components/mobile/FloatingPanel';
+import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { FinanceOverviewSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { useAdminMobileCardViewGuard } from '@/hooks/useAdminMobileCardViewGuard';
 import { useIsBelowLg, useIsBelowMd } from '@/hooks/useMediaQuery';

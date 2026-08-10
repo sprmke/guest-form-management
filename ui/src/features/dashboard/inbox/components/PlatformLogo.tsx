@@ -4,8 +4,8 @@ import { MessageCircle } from 'lucide-react';
 
 import type { SocialPlatform } from '@/features/dashboard/inbox/types/inbox';
 
-import { cn } from '@/lib/utils';
 import { statusToneSurfaceClasses } from '@/lib/statusToneColors';
+import { cn } from '@/lib/utils';
 
 type PlatformLogoProps = {
   platform: SocialPlatform;

@@ -29,9 +29,9 @@ import type { PricingHolidayRule } from '@/features/dashboard/pricing/lib/phHoli
 import { dateKey } from '@/features/dashboard/pricing/lib/pricingCalendarUtils';
 import type { PropertyPricingCalendarBooking } from '@/features/dashboard/pricing/lib/propertyPricingApi';
 
+import { AdminSurfaceCardHeader } from '@/components/shared/AdminSurfaceCardHeader';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { AdminSurfaceCardHeader } from '@/components/shared/AdminSurfaceCardHeader';
 import { cn } from '@/lib/utils';
 import { formatMoneyCompact } from '@/utils/format/currency';
 

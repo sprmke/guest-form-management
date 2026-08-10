@@ -3,8 +3,8 @@ import { AlertCircle, Check, Circle, Clock } from 'lucide-react';
 import type { OrgVerificationStatus } from '@/features/dashboard/org/lib/orgVerification';
 import type { OrgVerificationRejectionKind } from '@/features/dashboard/org/lib/orgVerificationTiers';
 import { verificationStatusLabel } from '@/features/dashboard/org/lib/orgVerificationTiers';
-import { semanticBadgeClasses } from '@/lib/statusToneColors';
 
+import { semanticBadgeClasses } from '@/lib/statusToneColors';
 import { cn } from '@/lib/utils';
 
 type Props = {

@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom';
 import { AlertTriangle, ArrowRight, Bell, CheckCircle2, ChevronRight } from 'lucide-react';
 
 import type { DashboardAttentionItem } from '@/features/dashboard/property/lib/types';
-import { ATTENTION_SEVERITY_STYLES } from '@/lib/statusToneColors';
+
 
 import { AdminSurfaceCardHeader } from '@/components/shared/AdminSurfaceCardHeader';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ATTENTION_SEVERITY_STYLES } from '@/lib/statusToneColors';
 import { cn } from '@/lib/utils';
 
 const MAX_ITEMS = 5;

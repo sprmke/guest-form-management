@@ -7,6 +7,7 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
+import { isPlatformSeedMediaUrl } from '@/features/dashboard/lib/storedMediaDisplay';
 import { ORGANIZATIONS_QUERY_KEY } from '@/features/dashboard/org/hooks/useOrganizations';
 import {
   getLastPropertySlug,
@@ -30,7 +31,6 @@ import {
   type TeamInvitePreview,
 } from '@/features/dashboard/team/lib/acceptInviteApi';
 
-import { isPlatformSeedMediaUrl } from '@/features/dashboard/lib/storedMediaDisplay';
 
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';

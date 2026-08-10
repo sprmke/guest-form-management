@@ -17,7 +17,6 @@ import {
   guestPropertyPickDatesPath,
 } from '@/features/guest/lib/guestPublicPaths';
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
-
 import { GuestStayContextBar } from '@/features/guest/property/components/GuestStayContextBar';
 
 import { Button } from '@/components/ui/button';

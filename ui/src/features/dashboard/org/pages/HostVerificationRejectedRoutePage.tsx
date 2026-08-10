@@ -1,14 +1,16 @@
+import { Navigate } from 'react-router-dom';
+
+import { Loader2 } from 'lucide-react';
+
 import { RequireAdmin } from '@/features/dashboard/bookings/components/RequireAdmin';
 import { useOrganizations } from '@/features/dashboard/org/hooks/useOrganizations';
+import { resolveOrgLandingPath } from '@/features/dashboard/org/lib/orgLanding';
 import {
   isHostVerificationHardRejected,
   readOrgVerificationDetail,
 } from '@/features/dashboard/org/lib/orgVerificationTiers';
-import { resolveOrgLandingPath } from '@/features/dashboard/org/lib/orgLanding';
 import { HostVerificationRejectedPage } from '@/features/dashboard/org/pages/HostVerificationRejectedPage';
 
-import { Loader2 } from 'lucide-react';
-import { Navigate } from 'react-router-dom';
 
 /**
  * Hub for hard-rejected hosts after login (`/verification-rejected`).

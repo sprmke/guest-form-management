@@ -11,7 +11,12 @@ import {
   type ImportBatchStatus,
 } from '../_shared/importBatchStatusMachine.ts';
 import { IMPORT_UPLOAD_BUCKET } from '../_shared/importUploadLimits.ts';
-import { jsonError, jsonSuccess, readJsonBody, requireHttpMethod } from '../_shared/httpResponse.ts';
+import {
+  jsonError,
+  jsonSuccess,
+  readJsonBody,
+  requireHttpMethod,
+} from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 /** Statuses that cannot be cancelled (already in flight or terminal). */
@@ -66,10 +71,7 @@ serveAuthenticated('import-cancel', async (req) => {
   }
 
   // Delete batch (cascades to import_batch_rows via FK).
-  const { error: deleteError } = await supabase
-    .from('import_batches')
-    .delete()
-    .eq('id', batchId);
+  const { error: deleteError } = await supabase.from('import_batches').delete().eq('id', batchId);
 
   if (deleteError) {
     console.error('[import-cancel] batch delete failed:', deleteError.message);

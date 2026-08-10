@@ -3,14 +3,14 @@ import type { ReactNode } from 'react';
 import { Route } from 'react-router-dom';
 
 import { ParkingInboxPage } from '@/features/dashboard/inbox/pages/ParkingInboxPage';
-import { ParkingBookingsPage } from '@/features/dashboard/parking/pages/ParkingBookingsPage';
+import type { ParkingRouteFn } from '@/features/dashboard/org/routes/guards';
 import { ParkingBookingDetailPage } from '@/features/dashboard/parking/pages/ParkingBookingDetailPage';
+import { ParkingBookingsPage } from '@/features/dashboard/parking/pages/ParkingBookingsPage';
 import { ParkingDashboardPage } from '@/features/dashboard/parking/pages/ParkingDashboardPage';
 import { ParkingFinancePage } from '@/features/dashboard/parking/pages/ParkingFinancePage';
 import { ParkingNotificationsPage } from '@/features/dashboard/parking/pages/ParkingNotificationsPage';
 import { ParkingPricingPage } from '@/features/dashboard/parking/pages/ParkingPricingPage';
 import { ParkingSettingsPage } from '@/features/dashboard/parking/pages/ParkingSettingsPage';
-import type { ParkingRouteFn } from '@/features/dashboard/org/routes/guards';
 
 export function parkingAdminRoutes(parkingRoute: ParkingRouteFn): ReactNode {
   return (

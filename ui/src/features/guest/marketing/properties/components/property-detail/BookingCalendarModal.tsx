@@ -1,12 +1,12 @@
 import { CalendarDays, ArrowRight, Check } from 'lucide-react';
 
 import { GuestDialogShell } from '@/features/guest/marketing/shared/components/GuestDialogShell';
+import { PublicPropertyCalendar } from '@/features/guest/property/components/PublicPropertyCalendar';
 
 import { Button } from '@/components/ui/button';
 import { DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
-import { PublicPropertyCalendar } from '@/features/guest/property/components/PublicPropertyCalendar';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 

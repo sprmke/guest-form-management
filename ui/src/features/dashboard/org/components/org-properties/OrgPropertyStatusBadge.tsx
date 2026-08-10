@@ -1,6 +1,6 @@
 import { ORG_PROPERTY_STATUSES } from '@/features/dashboard/org/lib/orgPropertyDisplay';
-import { semanticBadgeClasses, semanticBadgeDotClasses } from '@/lib/statusToneColors';
 
+import { semanticBadgeClasses, semanticBadgeDotClasses } from '@/lib/statusToneColors';
 import { cn } from '@/lib/utils';
 
 type Props = {

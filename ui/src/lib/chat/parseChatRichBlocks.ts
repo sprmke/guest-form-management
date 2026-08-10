@@ -314,7 +314,7 @@ export function parseChatRichBlocks(raw: string): ChatRichBlock[] {
 
   const lines = text.split('\n');
   const out: ChatRichBlock[] = [];
-  let paragraphBuf: string[] = [];
+  const paragraphBuf: string[] = [];
   let listMode: 'unordered' | 'ordered' | null = null;
   let listItems: string[] = [];
 

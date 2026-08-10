@@ -22,7 +22,12 @@ import {
   type ImportBatchStatus,
 } from '../_shared/importBatchStatusMachine.ts';
 import { WorkflowOrchestrator, type DevControlFlags } from '../_shared/workflowOrchestrator.ts';
-import { jsonError, jsonSuccess, readJsonBody, requireHttpMethod } from '../_shared/httpResponse.ts';
+import {
+  jsonError,
+  jsonSuccess,
+  readJsonBody,
+  requireHttpMethod,
+} from '../_shared/httpResponse.ts';
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
@@ -111,19 +116,14 @@ serveAuthenticated('import-revert', async (req) => {
     const importedRows = all.filter((s) => s.status === 'IMPORTED');
     const movedRows = all.filter((s) => s.status !== 'IMPORTED');
     const modifiedCount = all.filter(
-      (s) =>
-        committedAt != null &&
-        typeof s.updated_at === 'string' &&
-        s.updated_at > committedAt
+      (s) => committedAt != null && typeof s.updated_at === 'string' && s.updated_at > committedAt
     ).length;
 
     const movedDetails: MovedRow[] = movedRows.map((s) => ({
       bookingId: s.id,
       status: s.status,
       modifiedSinceImport:
-        committedAt != null &&
-        typeof s.updated_at === 'string' &&
-        s.updated_at > committedAt,
+        committedAt != null && typeof s.updated_at === 'string' && s.updated_at > committedAt,
     }));
 
     return jsonSuccess(req, {
@@ -179,9 +179,7 @@ serveAuthenticated('import-revert', async (req) => {
     bookingId: s.id,
     status: s.status,
     modifiedSinceImport:
-      committedAt != null &&
-      typeof s.updated_at === 'string' &&
-      s.updated_at > committedAt,
+      committedAt != null && typeof s.updated_at === 'string' && s.updated_at > committedAt,
   }));
 
   const toCancel = includeMoved ? allSubmissions : importedRows;

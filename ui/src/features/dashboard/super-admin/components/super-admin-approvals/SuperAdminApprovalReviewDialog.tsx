@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { Ban, FileText, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { VerificationStatusBadge } from '@/features/dashboard/org/components/verification/VerificationStatusBadge';
 import {
   VerificationDocFullViewDialog,
   VerificationDocPreviewCard,
@@ -12,35 +11,13 @@ import {
   type VerificationPreviewAsset,
 } from '@/features/dashboard/org/components/verification/VerificationDocPreview';
 import { VerificationDocThumbnail } from '@/features/dashboard/org/components/verification/VerificationDocThumbnail';
-import {
-  useApproveOrgVerification,
-  useDecideContractConsideration,
-  useOrgVerificationAssets,
-  useRejectOrgVerification,
-} from '@/features/dashboard/super-admin/hooks/useApprovals';
+import { VerificationStatusBadge } from '@/features/dashboard/org/components/verification/VerificationStatusBadge';
 import {
   ORG_SOCIAL_PROOF_PLATFORMS,
   ORG_VERIFICATION_RIGHTS,
 } from '@/features/dashboard/org/lib/orgVerification';
 import { formatTowerAndUnit } from '@/features/dashboard/org/lib/propertyTowerUnit';
 import { VERIFICATION_TIER2_DOC_LABELS } from '@/features/dashboard/org/lib/verificationCopy';
-import {
-  buildChangeDocOptions,
-  buildRequestChangesMessage,
-  HOST_REQUEST_CHANGES_REASON_OPTIONS,
-  type ChangeDocId,
-  type HostRequestChangesReasonId,
-} from '@/features/dashboard/super-admin/lib/requestChangesMessage';
-import {
-  buildRejectionMessage,
-  HOST_REJECTION_REASON_OPTIONS,
-  type HostRejectionReasonId,
-} from '@/features/dashboard/super-admin/lib/rejectReasonOptions';
-import {
-  approvalHasDualTierQueue,
-  defaultApprovalReviewTier,
-  type ApprovalReviewTier,
-} from '@/features/dashboard/super-admin/lib/approvalReviewTier';
 import {
   formatSuperAdminApprovalDate,
   superAdminApprovalDialogBodyClass,
@@ -51,6 +28,29 @@ import {
   superAdminApprovalSectionTitleClass,
   SuperAdminApprovalInfoRow,
 } from '@/features/dashboard/super-admin/components/super-admin-approvals/SuperAdminApprovalDialogLayout';
+import {
+  useApproveOrgVerification,
+  useDecideContractConsideration,
+  useOrgVerificationAssets,
+  useRejectOrgVerification,
+} from '@/features/dashboard/super-admin/hooks/useApprovals';
+import {
+  approvalHasDualTierQueue,
+  defaultApprovalReviewTier,
+  type ApprovalReviewTier,
+} from '@/features/dashboard/super-admin/lib/approvalReviewTier';
+import {
+  buildRejectionMessage,
+  HOST_REJECTION_REASON_OPTIONS,
+  type HostRejectionReasonId,
+} from '@/features/dashboard/super-admin/lib/rejectReasonOptions';
+import {
+  buildChangeDocOptions,
+  buildRequestChangesMessage,
+  HOST_REQUEST_CHANGES_REASON_OPTIONS,
+  type ChangeDocId,
+  type HostRequestChangesReasonId,
+} from '@/features/dashboard/super-admin/lib/requestChangesMessage';
 import type {
   OrgApprovalSummary,
   OrgApprovalUnitConflict,

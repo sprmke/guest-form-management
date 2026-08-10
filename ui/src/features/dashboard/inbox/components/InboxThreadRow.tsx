@@ -2,8 +2,8 @@ import { PlatformLogo } from '@/features/dashboard/inbox/components/PlatformLogo
 import { formatInboxTime, platformLabel } from '@/features/dashboard/inbox/lib/inboxFormat';
 import type { InboxConversation } from '@/features/dashboard/inbox/types/inbox';
 
-import { cn } from '@/lib/utils';
 import { softBadgeClasses, toneBadgeClasses } from '@/lib/statusToneColors';
+import { cn } from '@/lib/utils';
 import { formatIsoDateForDisplay } from '@/utils/format/dates';
 
 type Props = {

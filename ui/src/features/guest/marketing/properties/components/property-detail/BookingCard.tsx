@@ -3,8 +3,6 @@ import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { CalendarDays, Users, Star, ChevronDown, Info, Shield, ChevronRight } from 'lucide-react';
 
-import { useParkingReserve } from '@/features/guest/marketing/parkings/hooks/useParkingReserve';
-import { usePropertyReserve } from '@/features/guest/marketing/properties/hooks/usePropertyReserve';
 import {
   adjustBookingGuestCount,
   canAdjustBookingGuestCount,
@@ -13,6 +11,8 @@ import {
   resolveListingGuestCapacity,
   type BookingGuestCounts,
 } from '@/features/guest/form/lib/guestCounts';
+import { useParkingReserve } from '@/features/guest/marketing/parkings/hooks/useParkingReserve';
+import { usePropertyReserve } from '@/features/guest/marketing/properties/hooks/usePropertyReserve';
 
 import { computeParkingStayTotal } from '@/features/dashboard/parking/lib/parkingPricingCompute';
 import { parkingPricingDefaultsFromDto } from '@/features/dashboard/parking/lib/parkingPricingDefaults';

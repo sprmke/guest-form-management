@@ -19,8 +19,8 @@ import type { FinanceLedgerEntry } from '@/features/dashboard/finance/lib/financ
 import { recurrenceIntervalLabel } from '@/features/dashboard/finance/lib/recurrence';
 import type { FinanceBookingLedgerRow } from '@/features/dashboard/finance/lib/types';
 
-import { cn } from '@/lib/utils';
 import { toneIconWrapClasses } from '@/lib/statusToneColors';
+import { cn } from '@/lib/utils';
 import { formatMoney } from '@/utils/format/currency';
 
 type Props = {

@@ -1,3 +1,7 @@
+import {
+  defaultUnitTypesForResidence,
+  resolveUnitTypeIdFromCapacity,
+} from '@/features/dashboard/bookings/lib/unitTypes';
 import { slugifyOrgName } from '@/features/dashboard/org/lib/orgSettingsForm';
 import {
   readCancellationPolicyFromSettings,
@@ -15,10 +19,6 @@ import {
 } from '@/features/dashboard/org/lib/propertyLocation';
 import { normalizePropertyMediaDraft } from '@/features/dashboard/org/lib/propertyMedia';
 import { isCondoPropertyType } from '@/features/dashboard/org/lib/propertyResidences';
-import {
-  defaultUnitTypesForResidence,
-  resolveUnitTypeIdFromCapacity,
-} from '@/features/dashboard/bookings/lib/unitTypes';
 import {
   PROPERTY_CONTACT_ROLE_VALUES,
   type CustomAmenity,

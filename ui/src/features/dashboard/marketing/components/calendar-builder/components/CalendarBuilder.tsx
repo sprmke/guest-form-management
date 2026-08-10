@@ -1,5 +1,6 @@
 import { useRef, useCallback, useState, useEffect, useMemo } from 'react';
 
+import { useQueryClient } from '@tanstack/react-query';
 import {
   ZoomIn,
   ZoomOut,
@@ -27,7 +28,6 @@ import { MarketingAutoSaveStatus } from '@/features/dashboard/marketing/componen
 import { MarketingEditorHistoryControls } from '@/features/dashboard/marketing/components/shared/MarketingEditorHistoryControls';
 import { MarketingEditorSidebar } from '@/features/dashboard/marketing/components/shared/MarketingEditorSidebar';
 import { MarketingPreviewHeader } from '@/features/dashboard/marketing/components/shared/MarketingPreviewHeader';
-import { marketingEditorWorkspaceClassName } from '@/features/dashboard/marketing/lib/marketingEditorWorkspace';
 import { useMarketingStudioHeaderActions } from '@/features/dashboard/marketing/components/shared/MarketingStudioHeaderActions';
 import { SaveMarketingTemplateButton } from '@/features/dashboard/marketing/components/shared/SaveMarketingTemplateButton';
 import { useCalendarTemplateDedupe } from '@/features/dashboard/marketing/hooks/useCalendarTemplateDedupe';
@@ -36,6 +36,11 @@ import { useMarketingAutoSave } from '@/features/dashboard/marketing/hooks/useMa
 import { useMarketingAutoSaveSuspension } from '@/features/dashboard/marketing/hooks/useMarketingAutoSaveSuspension';
 import { useMarketingBookedDates } from '@/features/dashboard/marketing/hooks/useMarketingBookedDates';
 import { saveMarketingTemplate } from '@/features/dashboard/marketing/hooks/useMarketingTemplates';
+import {
+  applyCalendarAiElementsToStyles,
+  applyCalendarAiPreferencesToTokens,
+} from '@/features/dashboard/marketing/lib/calendarAiGenerateOptions';
+import { resolveAiGeneratedCalendarStylesForAllFormats } from '@/features/dashboard/marketing/lib/calendarAiTokens';
 import {
   aspectPresetForCalendarFormat,
   calendarTemplateMatchesAspectPreset,
@@ -47,11 +52,6 @@ import {
   planCalendarRelatedCustomRemoval,
   CALENDAR_CUSTOM_PRESET_ID,
 } from '@/features/dashboard/marketing/lib/calendarAutosave';
-import {
-  applyCalendarAiElementsToStyles,
-  applyCalendarAiPreferencesToTokens,
-} from '@/features/dashboard/marketing/lib/calendarAiGenerateOptions';
-import { resolveAiGeneratedCalendarStylesForAllFormats } from '@/features/dashboard/marketing/lib/calendarAiTokens';
 import { applyBrandAccentToCalendarStyles } from '@/features/dashboard/marketing/lib/calendarBrandColors';
 import {
   CALENDAR_MIN_RELATIVE_ZOOM,
@@ -67,13 +67,14 @@ import {
   CALENDAR_PRESET_CATEGORIES,
 } from '@/features/dashboard/marketing/lib/calendarPresets';
 import { marketingContentFingerprint } from '@/features/dashboard/marketing/lib/marketingContentFingerprint';
+import { marketingEditorWorkspaceClassName } from '@/features/dashboard/marketing/lib/marketingEditorWorkspace';
 import {
   propertyGalleryMediaItems,
   propertyMediaItems,
 } from '@/features/dashboard/marketing/lib/polotno/propertyMedia';
 import { useOrgBrandColor } from '@/features/dashboard/org/hooks/useOrgBrandColor';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
-import { useQueryClient } from '@tanstack/react-query';
+
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { resolveOrgBrandHex } from '@/lib/theme/brandColor';

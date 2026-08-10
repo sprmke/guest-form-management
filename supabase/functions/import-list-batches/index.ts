@@ -19,7 +19,9 @@ serveAuthenticated('import-list-batches', async (req) => {
   const url = new URL(req.url);
 
   const rawLimit = parseInt(url.searchParams.get('limit') ?? String(DEFAULT_LIMIT), 10);
-  const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(1, rawLimit), MAX_LIMIT) : DEFAULT_LIMIT;
+  const limit = Number.isFinite(rawLimit)
+    ? Math.min(Math.max(1, rawLimit), MAX_LIMIT)
+    : DEFAULT_LIMIT;
 
   const rawPage = parseInt(url.searchParams.get('page') ?? '1', 10);
   const page = Number.isFinite(rawPage) ? Math.max(1, rawPage) : 1;
@@ -27,7 +29,11 @@ serveAuthenticated('import-list-batches', async (req) => {
 
   const supabase = createServiceClient();
 
-  const { data: batches, error, count } = await supabase
+  const {
+    data: batches,
+    error,
+    count,
+  } = await supabase
     .from('import_batches')
     .select(
       'id, status, original_file_name, row_count, created_by, created_at, updated_at, column_mapping',

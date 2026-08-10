@@ -72,9 +72,7 @@ export function propertiesQueryFromSearch(
   const base = parsePropertiesQuery(bridged);
   const intent = resolveClientSearchIntent(search.where);
   const conceptTypes =
-    intent.kind === 'concept'
-      ? intent.propertyTypes.map((type) => type.toLowerCase())
-      : [];
+    intent.kind === 'concept' ? intent.propertyTypes.map((type) => type.toLowerCase()) : [];
 
   return {
     ...base,

@@ -16,13 +16,13 @@ import {
   type HeroSearchField,
   type HeroSearchValues,
 } from '@/features/guest/marketing/guest-landing/components/HeroSearch';
-import type { ListingSearchPreferType } from '@/features/guest/marketing/shared/lib/listingSearchPreferType';
 import {
   clamp01,
   easeOutCubic,
   lerp,
   smoothstep,
 } from '@/features/guest/marketing/shared/lib/listingScrollSearchEasing';
+import type { ListingSearchPreferType } from '@/features/guest/marketing/shared/lib/listingSearchPreferType';
 
 const MORPH_DISTANCE = 168;
 const HEADER_HEIGHT_MOBILE = 64;

@@ -1,8 +1,8 @@
 import { Home } from 'lucide-react';
 
 import { AdminSection } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
-import { UnitTypesListEditor } from '@/features/dashboard/org/components/unit-types/UnitTypesListEditor';
 import type { DevelopmentUnitType } from '@/features/dashboard/bookings/lib/unitTypes';
+import { UnitTypesListEditor } from '@/features/dashboard/org/components/unit-types/UnitTypesListEditor';
 
 type Props = {
   list: DevelopmentUnitType[];

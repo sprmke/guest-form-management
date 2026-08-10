@@ -8,7 +8,6 @@ import type { BookingEditFormValues } from '@/features/dashboard/bookings/compon
 
 import type { UseFormRegister, UseFormSetValue } from 'react-hook-form';
 
-
 type Props = {
   register: UseFormRegister<BookingEditFormValues>;
   setValue: UseFormSetValue<BookingEditFormValues>;

@@ -29,6 +29,7 @@ import { SettingsField } from '@/features/dashboard/org/components/property-sett
 import { useParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
 import { BrandColorField } from '@/features/dashboard/org/components/settings/BrandColorField';
 import { useOrgBrandColor } from '@/features/dashboard/org/hooks/useOrgBrandColor';
+import { useParkingSlotConflict } from '@/features/dashboard/org/hooks/useParkingSlotConflict';
 import {
   AZURE_NORTH_PARKING_TOWERS,
   DEFAULT_PARKING_LEVEL,
@@ -38,7 +39,6 @@ import {
   PARKING_TYPES,
   type ParkingType,
 } from '@/features/dashboard/org/lib/parkingResidences';
-import { useParkingSlotConflict } from '@/features/dashboard/org/hooks/useParkingSlotConflict';
 import {
   formatParkingCode,
   formatParkingDisplayName,
@@ -97,6 +97,7 @@ import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButt
 import { AppSettingsCardSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import {
   ResponsiveModal,
   ResponsiveModalContent,
@@ -105,7 +106,6 @@ import {
   ResponsiveModalHeader,
   ResponsiveModalTitle,
 } from '@/components/ui/responsive-modal';
-import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,

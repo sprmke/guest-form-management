@@ -1,6 +1,7 @@
 import { Info, Share2 } from 'lucide-react';
 
 import { AdminSection } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
+import { storedOrgSettingsMediaUrl } from '@/features/dashboard/lib/storedMediaDisplay';
 import {
   OrgSettingsField,
   OrgSettingsFieldGrid,
@@ -19,11 +20,9 @@ import { AvailabilityCheckInput } from '@/components/AvailabilityCheckInput';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { storedOrgSettingsMediaUrl } from '@/features/dashboard/lib/storedMediaDisplay';
-
+import type { AvailabilityCheckState } from '@/lib/availabilityCheckState';
 import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
 import { DEFAULT_ORG_BRAND_COLOR } from '@/lib/theme/brandColor';
-import type { AvailabilityCheckState } from '@/lib/availabilityCheckState';
 import { cn } from '@/lib/utils';
 
 export function OrgBasicInformationSection({

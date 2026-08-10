@@ -1,6 +1,5 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
-import { publicListingFetch } from '@/features/guest/marketing/shared/lib/publicListingFetch';
 import {
   EMPTY_PARKINGS_FACETS,
   writeParkingsQuery,
@@ -8,6 +7,7 @@ import {
   type ParkingsListingQuery,
   type PublicParkingListItem,
 } from '@/features/guest/marketing/parkings/lib/parkingsQuery';
+import { publicListingFetch } from '@/features/guest/marketing/shared/lib/publicListingFetch';
 
 export const PUBLIC_PARKINGS_QUERY_KEY = ['list-public-parkings'] as const;
 

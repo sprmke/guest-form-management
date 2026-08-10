@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom';
 import { AlertTriangle, ArrowRight, Bell, Info } from 'lucide-react';
 
 import type { DashboardAttentionItem } from '@/features/dashboard/property/lib/types';
-import { ATTENTION_SEVERITY_STYLES } from '@/lib/statusToneColors';
 
+import { ATTENTION_SEVERITY_STYLES } from '@/lib/statusToneColors';
 import { cn } from '@/lib/utils';
 
 const SEVERITY_ICONS = {

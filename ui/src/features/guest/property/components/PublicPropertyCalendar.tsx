@@ -10,8 +10,8 @@ import {
   isGuestCalendarValidCheckoutDate,
 } from '@/features/guest/calendar/lib/guestCalendarAvailability';
 import { useGuestBookedDates } from '@/features/guest/form/hooks/useGuestBookedDates';
-import { GuestStayDateRangeDisplay } from '@/features/guest/property/components/GuestStayDateRangeDisplay';
 import { usePropertyReserve } from '@/features/guest/marketing/properties/hooks/usePropertyReserve';
+import { GuestStayDateRangeDisplay } from '@/features/guest/property/components/GuestStayDateRangeDisplay';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';

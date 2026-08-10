@@ -1,6 +1,6 @@
 import type { IntegrationFieldSource } from '@/features/dashboard/bookings/hooks/useAppSettings';
-import { compactStatusBadgeClasses } from '@/lib/statusToneColors';
 
+import { compactStatusBadgeClasses } from '@/lib/statusToneColors';
 import { cn } from '@/lib/utils';
 
 const SOURCE_LABEL: Record<IntegrationFieldSource, string> = {

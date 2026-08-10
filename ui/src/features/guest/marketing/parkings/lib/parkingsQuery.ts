@@ -1,4 +1,12 @@
 import {
+  locationsFromLegacyTypeParam,
+  type ParkingFilterState,
+  type ParkingLocationFilter,
+  type ParkingSortKey,
+} from '@/features/guest/marketing/developments/lib/parkingSlotFilters';
+import type { ParkingSlot, ParkingType } from '@/features/guest/marketing/developments/types';
+import type { ParkingListEntry } from '@/features/guest/marketing/parkings/lib/parkingListEntries';
+import {
   parseCsvParam,
   parseOptionalNumber,
   parseOptionalYmd,
@@ -10,14 +18,6 @@ import {
 } from '@/features/guest/marketing/shared/lib/listingQueryParams';
 import { normalizeCityPlace } from '@/features/guest/marketing/shared/lib/locationSlug';
 import { resolveListingCoverImage } from '@/features/guest/marketing/shared/lib/mockListingImages';
-import type { ParkingListEntry } from '@/features/guest/marketing/parkings/lib/parkingListEntries';
-import {
-  locationsFromLegacyTypeParam,
-  type ParkingFilterState,
-  type ParkingLocationFilter,
-  type ParkingSortKey,
-} from '@/features/guest/marketing/developments/lib/parkingSlotFilters';
-import type { ParkingSlot, ParkingType } from '@/features/guest/marketing/developments/types';
 
 export const PARKINGS_SORTS = ['tower'] as const;
 

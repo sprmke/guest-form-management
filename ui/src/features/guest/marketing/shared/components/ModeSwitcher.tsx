@@ -4,9 +4,10 @@ import { useLocation } from 'react-router-dom';
 
 import { Building2, Compass, Shield } from 'lucide-react';
 
-import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
 import { getAppModeFromPath, type AppMode } from '@/features/guest/auth/config/mode-switch';
 import { useModeSwitchTransition } from '@/features/guest/marketing/shared/context/ModeSwitchTransitionContext';
+
+import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
 
 import { isSuperAdminEmail } from '@/lib/auth/superAdminAllowList';
 import { cn } from '@/lib/utils';

@@ -70,11 +70,11 @@ import { useUpdateProperty } from '@/features/dashboard/org/hooks/useUpdatePrope
 import { publicPropertySlugUrlPrefix } from '@/features/dashboard/org/lib/guestPublicPaths';
 import { paymentMethodsDraftIsDirty } from '@/features/dashboard/org/lib/paymentMethods';
 import type { PropertyAutomationToggleKey } from '@/features/dashboard/org/lib/propertyEmailAutomation';
-import { type PropertySettingsSectionId } from '@/features/dashboard/org/lib/propertySettingsCompletion';
 import {
   mergeExternalReviewsForSingleReviewSave,
   validateExternalReviewDraft,
 } from '@/features/dashboard/org/lib/propertyExternalReviews';
+import { type PropertySettingsSectionId } from '@/features/dashboard/org/lib/propertySettingsCompletion';
 import { resolvePropertySettingsFieldError } from '@/features/dashboard/org/lib/propertySettingsFieldError';
 import {
   gafTowerUnitFromProfile,
@@ -100,8 +100,8 @@ import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButt
 import { AppSettingsCardSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { friendlyToastError } from '@/lib/feedback/toastMessages';
 import { resolveNameAvailabilityState } from '@/lib/availabilityCheckState';
+import { friendlyToastError } from '@/lib/feedback/toastMessages';
 import { propertyBrandColorStoredValue } from '@/lib/theme/brandColor';
 
 const SETTINGS_SECTIONS: AdminSectionNavItem[] = [

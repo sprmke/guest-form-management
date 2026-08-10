@@ -2,8 +2,8 @@ import { Fragment } from 'react';
 import type { ReactNode } from 'react';
 
 import { adminPropertyRoutes } from '@/features/dashboard/bookings/routes/propertyRoutes';
-import { propertyInboxRoute } from '@/features/dashboard/inbox/routes';
 import { financePropertyRoute } from '@/features/dashboard/finance/routes';
+import { propertyInboxRoute } from '@/features/dashboard/inbox/routes';
 import { maintenancePropertyRoute } from '@/features/dashboard/maintenance/routes';
 import { marketingPropertyRoute } from '@/features/dashboard/marketing/routes';
 import {

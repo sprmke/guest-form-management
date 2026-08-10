@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import {
   ResponsiveModal,
   ResponsiveModalContent,
@@ -11,7 +12,6 @@ import {
   ResponsiveModalHeader,
   ResponsiveModalTitle,
 } from '@/components/ui/responsive-modal';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 
 export const DEFAULT_AI_RESPONSE_CONTEXT =

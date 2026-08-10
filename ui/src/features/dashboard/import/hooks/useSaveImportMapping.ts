@@ -32,7 +32,10 @@ export function useSaveImportMapping() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ batchId, columnMapping }: SaveMappingInput): Promise<SaveMappingResult> => {
+    mutationFn: async ({
+      batchId,
+      columnMapping,
+    }: SaveMappingInput): Promise<SaveMappingResult> => {
       if (!propertyId) throw new Error('Property context is required');
 
       const jwt = await getSessionJwt();

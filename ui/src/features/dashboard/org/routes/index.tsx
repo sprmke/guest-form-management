@@ -7,6 +7,7 @@ import { LegacyAdminRedirect } from '@/features/dashboard/org/components/LegacyA
 import { OrgAdminShell } from '@/features/dashboard/org/components/OrgAdminShell';
 import { ParkingAdminShell } from '@/features/dashboard/org/components/ParkingAdminShell';
 import { PropertyAdminShell } from '@/features/dashboard/org/components/PropertyAdminShell';
+import { HostVerificationRejectedRoutePage } from '@/features/dashboard/org/pages/HostVerificationRejectedRoutePage';
 import { OnboardingPage } from '@/features/dashboard/org/pages/OnboardingPage';
 import { OrgBookingsPage } from '@/features/dashboard/org/pages/OrgBookingsPage';
 import { OrgDashboardPage } from '@/features/dashboard/org/pages/OrgDashboardPage';
@@ -14,7 +15,6 @@ import { OrgParkingsPage } from '@/features/dashboard/org/pages/OrgParkingsPage'
 import { OrgPropertiesPage } from '@/features/dashboard/org/pages/OrgPropertiesPage';
 import { OrgSelectorPage } from '@/features/dashboard/org/pages/OrgSelectorPage';
 import { OrgSettingsPage } from '@/features/dashboard/org/pages/OrgSettingsPage';
-import { HostVerificationRejectedRoutePage } from '@/features/dashboard/org/pages/HostVerificationRejectedRoutePage';
 import type { OrgRouteFn } from '@/features/dashboard/org/routes/guards';
 import { OrgTeamPage } from '@/features/dashboard/team/pages/OrgTeamPage';
 

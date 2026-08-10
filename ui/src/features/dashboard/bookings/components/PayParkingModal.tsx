@@ -29,6 +29,7 @@ import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgCon
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DatePicker } from '@/components/ui/date-picker';
+import { Label } from '@/components/ui/label';
 import {
   ResponsiveModal,
   ResponsiveModalContent,
@@ -36,7 +37,6 @@ import {
   ResponsiveModalHeader,
   ResponsiveModalTitle,
 } from '@/components/ui/responsive-modal';
-import { Label } from '@/components/ui/label';
 import { formatBookingDate } from '@/utils/format/bookingDisplay';
 import { formatMoney } from '@/utils/format/currency';
 import { DATE_PICKER_DISPLAY_FORMAT } from '@/utils/format/dates';

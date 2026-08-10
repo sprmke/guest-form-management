@@ -1,5 +1,6 @@
-import { motion } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
+
+import { motion } from 'framer-motion';
 
 import {
   HeroSearch,
@@ -7,13 +8,13 @@ import {
   type HeroSearchValues,
 } from '@/features/guest/marketing/guest-landing/components/HeroSearch';
 import { useListingScrollSearchOptional } from '@/features/guest/marketing/shared/context/ListingScrollSearchContext';
+import { resolveListingSearchPreferType } from '@/features/guest/marketing/shared/lib/listingScrollSearchPaths';
 import { useListingSearchDefaultLocation } from '@/features/guest/marketing/shared/lib/listingSearchDefaultLocation';
 import {
   useListingSearchFields,
   useListingSearchWhereSegment,
 } from '@/features/guest/marketing/shared/lib/listingSearchFields';
 import type { ListingSearchPreferType } from '@/features/guest/marketing/shared/lib/listingSearchPreferType';
-import { resolveListingSearchPreferType } from '@/features/guest/marketing/shared/lib/listingScrollSearchPaths';
 
 import { cn } from '@/lib/utils';
 

@@ -1,6 +1,7 @@
+import type { ReceptionistAvatarState } from '@/features/guest/chat/components/voice/ReceptionistAvatar';
+
 import { cn } from '@/lib/utils';
 
-import type { ReceptionistAvatarState } from '@/features/guest/chat/components/voice/ReceptionistAvatar';
 
 type Props = {
   state: ReceptionistAvatarState;

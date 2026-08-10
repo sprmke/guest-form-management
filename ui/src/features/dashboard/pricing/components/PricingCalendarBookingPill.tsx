@@ -1,6 +1,6 @@
+import type { CalendarOccupancySpanPosition } from '@/features/dashboard/bookings/components/calendar/calendarDateUtils';
 import { GuestAvatar } from '@/features/dashboard/bookings/components/GuestAvatar';
 import { statusLabel } from '@/features/dashboard/bookings/lib/bookingStatus';
-import type { CalendarOccupancySpanPosition } from '@/features/dashboard/bookings/components/calendar/calendarDateUtils';
 
 import { cn } from '@/lib/utils';
 

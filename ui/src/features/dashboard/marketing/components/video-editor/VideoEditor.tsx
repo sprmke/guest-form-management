@@ -51,7 +51,6 @@ import {
   useVideoProjectHistoryShortcuts,
 } from '@/features/dashboard/marketing/hooks/useVideoProjectHistory';
 import type { DesignBinding } from '@/features/dashboard/marketing/lib/designCanvasTypes';
-import { VIDEO_CATEGORIES } from '@/features/dashboard/marketing/lib/video/videoCategories';
 import {
   blobToDataUrl,
   exportVideoToBlob,
@@ -83,6 +82,8 @@ import {
   resolveDesignBindingMedia,
 } from '@/features/dashboard/marketing/lib/propertyBindingMedia';
 import { renderVideoPresetThumbnail } from '@/features/dashboard/marketing/lib/renderMarketingVideoThumbnail';
+import { ensureVideoMusicForExport } from '@/features/dashboard/marketing/lib/video/importVideoMusic';
+import { VIDEO_CATEGORIES } from '@/features/dashboard/marketing/lib/video/videoCategories';
 import {
   VIDEO_FORMAT_DIMENSIONS,
   VIDEO_MAX_RELATIVE_ZOOM,
@@ -91,7 +92,6 @@ import {
   stepVideoZoomIn,
   stepVideoZoomOut,
 } from '@/features/dashboard/marketing/lib/video/videoFormatDimensions';
-import { ensureVideoMusicForExport } from '@/features/dashboard/marketing/lib/video/importVideoMusic';
 import { resolveVideoMotionProfile } from '@/features/dashboard/marketing/lib/video/videoMotionProfiles';
 import { buildDefaultVideoProject } from '@/features/dashboard/marketing/lib/video/videoProjectDefaults';
 import type {
@@ -112,8 +112,8 @@ import {
 } from '@/features/dashboard/marketing/lib/videoCampaignTemplates';
 import { registerVideoThumbnailPlaybackPause } from '@/features/dashboard/marketing/lib/videoThumbnailCapture';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
-import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { useOrgSettings } from '@/features/dashboard/org/hooks/useOrgSettings';
+import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';

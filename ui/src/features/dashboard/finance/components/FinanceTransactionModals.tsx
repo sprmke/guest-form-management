@@ -14,7 +14,12 @@ import { FINANCE_DEFAULT_REMINDER_TEMPLATE } from '@/features/dashboard/finance/
 import { recurrenceScheduleUpdateFields } from '@/features/dashboard/finance/lib/recurrence';
 import type { FinanceLineItem, FinanceQuery } from '@/features/dashboard/finance/lib/types';
 
-import { ResponsiveModal, ResponsiveModalContent, ResponsiveModalHeader, ResponsiveModalTitle } from '@/components/ui/responsive-modal';
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 
 type Props = {
   query: FinanceQuery;
@@ -154,7 +159,9 @@ export function FinanceTransactionModals({
           }}
         >
           <ResponsiveModalHeader className="text-left">
-            <ResponsiveModalTitle>{editingItem ? 'Edit transaction' : 'New transaction'}</ResponsiveModalTitle>
+            <ResponsiveModalTitle>
+              {editingItem ? 'Edit transaction' : 'New transaction'}
+            </ResponsiveModalTitle>
           </ResponsiveModalHeader>
           <OperatingLineItemForm
             key={

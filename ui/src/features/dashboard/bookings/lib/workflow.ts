@@ -563,7 +563,12 @@ export function bookingPipeline(
     return true;
   });
 
-  if (currentStatus && currentStatus !== 'CANCELLED' && currentStatus !== 'IMPORTED' && !filtered.includes(currentStatus)) {
+  if (
+    currentStatus &&
+    currentStatus !== 'CANCELLED' &&
+    currentStatus !== 'IMPORTED' &&
+    !filtered.includes(currentStatus)
+  ) {
     const targetIdx = PIPELINE_ORDER.indexOf(currentStatus);
     let insertAt = filtered.length;
     for (let i = 0; i < filtered.length; i++) {
@@ -736,7 +741,11 @@ export function isLiveWorkflowView(
   currentStatus: BookingStatus,
   booking: ApplicabilityFlags
 ): boolean {
-  if (currentStatus === 'CANCELLED' || currentStatus === 'COMPLETED' || currentStatus === 'IMPORTED') {
+  if (
+    currentStatus === 'CANCELLED' ||
+    currentStatus === 'COMPLETED' ||
+    currentStatus === 'IMPORTED'
+  ) {
     return viewed.kind === 'pipeline' && viewed.status === currentStatus;
   }
   if (viewed.kind === 'pending-doc-sub') {

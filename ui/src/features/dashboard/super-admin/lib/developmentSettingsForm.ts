@@ -1,6 +1,3 @@
-import { AZURE_PMO_EMAIL } from '@/features/dashboard/org/lib/propertyEmailAutomationDefaults';
-import type { PropertyMediaItem } from '@/features/dashboard/org/lib/propertySettingsConstants';
-import { documentRequirementLabelFieldErrors } from '@/features/dashboard/org/lib/propertyDocumentRequirements';
 import {
   mergeDocumentRequirements,
   type DocumentRequirement,
@@ -10,6 +7,9 @@ import {
   validateUnitTypes,
   type DevelopmentUnitType,
 } from '@/features/dashboard/bookings/lib/unitTypes';
+import { documentRequirementLabelFieldErrors } from '@/features/dashboard/org/lib/propertyDocumentRequirements';
+import { AZURE_PMO_EMAIL } from '@/features/dashboard/org/lib/propertyEmailAutomationDefaults';
+import type { PropertyMediaItem } from '@/features/dashboard/org/lib/propertySettingsConstants';
 import {
   developmentMediaToLegacyFields,
   readDevelopmentMedia,

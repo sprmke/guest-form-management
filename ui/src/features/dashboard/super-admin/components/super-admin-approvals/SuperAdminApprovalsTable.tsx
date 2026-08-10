@@ -19,8 +19,8 @@ import {
 } from '@/features/dashboard/super-admin/lib/superAdminApprovalsFilters';
 import type { ApprovalQueueItem } from '@/features/dashboard/super-admin/types/approval';
 
-import { cn } from '@/lib/utils';
 import { softBadgeClasses, toneBadgeClasses } from '@/lib/statusToneColors';
+import { cn } from '@/lib/utils';
 
 function SuccessionBadge() {
   return <span className={softBadgeClasses('warning')}>Succession</span>;

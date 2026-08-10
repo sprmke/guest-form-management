@@ -22,13 +22,13 @@ import { toast } from 'sonner';
 import { buildPayParkingPath } from '@/features/guest/pay-parking/lib/api';
 import { hasPayParkingAvailed } from '@/features/guest/pay-parking/lib/payParkingHelpers';
 
-import { getDocType } from '@/features/dashboard/bookings/components/booking-detail/BookingDocPreview';
 import { BookingDetailAssetPreviewModal } from '@/features/dashboard/bookings/components/booking-detail/BookingDetailAssetPreviewModal';
 import { BookingDetailHeader } from '@/features/dashboard/bookings/components/booking-detail/BookingDetailHeader';
 import {
   BookingDetailTabs,
   type BookingViewTab,
 } from '@/features/dashboard/bookings/components/booking-detail/BookingDetailTabs';
+import { getDocType } from '@/features/dashboard/bookings/components/booking-detail/BookingDocPreview';
 import { DocumentsPanel } from '@/features/dashboard/bookings/components/booking-detail/panels/DocumentsPanel';
 import { GuestInfoPanel } from '@/features/dashboard/bookings/components/booking-detail/panels/GuestInfoPanel';
 import { GuestsPanel } from '@/features/dashboard/bookings/components/booking-detail/panels/GuestsPanel';
@@ -49,8 +49,8 @@ import {
   isStorageObjectNotFoundError,
   resolveAssetUrlForBrowser,
 } from '@/features/dashboard/bookings/lib/storageUrls';
-import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
+import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 
 import { BookingDetailPageSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';

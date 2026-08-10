@@ -1,4 +1,9 @@
 import {
+  HOST_VERIFICATION_REJECTED_PATH,
+  resolveOrgLandingPath,
+} from '@/features/dashboard/org/lib/orgLanding';
+import { isHostVerificationHardRejected } from '@/features/dashboard/org/lib/orgVerificationTiers';
+import {
   bookingDetailPath,
   getLastOrgSlug,
   getLastParkingSlug,
@@ -13,11 +18,6 @@ import {
   setLastParkingContext,
   setLastTenantContext,
 } from '@/features/dashboard/org/lib/tenantPaths';
-import {
-  HOST_VERIFICATION_REJECTED_PATH,
-  resolveOrgLandingPath,
-} from '@/features/dashboard/org/lib/orgLanding';
-import { isHostVerificationHardRejected } from '@/features/dashboard/org/lib/orgVerificationTiers';
 
 const LEGACY_SECTIONS = [
   'dashboard',

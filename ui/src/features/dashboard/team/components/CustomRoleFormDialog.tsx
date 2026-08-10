@@ -4,6 +4,8 @@ import { getTeamScopeConfig, type TeamScope } from '@/features/dashboard/team/li
 
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   ResponsiveModal,
   ResponsiveModalContent,
@@ -11,8 +13,6 @@ import {
   ResponsiveModalHeader,
   ResponsiveModalTitle,
 } from '@/components/ui/responsive-modal';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 
 type Props = {
   scope?: TeamScope;

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import type { DocumentRequirement } from '@/features/dashboard/bookings/lib/documentRequirements';
 import { legacyGcashQrForPaymentMethods } from '@/features/dashboard/lib/storedMediaDisplay';
 import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import {
@@ -20,7 +21,6 @@ import {
   type SuperhostStatus,
 } from '@/features/dashboard/org/lib/propertyExternalReviews';
 import type { AppSettingsPatchBody } from '@/features/dashboard/org/lib/propertySettingsSave';
-import type { DocumentRequirement } from '@/features/dashboard/bookings/lib/documentRequirements';
 
 import { supabase } from '@/lib/supabase/client';
 import { propertyBrandColorFormValue, propertyBrandColorsEquivalent } from '@/lib/theme/brandColor';

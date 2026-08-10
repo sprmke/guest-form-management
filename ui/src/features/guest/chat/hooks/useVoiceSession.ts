@@ -19,6 +19,7 @@ import {
   type VoiceReceptionistRole,
   type VoiceReceptionistTranscriptTurn,
 } from '@/features/guest/chat/lib/voiceReceptionistApi';
+
 import { isMostlyLatinScript, normalizeChatText } from '@/lib/chat/parseChatRichBlocks';
 
 export type VoiceSessionPhase =

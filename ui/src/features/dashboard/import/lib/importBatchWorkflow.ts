@@ -46,8 +46,6 @@ export function canImportBatchTransition(
   return (TRANSITION_GRAPH[from] ?? []).includes(to);
 }
 
-export function availableImportBatchTransitions(
-  from: ImportBatchStatus
-): ImportBatchStatus[] {
+export function availableImportBatchTransitions(from: ImportBatchStatus): ImportBatchStatus[] {
   return [...(TRANSITION_GRAPH[from] ?? [])];
 }

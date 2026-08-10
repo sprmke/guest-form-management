@@ -5,6 +5,8 @@ import { Plus } from 'lucide-react';
 import { RichTextEditor } from '@/features/dashboard/bookings/components/property-templates/RichTextEditor';
 
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   ResponsiveModal,
   ResponsiveModalContent,
@@ -13,8 +15,6 @@ import {
   ResponsiveModalTitle,
   ResponsiveModalTrigger,
 } from '@/components/ui/responsive-modal';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 
 type Props = {
   onAdd: (name: string, content: string) => Promise<void>;

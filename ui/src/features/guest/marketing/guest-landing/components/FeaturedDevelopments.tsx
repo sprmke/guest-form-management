@@ -10,8 +10,8 @@ import type { Development, DevelopmentType } from '@/features/guest/marketing/de
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
 
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import { DEVELOPMENT_TYPE_BADGE } from '@/lib/statusToneColors';
+import { cn } from '@/lib/utils';
 
 const TYPE_CONFIG: Record<
   DevelopmentType,

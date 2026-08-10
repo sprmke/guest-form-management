@@ -710,6 +710,3 @@ export function ImportPreviewTable({ batchId, isLoading, error, onRetry }: Props
     </>
   );
 }
-
-
-

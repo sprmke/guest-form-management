@@ -31,7 +31,6 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
-
 import { BookingDetailCard } from '@/features/dashboard/bookings/components/booking-detail/primitives/BookingDetailCard';
 import type { BookingEditFormValues } from '@/features/dashboard/bookings/components/BookingEditForm';
 import { ReadyForCheckinSensitiveFieldsNotice } from '@/features/dashboard/bookings/components/ReadyForCheckinSensitiveFieldsNotice';

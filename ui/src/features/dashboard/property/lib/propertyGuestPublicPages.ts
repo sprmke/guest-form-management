@@ -1,4 +1,3 @@
-import type { LucideIcon } from 'lucide-react';
 import { BookOpen, Calendar, FileText, Home, MessageCircle } from 'lucide-react';
 
 import {
@@ -8,6 +7,8 @@ import {
   guestPropertyPath,
   guestStayGuidePreviewPath,
 } from '@/features/guest/lib/guestPublicPaths';
+
+import type { LucideIcon } from 'lucide-react';
 
 export type PropertyGuestPublicPage = {
   id: string;

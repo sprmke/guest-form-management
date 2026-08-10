@@ -6,16 +6,25 @@ import { SlidersHorizontal } from 'lucide-react';
 
 import { DevelopmentsFilters } from '@/features/guest/marketing/developments/components/DevelopmentsFilters';
 import { ParkingFilters } from '@/features/guest/marketing/developments/components/ParkingFilters';
-import { EMPTY_DEVELOPMENTS_FACETS } from '@/features/guest/marketing/developments/lib/developmentsQuery';
 import { usePublicDevelopments } from '@/features/guest/marketing/developments/hooks/usePublicDevelopments';
-import { PropertiesFilters } from '@/features/guest/marketing/properties/components/PropertiesFilters';
-import { EMPTY_PROPERTIES_FACETS } from '@/features/guest/marketing/properties/lib/propertiesQuery';
-import { usePublicProperties } from '@/features/guest/marketing/properties/hooks/usePublicProperties';
+import { EMPTY_DEVELOPMENTS_FACETS } from '@/features/guest/marketing/developments/lib/developmentsQuery';
+import type { DevelopmentsListingQuery } from '@/features/guest/marketing/developments/lib/developmentsQuery';
+import type { PublicDevelopmentListItem } from '@/features/guest/marketing/developments/lib/developmentsQuery';
+import { usePublicParkings } from '@/features/guest/marketing/parkings/hooks/usePublicParkings';
 import {
   EMPTY_PARKINGS_FACETS,
   parkingsQueryToFilterState,
 } from '@/features/guest/marketing/parkings/lib/parkingsQuery';
-import { usePublicParkings } from '@/features/guest/marketing/parkings/hooks/usePublicParkings';
+import {
+  filterStateToParkingsQuery,
+  type PublicParkingListItem,
+} from '@/features/guest/marketing/parkings/lib/parkingsQuery';
+import type { ParkingsListingQuery } from '@/features/guest/marketing/parkings/lib/parkingsQuery';
+import { PropertiesFilters } from '@/features/guest/marketing/properties/components/PropertiesFilters';
+import { usePublicProperties } from '@/features/guest/marketing/properties/hooks/usePublicProperties';
+import { EMPTY_PROPERTIES_FACETS } from '@/features/guest/marketing/properties/lib/propertiesQuery';
+import type { PropertiesListingQuery } from '@/features/guest/marketing/properties/lib/propertiesQuery';
+import type { PublicPropertyListItem } from '@/features/guest/marketing/properties/lib/propertiesQuery';
 import {
   parseBboxFromSearchParams,
   type MapBbox,
@@ -26,7 +35,6 @@ import { SearchResultsGrid } from '@/features/guest/search/components/SearchResu
 import { SearchResultsHeader } from '@/features/guest/search/components/SearchResultsHeader';
 import { SearchResultsPagination } from '@/features/guest/search/components/SearchResultsPagination';
 import { SearchResultsSkeleton } from '@/features/guest/search/components/SearchResultsSkeleton';
-import { SearchStatusBanner } from '@/features/guest/search/components/SearchStatusBanner';
 import {
   categoriesWithResults,
   SearchResultsTabs,
@@ -36,10 +44,9 @@ import {
   SearchResultsToolbar,
   type SearchViewMode,
 } from '@/features/guest/search/components/SearchResultsToolbar';
+import { SearchStatusBanner } from '@/features/guest/search/components/SearchStatusBanner';
 import { useSearchListings } from '@/features/guest/search/hooks/useSearchListings';
 import { requestGuestGeolocation } from '@/features/guest/search/lib/geolocation';
-import { nearbyDisplayLabel } from '@/features/guest/search/lib/searchIntents';
-import { parseSearchParams, writeSearchParams } from '@/features/guest/search/lib/searchParams';
 import {
   developmentsQueryFromSearch,
   parkingsQueryFromSearch,
@@ -49,21 +56,14 @@ import {
   writeParkingsFiltersToSearch,
   writePropertiesFiltersToSearch,
 } from '@/features/guest/search/lib/searchFilterParams';
-import {
-  filterStateToParkingsQuery,
-  type PublicParkingListItem,
-} from '@/features/guest/marketing/parkings/lib/parkingsQuery';
+import { nearbyDisplayLabel } from '@/features/guest/search/lib/searchIntents';
+import { parseSearchParams, writeSearchParams } from '@/features/guest/search/lib/searchParams';
 import type {
   DevelopmentSearchSummary,
   ParkingSearchSummary,
   PropertySearchSummary,
   SearchListingsType,
 } from '@/features/guest/search/types/search';
-import type { DevelopmentsListingQuery } from '@/features/guest/marketing/developments/lib/developmentsQuery';
-import type { PropertiesListingQuery } from '@/features/guest/marketing/properties/lib/propertiesQuery';
-import type { ParkingsListingQuery } from '@/features/guest/marketing/parkings/lib/parkingsQuery';
-import type { PublicDevelopmentListItem } from '@/features/guest/marketing/developments/lib/developmentsQuery';
-import type { PublicPropertyListItem } from '@/features/guest/marketing/properties/lib/propertiesQuery';
 
 import { Button } from '@/components/ui/button';
 

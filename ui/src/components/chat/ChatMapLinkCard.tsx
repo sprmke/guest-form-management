@@ -3,6 +3,7 @@ import { useState, type ReactNode } from 'react';
 import { ExternalLink, MapPin } from 'lucide-react';
 
 import { resolvePropertyMapEmbedSrc } from '@/features/guest/marketing/properties/lib/propertyMapEmbed';
+
 import { getGoogleMapsApiKey } from '@/lib/google-maps/useGoogleMapsLoader';
 import { cn } from '@/lib/utils';
 

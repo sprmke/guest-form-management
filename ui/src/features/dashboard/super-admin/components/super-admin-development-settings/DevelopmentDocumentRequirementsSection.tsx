@@ -1,8 +1,8 @@
 import { FileCheck2 } from 'lucide-react';
 
 import { AdminSection } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
-import { DocumentRequirementsListEditor } from '@/features/dashboard/org/components/document-requirements/DocumentRequirementsListEditor';
 import type { DocumentRequirement } from '@/features/dashboard/bookings/lib/documentRequirements';
+import { DocumentRequirementsListEditor } from '@/features/dashboard/org/components/document-requirements/DocumentRequirementsListEditor';
 
 type Props = {
   list: DocumentRequirement[];

@@ -7,8 +7,8 @@ import {
 } from '@/features/dashboard/bookings/components/booking-detail/primitives/BookingDetailRow';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
-import { cn } from '@/lib/utils';
 import { semanticBadgeClasses, toneBadgeClasses } from '@/lib/statusToneColors';
+import { cn } from '@/lib/utils';
 
 export function OtherInfoPanel({ booking }: { booking: BookingRow }) {
   const source = booking.booking_source || 'Direct';

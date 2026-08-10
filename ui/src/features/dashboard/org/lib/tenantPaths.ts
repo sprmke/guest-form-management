@@ -1,5 +1,5 @@
-import type { PropertySection } from '@/features/dashboard/team/lib/propertyPermissions';
 import type { ParkingSection } from '@/features/dashboard/team/lib/parkingPermissions';
+import type { PropertySection } from '@/features/dashboard/team/lib/propertyPermissions';
 
 const LAST_ORG_SLUG_KEY = 'kame-last-org-slug';
 const LAST_PROPERTY_SLUG_KEY = 'kame-last-property-slug';

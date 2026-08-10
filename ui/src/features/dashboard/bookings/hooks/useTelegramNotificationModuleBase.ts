@@ -6,11 +6,11 @@ import {
   buildTelegramVerifyBody,
   telegramVerifySucceeded,
 } from '@/features/dashboard/bookings/components/telegram-notifications/telegramCredentials';
+import { useTelegramNotificationsGlobalBot } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramNotificationsGlobalBotContext';
 import type { PropertyTelegramCredentialsStatus } from '@/features/dashboard/bookings/hooks/useAppSettings';
 import { useTelegramCredentialAutoSave } from '@/features/dashboard/bookings/hooks/useTelegramCredentialAutoSave';
 import { useTelegramCredentialFields } from '@/features/dashboard/bookings/hooks/useTelegramCredentialFields';
 import { useTelegramModuleConnection } from '@/features/dashboard/bookings/hooks/useTelegramModuleConnection';
-import { useTelegramNotificationsGlobalBot } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramNotificationsGlobalBotContext';
 import type { TelegramEnvVerifyDto } from '@/features/dashboard/bookings/lib/telegramEnvVerify';
 import { assetScopeKey, useAdminAssetScope } from '@/features/dashboard/org/lib/adminAssetScope';
 

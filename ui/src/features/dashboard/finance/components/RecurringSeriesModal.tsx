@@ -42,15 +42,15 @@ import {
 } from '@/features/dashboard/finance/lib/recurrence';
 import type { FinanceLineItem, FinanceQuery } from '@/features/dashboard/finance/lib/types';
 
+import { IsoDateInput } from '@/components/ui/iso-date-input';
 import {
   ResponsiveModal,
   ResponsiveModalContent,
   ResponsiveModalHeader,
   ResponsiveModalTitle,
 } from '@/components/ui/responsive-modal';
-import { IsoDateInput } from '@/components/ui/iso-date-input';
-import { cn } from '@/lib/utils';
 import { compactStatusBadgeClasses } from '@/lib/statusToneColors';
+import { cn } from '@/lib/utils';
 import { formatIsoDate } from '@/utils/format/bookingDisplay';
 import { formatMoney } from '@/utils/format/currency';
 import { formatIsoDateForDisplay } from '@/utils/format/dates';

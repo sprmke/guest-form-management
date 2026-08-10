@@ -2,13 +2,6 @@ import type {
   AppSettingsDto,
   AppSettingsFormValues,
 } from '@/features/dashboard/bookings/hooks/useAppSettings';
-import type { OrgSocialLinks } from '@/features/dashboard/org/lib/propertySocialLinks';
-import {
-  countFilledSocialUrls,
-  effectiveMainSocialPlatform,
-  effectiveSocialUrlMap,
-  propertySocialLinkInherits,
-} from '@/features/dashboard/org/lib/propertySocialLinks';
 import { validateOrgBrandColor } from '@/features/dashboard/org/lib/orgSettingsValidation';
 import { MAX_PROPERTY_PAYMENT_METHODS } from '@/features/dashboard/org/lib/paymentMethods';
 import {
@@ -28,6 +21,13 @@ import {
 } from '@/features/dashboard/org/lib/propertyResidenceDefaults';
 import { isCondoPropertyType } from '@/features/dashboard/org/lib/propertyResidences';
 import type { PropertyProfileDraft } from '@/features/dashboard/org/lib/propertySettingsForm';
+import {
+  countFilledSocialUrls,
+  effectiveMainSocialPlatform,
+  effectiveSocialUrlMap,
+  propertySocialLinkInherits,
+} from '@/features/dashboard/org/lib/propertySocialLinks';
+import type { OrgSocialLinks } from '@/features/dashboard/org/lib/propertySocialLinks';
 import {
   isPropertyTowerForResidence,
   isValidUnitNumber,

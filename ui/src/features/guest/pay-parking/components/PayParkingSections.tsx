@@ -1,7 +1,7 @@
 import { AlertCircle, CalendarDays, Car, ParkingCircle, type LucideIcon } from 'lucide-react';
 
-import type { PayParkingBootstrap } from '@/features/guest/pay-parking/lib/api';
 import { formatPayParkingLastMinuteWarning } from '@/features/guest/form/lib/guestFormBranding';
+import type { PayParkingBootstrap } from '@/features/guest/pay-parking/lib/api';
 
 import { formatBookingDate } from '@/utils/format/bookingDisplay';
 import { formatMoney } from '@/utils/format/currency';

@@ -4,10 +4,10 @@ import { Sparkles } from 'lucide-react';
 
 import { useCalendarThumbnails } from '@/features/dashboard/marketing/components/calendar-builder/components/CalendarThumbnailsProvider';
 import type { SavedCalendarTemplate } from '@/features/dashboard/marketing/components/calendar-builder/hooks/useCalendarTemplates';
+import { MarketingNameDialog } from '@/features/dashboard/marketing/components/shared/MarketingNameDialog';
 import { MARKETING_SIDEBAR_GRID } from '@/features/dashboard/marketing/components/shared/marketingSidebarLayout';
 import type { MarketingSidebarMenuItem } from '@/features/dashboard/marketing/components/shared/MarketingSidebarSection';
 import { MarketingSidebarSection } from '@/features/dashboard/marketing/components/shared/MarketingSidebarSection';
-import { MarketingNameDialog } from '@/features/dashboard/marketing/components/shared/MarketingNameDialog';
 import { MarketingTemplateCard } from '@/features/dashboard/marketing/components/shared/MarketingTemplateCard';
 import {
   CALENDAR_CANVAS_DIMENSIONS,

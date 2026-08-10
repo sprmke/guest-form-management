@@ -4,7 +4,6 @@ import { useSearchParams } from 'react-router-dom';
 
 import { Bell, DollarSign, HardHat, Megaphone, MessageCircle, Wrench } from 'lucide-react';
 
-import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import {
   AdminSection,
   AdminSectionGroupHeading,
@@ -21,6 +20,8 @@ import { TelegramFinanceSettingsCard } from '@/features/dashboard/bookings/compo
 import { TelegramMaintenanceSettingsCard } from '@/features/dashboard/bookings/components/TelegramMaintenanceSettingsCard';
 import { TelegramMarketingSettingsCard } from '@/features/dashboard/bookings/components/TelegramMarketingSettingsCard';
 import { TelegramStaffSettingsCard } from '@/features/dashboard/bookings/components/TelegramStaffSettingsCard';
+
+import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 
 const NOTIFICATION_MODULES = [
   'marketing',

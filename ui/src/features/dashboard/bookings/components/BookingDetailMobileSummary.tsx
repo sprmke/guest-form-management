@@ -1,7 +1,7 @@
 import { Calendar, ChevronDown, Edit2, PencilLine, Users, X } from 'lucide-react';
 
-import { occupiedNightsFromStay } from '@/features/dashboard/bookings/components/calendar/calendarStayAmounts';
 import { BookingDetailFlagChips } from '@/features/dashboard/bookings/components/BookingDetailFlagChips';
+import { occupiedNightsFromStay } from '@/features/dashboard/bookings/components/calendar/calendarStayAmounts';
 import { PayParkingHeaderButton } from '@/features/dashboard/bookings/components/PayParkingModal';
 import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
