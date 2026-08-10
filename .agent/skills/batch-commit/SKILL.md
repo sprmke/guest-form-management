@@ -39,6 +39,34 @@ Follow **`.cursor/rules/git-commits.mdc`**:
 - **Only commit when the user explicitly asks**
 - **Never commit** secrets (`.env`, `.env.local`, credentials JSON, keys)
 
+## CI quality gate (required)
+
+**Before** creating any batch commits and **after** the last commit (before recommending push), run the same checks as GitHub Actions **`ci.yml`** and **`cd-dev.yml`** quality job:
+
+```bash
+bun run ci:quality
+```
+
+Script: `scripts/dev/ci-quality-gate.sh` — runs in order:
+
+| Step       | Command                         | Blocks CD?                                    |
+| ---------- | ------------------------------- | --------------------------------------------- |
+| Install    | `bun install --frozen-lockfile` | —                                             |
+| Type check | `bun run type-check`            | Yes                                           |
+| Lint       | `bun run lint`                  | **Yes** (ESLint **errors** only; warnings OK) |
+| Filenames  | `bun run check:filenames`       | Yes                                           |
+| Build      | `bun run build`                 | Yes                                           |
+
+**If the gate fails:** fix the reported issue, re-run `bun run ci:quality`, then continue batch commits. Do **not** push to **`develop`** until the gate passes.
+
+**Re-run after last commit** (use `--skip-install` if deps unchanged):
+
+```bash
+./scripts/dev/ci-quality-gate.sh --skip-install
+```
+
+Per-commit hooks still run **lint-staged** (ESLint `--fix` on staged UI files) and **commitlint** — those do **not** replace the full gate (no type-check or build).
+
 ## Commit message format
 
 See `commitlint.config.js`. Use `chore(deps)` for lockfiles — **`deps` is not a valid type**.
@@ -49,19 +77,29 @@ Subject: lower-case, max 72 chars, imperative mood.
 
 ```
 Batch commit progress:
+- [ ] 0. CI quality gate (before any commit)
 - [ ] 1. Inventory (respect commit quota)
 - [ ] 2. Show daily plan only (N batches × 5–10 files)
 - [ ] 3. User confirms or adjusts
 - [ ] 4. Execute exactly N commits — stop
-- [ ] 5. Report remaining uncommitted files
+- [ ] 5. CI quality gate again (before push)
+- [ ] 6. Report remaining uncommitted files
 ```
+
+### Step 0 — CI quality gate (before commits)
+
+```bash
+bun run ci:quality
+```
+
+Stop if this fails. Common CD blockers: ESLint **errors** (`react-hooks/rules-of-hooks`, etc.), TypeScript errors, failed Vite build.
 
 ### Step 1 — Inventory
 
 ```bash
 git status -sb
 git status --porcelain=v1 -uall | wc -l
-node .cursor/skills/batch-commit/scripts/plan-commits.mjs --commits <N> --min 5 --max 10
+node .agent/skills/batch-commit/scripts/plan-commits.mjs --commits <N> --min 5 --max 10
 ```
 
 Use **`dailyPlan`** from JSON — only those batches. Ignore the rest until the next session.
@@ -99,14 +137,22 @@ EOF
 - **Stop after N commits** even if more files remain
 - On hook failure, fix message and retry; do not amend pushed commits
 
-### Step 4 — Verify
+### Step 4 — CI quality gate (after last commit)
+
+```bash
+./scripts/dev/ci-quality-gate.sh --skip-install
+```
+
+Only recommend **`git push`** when this passes.
+
+### Step 5 — Verify
 
 ```bash
 git status -sb
 git log --oneline -n <N>
 ```
 
-Report: commits created, files committed, **files still uncommitted**, suggested next session.
+Report: commits created, files committed, **files still uncommitted**, gate status, suggested next session.
 
 ## Grouping rules
 
@@ -121,7 +167,7 @@ Report: commits created, files committed, **files still uncommitted**, suggested
 
 **User: `/batch-commit 10`**
 
-→ 10 commits × ~7 files ≈ 70 files committed; remainder stays for future days.
+→ Run `ci:quality` → 10 commits × ~7 files ≈ 70 files committed → run gate again → push if green.
 
 **Bad (previous mistake):**
 
@@ -135,6 +181,8 @@ Report: commits created, files committed, **files still uncommitted**, suggested
 | Not enough files for N        | Commit what's available; say so                     |
 | User says "commit everything" | Confirm — that's a different mode; warn about count |
 | Already staged                | Include in plan; don't double-stage                 |
+| Gate fails mid-batch          | Fix, re-run gate, resume remaining commits          |
+| User skips gate               | Warn: push to `develop` will likely fail **CD Dev** |
 
 ## property-management-app
 

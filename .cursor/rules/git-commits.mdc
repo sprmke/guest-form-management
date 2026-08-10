@@ -23,6 +23,7 @@ When creating commits (only when the user explicitly asks), **never** attribute 
 Use the **`batch-commit`** skill (`.cursor/skills/batch-commit/SKILL.md`):
 
 - **`/batch-commit N`** = **N commits per session**, each **5–10 files** — not N giant commits for the whole tree.
+- **Before and after** a batch session, run **`bun run ci:quality`** (same checks as `ci.yml` / `cd-dev.yml` quality) — ESLint errors, type-check, filenames, build.
 - Stop after N commits; leave remaining changes uncommitted for the next day.
 - Never `git add -A` on a large dirty tree unless the user explicitly asks to commit everything at once.
 

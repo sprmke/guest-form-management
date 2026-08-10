@@ -27,6 +27,7 @@
     "setup:playwright-cli": "bash scripts/dev/setup-playwright-cli.sh",
     "setup:design-md": "bash scripts/dev/setup-design-md.sh",
     "type-check": "cd ui && bun run type-check",
+    "ci:quality": "./scripts/dev/ci-quality-gate.sh",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,md,json,mdc,css}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,md,json,mdc,css}\"",
     "preview:emails:db": "node scripts/preview/preview-emails-from-db.mjs",

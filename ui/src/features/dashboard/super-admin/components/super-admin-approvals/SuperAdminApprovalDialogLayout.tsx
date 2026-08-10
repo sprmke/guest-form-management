@@ -1,7 +1,7 @@
 import type { ExternalReviewSource } from '@/features/dashboard/org/lib/propertyExternalReviews';
 
 import { cn } from '@/lib/utils';
-import { toneBadgeClasses } from '@/lib/status-tone-colors';
+import { toneBadgeClasses } from '@/lib/statusToneColors';
 
 export const superAdminApprovalDialogContentClass = cn(
   'flex h-[min(90dvh,44rem)] max-h-[min(90dvh,44rem)] w-[min(calc(100vw-1.5rem),40rem)] max-w-none flex-col gap-0 overflow-hidden p-0',

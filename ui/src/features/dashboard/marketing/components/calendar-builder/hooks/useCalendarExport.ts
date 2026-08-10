@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 
 import { marketingHtmlToImageOptions } from '@/features/dashboard/marketing/lib/marketingHtmlToImageOptions';
 
-import { useCalendarBuilderStore } from '../stores/calendar-builder-store';
+import { useCalendarBuilderStore } from '../stores/calendarBuilderStore';
 
 export function useCalendarExport(
   containerRef: React.RefObject<HTMLDivElement | null>,
