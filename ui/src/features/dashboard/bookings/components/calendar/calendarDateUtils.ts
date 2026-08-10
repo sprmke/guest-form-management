@@ -1,4 +1,15 @@
-import { eachDayOfInterval, format, getDay, isSameDay, parse, subDays } from 'date-fns';
+import {
+  differenceInCalendarMonths,
+  eachDayOfInterval,
+  format,
+  getDay,
+  isSameDay,
+  parse,
+  startOfMonth,
+  subDays,
+} from 'date-fns';
+
+import type { DatePreset } from '@/lib/date/navigation';
 
 /** Parse MM-DD-YYYY or YYYY-MM-DD stay dates from the DB. */
 export function parseOccupancyDate(value: string | null | undefined): Date | null {
@@ -71,7 +82,7 @@ export type OccupancySegment<T> = {
   startCol: number;
   endCol: number;
   lane: number;
-  /** Guest label only on the first occupied night of the stay (or first visible segment). */
+  /** Guest/price label at the start of each week fragment (continuations stay readable). */
   showLabel: boolean;
   spanStart: boolean;
   spanEnd: boolean;
@@ -153,7 +164,6 @@ export function buildOccupancySegmentsForWeeks<T>(
 
       let startCol: number | null = null;
       let endCol: number | null = null;
-      let showLabel = false;
 
       for (let col = 0; col < 7; col++) {
         const day = week.days[col];
@@ -161,7 +171,6 @@ export function buildOccupancySegmentsForWeeks<T>(
         if (day < range.start || day > range.end) continue;
         if (startCol === null) startCol = col;
         endCol = col;
-        if (isSameDay(day, range.start)) showLabel = true;
       }
 
       if (startCol === null || endCol === null) continue;
@@ -174,7 +183,8 @@ export function buildOccupancySegmentsForWeeks<T>(
         weekIndex: week.weekIndex,
         startCol,
         endCol,
-        showLabel,
+        // Label each week fragment so multi-week stays stay readable (no empty bars).
+        showLabel: true,
         spanStart,
         spanEnd,
       });
@@ -205,4 +215,15 @@ export function buildRangeCalendarDays(range: CalendarVisibleRange): {
 } {
   const days = eachDayOfInterval({ start: range.from, end: range.to });
   return { days, paddingStart: calendarPaddingStart(range.from) };
+}
+
+/** Name/Price pills only fit single-month cells; year and multi-month views use dots or dense grids. */
+export function calendarSupportsPillLabelToggle(
+  datePreset: DatePreset,
+  rangeFrom: Date | null,
+  rangeTo: Date | null
+): boolean {
+  if (datePreset === 'year') return false;
+  if (!rangeFrom || !rangeTo) return true;
+  return differenceInCalendarMonths(startOfMonth(rangeTo), startOfMonth(rangeFrom)) === 0;
 }

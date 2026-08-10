@@ -4,13 +4,15 @@ import type { OccupancySegment } from '@/features/dashboard/bookings/components/
 
 import { cn } from '@/lib/utils';
 
-const LANE_HEIGHT_PX = 18;
+const DEFAULT_LANE_HEIGHT_PX = 18;
 
 type Props<T> = {
   segments: OccupancySegment<T>[];
   getSegmentKey: (segment: OccupancySegment<T>) => string;
   renderSegment: (segment: OccupancySegment<T>) => ReactNode;
   maxLanes?: number;
+  /** Override bar row height (mini/dense calendars use shorter lanes). */
+  laneHeightPx?: number;
   className?: string;
   hiddenClassName?: string;
 };
@@ -21,6 +23,7 @@ export function CalendarOccupancySpanTrack<T>({
   getSegmentKey,
   renderSegment,
   maxLanes = 2,
+  laneHeightPx = DEFAULT_LANE_HEIGHT_PX,
   className,
   hiddenClassName,
 }: Props<T>) {
@@ -32,15 +35,15 @@ export function CalendarOccupancySpanTrack<T>({
 
   return (
     <div
-      className={cn('mt-0.5 grid grid-cols-7 gap-1', hiddenClassName, className)}
-      style={{ gridTemplateRows: `repeat(${visibleLanes}, ${LANE_HEIGHT_PX}px)` }}
+      className={cn('mt-0.5 grid grid-cols-7 gap-px', hiddenClassName, className)}
+      style={{ gridTemplateRows: `repeat(${visibleLanes}, ${laneHeightPx}px)` }}
     >
       {segments
         .filter((segment) => segment.lane < maxLanes)
         .map((segment) => (
           <div
             key={getSegmentKey(segment)}
-            className="min-w-0"
+            className="min-w-0 px-px"
             style={{
               gridColumn: `${segment.startCol + 1} / ${segment.endCol + 2}`,
               gridRow: segment.lane + 1,
@@ -51,7 +54,7 @@ export function CalendarOccupancySpanTrack<T>({
         ))}
       {overflow > 0 ? (
         <div
-          className="text-muted-foreground flex items-center justify-end px-1 text-[9px] font-bold"
+          className="text-muted-foreground flex items-center justify-end px-1 text-[9px] font-semibold tabular-nums"
           style={{ gridColumn: '7 / 8', gridRow: visibleLanes }}
         >
           +{overflow}

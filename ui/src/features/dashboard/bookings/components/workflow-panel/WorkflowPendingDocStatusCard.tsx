@@ -27,6 +27,7 @@ import {
 import { workflowInlineLink } from '@/features/dashboard/bookings/lib/workflowActionButtonStyles';
 
 import { cn } from '@/lib/utils';
+import { semanticBadgeClasses, softBadgeClasses } from '@/lib/status-tone-colors';
 
 export function PendingDocSubStatusCard({
   booking,
@@ -65,10 +66,8 @@ export function PendingDocSubStatusCard({
             ) : null}
             <span
               className={cn(
-                'rounded-full px-2.5 py-0.5 text-xs font-semibold',
-                completed
-                  ? 'bg-primary/10 text-primary'
-                  : 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
+                'rounded-md border px-2.5 py-0.5 text-xs font-semibold',
+                completed ? semanticBadgeClasses('success') : softBadgeClasses('warning')
               )}
             >
               {completed ? 'Complete' : 'Incomplete'}

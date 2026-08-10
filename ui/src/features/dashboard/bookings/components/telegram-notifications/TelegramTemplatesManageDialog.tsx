@@ -10,6 +10,7 @@ import {
 } from '@/features/dashboard/bookings/lib/telegramPreviewSamples';
 
 import { cn } from '@/lib/utils';
+import { compactStatusBadgeClasses } from '@/lib/status-tone-colors';
 
 export type TelegramTemplateTab = {
   id: string;
@@ -36,12 +37,9 @@ type Props = {
 
 function tabBadgeClass(badge: string) {
   if (badge === 'Instant' || badge === 'INSTANT') {
-    return 'bg-primary/10 text-primary';
+    return compactStatusBadgeClasses('info');
   }
-  if (badge === 'Hourly' || badge === 'HOURLY') {
-    return 'bg-amber-500/15 text-amber-800 dark:text-amber-200';
-  }
-  return 'bg-amber-500/15 text-amber-800 dark:text-amber-200';
+  return compactStatusBadgeClasses('warning');
 }
 
 function TabBadge({ badge }: { badge: string }) {

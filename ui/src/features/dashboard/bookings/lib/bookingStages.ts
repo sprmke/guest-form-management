@@ -18,7 +18,7 @@ import {
   XCircle,
 } from 'lucide-react';
 
-import { type BookingStatus } from '@/features/dashboard/bookings/lib/bookingStatus';
+import { type BookingStatus, statusTone } from '@/features/dashboard/bookings/lib/bookingStatus';
 import {
   DEFAULT_DOCUMENT_REQUIREMENTS,
   type DocumentRequirement,
@@ -31,6 +31,7 @@ import {
   isSubStatusRequired,
   type PendingDocumentSubStatus,
 } from '@/features/dashboard/bookings/lib/workflow';
+import { statusToneSurfaceClasses } from '@/lib/status-tone-colors';
 
 import type { LucideIcon } from 'lucide-react';
 
@@ -130,104 +131,86 @@ export type KanbanStatusConfig = {
   stage: Exclude<BookingStage, 'all'>;
 };
 
+function kanbanColors(status: BookingStatus) {
+  return statusToneSurfaceClasses(statusTone(status));
+}
+
 export const KANBAN_STATUS_CONFIG: Record<BookingStatus, KanbanStatusConfig> = {
   PENDING_REVIEW: {
     label: 'Pending Review',
     shortLabel: 'Review',
     icon: ClipboardCheck,
-    color: 'text-red-600 dark:text-red-400',
-    bgColor: 'bg-red-50 dark:bg-red-500/10',
-    borderColor: 'border-red-200 dark:border-red-500/30',
+    ...kanbanColors('PENDING_REVIEW'),
     stage: 'action_required',
   },
   PENDING_DOCUMENTS: {
     label: 'Pending Documents',
     shortLabel: 'Docs',
     icon: FileText,
-    color: 'text-amber-600 dark:text-amber-400',
-    bgColor: 'bg-amber-50 dark:bg-amber-500/10',
-    borderColor: 'border-amber-200 dark:border-amber-500/30',
+    ...kanbanColors('PENDING_DOCUMENTS'),
     stage: 'pending_docs',
   },
   PENDING_GAF: {
     label: 'Pending GAF',
     shortLabel: 'GAF',
     icon: FileText,
-    color: 'text-amber-600 dark:text-amber-400',
-    bgColor: 'bg-amber-50 dark:bg-amber-500/10',
-    borderColor: 'border-amber-200 dark:border-amber-500/30',
+    ...kanbanColors('PENDING_GAF'),
     stage: 'pending_docs',
   },
   PENDING_PARKING_REQUEST: {
     label: 'Pending Parking',
     shortLabel: 'Parking',
     icon: Car,
-    color: 'text-amber-600 dark:text-amber-400',
-    bgColor: 'bg-amber-50 dark:bg-amber-500/10',
-    borderColor: 'border-amber-200 dark:border-amber-500/30',
+    ...kanbanColors('PENDING_PARKING_REQUEST'),
     stage: 'pending_docs',
   },
   PENDING_PET_REQUEST: {
     label: 'Pending Pet',
     shortLabel: 'Pet',
     icon: PawPrint,
-    color: 'text-amber-600 dark:text-amber-400',
-    bgColor: 'bg-amber-50 dark:bg-amber-500/10',
-    borderColor: 'border-amber-200 dark:border-amber-500/30',
+    ...kanbanColors('PENDING_PET_REQUEST'),
     stage: 'pending_docs',
   },
   READY_FOR_CHECKIN: {
     label: 'Ready for Check-in',
     shortLabel: 'Ready',
     icon: CalendarCheck,
-    color: 'text-emerald-600 dark:text-emerald-400',
-    bgColor: 'bg-emerald-50 dark:bg-emerald-500/10',
-    borderColor: 'border-emerald-200 dark:border-emerald-500/30',
+    ...kanbanColors('READY_FOR_CHECKIN'),
     stage: 'confirmed',
   },
   READY_FOR_CHECKOUT: {
     label: 'Ready for Check-out',
     shortLabel: 'Check-out',
     icon: LogOut,
-    color: 'text-red-600 dark:text-red-400',
-    bgColor: 'bg-red-50 dark:bg-red-500/10',
-    borderColor: 'border-red-200 dark:border-red-500/30',
+    ...kanbanColors('READY_FOR_CHECKOUT'),
     stage: 'action_required',
   },
   PENDING_SD_REFUND: {
     label: 'Pending SD Refund',
     shortLabel: 'SD Refund',
     icon: Wallet,
-    color: 'text-red-600 dark:text-red-400',
-    bgColor: 'bg-red-50 dark:bg-red-500/10',
-    borderColor: 'border-red-200 dark:border-red-500/30',
+    ...kanbanColors('PENDING_SD_REFUND'),
     stage: 'action_required',
   },
   COMPLETED: {
     label: 'Completed',
     shortLabel: 'Done',
     icon: CheckCircle2,
-    color: 'text-gray-600 dark:text-gray-400',
-    bgColor: 'bg-gray-50 dark:bg-gray-500/10',
-    borderColor: 'border-gray-200 dark:border-gray-500/30',
+    ...kanbanColors('COMPLETED'),
     stage: 'history',
   },
   CANCELLED: {
     label: 'Cancelled',
     shortLabel: 'Cancelled',
     icon: XCircle,
-    color: 'text-gray-600 dark:text-gray-400',
-    bgColor: 'bg-gray-50 dark:bg-gray-500/10',
-    borderColor: 'border-gray-200 dark:border-gray-500/30',
+    ...kanbanColors('CANCELLED'),
     stage: 'history',
   },
   IMPORTED: {
     label: 'Imported',
     shortLabel: 'Imported',
     icon: History,
-    color: 'text-gray-600 dark:text-gray-400',
-    bgColor: 'bg-gray-50 dark:bg-gray-500/10',
-    borderColor: 'border-gray-200 dark:border-gray-500/30',
+    ...kanbanColors('IMPORTED'),
     stage: 'history',
   },
 };

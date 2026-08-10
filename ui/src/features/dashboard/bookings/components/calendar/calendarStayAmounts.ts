@@ -25,6 +25,14 @@ export function occupiedNightsFromStay(
   return occupiedNightCount(storedNights);
 }
 
+/** Parse `booking_rate` (stay total for the whole booking). */
+export function stayTotalAmount(total: number | string | null | undefined): number | null {
+  if (total === null || total === undefined || total === '') return null;
+  const amount = typeof total === 'string' ? Number(total) : total;
+  if (Number.isNaN(amount)) return null;
+  return amount;
+}
+
 /** Split a stay total across occupied nights (each calendar cell is one night). */
 export function amountPerOccupiedNight(
   total: number | string | null | undefined,
@@ -32,9 +40,8 @@ export function amountPerOccupiedNight(
   checkIn?: string | null,
   checkOut?: string | null
 ): number | null {
-  if (total === null || total === undefined || total === '') return null;
-  const amount = typeof total === 'string' ? Number(total) : total;
-  if (Number.isNaN(amount)) return null;
+  const amount = stayTotalAmount(total);
+  if (amount == null) return null;
   const nightCount =
     checkIn && checkOut
       ? occupiedNightsFromStay(checkIn, checkOut, nights)

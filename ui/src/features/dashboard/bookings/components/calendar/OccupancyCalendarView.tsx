@@ -196,7 +196,7 @@ export function OccupancyCalendarView<T extends OccupancyRow>({
   );
 }
 
-/** Status-colored occupancy pill with a custom label (guest first name or net amount). */
+/** Status-colored occupancy pill with a custom label (guest first name or stay total). */
 export function CalendarOccupancyPill({
   status,
   label,
@@ -204,6 +204,7 @@ export function CalendarOccupancyPill({
   labelClassName,
   spanPosition = 'single',
   showLabel = true,
+  compact = false,
 }: {
   status: string;
   label: string;
@@ -211,10 +212,19 @@ export function CalendarOccupancyPill({
   labelClassName?: string;
   spanPosition?: import('@/features/dashboard/bookings/components/calendar/calendarDateUtils').CalendarOccupancySpanPosition;
   showLabel?: boolean;
+  /** Dashboard mini calendar — denser stay band under the date strip. */
+  compact?: boolean;
 }) {
   const tone = statusToneStyle(status);
-  const roundedClass =
-    spanPosition === 'start'
+  const roundedClass = compact
+    ? spanPosition === 'start'
+      ? 'rounded-l-full rounded-r-sm'
+      : spanPosition === 'end'
+        ? 'rounded-r-full rounded-l-sm'
+        : spanPosition === 'middle'
+          ? 'rounded-sm'
+          : 'rounded-full'
+    : spanPosition === 'start'
       ? 'rounded-l-md rounded-r-none'
       : spanPosition === 'end'
         ? 'rounded-r-md rounded-l-none'
@@ -225,10 +235,13 @@ export function CalendarOccupancyPill({
   return (
     <div
       className={cn(
-        'flex h-full min-w-0 items-center gap-1 truncate border px-1.5 py-0.5',
-        'text-[10px] font-semibold leading-tight',
+        'flex h-full min-w-0 items-center truncate',
+        compact
+          ? 'gap-1 border-0 px-1.5 text-[10px] font-semibold leading-none tracking-tight'
+          : 'gap-1 border px-1.5 py-0.5 text-[10px] font-semibold leading-tight',
         roundedClass,
-        tone.badge
+        tone.badge,
+        compact && 'border-transparent shadow-none'
       )}
       title={title ?? `${label} · ${statusLabel(status)}`}
     >
@@ -237,15 +250,16 @@ export function CalendarOccupancyPill({
           <span
             aria-hidden
             className={cn(
-              'size-1.5 shrink-0 rounded-full',
+              'shrink-0 rounded-full',
+              compact ? 'size-1' : 'size-1.5',
               tone.dot,
               tone.pulse && 'motion-safe:animate-pulse'
             )}
           />
-          <span className={cn('truncate', labelClassName)}>{label}</span>
+          <span className={cn('min-w-0 truncate', labelClassName)}>{label}</span>
         </>
       ) : (
-        <span aria-hidden className="block min-h-[10px] w-full" />
+        <span aria-hidden className={cn('block w-full', compact ? 'min-h-2.5' : 'min-h-[10px]')} />
       )}
     </div>
   );

@@ -137,7 +137,7 @@ const PLACEHOLDER_META: Record<string, PlaceholderMeta> = {
   conversation_link: {
     group: 'Chat',
     description: 'Inbox deep link to this conversation',
-    example: 'kamehomes.space/org/…/inbox?conversationId=…',
+    example: 'kamehomes.space/org/…/property/…/inbox?conversationId=…',
   },
   sent_at: {
     group: 'Chat',

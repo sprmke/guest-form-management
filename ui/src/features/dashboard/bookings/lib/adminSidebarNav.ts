@@ -23,7 +23,6 @@ import {
 import {
   orgBookingsPath,
   orgDashboardPath,
-  orgInboxPath,
   orgParkingsPath,
   orgPropertiesPath,
   orgSettingsPath,
@@ -100,11 +99,6 @@ export function buildOrgNavSections(
       label: 'Team',
       href: orgTeamPath(orgSlug),
       Icon: Users,
-    },
-    {
-      label: 'Inbox',
-      href: orgInboxPath(orgSlug),
-      Icon: Inbox,
     },
     {
       label: 'Settings',
