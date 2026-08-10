@@ -113,7 +113,9 @@ export function TeamMembersTab({
   showEditPermissions = true,
   removeFromLabel = getTeamScopeConfig(scope).removeFromLabel,
 }: Props) {
-  const orgSlug = useOptionalOrgContext()?.orgSlug ?? useOptionalParkingContext()?.orgSlug ?? null;
+  const orgContext = useOptionalOrgContext();
+  const parkingContext = useOptionalParkingContext();
+  const orgSlug = orgContext?.orgSlug ?? parkingContext?.orgSlug ?? null;
   if (!orgSlug) {
     throw new Error(
       'TeamMembersTab must be used within RequireOrgContext or RequireParkingContext'
