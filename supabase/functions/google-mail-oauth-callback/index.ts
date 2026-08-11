@@ -117,16 +117,6 @@ serve(async (req) => {
       return Response.redirect(dest, 302);
     }
 
-    await sb.from('gmail_listener_state').upsert(
-      {
-        id: propertyId,
-        property_id: propertyId,
-        email_address: profileEmail,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'id' }
-    );
-
     try {
       await ensurePropertySettings(propertyId);
     } catch (settingsErr) {

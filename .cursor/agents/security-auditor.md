@@ -21,7 +21,7 @@ When invoked, perform a readonly audit. Do not modify files unless explicitly as
   - `SUPABASE_SERVICE_ROLE_KEY` — server-only.
   - `GMAIL_API_WEB_CLIENT_JSON` / `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY` — Gmail OAuth.
   - `RESEND_API_KEY`.
-- **Gmail listener** (`supabase/functions/gmail-listener/`): OAuth tokens, read-only scope, idempotency via `processed_emails`.
+- **Approval inbound** (`supabase/functions/approval-email-webhook/`): Svix-signed Resend webhook; `RESEND_INBOUND_WEBHOOK_SECRET`; idempotency via `processed_emails`.
 
 ## 2. Checks to run
 

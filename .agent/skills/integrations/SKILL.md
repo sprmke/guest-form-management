@@ -7,9 +7,10 @@ description: Google (Gmail), Telegram crons, Meta inbox, Resend. Use when connec
 
 ## Google (per property)
 
-- OAuth: Settings → Connect Google — `google-mail-oauth-*` functions (Gmail `readonly` scope)
-- Stored: `gmail_mail_integration` encrypted refresh token
-- Skills: `gmail-listener` | Rules: `booking-workflow.mdc`
+- OAuth: Settings → Connect Google — `google-mail-oauth-*` (Gmail `readonly`; **internal/testing only**)
+- Production GAF/pet intake: Resend Receiving → `approval-email-webhook` (see `docs/archive/operations/approval-email-inbound.md`)
+- Stored (legacy/internal): `gmail_mail_integration` encrypted refresh token
+- Skills: `gmail-listener` (now documents inbound path) | Rules: `booking-workflow.mdc`
 
 Env: `GMAIL_API_WEB_CLIENT_JSON`, `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`, `GMAIL_OAUTH_ALLOWED_RETURN_ORIGINS`
 

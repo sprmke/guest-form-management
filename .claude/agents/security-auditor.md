@@ -22,7 +22,7 @@ When invoked, perform a readonly audit. Your tool access does not include Edit/W
   - `SUPABASE_SERVICE_ROLE_KEY` — server-only.
   - Gmail OAuth refresh tokens, Telegram bot tokens — encrypted at rest via `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`.
   - `RESEND_API_KEY`.
-- **Gmail listener** (`supabase/functions/gmail-listener/`): OAuth tokens, read-only scope, idempotency via `processed_emails`.
+- **Approval inbound** (`supabase/functions/approval-email-webhook/`): Svix-signed Resend webhook; `RESEND_INBOUND_WEBHOOK_SECRET`; idempotency via `processed_emails`.
 
 ## 2. Checks to run
 

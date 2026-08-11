@@ -111,7 +111,7 @@ Two-column on ≥lg, single column on mobile:
 
 - Primary buttons: transitions from `canTransition(currentStatus, *)`.
 - **Recovery / force buttons**: additional transitions from `canManualForceTransition(currentStatus, *, ctx)` — used when cron or Gmail listener should have advanced the booking but didn't. Same `transition-booking` mutation, `{ manual: true }` flag.
-- **Manual automation hooks (`Q6.6`):** add secondary actions (toolbar or panel footer) such as **“Run Gmail poll now”** and **“Run SD refund cron now”** that invoke the same scheduled Edge functions with the **admin JWT** — schedules run on Supabase regardless of a sleeping laptop; these buttons cover stuck runs and dev debugging.
+- **Manual automation hooks (`Q6.6`):** secondary actions such as **“Reconcile document approvals”** and **“Run SD refund cron now”** that invoke the same Edge functions with the **admin JWT**. GAF/pet approvals arrive via Resend inbound webhook (no Gmail poll).
 - Each button: label (`Proceed to PENDING GAF`), confirmation dialog with a summary of side effects.
 - Destructive action `Cancel booking` is always visible when status ≠ CANCELLED, styled as danger.
 - After success, invalidate queries and scroll to top of panel.
