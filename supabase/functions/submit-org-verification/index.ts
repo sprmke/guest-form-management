@@ -1,5 +1,7 @@
 /**
- * submit-org-verification — Owner submits base or enhanced verification for review.
+ * submit-org-verification — Owner submits host Tier 1 (base) or Tier 2 (enhanced) for review.
+ * Host scope only: identity and platform presence. Listing authority, rights, and contract end
+ * dates go through submit-listing-authorization.
  * Auth: verifyOrgOwner via orgId in body.
  */
 
@@ -8,15 +10,10 @@ import {
   canSubmitBaseVerification,
   canSubmitEnhancedVerification,
   ORG_SOCIAL_PROOF_PLATFORMS,
-  ORG_VERIFICATION_RIGHTS,
   orgVerificationToSettingsValue,
   readOrgVerificationFromSettings,
-  validateVerificationContractEndDate,
-  verificationRightsNeedsContractEnd,
   type OrgSocialProofPlatform,
-  type OrgVerificationRights,
 } from '../_shared/orgVerification.ts';
-import { resetLifecycleForNewContractCycle } from '../_shared/contractLifecycle.ts';
 import {
   jsonError,
   jsonSuccess,
@@ -44,128 +41,23 @@ serveAuthenticated('submit-org-verification', async (req) => {
   let verification = readOrgVerificationFromSettings(currentSettings);
 
   if (tier === 'base') {
-    const hostModes = Array.isArray(org.host_modes) ? (org.host_modes as string[]) : ['property'];
-    const needsProperty = hostModes.includes('property');
-    const needsParking = hostModes.includes('parking');
-
-    const platformRaw = typeof body.socialPlatform === 'string' ? body.socialPlatform.trim() : '';
-    const propertyRelationshipRaw =
-      typeof body.propertyRelationship === 'string' ? body.propertyRelationship.trim() : '';
-    const parkingRelationshipRaw =
-      typeof body.parkingRelationship === 'string' ? body.parkingRelationship.trim() : '';
-
-    if (needsProperty) {
-      if (!ORG_SOCIAL_PROOF_PLATFORMS.includes(platformRaw as OrgSocialProofPlatform)) {
-        return jsonError(req, 'socialPlatform must be facebook, instagram, or airbnb');
-      }
-      if (!ORG_VERIFICATION_RIGHTS.includes(propertyRelationshipRaw as OrgVerificationRights)) {
-        return jsonError(
-          req,
-          'propertyRelationship must be property_owner, authorized_representative, sublessee, or property_admin'
-        );
-      }
-      const propertyRelationship = propertyRelationshipRaw as OrgVerificationRights;
-      verification = {
-        ...verification,
-        socialPlatform: platformRaw as OrgSocialProofPlatform,
-        propertyRelationship,
-      };
-
-      if (verificationRightsNeedsContractEnd(propertyRelationship)) {
-        const endRaw =
-          typeof body.propertyContractEndDate === 'string'
-            ? body.propertyContractEndDate.trim()
-            : '';
-        const endError = validateVerificationContractEndDate(endRaw);
-        if (endError) return jsonError(req, endError);
-        const prevEnd = verification.propertyContractEndDate;
-        verification = {
-          ...verification,
-          propertyContractEndDate: endRaw,
-          ...(prevEnd && prevEnd !== endRaw
-            ? {
-                propertyLifecycle: resetLifecycleForNewContractCycle(
-                  verification.propertyLifecycle
-                ),
-              }
-            : {}),
-        };
-      } else {
-        verification = { ...verification, propertyContractEndDate: null };
-      }
-    }
-
-    if (needsParking) {
-      if (!ORG_VERIFICATION_RIGHTS.includes(parkingRelationshipRaw as OrgVerificationRights)) {
-        return jsonError(
-          req,
-          'parkingRelationship must be property_owner, authorized_representative, sublessee, or property_admin'
-        );
-      }
-      const parkingRelationship = parkingRelationshipRaw as OrgVerificationRights;
-      verification = {
-        ...verification,
-        parkingRelationship,
-      };
-
-      if (verificationRightsNeedsContractEnd(parkingRelationship)) {
-        const endRaw =
-          typeof body.parkingContractEndDate === 'string' ? body.parkingContractEndDate.trim() : '';
-        const endError = validateVerificationContractEndDate(endRaw);
-        if (endError) return jsonError(req, endError);
-        const prevEnd = verification.parkingContractEndDate;
-        verification = {
-          ...verification,
-          parkingContractEndDate: endRaw,
-          ...(prevEnd && prevEnd !== endRaw
-            ? { parkingLifecycle: resetLifecycleForNewContractCycle(verification.parkingLifecycle) }
-            : {}),
-        };
-      } else {
-        verification = { ...verification, parkingContractEndDate: null };
-      }
-    }
-
-    if (!canSubmitBaseVerification(verification, hostModes)) {
-      const missing: string[] = [];
-      if (!verification.assets.validIdPath) missing.push('valid ID');
-      if (needsProperty && !verification.assets.socialProofPath) {
-        missing.push('property access screenshot');
-      }
-      if (needsProperty && !verification.assets.propertyOwnershipProofPath) {
-        missing.push('property ownership or management proof');
-      }
-      if (needsProperty && !verification.propertyRelationship) {
-        missing.push('property/parking rights');
-      }
-      if (
-        needsProperty &&
-        verificationRightsNeedsContractEnd(verification.propertyRelationship) &&
-        !verification.propertyContractEndDate
-      ) {
-        missing.push('property contract end date');
-      }
-      if (needsParking && !verification.assets.parkingSocialProofPath) {
-        missing.push('parking ownership or management proof');
-      }
-      if (needsParking && !verification.parkingRelationship) {
-        missing.push('parking property/parking rights');
-      }
-      if (
-        needsParking &&
-        verificationRightsNeedsContractEnd(verification.parkingRelationship) &&
-        !verification.parkingContractEndDate
-      ) {
-        missing.push('parking contract end date');
-      }
-      return jsonError(req, `Required: ${missing.join(', ')}`);
-    }
     if (verification.baseStatus === 'approved') {
       return jsonError(req, 'Base verification is already approved');
     }
     if (verification.baseStatus === 'rejected' && verification.baseRejectionKind === 'rejected') {
       return jsonError(req, 'This verification was declined. Please start a new application.');
     }
+
+    // Tier 1 social proof is pinned to Facebook — no platform selector.
+    verification = { ...verification, socialPlatform: 'facebook' };
+
+    if (!canSubmitBaseVerification(verification)) {
+      const missing: string[] = [];
+      if (!verification.assets.validIdPath) missing.push('valid ID');
+      if (!verification.assets.socialProofPath) missing.push('Facebook Page screenshot');
+      return jsonError(req, `Required: ${missing.join(', ')}`);
+    }
+
     verification = {
       ...verification,
       baseStatus: 'pending',
@@ -175,15 +67,27 @@ serveAuthenticated('submit-org-verification', async (req) => {
       baseChangesRequestedDocs: [],
     };
   } else {
-    if (!canSubmitEnhancedVerification(verification)) {
-      return jsonError(
-        req,
-        'Selfie with ID, additional proof of ownership/authorization, and Azure PMO email confirmation are required'
-      );
-    }
     if (verification.enhancedStatus === 'approved') {
       return jsonError(req, 'Enhanced verification is already approved');
     }
+
+    const platformRaw =
+      typeof body.platformAdminPlatform === 'string' ? body.platformAdminPlatform.trim() : '';
+    if (!ORG_SOCIAL_PROOF_PLATFORMS.includes(platformRaw as OrgSocialProofPlatform)) {
+      return jsonError(req, 'platformAdminPlatform must be facebook, instagram, or airbnb');
+    }
+    verification = {
+      ...verification,
+      platformAdminPlatform: platformRaw as OrgSocialProofPlatform,
+    };
+
+    if (!canSubmitEnhancedVerification(verification)) {
+      const missing: string[] = [];
+      if (!verification.assets.selfieWithIdPath) missing.push('selfie with ID');
+      if (!verification.assets.platformAdminProofPath) missing.push('platform admin screenshot');
+      return jsonError(req, `Required: ${missing.join(', ')}`);
+    }
+
     verification = {
       ...verification,
       enhancedStatus: 'pending',
@@ -215,11 +119,7 @@ serveAuthenticated('submit-org-verification', async (req) => {
     verification: {
       baseStatus: verification.baseStatus,
       enhancedStatus: verification.enhancedStatus,
-      socialPlatform: verification.socialPlatform,
-      propertyRelationship: verification.propertyRelationship,
-      propertyContractEndDate: verification.propertyContractEndDate,
-      parkingRelationship: verification.parkingRelationship,
-      parkingContractEndDate: verification.parkingContractEndDate,
+      platformAdminPlatform: verification.platformAdminPlatform,
       verifiedBadge: verification.enhancedStatus === 'approved',
     },
   });

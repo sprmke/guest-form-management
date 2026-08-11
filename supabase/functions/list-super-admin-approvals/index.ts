@@ -9,6 +9,7 @@ import {
   type ExternalReviewModerationStatus,
   type ExternalReviewSource,
 } from '../_shared/propertyExternalReviews.ts';
+import { listListingVerificationApprovalRows } from '../_shared/superAdminListingVerifications.ts';
 import { listOrgVerificationApprovalRows } from '../_shared/superAdminOrgVerifications.ts';
 import { jsonSuccess, requireHttpMethod } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
@@ -100,14 +101,16 @@ serveAuthenticated('list-super-admin-approvals', async (req) => {
   requireHttpMethod(req, 'GET');
   await verifySuperAdminJwt(req);
 
-  const [orgVerifications, externalReviews] = await Promise.all([
+  const [orgVerifications, listingVerifications, externalReviews] = await Promise.all([
     listOrgVerificationApprovalRows(),
+    listListingVerificationApprovalRows(),
     listExternalReviewApprovalRows(),
   ]);
 
   return jsonSuccess(req, {
-    approvals: [...orgVerifications, ...externalReviews],
+    approvals: [...orgVerifications, ...listingVerifications, ...externalReviews],
     orgVerifications,
+    listingVerifications,
     externalReviews,
   });
 });

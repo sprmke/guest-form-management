@@ -86,17 +86,23 @@ serveAuthenticated('get-org-verification-assets', async (req) => {
   const [
     validIdUrl,
     socialProofUrl,
+    selfieWithIdUrl,
+    platformAdminProofUrl,
+    legitimacyCheckProofUrl,
+    businessPermitOrBirUrl,
     propertyOwnershipProofUrl,
     parkingSocialProofUrl,
-    selfieWithIdUrl,
     ownershipProofUrl,
     azurePmoConfirmationUrl,
   ] = await Promise.all([
     signPath(supabase, verification.assets.validIdPath),
     signPath(supabase, verification.assets.socialProofPath),
+    signPath(supabase, verification.assets.selfieWithIdPath),
+    signPath(supabase, verification.assets.platformAdminProofPath),
+    signPath(supabase, verification.assets.legitimacyCheckProofPath),
+    signPath(supabase, verification.assets.businessPermitOrBirPath),
     signPath(supabase, verification.assets.propertyOwnershipProofPath),
     signPath(supabase, verification.assets.parkingSocialProofPath),
-    signPath(supabase, verification.assets.selfieWithIdPath),
     signPath(supabase, verification.assets.ownershipProofPath),
     signPath(supabase, verification.assets.azurePmoConfirmationPath),
   ]);
@@ -111,10 +117,17 @@ serveAuthenticated('get-org-verification-assets', async (req) => {
     assetUrls: {
       validIdUrl,
       socialProofUrl,
-      propertyOwnershipProofUrl,
-      parkingSocialProofUrl,
       selfieWithIdUrl,
+      platformAdminProofUrl,
+      legitimacyCheckProofUrl,
+      businessPermitOrBirUrl,
+      /** @deprecated listing-scoped — see get-listing-authorization-assets */
+      propertyOwnershipProofUrl,
+      /** @deprecated listing-scoped — see get-listing-authorization-assets */
+      parkingSocialProofUrl,
+      /** @deprecated listing-scoped — see get-listing-authorization-assets */
       ownershipProofUrl,
+      /** @deprecated listing-scoped — see get-listing-authorization-assets */
       azurePmoConfirmationUrl,
       /** @deprecated use azurePmoConfirmationUrl */
       opsProofUrl: azurePmoConfirmationUrl,

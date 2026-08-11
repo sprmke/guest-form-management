@@ -151,16 +151,13 @@ serveAuthenticated('upload-org-verification-asset', async (req) => {
     verification: {
       baseStatus: verification.baseStatus,
       enhancedStatus: verification.enhancedStatus,
-      socialPlatform: verification.socialPlatform,
-      parkingSocialPlatform: verification.parkingSocialPlatform,
-      parkingRelationship: verification.parkingRelationship,
+      platformAdminPlatform: verification.platformAdminPlatform,
       hasValidId: Boolean(verification.assets.validIdPath),
       hasSocialProof: Boolean(verification.assets.socialProofPath),
-      hasPropertyOwnershipProof: Boolean(verification.assets.propertyOwnershipProofPath),
-      hasParkingSocialProof: Boolean(verification.assets.parkingSocialProofPath),
       hasSelfieWithId: Boolean(verification.assets.selfieWithIdPath),
-      hasOwnershipProof: Boolean(verification.assets.ownershipProofPath),
-      hasAzurePmoConfirmation: Boolean(verification.assets.azurePmoConfirmationPath),
+      hasPlatformAdminProof: Boolean(verification.assets.platformAdminProofPath),
+      hasLegitimacyCheckProof: Boolean(verification.assets.legitimacyCheckProofPath),
+      hasBusinessPermitOrBir: Boolean(verification.assets.businessPermitOrBirPath),
     },
   });
 });
