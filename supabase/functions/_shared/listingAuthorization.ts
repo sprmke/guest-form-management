@@ -16,8 +16,10 @@ import {
   contractLegLifecycleToSettingsValue,
   emptyContractLegLifecycle,
   parseContractLegLifecycle,
+  resolveListingContractRenewalPhase,
   type ContractLegLifecycle,
 } from './contractLifecycle.ts';
+import { manilaTodayYmd } from './calendarAvailabilityManila.ts';
 import {
   ORG_VERIFICATION_RIGHTS,
   readOrgVerificationFromSettings,
@@ -324,6 +326,29 @@ export function isListingRecommendedBadge(state: ListingAuthorizationState): boo
 /** Tier 1 approved — the listing may be ACTIVE regardless of org verification status. */
 export function isListingAuthorized(state: ListingAuthorizationState): boolean {
   return state.baseStatus === 'approved';
+}
+
+/** Approved listing in pre-expiry, grace, or locked — eligible to submit a renewal. */
+export function isListingRenewEligible(
+  state: ListingAuthorizationState,
+  todayYmd: string = manilaTodayYmd()
+): boolean {
+  if (state.baseStatus !== 'approved') return false;
+  const phase = resolveListingContractRenewalPhase(
+    state.contractEndDate,
+    state.lifecycle,
+    todayYmd
+  );
+  return phase === 'pre_expiry' || phase === 'grace' || phase === 'locked';
+}
+
+/** Renewal submit — same doc requirements as Tier 1 base. */
+export function canSubmitListingRenewal(
+  state: ListingAuthorizationState,
+  todayYmd: string = manilaTodayYmd()
+): boolean {
+  if (!isListingRenewEligible(state, todayYmd)) return false;
+  return canSubmitBaseListingAuthorization(state);
 }
 
 export function isListingAuthorizationHardRejected(state: ListingAuthorizationState): boolean {

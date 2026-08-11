@@ -5,9 +5,12 @@
 
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import { resetLifecycleForNewContractCycle } from '../_shared/contractLifecycle.ts';
+import { manilaTodayYmd } from '../_shared/calendarAvailabilityManila.ts';
 import {
   canSubmitBaseListingAuthorization,
+  canSubmitListingRenewal,
   isListingAuthorizationHardRejected,
+  isListingRenewEligible,
   listingRightsNeedContractEnd,
   type ListingAuthorizationState,
 } from '../_shared/listingAuthorization.ts';
@@ -51,7 +54,10 @@ serveAuthenticated('submit-listing-authorization', async (req) => {
   const context = await verifyListingOwner(req, listingKind, listingId);
   let state: ListingAuthorizationState = { ...context.authorization, relationship };
 
-  if (state.baseStatus === 'approved') {
+  const today = manilaTodayYmd();
+  const isRenew = state.baseStatus === 'approved' && isListingRenewEligible(state, today);
+
+  if (state.baseStatus === 'approved' && !isRenew) {
     return jsonError(req, 'This listing is already approved');
   }
   if (isListingAuthorizationHardRejected(context.authorization)) {
@@ -63,11 +69,15 @@ serveAuthenticated('submit-listing-authorization', async (req) => {
     const endError = validateVerificationContractEndDate(endRaw);
     if (endError) return jsonError(req, endError);
 
-    const previousEnd = state.contractEndDate;
+    const previousEnd = context.authorization.contractEndDate;
+    if (isRenew && previousEnd && endRaw <= previousEnd) {
+      return jsonError(req, 'Renewal contract end must be after the previous end date');
+    }
+
     state = {
       ...state,
       contractEndDate: endRaw,
-      ...(previousEnd && previousEnd !== endRaw
+      ...(isRenew || (previousEnd && previousEnd !== endRaw)
         ? { lifecycle: resetLifecycleForNewContractCycle(state.lifecycle) }
         : {}),
     };
@@ -75,7 +85,11 @@ serveAuthenticated('submit-listing-authorization', async (req) => {
     state = { ...state, contractEndDate: null };
   }
 
-  if (!canSubmitBaseListingAuthorization(state)) {
+  if (isRenew) {
+    if (!canSubmitListingRenewal(state, today)) {
+      return jsonError(req, 'Renewal requirements not met');
+    }
+  } else if (!canSubmitBaseListingAuthorization(state)) {
     const missing: string[] = [];
     if (!state.assets.proofPath) missing.push('proof of ownership or authorization');
     if (listingRightsNeedContractEnd(state) && !state.contractEndDate) {

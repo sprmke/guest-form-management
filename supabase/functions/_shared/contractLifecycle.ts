@@ -366,6 +366,55 @@ export function markNoticeSent(
   };
 }
 
+/** Pre-expiry in-app reminder window (days before end, inclusive). Aligns with t_minus_15 email. */
+export const PRE_EXPIRY_REMINDER_MAX_DAYS = 15;
+
+export function isInPreExpiryWindow(
+  contractEndYmd: string,
+  todayYmd: string = manilaTodayYmd(),
+  maxDaysBefore: number = PRE_EXPIRY_REMINDER_MAX_DAYS
+): boolean {
+  const until = daysUntilContractEnd(contractEndYmd, todayYmd);
+  return until >= 1 && until <= maxDaysBefore;
+}
+
+export type ListingContractRenewalPhase = 'none' | 'pre_expiry' | 'grace' | 'locked' | 'granted';
+
+/** Listing had (or has) a contract-end lifecycle — includes residual state after rights changes. */
+export function listingHasContractRenewalLifecycle(
+  contractEndYmd: string | null,
+  lifecycle: ContractLegLifecycle
+): boolean {
+  if (contractEndYmd) return true;
+  if (lifecycle.accessLockedAt) return true;
+  if (Object.keys(lifecycle.noticesSent).length > 0) return true;
+  if (lifecycle.consideration.status !== 'none') return true;
+  return false;
+}
+
+export function resolveListingContractRenewalPhase(
+  contractEndYmd: string | null,
+  lifecycle: ContractLegLifecycle,
+  todayYmd: string = manilaTodayYmd()
+): ListingContractRenewalPhase {
+  if (hasActiveConsiderationGrant(lifecycle, todayYmd)) return 'granted';
+  if (isListingAccessLocked(lifecycle)) return 'locked';
+
+  const { status, grantedUntil } = lifecycle.consideration;
+  if (status === 'granted' && grantedUntil && grantedUntil < todayYmd) {
+    return 'locked';
+  }
+
+  if (contractEndYmd) {
+    if (isInGracePeriod(contractEndYmd, todayYmd)) return 'grace';
+    if (isInPreExpiryWindow(contractEndYmd, todayYmd)) return 'pre_expiry';
+    const since = daysSinceContractEnd(contractEndYmd, todayYmd);
+    if (since != null && since >= LOCK_DAY_OFFSET) return 'locked';
+  }
+
+  return 'none';
+}
+
 export function appendConsiderationAudit(
   consideration: ContractConsideration,
   entry: Omit<ContractConsiderationAuditEntry, 'at'> & { at?: string }

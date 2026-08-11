@@ -8,11 +8,13 @@ import {
   applyListingAssetPath,
   assetTypeToPathKey,
   canSubmitBaseListingAuthorization,
+  canSubmitListingRenewal,
   canSubmitRecommendedListingAuthorization,
   emptyListingAuthorizationState,
   isListingAuthorizationChangesRequested,
   isListingAuthorizationHardRejected,
   isListingRecommendedBadge,
+  isListingRenewEligible,
   listingAuthorizationUsesLegacyFallback,
   listingTableForKind,
   mergeListingAuthorizationIntoSettings,
@@ -21,6 +23,7 @@ import {
   resolveListingAuthorization,
   type ListingAuthorizationState,
 } from './listingAuthorization.ts';
+import { emptyContractLegLifecycle } from './contractLifecycle.ts';
 
 function ownerWithProof(): ListingAuthorizationState {
   return {
@@ -259,4 +262,34 @@ Deno.test('missing docs and table mapping', () => {
 
   assertEquals(listingTableForKind('property'), 'properties');
   assertEquals(listingTableForKind('parking'), 'parkings');
+});
+
+Deno.test('renew eligible when approved and in pre-expiry, grace, or locked', () => {
+  const approved = {
+    ...ownerWithProof(),
+    baseStatus: 'approved' as const,
+    contractEndDate: '2099-06-15',
+    lifecycle: emptyContractLegLifecycle(),
+  };
+
+  assert(isListingRenewEligible(approved, '2099-06-01'));
+
+  const grace = {
+    ...approved,
+    contractEndDate: '2099-06-01',
+  };
+  assert(isListingRenewEligible(grace, '2099-06-02'));
+
+  const locked = {
+    ...approved,
+    contractEndDate: '2099-06-01',
+    lifecycle: {
+      ...emptyContractLegLifecycle(),
+      accessLockedAt: '2099-06-06T00:00:00.000Z',
+    },
+  };
+  assert(isListingRenewEligible(locked, '2099-06-06'));
+
+  assertFalse(isListingRenewEligible({ ...approved, baseStatus: 'pending' }, '2099-06-01'));
+  assert(canSubmitListingRenewal(approved, '2099-06-01'));
 });
