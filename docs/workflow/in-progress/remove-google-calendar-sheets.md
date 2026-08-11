@@ -13,7 +13,7 @@ updated: 2026-08-11
 
 **Goal:** Remove Google Calendar and Google Sheets integrations entirely from the app, and replace the Gmail API listener (GAF/pet approval automation) with a CASA-free inbound-email-webhook, so the app no longer needs Google's CASA security assessment before public launch.
 
-**Architecture:** Phase 1 deletes/edits every Calendar and Sheets code path (edge functions, DB columns, UI, docs) while leaving Gmail OAuth machinery untouched. Phase 2 replaces the Gmail API polling listener with a Resend Receiving inbound webhook that ports the same GAF/pet matching + booking-transition logic, burns in alongside the old listener, then retires it and narrows the OAuth consent scope to `gmail.readonly` only.
+**Architecture:** Phase 1 deletes/edits every Calendar and Sheets code path (edge functions, DB columns, UI, docs) while leaving Gmail OAuth machinery untouched. Phase 2 replaces the Gmail API polling listener with a Resend Receiving inbound webhook that ports the same GAF/pet matching + booking-transition logic, then retires the listener (hard cutover — burn-in window skipped per product decision to ship production-ready inbound path immediately). Narrow OAuth consent remains `gmail.readonly` for optional internal Connect Google only.
 
 **Tech Stack:** Vite + React 18 (`ui/`), Deno Supabase Edge Functions (`supabase/functions/`), plain SQL migrations (`supabase/migrations/`), Resend (already the outbound email provider).
 

@@ -13,7 +13,7 @@ Route: `/org/:orgSlug/property/:propertySlug/templates`
 
 ## Purpose
 
-Each template card shows a **title**, **subtitle** (built-in description from the server registry; custom templates use a generic fallback), Edit/Preview tabs, WYSIWYG editor, placeholders, and reset-to-default.
+Each template card shows a **title**, **subtitle** (built-in description from the server registry; custom templates use a generic fallback), Edit/Preview tabs, WYSIWYG editor (white `bg-card` surface on light theme), placeholders, and reset-to-default.
 
 On **phone/tablet**, the page scrolls inside the section layout (`AdminSectionNavLayout` + `AdminMobilePage` flex height chain). Desktop keeps the sticky section sidebar + content scrollport.
 

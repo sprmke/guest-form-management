@@ -2,7 +2,7 @@
 title: 'Mobile native redesign'
 stage: in-progress
 status: in-progress
-updated: 2026-08-05
+updated: 2026-08-11
 ---
 
 # Ground-Up Mobile Redesign — "Feels Like a Native App"
@@ -122,7 +122,7 @@ Rough sweep of the 55 sites, by module (destructive confirms and single-field pr
 - **Finance/Maintenance**: `RecurringSeriesModal`/`StayFinanceModal` → sheet; `RecurringDeleteDialog` (destructive) → stays Dialog.
 - **Marketing (dashboard)**: `PublishDialog`/move-template picker → sheet; `MarketingNameDialog` (single field) → stays Dialog.
 - **Parking/Pricing**: booking/settings forms → sheet; `PricingSaveDialog` (single confirm) → stays Dialog.
-- **Guest-facing**: `ContactHostSheet` (already named "Sheet" but built on `Dialog` today — first to migrate onto the real primitive); `GuestAuthModal` → flagged as a UX call to make during implementation, default to keeping centered (trust/auth convention); `VoiceSessionOverlay` excluded (already full-screen, not a hybrid candidate); `PropertyRules`/`PropertyAmenities` → sheet; `BookingCalendarModal` → sheet.
+- **Guest-facing**: `ContactHostSheet` (already named "Sheet" but built on `Dialog` today — first to migrate onto the real primitive); `GuestAuthModal` → flagged as a UX call to make during implementation, default to keeping centered (trust/auth convention); `VoiceSessionPanel` excluded (inline conversation replacement, not a hybrid modal candidate); `PropertyRules`/`PropertyAmenities` → sheet; `BookingCalendarModal` → sheet.
 
 Net: roughly 35-40 of 55 sites convert; ~15 (destructive confirms, single-field prompts, 2 media lightboxes, auth modal) stay Dialog everywhere.
 

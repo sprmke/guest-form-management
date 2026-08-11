@@ -2,7 +2,7 @@
 title: 'Tasks To Prompt'
 status: archived
 tags: [planning]
-updated: 2026-08-10
+updated: 2026-08-11
 ---
 
 **Status legend:** ✅ done · 🚧 in progress · 📋 planned (plan doc written) · 🔵 pending / open · ❌ cancelled / won't do
@@ -207,3 +207,7 @@ Please list them down and if you have suggestion to name differently or grouped 
 - Improve pagination UI/UX
 - Add table column sort
 - Update modal to be scrollable inside modal content;
+
+===
+
+🔵 Improve UI/UX of exported reports

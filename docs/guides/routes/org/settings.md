@@ -23,7 +23,7 @@ Route: `/org/:orgSlug/settings`
 
 ## Overview
 
-Organization settings uses `AdminSectionNavLayout` with **two save paths**:
+Organization settings uses `AdminSectionNavLayout` with **two save paths**. The desktop **Unsaved changes** footer stays in the main content column (aligned to `max-w-4xl`) so the secondary section nav stays fully usable.
 
 1. **Profile** (`organizations` + `organizations.settings` JSONB) → `update-organization`
 2. **Operator** (`org_settings` row) → `org-settings` — social links + team logo only (email automations live on each property)

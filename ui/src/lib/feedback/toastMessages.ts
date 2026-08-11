@@ -153,6 +153,22 @@ export function telegramScheduleSyncError(
   return fallback;
 }
 
+export function documentApprovalReconcileSuccessMessage(result: {
+  applied?: number;
+  skipped?: number;
+  failed?: number;
+  reconciled?: number;
+}): string {
+  const reconciled = result.reconciled ?? 0;
+  if (reconciled > 0) {
+    return reconciled === 1
+      ? '1 stored approval re-applied'
+      : `${reconciled} stored approvals re-applied`;
+  }
+  return 'No stored approvals to re-apply';
+}
+
+/** @deprecated Prefer `documentApprovalReconcileSuccessMessage`. */
 export function gmailPollSuccessMessage(result: {
   applied?: number;
   skipped?: number;
@@ -161,25 +177,18 @@ export function gmailPollSuccessMessage(result: {
   initialized?: boolean;
   historyReset?: boolean;
 }): string {
-  if (result.initialized) {
-    return 'Gmail is ready — run the check again';
+  if (result.initialized || result.historyReset) {
+    return documentApprovalReconcileSuccessMessage(result);
   }
-  if (result.historyReset) {
-    return 'Gmail history was reset. Review recent approvals manually.';
-  }
-
   const applied = result.applied ?? 0;
-  const failed = result.failed ?? 0;
-
-  if (applied === 0 && failed === 0) {
-    return 'No new approval emails found';
+  const reconciled = result.reconciled ?? 0;
+  if (applied + reconciled === 0) {
+    return documentApprovalReconcileSuccessMessage(result);
   }
-  if (failed > 0) {
-    return applied > 0
-      ? `${applied} approval(s) applied, ${failed} could not be processed`
-      : 'Could not process approval emails';
+  if (applied > 0) {
+    return applied === 1 ? '1 approval applied' : `${applied} approvals applied`;
   }
-  return applied === 1 ? '1 approval applied' : `${applied} approvals applied`;
+  return documentApprovalReconcileSuccessMessage(result);
 }
 
 export function sdRefundCronSuccessMessage(result: {

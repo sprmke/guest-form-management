@@ -1345,6 +1345,54 @@
   color: hsl(var(--foreground));
 }
 
+/* Admin dashboard custom range — solid primary (not brand-gradient / foreground black). */
+.admin-date-range-calendar.rdp-root {
+  width: 100%;
+  padding: 0.25rem;
+  background: transparent;
+  display: flex;
+  justify-content: center;
+}
+
+.admin-date-range-calendar.rdp-root .rdp-nav {
+  display: none;
+}
+
+.admin-date-range-calendar.rdp-root .rdp-button_previous,
+.admin-date-range-calendar.rdp-root .rdp-button_next {
+  position: static;
+  transform: none;
+}
+
+.admin-date-range-calendar.rdp-root .rdp-button_previous:hover,
+.admin-date-range-calendar.rdp-root .rdp-button_next:hover {
+  transform: none;
+}
+
+.admin-date-range-calendar.rdp-root .rdp-month_caption {
+  margin-bottom: 0;
+  font-size: 0.8125rem !important;
+}
+
+.admin-date-range-calendar.rdp-root td[aria-selected] .rdp-day_button,
+.admin-date-range-calendar.rdp-root td.rdp-day_range_start .rdp-day_button,
+.admin-date-range-calendar.rdp-root td.rdp-day_range_end .rdp-day_button,
+.admin-date-range-calendar.rdp-root .rdp-day.rdp-selected .rdp-day_button {
+  background: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+  box-shadow: none;
+}
+
+.admin-date-range-calendar.rdp-root .rdp-day_range_middle .rdp-day_button {
+  background: hsl(var(--primary) / 0.14) !important;
+  color: hsl(var(--foreground)) !important;
+  font-weight: 500;
+}
+
+.admin-date-range-calendar.rdp-root td .rdp-day_button:hover {
+  transform: none;
+}
+
 /* Hero search date picker — scoped from admin calendar globals above */
 .hero-search-calendar.rdp-root {
   --rdp-accent-color: hsl(var(--primary));

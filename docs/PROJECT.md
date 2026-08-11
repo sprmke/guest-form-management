@@ -20,7 +20,7 @@ This document is the entry point for the **guest-form-management** architecture 
 | Postgres schema (`guest_submissions`, multi-tenancy, finance/maintenance)          | [`docs/architecture/data-model.md`](architecture/data-model.md)                 |
 | Storage buckets                                                                    | [`docs/architecture/storage.md`](architecture/storage.md)                       |
 | Edge function inventory (API surface)                                              | [`docs/architecture/edge-functions.md`](architecture/edge-functions.md)         |
-| Integrations — Resend email, Gmail listener, PDF                                   | [`docs/architecture/integrations.md`](architecture/integrations.md)             |
+| Integrations — Resend email, inbound approvals, PDF                                | [`docs/architecture/integrations.md`](architecture/integrations.md)             |
 | Guest form validation + environment variables                                      | [`docs/architecture/validation-and-env.md`](architecture/validation-and-env.md) |
 | Deployment                                                                         | [`docs/architecture/deployment.md`](architecture/deployment.md)                 |
 | Roadmap / gaps                                                                     | [`docs/architecture/roadmap.md`](architecture/roadmap.md)                       |
