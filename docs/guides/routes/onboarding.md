@@ -13,12 +13,12 @@ Route: `/onboarding`
 
 ## Progress overview
 
-| Section      | E2E save | Validation | Docs       | Notes                                                    |
-| ------------ | -------- | ---------- | ---------- | -------------------------------------------------------- |
-| Organization | ✅       | ✅         | Documented | Name + contact phone (no role on this step)              |
-| Hosting      | ✅       | ✅         | Documented | Property and/or Parking toggles + details                |
-| Verify       | ✅       | ✅         | Documented | Valid ID + property/parking proof; rights + contract end |
-| Get Verified | ✅       | ✅         | Documented | Tier 2 persuasion + public Recommended badge (Phase 1)   |
+| Section      | E2E save | Validation | Docs       | Notes                                                                     |
+| ------------ | -------- | ---------- | ---------- | ------------------------------------------------------------------------- |
+| Organization | ✅       | ✅         | Documented | Name + contact phone (no role on this step)                               |
+| Hosting      | ✅       | ✅         | Documented | Property and/or Parking toggles + details                                 |
+| Verify       | ✅       | ✅         | Documented | Host: Valid ID + Facebook Page; Listing: rights + proof (save path split) |
+| Get Verified | ✅       | ✅         | Documented | Host CTA on org routes; listing verification CTA on property/parking only |
 
 ---
 
@@ -49,7 +49,7 @@ First-time hosts complete this wizard right after signing in with Google — org
 
 1. **Organization** — organization name, contact **Name**, **Contact number**. Organization name availability is checked after typing pauses (reserved-name rules below).
 2. **Hosting** — choose **Property** and/or **Parking** (multi-select toggles); fill tower/unit and/or parking slot in the same step. **Property name** is required when Property is selected (tower + unit alone do not enable Continue). Property names follow the same reserved-name rules as org names. At least one host type must be selected. Residence is currently Azure-only (field **?** help).
-3. **Verify** — unified step header → trust notice + **Let’s get verified**; upload fields after click. **Valid ID** + **Property verification** (Property Rights + contract end when applicable + proof of ownership + platform + access screenshot) and/or **Parking verification** (Parking Rights + contract end + proof upload).
+3. **Verify** — trust notice + **Let's get verified**. **Host:** Valid ID + Facebook Page screenshot. **Per listing (same fields as before):** Property and/or Parking rights (+ contract end when applicable) + ownership/authorization proof. Save path splits host vs listing (see below).
 
 Contact name pre-fills from the Google account display name when available.
 
@@ -97,9 +97,14 @@ Selected rights are also saved as org **`contactRole`** on **`create-organizatio
 ## Save path
 
 1. **Finish setup** → `POST create-organization` (contact + hostModes + property/parking; **`contactRole`** from verification rights)
-2. `POST upload-org-verification-asset` — Tier 1: `valid_id`; plus `social_proof` + `property_ownership_proof` when property mode; plus `parking_social_proof` when parking mode. **Get Verified (Tier 2):** `selfie_with_id`, `ownership_proof`, `azure_pmo_confirmation` — private bucket **`org-verification-assets`**
-3. `POST submit-org-verification` `{ tier: 'base', socialPlatform?, propertyRelationship?, propertyContractEndDate?, parkingRelationship?, parkingContractEndDate? }` → `organizations.settings.verification.baseStatus = pending`
-4. Redirect: property settings → parking settings → org dashboard
+2. `POST upload-org-verification-asset` — Host Tier 1: `valid_id`, `social_proof` (Facebook Page) → bucket **`org-verification-assets`**
+3. `POST submit-org-verification` `{ tier: 'base' }` → `organizations.settings.verification.baseStatus = pending`
+4. Per created listing: `POST upload-listing-authorization-asset` (`proof`) then `POST submit-listing-authorization` (rights + contract end) → `settings.listingAuthorization.baseStatus = pending` (bucket **`listing-authorization-assets`**)
+5. Redirect: property settings → parking settings → org dashboard
+
+Host Tier 2 (Get Verified after onboarding): `selfie_with_id`, `platform_admin_proof` + `platformAdminPlatform`; optional `legitimacy_check_proof`, `business_permit_bir`.
+
+Listing Tier 2 (listing verification modal): `additional_proof`, `azure_pmo_confirmation` via `submit-listing-recommended`.
 
 ---
 
@@ -107,10 +112,12 @@ Selected rights are also saved as org **`contactRole`** on **`create-organizatio
 
 Two-tier model (see **Get Verified** sidebar modal):
 
-| Tier | Name            | Unlock                                        | Documents                                                                                 |
-| ---- | --------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| 1    | **Verified**    | Required to host (onboarding)                 | Valid ID + property/parking verification per **`host_modes`**                             |
-| 2    | **Recommended** | **Recommended** badge on host page + listings | Selfie with ID, additional proof of ownership/authorization, Azure PMO email confirmation |
+| Tier | Name            | Unlock                                  | Documents                                                                  |
+| ---- | --------------- | --------------------------------------- | -------------------------------------------------------------------------- |
+| 1    | **Verified**    | Required to host (onboarding)           | Valid ID + Facebook Page screenshot                                        |
+| 2    | **Recommended** | Org-wide Recommended badge on host page | Selfie with ID; other-platform admin screenshot; optional legitimacy / BIR |
+
+**Listing verification** (separate scope, per property/parking): Tier 1 ownership/authorization proof + rights; Tier 2 additional proof + Azure PMO → listing Recommended badge. See [`verification-scope-split`](../../workflow/in-progress/verification-scope-split.md) / property settings guide.
 
 Tier names are display-only. Server tiers stay **`base`** (Tier 1) and **`enhanced`** (Tier 2), and the public flag stays **`verifiedBadge`**.
 
@@ -120,7 +127,7 @@ Tier names are display-only. Server tiers stay **`base`** (Tier 1) and **`enhanc
 - **Tier rank cards** in the modal header: clickable Verified / Recommended cards with status badges; one tier panel visible at a time. Opens on the most relevant step (e.g. Recommended when Tier 1 is approved).
 - Modal title follows the active step: **Get Verified** / **Get Recommended**; **Changes requested** in forced resubmit (stepper hidden).
 - On phone/tablet the modal is a **bottom sheet** (`ResponsiveModal` `sheetLayout="split"`): sticky header + footer, middle section scrolls so long Verified uploads are not clipped.
-- Sidebar CTA uses a soft primary wash and “Earn your Recommended badge.” when Tier 2 is not yet approved. Stays visible as **Verification** when both tiers are approved (status view; contract renewals / reverification later).
+- Sidebar CTA uses a soft primary wash and “Earn your Recommended badge.” when Tier 2 is not yet approved. Stays visible as **Verification** when both tiers are approved (status view; contract renewals / reverification later). Shown on **org** admin routes only — property/parking sidebars use the listing verification CTA instead.
 - Public **Recommended** badge (`ListingRecommendedBadge`) has tooltip: identity, ownership, and Azure records checked by Kame Homes; shown on host page hero and **`ListingHostCard`** on property/parking detail (not duplicated next to the type badge).
 - Copy constants: `ui/.../lib/verificationCopy.ts`.
 

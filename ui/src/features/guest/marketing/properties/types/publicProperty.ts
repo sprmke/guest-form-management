@@ -73,7 +73,10 @@ export type PublicPropertyDetailDto = {
   reviewCount: number;
   guestReviews: PublicGuestReview[];
   isSuperhost?: boolean;
+  /** Host-wide Recommended badge (org Tier 2). */
   verifiedBadge?: boolean;
+  /** This listing's Recommended badge (listing Tier 2). */
+  recommendedBadge?: boolean;
   updatedAt: string;
 };
 
@@ -140,7 +143,10 @@ export type ResolvedPropertyDetail = {
   reviews?: number;
   guestReviews?: PublicGuestReview[];
   isSuperhost?: boolean;
+  /** Host-wide Recommended badge (org Tier 2). */
   verifiedBadge?: boolean;
+  /** This listing's Recommended badge (listing Tier 2). */
+  recommendedBadge?: boolean;
   host?: ResolvedPropertyHost;
   /** @deprecated Use host.organizationName — kept for mock marketing copy */
   hostName?: string;

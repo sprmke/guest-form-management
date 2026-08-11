@@ -19,6 +19,7 @@ export type PublicHostProfile = {
   description: string | null;
   ownerName: string;
   ownerAvatarUrl: string | null;
+  /** Host-wide Recommended badge (org Tier 2). */
   verifiedBadge: boolean;
   socialLinks: PublicHostSocialLinks;
   properties: Array<{
@@ -28,6 +29,7 @@ export type PublicHostProfile = {
     locationLabel: string;
     imageUrl: string | null;
     weekdayNightlyRate: number;
+    recommendedBadge: boolean;
   }>;
   parkings: Array<{
     slug: string;
@@ -36,6 +38,7 @@ export type PublicHostProfile = {
     locationLabel: string;
     imageUrl: string | null;
     weekdayNightlyRate: number;
+    recommendedBadge: boolean;
   }>;
 };
 

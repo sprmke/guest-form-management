@@ -13,7 +13,6 @@ Approved plans **not yet started**. Once implementation begins (even a partial s
 
 | Plan                                                                                   | Status      | Summary                                                                                        |
 | -------------------------------------------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------- |
-| [`verification-scope-split.md`](./verification-scope-split.md)                         | not started | Split verification into independent Host/Org and per-listing scopes, each with Tier 1 + Tier 2 |
 | [`ai-dashboard-assistant.md`](./ai-dashboard-assistant.md)                             | not started | RBAC-scoped admin chat assistant                                                               |
 | [`custom-pages-module.md`](./custom-pages-module.md)                                   | not started | Custom Pages module + stay-guide redesign                                                      |
 | [`refine-footer-public-pages.md`](./refine-footer-public-pages.md)                     | not started | Footer trim + About/Contact/Support pages (footer links exist; routes/pages not built)         |

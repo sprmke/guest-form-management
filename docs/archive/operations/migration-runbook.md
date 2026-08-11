@@ -403,6 +403,22 @@ Incremental schema after Phase 0 is enumerated in **§1.3** (filenames + purpose
 
 ---
 
+## 10. Additive: listing authorization backfill (August 2026)
+
+Verification scope split — see [`docs/workflow/in-progress/verification-scope-split.md`](../../workflow/in-progress/verification-scope-split.md).
+
+| File                                       | Purpose                                                                                                                                                                                                                                                                                                                                 | Reversible?                                                                                 |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `20261011120000_listing_authorization.sql` | Creates the private bucket **`listing-authorization-assets`** (5 MB; JPEG/PNG/WebP/PDF, service-role policy only), then backfills **`settings.listingAuthorization`** onto every `properties` and `parkings` row from the matching `organizations.settings.verification` leg (rights, contract end date, lifecycle, Tier 1 proof path). | Yes — the org verification block is **not** modified, so the backfilled key can be dropped. |
+
+Notes:
+
+- **Non-destructive by design.** Rows that already have a `listingAuthorization` **object** are skipped, and nothing is removed from `organizations.settings.verification`. Edge parsers fall back to the org leg via `resolveListingAuthorization` for any row the backfill skipped.
+- The backfill helper `public.listing_authorization_from_org_leg(JSONB, TEXT)` is created and **dropped** within the same migration — it is not part of the schema afterwards.
+- Verify after applying: bucket is `public = false` with only the service-role policy, and `SELECT count(*) FROM properties WHERE settings ? 'listingAuthorization'` matches the property count.
+
+---
+
 ## 11. Production configuration & secrets (Supabase, Google, hosting)
 
 Use this **after** migrations (**§5**) and Edge Function deploys. Canonical env templates: **[`supabase/.env.example`](../../supabase/.env.example)** (Edge secrets — mirror into Dashboard) and **[`ui/.env.example`](../../ui/.env.example)** (Vite / SPA). Full narrative also lives in **[`docs/architecture/validation-and-env.md`](../architecture/validation-and-env.md)** and **[`docs/architecture/deployment.md`](../architecture/deployment.md)**.

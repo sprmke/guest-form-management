@@ -73,6 +73,7 @@ export function mapApiPropertyToResolved(dto: PublicPropertyDetailDto): Resolved
     guestReviews: dto.guestReviews,
     isSuperhost: dto.isSuperhost,
     verifiedBadge: dto.verifiedBadge,
+    recommendedBadge: dto.recommendedBadge,
     host: {
       unitName: dto.host.unitName,
       organizationName: dto.host.organizationName,

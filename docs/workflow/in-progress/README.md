@@ -2,7 +2,7 @@
 title: 'In progress'
 status: active
 tags: [workflow, in-progress]
-updated: 2026-08-10
+updated: 2026-08-11
 stage: in-progress
 kind: reference
 ---
@@ -13,6 +13,7 @@ Implementation **started** — plan not fully complete. Partial phases or v1 sli
 
 | Doc                                                                            | Summary                                                                                                     |
 | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| [`verification-scope-split.md`](./verification-scope-split.md)                 | Host vs listing verification scopes — Phases 1–6 landed; docs/quality gate open                             |
 | [`host-verification-tiers.md`](./host-verification-tiers.md)                   | Phases 1–2 shipped; Phase 3 partial — admin queue ✅; browse search boost deferred                          |
 | [`ci-cd-environments/`](./ci-cd-environments/README.md)                        | **CI/CD + environments** — dual-track deploy, dev now / prod at release (Phases A–C shipped; F in progress) |
 | [`booking-workflow-multi-tenancy.md`](./booking-workflow-multi-tenancy.md)     | v1 configurable docs shipped; backlog — Gmail listener, payment automation, client mirror (see §5)          |
