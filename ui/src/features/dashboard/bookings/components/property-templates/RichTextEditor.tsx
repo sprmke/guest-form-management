@@ -54,6 +54,7 @@ const richTextStyles = `
     font-size: 0.9375rem;
     line-height: 1.65;
     color: hsl(var(--foreground));
+    background-color: hsl(var(--card));
   }
 
   .${PROPERTY_TEMPLATE_RICH_TEXT_CLASS}:focus {
@@ -131,7 +132,7 @@ const richTextStyles = `
   }
 
   .${PROPERTY_TEMPLATE_RICH_TEXT_CLASS} blockquote {
-    border-left: 4px solid hsl(var(--primary));
+    border-left: 2px solid hsl(var(--border));
     padding-left: 1rem;
     margin: 1rem 0;
     font-style: italic;
@@ -598,7 +599,7 @@ function Toolbar({
   onImageUpload?: (file: File) => Promise<string>;
 }) {
   return (
-    <div className="border-border bg-muted/40 flex flex-wrap items-center gap-0.5 overflow-x-auto border-b px-1 py-1 sm:px-2">
+    <div className="border-border bg-card flex flex-wrap items-center gap-0.5 overflow-x-auto border-b px-1 py-1 sm:px-2">
       <ToolbarButton
         label="Bold"
         onClick={() => editor.chain().focus().toggleBold().run()}
@@ -836,13 +837,13 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
         <style>{richTextStyles}</style>
         <div
           className={cn(
-            'border-border bg-background rounded-lg border',
+            'border-border bg-card rounded-lg border',
             !editable && 'opacity-60',
             className
           )}
         >
           {editable ? <Toolbar editor={editor} onImageUpload={onImageUpload} /> : null}
-          <div className="property-template-editor min-w-0 overflow-x-auto">
+          <div className="property-template-editor bg-card min-w-0 overflow-x-auto">
             <EditorContent editor={editor} />
           </div>
         </div>

@@ -44,23 +44,29 @@ import { WorkflowStageSlide } from '@/features/dashboard/bookings/components/wor
 import { WorkflowSubFormHost } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowSubFormHost';
 import { useAppSettings } from '@/features/dashboard/bookings/hooks/useAppSettings';
 import { BOOKING_QUERY_KEY } from '@/features/dashboard/bookings/hooks/useBooking';
+import type { BookingAssetPreviewHandler } from '@/features/dashboard/bookings/hooks/useBookingAssetPreview';
 import {
   useTransitionBooking,
   useCancelBooking,
-  useRunGmailPoll,
+  useReconcileDocumentApprovals,
   useRunSdRefundCron,
   useResendSdRefundFormEmail,
   type TransitionPayload,
 } from '@/features/dashboard/bookings/hooks/useTransitionBooking';
+import { useUpdateBooking } from '@/features/dashboard/bookings/hooks/useUpdateBooking';
 import { useWorkflowActions } from '@/features/dashboard/bookings/hooks/useWorkflowActions';
 import { useWorkflowSubFormDrafts } from '@/features/dashboard/bookings/hooks/useWorkflowSubFormDrafts';
+import {
+  isEditableWorkflowProgressContent,
+  progressSavePayloadForView,
+} from '@/features/dashboard/bookings/lib/bookingProgressEditPayload';
 import { resolveBookingPropertySlug } from '@/features/dashboard/bookings/lib/bookingListNavigation';
 import { shouldWarnPastBookingStayForProceed } from '@/features/dashboard/bookings/lib/bookingPastPipelineManila';
 import { statusLabel, type BookingStatus } from '@/features/dashboard/bookings/lib/bookingStatus';
 import { DEFAULT_DOCUMENT_REQUIREMENTS } from '@/features/dashboard/bookings/lib/documentRequirements';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import {
-  bookingNeedsGmailListenerPoll,
+  bookingNeedsDocumentApprovalReconcile,
   defaultPendingDocNestedKey,
   initialViewedWorkflowStep,
   nestedKeyLabel,
@@ -79,16 +85,15 @@ import { usePropertyPricingDefaults } from '@/features/dashboard/pricing/hooks/u
 
 import {
   friendlyToastError,
-  gmailPollSuccessMessage,
+  documentApprovalReconcileSuccessMessage,
   sdRefundCronSuccessMessage,
 } from '@/lib/feedback/toastMessages';
 import { cn } from '@/lib/utils';
 
-/** Shared copy for manual "Run Gmail poll" and auto-poll on Pending Documents load. */
-function buildGmailPollSuccessMessage(
-  result: Parameters<typeof gmailPollSuccessMessage>[0]
+function buildDocumentReconcileSuccessMessage(
+  result: Parameters<typeof documentApprovalReconcileSuccessMessage>[0]
 ): string {
-  return gmailPollSuccessMessage(result);
+  return documentApprovalReconcileSuccessMessage(result);
 }
 
 // ─── Confirm dialog ───────────────────────────────────────────────────────────
@@ -107,9 +112,11 @@ type Props = {
   booking: BookingRow;
   /** `modal` — kanban workflow dialog: no progress stepper, sticky action footer. */
   variant?: 'rail' | 'modal';
+  /** Opens the shared booking asset preview modal (required for file View actions). */
+  onPreview: BookingAssetPreviewHandler;
 };
 
-export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
+export function WorkflowPanel({ booking, variant = 'rail', onPreview }: Props) {
   const orgContext = useOptionalOrgContext();
   const propertySlug = resolveBookingPropertySlug(booking, orgContext?.propertySlug) ?? '';
   const isModal = variant === 'modal';
@@ -128,9 +135,6 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
   const [automationHelpOpen, setAutomationHelpOpen] = useState(false);
   const [progressMapOpen, setProgressMapOpen] = useState(false);
 
-  // Sub-form draft state (pricing/parking/sd-refund/guest-balance/surprise-decor ack).
-  const subFormDrafts = useWorkflowSubFormDrafts(booking, status);
-
   const [viewedStep, setViewedStep] = useState<ViewedWorkflowStep>(() =>
     initialViewedWorkflowStep(status, booking, documentRequirements)
   );
@@ -139,6 +143,12 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
     setViewedStep(initialViewedWorkflowStep(status, booking, documentRequirements));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [booking.id, status, booking.need_parking, booking.has_pets, documentRequirements]);
+
+  const viewedDraftKey =
+    viewedStep.kind === 'pipeline' ? viewedStep.status : `doc:${viewedStep.sub}`;
+
+  // Sub-form draft state (pricing/parking/sd-refund/guest-balance/surprise-decor ack).
+  const subFormDrafts = useWorkflowSubFormDrafts(booking, status, viewedDraftKey);
 
   const focusPipelineView = useCallback(() => {
     setViewedStep({ kind: 'pipeline', status });
@@ -195,12 +205,102 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
 
   const transitionMut = useTransitionBooking();
   const cancelMut = useCancelBooking();
+  const updateMut = useUpdateBooking();
   const { handleGmailError } = useGmailReconnectPrompt();
-  const gmailPollMut = useRunGmailPoll(booking.id);
-  const gmailPollMutRef = useRef(gmailPollMut);
-  gmailPollMutRef.current = gmailPollMut;
+
+  const persistPartialDrafts =
+    !workflowActions.contentReadOnly && (!workflowActions.isLiveView || status === 'COMPLETED');
+
+  /** Live pipeline step: persist quietly so the footer stays Return / Proceed / Cancel. */
+  const liveProgressAutosave =
+    workflowActions.isLiveView && status !== 'COMPLETED' && !workflowActions.contentReadOnly;
+
+  const [liveAutosaveFailed, setLiveAutosaveFailed] = useState(false);
+
+  const showProgressSave =
+    (!liveProgressAutosave || liveAutosaveFailed) &&
+    !workflowActions.contentReadOnly &&
+    subFormDrafts.progressDirty &&
+    isEditableWorkflowProgressContent(workflowActions.viewedContent);
+
+  const handleProgressSave = useCallback(
+    async (opts?: { quiet?: boolean }) => {
+      const payload = progressSavePayloadForView(booking, workflowActions.viewedContent, {
+        pricing: subFormDrafts.pricingValues,
+        parking: subFormDrafts.parkingValues,
+        guestBalance: subFormDrafts.guestBalanceValues,
+        sdRefund: subFormDrafts.sdRefundValues,
+        sdRefundGuest: subFormDrafts.sdRefundGuestValues,
+        surpriseDecorStaffAck: subFormDrafts.surpriseDecorStaffAck,
+      });
+      if (!payload) {
+        if (!opts?.quiet) {
+          toast.error('Fill in the required fields before saving');
+        }
+        return;
+      }
+      try {
+        await updateMut.mutateAsync({
+          bookingId: booking.id,
+          currentStatus: booking.status,
+          payload,
+          revertToPendingReview: false,
+        });
+        subFormDrafts.clearProgressDirty();
+        setLiveAutosaveFailed(false);
+        if (!opts?.quiet) toast.success('Saved');
+      } catch (err: unknown) {
+        if (opts?.quiet) setLiveAutosaveFailed(true);
+        toast.error(friendlyToastError(err, 'Could not save'));
+      }
+    },
+    [
+      booking,
+      workflowActions.viewedContent,
+      subFormDrafts.pricingValues,
+      subFormDrafts.parkingValues,
+      subFormDrafts.guestBalanceValues,
+      subFormDrafts.sdRefundValues,
+      subFormDrafts.sdRefundGuestValues,
+      subFormDrafts.surpriseDecorStaffAck,
+      subFormDrafts.clearProgressDirty,
+      updateMut,
+    ]
+  );
+
+  useEffect(() => {
+    if (!liveProgressAutosave || !subFormDrafts.progressDirty) return;
+    if (!isEditableWorkflowProgressContent(workflowActions.viewedContent)) return;
+    if (updateMut.isPending || transitionMut.isPending || cancelMut.isPending) return;
+
+    const timer = window.setTimeout(() => {
+      void handleProgressSave({ quiet: true });
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [
+    liveProgressAutosave,
+    subFormDrafts.progressDirty,
+    subFormDrafts.pricingValues,
+    subFormDrafts.parkingValues,
+    subFormDrafts.guestBalanceValues,
+    subFormDrafts.sdRefundValues,
+    subFormDrafts.sdRefundGuestValues,
+    subFormDrafts.surpriseDecorStaffAck,
+    workflowActions.viewedContent,
+    handleProgressSave,
+    updateMut.isPending,
+    transitionMut.isPending,
+    cancelMut.isPending,
+  ]);
+
+  useEffect(() => {
+    setLiveAutosaveFailed(false);
+  }, [booking.id, workflowActions.viewedContent, workflowActions.isLiveView]);
+  const documentReconcileMut = useReconcileDocumentApprovals(booking.id);
+  const documentReconcileMutRef = useRef(documentReconcileMut);
+  documentReconcileMutRef.current = documentReconcileMut;
   /** Dedupes React Strict Mode double-invoke; cleared when leaving PENDING_DOCUMENTS. */
-  const pendingDocsAutoGmailPollRef = useRef<string | null>(null);
+  const pendingDocsAutoReconcileRef = useRef<string | null>(null);
   const sdCronMut = useRunSdRefundCron(booking.id);
   const resendSdFormMut = useResendSdRefundFormEmail(booking.id);
 
@@ -215,7 +315,7 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
 
   // Which automation triggers are relevant — only on the live, non-terminal step.
   const automationTriggersForLiveStep = workflowActions.isLiveView && !workflowActions.isTerminal;
-  const showGmailPoll =
+  const showDocumentReconcile =
     automationTriggersForLiveStep &&
     (status === 'PENDING_DOCUMENTS' ||
       status === 'PENDING_GAF' ||
@@ -259,26 +359,28 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
 
   useEffect(() => {
     if (status !== 'PENDING_DOCUMENTS') {
-      pendingDocsAutoGmailPollRef.current = null;
+      pendingDocsAutoReconcileRef.current = null;
       return;
     }
-    if (!bookingNeedsGmailListenerPoll(booking)) {
-      pendingDocsAutoGmailPollRef.current = null;
+    if (!bookingNeedsDocumentApprovalReconcile(booking)) {
+      pendingDocsAutoReconcileRef.current = null;
       return;
     }
     const dedupeKey = `${booking.id}:PENDING_DOCUMENTS`;
-    if (pendingDocsAutoGmailPollRef.current === dedupeKey) return;
-    pendingDocsAutoGmailPollRef.current = dedupeKey;
+    if (pendingDocsAutoReconcileRef.current === dedupeKey) return;
+    pendingDocsAutoReconcileRef.current = dedupeKey;
 
     let cancelled = false;
     void (async () => {
       try {
-        const result = await gmailPollMutRef.current.mutateAsync();
+        const result = await documentReconcileMutRef.current.mutateAsync();
         if (cancelled) return;
-        toast.success(buildGmailPollSuccessMessage(result));
+        if ((result.reconciled ?? 0) > 0) {
+          toast.success(buildDocumentReconcileSuccessMessage(result));
+        }
       } catch (err: unknown) {
         if (cancelled) return;
-        toastUnlessGmailReconnect(err, 'Gmail check failed');
+        toastUnlessGmailReconnect(err, 'Document reconcile failed');
       }
     })();
 
@@ -299,12 +401,12 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
     toastUnlessGmailReconnect,
   ]);
 
-  async function handleGmailPoll() {
+  async function handleDocumentReconcile() {
     try {
-      const result = await gmailPollMut.mutateAsync();
-      toast.success(buildGmailPollSuccessMessage(result));
+      const result = await documentReconcileMut.mutateAsync();
+      toast.success(buildDocumentReconcileSuccessMessage(result));
     } catch (err: unknown) {
-      toastUnlessGmailReconnect(err, 'Gmail check failed');
+      toastUnlessGmailReconnect(err, 'Document reconcile failed');
     }
   }
 
@@ -467,6 +569,7 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
           booking={booking}
           viewedContent={workflowActions.viewedContent}
           contentReadOnly={workflowActions.contentReadOnly}
+          persistPartialDrafts={persistPartialDrafts}
           activePendingDocSubStatus={workflowActions.activePendingDocSubStatus}
           documentRequirements={documentRequirements}
           pricingValues={subFormDrafts.pricingValues}
@@ -483,10 +586,12 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
           onGuestBalanceChange={subFormDrafts.setGuestBalanceValues}
           sdRefundValues={subFormDrafts.sdRefundValues}
           onSdRefundChange={subFormDrafts.setSdRefundValues}
+          onSdRefundGuestChange={subFormDrafts.setSdRefundGuestValues}
           sdGuestFormUrl={sdGuestFormUrl}
           onCopySdGuestFormUrl={() => void copySdGuestFormUrl()}
           recheckSdGuestSubmitPending={recheckSdGuestSubmitPending}
           onRecheckGuestSdSubmission={() => void recheckGuestSdSubmission()}
+          onPreview={onPreview}
         />
       ) : (
         <WorkflowStageSlide
@@ -501,7 +606,7 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
                 items={pendingDocTabItems}
                 value={workflowActions.activePendingDocSubStatus}
                 onChange={focusPendingDocSubView}
-                disabled={transitionMut.isPending}
+                disabled={transitionMut.isPending || updateMut.isPending}
               />
             </div>
           ) : null}
@@ -510,6 +615,7 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
             booking={booking}
             viewedContent={workflowActions.viewedContent}
             contentReadOnly={workflowActions.contentReadOnly}
+            persistPartialDrafts={persistPartialDrafts}
             activePendingDocSubStatus={workflowActions.activePendingDocSubStatus}
             documentRequirements={documentRequirements}
             pricingValues={subFormDrafts.pricingValues}
@@ -526,10 +632,12 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
             onGuestBalanceChange={subFormDrafts.setGuestBalanceValues}
             sdRefundValues={subFormDrafts.sdRefundValues}
             onSdRefundChange={subFormDrafts.setSdRefundValues}
+            onSdRefundGuestChange={subFormDrafts.setSdRefundGuestValues}
             sdGuestFormUrl={sdGuestFormUrl}
             onCopySdGuestFormUrl={() => void copySdGuestFormUrl()}
             recheckSdGuestSubmitPending={recheckSdGuestSubmitPending}
             onRecheckGuestSdSubmission={() => void recheckGuestSdSubmission()}
+            onPreview={onPreview}
           />
         </WorkflowStageSlide>
       )}
@@ -537,15 +645,15 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
       {/* ── Automation triggers (detail rail only) ─────────────────────────── */}
       <WorkflowAutomationTriggers
         isModal={isModal}
-        showGmailPoll={showGmailPoll}
+        showDocumentReconcile={showDocumentReconcile}
         showSdCron={showSdCron}
         showSdFormResend={showSdFormResend}
         automationHelpOpen={automationHelpOpen}
         onToggleAutomationHelp={() => setAutomationHelpOpen((o) => !o)}
-        gmailPollPending={gmailPollMut.isPending}
+        documentReconcilePending={documentReconcileMut.isPending}
         sdCronPending={sdCronMut.isPending}
         resendSdFormPending={resendSdFormMut.isPending}
-        onRunGmailPoll={handleGmailPoll}
+        onReconcileDocuments={handleDocumentReconcile}
         onRunSdCron={handleSdCron}
         onResendSdFormEmail={handleResendSdFormEmail}
       />
@@ -578,6 +686,9 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
         isTransitionDisabled={subFormDrafts.isTransitionDisabled}
         cancelPending={cancelMut.isPending}
         onOpenCancelConfirm={() => setCancelConfirm(true)}
+        showProgressSave={showProgressSave}
+        progressSavePending={updateMut.isPending}
+        onProgressSave={() => void handleProgressSave()}
       />
 
       {/* ── Full progress map (on demand) ────────────────────────────────── */}

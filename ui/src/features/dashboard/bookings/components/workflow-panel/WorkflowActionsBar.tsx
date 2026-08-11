@@ -13,12 +13,15 @@
  *    earlier completed stages. Disappears for good once the guest has checked in
  *    (`canCancelBookingAtStatus`).
  *
+ * Progress drafts on the **live** stage autosave (no Save button). While browsing
+ * an earlier stage — or after a live autosave failure — **Save** appears so hosts
+ * can persist pricing/settlement without opening Edit Booking.
+ *
  * The eligibility booleans still come from `useWorkflowActions`; only the
- * presentation is re-ranked. While the rail browses a passed stage, the whole
- * footer hides when there is nothing to act on.
+ * presentation is re-ranked.
  */
 
-import { ArrowLeft, ArrowRight, Loader2, RotateCcw } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2, RotateCcw, Save } from 'lucide-react';
 
 import {
   canCancelBookingAtStatus,
@@ -67,6 +70,10 @@ type Props = {
   isTransitionDisabled: (toStatus: BookingStatus) => boolean;
   cancelPending: boolean;
   onOpenCancelConfirm: () => void;
+  /** Persist dirty progress-form drafts without a status transition. */
+  showProgressSave?: boolean;
+  progressSavePending?: boolean;
+  onProgressSave?: () => void;
 };
 
 type PrimaryAction = {
@@ -163,11 +170,12 @@ export function WorkflowActionsBar({
   isTransitionDisabled,
   cancelPending,
   onOpenCancelConfirm,
+  showProgressSave = false,
+  progressSavePending = false,
+  onProgressSave,
 }: Props) {
-  if (isTerminal) return null;
-
-  const showCancel = canCancelBookingAtStatus(status) && (isLiveView || isModal);
-  const showTransitions = isLiveView || isModal;
+  const showCancel = !isTerminal && canCancelBookingAtStatus(status) && (isLiveView || isModal);
+  const showTransitions = !isTerminal && (isLiveView || isModal);
   const inDocStep = inPendingDocuments && viewingPendingDocSub;
   const activeDocShortLabel = shortDocStepLabel(activePendingDocLabel);
   const docStepNotRequired = inDocStep && !selectedPendingDocRequired;
@@ -208,7 +216,7 @@ export function WorkflowActionsBar({
   const backTo = (inDocStep || livePipelineActions) && prev ? prev : null;
   // One in-flight mutation locks the whole footer: a cancel and a transition
   // racing each other would land the booking somewhere neither host intended.
-  const actionsBusy = transitionPending || cancelPending;
+  const actionsBusy = transitionPending || cancelPending || progressSavePending;
   const primaryDisabled = !primary?.enabled || actionsBusy;
 
   const showMarkIncomplete = showTransitions && inDocStep && selectedPendingDocCanMarkIncomplete;
@@ -219,7 +227,11 @@ export function WorkflowActionsBar({
     showTransitions && !showTransitionRow && !showNotRequiredNote && !showMarkIncomplete;
 
   const hasStageActions =
-    showTransitionRow || showNotRequiredNote || showDeadEndNote || showMarkIncomplete;
+    showTransitionRow ||
+    showNotRequiredNote ||
+    showDeadEndNote ||
+    showMarkIncomplete ||
+    showProgressSave;
   if (!hasStageActions && !showCancel) return null;
 
   return (
@@ -229,6 +241,25 @@ export function WorkflowActionsBar({
         isModal ? 'border-border mt-auto shrink-0 border-t pt-5' : 'px-4 py-4'
       )}
     >
+      {showProgressSave && onProgressSave ? (
+        <button
+          type="button"
+          disabled={actionsBusy}
+          onClick={onProgressSave}
+          aria-busy={progressSavePending || undefined}
+          className={cn(workflowPrimaryActionClass(!actionsBusy), 'w-full min-w-0')}
+        >
+          <span className={cn(workflowActionLabelGroupClass, 'gap-2')}>
+            {progressSavePending ? (
+              <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+            ) : (
+              <Save className="size-4 shrink-0" aria-hidden />
+            )}
+            <span className={workflowActionLabelTextClass}>Save</span>
+          </span>
+        </button>
+      ) : null}
+
       {showNotRequiredNote ? (
         <p className="border-border/50 bg-muted/50 text-muted-foreground flex min-h-[44px] items-center rounded-xl border px-3.5 py-2.5 text-sm">
           {activePendingDocLabel} is not required for this booking.

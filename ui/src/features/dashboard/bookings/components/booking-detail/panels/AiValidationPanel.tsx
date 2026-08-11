@@ -3,7 +3,8 @@ import { ImageOff, Loader2, ScanSearch } from 'lucide-react';
 import { DocPreview } from '@/features/dashboard/bookings/components/booking-detail/BookingDocPreview';
 import { BookingDetailCard } from '@/features/dashboard/bookings/components/booking-detail/primitives/BookingDetailCard';
 import {
-  ReceiptAiVerdictBadge,
+  ReceiptAiVerdictMark,
+  receiptAiVerdictReportTextClass,
   type ReceiptAiVerdict,
 } from '@/features/dashboard/bookings/components/ReceiptAiVerdictBadge';
 import {
@@ -17,10 +18,10 @@ import { cn } from '@/lib/utils';
 
 type PreviewHandler = (label: string, rawUrl: string) => void;
 
-/** Verdicts `ReceiptAiVerdictBadge` renders — anything else has no badge to show. */
+/** Verdicts `ReceiptAiVerdictMark` renders — anything else has no mark to show. */
 const BADGED_VERDICTS = new Set(['valid', 'likely_valid', 'unclear', 'invalid']);
 
-/** Status text for rows with no verdict badge (queued, skipped, or unrecognized). */
+/** Status text for rows with no verdict mark (queued, skipped, or unrecognized). */
 function pendingLabel(verdict: ReceiptAiVerdict, loading: boolean): string {
   if (loading) return 'Checking';
   return BADGED_VERDICTS.has(String(verdict ?? '').toLowerCase()) ? '' : 'Not checked';
@@ -66,9 +67,7 @@ export function AiValidationPanel({
             const canOpen = Boolean(item.url);
 
             return (
-              <li key={item.id} className="flex items-start gap-3 px-4 py-3 sm:gap-4 sm:px-5">
-                {/* The verdict badge below already names the result — an overlay mark on the
-                 * thumb would state it twice, so the tile stays a clean look at the file. */}
+              <li key={item.id} className="flex items-center gap-3 px-4 py-3 sm:gap-4 sm:px-5">
                 {canOpen ? (
                   <DocPreview compact label={item.label} url={item.url!} onPreview={onPreview} />
                 ) : (
@@ -82,48 +81,43 @@ export function AiValidationPanel({
                 )}
 
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-3">
-                    {canOpen ? (
-                      <button
-                        type="button"
-                        onClick={() => onPreview(item.label, item.url!)}
-                        className="text-foreground hover:text-primary min-w-0 truncate text-left text-sm font-medium transition-colors"
-                      >
-                        {item.label}
-                      </button>
-                    ) : (
-                      <p className="text-foreground min-w-0 truncate text-sm font-medium">
-                        {item.label}
-                      </p>
-                    )}
-
-                    <span className="flex shrink-0 items-center gap-1.5">
-                      {item.loading ? (
-                        <Loader2
-                          className="text-muted-foreground size-3.5 animate-spin motion-reduce:animate-none"
-                          aria-hidden
-                        />
-                      ) : null}
-                      {pending ? (
-                        <span className="text-muted-foreground text-[11px] font-medium">
-                          {pending}
-                        </span>
-                      ) : (
-                        <ReceiptAiVerdictBadge
-                          verdict={item.verdict}
-                          summary={item.summary}
-                          compact
-                          variant={item.variant}
-                        />
-                      )}
-                    </span>
-                  </div>
+                  {canOpen ? (
+                    <button
+                      type="button"
+                      onClick={() => onPreview(item.label, item.url!)}
+                      className="text-foreground hover:text-primary block min-w-0 truncate text-left text-sm font-medium transition-colors"
+                    >
+                      {item.label}
+                    </button>
+                  ) : (
+                    <p className="text-foreground min-w-0 truncate text-sm font-medium">
+                      {item.label}
+                    </p>
+                  )}
 
                   {item.summary ? (
-                    <p className="text-muted-foreground mt-1 line-clamp-2 text-xs leading-relaxed [overflow-wrap:anywhere]">
+                    <p
+                      className={cn(
+                        'mt-1 line-clamp-3 text-xs leading-relaxed [overflow-wrap:anywhere]',
+                        receiptAiVerdictReportTextClass(item.verdict, item.loading)
+                      )}
+                    >
                       {item.summary}
                     </p>
                   ) : null}
+                </div>
+
+                <div className="flex shrink-0 items-center justify-center self-center">
+                  {item.loading ? (
+                    <Loader2
+                      className="text-muted-foreground size-5 animate-spin motion-reduce:animate-none"
+                      aria-label={`Checking ${item.label}`}
+                    />
+                  ) : pending ? (
+                    <span className="text-muted-foreground text-[11px] font-medium">{pending}</span>
+                  ) : (
+                    <ReceiptAiVerdictMark verdict={item.verdict} size="md" />
+                  )}
                 </div>
               </li>
             );

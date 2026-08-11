@@ -1,195 +1,164 @@
 /**
- * `PendingDocSubStatusCard` + `DocLinkRow` — ported verbatim from the
- * pre-decomposition `WorkflowPanel.tsx`. Read-only status card for a
- * PENDING_DOCUMENTS sub-step (GAF / pet request) not owned by the active
- * pricing/parking/sd-refund sub-form.
+ * Read-only status card for a PENDING_DOCUMENTS sub-step (GAF / pet / other)
+ * when the rail is not showing a pricing/parking/sd form for that step.
  */
 
-import { useEffect, useState } from 'react';
-
-import { ExternalLink, Loader2 } from 'lucide-react';
+import { FileText } from 'lucide-react';
 
 import { WorkflowSubFormCard } from '@/features/dashboard/bookings/components/WorkflowSubFormCard';
+import type { BookingAssetPreviewHandler } from '@/features/dashboard/bookings/hooks/useBookingAssetPreview';
 import { statusLabel } from '@/features/dashboard/bookings/lib/bookingStatus';
 import type { DocumentRequirement } from '@/features/dashboard/bookings/lib/documentRequirements';
-import {
-  isStorageObjectNotFoundError,
-  normalizeStoragePublicUrl,
-  parseStorageUrl,
-  PRIVATE_STORAGE_BUCKETS,
-  resolveAssetUrlForBrowser,
-} from '@/features/dashboard/bookings/lib/storageUrls';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import {
   getPendingDocumentsNestedCompletion,
   type PendingDocNestedKey,
 } from '@/features/dashboard/bookings/lib/workflow';
-import { workflowInlineLink } from '@/features/dashboard/bookings/lib/workflowActionButtonStyles';
 
 import { semanticBadgeClasses, softBadgeClasses } from '@/lib/statusToneColors';
 import { cn } from '@/lib/utils';
+
+type DocLink = { label: string; url?: string | null };
+
+function approvalSourceLabel(
+  source: DocumentRequirement['approvalSource'] | undefined
+): string | null {
+  if (source === 'email-listener') return 'Email';
+  if (source === 'manual') return 'Manual';
+  return null;
+}
+
+function gafHint(booking: BookingRow, completed: boolean): string | null {
+  if (!completed) {
+    return 'Waiting for Azure’s approved GAF. Approvals arrive automatically when Azure replies.';
+  }
+  if (booking.approved_gaf_pdf_url?.trim()) return null;
+  return 'Marked complete without an approved GAF. Upload it on the booking.';
+}
+
+function petHint(booking: BookingRow, completed: boolean): string | null {
+  if (!completed) {
+    return 'Waiting for Azure’s approved pet request. Approvals arrive automatically when Azure replies.';
+  }
+  if (booking.approved_pet_pdf_url?.trim()) return null;
+  return 'Marked complete without an approved pet file. Upload it on the booking.';
+}
+
+function genericHint(completed: boolean): string | null {
+  return completed ? null : 'Waiting for this document to be marked complete.';
+}
 
 export function PendingDocSubStatusCard({
   booking,
   sub,
   requirements,
   plain = false,
+  onPreview,
 }: {
   booking: BookingRow;
   sub: PendingDocNestedKey;
   requirements: DocumentRequirement[];
   plain?: boolean;
+  onPreview: BookingAssetPreviewHandler;
 }) {
   const { byRequirementId } = getPendingDocumentsNestedCompletion(booking, requirements);
   const completed = byRequirementId[sub] ?? false;
   const requirement = requirements.find((req) => req.id === sub);
   const title = requirement?.label ?? statusLabel(sub);
-  const approvalHint =
-    requirement?.approvalSource === 'email-listener'
-      ? 'Email'
-      : requirement?.approvalSource === 'manual'
-        ? 'Manual'
-        : null;
+  const via = approvalSourceLabel(requirement?.approvalSource);
   const isGaf = sub === 'gaf';
   const isPet = sub === 'pet';
 
+  const hint = isGaf
+    ? gafHint(booking, completed)
+    : isPet
+      ? petHint(booking, completed)
+      : genericHint(completed);
+
+  const links: DocLink[] = isGaf
+    ? [
+        { label: 'GAF request', url: booking.gaf_request_pdf_url },
+        { label: 'Approved GAF', url: booking.approved_gaf_pdf_url },
+        { label: 'Valid ID', url: booking.valid_id_url },
+      ]
+    : isPet
+      ? [
+          { label: 'Pet request', url: booking.pet_request_pdf_url },
+          { label: 'Approved pet', url: booking.approved_pet_pdf_url },
+          { label: 'Vaccination', url: booking.pet_vaccination_url },
+          { label: 'Pet photo', url: booking.pet_image_url },
+        ]
+      : [];
+
+  const available = links.filter((l) => Boolean(l.url?.trim()));
+  const missingApproved =
+    completed &&
+    ((isGaf && !booking.approved_gaf_pdf_url?.trim()) ||
+      (isPet && !booking.approved_pet_pdf_url?.trim()));
+
   return (
-    <WorkflowSubFormCard title={title} plain={plain}>
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="text-muted-foreground text-xs">Status</span>
-          <span className="flex items-center gap-1.5">
-            {approvalHint ? (
-              <span className="text-muted-foreground/70 text-[10px] font-medium uppercase tracking-wide">
-                {approvalHint}
-              </span>
-            ) : null}
-            <span
-              className={cn(
-                'rounded-md border px-2.5 py-0.5 text-xs font-semibold',
-                completed ? semanticBadgeClasses('success') : softBadgeClasses('warning')
-              )}
-            >
-              {completed ? 'Complete' : 'Incomplete'}
-            </span>
-          </span>
-        </div>
-
-        {isGaf ? (
-          <div className="space-y-2">
-            <p className="text-muted-foreground text-xs leading-relaxed">
-              {!completed
-                ? 'Waiting for Azure’s approved GAF. Use Run Gmail poll if an email was missed.'
-                : booking.approved_gaf_pdf_url?.trim()
-                  ? 'Azure returned an approved GAF. Sub-step marked complete.'
-                  : 'Marked complete without an approved GAF file. Upload manually on the booking.'}
-            </p>
-            <DocLinkRow label="GAF request PDF" url={booking.gaf_request_pdf_url} />
-            <DocLinkRow label="Approved GAF" url={booking.approved_gaf_pdf_url} />
-            <DocLinkRow label="Guest valid ID" url={booking.valid_id_url} />
-          </div>
-        ) : null}
-
-        {isPet ? (
-          <div className="space-y-2">
-            <p className="text-muted-foreground text-xs leading-relaxed">
-              {!completed
-                ? 'Waiting for Azure’s approved pet request. Use Run Gmail poll if missed.'
-                : booking.approved_pet_pdf_url?.trim()
-                  ? 'Azure returned an approved pet request. Sub-step marked complete.'
-                  : 'Marked complete without an approved pet file. Upload manually on the booking.'}
-            </p>
-            <DocLinkRow label="Pet request PDF" url={booking.pet_request_pdf_url} />
-            <DocLinkRow label="Approved pet request" url={booking.approved_pet_pdf_url} />
-            <DocLinkRow label="Pet vaccination" url={booking.pet_vaccination_url} />
-            <DocLinkRow label="Pet photo" url={booking.pet_image_url} />
-          </div>
-        ) : null}
-
-        {!isGaf && !isPet ? (
-          <p className="text-muted-foreground text-xs leading-relaxed">
-            {completed ? 'Marked complete.' : 'Waiting for this document to be marked complete.'}
-          </p>
+    <WorkflowSubFormCard title={title} plain={plain} bodyClassName="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <span
+          className={cn(
+            'rounded-md border px-2.5 py-0.5 text-xs font-semibold',
+            completed ? semanticBadgeClasses('success') : softBadgeClasses('warning')
+          )}
+        >
+          {completed ? 'Complete' : 'Incomplete'}
+        </span>
+        {via ? (
+          <span className="text-muted-foreground text-[11px] font-medium">via {via}</span>
         ) : null}
       </div>
+
+      {hint ? (
+        <p
+          className={cn(
+            'text-[12px] leading-snug',
+            missingApproved
+              ? 'rounded-lg border border-amber-500/25 bg-amber-500/[0.08] px-3 py-2 text-amber-950 dark:text-amber-200'
+              : 'text-muted-foreground'
+          )}
+        >
+          {hint}
+        </p>
+      ) : null}
+
+      {available.length > 0 ? (
+        <ul className="border-border/70 divide-border/60 divide-y overflow-hidden rounded-lg border">
+          {available.map((item) => (
+            <DocLinkRow key={item.label} label={item.label} url={item.url!} onPreview={onPreview} />
+          ))}
+        </ul>
+      ) : null}
     </WorkflowSubFormCard>
   );
 }
 
-function DocLinkRow({ label, url }: { label: string; url?: string | null }) {
-  const trimmed = url?.trim();
-  const normalized = trimmed ? (normalizeStoragePublicUrl(trimmed) ?? trimmed) : null;
-  const parsed = normalized ? parseStorageUrl(normalized) : null;
-  const needsSignedUrl = Boolean(parsed && PRIVATE_STORAGE_BUCKETS.has(parsed.bucket));
-
-  const [resolvedUrl, setResolvedUrl] = useState<string | null>(() =>
-    trimmed && !needsSignedUrl ? normalized : null
-  );
-  const [loading, setLoading] = useState(false);
-  const [missingInStorage, setMissingInStorage] = useState(false);
-
-  useEffect(() => {
-    if (!trimmed) {
-      setResolvedUrl(null);
-      setLoading(false);
-      setMissingInStorage(false);
-      return;
-    }
-    if (!needsSignedUrl) {
-      setResolvedUrl(normalized);
-      setLoading(false);
-      setMissingInStorage(false);
-      return;
-    }
-
-    let cancelled = false;
-    setLoading(true);
-    setMissingInStorage(false);
-    setResolvedUrl(null);
-    resolveAssetUrlForBrowser(trimmed)
-      .then((signed) => {
-        if (!cancelled) setResolvedUrl(signed);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        if (isStorageObjectNotFoundError(err)) {
-          setMissingInStorage(true);
-          return;
-        }
-        setResolvedUrl(normalized);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [trimmed, normalized, needsSignedUrl]);
-
+function DocLinkRow({
+  label,
+  url,
+  onPreview,
+}: {
+  label: string;
+  url: string;
+  onPreview: BookingAssetPreviewHandler;
+}) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-      <span className="text-muted-foreground">{label}</span>
-      {!trimmed ? (
-        <span className="text-muted-foreground italic">Not available</span>
-      ) : loading ? (
-        <span className="text-muted-foreground inline-flex items-center gap-1">
-          <Loader2 className="size-3 animate-spin" aria-hidden />
-          Loading…
-        </span>
-      ) : missingInStorage ? (
-        <span className="text-muted-foreground italic">File missing from storage</span>
-      ) : (
-        <a
-          href={resolvedUrl ?? normalized ?? trimmed}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={cn(workflowInlineLink, 'inline-flex items-center gap-1')}
-        >
-          View
-          <ExternalLink className="size-3 shrink-0" aria-hidden />
-        </a>
-      )}
-    </div>
+    <li className="flex min-h-11 items-center justify-between gap-3 px-3 py-1.5">
+      <span className="text-foreground flex min-w-0 items-center gap-2 text-xs font-medium">
+        <FileText className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
+        <span className="truncate">{label}</span>
+      </span>
+      <button
+        type="button"
+        onClick={() => void onPreview(label, url)}
+        aria-label={`View ${label}`}
+        className="text-primary focus-ring hover:text-primary/90 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-end rounded-md px-1 text-xs font-semibold underline-offset-2 hover:underline"
+      >
+        View
+      </button>
+    </li>
   );
 }

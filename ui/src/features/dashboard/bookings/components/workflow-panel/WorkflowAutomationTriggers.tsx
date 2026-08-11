@@ -9,34 +9,34 @@ import { workflowNeutralActionClass } from '@/features/dashboard/bookings/lib/wo
 
 type Props = {
   isModal: boolean;
-  showGmailPoll: boolean;
+  showDocumentReconcile: boolean;
   showSdCron: boolean;
   showSdFormResend: boolean;
   automationHelpOpen: boolean;
   onToggleAutomationHelp: () => void;
-  gmailPollPending: boolean;
+  documentReconcilePending: boolean;
   sdCronPending: boolean;
   resendSdFormPending: boolean;
-  onRunGmailPoll: () => void;
+  onReconcileDocuments: () => void;
   onRunSdCron: () => void;
   onResendSdFormEmail: () => void;
 };
 
 export function WorkflowAutomationTriggers({
   isModal,
-  showGmailPoll,
+  showDocumentReconcile,
   showSdCron,
   showSdFormResend,
   automationHelpOpen,
   onToggleAutomationHelp,
-  gmailPollPending,
+  documentReconcilePending,
   sdCronPending,
   resendSdFormPending,
-  onRunGmailPoll,
+  onReconcileDocuments,
   onRunSdCron,
   onResendSdFormEmail,
 }: Props) {
-  if (isModal || !(showGmailPoll || showSdCron || showSdFormResend)) return null;
+  if (isModal || !(showDocumentReconcile || showSdCron || showSdFormResend)) return null;
 
   return (
     <div className="border-separator border-b">
@@ -79,17 +79,18 @@ export function WorkflowAutomationTriggers({
                 status.
               </p>
             </>
-          ) : showGmailPoll ? (
+          ) : showDocumentReconcile ? (
             <>
               <p className="text-muted-foreground">
-                Use when inbox approvals look stuck. Shown while this booking awaits pipeline
-                documents.
+                Azure approvals arrive automatically when they reply to the inbound address. Use
+                reconcile when a stored approved PDF needs to be re-applied after mark incomplete.
               </p>
               <ol className="marker:text-muted-foreground list-decimal space-y-1.5 pl-4">
                 <li>
-                  <span className="text-muted-foreground font-medium">Run Gmail poll now</span>{' '}
-                  checks the inbox for all bookings awaiting that reply—not just this one. Safe to
-                  rerun.
+                  <span className="text-muted-foreground font-medium">
+                    Reconcile document approvals
+                  </span>{' '}
+                  re-applies stored GAF/pet PDFs for this property—safe to rerun.
                 </li>
               </ol>
             </>
@@ -103,15 +104,15 @@ export function WorkflowAutomationTriggers({
           )}
 
           <div className="border-separator flex flex-col gap-1.5 border-t pt-3">
-            {showGmailPoll && (
+            {showDocumentReconcile && (
               <button
                 type="button"
-                disabled={gmailPollPending}
-                onClick={onRunGmailPoll}
+                disabled={documentReconcilePending}
+                onClick={onReconcileDocuments}
                 className={workflowNeutralActionClass()}
               >
-                <span>Run Gmail poll now</span>
-                {gmailPollPending ? (
+                <span>Reconcile document approvals</span>
+                {documentReconcilePending ? (
                   <Loader2 className="size-3.5 shrink-0 animate-spin" />
                 ) : (
                   <Mail className="size-3.5 shrink-0" aria-hidden />

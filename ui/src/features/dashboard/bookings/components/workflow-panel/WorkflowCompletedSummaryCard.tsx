@@ -9,8 +9,7 @@
  * tab; this card carries only the facts the workflow itself produced.
  */
 
-import { ExternalLink } from 'lucide-react';
-
+import type { BookingAssetPreviewHandler } from '@/features/dashboard/bookings/hooks/useBookingAssetPreview';
 import { WorkflowSubFormCard } from '@/features/dashboard/bookings/components/WorkflowSubFormCard';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import { guestBalancePaidRecorded } from '@/features/dashboard/bookings/lib/totalGuestBalance';
@@ -50,9 +49,11 @@ function SummaryRow({
 export function WorkflowCompletedSummaryCard({
   booking,
   plain = false,
+  onPreview,
 }: {
   booking: BookingRow;
   plain?: boolean;
+  onPreview: BookingAssetPreviewHandler;
 }) {
   const completedOn = formatManilaLongDate(booking.status_updated_at ?? booking.updated_at);
   const balanceCollected = guestBalancePaidRecorded(booking);
@@ -73,15 +74,13 @@ export function WorkflowCompletedSummaryCard({
         ) : null}
       </div>
       {receiptUrl ? (
-        <a
-          href={receiptUrl}
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          type="button"
+          onClick={() => void onPreview('Refund receipt', receiptUrl)}
           className={cn(workflowInlineLink, 'mt-3 inline-flex items-center gap-1.5')}
         >
-          <ExternalLink className="size-3.5 shrink-0" aria-hidden />
           View refund receipt
-        </a>
+        </button>
       ) : null}
     </WorkflowSubFormCard>
   );

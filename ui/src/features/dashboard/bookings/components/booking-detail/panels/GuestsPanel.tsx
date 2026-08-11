@@ -98,12 +98,12 @@ export function GuestsPanel({
                 <th scope="col" className="text-overline px-4 pb-2 text-left sm:px-5">
                   Name
                 </th>
-                <th scope="col" className="text-overline w-[4.5rem] pb-2 text-center">
+                <th scope="col" className="text-overline w-[4.5rem] pb-2 text-left">
                   Age
                 </th>
                 <th
                   scope="col"
-                  className="text-overline w-[5.5rem] px-4 pb-2 text-right sm:w-28 sm:px-5"
+                  className="text-overline w-[5.5rem] px-4 pb-2 text-left sm:w-28 sm:px-5"
                 >
                   Valid ID
                 </th>

@@ -10,7 +10,6 @@ import {
   bookingFlagIconChipClass,
 } from '@/features/dashboard/bookings/lib/bookingFlags';
 
-
 import { cn } from '@/lib/utils';
 import { formatBookingDate } from '@/utils/format/bookingDisplay';
 import { formatMoney } from '@/utils/format/currency';
@@ -74,7 +73,7 @@ export function CalendarDayBookingCard({ row, amount, showProperty = false, onOp
           <div className="min-w-0 flex-1">
             <p className="text-foreground truncate text-[13px] font-bold">{name}</p>
             {showProperty ? (
-              <BookingResourceLabel row={row} showKindBadge className="mt-0.5 font-medium" />
+              <BookingResourceLabel row={row} className="mt-0.5 font-medium" />
             ) : null}
           </div>
           <ArrowUpRight
