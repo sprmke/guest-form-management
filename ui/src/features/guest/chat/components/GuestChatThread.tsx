@@ -325,7 +325,7 @@ export function GuestChatThread({
 
       <div
         ref={scrollContainerRef}
-        className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 py-2.5 sm:px-2.5"
+        className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain px-3 py-2"
       >
         {isLoading ? (
           <div className="space-y-3">
@@ -355,6 +355,7 @@ export function GuestChatThread({
               </div>
             ) : null}
             <ChatMessageList
+              className="space-y-3"
               messages={messages}
               focusedMessageId={threadSearch.activeMessageId}
               getOutbound={(msg) => msg.direction === 'inbound'}
@@ -494,7 +495,7 @@ export function GuestChatThread({
         )}
       </div>
 
-      <div className="border-border bg-background shrink-0 space-y-2 border-t px-5 py-4 pb-[max(env(safe-area-inset-bottom,0px),1rem)]">
+      <div className="border-border bg-card shrink-0 space-y-1.5 border-t px-3 py-2.5 pb-[max(env(safe-area-inset-bottom,0px),0.625rem)]">
         {peerTyping ? (
           <p className="text-muted-foreground text-xs" aria-live="polite">
             Host is typing…
@@ -502,13 +503,13 @@ export function GuestChatThread({
         ) : null}
         {composerBar}
         {pendingAttachments.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {pendingAttachments.map((att, index) => (
               <div
                 key={`${att.url}-${index}`}
-                className="bg-muted flex max-w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs"
+                className="bg-muted flex max-w-full items-center gap-1.5 rounded-md px-2 py-1 text-xs"
               >
-                <span className="truncate">
+                <span className="min-w-0 truncate">
                   {att.label ?? (att.kind === 'image' ? 'Image' : 'File')}
                 </span>
                 <Button
@@ -527,7 +528,7 @@ export function GuestChatThread({
             ))}
           </div>
         ) : null}
-        <div className="flex items-end gap-2">
+        <div className="flex items-end gap-1.5">
           {onUploadAttachment && composerMode.kind !== 'edit' ? (
             <>
               <input
@@ -563,7 +564,7 @@ export function GuestChatThread({
             }}
             placeholder={composerMode.kind === 'edit' ? 'Edit message' : 'Message'}
             rows={1}
-            className="max-h-32 min-h-[44px] flex-1 resize-none py-3"
+            className="bg-card max-h-28 min-h-[44px] flex-1 resize-none py-2.5 text-[15px] leading-snug sm:text-sm"
             aria-label="Message"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
@@ -577,15 +578,15 @@ export function GuestChatThread({
           <Button
             type="button"
             size="icon"
-            className="min-h-[44px] min-w-[44px] shrink-0"
+            className="min-h-[44px] min-w-[44px] shrink-0 rounded-full"
             disabled={composerMode.kind === 'edit' ? !draft.trim() || isBusy : !canSend}
             onClick={() => void handleSend()}
             aria-label={composerMode.kind === 'edit' ? 'Save edit' : 'Send message'}
           >
             {isBusy ? (
-              <Loader2 className="size-5 animate-spin" aria-hidden />
+              <Loader2 className="size-4 animate-spin" aria-hidden />
             ) : (
-              <SendHorizontal className="size-5" aria-hidden />
+              <SendHorizontal className="size-4" aria-hidden />
             )}
           </Button>
         </div>

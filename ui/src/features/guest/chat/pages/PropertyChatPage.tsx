@@ -10,7 +10,7 @@ import {
   GuestChatSearchPanelRow,
 } from '@/features/guest/chat/components/GuestChatHeaderBar';
 import { GuestChatThread } from '@/features/guest/chat/components/GuestChatThread';
-import { VoiceSessionOverlay } from '@/features/guest/chat/components/voice/VoiceSessionOverlay';
+import { VoiceSessionPanel } from '@/features/guest/chat/components/voice/VoiceSessionPanel';
 import { useGuestChatMessages, useGuestChatStart } from '@/features/guest/chat/hooks/useGuestChat';
 import {
   guestPropertyPath,
@@ -22,6 +22,7 @@ import { GuestStayContextBar } from '@/features/guest/property/components/GuestS
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useChatThreadSearch } from '@/lib/chat/useChatThreadSearch';
+import { cn } from '@/lib/utils';
 import { parseGuestInquiryDateRange } from '@/utils/format/dates';
 
 function parseInquiryDates(searchParams: URLSearchParams): {
@@ -133,17 +134,17 @@ function PropertyChatContent({
   const hostAvatar = host?.ownerAvatarUrl ?? null;
 
   const hostAvatarNode = (
-    <div className="from-primary to-primary/80 relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gradient-to-br">
+    <div className="from-primary to-primary/80 relative size-9 shrink-0 overflow-hidden rounded-full bg-gradient-to-br">
       {hostAvatar ? (
         <Image
           src={hostAvatar}
           alt={hostLabel}
-          width={40}
-          height={40}
+          width={36}
+          height={36}
           className="h-full w-full object-cover"
         />
       ) : (
-        <div className="flex h-full w-full items-center justify-center text-sm font-bold text-white">
+        <div className="flex h-full w-full items-center justify-center text-xs font-bold text-white">
           {hostLabel.charAt(0)}
         </div>
       )}
@@ -151,11 +152,23 @@ function PropertyChatContent({
   );
 
   return (
-    <div className="mx-auto flex h-[calc(100dvh-8rem)] max-w-2xl flex-col sm:h-[calc(100dvh-9rem)]">
+    <div
+      className={cn(
+        'bg-card mx-auto flex w-full max-w-3xl flex-col overflow-hidden',
+        /* Match MainLayout surface-card radius when flush (sm+ has no card padding). */
+        'sm:rounded-3xl',
+        /* Mobile: fill remaining viewport under the operational band + footer. */
+        'h-[calc(100dvh-12.5rem)]',
+        /* Tablet/desktop: roomy messaging pane — fits under the band without looking tiny. */
+        'md:h-[min(44rem,calc(100dvh-16rem))]',
+        'lg:h-[min(48rem,calc(100dvh-14rem))]',
+        'xl:h-[min(52rem,calc(100dvh-12rem))]'
+      )}
+    >
       <div className="border-border shrink-0 border-b">
-        <div className="px-2.5 py-2.5 sm:px-3">
+        <div className="px-3 py-2">
           {startQuery.isLoading ? (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
               <Button
                 variant="ghost"
                 size="icon"
@@ -166,7 +179,7 @@ function PropertyChatContent({
                   <ChevronLeft className="size-5" />
                 </Link>
               </Button>
-              <Skeleton className="h-10 w-10 rounded-full" />
+              <Skeleton className="size-9 rounded-full" />
               <Skeleton className="h-4 w-32" />
             </div>
           ) : (
@@ -199,23 +212,23 @@ function PropertyChatContent({
         </div>
         {!startQuery.isLoading ? <GuestChatSearchPanelRow threadSearch={threadSearch} /> : null}
         {!startQuery.isLoading ? (
-          <div className="border-border border-t px-3 py-2.5 sm:px-4">
-            <GuestStayContextBar checkInDate={checkInDate} checkOutDate={checkOutDate} />
+          <div className="border-border border-t px-3 py-2">
+            <GuestStayContextBar
+              checkInDate={checkInDate}
+              checkOutDate={checkOutDate}
+              width="full"
+              density="compact"
+            />
           </div>
         ) : null}
       </div>
-
-      {voiceSessionOpen ? (
-        <VoiceSessionOverlay
-          propertySlug={propertySlug}
-          onClose={() => setVoiceSessionOpen(false)}
-        />
-      ) : null}
 
       {startQuery.isLoading || !conversationId ? (
         <div className="flex flex-1 items-center justify-center p-4">
           <Skeleton className="h-[50vh] w-full rounded-2xl" />
         </div>
+      ) : voiceSessionOpen ? (
+        <VoiceSessionPanel propertySlug={propertySlug} onClose={() => setVoiceSessionOpen(false)} />
       ) : (
         <GuestChatThread
           conversationId={conversationId}

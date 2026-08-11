@@ -132,7 +132,8 @@ export function ReceptionistAvatar({ state, amplitude = 0, size = 160, className
     <div
       className={cn(
         'relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full',
-        'bg-[#B8E0C8] ring-1 ring-[#C4A35A]/30',
+        /* Character plate matches turtle poster; chrome accents use theme tokens elsewhere. */
+        'ring-primary/25 bg-[#B8E0C8] ring-1',
         className
       )}
       style={{ width: size, height: size }}
@@ -174,8 +175,8 @@ export function ReceptionistAvatar({ state, amplitude = 0, size = 160, className
 
       <div
         className={cn(
-          'pointer-events-none absolute inset-x-[14%] bottom-0 h-[16%] rounded-full bg-[#C4A35A]/0 blur-xl',
-          speaking && 'bg-[#C4A35A]/30'
+          'bg-primary/0 pointer-events-none absolute inset-x-[14%] bottom-0 h-[16%] rounded-full blur-xl',
+          speaking && 'bg-primary/30'
         )}
         style={{
           opacity: speaking ? 0.35 + amp * 0.55 : 0,

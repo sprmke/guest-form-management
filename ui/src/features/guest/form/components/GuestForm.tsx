@@ -45,6 +45,7 @@ import {
   stripLegacyFromQueryParam,
 } from '@/features/guest/form/lib/bookingSourceFromSearchParams';
 import { computeGuestCountsByAge } from '@/features/guest/form/lib/guestCounts';
+import { FIND_US_OPTIONS } from '@/features/guest/form/lib/findUsOptions';
 import {
   formatGafEmailHint,
   formatGuestCopyPasteHint,
@@ -1617,12 +1618,11 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="Facebook">Facebook</SelectItem>
-                              <SelectItem value="Airbnb">Airbnb</SelectItem>
-                              <SelectItem value="Tiktok">Tiktok</SelectItem>
-                              <SelectItem value="Instagram">Instagram</SelectItem>
-                              <SelectItem value="Friend">Friend</SelectItem>
-                              <SelectItem value="Others">Others</SelectItem>
+                              {FIND_US_OPTIONS.map((option) => (
+                                <SelectItem key={option} value={option}>
+                                  {option}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                           <FormMessage />
