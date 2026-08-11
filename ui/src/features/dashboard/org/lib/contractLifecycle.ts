@@ -89,6 +89,17 @@ export function isInGracePeriod(contractEndYmd: string, todayYmd: string): boole
   return since != null && since >= 0 && since <= GRACE_DAYS_INCLUSIVE;
 }
 
+/** Days until access lock (T+5) while in grace (T+0…T+4). */
+export function daysUntilContractAccessLock(
+  contractEndYmd: string,
+  todayYmd: string
+): number | null {
+  if (!isInGracePeriod(contractEndYmd, todayYmd)) return null;
+  const since = daysSinceContractEnd(contractEndYmd, todayYmd);
+  if (since == null) return null;
+  return LOCK_DAY_OFFSET - since;
+}
+
 export function hasActiveConsiderationGrant(
   lifecycle: ContractLegLifecycle,
   todayYmd: string
@@ -162,6 +173,55 @@ export function parseContractLegLifecycle(raw: unknown): ContractLegLifecycle {
       allowConsiderationOverride: c.allowConsiderationOverride === true,
     },
   };
+}
+
+/** Pre-expiry in-app reminder window (days before end, inclusive). Aligns with t_minus_15 email. */
+export const PRE_EXPIRY_REMINDER_MAX_DAYS = 15;
+
+export function isInPreExpiryWindow(
+  contractEndYmd: string,
+  todayYmd: string,
+  maxDaysBefore: number = PRE_EXPIRY_REMINDER_MAX_DAYS
+): boolean {
+  const until = daysUntilContractEnd(contractEndYmd, todayYmd);
+  return until >= 1 && until <= maxDaysBefore;
+}
+
+export type ListingContractRenewalPhase = 'none' | 'pre_expiry' | 'grace' | 'locked' | 'granted';
+
+/** Listing had (or has) a contract-end lifecycle — includes residual state after rights changes. */
+export function listingHasContractRenewalLifecycle(
+  contractEndYmd: string | null,
+  lifecycle: ContractLegLifecycle
+): boolean {
+  if (contractEndYmd) return true;
+  if (lifecycle.accessLockedAt) return true;
+  if (Object.keys(lifecycle.noticesSent).length > 0) return true;
+  if (lifecycle.consideration.status !== 'none') return true;
+  return false;
+}
+
+export function resolveListingContractRenewalPhase(
+  contractEndYmd: string | null,
+  lifecycle: ContractLegLifecycle,
+  todayYmd: string
+): ListingContractRenewalPhase {
+  if (hasActiveConsiderationGrant(lifecycle, todayYmd)) return 'granted';
+  if (isListingAccessLocked(lifecycle)) return 'locked';
+
+  const { status, grantedUntil } = lifecycle.consideration;
+  if (status === 'granted' && grantedUntil && grantedUntil < todayYmd) {
+    return 'locked';
+  }
+
+  if (contractEndYmd) {
+    if (isInGracePeriod(contractEndYmd, todayYmd)) return 'grace';
+    if (isInPreExpiryWindow(contractEndYmd, todayYmd)) return 'pre_expiry';
+    const since = daysSinceContractEnd(contractEndYmd, todayYmd);
+    if (since != null && since >= LOCK_DAY_OFFSET) return 'locked';
+  }
+
+  return 'none';
 }
 
 export function readContractLegLifecycleFromVerification(

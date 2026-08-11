@@ -50,6 +50,7 @@ import { SectionNavIssueDot } from '@/features/dashboard/org/components/property
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useOptionalParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
 import { SidebarTenantScope } from '@/features/dashboard/org/components/TenantSwitchers';
+import { ListingContractRenewalProvider } from '@/features/dashboard/org/components/listing-authorization/ListingContractRenewalProvider';
 import { ListingVerificationSidebarCta } from '@/features/dashboard/org/components/listing-authorization/ListingVerificationSidebarCta';
 import {
   GetVerifiedSidebarCta,
@@ -144,9 +145,11 @@ export function AdminLayoutOutlet() {
   return (
     <AdminLayoutFillMainContext.Provider value={setFill}>
       <AdminLayoutFillMainActiveContext.Provider value={fillMain}>
-        <AdminLayout fillMain={fillMain}>
-          <Outlet />
-        </AdminLayout>
+        <ListingContractRenewalProvider>
+          <AdminLayout fillMain={fillMain}>
+            <Outlet />
+          </AdminLayout>
+        </ListingContractRenewalProvider>
       </AdminLayoutFillMainActiveContext.Provider>
     </AdminLayoutFillMainContext.Provider>
   );

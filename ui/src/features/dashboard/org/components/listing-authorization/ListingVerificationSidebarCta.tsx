@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 
 import { Home } from 'lucide-react';
 
+import { useListingContractRenewalContext } from '@/features/dashboard/org/components/listing-authorization/ListingContractRenewalProvider';
 import { ListingVerificationModal } from '@/features/dashboard/org/components/listing-authorization/ListingVerificationModal';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useOptionalParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
@@ -25,6 +26,7 @@ type Props = {
 
 export function ListingVerificationSidebarCta({ collapsed, variant = 'sidebar' }: Props) {
   const [open, setOpen] = useState(false);
+  const { setListingVerificationModalOpen } = useListingContractRenewalContext();
   const [searchParams, setSearchParams] = useSearchParams();
   const propertyCtx = useOptionalOrgContext();
   const parkingCtx = useOptionalParkingContext();
@@ -33,9 +35,18 @@ export function ListingVerificationSidebarCta({ collapsed, variant = 'sidebar' }
   const listing = parkingCtx?.parking ?? propertyCtx?.property ?? null;
   const org = parkingCtx?.org ?? propertyCtx?.org ?? null;
 
+  const setVerificationOpen = (next: boolean) => {
+    setOpen(next);
+  };
+
+  useEffect(() => {
+    setListingVerificationModalOpen(open);
+    return () => setListingVerificationModalOpen(false);
+  }, [open, setListingVerificationModalOpen]);
+
   useEffect(() => {
     if (searchParams.get(OPEN_QUERY) === 'open' && listing && org) {
-      setOpen(true);
+      setVerificationOpen(true);
       const next = new URLSearchParams(searchParams);
       next.delete(OPEN_QUERY);
       setSearchParams(next, { replace: true });
@@ -57,7 +68,7 @@ export function ListingVerificationSidebarCta({ collapsed, variant = 'sidebar' }
   const modal = (
     <ListingVerificationModal
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={setVerificationOpen}
       orgId={org.id}
       orgSlug={org.slug}
       listingKind={listingKind}
@@ -73,7 +84,7 @@ export function ListingVerificationSidebarCta({ collapsed, variant = 'sidebar' }
       <>
         <button
           type="button"
-          onClick={() => setOpen(true)}
+          onClick={() => setVerificationOpen(true)}
           title={label}
           aria-label={label}
           className="border-primary/25 from-primary/[0.12] to-primary/[0.04] text-primary hover:from-primary/15 hover:to-primary/[0.08] flex size-10 shrink-0 items-center justify-center rounded-xl border bg-gradient-to-br shadow-sm transition-colors"
@@ -92,7 +103,7 @@ export function ListingVerificationSidebarCta({ collapsed, variant = 'sidebar' }
       >
         <button
           type="button"
-          onClick={() => setOpen(true)}
+          onClick={() => setVerificationOpen(true)}
           title={collapsed ? label : undefined}
           className={cn(
             'border-primary/25 from-primary/[0.12] to-primary/[0.04] text-primary hover:from-primary/15 hover:to-primary/[0.08] flex min-h-[44px] w-full items-center rounded-xl border bg-gradient-to-br shadow-sm transition-colors',

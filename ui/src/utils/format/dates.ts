@@ -53,6 +53,14 @@ export const formatDateToLongFormat = (dateString: string): string => {
   }
 };
 
+/** ISO `YYYY-MM-DD` → `January 1, 2026` for user-facing contract dates. */
+export function formatYmdToFullLongDate(ymd: string | null | undefined): string {
+  if (!ymd) return '';
+  const date = dayjs(ymd.slice(0, 10), 'YYYY-MM-DD', true);
+  if (!date.isValid()) return '';
+  return date.format('MMMM D, YYYY');
+}
+
 /** User-facing 12-hour time (e.g. `2:00 PM`). Accepts DB `HH:mm` or legacy `h:mm A`. */
 export const formatTimeToAMPM = (time: string, isCheckIn: boolean = false): string => {
   const fallback = isCheckIn ? '2:00 PM' : '11:00 AM';

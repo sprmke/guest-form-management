@@ -7,16 +7,14 @@ import { OnboardingProofUpload } from '@/features/dashboard/org/components/onboa
 import { OnboardingVerificationRightsFields } from '@/features/dashboard/org/components/onboarding/OnboardingVerificationRightsFields';
 import { ListingRecommendedBadgePreview } from '@/features/dashboard/org/components/listing-authorization/ListingRecommendedBadgePreview';
 import { ListingVerificationSubmittedDocs } from '@/features/dashboard/org/components/listing-authorization/ListingVerificationSubmittedDocs';
-import {
-  VerificationTierProgress,
-  defaultVerificationStepIndex,
-} from '@/features/dashboard/org/components/verification/VerificationTierProgress';
+import { VerificationTierProgress } from '@/features/dashboard/org/components/verification/VerificationTierProgress';
 import {
   useListingAuthorizationAssets,
   useListingAuthorizationMutations,
 } from '@/features/dashboard/org/hooks/useListingAuthorization';
 import {
   isInGracePeriod,
+  isInPreExpiryWindow,
   isListingAccessLocked,
 } from '@/features/dashboard/org/lib/contractLifecycle';
 import {
@@ -24,6 +22,7 @@ import {
   canSubmitRecommendedListingAuthorization,
   isListingAuthorizationChangesRequested,
   isListingAuthorizationHardRejected,
+  isListingRenewEligible,
   listingRightsNeedContractEnd,
   readListingAuthorizationSummary,
   type ListingAuthorizationAssetType,
@@ -162,8 +161,15 @@ export function ListingVerificationModal({
     isInGracePeriod(remoteAuthorization.contractEndDate, today) &&
     remoteAuthorization.baseStatus === 'approved'
   );
+  const inPreExpiry = Boolean(
+    remoteAuthorization.contractEndDate &&
+    isInPreExpiryWindow(remoteAuthorization.contractEndDate, today) &&
+    remoteAuthorization.baseStatus === 'approved'
+  );
   const locked = isListingAccessLocked(remoteAuthorization.lifecycle);
-  const renewMode = remoteAuthorization.baseStatus === 'approved' && (inGrace || locked);
+  const renewMode =
+    remoteAuthorization.baseStatus === 'approved' &&
+    isListingRenewEligible(remoteAuthorization, today);
 
   const baseEditable =
     isOwner &&
@@ -187,13 +193,13 @@ export function ListingVerificationModal({
     setLocalPreviews({});
     setBaseTouched(false);
     setRecommendedTouched(false);
-    setActiveStep(
-      defaultListingVerificationStepIndex(remoteAuthorization) ||
-        defaultVerificationStepIndex(tiers)
-    );
+    setActiveStep(defaultListingVerificationStepIndex(remoteAuthorization, { renewMode }));
   }, [
     open,
     listingId,
+    renewMode,
+    remoteAuthorization.baseStatus,
+    remoteAuthorization.recommendedStatus,
     remoteAuthorization.baseSubmittedAt,
     remoteAuthorization.recommendedSubmittedAt,
   ]);
@@ -288,6 +294,11 @@ export function ListingVerificationModal({
         </h4>
         <p className="text-muted-foreground text-xs leading-relaxed">{baseTier.benefit}</p>
       </div>
+      {inPreExpiry ? (
+        <p className="text-muted-foreground text-sm" role="status">
+          Contract ends soon — submit a renewal before the end date.
+        </p>
+      ) : null}
       {inGrace ? (
         <p className="text-sm text-amber-800 dark:text-amber-100" role="status">
           Contract ended — renew listing verification to keep this listing active.

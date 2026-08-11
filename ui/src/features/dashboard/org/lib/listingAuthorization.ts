@@ -6,9 +6,13 @@
 
 import {
   emptyContractLegLifecycle,
+  listingHasContractRenewalLifecycle,
   parseContractLegLifecycle,
+  resolveListingContractRenewalPhase,
   type ContractLegLifecycle,
+  type ListingContractRenewalPhase,
 } from './contractLifecycle.ts';
+import { todayManilaYmd } from './orgVerification.ts';
 import {
   ORG_VERIFICATION_RIGHTS,
   verificationRightsNeedsContractEnd,
@@ -189,6 +193,30 @@ export function canSubmitRecommendedListingAuthorization(
 export function isListingAuthorized(state: ListingAuthorizationSummary): boolean {
   return state.baseStatus === 'approved';
 }
+
+export function isListingRenewEligible(
+  state: ListingAuthorizationSummary,
+  todayYmd: string = todayManilaYmd()
+): boolean {
+  if (state.baseStatus !== 'approved') return false;
+  const phase = resolveListingContractRenewalPhase(
+    state.contractEndDate,
+    state.lifecycle,
+    todayYmd
+  );
+  return phase === 'pre_expiry' || phase === 'grace' || phase === 'locked';
+}
+
+export function canSubmitListingRenewal(
+  state: ListingAuthorizationSummary,
+  todayYmd: string = todayManilaYmd()
+): boolean {
+  if (!isListingRenewEligible(state, todayYmd)) return false;
+  return canSubmitBaseListingAuthorization(state);
+}
+
+export { listingHasContractRenewalLifecycle, resolveListingContractRenewalPhase };
+export type { ListingContractRenewalPhase };
 
 /** Sidebar entry stays visible once listing verification has started. */
 export function shouldShowListingVerificationCta(state: ListingAuthorizationSummary): boolean {

@@ -2,6 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { supabase } from '@/lib/supabase/client';
 
+import {
+  clearLegacyOrgRenewalSessionStorage,
+  clearOrgRenewalAutoShownForUser,
+} from '@/features/dashboard/org/lib/listingContractRenewalSession';
+
 import type { Session } from '@supabase/supabase-js';
 
 export type AdminSessionState = {
@@ -46,10 +51,13 @@ export function useAdminSession(): AdminSessionState {
         });
     }
 
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, next) => {
+    const { data: subscription } = supabase.auth.onAuthStateChange((event, next) => {
       hydratedSession = next;
       setSession(next);
       setIsLoading(false);
+      if (event === 'SIGNED_OUT') {
+        clearLegacyOrgRenewalSessionStorage();
+      }
     });
 
     return () => {
@@ -73,6 +81,11 @@ export function useAdminSession(): AdminSessionState {
     name,
     isLoading,
     signOut: async () => {
+      const userId = hydratedSession?.user?.id;
+      if (userId) {
+        clearOrgRenewalAutoShownForUser(userId);
+      }
+      clearLegacyOrgRenewalSessionStorage();
       await supabase.auth.signOut();
     },
   };

@@ -130,10 +130,14 @@ export function buildListingVerificationTiers(
   ];
 }
 
-/** Which tab the modal lands on. Tier 1 owns attention until it is settled. */
-export function defaultListingVerificationStepIndex(state: ListingAuthorizationSummary): number {
-  if (state.baseStatus !== 'approved') return 0;
-  return 1;
+/** Which tab the modal lands on when it opens. */
+export function defaultListingVerificationStepIndex(
+  state: ListingAuthorizationSummary,
+  options?: { renewMode?: boolean }
+): number {
+  if (options?.renewMode || state.baseStatus !== 'approved') return 0;
+  if (state.recommendedStatus === 'none') return 1;
+  return 0;
 }
 
 export function listingVerificationSidebarLabel(state: ListingAuthorizationSummary): string {
