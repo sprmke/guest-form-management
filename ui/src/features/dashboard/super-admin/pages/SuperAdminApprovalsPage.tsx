@@ -7,11 +7,13 @@ import { SuperAdminApprovalReviewDialog } from '@/features/dashboard/super-admin
 import { SuperAdminApprovalsCardGrid } from '@/features/dashboard/super-admin/components/super-admin-approvals/SuperAdminApprovalsCardGrid';
 import { SuperAdminApprovalsTable } from '@/features/dashboard/super-admin/components/super-admin-approvals/SuperAdminApprovalsTable';
 import { SuperAdminExternalReviewDialog } from '@/features/dashboard/super-admin/components/super-admin-approvals/SuperAdminExternalReviewDialog';
+import { SuperAdminListingVerificationDialog } from '@/features/dashboard/super-admin/components/super-admin-approvals/SuperAdminListingVerificationDialog';
 import { useApprovals } from '@/features/dashboard/super-admin/hooks/useApprovals';
 import {
   DEFAULT_APPROVALS_FILTERS,
   filterSuperAdminApprovals,
   isExternalReviewApprovalSummary,
+  isListingVerificationApprovalSummary,
   isOrgApprovalSummary,
   superAdminApprovalsHasActiveFilters,
   type SuperAdminApprovalsFilters,
@@ -19,6 +21,7 @@ import {
 import type {
   ApprovalQueueItem,
   ExternalReviewApprovalSummary,
+  ListingVerificationApprovalSummary,
   OrgApprovalSummary,
 } from '@/features/dashboard/super-admin/types/approval';
 
@@ -47,6 +50,9 @@ export function SuperAdminApprovalsPage() {
   const { data: approvals = [], isLoading, error } = useApprovals();
   const [filters, setFilters] = useState<SuperAdminApprovalsFilters>(DEFAULT_APPROVALS_FILTERS);
   const [selectedOrg, setSelectedOrg] = useState<OrgApprovalSummary | null>(null);
+  const [selectedListing, setSelectedListing] = useState<ListingVerificationApprovalSummary | null>(
+    null
+  );
   const [selectedReview, setSelectedReview] = useState<ExternalReviewApprovalSummary | null>(null);
   const isMobileLayout = useIsBelowLg();
 
@@ -59,11 +65,19 @@ export function SuperAdminApprovalsPage() {
   function handleSelect(item: ApprovalQueueItem) {
     if (isOrgApprovalSummary(item)) {
       setSelectedReview(null);
+      setSelectedListing(null);
       setSelectedOrg(item);
+      return;
+    }
+    if (isListingVerificationApprovalSummary(item)) {
+      setSelectedOrg(null);
+      setSelectedReview(null);
+      setSelectedListing(item);
       return;
     }
     if (isExternalReviewApprovalSummary(item)) {
       setSelectedOrg(null);
+      setSelectedListing(null);
       setSelectedReview(item);
     }
   }
@@ -114,6 +128,7 @@ export function SuperAdminApprovalsPage() {
                   <SelectItem value="all">All types</SelectItem>
                   <SelectItem value="property">Property</SelectItem>
                   <SelectItem value="parking">Parking</SelectItem>
+                  <SelectItem value="listing_verification">Listing verification</SelectItem>
                   <SelectItem value="reviews">Reviews</SelectItem>
                 </SelectContent>
               </Select>
@@ -158,6 +173,13 @@ export function SuperAdminApprovalsPage() {
         approval={selectedOrg}
         onOpenChange={(open) => {
           if (!open) setSelectedOrg(null);
+        }}
+      />
+
+      <SuperAdminListingVerificationDialog
+        approval={selectedListing}
+        onOpenChange={(open) => {
+          if (!open) setSelectedListing(null);
         }}
       />
 

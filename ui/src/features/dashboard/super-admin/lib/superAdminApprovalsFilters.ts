@@ -2,6 +2,7 @@ import type { OrgVerificationStatus } from '@/features/dashboard/org/lib/orgVeri
 import type {
   ApprovalQueueItem,
   ExternalReviewApprovalSummary,
+  ListingVerificationApprovalSummary,
   OrgApprovalSummary,
   SuperAdminApprovalTypeFilter,
 } from '@/features/dashboard/super-admin/types/approval';
@@ -24,6 +25,7 @@ export const DEFAULT_APPROVALS_FILTERS: SuperAdminApprovalsFilters = {
 function matchesTypeFilter(item: ApprovalQueueItem, type: SuperAdminApprovalTypeFilter): boolean {
   if (type === 'all') return true;
   if (type === 'reviews') return item.type === 'external_review';
+  if (type === 'listing_verification') return item.type === 'listing_verification';
   if (item.type !== 'org_verification') return false;
   if (type === 'property') return item.hostModes.includes('property');
   if (type === 'parking') return item.hostModes.includes('parking');
@@ -39,6 +41,24 @@ function matchesStatusFilter(
   if (item.type === 'external_review') {
     if (status === 'changes') return false;
     return item.moderationStatus === status;
+  }
+
+  if (item.type === 'listing_verification') {
+    const queuePending = item.baseStatus === 'pending' || item.recommendedStatus === 'pending';
+    if (status === 'changes') {
+      const baseChanges = item.baseStatus === 'rejected' && item.baseRejectionKind === 'changes';
+      const recommendedChanges =
+        item.recommendedStatus === 'rejected' && item.recommendedRejectionKind === 'changes';
+      return baseChanges || recommendedChanges;
+    }
+    if (status === 'rejected') {
+      const baseHard = item.baseStatus === 'rejected' && item.baseRejectionKind !== 'changes';
+      const recommendedHard =
+        item.recommendedStatus === 'rejected' && item.recommendedRejectionKind !== 'changes';
+      return baseHard || recommendedHard;
+    }
+    if (status === 'pending') return queuePending;
+    return item.baseStatus === status || item.recommendedStatus === status;
   }
 
   const queuePending = item.baseStatus === 'pending' || item.enhancedStatus === 'pending';
@@ -82,6 +102,19 @@ export function filterSuperAdminApprovals(
       return haystack.includes(search);
     }
 
+    if (item.type === 'listing_verification') {
+      const haystack = [
+        item.listingName,
+        item.organizationName,
+        item.ownerName,
+        item.ownerEmail,
+        item.listingKind,
+      ]
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(search);
+    }
+
     const haystack = [item.organizationName, item.ownerName, item.ownerEmail]
       .join(' ')
       .toLowerCase();
@@ -101,6 +134,12 @@ export function isOrgApprovalSummary(item: ApprovalQueueItem): item is OrgApprov
   return item.type === 'org_verification';
 }
 
+export function isListingVerificationApprovalSummary(
+  item: ApprovalQueueItem
+): item is ListingVerificationApprovalSummary {
+  return item.type === 'listing_verification';
+}
+
 export function isExternalReviewApprovalSummary(
   item: ApprovalQueueItem
 ): item is ExternalReviewApprovalSummary {
@@ -110,6 +149,9 @@ export function isExternalReviewApprovalSummary(
 export function approvalQueueItemKey(item: ApprovalQueueItem): string {
   if (item.type === 'external_review') {
     return `review:${item.propertyId}:${item.reviewId}`;
+  }
+  if (item.type === 'listing_verification') {
+    return `listing:${item.listingKind}:${item.listingId}`;
   }
   return `org:${item.organizationId}`;
 }

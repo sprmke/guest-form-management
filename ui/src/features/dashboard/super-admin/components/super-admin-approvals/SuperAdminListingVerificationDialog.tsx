@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { Ban, FileText, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { OrgListingVerificationRollup } from '@/features/dashboard/org/components/listing-authorization/OrgListingVerificationRollup';
 import {
   VerificationDocFullViewDialog,
   VerificationDocPreviewCard,
@@ -13,8 +12,12 @@ import {
 } from '@/features/dashboard/org/components/verification/VerificationDocPreview';
 import { VerificationDocThumbnail } from '@/features/dashboard/org/components/verification/VerificationDocThumbnail';
 import { VerificationStatusBadge } from '@/features/dashboard/org/components/verification/VerificationStatusBadge';
-import { ORG_SOCIAL_PROOF_PLATFORMS } from '@/features/dashboard/org/lib/orgVerification';
-import { VERIFICATION_TIER2_DOC_LABELS } from '@/features/dashboard/org/lib/verificationCopy';
+import { ORG_VERIFICATION_RIGHTS } from '@/features/dashboard/org/lib/orgVerification';
+import {
+  LISTING_VERIFICATION_DOC_LABELS,
+  listingKindLabel,
+} from '@/features/dashboard/org/lib/listingVerificationCopy';
+import { formatTowerAndUnit } from '@/features/dashboard/org/lib/propertyTowerUnit';
 import {
   formatSuperAdminApprovalDate,
   superAdminApprovalDialogBodyClass,
@@ -26,33 +29,49 @@ import {
   SuperAdminApprovalInfoRow,
 } from '@/features/dashboard/super-admin/components/super-admin-approvals/SuperAdminApprovalDialogLayout';
 import {
-  useApproveOrgVerification,
-  useDecideContractConsideration,
-  useOrgVerificationAssets,
-  useRejectOrgVerification,
+  useApproveListingAuthorization,
+  useApproveListingRecommended,
+  useListingAuthorizationAssets,
+  useRejectListingAuthorization,
 } from '@/features/dashboard/super-admin/hooks/useApprovals';
 import {
-  approvalHasDualTierQueue,
-  defaultApprovalReviewTier,
-  type ApprovalReviewTier,
-} from '@/features/dashboard/super-admin/lib/approvalReviewTier';
+  defaultListingApprovalReviewTier,
+  listingApprovalHasDualTierQueue,
+  listingApprovalTierRejectionKind,
+  listingApprovalTierRejectionReason,
+  listingApprovalTierStatus,
+  listingApprovalTierSubmittedAt,
+  type ListingApprovalReviewTier,
+} from '@/features/dashboard/super-admin/lib/listingApprovalReviewTier';
+import {
+  buildListingChangeDocOptions,
+  type ListingChangeDocId,
+} from '@/features/dashboard/super-admin/lib/listingRequestChangesMessage';
 import {
   buildRejectionMessage,
   HOST_REJECTION_REASON_OPTIONS,
   type HostRejectionReasonId,
 } from '@/features/dashboard/super-admin/lib/rejectReasonOptions';
 import {
-  buildChangeDocOptions,
   buildRequestChangesMessage,
   HOST_REQUEST_CHANGES_REASON_OPTIONS,
-  type ChangeDocId,
   type HostRequestChangesReasonId,
 } from '@/features/dashboard/super-admin/lib/requestChangesMessage';
 import type {
-  OrgApprovalSummary,
-  OrgApprovalVerification,
+  ListingVerificationApprovalSummary,
+  OrgApprovalUnitConflict,
 } from '@/features/dashboard/super-admin/types/approval';
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -74,7 +93,6 @@ import { cn } from '@/lib/utils';
 
 type Panel = 'review' | 'changes' | 'reject';
 
-/** Wide, wrapping reason dropdown — long labels stay readable in the panel. */
 const reasonSelectTriggerClass =
   'h-auto min-h-[44px] items-start gap-2 py-2.5 text-left [&>span]:line-clamp-none [&>span]:flex-1 [&>span]:whitespace-normal [&>span]:break-words';
 const reasonSelectContentClass =
@@ -82,54 +100,77 @@ const reasonSelectContentClass =
 const reasonSelectItemClass =
   'items-start whitespace-normal py-2.5 pl-9 pr-3 leading-snug [&>span:last-child]:whitespace-normal [&>span:last-child]:break-words';
 
-function platformLabel(value: string | null): string | null {
+function rightsLabel(value: string | null): string | null {
   if (!value) return null;
-  return ORG_SOCIAL_PROOF_PLATFORMS.find((p) => p.value === value)?.label ?? value;
+  return ORG_VERIFICATION_RIGHTS.find((r) => r.value === value)?.label ?? value;
 }
 
-function hostModesLabel(hostModes: string[]): string {
-  const hasProperty = hostModes.includes('property');
-  const hasParking = hostModes.includes('parking');
-  if (hasProperty && hasParking) return 'Property + Parking';
-  if (hasParking) return 'Parking';
-  return 'Property';
+function successionConfirmMessage(conflicts: OrgApprovalUnitConflict[]): string {
+  const orgNames = [...new Set(conflicts.map((c) => c.orgName.trim()).filter(Boolean))];
+  const orgLabel = orgNames[0] || 'the current host';
+  if (orgNames.length <= 1) {
+    return `Archive ${orgLabel}'s active listing and activate this one. Future bookings stay on the old property.`;
+  }
+  return `Archive active listings from ${orgNames.join(', ')} and activate this one. Future bookings stay on the old property.`;
 }
 
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return <SuperAdminApprovalInfoRow label={label} value={value} />;
+function UnitConflictList({ conflicts }: { conflicts: OrgApprovalUnitConflict[] }) {
+  if (conflicts.length === 0) return null;
+
+  return (
+    <section className="space-y-3">
+      <p className="text-foreground text-xs font-semibold uppercase tracking-wide">
+        Active listing
+      </p>
+      <ul className="border-border divide-border divide-y overflow-hidden rounded-xl border">
+        {conflicts.map((conflict) => {
+          const orgLabel = conflict.orgName.trim() || 'Unknown org';
+          const unitLabel = formatTowerAndUnit(conflict.tower, conflict.unitNumber);
+          return (
+            <li
+              key={conflict.propertyId}
+              className="flex min-h-[44px] flex-col gap-0.5 px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+            >
+              <div className="min-w-0">
+                <p className="text-foreground truncate text-sm font-medium">{orgLabel}</p>
+                <p className="text-muted-foreground truncate text-xs tabular-nums">{unitLabel}</p>
+              </div>
+              <span className="text-muted-foreground shrink-0 text-xs font-medium uppercase tracking-wide">
+                {conflict.status || 'ACTIVE'}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
 }
 
-function formatApprovalDate(value: string | null): string {
-  return formatSuperAdminApprovalDate(value);
-}
-
-function ApprovalReviewTierSwitcher({
+function ListingReviewTierSwitcher({
   reviewTier,
-  verification,
+  approval,
+  detail,
   onChange,
 }: {
-  reviewTier: ApprovalReviewTier;
-  verification: OrgApprovalVerification;
-  onChange: (tier: ApprovalReviewTier) => void;
+  reviewTier: ListingApprovalReviewTier;
+  approval: ListingVerificationApprovalSummary;
+  detail: NonNullable<ReturnType<typeof useListingAuthorizationAssets>['data']> | undefined;
+  onChange: (tier: ListingApprovalReviewTier) => void;
 }) {
-  const tiers: Array<{ id: ApprovalReviewTier; label: string }> = [
+  const tiers: Array<{ id: ListingApprovalReviewTier; label: string }> = [
     { id: 'base', label: 'Verified' },
-    { id: 'enhanced', label: 'Recommended' },
+    { id: 'recommended', label: 'Recommended' },
   ];
 
   return (
     <div
       className="border-border bg-muted/30 flex flex-wrap gap-1 rounded-xl border p-1"
       role="tablist"
-      aria-label="Verification tier"
+      aria-label="Listing verification tier"
     >
       {tiers.map((tier) => {
-        const status =
-          tier.id === 'enhanced' ? verification.enhancedStatus : verification.baseStatus;
-        const kind =
-          tier.id === 'enhanced'
-            ? verification.enhancedRejectionKind
-            : verification.baseRejectionKind;
+        const status = listingApprovalTierStatus(approval, tier.id, detail ?? null);
+        const kind = listingApprovalTierRejectionKind(approval, tier.id, detail ?? null);
         const selected = reviewTier === tier.id;
         return (
           <button
@@ -155,17 +196,18 @@ function ApprovalReviewTierSwitcher({
 }
 
 type Props = {
-  approval: OrgApprovalSummary | null;
+  approval: ListingVerificationApprovalSummary | null;
   onOpenChange: (open: boolean) => void;
 };
 
-export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props) {
+export function SuperAdminListingVerificationDialog({ approval, onOpenChange }: Props) {
   const open = Boolean(approval);
-  const orgId = approval?.organizationId;
-  const { data: detail, isLoading } = useOrgVerificationAssets(orgId);
-  const approveMutation = useApproveOrgVerification();
-  const rejectMutation = useRejectOrgVerification();
-  const decideConsideration = useDecideContractConsideration();
+  const listingKind = approval?.listingKind;
+  const listingId = approval?.listingId;
+  const { data: detail, isLoading } = useListingAuthorizationAssets(listingKind, listingId, open);
+  const approveBase = useApproveListingAuthorization();
+  const approveRecommended = useApproveListingRecommended();
+  const rejectMutation = useRejectListingAuthorization();
 
   const [panel, setPanel] = useState<Panel>('review');
   const [rejectReasonId, setRejectReasonId] = useState<HostRejectionReasonId | ''>('');
@@ -174,14 +216,14 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
     Set<HostRequestChangesReasonId>
   >(() => new Set());
   const [changeNote, setChangeNote] = useState('');
-  const [selectedDocs, setSelectedDocs] = useState<Set<ChangeDocId>>(() => new Set());
+  const [selectedDocs, setSelectedDocs] = useState<Set<ListingChangeDocId>>(() => new Set());
   const [fullView, setFullView] = useState<VerificationPreviewAsset | null>(null);
-  const [reviewTier, setReviewTier] = useState<ApprovalReviewTier>('base');
+  const [approveConfirmOpen, setApproveConfirmOpen] = useState(false);
+  const [reviewTier, setReviewTier] = useState<ListingApprovalReviewTier>('base');
 
-  const hostModes = detail?.organization.hostModes ?? approval?.hostModes ?? [];
   const changeDocOptions = useMemo(
-    () => (detail ? buildChangeDocOptions(detail) : []),
-    [detail, hostModes]
+    () => (detail ? buildListingChangeDocOptions(detail, reviewTier) : []),
+    [detail, reviewTier]
   );
   const selectedLabels = changeDocOptions
     .filter((option) => selectedDocs.has(option.id))
@@ -204,31 +246,24 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
     setSelectedChangeReasons(new Set());
     setChangeNote('');
     setSelectedDocs(new Set());
-  }, [open, orgId]);
+    setApproveConfirmOpen(false);
+  }, [open, listingId, listingKind]);
 
   useEffect(() => {
     if (!open || !approval) return;
-    setReviewTier(defaultApprovalReviewTier(approval, detail?.verification));
-  }, [open, approval, detail?.verification]);
+    setReviewTier(defaultListingApprovalReviewTier(approval, detail ?? null));
+  }, [open, approval, detail]);
 
   if (!approval) return null;
 
-  const dualTierQueue = approvalHasDualTierQueue(approval);
-  const status =
-    reviewTier === 'enhanced'
-      ? (detail?.verification.enhancedStatus ?? approval.enhancedStatus)
-      : (detail?.verification.baseStatus ?? approval.baseStatus);
-  const rejectionKind =
-    reviewTier === 'enhanced'
-      ? (detail?.verification.enhancedRejectionKind ?? null)
-      : (detail?.verification.baseRejectionKind ?? approval.baseRejectionKind ?? null);
-  const rejectionReason =
-    reviewTier === 'enhanced'
-      ? (detail?.verification.enhancedRejectionReason ?? null)
-      : (detail?.verification.baseRejectionReason ?? approval.baseRejectionReason ?? null);
+  const unitConflicts = approval.unitConflicts ?? [];
+  const hasActiveUnitConflict = approval.hasActiveUnitConflict === true || unitConflicts.length > 0;
+  const dualTierQueue = listingApprovalHasDualTierQueue(approval);
+  const status = listingApprovalTierStatus(approval, reviewTier, detail ?? null);
+  const rejectionKind = listingApprovalTierRejectionKind(approval, reviewTier, detail ?? null);
+  const rejectionReason = listingApprovalTierRejectionReason(approval, reviewTier, detail ?? null);
   const decided = status !== 'pending';
-  const verification = detail?.verification;
-  const busy = approveMutation.isPending || rejectMutation.isPending;
+  const busy = approveBase.isPending || approveRecommended.isPending || rejectMutation.isPending;
 
   const close = () => {
     setPanel('review');
@@ -238,12 +273,8 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
     setChangeNote('');
     setSelectedDocs(new Set());
     setFullView(null);
+    setApproveConfirmOpen(false);
     onOpenChange(false);
-  };
-
-  const switchReviewTier = (tier: ApprovalReviewTier) => {
-    setReviewTier(tier);
-    backToReview();
   };
 
   const backToReview = () => {
@@ -255,7 +286,12 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
     setSelectedDocs(new Set());
   };
 
-  const toggleDoc = (id: ChangeDocId, checked: boolean) => {
+  const switchReviewTier = (tier: ListingApprovalReviewTier) => {
+    setReviewTier(tier);
+    backToReview();
+  };
+
+  const toggleDoc = (id: ListingChangeDocId, checked: boolean) => {
     setSelectedDocs((prev) => {
       const next = new Set(prev);
       if (checked) next.add(id);
@@ -274,29 +310,47 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
   };
 
   const handleApprove = async () => {
+    if (!approval) return;
     try {
-      await approveMutation.mutateAsync({ orgId: approval.organizationId, tier: reviewTier });
-      toast.success(
-        reviewTier === 'enhanced'
-          ? `${approval.organizationName} Recommended tier approved`
-          : `${approval.organizationName} approved`
-      );
+      if (reviewTier === 'recommended') {
+        await approveRecommended.mutateAsync({
+          listingKind: approval.listingKind,
+          listingId: approval.listingId,
+        });
+        toast.success(`${approval.listingName} Recommended tier approved`);
+      } else {
+        await approveBase.mutateAsync({
+          listingKind: approval.listingKind,
+          listingId: approval.listingId,
+        });
+        toast.success(`${approval.listingName} approved`);
+      }
+      setApproveConfirmOpen(false);
       close();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Approval failed');
     }
   };
 
+  const requestApprove = () => {
+    if (reviewTier === 'base' && approval.listingKind === 'property' && hasActiveUnitConflict) {
+      setApproveConfirmOpen(true);
+      return;
+    }
+    void handleApprove();
+  };
+
   const handleReject = async () => {
-    if (!rejectMessage) return;
+    if (!rejectMessage || !approval) return;
     try {
       await rejectMutation.mutateAsync({
-        orgId: approval.organizationId,
+        listingKind: approval.listingKind,
+        listingId: approval.listingId,
         tier: reviewTier,
         kind: 'rejected',
         reason: rejectMessage,
       });
-      toast.success(`${approval.organizationName} rejected`);
+      toast.success(`${approval.listingName} rejected`);
       close();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not save decision');
@@ -304,21 +358,24 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
   };
 
   const handleRequestChanges = async () => {
-    if (!changesMessage) return;
+    if (!changesMessage || !approval) return;
     try {
       await rejectMutation.mutateAsync({
-        orgId: approval.organizationId,
+        listingKind: approval.listingKind,
+        listingId: approval.listingId,
         tier: reviewTier,
         kind: 'changes',
         reason: changesMessage,
-        ...(reviewTier === 'base' ? { changesRequestedDocs: Array.from(selectedDocs) } : {}),
       });
-      toast.success(`${approval.organizationName}: changes requested`);
+      toast.success(`${approval.listingName}: changes requested`);
       close();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not request changes');
     }
   };
+
+  const relationship = detail?.authorization.relationship ?? approval.relationship ?? null;
+  const contractEndDate = detail?.authorization.contractEndDate ?? approval.contractEndDate ?? null;
 
   return (
     <>
@@ -345,8 +402,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                     Request changes
                   </ResponsiveModalTitle>
                   <p className="text-muted-foreground truncate text-xs">
-                    {approval.organizationName}
-                    {approval.ownerName ? ` · ${approval.ownerName}` : ''}
+                    {approval.listingName} · {approval.organizationName}
                   </p>
                 </div>
               </div>
@@ -360,8 +416,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                     Reject
                   </ResponsiveModalTitle>
                   <p className="text-muted-foreground truncate text-xs">
-                    {approval.organizationName}
-                    {approval.ownerName ? ` · ${approval.ownerName}` : ''}
+                    {approval.listingName} · {approval.organizationName}
                   </p>
                 </div>
               </div>
@@ -369,11 +424,11 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
               <>
                 <div className="flex flex-wrap items-center gap-2">
                   <ResponsiveModalTitle className="text-lg font-semibold">
-                    {approval.organizationName}
+                    {approval.listingName}
                   </ResponsiveModalTitle>
                   {!dualTierQueue ? (
                     <span className="text-muted-foreground text-xs font-medium">
-                      {reviewTier === 'enhanced' ? 'Recommended' : 'Verified'}
+                      {reviewTier === 'recommended' ? 'Recommended' : 'Verified'}
                     </span>
                   ) : null}
                   {!dualTierQueue ? (
@@ -381,15 +436,15 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                   ) : null}
                 </div>
                 <p className="text-muted-foreground text-xs">
-                  {approval.ownerName}
-                  {approval.ownerEmail ? ` · ${approval.ownerEmail}` : ''}
+                  {approval.organizationName}
+                  {approval.ownerName ? ` · ${approval.ownerName}` : ''}
                 </p>
               </>
             )}
           </ResponsiveModalHeader>
 
           <div className={superAdminApprovalDialogBodyClass}>
-            {isLoading || !detail || !verification ? (
+            {isLoading || !detail ? (
               <div className="flex justify-center py-10">
                 <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
               </div>
@@ -402,7 +457,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                   <div className="space-y-1.5">
                     {HOST_REQUEST_CHANGES_REASON_OPTIONS.map((option) => {
                       const checked = selectedChangeReasons.has(option.id);
-                      const checkboxId = `request-change-reason-${option.id}`;
+                      const checkboxId = `listing-request-change-reason-${option.id}`;
                       return (
                         <label
                           key={option.id}
@@ -436,7 +491,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                   <div className="space-y-1.5">
                     {changeDocOptions.map((option) => {
                       const checked = selectedDocs.has(option.id);
-                      const checkboxId = `request-change-doc-${option.id}`;
+                      const checkboxId = `listing-request-change-doc-${option.id}`;
                       return (
                         <label
                           key={option.id}
@@ -481,13 +536,13 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
 
                 <div className="space-y-1.5">
                   <label
-                    htmlFor="request-changes-note"
+                    htmlFor="listing-request-changes-note"
                     className="text-foreground text-xs font-semibold"
                   >
                     Additional notes
                   </label>
                   <Textarea
-                    id="request-changes-note"
+                    id="listing-request-changes-note"
                     value={changeNote}
                     onChange={(e) => setChangeNote(e.target.value)}
                     placeholder="Optional details for the host…"
@@ -521,7 +576,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
               <div className="space-y-5">
                 <div className="space-y-1.5">
                   <label
-                    htmlFor="reject-reason-select"
+                    htmlFor="listing-reject-reason-select"
                     className="text-foreground text-xs font-semibold"
                   >
                     Rejection reason <span className="text-destructive">*</span>
@@ -530,7 +585,10 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                     value={rejectReasonId || undefined}
                     onValueChange={(value) => setRejectReasonId(value as HostRejectionReasonId)}
                   >
-                    <SelectTrigger id="reject-reason-select" className={reasonSelectTriggerClass}>
+                    <SelectTrigger
+                      id="listing-reject-reason-select"
+                      className={reasonSelectTriggerClass}
+                    >
                       <SelectValue placeholder="Select a reason" />
                     </SelectTrigger>
                     <SelectContent className={reasonSelectContentClass}>
@@ -549,13 +607,13 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
 
                 <div className="space-y-1.5">
                   <label
-                    htmlFor="reject-custom-note"
+                    htmlFor="listing-reject-custom-note"
                     className="text-foreground text-xs font-semibold"
                   >
                     Additional notes
                   </label>
                   <Textarea
-                    id="reject-custom-note"
+                    id="listing-reject-custom-note"
                     value={rejectCustomNote}
                     onChange={(e) => setRejectCustomNote(e.target.value)}
                     placeholder="Optional details for the host…"
@@ -588,155 +646,77 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
             ) : (
               <div className="space-y-6">
                 {dualTierQueue ? (
-                  <ApprovalReviewTierSwitcher
+                  <ListingReviewTierSwitcher
                     reviewTier={reviewTier}
-                    verification={verification}
+                    approval={approval}
+                    detail={detail}
                     onChange={switchReviewTier}
                   />
                 ) : null}
-                {approval.hasPendingConsideration ? (
-                  <section className="border-border space-y-3 rounded-xl border p-3">
-                    <p className="text-foreground text-xs font-semibold uppercase tracking-wide">
-                      Consideration
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {(
-                        [
-                          ['property', approval.propertyConsiderationStatus],
-                          ['parking', approval.parkingConsiderationStatus],
-                        ] as const
-                      )
-                        .filter(([, status]) => status === 'pending')
-                        .map(([leg]) => (
-                          <div key={leg} className="flex flex-wrap gap-1.5">
-                            <Button
-                              type="button"
-                              size="sm"
-                              className="min-h-[44px]"
-                              disabled={decideConsideration.isPending}
-                              onClick={() => {
-                                void decideConsideration
-                                  .mutateAsync({
-                                    orgId: approval.organizationId,
-                                    leg,
-                                    decision: 'grant',
-                                  })
-                                  .then(() => {
-                                    toast.success(`${leg} consideration granted`);
-                                    onOpenChange(false);
-                                  })
-                                  .catch((err: Error) => toast.error(err.message));
-                              }}
-                            >
-                              Grant {leg}
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              className="min-h-[44px]"
-                              disabled={decideConsideration.isPending}
-                              onClick={() => {
-                                void decideConsideration
-                                  .mutateAsync({
-                                    orgId: approval.organizationId,
-                                    leg,
-                                    decision: 'deny',
-                                  })
-                                  .then(() => {
-                                    toast.success(`${leg} consideration denied`);
-                                    onOpenChange(false);
-                                  })
-                                  .catch((err: Error) => toast.error(err.message));
-                              }}
-                            >
-                              Deny {leg}
-                            </Button>
-                          </div>
-                        ))}
-                    </div>
-                  </section>
-                ) : null}
+
                 <section className="space-y-3">
                   <p className={superAdminApprovalSectionTitleClass}>Information</p>
                   <dl className="space-y-2.5">
-                    <InfoRow label="Hosting" value={hostModesLabel(hostModes)} />
-                    <InfoRow
+                    <SuperAdminApprovalInfoRow
+                      label="Kind"
+                      value={listingKindLabel(approval.listingKind)}
+                    />
+                    <SuperAdminApprovalInfoRow
                       label="Submitted"
-                      value={formatApprovalDate(
-                        reviewTier === 'enhanced'
-                          ? (verification.enhancedSubmittedAt ?? approval.enhancedSubmittedAt)
-                          : (verification.baseSubmittedAt ?? approval.baseSubmittedAt)
+                      value={formatSuperAdminApprovalDate(
+                        listingApprovalTierSubmittedAt(approval, reviewTier, detail)
                       )}
                     />
-                    {reviewTier === 'enhanced' && verification.platformAdminPlatform ? (
-                      <InfoRow
-                        label="Platform"
-                        value={
-                          platformLabel(verification.platformAdminPlatform) ?? 'Platform not set'
-                        }
-                      />
+                    {reviewTier === 'base' ? (
+                      <>
+                        <SuperAdminApprovalInfoRow
+                          label="Rights"
+                          value={rightsLabel(relationship) ?? 'Rights not set'}
+                        />
+                        {contractEndDate ? (
+                          <SuperAdminApprovalInfoRow
+                            label="Contract end"
+                            value={formatSuperAdminApprovalDate(contractEndDate)}
+                          />
+                        ) : null}
+                        {approval.tower && approval.unitNumber ? (
+                          <SuperAdminApprovalInfoRow
+                            label="Unit"
+                            value={formatTowerAndUnit(approval.tower, approval.unitNumber)}
+                          />
+                        ) : null}
+                      </>
                     ) : null}
                   </dl>
                 </section>
 
+                {reviewTier === 'base' ? <UnitConflictList conflicts={unitConflicts} /> : null}
+
                 <section className="space-y-3">
                   <p className={superAdminApprovalSectionTitleClass}>Documents</p>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {reviewTier === 'enhanced' ? (
+                    {reviewTier === 'recommended' ? (
                       <>
                         <VerificationDocPreviewCard
-                          label={VERIFICATION_TIER2_DOC_LABELS.selfie}
-                          url={detail.assetUrls.selfieWithIdUrl}
+                          label={LISTING_VERIFICATION_DOC_LABELS.additionalProof}
+                          url={detail.assetUrls.additionalProofUrl}
                           onFullView={setFullView}
                         />
                         <VerificationDocPreviewCard
-                          label={
-                            platformLabel(verification.platformAdminPlatform)
-                              ? `${platformLabel(verification.platformAdminPlatform)} admin`
-                              : VERIFICATION_TIER2_DOC_LABELS.platformAdmin
-                          }
-                          url={detail.assetUrls.platformAdminProofUrl}
-                          onFullView={setFullView}
-                        />
-                        {detail.assetUrls.legitimacyCheckProofUrl ? (
-                          <VerificationDocPreviewCard
-                            label={VERIFICATION_TIER2_DOC_LABELS.legitimacyCheck}
-                            url={detail.assetUrls.legitimacyCheckProofUrl}
-                            onFullView={setFullView}
-                          />
-                        ) : null}
-                        {detail.assetUrls.businessPermitOrBirUrl ? (
-                          <VerificationDocPreviewCard
-                            label={VERIFICATION_TIER2_DOC_LABELS.businessPermit}
-                            url={detail.assetUrls.businessPermitOrBirUrl}
-                            onFullView={setFullView}
-                          />
-                        ) : null}
-                      </>
-                    ) : (
-                      <>
-                        <VerificationDocPreviewCard
-                          label="Valid ID"
-                          url={detail.assetUrls.validIdUrl}
-                          onFullView={setFullView}
-                        />
-                        <VerificationDocPreviewCard
-                          label="Facebook Page screenshot"
-                          url={detail.assetUrls.socialProofUrl}
+                          label={LISTING_VERIFICATION_DOC_LABELS.azurePmoConfirmation}
+                          url={detail.assetUrls.azurePmoConfirmationUrl}
                           onFullView={setFullView}
                         />
                       </>
+                    ) : (
+                      <VerificationDocPreviewCard
+                        label={LISTING_VERIFICATION_DOC_LABELS.proof}
+                        url={detail.assetUrls.proofUrl}
+                        onFullView={setFullView}
+                      />
                     )}
                   </div>
                 </section>
-
-                <OrgListingVerificationRollup
-                  orgId={approval.organizationId}
-                  orgSlug={approval.organizationSlug}
-                  enabled={open}
-                  readOnly
-                />
 
                 {status === 'rejected' && rejectionReason ? (
                   <div
@@ -852,9 +832,9 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                   type="button"
                   className={superAdminApprovalFooterButtonClass}
                   disabled={busy || isLoading}
-                  onClick={() => void handleApprove()}
+                  onClick={() => void requestApprove()}
                 >
-                  {approveMutation.isPending ? (
+                  {approveBase.isPending || approveRecommended.isPending ? (
                     <>
                       <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
                       Approving…
@@ -868,6 +848,36 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
           </ResponsiveModalFooter>
         </ResponsiveModalContent>
       </ResponsiveModal>
+
+      <AlertDialog open={approveConfirmOpen} onOpenChange={setApproveConfirmOpen}>
+        <AlertDialogContent
+          className={cn(
+            'max-h-[min(90dvh,32rem)] max-w-[min(calc(100vw-1.5rem),28rem)] overflow-y-auto'
+          )}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>Approve succession?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {successionConfirmMessage(unitConflicts)}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel className="min-h-[44px]" disabled={busy}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="min-h-[44px]"
+              disabled={busy}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleApprove();
+              }}
+            >
+              {approveBase.isPending ? 'Approving…' : 'Approve'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {fullView ? (
         <VerificationDocFullViewDialog

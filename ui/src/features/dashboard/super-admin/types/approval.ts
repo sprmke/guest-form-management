@@ -1,5 +1,10 @@
 import type { ConsiderationStatus } from '@/features/dashboard/org/lib/contractLifecycle';
 import type {
+  ListingAuthorizationRejectionKind,
+  ListingAuthorizationStatus,
+  ListingKind,
+} from '@/features/dashboard/org/lib/listingAuthorization';
+import type {
   OrgVerificationRights,
   OrgVerificationStatus,
   OrgSocialProofPlatform,
@@ -44,6 +49,34 @@ export type OrgApprovalSummary = {
   parkingAccessLocked: boolean;
 };
 
+export type ListingVerificationApprovalSummary = {
+  type: 'listing_verification';
+  listingKind: ListingKind;
+  listingId: string;
+  listingName: string;
+  listingSlug: string;
+  listingStatus: string;
+  organizationId: string;
+  organizationName: string;
+  organizationSlug: string;
+  ownerName: string;
+  ownerEmail: string;
+  relationship: OrgVerificationRights | null;
+  contractEndDate: string | null;
+  baseStatus: ListingAuthorizationStatus;
+  baseSubmittedAt: string | null;
+  baseRejectionReason: string | null;
+  baseRejectionKind: ListingAuthorizationRejectionKind | null;
+  recommendedStatus: ListingAuthorizationStatus;
+  recommendedSubmittedAt: string | null;
+  recommendedRejectionReason: string | null;
+  recommendedRejectionKind: ListingAuthorizationRejectionKind | null;
+  tower: string | null;
+  unitNumber: string | null;
+  unitConflicts: OrgApprovalUnitConflict[];
+  hasActiveUnitConflict: boolean;
+};
+
 export type ExternalReviewApprovalSummary = {
   type: 'external_review';
   propertyId: string;
@@ -65,13 +98,18 @@ export type ExternalReviewApprovalSummary = {
   imagePath: string | null;
 };
 
-export type ApprovalQueueItem = OrgApprovalSummary | ExternalReviewApprovalSummary;
+export type ApprovalQueueItem =
+  OrgApprovalSummary | ListingVerificationApprovalSummary | ExternalReviewApprovalSummary;
 
-export type SuperAdminApprovalTypeFilter = 'all' | 'property' | 'parking' | 'reviews';
+export type SuperAdminApprovalTypeFilter =
+  'all' | 'property' | 'parking' | 'listing_verification' | 'reviews';
 
 export type OrgVerificationAssetUrls = {
   validIdUrl: string | null;
   socialProofUrl: string | null;
+  platformAdminProofUrl: string | null;
+  legitimacyCheckProofUrl: string | null;
+  businessPermitOrBirUrl: string | null;
   propertyOwnershipProofUrl: string | null;
   parkingSocialProofUrl: string | null;
   selfieWithIdUrl: string | null;
@@ -86,6 +124,7 @@ export type OrgApprovalVerification = {
   baseStatus: OrgVerificationStatus;
   enhancedStatus: OrgVerificationStatus;
   socialPlatform: OrgSocialProofPlatform | null;
+  platformAdminPlatform: OrgSocialProofPlatform | null;
   parkingSocialPlatform: OrgSocialProofPlatform | null;
   propertyRelationship: OrgVerificationRights | null;
   propertyContractEndDate: string | null;

@@ -1,12 +1,18 @@
 import { AdminTableRowAffordance } from '@/features/dashboard/bookings/components/AdminDataTable';
 import { VerificationStatusBadge } from '@/features/dashboard/org/components/verification/VerificationStatusBadge';
 import { externalReviewSourceLabel } from '@/features/dashboard/org/lib/propertyExternalReviews';
+import { listingKindLabel } from '@/features/dashboard/org/lib/listingVerificationCopy';
 import {
   approvalHasDualTierQueue,
   latestApprovalSubmittedAt,
 } from '@/features/dashboard/super-admin/lib/approvalReviewTier';
 import {
+  latestListingApprovalSubmittedAt,
+  listingApprovalHasDualTierQueue,
+} from '@/features/dashboard/super-admin/lib/listingApprovalReviewTier';
+import {
   approvalQueueItemKey,
+  isListingVerificationApprovalSummary,
   isOrgApprovalSummary,
 } from '@/features/dashboard/super-admin/lib/superAdminApprovalsFilters';
 import type { ApprovalQueueItem } from '@/features/dashboard/super-admin/types/approval';
@@ -36,6 +42,10 @@ function ReviewBadge() {
   );
 }
 
+function ListingBadge() {
+  return <span className={softBadgeClasses('info')}>Listing</span>;
+}
+
 function hostModesLabel(hostModes: string[]): string {
   const hasProperty = hostModes.includes('property');
   const hasParking = hostModes.includes('parking');
@@ -63,10 +73,17 @@ export function SuperAdminApprovalsCardGrid({ approvals, onSelect }: Props) {
     <AdminCardGrid denser={false}>
       {approvals.map((approval) => {
         const isReview = approval.type === 'external_review';
-        const label = isReview ? approval.propertyName : approval.organizationName;
+        const isListing = approval.type === 'listing_verification';
+        const label = isReview
+          ? approval.propertyName
+          : isListing
+            ? approval.listingName
+            : approval.organizationName;
         const ariaLabel = isReview
           ? `Review ${approval.propertyName} external review`
-          : `Review ${approval.organizationName}`;
+          : isListing
+            ? `Review ${approval.listingName} listing verification`
+            : `Review ${approval.organizationName}`;
 
         return (
           <AdminCardRow
@@ -80,13 +97,23 @@ export function SuperAdminApprovalsCardGrid({ approvals, onSelect }: Props) {
                 <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                   <p className="text-foreground truncate text-sm font-semibold">{label}</p>
                   {isReview ? <ReviewBadge /> : null}
-                  {!isReview && approval.hasActiveUnitConflict ? <SuccessionBadge /> : null}
-                  {!isReview && approval.hasPendingConsideration ? <ConsiderationBadge /> : null}
+                  {isListing ? <ListingBadge /> : null}
+                  {!isReview && !isListing && approval.hasActiveUnitConflict ? (
+                    <SuccessionBadge />
+                  ) : null}
+                  {!isReview && !isListing && approval.hasPendingConsideration ? (
+                    <ConsiderationBadge />
+                  ) : null}
+                  {isListing && approval.hasActiveUnitConflict ? <SuccessionBadge /> : null}
                 </div>
                 <p className="text-muted-foreground mt-0.5 truncate text-xs">
-                  {isReview ? approval.organizationName : approval.ownerName}
+                  {isReview
+                    ? approval.organizationName
+                    : isListing
+                      ? approval.organizationName
+                      : approval.ownerName}
                 </p>
-                {!isReview && approval.ownerEmail ? (
+                {!isReview && !isListing && approval.ownerEmail ? (
                   <p className="text-muted-foreground truncate text-xs">{approval.ownerEmail}</p>
                 ) : null}
                 {isReview ? (
@@ -102,16 +129,24 @@ export function SuperAdminApprovalsCardGrid({ approvals, onSelect }: Props) {
               <span className="text-muted-foreground text-xs">
                 {isReview
                   ? externalReviewSourceLabel(approval.source)
-                  : hostModesLabel(approval.hostModes)}
+                  : isListing
+                    ? listingKindLabel(approval.listingKind)
+                    : hostModesLabel(approval.hostModes)}
               </span>
               <div className="flex items-center gap-2">
                 <span className={cn('text-muted-foreground text-xs tabular-nums')}>
                   {formatSubmittedDate(
-                    isReview ? approval.submittedAt : latestApprovalSubmittedAt(approval)
+                    isReview
+                      ? approval.submittedAt
+                      : isListing
+                        ? latestListingApprovalSubmittedAt(approval)
+                        : latestApprovalSubmittedAt(approval)
                   )}
                 </span>
                 {isReview ? (
                   <VerificationStatusBadge status={approval.moderationStatus} />
+                ) : isListing ? (
+                  <ListingApprovalQueueStatusCell approval={approval} />
                 ) : (
                   <OrgApprovalQueueStatusCell approval={approval} />
                 )}
@@ -153,6 +188,42 @@ function OrgApprovalQueueStatusCell({
   const status =
     approval.enhancedStatus === 'pending' ? approval.enhancedStatus : approval.baseStatus;
   const kind = approval.enhancedStatus === 'pending' ? null : approval.baseRejectionKind;
+
+  return <VerificationStatusBadge status={status} kind={kind} />;
+}
+
+function ListingApprovalQueueStatusCell({
+  approval,
+}: {
+  approval: Extract<ApprovalQueueItem, { type: 'listing_verification' }>;
+}) {
+  if (!isListingVerificationApprovalSummary(approval)) return null;
+
+  if (listingApprovalHasDualTierQueue(approval)) {
+    return (
+      <div className="flex flex-col items-end gap-1 whitespace-nowrap">
+        <div className="flex flex-nowrap items-center gap-1.5">
+          <span className="text-muted-foreground shrink-0 text-[10px] font-semibold uppercase tracking-wide">
+            Verified
+          </span>
+          <VerificationStatusBadge status={approval.baseStatus} kind={approval.baseRejectionKind} />
+        </div>
+        <div className="flex flex-nowrap items-center gap-1.5">
+          <span className="text-muted-foreground shrink-0 text-[10px] font-semibold uppercase tracking-wide">
+            Recommended
+          </span>
+          <VerificationStatusBadge
+            status={approval.recommendedStatus}
+            kind={approval.recommendedRejectionKind}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  const status =
+    approval.recommendedStatus === 'pending' ? approval.recommendedStatus : approval.baseStatus;
+  const kind = approval.recommendedStatus === 'pending' ? null : approval.baseRejectionKind;
 
   return <VerificationStatusBadge status={status} kind={kind} />;
 }
