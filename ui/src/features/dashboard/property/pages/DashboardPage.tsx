@@ -31,13 +31,13 @@ import { detectPresetFromRange, fromIsoDate } from '@/lib/date/navigation';
  * THESIS: KPIs lead; equal 2×3 board for ops + money + calendar.
  * OWN-WORLD: Kame surface-card peers, Plus Jakarta admin density.
  * STORY: Scan period stats, then attention/calendar, cash, maintenance/transactions.
- * FIRST VIEWPORT: KPI strip, then Calendar | Needs attention.
+ * FIRST VIEWPORT: KPI strip, then Calendar | Needs attention (Recent bookings when clear).
  * FORM: equal-width board (user 2026-08-09).
  */
 export function DashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const isBelowMd = useIsBelowMd();
-  const { propertySlug, property } = useOrgContext();
+  const { propertySlug, property, orgSlug } = useOrgContext();
   const { data, isLoading, error, refetch } = useDashboardStats();
 
   const period = useMemo(() => resolveDashboardPeriod(searchParams), [searchParams]);
@@ -74,7 +74,6 @@ export function DashboardPage() {
     dateNav.setDatePreset('year');
   }, [dateNav]);
 
-  const trendLabel = data?.trendWindow.label ?? '';
   const googleAttentionItem = usePropertyGoogleAttentionItem();
   const rejectedReviewsAttentionItem = usePropertyRejectedExternalReviewsAttentionItem();
 
@@ -142,7 +141,7 @@ export function DashboardPage() {
         </FloatingPanel>
       ) : data ? (
         <div className="native-stagger flex min-w-0 flex-col gap-2.5 sm:gap-3 lg:gap-4">
-          <DashboardStatCards stats={data} periodLabel={trendLabel} />
+          <DashboardStatCards stats={data} />
 
           {period.from && period.to ? (
             <DashboardFinanceCalendarSection
@@ -150,6 +149,10 @@ export function DashboardPage() {
               to={period.to}
               datePreset={dateNav.datePreset}
               attentionItems={attentionItems}
+              recentBookings={data.recentBookings ?? []}
+              orgSlug={orgSlug}
+              propertySlug={propertySlug}
+              attentionLoading={isLoading}
             />
           ) : null}
         </div>

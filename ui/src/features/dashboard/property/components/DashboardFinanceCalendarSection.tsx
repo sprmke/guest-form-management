@@ -22,7 +22,10 @@ import { DEFAULT_FINANCE_QUERY, type FinanceQuery } from '@/features/dashboard/f
 import { DashboardAttentionCard } from '@/features/dashboard/property/components/DashboardAttentionCard';
 import { DashboardMaintenanceRemindersCard } from '@/features/dashboard/property/components/DashboardMaintenanceRemindersCard';
 import { DashboardTransactionsDueCard } from '@/features/dashboard/property/components/DashboardTransactionsDueCard';
-import type { DashboardAttentionItem } from '@/features/dashboard/property/lib/types';
+import type {
+  DashboardAttentionItem,
+  DashboardRecentBooking,
+} from '@/features/dashboard/property/lib/types';
 
 import { AdminSurfaceCardHeader } from '@/components/shared/AdminSurfaceCardHeader';
 import { formatDateRangeDisplay, fromIsoDate, type DatePreset } from '@/lib/date/navigation';
@@ -32,15 +35,28 @@ type Props = {
   to: string;
   datePreset: DatePreset;
   attentionItems: DashboardAttentionItem[];
+  recentBookings: DashboardRecentBooking[];
+  orgSlug: string;
+  propertySlug: string;
+  attentionLoading?: boolean;
 };
 
 /**
  * Equal-width 2×3 board after KPIs:
- * Calendar         | Needs attention
+ * Calendar         | Needs attention (or Recent bookings when clear)
  * Cash flow        | Breakdown
  * Maintenance      | Transactions
  */
-export function DashboardFinanceCalendarSection({ from, to, datePreset, attentionItems }: Props) {
+export function DashboardFinanceCalendarSection({
+  from,
+  to,
+  datePreset,
+  attentionItems,
+  recentBookings,
+  orgSlug,
+  propertySlug,
+  attentionLoading,
+}: Props) {
   const rangeFrom = fromIsoDate(from);
   const rangeTo = fromIsoDate(to);
   const rangeLabel =
@@ -131,7 +147,12 @@ export function DashboardFinanceCalendarSection({ from, to, datePreset, attentio
       <DashboardAttentionCard
         className="h-full"
         items={attentionItems}
+        recentBookings={recentBookings}
+        orgSlug={orgSlug}
+        propertySlug={propertySlug}
         viewAllHref={`/bookings?from=${from}&to=${to}`}
+        rangeLabel={rangeLabel}
+        isLoading={attentionLoading}
       />
 
       <FinanceTransactionsChart
