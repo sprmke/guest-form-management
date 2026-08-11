@@ -64,6 +64,8 @@ prod_deploy_is_blocked() {
       return 0
       ;;
     *"migration repair"*)
+      # Local-only history repair is safe; remote / unspecified targets are not.
+      [[ "$cmd" == *"--local"* ]] && return 1
       return 0
       ;;
     *"migration up"*)

@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# preToolUse hook (matcher: StrReplace): enforces "never edit a shipped migration, add a new
-# one" (.cursor/rules/booking-workflow.mdc §7, .cursor/rules/supabase-edge-functions.mdc).
-# StrReplace only ever targets an existing file, so denying it under supabase/migrations/ is a
-# precise proxy for "don't touch a shipped migration" — Write (creating a new migration file)
-# is unaffected.
+# preToolUse hook: enforces "never edit a shipped migration, add a new one"
+# (.cursor/rules/booking-workflow.mdc §7, .cursor/rules/supabase-edge-functions.mdc).
+#
+# Denies any write to an *existing* file under supabase/migrations/. Creating a new migration
+# file is allowed, so the guard cannot depend on the tool matcher being honored — Cursor has
+# been observed running preToolUse hooks for tools outside their declared matcher.
 #
 # Reads Cursor's preToolUse JSON from stdin: {"tool_name":"StrReplace","tool_input":{"path":"..."},...}
 # Ported from .claude/hooks/guard-shipped-migrations.sh (Claude's PreToolUse/Edit matcher).
@@ -19,7 +20,8 @@ else
   file_path=$(echo "$input" | grep -o '"path":"[^"]*"' | head -1 | sed 's/"path":"//;s/"$//')
 fi
 
-if [[ "$file_path" == *"/supabase/migrations/"* || "$file_path" == supabase/migrations/* ]]; then
+if [[ -f "$file_path" ]] &&
+  [[ "$file_path" == *"/supabase/migrations/"* || "$file_path" == supabase/migrations/* ]]; then
   reason="Editing a shipped migration under supabase/migrations/ is not allowed — add a new migration file instead (see .cursor/rules/booking-workflow.mdc)."
   if command -v jq >/dev/null 2>&1; then
     jq -n --arg reason "$reason" '{permission: "deny", user_message: $reason, agent_message: $reason}'
