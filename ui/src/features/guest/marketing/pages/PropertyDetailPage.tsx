@@ -292,6 +292,7 @@ export function PropertyDetailPage() {
                 reviews={propertyData.reviews}
                 isSuperhost={propertyData.isSuperhost}
                 verifiedBadge={propertyData.verifiedBadge}
+                recommendedBadge={propertyData.recommendedBadge}
                 host={propertyData.host}
                 selfCheckIn={propertyData.selfCheckIn}
                 showMarketingFeatures={propertyData.source === 'mock'}

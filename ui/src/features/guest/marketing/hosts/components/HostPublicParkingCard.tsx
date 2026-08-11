@@ -5,6 +5,7 @@ import { Car } from 'lucide-react';
 
 import { guestParkingPath } from '@/features/guest/lib/guestPublicPaths';
 import type { PublicHostProfile } from '@/features/guest/marketing/properties/hooks/usePublicHost';
+import { ListingRecommendedBadge } from '@/features/guest/marketing/shared/components/ListingRecommendedBadge';
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
 
 type Parking = PublicHostProfile['parkings'][number];
@@ -38,6 +39,12 @@ export function HostPublicParkingCard({ parking, index = 0 }: Props) {
               <Car className="text-muted-foreground/50 h-10 w-10" aria-hidden />
             </div>
           )}
+          {parking.recommendedBadge ? (
+            <ListingRecommendedBadge
+              withTooltip={false}
+              className="bg-background/90 absolute left-2 top-2 shadow-sm backdrop-blur"
+            />
+          ) : null}
         </div>
 
         <div className="space-y-0.5">

@@ -10,7 +10,7 @@ export function ParkingAdminShell() {
     <RequireAdmin>
       <RequireOrgNotHardRejected>
         <RequireParkingContext>
-          <ListingContractAccessGate leg="parking">
+          <ListingContractAccessGate listingKind="parking">
             <AdminLayoutOutlet />
           </ListingContractAccessGate>
         </RequireParkingContext>

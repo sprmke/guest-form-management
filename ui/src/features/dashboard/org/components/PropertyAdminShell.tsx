@@ -11,7 +11,7 @@ export function PropertyAdminShell() {
     <RequireAdmin>
       <RequireOrgNotHardRejected>
         <RequireOrgContext>
-          <ListingContractAccessGate leg="property">
+          <ListingContractAccessGate listingKind="property">
             <PropertySettingsIssuesSync />
             <AdminLayoutOutlet />
           </ListingContractAccessGate>

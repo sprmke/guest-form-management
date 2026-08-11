@@ -14,6 +14,7 @@ import {
   type ListingHostInfo,
 } from '@/features/guest/marketing/shared/components/ListingHostCard';
 import { ListingPlaceMeta } from '@/features/guest/marketing/shared/components/ListingPlaceMeta';
+import { ListingRecommendedBadge } from '@/features/guest/marketing/shared/components/ListingRecommendedBadge';
 import { ListingStatItem } from '@/features/guest/marketing/shared/components/ListingStatItem';
 import { buildParkingPlacementLabels } from '@/features/guest/marketing/shared/lib/listingPlacement';
 
@@ -38,11 +39,14 @@ type Props = {
   heightClearanceM?: number | null;
   checkInTime?: string;
   checkOutTime?: string;
+  /** This listing's badge — shown next to the parking type. */
+  recommendedBadge?: boolean;
 };
 
 export function ParkingOverview({
   name,
   parkingType,
+  recommendedBadge = false,
   residenceName,
   tower,
   level,
@@ -75,6 +79,7 @@ export function ParkingOverview({
             <Car className="h-3.5 w-3.5" aria-hidden />
             {parkingTypeLabel(parkingType)}
           </span>
+          {recommendedBadge ? <ListingRecommendedBadge size="md" /> : null}
         </motion.div>
 
         <motion.h1

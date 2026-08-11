@@ -133,6 +133,7 @@ export function ParkingDetailPage() {
                 heightClearanceM={data.heightClearanceM}
                 checkInTime={data.checkInTime}
                 checkOutTime={data.checkOutTime}
+                recommendedBadge={data.recommendedBadge}
               />
 
               {data.features.length > 0 ? (

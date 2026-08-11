@@ -42,6 +42,8 @@ export type PublicParkingDetail = {
   placeId: string | null;
   orgSlug: string;
   orgName: string;
+  /** This listing's Recommended badge (listing Tier 2). */
+  recommendedBadge?: boolean;
 };
 
 async function fetchPublicParking(slug: string): Promise<PublicParkingDetail> {

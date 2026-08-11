@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 
 import { guestPropertyPath } from '@/features/guest/lib/guestPublicPaths';
 import type { PublicHostProfile } from '@/features/guest/marketing/properties/hooks/usePublicHost';
+import { ListingRecommendedBadge } from '@/features/guest/marketing/shared/components/ListingRecommendedBadge';
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
 
 type Property = PublicHostProfile['properties'][number];
@@ -31,6 +32,12 @@ export function HostPublicPropertyCard({ property, index = 0 }: Props) {
               alt={property.name}
               fill
               className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+            />
+          ) : null}
+          {property.recommendedBadge ? (
+            <ListingRecommendedBadge
+              withTooltip={false}
+              className="bg-background/90 absolute left-2 top-2 shadow-sm backdrop-blur"
             />
           ) : null}
         </div>

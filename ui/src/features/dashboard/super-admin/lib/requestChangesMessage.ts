@@ -1,4 +1,3 @@
-import { ORG_SOCIAL_PROOF_PLATFORMS } from '@/features/dashboard/org/lib/orgVerification';
 import type { OrgVerificationChangeDocId } from '@/features/dashboard/org/lib/orgVerificationTiers';
 import type { OrgApprovalDetail } from '@/features/dashboard/super-admin/types/approval';
 
@@ -40,41 +39,15 @@ export function hostRequestChangesReasonLabel(id: HostRequestChangesReasonId): s
   return HOST_REQUEST_CHANGES_REASON_OPTIONS.find((option) => option.id === id)?.label ?? id;
 }
 
-function platformLabel(value: string | null): string | null {
-  if (!value) return null;
-  return ORG_SOCIAL_PROOF_PLATFORMS.find((p) => p.value === value)?.label ?? value;
-}
-
-export function buildChangeDocOptions(
-  detail: OrgApprovalDetail,
-  hostModes: string[]
-): ChangeDocOption[] {
-  const needsProperty = hostModes.includes('property');
-  const needsParking = hostModes.includes('parking');
-  const platform = platformLabel(detail.verification.socialPlatform);
-  const options: ChangeDocOption[] = [
+export function buildChangeDocOptions(detail: OrgApprovalDetail): ChangeDocOption[] {
+  return [
     { id: 'validId', label: 'Valid ID', url: detail.assetUrls.validIdUrl },
-  ];
-  if (needsProperty) {
-    options.push({
+    {
       id: 'socialProof',
-      label: platform ? `${platform} access` : 'Listing access',
+      label: 'Facebook Page screenshot',
       url: detail.assetUrls.socialProofUrl,
-    });
-    options.push({
-      id: 'propertyOwnership',
-      label: 'Ownership / management',
-      url: detail.assetUrls.propertyOwnershipProofUrl,
-    });
-  }
-  if (needsParking) {
-    options.push({
-      id: 'parkingProof',
-      label: 'Parking ownership / management',
-      url: detail.assetUrls.parkingSocialProofUrl,
-    });
-  }
-  return options;
+    },
+  ];
 }
 
 /** Compose the host-facing message from preset reasons + selected docs + optional notes. */
@@ -117,9 +90,6 @@ export function resolveHostChangesRequestedDocs(input: {
   const match = reason.match(/Please re-upload:\s*([^\n.]+)/i);
   if (!match?.[1]) return [];
 
-  const modes = input.hostModes.length > 0 ? input.hostModes : ['property'];
-  const needsProperty = modes.includes('property');
-  const needsParking = modes.includes('parking');
   const tokens = match[1]
     .split(',')
     .map((part) => part.trim().toLowerCase())
@@ -135,17 +105,13 @@ export function resolveHostChangesRequestedDocs(input: {
       add('validId');
       continue;
     }
-    if (needsParking && token.includes('parking')) {
-      add('parkingProof');
-      continue;
-    }
-    if (needsProperty && (token === 'ownership / management' || token.includes('ownership'))) {
-      add('propertyOwnership');
-      continue;
-    }
     if (
-      needsProperty &&
-      (token.includes('access') || token.includes('listing') || token.endsWith(' access'))
+      token.includes('facebook') ||
+      token.includes('access') ||
+      token.includes('listing') ||
+      token.endsWith(' access') ||
+      token.includes('parking') ||
+      token.includes('ownership')
     ) {
       add('socialProof');
     }
