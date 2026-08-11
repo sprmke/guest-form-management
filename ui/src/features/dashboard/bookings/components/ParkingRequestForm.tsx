@@ -13,11 +13,11 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ExternalLink, FileImage, Loader2, Upload } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
+import { BookingCompactAssetControl } from '@/features/dashboard/bookings/components/BookingCompactAssetControl';
 import {
   ReceiptAiVerdictBadge,
   receiptAiUploadToastMessage,
@@ -25,23 +25,17 @@ import {
   receiptAiVerdictBlocksAdmin,
   type ReceiptAiVerdict,
 } from '@/features/dashboard/bookings/components/ReceiptAiVerdictBadge';
-import { WorkflowAssetPreviewWithRemove } from '@/features/dashboard/bookings/components/WorkflowAssetPreviewWithRemove';
 import {
   WorkflowFormShell,
   workflowFormEditTitle,
   type WorkflowFormVariant,
 } from '@/features/dashboard/bookings/components/WorkflowFormShell';
 import { useClearBookingAsset } from '@/features/dashboard/bookings/hooks/useClearBookingAsset';
+import type { BookingAssetPreviewHandler } from '@/features/dashboard/bookings/hooks/useBookingAssetPreview';
 import { useUploadBookingAsset } from '@/features/dashboard/bookings/hooks/useUploadBookingAsset';
 import { requiredPositiveMoney } from '@/features/dashboard/bookings/lib/moneyFieldSchema';
-import { withStorageUrlCacheBust } from '@/features/dashboard/bookings/lib/storageUrls';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import { isPostPendingDocumentsStatus } from '@/features/dashboard/bookings/lib/workflow';
-import {
-  workflowAssetPreviewCard,
-  workflowAssetViewLink,
-  workflowUploadButtonClass,
-} from '@/features/dashboard/bookings/lib/workflowActionButtonStyles';
 
 import { Checkbox } from '@/components/ui/checkbox';
 import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
@@ -125,6 +119,7 @@ type Props = {
   readOnly?: boolean;
   editMode?: boolean;
   variant?: WorkflowFormVariant;
+  onPreview: BookingAssetPreviewHandler;
 };
 
 export function ParkingRequestForm({
@@ -134,12 +129,11 @@ export function ParkingRequestForm({
   readOnly = false,
   editMode = false,
   variant = 'workflow',
+  onPreview,
 }: Props) {
   const uploadMut = useUploadBookingAsset();
   const clearAssetMut = useClearBookingAsset();
   const [uploadingField, setUploadingField] = useState<'endorsement' | 'receipt' | null>(null);
-  const endorsementInputRef = useRef<HTMLInputElement>(null);
-  const receiptInputRef = useRef<HTMLInputElement>(null);
   const stashedReceiptRef = useRef<{
     url: string;
     previewBust: number;
@@ -222,10 +216,7 @@ export function ParkingRequestForm({
     onChange,
   ]);
 
-  async function handleEndorsementFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  async function handleEndorsementFile(file: File) {
     setUploadingField('endorsement');
     try {
       const result = await uploadMut.mutateAsync({
@@ -242,16 +233,13 @@ export function ParkingRequestForm({
       toast.success('Parking endorsement uploaded');
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to upload parking endorsement');
+      throw err;
     } finally {
       setUploadingField(null);
-      if (endorsementInputRef.current) endorsementInputRef.current.value = '';
     }
   }
 
-  async function handleReceiptFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  async function handleReceiptFile(file: File) {
     setUploadingField('receipt');
     try {
       const result = await uploadMut.mutateAsync({
@@ -291,9 +279,9 @@ export function ParkingRequestForm({
       }
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to upload parking payment receipt');
+      throw err;
     } finally {
       setUploadingField(null);
-      if (receiptInputRef.current) receiptInputRef.current.value = '';
     }
   }
 
@@ -304,7 +292,6 @@ export function ParkingRequestForm({
       shouldValidate: true,
       shouldDirty: true,
     });
-    if (endorsementInputRef.current) endorsementInputRef.current.value = '';
     if (readOnly) return;
     try {
       await clearAssetMut.mutateAsync({
@@ -313,6 +300,7 @@ export function ParkingRequestForm({
       });
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to remove endorsement');
+      throw err;
     }
   }
 
@@ -326,7 +314,6 @@ export function ParkingRequestForm({
       shouldValidate: true,
       shouldDirty: true,
     });
-    if (receiptInputRef.current) receiptInputRef.current.value = '';
     if (readOnly) return;
     try {
       await clearAssetMut.mutateAsync({
@@ -335,6 +322,7 @@ export function ParkingRequestForm({
       });
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to remove receipt');
+      throw err;
     }
   }
 
@@ -343,11 +331,9 @@ export function ParkingRequestForm({
 
   return (
     <WorkflowFormShell title={cardTitle} variant={variant}>
-      {!readOnly ? (
-        <div className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/30">
-          Parking fee is <strong>non-refundable</strong> and cannot be rescheduled after this step.
-        </div>
-      ) : null}
+      <div className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/30">
+        Parking fee is <strong>non-refundable</strong> and cannot be rescheduled after this step.
+      </div>
 
       <Field
         label="Parking Owner"
@@ -395,87 +381,19 @@ export function ParkingRequestForm({
 
       <Field label="Parking Endorsement" required error={errors.parking_endorsement_url?.message}>
         <input type="hidden" {...register('parking_endorsement_url')} />
-        <div className="space-y-2">
-          {currentEndorsementUrl ? (
-            <WorkflowAssetPreviewWithRemove
-              readOnly={readOnly}
-              removing={clearAssetMut.isPending}
-              uploading={endorsementUploading}
-              removeAriaLabel="Remove parking endorsement"
-              onRemove={() => void handleRemoveEndorsement()}
-              preview={
-                <a
-                  href={withStorageUrlCacheBust(
-                    currentEndorsementUrl,
-                    endorsementPreviewBust || null
-                  )}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={workflowAssetPreviewCard}
-                >
-                  <div className="bg-muted h-12 w-12 shrink-0 overflow-hidden rounded-md">
-                    <img
-                      key={endorsementPreviewBust}
-                      src={withStorageUrlCacheBust(
-                        currentEndorsementUrl,
-                        endorsementPreviewBust || null
-                      )}
-                      alt="Parking endorsement"
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-foreground text-xs font-medium">Current endorsement</p>
-                    <p className={workflowAssetViewLink}>
-                      <ExternalLink className="size-3 shrink-0" />
-                      View image
-                    </p>
-                  </div>
-                </a>
-              }
-            />
-          ) : (
-            <div className="bg-card border-border text-muted-foreground flex h-14 items-center justify-center rounded-lg border border-dashed text-xs">
-              <span className="inline-flex items-center gap-1.5">
-                <FileImage className="size-3.5" />
-                No parking endorsement uploaded
-              </span>
-            </div>
-          )}
-
-          {!readOnly ? (
-            <>
-              <input
-                ref={endorsementInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleEndorsementFileChange}
-                disabled={endorsementUploading}
-              />
-              <button
-                type="button"
-                disabled={endorsementUploading}
-                onClick={() => endorsementInputRef.current?.click()}
-                className={workflowUploadButtonClass(endorsementUploading)}
-              >
-                {endorsementUploading ? (
-                  <>
-                    <Loader2 className="size-3.5 animate-spin" />
-                    Uploading image...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="size-3.5" />
-                    {currentEndorsementUrl
-                      ? 'Replace endorsement image'
-                      : 'Upload endorsement image'}
-                  </>
-                )}
-              </button>
-            </>
-          ) : null}
-        </div>
+        <BookingCompactAssetControl
+          label="Parking Endorsement"
+          showLabel={false}
+          currentUrl={currentEndorsementUrl}
+          accept="image/*"
+          readOnly={readOnly}
+          uploading={endorsementUploading}
+          removing={clearAssetMut.isPending && !receiptUploading}
+          previewCacheBust={endorsementPreviewBust}
+          onSelectFile={handleEndorsementFile}
+          onRemove={handleRemoveEndorsement}
+          onPreview={onPreview}
+        />
       </Field>
 
       {!readOnly ? (
@@ -557,84 +475,24 @@ export function ParkingRequestForm({
           error={errors.parking_payment_receipt_url?.message}
         >
           <input type="hidden" {...register('parking_payment_receipt_url')} />
-          <div className="space-y-2">
-            {currentReceiptUrl ? (
-              <WorkflowAssetPreviewWithRemove
-                readOnly={readOnly}
-                removing={clearAssetMut.isPending}
-                uploading={receiptUploading}
-                removeAriaLabel="Remove parking payment receipt"
-                onRemove={() => void handleRemoveParkingReceipt()}
-                preview={
-                  <a
-                    href={withStorageUrlCacheBust(currentReceiptUrl, receiptPreviewBust || null)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={workflowAssetPreviewCard}
-                  >
-                    <div className="bg-muted h-12 w-12 shrink-0 overflow-hidden rounded-md">
-                      <img
-                        key={receiptPreviewBust}
-                        src={withStorageUrlCacheBust(currentReceiptUrl, receiptPreviewBust || null)}
-                        alt="Parking payment receipt"
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-foreground text-xs font-medium">Current receipt</p>
-                      <p className={workflowAssetViewLink}>
-                        <ExternalLink className="size-3 shrink-0" />
-                        View image
-                      </p>
-                    </div>
-                  </a>
-                }
-              />
-            ) : (
-              <div className="bg-card border-border text-muted-foreground flex h-14 items-center justify-center rounded-lg border border-dashed text-xs">
-                <span className="inline-flex items-center gap-1.5">
-                  <FileImage className="size-3.5" />
-                  No parking payment receipt uploaded
-                </span>
-              </div>
-            )}
-
-            {!readOnly ? (
-              <>
-                <input
-                  ref={receiptInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleReceiptFileChange}
-                  disabled={receiptUploading}
-                />
-                <button
-                  type="button"
-                  disabled={receiptUploading}
-                  onClick={() => receiptInputRef.current?.click()}
-                  className={workflowUploadButtonClass(receiptUploading)}
-                >
-                  {receiptUploading ? (
-                    <>
-                      <Loader2 className="size-3.5 animate-spin" />
-                      Uploading image...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="size-3.5" />
-                      {currentReceiptUrl
-                        ? 'Replace parking payment receipt'
-                        : 'Upload parking payment receipt'}
-                    </>
-                  )}
-                </button>
-              </>
-            ) : null}
-            {receiptAiVerdict ? (
-              <ReceiptAiVerdictBadge verdict={receiptAiVerdict} summary={receiptAiSummary} />
-            ) : null}
-          </div>
+          <BookingCompactAssetControl
+            label="Parking Payment Receipt"
+            showLabel={false}
+            currentUrl={currentReceiptUrl}
+            accept="image/*"
+            readOnly={readOnly}
+            uploading={receiptUploading}
+            removing={clearAssetMut.isPending && !endorsementUploading}
+            previewCacheBust={receiptPreviewBust}
+            onSelectFile={handleReceiptFile}
+            onRemove={handleRemoveParkingReceipt}
+            onPreview={onPreview}
+            footer={
+              receiptAiVerdict ? (
+                <ReceiptAiVerdictBadge verdict={receiptAiVerdict} summary={receiptAiSummary} />
+              ) : null
+            }
+          />
         </Field>
       ) : null}
     </WorkflowFormShell>

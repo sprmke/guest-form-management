@@ -336,6 +336,17 @@ export function PropertyIntegrationsPanel({
         ]
       : [
           {
+            id: 'chat',
+            label: 'Chat',
+            status: status.telegram.chat ?? {
+              tokenConfigured: false,
+              chatIdConfigured: false,
+              tokenSource: 'none' as const,
+              chatIdSource: 'none' as const,
+              secretsEncryptionConfigured: false,
+            },
+          },
+          {
             id: 'marketing',
             label: 'Marketing',
             status: status.telegram.marketing,
@@ -359,17 +370,6 @@ export function PropertyIntegrationsPanel({
             id: 'maintenance',
             label: 'Maintenance',
             status: status.telegram.maintenance,
-          },
-          {
-            id: 'chat',
-            label: 'Chat',
-            status: status.telegram.chat ?? {
-              tokenConfigured: false,
-              chatIdConfigured: false,
-              tokenSource: 'none' as const,
-              chatIdSource: 'none' as const,
-              secretsEncryptionConfigured: false,
-            },
           },
         ];
 

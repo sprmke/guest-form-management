@@ -93,16 +93,16 @@ export function BookingTable({
       <AdminTableHeadRow>
         <AdminTableTh className="pl-4 pr-3 sm:pl-5">Status</AdminTableTh>
         {showProperty ? (
-          <AdminTableTh className="hidden px-3 sm:table-cell sm:px-4">Resource</AdminTableTh>
+          <AdminTableTh className="hidden px-3 sm:table-cell sm:px-4">Listing</AdminTableTh>
         ) : null}
         <AdminTableTh className="px-3 sm:px-4">Guest</AdminTableTh>
         <AdminTableTh className="px-3 sm:px-4">
           <BookingStaySortControl sort={sort} onChange={onStaySortChange} variant="header" />
         </AdminTableTh>
-        <AdminTableTh className="hidden px-3 text-right sm:px-4 md:table-cell">Pax</AdminTableTh>
-        <AdminTableTh className="hidden px-3 text-center sm:table-cell sm:px-4">Flags</AdminTableTh>
-        <AdminTableTh className="hidden px-3 text-right sm:px-4 lg:table-cell">Amount</AdminTableTh>
-        <AdminTableTh className="pl-2 pr-3 text-right sm:pl-3 sm:pr-4">
+        <AdminTableTh className="hidden px-3 sm:px-4 md:table-cell">Pax</AdminTableTh>
+        <AdminTableTh className="hidden px-3 sm:table-cell sm:px-4">Flags</AdminTableTh>
+        <AdminTableTh className="hidden px-3 sm:px-4 lg:table-cell">Amount</AdminTableTh>
+        <AdminTableTh className="pl-2 pr-3 sm:pl-3 sm:pr-4">
           <span className="sr-only">View</span>
         </AdminTableTh>
       </AdminTableHeadRow>
@@ -160,7 +160,6 @@ function BookingTableRow({
         <td className={cn('hidden sm:table-cell', adminTableCell.body)}>
           <BookingResourceLabel
             row={row}
-            showKindBadge
             className="max-w-[10rem] text-xs font-medium sm:text-[13px]"
           />
         </td>
@@ -190,7 +189,7 @@ function BookingTableRow({
       </td>
 
       {/* Flags — bigger, more legible icons */}
-      <td className={cn('hidden text-center sm:table-cell', adminTableCell.body)}>
+      <td className={cn('hidden sm:table-cell', adminTableCell.body)}>
         <AdminTableFlagsCell
           need_parking={row.need_parking}
           has_pets={row.has_pets}

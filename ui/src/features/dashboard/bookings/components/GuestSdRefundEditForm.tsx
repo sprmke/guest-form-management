@@ -1,18 +1,17 @@
 /**
- * Editable guest SD refund submission — admin edit form (Workflow Details).
- * Mirrors guest `/sd-form` fields with BookingEditForm section styling.
+ * Editable guest SD refund submission — Progress rail (and formerly edit Workflow).
+ * Mirrors guest `/sd-form` fields.
  */
 
 import { useEffect, useMemo, useState } from 'react';
 
 import { SD_BANKS, refundBodySchema, type SdBank } from '@/features/guest/sd-form/lib/sdFormSchema';
 
+import { Field, Input, Row2 } from '@/features/dashboard/bookings/components/BookingEditLayout';
 import {
-  Field,
-  Input,
-  Row2,
-  Section,
-} from '@/features/dashboard/bookings/components/BookingEditLayout';
+  WorkflowFormShell,
+  type WorkflowFormVariant,
+} from '@/features/dashboard/bookings/components/WorkflowFormShell';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
 import { NativeSelect } from '@/components/ui/native-select';
@@ -32,6 +31,7 @@ type Props = {
   booking: BookingRow;
   onChange: (values: GuestSdRefundEditValues | null) => void;
   editMode?: boolean;
+  variant?: WorkflowFormVariant;
 };
 
 function defaultValuesFromBooking(booking: BookingRow): GuestSdRefundEditValues {
@@ -64,7 +64,12 @@ const METHOD_OPTIONS: Array<{
   },
 ];
 
-export function GuestSdRefundEditForm({ booking, onChange, editMode = true }: Props) {
+export function GuestSdRefundEditForm({
+  booking,
+  onChange,
+  editMode = true,
+  variant = 'workflow',
+}: Props) {
   const [values, setValues] = useState<GuestSdRefundEditValues>(() =>
     defaultValuesFromBooking(booking)
   );
@@ -128,7 +133,7 @@ export function GuestSdRefundEditForm({ booking, onChange, editMode = true }: Pr
     showError(field) ? 'border-red-400 ring-1 ring-red-400/30' : undefined;
 
   return (
-    <Section title="SD Refund Form">
+    <WorkflowFormShell title="SD Refund Form" variant={variant} bodyClassName="space-y-4">
       <Field label="Refund method" required>
         <NativeSelect
           value={values.method}
@@ -155,9 +160,6 @@ export function GuestSdRefundEditForm({ booking, onChange, editMode = true }: Pr
       {values.method === 'same_phone' ? (
         <Field label="Phone number">
           <Input readOnly value={phoneDisplay} className="bg-muted/50" />
-          <p className="text-muted-foreground text-[11px] leading-snug">
-            Uses the guest phone on file. Update under Booking Details if needed.
-          </p>
         </Field>
       ) : null}
 
@@ -226,12 +228,8 @@ export function GuestSdRefundEditForm({ booking, onChange, editMode = true }: Pr
         <p className="text-muted-foreground text-xs">
           Guest submitted: <span className="text-foreground font-medium">{submittedLabel}</span>
         </p>
-      ) : (
-        <p className="text-muted-foreground text-xs italic">
-          Not yet submitted by guest — you can pre-fill refund details here.
-        </p>
-      )}
-    </Section>
+      ) : null}
+    </WorkflowFormShell>
   );
 }
 

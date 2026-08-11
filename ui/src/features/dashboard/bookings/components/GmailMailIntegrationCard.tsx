@@ -93,7 +93,7 @@ export function GmailMailIntegrationCard({ variant = 'card' }: Props) {
           )}
           {!isError && !connected && (
             <p className="mt-1.5 text-xs text-amber-800/90 sm:text-[11px] dark:text-amber-200">
-              Not connected
+              Internal only — production approvals use inbound email
             </p>
           )}
         </div>
@@ -145,7 +145,8 @@ export function GmailMailIntegrationCard({ variant = 'card' }: Props) {
         <ResponsiveModalHeader>
           <ResponsiveModalTitle>Disconnect Google?</ResponsiveModalTitle>
           <ResponsiveModalDescription>
-            Gmail approval intake will stop for this property until you connect again. again.
+            Removes this property’s Google connection. Production GAF/pet approvals use inbound
+            email and are unaffected.
           </ResponsiveModalDescription>
         </ResponsiveModalHeader>
         <ResponsiveModalFooter className="flex-col gap-2 sm:flex-row">
