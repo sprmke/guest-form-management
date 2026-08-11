@@ -2,7 +2,7 @@
 stage: in-progress
 title: 'Verification scope split — Host vs Listing'
 status: in progress — phases 1–2 landed (migration file blocked by hook)
-updated: 2026-08-11
+updated: 2026-08-12
 tags: [verification, onboarding, multi-tenancy, listing-authorization, super-admin]
 supersedes:
   - docs/workflow/wont-do/listing-authorization.md
@@ -158,7 +158,7 @@ Also added `_shared/listingAuthorizationService.ts` — listing row + org resolu
 - [x] Sidebar entry for property **and** parking listings
 - [x] Slim `GetVerifiedModal.tsx` to host docs only — remove property/parking rights, ownership, and parking upload blocks plus their changes-requested branches
 - [x] `OrgListingVerificationRollup.tsx` — read-only, rendered in **both** org tier panels: per-listing status badge, missing-doc count, `Open` deep-link
-- [x] `RequireListingContractAccess.tsx` reads the listing row lifecycle instead of the org leg
+- [x] Contract lifecycle reads from listing row (`listingAuthorization.lifecycle`); renewal UX in `ListingContractRenewalProvider`
 - [x] Listing copy in `ui/.../org/lib/listingVerificationCopy.ts`; tier builders in `listingVerificationTiers.ts`
 
 ## Phase 5 — Onboarding (UI unchanged)
@@ -196,6 +196,8 @@ Also added `_shared/listingAuthorizationService.ts` — listing row + org resolu
 - [ ] Host page shows host Recommended; listing pages show listing Recommended
 - [ ] Backfilled legacy orgs still load and preview their old documents
 
+**Follow-up (in progress):** listing renewal reminder modal replacing strip/lock UI — [`listing-contract-renewal-modal.md`](./listing-contract-renewal-modal.md) · design [`../intake/listing-contract-renewal-modal-design.md`](../intake/listing-contract-renewal-modal-design.md).
+
 ---
 
 ## Constraints
@@ -210,18 +212,18 @@ Also added `_shared/listingAuthorizationService.ts` — listing row + org resolu
 
 ## Key files
 
-| Area                 | Path                                                                               |
-| -------------------- | ---------------------------------------------------------------------------------- |
-| Org shared           | `supabase/functions/_shared/orgVerification.ts`                                    |
-| Listing shared (new) | `supabase/functions/_shared/listingAuthorization.ts`                               |
-| Contract lifecycle   | `supabase/functions/_shared/contractExpiryCron.ts`, `_shared/contractLifecycle.ts` |
-| Org approve/reject   | `supabase/functions/approve-org-verification/`, `reject-org-verification/`         |
-| SA queue             | `supabase/functions/list-super-admin-approvals/`, `list-org-verifications/`        |
-| Public badge         | `supabase/functions/_shared/publicHostService.ts`, `publicPropertyService.ts`      |
-| Org modal            | `ui/src/features/dashboard/org/components/verification/GetVerifiedModal.tsx`       |
-| Org tiers/copy       | `ui/.../org/lib/orgVerificationTiers.ts`, `lib/verificationCopy.ts`                |
-| Contract gate        | `ui/.../org/components/RequireListingContractAccess.tsx`                           |
-| Onboarding           | `ui/.../org/pages/OnboardingPage.tsx`                                              |
-| Guest badge          | `ui/.../guest/marketing/shared/components/ListingRecommendedBadge.tsx`             |
+| Area                 | Path                                                                                         |
+| -------------------- | -------------------------------------------------------------------------------------------- |
+| Org shared           | `supabase/functions/_shared/orgVerification.ts`                                              |
+| Listing shared (new) | `supabase/functions/_shared/listingAuthorization.ts`                                         |
+| Contract lifecycle   | `supabase/functions/_shared/contractExpiryCron.ts`, `_shared/contractLifecycle.ts`           |
+| Org approve/reject   | `supabase/functions/approve-org-verification/`, `reject-org-verification/`                   |
+| SA queue             | `supabase/functions/list-super-admin-approvals/`, `list-org-verifications/`                  |
+| Public badge         | `supabase/functions/_shared/publicHostService.ts`, `publicPropertyService.ts`                |
+| Org modal            | `ui/src/features/dashboard/org/components/verification/GetVerifiedModal.tsx`                 |
+| Org tiers/copy       | `ui/.../org/lib/orgVerificationTiers.ts`, `lib/verificationCopy.ts`                          |
+| Renewal reminder     | `ui/.../listing-authorization/ListingContractRenewalProvider.tsx` (replaces strip/lock gate) |
+| Onboarding           | `ui/.../org/pages/OnboardingPage.tsx`                                                        |
+| Guest badge          | `ui/.../guest/marketing/shared/components/ListingRecommendedBadge.tsx`                       |
 
 Back to [planned index](./README.md).

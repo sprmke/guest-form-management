@@ -2,7 +2,7 @@
 title: 'Planned work'
 status: active
 tags: [workflow, planned]
-updated: 2026-08-10
+updated: 2026-08-11
 stage: planned
 kind: reference
 ---
@@ -24,7 +24,7 @@ Approved plans **not yet started**. Once implementation begins (even a partial s
 | [`parking-e2e-phase1-overview.md`](./parking-e2e-phase1-overview.md)                   | not started | Parking E2E Phase 0/1 production plan: broadcast claim, realtime status (index + 5 companions) |
 | [`parking-e2e-later-phases.md`](./parking-e2e-later-phases.md)                         | not started | Parking E2E Phase 2a/2b/3/4 stubs only — plan after Phase 1                                    |
 
-Moved to in-progress: [`ci-cd-dev-prod.md`](../in-progress/ci-cd-environments/ci-cd-dev-prod.md) (Phases A–C shipped; Phase F still open — see [`ci-cd-environments/`](../in-progress/ci-cd-environments/README.md)).
+Moved to in-progress: [`listing-contract-renewal-modal.md`](../in-progress/listing-contract-renewal-modal.md), [`ci-cd-dev-prod.md`](../in-progress/ci-cd-environments/ci-cd-dev-prod.md) (Phases A–C shipped; Phase F still open — see [`ci-cd-environments/`](../in-progress/ci-cd-environments/README.md)).
 
 **In progress:** [`../in-progress/README.md`](../in-progress/README.md) — includes partial plans (Phases 1–2 shipped but plan not closed, v1 slice shipped but backlog open, etc.).
 
