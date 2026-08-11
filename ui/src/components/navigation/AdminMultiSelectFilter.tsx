@@ -1,7 +1,8 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef } from 'react';
 
 import { Check, ChevronDown } from 'lucide-react';
 
+import { useAdminToolbarMenuOpen } from '@/components/navigation/AdminToolbarMenuScope';
 import { useDismissOnOutsideClick } from '@/hooks/useDismissOnOutsideClick';
 import { cn } from '@/lib/utils';
 
@@ -20,6 +21,10 @@ type Props<T extends string> = {
   triggerWidthClassName?: string;
   panelScrollable?: boolean;
   emptyMessage?: string;
+  panelAlign?: 'left' | 'right';
+  panelWidthClassName?: string;
+  /** Keep parent Filters/Status open when this menu toggles (nested in popover). */
+  toolbarExclusive?: boolean;
 };
 
 export function AdminMultiSelectFilter<T extends string>({
@@ -32,8 +37,11 @@ export function AdminMultiSelectFilter<T extends string>({
   triggerWidthClassName = 'sm:w-[9.5rem]',
   panelScrollable = false,
   emptyMessage,
+  panelAlign = 'right',
+  panelWidthClassName = 'w-[min(calc(100vw-24px),12rem)]',
+  toolbarExclusive = true,
 }: Props<T>) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useAdminToolbarMenuOpen(undefined, { exclusive: toolbarExclusive });
   const ref = useRef<HTMLDivElement>(null);
   const close = () => setOpen(false);
   useDismissOnOutsideClick(ref, open, close);
@@ -63,6 +71,7 @@ export function AdminMultiSelectFilter<T extends string>({
         aria-haspopup="listbox"
         className={cn(
           'inline-flex min-h-[44px] w-full items-center justify-between gap-1.5 rounded-lg border px-3 py-2.5 text-[13px] font-semibold',
+          'lg:h-10 lg:py-0',
           triggerWidthClassName,
           open || value.length > 0
             ? 'border-primary bg-primary/10 text-primary'
@@ -83,10 +92,10 @@ export function AdminMultiSelectFilter<T extends string>({
           role="listbox"
           aria-label={ariaLabel}
           className={cn(
-            'border-border/50 bg-popover shadow-elevated-lg dark:border-border/20 absolute right-0 z-50 mt-1.5 w-[min(calc(100vw-24px),12rem)] rounded-xl border',
-            panelScrollable
-              ? 'max-h-[60vh] w-[min(calc(100vw-24px),14rem)] overflow-y-auto'
-              : 'overflow-hidden'
+            'border-border/50 bg-popover shadow-elevated-lg dark:border-border/20 absolute z-50 mt-1.5 rounded-xl border',
+            panelAlign === 'left' ? 'left-0' : 'right-0',
+            panelWidthClassName,
+            panelScrollable ? 'max-h-[60vh] overflow-y-auto' : 'overflow-hidden'
           )}
         >
           <div className="py-1">
