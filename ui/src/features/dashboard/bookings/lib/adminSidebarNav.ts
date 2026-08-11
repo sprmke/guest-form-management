@@ -334,6 +334,7 @@ export function buildSuperAdminNavSections(orgSlug: string | null): SidebarNavSe
         { label: 'Properties', href: superAdminPaths.properties, Icon: Building2 },
         { label: 'Approvals', href: superAdminPaths.approvals, Icon: ClipboardCheck },
         { label: 'Hosts', href: superAdminPaths.hosts, Icon: Users },
+        { label: 'Settings', href: superAdminPaths.settings, Icon: Settings },
       ],
     },
   ];

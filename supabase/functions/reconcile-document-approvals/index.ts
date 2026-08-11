@@ -9,7 +9,7 @@ import { jsonResponse, requireHttpMethod } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('reconcile-document-approvals', async (req) => {
-  requireHttpMethod(req, ['POST']);
+  requireHttpMethod(req, 'POST');
   const { property } = await resolveScopedPropertyAccess(req, 'bookings:workflow');
   const reconciled = await reconcileManualIncompleteApprovals(property.id);
   const total = reconciled.gaf + reconciled.pet;

@@ -4,6 +4,7 @@ export const superAdminPaths = {
   developmentDetail: (slug: string) => `/admin/developments/${slug}`,
   approvals: '/admin/approvals',
   hosts: '/admin/hosts',
+  settings: '/admin/settings',
   properties: '/admin/properties',
   hostDetail: (hostId: string) => `/admin/hosts/${hostId}`,
   hostOrgs: (hostId: string) => `/admin/hosts/${hostId}/orgs`,

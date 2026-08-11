@@ -13,6 +13,7 @@ import { SuperAdminHostsPage } from '@/features/dashboard/super-admin/pages/Supe
 import { SuperAdminOverviewPage } from '@/features/dashboard/super-admin/pages/SuperAdminOverviewPage';
 import { SuperAdminPlatformPropertiesPage } from '@/features/dashboard/super-admin/pages/SuperAdminPlatformPropertiesPage';
 import { SuperAdminPropertiesPage } from '@/features/dashboard/super-admin/pages/SuperAdminPropertiesPage';
+import { SuperAdminSettingsPage } from '@/features/dashboard/super-admin/pages/SuperAdminSettingsPage';
 
 export const superAdminRoutes: ReactNode = (
   <Route path="/admin" element={<SuperAdminShell />}>
@@ -21,6 +22,7 @@ export const superAdminRoutes: ReactNode = (
     <Route path="developments/:developmentSlug" element={<SuperAdminDevelopmentDetailPage />} />
     <Route path="approvals" element={<SuperAdminApprovalsPage />} />
     <Route path="hosts" element={<SuperAdminHostsPage />} />
+    <Route path="settings" element={<SuperAdminSettingsPage />} />
     <Route path="properties" element={<SuperAdminPlatformPropertiesPage />} />
     <Route path="hosts/:hostId" element={<SuperAdminHostShell />}>
       <Route index element={<Navigate to="orgs" replace />} />

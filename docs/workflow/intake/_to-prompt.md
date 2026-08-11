@@ -211,3 +211,7 @@ Please list them down and if you have suggestion to name differently or grouped 
 ===
 
 🔵 Improve UI/UX of exported reports
+
+===
+
+🔵 Cleanup all env variables and example for both ui and supabase
