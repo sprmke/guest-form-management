@@ -1,5 +1,5 @@
 /**
- * Shared layout primitives for BookingEditForm and progress-form edit sections.
+ * Shared layout primitives for BookingEditForm and Progress-rail form fields.
  *
  * Prefer `booking-detail/edit/BookingEditFields.tsx` for new edit-tab work.
  * This file re-exports the same field primitives so WorkflowFormShell /

@@ -42,15 +42,10 @@ import {
   type BookingEditTabId,
   type BookingEditTabsHandle,
 } from '@/features/dashboard/bookings/components/booking-detail/edit/BookingEditTabs';
-import {
-  DocumentsTab,
-  shouldShowDocumentsTab,
-} from '@/features/dashboard/bookings/components/booking-detail/edit/tabs/DocumentsTab';
 import { GuestIdentityTab } from '@/features/dashboard/bookings/components/booking-detail/edit/tabs/GuestIdentityTab';
 import { ParkingTab } from '@/features/dashboard/bookings/components/booking-detail/edit/tabs/ParkingTab';
 import { PetsTab } from '@/features/dashboard/bookings/components/booking-detail/edit/tabs/PetsTab';
 import { StayDetailsTab } from '@/features/dashboard/bookings/components/booking-detail/edit/tabs/StayDetailsTab';
-import { WorkflowDetailsTab } from '@/features/dashboard/bookings/components/booking-detail/edit/tabs/WorkflowDetailsTab';
 import { BookingEditSaveChoiceDialog } from '@/features/dashboard/bookings/components/BookingEditSaveChoiceDialog';
 import { useAppSettings } from '@/features/dashboard/bookings/hooks/useAppSettings';
 import {
@@ -58,10 +53,6 @@ import {
   type UpdateBookingPayload,
 } from '@/features/dashboard/bookings/hooks/useUpdateBooking';
 import type { GuestDocAssetType } from '@/features/dashboard/bookings/hooks/useUploadBookingAsset';
-import {
-  progressFormPayloadFromState,
-  type ProgressFormEditState,
-} from '@/features/dashboard/bookings/lib/bookingProgressEditPayload';
 import { shouldRevertGuestFieldEditsToPendingReview } from '@/features/dashboard/bookings/lib/bookingStatus';
 import { DEFAULT_DOCUMENT_REQUIREMENTS } from '@/features/dashboard/bookings/lib/documentRequirements';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
@@ -313,14 +304,6 @@ export function BookingEditForm({ booking, onClose, onSaved, onPreview, initialT
     return params;
   }, [orgContext?.property.slug]);
   const [bookedDates, setBookedDates] = useState<BookedDateRange[]>([]);
-  const [progressFormState, setProgressFormState] = useState<ProgressFormEditState>({
-    pricing: null,
-    parking: null,
-    guestBalance: null,
-    sdSettlement: null,
-    sdRefundGuest: null,
-  });
-  const [progressTouched, setProgressTouched] = useState(false);
   const [saveChoiceOpen, setSaveChoiceOpen] = useState(false);
   const [pendingPayload, setPendingPayload] = useState<UpdateBookingPayload | null>(null);
   const [visibleAdditionalGuestCount, setVisibleAdditionalGuestCount] = useState(() =>
@@ -349,16 +332,15 @@ export function BookingEditForm({ booking, onClose, onSaved, onPreview, initialT
   const watchSurpriseDecor = !!formSnapshot?.guest_requests_surprise_decor;
   const surpriseDecorChangedFromSaved =
     watchSurpriseDecor !== !!booking.guest_requests_surprise_decor;
-  const progressDirty = progressTouched;
   const showSensitiveRevertHint =
     guestEditRevertPipeline &&
-    (isDirty || progressDirty) &&
+    isDirty &&
     hasWorkflowSensitiveGuestFieldDiff(
       savedSensitiveBaseline,
       bookingEditPayloadFromValues(formSnapshot),
       documentRequirements
     );
-  const canSave = isDirty || progressDirty;
+  const canSave = isDirty;
 
   React.useEffect(() => {
     let mounted = true;
@@ -488,12 +470,6 @@ export function BookingEditForm({ booking, onClose, onSaved, onPreview, initialT
     setVisibleAdditionalGuestCount((count) => Math.max(0, count - 1));
   };
 
-  const showDocsTab = shouldShowDocumentsTab(
-    booking.booking_source,
-    formSnapshot?.booking_source,
-    watchPets
-  );
-
   const onInvalid: SubmitErrorHandler<FormValues> = (fieldErrors) => {
     toast.error('Fix the highlighted fields');
     editTabsRef.current?.focusFirstError(fieldErrors as FieldErrors<FormValues>);
@@ -502,7 +478,6 @@ export function BookingEditForm({ booking, onClose, onSaved, onPreview, initialT
   const buildPayloadFromValues = (values: FormValues): UpdateBookingPayload => {
     const payload: UpdateBookingPayload = {
       ...bookingEditPayloadFromValues(values),
-      ...(progressTouched ? progressFormPayloadFromState(booking, progressFormState) : {}),
     };
 
     const newSource = normalizeBookingSource(values.booking_source);
@@ -587,10 +562,15 @@ export function BookingEditForm({ booking, onClose, onSaved, onPreview, initialT
         <BookingEditTabs
           ref={editTabsRef}
           booking={booking}
-          onDiscard={onClose}
-          discardDisabled={updateMut.isPending}
+          actions={{
+            onCancel: onClose,
+            cancelDisabled: updateMut.isPending,
+            saveDisabled: updateMut.isPending || !canSave,
+            savePending: updateMut.isPending,
+            saveLabel,
+            formId,
+          }}
           errors={errors}
-          showDocsTab={showDocsTab}
           sensitiveNoticeVisible={showSensitiveRevertHint}
           initialTab={initialTab}
           tabs={{
@@ -618,6 +598,7 @@ export function BookingEditForm({ booking, onClose, onSaved, onPreview, initialT
                 setValue={setValue}
                 formSnapshot={formSnapshot}
                 bookedDates={bookedDates}
+                onPreview={onPreview}
               />
             ),
             parking: (
@@ -625,25 +606,12 @@ export function BookingEditForm({ booking, onClose, onSaved, onPreview, initialT
             ),
             pets: (
               <PetsTab
+                booking={booking}
                 register={register}
                 setValue={setValue}
                 watchPets={watchPets}
                 petVaccinationDate={formSnapshot?.pet_vaccination_date ?? ''}
-              />
-            ),
-            docs: showDocsTab ? (
-              <DocumentsTab
-                booking={booking}
                 onPreview={onPreview}
-                watchHasPets={watchPets}
-                watchBookingSource={formSnapshot?.booking_source}
-              />
-            ) : undefined,
-            workflow: (
-              <WorkflowDetailsTab
-                booking={booking}
-                onStateChange={setProgressFormState}
-                onTouchedChange={setProgressTouched}
               />
             ),
           }}

@@ -128,9 +128,7 @@ function BookingCard({
             <ChevronRight className="text-muted-foreground/60 mt-0.5 size-4 shrink-0" aria-hidden />
           </div>
           <StatusBadge status={row.status} className="w-fit max-w-full" />
-          {showProperty ? (
-            <BookingResourceLabel row={row} showKindBadge className="font-medium" />
-          ) : null}
+          {showProperty ? <BookingResourceLabel row={row} className="font-medium" /> : null}
           <p className="text-foreground text-[13px] font-semibold tabular-nums leading-snug">
             {formatBookingDateShort(row.check_in_date)}
             <span className="text-muted-foreground/50 mx-1 font-light">→</span>
@@ -174,7 +172,7 @@ function BookingCard({
               <p className="text-foreground truncate text-sm font-bold leading-tight">{name}</p>
               <p className="text-data-secondary mt-0.5 truncate">{row.guest_email}</p>
               {showProperty ? (
-                <BookingResourceLabel row={row} showKindBadge className="mt-0.5 font-medium" />
+                <BookingResourceLabel row={row} className="mt-0.5 font-medium" />
               ) : null}
             </div>
           </div>

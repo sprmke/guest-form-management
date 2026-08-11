@@ -3,6 +3,10 @@ import { useEffect, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 import {
+  AdminToolbarMenuScope,
+  useAdminToolbarMenuOpen,
+} from '@/components/navigation/AdminToolbarMenuScope';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -65,20 +69,26 @@ type PerPageProps = {
 
 export function AdminListPerPageSelect({ limit, onChange }: PerPageProps) {
   const pageSize = normalizeAdminPageLimit(limit);
+  const [open, setOpen] = useAdminToolbarMenuOpen();
 
   useEffect(() => {
     if (limit !== pageSize) onChange(pageSize);
   }, [limit, pageSize, onChange]);
 
   return (
-    <Select value={String(pageSize)} onValueChange={(value) => onChange(Number(value))}>
+    <Select
+      value={String(pageSize)}
+      open={open}
+      onOpenChange={setOpen}
+      onValueChange={(value) => onChange(Number(value))}
+    >
       <SelectTrigger
         aria-label="Items per page"
         className={cn(
           'border-border bg-card h-10 min-h-[44px] w-auto min-w-[3.5rem] shrink-0 gap-1 rounded-xl py-2 pl-2.5 pr-1.5',
           'text-foreground text-[13px] font-semibold shadow-none',
           'hover:border-primary/40 hover:bg-muted/60',
-          'lg:h-9 lg:min-h-0 lg:rounded-lg'
+          'lg:rounded-lg'
         )}
       >
         <SelectValue className="min-w-[1.25rem] tabular-nums" />
@@ -243,5 +253,64 @@ export function AdminListMetaBar({
         </div>
       </div>
     </>
+  );
+}
+
+type DesktopToolbarProps = {
+  search: ReactNode;
+  /** Primary facet (e.g. Status) — own button, not inside Filters. */
+  leading?: ReactNode;
+  /** Secondary facets only (keeps the Filters popover short). */
+  refine?: ReactNode;
+  sort?: ReactNode;
+  perPage?: ReactNode;
+  view?: ReactNode;
+  className?: string;
+  'aria-label'?: string;
+};
+
+/**
+ * Desktop (`lg+`) list toolbar — three zones so controls aren’t one crowded strip:
+ * [Status · Filters] · [search fills remaining width] · [Sort · per-page · View]
+ */
+export function AdminListDesktopToolbar({
+  search,
+  leading,
+  refine,
+  sort,
+  perPage,
+  view,
+  className,
+  'aria-label': ariaLabel = 'List filters',
+}: DesktopToolbarProps) {
+  const hasFilters = Boolean(leading || refine);
+  const hasChrome = Boolean(sort || perPage || view);
+
+  return (
+    <AdminToolbarMenuScope>
+      <div
+        role="toolbar"
+        aria-label={ariaLabel}
+        aria-orientation="horizontal"
+        className={cn('hidden w-full min-w-0 items-center gap-3 lg:flex', className)}
+      >
+        {hasFilters ? (
+          <div role="group" aria-label="Filter by" className="flex shrink-0 items-center gap-2">
+            {leading}
+            {refine}
+          </div>
+        ) : null}
+
+        <div className="min-w-0 flex-1">{search}</div>
+
+        {hasChrome ? (
+          <div role="group" aria-label="Sort and view" className="flex shrink-0 items-center gap-2">
+            {sort}
+            {perPage}
+            {view}
+          </div>
+        ) : null}
+      </div>
+    </AdminToolbarMenuScope>
   );
 }

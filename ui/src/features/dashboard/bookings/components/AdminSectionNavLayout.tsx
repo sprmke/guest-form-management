@@ -33,7 +33,7 @@ type AdminSectionNavLayoutProps = {
   className?: string;
   /** Page title block — pinned above the scroll region on desktop; scrolls with content on mobile. */
   header?: React.ReactNode;
-  /** Optional action row — pinned below the scroll region on desktop; scrolls with content on mobile. */
+  /** Optional action row — pinned under the main content column on desktop (not under the section nav); scrolls with content on mobile. */
   footer?: React.ReactNode;
 };
 
@@ -465,28 +465,36 @@ export function AdminSectionNavLayout({
               </Card>
             </aside>
 
-            <div
-              ref={contentScrollRef}
-              data-admin-content-scroll
-              className={cn(
-                'min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain',
-                /* Scrollable tab clearance — scrollport fills height; last cards clear the dock. */
-                bottomTabBarOffsetClassName()
-              )}
-            >
-              {header ? <div className="pb-3 lg:hidden">{header}</div> : null}
-              <div className="mx-auto w-full max-w-4xl space-y-6">{children}</div>
+            {/*
+              Main column owns scroll + desktop sticky footer so the unsaved bar
+              never spans under the secondary section nav (Integrations, etc.).
+            */}
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+              <div
+                ref={contentScrollRef}
+                data-admin-content-scroll
+                className={cn(
+                  'min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain',
+                  /* Scrollable tab clearance — scrollport fills height; last cards clear the dock. */
+                  bottomTabBarOffsetClassName()
+                )}
+              >
+                {header ? <div className="pb-3 lg:hidden">{header}</div> : null}
+                <div className="mx-auto w-full max-w-4xl space-y-6">{children}</div>
+                {footer ? (
+                  <div className="border-separator mx-auto mt-3 w-full max-w-4xl border-t pt-3 lg:hidden">
+                    {footer}
+                  </div>
+                ) : null}
+              </div>
+
               {footer ? (
-                <div className="border-separator mt-3 border-t pt-3 lg:hidden">{footer}</div>
+                <div className="border-separator bg-background relative z-20 hidden shrink-0 border-t pt-3 lg:block">
+                  <div className="mx-auto w-full max-w-4xl">{footer}</div>
+                </div>
               ) : null}
             </div>
           </div>
-
-          {footer ? (
-            <div className="border-separator bg-background relative z-20 hidden shrink-0 border-t pt-3 lg:block">
-              {footer}
-            </div>
-          ) : null}
         </div>
       </SectionNavGroupsContext.Provider>
     </SectionNavStoreContext.Provider>

@@ -92,7 +92,7 @@ export function AdminTableTh({
   className?: string;
 }) {
   return (
-    <th scope="col" className={cn('text-table-head py-3 text-left', className)}>
+    <th scope="col" className={cn('text-table-head py-3', className, 'text-left')}>
       {children}
     </th>
   );
@@ -247,7 +247,7 @@ export function AdminTableFlagsCell({
   if (!hasAny && hideEmpty) return null;
 
   return (
-    <div className="inline-flex items-center justify-center gap-1.5">
+    <div className="inline-flex items-center justify-start gap-1.5">
       {need_parking ? (
         <span
           title="Needs parking"
