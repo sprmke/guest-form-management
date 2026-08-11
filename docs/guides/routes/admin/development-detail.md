@@ -76,9 +76,9 @@ Reuses the property media-upload component (`PropertyMediaUpload`), scoped by `d
 
 ## Email automations
 
-| Field     | Storage                          | Validation                             |
-| --------- | -------------------------------- | -------------------------------------- |
-| PMO email | `developments.settings.pmoEmail` | Optional; must be a valid email if set |
+| Field     | Storage                          | Validation                                                                                                                                                                                    |
+| --------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PMO email | `developments.settings.pmoEmail` | Optional; must be a valid email if set. Canonical **To:** for GAF/pet approval request emails for every property in this development (overrides legacy per-property `app_settings.email_to`). |
 
 Receives GAF and pet approval requests for **all** properties inside this development (see `.cursor/rules/booking-workflow.mdc` for the request-email flow itself; this field only configures the recipient).
 

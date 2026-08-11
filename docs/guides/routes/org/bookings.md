@@ -17,7 +17,7 @@ Route: `/org/:orgSlug/bookings`
 | ----------------------------- | -------- | ---------- | ---- | ------------------------------------------------ |
 | Summary stage cards           | —        | —          | Done | Property + parking rows share stage buckets      |
 | Filter bar                    | —        | —          | Done | Includes **Booking type** (property / parking)   |
-| Table / card / calendar views | —        | —          | Done | **Resource** column: property or parking + badge |
+| Table / card / calendar views | —        | —          | Done | **Listing** column: property or parking name     |
 | Kanban view                   | —        | —          | N/A  | Hidden at org level (property list keeps kanban) |
 
 ---
@@ -28,7 +28,7 @@ Paginated list of **property stays** and **parking-slot reservations** across th
 
 Differences from property list:
 
-1. Each row shows **Resource** — property name or parking slot name with a **Property** / **Parking** badge.
+1. Each row shows **Listing** — property name or parking slot name (no kind badge; use **Booking type** filter to narrow).
 2. **More filters → Booking type** narrows to property stays or parking only.
 3. Property rows open `/org/:orgSlug/property/:propertySlug/bookings/:bookingId`.
 4. Parking rows open `/org/:orgSlug/parking/:parkingSlug/bookings/:bookingId`.
@@ -74,7 +74,7 @@ Status changes: `POST transition-parking-booking?parking_id=…` with `{ booking
 | ------------- | ------------------------------------------------------------------------------- |
 | Page          | `ui/src/features/dashboard/org/pages/OrgBookingsPage.tsx`                       |
 | Shared list   | `ui/src/features/dashboard/bookings/pages/BookingsListPage.tsx` (`scope="org"`) |
-| Resource chip | `ui/src/features/dashboard/bookings/components/BookingResourceLabel.tsx`        |
+| Listing label | `ui/src/features/dashboard/bookings/components/BookingResourceLabel.tsx`        |
 | Hook          | `ui/src/features/dashboard/bookings/hooks/useBookings.ts`                       |
 | Edge function | `supabase/functions/list-bookings/index.ts`                                     |
 

@@ -19,7 +19,7 @@ Route: `/org/:orgSlug/property/:propertySlug`
 | Stat cards            | —        | —          | Documented | Always first                                             |
 | Board (2×3)           | —        | —          | Documented | Equal half-width cells; attention/calendar/cash/maint/tx |
 | Loading skeleton      | —        | —          | Documented | Mirrors KPI + 2×3 board (compact mini calendar cells)    |
-| Needs attention card  | —        | —          | Documented | Board cell; booking/Google/review items                  |
+| Needs attention card  | —        | —          | Documented | Board cell; swaps to Recent bookings when clear          |
 | Maintenance reminders | —        | —          | Documented | Board cell; pending/done + next reminders                |
 | Guest pages           | —        | —          | Documented | Public guest URLs (sheet on mobile; menu on desktop)     |
 | Mobile shell          | —        | —          | Documented | Sticky collapsing brand hero + overlap (`max-lg`)        |
@@ -34,7 +34,7 @@ Layout order:
 
 1. **KPI row** — revenue, bookings, occupancy, ADR
 2. **Equal 2×3 board** (same card width each cell):
-   - Calendar | Needs attention
+   - Calendar | Needs attention (or Recent bookings when clear)
    - Cash flow | Breakdown
    - Maintenance | Transactions
 
@@ -42,7 +42,7 @@ Layout order:
 
 - **Brand hero** — teal band with tenant/property switcher (light-on-primary) and page title. Subtitle is `lg+` only. On scroll the hero **sticks**; title compresses/fades and the arc flattens while switcher + guest-pages action stay visible (`useMobileHeroCollapseProgress`).
 - **Overlap toolbar** — first floating white card pulled up over the hero lower edge: date range + **Guest pages**.
-- **Canvas** — denser KPI cards first (no icon tiles / “vs last period” text), then the six board cards stack full-width in the same reading order. Chart/calendar headers use a compact icon + centered title (`AdminSurfaceCardHeader`; descriptions `lg+` only). Period eyebrow above KPIs is `lg+` only. Section/card gaps stay comfortable (`gap-2.5`–`3.5`, `p-3`+), not cramped.
+- **Canvas** — denser KPI cards first (no icon tiles / “vs last period” text), then the six board cards stack full-width in the same reading order. Chart/calendar headers use a compact icon + centered title (`AdminSurfaceCardHeader`; descriptions `lg+` only). Section/card gaps stay comfortable (`gap-2.5`–`3.5`, `p-3`+), not cramped.
 - **Desktop (`lg+`)** — standard `AdminPageHeader` with inline date filter and Guest pages actions; board is `lg:grid-cols-2`.
 
 ---
@@ -51,12 +51,12 @@ Layout order:
 
 Uses **`BookingDateRangeFilter`** in the page header, backed by `useDateNavigation` + `useSyncDateRangeWithQuery`:
 
-| Preset | Behavior                                                   |
-| ------ | ---------------------------------------------------------- |
-| Week   | Sun–Sat, navigable with arrows                             |
-| Month  | Current calendar month (default when the URL has no range) |
-| Year   | Current calendar year                                      |
-| Custom | Calendar popover                                           |
+| Preset | Behavior                                                                                                                                              |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Week   | Sun–Sat, navigable with arrows                                                                                                                        |
+| Month  | Current calendar month (default when the URL has no range)                                                                                            |
+| Year   | Current calendar year                                                                                                                                 |
+| Custom | Calendar popover — primary range selection, centered month grid; Apply in the footer (no overlapping date readout); **Back to presets** in the header |
 
 URL params: **`?from=YYYY-MM-DD&to=YYYY-MM-DD`** — written back on any range change (`replace: true`, no history spam). If the URL has neither param on load, the page seeds the default period (`defaultDashboardPeriod()`, current month) into the URL.
 
@@ -88,7 +88,9 @@ Mobile hero: icon-only trigger beside the tenant switcher. Desktop: labelled **G
 2. **Connect Google** (client-only, prepended first) — shown when Gmail, Calendar, or Spreadsheet is not fully connected for the property (`usePropertyGoogleAttentionItem`); links to **Settings**.
 3. **Rejected external review** (client-only) — shown when `app_settings.external_reviews` includes any row with `moderationStatus = rejected` (`usePropertyRejectedExternalReviewsAttentionItem`); label **Review rejected** (or **Reviews rejected** + count); links to **Settings** → Socials → External reviews. Clears when the host deletes the review or edits and resubmits (back to pending).
 
-Unified **divided list** (up to 5 rows): severity dot (rose / amber / sky), label, optional count on the right; setup-style rows without a count show a chevron. Header subtitle **Bookings, Google & reviews** (matches Calendar / Maintenance / Transactions card headers). **View** links to period-scoped bookings; when any item is critical, an **urgent** summary chip appears under the header. **View all (+N more)** when more than five items. Empty state: **All clear**.
+Unified **divided list** (up to 5 rows): severity dot (rose / amber / sky), label, optional count on the right; setup-style rows without a count show a chevron. Header subtitle **Bookings, Google & reviews** (matches Calendar / Maintenance / Transactions card headers). **View** links to period-scoped bookings; when any item is critical, an **urgent** summary chip appears under the header. **View all (+N more)** when more than five items.
+
+When the list is **empty** (no server alerts and no Connect Google / rejected-review chips), the same board cell switches to **Recent bookings** — period check-ins from `dashboard-stats.recentBookings` (guest, stay dates, amount, status), linking into booking detail. Empty period: dashed **No bookings**. This keeps the Calendar | ops peer heights from looking hollow next to a tall calendar.
 
 Parking dashboard still uses the legacy `DashboardAttentionStrip` chip row.
 
@@ -141,7 +143,7 @@ List cards (Needs attention, Maintenance, Transactions) show at most **5** rows.
 
 Mini calendar: short day strip with **day numbers always visible**; status-colored stay bands sit under each week (not over the dates). Alternating week wash + muted tint on occupied days aid scanning. **Year** and custom ranges spanning more than one calendar month switch to the yearly dot grid (no stay pills); the Name/Price header toggle is hidden in those views because labels do not render. On single-month week/month/custom ranges, Name/Price toggle: **Price** shows the full stay total (`booking_rate`), not the per-night split. Each week fragment of a multi-week stay repeats the label (no empty continuation bars). Compact mode omits the per-day count badge.
 
-Initial page load uses `DashboardSkeleton` (`AdminSkeletons.tsx`): same gaps as the live board (`gap-2.5` / `lg:grid-cols-2`), period eyebrow `lg+` only, compact calendar day placeholders (not square tiles), and header actions that match each card (Name/Price toggle, attention badge, View links, breakdown segment). Per-card refresh skeletons inside Maintenance / Transactions / Attention use the same row heights.
+Initial page load uses `DashboardSkeleton` (`AdminSkeletons.tsx`): same gaps as the live board (`gap-2.5` / `lg:grid-cols-2`), compact calendar day placeholders (not square tiles), and header actions that match each card (Name/Price toggle, attention badge, View links, breakdown segment). Per-card refresh skeletons inside Maintenance / Transactions / Attention use the same row heights.
 
 Cash flow / breakdown / transactions / calendar data still come from `finance-line-items`, `finance-bookings`, and `list-bookings` for the selected period. Tapping a calendar day or booking pill navigates to that booking's detail page.
 

@@ -9,7 +9,7 @@ updated: 2026-08-02
 
 Route: `/org/:orgSlug/property/:propertySlug/notifications`
 
-Deep link: `?module=marketing|staff|operations|finance|maintenance|chat` scrolls to that module section.
+Deep link: `?module=chat|marketing|staff|operations|finance|maintenance` scrolls to that module section.
 
 > **Status:** Documented
 
@@ -17,12 +17,12 @@ Deep link: `?module=marketing|staff|operations|finance|maintenance|chat` scrolls
 
 | Section     | E2E save | Validation | Docs       | Notes                                      |
 | ----------- | -------- | ---------- | ---------- | ------------------------------------------ |
+| Chat        | ✅       | ✅         | Documented | Inbound guest web chat → Telegram template |
 | Marketing   | ✅       | ✅         | Documented | Gated setup + manage cards                 |
 | Staff       | ✅       | ✅         | Documented | Gated setup + manage cards                 |
 | Operations  | ✅       | ✅         | Documented | Gated setup + manage cards                 |
 | Finance     | ✅       | ✅         | Documented | Gated setup + template modal               |
 | Maintenance | ✅       | ✅         | Documented | Gated setup + template modal               |
-| Chat        | ✅       | ✅         | Documented | Inbound guest web chat → Telegram template |
 
 ---
 
@@ -42,12 +42,12 @@ Save **one** BotFather token at the top. It pre-fills each module’s bot token 
 
 1. **Enable notifications** — master toggle (**off by default**; opt-in per module). When off, only this toggle is shown.
 2. **Telegram connection** — bot token row, chat ID row (inline **?** help on each label), and **Connect** beside chat ID. While setup is incomplete, Chat ID shows **Scan for chats** in the field; after scan, a **group dropdown** replaces the empty state. After **Connected**, chat ID shows the group name with **Reveal** for the raw id. Editing bot token or chat ID resets to **Connect**. Failed verify shows **Connection failed** beside the section title and an outline-destructive **Connect** to retry. Saved credentials show **@bot username** and **group name** by default.
-3. **Manage cards** — after connect, shown inside a bordered group (Marketing/Staff: **Notification controls**; Operations: **Workflow alerts**; Finance/Maintenance: **Reminder message**; Chat: **New message**), same card pattern as **Telegram connection**:
+3. **Manage cards** — after connect, shown inside a bordered group (Chat: **New message**; Marketing/Staff: **Notification controls**; Operations: **Workflow alerts**; Finance/Maintenance: **Reminder message**), same card pattern as **Telegram connection**:
+   - **Chat:** New message template for every inbound guest message (placeholders include `{{chat_source}}`, `{{chat_content}}`, attachment helpers, and `{{conversation_link}}` → `/org/:orgSlug/property/:propertySlug/inbox?conversationId=…&platform=web|facebook|instagram`)
    - **Marketing:** Schedule alerts (daily times + calendar rules) · Message templates
    - **Staff:** Schedule alerts · Message templates
    - **Operations:** Message templates (6 scenarios)
    - **Finance / Maintenance:** Reminder message (single template; module enable toggle only — no per-template switch)
-   - **Chat:** New message template for every inbound guest message (placeholders include `{{chat_source}}`, `{{chat_content}}`, attachment helpers, and `{{conversation_link}}` → `/org/:orgSlug/property/:propertySlug/inbox?conversationId=…&platform=web|facebook|instagram`)
 
 ### Saving behavior
 
@@ -77,22 +77,22 @@ Legacy URLs redirect here — see [previous guide version](./notifications.md) r
 
 Page header subtitle: **Configure Telegram notifications for this property.**
 
-**Sidebar:** uppercase **Telegram notifications** group label above module links (PMA templates pattern), with separator before additional groups when added later (e.g. email).
+**Sidebar:** uppercase **Telegram notifications** group label above module links in order **Chat → Marketing → Staff → Operations → Finance → Maintenance** (PMA templates pattern), with separator before additional groups when added later (e.g. email).
 
-**Main content:** **Shared bot token** card, then **Telegram notifications** group heading with module count badge before the six module cards. Each module card includes a short description of what it sends.
+**Main content:** **Shared bot token** card, then **Telegram notifications** group heading with module count badge before the six module cards (same order as the sidebar). Each module card includes a short description of what it sends.
 
 ---
 
 ## Host-facing knowledge
 
-Notifications is the one place to set up Telegram alerts for this property — marketing schedules, staff summaries, booking workflow updates, finance and maintenance reminders, and new guest chat messages. Each module has its own on/off switch, Telegram connection, and message templates.
+Notifications is the one place to set up Telegram alerts for this property — new guest chat messages, marketing schedules, staff summaries, booking workflow updates, and finance and maintenance reminders. Each module has its own on/off switch, Telegram connection, and message templates.
 
 **Common host questions**
 
 - Q: Do I have to save again after connecting Telegram?
   A: No — once you enter your bot token and chat ID and tap **Connect** successfully, credentials save automatically. Template and schedule changes save when you confirm in each modal.
 - Q: Can I turn off just one type of alert?
-  A: Yes — each module (Marketing, Staff, Operations, Finance, Maintenance, Chat) has its own **Enable notifications** toggle so you can opt in only to what you need.
+  A: Yes — each module (Chat, Marketing, Staff, Operations, Finance, Maintenance) has its own **Enable notifications** toggle so you can opt in only to what you need.
 - Q: Do I need a different bot for every module?
   A: No — one shared bot token is enough. Save it once at the top; each module can reuse it or override with its own token. Use different **Chat IDs** so each module posts to the right group.
 - Q: How do I pick a Telegram group?
@@ -110,12 +110,12 @@ Each module uses its existing edge function (property-scoped via `property_id`):
 
 | Module      | Edge function                   | UI component                      |
 | ----------- | ------------------------------- | --------------------------------- |
+| Chat        | `telegram-chat-settings`        | `TelegramChatSettingsCard`        |
 | Marketing   | `telegram-marketing-settings`   | `TelegramMarketingSettingsCard`   |
 | Staff       | `telegram-staff-settings`       | `TelegramStaffSettingsCard`       |
 | Operations  | `telegram-admin-settings`       | `TelegramAdminSettingsCard`       |
 | Finance     | `telegram-finance-settings`     | `TelegramFinanceSettingsCard`     |
 | Maintenance | `telegram-maintenance-settings` | `TelegramMaintenanceSettingsCard` |
-| Chat        | `telegram-chat-settings`        | `TelegramChatSettingsCard`        |
 
 Credentials unlock logic: `telegramCredentialsReady()` — saved token **and** chat ID on server, or both fields filled in the current draft.
 

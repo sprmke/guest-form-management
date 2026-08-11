@@ -28,7 +28,7 @@ Route: `/org/:orgSlug/property/:propertySlug/settings`
 | Building Forms     | Done     | Done       | Done | Shared GAF + pet PDF fields                                               |
 | Email automations  | Done     | Done       | Done | Recipients, timing, toggles per property                                  |
 | Booking Workflow   | Done     | Done       | Done | Calendar/Sheets sync toggles per property                                 |
-| Integrations       | Done     | Done       | Done | Google (Gmail + Calendar + Sheet) required; Telegram optional             |
+| Integrations       | Done     | Done       | Done | Google optional (internal); Telegram optional; GAF/pet via Resend inbound |
 | Voice Receptionist | Done     | Done       | Done | Opt-in AI voice assistant; own settings row; saves with page Save Changes |
 | Danger Zone        | Done     | Done       | Done | Archive + delete with confirmations                                       |
 
@@ -54,6 +54,8 @@ Property Settings is where you complete your listing and day-to-day setup — ba
   A: House rules and cancellation policy appear on your public property listing. Automated email wording is edited separately on the Templates page.
 - Q: Where do I configure which documents guests must submit (GAF, pet approval, etc.)?
   A: Document requirements are set at the **development** level by the platform team (Super Admin → Developments → Document Requirements). All properties in that development inherit the same list.
+- Q: Where is the PMO / documents-approver email set?
+  A: On the development in Super Admin (**Developments → Email automations → PMO email**). Property Settings only has your property/team ops email (alerts, Reply-To, CC on GAF/pet) — not the PMO To address.
 
 ---
 
@@ -61,7 +63,7 @@ Property Settings is where you complete your listing and day-to-day setup — ba
 
 **Save Changes** saves **only dirty sections that pass validation** — you do not need every section complete first. Within a section, only **changed fields** are validated for that save (e.g. contact information can save even when other basic fields are still incomplete). Valid filled sections persist; invalid dirty sections are skipped and highlighted. If some sections save and others do not, you get a toast: _New changes has been saved._
 
-Incomplete sections still show a **red dot** on the in-page section nav (**desktop `lg+` sidebar only** — the mobile horizontal chip strip is hidden) and on the sidebar **Settings** link (for setup tracking). On phone/tablet, Settings uses the same **brand hero** shell as other admin pages (`AdminMobilePage`); Save appears as a hero icon when there are unsaved changes.
+Incomplete sections still show a **red dot** on the in-page section nav (**desktop `lg+` sidebar only** — the mobile horizontal chip strip is hidden) and on the sidebar **Settings** link (for setup tracking). On phone/tablet, Settings uses the same **brand hero** shell as other admin pages (`AdminMobilePage`); Save appears as a hero icon when there are unsaved changes. On desktop, the amber **Unsaved changes** bar is pinned to the **main content column** only (`max-w-4xl`, same measure as the form) so it does not cover the secondary section nav.
 
 | Rule                                                           | Required?                                                    |
 | -------------------------------------------------------------- | ------------------------------------------------------------ |
@@ -75,8 +77,8 @@ Incomplete sections still show a **red dot** on the in-page section nav (**deskt
 | Brand color (Basic information)                                | No — defaults to `#24a88e`; property inherits org when unset |
 | Payment (provider, account, QR upload)                         | Yes                                                          |
 | Building forms (GAF fields + signature)                        | Yes                                                          |
-| Email automations (PMO/property email, timing, toggles)        | Yes                                                          |
-| Google integration (Gmail, Calendar, Spreadsheet)              | Yes                                                          |
+| Email automations (property/team email, timing, toggles)       | Yes                                                          |
+| Google integration (Connect Google — internal/testing)         | No — production GAF/pet approvals use Resend inbound         |
 | Telegram integrations                                          | No                                                           |
 
 Field-level errors appear **as you edit** a field (on change). After **Save Changes**, all remaining issues are shown at once. Section banners (orange) appear only for **Photos & Videos**, **Amenities**, and **Integrations** — not for sections with individual inputs.
@@ -392,13 +394,14 @@ Per-property operational settings in `app_settings` (below Building Forms in the
 
 ### Recipients
 
-| Field                                                | Column                 | Notes                                                                   |
-| ---------------------------------------------------- | ---------------------- | ----------------------------------------------------------------------- |
-| PMO email (Azure North) / Documents approver (other) | `email_to`             | Required; GAF/pet approval requests                                     |
-| Property email (Azure North) / Team email (other)    | `email_reply_to`       | Required; new booking alert + guest reply-to; Gmail listener allow-list |
-| Parking owners                                       | `parking_owner_emails` | Comma-separated BCC for parking broadcast                               |
+| Field                                             | Column                 | Notes                                                                                            |
+| ------------------------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------ |
+| Property email (Azure North) / Team email (other) | `email_reply_to`       | Required. Ops inbox: new booking alerts + CC on GAF/pet requests; Reply-To on most guest emails. |
+| Parking owners                                    | `parking_owner_emails` | Comma-separated BCC for parking broadcast                                                        |
 
-**Azure North Residences** uses residence-specific labels and defaults (`propertyEmailAutomationDefaults.ts`): PMO default **`stlmonaco.theresortresidences@azurenorth.com.ph`**.
+**GAF / pet request `To:`** is **not** edited here. It comes from the property’s development **PMO email** (`developments.settings.pmoEmail` via super-admin `/admin/developments/:slug`), then legacy `app_settings.email_to`, then the Azure North default. The Automation toggles panel shows that resolved address as read-only.
+
+**Azure North Residences** uses residence-specific labels and defaults (`propertyEmailAutomationDefaults.ts`): PMO fallback **`stlmonaco.theresortresidences@azurenorth.com.ph`**.
 
 ### Check-out timing & defaults
 

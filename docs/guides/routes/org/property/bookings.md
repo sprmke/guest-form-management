@@ -35,7 +35,7 @@ Layout (top → bottom):
 3. **Summary cards** — Action Required, Pending Docs, Confirmed Stays, History (Finance-style `surface-card`; count + inline status hints; click toggles `?stage=` filter)
 4. **Toolbar** (`BookingFilters` in page body — always visible, matches Finance / Maintenance):
    - **Mobile (`max-lg`):** search + refine icon (opens sheet for status / more filters / sort / per-page) + view toggle
-   - **Desktop (`lg+`):** Row 1: search + Status + More filters + Clear; Row 2: sort + per-page | view toggle
+   - **Desktop (`lg+`):** **Status** · **Filters** (more only) · **search (flex)** · sort · per-page · **View**. Filters left of search; presentation controls on the right. Toolbar controls match Team height (`h-10` + `min-h-[44px]` → 44px). Status/Filters popovers omit redundant titles and use comfortable row spacing.
 5. Active view content + pagination (table/card only)
 
 ---

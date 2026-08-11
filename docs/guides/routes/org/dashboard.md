@@ -22,7 +22,7 @@ Route: `/org/:orgSlug/dashboard`
 | Recent bookings          | —        | —          | Done | Compact divided list; resource name + dates, no kind badge |
 | Pending actions          | —        | —          | Done | From `dashboard-stats.attention` (org bookings deep links) |
 | Listings performance     | —        | —          | Done | All/Properties/Parkings tabs only when org has both kinds  |
-| Add asset                | ✅       | ✅         | Done | Opens unified `AddEntityDialog`                            |
+| Add listing              | ✅       | ✅         | Done | Opens unified `AddEntityDialog`                            |
 | Loading skeleton         | —        | —          | Done | `OrgDashboardSkeleton` mirrors KPI + 2×2 board + listings  |
 
 ---
@@ -31,9 +31,9 @@ Route: `/org/:orgSlug/dashboard`
 
 Org-level performance overview across **all properties** and, when present, **parking listings** in the organization. Layout matches the property dashboard density: KPI strip, then an equal-width `lg:grid-cols-2` board (`items-stretch`), then a full-width listings performance card.
 
-Page title **Dashboard**. Subtitle is _Performance across all properties._ or _Performance across all properties and parking._ when `parkingCount > 0`. On **phone/tablet** (`max-lg`), shared **brand hero** shell (`AdminMobilePage`): teal hero + title/subtitle, date range in overlapping floating toolbar, **Add asset** as hero icon when permitted. Desktop (`lg+`) keeps compact header with date filter + Add asset. Selected **`?from` / `?to`** (Asia/Manila) drives KPIs, charts, recent bookings, and listing performance.
+Page title **Dashboard**. Subtitle is _Performance across all properties._ or _Performance across all properties and parking._ when `parkingCount > 0`. On **phone/tablet** (`max-lg`), shared **brand hero** shell (`AdminMobilePage`): teal hero + title/subtitle, date range in overlapping floating toolbar, **Add listing** as hero icon when permitted. Desktop (`lg+`) keeps compact header with date filter + Add listing. Selected **`?from` / `?to`** (Asia/Manila) drives KPIs, charts, recent bookings, and listing performance.
 
-**Add asset** (when the user can create property and/or parking): same unified modal as the workspace switcher **+**. Creating an asset navigates to its dashboard.
+**Add listing** (when the user can create property and/or parking): same unified modal as the workspace switcher **+** (title **New listing**). Creating a listing navigates to its dashboard.
 
 There is **no** New Booking button on this page.
 
@@ -43,12 +43,12 @@ There is **no** New Booking button on this page.
 
 Uses **`BookingDateRangeFilter`** — same behavior as the property dashboard:
 
-| Preset | Behavior                                               |
-| ------ | ------------------------------------------------------ |
-| Week   | Sun–Sat, navigable with arrows                         |
-| Month  | Current calendar month (default when URL has no range) |
-| Year   | Current calendar year                                  |
-| Custom | Calendar popover                                       |
+| Preset | Behavior                                                                                                                            |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Week   | Sun–Sat, navigable with arrows                                                                                                      |
+| Month  | Current calendar month (default when URL has no range)                                                                              |
+| Year   | Current calendar year                                                                                                               |
+| Custom | Calendar popover — primary-colored range selection; footer is Apply only (no date readout); **Back to presets** in the panel header |
 
 URL params: `?from=YYYY-MM-DD&to=YYYY-MM-DD`.
 
@@ -136,7 +136,7 @@ This is the landing page for an organization — it rolls up revenue, bookings, 
 - Q: Where did the booking status list go?
   A: Hover or tap a slice of the chart to see the status name and count.
 - Q: Can I create a new property or parking listing from here?
-  A: Yes, if you have permission — use **Add asset** in the header.
+  A: Yes, if you have permission — use **Add listing** in the header.
 
 ---
 
@@ -163,7 +163,7 @@ Org scope returns `parkingCount`, `parkingPerformance`, and `recentBookings[].bo
 | Recent bookings        | `ui/src/features/dashboard/org/components/org-dashboard/OrgRecentBookingsList.tsx`                                         |
 | Pending actions        | `ui/src/features/dashboard/org/components/org-dashboard/OrgPendingActionsCard.tsx`                                         |
 | Listings performance   | `ui/src/features/dashboard/org/components/org-dashboard/OrgPropertiesPerformanceCard.tsx`                                  |
-| Add asset dialog       | `ui/src/features/dashboard/org/components/AddEntityDialog.tsx`                                                             |
+| Add listing dialog     | `ui/src/features/dashboard/org/components/AddEntityDialog.tsx`                                                             |
 | Aggregates             | `supabase/functions/_shared/dashboardService.ts`                                                                           |
 | Edge function          | `supabase/functions/dashboard-stats/index.ts`                                                                              |
 | Status labels / colors | `ui/src/features/dashboard/bookings/lib/bookingStatus.ts`, `ui/src/features/dashboard/bookings/components/StatusBadge.tsx` |

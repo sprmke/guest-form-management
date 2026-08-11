@@ -32,7 +32,7 @@ Single-page maintenance view (no tabs), structured like Finance.
 **Reminders toolbar** (`MaintenanceRemindersToolbar`):
 
 - **Mobile (`max-lg`):** search + refine icon (sheet: status / category / telegram / sort / per-page) + view toggle.
-- **Desktop (`lg+`):** Row 1: search | Status | Category | Telegram | Clear; Row 2: Sort + per-page | view toggle
+- **Desktop (`lg+`):** **Status** · **Filters** (category / telegram; nested selects stay open inside Filters and match trigger width) · **search (flex)** · sort · per-page · **View**
 
 Status, category, and Telegram filters apply **client-side** on items already loaded for the date range; search still uses the API `q` param. List/card views paginate filtered results; calendar shows all matching rows for the period.
 

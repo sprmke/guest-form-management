@@ -89,7 +89,7 @@ Charts (`FinanceTransactionsChart`) plot the same underlying data as cash-flow (
 ### Toolbar (`FinanceLedgerToolbar`)
 
 - **Mobile (`max-lg`):** search + refine icon (sheet: type / status / category / sort / per-page) + view toggle.
-- **Desktop (`lg+`):** Row 1: search + Type / Status / Category + Clear; Row 2: sort + per-page | view toggle.
+- **Desktop (`lg+`):** **Status** · **Filters** (type / category; nested selects stay open inside Filters and match trigger width) · **search (flex)** · sort · per-page · **View**.
 
 ### Behavior / edge cases
 
