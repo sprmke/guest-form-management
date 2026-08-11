@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-**Guest Form Management (GFM)** — a multi-tenant property-management platform, not just a guest form. Core loop: guests submit a booking form; admins run each booking through a status workflow (`PENDING_REVIEW` → … → `COMPLETED`) with Google Calendar/Sheets sync, Resend email, and a Gmail listener that auto-approves Azure GAF/pet documents.
+**Guest Form Management (GFM)** — a multi-tenant property-management platform, not just a guest form. Core loop: guests submit a booking form; admins run each booking through a status workflow (`PENDING_REVIEW` → … → `COMPLETED`) with Resend email and inbound approval email for Azure GAF/pet documents.
 
 Beyond that loop: org/property/**parking** multi-tenancy (parking is a separate vertical + RBAC, not a property sub-feature) with org verification tiers and a super-admin layer (`/admin/*`); Guest Inbox (Meta + web chat, AI replies); Marketing Studio (AI content, Meta publishing); Finance/Maintenance modules; pricing calendars; an authenticated guest portal (separate identity from the anon booking form); AI receipt validation; a voucher system. Not all of these have a dedicated skill yet — check `.claude/README.md` before assuming coverage.
 

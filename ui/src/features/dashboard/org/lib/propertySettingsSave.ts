@@ -72,8 +72,6 @@ const FIELD_SECTIONS: Record<string, PropertySettingsSectionId> = {
   'parking-owner-emails': 'email-automations',
   'sd-lead-hours': 'email-automations',
   'sd-max-age': 'email-automations',
-  'sync-calendar': 'workflow-documents',
-  'sync-sheets': 'workflow-documents',
   'guest-form-allow-pets': 'guest-form',
   'guest-form-allow-parking': 'guest-form',
   'guest-form-allow-surprise-decor': 'guest-form',
@@ -96,7 +94,6 @@ function fieldSectionId(fieldId: string): PropertySettingsSectionId | undefined 
   const direct = FIELD_SECTIONS[fieldId];
   if (direct) return direct;
   if (fieldId.startsWith('payment-method-')) return 'payment';
-  if (fieldId.startsWith('sync-')) return 'workflow-documents';
   return undefined;
 }
 
@@ -106,7 +103,6 @@ const OPERATIONAL_SECTIONS: PropertySettingsSectionId[] = [
   'payment',
   'building-forms',
   'email-automations',
-  'workflow-documents',
 ];
 
 export type PropertySettingsSavePlan = {
@@ -268,8 +264,6 @@ export function propertySettingsSectionDirty(
             operationalBaseline.automationToggles
           ))
       );
-    case 'workflow-documents':
-      return false;
     default:
       return false;
   }
@@ -493,8 +487,6 @@ function dirtyFieldIdsInSection(
         ids.push('sd-max-age');
       }
       break;
-    case 'workflow-documents':
-      break;
     default:
       break;
   }
@@ -565,7 +557,6 @@ export function planPropertySettingsSave(input: {
       'payment',
       'building-forms',
       'email-automations',
-      'workflow-documents',
     ] as PropertySettingsSectionId[]
   ).filter((sectionId) =>
     propertySettingsSectionDirty(

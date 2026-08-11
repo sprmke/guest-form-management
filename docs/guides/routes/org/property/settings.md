@@ -27,7 +27,6 @@ Route: `/org/:orgSlug/property/:propertySlug/settings`
 | Payment            | Done     | Done       | Done | Server-enforced; QR via upload only                                       |
 | Building Forms     | Done     | Done       | Done | Shared GAF + pet PDF fields                                               |
 | Email automations  | Done     | Done       | Done | Recipients, timing, toggles per property                                  |
-| Booking Workflow   | Done     | Done       | Done | Calendar/Sheets sync toggles per property                                 |
 | Integrations       | Done     | Done       | Done | Google optional (internal); Telegram optional; GAF/pet via Resend inbound |
 | Voice Receptionist | Done     | Done       | Done | Opt-in AI voice assistant; own settings row; saves with page Save Changes |
 | Danger Zone        | Done     | Done       | Done | Archive + delete with confirmations                                       |

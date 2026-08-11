@@ -187,13 +187,13 @@ Hosted projects **ignore** `[auth.external.google]` in `config.toml`; configure 
 
 ## 8. UI production environment (hosting build)
 
-| Variable                        | Purpose                                                                        |
-| ------------------------------- | ------------------------------------------------------------------------------ |
-| **`VITE_NODE_ENV`**             | **`production`**                                                               |
-| **`VITE_SUPABASE_URL`**         | `https://<ref>.supabase.co/functions/v1`                                       |
-| **`VITE_API_URL`**              | Same as **`VITE_SUPABASE_URL`**                                                |
-| **`VITE_SUPABASE_ANON_KEY`**    | Dashboard → **Project Settings → API**                                         |
-| **`VITE_ADMIN_ALLOWED_EMAILS`** | Same comma list as **`ADMIN_ALLOWED_EMAILS`** (**empty ⇒ UI denies everyone**) |
+| Variable                      | Purpose                                                                    |
+| ----------------------------- | -------------------------------------------------------------------------- |
+| **`VITE_NODE_ENV`**           | **`production`**                                                           |
+| **`VITE_SUPABASE_URL`**       | `https://<ref>.supabase.co/functions/v1`                                   |
+| **`VITE_API_URL`**            | Same as **`VITE_SUPABASE_URL`**                                            |
+| **`VITE_SUPABASE_ANON_KEY`**  | Dashboard → **Project Settings → API**                                     |
+| **`VITE_SUPER_ADMIN_EMAILS`** | Platform super-admin UX (`/admin/*`); server uses **`SUPER_ADMIN_EMAILS`** |
 
 **Not for Vercel prod:** **`GOOGLE_CLIENT_*`** — those power **local** `supabase start` only.
 

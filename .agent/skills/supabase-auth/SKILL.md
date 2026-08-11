@@ -14,8 +14,9 @@ description: Supabase Auth for admin Google OAuth, session JWT, allow list, org/
 
 ## Allow list
 
-- Server: `ADMIN_ALLOWED_EMAILS` in edge env — `_shared/auth.ts#verifyAdminJwt`
-- Client UX: `VITE_ADMIN_ALLOWED_EMAILS` — reject early only; **not** the security boundary
+- Server: `ADMIN_ALLOWED_EMAILS` in edge env — `_shared/auth.ts#verifyAdminJwt` (org owners bypass)
+- Server: `SUPER_ADMIN_EMAILS` — `serveSuperAdmin`, `isSuperAdminEmail` in `_shared/orgAuth.ts`
+- Client UX: `VITE_SUPER_ADMIN_EMAILS` — `RequireSuperAdmin`, `ModeSwitcher` Admin tab only
 
 See `.cursor/rules/admin-auth.mdc`.
 
@@ -28,7 +29,7 @@ See `.cursor/rules/admin-auth.mdc`.
 | Property permissions     | `_shared/propertyTeamPermissions.ts` |
 | Org permissions          | `_shared/orgTeamPermissions.ts`      |
 
-Platform superadmin: same email allow list as legacy admin.
+Platform superadmin: `SUPER_ADMIN_EMAILS` (edge) + `VITE_SUPER_ADMIN_EMAILS` (UI).
 
 ## Edge pattern
 

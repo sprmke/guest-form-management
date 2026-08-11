@@ -29,22 +29,18 @@ Applies whenever a change touches the `/bookings` routes, the new admin-only edg
 - Single shared Supabase client: `ui/src/lib/supabase/client.ts`.
 - Entry point: **`/for-hosts/login`** — calls `supabase.auth.signInWithOAuth({ provider: 'google' })`. Legacy **`/sign-in`** redirects here.
 
-## 2. Allow list
+## 2. Allow list (server)
 
-- Only these emails may access admin routes and admin edge functions:
-  - **Config**: `ADMIN_ALLOWED_EMAILS` — comma-separated env var in `supabase/.env.local` and Supabase dashboard.
-  - **Default value**: `kamehome.azurenorth@gmail.com`.
-- The allow list is enforced **server-side** on every admin edge function via `_shared/auth.ts#verifyAdminJwt(req)`. Never trust the client.
-- Client also reads `ADMIN_ALLOWED_EMAILS` (via `VITE_ADMIN_ALLOWED_EMAILS`) for an immediate UX reject, but never as the only gate.
+- **`ADMIN_ALLOWED_EMAILS`** (edge only) — comma-separated emails for `verifyAdminJwt` and `isPlatformAdmin`. Org **owners** can pass `verifyAdminJwt` without being on this list.
+- **`SUPER_ADMIN_EMAILS`** (edge only) — platform `/admin/*` APIs (`serveSuperAdmin`, `list-developments`, …).
+- **`VITE_SUPER_ADMIN_EMAILS`** (UI / Vercel) — client UX gate for the Admin mode tab and `RequireSuperAdmin`; **not** the security boundary.
+- There is **no** `VITE_ADMIN_ALLOWED_EMAILS` — host dashboard access is Google sign-in + org/team RBAC; do not reintroduce a client allow list.
 
 ## 3. Route guards (UI)
 
-- New component: `ui/src/features/dashboard/bookings/components/RequireAdmin.tsx`.
-  - Shows a loader while the session hydrates.
-  - Redirects to **`/for-hosts/login`** (via `hostLoginPath`) if unauthenticated.
-  - Shows a generic "access restricted" message if the signed-in email is not allow-listed (no disclosure of which emails are allowed; signs the user out from that view).
-- Applied to: `/bookings`, `/bookings/:bookingId`, `/finance`, `/maintenance`, `/notifications`, `/settings`, and any other admin route added later.
-- The existing public routes (`/`, `/form`, `/success`, `/calendar`) stay unauthenticated.
+- `RequireAdmin.tsx` — loader while session hydrates; redirects to **`/for-hosts/login`** if unsigned. **No client email allow list.**
+- `RequireSuperAdmin.tsx` — checks `VITE_SUPER_ADMIN_EMAILS` (UX only); server enforces `SUPER_ADMIN_EMAILS`.
+- Applied to org/property dashboard routes via `RequireAdmin`; `/admin/*` via `RequireSuperAdmin`.
 
 ## 4. Guest form dev controls (`GuestForm.tsx`)
 
@@ -78,8 +74,9 @@ Server-side `DevControlFlags` in `_shared/workflowOrchestrator.ts` remain for au
 
 | Var                                    | Scope | Purpose                                                                                                                                                                                                                                                                       |
 | -------------------------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ADMIN_ALLOWED_EMAILS`                 | edge  | Comma-separated allow list (server-enforced).                                                                                                                                                                                                                                 |
-| `VITE_ADMIN_ALLOWED_EMAILS`            | UI    | UX reject only; never the only gate.                                                                                                                                                                                                                                          |
+| `ADMIN_ALLOWED_EMAILS`                 | edge  | `verifyAdminJwt` allow list + `isPlatformAdmin`; org owners bypass.                                                                                                                                                                                                           |
+| `SUPER_ADMIN_EMAILS`                   | edge  | Platform super-admin APIs (`/admin/*`).                                                                                                                                                                                                                                       |
+| `VITE_SUPER_ADMIN_EMAILS`              | UI    | Super-admin UX gate (`ModeSwitcher` Admin tab, `RequireSuperAdmin`).                                                                                                                                                                                                          |
 | `PARKING_OWNER_EMAILS`                 | edge  | _(Removed — use **`app_settings.parking_owner_emails`** per property.)                                                                                                                                                                                                        |
 | `GMAIL_API_WEB_CLIENT_JSON`            | edge  | Web OAuth client JSON for **Connect Google** on **`/settings`** (Gmail `readonly` scope); redirect URI `{SUPABASE_URL}/functions/v1/google-mail-oauth-callback`. Pair with `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`.                                                                |
 | `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`     | edge  | 32-byte AES key (64 hex or base64) for encrypting Gmail refresh tokens + Telegram bot tokens in DB.                                                                                                                                                                           |

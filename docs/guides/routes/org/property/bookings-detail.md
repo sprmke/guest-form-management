@@ -203,7 +203,7 @@ This is the page a host opens to manage one specific booking end to end — gues
 - Q: I edited the guest's check-in date and now the booking jumped back to review — why?
   A: Changing a detail that affects the booking's documents or paperwork (dates, contact info, parking/pet info, uploaded IDs) automatically sends it back to the review stage so those steps get re-checked with the new information.
 - Q: Will editing a booking send the guest another email?
-  A: No — saving changes on this page only updates the booking record, calendar, and spreadsheet. It never re-sends guest emails on its own; those only go out from the workflow actions on the right side.
+  A: No — saving changes on this page only updates the booking record. It never re-sends guest emails on its own; those only go out from the workflow actions on the right side.
 - Q: The guest submitted their check-out refund form — why doesn't it show yet?
   A: The page checks for updates automatically every minute, but you can also use "Check for guest submission" to refresh right away.
 - Q: Can I go back a step if I made a mistake?

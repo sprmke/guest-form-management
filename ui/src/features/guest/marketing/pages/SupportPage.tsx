@@ -60,7 +60,7 @@ const hostFaqs: MarketingPublicFaqItem[] = [
   {
     question: 'What does the booking status flow cover?',
     answer:
-      'Pending review → documents → ready for check-in → ready for check-out → security-deposit refund → completed, plus cancel when needed. Email, calendar, and sheet updates run through the shared workflow.',
+      'Pending review → documents → ready for check-in → ready for check-out → security-deposit refund → completed, plus cancel when needed. Email and related automations run through the shared workflow.',
   },
   {
     question: 'Where is pricing explained?',

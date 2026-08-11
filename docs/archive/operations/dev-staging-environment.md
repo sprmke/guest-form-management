@@ -247,13 +247,13 @@ Open [`kame-homes`](https://vercel.com/kame-works/kame-homes) → **Settings →
 
 Add for **Production** (this project's Production = multi-tenant integration app):
 
-| Variable                    | Production value on `kame-homes`                        |
-| --------------------------- | ------------------------------------------------------- |
-| `VITE_NODE_ENV`             | `development`                                           |
-| `VITE_SUPABASE_URL`         | `https://fworvijbrwpyngycotbz.supabase.co/functions/v1` |
-| `VITE_API_URL`              | Same as `VITE_SUPABASE_URL`                             |
-| `VITE_SUPABASE_ANON_KEY`    | Dev anon key                                            |
-| `VITE_ADMIN_ALLOWED_EMAILS` | Dev team emails (comma-separated)                       |
+| Variable                  | Production value on `kame-homes`                        |
+| ------------------------- | ------------------------------------------------------- |
+| `VITE_NODE_ENV`           | `development`                                           |
+| `VITE_SUPABASE_URL`       | `https://fworvijbrwpyngycotbz.supabase.co/functions/v1` |
+| `VITE_API_URL`            | Same as `VITE_SUPABASE_URL`                             |
+| `VITE_SUPABASE_ANON_KEY`  | Dev anon key                                            |
+| `VITE_SUPER_ADMIN_EMAILS` | Dev platform team emails (Admin tab + `/admin/*`)       |
 
 **Do not** change **Production** env on [`guest-form-management-app`](https://vercel.com/sprmkes-projects/guest-form-management-app) — that stays LEGACY.
 
@@ -330,7 +330,7 @@ VITE_NODE_ENV=development
 VITE_SUPABASE_URL=https://<DEV_REF>.supabase.co/functions/v1
 VITE_API_URL=https://<DEV_REF>.supabase.co/functions/v1
 VITE_SUPABASE_ANON_KEY=<dev-anon-key>
-VITE_ADMIN_ALLOWED_EMAILS=you@example.com
+# VITE_SUPER_ADMIN_EMAILS=you@example.com
 ```
 
 **Hybrid mode** (local edge functions → dev DB/auth/storage):
@@ -342,7 +342,7 @@ VITE_SUPABASE_URL=http://127.0.0.1:54321/functions/v1
 VITE_API_URL=http://127.0.0.1:54321/functions/v1
 VITE_SUPABASE_PROJECT_URL=https://<DEV_REF>.supabase.co
 VITE_SUPABASE_ANON_KEY=<dev-anon-key>
-VITE_ADMIN_ALLOWED_EMAILS=you@example.com
+# VITE_SUPER_ADMIN_EMAILS=you@example.com
 ```
 
 `VITE_SUPABASE_PROJECT_URL` sends Auth / Storage / Realtime to hosted dev while API calls hit local `functions serve`.

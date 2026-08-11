@@ -2,7 +2,7 @@
 title: 'Booking workflow multi-tenancy: audit, design & backlog'
 status: in-progress
 tags: [workflow, in-progress, booking-workflow, multi-tenancy]
-updated: 2026-08-07
+updated: 2026-08-11
 stage: in-progress
 kind: plan
 ---
@@ -11,7 +11,9 @@ kind: plan
 
 Back to [in progress work](./README.md).
 
-**Implementation plan (v1 slice):** [`booking-workflow-configurable-docs.md`](../done/booking-workflow-configurable-docs.md) — **done** (2026-08-03). Tasks 1–8 shipped. Post-ship: document requirements editor on Super Admin → Developments; property override retired; property settings = Workflow sync only.
+**Implementation plan (v1 slice):** [`booking-workflow-configurable-docs.md`](../done/booking-workflow-configurable-docs.md) — **done** (2026-08-03). Tasks 1–8 shipped. Post-ship: document requirements editor on Super Admin → Developments; property override retired.
+
+> **2026-08-11 update:** Google Calendar / Sheets sync and the Gmail API listener were **removed** (see [`remove-google-calendar-sheets.md`](./remove-google-calendar-sheets.md)). Production GAF/pet approvals use Resend inbound (`approval-email-webhook`). Sections below that still describe CalendarService / SheetsService / `gmail-listener` are **historical audit notes**, not current behavior.
 
 ## Why this doc exists
 

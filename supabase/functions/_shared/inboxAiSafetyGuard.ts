@@ -20,7 +20,7 @@ export type GuestReplyGuardInput = {
 export const AI_SUGGEST_FALLBACK_REPLY = 'Let me check on that and get back to you shortly.';
 
 const OWNER_SENSITIVE_TOPIC_PATTERN =
-  /\b(revenue|expenses?|profit|net income|payroll|salary|maintenance schedule|maintenance item|internal note|internal only|telegram|bot token|api[_ ]?key|password|secret|service[_ ]?role|refresh token|gmail|spreadsheet id|calendar id)\b/i;
+  /\b(revenue|expenses?|profit|net income|payroll|salary|maintenance schedule|maintenance item|internal note|internal only|telegram|bot token|api[_ ]?key|password|secret|service[_ ]?role|refresh token|gmail)\b/i;
 
 const SENSITIVE_GUEST_REQUEST_PATTERN =
   /\b(other guests?|guest list|who (?:else )?(?:is|are) (?:staying|booked|checking in)|who booked|name of (?:the )?guest|booked on|my revenue|your revenue|how much (?:do you|you) (?:earn|make)|profit margin|finance report|owner earnings|internal ops|telegram bot)\b/i;

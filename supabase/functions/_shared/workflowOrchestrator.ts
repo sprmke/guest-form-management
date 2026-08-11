@@ -317,7 +317,7 @@ export class WorkflowOrchestrator {
     // Also resolved whenever the target is PENDING_DOCUMENTS (even outside a review
     // proceed attempt — e.g. same-status document_completion_target marks, or legacy
     // PENDING_GAF/PENDING_PARKING_REQUEST/PENDING_PET_REQUEST → PENDING_DOCUMENTS edges)
-    // so the calendar prefix (§4.5) always reflects this property's actual list.
+    // so document completion / nested labels always reflect this property's actual list.
     // Doc-completion targets also need the real list: their requirement id is looked
     // up in it (late parking at RFCI+ keeps `toStatus` off PENDING_DOCUMENTS).
     let documentRequirements: DocumentRequirement[] = DEFAULT_DOCUMENT_REQUIREMENTS;
@@ -719,7 +719,7 @@ export class WorkflowOrchestrator {
           `[orchestrator] All document sub-steps complete for ${bookingId} — auto-advancing to READY_FOR_CHECKIN`
         );
         try {
-          // Recursive call: re-uses same calendar/sheet flags but always sends
+          // Recursive call: preserve caller email flags but always send
           // the ready-for-check-in email (automated behaviour, not a manual click).
           return await WorkflowOrchestrator.transition(
             bookingId,

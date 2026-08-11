@@ -85,7 +85,7 @@ Mobile hero: icon-only trigger beside the tenant switcher. Desktop: labelled **G
 `DashboardAttentionCard` is a peer **surface card** on the ops rail (not a top strip). Sources (unchanged):
 
 1. **Server attention items** — `dashboard-stats` `attention[]` (pending review, awaiting documents, check-ins/outs today, SD refunds, unpaid guest balance; same rules as the org dashboard).
-2. **Connect Google** (client-only, prepended first) — shown when Gmail, Calendar, or Spreadsheet is not fully connected for the property (`usePropertyGoogleAttentionItem`); links to **Settings**.
+2. **Connect Google** (client-only, prepended first) — shown when Gmail is not connected for the property (`usePropertyGoogleAttentionItem`); optional internal tooling — production GAF/pet approvals use Resend inbound; links to **Settings**.
 3. **Rejected external review** (client-only) — shown when `app_settings.external_reviews` includes any row with `moderationStatus = rejected` (`usePropertyRejectedExternalReviewsAttentionItem`); label **Review rejected** (or **Reviews rejected** + count); links to **Settings** → Socials → External reviews. Clears when the host deletes the review or edits and resubmits (back to pending).
 
 Unified **divided list** (up to 5 rows): severity dot (rose / amber / sky), label, optional count on the right; setup-style rows without a count show a chevron. Header subtitle **Bookings, Google & reviews** (matches Calendar / Maintenance / Transactions card headers). **View** links to period-scoped bookings; when any item is critical, an **urgent** summary chip appears under the header. **View all (+N more)** when more than five items.
@@ -156,7 +156,7 @@ This is the home page for a single property — period performance first, then t
 **Common host questions**
 
 - Q: Why do I see a "Connect Google" notice here?
-  A: Your bookings sync to Google Calendar and a spreadsheet automatically once you connect your Google account in Settings — until then you'll see a reminder in Needs attention.
+  A: Connect Google is optional internal tooling. Production GAF and pet approvals arrive by inbound email — you do not need Google connected for those.
 - Q: What is the Maintenance card?
   A: A short list of property reminders due in the selected period, with how many are still pending. Open **View** to manage all reminders.
 - Q: What does the "Total Bookings" number mean?

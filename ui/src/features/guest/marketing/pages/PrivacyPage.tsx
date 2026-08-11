@@ -24,14 +24,14 @@ export function PrivacyPage() {
         {
           title: 'How we use information',
           paragraphs: [
-            'We use personal data to fulfill bookings, verify identity and documents, communicate about stays, process security-deposit refunds, operate host dashboards (calendar, sheets sync, email, messaging, finance, maintenance, marketing), and meet legal obligations.',
+            'We use personal data to fulfill bookings, verify identity and documents, communicate about stays, process security-deposit refunds, operate host dashboards (availability calendar, email, messaging, finance, maintenance, marketing), and meet legal obligations.',
             'AI features (for example receipt or document validation, marketing caption suggestions, inbox reply suggestions, and voice receptionist where enabled) process relevant content to produce suggestions or checks for hosts. We do not sell personal information.',
           ],
         },
         {
           title: 'Processors and sharing',
           paragraphs: [
-            'We share data with service providers that help run Kame Homes: Supabase (database, storage, auth, edge functions); Resend (transactional email); Google (OAuth sign-in, Gmail API for certain document approval workflows, Calendar and Sheets sync, Maps/Places); Google Gemini and Groq (AI features described above); Meta (guest inbox OAuth/webhooks and marketing publishing where connected); Telegram (internal staff notifications about bookings—not a guest-facing messaging channel); and Jamendo (royalty-free music in the video editor; not used to process guest PII).',
+            'We share data with service providers that help run Kame Homes: Supabase (database, storage, auth, edge functions); Resend (transactional email and inbound document approvals); Google (OAuth sign-in, Maps/Places); Google Gemini and Groq (AI features described above); Meta (guest inbox OAuth/webhooks and marketing publishing where connected); Telegram (internal staff notifications about bookings—not a guest-facing messaging channel); and Jamendo (royalty-free music in the video editor; not used to process guest PII).',
             'Hosts and authorized team members see guest and booking data needed to operate their properties. We may disclose information when required by law or to protect rights, safety, and the integrity of the service.',
           ],
         },

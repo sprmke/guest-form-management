@@ -66,7 +66,6 @@ Read-only context shown above the form: guest name, stay dates/pax, parking rate
    - **Save & email specific owner** — opens a second dialog to enter one owner's email; sends only to that address (no BCC).
    - **Save only** — persists the vehicle fields with no email sent.
 4. `submit-pay-parking` sets `need_parking = true` and the vehicle fields; if the parking sub-step had already been marked complete (or the booking is past `PENDING_DOCUMENTS`), it clears `parking_completed_at` so the admin stepper shows it as needing another look.
-5. Refreshes the booking's Google Calendar event and Sheet row (no workflow status change).
 
 ### Behavior / edge cases
 
@@ -74,7 +73,7 @@ Read-only context shown above the form: guest name, stay dates/pax, parking rate
 - **Cancelled bookings:** `get-pay-parking` and `submit-pay-parking` both reject once a booking's status is `CANCELLED`.
 - **Org automation toggle:** the owner broadcast email is skipped entirely if the property's org has parking-broadcast automation turned off — vehicle details still save.
 - **Parking rate:** always read from the database (set by an admin before sharing the link) — the guest never chooses or edits the rate here.
-- This form never changes booking `status` — it only touches parking-specific fields plus calendar/sheet refresh.
+- This form never changes booking `status` — it only touches parking-specific fields.
 
 ---
 
