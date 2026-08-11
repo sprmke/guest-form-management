@@ -63,18 +63,6 @@ export async function seedGoogleIntegrationForNewProperty(
     return { copied: false };
   }
 
-  if (profileEmail) {
-    await sb.from('gmail_listener_state').upsert(
-      {
-        id: newPropertyId,
-        property_id: newPropertyId,
-        email_address: profileEmail,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'id' }
-    );
-  }
-
   try {
     await ensurePropertySettings(newPropertyId);
   } catch (e) {

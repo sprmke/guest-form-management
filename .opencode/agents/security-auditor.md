@@ -25,7 +25,7 @@ When invoked, perform a readonly audit. You cannot modify files — report findi
   - `GOOGLE_SERVICE_ACCOUNT` (JSON) — calendar + sheets legacy fallback.
   - Gmail OAuth refresh tokens, Telegram bot tokens — encrypted at rest via `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`.
   - `RESEND_API_KEY`.
-- **Gmail listener** (`supabase/functions/gmail-listener/`): OAuth tokens, read-only scope, idempotency via `processed_emails`.
+- **Approval inbound** (`supabase/functions/approval-email-webhook/`): Svix-signed Resend webhook; `RESEND_INBOUND_WEBHOOK_SECRET`; idempotency via `processed_emails`.
 
 ## 2. Checks to run
 

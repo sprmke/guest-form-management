@@ -241,28 +241,24 @@ verify_jwt = false
 [functions.google-mail-oauth-disconnect]
 verify_jwt = false
 
-[functions.gmail-backfill-approvals]
+[functions.approval-email-webhook]
 verify_jwt = false
-# Orchestrator may auto-advance to READY_FOR_CHECKIN and send RFCI (same as gmail-listener).
 static_files = [
   "./functions/_shared/email-templates/*.html",
   "./functions/_shared/email-templates/fragments/*.html",
-  "./functions/_shared/email-assets/kame-home-gcash-qr-payment.jpg",
+]
+
+[functions.reconcile-document-approvals]
+verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
 ]
 
 # ── Scheduled / internal — served locally + triggered by cron in cloud ────────
 # The `schedule` key is Cloud-only — do NOT add it here or the local CLI will
 # fail to parse config.toml. Set the cron schedule in the Supabase dashboard.
-# Both functions are served locally (so the "Run now" admin buttons work) and
-# callable with an admin JWT from the WorkflowPanel (Q6.6).
-[functions.gmail-listener]
-verify_jwt = false
-static_files = [
-  "./functions/_shared/email-templates/*.html",
-  "./functions/_shared/email-templates/fragments/*.html",
-  "./functions/_shared/email-assets/kame-home-gcash-qr-payment.jpg",
-]
-
+# Callable with an admin JWT from the WorkflowPanel (Q6.6).
 [functions.sd-refund-cron]
 verify_jwt = false
 static_files = [
@@ -718,7 +714,6 @@ verify_jwt = false
 verify_jwt = false
 
 # ── kept for reference (cloud schedule lines, never uncomment locally) ─────────
-# [functions.gmail-listener] schedule = "*/5 * * * *"
 # [functions.sd-refund-cron] schedule = "*/5 * * * *"
 # schedule = "*/5 * * * *"
 # [functions.telegram-marketing-cron] Manila 10:00 / 15:00 / 21:00 → UTC cron: 0 2,7,13 * * *

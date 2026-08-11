@@ -590,7 +590,7 @@ export async function serializeGuestPaymentInfo(
   };
 }
 
-/** Gmail GAF/pet approval replies must match Documents Approver (`EMAIL_TO`) when set. */
+/** Documents Approver / development PMO (`emailTo`) — Azure reply sender allow-list for inbound approvals. */
 export async function getGmailApprovalSenderAllowList(
   propertyId?: string | null
 ): Promise<string[]> {

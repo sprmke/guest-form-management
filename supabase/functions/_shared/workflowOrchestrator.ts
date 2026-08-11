@@ -173,7 +173,7 @@ type ResolvedDocTarget = {
 
 /**
  * Resolve a doc-completion target to the requirement id to write. Admin clients send
- * the requirement id straight from the stepper (`gaf`, `custom-2`, …); `gmail-listener`
+ * the requirement id straight from the stepper (`gaf`, `custom-2`, …); inbound approval webhook
  * still sends the legacy `PENDING_GAF` / `PENDING_PET_REQUEST` literals, matched to a
  * renamed requirement via `pdfTemplateId`. Returns `null` when this property has no
  * matching requirement — callers must throw instead of writing nothing.
@@ -193,7 +193,7 @@ function resolveDocTarget(
     if (byTemplate) return { requirementId: byTemplate.id, configured: true };
   }
   // A property may have renamed or dropped `gaf`/`pet`; keep writing their named
-  // columns so `gmail-listener` never hard-fails on a legacy literal.
+  // columns so inbound approval intake never hard-fails on a legacy literal.
   if (normalized === 'gaf' || normalized === 'pet') {
     return { requirementId: normalized, configured: false };
   }
@@ -699,7 +699,7 @@ export class WorkflowOrchestrator {
     // required sub-step (GAF + parking if needed + pet if needed) is now done,
     // immediately advance to READY_FOR_CHECKIN instead of leaving the booking
     // stranded in PENDING_DOCUMENTS waiting for a manual "Proceed" click.
-    // This fires for every caller (gmail-listener, admin parking form,
+    // This fires for every caller (approval-email-webhook, admin parking form,
     // reconciliation) since they all route through the orchestrator.
     if (
       fromStatus === 'PENDING_DOCUMENTS' &&
