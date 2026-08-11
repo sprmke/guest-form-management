@@ -727,7 +727,6 @@ export function buildProfilePatchForSections(
 }
 
 export type AppSettingsPatchBody = {
-  emailTo?: string;
   emailReplyTo?: string;
   parkingOwnerEmails?: string;
   sdRefundCronEmailLeadHours?: number;

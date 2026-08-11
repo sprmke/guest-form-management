@@ -316,7 +316,7 @@ export function AddEntityDialog({
     <ResponsiveModal open={open} onOpenChange={onOpenChange}>
       <ResponsiveModalContent className="max-w-[min(calc(100vw-1.5rem),26rem)] sm:max-w-[min(90vw,28rem)]">
         <ResponsiveModalHeader className="text-left">
-          <ResponsiveModalTitle>New asset</ResponsiveModalTitle>
+          <ResponsiveModalTitle>New listing</ResponsiveModalTitle>
           <ResponsiveModalDescription>Add to {orgName}</ResponsiveModalDescription>
         </ResponsiveModalHeader>
 

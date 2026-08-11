@@ -98,7 +98,6 @@ export function OrgDashboardPage() {
     dateNav.setDatePreset('year');
   }, [dateNav]);
 
-  const trendLabel = data?.trendWindow.label ?? '';
   const rangeLabel = useMemo(() => {
     const from = fromIsoDate(period.from);
     const to = fromIsoDate(period.to);
@@ -125,7 +124,7 @@ export function OrgDashboardPage() {
           className="min-h-[44px] gap-1.5"
         >
           <Plus className="size-4" aria-hidden />
-          Add asset
+          Add listing
         </Button>
       ) : null}
     </div>
@@ -138,7 +137,7 @@ export function OrgDashboardPage() {
   );
 
   const heroAddAction = canAddAsset ? (
-    <MobileHeroActionButton aria-label="Add asset" onClick={() => setAddAssetOpen(true)}>
+    <MobileHeroActionButton aria-label="Add listing" onClick={() => setAddAssetOpen(true)}>
       <Plus className="size-5" aria-hidden />
     </MobileHeroActionButton>
   ) : undefined;
@@ -177,7 +176,7 @@ export function OrgDashboardPage() {
           </FloatingPanel>
         ) : data && orgSlug ? (
           <div className="native-stagger flex min-w-0 flex-col gap-2.5 sm:gap-3 lg:gap-4">
-            <OrgDashboardStatCards stats={data} periodLabel={trendLabel} />
+            <OrgDashboardStatCards stats={data} />
 
             <div className="grid min-w-0 items-stretch gap-2.5 sm:gap-3 lg:grid-cols-2 lg:gap-4">
               <OrgRevenueBookingsChart data={data.trendSeries} isLoading={isLoading} />

@@ -153,12 +153,7 @@ export function PropertyOperationalSettingsSections({
 
       <PropertyWorkflowDocumentsSection />
 
-      <AdminSection
-        id="integrations"
-        title="Integrations"
-        icon={Globe}
-        description="Gmail and AI key status."
-      >
+      <AdminSection id="integrations" title="Integrations" icon={Globe}>
         {propertySettingsSectionBanner('integrations', sectionMessages) ? (
           <PropertySettingsSectionAlert
             message={propertySettingsSectionBanner('integrations', sectionMessages)!}

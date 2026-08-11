@@ -5,7 +5,6 @@ import {
   useAppSettings,
 } from '@/features/dashboard/bookings/hooks/useAppSettings';
 import type { AppSettingsFormValues } from '@/features/dashboard/bookings/hooks/useAppSettings';
-import { useGmailMailIntegrationStatus } from '@/features/dashboard/bookings/hooks/useGmailMailIntegration';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import {
   orgSettingsToFormValues,
@@ -42,7 +41,6 @@ export function usePropertySettingsCompletionForDraft({
 }: CompletionInput) {
   const { data: appSettings } = useAppSettings();
   const { data: orgSettings } = useOrgSettings();
-  const { data: gmailStatus } = useGmailMailIntegrationStatus();
 
   const orgSocialLinks = useMemo(
     () => (orgSettings ? orgSettingsToFormValues(orgSettings) : null),
@@ -68,21 +66,10 @@ export function usePropertySettingsCompletionForDraft({
         operational,
         appSettings: appSettings ?? null,
         orgSocialLinks,
-        gmailConnected: gmailStatus?.connected ?? false,
-        gmailNeedsReconnect: gmailStatus?.needsReconnect ?? false,
         nameConflict: nameUnavailable,
         towerConflict,
       }),
-    [
-      profile,
-      operational,
-      appSettings,
-      orgSocialLinks,
-      gmailStatus?.connected,
-      gmailStatus?.needsReconnect,
-      nameUnavailable,
-      towerConflict,
-    ]
+    [profile, operational, appSettings, orgSocialLinks, nameUnavailable, towerConflict]
   );
 
   return { completion };

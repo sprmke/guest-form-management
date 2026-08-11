@@ -12,7 +12,6 @@ import { formatMoney } from '@/utils/format/currency';
 
 type Props = {
   stats: DashboardStats;
-  periodLabel: string;
   reservationsHref?: string;
 };
 
@@ -25,14 +24,11 @@ function TrendCardLink({ to, children }: { to?: string; children: ReactNode }) {
   );
 }
 
-export function ParkingDashboardStatCards({ stats, periodLabel, reservationsHref }: Props) {
-  const { trendWindow, kpis } = stats;
+export function ParkingDashboardStatCards({ stats, reservationsHref }: Props) {
+  const { kpis } = stats;
 
   return (
     <section aria-label="Key metrics">
-      <p className="section-eyebrow mb-2 hidden px-0.5 sm:mb-3 lg:block">
-        {periodLabel || trendWindow.label}
-      </p>
       <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4 lg:gap-4">
         <DashboardTrendStatCard
           title="Total Revenue"

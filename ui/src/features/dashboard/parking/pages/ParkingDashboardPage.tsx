@@ -133,11 +133,7 @@ export function ParkingDashboardPage() {
     >
       <DashboardAttentionStrip items={stats.attention} />
 
-      <ParkingDashboardStatCards
-        stats={stats}
-        periodLabel={stats.trendWindow.label}
-        reservationsHref={reservationsHref}
-      />
+      <ParkingDashboardStatCards stats={stats} reservationsHref={reservationsHref} />
 
       {period.from && period.to ? (
         <ParkingDashboardCalendarSection

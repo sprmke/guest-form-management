@@ -8,17 +8,15 @@ import { formatMoney } from '@/utils/format/currency';
 
 type Props = {
   stats: DashboardStats;
-  periodLabel: string;
 };
 
-export function OrgDashboardStatCards({ stats, periodLabel }: Props) {
+export function OrgDashboardStatCards({ stats }: Props) {
   const { kpis, propertyCount, parkingCount } = stats;
   const hasParking = parkingCount > 0;
   const listingCount = propertyCount + parkingCount;
 
   return (
     <section aria-label="Key metrics">
-      <p className="section-eyebrow mb-2 hidden px-0.5 sm:mb-3 lg:block">{periodLabel}</p>
       <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4 lg:gap-4">
         <DashboardTrendStatCard
           title="Total Revenue"
