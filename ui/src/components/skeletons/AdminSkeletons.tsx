@@ -586,7 +586,6 @@ export function DashboardSkeleton() {
       aria-label="Loading dashboard"
     >
       <section aria-hidden>
-        <Skeleton className="section-eyebrow mb-2 hidden h-3 w-28 px-0.5 sm:mb-3 lg:block" />
         <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4 lg:gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <DashboardTrendStatCardSkeleton key={`trend-${i}`} />
@@ -698,7 +697,6 @@ export function OrgDashboardSkeleton() {
       aria-label="Loading organization dashboard"
     >
       <section aria-hidden>
-        <Skeleton className="section-eyebrow mb-2 hidden h-3 w-28 px-0.5 sm:mb-3 lg:block" />
         <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4 lg:gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <DashboardTrendStatCardSkeleton key={`org-trend-${i}`} />

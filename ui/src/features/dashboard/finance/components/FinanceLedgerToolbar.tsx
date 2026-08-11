@@ -1,12 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { Filter, Search, X } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 
-import { AdminListPerPageSelect } from '@/features/dashboard/bookings/components/AdminListToolbar';
+import {
+  AdminListDesktopToolbar,
+  AdminListPerPageSelect,
+} from '@/features/dashboard/bookings/components/AdminListToolbar';
+import {
+  AdminListViewMenuControl,
+  AdminListViewToggle,
+} from '@/features/dashboard/bookings/components/AdminListViewToggle';
 import { FinanceCategoryFilter } from '@/features/dashboard/finance/components/FinanceCategoryFilter';
 import { FinanceLedgerSortMenu } from '@/features/dashboard/finance/components/FinanceLedgerSortMenu';
 import { FinanceStatusFilter } from '@/features/dashboard/finance/components/FinanceStatusFilter';
-import { FinanceStaysViewToggle } from '@/features/dashboard/finance/components/FinanceStaysViewToggle';
 import { FinanceTypeFilter } from '@/features/dashboard/finance/components/FinanceTypeFilter';
 import type { FinanceQuery } from '@/features/dashboard/finance/lib/types';
 
@@ -15,6 +21,7 @@ import {
   AdminListRefineSheet,
   AdminMobileSearchFilterRow,
 } from '@/components/mobile/AdminListRefineSheet';
+import { AdminListRefinePopover } from '@/components/navigation/AdminListRefinePopover';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -34,12 +41,13 @@ export function FinanceLedgerToolbar({
 }: Props) {
   const [searchDraft, setSearchDraft] = useState(query.q);
   const [refineOpen, setRefineOpen] = useState(false);
+  const [desktopRefineOpen, setDesktopRefineOpen] = useState(false);
   const searchMount = useRef(true);
 
-  const activeFilterCount =
-    (query.typeFilter !== 'all' ? 1 : 0) +
-    (query.statusFilter.length > 0 ? 1 : 0) +
-    (query.categoryFilter.length > 0 ? 1 : 0);
+  const statusCount = query.statusFilter.length > 0 ? 1 : 0;
+  const moreFilterCount =
+    (query.typeFilter !== 'all' ? 1 : 0) + (query.categoryFilter.length > 0 ? 1 : 0);
+  const mobileRefineCount = statusCount + moreFilterCount;
 
   useEffect(() => {
     if (searchMount.current) {
@@ -58,7 +66,7 @@ export function FinanceLedgerToolbar({
     setSearchDraft(query.q);
   }, [query.q]);
 
-  function resetFilters() {
+  function resetAllFilters() {
     onChange({
       ...query,
       page: 1,
@@ -68,34 +76,52 @@ export function FinanceLedgerToolbar({
     });
   }
 
-  const searchField = (
-    <FinanceSearchField value={searchDraft} onChange={setSearchDraft} className="lg:max-w-sm" />
-  );
+  function clearMoreFilters() {
+    onChange({
+      ...query,
+      page: 1,
+      typeFilter: 'all',
+      categoryFilter: [],
+    });
+  }
 
-  const filterControls = (
+  const searchField = <FinanceSearchField value={searchDraft} onChange={setSearchDraft} />;
+
+  const mobileRefineBody = (
     <>
-      <FinanceTypeFilter
-        value={query.typeFilter}
-        onChange={(typeFilter) => onChange({ ...query, page: 1, typeFilter })}
-      />
-      <FinanceStatusFilter
-        value={query.statusFilter}
-        onChange={(statusFilter) => onChange({ ...query, page: 1, statusFilter })}
-      />
-      <FinanceCategoryFilter
-        categories={categories}
-        value={query.categoryFilter}
-        onChange={(categoryFilter) => onChange({ ...query, page: 1, categoryFilter })}
-      />
+      <AdminListRefineSection title="Filters">
+        <div className="flex flex-col gap-2 [&_button]:w-full">
+          <FinanceTypeFilter
+            value={query.typeFilter}
+            onChange={(typeFilter) => onChange({ ...query, page: 1, typeFilter })}
+          />
+          <FinanceStatusFilter
+            value={query.statusFilter}
+            onChange={(statusFilter) => onChange({ ...query, page: 1, statusFilter })}
+          />
+          <FinanceCategoryFilter
+            categories={categories}
+            value={query.categoryFilter}
+            onChange={(categoryFilter) => onChange({ ...query, page: 1, categoryFilter })}
+          />
+        </div>
+      </AdminListRefineSection>
+      <AdminListRefineSection title="Sort">
+        <FinanceLedgerSortMenu
+          sort={query.sort}
+          onChange={(sort) => onChange({ ...query, sort, page: 1 })}
+          fullWidth
+        />
+      </AdminListRefineSection>
+      {showPerPage ? (
+        <AdminListRefineSection title="Per page">
+          <AdminListPerPageSelect
+            limit={query.limit}
+            onChange={(limit) => onChange({ ...query, limit, page: 1 })}
+          />
+        </AdminListRefineSection>
+      ) : null}
     </>
-  );
-
-  const viewToggle = (
-    <FinanceStaysViewToggle
-      value={query.view}
-      onChange={(view) => onChange({ ...query, view, page: 1 })}
-      hideTableView={hideTableView}
-    />
   );
 
   return (
@@ -103,78 +129,83 @@ export function FinanceLedgerToolbar({
       <div className="space-y-2.5 lg:hidden">
         <AdminMobileSearchFilterRow
           search={searchField}
-          filterCount={activeFilterCount}
+          filterCount={mobileRefineCount}
           filtersOpen={refineOpen}
           onFiltersOpenChange={setRefineOpen}
           filterAriaLabel="Refine transactions"
         />
-        {viewToggle}
+        <AdminListViewToggle
+          value={query.view}
+          onChange={(view) => onChange({ ...query, view, page: 1 })}
+          hideTableView={hideTableView}
+          ariaLabel="Choose stays view"
+        />
         <AdminListRefineSheet
           open={refineOpen}
           onOpenChange={setRefineOpen}
           title="Refine"
-          activeCount={activeFilterCount}
-          onClear={resetFilters}
+          activeCount={mobileRefineCount}
+          onClear={resetAllFilters}
         >
-          <AdminListRefineSection title="Filters">
-            <div className="flex flex-col gap-2 [&_button]:w-full">{filterControls}</div>
-          </AdminListRefineSection>
-          <AdminListRefineSection title="Sort">
-            <FinanceLedgerSortMenu
-              sort={query.sort}
-              onChange={(sort) => onChange({ ...query, sort, page: 1 })}
-              fullWidth
-            />
-          </AdminListRefineSection>
-          {showPerPage ? (
-            <AdminListRefineSection title="Per page">
-              <AdminListPerPageSelect
-                limit={query.limit}
-                onChange={(limit) => onChange({ ...query, limit, page: 1 })}
-              />
-            </AdminListRefineSection>
-          ) : null}
+          {mobileRefineBody}
         </AdminListRefineSheet>
       </div>
 
-      <div className="hidden space-y-2.5 sm:space-y-3 lg:block">
-        <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center lg:justify-between lg:gap-3">
-          {searchField}
-
-          <div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:w-auto lg:justify-end">
-            {filterControls}
-            {activeFilterCount > 0 ? (
-              <button
-                type="button"
-                onClick={resetFilters}
-                className="text-muted-foreground hover:text-foreground inline-flex min-h-[44px] items-center justify-center gap-1 rounded-xl px-2.5 text-xs font-semibold lg:min-h-0"
-              >
-                <Filter className="size-3.5" aria-hidden />
-                Clear
-              </button>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2">
-          <div className="flex w-full items-center gap-2 sm:w-auto">
-            <div className="min-w-0 flex-1 sm:flex-none">
-              <FinanceLedgerSortMenu
-                sort={query.sort}
-                onChange={(sort) => onChange({ ...query, sort, page: 1 })}
-                fullWidth
+      <AdminListDesktopToolbar
+        aria-label="Transaction filters"
+        search={searchField}
+        leading={
+          <FinanceStatusFilter
+            value={query.statusFilter}
+            onChange={(statusFilter) => onChange({ ...query, page: 1, statusFilter })}
+          />
+        }
+        refine={
+          <AdminListRefinePopover
+            open={desktopRefineOpen}
+            onOpenChange={setDesktopRefineOpen}
+            activeCount={moreFilterCount}
+            onClear={clearMoreFilters}
+            aria-label="More transaction filters"
+          >
+            <div className="flex w-full min-w-0 flex-col gap-2 px-2 py-1.5">
+              <FinanceTypeFilter
+                value={query.typeFilter}
+                onChange={(typeFilter) => onChange({ ...query, page: 1, typeFilter })}
+                nestedInPopover
+              />
+              <FinanceCategoryFilter
+                categories={categories}
+                value={query.categoryFilter}
+                onChange={(categoryFilter) => onChange({ ...query, page: 1, categoryFilter })}
+                nestedInPopover
               />
             </div>
-            {showPerPage ? (
-              <AdminListPerPageSelect
-                limit={query.limit}
-                onChange={(limit) => onChange({ ...query, limit, page: 1 })}
-              />
-            ) : null}
-          </div>
-          {viewToggle}
-        </div>
-      </div>
+          </AdminListRefinePopover>
+        }
+        sort={
+          <FinanceLedgerSortMenu
+            sort={query.sort}
+            onChange={(sort) => onChange({ ...query, sort, page: 1 })}
+          />
+        }
+        perPage={
+          showPerPage ? (
+            <AdminListPerPageSelect
+              limit={query.limit}
+              onChange={(limit) => onChange({ ...query, limit, page: 1 })}
+            />
+          ) : undefined
+        }
+        view={
+          <AdminListViewMenuControl
+            value={query.view}
+            onChange={(view) => onChange({ ...query, view, page: 1 })}
+            hideTableView={hideTableView}
+            ariaLabel="Choose stays view"
+          />
+        }
+      />
     </>
   );
 }
@@ -200,11 +231,13 @@ function FinanceSearchField({
         className={cn(
           'border-border bg-card text-foreground field-focus h-12 min-h-[48px] w-full rounded-2xl border py-2.5 pl-11 text-[15px]',
           'sm:h-10 sm:min-h-[44px] sm:rounded-xl sm:pl-10 sm:text-[13px]',
+          'lg:h-10 lg:min-h-[44px] lg:rounded-lg',
           value ? 'pr-11' : 'pr-3.5',
           'placeholder:text-muted-foreground'
         )}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        aria-label="Search transactions"
       />
       {value ? (
         <button

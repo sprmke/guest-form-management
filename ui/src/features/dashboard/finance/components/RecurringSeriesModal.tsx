@@ -258,7 +258,7 @@ export function RecurringSeriesModal({ anchor, open, onClose, query }: Props) {
                   <AdminTableTh className="hidden px-2 sm:table-cell sm:px-3 lg:max-w-none lg:whitespace-normal">
                     Notes
                   </AdminTableTh>
-                  <AdminTableTh className="pl-2 pr-2 text-right sm:pr-3">
+                  <AdminTableTh className="pl-2 pr-2 sm:pr-3">
                     <span className="sr-only">Actions</span>
                   </AdminTableTh>
                 </AdminTableHeadRow>
