@@ -10,6 +10,8 @@ import {
 import { BookingDetailCard } from '@/features/dashboard/bookings/components/booking-detail/primitives/BookingDetailCard';
 import type { BookingEditFormValues } from '@/features/dashboard/bookings/components/BookingEditForm';
 import { bookingEditDatePickerClass } from '@/features/dashboard/bookings/components/BookingEditForm';
+import { BookingGuestDocReplacer } from '@/features/dashboard/bookings/components/BookingGuestDocReplacer';
+import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
 import { DatePicker } from '@/components/ui/date-picker';
 import { dateToString, stringToDate, DATE_PICKER_DISPLAY_FORMAT } from '@/utils/format/dates';
@@ -17,13 +19,22 @@ import { dateToString, stringToDate, DATE_PICKER_DISPLAY_FORMAT } from '@/utils/
 import type { UseFormRegister, UseFormSetValue } from 'react-hook-form';
 
 type Props = {
+  booking: BookingRow;
   register: UseFormRegister<BookingEditFormValues>;
   setValue: UseFormSetValue<BookingEditFormValues>;
   watchPets: boolean;
   petVaccinationDate: string;
+  onPreview: (label: string, rawUrl: string) => void | Promise<void>;
 };
 
-export function PetsTab({ register, setValue, watchPets, petVaccinationDate }: Props) {
+export function PetsTab({
+  booking,
+  register,
+  setValue,
+  watchPets,
+  petVaccinationDate,
+  onPreview,
+}: Props) {
   return (
     <BookingDetailCard title="Pet information" icon={PawPrint} tone="edit">
       <div className="space-y-3.5 sm:space-y-4">
@@ -75,6 +86,24 @@ export function PetsTab({ register, setValue, watchPets, petVaccinationDate }: P
                 />
               </Field>
             </Row3>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <BookingGuestDocReplacer
+                bookingId={booking.id}
+                assetType="pet_vaccination"
+                label="Vaccination record"
+                currentUrl={booking.pet_vaccination_url}
+                accept="image/*,.pdf"
+                onPreview={onPreview}
+              />
+              <BookingGuestDocReplacer
+                bookingId={booking.id}
+                assetType="pet_image"
+                label="Pet photo"
+                currentUrl={booking.pet_image_url}
+                accept="image/*"
+                onPreview={onPreview}
+              />
+            </div>
           </>
         ) : null}
       </div>

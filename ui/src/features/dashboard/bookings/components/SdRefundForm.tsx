@@ -9,26 +9,22 @@
  * Plan: docs/planning/NEW_FLOW_PLAN.md §2 (sd columns), §6.1 Q2.1
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
-import { ExternalLink, FileImage, Loader2, Plus, Trash2, Upload } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { BookingCompactAssetControl } from '@/features/dashboard/bookings/components/BookingCompactAssetControl';
 import { GuestSdRefundDetailsSection } from '@/features/dashboard/bookings/components/GuestSdRefundDetailsSection';
-import { WorkflowAssetPreviewWithRemove } from '@/features/dashboard/bookings/components/WorkflowAssetPreviewWithRemove';
 import {
   WorkflowFormShell,
   workflowFormEditTitle,
   type WorkflowFormVariant,
 } from '@/features/dashboard/bookings/components/WorkflowFormShell';
 import { useClearBookingAsset } from '@/features/dashboard/bookings/hooks/useClearBookingAsset';
+import type { BookingAssetPreviewHandler } from '@/features/dashboard/bookings/hooks/useBookingAssetPreview';
 import { useUploadBookingAsset } from '@/features/dashboard/bookings/hooks/useUploadBookingAsset';
 import type { BookingRow, SdSettlementLineItem } from '@/features/dashboard/bookings/lib/types';
-import {
-  workflowAssetPreviewCard,
-  workflowAssetViewLink,
-  workflowUploadButtonClass,
-} from '@/features/dashboard/bookings/lib/workflowActionButtonStyles';
 
 import { cn } from '@/lib/utils';
 import { formatMoney } from '@/utils/format/currency';
@@ -139,6 +135,7 @@ type Props = {
   variant?: WorkflowFormVariant;
   /** When false, guest SD refund submission is omitted (shown separately in edit form). */
   showGuestDetails?: boolean;
+  onPreview: BookingAssetPreviewHandler;
 };
 
 const SD_DEFAULT = 1500;
@@ -151,10 +148,10 @@ export function SdRefundForm({
   editMode = false,
   variant = 'workflow',
   showGuestDetails = true,
+  onPreview,
 }: Props) {
   const uploadMut = useUploadBookingAsset();
   const clearAssetMut = useClearBookingAsset();
-  const receiptFileRef = useRef<HTMLInputElement>(null);
 
   const sdInitial = buildSdInitialState(booking, initialDraft);
 
@@ -213,9 +210,7 @@ export function SdRefundForm({
     }
   }, [expenseItems, profitItems, netSD, receiptUrl, readOnly, editMode]);
 
-  async function handleReceiptFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function handleReceiptFile(file: File) {
     try {
       const result = await uploadMut.mutateAsync({
         bookingId: booking.id,
@@ -226,14 +221,12 @@ export function SdRefundForm({
       toast.success('Refund receipt uploaded');
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to upload refund receipt');
-    } finally {
-      if (receiptFileRef.current) receiptFileRef.current.value = '';
+      throw err;
     }
   }
 
   async function handleRemoveReceipt() {
     setReceiptUrl('');
-    if (receiptFileRef.current) receiptFileRef.current.value = '';
     if (readOnly) return;
     try {
       await clearAssetMut.mutateAsync({
@@ -242,6 +235,7 @@ export function SdRefundForm({
       });
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to remove refund receipt');
+      throw err;
     }
   }
 
@@ -333,80 +327,18 @@ export function SdRefundForm({
 
       <div className="space-y-1">
         <label className="text-muted-foreground block text-xs">Refund receipt (optional)</label>
-        <div className="space-y-2">
-          {receiptUrl ? (
-            <WorkflowAssetPreviewWithRemove
-              readOnly={readOnly}
-              removing={clearAssetMut.isPending}
-              uploading={uploadMut.isPending}
-              removeAriaLabel="Remove refund receipt"
-              onRemove={() => void handleRemoveReceipt()}
-              preview={
-                <a
-                  href={receiptUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={workflowAssetPreviewCard}
-                >
-                  <div className="bg-muted h-12 w-12 shrink-0 overflow-hidden rounded-md">
-                    <img
-                      src={receiptUrl}
-                      alt="Refund receipt"
-                      className="h-full w-full shrink-0 object-cover"
-                      width={48}
-                      height={48}
-                    />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-foreground text-xs font-medium">Current receipt</p>
-                    <p className={workflowAssetViewLink}>
-                      <ExternalLink className="size-3 shrink-0" />
-                      View image
-                    </p>
-                  </div>
-                </a>
-              }
-            />
-          ) : (
-            <div className="border-border bg-card text-muted-foreground flex min-h-[44px] items-center justify-center rounded-lg border border-dashed px-2 text-xs">
-              <span className="inline-flex items-center gap-1.5">
-                <FileImage className="size-3.5 shrink-0" />
-                No receipt uploaded
-              </span>
-            </div>
-          )}
-
-          {!readOnly ? (
-            <>
-              <input
-                ref={receiptFileRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleReceiptFileChange}
-                disabled={uploadMut.isPending}
-              />
-              <button
-                type="button"
-                disabled={uploadMut.isPending}
-                onClick={() => receiptFileRef.current?.click()}
-                className={workflowUploadButtonClass(uploadMut.isPending)}
-              >
-                {uploadMut.isPending ? (
-                  <>
-                    <Loader2 className="size-3.5 shrink-0 animate-spin" />
-                    Uploading image…
-                  </>
-                ) : (
-                  <>
-                    <Upload className="size-3.5 shrink-0" />
-                    {receiptUrl ? 'Replace receipt image' : 'Upload receipt image'}
-                  </>
-                )}
-              </button>
-            </>
-          ) : null}
-        </div>
+        <BookingCompactAssetControl
+          label="Refund receipt"
+          showLabel={false}
+          currentUrl={receiptUrl}
+          accept="image/*"
+          readOnly={readOnly}
+          uploading={uploadMut.isPending}
+          removing={clearAssetMut.isPending}
+          onSelectFile={handleReceiptFile}
+          onRemove={handleRemoveReceipt}
+          onPreview={onPreview}
+        />
       </div>
     </WorkflowFormShell>
   );

@@ -1,5 +1,7 @@
 import { CalendarRange } from 'lucide-react';
 
+import { normalizeBookingSource } from '@/features/guest/form/lib/bookingSourceFromSearchParams';
+
 import {
   Field,
   fieldErrorMessage,
@@ -11,6 +13,7 @@ import {
 import { BookingDetailCard } from '@/features/dashboard/bookings/components/booking-detail/primitives/BookingDetailCard';
 import type { BookingEditFormValues } from '@/features/dashboard/bookings/components/BookingEditForm';
 import { bookingEditDatePickerClass } from '@/features/dashboard/bookings/components/BookingEditForm';
+import { BookingGuestDocReplacer } from '@/features/dashboard/bookings/components/BookingGuestDocReplacer';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
 import { DatePicker } from '@/components/ui/date-picker';
@@ -33,6 +36,7 @@ type Props = {
   setValue: UseFormSetValue<BookingEditFormValues>;
   formSnapshot: BookingEditFormValues;
   bookedDates: BookedDateRange[];
+  onPreview: (label: string, rawUrl: string) => void | Promise<void>;
 };
 
 export function StayDetailsTab({
@@ -42,8 +46,11 @@ export function StayDetailsTab({
   setValue,
   formSnapshot,
   bookedDates,
+  onPreview,
 }: Props) {
   const watchCheckInDate = formSnapshot?.check_in_date ?? '';
+  const isAirbnb =
+    normalizeBookingSource(formSnapshot?.booking_source ?? booking.booking_source) === 'Airbnb';
 
   return (
     <BookingDetailCard title="Stay details" icon={CalendarRange} tone="edit">
@@ -180,6 +187,19 @@ export function StayDetailsTab({
             </Field>
           </Row3>
         </Section>
+
+        {!isAirbnb ? (
+          <Section title="Payment">
+            <BookingGuestDocReplacer
+              bookingId={booking.id}
+              assetType="payment_receipt"
+              label="Downpayment receipt"
+              currentUrl={booking.payment_receipt_url}
+              accept="image/*,.pdf"
+              onPreview={onPreview}
+            />
+          </Section>
+        ) : null}
       </div>
     </BookingDetailCard>
   );

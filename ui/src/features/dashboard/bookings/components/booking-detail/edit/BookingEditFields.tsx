@@ -1,7 +1,6 @@
 /**
- * Shared RHF field glue for the booking edit tabs (and the nested Workflow
- * Details sub-forms, which still use `Section` via `WorkflowFormShell`'s
- * `variant="edit"` — see GuestSdRefundEditForm.tsx / GuestSdRefundDetailsSection.tsx).
+ * Shared RHF field glue for the booking edit tabs.
+ * Progress-rail forms use `WorkflowFormShell` separately.
  *
  * Relocated verbatim from the retired `BookingEditLayout.tsx` — no visual
  * changes here, `CollapsibleGroup` and `EditSectionJumpNav` were the only

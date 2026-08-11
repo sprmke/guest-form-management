@@ -4,8 +4,10 @@
  *
  * Owns local tab state (not a URL param — edit mode itself is transient).
  * Tab labels mirror view-mode `BookingDetailTabs` where the domains overlap
- * (Guests / Parking / Pets / Files); Stay + Workflow are edit-only. Each tab
+ * (Guests / Parking / Pets); Stay leads the strip and is edit-only. Each tab
  * owns its own `BookingDetailCard`(s) so edit and view share one card language.
+ * Document uploads live on Stay (downpayment), Guests (Valid ID), and Pets
+ * (vaccination / photo). Pricing and settlement edits live on the Progress rail.
  * The single `useForm` instance stays in `BookingEditForm.tsx` — RHF keeps
  * every field's value even while its tab isn't mounted.
  */
@@ -20,9 +22,13 @@ import {
   type ReactNode,
 } from 'react';
 
-import { PencilLine, X } from 'lucide-react';
+import { PencilLine } from 'lucide-react';
 
 import type { BookingEditFormValues } from '@/features/dashboard/bookings/components/BookingEditForm';
+import {
+  BookingEditActions,
+  type BookingEditActionsProps,
+} from '@/features/dashboard/bookings/components/booking-detail/edit/BookingEditStickyBar';
 import { ReadyForCheckinSensitiveFieldsNotice } from '@/features/dashboard/bookings/components/ReadyForCheckinSensitiveFieldsNotice';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
@@ -32,18 +38,16 @@ import { formatBookingDate } from '@/utils/format/bookingDisplay';
 
 import type { FieldErrors } from 'react-hook-form';
 
-export type BookingEditTabId = 'guest' | 'stay' | 'parking' | 'pets' | 'docs' | 'workflow';
+export type BookingEditTabId = 'guest' | 'stay' | 'parking' | 'pets';
 
-const TAB_ORDER: BookingEditTabId[] = ['guest', 'stay', 'parking', 'pets', 'docs', 'workflow'];
+const TAB_ORDER: BookingEditTabId[] = ['stay', 'guest', 'parking', 'pets'];
 
-/** Labels aligned with view-mode tabs where domains overlap (Guests / Files). */
+/** Labels aligned with view-mode tabs where domains overlap (Guests). */
 const TAB_LABEL: Record<BookingEditTabId, string> = {
-  guest: 'Guests',
   stay: 'Stay',
+  guest: 'Guests',
   parking: 'Parking',
   pets: 'Pets',
-  docs: 'Files',
-  workflow: 'Workflow',
 };
 
 /** Maps every RHF-registered top-level field to the tab that owns it, for error-dot badges and cross-tab error jump. */
@@ -111,10 +115,9 @@ export type BookingEditTabsHandle = {
 
 type Props = {
   booking: BookingRow;
-  onDiscard: () => void;
-  discardDisabled?: boolean;
+  /** Cancel + Save in the editing header (same props as the sticky footer). */
+  actions: Omit<BookingEditActionsProps, 'density'>;
   errors: FieldErrors<BookingEditFormValues>;
-  showDocsTab: boolean;
   sensitiveNoticeVisible: boolean;
   /** Content for each tab, built by `BookingEditForm.tsx` from the shared `useForm` instance. */
   tabs: Partial<Record<BookingEditTabId, ReactNode>>;
@@ -124,34 +127,14 @@ type Props = {
 };
 
 export const BookingEditTabs = forwardRef<BookingEditTabsHandle, Props>(function BookingEditTabs(
-  {
-    booking,
-    onDiscard,
-    discardDisabled,
-    errors,
-    showDocsTab,
-    sensitiveNoticeVisible,
-    tabs,
-    footer,
-    initialTab = 'guest',
-  },
+  { booking, actions, errors, sensitiveNoticeVisible, tabs, footer, initialTab = 'stay' },
   ref
 ) {
-  const orderedTabs = useMemo(
-    () => TAB_ORDER.filter((id) => id !== 'docs' || showDocsTab),
-    [showDocsTab]
-  );
+  const orderedTabs = TAB_ORDER;
   const [activeTab, setActiveTab] = useState<BookingEditTabId>(() =>
-    orderedTabs.includes(initialTab) ? initialTab : 'guest'
+    orderedTabs.includes(initialTab) ? initialTab : 'stay'
   );
   const pendingScrollErrorsRef = useRef<FieldErrors<BookingEditFormValues> | null>(null);
-
-  // Docs tab can appear/disappear as the admin edits booking source / pets — keep the active tab valid.
-  useEffect(() => {
-    if (!orderedTabs.includes(activeTab)) {
-      setActiveTab(orderedTabs[0] ?? 'guest');
-    }
-  }, [orderedTabs, activeTab]);
 
   useImperativeHandle(
     ref,
@@ -196,7 +179,7 @@ export const BookingEditTabs = forwardRef<BookingEditTabsHandle, Props>(function
 
   return (
     <div className="border-border/80 bg-card overflow-hidden rounded-2xl border" data-mode="edit">
-      <div className="border-border/70 bg-muted/25 flex flex-col gap-2.5 border-b px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+      <div className="border-border/70 bg-muted/25 flex flex-col gap-2.5 border-b px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-5">
         <div className="flex min-w-0 items-start gap-2.5 sm:items-center">
           <span className="icon-well-sm inline-flex !size-8 shrink-0 items-center justify-center sm:!size-9">
             <PencilLine className="text-primary size-4" aria-hidden />
@@ -218,16 +201,7 @@ export const BookingEditTabs = forwardRef<BookingEditTabsHandle, Props>(function
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={onDiscard}
-          disabled={discardDisabled}
-          aria-label="Cancel editing"
-          className="border-border/80 bg-background text-muted-foreground hover:bg-muted/50 hover:text-foreground inline-flex min-h-[44px] shrink-0 cursor-pointer items-center gap-1.5 self-end rounded-lg border px-3 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:self-auto"
-        >
-          <X className="size-3.5" aria-hidden />
-          Cancel
-        </button>
+        <BookingEditActions {...actions} density="header" />
       </div>
 
       <div className="space-y-4 px-3 py-4 sm:px-5 sm:py-5">

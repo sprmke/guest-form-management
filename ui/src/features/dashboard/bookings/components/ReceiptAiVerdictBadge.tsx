@@ -143,6 +143,17 @@ export function receiptAiVerdictBlocksAdmin(verdict: ReceiptAiVerdict): boolean 
   return String(verdict ?? '').toLowerCase() === 'invalid';
 }
 
+/** Summary line color in dense status-report rows (e.g. Document checks list). */
+export function receiptAiVerdictReportTextClass(
+  verdict: ReceiptAiVerdict,
+  loading = false
+): string {
+  if (loading) return 'text-muted-foreground';
+  const v = String(verdict ?? '').toLowerCase();
+  if (!v || v === 'skipped') return 'text-muted-foreground';
+  return semanticSurfaceClasses(receiptAiVerdictTone(verdict)).color;
+}
+
 /**
  * Full-bleed verdict strip for preview surfaces. Sits under a preview header and
  * states, in this order, that a check ran, what it concluded, and why — so the

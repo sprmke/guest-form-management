@@ -7,6 +7,11 @@ import { Info, Plus, UserRound, Users } from 'lucide-react';
 
 import { BOOKING_SOURCE_OPTIONS } from '@/features/guest/form/lib/bookingSourceFromSearchParams';
 import {
+  FIND_US_OPTIONS,
+  findUsRequiresDetails,
+  isFindUsOption,
+} from '@/features/guest/form/lib/findUsOptions';
+import {
   FIFTH_PARTY_GUEST_MAX_AGE,
   MAX_GUESTS,
   PRIMARY_GUEST_MIN_AGE,
@@ -34,6 +39,13 @@ import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
 import { Button } from '@/components/ui/button';
 import { NativeSelect } from '@/components/ui/native-select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 
 import type { FieldErrors, UseFormRegister, UseFormSetValue } from 'react-hook-form';
@@ -277,12 +289,50 @@ export function GuestIdentityTab({
           ) : null}
 
           <Row2>
-            <Field label="Referral channel">
-              <Input {...register('find_us')} placeholder="Facebook, Airbnb…" />
+            <Field label="Referral channel" htmlFor="find_us">
+              <input type="hidden" {...register('find_us')} />
+              <Select
+                value={formSnapshot?.find_us?.trim() || undefined}
+                onValueChange={(value) =>
+                  setValue('find_us', value, { shouldDirty: true, shouldValidate: true })
+                }
+              >
+                <SelectTrigger id="find_us" className={cn(fieldControlClass, 'h-11')}>
+                  <SelectValue placeholder="Select how they found us" />
+                </SelectTrigger>
+                <SelectContent>
+                  {FIND_US_OPTIONS.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                  {formSnapshot?.find_us?.trim() && !isFindUsOption(formSnapshot.find_us.trim()) ? (
+                    <SelectItem value={formSnapshot.find_us.trim()}>
+                      {formSnapshot.find_us.trim()}
+                    </SelectItem>
+                  ) : null}
+                </SelectContent>
+              </Select>
             </Field>
-            <Field label="Details">
-              <Input {...register('find_us_details')} placeholder="Referred by…" />
-            </Field>
+            {findUsRequiresDetails(formSnapshot?.find_us) ? (
+              <Field
+                label={formSnapshot?.find_us === 'Friend' ? "Friend's name" : 'Details'}
+                htmlFor="find_us_details"
+              >
+                <Input
+                  id="find_us_details"
+                  {...register('find_us_details')}
+                  placeholder={
+                    formSnapshot?.find_us === 'Friend'
+                      ? "Enter friend's name"
+                      : 'Please specify how they found us'
+                  }
+                  autoComplete="off"
+                />
+              </Field>
+            ) : (
+              <div className="hidden sm:block" aria-hidden />
+            )}
           </Row2>
 
           <Field label="Requests / notes">
