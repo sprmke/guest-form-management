@@ -102,14 +102,6 @@ type Props = {
   fillMain?: boolean;
 };
 
-export function AdminLayout({ children, fillMain }: Props) {
-  return (
-    <AdminBrandTheme>
-      <AdminLayoutShell fillMain={fillMain}>{children}</AdminLayoutShell>
-    </AdminBrandTheme>
-  );
-}
-
 const AdminLayoutFillMainContext = createContext<((fill: boolean) => void) | null>(null);
 const AdminLayoutFillMainActiveContext = createContext(false);
 
@@ -131,23 +123,32 @@ export function useAdminLayoutIsFillMain(): boolean {
   return useContext(AdminLayoutFillMainActiveContext);
 }
 
-/** Persistent admin chrome for React Router layout routes — keeps sidebar mounted across navigations. */
-export function AdminLayoutOutlet() {
-  const [fillMain, setFillMain] = useState(false);
+export function AdminLayout({ children, fillMain: fillMainProp = false }: Props) {
+  const [fillMainOptIn, setFillMainOptIn] = useState(false);
   const fillCountRef = useRef(0);
   const setFill = useCallback((fill: boolean) => {
     fillCountRef.current = Math.max(0, fillCountRef.current + (fill ? 1 : -1));
-    setFillMain(fillCountRef.current > 0);
+    setFillMainOptIn(fillCountRef.current > 0);
   }, []);
+  const fillMain = fillMainProp || fillMainOptIn;
 
   return (
     <AdminLayoutFillMainContext.Provider value={setFill}>
       <AdminLayoutFillMainActiveContext.Provider value={fillMain}>
-        <AdminLayout fillMain={fillMain}>
-          <Outlet />
-        </AdminLayout>
+        <AdminBrandTheme>
+          <AdminLayoutShell fillMain={fillMain}>{children}</AdminLayoutShell>
+        </AdminBrandTheme>
       </AdminLayoutFillMainActiveContext.Provider>
     </AdminLayoutFillMainContext.Provider>
+  );
+}
+
+/** Persistent admin chrome for React Router layout routes — keeps sidebar mounted across navigations. */
+export function AdminLayoutOutlet() {
+  return (
+    <AdminLayout>
+      <Outlet />
+    </AdminLayout>
   );
 }
 
