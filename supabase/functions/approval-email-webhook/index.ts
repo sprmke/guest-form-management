@@ -47,6 +47,81 @@ type ResendAttachmentMeta = {
   content_type?: string;
 };
 
+function resendApiKey(): string {
+  const apiKey = Deno.env.get('RESEND_API_KEY')?.trim();
+  if (!apiKey) throw new Error('Missing RESEND_API_KEY');
+  return apiKey;
+}
+
+function resendAuthFailureMessage(status: number, apiMessage?: string): string {
+  if (status === 401) {
+    return (
+      apiMessage ??
+      'Resend attachments API returned 401 — use a Full access API key (Sending-only keys cannot read inbound attachments)'
+    );
+  }
+  return apiMessage ?? `Resend attachments request failed (${status})`;
+}
+
+async function getReceivingAttachment(
+  emailId: string,
+  attachmentId: string
+): Promise<ResendAttachmentMeta> {
+  const res = await fetch(
+    `https://api.resend.com/emails/receiving/${encodeURIComponent(emailId)}/attachments/${encodeURIComponent(attachmentId)}`,
+    { headers: { Authorization: `Bearer ${resendApiKey()}` } }
+  );
+  const json = (await res.json()) as ResendAttachmentMeta & {
+    error?: { message?: string };
+  };
+  if (!res.ok) {
+    throw new Error(resendAuthFailureMessage(res.status, json.error?.message));
+  }
+  return {
+    id: json.id,
+    filename: json.filename,
+    download_url: json.download_url,
+    content_type: json.content_type,
+  };
+}
+
+async function listReceivingAttachments(emailId: string): Promise<ResendAttachmentMeta[]> {
+  const res = await fetch(
+    `https://api.resend.com/emails/receiving/${encodeURIComponent(emailId)}/attachments`,
+    { headers: { Authorization: `Bearer ${resendApiKey()}` } }
+  );
+  const json = (await res.json()) as {
+    data?: ResendAttachmentMeta[];
+    error?: { message?: string };
+  };
+  if (!res.ok) {
+    throw new Error(resendAuthFailureMessage(res.status, json.error?.message));
+  }
+  return json.data ?? [];
+}
+
+/** Prefer webhook attachment ids (download_url only comes from the Attachments API). */
+async function resolveReceivingAttachments(
+  emailId: string,
+  webhookAttachments: Array<{ id?: string; filename?: string; content_type?: string }> | undefined
+): Promise<ResendAttachmentMeta[]> {
+  const ids = (webhookAttachments ?? []).map((a) => String(a.id ?? '').trim()).filter(Boolean);
+  if (ids.length > 0) {
+    const resolved: ResendAttachmentMeta[] = [];
+    for (const id of ids) {
+      const meta = await getReceivingAttachment(emailId, id);
+      const webhook = webhookAttachments?.find((a) => a.id === id);
+      resolved.push({
+        ...meta,
+        filename: meta.filename || String(webhook?.filename ?? ''),
+        content_type: meta.content_type || webhook?.content_type,
+      });
+    }
+    return resolved;
+  }
+  return listReceivingAttachments(emailId);
+}
+
 function supabaseAdmin() {
   return createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
@@ -98,24 +173,6 @@ async function resolvePropertyIdBySlug(slug: string): Promise<string | null> {
     return null;
   }
   return (data?.id as string | undefined) ?? null;
-}
-
-async function listReceivingAttachments(emailId: string): Promise<ResendAttachmentMeta[]> {
-  const apiKey = Deno.env.get('RESEND_API_KEY')?.trim();
-  if (!apiKey) throw new Error('Missing RESEND_API_KEY');
-
-  const res = await fetch(
-    `https://api.resend.com/emails/receiving/${encodeURIComponent(emailId)}/attachments`,
-    { headers: { Authorization: `Bearer ${apiKey}` } }
-  );
-  const json = (await res.json()) as {
-    data?: ResendAttachmentMeta[];
-    error?: { message?: string };
-  };
-  if (!res.ok) {
-    throw new Error(json.error?.message ?? `Resend attachments list failed (${res.status})`);
-  }
-  return json.data ?? [];
 }
 
 async function downloadAttachmentBytes(downloadUrl: string): Promise<Uint8Array> {
@@ -218,7 +275,7 @@ async function processReceivedEmail(event: ResendReceivedEvent): Promise<{
     return { action: 'skipped', reason: 'sender_not_allowed', kind: parsed.kind };
   }
 
-  const attachments = await listReceivingAttachments(data.email_id);
+  const attachments = await resolveReceivingAttachments(data.email_id, data.attachments);
   const filenames = attachments.map((a) => a.filename).filter(Boolean);
   const matchedName = findApprovedAttachmentFilename(parsed.kind, filenames);
   if (!matchedName) {

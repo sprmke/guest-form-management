@@ -28,6 +28,7 @@ import {
   statusLabel,
   type BookingStatus,
 } from '@/features/dashboard/bookings/lib/bookingStatus';
+import { shortStatusLabel } from '@/features/dashboard/bookings/lib/bookingStages';
 import {
   PARKING_NESTED_KEY,
   type PendingDocNestedKey,
@@ -35,6 +36,7 @@ import {
 import {
   workflowActionLabelGroupClass,
   workflowActionLabelTextClass,
+  workflowActionLabelTextPairedClass,
   workflowBackActionClass,
   workflowPrimaryActionClass,
 } from '@/features/dashboard/bookings/lib/workflowActionButtonStyles';
@@ -78,11 +80,25 @@ type Props = {
 
 type PrimaryAction = {
   label: string;
+  /** Shorter rail label when shown beside the back CTA in a two-column row. */
+  compactLabel?: string;
   enabled: boolean;
   onSelect: () => void;
   /** Shown as a tooltip on the disabled CTA — why the forward step is blocked. */
   blockedHint?: string;
 };
+
+function workflowStatusCtaName(status: BookingStatus, compact: boolean): string {
+  return compact ? shortStatusLabel(status) : statusLabel(status);
+}
+
+function returnToStatusLabel(status: BookingStatus, compact: boolean): string {
+  return `Return to ${workflowStatusCtaName(status, compact)}`;
+}
+
+function proceedToStatusLabel(status: BookingStatus, compact: boolean): string {
+  return `Proceed to ${workflowStatusCtaName(status, compact)}`;
+}
 
 const quietRowClass =
   'focus-ring flex min-h-[40px] w-full items-center justify-center gap-1.5 rounded-lg px-3 text-[13px] font-medium transition-colors disabled:pointer-events-none disabled:opacity-40';
@@ -97,12 +113,14 @@ function PrimaryCta({
   disabled,
   busy,
   blockedHint,
+  paired,
   onSelect,
 }: {
   label: string;
   disabled: boolean;
   busy: boolean;
   blockedHint?: string;
+  paired?: boolean;
   onSelect: () => void;
 }) {
   const button = (
@@ -112,10 +130,18 @@ function PrimaryCta({
       onClick={onSelect}
       aria-busy={busy || undefined}
       aria-label={blockedHint ? `${label}. ${blockedHint}` : undefined}
-      className={cn(workflowPrimaryActionClass(!disabled), 'w-full min-w-0 text-center')}
+      className={cn(
+        workflowPrimaryActionClass(!disabled),
+        'w-full min-w-0 text-center',
+        paired && 'h-full'
+      )}
     >
       <span className={cn(workflowActionLabelGroupClass, 'gap-2')}>
-        <span className={workflowActionLabelTextClass}>{label}</span>
+        <span
+          className={paired ? workflowActionLabelTextPairedClass : workflowActionLabelTextClass}
+        >
+          {label}
+        </span>
         {busy ? (
           <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
         ) : (
@@ -125,15 +151,17 @@ function PrimaryCta({
     </button>
   );
 
+  const wrapperClass = cn('w-full min-w-0', paired && 'h-full');
+
   if (!blockedHint) {
-    return <div className="w-full min-w-0">{button}</div>;
+    return <div className={wrapperClass}>{button}</div>;
   }
 
   return (
     <TooltipProvider delayDuration={200}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className="block w-full min-w-0">{button}</span>
+          <span className={cn('block', wrapperClass)}>{button}</span>
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-[220px] text-center">
           {blockedHint}
@@ -191,10 +219,14 @@ export function WorkflowActionsBar({
     };
   } else if (inDocStep && showProceedToReadyForCheckin) {
     primary = {
-      label: 'Proceed to Ready for Check-in',
+      label: proceedToStatusLabel('READY_FOR_CHECKIN', false),
+      compactLabel: proceedToStatusLabel('READY_FOR_CHECKIN', true),
       enabled: pendingDocumentsComplete,
       onSelect: () =>
-        onOpenForwardProceedConfirm('READY_FOR_CHECKIN', 'Proceed to Ready for Check-in'),
+        onOpenForwardProceedConfirm(
+          'READY_FOR_CHECKIN',
+          proceedToStatusLabel('READY_FOR_CHECKIN', false)
+        ),
       blockedHint: 'Complete the remaining document steps to continue.',
     };
   } else if (showLateParkingActions) {
@@ -206,9 +238,10 @@ export function WorkflowActionsBar({
     };
   } else if (livePipelineActions && next) {
     primary = {
-      label: `Proceed to ${statusLabel(next)}`,
+      label: proceedToStatusLabel(next, false),
+      compactLabel: proceedToStatusLabel(next, true),
       enabled: !isTransitionDisabled(next),
-      onSelect: () => onOpenForwardProceedConfirm(next, `Proceed to ${statusLabel(next)}`),
+      onSelect: () => onOpenForwardProceedConfirm(next, proceedToStatusLabel(next, false)),
       blockedHint: 'Fill in the required fields to continue.',
     };
   }
@@ -222,6 +255,8 @@ export function WorkflowActionsBar({
   const showMarkIncomplete = showTransitions && inDocStep && selectedPendingDocCanMarkIncomplete;
   const showTransitionRow = showTransitions && (primary !== null || backTo !== null);
   const pairedTransitionActions = backTo !== null && primary !== null;
+  const primaryButtonLabel =
+    primary && pairedTransitionActions ? (primary.compactLabel ?? primary.label) : primary?.label;
   const showNotRequiredNote = showTransitions && docStepNotRequired && primary === null;
   const showDeadEndNote =
     showTransitions && !showTransitionRow && !showNotRequiredNote && !showMarkIncomplete;
@@ -278,13 +313,23 @@ export function WorkflowActionsBar({
               type="button"
               disabled={actionsBusy}
               onClick={() => onOpenBackConfirm(backTo)}
-              aria-label={`Return booking to ${statusLabel(backTo)}`}
-              className={cn(workflowBackActionClass, 'w-full min-w-0')}
+              aria-label={returnToStatusLabel(backTo, false)}
+              className={cn(
+                workflowBackActionClass,
+                'w-full min-w-0',
+                pairedTransitionActions && 'h-full'
+              )}
             >
               <span className={workflowActionLabelGroupClass}>
                 <ArrowLeft className="size-4 shrink-0" aria-hidden />
-                <span className={workflowActionLabelTextClass}>
-                  Return to {statusLabel(backTo)}
+                <span
+                  className={
+                    pairedTransitionActions
+                      ? workflowActionLabelTextPairedClass
+                      : workflowActionLabelTextClass
+                  }
+                >
+                  {returnToStatusLabel(backTo, pairedTransitionActions)}
                 </span>
               </span>
             </button>
@@ -292,10 +337,11 @@ export function WorkflowActionsBar({
 
           {primary ? (
             <PrimaryCta
-              label={primary.label}
+              label={primaryButtonLabel ?? primary.label}
               disabled={primaryDisabled}
               busy={transitionPending}
               blockedHint={!primary.enabled && !actionsBusy ? primary.blockedHint : undefined}
+              paired={pairedTransitionActions}
               onSelect={primary.onSelect}
             />
           ) : null}

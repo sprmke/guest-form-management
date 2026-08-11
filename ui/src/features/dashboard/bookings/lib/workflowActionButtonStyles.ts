@@ -30,6 +30,10 @@ export const workflowActionLabelGroupClass =
 
 export const workflowActionLabelTextClass = 'min-w-0 text-pretty text-center leading-snug';
 
+/** Paired rail CTAs — keep labels on one line so back/forward heights stay matched. */
+export const workflowActionLabelTextPairedClass =
+  'min-w-0 text-center leading-snug whitespace-nowrap';
+
 const workflowActionWarning =
   'border border-amber-500/25 bg-amber-500/[0.08] text-amber-800 hover:bg-amber-500/[0.12] hover:border-amber-500/35 dark:text-amber-300';
 

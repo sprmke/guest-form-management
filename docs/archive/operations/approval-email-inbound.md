@@ -18,11 +18,11 @@ Production path for Azure **GAF** and **pet** approval PDFs. Replaces the retire
 
 ## Edge secrets
 
-| Secret                           | Purpose                                             |
-| -------------------------------- | --------------------------------------------------- |
-| `RESEND_API_KEY`                 | Send mail + fetch received attachments              |
-| `RESEND_INBOUND_WEBHOOK_SECRET`  | Svix signing secret from Resend webhook (`whsec_…`) |
-| `RESEND_APPROVAL_INBOUND_DOMAIN` | Inbound host, e.g. `inbound.kamehomes.space`        |
+| Secret                           | Purpose                                                                                                                       |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `RESEND_API_KEY`                 | Send mail + fetch received attachments (**Full access** required — Sending-only keys return 401 on Receiving Attachments API) |
+| `RESEND_INBOUND_WEBHOOK_SECRET`  | Svix signing secret from Resend webhook (`whsec_…`)                                                                           |
+| `RESEND_APPROVAL_INBOUND_DOMAIN` | Inbound host, e.g. `inbound.kamehomes.space` or `cyonko.resend.app`                                                           |
 
 ## Dashboard / DNS checklist
 
