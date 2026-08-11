@@ -190,11 +190,10 @@ type RunAutomationResult = {
 };
 
 /**
- * Manually trigger the Gmail listener poll (Phase 4 — Q6.6).
- * Use when PENDING_GAF / PENDING_PET_REQUEST is stuck and the cron hasn't fired.
- * Invalidates the booking detail so status updates show immediately.
+ * Manually re-apply stored approved GAF/pet PDFs when a sub-step was marked incomplete.
+ * Replaces the reconcile half of the retired gmail-listener poll.
  */
-export function useRunGmailPoll(bookingId?: string) {
+export function useReconcileDocumentApprovals(bookingId?: string) {
   const qc = useQueryClient();
   const propertyId = usePropertyIdParam();
 
@@ -202,27 +201,19 @@ export function useRunGmailPoll(bookingId?: string) {
     mutationFn: async (): Promise<RunAutomationResult> => {
       const jwt = await getAdminJwt();
 
-      const res = await fetch(scopedFunctionsUrl('/gmail-listener', propertyId), {
+      const res = await fetch(scopedFunctionsUrl('/reconcile-document-approvals', propertyId), {
         method: 'POST',
         headers: { Authorization: `Bearer ${jwt}` },
       });
 
       const json = await res.json();
-      if (!json.success && json.needsReAuth) {
-        throw toGmailNeedsReconnectError(new Error(json.error))!;
-      }
-      if (!res.ok) {
-        const errMsg = json.error ?? `HTTP ${res.status}`;
-        if (messageIndicatesGmailNeedsReconnect(errMsg)) {
-          throw toGmailNeedsReconnectError(new Error(errMsg))!;
-        }
-        throw new Error(errMsg);
+      if (!res.ok || !json.success) {
+        throw new Error(json.error ?? `HTTP ${res.status}`);
       }
       return json as RunAutomationResult;
     },
     onSuccess: async () => {
       if (!bookingId) return;
-      // Await so mutateAsync does not resolve until detail + list refetches finish (avoids stale UI).
       await qc.invalidateQueries({ queryKey: BOOKING_QUERY_KEY(bookingId) });
       await qc.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY });
     },

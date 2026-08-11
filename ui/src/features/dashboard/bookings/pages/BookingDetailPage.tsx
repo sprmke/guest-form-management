@@ -30,7 +30,6 @@ import {
   BookingDetailTabs,
   type BookingViewTab,
 } from '@/features/dashboard/bookings/components/booking-detail/BookingDetailTabs';
-import { getDocType } from '@/features/dashboard/bookings/components/booking-detail/BookingDocPreview';
 import type { BookingEditTabId } from '@/features/dashboard/bookings/components/booking-detail/edit/BookingEditTabs';
 import { AiValidationPanel } from '@/features/dashboard/bookings/components/booking-detail/panels/AiValidationPanel';
 import { DocumentsPanel } from '@/features/dashboard/bookings/components/booking-detail/panels/DocumentsPanel';
@@ -47,14 +46,11 @@ import { PayParkingModal } from '@/features/dashboard/bookings/components/PayPar
 import { PendingReviewWorkflowGate } from '@/features/dashboard/bookings/components/PendingReviewWorkflowGate';
 import { WorkflowPanel } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowPanel';
 import { bookingDetailQueryKey, useBooking } from '@/features/dashboard/bookings/hooks/useBooking';
+import { useBookingAssetPreview } from '@/features/dashboard/bookings/hooks/useBookingAssetPreview';
 import { useBookingStayGuideLink } from '@/features/dashboard/bookings/hooks/useBookingStayGuideLink';
 import { useReceiptAiBackfill } from '@/features/dashboard/bookings/hooks/useReceiptAiBackfill';
 import { buildBookingDetailActions } from '@/features/dashboard/bookings/lib/bookingDetailActions';
 import { resolveBookingViewTab } from '@/features/dashboard/bookings/lib/resolveBookingViewTab';
-import {
-  isStorageObjectNotFoundError,
-  resolveAssetUrlForBrowser,
-} from '@/features/dashboard/bookings/lib/storageUrls';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 
@@ -77,13 +73,7 @@ export function BookingDetailPage() {
   const [editMode, setEditMode] = useState(false);
   const [editInitialTab, setEditInitialTab] = useState<BookingEditTabId | undefined>(undefined);
   const [payParkingModalOpen, setPayParkingModalOpen] = useState(false);
-  const [previewAsset, setPreviewAsset] = useState<{
-    label: string;
-    url: string;
-    rawUrl: string;
-    type: 'image' | 'pdf' | 'file';
-  } | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
+  const { previewAsset, previewLoading, handlePreview, closePreview } = useBookingAssetPreview();
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const [viewTab, setViewTab] = useState<BookingViewTab>('overview');
   const isBelowMd = useIsBelowMd();
@@ -171,29 +161,6 @@ export function BookingDetailPage() {
         : [],
     [booking, handleStartEdit, handleOpenPayParking, stayGuide]
   );
-
-  const handlePreview = async (label: string, rawUrl: string) => {
-    setPreviewLoading(true);
-    try {
-      const resolved = await resolveAssetUrlForBrowser(rawUrl);
-      setPreviewAsset({
-        label,
-        url: resolved,
-        rawUrl,
-        type: getDocType(resolved),
-      });
-    } catch (err) {
-      toast.error(
-        isStorageObjectNotFoundError(err)
-          ? 'This file is no longer in storage'
-          : err instanceof Error
-            ? err.message
-            : 'Failed to open document'
-      );
-    } finally {
-      setPreviewLoading(false);
-    }
-  };
 
   return (
     <>
@@ -338,7 +305,7 @@ export function BookingDetailPage() {
               )}
             >
               <PendingReviewWorkflowGate booking={booking}>
-                <WorkflowPanel key={booking.id} booking={booking} />
+                <WorkflowPanel key={booking.id} booking={booking} onPreview={handlePreview} />
               </PendingReviewWorkflowGate>
             </div>
           </div>
@@ -349,9 +316,7 @@ export function BookingDetailPage() {
         booking={booking}
         isReceiptAiBackfilling={isReceiptAiBackfilling}
         loading={previewLoading}
-        onClose={() => {
-          if (!previewLoading) setPreviewAsset(null);
-        }}
+        onClose={closePreview}
       />
       {booking && (
         <PayParkingModal

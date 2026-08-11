@@ -24,12 +24,12 @@ import { TelegramStaffSettingsCard } from '@/features/dashboard/bookings/compone
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 
 const NOTIFICATION_MODULES = [
+  'chat',
   'marketing',
   'staff',
   'operations',
   'finance',
   'maintenance',
-  'chat',
 ] as const;
 
 type PropertyNotificationModule = (typeof NOTIFICATION_MODULES)[number];
@@ -39,12 +39,12 @@ function isNotificationModule(value: string | null): value is PropertyNotificati
 }
 
 const MODULE_SECTIONS: AdminSectionNavItem[] = [
+  { id: 'chat', label: 'Chat', icon: MessageCircle },
   { id: 'marketing', label: 'Marketing', icon: Megaphone },
   { id: 'staff', label: 'Staff', icon: HardHat },
   { id: 'operations', label: 'Operations', icon: Bell },
   { id: 'finance', label: 'Finance', icon: DollarSign },
   { id: 'maintenance', label: 'Maintenance', icon: Wrench },
-  { id: 'chat', label: 'Chat', icon: MessageCircle },
 ];
 
 const NOTIFICATION_SECTION_GROUPS: AdminSectionNavGroup[] = [
@@ -52,6 +52,7 @@ const NOTIFICATION_SECTION_GROUPS: AdminSectionNavGroup[] = [
 ];
 
 const MODULE_DESCRIPTIONS: Record<PropertyNotificationModule, string> = {
+  chat: 'Instant alert for every inbound guest message from web chat, Facebook, or Instagram.',
   marketing:
     'Daily calendar alerts, plus instant messages when a guest submits or cancels a booking.',
   staff: 'Daily staff summary at your chosen Manila time.',
@@ -59,7 +60,6 @@ const MODULE_DESCRIPTIONS: Record<PropertyNotificationModule, string> = {
     'Booking workflow updates as guests move through documents, parking, pets, and check-in stages.',
   finance: 'Due-date reminders for tracked property expenses.',
   maintenance: 'Upcoming reminders for scheduled property upkeep items.',
-  chat: 'Instant alert for every inbound guest message from web chat, Facebook, or Instagram.',
 };
 
 export function NotificationsPage() {
@@ -95,6 +95,15 @@ export function NotificationsPage() {
             />
 
             <TelegramGlobalBotTokenCard />
+
+            <AdminSection
+              id="chat"
+              title="Chat"
+              icon={MessageCircle}
+              description={MODULE_DESCRIPTIONS.chat}
+            >
+              <TelegramChatSettingsCard embedded />
+            </AdminSection>
 
             <AdminSection
               id="marketing"
@@ -139,15 +148,6 @@ export function NotificationsPage() {
               description={MODULE_DESCRIPTIONS.maintenance}
             >
               <TelegramMaintenanceSettingsCard embedded />
-            </AdminSection>
-
-            <AdminSection
-              id="chat"
-              title="Chat"
-              icon={MessageCircle}
-              description={MODULE_DESCRIPTIONS.chat}
-            >
-              <TelegramChatSettingsCard embedded />
             </AdminSection>
           </div>
         </AdminSectionNavLayout>

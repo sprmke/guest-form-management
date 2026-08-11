@@ -103,7 +103,7 @@ export type UpdateBookingPayload = {
   guest_special_requests?: string | null;
   guest_requests_surprise_decor?: boolean;
 
-  // Progress / workflow fields (admin edit form)
+  // Progress / workflow fields (rail Save + transitions)
   booking_rate?: number;
   down_payment?: number;
   balance?: number | null;
@@ -111,6 +111,7 @@ export type UpdateBookingPayload = {
   pet_fee?: number;
   parking_rate_guest?: number;
   guest_additional_fee?: number;
+  surprise_decor_staff_acknowledged?: boolean;
   parking_owner?: string | null;
   parking_rate_paid?: number;
   parking_endorsement_url?: string | null;

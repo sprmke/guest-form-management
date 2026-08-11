@@ -432,10 +432,11 @@ export function defaultPendingDocNestedKey(
 }
 
 /**
- * Whether an automatic `gmail-listener` poll on page load could still apply
- * inbox approvals (GAF / pet). Parking is admin-only — not Gmail-driven.
+ * Whether document-approval reconcile on page load could still re-apply stored
+ * approved GAF/pet PDFs after an admin marked a sub-step incomplete.
+ * Parking is admin-only — not inbound-email-driven.
  */
-export function bookingNeedsGmailListenerPoll(booking: ApplicabilityFlags): boolean {
+export function bookingNeedsDocumentApprovalReconcile(booking: ApplicabilityFlags): boolean {
   if (!isSubStatusCompleted('PENDING_GAF', booking)) return true;
   if (
     isSubStatusRequired('PENDING_PET_REQUEST', booking) &&
@@ -445,6 +446,9 @@ export function bookingNeedsGmailListenerPoll(booking: ApplicabilityFlags): bool
   }
   return false;
 }
+
+/** @deprecated Use `bookingNeedsDocumentApprovalReconcile`. */
+export const bookingNeedsGmailListenerPoll = bookingNeedsDocumentApprovalReconcile;
 
 /**
  * Whether a graph-legal transition should actually be shown for this booking.
@@ -743,7 +747,7 @@ export function isLiveWorkflowView(
 export type ProgressEditFormKind =
   'pricing' | 'parking' | 'guest_balance' | 'sd_refund_guest' | 'sd_settlement';
 
-/** Pipeline stage when each Workflow Details form first becomes editable. */
+/** Pipeline stage when each Progress-rail form first becomes editable. */
 export const PROGRESS_EDIT_FORM_UNLOCK: Record<ProgressEditFormKind, BookingStatus> = {
   pricing: 'PENDING_REVIEW',
   parking: 'PENDING_DOCUMENTS',
@@ -767,7 +771,7 @@ function progressEditStatusRank(status: string): number {
   return -1;
 }
 
-/** True when the booking has reached the pipeline stage for this Workflow Details form. */
+/** True when the booking has reached the pipeline stage for this Progress-rail form. */
 export function isProgressEditFormEnabled(
   booking: ApplicabilityFlags & { status?: string | null },
   form: ProgressEditFormKind

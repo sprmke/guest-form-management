@@ -61,25 +61,3 @@ export function workflowNeutralActionClass(): string {
 /** Inline text link inside the workflow rail (e.g. SD refund link). */
 export const workflowInlineLink =
   'text-sm font-medium text-primary underline decoration-primary/30 underline-offset-2 hover:text-primary/90 sm:text-[13px] sm:font-normal';
-
-/** Full-width image upload / replace control in workflow sub-forms. */
-const workflowUploadBtnBase =
-  'flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors';
-
-const workflowUploadBtnDisabled =
-  'cursor-not-allowed bg-muted text-muted-foreground ring-1 ring-slate-200 dark:ring-border/60';
-
-const workflowUploadBtnEnabled =
-  'bg-primary/10 text-primary ring-1 ring-primary/25 hover:bg-primary/15 dark:bg-primary/10 dark:text-primary dark:ring-primary/30 dark:hover:bg-primary/20';
-
-export function workflowUploadButtonClass(disabled: boolean): string {
-  return cn(workflowUploadBtnBase, disabled ? workflowUploadBtnDisabled : workflowUploadBtnEnabled);
-}
-
-/** "View image" link on asset preview rows in workflow sub-forms. */
-export const workflowAssetViewLink =
-  'inline-flex items-center gap-1 text-[11px] text-primary group-hover:underline';
-
-/** Clickable asset preview card (receipt / endorsement). */
-export const workflowAssetPreviewCard =
-  'group flex min-h-[44px] items-center gap-2 rounded-lg border border-border bg-card p-2 transition-colors hover:border-primary/40 dark:hover:border-primary/40';

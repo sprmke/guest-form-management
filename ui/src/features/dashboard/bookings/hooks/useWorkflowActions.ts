@@ -77,7 +77,9 @@ export function useWorkflowActions(
   const selectedPendingDocCanMarkIncomplete =
     selectedPendingDocRequired && selectedPendingDocCompleted;
   const isLiveView = isLiveWorkflowView(viewedStep, status, booking);
-  const contentReadOnly = !isLiveView || status === 'COMPLETED' || status === 'CANCELLED';
+  // Cancelled / imported stay locked. Completed and earlier browsed stages are
+  // editable in the rail (Save) — hosts no longer need Edit Booking → Workflow.
+  const contentReadOnly = status === 'CANCELLED' || status === 'IMPORTED';
   const viewedContent = workflowContentForView(viewedStep, booking, documentRequirements);
   const viewingPendingDocSub = viewedStep.kind === 'pending-doc-sub';
 

@@ -1,5 +1,5 @@
 /**
- * Progress-form values for BookingEditForm saves.
+ * Progress-form values → `useUpdateBooking` patch (workflow rail Save).
  */
 
 import type { GuestBalanceSettlementValues } from '@/features/dashboard/bookings/components/GuestBalanceSettlementForm';
@@ -12,80 +12,93 @@ import type { ReviewPricingFormValues } from '@/features/dashboard/bookings/comp
 import type { SdRefundValues } from '@/features/dashboard/bookings/components/SdRefundForm';
 import type { UpdateBookingPayload } from '@/features/dashboard/bookings/hooks/useUpdateBooking';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
+import type { WorkflowViewContent } from '@/features/dashboard/bookings/lib/workflow';
 
-export type ProgressFormEditState = {
+export type WorkflowProgressDrafts = {
   pricing: ReviewPricingFormValues | null;
   parking: ParkingRequestValues | null;
   guestBalance: GuestBalanceSettlementValues | null;
+  sdRefund: SdRefundValues | null;
   sdRefundGuest: GuestSdRefundEditValues | null;
-  sdSettlement: SdRefundValues | null;
+  surpriseDecorStaffAck: boolean;
 };
 
-export function mergePricingIntoBooking(
-  booking: BookingRow,
-  pricing: ReviewPricingFormValues | null
-): BookingRow {
-  if (!pricing) return booking;
-  return {
-    ...booking,
-    booking_rate: pricing.booking_rate,
-    down_payment: pricing.down_payment,
-    security_deposit: pricing.security_deposit,
-    pet_fee: booking.has_pets ? pricing.pet_fee : 0,
-    parking_rate_guest: booking.need_parking ? pricing.parking_rate_guest : 0,
-    guest_additional_fee: pricing.guest_additional_fee,
-  };
+/** Stages that expose an editable progress form in the rail. */
+export function isEditableWorkflowProgressContent(
+  content: WorkflowViewContent | null
+): content is 'pricing' | 'parking' | 'guest_balance' | 'sd_refund' {
+  return (
+    content === 'pricing' ||
+    content === 'parking' ||
+    content === 'guest_balance' ||
+    content === 'sd_refund'
+  );
 }
 
-export function progressFormPayloadFromState(
+export function progressSavePayloadForView(
   booking: BookingRow,
-  state: ProgressFormEditState
-): Partial<UpdateBookingPayload> {
-  const patch: Partial<UpdateBookingPayload> = {};
+  viewedContent: WorkflowViewContent | null,
+  drafts: WorkflowProgressDrafts
+): Partial<UpdateBookingPayload> | null {
+  if (!isEditableWorkflowProgressContent(viewedContent)) return null;
 
-  if (state.pricing) {
-    const p = state.pricing;
-    patch.booking_rate = p.booking_rate;
-    patch.down_payment = p.down_payment;
-    patch.security_deposit = p.security_deposit;
-    patch.pet_fee = booking.has_pets ? p.pet_fee : 0;
-    patch.parking_rate_guest = booking.need_parking ? p.parking_rate_guest : 0;
-    patch.guest_additional_fee = p.guest_additional_fee ?? 0;
+  if (viewedContent === 'pricing') {
+    if (!drafts.pricing) return null;
+    const p = drafts.pricing;
+    const patch: Partial<UpdateBookingPayload> = {
+      booking_rate: p.booking_rate,
+      down_payment: p.down_payment,
+      security_deposit: p.security_deposit,
+      pet_fee: booking.has_pets ? p.pet_fee : 0,
+      parking_rate_guest: booking.need_parking ? p.parking_rate_guest : 0,
+      guest_additional_fee: p.guest_additional_fee ?? 0,
+    };
+    if (booking.guest_requests_surprise_decor && drafts.surpriseDecorStaffAck) {
+      patch.surprise_decor_staff_acknowledged = true;
+    }
+    return patch;
   }
 
-  if (booking.need_parking && state.parking) {
-    patch.parking_owner = state.parking.parking_owner.trim() || null;
-    patch.parking_rate_paid = state.parking.parking_rate_paid;
-    patch.parking_endorsement_url = state.parking.parking_endorsement_url || null;
-    patch.parking_fee_included_in_downpayment = state.parking.parking_fee_included_in_downpayment;
-    patch.parking_payment_receipt_url = state.parking.parking_fee_included_in_downpayment
-      ? null
-      : state.parking.parking_payment_receipt_url || null;
+  if (viewedContent === 'parking') {
+    if (!booking.need_parking || !drafts.parking) return null;
+    const parking = drafts.parking;
+    const patch: Partial<UpdateBookingPayload> = {
+      parking_owner: parking.parking_owner.trim() || null,
+      parking_rate_paid: parking.parking_rate_paid,
+      parking_endorsement_url: parking.parking_endorsement_url || null,
+      parking_fee_included_in_downpayment: parking.parking_fee_included_in_downpayment,
+      parking_payment_receipt_url: parking.parking_fee_included_in_downpayment
+        ? null
+        : parking.parking_payment_receipt_url || null,
+    };
     if (
-      !state.parking.parking_fee_included_in_downpayment &&
-      !state.parking.parking_payment_receipt_url?.trim()
+      !parking.parking_fee_included_in_downpayment &&
+      !parking.parking_payment_receipt_url?.trim()
     ) {
       patch.parking_receipt_ai_verdict = null;
       patch.parking_receipt_ai_summary = null;
     }
+    return patch;
   }
 
-  if (state.guestBalance) {
-    patch.guest_balance_paid_amount = state.guestBalance.guest_balance_paid_amount;
-    patch.guest_balance_payment_receipt_url =
-      state.guestBalance.guest_balance_payment_receipt_url || null;
-    if (!state.guestBalance.guest_balance_payment_receipt_url?.trim()) {
+  if (viewedContent === 'guest_balance') {
+    if (!drafts.guestBalance) return null;
+    const g = drafts.guestBalance;
+    const patch: Partial<UpdateBookingPayload> = {
+      guest_balance_paid_amount: g.guest_balance_paid_amount,
+      guest_balance_payment_receipt_url: g.guest_balance_payment_receipt_url || null,
+    };
+    if (!g.guest_balance_payment_receipt_url?.trim()) {
       patch.balance_receipt_ai_verdict = null;
       patch.balance_receipt_ai_summary = null;
     }
+    return patch;
   }
 
-  if (state.sdRefundGuest) {
-    Object.assign(patch, guestSdRefundPayloadFromValues(state.sdRefundGuest));
-  }
-
-  if (state.sdSettlement) {
-    const sd = state.sdSettlement;
+  // sd_refund — settlement + optional guest refund details
+  const patch: Partial<UpdateBookingPayload> = {};
+  if (drafts.sdRefund) {
+    const sd = drafts.sdRefund;
     patch.sd_additional_expense_items = sd.sd_additional_expense_items;
     patch.sd_additional_profit_items = sd.sd_additional_profit_items;
     patch.sd_additional_expenses = sd.sd_additional_expense_items.map((r) => Number(r.amount) || 0);
@@ -93,6 +106,8 @@ export function progressFormPayloadFromState(
     patch.sd_refund_amount = sd.sd_refund_amount;
     patch.sd_refund_receipt_url = sd.sd_refund_receipt_url || null;
   }
-
-  return patch;
+  if (drafts.sdRefundGuest) {
+    Object.assign(patch, guestSdRefundPayloadFromValues(drafts.sdRefundGuest));
+  }
+  return Object.keys(patch).length > 0 ? patch : null;
 }

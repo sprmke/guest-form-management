@@ -5,10 +5,14 @@
  * `useWorkflowActions`.
  */
 
-import { Info, Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 
 import { GuestBalanceSettlementForm } from '@/features/dashboard/bookings/components/GuestBalanceSettlementForm';
 import type { GuestBalanceSettlementValues } from '@/features/dashboard/bookings/components/GuestBalanceSettlementForm';
+import {
+  GuestSdRefundEditForm,
+  type GuestSdRefundEditValues,
+} from '@/features/dashboard/bookings/components/GuestSdRefundEditForm';
 import { InlineCopyIconButton } from '@/features/dashboard/bookings/components/InlineCopyIconButton';
 import { ParkingRequestForm } from '@/features/dashboard/bookings/components/ParkingRequestForm';
 import type { ParkingRequestValues } from '@/features/dashboard/bookings/components/ParkingRequestForm';
@@ -20,12 +24,14 @@ import { SurpriseDecorAckCard } from '@/features/dashboard/bookings/components/S
 import { WorkflowCompletedSummaryCard } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowCompletedSummaryCard';
 import { PendingDocSubStatusCard } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowPendingDocStatusCard';
 import { WorkflowSubFormCard } from '@/features/dashboard/bookings/components/WorkflowSubFormCard';
+import type { BookingAssetPreviewHandler } from '@/features/dashboard/bookings/hooks/useBookingAssetPreview';
 import type { DocumentRequirement } from '@/features/dashboard/bookings/lib/documentRequirements';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import type {
   PendingDocNestedKey,
   WorkflowViewContent,
 } from '@/features/dashboard/bookings/lib/workflow';
+import { isProgressEditFormEnabled } from '@/features/dashboard/bookings/lib/workflow';
 import {
   workflowInlineLink,
   workflowNeutralActionClass,
@@ -40,6 +46,8 @@ type Props = {
   booking: BookingRow;
   viewedContent: WorkflowViewContent | null;
   contentReadOnly: boolean;
+  /** When true, drafts emit even if incomplete (rail Save without Proceed). */
+  persistPartialDrafts: boolean;
   activePendingDocSubStatus: PendingDocNestedKey;
   documentRequirements: DocumentRequirement[];
 
@@ -64,12 +72,14 @@ type Props = {
   // SD refund sub-form
   sdRefundValues: SdRefundValues | null;
   onSdRefundChange: (values: SdRefundValues | null) => void;
+  onSdRefundGuestChange: (values: GuestSdRefundEditValues | null) => void;
 
   // SD guest-info card (READY_FOR_CHECKOUT)
   sdGuestFormUrl: string;
   onCopySdGuestFormUrl: () => void;
   recheckSdGuestSubmitPending: boolean;
   onRecheckGuestSdSubmission: () => void;
+  onPreview: BookingAssetPreviewHandler;
 };
 
 export function WorkflowSubFormHost({
@@ -77,6 +87,7 @@ export function WorkflowSubFormHost({
   booking,
   viewedContent,
   contentReadOnly,
+  persistPartialDrafts,
   activePendingDocSubStatus,
   documentRequirements,
   pricingValues,
@@ -93,10 +104,12 @@ export function WorkflowSubFormHost({
   onGuestBalanceChange,
   sdRefundValues,
   onSdRefundChange,
+  onSdRefundGuestChange,
   sdGuestFormUrl,
   onCopySdGuestFormUrl,
   recheckSdGuestSubmitPending,
   onRecheckGuestSdSubmission,
+  onPreview,
 }: Props) {
   const needsPricing = viewedContent === 'pricing';
   const needsParking = viewedContent === 'parking';
@@ -117,6 +130,9 @@ export function WorkflowSubFormHost({
   if (!showStageContent) return null;
 
   const formVariant = isModal ? 'modal' : 'workflow';
+  const editMode = persistPartialDrafts && !contentReadOnly;
+  const showGuestSdEdit =
+    needsSdRefund && !contentReadOnly && isProgressEditFormEnabled(booking, 'sd_refund_guest');
 
   return (
     <div
@@ -126,21 +142,6 @@ export function WorkflowSubFormHost({
           : 'border-separator space-y-6 border-b px-4 py-4'
       )}
     >
-      {contentReadOnly && !isModal && !showCompletedSummary ? (
-        <div
-          role="status"
-          className="border-primary/25 bg-primary/5 dark:border-primary/30 dark:bg-primary/10 flex gap-2.5 rounded-xl border px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3"
-        >
-          <Info
-            className="text-primary dark:text-primary mt-0.5 size-4 shrink-0 sm:size-[18px]"
-            aria-hidden
-          />
-          <p className="text-foreground dark:text-foreground min-w-0 text-[12px] leading-snug sm:text-[13px]">
-            Completed steps are read-only here. Edit them in{' '}
-            <span className="font-semibold">Edit Booking Details</span>.
-          </p>
-        </div>
-      ) : null}
       {showSdGuestInfoCard && (
         <WorkflowSubFormCard title="Guest SD refund form" plain={isModal}>
           <p className="text-muted-foreground text-[11.5px] leading-relaxed">
@@ -181,13 +182,16 @@ export function WorkflowSubFormHost({
           </button>
         </WorkflowSubFormCard>
       )}
-      {showCompletedSummary && <WorkflowCompletedSummaryCard booking={booking} plain={isModal} />}
+      {showCompletedSummary && (
+        <WorkflowCompletedSummaryCard booking={booking} plain={isModal} onPreview={onPreview} />
+      )}
       {needsDocSubStatus && (
         <PendingDocSubStatusCard
           booking={booking}
           sub={activePendingDocSubStatus}
           requirements={documentRequirements}
           plain={isModal}
+          onPreview={onPreview}
         />
       )}
       {needsPricing && (
@@ -198,6 +202,7 @@ export function WorkflowSubFormHost({
             initialDraft={pricingValues}
             onChange={onPricingChange}
             readOnly={contentReadOnly}
+            editMode={editMode}
             propertyDefaults={propertyPricingDefaults}
             dateOverrides={propertyPricingDateOverrides}
             holidayRules={propertyPricingHolidayRules}
@@ -219,7 +224,9 @@ export function WorkflowSubFormHost({
           initialDraft={parkingValues}
           onChange={onParkingChange}
           readOnly={contentReadOnly}
+          editMode={editMode}
           variant={formVariant}
+          onPreview={onPreview}
         />
       )}
       {needsGuestBalance && (
@@ -228,17 +235,33 @@ export function WorkflowSubFormHost({
           initialDraft={guestBalanceValues}
           onChange={onGuestBalanceChange}
           readOnly={contentReadOnly}
+          editMode={editMode}
           variant={formVariant}
+          onPreview={onPreview}
         />
       )}
       {needsSdRefund && (
-        <SdRefundForm
-          booking={booking}
-          initialDraft={sdRefundValues}
-          onChange={onSdRefundChange}
-          readOnly={contentReadOnly}
-          variant={formVariant}
-        />
+        <>
+          {showGuestSdEdit ? (
+            <GuestSdRefundEditForm
+              key={`${booking.id}-sd-guest`}
+              booking={booking}
+              onChange={onSdRefundGuestChange}
+              editMode={editMode}
+              variant={formVariant === 'modal' ? 'modal' : 'workflow'}
+            />
+          ) : null}
+          <SdRefundForm
+            booking={booking}
+            initialDraft={sdRefundValues}
+            onChange={onSdRefundChange}
+            readOnly={contentReadOnly}
+            editMode={editMode}
+            variant={formVariant}
+            showGuestDetails={!showGuestSdEdit}
+            onPreview={onPreview}
+          />
+        </>
       )}
     </div>
   );

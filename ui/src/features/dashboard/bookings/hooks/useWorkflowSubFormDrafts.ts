@@ -2,11 +2,13 @@
  * WorkflowPanel sub-form draft state — pure relocation from the pre-decomposition
  * `WorkflowPanel.tsx` (the 5 `useState`s + `buildPayload`/`isTransitionDisabled`).
  * No new logic: same `lib/workflow.ts#requiredSubForm` call, same field mapping.
+ * Also tracks dirty state for Progress rail Save (browsed stages) and live autosave.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { GuestBalanceSettlementValues } from '@/features/dashboard/bookings/components/GuestBalanceSettlementForm';
+import type { GuestSdRefundEditValues } from '@/features/dashboard/bookings/components/GuestSdRefundEditForm';
 import {
   isParkingRequestDraftComplete,
   type ParkingRequestValues,
@@ -18,20 +20,94 @@ import type { BookingStatus } from '@/features/dashboard/bookings/lib/bookingSta
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import { requiredSubForm } from '@/features/dashboard/bookings/lib/workflow';
 
-export function useWorkflowSubFormDrafts(booking: BookingRow, status: BookingStatus) {
-  const [pricingValues, setPricingValues] = useState<ReviewPricingFormValues | null>(null);
-  const [surpriseDecorStaffAck, setSurpriseDecorStaffAck] = useState(
+export function useWorkflowSubFormDrafts(
+  booking: BookingRow,
+  status: BookingStatus,
+  /** Reset dirty when the host browses to another stage. */
+  viewedContentKey?: string | null
+) {
+  const hydrationDone = useRef(false);
+  const [progressDirty, setProgressDirty] = useState(false);
+
+  useEffect(() => {
+    hydrationDone.current = false;
+    setProgressDirty(false);
+    const t = setTimeout(() => {
+      hydrationDone.current = true;
+    }, 400);
+    return () => clearTimeout(t);
+  }, [booking.id, status, viewedContentKey]);
+
+  const markDirty = useCallback(() => {
+    if (hydrationDone.current) setProgressDirty(true);
+  }, []);
+
+  const clearProgressDirty = useCallback(() => {
+    setProgressDirty(false);
+  }, []);
+
+  const [pricingValues, setPricingValuesState] = useState<ReviewPricingFormValues | null>(null);
+  const [surpriseDecorStaffAck, setSurpriseDecorStaffAckState] = useState(
     () => !!booking.surprise_decor_staff_acknowledged
   );
 
   useEffect(() => {
-    setSurpriseDecorStaffAck(!!booking.surprise_decor_staff_acknowledged);
+    setSurpriseDecorStaffAckState(!!booking.surprise_decor_staff_acknowledged);
   }, [booking.id, booking.surprise_decor_staff_acknowledged]);
 
-  const [parkingValues, setParkingValues] = useState<ParkingRequestValues | null>(null);
-  const [sdRefundValues, setSdRefundValues] = useState<SdRefundValues | null>(null);
-  const [guestBalanceValues, setGuestBalanceValues] = useState<GuestBalanceSettlementValues | null>(
-    null
+  const [parkingValues, setParkingValuesState] = useState<ParkingRequestValues | null>(null);
+  const [sdRefundValues, setSdRefundValuesState] = useState<SdRefundValues | null>(null);
+  const [guestBalanceValues, setGuestBalanceValuesState] =
+    useState<GuestBalanceSettlementValues | null>(null);
+  const [sdRefundGuestValues, setSdRefundGuestValuesState] =
+    useState<GuestSdRefundEditValues | null>(null);
+
+  const setPricingValues = useCallback(
+    (values: ReviewPricingFormValues | null) => {
+      setPricingValuesState(values);
+      markDirty();
+    },
+    [markDirty]
+  );
+
+  const setSurpriseDecorStaffAck = useCallback(
+    (value: boolean) => {
+      setSurpriseDecorStaffAckState(value);
+      markDirty();
+    },
+    [markDirty]
+  );
+
+  const setParkingValues = useCallback(
+    (values: ParkingRequestValues | null) => {
+      setParkingValuesState(values);
+      markDirty();
+    },
+    [markDirty]
+  );
+
+  const setSdRefundValues = useCallback(
+    (values: SdRefundValues | null) => {
+      setSdRefundValuesState(values);
+      markDirty();
+    },
+    [markDirty]
+  );
+
+  const setGuestBalanceValues = useCallback(
+    (values: GuestBalanceSettlementValues | null) => {
+      setGuestBalanceValuesState(values);
+      markDirty();
+    },
+    [markDirty]
+  );
+
+  const setSdRefundGuestValues = useCallback(
+    (values: GuestSdRefundEditValues | null) => {
+      setSdRefundGuestValuesState(values);
+      markDirty();
+    },
+    [markDirty]
   );
 
   const buildPayload = useCallback(
@@ -136,6 +212,10 @@ export function useWorkflowSubFormDrafts(booking: BookingRow, status: BookingSta
     setSdRefundValues,
     guestBalanceValues,
     setGuestBalanceValues,
+    sdRefundGuestValues,
+    setSdRefundGuestValues,
+    progressDirty,
+    clearProgressDirty,
     buildPayload,
     isTransitionDisabled,
   };
