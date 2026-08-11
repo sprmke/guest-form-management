@@ -2,7 +2,7 @@
 title: 'Planned work'
 status: active
 tags: [workflow, planned]
-updated: 2026-08-07
+updated: 2026-08-10
 stage: planned
 kind: reference
 ---
@@ -13,11 +13,11 @@ Approved plans **not yet started**. Once implementation begins (even a partial s
 
 | Plan                                                                                   | Status      | Summary                                                                                                       |
 | -------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------- |
+| [`verification-scope-split.md`](./verification-scope-split.md)                         | not started | Split verification into independent Host/Org and per-listing scopes, each with Tier 1 + Tier 2                |
 | [`ai-dashboard-assistant.md`](./ai-dashboard-assistant.md)                             | not started | RBAC-scoped admin chat assistant                                                                              |
 | [`custom-pages-module.md`](./custom-pages-module.md)                                   | not started | Custom Pages module + stay-guide redesign                                                                     |
 | [`refine-footer-public-pages.md`](./refine-footer-public-pages.md)                     | not started | Footer trim + About/Contact/Support pages (footer links exist; routes/pages not built)                        |
 | [`google-oauth-verification.md`](./google-oauth-verification.md)                       | not started | Inbound email webhook for PMO approvals (Gmail CASA pivot) — superseded by `remove-google-calendar-sheets.md` |
-| [`remove-google-calendar-sheets.md`](./remove-google-calendar-sheets.md)               | in progress | Delete Google Calendar + Sheets; replace Gmail listener with Resend inbound webhook (CASA fix)                |
 | [`ai-opportunities-roadmap.md`](./ai-opportunities-roadmap.md)                         | not started | AI opportunity backlog across guest/host/admin/dev                                                            |
 | [`property-public-pages-shell-redesign.md`](./property-public-pages-shell-redesign.md) | not started | Persistent shell unifying property detail + calendar/form/chat/sd-form/pay-parking layout                     |
 | [`in-app-notifications.md`](./in-app-notifications.md)                                 | not started | Notification center: bell + toast for chat, booking workflow events & Gmail auto-approvals                    |

@@ -10,14 +10,19 @@ function nonSymlinkFiles(files) {
   });
 }
 
+/** lint-staged splits the command string on whitespace, so paths must be quoted. */
+function quote(file) {
+  return `"${file}"`;
+}
+
 function prettierWrite(files) {
   const filtered = nonSymlinkFiles(files);
-  return filtered.length ? [`prettier --write ${filtered.join(' ')}`] : [];
+  return filtered.length ? [`prettier --write ${filtered.map(quote).join(' ')}`] : [];
 }
 
 module.exports = {
   'ui/**/*.{ts,tsx,js,jsx}': (files) => {
-    const relativeFiles = files.map((file) => file.replace(/^ui\//, '')).join(' ');
+    const relativeFiles = files.map((file) => quote(file.replace(/^ui\//, ''))).join(' ');
     return [`cd ui && eslint --fix ${relativeFiles}`];
   },
   'ui/**/*.{json,css,md}': prettierWrite,
