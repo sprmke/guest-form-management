@@ -37,7 +37,7 @@ Browse and view rental listings. Ported from PMA `features/marketing/properties/
 
 **Reserve / booking:** `BookingCard` and mobile sticky **Reserve** call **`usePropertyReserve`**. With check-in and check-out selected, **Reserve** runs **`requireGuestAuth`** when anonymous (same as Contact host), then opens **`GuestBookingFormModal`** on the listing — the same reusable **`GuestForm`** as `/properties/:propertySlug/form`, seeded with the selected dates (no page navigation). OAuth return uses `?reserveForm=open` (+ dates/guests). Without dates, opens the booking calendar modal first (desktop + mobile). Listing modals (calendar, guest form, house rules, amenities) share **`GuestDialogShell`** (header + optional action footer with separators). Direct `/form` links and calendar **Book Now** can still navigate to the standalone form page.
 
-**Contact host:** **`ListingHostCard`** → auth if needed → **`ContactHostSheet`** centered modal. See **[chat.md](./properties/chat.md)**.
+**Contact host:** **`ListingHostCard`** → auth if needed → **`ContactHostSheet`** centered modal (text thread + **Talk to receptionist** when enabled). See **[chat.md](./properties/chat.md)**.
 
 **Save / wishlist:** Heart on **`PropertyCard`** (grid + carousel), **`PropertyListItem`**, and detail **`PropertyGallery`** uses **`usePropertySave`** → **`requireGuestAuth`** when anonymous, then persists to **`guest_saved_properties`** (shared TanStack Query cache). OAuth return resumes via **`save_property`** intent in **`guestAuthResume.ts`**.
 

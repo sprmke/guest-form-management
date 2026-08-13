@@ -92,9 +92,11 @@ Ordered checklist of documents required before a booking reaches **Ready for che
 | ------------- | ------------------------------------------------------------- | --------------------------------------------------------------- |
 | Document list | `developments.settings.workflowDefaults.documentRequirements` | JSON array; empty list → bookings skip `PENDING_DOCUMENTS` (D2) |
 
-Each row: **label**, **trigger** (Always required / Guest has pets / Guest needs parking), **approval source** (Manual / Email listener).
+Each row: **label**, **trigger** (Always required / Guest has pets / Guest needs parking), **approval source** (Manual / Email listener), **PDF template** (None / GAF request form / Pet request form).
 
-Save path: batched **Save Changes** → **`PATCH update-development`** with `documentRequirements`.
+**PDF template** is what binds a row to the request pipeline: `requirementMatchesPdfTemplate` matches on `pdfTemplateId` **or** the literal row id (`gaf` / `pet`). A row left on **None** is tracked as a checklist step only — the orchestrator generates no request PDF and sends no request email for it. Re-adding a deleted GAF/pet row creates it with id `custom-N` and no template, so the template must be set explicitly or the request stops firing.
+
+Save path: batched **Save Changes** → **`PATCH update-development`** with `documentRequirements`. The handler rejects the payload if any row is missing `id`, `label`, `order`, `triggerCondition`, or `approvalSource` rather than silently dropping it.
 
 Edge resolution for bookings: `documentRequirements.ts#resolveDocumentRequirements` (property override column deprecated; development default → `DEFAULT_DOCUMENT_REQUIREMENTS` fallback).
 

@@ -2,7 +2,7 @@
 title: 'Guest web chat (/properties/:propertySlug/messages)'
 status: active
 tags: [guides, routes]
-updated: 2026-08-11
+updated: 2026-08-13
 ---
 
 # Guest web chat (`/properties/:propertySlug/messages`)
@@ -37,6 +37,8 @@ Guests message you from a property listing before they book — first through a 
   A: No — chatting does not hold dates or create a reservation; guests still use Reserve for that.
 - Q: Where do I see and answer these messages?
   A: In Guest Inbox under the Web tab, alongside your other guest conversations.
+- Q: Can guests talk to the AI receptionist from the listing chat popup?
+  A: Yes — when the voice receptionist is enabled for the property, **Talk to receptionist** is in the chat ⋮ menu on both the Contact host popup and the full messages page.
 
 ---
 
@@ -46,6 +48,7 @@ Guests message you from a property listing before they book — first through a 
 2. **First inquiry:** if no prior messages with this host on this property, **`BookingCalendarModal`** is required before the first send.
 3. **Return visit:** existing thread loads via **`guest-web-chat-resume`** — dates optional; chat history shows immediately.
 4. Guest composes message → **Send** → thread stays in modal.
+5. **Voice receptionist** (when enabled): header ⋮ **Talk to receptionist** — same in-modal **`VoiceSessionPanel`** as the full messages page. Available on first inquiry (dates not required) and return visits. Escape / overlay do not close the chat modal mid-call; hang-up returns to the text thread.
 
 **Reserve** remains separate: dates → **`requireGuestAuth`** when anonymous → **`GuestBookingFormModal`** (`GuestForm` embed) — never chat.
 
@@ -68,11 +71,14 @@ Use for deep links, **Open full chat**, and future guest Messages hub — not fi
 **Realtime:** Supabase channel on **`social_messages`** (guest RLS).
 
 **Voice receptionist:** when enabled (global + property), the header ⋮ menu shows **Talk to
-receptionist**. That swaps the conversation column for an inline **`VoiceSessionPanel`** (same shell:
-host header + stay strip stay visible — no black modal). Gemini Live audio, turtle avatar, live
-captions, countdown, mute, and end controls use theme tokens (light/dark). On end, timeout, or error
-the transcript is batch-written into this thread as `social_messages` (`source_mode='voice'`); the
-panel closes and the text thread returns with those turns already loaded.
+receptionist** on both **`ContactHostSheet`** (property detail) and this full-screen page. That swaps
+the conversation column for an inline **`VoiceSessionPanel`** (same shell: host header stays visible —
+no black modal). Gemini Live audio, turtle avatar, live captions, countdown, mute, and end controls
+use theme tokens (light/dark). On end, timeout, or error the transcript is batch-written into this
+thread as `social_messages` (`source_mode='voice'`); the panel closes and the text thread returns
+with those turns already loaded. First-inquiry guests can start a voice session from the contact
+modal without picking dates; `guest-web-chat-resume` still returns `voiceReceptionistEnabled` when
+there is no existing thread.
 
 **Phase 6 (shipped):** speech VAD; rich map/list/link bubbles; leaner voice prompts; theme-aware
 in-thread voice panel (primary ring + mic waveform); batch Flash polish on hang-up (`thinkingBudget: 0`);
@@ -84,7 +90,7 @@ See [[2026-07-30-ai-voice-receptionist|AI Voice Receptionist — Implementation 
 
 | Function                   | Method | Auth      | Notes                                                                                                                                                         |
 | -------------------------- | ------ | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `guest-web-chat-resume`    | GET    | Guest JWT | `?property_slug=` — existing thread if messages exist; also returns `voiceReceptionistEnabled`                                                                |
+| `guest-web-chat-resume`    | GET    | Guest JWT | `?property_slug=` — existing thread if messages exist; always returns `voiceReceptionistEnabled` (even when `hasMessages` is false)                           |
 | `guest-web-chat-start`     | POST   | Guest JWT | `{ propertySlug, checkInDate, checkOutDate }` — first inquiry; also returns `voiceReceptionistEnabled`                                                        |
 | `guest-web-chat-messages`  | GET    | Guest JWT | `?conversation_id=`; `before` cursor; returns `replyStatus` on first page load                                                                                |
 | `guest-web-chat-messages`  | POST   | Guest JWT | `{ conversationId, text?, attachments?, replyToMessageId? }`, `{ action: 'mark_read', conversationId }`, or `{ action: 'unsend', conversationId, messageId }` |

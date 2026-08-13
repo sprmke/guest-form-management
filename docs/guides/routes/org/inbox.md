@@ -13,7 +13,7 @@ Org-level Guest Inbox was removed to avoid confusion with property Inbox. Use:
 
 **[`/org/:orgSlug/property/:propertySlug/inbox`](./property/inbox.md)**
 
-- Full **Manage** menu: Channels, Quick replies, Automation
+- Full manage actions: Channels, Quick replies, Automation (desktop: separate header buttons; mobile: hero menu)
 - Messages scoped to the property (web) + effective Meta Page
 
 The old URL `/org/:orgSlug/inbox` **redirects** to `/org/:orgSlug/properties`.

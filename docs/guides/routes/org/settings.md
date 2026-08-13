@@ -105,7 +105,6 @@ Properties inherit org social URLs and main platform when their `app_settings` c
 | **Properties**               | All `properties` rows for the org (name, slug, tower/unit, `settings` JSONB including media metadata)                                             |
 | **Property operator config** | `app_settings` per property (payment provider, GCash fields, GAF defaults, integration IDs)                                                       |
 | **Telegram**                 | `telegram_admin_settings`, `telegram_finance_settings`, `telegram_maintenance_settings`, `telegram_marketing_settings`, `telegram_staff_settings` |
-| **Gmail integration**        | `gmail_mail_integration`, `gmail_listener_state` per property                                                                                     |
 | **Storage (explicit)**       | **`property-media`** objects referenced in each property’s `settings.media`                                                                       |
 
 All of the above are removed via **ON DELETE CASCADE** from `organizations` → `properties`, except guest/finance/maintenance blockers below.
@@ -120,9 +119,8 @@ All of the above are removed via **ON DELETE CASCADE** from `organizations` → 
 | **Org team logo files**          | **Not removed.** Files under `app-settings-assets` / `team-logo/org/{orgId}/…` may remain as orphans.                                                                                                           |
 | **Property app-settings assets** | **Not removed.** GCash QR, GAF signature uploads in `app-settings-assets` may remain as orphans.                                                                                                                |
 | **Booking uploads**              | N/A when delete succeeds (no bookings). Bucket **`booking-assets`** is untouched by this function.                                                                                                              |
-| **Gmail OAuth row**              | **Removed** for org properties (encrypted refresh tokens deleted with property cleanup). Production approvals use Resend inbound, not Gmail.                                                                    |
 | **External email**               | Sent mail is not recalled; Resend/platform config is env-scoped, not org-scoped.                                                                                                                                |
-| **Telegram / Gmail logs**        | `processed_emails`, `telegram_*_notification_log`, `finance_telegram_reminder_log`, etc. are **not** org-scoped; rows tied to deleted bookings/properties may remain as orphans.                                |
+| **Telegram / inbound logs**      | `processed_emails`, `telegram_*_notification_log`, `finance_telegram_reminder_log`, etc. are **not** org-scoped; rows tied to deleted bookings/properties may remain as orphans.                                |
 | **Auth account**                 | **Kept.** `auth.users` (owner) and other organizations owned by the same user are unchanged.                                                                                                                    |
 | **Deployment env**               | **Kept.** `PUBLIC_GUEST_APP_ORIGIN`, `FACEBOOK_REVIEWS_URL`, Gmail OAuth app, Resend, Gemini/Groq keys, etc.                                                                                                    |
 

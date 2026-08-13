@@ -27,7 +27,7 @@ Route: `/org/:orgSlug/property/:propertySlug/settings`
 | Payment            | Done     | Done       | Done | Server-enforced; QR via upload only                                       |
 | Building Forms     | Done     | Done       | Done | Shared GAF + pet PDF fields                                               |
 | Email automations  | Done     | Done       | Done | Recipients, timing, toggles per property                                  |
-| Integrations       | Done     | Done       | Done | Google optional (internal); Telegram optional; GAF/pet via Resend inbound |
+| Integrations       | Done     | Done       | Done | Telegram + AI optional; GAF/pet via Resend inbound                        |
 | Voice Receptionist | Done     | Done       | Done | Opt-in AI voice assistant; own settings row; saves with page Save Changes |
 | Danger Zone        | Done     | Done       | Done | Archive + delete with confirmations                                       |
 
@@ -77,7 +77,6 @@ Incomplete sections still show a **red dot** on the in-page section nav (**deskt
 | Payment (provider, account, QR upload)                         | Yes                                                          |
 | Building forms (GAF fields + signature)                        | Yes                                                          |
 | Email automations (property/team email, timing, toggles)       | Yes                                                          |
-| Google integration (Connect Google — internal/testing)         | No — production GAF/pet approvals use Resend inbound         |
 | Telegram integrations                                          | No                                                           |
 
 Field-level errors appear **as you edit** a field (on change). After **Save Changes**, all remaining issues are shown at once. Section banners (orange) appear only for **Photos & Videos**, **Amenities**, and **Integrations** — not for sections with individual inputs.
@@ -419,7 +418,11 @@ Master switches in `app_settings.automation_toggles` (JSONB). Missing keys defau
 
 ## Integrations
 
-Read-only status on this page. Connect/disconnect via cards linking to dedicated settings flows.
+**Telegram** — status cards link to `/notifications` per module (Marketing, Staff, Operations, Finance, Maintenance, Chat).
+
+**AI services** — read-only platform key status + **Test AI** card (uses property/org context).
+
+Production GAF/pet approvals use **Resend inbound** (`approval-email-webhook`); hosts do not connect Google accounts here.
 
 ---
 
