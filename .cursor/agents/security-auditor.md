@@ -1,6 +1,6 @@
 ---
 name: security-auditor
-description: Security specialist for this repo. Use when implementing or reviewing the admin auth flow, guest PII handling, Supabase edge functions, Google API credentials, or Gmail listener. Invoke with /security-auditor for a focused review.
+description: Security specialist for this repo. Use when implementing or reviewing the admin auth flow, guest PII handling, Supabase edge functions, or Resend inbound approvals. Invoke with /security-auditor for a focused review.
 model: inherit
 readonly: true
 ---
@@ -19,8 +19,8 @@ When invoked, perform a readonly audit. Do not modify files unless explicitly as
 - **Files / Storage**: `payment-receipts`, `pet-vaccinations`, `pet-images`, new `parking-endorsements`, `approved-gafs`. Check bucket visibility (public vs signed URL) and MIME enforcement.
 - **Service credentials**:
   - `SUPABASE_SERVICE_ROLE_KEY` — server-only.
-  - `GMAIL_API_WEB_CLIENT_JSON` / `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY` — Gmail OAuth.
-  - `RESEND_API_KEY`.
+  - `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY` — encrypts Telegram bot tokens at rest (legacy env name).
+  - `RESEND_API_KEY`, `RESEND_INBOUND_WEBHOOK_SECRET`.
 - **Approval inbound** (`supabase/functions/approval-email-webhook/`): Svix-signed Resend webhook; `RESEND_INBOUND_WEBHOOK_SECRET`; idempotency via `processed_emails`.
 
 ## 2. Checks to run

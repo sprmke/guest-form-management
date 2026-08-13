@@ -24,14 +24,14 @@ ui/src/features/dashboard/bookings/
     SignInPage.tsx                 # /sign-in
     BookingsListPage.tsx           # /bookings
     BookingDetailPage.tsx          # /bookings/:bookingId
-    AdminSettingsPage.tsx          # /settings (integrations, e.g. Gmail listener)
+    AdminSettingsPage.tsx          # /settings (property operational config)
     AdminMarketingPage.tsx         # /marketing (Telegram templates + tests)
   components/
     RequireAdmin.tsx               # session + allow-list guard
     BookingTable.tsx               # <BookingTable data={...} />
     BookingFilters.tsx             # search, status, date range, flags
     StatusBadge.tsx                # status → color dot + label
-    GmailMailIntegrationCard.tsx   # Gmail listener OAuth (used on /settings)
+    PropertyIntegrationsPanel.tsx  # Telegram + AI on property/parking settings
     TelegramMarketingSettingsCard.tsx  # Telegram templates, Manila reminder times (+ pg_cron sync), toggles (/marketing)
     WorkflowPanel.tsx              # right-hand rail on detail page
     WorkflowSubFormCard.tsx        # shared card shell for all rail sub-forms
@@ -110,8 +110,8 @@ Two-column on ≥lg, single column on mobile:
 ### WorkflowPanel rules
 
 - Primary buttons: transitions from `canTransition(currentStatus, *)`.
-- **Recovery / force buttons**: additional transitions from `canManualForceTransition(currentStatus, *, ctx)` — used when cron or Gmail listener should have advanced the booking but didn't. Same `transition-booking` mutation, `{ manual: true }` flag.
-- **Manual automation hooks (`Q6.6`):** secondary actions such as **“Reconcile document approvals”** and **“Run SD refund cron now”** that invoke the same Edge functions with the **admin JWT**. GAF/pet approvals arrive via Resend inbound webhook (no Gmail poll).
+- **Recovery / force buttons**: additional transitions from `canManualForceTransition(currentStatus, *, ctx)` — used when cron or inbound approval should have advanced the booking but didn't. Same `transition-booking` mutation, `{ manual: true }` flag.
+- **Manual automation hooks (`Q6.6`):** secondary actions such as **“Run SD refund cron now”** that invoke the same Edge functions with the **admin JWT**. GAF/pet approvals arrive via Resend inbound webhook.
 - Each button: label (`Proceed to PENDING GAF`), confirmation dialog with a summary of side effects.
 - Destructive action `Cancel booking` is always visible when status ≠ CANCELLED, styled as danger.
 - After success, invalidate queries and scroll to top of panel.
@@ -130,7 +130,7 @@ Two-column on ≥lg, single column on mobile:
 
 - Use `sonner` toasts (already installed) for transition success/failure.
 - On mutation failure, show the error message and offer **Retry**.
-- Gmail-listener / cron-originated transitions are surfaced as auto-refresh of the detail page (invalidate on a 60s interval while on the page).
+- Inbound approval / cron-originated transitions are surfaced as auto-refresh of the detail page (invalidate on a 60s interval while on the page).
 
 ## Don'ts
 
