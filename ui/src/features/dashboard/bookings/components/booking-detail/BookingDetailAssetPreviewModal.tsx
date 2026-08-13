@@ -9,6 +9,7 @@ import {
   type ReceiptAiVerdict,
 } from '@/features/dashboard/bookings/components/ReceiptAiVerdictBadge';
 import { receiptAiPreviewLoading } from '@/features/dashboard/bookings/hooks/useReceiptAiBackfill';
+import { ADMIN_GUEST_VIEW_SLOTS } from '@/features/dashboard/bookings/lib/adminGuestSlots';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
 import { cn } from '@/lib/utils';
@@ -82,15 +83,21 @@ export function receiptAiMetaForPreviewAsset(
     };
   }
 
-  if (asset.label === 'Valid ID' || matches(booking.valid_id_url)) {
+  for (const slot of ADMIN_GUEST_VIEW_SLOTS) {
+    const url = booking[slot.validIdUrlKey];
+    const isPrimary = slot.index === 1;
+    const labelMatch =
+      (isPrimary && asset.label === 'Valid ID') ||
+      asset.label === `${slot.label} valid ID` ||
+      asset.label === `${slot.label} guest valid ID`;
+    if (!labelMatch && !matches(url)) continue;
+    const verdictKey = slot.validIdAiVerdictKey;
+    const summaryKey = slot.validIdAiSummaryKey;
+    if (!verdictKey) return null;
     return {
-      verdict: booking.valid_id_ai_verdict,
-      summary: booking.valid_id_ai_summary?.trim() || null,
-      loading: receiptAiPreviewLoading(
-        isBackfilling,
-        booking.valid_id_url,
-        booking.valid_id_ai_verdict
-      ),
+      verdict: booking[verdictKey],
+      summary: (summaryKey ? booking[summaryKey]?.trim() : null) || null,
+      loading: receiptAiPreviewLoading(isBackfilling, url, booking[verdictKey]),
       variant: 'valid_id',
     };
   }

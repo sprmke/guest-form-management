@@ -5,165 +5,34 @@
  * per-section progress it cannot know.
  */
 
-import { useCallback, useEffect, useMemo, type ElementType } from 'react';
+import { useEffect, useMemo } from 'react';
 
-import {
-  AlertTriangle,
-  CalendarDays,
-  Car,
-  Check,
-  Clock,
-  MinusCircle,
-  PawPrint,
-  Receipt,
-  Sparkles,
-  Users,
-  X,
-} from 'lucide-react';
+import { RotateCcw, Sparkles, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
+import {
+  AI_SUMMARY_SECTIONS,
+  BookingAiSummaryResultsList,
+  visibleAiSummarySections,
+  type AiSummarySectionDef,
+} from '@/features/dashboard/bookings/components/booking-detail/BookingAiSummaryResults';
 import { useBookingAiReview } from '@/features/dashboard/bookings/hooks/useBookingAiReview';
 import { useBookingAiReviewTrigger } from '@/features/dashboard/bookings/hooks/useBookingAiReviewTrigger';
 import type { BookingAssetPreviewHandler } from '@/features/dashboard/bookings/hooks/useBookingAssetPreview';
 import {
-  bookingAiSectionDocumentRefs,
-  collectBookingAiDocumentRefs,
-  linkifyBookingAiText,
-  type BookingAiDocumentRef,
-} from '@/features/dashboard/bookings/lib/bookingAiDocumentLinks';
-import {
+  canRefreshBookingAiReview,
   isBookingAiReviewRunning,
   isStuckProcessingReview,
 } from '@/features/dashboard/bookings/lib/bookingAiReviewProgress';
-import {
-  resolveSectionOutcome,
-  sanitizeAiReviewFlags,
-  sanitizeAiReviewSummary,
-  type SectionOutcome,
-} from '@/features/dashboard/bookings/lib/bookingAiValidations';
 import type {
   BookingAiReview,
-  BookingAiReviewFlag,
-  BookingAiReviewSectionResult,
   BookingAiReviewSectionStatus,
   BookingRow,
 } from '@/features/dashboard/bookings/lib/types';
 
 import { cn } from '@/lib/utils';
 
-type SectionId = 'stay_details' | 'guests' | 'parking' | 'pets' | 'pricing';
-
-type SectionDef = {
-  id: SectionId;
-  label: string;
-  icon: ElementType<{ className?: string }>;
-  optional: (booking: BookingRow) => boolean;
-};
-
-const SECTIONS: SectionDef[] = [
-  { id: 'stay_details', label: 'Stay', icon: CalendarDays, optional: () => false },
-  { id: 'guests', label: 'Guests', icon: Users, optional: () => false },
-  { id: 'parking', label: 'Parking', icon: Car, optional: () => false },
-  { id: 'pets', label: 'Pets', icon: PawPrint, optional: (b) => !b.has_pets },
-  { id: 'pricing', label: 'Pricing', icon: Receipt, optional: () => false },
-];
-
-/** Width of the verdict column — fits "Action needed" on one line at 11px. */
-const STATUS_COLUMN = 'w-[104px]';
-
-/**
- * `text-warning` is amber at 56% lightness and unreadable on a light tint, hence the
- * darker foreground token on light and the plain token on dark.
- */
-function statusVisual(variant: SectionOutcome['variant']): {
-  surface: string;
-  text: string;
-  icon?: ElementType<{ className?: string }>;
-} {
-  switch (variant) {
-    case 'pass':
-      return {
-        surface: 'border-success/30 bg-success/10 text-success',
-        text: 'text-success',
-        icon: Check,
-      };
-    case 'review':
-      return {
-        surface: 'border-warning/40 bg-warning/15 text-warning-foreground dark:text-warning',
-        text: 'text-warning-foreground dark:text-warning',
-        icon: AlertTriangle,
-      };
-    case 'issue':
-      return {
-        surface: 'border-destructive/30 bg-destructive/10 text-destructive',
-        text: 'text-destructive',
-        icon: X,
-      };
-    // Breathing dot, not a spinner — the running list already carries the motion.
-    case 'checking':
-      return { surface: 'border-primary/30 bg-primary/10 text-primary', text: 'text-primary' };
-    case 'queued':
-      return {
-        surface: 'border-border bg-muted text-muted-foreground',
-        text: 'text-muted-foreground',
-        icon: Clock,
-      };
-    default:
-      return {
-        surface: 'border-border bg-muted text-muted-foreground',
-        text: 'text-muted-foreground',
-        icon: MinusCircle,
-      };
-  }
-}
-
-function StatusMark({ outcome, className }: { outcome: SectionOutcome; className?: string }) {
-  const { surface, icon: Icon } = statusVisual(outcome.variant);
-  return (
-    <span
-      className={cn('flex items-center justify-center rounded-full border', surface, className)}
-      aria-hidden
-    >
-      {Icon ? (
-        <Icon className="size-4" />
-      ) : (
-        <span className="bg-primary size-2 animate-pulse rounded-full" />
-      )}
-    </span>
-  );
-}
-
-/** Stacked verdict for the right-hand column: mark above, words beneath. */
-function SectionStatusStamp({ outcome }: { outcome: SectionOutcome }) {
-  const { text } = statusVisual(outcome.variant);
-  return (
-    <span className="flex flex-col items-center gap-1.5">
-      <StatusMark outcome={outcome} className="size-8" />
-      <span className={cn('text-center text-[11px] font-semibold leading-tight', text)}>
-        {outcome.label}
-      </span>
-    </span>
-  );
-}
-
-/** Inline verdict for narrow screens, where a fixed column would starve the findings. */
-function SectionStatusChip({ outcome }: { outcome: SectionOutcome }) {
-  const { surface, text } = statusVisual(outcome.variant);
-  return (
-    <span
-      className={cn(
-        'inline-flex shrink-0 items-center gap-1.5 rounded-full border py-0.5 pl-1 pr-2.5 text-xs font-semibold',
-        surface,
-        text
-      )}
-    >
-      <StatusMark outcome={outcome} className="size-5 border-0 bg-transparent" />
-      {outcome.label}
-    </span>
-  );
-}
-
-function ScopeLine({ sections }: { sections: SectionDef[] }) {
+function ScopeLine({ sections }: { sections: AiSummarySectionDef[] }) {
   return (
     <p className="text-muted-foreground mt-2 text-[13px] leading-relaxed">
       {sections.map((s) => s.label).join(' · ')}
@@ -171,7 +40,7 @@ function ScopeLine({ sections }: { sections: SectionDef[] }) {
   );
 }
 
-function IdlePanel({ sections }: { sections: SectionDef[] }) {
+function IdlePanel({ sections }: { sections: AiSummarySectionDef[] }) {
   return (
     <div className="flex flex-col items-center px-2 py-8 text-center sm:py-10">
       <div className="from-primary/15 to-primary/5 text-primary mb-4 flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br">
@@ -187,12 +56,11 @@ function IdlePanel({ sections }: { sections: SectionDef[] }) {
 const PLACEHOLDER_WIDTHS = ['72%', '58%', '81%', '64%', '76%'];
 
 /**
- * The wait is the shape of the answer: the same rows, chips and text lines the
- * results will occupy, with one light sweeping down them. Nothing here claims a
- * section is finished — mid-run polling is unreliable, so there is no progress to
- * report, only that work is moving.
+ * The wait is the shape of the answer: the same rows the results will occupy, with one
+ * light sweeping down them. Mid-run polling is unreliable, so there is no progress to
+ * report — only that work is moving.
  */
-function RunningPanel({ sections }: { sections: SectionDef[] }) {
+function RunningPanel({ sections }: { sections: AiSummarySectionDef[] }) {
   return (
     <div
       className="border-border relative overflow-hidden rounded-lg border"
@@ -229,8 +97,7 @@ function RunningPanel({ sections }: { sections: SectionDef[] }) {
               </div>
               <div
                 className={cn(
-                  'border-border bg-muted/30 hidden shrink-0 flex-col items-center justify-center gap-1.5 border-l px-2 py-3.5 sm:flex',
-                  STATUS_COLUMN
+                  'border-border bg-muted/30 hidden w-[104px] shrink-0 flex-col items-center justify-center gap-1.5 border-l px-2 py-3.5 sm:flex'
                 )}
               >
                 <span className="bg-muted size-8 rounded-full" aria-hidden />
@@ -241,7 +108,6 @@ function RunningPanel({ sections }: { sections: SectionDef[] }) {
         })}
       </div>
 
-      {/* Beam: trail above, bright edge at the leading (lower) side. */}
       <span
         className="animate-ai-scan pointer-events-none absolute inset-x-0 -top-1/4 h-1/4"
         aria-hidden
@@ -253,146 +119,17 @@ function RunningPanel({ sections }: { sections: SectionDef[] }) {
   );
 }
 
-function flagDotClasses(severity: BookingAiReviewFlag['severity']): string {
-  if (severity === 'blocking') return 'bg-destructive';
-  if (severity === 'warning') return 'bg-warning';
-  return 'bg-muted-foreground/40';
-}
-
-/**
- * AI text with any mention of a stored booking file rendered as a preview link,
- * so a finding can be verified against the document without leaving the modal.
- */
-function AiText({
-  text,
-  refs,
-  onPreview,
-}: {
-  text: string;
-  refs: BookingAiDocumentRef[];
-  onPreview?: BookingAssetPreviewHandler;
-}) {
-  if (!onPreview || refs.length === 0) return <>{text}</>;
-
-  return (
-    <>
-      {linkifyBookingAiText(text, refs).map((segment, idx) =>
-        segment.ref ? (
-          <button
-            key={idx}
-            type="button"
-            onClick={() => void onPreview(segment.ref!.label, segment.ref!.url)}
-            className="text-primary hover:decoration-primary focus-ring decoration-primary/40 rounded font-medium underline decoration-dotted underline-offset-2"
-            title={`Preview ${segment.ref.label}`}
-          >
-            {segment.text}
-          </button>
-        ) : (
-          <span key={idx}>{segment.text}</span>
-        )
-      )}
-    </>
-  );
-}
-
-function FlagList({
-  flags,
-  refs,
-  onPreview,
-}: {
-  flags: BookingAiReviewFlag[];
-  refs: BookingAiDocumentRef[];
-  onPreview?: BookingAssetPreviewHandler;
-}) {
-  return (
-    <ul className="mt-2 space-y-1.5">
-      {flags.map((flag, idx) => (
-        <li key={idx} className="text-muted-foreground flex gap-2 text-[13px] leading-relaxed">
-          <span
-            className={cn('mt-[7px] size-1.5 shrink-0 rounded-full', flagDotClasses(flag.severity))}
-            aria-hidden
-          />
-          <span className="min-w-0">
-            <AiText text={flag.message} refs={refs} onPreview={onPreview} />
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function SectionResultRow({
-  section,
-  result,
-  status,
-  refs,
-  onPreview,
-}: {
-  section: SectionDef;
-  result?: BookingAiReviewSectionResult | null;
-  status: BookingAiReviewSectionStatus;
-  refs: BookingAiDocumentRef[];
-  onPreview?: BookingAssetPreviewHandler;
-}) {
-  const outcome = resolveSectionOutcome(status, result, section.label);
-  const displaySummary =
-    status === 'failed' || status === 'completed'
-      ? sanitizeAiReviewSummary(result?.summary, section.label)
-      : result?.summary;
-  const displayFlags = sanitizeAiReviewFlags(result?.flags ?? null, section.label);
-  const sectionRefs = bookingAiSectionDocumentRefs(section.id, refs);
-  const SectionIcon = section.icon;
-  const hasBody =
-    status === 'skipped' || ((status === 'completed' || status === 'failed') && result);
-
-  return (
-    // Verdicts live in their own ruled column so they line up down the list instead
-    // of floating at ragged widths above the findings. Too narrow for that on phones,
-    // where the verdict rides the title line instead.
-    <div className="flex">
-      <div className="min-w-0 flex-1 px-3.5 py-3.5">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <SectionIcon className="text-muted-foreground size-4 shrink-0" aria-hidden />
-            <h4 className="text-foreground truncate text-sm font-semibold tracking-tight">
-              {section.label}
-            </h4>
-          </div>
-          <span className="sm:hidden">
-            <SectionStatusChip outcome={outcome} />
-          </span>
-        </div>
-
-        {hasBody ? (
-          <div className="mt-1.5 pl-6">
-            {status === 'skipped' ? (
-              <p className="text-muted-foreground text-[13px]">
-                Nothing to check for this booking.
-              </p>
-            ) : (
-              <>
-                <p className="text-foreground text-sm leading-relaxed">
-                  <AiText text={displaySummary ?? ''} refs={sectionRefs} onPreview={onPreview} />
-                </p>
-                {displayFlags.length > 0 ? (
-                  <FlagList flags={displayFlags} refs={sectionRefs} onPreview={onPreview} />
-                ) : null}
-              </>
-            )}
-          </div>
-        ) : null}
-      </div>
-
-      <div
-        className={cn(
-          'border-border bg-muted/30 hidden shrink-0 items-center justify-center border-l px-2 py-3.5 sm:flex',
-          STATUS_COLUMN
-        )}
-      >
-        <SectionStatusStamp outcome={outcome} />
-      </div>
-    </div>
-  );
+function hasAnySectionResult(
+  review: BookingAiReview | null | undefined,
+  sections: AiSummarySectionDef[]
+): boolean {
+  if (!review) return false;
+  return sections.some((s) => {
+    const status =
+      (review[`${s.id}_status` as keyof BookingAiReview] as BookingAiReviewSectionStatus) ??
+      'pending';
+    return status === 'completed' || status === 'failed' || status === 'skipped';
+  });
 }
 
 type Props = {
@@ -410,33 +147,12 @@ export function BookingAiSummaryPanel({ booking, open, onOpenChange, onPreview }
   const isStuck = isStuckProcessingReview(review);
   const isRunning = isBookingAiReviewRunning(review, trigger.isPending);
 
-  const visibleSections = useMemo(() => SECTIONS.filter((s) => !s.optional(booking)), [booking]);
-  const documentRefs = useMemo(() => collectBookingAiDocumentRefs(booking), [booking]);
+  const visibleSections = useMemo(() => visibleAiSummarySections(booking), [booking]);
 
-  const sectionStatus = useCallback(
-    (row: BookingAiReview | null | undefined, id: SectionId) =>
-      (row?.[`${id}_status` as keyof BookingAiReview] as BookingAiReviewSectionStatus) ?? 'pending',
-    []
-  );
-
-  const sectionResult = useCallback(
-    (row: BookingAiReview | null | undefined, id: SectionId) =>
-      (row?.[`${id}_result` as keyof BookingAiReview] as
-        BookingAiReviewSectionResult | null | undefined) ?? null,
-    []
-  );
-
-  const hasAnyResult = useMemo(() => {
-    if (!review) return false;
-    return visibleSections.some((s) => {
-      const status = sectionStatus(review, s.id);
-      return status === 'completed' || status === 'failed' || status === 'skipped';
-    });
-  }, [review, visibleSections, sectionStatus]);
-
-  const showResults = hasAnyResult && !isRunning;
-  // One run per booking — re-runs burn tokens. Stuck / failed first attempts may retry.
-  const canTriggerRun = !isRunning && !showResults;
+  const showResults = hasAnySectionResult(review, visibleSections) && !isRunning;
+  const canRefresh = canRefreshBookingAiReview(review, trigger.isPending);
+  // First run, or an opt-in refresh after inputs drifted / the first attempt failed.
+  const canTriggerRun = !isRunning && (!showResults || canRefresh);
 
   useEffect(() => {
     if (!open) return;
@@ -493,32 +209,19 @@ export function BookingAiSummaryPanel({ booking, open, onOpenChange, onPreview }
           {isRunning ? (
             <RunningPanel sections={visibleSections} />
           ) : showResults ? (
-            <div className="border-border divide-border divide-y overflow-hidden rounded-lg border">
-              {visibleSections.map((section, index) => (
-                // Findings land in the order the scan passed over them, so the wait
-                // resolves into the answer instead of swapping for it.
-                <div
-                  key={section.id}
-                  className="motion-safe:animate-fade-up motion-safe:[animation-fill-mode:backwards]"
-                  style={{ animationDelay: `${index * 45}ms` }}
-                >
-                  <SectionResultRow
-                    section={section}
-                    status={sectionStatus(review, section.id)}
-                    result={sectionResult(review, section.id)}
-                    refs={documentRefs}
-                    onPreview={onPreview}
-                  />
-                </div>
-              ))}
-            </div>
+            <BookingAiSummaryResultsList
+              booking={booking}
+              review={review}
+              onPreview={onPreview}
+              animateEntrance
+            />
           ) : (
             <IdlePanel sections={visibleSections} />
           )}
         </div>
 
         <div className="border-border shrink-0 border-t px-4 py-3 sm:px-5">
-          {showResults ? (
+          {showResults && !canRefresh ? (
             <button
               type="button"
               onClick={() => onOpenChange(false)}
@@ -533,11 +236,9 @@ export function BookingAiSummaryPanel({ booking, open, onOpenChange, onPreview }
               disabled={!canTriggerRun}
               aria-busy={isRunning || undefined}
               className={cn(
-                'relative inline-flex min-h-[44px] w-full items-center justify-center gap-2 overflow-hidden rounded-xl text-sm font-bold transition-all duration-200 motion-safe:active:scale-[0.98]',
+                'inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl text-sm font-bold transition-all duration-200 motion-safe:active:scale-[0.98]',
                 isRunning
-                  ? // Indeterminate track instead of a second spinner: the list is already
-                    // saying work is happening, so the action only has to look occupied.
-                    'border-border bg-muted/50 text-muted-foreground cursor-default border font-semibold'
+                  ? 'border-border bg-muted/50 text-muted-foreground cursor-default border font-semibold'
                   : 'disabled:opacity-50',
                 !isRunning &&
                   (isStuck
@@ -546,15 +247,14 @@ export function BookingAiSummaryPanel({ booking, open, onOpenChange, onPreview }
               )}
             >
               {isRunning ? (
-                <>
-                  <span
-                    className="animate-meta-sync-slide via-primary/30 absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent to-transparent"
-                    aria-hidden
-                  />
-                  <span className="relative">Checking…</span>
-                </>
+                'Checking booking details…'
               ) : isStuck ? (
                 'Try again'
+              ) : canRefresh ? (
+                <>
+                  <RotateCcw className="size-4" aria-hidden />
+                  Recheck
+                </>
               ) : (
                 <>
                   <Sparkles className="size-4" aria-hidden />
@@ -569,3 +269,6 @@ export function BookingAiSummaryPanel({ booking, open, onOpenChange, onPreview }
     document.body
   );
 }
+
+/** Exported for tests / idle scope copy — same section set as the results list. */
+export { AI_SUMMARY_SECTIONS };

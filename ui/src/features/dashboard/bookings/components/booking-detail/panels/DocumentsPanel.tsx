@@ -103,6 +103,8 @@ function collectBookingFileGroups(
     receiptAiVariant: 'valid_id',
   });
   for (const slot of ADMIN_GUEST_VIEW_SLOTS) {
+    // Primary ID is already listed as Valid ID above.
+    if (slot.index === 1) continue;
     if (!shouldShowAdminGuestViewSlot(slot, booking)) continue;
     const validIdUrl = booking[slot.validIdUrlKey]?.trim();
     if (!validIdUrl) continue;

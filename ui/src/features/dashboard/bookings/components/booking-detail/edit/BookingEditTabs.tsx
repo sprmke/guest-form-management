@@ -24,11 +24,11 @@ import {
 
 import { PencilLine } from 'lucide-react';
 
-import type { BookingEditFormValues } from '@/features/dashboard/bookings/components/BookingEditForm';
 import {
   BookingEditActions,
   type BookingEditActionsProps,
 } from '@/features/dashboard/bookings/components/booking-detail/edit/BookingEditStickyBar';
+import type { BookingEditFormValues } from '@/features/dashboard/bookings/components/BookingEditForm';
 import { ReadyForCheckinSensitiveFieldsNotice } from '@/features/dashboard/bookings/components/ReadyForCheckinSensitiveFieldsNotice';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 

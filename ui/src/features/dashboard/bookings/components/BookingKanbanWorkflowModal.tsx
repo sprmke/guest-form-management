@@ -2,8 +2,8 @@ import { Link } from 'react-router-dom';
 
 import { ExternalLink, Loader2 } from 'lucide-react';
 
-import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
 import { BookingDetailAssetPreviewModal } from '@/features/dashboard/bookings/components/booking-detail/BookingDetailAssetPreviewModal';
+import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
 import { WorkflowPanel } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowPanel';
 import { useBooking } from '@/features/dashboard/bookings/hooks/useBooking';
 import { useBookingAssetPreview } from '@/features/dashboard/bookings/hooks/useBookingAssetPreview';

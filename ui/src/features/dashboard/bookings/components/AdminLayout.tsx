@@ -23,7 +23,6 @@ import {
   useAdminBrandThemeStyle,
 } from '@/features/dashboard/bookings/components/AdminBrandTheme';
 import { AdminMoreSheet } from '@/features/dashboard/bookings/components/AdminMoreSheet';
-import { GmailReconnectProvider } from '@/features/dashboard/bookings/components/GmailReconnectProvider';
 import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
 import {
   resolveBottomTabActiveKey,
@@ -47,8 +46,14 @@ import {
 import { resolveActiveNavHref } from '@/features/dashboard/bookings/lib/navActive';
 import { OrgSettingsIssuesSync } from '@/features/dashboard/org/components/OrgSettingsIssuesSync';
 import { SectionNavIssueDot } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
-import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
-import { useOptionalParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
+import {
+  type OrgContextValue,
+  useOptionalOrgContext,
+} from '@/features/dashboard/org/components/RequireOrgContext';
+import {
+  type ParkingContextValue,
+  useOptionalParkingContext,
+} from '@/features/dashboard/org/components/RequireParkingContext';
 import { SidebarTenantScope } from '@/features/dashboard/org/components/TenantSwitchers';
 import {
   GetVerifiedSidebarCta,
@@ -64,6 +69,7 @@ import {
   hasPropertySettingsIssues,
   subscribePropertySettingsIssues,
 } from '@/features/dashboard/org/lib/propertySettingsIssuesStore';
+import type { Organization, Parking, Property } from '@/features/dashboard/org/types';
 import { SuperAdminSidebarScope } from '@/features/dashboard/super-admin/components/SuperAdminSidebarScope';
 import { superAdminOrgSlugFromPath } from '@/features/dashboard/super-admin/lib/superAdminPaths';
 import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermissions';
@@ -81,6 +87,14 @@ import { PageTransition } from '@/components/mobile/PageTransition';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { SlidingActivePill } from '@/components/ui/SlidingActivePill';
 import { useSlidingActivePill } from '@/hooks/useSlidingActivePill';
+import { useFavicon } from '@/lib/favicon';
+import {
+  appPageTitle,
+  orgPageTitle,
+  parkingDashboardPageTitle,
+  propertyDashboardPageTitle,
+  usePageTitle,
+} from '@/lib/pageTitle';
 import { cn } from '@/lib/utils';
 
 const SIDEBAR_COLLAPSED_KEY = 'kame-admin-sidebar-collapsed';
@@ -94,6 +108,62 @@ const SIDEBAR_TOGGLE_TOP_COLLAPSED = 32;
 function readSidebarCollapsed(): boolean {
   if (typeof window === 'undefined') return false;
   return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true';
+}
+
+function resolveAdminPageTitle(
+  pathname: string,
+  navSections: SidebarNavSection[],
+  activeNavHref: string | null,
+  tenant: OrgContextValue | null,
+  parkingTenant: ParkingContextValue | null,
+  orgsData: { organizations: Organization[] } | undefined,
+  propertiesData: { properties: Property[] } | undefined,
+  parkingsData: { parkings: Parking[] } | undefined,
+  routeOrgSlug: string | undefined,
+  routePropertySlug: string | undefined,
+  routeParkingSlug: string | undefined
+): string | undefined {
+  const activeItem = navSections
+    .flatMap((s) => s.items)
+    .find((item) => item.href && item.href === activeNavHref);
+  const pageName = activeItem?.label;
+
+  if (isSuperAdminPath(pathname)) {
+    return appPageTitle(pageName ?? 'Admin');
+  }
+
+  const orgSlug = tenant?.orgSlug ?? parkingTenant?.orgSlug ?? routeOrgSlug;
+  const org = orgsData?.organizations.find((o) => o.slug === orgSlug);
+  const orgName = org?.name;
+
+  if (isPropertyAdminPath(pathname)) {
+    const propertySlug = tenant?.propertySlug ?? routePropertySlug;
+    const property =
+      tenant?.property ?? propertiesData?.properties.find((p) => p.slug === propertySlug);
+    if (property?.name && pageName) {
+      return propertyDashboardPageTitle(property.name, pageName);
+    }
+    return undefined;
+  }
+
+  if (isParkingAdminPath(pathname)) {
+    const parkingSlug = parkingTenant?.parkingSlug ?? routeParkingSlug;
+    const parking =
+      parkingTenant?.parking ?? parkingsData?.parkings.find((p) => p.slug === parkingSlug);
+    if (orgName && parking?.name && pageName) {
+      return parkingDashboardPageTitle(orgName, parking.name, pageName);
+    }
+    return undefined;
+  }
+
+  if (isOrgAdminPath(pathname)) {
+    if (orgName && pageName) {
+      return orgPageTitle(orgName, pageName);
+    }
+    return undefined;
+  }
+
+  return undefined;
 }
 
 type Props = {
@@ -263,6 +333,54 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
     setMoreSheetOpen(false);
   }, [location.pathname]);
 
+  const pageTitle = useMemo(
+    () =>
+      resolveAdminPageTitle(
+        location.pathname,
+        navSections,
+        activeNavHref,
+        tenant,
+        parkingTenant,
+        orgsData,
+        propertiesData,
+        parkingsData,
+        routeOrgSlug,
+        routePropertySlug,
+        routeParkingSlug
+      ),
+    [
+      location.pathname,
+      navSections,
+      activeNavHref,
+      tenant,
+      parkingTenant,
+      orgsData,
+      propertiesData,
+      parkingsData,
+      routeOrgSlug,
+      routePropertySlug,
+      routeParkingSlug,
+    ]
+  );
+  usePageTitle(pageTitle);
+
+  const faviconUrl = useMemo(() => {
+    if (isSuperAdminPath(location.pathname)) return undefined;
+    if (isPropertyAdminPath(location.pathname)) return tenant?.org.logoUrl ?? undefined;
+    if (isParkingAdminPath(location.pathname)) return parkingTenant?.org.logoUrl ?? undefined;
+    if (isOrgAdminPath(location.pathname)) {
+      return orgsData?.organizations.find((o) => o.slug === routeOrgSlug)?.logoUrl ?? undefined;
+    }
+    return undefined;
+  }, [
+    location.pathname,
+    tenant?.org.logoUrl,
+    parkingTenant?.org.logoUrl,
+    orgsData?.organizations,
+    routeOrgSlug,
+  ]);
+  useFavicon(faviconUrl);
+
   const displayName = name ?? email?.split('@')[0] ?? 'Admin';
   const initial = displayName[0]?.toUpperCase() ?? 'A';
   const superAdmin = isSuperAdminPath(location.pathname);
@@ -306,7 +424,7 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
   );
 
   return (
-    <GmailReconnectProvider>
+    <>
       {isOrgAdminPath(location.pathname) ? <OrgSettingsIssuesSync /> : null}
       {!superAdmin ? <HostVerificationChangesGate /> : null}
       <AdminMobileHeroProvider>
@@ -387,7 +505,7 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
           />
         </BottomBarSlotProvider>
       </AdminMobileHeroProvider>
-    </GmailReconnectProvider>
+    </>
   );
 }
 
