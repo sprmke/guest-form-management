@@ -34,17 +34,15 @@ Production path for Azure **GAF** and **pet** approval PDFs. Replaces the retire
 
 ## Admin recovery
 
-| Situation                                        | Action                                                                                                       |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
-| Approval email never arrived / mistyped Reply-To | Upload PDF + **Mark as Complete** on Pending Documents                                                       |
-| Marked incomplete after PDF already stored       | **Reconcile document approvals** (Automation Triggers) or open booking (auto-reconcile on Pending Documents) |
-| Ambiguous multi-match (same dates, same status)  | Manual mark-complete — webhook skips with `ambiguous_multiple_bookings`                                      |
+| Situation                                        | Action                                                                  |
+| ------------------------------------------------ | ----------------------------------------------------------------------- |
+| Approval email never arrived / mistyped Reply-To | Upload PDF + **Mark as Complete** on Pending Documents                  |
+| Ambiguous multi-match (same dates, same status)  | Manual mark-complete — webhook skips with `ambiguous_multiple_bookings` |
 
 ## Local testing
 
 - Set the three secrets in `supabase/.env.local`.
 - POST a signed synthetic payload to `/functions/v1/approval-email-webhook` (Svix headers).
-- Or call **`reconcile-document-approvals`** with admin JWT for the reconcile-only path.
 
 ## Related
 

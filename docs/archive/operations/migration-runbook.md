@@ -76,7 +76,8 @@ Supabase applies migrations in **filename sort order**. Among workflow redesign 
 | `20260710170000_app_settings_gaf_details.sql`                             | GAF PDF defaults (`app_settings` GAF columns)                                                                           |
 | `20260710180000_app_settings_gaf_signature.sql`                           | GAF unit-owner signature URL column                                                                                     |
 | `20260710190000_app_settings_gaf_guests_onsite_contact.sql`               | Rename GAF on-site contact column                                                                                       |
-| `20260602120000_document_substep_manual_incomplete.sql`                   | Manual incomplete flags / doc pipeline                                                                                  |
+| `20260602120000_document_substep_manual_incomplete.sql`                   | Manual incomplete flags / doc pipeline (dropped in `20261014120000`)                                                    |
+| `20261014120000_drop_document_manual_incomplete.sql`                      | Drops `gaf_manual_incomplete` / `pet_manual_incomplete`; strips JSONB `manualIncomplete`                                |
 | `20260603120000_guest_balance_settlement.sql`                             | Guest balance settlement columns                                                                                        |
 | `20260604140000_parking_owner.sql`                                        | `parking_owner` display name                                                                                            |
 | `20260605120000_rename_status_to_ready_for_checkout.sql`                  | Rename intermediate status to `READY_FOR_CHECKOUT`                                                                      |

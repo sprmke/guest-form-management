@@ -92,18 +92,13 @@ Part of the [`docs/PROJECT.md`](../PROJECT.md) architecture split.
 **Secrets / infra — env only (Supabase Dashboard secrets; Vercel for `VITE_*`):**
 
 - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
-- `SUPABASE_PUBLIC_URL` _(optional, local Gmail OAuth)_ — Public Supabase API origin (e.g. `http://127.0.0.1:54321`) used only to build **`google-mail-oauth-callback`** `redirect_uri` for Google. When local Edge exposes internal `http://kong:8000` as `SUPABASE_URL`, set this **or** rely on the automatic `kong` → `127.0.0.1:54321` fallback in `gmailMailOAuthAccess.ts`. Add matching **Authorized redirect URI** in Google Cloud: `{that origin}/functions/v1/google-mail-oauth-callback`.
 - `RESEND_API_KEY`
 - `RESEND_INBOUND_WEBHOOK_SECRET` _(optional until Phase 2 cutover)_ — Svix signing secret for **`approval-email-webhook`** (`email.received`).
 - `RESEND_APPROVAL_INBOUND_DOMAIN` _(optional)_ — inbound host for plus-address Reply-To, e.g. `inbound.kamehomes.space` → `approvals+{slug}@…`. See **[[approval-email-inbound]]**.
 - `RESEND_FROM_EMAIL` _(optional)_ — Verified Resend **From** address for workflow emails (e.g. `mail@yourdomain.com`). When unset, falls back to property **`emailReplyTo`** from **`app_settings`**. Display name is built from unit + org/property labels (`propertyEmailBranding.ts`).
 - `ADMIN_ALLOWED_EMAILS` — comma-separated allow list for `verifyAdminJwt` / `isPlatformAdmin` (org owners bypass `verifyAdminJwt`)
 - `SUPER_ADMIN_EMAILS` — platform super-admin (`/admin/*`, `serveSuperAdmin`)
-- `GMAIL_API_WEB_CLIENT_JSON` _(optional)_ — OAuth **Web application** client JSON for in-app Gmail connect (**Admin → Settings** → **Connect Google**, internal/testing). Redirect URI in Google Cloud must be `{SUPABASE_URL}/functions/v1/google-mail-oauth-callback`. Pair with `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY` and `GMAIL_OAUTH_ALLOWED_RETURN_ORIGINS` (comma-separated SPA origins, e.g. `http://127.0.0.1:5173`).
-- `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY` _(optional)_ — 32-byte key as **64 hex** chars or base64; encrypts Gmail refresh token at rest in `gmail_mail_integration`.
-- `GMAIL_OAUTH_ALLOWED_RETURN_ORIGINS` _(optional)_ — Comma-separated allowed `Origin` values for `google-mail-oauth-start` (defaults include local Vite origins).
-- `GMAIL_OAUTH_CLIENT_JSON` — Legacy (retired listener): full OAuth client JSON; set by `npm run gmail-auth` from `scripts/integrations/gmail-credentials.json`
-- `GMAIL_OAUTH_TOKEN_JSON` — Legacy (retired listener): token JSON containing `refresh_token`
+- `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY` _(optional)_ — 32-byte key as **64 hex** chars or base64; encrypts per-property Telegram bot tokens at rest (`propertySecretCrypto.ts`). Legacy name retained from Gmail OAuth era.
 - **`TELEGRAM_BOT_TOKEN`**, **`TELEGRAM_CHAT_ID`** _(optional)_ — Telegram Bot API: group or channel id for marketing sends (`telegram-marketing-cron`, `submit-form` new row, `cancel-booking`). When either is unset, sends are skipped (logged).
 - **`TELEGRAM_CRON_SECRET`** _(optional)_ — When set, `telegram-marketing-cron` requires request header **`X-Telegram-Cron-Secret`** with the same value (use in `pg_net` from Vault; see **[[telegram-marketing-reminders|Telegram marketing reminders]]**).
 - **`CONTRACT_EXPIRY_CRON_SECRET`** _(optional)_ — When set, `contract-expiry-cron` requires header **`X-Contract-Expiry-Cron-Secret`** (see `supabase/snippets/contract-expiry-cron.sql`).

@@ -32,9 +32,9 @@ Part of the [`docs/PROJECT.md`](../PROJECT.md) architecture split. Cross-links: 
 
 - Production GAF/pet approvals: Azure replies to **`approvals+{propertySlug}@{RESEND_APPROVAL_INBOUND_DOMAIN}`** (set as **Reply-To** on outbound GAF/pet request emails; ops **`emailReplyTo`** is CC’d).
 - Webhook: **`approval-email-webhook`** verifies Svix signature (`RESEND_INBOUND_WEBHOOK_SECRET`), matches via **`approvalEmailMatcher.ts`**, uploads PDF, transitions through **`WorkflowOrchestrator`**, dedupes with **`processed_emails`**.
-- Admin recovery: **Mark as Complete** / **Reconcile document approvals** (`reconcile-document-approvals`).
+- Admin recovery: **Mark as Complete** (manual PDF upload if the inbound approval never arrived).
 - Runbook: **[[approval-email-inbound|Approval email inbound]]**.
-- Gmail OAuth Connect Google UI remains **internal/testing only** — not required for production approval intake.
+- Connect Google / Gmail OAuth removed — hosts do not connect Google for production approval intake.
 
 ### 9.4 PDF
 
