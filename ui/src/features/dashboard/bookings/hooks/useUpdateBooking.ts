@@ -5,9 +5,10 @@
  * When `revertToPendingReview` is true and `currentStatus` is in the documents pipeline
  * or Ready for check-in (see `shouldRevertGuestFieldEditsToPendingReview` in
  * `bookingStatus.ts`), this also resets status → PENDING_REVIEW and merges
- * `pendingDocumentsClearPatchForGuestEditRevert` (nested doc completion, PDF URLs,
- * parking settlement, guest balance settlement — **not** pricing snapshot fields)
- * plus `pendingDocumentsClearCompletionsJsonbPatch` (gaf/pet reset merged into the
+ * `pendingDocumentsClearPatchForGuestEditRevert` (nested doc completion, approved
+ * PDF URLs, parking settlement, guest balance settlement — **not** pricing snapshot
+ * fields or request PDF URLs unless PDF fill fields changed) plus
+ * `pendingDocumentsClearCompletionsJsonbPatch` (gaf/pet reset merged into the
  * `document_requirement_completions` JSONB map so the dual-read stepper doesn't show
  * a stale "complete" substep). The caller must pass the currently-loaded row's
  * `document_requirement_completions` via `currentDocumentRequirementCompletions`.
@@ -28,6 +29,8 @@ import {
   pendingDocumentsClearPatchForGuestEditRevert,
   shouldRevertGuestFieldEditsToPendingReview,
 } from '../lib/bookingStatus';
+import type { DocumentRequirement } from '../lib/documentRequirements';
+import { requestPdfClearPatchForAdminGuestEdit } from '../lib/workflowSensitiveGuestDiff';
 
 import type { BookingRow } from '../lib/types';
 
@@ -151,6 +154,12 @@ type MutationArgs = {
    * `revertToPendingReview` ends up applying.
    */
   currentDocumentRequirementCompletions?: unknown;
+  /**
+   * Baseline payload before the edit — used to clear request PDF URLs only when
+   * PDF fill fields changed. Required when `revertToPendingReview` may apply.
+   */
+  revertBaselinePayload?: UpdateBookingPayload;
+  documentRequirements?: DocumentRequirement[];
 };
 
 export function useUpdateBooking() {
@@ -163,6 +172,8 @@ export function useUpdateBooking() {
       payload,
       revertToPendingReview,
       currentDocumentRequirementCompletions,
+      revertBaselinePayload,
+      documentRequirements,
     }: MutationArgs) => {
       let patch: Record<string, unknown> = {
         ...payload,
@@ -189,6 +200,16 @@ export function useUpdateBooking() {
 
       if (revertToPendingReview && shouldRevertGuestFieldEditsToPendingReview(currentStatus)) {
         Object.assign(patch, pendingDocumentsClearPatchForGuestEditRevert());
+        if (revertBaselinePayload) {
+          Object.assign(
+            patch,
+            requestPdfClearPatchForAdminGuestEdit(
+              revertBaselinePayload,
+              payload,
+              documentRequirements
+            )
+          );
+        }
         patch.document_requirement_completions = pendingDocumentsClearCompletionsJsonbPatch(
           currentDocumentRequirementCompletions
         );

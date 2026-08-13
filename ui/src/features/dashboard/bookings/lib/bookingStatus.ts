@@ -192,9 +192,11 @@ export function shouldRevertGuestFieldEditsToPendingReview(
 }
 
 /**
- * Clears nested Pending Documents state, request/approved PDF URLs, admin
+ * Clears nested Pending Documents state, approved PDF URLs, admin
  * parking settlement, and guest balance settlement when sensitive guest edits
- * revert the row to `PENDING_REVIEW`. Does **not** clear pricing snapshot
+ * revert the row to `PENDING_REVIEW`. Request PDF URLs (`gaf_request_pdf_url`,
+ * `pet_request_pdf_url`) are preserved unless the edit changes PDF fill content
+ * — see `requestPdfClearPatchForAdminGuestEdit`. Does **not** clear pricing
  * fields — same column set as server.
  *
  * Named-column patch only — callers that also write `document_requirement_completions`
@@ -212,8 +214,6 @@ export function pendingDocumentsClearPatchForGuestEditRevert(): Record<string, n
     pet_manual_incomplete: false,
     approved_gaf_pdf_url: null,
     approved_pet_pdf_url: null,
-    gaf_request_pdf_url: null,
-    pet_request_pdf_url: null,
     parking_rate_paid: null,
     parking_owner: null,
     parking_owner_email: null,

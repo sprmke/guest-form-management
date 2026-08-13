@@ -133,3 +133,44 @@ export function mergeDocumentRequirements(raw: unknown): DocumentRequirement[] {
   }
   return parsed;
 }
+
+export type RequestPdfTemplateId = 'gaf' | 'pet';
+
+export function requirementMatchesPdfTemplate(
+  req: DocumentRequirement,
+  templateId: RequestPdfTemplateId
+): boolean {
+  return req.pdfTemplateId === templateId || req.id === templateId;
+}
+
+export function hasApplicableDocumentPdfTemplate(
+  requirements: DocumentRequirement[],
+  booking: { has_pets?: unknown; need_parking?: unknown },
+  templateId: RequestPdfTemplateId
+): boolean {
+  return requirements.some(
+    (req) => requirementApplies(req, booking) && requirementMatchesPdfTemplate(req, templateId)
+  );
+}
+
+export type RequirementDocKind = 'gaf' | 'pet' | 'other';
+
+export function requirementDocKind(
+  requirement: DocumentRequirement | undefined,
+  sub?: string
+): RequirementDocKind {
+  const subKey = (sub ?? requirement?.id ?? '').trim().toLowerCase();
+  if (subKey === 'gaf' || subKey === 'pending_gaf') return 'gaf';
+  if (subKey === 'pet' || subKey === 'pending_pet_request') return 'pet';
+  if (!requirement) return 'other';
+  if (requirementMatchesPdfTemplate(requirement, 'gaf')) return 'gaf';
+  if (requirementMatchesPdfTemplate(requirement, 'pet')) return 'pet';
+  const label = requirement.label.trim().toLowerCase();
+  if (label.includes('gaf')) return 'gaf';
+  if (label.includes('pet')) return 'pet';
+  return 'other';
+}
+
+export function requirementNeedsApprovedPdf(req: DocumentRequirement): boolean {
+  return requirementDocKind(req) !== 'other';
+}

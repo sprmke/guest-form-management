@@ -24,6 +24,7 @@ import {
   type DocumentRequirement,
 } from '@/features/dashboard/bookings/lib/documentRequirements';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
+import { pendingDocStepUsesApprovalModal } from '@/features/dashboard/bookings/lib/pendingDocApproval';
 import {
   bookingPipeline,
   canNavigatePendingParkingSubStep,
@@ -39,6 +40,7 @@ import {
   type PendingDocNestedKey,
   type ViewedWorkflowStep,
 } from '@/features/dashboard/bookings/lib/workflow';
+import { pendingDocumentsProceedBlockedHint } from '@/features/dashboard/bookings/lib/workflowStageDeck';
 
 export function useWorkflowActions(
   booking: BookingRow,
@@ -64,16 +66,26 @@ export function useWorkflowActions(
   const nestedCompletion = getPendingDocumentsNestedCompletion(booking, documentRequirements);
   const pendingDocumentsComplete =
     nestedCompletion.allConfigurableDocsDone && nestedCompletion.parkingDone;
+  const pendingDocumentsBlockedHint = pendingDocumentsProceedBlockedHint(
+    booking,
+    documentRequirements
+  );
 
   const nestedItems = pendingDocumentsNestedItems(booking, documentRequirements);
   const activeItem = nestedItems.find((item) => item.key === activePendingDocSubStatus);
   const selectedPendingDocRequired = !!activeItem;
   const selectedPendingDocCompleted = activeItem?.completed ?? false;
   const selectedPendingDocIsParking = activePendingDocSubStatus === PARKING_NESTED_KEY;
+  const selectedPendingDocUsesApprovalModal = pendingDocStepUsesApprovalModal(
+    activePendingDocSubStatus,
+    documentRequirements
+  );
   const selectedPendingDocCanMarkComplete =
     selectedPendingDocRequired &&
     !selectedPendingDocCompleted &&
-    (!selectedPendingDocIsParking || isParkingRequestDraftComplete(parkingValues));
+    (selectedPendingDocUsesApprovalModal ||
+      !selectedPendingDocIsParking ||
+      isParkingRequestDraftComplete(parkingValues));
   const selectedPendingDocCanMarkIncomplete =
     selectedPendingDocRequired && selectedPendingDocCompleted;
   const isLiveView = isLiveWorkflowView(viewedStep, status, booking);
@@ -114,9 +126,11 @@ export function useWorkflowActions(
     prev,
     inPendingDocuments,
     pendingDocumentsComplete,
+    pendingDocumentsBlockedHint,
     selectedPendingDocRequired,
     selectedPendingDocCompleted,
     selectedPendingDocIsParking,
+    selectedPendingDocUsesApprovalModal,
     selectedPendingDocCanMarkComplete,
     selectedPendingDocCanMarkIncomplete,
     isLiveView,

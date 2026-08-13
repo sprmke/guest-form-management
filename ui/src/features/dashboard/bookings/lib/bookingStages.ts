@@ -230,7 +230,7 @@ export const KANBAN_COLUMNS: readonly BookingStatus[] = [
 
 /**
  * `PENDING_DOCUMENTS` is a parent status — place the card in the first
- * incomplete nested step (GAF → parking → pet), matching calendar summary logic.
+ * incomplete nested step (GAF → parking → pet for kanban column placement).
  *
  * `requirements` defaults to `DEFAULT_DOCUMENT_REQUIREMENTS` (Azure parity) —
  * pass the property's resolved list when available so an empty or custom

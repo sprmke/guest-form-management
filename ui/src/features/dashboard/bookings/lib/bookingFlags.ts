@@ -18,7 +18,7 @@ type ReceiptAiFlagBooking = {
   parking_receipt_ai_verdict?: string | null;
 };
 
-/** True when any on-file payment receipt has AI verdict `invalid`. */
+/** True when any on-file payment receipt has AI verdict `invalid` (list chip: "AI: Needs review"). */
 export function bookingHasInvalidReceiptAi(booking: ReceiptAiFlagBooking): boolean {
   const isInvalid = (url: string | null | undefined, verdict: string | null | undefined) =>
     Boolean(url?.trim()) && String(verdict ?? '').toLowerCase() === 'invalid';

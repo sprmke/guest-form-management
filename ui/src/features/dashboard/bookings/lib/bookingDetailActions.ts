@@ -1,4 +1,4 @@
-import { Car, Copy, CreditCard, ExternalLink, PawPrint } from 'lucide-react';
+import { Car, Copy, CreditCard, ExternalLink, PawPrint, Sparkles } from 'lucide-react';
 
 import { hasPayParkingAvailed } from '@/features/guest/pay-parking/lib/payParkingHelpers';
 
@@ -21,6 +21,7 @@ type Args = {
   booking: BookingRow;
   onEdit: (tab?: BookingEditTabId) => void;
   onPayParking: () => void;
+  onOpenAiSummary?: () => void;
   stayGuide: BookingStayGuideLink;
 };
 
@@ -33,9 +34,21 @@ export function buildBookingDetailActions({
   booking,
   onEdit,
   onPayParking,
+  onOpenAiSummary,
   stayGuide,
 }: Args): BookingDetailAction[] {
   const actions: BookingDetailAction[] = [
+    ...(onOpenAiSummary
+      ? [
+          {
+            key: 'ai-summary',
+            label: 'AI Summary',
+            Icon: Sparkles,
+            onSelect: onOpenAiSummary,
+            group: 'edit' as const,
+          },
+        ]
+      : []),
     {
       key: 'parking',
       label: booking.need_parking === true ? 'Edit parking' : 'Add parking',

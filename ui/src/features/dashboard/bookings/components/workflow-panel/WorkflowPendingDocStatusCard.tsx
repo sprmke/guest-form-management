@@ -1,51 +1,173 @@
 /**
  * Read-only status card for a PENDING_DOCUMENTS sub-step (GAF / pet / other)
  * when the rail is not showing a pricing/parking/sd form for that step.
+ *
+ * The host opens this step to answer one question — what is still outstanding —
+ * so every expected file gets a row: the ones on file open a preview, the ones
+ * missing read `Pending` instead of being dropped from the list. Rows are grouped
+ * as **Sent Docs** (outbound package) and **Pending Docs** / **Approved Docs**
+ * (signed copy back, label flips when the sub-step is complete).
  */
 
-import { FileText } from 'lucide-react';
+import { useId } from 'react';
+
+import { FileClock, FileText } from 'lucide-react';
 
 import { WorkflowSubFormCard } from '@/features/dashboard/bookings/components/WorkflowSubFormCard';
 import type { BookingAssetPreviewHandler } from '@/features/dashboard/bookings/hooks/useBookingAssetPreview';
 import { statusLabel } from '@/features/dashboard/bookings/lib/bookingStatus';
-import type { DocumentRequirement } from '@/features/dashboard/bookings/lib/documentRequirements';
+import {
+  hasApplicableDocumentPdfTemplate,
+  requirementApplies,
+  requirementDocKind,
+  type DocumentRequirement,
+} from '@/features/dashboard/bookings/lib/documentRequirements';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import {
   getPendingDocumentsNestedCompletion,
+  readDocumentCompletions,
   type PendingDocNestedKey,
 } from '@/features/dashboard/bookings/lib/workflow';
+import { withStorageUrlCacheBust } from '@/features/dashboard/bookings/lib/storageUrls';
 
-import { semanticBadgeClasses, softBadgeClasses } from '@/lib/statusToneColors';
 import { cn } from '@/lib/utils';
 
-type DocLink = { label: string; url?: string | null };
+type DocRow = { label: string; url: string | null | undefined };
+type DocGroup = { key: string; label: string; rows: DocRow[] };
 
-function approvalSourceLabel(
-  source: DocumentRequirement['approvalSource'] | undefined
-): string | null {
-  if (source === 'email-listener') return 'Email';
-  if (source === 'manual') return 'Manual';
-  return null;
+const DOC_GROUP_SENT = 'Sent Docs';
+
+function docGroupApprovalLabel(completed: boolean): string {
+  return completed ? 'Approved Docs' : 'Pending Docs';
 }
 
-function gafHint(booking: BookingRow, completed: boolean): string | null {
-  if (!completed) {
-    return 'Waiting for Azure’s approved GAF. Approvals arrive automatically when Azure replies.';
+/** Right-column action link — matches `BookingCompactAssetControl` preview links. */
+const DOC_ROW_ACTION =
+  'text-primary text-xs font-semibold underline-offset-2 hover:underline hover:text-primary/90';
+
+/** Right-column outstanding state — workflow amber, same family as incomplete stepper nodes. */
+const DOC_ROW_PENDING = 'text-xs font-semibold text-amber-700 dark:text-amber-400';
+
+type DocStepState =
+  'not-required' | 'not-sent' | 'awaiting' | 'reopened' | 'approved' | 'complete-without-file';
+
+function previewStorageUrl(url: string, statusUpdatedAt: string | null | undefined): string {
+  const trimmed = url.trim();
+  if (!trimmed) return trimmed;
+  if (/[?&]v=/.test(trimmed)) return trimmed;
+  return withStorageUrlCacheBust(trimmed, statusUpdatedAt);
+}
+
+function validIdRows(booking: BookingRow): DocRow[] {
+  const additional: Array<{ name: string | null; url: string | null }> = [
+    { name: booking.guest2_name, url: booking.guest2_valid_id_url },
+    { name: booking.guest3_name, url: booking.guest3_valid_id_url },
+    { name: booking.guest4_name, url: booking.guest4_valid_id_url },
+    { name: booking.guest5_name, url: booking.guest5_valid_id_url },
+  ];
+
+  return [
+    { label: 'Valid ID', url: booking.valid_id_url },
+    // Azure files the GAF against every guest on the booking, so a named guest
+    // without an ID on file is an outstanding document, not an empty slot.
+    ...additional
+      .map((guest, index) => ({ ...guest, position: index + 2 }))
+      .filter((guest) => Boolean(guest.name?.trim()))
+      .map((guest) => ({ label: `Valid ID · Guest ${guest.position}`, url: guest.url })),
+  ];
+}
+
+function requestPdfUrl(booking: BookingRow, kind: 'gaf' | 'pet'): string | null {
+  const raw = kind === 'gaf' ? booking.gaf_request_pdf_url : booking.pet_request_pdf_url;
+  const trimmed = raw?.trim() ?? '';
+  return trimmed || null;
+}
+
+function docGroups(
+  booking: BookingRow,
+  requirements: DocumentRequirement[],
+  requirement: DocumentRequirement | undefined,
+  sub: PendingDocNestedKey,
+  approvedUrl: string | null,
+  approvalGroupCompleted: boolean
+): DocGroup[] {
+  const kind = requirementDocKind(requirement, sub);
+  const approvalLabel = docGroupApprovalLabel(approvalGroupCompleted);
+
+  if (kind === 'gaf') {
+    const sentRows: DocRow[] = [];
+    if (hasApplicableDocumentPdfTemplate(requirements, booking, 'gaf')) {
+      sentRows.push({ label: 'GAF Request', url: requestPdfUrl(booking, 'gaf') });
+    }
+    sentRows.push(...validIdRows(booking));
+
+    return [
+      {
+        key: 'sent',
+        label: DOC_GROUP_SENT,
+        rows: sentRows,
+      },
+      {
+        key: 'approval',
+        label: approvalLabel,
+        rows: [{ label: 'Approved GAF', url: approvedUrl }],
+      },
+    ];
   }
-  if (booking.approved_gaf_pdf_url?.trim()) return null;
-  return 'Marked complete without an approved GAF. Upload it on the booking.';
-}
 
-function petHint(booking: BookingRow, completed: boolean): string | null {
-  if (!completed) {
-    return 'Waiting for Azure’s approved pet request. Approvals arrive automatically when Azure replies.';
+  if (kind === 'pet') {
+    const sentRows: DocRow[] = [];
+    if (hasApplicableDocumentPdfTemplate(requirements, booking, 'pet')) {
+      sentRows.push({ label: 'Pet Request Form', url: requestPdfUrl(booking, 'pet') });
+    }
+    sentRows.push(
+      { label: 'Vaccination', url: booking.pet_vaccination_url },
+      { label: 'Pet photo', url: booking.pet_image_url }
+    );
+
+    return [
+      {
+        key: 'sent',
+        label: DOC_GROUP_SENT,
+        rows: sentRows,
+      },
+      {
+        key: 'approval',
+        label: approvalLabel,
+        rows: [{ label: 'Approved Pet Request', url: approvedUrl }],
+      },
+    ];
   }
-  if (booking.approved_pet_pdf_url?.trim()) return null;
-  return 'Marked complete without an approved pet file. Upload it on the booking.';
+
+  return [
+    {
+      key: 'approval',
+      label: approvalLabel,
+      rows: [{ label: 'Approved form', url: approvedUrl }],
+    },
+  ];
 }
 
-function genericHint(completed: boolean): string | null {
-  return completed ? null : 'Waiting for this document to be marked complete.';
+function resolveDocStepState({
+  applies,
+  beforeRequestSent,
+  completed,
+  approvedUrl,
+  manualIncomplete,
+}: {
+  applies: boolean;
+  beforeRequestSent: boolean;
+  completed: boolean;
+  approvedUrl: string | null;
+  manualIncomplete: boolean;
+}): DocStepState {
+  if (!applies) return 'not-required';
+  // A fresh review outranks stored completions, same guard the stepper applies —
+  // a prior cycle's approval must not read as done before the request re-sends.
+  if (beforeRequestSent) return 'not-sent';
+  if (completed) return approvedUrl ? 'approved' : 'complete-without-file';
+  if (manualIncomplete && approvedUrl) return 'reopened';
+  return 'awaiting';
 }
 
 export function PendingDocSubStatusCard({
@@ -61,76 +183,73 @@ export function PendingDocSubStatusCard({
   plain?: boolean;
   onPreview: BookingAssetPreviewHandler;
 }) {
+  const groupIdPrefix = useId();
   const { byRequirementId } = getPendingDocumentsNestedCompletion(booking, requirements);
-  const completed = byRequirementId[sub] ?? false;
   const requirement = requirements.find((req) => req.id === sub);
-  const title = requirement?.label ?? statusLabel(sub);
-  const via = approvalSourceLabel(requirement?.approvalSource);
-  const isGaf = sub === 'gaf';
-  const isPet = sub === 'pet';
+  const applies = requirement ? requirementApplies(requirement, booking) : false;
+  const completion = readDocumentCompletions(booking)[sub];
+  const approvedUrl = completion?.approvedPdfUrl?.trim() ? completion.approvedPdfUrl : null;
+  const beforeRequestSent = booking.status === 'PENDING_REVIEW' || booking.status === 'IMPORTED';
+  const state = resolveDocStepState({
+    applies,
+    beforeRequestSent,
+    completed: byRequirementId[sub] ?? false,
+    approvedUrl,
+    manualIncomplete: Boolean(completion?.manualIncomplete),
+  });
 
-  const hint = isGaf
-    ? gafHint(booking, completed)
-    : isPet
-      ? petHint(booking, completed)
-      : genericHint(completed);
-
-  const links: DocLink[] = isGaf
-    ? [
-        { label: 'GAF request', url: booking.gaf_request_pdf_url },
-        { label: 'Approved GAF', url: booking.approved_gaf_pdf_url },
-        { label: 'Valid ID', url: booking.valid_id_url },
-      ]
-    : isPet
-      ? [
-          { label: 'Pet request', url: booking.pet_request_pdf_url },
-          { label: 'Approved pet', url: booking.approved_pet_pdf_url },
-          { label: 'Vaccination', url: booking.pet_vaccination_url },
-          { label: 'Pet photo', url: booking.pet_image_url },
-        ]
-      : [];
-
-  const available = links.filter((l) => Boolean(l.url?.trim()));
-  const missingApproved =
-    completed &&
-    ((isGaf && !booking.approved_gaf_pdf_url?.trim()) ||
-      (isPet && !booking.approved_pet_pdf_url?.trim()));
+  const subStepCompleted = state === 'approved' || state === 'complete-without-file';
+  const groups = applies
+    ? docGroups(booking, requirements, requirement, sub, approvedUrl, subStepCompleted)
+    : [];
+  const showGroupLabels = groups.length > 1;
 
   return (
-    <WorkflowSubFormCard title={title} plain={plain} bodyClassName="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <span
-          className={cn(
-            'rounded-md border px-2.5 py-0.5 text-xs font-semibold',
-            completed ? semanticBadgeClasses('success') : softBadgeClasses('warning')
-          )}
-        >
-          {completed ? 'Complete' : 'Incomplete'}
-        </span>
-        {via ? (
-          <span className="text-muted-foreground text-[11px] font-medium">via {via}</span>
-        ) : null}
-      </div>
+    <WorkflowSubFormCard
+      title={requirement?.label ?? statusLabel(sub)}
+      plain={plain}
+      bodyClassName="space-y-3.5"
+    >
+      {groups.length > 0 ? (
+        <div className="border-border/70 divide-separator divide-y overflow-hidden rounded-lg border">
+          {groups.map((group) => {
+            const onFile = group.rows.filter((row) => Boolean(row.url?.trim())).length;
+            const headingId = `${groupIdPrefix}-${group.key}`;
 
-      {hint ? (
-        <p
-          className={cn(
-            'text-[12px] leading-snug',
-            missingApproved
-              ? 'rounded-lg border border-amber-500/25 bg-amber-500/[0.08] px-3 py-2 text-amber-950 dark:text-amber-200'
-              : 'text-muted-foreground'
-          )}
-        >
-          {hint}
-        </p>
-      ) : null}
-
-      {available.length > 0 ? (
-        <ul className="border-border/70 divide-border/60 divide-y overflow-hidden rounded-lg border">
-          {available.map((item) => (
-            <DocLinkRow key={item.label} label={item.label} url={item.url!} onPreview={onPreview} />
-          ))}
-        </ul>
+            return (
+              <section key={group.key}>
+                {showGroupLabels ? (
+                  <div className="border-separator bg-muted/40 flex items-center justify-between gap-2 border-b px-3 py-1.5">
+                    <h4
+                      id={headingId}
+                      className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider"
+                    >
+                      {group.label}
+                    </h4>
+                    <span className="text-muted-foreground text-[11px] font-medium tabular-nums">
+                      {onFile} of {group.rows.length}
+                    </span>
+                  </div>
+                ) : null}
+                <ul
+                  className="divide-border/60 divide-y"
+                  aria-labelledby={showGroupLabels ? headingId : undefined}
+                >
+                  {group.rows.map((row) => (
+                    <DocLinkRow
+                      key={row.label}
+                      label={row.label}
+                      url={row.url}
+                      approvalAction={group.key === 'approval'}
+                      statusUpdatedAt={booking.status_updated_at}
+                      onPreview={onPreview}
+                    />
+                  ))}
+                </ul>
+              </section>
+            );
+          })}
+        </div>
       ) : null}
     </WorkflowSubFormCard>
   );
@@ -139,26 +258,49 @@ export function PendingDocSubStatusCard({
 function DocLinkRow({
   label,
   url,
+  approvalAction = false,
+  statusUpdatedAt,
   onPreview,
 }: {
   label: string;
-  url: string;
+  url: string | null | undefined;
+  approvalAction?: boolean;
+  statusUpdatedAt?: string | null;
   onPreview: BookingAssetPreviewHandler;
 }) {
+  const stored = url?.trim() ?? '';
+  const Icon = stored ? FileText : FileClock;
+  const actionLabel = approvalAction && stored ? 'Approved' : 'View';
+
   return (
     <li className="flex min-h-11 items-center justify-between gap-3 px-3 py-1.5">
-      <span className="text-foreground flex min-w-0 items-center gap-2 text-xs font-medium">
-        <FileText className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
+      <span
+        className={cn(
+          'flex min-w-0 items-center gap-2 text-xs font-medium',
+          stored ? 'text-foreground' : 'text-muted-foreground'
+        )}
+      >
+        <Icon
+          className={cn('size-3.5 shrink-0', stored ? 'text-muted-foreground' : 'opacity-60')}
+          aria-hidden
+        />
         <span className="truncate">{label}</span>
       </span>
-      <button
-        type="button"
-        onClick={() => void onPreview(label, url)}
-        aria-label={`View ${label}`}
-        className="text-primary focus-ring hover:text-primary/90 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-end rounded-md px-1 text-xs font-semibold underline-offset-2 hover:underline"
-      >
-        View
-      </button>
+      {stored ? (
+        <button
+          type="button"
+          onClick={() => void onPreview(label, previewStorageUrl(stored, statusUpdatedAt))}
+          aria-label={`View ${label}`}
+          className={cn(
+            'focus-ring inline-flex min-h-11 min-w-11 shrink-0 items-center justify-end rounded-md px-1',
+            DOC_ROW_ACTION
+          )}
+        >
+          {actionLabel}
+        </button>
+      ) : (
+        <span className={DOC_ROW_PENDING}>Pending</span>
+      )}
     </li>
   );
 }
