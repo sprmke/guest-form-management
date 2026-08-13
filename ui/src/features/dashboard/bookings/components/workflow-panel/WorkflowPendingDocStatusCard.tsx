@@ -22,13 +22,14 @@ import {
   requirementDocKind,
   type DocumentRequirement,
 } from '@/features/dashboard/bookings/lib/documentRequirements';
+import { withStorageUrlCacheBust } from '@/features/dashboard/bookings/lib/storageUrls';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import {
   getPendingDocumentsNestedCompletion,
   readDocumentCompletions,
   type PendingDocNestedKey,
 } from '@/features/dashboard/bookings/lib/workflow';
-import { withStorageUrlCacheBust } from '@/features/dashboard/bookings/lib/storageUrls';
+import { nestedAdvanceMode } from '@/features/dashboard/bookings/lib/workflowAdvanceMode';
 
 import { cn } from '@/lib/utils';
 
@@ -48,8 +49,7 @@ const DOC_ROW_ACTION =
 /** Right-column outstanding state — workflow amber, same family as incomplete stepper nodes. */
 const DOC_ROW_PENDING = 'text-xs font-semibold text-amber-700 dark:text-amber-400';
 
-type DocStepState =
-  'not-required' | 'not-sent' | 'awaiting' | 'reopened' | 'approved' | 'complete-without-file';
+type DocStepState = 'not-required' | 'not-sent' | 'awaiting' | 'approved' | 'complete-without-file';
 
 function previewStorageUrl(url: string, statusUpdatedAt: string | null | undefined): string {
   const trimmed = url.trim();
@@ -153,20 +153,17 @@ function resolveDocStepState({
   beforeRequestSent,
   completed,
   approvedUrl,
-  manualIncomplete,
 }: {
   applies: boolean;
   beforeRequestSent: boolean;
   completed: boolean;
   approvedUrl: string | null;
-  manualIncomplete: boolean;
 }): DocStepState {
   if (!applies) return 'not-required';
   // A fresh review outranks stored completions, same guard the stepper applies —
   // a prior cycle's approval must not read as done before the request re-sends.
   if (beforeRequestSent) return 'not-sent';
   if (completed) return approvedUrl ? 'approved' : 'complete-without-file';
-  if (manualIncomplete && approvedUrl) return 'reopened';
   return 'awaiting';
 }
 
@@ -195,7 +192,6 @@ export function PendingDocSubStatusCard({
     beforeRequestSent,
     completed: byRequirementId[sub] ?? false,
     approvedUrl,
-    manualIncomplete: Boolean(completion?.manualIncomplete),
   });
 
   const subStepCompleted = state === 'approved' || state === 'complete-without-file';
@@ -209,6 +205,7 @@ export function PendingDocSubStatusCard({
       title={requirement?.label ?? statusLabel(sub)}
       plain={plain}
       bodyClassName="space-y-3.5"
+      advanceMode={nestedAdvanceMode(requirement?.approvalSource)}
     >
       {groups.length > 0 ? (
         <div className="border-border/70 divide-separator divide-y overflow-hidden rounded-lg border">

@@ -45,14 +45,7 @@ export type PropertyTelegramCredentialsStatus = {
   chatId?: string | null;
 };
 
-export type PropertyGmailIntegrationStatus = {
-  connected: boolean;
-  source: 'db' | 'none';
-  googleAccountEmail: string | null;
-};
-
 export type PropertyIntegrationStatus = {
-  gmail: PropertyGmailIntegrationStatus;
   telegram: {
     marketing: PropertyTelegramCredentialsStatus;
     staff: PropertyTelegramCredentialsStatus;
@@ -65,8 +58,7 @@ export type PropertyIntegrationStatus = {
 
 export type PlatformSecretsStatus = {
   resendApiKeyConfigured: boolean;
-  gmailEncryptionKeyConfigured: boolean;
-  gmailWebClientConfigured: boolean;
+  secretsEncryptionKeyConfigured: boolean;
   geminiApiKeyConfigured: boolean;
   groqApiKeyConfigured: boolean;
 };

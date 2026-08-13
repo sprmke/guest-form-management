@@ -9,10 +9,10 @@
  * tab; this card carries only the facts the workflow itself produced.
  */
 
-import type { BookingAssetPreviewHandler } from '@/features/dashboard/bookings/hooks/useBookingAssetPreview';
 import { WorkflowSubFormCard } from '@/features/dashboard/bookings/components/WorkflowSubFormCard';
-import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
+import type { BookingAssetPreviewHandler } from '@/features/dashboard/bookings/hooks/useBookingAssetPreview';
 import { guestBalancePaidRecorded } from '@/features/dashboard/bookings/lib/totalGuestBalance';
+import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import { workflowInlineLink } from '@/features/dashboard/bookings/lib/workflowActionButtonStyles';
 
 import { cn } from '@/lib/utils';

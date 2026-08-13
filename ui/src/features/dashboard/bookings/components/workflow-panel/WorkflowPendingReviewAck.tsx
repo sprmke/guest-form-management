@@ -3,14 +3,16 @@
  * transition actions bar until the host confirms they read the submission.
  *
  * Manual path: checkbox only. AI path: Run AI check first, then checkbox.
+ * Recheck is optional — the checkbox stays available beside it.
  */
 
 import { useEffect, useRef, useState } from 'react';
 
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, RotateCcw, Sparkles } from 'lucide-react';
 
 import { useBookingAiReview } from '@/features/dashboard/bookings/hooks/useBookingAiReview';
 import {
+  canRefreshBookingAiReview,
   hasBookingAiReviewRun,
   isBookingAiReviewRunning,
 } from '@/features/dashboard/bookings/lib/bookingAiReviewProgress';
@@ -24,9 +26,11 @@ import { cn } from '@/lib/utils';
 const CONFIRM_SETTLE_MS = 200;
 
 const MANUAL_ACK_LABEL =
-  'I manually reviewed and confirmed that all details, documents, and receipts are accurate.';
+  'I manually reviewed and confirmed that all details, documents, and receipts are correct.';
 
 const AI_ACK_LABEL = 'I reviewed the AI results and confirm this booking is ready to proceed.';
+
+const REVIEW_METHOD_LABEL = 'How Would You Like to Review?';
 
 type ReviewMethod = 'manual' | 'ai';
 
@@ -51,6 +55,7 @@ export function WorkflowPendingReviewAck({
 
   const hasAiRun = hasBookingAiReviewRun(review);
   const isAiRunning = isBookingAiReviewRunning(review, false);
+  const needsAiRefresh = canRefreshBookingAiReview(review);
 
   const checkboxId = `pending-review-ack-${bookingId}`;
 
@@ -70,7 +75,8 @@ export function WorkflowPendingReviewAck({
   }, [method]);
 
   const ackLabel = method === 'ai' && showAiPath ? AI_ACK_LABEL : MANUAL_ACK_LABEL;
-  const showRunAiButton = method === 'ai' && showAiPath && !hasAiRun;
+  const showRunAiButton =
+    method === 'ai' && showAiPath && (!hasAiRun || needsAiRefresh || isAiRunning);
   const showAckCheckbox = method === 'manual' || !showAiPath || hasAiRun;
 
   return (
@@ -78,11 +84,12 @@ export function WorkflowPendingReviewAck({
       <div className="border-border/80 bg-card overflow-hidden rounded-xl border shadow-sm">
         {showAiPath ? (
           <div className="border-border/60 border-b px-3 py-3">
+            <p className="text-muted-foreground mb-2 text-sm font-medium">{REVIEW_METHOD_LABEL}</p>
             <SegmentedControl
               value={method}
               onChange={setMethod}
               size="compact"
-              aria-label="Review method"
+              aria-label={REVIEW_METHOD_LABEL}
               className="w-full"
               listClassName="flex w-full"
               triggerClassName="min-w-0 flex-1"
@@ -96,7 +103,12 @@ export function WorkflowPendingReviewAck({
 
         <div className="space-y-3 px-4 py-4">
           {showRunAiButton ? (
-            <Button type="button" className="min-h-[44px] w-full" onClick={onOpenAiSummary}>
+            <Button
+              type="button"
+              variant={hasAiRun ? 'outline' : 'default'}
+              className="min-h-[44px] w-full"
+              onClick={onOpenAiSummary}
+            >
               {isAiRunning ? (
                 <>
                   <Loader2 className="size-4 animate-spin" aria-hidden />
@@ -104,8 +116,12 @@ export function WorkflowPendingReviewAck({
                 </>
               ) : (
                 <>
-                  <Sparkles className="size-4" aria-hidden />
-                  Run AI check
+                  {hasAiRun ? (
+                    <RotateCcw className="size-4" aria-hidden />
+                  ) : (
+                    <Sparkles className="size-4" aria-hidden />
+                  )}
+                  {hasAiRun ? 'Recheck' : 'Run AI check'}
                 </>
               )}
             </Button>

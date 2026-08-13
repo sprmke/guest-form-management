@@ -8,8 +8,23 @@ import { AlertTriangle } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
 import { statusLabel, type BookingStatus } from '@/features/dashboard/bookings/lib/bookingStatus';
+import type {
+  WorkflowEmailDevControlKey,
+  WorkflowEmailEffect,
+} from '@/features/dashboard/bookings/lib/workflowTransitionEmailControls';
 
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
+
+/** Opt-in row labels — name the document and who receives it. */
+const WORKFLOW_EMAIL_ACTION_LABEL: Record<WorkflowEmailDevControlKey, string> = {
+  sendGafRequestEmail: 'Email GAF request to building management',
+  sendBookingAcknowledgementEmail: 'Email guest acknowledgement to guest',
+  sendPetRequestEmail: 'Email pet request to building management',
+  sendParkingBroadcastEmail: 'Email parking request to owners',
+  sendReadyForCheckinEmail: 'Email ready-for-check-in email to guest',
+  sendSdRefundFormEmail: 'Email Check-out Instructions to guest',
+};
 
 /** One-line summary for transition confirms — status names in semibold, not quotes. */
 export function WorkflowStatusTransitionDescription({
@@ -32,6 +47,9 @@ export function WorkflowConfirmModal({
   title,
   description,
   effectLines,
+  emailEffects,
+  emailChoices,
+  onEmailChoiceChange,
   banner,
   secondaryLabel = 'Back',
   onConfirm,
@@ -43,6 +61,10 @@ export function WorkflowConfirmModal({
   description: ReactNode;
   /** Short host-facing bullets describing what will happen on confirm. */
   effectLines?: string[];
+  /** Optional email opt-in rows (past stay / re-forward). */
+  emailEffects?: WorkflowEmailEffect[];
+  emailChoices?: Partial<Record<WorkflowEmailDevControlKey, boolean>>;
+  onEmailChoiceChange?: (key: WorkflowEmailDevControlKey, checked: boolean) => void;
   banner?: ReactNode;
   /** Dismiss control (e.g. `Cancel` for transitions, `Keep booking` when cancelling a booking). */
   secondaryLabel?: string;
@@ -53,10 +75,13 @@ export function WorkflowConfirmModal({
 }) {
   if (typeof document === 'undefined') return null;
 
+  const showEmailChoices =
+    emailEffects != null && emailEffects.length > 0 && onEmailChoiceChange != null;
+
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-3 backdrop-blur-[2px] sm:p-4">
       <div className="border-border bg-card flex max-h-[min(90dvh,calc(100dvh-1.5rem))] w-full max-w-[min(calc(100vw-1.5rem),28rem)] flex-col overflow-hidden rounded-xl border p-5 shadow-2xl">
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
           <div className="flex items-start gap-3">
             {destructive && (
               <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500/10">
@@ -65,20 +90,59 @@ export function WorkflowConfirmModal({
             )}
             <div className="min-w-0 flex-1">
               <h3 className="text-foreground text-lg font-semibold sm:text-xl">{title}</h3>
-              {banner ? <div className="mt-3">{banner}</div> : null}
               <p className="text-muted-foreground mt-2 text-sm leading-relaxed">{description}</p>
               {effectLines && effectLines.length > 0 ? (
                 <>
-                  <p className="text-muted-foreground mt-3 text-sm">
-                    This action will do the following items:
-                  </p>
-                  <ul className="text-muted-foreground mt-1.5 list-disc space-y-1 pl-4 text-sm leading-relaxed">
+                  <p className="text-muted-foreground mt-3 text-sm">This will:</p>
+                  <ul className="mt-2 space-y-1">
                     {effectLines.map((line) => (
-                      <li key={line}>{line}</li>
+                      <li key={line} className="flex items-start gap-2.5">
+                        <span
+                          className="flex w-[18px] shrink-0 justify-center pt-[7px]"
+                          aria-hidden
+                        >
+                          <span className="bg-muted-foreground/40 size-1.5 rounded-full" />
+                        </span>
+                        <span className="text-foreground min-w-0 text-[13px] leading-5">
+                          {line}
+                        </span>
+                      </li>
                     ))}
                   </ul>
                 </>
               ) : null}
+              {showEmailChoices ? (
+                <div className="mt-3" role="group" aria-label="Optional actions">
+                  <p className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
+                    Optional actions
+                  </p>
+                  <div className="ml-0.5 mt-1 space-y-0.5">
+                    {emailEffects.map((effect) => {
+                      const checkboxId = `workflow-email-${effect.key}`;
+                      return (
+                        <label
+                          key={effect.key}
+                          htmlFor={checkboxId}
+                          className="hover:bg-muted/50 flex cursor-pointer items-start gap-2.5 rounded-md py-1.5 pr-1.5 transition-colors sm:py-1"
+                        >
+                          <Checkbox
+                            id={checkboxId}
+                            checked={emailChoices?.[effect.key] === true}
+                            onCheckedChange={(value) => {
+                              onEmailChoiceChange(effect.key, value === true);
+                            }}
+                            className="mt-px shrink-0"
+                          />
+                          <span className="text-foreground min-w-0 text-[13px] leading-5">
+                            {WORKFLOW_EMAIL_ACTION_LABEL[effect.key]}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+              {banner ? <div className="mt-2.5">{banner}</div> : null}
             </div>
           </div>
         </div>

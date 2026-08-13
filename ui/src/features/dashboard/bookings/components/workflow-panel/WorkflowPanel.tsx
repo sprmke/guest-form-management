@@ -3,9 +3,9 @@
  *
  * Orchestrator only: owns confirm-modal state, `viewedStep` state, calls
  * `useWorkflowActions`/`useWorkflowSubFormDrafts` for derived state, calls all
- * mutation hooks, keeps the Gmail-poll-on-load auto-trigger, and composes the
- * decomposed children below. `variant`/`isModal` is passed down so each child
- * branches internally rather than this file building two separate trees.
+ * mutation hooks, and composes the decomposed children below. `variant`/`isModal` is
+ * passed down so each child branches internally rather than this file building two
+ * separate trees.
  *
  * Shows:
  * - Stage deck: `WorkflowStageDeckHeader` (one stage at a time, arrows + progress
@@ -20,7 +20,9 @@
  * (`usePendingReviewAck`), so progress stays readable while the stage is closed.
  *
  * Side effects (emails, PDFs, DB) run from server defaults on every transition;
- * per-property email automations are configured under Property Settings.
+ * per-property email automations are configured under Property Settings. When stay
+ * dates are past or the booking was stepped back, forward Proceed confirms offer
+ * optional email checkboxes (default off).
  *
  * The guest stay-guide link is deliberately **not** here — it is a booking-scoped
  * share action, so it lives in the header action menu (`useBookingStayGuideLink`).
@@ -28,7 +30,7 @@
  * Plan: docs/planning/NEW_FLOW_PLAN.md §3.1, admin-dashboard.mdc §WorkflowPanel
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -36,7 +38,6 @@ import { toast } from 'sonner';
 import { guestSdFormPath } from '@/features/guest/lib/guestPublicPaths';
 
 import { BookingAiSummaryPanel } from '@/features/dashboard/bookings/components/booking-detail/BookingAiSummaryPanel';
-import { useGmailReconnectPrompt } from '@/features/dashboard/bookings/components/GmailReconnectProvider';
 import { isParkingRequestDraftComplete } from '@/features/dashboard/bookings/components/ParkingRequestForm';
 import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
 import { WorkflowActionsBar } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowActionsBar';
@@ -47,7 +48,6 @@ import {
 } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowConfirmModal';
 import { WorkflowDocApprovalModal } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowDocApprovalModal';
 import { WorkflowDocStepTabs } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowDocStepTabs';
-import { WorkflowMarkDocIncompleteAction } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowMarkDocIncompleteAction';
 import { WorkflowPendingReviewAck } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowPendingReviewAck';
 import { WorkflowProgressMapModal } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowProgressMapModal';
 import { WorkflowStageDeckHeader } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowStageDeckHeader';
@@ -60,7 +60,6 @@ import { usePendingReviewAck } from '@/features/dashboard/bookings/hooks/usePend
 import {
   useTransitionBooking,
   useCancelBooking,
-  useReconcileDocumentApprovals,
   useRunSdRefundCron,
   useResendSdRefundFormEmail,
   type TransitionPayload,
@@ -79,7 +78,6 @@ import { DEFAULT_DOCUMENT_REQUIREMENTS } from '@/features/dashboard/bookings/lib
 import { pendingDocStepUsesApprovalModal } from '@/features/dashboard/bookings/lib/pendingDocApproval';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import {
-  bookingNeedsDocumentApprovalReconcile,
   defaultPendingDocNestedKey,
   initialViewedWorkflowStep,
   nestedKeyLabel,
@@ -93,22 +91,19 @@ import { buildWorkflowStageDeck } from '@/features/dashboard/bookings/lib/workfl
 import {
   workflowCancelEffectLines,
   workflowTransitionEffectLines,
+  workflowTransitionEmailEffects,
 } from '@/features/dashboard/bookings/lib/workflowTransitionEffectsCopy';
+import {
+  buildWorkflowEmailDevControls,
+  defaultWorkflowEmailChoiceState,
+  shouldOfferWorkflowEmailChoices,
+  type WorkflowEmailDevControlKey,
+} from '@/features/dashboard/bookings/lib/workflowTransitionEmailControls';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { usePropertyPricingDefaults } from '@/features/dashboard/pricing/hooks/usePropertyPricing';
 
-import {
-  friendlyToastError,
-  documentApprovalReconcileSuccessMessage,
-  sdRefundCronSuccessMessage,
-} from '@/lib/feedback/toastMessages';
+import { friendlyToastError, sdRefundCronSuccessMessage } from '@/lib/feedback/toastMessages';
 import { cn } from '@/lib/utils';
-
-function buildDocumentReconcileSuccessMessage(
-  result: Parameters<typeof documentApprovalReconcileSuccessMessage>[0]
-): string {
-  return documentApprovalReconcileSuccessMessage(result);
-}
 
 // ─── Confirm dialog ───────────────────────────────────────────────────────────
 
@@ -208,13 +203,6 @@ export function WorkflowPanel({
     documentRequirements
   );
 
-  const showMarkDocIncomplete =
-    !workflowActions.isTerminal &&
-    (workflowActions.isLiveView || isModal) &&
-    workflowActions.inPendingDocuments &&
-    workflowActions.viewingPendingDocSub &&
-    workflowActions.selectedPendingDocCanMarkIncomplete;
-
   // ─── Stage deck ──────────────────────────────────────────────────────────
   // One pipeline stage on screen at a time; `viewedStep` stays the source of
   // truth so the map modal, sub-forms, and actions all read the same selection.
@@ -235,13 +223,15 @@ export function WorkflowPanel({
 
   // Confirm modals
   const [confirm, setConfirm] = useState<ConfirmState>(null);
+  const [emailChoices, setEmailChoices] = useState<
+    Partial<Record<WorkflowEmailDevControlKey, boolean>>
+  >({});
   const [cancelConfirm, setCancelConfirm] = useState(false);
   const [docApprovalModalSub, setDocApprovalModalSub] = useState<PendingDocNestedKey | null>(null);
 
   const transitionMut = useTransitionBooking();
   const cancelMut = useCancelBooking();
   const updateMut = useUpdateBooking();
-  const { handleGmailError } = useGmailReconnectPrompt();
 
   const persistPartialDrafts =
     !workflowActions.contentReadOnly && (!workflowActions.isLiveView || status === 'COMPLETED');
@@ -331,34 +321,13 @@ export function WorkflowPanel({
   useEffect(() => {
     setLiveAutosaveFailed(false);
   }, [booking.id, workflowActions.viewedContent, workflowActions.isLiveView]);
-  const documentReconcileMut = useReconcileDocumentApprovals(booking.id);
-  const documentReconcileMutRef = useRef(documentReconcileMut);
-  documentReconcileMutRef.current = documentReconcileMut;
-  /** Dedupes React Strict Mode double-invoke; cleared when leaving PENDING_DOCUMENTS. */
-  const pendingDocsAutoReconcileRef = useRef<string | null>(null);
   const sdCronMut = useRunSdRefundCron(booking.id);
   const resendSdFormMut = useResendSdRefundFormEmail(booking.id);
 
-  const toastUnlessGmailReconnect = useCallback(
-    (err: unknown, fallback: string) => {
-      if (!handleGmailError(err)) {
-        toast.error(friendlyToastError(err, fallback));
-      }
-    },
-    [handleGmailError]
-  );
-
   // Which automation triggers are relevant — only on the live, non-terminal step.
   const automationTriggersForLiveStep = workflowActions.isLiveView && !workflowActions.isTerminal;
-  const showDocumentReconcile =
-    automationTriggersForLiveStep &&
-    (status === 'PENDING_DOCUMENTS' ||
-      status === 'PENDING_GAF' ||
-      status === 'PENDING_PET_REQUEST');
   const showSdCron = automationTriggersForLiveStep && status === 'READY_FOR_CHECKIN';
-  const showSdFormResend =
-    automationTriggersForLiveStep &&
-    (status === 'READY_FOR_CHECKOUT' || status === 'READY_FOR_CHECKIN');
+  const showSdFormResend = automationTriggersForLiveStep && status === 'READY_FOR_CHECKOUT';
   const sdGuestFormUrl = `${window.location.origin}${guestSdFormPath(propertySlug, booking.id)}`;
 
   const [recheckSdGuestSubmitPending, setRecheckSdGuestSubmitPending] = useState(false);
@@ -366,6 +335,7 @@ export function WorkflowPanel({
   const copySdGuestFormUrl = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(sdGuestFormUrl);
+      toast.success('SD Refund Form link copied');
     } catch {
       toast.error('Could not copy to clipboard');
     }
@@ -392,59 +362,6 @@ export function WorkflowPanel({
     }
   }, [booking.id, booking.status, queryClient]);
 
-  useEffect(() => {
-    if (status !== 'PENDING_DOCUMENTS') {
-      pendingDocsAutoReconcileRef.current = null;
-      return;
-    }
-    if (!bookingNeedsDocumentApprovalReconcile(booking)) {
-      pendingDocsAutoReconcileRef.current = null;
-      return;
-    }
-    const dedupeKey = `${booking.id}:PENDING_DOCUMENTS`;
-    if (pendingDocsAutoReconcileRef.current === dedupeKey) return;
-    pendingDocsAutoReconcileRef.current = dedupeKey;
-
-    let cancelled = false;
-    void (async () => {
-      try {
-        const result = await documentReconcileMutRef.current.mutateAsync();
-        if (cancelled) return;
-        if ((result.reconciled ?? 0) > 0) {
-          toast.success(buildDocumentReconcileSuccessMessage(result));
-        }
-      } catch (err: unknown) {
-        if (cancelled) return;
-        toastUnlessGmailReconnect(err, 'Document reconcile failed');
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    booking.id,
-    booking.status,
-    booking.gaf_completed_at,
-    booking.approved_gaf_pdf_url,
-    booking.gaf_manual_incomplete,
-    booking.pet_completed_at,
-    booking.approved_pet_pdf_url,
-    booking.pet_manual_incomplete,
-    booking.has_pets,
-    status,
-    toastUnlessGmailReconnect,
-  ]);
-
-  async function handleDocumentReconcile() {
-    try {
-      const result = await documentReconcileMut.mutateAsync();
-      toast.success(buildDocumentReconcileSuccessMessage(result));
-    } catch (err: unknown) {
-      toastUnlessGmailReconnect(err, 'Document reconcile failed');
-    }
-  }
-
   async function handleSdCron() {
     try {
       const result = await sdCronMut.mutateAsync();
@@ -465,40 +382,62 @@ export function WorkflowPanel({
       if (result.skipped) {
         toast.message('Skipped in production');
       } else {
-        toast.success('SD refund form email sent');
+        toast.success('Check-out Instructions email sent');
       }
     } catch (err: unknown) {
-      toast.error(friendlyToastError(err, 'Could not send email'));
+      toast.error(friendlyToastError(err, 'Could not send Check-out Instructions email'));
     }
   }
 
   // ─── Handlers ────────────────────────────────────────────────────────────
 
   function openForwardProceedConfirm(toStatus: BookingStatus, label: string) {
+    const pastStayWarning = shouldWarnPastBookingStayForProceed(status, booking);
     setConfirm({
       toStatus,
       label,
       direction: 'forward',
-      pastStayWarning: shouldWarnPastBookingStayForProceed(status, booking),
+      pastStayWarning,
     });
+    const effectsInput = {
+      fromStatus: status,
+      toStatus,
+      direction: 'forward' as const,
+      booking,
+      documentRequirements,
+      automationToggles: appSettings?.automationToggles,
+    };
+    if (shouldOfferWorkflowEmailChoices(effectsInput)) {
+      setEmailChoices(
+        defaultWorkflowEmailChoiceState(workflowTransitionEmailEffects(effectsInput))
+      );
+    } else {
+      setEmailChoices({});
+    }
   }
 
   function openBackConfirm(toStatus: BookingStatus) {
+    setEmailChoices({});
     setConfirm({ toStatus, label: `Return to ${statusLabel(toStatus)}`, direction: 'back' });
   }
 
-  async function handleTransition(toStatus: BookingStatus) {
+  async function handleTransition(
+    toStatus: BookingStatus,
+    devControls?: ReturnType<typeof buildWorkflowEmailDevControls>
+  ) {
     setConfirm(null);
+    setEmailChoices({});
     try {
       await transitionMut.mutateAsync({
         bookingId: booking.id,
         toStatus,
         payload: subFormDrafts.buildPayload(toStatus),
+        ...(devControls ? { devControls } : {}),
         manual: true,
       });
       toast.success(`Moved to ${statusLabel(toStatus)}`);
     } catch (err: unknown) {
-      toastUnlessGmailReconnect(err, 'Could not update booking status');
+      toast.error(friendlyToastError(err, 'Could not update booking status'));
     }
   }
 
@@ -543,22 +482,7 @@ export function WorkflowPanel({
         }
       }
     } catch (err: unknown) {
-      toastUnlessGmailReconnect(err, 'Could not mark step complete');
-    }
-  }
-
-  async function handleMarkPendingDocSubStatusIncomplete(subStatus: PendingDocNestedKey) {
-    const label = nestedKeyLabel(subStatus, documentRequirements);
-    try {
-      await transitionMut.mutateAsync({
-        bookingId: booking.id,
-        toStatus: workflowActions.inPendingDocuments ? 'PENDING_DOCUMENTS' : status,
-        payload: { document_completion_clear_target: subStatus },
-        manual: true,
-      });
-      toast.success(`Marked ${label} as incomplete`);
-    } catch (err: unknown) {
-      toastUnlessGmailReconnect(err, 'Could not mark step incomplete');
+      toast.error(friendlyToastError(err, 'Could not mark step complete'));
     }
   }
 
@@ -695,32 +619,18 @@ export function WorkflowPanel({
         </div>
       )}
 
-      {showMarkDocIncomplete ? (
-        <WorkflowMarkDocIncompleteAction
-          docLabel={workflowActions.activePendingDocLabel}
-          isModal={isModal}
-          disabled={transitionMut.isPending || cancelMut.isPending || updateMut.isPending}
-          busy={transitionMut.isPending}
-          onClick={() =>
-            void handleMarkPendingDocSubStatusIncomplete(workflowActions.activePendingDocSubStatus)
-          }
-        />
-      ) : null}
-
       {/* ── Automation triggers (detail rail only) ─────────────────────────── */}
       {!needsReviewAck ? (
         <>
           <WorkflowAutomationTriggers
             isModal={isModal}
-            showDocumentReconcile={showDocumentReconcile}
             showSdCron={showSdCron}
             showSdFormResend={showSdFormResend}
+            sdRefundEmailLeadMinutes={appSettings?.sdRefundCronEmailLeadMinutes}
             automationHelpOpen={automationHelpOpen}
             onToggleAutomationHelp={() => setAutomationHelpOpen((o) => !o)}
-            documentReconcilePending={documentReconcileMut.isPending}
             sdCronPending={sdCronMut.isPending}
             resendSdFormPending={resendSdFormMut.isPending}
-            onReconcileDocuments={handleDocumentReconcile}
             onRunSdCron={handleSdCron}
             onResendSdFormEmail={handleResendSdFormEmail}
           />
@@ -775,41 +685,79 @@ export function WorkflowPanel({
           disabled={transitionMut.isPending}
           onSelectStep={selectPipelineStep}
           onSelectSubStep={focusPendingDocSubView}
+          sdRefundEmailLeadMinutes={appSettings?.sdRefundCronEmailLeadMinutes}
         />
       ) : null}
 
       {/* ── Confirm transition modal ─────────────────────────────────────── */}
-      {confirm && (
-        <WorkflowConfirmModal
-          title={confirm.label}
-          secondaryLabel="Cancel"
-          banner={
-            confirm.pastStayWarning ? (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
-                <p className="font-semibold">Stay dates are in the past</p>
-                <p className="mt-1 text-xs leading-relaxed text-amber-900/95 dark:text-amber-200/90">
-                  Check-in or check-out is before today (Asia/Manila). Continue only if you still
-                  want to advance.
-                </p>
-              </div>
-            ) : null
-          }
-          description={
-            <WorkflowStatusTransitionDescription fromStatus={status} toStatus={confirm.toStatus} />
-          }
-          effectLines={workflowTransitionEffectLines({
-            fromStatus: status,
-            toStatus: confirm.toStatus,
-            direction: confirm.direction,
-            booking,
-            documentRequirements,
-            automationToggles: appSettings?.automationToggles,
-          })}
-          onConfirm={() => handleTransition(confirm.toStatus)}
-          onCancel={() => setConfirm(null)}
-          isLoading={transitionMut.isPending}
-        />
-      )}
+      {confirm
+        ? (() => {
+            const transitionEffectsInput = {
+              fromStatus: status,
+              toStatus: confirm.toStatus,
+              direction: confirm.direction,
+              booking,
+              documentRequirements,
+              automationToggles: appSettings?.automationToggles,
+            };
+            const confirmEmailEffects =
+              confirm.direction === 'forward'
+                ? workflowTransitionEmailEffects(transitionEffectsInput)
+                : [];
+            const offerEmailChoices =
+              confirm.direction === 'forward' &&
+              shouldOfferWorkflowEmailChoices(transitionEffectsInput);
+
+            return (
+              <WorkflowConfirmModal
+                title={confirm.label}
+                secondaryLabel="Cancel"
+                banner={
+                  confirm.pastStayWarning ? (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
+                      <p className="font-semibold">Stay dates are in the past</p>
+                      <p className="mt-1 text-xs leading-relaxed text-amber-900/95 dark:text-amber-200/90">
+                        Check-in or check-out is before today (Asia/Manila). Continue only if you
+                        still want to advance.
+                      </p>
+                    </div>
+                  ) : null
+                }
+                description={
+                  <WorkflowStatusTransitionDescription
+                    fromStatus={status}
+                    toStatus={confirm.toStatus}
+                  />
+                }
+                effectLines={workflowTransitionEffectLines(transitionEffectsInput, {
+                  includeEmailLines: !offerEmailChoices,
+                })}
+                emailEffects={offerEmailChoices ? confirmEmailEffects : undefined}
+                emailChoices={offerEmailChoices ? emailChoices : undefined}
+                onEmailChoiceChange={
+                  offerEmailChoices
+                    ? (key, checked) => {
+                        setEmailChoices((prev) => ({ ...prev, [key]: checked }));
+                      }
+                    : undefined
+                }
+                onConfirm={() =>
+                  handleTransition(
+                    confirm.toStatus,
+                    offerEmailChoices
+                      ? buildWorkflowEmailDevControls(confirmEmailEffects, emailChoices)
+                      : undefined
+                  )
+                }
+                onCancel={() => {
+                  setConfirm(null);
+                  setEmailChoices({});
+                }}
+                isLoading={transitionMut.isPending}
+              />
+            );
+          })()
+        : null}
 
       {cancelConfirm && (
         <WorkflowConfirmModal

@@ -82,9 +82,7 @@ export function WorkflowDocApprovalModal({
   const busy = isConfirming || uploadMut.isPending || clearMut.isPending;
   const hasApprovedFile = Boolean(currentUrl.trim());
   const instruction =
-    assetType === 'approved_gaf'
-      ? 'If the Approved GAF email reply is not detected or cannot be found, manually upload the signed GAF provided by management.'
-      : 'If the Approved Pet Form email reply is not detected or cannot be found, manually upload the approved pet form provided by management.';
+    'If the signed PDF was not received via email, manually upload it and mark it as complete.';
 
   async function handleUpload(file: File, type: DocApprovalAssetType) {
     try {
@@ -130,7 +128,7 @@ export function WorkflowDocApprovalModal({
         <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-5">
           <header className="space-y-2">
             <h3 id="workflow-doc-approval-title" className="text-foreground text-lg font-semibold">
-              Mark {label} complete
+              Mark {label} as complete
             </h3>
             <p
               id="workflow-doc-approval-description"
@@ -181,7 +179,7 @@ export function WorkflowDocApprovalModal({
                 Processing…
               </span>
             ) : (
-              'Mark complete'
+              'Mark as complete'
             )}
           </button>
         </div>
