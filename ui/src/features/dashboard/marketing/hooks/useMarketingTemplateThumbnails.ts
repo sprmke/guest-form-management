@@ -35,10 +35,7 @@ import {
   videoPresetThumbnailKey,
 } from '@/features/dashboard/marketing/lib/marketingTemplateThumbnailCache';
 import { runWithConcurrency } from '@/features/dashboard/marketing/lib/marketingThumbnailQueue';
-import {
-  renderDesignPolotnoJsonThumbnail,
-  renderDesignPresetThumbnail,
-} from '@/features/dashboard/marketing/lib/renderMarketingDesignThumbnail';
+import { renderDesignPresetThumbnail } from '@/features/dashboard/marketing/lib/renderMarketingDesignThumbnail';
 import {
   renderVideoPresetThumbnail,
   renderVideoProjectThumbnail,
@@ -636,6 +633,12 @@ export function useMarketingTemplateThumbnails(options: Options) {
           return;
         }
 
+        // OpenPolotno `toBlob` finds Konva stages by pageId. Compiled docs reuse
+        // `page-1`, so a headless store captures the live editor canvas instead
+        // of this record. Saved design thumbs must come from thumbnailDataUrl
+        // (captured against the mounted Workspace at save/select time).
+        if (contentType === 'design') return;
+
         if (contentType === 'video') {
           if (!isThumbnailRequested(record.id, requestedIdsRef.current)) return;
           await waitForMarketingIdle();
@@ -645,12 +648,7 @@ export function useMarketingTemplateThumbnails(options: Options) {
         setLoadingIds((prev) => new Set(prev).add(record.id));
 
         let dataUrl: string | null = null;
-        if (contentType === 'design') {
-          const polotno = record.designJson.polotno;
-          if (polotno && typeof polotno === 'object') {
-            dataUrl = await renderDesignPolotnoJsonThumbnail(polotno as Record<string, unknown>);
-          }
-        } else {
+        if (contentType === 'video') {
           const template = getVideoCampaignTemplate(
             typeof record.designJson.templateId === 'string'
               ? record.designJson.templateId

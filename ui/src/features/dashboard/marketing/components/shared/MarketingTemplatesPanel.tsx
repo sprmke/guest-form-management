@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import { useQueryClient } from '@tanstack/react-query';
+import { Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { MarketingCategoryChip } from '@/features/dashboard/marketing/components/shared/MarketingCategoryChip';
@@ -18,27 +20,25 @@ import {
   type MarketingCatalogTab,
 } from '@/features/dashboard/marketing/hooks/useMarketingCatalog';
 import {
-  useDeleteMarketingTemplate,
+  deleteMarketingTemplate,
+  updateMarketingTemplate,
   useSaveMarketingTemplate,
   type MarketingTemplateRecord,
 } from '@/features/dashboard/marketing/hooks/useMarketingTemplates';
 import { useMarketingTemplateThumbnails } from '@/features/dashboard/marketing/hooks/useMarketingTemplateThumbnails';
 import { DESIGN_CUSTOM_SOURCE_PRESET_ID } from '@/features/dashboard/marketing/lib/designAutosave';
 import type { DesignBinding } from '@/features/dashboard/marketing/lib/designCanvasTypes';
-import {
-  ARCHIVE_MENU_LABEL,
-  ARCHIVED_EMPTY_MESSAGE,
-  isHiddenCategoryId,
-  UNARCHIVE_MENU_LABEL,
-} from '@/features/dashboard/marketing/lib/marketingCatalogHidden';
+import { isHiddenCategoryId } from '@/features/dashboard/marketing/lib/marketingCatalogHidden';
 import { resolveFormatOptionDimensions } from '@/features/dashboard/marketing/lib/marketingFormats';
 import {
   isDesignCustomTemplate,
   marketingSavedTemplateCategoryId,
   marketingSavedTemplateMatchesFormat,
   marketingVideoSavedCategoryId,
+  planSavedTemplateRelatedIds,
 } from '@/features/dashboard/marketing/lib/marketingSavedTemplates';
 import type { VideoFormat } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
+import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 
 import {
   AlertDialog,
@@ -50,6 +50,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
 
 export type PresetTemplateItem = {
   id: string;
@@ -64,15 +65,23 @@ type DialogState =
   | { kind: 'add-category' }
   | { kind: 'rename-category'; categoryId: string; defaultValue: string }
   | { kind: 'rename-preset'; templateId: string; defaultValue: string }
+  | { kind: 'rename-saved'; recordId: string; defaultValue: string }
   | { kind: 'save-template' }
   | null;
 
-type MoveTarget = {
-  kind: 'preset';
-  templateId: string;
-  templateName: string;
-  currentCategoryId: string;
-};
+type MoveTarget =
+  | {
+      kind: 'preset';
+      templateId: string;
+      templateName: string;
+      currentCategoryId: string;
+    }
+  | {
+      kind: 'saved';
+      recordId: string;
+      templateName: string;
+      currentCategoryId: string;
+    };
 
 type DeleteTarget =
   | { kind: 'category'; categoryId: string }
@@ -94,6 +103,8 @@ type Props = {
   selectedSavedId?: string | null;
   onSelectSaved?: (record: MarketingTemplateRecord) => void;
   onSavedTemplate?: (record: MarketingTemplateRecord) => void;
+  onOpenAiGenerate?: () => void;
+  aiGenerateBusy?: boolean;
   designJsonForSave?: Record<string, unknown> | (() => Record<string, unknown> | null);
   aspectPreset?: string;
   platform?: string;
@@ -123,6 +134,8 @@ export function MarketingTemplatesPanel({
   selectedSavedId = null,
   onSelectSaved,
   onSavedTemplate,
+  onOpenAiGenerate,
+  aiGenerateBusy = false,
   designJsonForSave,
   aspectPreset,
   platform,
@@ -134,23 +147,27 @@ export function MarketingTemplatesPanel({
   isThumbnailLoading: isThumbnailLoadingProp,
 }: Props) {
   const catalog = useMarketingCatalog(tab);
-  const viewingHidden = isHiddenCategoryId(category);
+  const propertyId = usePropertyIdParam();
+  const queryClient = useQueryClient();
   const saveTemplate = useSaveMarketingTemplate();
-  const deleteTemplate = useDeleteMarketingTemplate();
+
+  useEffect(() => {
+    if (!isHiddenCategoryId(category)) return;
+    const fallback = catalog.movableCategories[0];
+    if (fallback) onCategoryChange(fallback.id);
+  }, [category, catalog.movableCategories, onCategoryChange]);
 
   const visibleSavedRecords = useMemo(() => {
     return savedRecords.filter((record) => {
       if (contentType === 'design' && !isDesignCustomTemplate(record)) return false;
       if (!marketingSavedTemplateMatchesFormat(record, format)) return false;
-      if (viewingHidden) return catalog.isSavedTemplateHidden(record.id);
-      if (catalog.isSavedTemplateHidden(record.id)) return false;
       const savedCategory =
         tab === 'video'
           ? marketingVideoSavedCategoryId(record)
           : marketingSavedTemplateCategoryId(record);
       return savedCategory === category;
     });
-  }, [savedRecords, contentType, format, viewingHidden, catalog, category, tab]);
+  }, [savedRecords, contentType, format, category, tab]);
 
   const visibleSavedIds = useMemo(
     () => visibleSavedRecords.map((record) => record.id),
@@ -158,15 +175,11 @@ export function MarketingTemplatesPanel({
   );
 
   const visiblePresets = useMemo(() => {
-    if (viewingHidden) {
-      return presetTemplates.filter((template) => catalog.isPresetHidden(template.id));
-    }
     return presetTemplates.filter((template) => {
-      if (catalog.isPresetHidden(template.id)) return false;
       const effectiveCategory = catalog.getPresetCategory(template.id, template.category);
       return effectiveCategory === category;
     });
-  }, [presetTemplates, category, catalog, viewingHidden]);
+  }, [presetTemplates, category, catalog]);
 
   const visiblePresetIds = useMemo(
     () => visiblePresets.map((template) => template.id),
@@ -230,27 +243,10 @@ export function MarketingTemplatesPanel({
   const [moveTarget, setMoveTarget] = useState<MoveTarget | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
 
-  const hiddenBuiltinCategories = useMemo(
-    () =>
-      catalog.prefs.hiddenBuiltinCategories.map((categoryId) => ({
-        id: categoryId,
-        label: catalog.getHiddenBuiltinCategoryLabel(categoryId),
-      })),
-    [catalog]
-  );
-
-  const switchAwayFromCategory = (categoryId: string) => {
-    if (category !== categoryId) return;
-    const fallback = catalog.movableCategories[0];
-    if (fallback) onCategoryChange(fallback.id);
-  };
-
   const categoryMenuItems = (
     categoryId: string,
-    kind: 'builtin' | 'custom' | 'hidden'
+    kind: 'builtin' | 'custom'
   ): MarketingSidebarMenuItem[] => {
-    if (kind === 'hidden') return [];
-
     const renameItem: MarketingSidebarMenuItem = {
       id: 'rename',
       label: 'Rename',
@@ -273,17 +269,7 @@ export function MarketingTemplatesPanel({
       ];
     }
 
-    return [
-      renameItem,
-      {
-        id: 'hide',
-        label: ARCHIVE_MENU_LABEL,
-        onSelect: () => {
-          catalog.hideBuiltinCategory(categoryId);
-          switchAwayFromCategory(categoryId);
-        },
-      },
-    ];
+    return [renameItem];
   };
 
   const moveMenuItem = (target: MoveTarget): MarketingSidebarMenuItem | null => {
@@ -299,21 +285,25 @@ export function MarketingTemplatesPanel({
   };
 
   const savedMenuItems = (record: MarketingTemplateRecord): MarketingSidebarMenuItem[] => {
-    if (viewingHidden) {
-      return [
-        {
-          id: 'unhide',
-          label: UNARCHIVE_MENU_LABEL,
-          onSelect: () => catalog.unhideSavedTemplate(record.id),
-        },
-      ];
-    }
+    const currentCategoryId =
+      (tab === 'video'
+        ? marketingVideoSavedCategoryId(record)
+        : marketingSavedTemplateCategoryId(record)) ?? category;
+    const moveItem = moveMenuItem({
+      kind: 'saved',
+      recordId: record.id,
+      templateName: record.name,
+      currentCategoryId,
+    });
+
     return [
       {
-        id: 'archive',
-        label: ARCHIVE_MENU_LABEL,
-        onSelect: () => catalog.hideSavedTemplate(record.id),
+        id: 'rename',
+        label: 'Rename',
+        onSelect: () =>
+          setDialog({ kind: 'rename-saved', recordId: record.id, defaultValue: record.name }),
       },
+      ...(moveItem ? [moveItem] : []),
       {
         id: 'delete',
         label: 'Remove',
@@ -325,16 +315,6 @@ export function MarketingTemplatesPanel({
   };
 
   const presetMenuItems = (templateId: string, displayName: string, currentCategoryId: string) => {
-    if (viewingHidden) {
-      return [
-        {
-          id: 'unhide',
-          label: UNARCHIVE_MENU_LABEL,
-          onSelect: () => catalog.unhidePresetTemplate(templateId),
-        },
-      ];
-    }
-
     const moveItem = moveMenuItem({
       kind: 'preset',
       templateId,
@@ -342,14 +322,7 @@ export function MarketingTemplatesPanel({
       currentCategoryId,
     });
     if (videoTemplateMenus === 'minimal') {
-      return [
-        ...(moveItem ? [moveItem] : []),
-        {
-          id: 'hide',
-          label: ARCHIVE_MENU_LABEL,
-          onSelect: () => catalog.hidePresetTemplate(templateId),
-        },
-      ];
+      return moveItem ? [moveItem] : [];
     }
     return [
       {
@@ -358,23 +331,49 @@ export function MarketingTemplatesPanel({
         onSelect: () => setDialog({ kind: 'rename-preset', templateId, defaultValue: displayName }),
       },
       ...(moveItem ? [moveItem] : []),
-      {
-        id: 'hide',
-        label: ARCHIVE_MENU_LABEL,
-        onSelect: () => catalog.hidePresetTemplate(templateId),
-      },
     ];
   };
 
   const handleMoveConfirm = (targetCategoryId: string) => {
     if (!moveTarget) return;
 
-    catalog.movePresetTemplate(moveTarget.templateId, targetCategoryId);
-    toast.success('Template moved');
-    setMoveTarget(null);
-    if (category === moveTarget.currentCategoryId) {
-      onCategoryChange(targetCategoryId);
+    if (moveTarget.kind === 'preset') {
+      catalog.movePresetTemplate(moveTarget.templateId, targetCategoryId);
+      toast.success('Template moved');
+      setMoveTarget(null);
+      if (category === moveTarget.currentCategoryId) {
+        onCategoryChange(targetCategoryId);
+      }
+      return;
     }
+
+    const ids = planSavedTemplateRelatedIds(savedRecords, moveTarget.recordId);
+    void (async () => {
+      try {
+        await Promise.all(
+          ids.map((id) => {
+            const record = savedRecords.find((item) => item.id === id);
+            if (!record) return Promise.resolve();
+            return updateMarketingTemplate(propertyId, {
+              id,
+              designJson: {
+                ...record.designJson,
+                categoryId: targetCategoryId,
+                category: targetCategoryId,
+              },
+            });
+          })
+        );
+        void queryClient.invalidateQueries({ queryKey: ['marketing-templates', propertyId] });
+        toast.success(ids.length > 1 ? `Moved ${ids.length} formats` : 'Template moved');
+        setMoveTarget(null);
+        if (category === moveTarget.currentCategoryId) {
+          onCategoryChange(targetCategoryId);
+        }
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Move failed');
+      }
+    })();
   };
 
   const handleDialogConfirm = async (value: string) => {
@@ -393,6 +392,17 @@ export function MarketingTemplatesPanel({
         case 'rename-preset':
           catalog.renamePresetTemplate(dialog.templateId, value);
           break;
+        case 'rename-saved': {
+          const trimmed = value.trim();
+          if (!trimmed) return;
+          const ids = planSavedTemplateRelatedIds(savedRecords, dialog.recordId);
+          await Promise.all(
+            ids.map((id) => updateMarketingTemplate(propertyId, { id, name: trimmed }))
+          );
+          void queryClient.invalidateQueries({ queryKey: ['marketing-templates', propertyId] });
+          toast.success(ids.length > 1 ? `Renamed ${ids.length} formats` : 'Template renamed');
+          break;
+        }
         case 'save-template':
           {
             const designJsonPayload =
@@ -414,9 +424,7 @@ export function MarketingTemplatesPanel({
                 ...(contentType === 'design'
                   ? { sourcePresetId: DESIGN_CUSTOM_SOURCE_PRESET_ID }
                   : {}),
-                categoryId: viewingHidden
-                  ? (catalog.movableCategories[0]?.id ?? category)
-                  : category,
+                categoryId: category,
                 ...(thumbnailDataUrl ? { thumbnailDataUrl } : {}),
               },
             });
@@ -447,9 +455,18 @@ export function MarketingTemplatesPanel({
       return;
     }
 
-    void deleteTemplate.mutateAsync(deleteTarget.recordId).finally(() => {
-      setDeleteTarget(null);
-    });
+    const ids = planSavedTemplateRelatedIds(savedRecords, deleteTarget.recordId);
+    void (async () => {
+      try {
+        await Promise.all(ids.map((id) => deleteMarketingTemplate(propertyId, id)));
+        void queryClient.invalidateQueries({ queryKey: ['marketing-templates', propertyId] });
+        toast.success(ids.length > 1 ? `Removed ${ids.length} formats` : 'Template removed');
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Delete failed');
+      } finally {
+        setDeleteTarget(null);
+      }
+    })();
   };
 
   const dialogMeta = (() => {
@@ -464,6 +481,7 @@ export function MarketingTemplatesPanel({
           defaultValue: dialog.defaultValue,
         };
       case 'rename-preset':
+      case 'rename-saved':
         return {
           title: 'Rename template',
           confirmLabel: 'Save',
@@ -476,14 +494,23 @@ export function MarketingTemplatesPanel({
     }
   })();
 
-  const hasTemplates =
-    visiblePresets.length > 0 ||
-    visibleSavedRecords.length > 0 ||
-    (viewingHidden && hiddenBuiltinCategories.length > 0);
+  const hasTemplates = visiblePresets.length > 0 || visibleSavedRecords.length > 0;
 
   return (
     <>
       <div className="space-y-4">
+        {onOpenAiGenerate ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-[44px] w-full gap-2"
+            disabled={aiGenerateBusy}
+            onClick={onOpenAiGenerate}
+          >
+            <Sparkles className="size-4" aria-hidden />
+            {aiGenerateBusy ? 'Generating…' : 'Generate with AI'}
+          </Button>
+        ) : null}
         <MarketingFormatPicker options={formatOptions} value={format} onChange={onFormatChange} />
 
         <MarketingSidebarSection
@@ -510,34 +537,11 @@ export function MarketingTemplatesPanel({
       <MarketingSidebarSection
         title="Templates"
         collapsible={false}
-        onAdd={
-          designJsonForSave && !viewingHidden
-            ? () => setDialog({ kind: 'save-template' })
-            : undefined
-        }
+        onAdd={designJsonForSave ? () => setDialog({ kind: 'save-template' }) : undefined}
         addLabel="Save template"
       >
         {hasTemplates ? (
           <ul className={MARKETING_SIDEBAR_GRID}>
-            {viewingHidden
-              ? hiddenBuiltinCategories.map((item) => (
-                  <li key={item.id} className="min-w-0">
-                    <MarketingTemplateCard
-                      name={item.label}
-                      meta="Category"
-                      layout="row"
-                      onClick={() => undefined}
-                      menuItems={[
-                        {
-                          id: 'unhide',
-                          label: UNARCHIVE_MENU_LABEL,
-                          onSelect: () => catalog.unhideBuiltinCategory(item.id),
-                        },
-                      ]}
-                    />
-                  </li>
-                ))
-              : null}
             {visibleSavedRecords.map((record) => (
               <li key={record.id} className="min-w-0">
                 <MarketingTemplateCard
@@ -584,9 +588,7 @@ export function MarketingTemplatesPanel({
             })}
           </ul>
         ) : (
-          <p className="text-muted-foreground text-xs">
-            {viewingHidden ? ARCHIVED_EMPTY_MESSAGE : 'No templates in this category.'}
-          </p>
+          <p className="text-muted-foreground text-xs">No templates in this category.</p>
         )}
       </MarketingSidebarSection>
 
@@ -628,7 +630,9 @@ export function MarketingTemplatesPanel({
               <AlertDialogTitle>Remove?</AlertDialogTitle>
               <AlertDialogDescription>
                 {deleteTarget.kind === 'saved-template'
-                  ? `"${deleteTarget.name}" will be deleted permanently.`
+                  ? planSavedTemplateRelatedIds(savedRecords, deleteTarget.recordId).length > 1
+                    ? `"${deleteTarget.name}" and its other formats will be deleted permanently.`
+                    : `"${deleteTarget.name}" will be deleted permanently.`
                   : 'This cannot be undone.'}
               </AlertDialogDescription>
             </AlertDialogHeader>

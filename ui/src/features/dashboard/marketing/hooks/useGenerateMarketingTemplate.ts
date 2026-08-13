@@ -1,6 +1,8 @@
 import { useMutation } from '@tanstack/react-query';
 
 import type { CalendarTemplateTokens } from '@/features/dashboard/marketing/lib/calendarAiTokens';
+import type { DesignTemplateTokens } from '@/features/dashboard/marketing/lib/designAiTokens';
+import type { VideoTemplateTokens } from '@/features/dashboard/marketing/lib/videoAiTokens';
 import { usePropertyIdParam, scopedFunctionsUrl } from '@/features/dashboard/org/lib/adminApiScope';
 import {
   handleAiMutationError,
@@ -15,21 +17,27 @@ export type GenerateMarketingTemplatePayload = {
     propertyPhoto?: boolean;
     amenities?: boolean;
     availability?: boolean;
+    orgLogo?: boolean;
+    propertyName?: boolean;
+    cta?: boolean;
   };
   amenitiesText?: string;
   availabilityText?: string;
-  /** Calendar style locks — folded into the model prompt server-side. */
+  /** Design-only: describes what the generated design should say. Overrides category defaults. */
+  content?: string;
+  /** Calendar / Design style locks — folded into the model prompt server-side. */
   preferences?: {
     layoutArchetype?: string;
     fontPairing?: string;
     backgroundMood?: string;
+    category?: string;
   };
 };
 
-export type GenerateMarketingTemplateResult = {
-  contentType: 'calendar' | 'design' | 'video';
-  tokens: CalendarTemplateTokens;
-};
+export type GenerateMarketingTemplateResult =
+  | { contentType: 'calendar'; tokens: CalendarTemplateTokens }
+  | { contentType: 'design'; tokens: DesignTemplateTokens }
+  | { contentType: 'video'; tokens: VideoTemplateTokens };
 
 async function parseEdgeJson<T>(res: Response): Promise<T> {
   return parseEdgeJsonOrQuota<T>(res);

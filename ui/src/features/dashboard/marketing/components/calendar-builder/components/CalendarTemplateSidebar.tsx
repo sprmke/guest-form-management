@@ -1,7 +1,5 @@
 import { memo, useState } from 'react';
 
-import { Sparkles } from 'lucide-react';
-
 import { useCalendarThumbnails } from '@/features/dashboard/marketing/components/calendar-builder/components/CalendarThumbnailsProvider';
 import type { SavedCalendarTemplate } from '@/features/dashboard/marketing/components/calendar-builder/hooks/useCalendarTemplates';
 import { MarketingNameDialog } from '@/features/dashboard/marketing/components/shared/MarketingNameDialog';
@@ -24,7 +22,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Button } from '@/components/ui/button';
 
 export type CalendarPresetCategory = {
   label: string;
@@ -50,8 +47,6 @@ type Props = {
   onCustomizeCustom: (id: string) => void;
   onRenameCustom: (id: string, name: string) => void | Promise<void>;
   onRemoveCustom: (id: string) => void | Promise<void>;
-  onOpenAiGenerate?: () => void;
-  aiGenerateBusy?: boolean;
 };
 
 export const CalendarTemplateSidebar = memo(function CalendarTemplateSidebar({
@@ -67,8 +62,6 @@ export const CalendarTemplateSidebar = memo(function CalendarTemplateSidebar({
   onCustomizeCustom,
   onRenameCustom,
   onRemoveCustom,
-  onOpenAiGenerate,
-  aiGenerateBusy = false,
 }: Props) {
   const { getThumbnailUrl, isThumbnailLoading, requestThumbnail } = useCalendarThumbnails();
   const [removeTarget, setRemoveTarget] = useState<SavedCalendarTemplate | null>(null);
@@ -127,18 +120,6 @@ export const CalendarTemplateSidebar = memo(function CalendarTemplateSidebar({
 
   return (
     <>
-      {onOpenAiGenerate ? (
-        <Button
-          type="button"
-          variant="outline"
-          className="mb-2 min-h-[44px] w-full gap-2"
-          disabled={aiGenerateBusy}
-          onClick={onOpenAiGenerate}
-        >
-          <Sparkles className="size-4" aria-hidden />
-          {aiGenerateBusy ? 'Generating…' : 'Generate with AI'}
-        </Button>
-      ) : null}
       <MarketingSidebarSection title="Custom" collapsible={false}>
         <ul className={MARKETING_SIDEBAR_GRID}>
           <li className="min-w-0">
