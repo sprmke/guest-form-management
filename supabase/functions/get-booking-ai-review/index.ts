@@ -3,11 +3,15 @@
  *
  * Trigger: GET /functions/v1/get-booking-ai-review?property_id=<id>&bookingId=<id>
  * Auth:    resolveScopedPropertyAccess(req, 'bookings:edit')
+ *
+ * Completed/failed rows include `stale_sections`: section ids whose stored
+ * fingerprint no longer matches the live booking (computed, not stored).
  */
 
 import {
   failStaleStuckBookingAiReview,
   getBookingAiReviewById,
+  withStaleAiReviewSections,
 } from '../_shared/bookingAiReviewService.ts';
 import { jsonSuccess, requireHttpMethod } from '../_shared/httpResponse.ts';
 import {
@@ -31,5 +35,5 @@ serveAuthenticated('get-booking-ai-review', async (req) => {
   if (row) {
     row = await failStaleStuckBookingAiReview(row);
   }
-  return jsonSuccess(req, row);
+  return jsonSuccess(req, await withStaleAiReviewSections(row, propertyId));
 });

@@ -13,6 +13,7 @@ import {
   upsertConversation,
 } from './socialInboxService.ts';
 import { maybeAutoReplyToWebInbound } from './webInboxAutoReply.ts';
+import { createNotification } from './notificationService.ts';
 import type { AuthenticatedUser } from './orgAuth.ts';
 import type { SocialConversationRow, SocialMessageRow } from './socialInboxTypes.ts';
 
@@ -151,7 +152,11 @@ export async function resumeGuestWebChat(
     return empty;
   }
 
-  if (!conv?.subject_preview?.trim()) return empty;
+  const voiceReceptionistEnabled = await isVoiceReceptionistAvailableForProperty(property.id);
+
+  if (!conv?.subject_preview?.trim()) {
+    return { ...empty, voiceReceptionistEnabled };
+  }
 
   return {
     hasMessages: true,
@@ -169,7 +174,7 @@ export async function resumeGuestWebChat(
       ownerName: property.host.ownerName,
       ownerAvatarUrl: property.host.ownerAvatarUrl,
     },
-    voiceReceptionistEnabled: await isVoiceReceptionistAvailableForProperty(property.id),
+    voiceReceptionistEnabled,
   };
 }
 
@@ -317,6 +322,21 @@ export async function sendGuestWebMessage(
     });
   } catch (tgErr) {
     console.warn('[webGuestChat] telegram notify:', tgErr);
+  }
+
+  try {
+    await createNotification({
+      organizationId: conv.organization_id,
+      propertyId: conv.property_id ?? null,
+      parkingId: conv.parking_id ?? null,
+      type: 'inbox_new_message',
+      title: 'New guest message',
+      body: preview.slice(0, 200),
+      conversationId: conv.id,
+      dedupeKey: `${externalId}:inbox_new_message`,
+    });
+  } catch (notifErr) {
+    console.warn('[webGuestChat] notification create:', notifErr);
   }
 }
 

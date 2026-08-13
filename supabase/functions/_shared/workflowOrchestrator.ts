@@ -31,6 +31,8 @@ import {
   propertyAutomationEnabled,
   type PropertyAutomationToggleKey,
 } from './propertyAutomationToggles.ts';
+import { createNotification } from './notificationService.ts';
+import { resolveOrganizationIdForProperty } from './propertyScope.ts';
 import {
   BookingStatus,
   canTransition,
@@ -112,12 +114,6 @@ export type TransitionPayload = {
    */
   document_completion_target?:
     'PENDING_GAF' | 'PENDING_PARKING_REQUEST' | 'PENDING_PET_REQUEST' | string;
-  /**
-   * PENDING_DOCUMENTS → PENDING_DOCUMENTS: admin marks a sub-step incomplete again (manual only).
-   * GAF/pet keep approved PDF URLs but are treated as incomplete until Gmail or admin completes again.
-   */
-  document_completion_clear_target?:
-    'PENDING_GAF' | 'PENDING_PARKING_REQUEST' | 'PENDING_PET_REQUEST' | string;
 };
 
 /**
@@ -158,9 +154,9 @@ function computeBalance(bookingRate?: number | null, downPayment?: number | null
 }
 
 /**
- * `document_completion_target` / `document_completion_clear_target` accept the legacy
- * `PENDING_GAF` / `PENDING_PET_REQUEST` literals or a bare requirement id (e.g. `"gaf"`).
- * Parking stays special-cased on `PENDING_PARKING_REQUEST` (not a `documentRequirements` id).
+ * `document_completion_target` accepts the legacy `PENDING_GAF` / `PENDING_PET_REQUEST`
+ * literals or a bare requirement id (e.g. `"gaf"`). Parking stays special-cased on
+ * `PENDING_PARKING_REQUEST` (not a `documentRequirements` id).
  */
 const LEGACY_DOC_TARGET_TO_REQUIREMENT_ID: Record<string, string> = {
   PENDING_GAF: 'gaf',
@@ -215,11 +211,11 @@ function resolveLegacyCompletionId(
 }
 
 /**
- * Same as `resolveDocTarget`, but throws for an unmatched target so a mark-complete /
- * mark-incomplete call can never report success after writing nothing.
+ * Same as `resolveDocTarget`, but throws for an unmatched target so a mark-complete
+ * call can never report success after writing nothing.
  */
 function requireResolvedDocTarget(
-  field: 'document_completion_target' | 'document_completion_clear_target',
+  field: 'document_completion_target',
   target: string,
   requirements: DocumentRequirement[]
 ): ResolvedDocTarget {
@@ -242,14 +238,12 @@ function requireResolvedDocTarget(
 function applyLegacyCompletionColumns(
   fields: Record<string, unknown>,
   requirementId: string,
-  patch: { completedAt: string | null; manualIncomplete: boolean }
+  completedAt: string | null
 ): void {
   if (requirementId === 'gaf') {
-    fields.gaf_completed_at = patch.completedAt;
-    fields.gaf_manual_incomplete = patch.manualIncomplete;
+    fields.gaf_completed_at = completedAt;
   } else if (requirementId === 'pet') {
-    fields.pet_completed_at = patch.completedAt;
-    fields.pet_manual_incomplete = patch.manualIncomplete;
+    fields.pet_completed_at = completedAt;
   }
 }
 
@@ -335,6 +329,20 @@ export class WorkflowOrchestrator {
     const propertyId =
       typeof booking.property_id === 'string' ? booking.property_id.trim() || null : null;
 
+    // Notification Center — resolved lazily by the (few) transitions that emit one.
+    const resolveNotificationOrgId = async (): Promise<string | null> => {
+      if (!propertyId) return null;
+      try {
+        return await resolveOrganizationIdForProperty(propertyId);
+      } catch (err) {
+        console.error(
+          '[orchestrator] Could not resolve organization for notification (non-fatal):',
+          err
+        );
+        return null;
+      }
+    };
+
     // First step after review: either legacy PENDING_GAF or parent PENDING_DOCUMENTS,
     // or (D2) a direct skip to READY_FOR_CHECKIN — all share the same pricing capture
     // and outbound "document request" email bundle (minus GAF/pet when skipped/absent).
@@ -356,8 +364,7 @@ export class WorkflowOrchestrator {
     if (
       isReviewProceedAttempt ||
       toStatus === 'PENDING_DOCUMENTS' ||
-      payload.document_completion_target ||
-      payload.document_completion_clear_target
+      payload.document_completion_target
     ) {
       documentRequirements = propertyId
         ? await resolveDocumentRequirements(propertyId)
@@ -461,7 +468,6 @@ export class WorkflowOrchestrator {
       const prev: DocumentRequirementCompletion = completionsMap[id] ?? {
         completedAt: null,
         approvedPdfUrl: null,
-        manualIncomplete: false,
       };
       completionsMap[id] = { ...prev, ...patch };
       completionsChanged = true;
@@ -476,7 +482,7 @@ export class WorkflowOrchestrator {
         ...documentRequirements.map((req) => req.id),
       ]);
       for (const id of idsToReset) {
-        patchCompletion(id, { completedAt: null, approvedPdfUrl: null, manualIncomplete: false });
+        patchCompletion(id, { completedAt: null, approvedPdfUrl: null });
       }
     }
 
@@ -490,12 +496,10 @@ export class WorkflowOrchestrator {
         toStatus === 'READY_FOR_CHECKIN'
       ) {
         workflowFields.approved_gaf_pdf_url = payload.approved_gaf_pdf_url;
-        workflowFields.gaf_manual_incomplete = false;
         // The map entry follows this property's GAF requirement id, which may be a
         // renamed one (matched on pdfTemplateId) rather than a literal `gaf`.
         patchCompletion(resolveLegacyCompletionId('PENDING_GAF', documentRequirements), {
           approvedPdfUrl: payload.approved_gaf_pdf_url,
-          manualIncomplete: false,
         });
       }
     }
@@ -507,63 +511,13 @@ export class WorkflowOrchestrator {
         (toStatus === 'READY_FOR_CHECKIN' && fromStatus === 'PENDING_PET_REQUEST')
       ) {
         workflowFields.approved_pet_pdf_url = payload.approved_pet_pdf_url;
-        workflowFields.pet_manual_incomplete = false;
         patchCompletion(resolveLegacyCompletionId('PENDING_PET_REQUEST', documentRequirements), {
           approvedPdfUrl: payload.approved_pet_pdf_url,
-          manualIncomplete: false,
         });
       }
     }
 
-    const docClear = payload.document_completion_clear_target;
     const docComplete = payload.document_completion_target;
-    if (docClear && docComplete) {
-      throw new Error(
-        'document_completion_target and document_completion_clear_target cannot both be set'
-      );
-    }
-    if (docClear) {
-      const isLateParkingClear =
-        manual &&
-        fromStatus === toStatus &&
-        isPostPendingDocumentsStatus(fromStatus) &&
-        docClear === 'PENDING_PARKING_REQUEST';
-      if (
-        !isLateParkingClear &&
-        (!manual || fromStatus !== 'PENDING_DOCUMENTS' || toStatus !== 'PENDING_DOCUMENTS')
-      ) {
-        throw new Error(
-          'document_completion_clear_target requires manual=true and PENDING_DOCUMENTS → PENDING_DOCUMENTS'
-        );
-      }
-    }
-
-    // Admin "Mark … as incomplete" under Pending Documents (manual only).
-    if (manual && docClear) {
-      const lateParkingClear =
-        fromStatus === toStatus &&
-        isPostPendingDocumentsStatus(fromStatus) &&
-        docClear === 'PENDING_PARKING_REQUEST';
-
-      if (fromStatus === 'PENDING_DOCUMENTS' && toStatus === 'PENDING_DOCUMENTS') {
-        if (docClear === 'PENDING_PARKING_REQUEST') {
-          workflowFields.parking_completed_at = null;
-        } else {
-          const resolved = requireResolvedDocTarget(
-            'document_completion_clear_target',
-            docClear,
-            documentRequirements
-          );
-          patchCompletion(resolved.requirementId, { completedAt: null, manualIncomplete: true });
-          applyLegacyCompletionColumns(workflowFields, resolved.requirementId, {
-            completedAt: null,
-            manualIncomplete: true,
-          });
-        }
-      } else if (lateParkingClear) {
-        workflowFields.parking_completed_at = null;
-      }
-    }
 
     // Admin "Mark … as complete" under Pending Documents (no PDF): persist *_completed_at.
     // Parking may also be completed late at RFCI+ without changing parent status.
@@ -606,16 +560,12 @@ export class WorkflowOrchestrator {
           }
           patchCompletion(resolved.requirementId, {
             completedAt: now,
-            manualIncomplete: false,
             ...(approvedUrl ? { approvedPdfUrl: approvedUrl } : {}),
           });
           if (approvedColumn && approvedUrl) {
             workflowFields[approvedColumn] = approvedUrl;
           }
-          applyLegacyCompletionColumns(workflowFields, resolved.requirementId, {
-            completedAt: now,
-            manualIncomplete: false,
-          });
+          applyLegacyCompletionColumns(workflowFields, resolved.requirementId, now);
         }
       } else if (lateParkingComplete) {
         workflowFields.parking_completed_at = now;
@@ -1016,7 +966,9 @@ export class WorkflowOrchestrator {
         .sd_refund_form_emailed_at;
       const alreadyEmailed = typeof emailedRaw === 'string' && emailedRaw.trim() !== '';
       if (alreadyEmailed) {
-        console.log('[orchestrator] SD refund form email skipped (already sent for this stay)');
+        console.log(
+          '[orchestrator] Check-out instructions email skipped (already sent for this stay)'
+        );
       } else {
         try {
           await sendSdRefundFormRequest(updatedBooking);
@@ -1037,6 +989,68 @@ export class WorkflowOrchestrator {
       sdAmount > 0
     ) {
       console.log('[orchestrator] SD refund form email skipped (org automation off)');
+    }
+
+    // Notification Center — fires alongside the guest-facing emails above, for the
+    // 3 confirmed v1 transitions. Dedupe key guards retries of the same transition.
+    if (
+      toStatus === 'READY_FOR_CHECKIN' &&
+      isForwardToReady &&
+      flag(devControls, 'sendReadyForCheckinEmail') &&
+      (await propertyEmailAllowed('emailReadyForCheckin'))
+    ) {
+      const organizationId = await resolveNotificationOrgId();
+      if (organizationId) {
+        await createNotification({
+          organizationId,
+          propertyId,
+          type: 'booking_ready_for_checkin',
+          title: STATUS_HUMAN_LABEL.READY_FOR_CHECKIN,
+          body: `${updatedBooking.primary_guest_name ?? 'A guest'}'s booking is ready for check-in.`,
+          bookingId,
+          dedupeKey: `${bookingId}:${toStatus}`,
+        });
+      }
+    }
+
+    if (
+      fromStatus === 'READY_FOR_CHECKIN' &&
+      toStatus === 'READY_FOR_CHECKOUT' &&
+      flag(devControls, 'sendSdRefundFormEmail') &&
+      sdAmount > 0 &&
+      (await propertyEmailAllowed('emailSdRefundCheckout'))
+    ) {
+      const organizationId = await resolveNotificationOrgId();
+      if (organizationId) {
+        await createNotification({
+          organizationId,
+          propertyId,
+          type: 'booking_ready_for_checkout',
+          title: STATUS_HUMAN_LABEL.READY_FOR_CHECKOUT,
+          body: `${updatedBooking.primary_guest_name ?? 'A guest'}'s booking is ready for check-out.`,
+          bookingId,
+          dedupeKey: `${bookingId}:${toStatus}`,
+        });
+      }
+    }
+
+    if (
+      fromStatus === 'READY_FOR_CHECKOUT' &&
+      toStatus === 'PENDING_SD_REFUND' &&
+      payload.sd_refund_method != null
+    ) {
+      const organizationId = await resolveNotificationOrgId();
+      if (organizationId) {
+        await createNotification({
+          organizationId,
+          propertyId,
+          type: 'booking_sd_refund_due',
+          title: STATUS_HUMAN_LABEL.PENDING_SD_REFUND,
+          body: `${updatedBooking.primary_guest_name ?? 'A guest'} submitted their SD refund details.`,
+          bookingId,
+          dedupeKey: `${bookingId}:${toStatus}`,
+        });
+      }
     }
 
     console.log(`[orchestrator] Transition complete: ${fromStatus} → ${toStatus}`, {

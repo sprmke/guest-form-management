@@ -2,11 +2,13 @@
  * booking-ai-review — Admin-triggered AI summary & validation for a single booking.
  *
  * Trigger: POST /functions/v1/booking-ai-review?property_id=<id>
- * Body:    { bookingId: string, force?: boolean }
+ * Body:    { bookingId: string, force?: boolean, refresh?: boolean }
  * Auth:    resolveScopedPropertyAccess(req, 'bookings:edit')
  *
- * One completed run per booking — a finished job is returned as-is (no second AI pass).
- * `force` only clears a live `processing` row; it does not re-run a completed job.
+ * A completed job is returned as-is unless `refresh` is true and at least one
+ * section's inputs have changed (or the prior job failed / got stuck). Section
+ * fingerprints skip Gemini when that section is unchanged.
+ * `force` only clears a live `processing` row.
  *
  * Runs **inline** on this request (not EdgeRuntime.waitUntil). Local `functions serve`
  * exposes waitUntil but drops background work after the response — that left rows stuck
@@ -17,9 +19,13 @@
 import {
   executeBookingAiReview,
   getBookingAiReviewById,
+  hasPriorAiReviewResults,
   isStaleStuckProcessingRow,
   prepareBookingAiReviewJob,
+  staleAiReviewSections,
+  withStaleAiReviewSections,
 } from '../_shared/bookingAiReviewService.ts';
+import { DatabaseService } from '../_shared/databaseService.ts';
 import { jsonSuccess, readJsonBody, requireHttpMethod } from '../_shared/httpResponse.ts';
 import {
   resolveScopedPropertyAccess,
@@ -35,24 +41,38 @@ serveAuthenticated('booking-ai-review', async (req, user) => {
   const body = await readJsonBody(req);
   const bookingId = String(body.bookingId ?? '').trim();
   const force = body.force === true;
+  const refresh = body.refresh === true;
   if (!bookingId) throw new Error('bookingId is required');
 
   await verifyBookingBelongsToProperty(bookingId, propertyId);
 
   const existing = await getBookingAiReviewById(bookingId);
-  // Finished once — do not spend tokens on a second pass (UI has no re-run either).
   if (existing?.job_status === 'completed') {
-    return jsonSuccess(req, existing);
+    if (!refresh) {
+      return jsonSuccess(req, await withStaleAiReviewSections(existing, propertyId));
+    }
+    const booking = await DatabaseService.getBookingById(bookingId);
+    const stale = booking
+      ? await staleAiReviewSections(booking as Record<string, unknown>, propertyId, existing)
+      : [];
+    if (stale.length === 0) {
+      return jsonSuccess(req, { ...existing, stale_sections: [] });
+    }
   }
   if (existing?.job_status === 'processing' && !force && !isStaleStuckProcessingRow(existing)) {
-    return jsonSuccess(req, existing);
+    return jsonSuccess(req, await withStaleAiReviewSections(existing, propertyId));
   }
 
-  await prepareBookingAiReviewJob(bookingId, propertyId, user.id);
+  const keepPriorResults =
+    existing?.job_status === 'completed' ||
+    existing?.job_status === 'failed' ||
+    hasPriorAiReviewResults(existing);
+
+  await prepareBookingAiReviewJob(bookingId, propertyId, user.id, { keepPriorResults });
 
   console.log(`[booking-ai-review] ${bookingId}: running inline`);
   const row = await executeBookingAiReview(bookingId, propertyId, user.id, org.id);
   console.log(`[booking-ai-review] ${bookingId}: finished with ${row.job_status}`);
 
-  return jsonSuccess(req, row);
+  return jsonSuccess(req, await withStaleAiReviewSections(row, propertyId));
 });

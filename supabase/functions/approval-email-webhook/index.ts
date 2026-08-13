@@ -22,6 +22,8 @@ import {
 import { bookingAssetStorageKey } from '../_shared/bookingStoragePaths.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { jsonError } from '../_shared/httpResponse.ts';
+import { createNotification } from '../_shared/notificationService.ts';
+import { resolveOrganizationIdForProperty } from '../_shared/propertyScope.ts';
 import { verifyResendWebhookSignature } from '../_shared/resendWebhookVerify.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
 import { formatPublicUrl } from '../_shared/utils.ts';
@@ -370,6 +372,22 @@ async function processReceivedEmail(event: ResendReceivedEvent): Promise<{
     { ...APPROVAL_INTAKE_DEV_CONTROLS },
     false
   );
+
+  try {
+    const organizationId = await resolveOrganizationIdForProperty(propertyId);
+    const guestName = String(match.booking.primary_guest_name ?? '').trim() || 'A guest';
+    await createNotification({
+      organizationId,
+      propertyId,
+      type: parsed.kind === 'gaf' ? 'booking_gaf_auto_approved' : 'booking_pet_auto_approved',
+      title: parsed.kind === 'gaf' ? 'GAF auto-approved' : 'Pet document auto-approved',
+      body: `${guestName}'s ${parsed.kind === 'gaf' ? 'GAF' : 'pet'} document was auto-approved.`,
+      bookingId,
+      dedupeKey: `${bookingId}:${parsed.kind === 'gaf' ? 'booking_gaf_auto_approved' : 'booking_pet_auto_approved'}`,
+    });
+  } catch (err) {
+    console.error('[approval-email-webhook] Could not create notification (non-fatal):', err);
+  }
 
   await recordProcessedEmail({
     messageId: dedupeId,

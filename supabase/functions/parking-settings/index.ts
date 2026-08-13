@@ -31,7 +31,6 @@ function serializeParkingSettingsRow(
     gcashNumber: row.gcash_number ?? null,
     gcashQrImageUrl: row.gcash_qr_image_url ?? null,
     paymentMethods: row.payment_methods ?? [],
-    gmailConnected: Boolean(row.gmail_connected),
     parkingNotificationTemplates: row.parking_notification_templates ?? {},
     updatedAt: row.updated_at,
     parkingIntegrations: extras?.parkingIntegrations,
@@ -80,7 +79,6 @@ serveAuthenticated('parking-settings', async (req) => {
     if (Array.isArray(body.paymentMethods)) {
       patch.payment_methods = body.paymentMethods;
     }
-    if (typeof body.gmailConnected === 'boolean') patch.gmail_connected = body.gmailConnected;
     if (
       body.parkingNotificationTemplates &&
       typeof body.parkingNotificationTemplates === 'object'
