@@ -245,6 +245,13 @@ module.exports = {
           '0%, 100%': { opacity: '0.35', transform: 'translateY(0)' },
           '50%': { opacity: '1', transform: 'translateY(-3px)' },
         },
+        // Light passing down the AI review list while checks run. Travel is a
+        // multiple of the band's own height, so it clears a list of any length.
+        'ai-scan': {
+          '0%': { transform: 'translateY(0)', opacity: '0' },
+          '12%, 82%': { opacity: '1' },
+          '100%': { transform: 'translateY(460%)', opacity: '0' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
@@ -281,6 +288,7 @@ module.exports = {
         'spin-slow': 'spin-slow 3s linear infinite',
         'turtle-blink': 'turtle-blink 5s ease-in-out infinite',
         'think-dot': 'think-dot 1.2s ease-in-out infinite',
+        'ai-scan': 'ai-scan 2.6s cubic-bezier(0.37, 0, 0.63, 1) infinite',
       },
       boxShadow: {
         'soft-xs': '0 1px 2px 0 rgb(0 0 0 / 0.03)',

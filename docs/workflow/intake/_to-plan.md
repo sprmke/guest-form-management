@@ -2,7 +2,7 @@
 title: 'Claude To Plan'
 status: archived
 tags: [planning]
-updated: 2026-08-11
+updated: 2026-08-13
 ---
 
 **Status legend:** ✅ done · 🚧 in progress · 📋 planned (plan doc written) · 🔵 pending / open · ❌ cancelled / won't do
@@ -477,3 +477,7 @@ Design: [`ci-cd-dev-prod-design.md`](../in-progress/ci-cd-environments/ci-cd-dev
 ===
 
 🔵 Cancellation Process
+
+===
+
+🔵 Able to send documents through chat

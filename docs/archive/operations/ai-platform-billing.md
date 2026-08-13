@@ -41,7 +41,7 @@ Shared server modules:
 | Feature                     | Model                                          |
 | --------------------------- | ---------------------------------------------- |
 | Receipt / inbox / marketing | `gemini-2.5-flash`                             |
-| Import column map           | `gemini-2.5-flash-lite`                        |
+| Import column map           | `gemini-2.5-flash`                             |
 | Voice Live                  | separate session caps (`voice_receptionist_*`) |
 
 Verify current rates at [ai.google.dev/pricing](https://ai.google.dev/gemini-api/docs/pricing) before budgeting.
