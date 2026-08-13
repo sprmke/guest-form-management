@@ -114,7 +114,6 @@ export type {
   IntegrationFieldSource,
   IntegrationFieldStatus,
   PlatformSecretsStatus,
-  PropertyGmailIntegrationStatus,
   PropertyIntegrationStatus,
 } from './propertyIntegrationStatus.ts';
 
@@ -591,9 +590,7 @@ export async function serializeGuestPaymentInfo(
 }
 
 /** Documents Approver / development PMO (`emailTo`) — Azure reply sender allow-list for inbound approvals. */
-export async function getGmailApprovalSenderAllowList(
-  propertyId?: string | null
-): Promise<string[]> {
+export async function getApprovalSenderAllowList(propertyId?: string | null): Promise<string[]> {
   const s = await resolveAppSettings(propertyId);
   return parseCommaSeparatedEmailsLower(s.emailTo);
 }

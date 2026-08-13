@@ -10,7 +10,7 @@
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
-import { getGmailApprovalSenderAllowList } from './appSettings.ts';
+import { getApprovalSenderAllowList } from './appSettings.ts';
 import type { BookingStatus } from './statusMachine.ts';
 
 export type ApprovalKind = 'gaf' | 'pet';
@@ -89,7 +89,7 @@ export function extractEmailAddress(fromHeader: string): string {
 }
 
 export async function isSenderAllowed(propertyId: string, fromHeader: string): Promise<boolean> {
-  const allowed = await getGmailApprovalSenderAllowList(propertyId);
+  const allowed = await getApprovalSenderAllowList(propertyId);
   if (allowed.length === 0) return true;
   const sender = extractEmailAddress(fromHeader);
   return allowed.includes(sender);

@@ -11,6 +11,8 @@ import {
 import { UploadService } from './uploadService.ts';
 import { assertPropertyGuestPartyRules, guestPartySlotsFromFormData } from './guestCounts.ts';
 import { resolveGuestFormSettings } from './guestFormSettings.ts';
+import { createNotification } from './notificationService.ts';
+import { resolveOrganizationIdForParking } from './parkingScope.ts';
 import {
   formatDate,
   formatTime,
@@ -622,6 +624,25 @@ export class DatabaseService {
       .single();
 
     if (error) throw new Error(`Failed to create parking booking: ${error.message}`);
+
+    try {
+      const organizationId = await resolveOrganizationIdForParking(input.parkingId);
+      await createNotification({
+        organizationId,
+        parkingId: input.parkingId,
+        type: 'booking_pending_review',
+        title: 'New booking submitted',
+        body: `${guestName} submitted a new parking booking request.`,
+        bookingId: data.id,
+        dedupeKey: `${data.id}:booking_pending_review`,
+      });
+    } catch (notifErr) {
+      console.error(
+        '[databaseService] Could not create parking notification (non-fatal):',
+        notifErr
+      );
+    }
+
     return data;
   }
 

@@ -7,8 +7,9 @@
  * Conventions:
  * - Prompts are hand-written JSON instructions; we regex-extract JSON then parse.
  * - No Zod; we normalize and clamp outputs defensively.
- * - Completed jobs are not re-run (UI + `booking-ai-review` both refuse a second pass).
- * - Stuck / failed first attempts may retry; section fingerprints skip AI when inputs are unchanged.
+ * - Completed jobs are not re-run unless the host opts into a refresh after inputs
+ *   changed (or the first attempt failed / got stuck). Section fingerprints skip AI
+ *   when that section's inputs are unchanged.
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
@@ -30,6 +31,10 @@ import {
 } from './aiUsageService.ts';
 import { DatabaseService } from './databaseService.ts';
 import { parseStorageUrl } from './receiptValidationService.ts';
+import {
+  computeTotalGuestBalanceFromBooking,
+  guestBalancePaymentReceiptRequired,
+} from './totalGuestBalance.ts';
 import {
   countStayNights,
   formatTime,
@@ -79,6 +84,8 @@ export type BookingAiReviewRow = {
   triggered_by?: string | null;
   created_at?: string;
   updated_at?: string;
+  /** Computed on GET/POST — not a DB column. Sections whose inputs no longer match. */
+  stale_sections?: BookingAiReviewSection[];
 };
 
 export type AiUsageContext = {
@@ -602,6 +609,231 @@ function minutesBetweenTimes(prevTime: string, nextTime: string): number {
   return bh * 60 + bm - (ah * 60 + am);
 }
 
+function stayDetailsFingerprintInputs(
+  booking: Record<string, unknown>,
+  propertyId: string | null | undefined
+) {
+  return {
+    check_in_date: normalizeDateToYmd(booking.check_in_date),
+    check_out_date: normalizeDateToYmd(booking.check_out_date),
+    check_in_time: String(booking.check_in_time || DEFAULT_CHECK_IN_TIME),
+    check_out_time: String(booking.check_out_time || DEFAULT_CHECK_OUT_TIME),
+    property_id: propertyId,
+    guest_requests_surprise_decor: !!booking.guest_requests_surprise_decor,
+    guest_special_requests: String(booking.guest_special_requests || ''),
+  };
+}
+
+function guestsFingerprintInputs(booking: Record<string, unknown>) {
+  return buildGuestSlots(booking)
+    .filter((s) => !isBlankUrl(s.url))
+    .map((s) => ({
+      slot: s.slot,
+      url: s.url,
+      typed_name: s.typedName,
+      typed_age: s.typedAge,
+      typed_nationality: s.typedNationality,
+    }));
+}
+
+function petsFingerprintInputs(booking: Record<string, unknown>) {
+  const hasPets = booking.has_pets === true || String(booking.has_pets) === 'true';
+  if (!hasPets) return { has_pets: false };
+  return {
+    pet_image_url: String(booking.pet_image_url || ''),
+    pet_vaccination_url: String(booking.pet_vaccination_url || ''),
+  };
+}
+
+const BALANCE_RECEIPT_LABEL = 'Payment balance receipt';
+const BALANCE_RECEIPT_FLAG_RE = /payment balance receipt/i;
+const GUEST_BALANCE_RECEIPT_STAGES = new Set([
+  'READY_FOR_CHECKIN',
+  'READY_FOR_CHECKOUT',
+  'PENDING_SD_REFUND',
+  'COMPLETED',
+]);
+
+function expectsGuestBalanceReceipt(booking: Record<string, unknown>): boolean {
+  const totalDue = computeTotalGuestBalanceFromBooking(booking);
+  return (
+    totalDue !== null &&
+    guestBalancePaymentReceiptRequired(totalDue) &&
+    GUEST_BALANCE_RECEIPT_STAGES.has(String(booking.status || ''))
+  );
+}
+
+function downpaymentPricingFingerprintInputs(booking: Record<string, unknown>) {
+  return {
+    receipt_url: String(booking.payment_receipt_url || ''),
+    booking_source: String(booking.booking_source || 'Direct'),
+    down_payment: coerceNumber(booking.down_payment),
+    booking_rate: coerceNumber(booking.booking_rate),
+  };
+}
+
+function pricingFingerprintInputs(booking: Record<string, unknown>) {
+  const inputs: Record<string, unknown> = {
+    ...downpaymentPricingFingerprintInputs(booking),
+  };
+  // Extra keys only when a balance receipt exists or is due — keeps fingerprints
+  // of older Pricing runs (Pending Review, no settlement file yet) stable.
+  const balanceUrl = String(booking.guest_balance_payment_receipt_url || '').trim();
+  if (balanceUrl) {
+    inputs.balance_receipt_url = balanceUrl;
+    inputs.balance_receipt_verdict = String(booking.balance_receipt_ai_verdict || '');
+  } else if (expectsGuestBalanceReceipt(booking)) {
+    inputs.balance_receipt_expected = true;
+  }
+  return inputs;
+}
+
+function withoutBalanceReceiptFlags(flags: AiReviewFlag[] | null | undefined): AiReviewFlag[] {
+  return (flags ?? []).filter((f) => !BALANCE_RECEIPT_FLAG_RE.test(f.message));
+}
+
+/**
+ * Flags for the guest-balance settlement receipt. Reuses the verdict already
+ * persisted by `upload-booking-asset` — no extra Gemini call.
+ * Missing-file only at checkout stages (the file is not expected earlier).
+ */
+function balanceReceiptAiFlags(booking: Record<string, unknown>): AiReviewFlag[] {
+  const url = String(booking.guest_balance_payment_receipt_url || '').trim();
+
+  if (isBlankUrl(url)) {
+    return expectsGuestBalanceReceipt(booking) ? [missingFileFlag(BALANCE_RECEIPT_LABEL)] : [];
+  }
+
+  const verdict = String(booking.balance_receipt_ai_verdict || '').toLowerCase();
+  if (verdict === 'invalid' || verdict === 'unclear') {
+    return [uploadedNeedsReviewFlag(BALANCE_RECEIPT_LABEL, verdict)];
+  }
+  return [];
+}
+
+function withBalanceReceiptPricing(
+  booking: Record<string, unknown>,
+  out: {
+    result: AiReviewSectionResult;
+    extractedAmount: number | null;
+    persistPatch: Record<string, string>;
+  }
+): {
+  result: AiReviewSectionResult;
+  extractedAmount: number | null;
+  persistPatch: Record<string, string>;
+} {
+  return {
+    ...out,
+    result: {
+      ...out.result,
+      flags: [...withoutBalanceReceiptFlags(out.result.flags), ...balanceReceiptAiFlags(booking)],
+    },
+  };
+}
+
+/**
+ * After auto-validating a guest-balance receipt, merge those flags into an
+ * existing AI Summary Pricing section so the tab stays current (not Outdated)
+ * without a full Recheck / extra Gemini call.
+ */
+export async function syncPricingReviewBalanceReceipt(bookingId: string): Promise<void> {
+  const row = await getBookingAiReviewById(bookingId);
+  if (!row || row.job_status === 'processing') return;
+  if (!row.pricing_result) return;
+
+  const booking = await DatabaseService.getBookingById(bookingId);
+  if (!booking) return;
+  const record = booking as Record<string, unknown>;
+
+  const flags = [
+    ...withoutBalanceReceiptFlags(row.pricing_result.flags),
+    ...balanceReceiptAiFlags(record),
+  ];
+  const fingerprint = await computeSectionFingerprint(pricingFingerprintInputs(record));
+  row.pricing_result = {
+    ...row.pricing_result,
+    flags,
+    fingerprint,
+    reused: false,
+    updated_at: nowIso(),
+  };
+  const rollup = buildBookingAiSummaryRollup(row);
+  row.flag_count = rollup.flagCount;
+  row.has_blocking_flag = rollup.hasBlocking;
+  row.updated_at = nowIso();
+  await upsertBookingAiReview(row);
+}
+
+function parkingFingerprintInputs(booking: Record<string, unknown>, pricingFingerprint: string) {
+  const needParking = booking.need_parking === true || String(booking.need_parking) === 'true';
+  return {
+    need_parking: needParking,
+    parking_fee_included_in_downpayment: !!booking.parking_fee_included_in_downpayment,
+    parking_rate_guest: coerceNumber(booking.parking_rate_guest),
+    parking_rate_paid: coerceNumber(booking.parking_rate_paid),
+    parking_payment_receipt_url: String(booking.parking_payment_receipt_url || ''),
+    pricing_fingerprint: pricingFingerprint,
+  };
+}
+
+function sectionResultFingerprint(
+  row: BookingAiReviewRow,
+  section: BookingAiReviewSection
+): string {
+  const result = row[sectionResultColumn(section) as keyof BookingAiReviewRow] as
+    AiReviewSectionResult | null | undefined;
+  return result?.fingerprint ?? '';
+}
+
+/**
+ * Sections whose stored fingerprint no longer matches the live booking.
+ * Cheap — hashes field/URL inputs only, no Storage downloads or Gemini.
+ */
+export async function staleAiReviewSections(
+  booking: Record<string, unknown>,
+  propertyId: string | null | undefined,
+  row: BookingAiReviewRow
+): Promise<BookingAiReviewSection[]> {
+  const pricingFp = await computeSectionFingerprint(pricingFingerprintInputs(booking));
+  const dpPricingFp = await computeSectionFingerprint(downpaymentPricingFingerprintInputs(booking));
+  const current: Record<BookingAiReviewSection, string> = {
+    stay_details: await computeSectionFingerprint(
+      stayDetailsFingerprintInputs(booking, propertyId)
+    ),
+    guests: await computeSectionFingerprint(guestsFingerprintInputs(booking)),
+    pricing: pricingFp,
+    parking: await computeSectionFingerprint(parkingFingerprintInputs(booking, dpPricingFp)),
+    pets: await computeSectionFingerprint(petsFingerprintInputs(booking)),
+  };
+
+  const stale: BookingAiReviewSection[] = [];
+  for (const section of SECTIONS) {
+    if (current[section] !== sectionResultFingerprint(row, section)) {
+      stale.push(section);
+    }
+  }
+  return stale;
+}
+
+export async function withStaleAiReviewSections(
+  row: BookingAiReviewRow | null,
+  propertyId: string
+): Promise<BookingAiReviewRow | null> {
+  if (!row) return null;
+  if (row.job_status !== 'completed' && row.job_status !== 'failed') {
+    return { ...row, stale_sections: [] };
+  }
+  const booking = await DatabaseService.getBookingById(row.booking_id);
+  if (!booking) return { ...row, stale_sections: [] };
+  const stale_sections = await staleAiReviewSections(
+    booking as Record<string, unknown>,
+    propertyId,
+    row
+  );
+  return { ...row, stale_sections };
+}
+
 export async function computeStayDetailsSection(
   booking: Record<string, unknown>,
   propertyId: string | null | undefined,
@@ -612,15 +844,7 @@ export async function computeStayDetailsSection(
   const checkInTime = String(booking.check_in_time || DEFAULT_CHECK_IN_TIME);
   const checkOutTime = String(booking.check_out_time || DEFAULT_CHECK_OUT_TIME);
 
-  const inputs = {
-    check_in_date: checkIn,
-    check_out_date: checkOut,
-    check_in_time: checkInTime,
-    check_out_time: checkOutTime,
-    property_id: propertyId,
-    guest_requests_surprise_decor: !!booking.guest_requests_surprise_decor,
-    guest_special_requests: String(booking.guest_special_requests || ''),
-  };
+  const inputs = stayDetailsFingerprintInputs(booking, propertyId);
   const fingerprint = await computeSectionFingerprint(inputs);
 
   const existing = existingRow?.stay_details_result;
@@ -820,14 +1044,7 @@ export async function runGuestsSection(
   const activeSlots = slots.filter((s) => !isBlankUrl(s.url));
   const skippedSlots = slots.filter((s) => isBlankUrl(s.url) && s.typedName);
 
-  const inputs = activeSlots.map((s) => ({
-    slot: s.slot,
-    url: s.url,
-    typed_name: s.typedName,
-    typed_age: s.typedAge,
-    typed_nationality: s.typedNationality,
-  }));
-  const fingerprint = await computeSectionFingerprint(inputs);
+  const fingerprint = await computeSectionFingerprint(guestsFingerprintInputs(booking));
 
   const existingResult = existingRow?.guests_result;
   if (existingResult?.fingerprint === fingerprint) {
@@ -991,14 +1208,14 @@ export async function runPetsSection(
   existingRow?: BookingAiReviewRow | null
 ): Promise<AiReviewSectionResult> {
   const hasPets = booking.has_pets === true || String(booking.has_pets) === 'true';
+  const inputs = petsFingerprintInputs(booking);
   if (!hasPets) {
-    const fp = await computeSectionFingerprint({ has_pets: false });
+    const fp = await computeSectionFingerprint(inputs);
     return buildSectionResult('No pets.', [], fp, existingRow?.pets_result?.fingerprint === fp);
   }
 
   const petImageUrl = String(booking.pet_image_url || '');
   const petVaccinationUrl = String(booking.pet_vaccination_url || '');
-  const inputs = { pet_image_url: petImageUrl, pet_vaccination_url: petVaccinationUrl };
   const fingerprint = await computeSectionFingerprint(inputs);
 
   if (existingRow?.pets_result?.fingerprint === fingerprint) {
@@ -1111,12 +1328,7 @@ export async function runPricingSection(
   const bookingSource = String(booking.booking_source || 'Direct');
   const isAirbnb = /airbnb/i.test(bookingSource);
 
-  const inputs = {
-    receipt_url: receiptUrl,
-    booking_source: bookingSource,
-    down_payment: coerceNumber(booking.down_payment),
-    booking_rate: coerceNumber(booking.booking_rate),
-  };
+  const inputs = pricingFingerprintInputs(booking);
   const fingerprint = await computeSectionFingerprint(inputs);
 
   if (existingRow?.pricing_result?.fingerprint === fingerprint) {
@@ -1128,7 +1340,11 @@ export async function runPricingSection(
     );
     reused.updated_at = nowIso();
     const amount = extractAmountFromResult(existingRow.pricing_result);
-    return { result: reused, extractedAmount: amount, persistPatch: {} };
+    return withBalanceReceiptPricing(booking, {
+      result: reused,
+      extractedAmount: amount,
+      persistPatch: {},
+    });
   }
 
   if (isAirbnb || isBlankUrl(receiptUrl)) {
@@ -1136,16 +1352,16 @@ export async function runPricingSection(
       ? 'Airbnb booking — no downpayment receipt expected.'
       : 'Downpayment receipt not uploaded yet.';
     const flags: AiReviewFlag[] = isAirbnb ? [] : [missingFileFlag('Downpayment receipt')];
-    return {
+    return withBalanceReceiptPricing(booking, {
       result: buildSectionResult(summary, flags, fingerprint, false),
       extractedAmount: null,
       persistPatch: {},
-    };
+    });
   }
 
   const file = await downloadStorageFile(receiptUrl);
   if (!file) {
-    return {
+    return withBalanceReceiptPricing(booking, {
       result: buildSectionResult(
         'Downpayment receipt is on file but could not be opened.',
         [
@@ -1159,7 +1375,7 @@ export async function runPricingSection(
       ),
       extractedAmount: null,
       persistPatch: {},
-    };
+    });
   }
 
   const rawText = await callGeminiBatched(
@@ -1220,11 +1436,11 @@ export async function runPricingSection(
     dp_receipt_ai_summary: summary,
   };
 
-  return {
+  return withBalanceReceiptPricing(booking, {
     result: buildSectionResult(summary, flags, fingerprint, false),
     extractedAmount,
     persistPatch,
-  };
+  });
 }
 
 function extractAmountFromResult(result: AiReviewSectionResult | null | undefined): number | null {
@@ -1236,19 +1452,12 @@ function extractAmountFromResult(result: AiReviewSectionResult | null | undefine
 
 export async function computeParkingSection(
   booking: Record<string, unknown>,
-  pricingResult: AiReviewSectionResult | null,
   extractedAmount: number | null,
   existingRow?: BookingAiReviewRow | null
 ): Promise<AiReviewSectionResult> {
   const needParking = booking.need_parking === true || String(booking.need_parking) === 'true';
-  const inputs = {
-    need_parking: needParking,
-    parking_fee_included_in_downpayment: !!booking.parking_fee_included_in_downpayment,
-    parking_rate_guest: coerceNumber(booking.parking_rate_guest),
-    parking_rate_paid: coerceNumber(booking.parking_rate_paid),
-    parking_payment_receipt_url: String(booking.parking_payment_receipt_url || ''),
-    pricing_fingerprint: pricingResult?.fingerprint ?? '',
-  };
+  const dpPricingFp = await computeSectionFingerprint(downpaymentPricingFingerprintInputs(booking));
+  const inputs = parkingFingerprintInputs(booking, dpPricingFp);
   const fingerprint = await computeSectionFingerprint(inputs);
 
   if (existingRow?.parking_result?.fingerprint === fingerprint) {
@@ -1346,9 +1555,10 @@ export function buildBookingAiSummaryRollup(row: BookingAiReviewRow): {
 
 export async function upsertBookingAiReview(row: BookingAiReviewRow): Promise<BookingAiReviewRow> {
   const supabase = supabaseService();
+  const { stale_sections: _stale, ...persist } = row;
   const { data, error } = await supabase
     .from('booking_ai_reviews')
-    .upsert(row, { onConflict: 'booking_id' })
+    .upsert(persist, { onConflict: 'booking_id' })
     .select()
     .single();
   if (error) {
@@ -1402,11 +1612,37 @@ export async function failStaleStuckBookingAiReview(
   return await upsertBookingAiReview(failed);
 }
 
+export function hasPriorAiReviewResults(row: BookingAiReviewRow | null | undefined): boolean {
+  if (!row) return false;
+  return Boolean(
+    row.stay_details_result ||
+    row.guests_result ||
+    row.parking_result ||
+    row.pets_result ||
+    row.pricing_result
+  );
+}
+
 export function resetBookingAiReviewForRun(
   base: BookingAiReviewRow,
   propertyId: string,
-  triggeredByUserId: string
+  triggeredByUserId: string,
+  keepPriorResults = false
 ): BookingAiReviewRow {
+  if (keepPriorResults) {
+    return {
+      ...base,
+      property_id: propertyId,
+      job_status: 'processing',
+      triggered_by: triggeredByUserId,
+      stay_details_status: 'pending',
+      guests_status: 'pending',
+      parking_status: 'pending',
+      pets_status: 'pending',
+      pricing_status: 'pending',
+      stale_sections: [],
+    };
+  }
   return {
     ...base,
     property_id: propertyId,
@@ -1424,20 +1660,24 @@ export function resetBookingAiReviewForRun(
     pricing_result: null,
     flag_count: 0,
     has_blocking_flag: false,
+    stale_sections: [],
   };
 }
 
-/** Marks the job processing and clears prior section results so polling shows a fresh run. */
+/** Marks the job processing. Refresh/retry keeps prior results so fingerprints can skip AI. */
 export async function prepareBookingAiReviewJob(
   bookingId: string,
   propertyId: string,
-  triggeredByUserId: string
+  triggeredByUserId: string,
+  opts: { keepPriorResults?: boolean } = {}
 ): Promise<BookingAiReviewRow> {
   const existingRow = await getBookingAiReviewById(bookingId);
+  const keepPriorResults = Boolean(opts.keepPriorResults && hasPriorAiReviewResults(existingRow));
   const row = resetBookingAiReviewForRun(
     existingRow ?? emptyBookingAiReviewRow(bookingId),
     propertyId,
-    triggeredByUserId
+    triggeredByUserId,
+    keepPriorResults
   );
   return await upsertBookingAiReview(row);
 }
@@ -1461,7 +1701,6 @@ export async function executeBookingAiReview(
   };
 
   let extractedAmount: number | null = null;
-  let pricingResult: AiReviewSectionResult | null = null;
   let lastError: Error | null = null;
 
   const updateSection = async (
@@ -1470,9 +1709,7 @@ export async function executeBookingAiReview(
     result?: AiReviewSectionResult | null
   ) => {
     row[sectionStatusColumn(section) as keyof BookingAiReviewRow] = status as never;
-    if (status === 'processing') {
-      row[sectionResultColumn(section) as keyof BookingAiReviewRow] = null as never;
-    } else if (result) {
+    if (result) {
       row[sectionResultColumn(section) as keyof BookingAiReviewRow] = result as never;
     }
     const rollup = buildBookingAiSummaryRollup(row);
@@ -1525,14 +1762,12 @@ export async function executeBookingAiReview(
       existingRow ?? undefined
     );
     extractedAmount = pricing.extractedAmount;
-    pricingResult = pricing.result;
     return pricing;
   });
 
   await runSection('parking', async () => ({
     result: await computeParkingSection(
       booking as Record<string, unknown>,
-      pricingResult,
       extractedAmount,
       existingRow ?? undefined
     ),
@@ -1552,9 +1787,10 @@ export async function runBookingAiReview(
   bookingId: string,
   propertyId: string,
   triggeredByUserId: string,
-  orgId: string
+  orgId: string,
+  opts: { keepPriorResults?: boolean } = {}
 ): Promise<BookingAiReviewRow> {
-  await prepareBookingAiReviewJob(bookingId, propertyId, triggeredByUserId);
+  await prepareBookingAiReviewJob(bookingId, propertyId, triggeredByUserId, opts);
   return executeBookingAiReview(bookingId, propertyId, triggeredByUserId, orgId);
 }
 

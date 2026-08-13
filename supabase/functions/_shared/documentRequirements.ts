@@ -22,7 +22,6 @@ export type DocumentRequirement = {
 export type DocumentRequirementCompletion = {
   completedAt: string | null;
   approvedPdfUrl: string | null;
-  manualIncomplete: boolean;
 };
 
 const APPROVAL_SOURCES: DocumentApprovalSource[] = ['manual', 'email-listener', 'none'];
