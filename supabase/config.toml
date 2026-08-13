@@ -196,6 +196,12 @@ verify_jwt = false
 [functions.validate-booking-receipts]
 verify_jwt = false
 
+[functions.booking-ai-review]
+verify_jwt = false
+
+[functions.get-booking-ai-review]
+verify_jwt = false
+
 [functions.get-booking-asset-url]
 verify_jwt = false
 

@@ -180,6 +180,13 @@ serveAuthenticated('upload-booking-asset', async (req) => {
     [config.column]: safePublicUrl,
   };
 
+  // Pet file columns enforce CHECK (url IS NULL OR (has_pets AND length(url) > 0)).
+  // Admin edit uploads often run before Save persists the Pets toggle — always
+  // set has_pets here so the row satisfies guest_submissions_check7/8.
+  if (assetType === 'pet_vaccination' || assetType === 'pet_image') {
+    workflowUpdate.has_pets = true;
+  }
+
   let receiptValidation: ReceiptValidationResult | undefined;
   const docAiKind = documentAiKindForAssetType(assetType);
   if (docAiKind) {
