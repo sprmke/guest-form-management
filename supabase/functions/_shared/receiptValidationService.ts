@@ -584,7 +584,7 @@ export async function validateValidIdFile(
 
 const STORAGE_OBJECT_PATH_RE = /\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.+)$/;
 
-function parseStorageUrl(url: string): { bucket: string; path: string } | null {
+export function parseStorageUrl(url: string): { bucket: string; path: string } | null {
   const trimmed = url?.trim();
   if (!trimmed || trimmed === 'dev-mode-skipped' || trimmed === 'test-mode-skipped') {
     return null;

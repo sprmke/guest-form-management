@@ -5,6 +5,7 @@ import { hasBlockedNightsInRange } from './propertyBlockedDates.ts';
 import {
   pendingDocumentsClearCompletionsJsonbPatch,
   pendingDocumentsClearPatchForGuestEditRevert,
+  requestPdfClearPatchForChangedFormFields,
   shouldRevertGuestFieldEditsToPendingReview,
 } from './statusMachine.ts';
 import { UploadService } from './uploadService.ts';
@@ -177,7 +178,8 @@ export class DatabaseService {
     saveImagesToStorage = true,
     revertReadyForCheckinToPendingReview = false,
     propertyId?: string,
-    guestUserId?: string
+    guestUserId?: string,
+    revertChangedFormFields: string[] = []
   ): Promise<{
     data: GuestFormData;
     submissionData: any;
@@ -464,6 +466,7 @@ export class DatabaseService {
             shouldRevertGuestFieldEditsToPendingReview(existingBooking.status)
           ) {
             Object.assign(patch, pendingDocumentsClearPatchForGuestEditRevert());
+            Object.assign(patch, requestPdfClearPatchForChangedFormFields(revertChangedFormFields));
             (patch as Record<string, unknown>).document_requirement_completions =
               pendingDocumentsClearCompletionsJsonbPatch(
                 existingBooking.document_requirement_completions
@@ -1068,6 +1071,56 @@ export class DatabaseService {
       console.error('Error checking overlapping bookings:', error);
       throw error;
     }
+  }
+
+  /**
+   * Adjacent bookings that immediately precede or follow the requested stay on the
+   * same day. Used for cleaning-window / turnover warnings in the AI summary.
+   */
+  static async getAdjacentBookings(
+    checkInDate: string,
+    checkOutDate: string,
+    bookingId?: string,
+    propertyId?: string
+  ) {
+    const normalizeDate = (dateStr: string): string => {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+      if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
+        const [month, day, year] = dateStr.split('-');
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      }
+      return dateStr;
+    };
+
+    const newCheckIn = normalizeDate(checkInDate);
+    const newCheckOut = normalizeDate(checkOutDate);
+
+    let query = this.supabase
+      .from('guest_submissions')
+      .select(
+        'id, check_in_date, check_out_date, check_in_time, check_out_time, status, primary_guest_name'
+      )
+      .neq('status', 'CANCELLED')
+      .neq('status', 'IMPORTED')
+      .or(`check_out_date.eq.${newCheckIn},check_in_date.eq.${newCheckOut}`);
+
+    if (propertyId) {
+      query = query.eq('property_id', propertyId);
+    }
+    if (bookingId) {
+      query = query.neq('id', bookingId);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.error('getAdjacentBookings error:', error);
+      throw new Error('Failed to load adjacent bookings');
+    }
+    return (data || []).map((b) => ({
+      ...b,
+      check_in_date: normalizeDate(b.check_in_date),
+      check_out_date: normalizeDate(b.check_out_date),
+    }));
   }
 
   /**

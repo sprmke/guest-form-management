@@ -12,6 +12,9 @@ export const AI_FEATURES = [
   'import_column_map',
   'voice_polish',
   'ai_integration_verify',
+  'booking_ai_summary_guests',
+  'booking_ai_summary_pets',
+  'booking_ai_summary_pricing',
 ] as const;
 
 export type AiFeature = (typeof AI_FEATURES)[number];
@@ -60,10 +63,10 @@ const FEATURE_MODELS: Record<AiFeature, AiModelConfig> = {
     outputUsdPer1M: 2.5,
   },
   import_column_map: {
-    model: 'gemini-2.5-flash-lite',
-    tier: 'flash_lite',
-    inputUsdPer1M: 0.1,
-    outputUsdPer1M: 0.4,
+    model: 'gemini-2.5-flash',
+    tier: 'flash',
+    inputUsdPer1M: 0.3,
+    outputUsdPer1M: 2.5,
   },
   voice_polish: {
     model: 'gemini-2.5-flash',
@@ -72,6 +75,24 @@ const FEATURE_MODELS: Record<AiFeature, AiModelConfig> = {
     outputUsdPer1M: 2.5,
   },
   ai_integration_verify: {
+    model: 'gemini-2.5-flash',
+    tier: 'flash',
+    inputUsdPer1M: 0.3,
+    outputUsdPer1M: 2.5,
+  },
+  booking_ai_summary_guests: {
+    model: 'gemini-2.5-flash',
+    tier: 'flash',
+    inputUsdPer1M: 0.3,
+    outputUsdPer1M: 2.5,
+  },
+  booking_ai_summary_pets: {
+    model: 'gemini-2.5-flash',
+    tier: 'flash',
+    inputUsdPer1M: 0.3,
+    outputUsdPer1M: 2.5,
+  },
+  booking_ai_summary_pricing: {
     model: 'gemini-2.5-flash',
     tier: 'flash',
     inputUsdPer1M: 0.3,

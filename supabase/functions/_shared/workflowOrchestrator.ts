@@ -44,6 +44,9 @@ import {
 } from './statusMachine.ts';
 import {
   DEFAULT_DOCUMENT_REQUIREMENTS,
+  hasApplicableDocumentPdfTemplate,
+  requirementDocKind,
+  requirementMatchesPdfTemplate,
   resolveDocumentRequirements,
   type DocumentRequirement,
   type DocumentRequirementCompletion,
@@ -250,6 +253,35 @@ function applyLegacyCompletionColumns(
   }
 }
 
+function readApprovedPdfUrlForRequirement(
+  booking: Record<string, unknown>,
+  requirementId: string,
+  requirements: DocumentRequirement[]
+): string | null {
+  const column = approvedPdfColumnForRequirement(requirementId, requirements);
+  if (!column) return null;
+
+  const completions = readDocumentCompletions(
+    booking as Parameters<typeof readDocumentCompletions>[0]
+  );
+  const fromMap = completions[requirementId]?.approvedPdfUrl;
+  if (typeof fromMap === 'string' && fromMap.trim()) return fromMap.trim();
+
+  const raw = booking[column] as string | null | undefined;
+  return typeof raw === 'string' && raw.trim() ? raw.trim() : null;
+}
+
+function approvedPdfColumnForRequirement(
+  requirementId: string,
+  requirements: DocumentRequirement[]
+): 'approved_gaf_pdf_url' | 'approved_pet_pdf_url' | null {
+  const req = requirements.find((entry) => entry.id === requirementId);
+  const kind = requirementDocKind(req, requirementId);
+  if (kind === 'gaf') return 'approved_gaf_pdf_url';
+  if (kind === 'pet') return 'approved_pet_pdf_url';
+  return null;
+}
+
 function assertParkingPaymentReceiptIfRequired(
   payload: TransitionPayload,
   booking?: Record<string, unknown>
@@ -349,9 +381,8 @@ export class WorkflowOrchestrator {
         );
       }
     }
-    const requirementIds = new Set(documentRequirements.map((req) => req.id));
-    const gafRequirementPresent = requirementIds.has('gaf');
-    const petRequirementPresent = requirementIds.has('pet');
+    const gafPdfRequired = hasApplicableDocumentPdfTemplate(documentRequirements, booking, 'gaf');
+    const petPdfRequired = hasApplicableDocumentPdfTemplate(documentRequirements, booking, 'pet');
 
     // 2. Validate transition (late parking doc actions stay on current status at RFCI+)
     const isLateParkingDocAction = isLatePendingParkingDocumentTransition(
@@ -557,7 +588,30 @@ export class WorkflowOrchestrator {
             docComplete,
             documentRequirements
           );
-          patchCompletion(resolved.requirementId, { completedAt: now, manualIncomplete: false });
+          const approvedColumn = approvedPdfColumnForRequirement(
+            resolved.requirementId,
+            documentRequirements
+          );
+          const approvedUrl = approvedColumn
+            ? readApprovedPdfUrlForRequirement(
+                booking as Record<string, unknown>,
+                resolved.requirementId,
+                documentRequirements
+              )
+            : null;
+          if (approvedColumn && !approvedUrl) {
+            throw new Error(
+              'Upload or receive the approved document before marking this step complete.'
+            );
+          }
+          patchCompletion(resolved.requirementId, {
+            completedAt: now,
+            manualIncomplete: false,
+            ...(approvedUrl ? { approvedPdfUrl: approvedUrl } : {}),
+          });
+          if (approvedColumn && approvedUrl) {
+            workflowFields[approvedColumn] = approvedUrl;
+          }
           applyLegacyCompletionColumns(workflowFields, resolved.requirementId, {
             completedAt: now,
             manualIncomplete: false,
@@ -745,46 +799,74 @@ export class WorkflowOrchestrator {
     // Skipped entirely when requirements are empty (D2) or the admin skipped straight
     // to READY_FOR_CHECKIN; gated per-requirement so a property without "gaf" (or "pet")
     // never gets that PDF even when the other one is configured.
-    if (isReviewToInitialDocs && flag(devControls, 'generatePdf')) {
+    const missingGafRequestPdf =
+      gafPdfRequired && !String(updatedBooking.gaf_request_pdf_url ?? '').trim();
+    const missingPetRequestPdf =
+      petPdfRequired &&
+      bookingFlagTrue(updatedBooking.has_pets) &&
+      !String(updatedBooking.pet_request_pdf_url ?? '').trim();
+    const shouldGenerateGafRequestPdf =
+      gafPdfRequired && (isReviewToInitialDocs || missingGafRequestPdf);
+    const shouldGeneratePetRequestPdf =
+      petPdfRequired && (isReviewToInitialDocs || missingPetRequestPdf);
+    const shouldGenerateRequestPdfs =
+      flag(devControls, 'generatePdf') &&
+      (isReviewToInitialDocs ||
+        (updatedBooking.status === 'PENDING_DOCUMENTS' &&
+          (missingGafRequestPdf || missingPetRequestPdf)));
+
+    if (shouldGenerateRequestPdfs) {
       const fd = buildGuestFormData(updatedBooking);
-      if (gafRequirementPresent) {
+      if (shouldGenerateGafRequestPdf) {
         try {
           gafPdfBuffer = await generatePDF(fd, propertyId);
         } catch (err) {
           console.error('[orchestrator] GAF PDF generation failed:', err);
+          throw new Error(
+            `GAF request PDF could not be generated. Ensure templates/guest-form-template.pdf exists in Storage. ${
+              err instanceof Error ? err.message : String(err)
+            }`
+          );
         }
       }
-      if (updatedBooking.has_pets && petRequirementPresent) {
+      if (shouldGeneratePetRequestPdf) {
         try {
           petPdfBuffer = await generatePetPDF(fd, propertyId);
         } catch (err) {
           console.error('[orchestrator] Pet request PDF generation failed:', err);
+          throw new Error(
+            `Pet request PDF could not be generated. Ensure templates/pet-form-template.pdf exists in Storage. ${
+              err instanceof Error ? err.message : String(err)
+            }`
+          );
         }
       }
       if (flag(devControls, 'saveToDatabase')) {
-        try {
-          const pdfFields: Record<string, unknown> = {};
-          const pdfPropertyId = String(updatedBooking.property_id ?? '').trim() || undefined;
-          if (gafPdfBuffer) {
-            pdfFields.gaf_request_pdf_url = await UploadService.uploadPdfBytes(
-              'approved-gafs',
-              bookingAssetStorageKey(pdfPropertyId, bookingId, 'gaf-request.pdf'),
-              gafPdfBuffer
-            );
+        const pdfFields: Record<string, unknown> = {};
+        const pdfPropertyId = String(updatedBooking.property_id ?? '').trim() || undefined;
+        if (shouldGenerateGafRequestPdf) {
+          if (!gafPdfBuffer) {
+            throw new Error('GAF request PDF buffer is empty after generation.');
           }
-          if (petPdfBuffer) {
-            pdfFields.pet_request_pdf_url = await UploadService.uploadPdfBytes(
-              'approved-pet-forms',
-              bookingAssetStorageKey(pdfPropertyId, bookingId, 'pet-request.pdf'),
-              petPdfBuffer
-            );
+          pdfFields.gaf_request_pdf_url = await UploadService.uploadPdfBytes(
+            'approved-gafs',
+            bookingAssetStorageKey(pdfPropertyId, bookingId, 'gaf-request.pdf'),
+            gafPdfBuffer
+          );
+        }
+        if (shouldGeneratePetRequestPdf) {
+          if (!petPdfBuffer) {
+            throw new Error('Pet request PDF buffer is empty after generation.');
           }
-          if (Object.keys(pdfFields).length > 0) {
-            await DatabaseService.setWorkflowFields(bookingId, pdfFields);
-            Object.assign(updatedBooking, pdfFields);
-          }
-        } catch (err) {
-          console.error('[orchestrator] Request PDF upload failed:', err);
+          pdfFields.pet_request_pdf_url = await UploadService.uploadPdfBytes(
+            'approved-pet-forms',
+            bookingAssetStorageKey(pdfPropertyId, bookingId, 'pet-request.pdf'),
+            petPdfBuffer
+          );
+        }
+        if (Object.keys(pdfFields).length > 0) {
+          await DatabaseService.setWorkflowFields(bookingId, pdfFields);
+          Object.assign(updatedBooking, pdfFields);
         }
       }
     }
@@ -805,7 +887,7 @@ export class WorkflowOrchestrator {
 
       if (
         isReviewToInitialDocs &&
-        gafRequirementPresent &&
+        gafPdfRequired &&
         flag(devControls, 'sendGafRequestEmail') &&
         (await propertyEmailAllowed('emailGafRequest'))
       ) {
@@ -817,7 +899,7 @@ export class WorkflowOrchestrator {
         }
       } else if (
         isReviewToInitialDocs &&
-        gafRequirementPresent &&
+        gafPdfRequired &&
         flag(devControls, 'sendGafRequestEmail')
       ) {
         console.log('[orchestrator] GAF request email skipped (org automation off)');
@@ -840,7 +922,7 @@ export class WorkflowOrchestrator {
       if (
         isReviewToInitialDocs &&
         updatedBooking.has_pets &&
-        petRequirementPresent &&
+        petPdfRequired &&
         flag(devControls, 'sendPetRequestEmail') &&
         (await propertyEmailAllowed('emailPetRequest'))
       ) {
@@ -860,7 +942,7 @@ export class WorkflowOrchestrator {
       } else if (
         isReviewToInitialDocs &&
         updatedBooking.has_pets &&
-        petRequirementPresent &&
+        petPdfRequired &&
         flag(devControls, 'sendPetRequestEmail')
       ) {
         console.log('[orchestrator] Pet request email skipped (org automation off)');
@@ -960,6 +1042,11 @@ export class WorkflowOrchestrator {
     console.log(`[orchestrator] Transition complete: ${fromStatus} → ${toStatus}`, {
       emailsSent,
     });
+
+    if (flag(devControls, 'saveToDatabase')) {
+      const refreshedFinal = await DatabaseService.getBookingById(bookingId);
+      if (refreshedFinal) updatedBooking = refreshedFinal;
+    }
 
     return {
       success: true,

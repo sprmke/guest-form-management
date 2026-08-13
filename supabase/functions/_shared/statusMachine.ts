@@ -19,6 +19,7 @@
 import {
   DEFAULT_DOCUMENT_REQUIREMENTS,
   requirementApplies,
+  requirementNeedsApprovedPdf,
   type DocumentRequirement,
   type DocumentRequirementCompletion,
 } from './documentRequirements.ts';
@@ -101,7 +102,7 @@ export function canGuestPublicUpdateForm(status: string | null | undefined): boo
  * Columns cleared when guest-sensitive edits force `status` → `PENDING_REVIEW`
  * (admin `guest_submissions` patch, public `submit-form` update, or guest-doc
  * `upload-booking-asset`). Resets nested Pending Documents substeps, stale
- * request/approved PDF pointers, **admin parking settlement**, and **guest
+ * approved PDF pointers, **admin parking settlement**, and **guest
  * balance settlement** — **not** pricing snapshot fields (`booking_rate`,
  * `down_payment`, `balance`, `security_deposit`, `pet_fee`,
  * `parking_rate_guest`, `guest_additional_fee`) so the Pending Review pricing
@@ -128,8 +129,6 @@ export function pendingDocumentsClearPatchForGuestEditRevert(): Record<string, n
     pet_manual_incomplete: false,
     approved_gaf_pdf_url: null,
     approved_pet_pdf_url: null,
-    gaf_request_pdf_url: null,
-    pet_request_pdf_url: null,
     parking_rate_paid: null,
     parking_owner: null,
     parking_owner_email: null,
@@ -142,6 +141,60 @@ export function pendingDocumentsClearPatchForGuestEditRevert(): Record<string, n
     guest_balance_payment_receipt_url: null,
     surprise_decor_staff_acknowledged: false,
   };
+}
+
+/**
+ * Guest-form keys (compareFormData `changedFields`) that invalidate a stored
+ * filled GAF request PDF. Guest doc uploads (valid ID, pet files) are excluded —
+ * those are email attachments, not fields inside the generated PDF.
+ */
+export const GAF_REQUEST_PDF_INVALIDATING_FORM_FIELDS = new Set<string>([
+  'guestFacebookName',
+  'primaryGuestName',
+  'guestEmail',
+  'guestPhoneNumber',
+  'guest2Name',
+  'guest2Age',
+  'guest3Name',
+  'guest3Age',
+  'guest4Name',
+  'guest4Age',
+  'guest5Name',
+  'guest5Age',
+  'checkInDate',
+  'checkOutDate',
+  'checkInTime',
+  'checkOutTime',
+  'guestRequestsSurpriseDecor',
+  'needParking',
+  'carPlateNumber',
+  'carBrandModel',
+  'carColor',
+  'hasPets',
+]);
+
+/** Guest-form keys that invalidate a stored filled pet request PDF. */
+export const PET_REQUEST_PDF_INVALIDATING_FORM_FIELDS = new Set<string>([
+  'hasPets',
+  'petName',
+  'petType',
+  'petBreed',
+  'petAge',
+  'petVaccinationDate',
+]);
+
+/** Clear stored request PDF URLs only when the edit changes PDF fill content. */
+export function requestPdfClearPatchForChangedFormFields(
+  changedFields: string[]
+): Record<string, null> {
+  const patch: Record<string, null> = {};
+  if (changedFields.some((field) => GAF_REQUEST_PDF_INVALIDATING_FORM_FIELDS.has(field))) {
+    patch.gaf_request_pdf_url = null;
+  }
+  if (changedFields.some((field) => PET_REQUEST_PDF_INVALIDATING_FORM_FIELDS.has(field))) {
+    patch.pet_request_pdf_url = null;
+  }
+  return patch;
 }
 
 /** Terminal statuses — no further transitions are valid. */
@@ -344,8 +397,12 @@ export function pendingDocumentsClearCompletionsJsonbPatch(
   return map;
 }
 
-function isCompletionDone(completion: DocumentRequirementCompletion | undefined): boolean {
+function isCompletionDone(
+  completion: DocumentRequirementCompletion | undefined,
+  requiresApprovedPdf: boolean
+): boolean {
   if (!completion || completion.manualIncomplete) return false;
+  if (requiresApprovedPdf) return Boolean(completion.approvedPdfUrl?.trim());
   return !!completion.completedAt || !!completion.approvedPdfUrl;
 }
 
@@ -379,7 +436,7 @@ export function getPendingDocumentsNestedCompletion(
   let allConfigurableDocsDone = true;
   for (const req of requirements) {
     if (!requirementApplies(req, booking)) continue;
-    const done = isCompletionDone(completions[req.id]);
+    const done = isCompletionDone(completions[req.id], requirementNeedsApprovedPdf(req));
     byRequirementId[req.id] = done;
     if (!done) allConfigurableDocsDone = false;
   }
