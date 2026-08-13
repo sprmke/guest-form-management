@@ -44,7 +44,7 @@ const TRANSITION_GRAPH: Record<string, ReadonlyArray<BookingStatus>> = {
 
 /**
  * Admin-only override edges — exposed in the WorkflowPanel for manual recovery
- * when cron / Gmail listener is late or skipped, or when the admin needs to
+ * when cron / inbound approval is late or skipped, or when the admin needs to
  * step the booking back one stage to redo a step.
  *
  * Mirrors MANUAL_OVERRIDE_GRAPH in statusMachine.ts.
@@ -126,8 +126,6 @@ type ApplicabilityFlags = {
   gaf_completed_at?: string | null;
   parking_completed_at?: string | null;
   pet_completed_at?: string | null;
-  gaf_manual_incomplete?: boolean | null;
-  pet_manual_incomplete?: boolean | null;
   security_deposit?: number | string | null;
 };
 
@@ -150,10 +148,6 @@ export function isSubStatusRequired(
   const requirementId = subStatus === 'PENDING_GAF' ? 'gaf' : 'pet';
   const req = requirements.find((r) => r.id === requirementId);
   return !!req && requirementApplies(req, booking);
-}
-
-function flagTrue(v: unknown): boolean {
-  return v === true || v === 'true';
 }
 
 /** Statuses at or after Ready for Check-in (parent Pending Documents is behind). */
@@ -190,7 +184,6 @@ export function isSubStatusCompleted(
 ): boolean {
   if (!isSubStatusRequired(subStatus, booking, requirements)) return true;
   if (subStatus === 'PENDING_GAF') {
-    if (flagTrue(booking.gaf_manual_incomplete)) return false;
     return Boolean(booking.approved_gaf_pdf_url?.trim());
   }
   if (subStatus === 'PENDING_PARKING_REQUEST') {
@@ -198,7 +191,6 @@ export function isSubStatusCompleted(
     // click "Mark as Complete" so `transition-booking` sets `parking_completed_at`.
     return !!booking.parking_completed_at;
   }
-  if (flagTrue(booking.pet_manual_incomplete)) return false;
   return Boolean(booking.approved_pet_pdf_url?.trim());
 }
 
@@ -241,7 +233,6 @@ function parseCompletionEntry(raw: unknown): DocumentRequirementCompletion | und
   return {
     completedAt: typeof entry.completedAt === 'string' ? entry.completedAt : null,
     approvedPdfUrl: typeof entry.approvedPdfUrl === 'string' ? entry.approvedPdfUrl : null,
-    manualIncomplete: flagTrue(entry.manualIncomplete),
   };
 }
 
@@ -266,14 +257,12 @@ export function readDocumentCompletions(booking: ConfigurableDocsBooking): Docum
     map.gaf = {
       completedAt: booking.gaf_completed_at ?? null,
       approvedPdfUrl: booking.approved_gaf_pdf_url ?? null,
-      manualIncomplete: flagTrue(booking.gaf_manual_incomplete),
     };
   }
   if (!map.pet) {
     map.pet = {
       completedAt: booking.pet_completed_at ?? null,
       approvedPdfUrl: booking.approved_pet_pdf_url ?? null,
-      manualIncomplete: flagTrue(booking.pet_manual_incomplete),
     };
   }
   return map;
@@ -283,7 +272,7 @@ function isCompletionDone(
   completion: DocumentRequirementCompletion | undefined,
   requiresApprovedPdf: boolean
 ): boolean {
-  if (!completion || completion.manualIncomplete) return false;
+  if (!completion) return false;
   if (requiresApprovedPdf) return Boolean(completion.approvedPdfUrl?.trim());
   return !!completion.completedAt || !!completion.approvedPdfUrl;
 }
@@ -454,25 +443,6 @@ export function nextIncompletePendingDocKeyAfter(
   }
   return items.find((item) => !item.completed)?.key ?? null;
 }
-
-/**
- * Whether document-approval reconcile on page load could still re-apply stored
- * approved GAF/pet PDFs after an admin marked a sub-step incomplete.
- * Parking is admin-only — not inbound-email-driven.
- */
-export function bookingNeedsDocumentApprovalReconcile(booking: ApplicabilityFlags): boolean {
-  if (!isSubStatusCompleted('PENDING_GAF', booking)) return true;
-  if (
-    isSubStatusRequired('PENDING_PET_REQUEST', booking) &&
-    !isSubStatusCompleted('PENDING_PET_REQUEST', booking)
-  ) {
-    return true;
-  }
-  return false;
-}
-
-/** @deprecated Use `bookingNeedsDocumentApprovalReconcile`. */
-export const bookingNeedsGmailListenerPoll = bookingNeedsDocumentApprovalReconcile;
 
 /**
  * Whether a graph-legal transition should actually be shown for this booking.

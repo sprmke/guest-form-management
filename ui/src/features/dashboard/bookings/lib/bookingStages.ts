@@ -243,11 +243,9 @@ export function kanbanColumnForBooking(
     | 'need_parking'
     | 'has_pets'
     | 'gaf_completed_at'
-    | 'gaf_manual_incomplete'
     | 'approved_gaf_pdf_url'
     | 'parking_completed_at'
     | 'pet_completed_at'
-    | 'pet_manual_incomplete'
     | 'approved_pet_pdf_url'
   >,
   requirements: DocumentRequirement[] = DEFAULT_DOCUMENT_REQUIREMENTS
@@ -312,11 +310,9 @@ function kanbanDocStepsBeforeTargetComplete(
     | 'need_parking'
     | 'has_pets'
     | 'gaf_completed_at'
-    | 'gaf_manual_incomplete'
     | 'approved_gaf_pdf_url'
     | 'parking_completed_at'
     | 'pet_completed_at'
-    | 'pet_manual_incomplete'
     | 'approved_pet_pdf_url'
   >,
   target: BookingStatus,

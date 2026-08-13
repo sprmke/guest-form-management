@@ -1,8 +1,8 @@
+import type { WorkflowAssetType } from '@/features/dashboard/bookings/hooks/useUploadBookingAsset';
 import {
   requirementDocKind,
   type DocumentRequirement,
 } from '@/features/dashboard/bookings/lib/documentRequirements';
-import type { WorkflowAssetType } from '@/features/dashboard/bookings/hooks/useUploadBookingAsset';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import {
   PARKING_NESTED_KEY,

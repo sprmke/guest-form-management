@@ -127,17 +127,12 @@ export function isBookingStatus(value: string): value is BookingStatus {
 
 type DocumentCompletionsMap = Record<string, DocumentRequirementCompletion>;
 
-function completionFlagTrue(value: unknown): boolean {
-  return value === true || value === 'true';
-}
-
 function parseCompletionEntry(raw: unknown): DocumentRequirementCompletion | undefined {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
   const entry = raw as Record<string, unknown>;
   return {
     completedAt: typeof entry.completedAt === 'string' ? entry.completedAt : null,
     approvedPdfUrl: typeof entry.approvedPdfUrl === 'string' ? entry.approvedPdfUrl : null,
-    manualIncomplete: completionFlagTrue(entry.manualIncomplete),
   };
 }
 
@@ -167,7 +162,7 @@ export function pendingDocumentsClearCompletionsJsonbPatch(
 ): DocumentCompletionsMap {
   const map = parseCompletionsMap(existingCompletions);
   for (const id of [...Object.keys(map), 'gaf', 'pet']) {
-    map[id] = { completedAt: null, approvedPdfUrl: null, manualIncomplete: false };
+    map[id] = { completedAt: null, approvedPdfUrl: null };
   }
   return map;
 }
@@ -210,8 +205,6 @@ export function pendingDocumentsClearPatchForGuestEditRevert(): Record<string, n
     gaf_completed_at: null,
     parking_completed_at: null,
     pet_completed_at: null,
-    gaf_manual_incomplete: false,
-    pet_manual_incomplete: false,
     approved_gaf_pdf_url: null,
     approved_pet_pdf_url: null,
     parking_rate_paid: null,

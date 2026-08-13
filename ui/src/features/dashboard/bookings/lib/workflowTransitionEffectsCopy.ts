@@ -9,6 +9,21 @@ import {
   type PropertyAutomationToggles,
 } from '@/features/dashboard/org/lib/propertyEmailAutomation';
 
+/** Mirrors `DevControlFlags` email keys in `_shared/workflowOrchestrator.ts`. */
+export type WorkflowEmailDevControlKey =
+  | 'sendGafRequestEmail'
+  | 'sendBookingAcknowledgementEmail'
+  | 'sendPetRequestEmail'
+  | 'sendParkingBroadcastEmail'
+  | 'sendReadyForCheckinEmail'
+  | 'sendSdRefundFormEmail';
+
+export type WorkflowEmailEffect = {
+  key: WorkflowEmailDevControlKey;
+  /** Host-facing checkbox label (matches former effect-line copy). */
+  label: string;
+};
+
 export type WorkflowTransitionEffectsInput = {
   fromStatus: BookingStatus;
   toStatus: BookingStatus;
@@ -55,16 +70,24 @@ function pushIf(lines: string[], condition: boolean, line: string): void {
   if (condition) lines.push(line);
 }
 
-/** Short, host-facing bullets for what a workflow transition will do. */
-export function workflowTransitionEffectLines(input: WorkflowTransitionEffectsInput): string[] {
+function pushEmailIf(
+  effects: WorkflowEmailEffect[],
+  condition: boolean,
+  key: WorkflowEmailEffect['key'],
+  label: string
+): void {
+  if (condition) effects.push({ key, label });
+}
+
+/** Emails that would fire on this forward transition (property automations on). */
+export function workflowTransitionEmailEffects(
+  input: WorkflowTransitionEffectsInput
+): WorkflowEmailEffect[] {
   const { fromStatus, toStatus, direction, booking, documentRequirements } = input;
+  if (direction === 'back') return [];
+
   const toggles = automation(input);
-
-  if (direction === 'back') {
-    return ['Moves the booking to previous status.', 'No emails will be sent.'];
-  }
-
-  const lines: string[] = ['Saves your changes and updates the booking status.'];
+  const effects: WorkflowEmailEffect[] = [];
   const isReviewProceed =
     fromStatus === 'PENDING_REVIEW' &&
     (toStatus === 'PENDING_DOCUMENTS' ||
@@ -79,23 +102,29 @@ export function workflowTransitionEffectLines(input: WorkflowTransitionEffectsIn
   const hasPets = booking.has_pets === true;
 
   if (isReviewProceed) {
-    pushIf(lines, isReviewToDocs && gafDoc, 'Creates the GAF request document.');
-    pushIf(lines, isReviewToDocs && hasPets && petDoc, 'Creates the pet request document.');
-    pushIf(
-      lines,
+    pushEmailIf(
+      effects,
       toggles.emailGafRequest && isReviewToDocs && gafDoc,
-      'Emails management the GAF request.'
+      'sendGafRequestEmail',
+      'Emails building management the GAF request.'
     );
-    pushIf(lines, toggles.emailBookingAcknowledgement, 'Emails the guest a booking confirmation.');
-    pushIf(
-      lines,
+    pushEmailIf(
+      effects,
+      toggles.emailBookingAcknowledgement,
+      'sendBookingAcknowledgementEmail',
+      'Emails the guest the guest acknowledgement email.'
+    );
+    pushEmailIf(
+      effects,
       toggles.emailPetRequest && isReviewToDocs && hasPets && petDoc,
-      'Emails management the pet request.'
+      'sendPetRequestEmail',
+      'Emails building management the pet request.'
     );
-    pushIf(
-      lines,
+    pushEmailIf(
+      effects,
       toggles.emailParkingBroadcast && hasParking,
-      'Emails parking owners about this stay.'
+      'sendParkingBroadcastEmail',
+      'Emails parking owners the parking request.'
     );
   }
 
@@ -108,33 +137,102 @@ export function workflowTransitionEffectLines(input: WorkflowTransitionEffectsIn
       fromStatus === 'PENDING_PET_REQUEST');
 
   if (forwardToReadyForCheckin) {
-    pushIf(lines, toggles.emailReadyForCheckin, 'Emails the guest ready-for-check-in details.');
+    pushEmailIf(
+      effects,
+      toggles.emailReadyForCheckin,
+      'sendReadyForCheckinEmail',
+      'Emails the guest the ready-for-check-in email.'
+    );
+  }
+
+  if (fromStatus === 'READY_FOR_CHECKIN' && toStatus === 'READY_FOR_CHECKOUT') {
+    pushEmailIf(
+      effects,
+      toggles.emailSdRefundCheckout &&
+        securityDepositPositive(booking) &&
+        !sdRefundEmailAlreadySent(booking),
+      'sendSdRefundFormEmail',
+      'Emails the guest the Check-out Instructions email.'
+    );
+  }
+
+  return effects;
+}
+
+/** Short, host-facing bullets for what a workflow transition will do. */
+export function workflowTransitionEffectLines(
+  input: WorkflowTransitionEffectsInput,
+  opts?: { includeEmailLines?: boolean }
+): string[] {
+  const { fromStatus, toStatus, direction, booking, documentRequirements } = input;
+  const includeEmailLines = opts?.includeEmailLines !== false;
+
+  if (direction === 'back') {
+    return [
+      'Moves the booking to previous status.',
+      'Existing fields and documents on this step will be reset.',
+      'No emails will be sent.',
+    ];
+  }
+
+  const lines: string[] = ['Saves your changes and updates the booking status.'];
+  const isReviewProceed =
+    fromStatus === 'PENDING_REVIEW' &&
+    (toStatus === 'PENDING_DOCUMENTS' ||
+      toStatus === 'PENDING_GAF' ||
+      toStatus === 'READY_FOR_CHECKIN');
+  const isReviewToDocs =
+    fromStatus === 'PENDING_REVIEW' &&
+    (toStatus === 'PENDING_DOCUMENTS' || toStatus === 'PENDING_GAF');
+  const gafDoc = hasDocWithTemplate(documentRequirements, booking, 'gaf');
+  const petDoc = hasDocWithTemplate(documentRequirements, booking, 'pet');
+  const hasPets = booking.has_pets === true;
+
+  if (isReviewProceed) {
+    pushIf(
+      lines,
+      isReviewToDocs && gafDoc,
+      'Creates the Guest Acknowledgment Form (GAF) request document.'
+    );
+    pushIf(lines, isReviewToDocs && hasPets && petDoc, 'Creates the Pet Request Form document.');
+  }
+
+  if (includeEmailLines) {
+    for (const effect of workflowTransitionEmailEffects(input)) {
+      lines.push(effect.label);
+    }
+  }
+
+  const forwardToReadyForCheckin =
+    toStatus === 'READY_FOR_CHECKIN' &&
+    (fromStatus === 'PENDING_REVIEW' ||
+      fromStatus === 'PENDING_DOCUMENTS' ||
+      fromStatus === 'PENDING_GAF' ||
+      fromStatus === 'PENDING_PARKING_REQUEST' ||
+      fromStatus === 'PENDING_PET_REQUEST');
+
+  if (forwardToReadyForCheckin) {
     lines.push('Prepares a stay guide link for the guest.');
   }
 
   if (fromStatus === 'READY_FOR_CHECKIN' && toStatus === 'READY_FOR_CHECKOUT') {
     lines.push('Records the guest balance you entered.');
-    pushIf(
-      lines,
-      toggles.emailSdRefundCheckout &&
-        securityDepositPositive(booking) &&
-        !sdRefundEmailAlreadySent(booking),
-      'Email guest the check-out and deposit refund form.'
-    );
-    pushIf(
-      lines,
-      securityDepositPositive(booking) && sdRefundEmailAlreadySent(booking),
-      'Check-out email was already sent — it will not be sent again.'
-    );
+    if (
+      includeEmailLines &&
+      securityDepositPositive(booking) &&
+      sdRefundEmailAlreadySent(booking)
+    ) {
+      lines.push('Check-out Instructions email was already sent — it will not be sent again.');
+    }
   }
 
   if (fromStatus === 'READY_FOR_CHECKOUT' && toStatus === 'PENDING_SD_REFUND') {
-    lines.push('Saves the guest refund details from the form.');
+    lines.push('Saves the guest security deposit refund form details.');
   }
 
   if (toStatus === 'COMPLETED') {
     if (fromStatus === 'PENDING_SD_REFUND') {
-      lines.push('Saves deposit refund details and closes the booking.');
+      lines.push('Saves security deposit refund details and marks the booking as completed.');
     } else {
       lines.push('Closes the booking.');
     }
@@ -146,7 +244,7 @@ export function workflowTransitionEffectLines(input: WorkflowTransitionEffectsIn
 export function workflowCancelEffectLines(): string[] {
   return [
     'Marks this booking as cancelled.',
-    'Keeps all guest information on file.',
+    'Keeps all guest information.',
     'No emails will be sent.',
   ];
 }

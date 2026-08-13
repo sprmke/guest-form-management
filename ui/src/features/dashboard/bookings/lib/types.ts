@@ -119,8 +119,6 @@ export type BookingRow = {
   gaf_completed_at?: string | null;
   parking_completed_at?: string | null;
   pet_completed_at?: string | null;
-  gaf_manual_incomplete?: boolean | null;
-  pet_manual_incomplete?: boolean | null;
   /** Per-requirement-id completion map — see `lib/documentRequirements.ts#DocumentRequirementCompletion`. */
   document_requirement_completions?: Record<string, unknown> | null;
   sd_additional_expense_items?: SdSettlementLineItem[] | null;
@@ -227,6 +225,8 @@ export type BookingAiReviewSectionResult = {
   updated_at: string;
 };
 
+export type BookingAiReviewSectionId = 'stay_details' | 'guests' | 'parking' | 'pets' | 'pricing';
+
 export type BookingAiReview = {
   id?: string;
   booking_id: string;
@@ -247,4 +247,6 @@ export type BookingAiReview = {
   triggered_by?: string | null;
   created_at?: string;
   updated_at?: string;
+  /** Computed by GET/POST — sections whose inputs no longer match the stored run. */
+  stale_sections?: BookingAiReviewSectionId[];
 };

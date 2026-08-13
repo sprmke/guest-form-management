@@ -22,7 +22,6 @@ export type DocumentRequirement = {
 export type DocumentRequirementCompletion = {
   completedAt: string | null;
   approvedPdfUrl: string | null;
-  manualIncomplete: boolean;
 };
 
 export const DEFAULT_DOCUMENT_REQUIREMENTS: DocumentRequirement[] = [
