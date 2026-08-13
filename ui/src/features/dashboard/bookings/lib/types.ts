@@ -137,6 +137,14 @@ export type BookingRow = {
   balance_receipt_ai_summary?: string | null;
   valid_id_ai_verdict?: string | null;
   valid_id_ai_summary?: string | null;
+  guest2_valid_id_ai_verdict?: string | null;
+  guest2_valid_id_ai_summary?: string | null;
+  guest3_valid_id_ai_verdict?: string | null;
+  guest3_valid_id_ai_summary?: string | null;
+  guest4_valid_id_ai_verdict?: string | null;
+  guest4_valid_id_ai_summary?: string | null;
+  guest5_valid_id_ai_verdict?: string | null;
+  guest5_valid_id_ai_summary?: string | null;
   sd_refund_guest_feedback?: string | null;
   sd_refund_method?: 'same_phone' | 'other_bank' | 'cash' | null;
   sd_refund_phone_confirmed?: boolean | null;
@@ -199,4 +207,44 @@ export const DEFAULT_BOOKINGS_QUERY: BookingsQuery = {
   sort: 'status_priority:asc',
   page: 1,
   limit: 31,
+};
+
+export type BookingAiReviewSectionStatus =
+  'pending' | 'processing' | 'completed' | 'failed' | 'skipped';
+
+export type BookingAiReviewJobStatus = 'pending' | 'processing' | 'completed' | 'failed';
+
+export type BookingAiReviewFlag = {
+  message: string;
+  severity: 'info' | 'warning' | 'blocking';
+};
+
+export type BookingAiReviewSectionResult = {
+  summary: string;
+  flags: BookingAiReviewFlag[];
+  fingerprint: string;
+  reused: boolean;
+  updated_at: string;
+};
+
+export type BookingAiReview = {
+  id?: string;
+  booking_id: string;
+  property_id?: string | null;
+  job_status: BookingAiReviewJobStatus;
+  stay_details_status: BookingAiReviewSectionStatus;
+  guests_status: BookingAiReviewSectionStatus;
+  parking_status: BookingAiReviewSectionStatus;
+  pets_status: BookingAiReviewSectionStatus;
+  pricing_status: BookingAiReviewSectionStatus;
+  stay_details_result?: BookingAiReviewSectionResult | null;
+  guests_result?: BookingAiReviewSectionResult | null;
+  parking_result?: BookingAiReviewSectionResult | null;
+  pets_result?: BookingAiReviewSectionResult | null;
+  pricing_result?: BookingAiReviewSectionResult | null;
+  flag_count: number;
+  has_blocking_flag: boolean;
+  triggered_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
 };

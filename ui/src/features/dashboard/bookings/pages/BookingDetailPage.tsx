@@ -43,12 +43,10 @@ import { BookingDetailMobileSummary } from '@/features/dashboard/bookings/compon
 import { BookingEditForm } from '@/features/dashboard/bookings/components/BookingEditForm';
 import { BookingMetaCard } from '@/features/dashboard/bookings/components/BookingMetaCard';
 import { PayParkingModal } from '@/features/dashboard/bookings/components/PayParkingModal';
-import { PendingReviewWorkflowGate } from '@/features/dashboard/bookings/components/PendingReviewWorkflowGate';
 import { WorkflowPanel } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowPanel';
 import { bookingDetailQueryKey, useBooking } from '@/features/dashboard/bookings/hooks/useBooking';
 import { useBookingAssetPreview } from '@/features/dashboard/bookings/hooks/useBookingAssetPreview';
 import { useBookingStayGuideLink } from '@/features/dashboard/bookings/hooks/useBookingStayGuideLink';
-import { useReceiptAiBackfill } from '@/features/dashboard/bookings/hooks/useReceiptAiBackfill';
 import { buildBookingDetailActions } from '@/features/dashboard/bookings/lib/bookingDetailActions';
 import { resolveBookingViewTab } from '@/features/dashboard/bookings/lib/resolveBookingViewTab';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
@@ -69,13 +67,13 @@ export function BookingDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: booking, isLoading, error } = useBooking(bookingId);
-  const { isBackfilling: isReceiptAiBackfilling } = useReceiptAiBackfill(booking);
   const [editMode, setEditMode] = useState(false);
   const [editInitialTab, setEditInitialTab] = useState<BookingEditTabId | undefined>(undefined);
   const [payParkingModalOpen, setPayParkingModalOpen] = useState(false);
   const { previewAsset, previewLoading, handlePreview, closePreview } = useBookingAssetPreview();
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const [viewTab, setViewTab] = useState<BookingViewTab>('overview');
+  const [aiSummaryOpen, setAiSummaryOpen] = useState(false);
   const isBelowMd = useIsBelowMd();
 
   const copyBookingIdToClipboard = useCallback(async () => {
@@ -149,6 +147,8 @@ export function BookingDetailPage() {
 
   const stayGuide = useBookingStayGuideLink(booking);
 
+  const handleOpenAiSummary = useCallback(() => setAiSummaryOpen(true), []);
+
   const hostActions = useMemo(
     () =>
       booking
@@ -156,10 +156,11 @@ export function BookingDetailPage() {
             booking,
             onEdit: handleStartEdit,
             onPayParking: handleOpenPayParking,
+            onOpenAiSummary: handleOpenAiSummary,
             stayGuide,
           })
         : [],
-    [booking, handleStartEdit, handleOpenPayParking, stayGuide]
+    [booking, handleStartEdit, handleOpenPayParking, handleOpenAiSummary, stayGuide]
   );
 
   return (
@@ -252,11 +253,7 @@ export function BookingDetailPage() {
                     {viewTab === 'overview' && (
                       <div className="space-y-4">
                         <StayDetailsPanel booking={booking} />
-                        <AiValidationPanel
-                          booking={booking}
-                          onPreview={handlePreview}
-                          isDocumentAiBackfilling={isReceiptAiBackfilling}
-                        />
+                        <AiValidationPanel booking={booking} onPreview={handlePreview} />
                         <OtherInfoPanel booking={booking} />
                         <BookingMetaCard
                           booking={booking}
@@ -265,11 +262,7 @@ export function BookingDetailPage() {
                       </div>
                     )}
                     {viewTab === 'guests' && (
-                      <GuestsPanel
-                        booking={booking}
-                        onPreview={handlePreview}
-                        isDocumentAiBackfilling={isReceiptAiBackfilling}
-                      />
+                      <GuestsPanel booking={booking} onPreview={handlePreview} />
                     )}
                     {viewTab === 'parking' && booking.need_parking ? (
                       <ParkingPanel booking={booking} onPreview={handlePreview} />
@@ -278,18 +271,10 @@ export function BookingDetailPage() {
                       <PetsPanel booking={booking} onPreview={handlePreview} />
                     ) : null}
                     {viewTab === 'pricing' && booking.status !== 'PENDING_REVIEW' && (
-                      <PricingSummaryPanel
-                        booking={booking}
-                        onPreview={handlePreview}
-                        isReceiptAiBackfilling={isReceiptAiBackfilling}
-                      />
+                      <PricingSummaryPanel booking={booking} onPreview={handlePreview} />
                     )}
                     {viewTab === 'files' && (
-                      <DocumentsPanel
-                        booking={booking}
-                        onPreview={handlePreview}
-                        isDocumentAiBackfilling={isReceiptAiBackfilling}
-                      />
+                      <DocumentsPanel booking={booking} onPreview={handlePreview} />
                     )}
                   </>
                 )}
@@ -304,9 +289,13 @@ export function BookingDetailPage() {
                 isMobileWorkflowFirst && 'md:order-none'
               )}
             >
-              <PendingReviewWorkflowGate booking={booking}>
-                <WorkflowPanel key={booking.id} booking={booking} onPreview={handlePreview} />
-              </PendingReviewWorkflowGate>
+              <WorkflowPanel
+                key={booking.id}
+                booking={booking}
+                onPreview={handlePreview}
+                aiSummaryOpen={aiSummaryOpen}
+                onOpenAiSummary={setAiSummaryOpen}
+              />
             </div>
           </div>
         )}
@@ -314,7 +303,6 @@ export function BookingDetailPage() {
       <BookingDetailAssetPreviewModal
         asset={previewAsset}
         booking={booking}
-        isReceiptAiBackfilling={isReceiptAiBackfilling}
         loading={previewLoading}
         onClose={closePreview}
       />

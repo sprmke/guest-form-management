@@ -14,8 +14,10 @@
 
 import type { BookingStatus } from '@/features/dashboard/bookings/lib/bookingStatus';
 import type { DocumentRequirement } from '@/features/dashboard/bookings/lib/documentRequirements';
+import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import {
   bookingPipeline,
+  pendingDocumentsNestedItems,
   type ViewedWorkflowStep,
 } from '@/features/dashboard/bookings/lib/workflow';
 
@@ -76,4 +78,27 @@ export function shortDocStepLabel(label: string): string {
   if (!trimmed) return trimmed;
   const short = trimmed.replace(/^pending\s+/i, '').replace(/\s+(request|approval)$/i, '');
   return short || trimmed;
+}
+
+function formatEnglishList(items: string[]): string {
+  if (items.length === 0) return '';
+  if (items.length === 1) return items[0];
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
+}
+
+/** Tooltip when Proceed to Ready for Check-in is blocked by incomplete doc substeps. */
+export function pendingDocumentsProceedBlockedHint(
+  booking: BookingRow,
+  requirements: DocumentRequirement[]
+): string {
+  const labels = pendingDocumentsNestedItems(booking, requirements).map((item) =>
+    shortDocStepLabel(item.label)
+  );
+  if (labels.length === 0) {
+    return 'Complete all required pending documents first.';
+  }
+  const list = formatEnglishList(labels);
+  const verb = labels.length === 1 ? 'is' : 'are';
+  return `Make sure ${list} ${verb} complete before proceeding.`;
 }

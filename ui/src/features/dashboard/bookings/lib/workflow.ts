@@ -13,6 +13,7 @@ import { statusLabel, type BookingStatus } from '@/features/dashboard/bookings/l
 import {
   DEFAULT_DOCUMENT_REQUIREMENTS,
   requirementApplies,
+  requirementNeedsApprovedPdf,
   type DocumentApprovalSource,
   type DocumentRequirement,
   type DocumentRequirementCompletion,
@@ -190,7 +191,7 @@ export function isSubStatusCompleted(
   if (!isSubStatusRequired(subStatus, booking, requirements)) return true;
   if (subStatus === 'PENDING_GAF') {
     if (flagTrue(booking.gaf_manual_incomplete)) return false;
-    return !!booking.gaf_completed_at || !!booking.approved_gaf_pdf_url;
+    return Boolean(booking.approved_gaf_pdf_url?.trim());
   }
   if (subStatus === 'PENDING_PARKING_REQUEST') {
     // Endorsement upload only fills `parking_endorsement_url`; admin must still
@@ -198,7 +199,7 @@ export function isSubStatusCompleted(
     return !!booking.parking_completed_at;
   }
   if (flagTrue(booking.pet_manual_incomplete)) return false;
-  return !!booking.pet_completed_at || !!booking.approved_pet_pdf_url;
+  return Boolean(booking.approved_pet_pdf_url?.trim());
 }
 
 /**
@@ -278,8 +279,12 @@ export function readDocumentCompletions(booking: ConfigurableDocsBooking): Docum
   return map;
 }
 
-function isCompletionDone(completion: DocumentRequirementCompletion | undefined): boolean {
+function isCompletionDone(
+  completion: DocumentRequirementCompletion | undefined,
+  requiresApprovedPdf: boolean
+): boolean {
   if (!completion || completion.manualIncomplete) return false;
+  if (requiresApprovedPdf) return Boolean(completion.approvedPdfUrl?.trim());
   return !!completion.completedAt || !!completion.approvedPdfUrl;
 }
 
@@ -304,7 +309,7 @@ export function getPendingDocumentsNestedCompletion(
   let allConfigurableDocsDone = true;
   for (const req of requirements) {
     if (!requirementApplies(req, booking)) continue;
-    const done = isCompletionDone(completions[req.id]);
+    const done = isCompletionDone(completions[req.id], requirementNeedsApprovedPdf(req));
     byRequirementId[req.id] = done;
     if (!done) allConfigurableDocsDone = false;
   }
@@ -346,8 +351,8 @@ export type PendingDocNestedItem = {
 
 /**
  * Ordered nested items under Pending Documents: `requirements.filter(requirementApplies)`
- * sorted by `order`, with the parking subtree inserted where a `has_pets`-triggered
- * requirement would land (GAF → parking → pet display order when using defaults).
+ * sorted by `order`, with the parking subtree appended last when `need_parking`
+ * (GAF → pet → parking display order when using defaults).
  * Empty requirements + no parking → empty list (D2: no nested tree to show).
  */
 export function pendingDocumentsNestedItems(
@@ -378,7 +383,6 @@ export function pendingDocumentsNestedItems(
   };
 
   for (const req of applicable) {
-    if (req.triggerCondition === 'has_pets') insertParkingIfNeeded();
     items.push({
       key: req.id,
       label: req.label,
@@ -429,6 +433,26 @@ export function defaultPendingDocNestedKey(
   const items = pendingDocumentsNestedItems(booking, requirements);
   if (items.length === 0) return null;
   return (items.find((item) => !item.completed) ?? items[0]).key;
+}
+
+/**
+ * Tab to focus after marking a nested doc step complete: next incomplete in
+ * display order, or — when the host completed steps out of order (e.g. Parking
+ * before Pet) — the first incomplete step anywhere. `null` when all are done.
+ */
+export function nextIncompletePendingDocKeyAfter(
+  booking: ConfigurableDocsBooking,
+  requirements: DocumentRequirement[],
+  afterKey: PendingDocNestedKey
+): PendingDocNestedKey | null {
+  const items = pendingDocumentsNestedItems(booking, requirements);
+  const startIdx = items.findIndex((item) => item.key === afterKey);
+  if (startIdx >= 0) {
+    for (let i = startIdx + 1; i < items.length; i++) {
+      if (!items[i].completed) return items[i].key;
+    }
+  }
+  return items.find((item) => !item.completed)?.key ?? null;
 }
 
 /**

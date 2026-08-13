@@ -130,3 +130,82 @@ export function hasWorkflowSensitiveGuestFieldDiff(
 
   return false;
 }
+
+/** Clear stored request PDF URLs when an admin edit changes PDF fill content. */
+export function requestPdfClearPatchForAdminGuestEdit(
+  baseline: UpdateBookingPayload,
+  draft: UpdateBookingPayload,
+  documentRequirements: DocumentRequirement[] = DEFAULT_DOCUMENT_REQUIREMENTS
+): Record<string, null> {
+  const patch: Record<string, null> = {};
+
+  if (!sameText(baseline.guest_facebook_name, draft.guest_facebook_name)) {
+    patch.gaf_request_pdf_url = null;
+  } else if (!sameText(baseline.primary_guest_name, draft.primary_guest_name)) {
+    patch.gaf_request_pdf_url = null;
+  } else if (!sameText(baseline.guest_email, draft.guest_email)) {
+    patch.gaf_request_pdf_url = null;
+  } else if (!sameText(baseline.guest_phone_number, draft.guest_phone_number)) {
+    patch.gaf_request_pdf_url = null;
+  } else if (!sameText(baseline.guest2_name, draft.guest2_name ?? null)) {
+    patch.gaf_request_pdf_url = null;
+  } else if (!sameNumber(baseline.guest2_age, draft.guest2_age ?? null)) {
+    patch.gaf_request_pdf_url = null;
+  } else if (!sameText(baseline.guest3_name, draft.guest3_name ?? null)) {
+    patch.gaf_request_pdf_url = null;
+  } else if (!sameNumber(baseline.guest3_age, draft.guest3_age ?? null)) {
+    patch.gaf_request_pdf_url = null;
+  } else if (!sameText(baseline.guest4_name, draft.guest4_name ?? null)) {
+    patch.gaf_request_pdf_url = null;
+  } else if (!sameNumber(baseline.guest4_age, draft.guest4_age ?? null)) {
+    patch.gaf_request_pdf_url = null;
+  } else if (!sameText(baseline.guest5_name, draft.guest5_name ?? null)) {
+    patch.gaf_request_pdf_url = null;
+  } else if (!sameNumber(baseline.guest5_age, draft.guest5_age ?? null)) {
+    patch.gaf_request_pdf_url = null;
+  } else if (normDate(baseline.check_in_date) !== normDate(draft.check_in_date ?? '')) {
+    patch.gaf_request_pdf_url = null;
+  } else if (normDate(baseline.check_out_date) !== normDate(draft.check_out_date ?? '')) {
+    patch.gaf_request_pdf_url = null;
+  } else if (timeForCompare(baseline.check_in_time) !== timeForCompare(draft.check_in_time ?? '')) {
+    patch.gaf_request_pdf_url = null;
+  } else if (
+    timeForCompare(baseline.check_out_time) !== timeForCompare(draft.check_out_time ?? '')
+  ) {
+    patch.gaf_request_pdf_url = null;
+  } else if (
+    !sameBool(baseline.guest_requests_surprise_decor, draft.guest_requests_surprise_decor)
+  ) {
+    patch.gaf_request_pdf_url = null;
+  } else if (!sameBool(baseline.need_parking, draft.need_parking)) {
+    patch.gaf_request_pdf_url = null;
+  } else if (draft.need_parking) {
+    if (!sameText(baseline.car_plate_number, draft.car_plate_number)) {
+      patch.gaf_request_pdf_url = null;
+    } else if (!sameText(baseline.car_brand_model, draft.car_brand_model)) {
+      patch.gaf_request_pdf_url = null;
+    } else if (!sameText(baseline.car_color, draft.car_color)) {
+      patch.gaf_request_pdf_url = null;
+    }
+  } else if (!sameBool(baseline.has_pets, draft.has_pets)) {
+    patch.gaf_request_pdf_url = null;
+  }
+
+  if (petDocumentationConfigured(documentRequirements)) {
+    if (!sameBool(baseline.has_pets, draft.has_pets)) {
+      patch.pet_request_pdf_url = null;
+    } else if (draft.has_pets) {
+      if (!sameText(baseline.pet_name, draft.pet_name)) patch.pet_request_pdf_url = null;
+      else if (!sameText(baseline.pet_type, draft.pet_type)) patch.pet_request_pdf_url = null;
+      else if (!sameText(baseline.pet_breed, draft.pet_breed)) patch.pet_request_pdf_url = null;
+      else if (!sameText(baseline.pet_age, draft.pet_age)) patch.pet_request_pdf_url = null;
+      else if (
+        normDate(baseline.pet_vaccination_date) !== normDate(draft.pet_vaccination_date ?? '')
+      ) {
+        patch.pet_request_pdf_url = null;
+      }
+    }
+  }
+
+  return patch;
+}
