@@ -13,7 +13,11 @@ import {
 } from '../_shared/statusMachine.ts';
 import { refreshGuestStayGuideAccessWindow } from '../_shared/guestStayGuide.ts';
 import type { GuestSubmission } from '../_shared/types.ts';
-import { resolvePublicPropertyId } from '../_shared/propertyScope.ts';
+import { createNotification } from '../_shared/notificationService.ts';
+import {
+  resolvePublicPropertyId,
+  resolveOrganizationIdForProperty,
+} from '../_shared/propertyScope.ts';
 import { tryGetAuthenticatedUser } from '../_shared/orgAuth.ts';
 
 serve(async (req) => {
@@ -274,6 +278,21 @@ serve(async (req) => {
           '[submit-form] Telegram staff same-day check-in notify failed (non-fatal):',
           staffTgErr
         );
+      }
+      try {
+        const organizationId = await resolveOrganizationIdForProperty(propertyId);
+        const guestName = String(notifyBooking.primary_guest_name ?? '').trim() || 'A guest';
+        await createNotification({
+          organizationId,
+          propertyId,
+          type: 'booking_pending_review',
+          title: 'New booking submitted',
+          body: `${guestName} submitted a new booking request.`,
+          bookingId: submissionData.id,
+          dedupeKey: `${submissionData.id}:booking_pending_review`,
+        });
+      } catch (notifErr) {
+        console.error('[submit-form] Could not create notification (non-fatal):', notifErr);
       }
     }
 

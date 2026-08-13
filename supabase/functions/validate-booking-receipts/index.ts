@@ -11,6 +11,7 @@
  * Auth:    verifyAdminJwt(req)
  */
 
+import { syncPricingReviewBalanceReceipt } from '../_shared/bookingAiReviewService.ts';
 import { DatabaseService } from '../_shared/databaseService.ts';
 import {
   backfillMissingReceiptAiVerdicts,
@@ -46,6 +47,16 @@ serveAuthenticated('validate-booking-receipts', async (req) => {
     console.log(
       `[validate-booking-receipts] ${bookingId}: validated ${validated.length} receipt(s)`
     );
+    if (validated.some((item) => item.kind === 'balance')) {
+      try {
+        await syncPricingReviewBalanceReceipt(bookingId);
+      } catch (aiReviewErr) {
+        console.error(
+          '[validate-booking-receipts] AI Summary Pricing sync failed (non-fatal):',
+          aiReviewErr
+        );
+      }
+    }
   }
 
   if (errors.length > 0) {

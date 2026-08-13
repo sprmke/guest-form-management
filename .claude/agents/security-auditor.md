@@ -1,6 +1,6 @@
 ---
 name: security-auditor
-description: Security specialist for this repo. Use when implementing or reviewing the admin auth flow, guest PII handling, Supabase edge functions, Google API credentials, or Gmail listener. Invoke with /security-auditor for a focused review.
+description: Security specialist for this repo. Use when implementing or reviewing the admin auth flow, guest PII handling, Supabase edge functions, or Resend inbound approvals. Invoke with /security-auditor for a focused review.
 model: inherit
 tools: Read, Grep, Glob, Bash
 ---
@@ -20,8 +20,8 @@ When invoked, perform a readonly audit. Your tool access does not include Edit/W
 - **Files / Storage**: `payment-receipts`, `pet-vaccinations`, `pet-images`, `parking-endorsements`, `approved-gafs`, `property-media`. Check bucket visibility (public vs signed URL) and MIME enforcement.
 - **Service credentials**:
   - `SUPABASE_SERVICE_ROLE_KEY` — server-only.
-  - Gmail OAuth refresh tokens, Telegram bot tokens — encrypted at rest via `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`.
-  - `RESEND_API_KEY`.
+  - Telegram bot tokens — encrypted at rest via `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY` (legacy env name).
+  - `RESEND_API_KEY`, `RESEND_INBOUND_WEBHOOK_SECRET`.
 - **Approval inbound** (`supabase/functions/approval-email-webhook/`): Svix-signed Resend webhook; `RESEND_INBOUND_WEBHOOK_SECRET`; idempotency via `processed_emails`.
 
 ## 2. Checks to run
@@ -37,7 +37,7 @@ For each surface, look for:
 - Missing org/property scoping — a client-supplied UUID accepted without a membership check.
 - CORS: every response — including errors and OPTIONS preflight — includes `corsHeaders(req)`. Non-wildcard if credentials are sent.
 - Guest PII in logs (console.log of full form data, storage object paths that leak PII).
-- Gmail listener: attachment size limits, filename validation, sender domain check against Azure.
+- Approval inbound: attachment size limits, filename validation, sender allow-list against Documents Approver (`emailTo`).
 - Storage bucket MIME + size restrictions (check `supabase/config.toml` and migration files).
 - Admin email list reading from env and splitting defensively (trim, lowercase, ignore empty).
 
@@ -47,9 +47,8 @@ For each surface, look for:
 - Admin-only edge function that does not call `verifyAdminJwt` at the top of the handler.
 - `transition-booking` accepting a `toStatus` that is not validated against `statusMachine.ts` server-side.
 - `get-form` / `get-sd-form` returning a booking without the intended access check for that route.
-- Calendar event description building a raw `href` with unsanitized `bookingId` or guest fields.
 - Email templates interpolating guest-provided text directly into `innerHTML`.
-- Gmail listener trusting the subject line date range without cross-checking with the booking's DB row.
+- Approval inbound trusting the subject line date range without cross-checking with the booking's DB row.
 - A UI flag disabling security checks rather than just side effects.
 
 ## 4. Output format

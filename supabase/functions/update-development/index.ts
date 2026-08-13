@@ -16,6 +16,7 @@ import {
 } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 import { validateOptionalEmail } from '../_shared/appSettings.ts';
+import { parseDocumentRequirements } from '../_shared/documentRequirements.ts';
 import { verifySuperAdminJwt } from '../_shared/superAdminAuth.ts';
 import { validatePropertyMediaArray } from '../_shared/propertyMedia.ts';
 
@@ -41,6 +42,12 @@ function numberOrNull(value: unknown): number | null | undefined {
   if (value === null) return null;
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   return undefined;
+}
+
+function objectOrEmpty(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? { ...(value as Record<string, unknown>) }
+    : {};
 }
 
 serveAuthenticated('update-development', async (req) => {
@@ -190,6 +197,26 @@ serveAuthenticated('update-development', async (req) => {
       if (err) return jsonError(req, err);
     }
     settingsPatch[key] = value;
+    settingsChanged = true;
+  }
+
+  if (body.documentRequirements !== undefined) {
+    if (!Array.isArray(body.documentRequirements)) {
+      return jsonError(req, 'documentRequirements must be an array');
+    }
+    // `parseDocumentRequirements` skips malformed entries, so compare counts and
+    // reject rather than silently dropping a row the super admin still sees.
+    const parsed = parseDocumentRequirements(body.documentRequirements) ?? [];
+    if (parsed.length !== body.documentRequirements.length) {
+      return jsonError(
+        req,
+        'Each document requirement needs an id, label, order, trigger, and approval source'
+      );
+    }
+    settingsPatch.workflowDefaults = {
+      ...objectOrEmpty(settingsPatch.workflowDefaults),
+      documentRequirements: parsed,
+    };
     settingsChanged = true;
   }
 

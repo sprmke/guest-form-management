@@ -17,6 +17,7 @@
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
+import { syncPricingReviewBalanceReceipt } from '../_shared/bookingAiReviewService.ts';
 import { DatabaseService } from '../_shared/databaseService.ts';
 import {
   pendingDocumentsClearCompletionsJsonbPatch,
@@ -225,6 +226,14 @@ serveAuthenticated('upload-booking-asset', async (req) => {
   await DatabaseService.setWorkflowFields(bookingId, workflowUpdate);
 
   if (assetType === 'guest_balance_payment_receipt') {
+    try {
+      await syncPricingReviewBalanceReceipt(bookingId);
+    } catch (aiReviewErr) {
+      console.error(
+        '[upload-booking-asset] AI Summary Pricing sync failed (non-fatal):',
+        aiReviewErr
+      );
+    }
     try {
       const refreshed = await DatabaseService.getBookingById(bookingId);
       if (refreshed) {

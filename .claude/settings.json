@@ -20,8 +20,17 @@
       "Read(//tmp/**)",
       "Read(//private/tmp/**)",
       "Bash(bunx eslint *)",
-      "Bash(bun x *)"
-    ]
+      "Bash(bun x *)",
+      "Bash(claude --version)",
+      "Read(//Users/michaelmanlulu/.local/share/claude/versions/**)",
+      "Bash(npm -g config get prefix)",
+      "Read(//Users/michaelmanlulu/.claude/**)",
+      "Bash(xargs -I{} dirname {})",
+      "Read(//Users/michaelmanlulu/**)",
+      "Bash(curl -s -m 10 \"https://downloads.claude.ai/claude-code-releases/latest\")",
+      "Bash(claude update *)"
+    ],
+    "additionalDirectories": ["/Users/michaelmanlulu/.claude"]
   },
   "hooks": {
     "UserPromptSubmit": [

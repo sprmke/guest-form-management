@@ -7,7 +7,7 @@ description: Resend inbound approval-email-webhook for Azure GAF/pet PDFs (repla
 
 **Production path:** Resend Receiving → **`approval-email-webhook`**.
 
-The Gmail API poller (`gmail-listener`) and **`gmail-backfill-approvals`** were **removed** (Phase 2 of `remove-google-calendar-sheets`). Do not reintroduce `gmail.readonly` polling for host-facing production — it triggers Google CASA.
+The Gmail API poller (`gmail-listener`), **`gmail-backfill-approvals`**, and **Connect Google** OAuth UI were **removed**. Do not reintroduce `gmail.readonly` polling or host-facing Gmail OAuth — it triggers Google CASA.
 
 ## Canonical docs
 
@@ -15,7 +15,6 @@ The Gmail API poller (`gmail-listener`) and **`gmail-backfill-approvals`** were 
 - Matcher: `supabase/functions/_shared/approvalEmailMatcher.ts`
 - Svix verify: `supabase/functions/_shared/resendWebhookVerify.ts`
 - Webhook: `supabase/functions/approval-email-webhook/index.ts`
-- Reconcile (mark-incomplete recovery): `reconcile-document-approvals` + `approvalDocumentReconcile.ts`
 - Rules: `.cursor/rules/booking-workflow.mdc`
 
 ## Algorithm (happy path)
@@ -32,14 +31,10 @@ The Gmail API poller (`gmail-listener`) and **`gmail-backfill-approvals`** were 
 ## Admin recovery
 
 - **Mark as Complete** on Pending Documents (manual PDF upload if needed).
-- **Reconcile document approvals** — re-applies stored PDFs after mark-incomplete (no inbox poll).
-
-## Connect Google UI
-
-Gmail OAuth plumbing remains for **internal/testing only**. Production approvals do **not** require hosts to connect Gmail.
 
 ## Don'ts
 
 - Don't call Gmail History API from edge functions for approval intake.
+- Don't add Connect Google / `google-mail-oauth-*` for hosts.
 - Don't bypass `WorkflowOrchestrator`.
 - Don't auto-resolve ambiguous multi-matches.
