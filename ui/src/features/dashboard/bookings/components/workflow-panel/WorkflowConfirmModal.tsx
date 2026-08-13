@@ -7,7 +7,26 @@ import type { ReactNode } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
+import { statusLabel, type BookingStatus } from '@/features/dashboard/bookings/lib/bookingStatus';
+
 import { cn } from '@/lib/utils';
+
+/** One-line summary for transition confirms — status names in semibold, not quotes. */
+export function WorkflowStatusTransitionDescription({
+  fromStatus,
+  toStatus,
+}: {
+  fromStatus: BookingStatus;
+  toStatus: BookingStatus;
+}) {
+  return (
+    <>
+      Move from <span className="text-foreground font-semibold">{statusLabel(fromStatus)}</span>
+      {' to '}
+      <span className="text-foreground font-semibold">{statusLabel(toStatus)}</span>.
+    </>
+  );
+}
 
 export function WorkflowConfirmModal({
   title,
@@ -21,7 +40,7 @@ export function WorkflowConfirmModal({
   destructive = false,
 }: {
   title: string;
-  description: string;
+  description: ReactNode;
   /** Short host-facing bullets describing what will happen on confirm. */
   effectLines?: string[];
   banner?: ReactNode;

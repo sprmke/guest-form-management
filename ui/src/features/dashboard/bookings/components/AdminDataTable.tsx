@@ -277,8 +277,8 @@ export function AdminTableFlagsCell({
       ) : null}
       {has_invalid_receipt_ai ? (
         <span
-          title="AI: Invalid payment receipt"
-          aria-label="AI detected invalid payment receipt"
+          title="AI: Needs review"
+          aria-label="AI: Needs review"
           className={cn('size-7', bookingFlagIconChipClass.invalidReceipt)}
         >
           <X className="size-3.5" strokeWidth={2.75} aria-hidden />

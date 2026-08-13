@@ -329,12 +329,10 @@ export function ParkingRequestForm({
   const cardTitle =
     variant === 'edit' ? workflowFormEditTitle('Parking request') : 'Parking request';
 
+  const showNonRefundableWarning = isParkingRequestDraftComplete(getValues());
+
   return (
     <WorkflowFormShell title={cardTitle} variant={variant}>
-      <div className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/30">
-        Parking fee is <strong>non-refundable</strong> and cannot be rescheduled after this step.
-      </div>
-
       <Field
         label="Parking Owner"
         required
@@ -494,6 +492,12 @@ export function ParkingRequestForm({
             }
           />
         </Field>
+      ) : null}
+
+      {showNonRefundableWarning ? (
+        <div className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/30">
+          Parking fee is <strong>non-refundable</strong> and cannot be rescheduled after this step.
+        </div>
       ) : null}
     </WorkflowFormShell>
   );

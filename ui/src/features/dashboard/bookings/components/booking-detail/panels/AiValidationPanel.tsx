@@ -7,6 +7,8 @@ import {
   receiptAiVerdictReportTextClass,
   type ReceiptAiVerdict,
 } from '@/features/dashboard/bookings/components/ReceiptAiVerdictBadge';
+import { useBookingAiReview } from '@/features/dashboard/bookings/hooks/useBookingAiReview';
+import { hasBookingAiReviewRun } from '@/features/dashboard/bookings/lib/bookingAiReviewProgress';
 import {
   collectBookingAiValidations,
   sortBookingAiValidations,
@@ -27,6 +29,10 @@ function pendingLabel(verdict: ReceiptAiVerdict, loading: boolean): string {
   return BADGED_VERDICTS.has(String(verdict ?? '').toLowerCase()) ? '' : 'Not checked';
 }
 
+/**
+ * Per-document AI verdicts from Overview. Hidden until an admin runs AI Summary —
+ * never auto-checks on page view (token cost).
+ */
 export function AiValidationPanel({
   booking,
   onPreview,
@@ -36,6 +42,9 @@ export function AiValidationPanel({
   onPreview: PreviewHandler;
   isDocumentAiBackfilling?: boolean;
 }) {
+  const { data: review } = useBookingAiReview(booking.id);
+  if (!hasBookingAiReviewRun(review)) return null;
+
   const items = sortBookingAiValidations(
     collectBookingAiValidations(booking, isDocumentAiBackfilling)
   );

@@ -7,8 +7,7 @@
  *    as a single direction control. These commit real status changes, unlike the
  *    deck header's arrows which only move the view, so they are deliberately a
  *    different shape and sit in their own footer.
- * 2. The step-scoped undo ("mark … incomplete"), quiet and full width.
- * 3. Cancel booking, below a rule, on a soft rose wash — shown only on the live
+ * 2. Cancel booking, below a rule, on a soft rose wash — shown only on the live
  *    step (or in the kanban modal), same as return/proceed; hidden while browsing
  *    earlier completed stages. Disappears for good once the guest has checked in
  *    (`canCancelBookingAtStatus`).
@@ -21,14 +20,14 @@
  * presentation is re-ranked.
  */
 
-import { ArrowLeft, ArrowRight, Loader2, RotateCcw, Save } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2, Save } from 'lucide-react';
 
+import { shortStatusLabel } from '@/features/dashboard/bookings/lib/bookingStages';
 import {
   canCancelBookingAtStatus,
   statusLabel,
   type BookingStatus,
 } from '@/features/dashboard/bookings/lib/bookingStatus';
-import { shortStatusLabel } from '@/features/dashboard/bookings/lib/bookingStages';
 import {
   PARKING_NESTED_KEY,
   type PendingDocNestedKey,
@@ -56,16 +55,17 @@ type Props = {
   prev: BookingStatus | null;
   next: BookingStatus | null;
   onOpenBackConfirm: (toStatus: BookingStatus) => void;
-  selectedPendingDocCanMarkIncomplete: boolean;
   selectedPendingDocCanMarkComplete: boolean;
   selectedPendingDocRequired: boolean;
   selectedPendingDocCompleted: boolean;
   activePendingDocSubStatus: PendingDocNestedKey;
   activePendingDocLabel: string;
-  onMarkPendingDocSubStatusIncomplete: (sub: PendingDocNestedKey) => void;
   onMarkPendingDocSubStatusComplete: (sub: PendingDocNestedKey) => void;
+  onOpenDocApprovalModal: (sub: PendingDocNestedKey) => void;
+  selectedPendingDocUsesApprovalModal: boolean;
   showProceedToReadyForCheckin: boolean;
   pendingDocumentsComplete: boolean;
+  pendingDocumentsBlockedHint: string;
   onOpenForwardProceedConfirm: (toStatus: BookingStatus, label: string) => void;
   showLateParkingActions: boolean;
   livePipelineActions: boolean;
@@ -182,16 +182,17 @@ export function WorkflowActionsBar({
   prev,
   next,
   onOpenBackConfirm,
-  selectedPendingDocCanMarkIncomplete,
   selectedPendingDocCanMarkComplete,
   selectedPendingDocRequired,
   selectedPendingDocCompleted,
   activePendingDocSubStatus,
   activePendingDocLabel,
-  onMarkPendingDocSubStatusIncomplete,
   onMarkPendingDocSubStatusComplete,
+  onOpenDocApprovalModal,
+  selectedPendingDocUsesApprovalModal,
   showProceedToReadyForCheckin,
   pendingDocumentsComplete,
+  pendingDocumentsBlockedHint,
   onOpenForwardProceedConfirm,
   showLateParkingActions,
   livePipelineActions,
@@ -214,8 +215,13 @@ export function WorkflowActionsBar({
     primary = {
       label: `Mark ${activeDocShortLabel} complete`,
       enabled: selectedPendingDocCanMarkComplete,
-      onSelect: () => onMarkPendingDocSubStatusComplete(activePendingDocSubStatus),
-      blockedHint: `Fill in the ${activeDocShortLabel.toLowerCase()} details above first.`,
+      onSelect: () =>
+        selectedPendingDocUsesApprovalModal
+          ? onOpenDocApprovalModal(activePendingDocSubStatus)
+          : onMarkPendingDocSubStatusComplete(activePendingDocSubStatus),
+      blockedHint: selectedPendingDocUsesApprovalModal
+        ? undefined
+        : `Fill in the ${activeDocShortLabel.toLowerCase()} details above first.`,
     };
   } else if (inDocStep && showProceedToReadyForCheckin) {
     primary = {
@@ -227,7 +233,7 @@ export function WorkflowActionsBar({
           'READY_FOR_CHECKIN',
           proceedToStatusLabel('READY_FOR_CHECKIN', false)
         ),
-      blockedHint: 'Complete the remaining document steps to continue.',
+      blockedHint: pendingDocumentsBlockedHint,
     };
   } else if (showLateParkingActions) {
     primary = {
@@ -252,21 +258,15 @@ export function WorkflowActionsBar({
   const actionsBusy = transitionPending || cancelPending || progressSavePending;
   const primaryDisabled = !primary?.enabled || actionsBusy;
 
-  const showMarkIncomplete = showTransitions && inDocStep && selectedPendingDocCanMarkIncomplete;
   const showTransitionRow = showTransitions && (primary !== null || backTo !== null);
   const pairedTransitionActions = backTo !== null && primary !== null;
   const primaryButtonLabel =
     primary && pairedTransitionActions ? (primary.compactLabel ?? primary.label) : primary?.label;
   const showNotRequiredNote = showTransitions && docStepNotRequired && primary === null;
-  const showDeadEndNote =
-    showTransitions && !showTransitionRow && !showNotRequiredNote && !showMarkIncomplete;
+  const showDeadEndNote = showTransitions && !showTransitionRow && !showNotRequiredNote;
 
   const hasStageActions =
-    showTransitionRow ||
-    showNotRequiredNote ||
-    showDeadEndNote ||
-    showMarkIncomplete ||
-    showProgressSave;
+    showTransitionRow || showNotRequiredNote || showDeadEndNote || showProgressSave;
   if (!hasStageActions && !showCancel) return null;
 
   return (
@@ -346,21 +346,6 @@ export function WorkflowActionsBar({
             />
           ) : null}
         </div>
-      ) : null}
-
-      {showMarkIncomplete ? (
-        <button
-          type="button"
-          disabled={actionsBusy}
-          onClick={() => onMarkPendingDocSubStatusIncomplete(activePendingDocSubStatus)}
-          className={cn(
-            quietRowClass,
-            'text-muted-foreground hover:bg-muted hover:text-foreground'
-          )}
-        >
-          <RotateCcw className="size-3.5 shrink-0" aria-hidden />
-          Mark {activeDocShortLabel} incomplete
-        </button>
       ) : null}
 
       {showDeadEndNote ? (

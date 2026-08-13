@@ -2,7 +2,6 @@ import { Link } from 'react-router-dom';
 
 import { ExternalLink, Loader2 } from 'lucide-react';
 
-import { PendingReviewWorkflowGate } from '@/features/dashboard/bookings/components/PendingReviewWorkflowGate';
 import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
 import { BookingDetailAssetPreviewModal } from '@/features/dashboard/bookings/components/booking-detail/BookingDetailAssetPreviewModal';
 import { WorkflowPanel } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowPanel';
@@ -106,9 +105,7 @@ export function BookingKanbanWorkflowModal({ bookingId, open, onOpenChange, prev
           ) : null}
 
           {booking ? (
-            <PendingReviewWorkflowGate booking={booking} layout="inline">
-              <WorkflowPanel booking={booking} variant="modal" onPreview={handlePreview} />
-            </PendingReviewWorkflowGate>
+            <WorkflowPanel booking={booking} variant="modal" onPreview={handlePreview} />
           ) : null}
         </div>
       </ResponsiveModalContent>

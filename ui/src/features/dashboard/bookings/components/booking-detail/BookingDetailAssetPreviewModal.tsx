@@ -101,7 +101,7 @@ export function receiptAiMetaForPreviewAsset(
 export function BookingDetailAssetPreviewModal({
   asset,
   booking,
-  isReceiptAiBackfilling,
+  isReceiptAiBackfilling = false,
   loading,
   onClose,
 }: {
@@ -112,7 +112,7 @@ export function BookingDetailAssetPreviewModal({
     type: 'image' | 'pdf' | 'file';
   } | null;
   booking: BookingRow | null | undefined;
-  isReceiptAiBackfilling: boolean;
+  isReceiptAiBackfilling?: boolean;
   loading: boolean;
   onClose: () => void;
 }) {
