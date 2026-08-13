@@ -3,10 +3,10 @@
  * Uses GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY (32 bytes hex or base64).
  */
 
-import { decryptGmailRefreshToken, encryptGmailRefreshToken } from './gmailMailOAuthCrypto.ts';
+import { decryptIntegrationSecret, encryptIntegrationSecret } from './secretsCrypto.ts';
 
 export async function encryptPropertySecret(plaintext: string): Promise<string> {
-  return encryptGmailRefreshToken(plaintext);
+  return encryptIntegrationSecret(plaintext);
 }
 
 export async function decryptPropertySecret(
@@ -15,7 +15,7 @@ export async function decryptPropertySecret(
   const t = (ciphertext ?? '').trim();
   if (!t) return null;
   try {
-    return await decryptGmailRefreshToken(t);
+    return await decryptIntegrationSecret(t);
   } catch (e) {
     console.error('[propertySecretCrypto] decrypt failed:', e);
     return null;

@@ -59,19 +59,17 @@ export function isPostPendingDocumentsStatus(status: string): boolean {
   return (POST_PENDING_DOCUMENTS_STATUSES as readonly string[]).includes(status);
 }
 
-/** Same-status manual parking document completion/clear at RFCI+ (no status revert). */
+/** Same-status manual parking document completion at RFCI+ (no status revert). */
 export function isLatePendingParkingDocumentTransition(
   from: BookingStatus,
   to: BookingStatus,
   payload: {
     document_completion_target?: string;
-    document_completion_clear_target?: string;
   },
   manual: boolean
 ): boolean {
   if (!manual || from !== to || !isPostPendingDocumentsStatus(from)) return false;
-  const target = payload.document_completion_target ?? payload.document_completion_clear_target;
-  return target === 'PENDING_PARKING_REQUEST';
+  return payload.document_completion_target === 'PENDING_PARKING_REQUEST';
 }
 
 /**
@@ -125,8 +123,6 @@ export function pendingDocumentsClearPatchForGuestEditRevert(): Record<string, n
     gaf_completed_at: null,
     parking_completed_at: null,
     pet_completed_at: null,
-    gaf_manual_incomplete: false,
-    pet_manual_incomplete: false,
     approved_gaf_pdf_url: null,
     approved_pet_pdf_url: null,
     parking_rate_paid: null,
@@ -315,9 +311,6 @@ type PendingDocumentsBookingFields = {
   approved_gaf_pdf_url?: string | null;
   approved_pet_pdf_url?: string | null;
   parking_endorsement_url?: string | null;
-  /** Admin marked GAF sub-step incomplete; Gmail approval or "mark complete" clears this. */
-  gaf_manual_incomplete?: boolean | null | string;
-  pet_manual_incomplete?: boolean | null | string;
 };
 
 function bookingFlagTrue(v: unknown): boolean {
@@ -333,7 +326,6 @@ function parseCompletionEntry(raw: unknown): DocumentRequirementCompletion | und
   return {
     completedAt: typeof entry.completedAt === 'string' ? entry.completedAt : null,
     approvedPdfUrl: typeof entry.approvedPdfUrl === 'string' ? entry.approvedPdfUrl : null,
-    manualIncomplete: bookingFlagTrue(entry.manualIncomplete),
   };
 }
 
@@ -361,14 +353,12 @@ export function readDocumentCompletions(
     map.gaf = {
       completedAt: booking.gaf_completed_at ?? null,
       approvedPdfUrl: booking.approved_gaf_pdf_url ?? null,
-      manualIncomplete: bookingFlagTrue(booking.gaf_manual_incomplete),
     };
   }
   if (!map.pet) {
     map.pet = {
       completedAt: booking.pet_completed_at ?? null,
       approvedPdfUrl: booking.approved_pet_pdf_url ?? null,
-      manualIncomplete: bookingFlagTrue(booking.pet_manual_incomplete),
     };
   }
   return map;
@@ -392,7 +382,7 @@ export function pendingDocumentsClearCompletionsJsonbPatch(
 ): DocumentCompletionsMap {
   const map = parseCompletionsMap(existingCompletions);
   for (const id of [...Object.keys(map), 'gaf', 'pet']) {
-    map[id] = { completedAt: null, approvedPdfUrl: null, manualIncomplete: false };
+    map[id] = { completedAt: null, approvedPdfUrl: null };
   }
   return map;
 }
@@ -401,7 +391,7 @@ function isCompletionDone(
   completion: DocumentRequirementCompletion | undefined,
   requiresApprovedPdf: boolean
 ): boolean {
-  if (!completion || completion.manualIncomplete) return false;
+  if (!completion) return false;
   if (requiresApprovedPdf) return Boolean(completion.approvedPdfUrl?.trim());
   return !!completion.completedAt || !!completion.approvedPdfUrl;
 }

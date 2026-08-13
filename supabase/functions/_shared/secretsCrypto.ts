@@ -1,6 +1,6 @@
 /**
- * AES-256-GCM encrypt/decrypt for Gmail OAuth refresh tokens at rest.
- * Key: GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY — 32 bytes as hex (64 chars) or standard base64.
+ * AES-256-GCM encrypt/decrypt for integration secrets at rest (Telegram bot tokens).
+ * Key: GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY — legacy env name; 32 bytes as hex (64 chars) or base64.
  */
 
 function decodeEncryptionKey(raw: string): Uint8Array {
@@ -45,10 +45,14 @@ function fromBase64Url(s: string): Uint8Array {
   return out;
 }
 
-export async function encryptGmailRefreshToken(plaintext: string): Promise<string> {
+function encryptionKeyRaw(): string {
   const keyRaw = Deno.env.get('GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY');
-  if (!keyRaw) throw new Error('Missing GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY');
-  const key = await importAesKey(keyRaw);
+  if (!keyRaw?.trim()) throw new Error('Missing GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY');
+  return keyRaw;
+}
+
+export async function encryptIntegrationSecret(plaintext: string): Promise<string> {
+  const key = await importAesKey(encryptionKeyRaw());
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const enc = new TextEncoder();
   const ct = new Uint8Array(
@@ -60,10 +64,8 @@ export async function encryptGmailRefreshToken(plaintext: string): Promise<strin
   return toBase64Url(combined);
 }
 
-export async function decryptGmailRefreshToken(ciphertextB64Url: string): Promise<string> {
-  const keyRaw = Deno.env.get('GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY');
-  if (!keyRaw) throw new Error('Missing GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY');
-  const key = await importAesKey(keyRaw);
+export async function decryptIntegrationSecret(ciphertextB64Url: string): Promise<string> {
+  const key = await importAesKey(encryptionKeyRaw());
   const combined = fromBase64Url(ciphertextB64Url.trim());
   if (combined.length < 13) throw new Error('Invalid ciphertext');
   const iv = combined.slice(0, 12);

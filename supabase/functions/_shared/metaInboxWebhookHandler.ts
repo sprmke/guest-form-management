@@ -4,6 +4,7 @@
 
 import { metaMessagingWindowExpiry, normalizeMetaWebhookTimestamp } from './metaTimestamp.ts';
 import { fetchMetaMessengerParticipantProfile, getPageAccessToken } from './metaInboxGraph.ts';
+import { createNotification } from './notificationService.ts';
 import {
   buildDmThreadId,
   getConnectionByMetaPageId,
@@ -121,6 +122,20 @@ export async function handleMetaMessagingWebhook(
       });
     } catch (e) {
       console.warn('[handleMetaMessagingWebhook] telegram notify:', e);
+    }
+    try {
+      await createNotification({
+        organizationId: orgId,
+        propertyId: conv.property_id ?? null,
+        parkingId: conv.parking_id ?? null,
+        type: 'inbox_new_message',
+        title: 'New guest message',
+        body: preview.slice(0, 200),
+        conversationId: conv.id,
+        dedupeKey: `${eventId}:inbox_new_message`,
+      });
+    } catch (e) {
+      console.warn('[handleMetaMessagingWebhook] notification create:', e);
     }
   }
 }

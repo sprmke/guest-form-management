@@ -3,7 +3,6 @@
  */
 
 import { createServiceClient } from './orgAuth.ts';
-import { trimOrEmpty } from './stringUtils.ts';
 
 import {
   getPropertyTelegramCredentialsStatus,
@@ -17,14 +16,7 @@ export type IntegrationFieldStatus = {
   source: IntegrationFieldSource;
 };
 
-export type PropertyGmailIntegrationStatus = {
-  connected: boolean;
-  source: 'db' | 'none';
-  googleAccountEmail: string | null;
-};
-
 export type PropertyIntegrationStatus = {
-  gmail: PropertyGmailIntegrationStatus;
   telegram: {
     marketing: TelegramCredentialsStatus;
     staff: TelegramCredentialsStatus;
@@ -37,21 +29,19 @@ export type PropertyIntegrationStatus = {
 
 export type PlatformSecretsStatus = {
   resendApiKeyConfigured: boolean;
-  gmailEncryptionKeyConfigured: boolean;
-  gmailWebClientConfigured: boolean;
+  secretsEncryptionKeyConfigured: boolean;
   geminiApiKeyConfigured: boolean;
   groqApiKeyConfigured: boolean;
 };
 
 export function buildPlatformSecretsStatus(): PlatformSecretsStatus {
+  const trim = (v: string | undefined) => (v ?? '').trim();
   return {
-    resendApiKeyConfigured: !!trimOrEmpty(Deno.env.get('RESEND_API_KEY')),
-    gmailEncryptionKeyConfigured: !!trimOrEmpty(Deno.env.get('GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY')),
-    gmailWebClientConfigured: !!trimOrEmpty(Deno.env.get('GMAIL_API_WEB_CLIENT_JSON')),
+    resendApiKeyConfigured: !!trim(Deno.env.get('RESEND_API_KEY')),
+    secretsEncryptionKeyConfigured: !!trim(Deno.env.get('GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY')),
     geminiApiKeyConfigured:
-      !!trimOrEmpty(Deno.env.get('GEMINI_API_KEYS')) ||
-      !!trimOrEmpty(Deno.env.get('GEMINI_API_KEY')),
-    groqApiKeyConfigured: !!trimOrEmpty(Deno.env.get('GROQ_API_KEY')),
+      !!trim(Deno.env.get('GEMINI_API_KEYS')) || !!trim(Deno.env.get('GEMINI_API_KEY')),
+    groqApiKeyConfigured: !!trim(Deno.env.get('GROQ_API_KEY')),
   };
 }
 
@@ -61,15 +51,6 @@ export async function buildParkingIntegrationStatus(
   if (!parkingId.trim()) {
     throw new Error('parkingId required for integration status');
   }
-  const sb = createServiceClient();
-
-  const { data: parkingRow } = await sb
-    .from('parking_settings')
-    .select('gmail_connected')
-    .eq('parking_id', parkingId)
-    .maybeSingle();
-
-  const gmailConnected = Boolean(parkingRow?.gmail_connected);
 
   const scope = { parkingId };
   const [parkingTelegram, financeTelegram] = await Promise.all([
@@ -78,11 +59,6 @@ export async function buildParkingIntegrationStatus(
   ]);
 
   return {
-    gmail: {
-      connected: gmailConnected,
-      source: gmailConnected ? 'db' : 'none',
-      googleAccountEmail: null,
-    },
     telegram: {
       marketing: parkingTelegram,
       staff: parkingTelegram,
@@ -99,15 +75,6 @@ export async function buildPropertyIntegrationStatus(
   if (!propertyId.trim()) {
     throw new Error('propertyId required for integration status');
   }
-  const sb = createServiceClient();
-
-  const { data: gmailRow } = await sb
-    .from('gmail_mail_integration')
-    .select('refresh_token_encrypted, google_account_email')
-    .eq('property_id', propertyId)
-    .maybeSingle();
-
-  const gmailConnected = !!trimOrEmpty(gmailRow?.refresh_token_encrypted as string | null);
 
   const [marketing, staff, admin, finance, maintenance, chat] = await Promise.all([
     getPropertyTelegramCredentialsStatus('marketing', propertyId),
@@ -119,13 +86,6 @@ export async function buildPropertyIntegrationStatus(
   ]);
 
   return {
-    gmail: {
-      connected: gmailConnected,
-      source: gmailConnected ? 'db' : 'none',
-      googleAccountEmail: gmailConnected
-        ? trimOrEmpty(gmailRow?.google_account_email as string | null) || null
-        : null,
-    },
     telegram: { marketing, staff, admin, finance, maintenance, chat },
   };
 }
