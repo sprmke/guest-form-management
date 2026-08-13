@@ -249,7 +249,12 @@ export function SegmentedControl<T extends string>({
         )}
         pillClassName={resolvedPillClassName}
         aria-label={ariaLabel}
-        remeasureDeps={[visible.length, value, size]}
+        remeasureDeps={[
+          visible.length,
+          value,
+          size,
+          visible.map((option) => option.ariaLabel ?? '').join('|'),
+        ]}
       >
         {visible.map(
           ({

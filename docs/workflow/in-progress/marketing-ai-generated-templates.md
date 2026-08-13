@@ -3,12 +3,21 @@ stage: in-progress
 title: 'Marketing 4: AI-Generated Marketing Calendar, Design & Video Templates — Implementation Plan'
 status: in-progress
 tags: [planning, planned-modules, marketing, templates]
-updated: 2026-08-10
+updated: 2026-08-14
 ---
 
 # Marketing 4: AI-Generated Marketing Calendar, Design & Video Templates — Implementation Plan
 
-**Status:** In progress — **calendar tab production-hardened** (edge + compiler + Generate with AI modal + fan-out save for 3 orientations + empty-prompt guards + partial-save handling). Design/Video compilers and entry points still pending.
+**Status:** In progress — **calendar tab production-hardened** (edge + compiler + Generate with AI modal + fan-out save for 3 orientations + empty-prompt guards + partial-save handling). **Design tab AI generate shipped** (category/content/include options + readability hardening + new layout archetypes). **Video tab AI generate shipped** (scene-storyboard compiler + Generate with AI modal + fan-out save for 3 formats).
+
+### Video AI generate (2026-08-13)
+
+- Modal reuses the Design-style **Content** then **Look** grouping: category chips (6 `VideoCategory` ids), **Content** textarea (category default), **Include** toggles (property photo, org logo, property name, CTA). Look: Suggestions (8 curated storyboard vibes), Look prompt, and video-specific pickers — **Length** (Auto/Quick 3-scene/Standard 4-scene/Extended 5-scene), **Type** (4 allow-listed font pairings), **Motion** (Auto/Calm/Energetic/Cinematic, overrides every scene's motion from a mood pool)
+- Token schema (`VideoTemplateTokens`, mirrored client/edge): `category`, `scenes: Array<{kind, durationSec, transition, motion}>` (3-5 scenes), `fontPairing`, one flat `copy` bundle (`headline`/`subheadline`/`promoLine`/`slotLabels`/`ctaLine`/`rulesLine`), `label`. The AI is not asked for per-scene copy or narrative role — `videoAiProjectBuilder.ts` deterministically assigns each scene a role by position (first = hook, last = cta, middle = broll/offer by kind), derives `textBeats`/overlay from that role, and distributes the flat copy bundle onto scenes exactly like the hand-authored storyboard recipes do. This keeps the LLM schema small while guaranteeing a valid hook → body → CTA arc every time.
+- Reuses the existing per-scene `VideoScene.motion` override and `VideoTransition`/`VideoSceneKind` enums directly — no new rendering path. AI-generated projects render through the exact same `VideoCompositions.tsx` path as hand-authored templates.
+- `VideoProject.templateId` is one of 4 synthetic ids (`ai-editorial-serif` / `ai-cinematic-serif` / `ai-modern-sans` / `ai-warm-serif`) registered in `videoTemplateTypography.ts`'s font-pairing map, so the existing typography/thumbnail/export pipeline resolves the AI-picked font pairing with zero special-casing. Palette stays brand-color-driven like every hand-authored template (no AI-picked hex palette for video — Design/Calendar's palette tokens don't carry over, since video colors are tightly coupled to the org brand color throughout the Remotion composition).
+- Property photo/video randomization matches Design/Calendar: each of the 3 saved formats (Story/Post/Landscape) gets a different rotation offset into the property media list.
+- Saves fan out to 3 `marketing_templates` rows (Story/Post/Landscape) sharing an `aiGenerationId`, each with a headlessly-rendered thumbnail (`renderVideoProjectThumbnail`) captured eagerly at save time — no live-store gymnastics needed (unlike Design's Polotno thumbnail capture), since Remotion stills render directly from an arbitrary `VideoProject`.
 
 ### Calendar polish (2026-08-06)
 
@@ -28,9 +37,20 @@ updated: 2026-08-10
 - 12 pastel Instagrammable suggestions (`calendarAiGenerateOptions.ts`); modal shows 4 by default with **View more** / **Show less**; each card has a mini palette preview
 - Layout / Type / Background use visual choice buttons (layout/background thumbnails, type sample glyph) with Auto default; prefs sent to edge + applied as token locks client-side
 - Include chips always visible; unavailable photo/amenities disabled with title hint
-- Header: “Creates Square, Portrait, and Landscape — edit any format after”
+- Header: “Creates beautiful AI generated calendars you can edit.” (Design: “…designs you can edit.”)
 - Advanced settings (collapsed): show/hide calendar chrome + optional context (photo/amenities/availability); element toggles apply via `applyCalendarAiElementsToStyles`
 - AI saves share `aiGenerationId`; removing one Custom card deletes Square/Portrait/Landscape siblings
+
+### Design AI generate (2026-08-13)
+
+- Modal grouped **Content** then **Look**. Content first: category chips (`promo`, `slots`, `giveaway`, `fully-booked`, `custom` last / blank copy), **Content** textarea (category default), **Include** toggles (property photo, org logo, property name, CTA — disabled with a hint). Look: Suggestions, Look prompt, Layout / Type / Background
+- Backend token schema and prompt updated to use `category`, `content`, and `includeContext` (`propertyPhoto`, `orgLogo`, `propertyName`, `cta`)
+- New design layout archetypes (`gradient-frame`, `photo-bottom`, `left-stack`) in a shared compiler (`polotnoAiCampaignDocuments.ts`) that renders from the same primitives as hand-authored templates
+- Readability hardening: high-contrast text panels, bottom gradient overlays for text-over-image layouts, clamped WCAG-safe panel colors, and forced light-on-dark primary text
+- Property photo randomization: for both calendar and design, when the property photo include is enabled, each of the three generated formats (Square/Portrait/Landscape or Instagram Post/Story/Facebook Post) gets a randomly selected property image instead of always using the cover photo
+- Design compiler always applies the included property photo (full-bleed image + page background, or a photo-bottom image node) even when the model returns a non-photo `backgroundMood`
+- Design sidebar thumbs are captured from the mounted Polotno Workspace at generate/select time (`designJson.thumbnailDataUrl`) — headless `toBlob` was snapshotting the live canvas for every custom card because compiled docs shared `page-1`
+- Generated design campaigns save under **Custom** as Square/Portrait/Landscape like other campaigns
 
 ## Calendar MVP decisions (session 2026-08-04)
 

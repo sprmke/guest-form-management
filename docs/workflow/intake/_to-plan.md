@@ -2,7 +2,7 @@
 title: 'Claude To Plan'
 status: archived
 tags: [planning]
-updated: 2026-08-13
+updated: 2026-08-14
 ---
 
 **Status legend:** ✅ done · 🚧 in progress · 📋 planned (plan doc written) · 🔵 pending / open · ❌ cancelled / won't do
@@ -205,8 +205,8 @@ Do /impeccable critique, audit, review, harden & polish of our current e2e booki
 
 - Improve UI/UX of entire booking detail page and edit form
 - Improve UI/UX and refine each elements, sections, modal, actions, process, status, logic and flow for booking e2e flow and make sure it's production ready
-  - Update implementation for automated gmail listener to use resend reply/hooks to prevent the need of Google CASA approval
-  - Entirely remove or limit access for google calendar and sheets sync
+  - ✅ Update implementation for automated gmail listener to use resend reply/hooks to prevent the need of Google CASA approval → **Done:** [`remove-google-calendar-sheets.md`](../done/remove-google-calendar-sheets.md)
+  - ✅ Entirely remove or limit access for google calendar and sheets sync → **Done:** [`remove-google-calendar-sheets.md`](../done/remove-google-calendar-sheets.md)
   - Check and refine all automation triggers for each step/status
   - Update AI validation logic, display, etc
   - Refine and improve UI/UX for each step/status
@@ -308,7 +308,7 @@ Apply to all pages including both public and dashboard pages
 
 ===
 
-📋 Do ground up redesign in dashboard UI to not make it look like AI generated app
+❌ Do ground up redesign in dashboard UI to not make it look like AI generated app
 
 Even after multiple redesign changes, it looks and feel like our dashboard UI looks like AI generated dashboard app.
 We need to do /impeccable critique, audit then do plan, shape, document then do layout, optimize, bolder & polish.
@@ -319,7 +319,7 @@ We can separate our dashboard redesign to different phases. Maybe start with bas
 
 Just make sure that we don't change or affect any public related pages that we have. make sure not even one single style on our public pages will be affected. We need to make sure that the design in our dashboard is scoped & isolated and will not affect our public UIs.
 
-→ **Plan:** [`../planned/dashboard-ground-up-redesign.md`](../planned/dashboard-ground-up-redesign.md)
+→ **Won't do:** [`../wont-do/dashboard-ground-up-redesign.md`](../wont-do/dashboard-ground-up-redesign.md) — incremental dashboard polish only; no dedicated ground-up pass
 
 ===
 
@@ -427,7 +427,7 @@ After we refine the roles & permissions that we have on both org and property le
 
 ===
 
-📋 In app notification for chat & other activity
+🚧 In app notification for chat & other activity
 
 When we receive new chat or guest message from inbox, we should display a toast or notification message on our app as long as we are using the app and even we are not on inbox page.
 

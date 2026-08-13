@@ -2,7 +2,7 @@
 title: 'Mobile native redesign'
 stage: in-progress
 status: in-progress
-updated: 2026-08-11
+updated: 2026-08-14
 ---
 
 # Ground-Up Mobile Redesign — "Feels Like a Native App"
@@ -116,7 +116,7 @@ Converts to bottom sheet (via `ResponsiveModal`) when **any** of: >~3 fields or 
 Rough sweep of the 55 sites, by module (destructive confirms and single-field prompts stay Dialog everywhere; forms/pickers/detail panels convert):
 
 - **Inbox**: quick-reply/AI-response/page-picker dialogs → sheet; `InboxMediaPreviewDialog` → special-cased as a full-bleed lightbox, not `ResponsiveModal`.
-- **Bookings**: `PayParkingModal`, `BookingKanbanWorkflowModal`, `PropertyIntegrationsPanel`, Telegram/template config dialogs → sheet; `GmailReconnectModal`/`TelegramHelpDialog` (short info) → stays Dialog.
+- **Bookings**: `PayParkingModal`, `BookingKanbanWorkflowModal`, `PropertyIntegrationsPanel`, Telegram/template config dialogs → sheet; `TelegramHelpDialog` (short info) → stays Dialog.
 - **Org**: `GetVerifiedModal` (multi-step) → sheet; `AddEntityDialog`/`OrgDangerZoneSection` (destructive) → stays Dialog; `PropertyMediaPreviewDialog` → lightbox special case.
 - **Team**: invite/edit-permission dialogs → sheet; `RemoveMemberDialog` (destructive) → stays Dialog.
 - **Finance/Maintenance**: `RecurringSeriesModal`/`StayFinanceModal` → sheet; `RecurringDeleteDialog` (destructive) → stays Dialog.

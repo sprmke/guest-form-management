@@ -2,7 +2,7 @@
 title: 'Tasks To Prompt'
 status: archived
 tags: [planning]
-updated: 2026-08-11
+updated: 2026-08-14
 ---
 
 **Status legend:** ✅ done · 🚧 in progress · 📋 planned (plan doc written) · 🔵 pending / open · ❌ cancelled / won't do
@@ -179,12 +179,7 @@ Generate more real world and hundreds of mock data for different properties, dev
 
 ===
 
-🔵 Cleanup unused ui and backend env vars:
-EMAIL_TO / EMAIL_REPLY_TO
-
-===
-
-🔵 Update each page browser title to be dynamic.
+✅ Update each page browser title to be dynamic.
 
 Public Pages - Kame Homes - ${page name}
 
@@ -201,7 +196,7 @@ Please list them down and if you have suggestion to name differently or grouped 
 
 ===
 
-🔵 UI/UX improvements
+✅ UI/UX improvements
 
 - Improve dashboard search, filter, sort and action buttons. Notice how we simplify it on mobile, maybe apply for desktop
 - Improve pagination UI/UX
@@ -215,3 +210,31 @@ Please list them down and if you have suggestion to name differently or grouped 
 ===
 
 🔵 Cleanup all env variables and example for both ui and supabase
+
+EMAIL_TO / EMAIL_REPLY_TO
+
+===
+
+🔵 Update all app, screen and skeleton loaders
+
+===
+
+🔵 Update brand color picker to provide pastel and good looking for different colors and still have an option to choose custom color from color picker
+
+===
+
+🔵 Update all payment AI validation to make sure that we achieve the actual minimum amount, date is reasonable, etc
+
+===
+
+🔵 Make sure the SD refund payments is reflecting based on payment methods available from property settings
+
+===
+
+🔵 Refine add pay parking and add/edit parking from booking detail page
+
+===
+
+🔵 Improve marketing generate modal > suggestions thumbnail is confusing
+
+Update marketing generate design suggestion thumbnail to be more closed to calendar template, design and video clips

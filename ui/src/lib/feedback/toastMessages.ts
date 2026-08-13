@@ -127,68 +127,10 @@ export function friendlyToastError(
   return message;
 }
 
-/** Maps `?gmail_error=` codes from `google-mail-oauth-callback` redirects. */
-export function gmailOAuthCallbackError(code: string): string {
-  switch (code.trim()) {
-    case 'save_failed':
-      return 'Could not save Google credentials — try Connect Google again';
-    case 'token_exchange_failed':
-      return 'Google token exchange failed — add the Edge callback redirect URI in Google Cloud (see docs/architecture/validation-and-env.md)';
-    case 'invalid_state':
-      return 'OAuth session expired or invalid — click Connect Google again';
-    case 'missing_refresh_token':
-      return 'No refresh token from Google — revoke app access in your Google Account, then reconnect';
-    case 'missing_property':
-      return 'Property context was lost during OAuth — open Settings for the property and try again';
-    case 'access_denied':
-      return 'Google sign-in was cancelled';
-    default:
-      return 'Gmail connection failed';
-  }
-}
-
 export function telegramScheduleSyncError(
   fallback = 'Reminder schedule could not be updated. Your other changes were saved.'
 ): string {
   return fallback;
-}
-
-export function documentApprovalReconcileSuccessMessage(result: {
-  applied?: number;
-  skipped?: number;
-  failed?: number;
-  reconciled?: number;
-}): string {
-  const reconciled = result.reconciled ?? 0;
-  if (reconciled > 0) {
-    return reconciled === 1
-      ? '1 stored approval re-applied'
-      : `${reconciled} stored approvals re-applied`;
-  }
-  return 'No stored approvals to re-apply';
-}
-
-/** @deprecated Prefer `documentApprovalReconcileSuccessMessage`. */
-export function gmailPollSuccessMessage(result: {
-  applied?: number;
-  skipped?: number;
-  failed?: number;
-  reconciled?: number;
-  initialized?: boolean;
-  historyReset?: boolean;
-}): string {
-  if (result.initialized || result.historyReset) {
-    return documentApprovalReconcileSuccessMessage(result);
-  }
-  const applied = result.applied ?? 0;
-  const reconciled = result.reconciled ?? 0;
-  if (applied + reconciled === 0) {
-    return documentApprovalReconcileSuccessMessage(result);
-  }
-  if (applied > 0) {
-    return applied === 1 ? '1 approval applied' : `${applied} approvals applied`;
-  }
-  return documentApprovalReconcileSuccessMessage(result);
 }
 
 export function sdRefundCronSuccessMessage(result: {
@@ -200,11 +142,13 @@ export function sdRefundCronSuccessMessage(result: {
 
   if (transitioned > 0) {
     return transitioned === 1
-      ? '1 booking moved to Ready for check-out'
-      : `${transitioned} bookings moved to Ready for check-out`;
+      ? '1 booking moved to Ready for Check-out'
+      : `${transitioned} bookings moved to Ready for Check-out`;
   }
   if (checkoutOnly > 0) {
-    return checkoutOnly === 1 ? 'Check-out email sent' : `${checkoutOnly} check-out emails sent`;
+    return checkoutOnly === 1
+      ? 'Check-out Instructions email sent'
+      : `${checkoutOnly} Check-out Instructions emails sent`;
   }
   return null;
 }
