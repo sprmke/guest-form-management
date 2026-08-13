@@ -20,7 +20,7 @@
 # fails on many networks. Use the **Session pooler** URI from Dashboard → Connect instead.
 # `PROD_DB_FORCE_IPV4=1` only helps when DNS yields an IPv4 (e.g. pooler host), not for direct db.*.
 #
-# This dumps only the `public` schema (guest_submissions, processed_emails, gmail_listener_state, etc.).
+# This dumps only the `public` schema (guest_submissions, processed_emails, app_settings, etc.).
 # It does NOT copy Storage objects — URLs in rows still point at prod buckets unless you sync files separately.
 
 set -euo pipefail
@@ -214,9 +214,6 @@ run_dump() {
 # Tables the restore step truncates — must exist locally (run `npm run db:reset` if behind).
 LOCAL_TRUNCATE_TABLES=(
   guest_submissions_backup_20260501
-  gmail_listener_state
-  gmail_mail_integration
-  gmail_mail_oauth_state
   app_settings
   telegram_marketing_settings
   telegram_staff_settings
@@ -322,7 +319,7 @@ assert_local_schema_ready
 
 echo "==> Truncating local public app tables (CASCADE also clears processed_emails → guest_submissions)"
 docker exec "$CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c \
-  "TRUNCATE TABLE guest_submissions_backup_20260501, gmail_listener_state, gmail_mail_integration, gmail_mail_oauth_state, app_settings, telegram_marketing_settings, telegram_staff_settings, telegram_admin_settings, guest_submissions RESTART IDENTITY CASCADE;"
+  "TRUNCATE TABLE guest_submissions_backup_20260501, app_settings, telegram_marketing_settings, telegram_staff_settings, telegram_admin_settings, guest_submissions RESTART IDENTITY CASCADE;"
 
 echo "==> Drop CHECK constraints that prod rows may violate (legacy status, bad date order, etc.)"
 docker exec "$CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c \
@@ -345,12 +342,7 @@ fi
 echo "==> Normalizing legacy status values + re-adding CHECK (see scripts/data/sql/after-prod-data-restore.sql)"
 docker exec -i "$CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 <"$AFTER_RESTORE_SQL"
 
-echo "==> Ensure gmail_listener_state singleton (migration seed is not re-run after TRUNCATE)"
-docker exec "$CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c \
-  "INSERT INTO gmail_listener_state (id) VALUES ('default') ON CONFLICT (id) DO NOTHING;"
-
 echo "==> Done. Quick counts:"
 docker exec "$CONTAINER" psql -U postgres -d postgres -c \
   "SELECT 'guest_submissions' AS tbl, count(*) FROM guest_submissions
-   UNION ALL SELECT 'processed_emails', count(*) FROM processed_emails
-   UNION ALL SELECT 'gmail_listener_state', count(*) FROM gmail_listener_state;"
+   UNION ALL SELECT 'processed_emails', count(*) FROM processed_emails;"
