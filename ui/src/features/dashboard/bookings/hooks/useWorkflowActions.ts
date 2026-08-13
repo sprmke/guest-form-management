@@ -23,8 +23,8 @@ import {
   DEFAULT_DOCUMENT_REQUIREMENTS,
   type DocumentRequirement,
 } from '@/features/dashboard/bookings/lib/documentRequirements';
-import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import { pendingDocStepUsesApprovalModal } from '@/features/dashboard/bookings/lib/pendingDocApproval';
+import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import {
   bookingPipeline,
   canNavigatePendingParkingSubStep,
@@ -86,8 +86,6 @@ export function useWorkflowActions(
     (selectedPendingDocUsesApprovalModal ||
       !selectedPendingDocIsParking ||
       isParkingRequestDraftComplete(parkingValues));
-  const selectedPendingDocCanMarkIncomplete =
-    selectedPendingDocRequired && selectedPendingDocCompleted;
   const isLiveView = isLiveWorkflowView(viewedStep, status, booking);
   // Cancelled / imported stay locked. Completed and earlier browsed stages are
   // editable in the rail (Save) — hosts no longer need Edit Booking → Workflow.
@@ -132,7 +130,6 @@ export function useWorkflowActions(
     selectedPendingDocIsParking,
     selectedPendingDocUsesApprovalModal,
     selectedPendingDocCanMarkComplete,
-    selectedPendingDocCanMarkIncomplete,
     isLiveView,
     contentReadOnly,
     viewedContent,

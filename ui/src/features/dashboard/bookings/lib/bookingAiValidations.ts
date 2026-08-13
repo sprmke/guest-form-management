@@ -1,13 +1,13 @@
-import type {
-  BookingAiReviewFlag,
-  BookingAiReviewSectionResult,
-  BookingAiReviewSectionStatus,
-} from '@/features/dashboard/bookings/lib/types';
 import {
   type DocumentAiVerdictVariant,
   type ReceiptAiVerdict,
 } from '@/features/dashboard/bookings/components/ReceiptAiVerdictBadge';
 import { receiptAiPreviewLoading } from '@/features/dashboard/bookings/hooks/useReceiptAiBackfill';
+import type {
+  BookingAiReviewFlag,
+  BookingAiReviewSectionResult,
+  BookingAiReviewSectionStatus,
+} from '@/features/dashboard/bookings/lib/types';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
 export type BookingAiValidationItem = {
@@ -312,15 +312,23 @@ export type SectionOutcomeTone = 'success' | 'warning' | 'danger' | 'info' | 'ne
 export type SectionOutcome = {
   tone: SectionOutcomeTone;
   label: string;
-  variant: 'pass' | 'review' | 'issue' | 'checking' | 'queued' | 'skipped' | 'unavailable';
+  variant:
+    'pass' | 'review' | 'issue' | 'checking' | 'queued' | 'skipped' | 'unavailable' | 'stale';
 };
 
 /** Maps pipeline status + result flags to what the host should see (Pass vs Review vs Issue). */
 export function resolveSectionOutcome(
   status: BookingAiReviewSectionStatus,
   result?: BookingAiReviewSectionResult | null,
-  sectionLabel?: string
+  sectionLabel?: string,
+  stale = false
 ): SectionOutcome {
+  if (status === 'processing') {
+    return { tone: 'info', label: 'Checking', variant: 'checking' };
+  }
+  if (stale) {
+    return { tone: 'neutral', label: 'Outdated', variant: 'stale' };
+  }
   if (status === 'failed') {
     const summary = result?.summary ?? '';
     if (
@@ -330,9 +338,6 @@ export function resolveSectionOutcome(
       return { tone: 'neutral', label: 'Not checked', variant: 'unavailable' };
     }
     return { tone: 'danger', label: 'Action needed', variant: 'issue' };
-  }
-  if (status === 'processing') {
-    return { tone: 'info', label: 'Checking', variant: 'checking' };
   }
   if (status === 'skipped') {
     return { tone: 'neutral', label: 'Not applicable', variant: 'skipped' };

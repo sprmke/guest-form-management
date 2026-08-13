@@ -1,7 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, type QueryClient } from '@tanstack/react-query';
 
-import type { BookingAiReview } from '@/features/dashboard/bookings/lib/types';
 import { isStuckProcessingReview } from '@/features/dashboard/bookings/lib/bookingAiReviewProgress';
+import type { BookingAiReview } from '@/features/dashboard/bookings/lib/types';
 import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 
 import { supabase } from '@/lib/supabase/client';
@@ -55,6 +55,12 @@ export function useBookingAiReview(bookingId: string | null | undefined) {
     },
     refetchIntervalInBackground: true,
     staleTime: 0,
+  });
+}
+
+export function invalidateBookingAiReviewQueries(qc: QueryClient, bookingId?: string) {
+  return qc.invalidateQueries({
+    queryKey: bookingId ? [BOOKING_AI_REVIEW_QUERY_KEY, bookingId] : [BOOKING_AI_REVIEW_QUERY_KEY],
   });
 }
 

@@ -22,7 +22,22 @@ export type AdminGuestViewSlot = {
     | 'guest4_valid_id_url'
     | 'guest5_valid_id_url'
   >;
-  validIdAiVerdictKey?: keyof Pick<BookingRow, 'valid_id_ai_verdict'>;
+  validIdAiVerdictKey?: keyof Pick<
+    BookingRow,
+    | 'valid_id_ai_verdict'
+    | 'guest2_valid_id_ai_verdict'
+    | 'guest3_valid_id_ai_verdict'
+    | 'guest4_valid_id_ai_verdict'
+    | 'guest5_valid_id_ai_verdict'
+  >;
+  validIdAiSummaryKey?: keyof Pick<
+    BookingRow,
+    | 'valid_id_ai_summary'
+    | 'guest2_valid_id_ai_summary'
+    | 'guest3_valid_id_ai_summary'
+    | 'guest4_valid_id_ai_summary'
+    | 'guest5_valid_id_ai_summary'
+  >;
   validIdAssetType: GuestDocAssetType;
 };
 
@@ -34,6 +49,7 @@ export const ADMIN_GUEST_VIEW_SLOTS: AdminGuestViewSlot[] = [
     ageKey: 'primary_guest_age',
     validIdUrlKey: 'valid_id_url',
     validIdAiVerdictKey: 'valid_id_ai_verdict',
+    validIdAiSummaryKey: 'valid_id_ai_summary',
     validIdAssetType: 'valid_id',
   },
   {
@@ -42,6 +58,8 @@ export const ADMIN_GUEST_VIEW_SLOTS: AdminGuestViewSlot[] = [
     nameKey: 'guest2_name',
     ageKey: 'guest2_age',
     validIdUrlKey: 'guest2_valid_id_url',
+    validIdAiVerdictKey: 'guest2_valid_id_ai_verdict',
+    validIdAiSummaryKey: 'guest2_valid_id_ai_summary',
     validIdAssetType: 'guest2_valid_id',
   },
   {
@@ -50,6 +68,8 @@ export const ADMIN_GUEST_VIEW_SLOTS: AdminGuestViewSlot[] = [
     nameKey: 'guest3_name',
     ageKey: 'guest3_age',
     validIdUrlKey: 'guest3_valid_id_url',
+    validIdAiVerdictKey: 'guest3_valid_id_ai_verdict',
+    validIdAiSummaryKey: 'guest3_valid_id_ai_summary',
     validIdAssetType: 'guest3_valid_id',
   },
   {
@@ -58,6 +78,8 @@ export const ADMIN_GUEST_VIEW_SLOTS: AdminGuestViewSlot[] = [
     nameKey: 'guest4_name',
     ageKey: 'guest4_age',
     validIdUrlKey: 'guest4_valid_id_url',
+    validIdAiVerdictKey: 'guest4_valid_id_ai_verdict',
+    validIdAiSummaryKey: 'guest4_valid_id_ai_summary',
     validIdAssetType: 'guest4_valid_id',
   },
   {
@@ -66,6 +88,8 @@ export const ADMIN_GUEST_VIEW_SLOTS: AdminGuestViewSlot[] = [
     nameKey: 'guest5_name',
     ageKey: 'guest5_age',
     validIdUrlKey: 'guest5_valid_id_url',
+    validIdAiVerdictKey: 'guest5_valid_id_ai_verdict',
+    validIdAiSummaryKey: 'guest5_valid_id_ai_summary',
     validIdAssetType: 'guest5_valid_id',
   },
 ];

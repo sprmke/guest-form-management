@@ -24,14 +24,15 @@ import { supabase } from '@/lib/supabase/client';
 import { toGuestSubmissionDate, toGuestSubmissionTime } from '@/utils/format/dates';
 
 import { BOOKING_QUERY_KEY } from './useBooking';
+import { invalidateBookingAiReviewQueries } from './useBookingAiReview';
 import {
   pendingDocumentsClearCompletionsJsonbPatch,
   pendingDocumentsClearPatchForGuestEditRevert,
   shouldRevertGuestFieldEditsToPendingReview,
 } from '../lib/bookingStatus';
-import type { DocumentRequirement } from '../lib/documentRequirements';
 import { requestPdfClearPatchForAdminGuestEdit } from '../lib/workflowSensitiveGuestDiff';
 
+import type { DocumentRequirement } from '../lib/documentRequirements';
 import type { BookingRow } from '../lib/types';
 
 function patchGuestSubmissionForDb(patch: Record<string, unknown>): Record<string, unknown> {
@@ -231,6 +232,7 @@ export function useUpdateBooking() {
     onSuccess: async (updated, { bookingId }) => {
       qc.setQueryData(BOOKING_QUERY_KEY(bookingId), updated);
       await qc.invalidateQueries({ queryKey: ['bookings'] });
+      await invalidateBookingAiReviewQueries(qc, bookingId);
     },
   });
 }

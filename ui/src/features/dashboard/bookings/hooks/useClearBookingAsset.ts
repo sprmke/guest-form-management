@@ -5,6 +5,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { BOOKING_QUERY_KEY } from '@/features/dashboard/bookings/hooks/useBooking';
+import { invalidateBookingAiReviewQueries } from '@/features/dashboard/bookings/hooks/useBookingAiReview';
 import { BOOKINGS_QUERY_KEY } from '@/features/dashboard/bookings/hooks/useBookings';
 import type { AssetType } from '@/features/dashboard/bookings/hooks/useUploadBookingAsset';
 import { bookingAssetClearPatch } from '@/features/dashboard/bookings/lib/bookingAssetClearPatch';
@@ -34,6 +35,7 @@ export function useClearBookingAsset() {
     onSuccess: async (_, { bookingId }) => {
       await qc.invalidateQueries({ queryKey: BOOKING_QUERY_KEY(bookingId) });
       await qc.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY });
+      await invalidateBookingAiReviewQueries(qc, bookingId);
     },
   });
 }

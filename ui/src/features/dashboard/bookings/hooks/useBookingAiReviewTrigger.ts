@@ -2,7 +2,10 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { bookingDetailQueryKey } from '@/features/dashboard/bookings/hooks/useBooking';
 import { bookingAiReviewQueryKey } from '@/features/dashboard/bookings/hooks/useBookingAiReview';
-import { buildOptimisticProcessingReview } from '@/features/dashboard/bookings/lib/bookingAiReviewProgress';
+import {
+  buildOptimisticProcessingReview,
+  hasPriorAiReviewResults,
+} from '@/features/dashboard/bookings/lib/bookingAiReviewProgress';
 import type { BookingAiReview } from '@/features/dashboard/bookings/lib/types';
 import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 
@@ -26,7 +29,7 @@ async function triggerBookingAiReview(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${jwt}`,
     },
-    body: JSON.stringify({ bookingId, force: true }),
+    body: JSON.stringify({ bookingId, force: true, refresh: true }),
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok || !json.success) {
@@ -49,7 +52,12 @@ export function useBookingAiReviewTrigger(
       if (!bookingId) return {};
       await qc.cancelQueries({ queryKey });
       const previous = qc.getQueryData<BookingAiReview | null>(queryKey);
-      qc.setQueryData(queryKey, buildOptimisticProcessingReview(bookingId));
+      qc.setQueryData(
+        queryKey,
+        previous && hasPriorAiReviewResults(previous)
+          ? { ...previous, job_status: 'processing' as const, stale_sections: [] }
+          : buildOptimisticProcessingReview(bookingId)
+      );
       void qc.invalidateQueries({ queryKey, refetchType: 'active' });
       return { previous };
     },

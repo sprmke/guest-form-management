@@ -8,10 +8,6 @@ import {
 } from '@/features/dashboard/bookings/hooks/useBooking';
 import { BOOKINGS_QUERY_KEY } from '@/features/dashboard/bookings/hooks/useBookings';
 import type { BookingStatus } from '@/features/dashboard/bookings/lib/bookingStatus';
-import {
-  messageIndicatesGmailNeedsReconnect,
-  toGmailNeedsReconnectError,
-} from '@/features/dashboard/bookings/lib/gmailReconnect';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 
@@ -53,13 +49,23 @@ export type TransitionPayload = {
    * id) — mirrors `workflowOrchestrator.ts` §`LEGACY_DOC_TARGET_TO_REQUIREMENT_ID`.
    */
   document_completion_target?: string | null;
-  document_completion_clear_target?: string | null;
+};
+
+/** Mirrors `_shared/workflowOrchestrator.ts#DevControlFlags` email keys. */
+export type TransitionEmailDevControls = {
+  sendGafRequestEmail?: boolean;
+  sendBookingAcknowledgementEmail?: boolean;
+  sendPetRequestEmail?: boolean;
+  sendParkingBroadcastEmail?: boolean;
+  sendReadyForCheckinEmail?: boolean;
+  sendSdRefundFormEmail?: boolean;
 };
 
 type TransitionInput = {
   bookingId: string;
   toStatus: BookingStatus;
   payload?: TransitionPayload;
+  devControls?: TransitionEmailDevControls;
   manual?: boolean;
 };
 
@@ -91,20 +97,14 @@ async function callTransitionBooking(input: TransitionInput, propertyId: string 
       bookingId: input.bookingId,
       toStatus: input.toStatus,
       payload: input.payload ?? {},
+      ...(input.devControls ? { devControls: input.devControls } : {}),
       manual: input.manual ?? true,
     }),
   });
 
   const json = await res.json();
-  if (json.needsReAuth) {
-    throw toGmailNeedsReconnectError(new Error(json.error))!;
-  }
   if (!res.ok || !json.success) {
-    const errMsg = json.error ?? `HTTP ${res.status}`;
-    if (messageIndicatesGmailNeedsReconnect(errMsg)) {
-      throw toGmailNeedsReconnectError(new Error(errMsg))!;
-    }
-    throw new Error(errMsg);
+    throw new Error(json.error ?? `HTTP ${res.status}`);
   }
 
   return json.data as TransitionResult;
@@ -172,10 +172,6 @@ type RunAutomationResult = {
   applied?: number;
   skipped?: number;
   failed?: number;
-  /** Sub-steps re-completed from existing `approved_*_pdf_url` after admin “mark incomplete”. */
-  reconciled?: number;
-  reconciledGaf?: number;
-  reconciledPet?: number;
   transitioned?: number;
   scanned?: number;
   /** True when `sd-refund-cron` was called with `{ bookingId }` (admin detail only). */
@@ -188,37 +184,6 @@ type RunAutomationResult = {
   historyReset?: boolean;
   [key: string]: unknown;
 };
-
-/**
- * Manually re-apply stored approved GAF/pet PDFs when a sub-step was marked incomplete.
- * Replaces the reconcile half of the retired gmail-listener poll.
- */
-export function useReconcileDocumentApprovals(bookingId?: string) {
-  const qc = useQueryClient();
-  const propertyId = usePropertyIdParam();
-
-  return useMutation({
-    mutationFn: async (): Promise<RunAutomationResult> => {
-      const jwt = await getAdminJwt();
-
-      const res = await fetch(scopedFunctionsUrl('/reconcile-document-approvals', propertyId), {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${jwt}` },
-      });
-
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        throw new Error(json.error ?? `HTTP ${res.status}`);
-      }
-      return json as RunAutomationResult;
-    },
-    onSuccess: async () => {
-      if (!bookingId) return;
-      await qc.invalidateQueries({ queryKey: BOOKING_QUERY_KEY(bookingId) });
-      await qc.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY });
-    },
-  });
-}
 
 /**
  * Manually trigger the SD refund cron (Phase 4 — Q6.6).
@@ -257,7 +222,7 @@ export function useRunSdRefundCron(bookingId?: string) {
 }
 
 /**
- * Re-send the guest Check-out & SD Refund Details email (READY_FOR_CHECKIN or READY_FOR_CHECKOUT).
+ * Re-send the guest Check-out & SD Refund Details email (Ready for Check-out).
  */
 export function useResendSdRefundFormEmail(bookingId?: string) {
   const qc = useQueryClient();

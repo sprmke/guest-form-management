@@ -18,6 +18,7 @@ import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org
 import { supabase } from '@/lib/supabase/client';
 
 import { BOOKING_QUERY_KEY } from './useBooking';
+import { invalidateBookingAiReviewQueries } from './useBookingAiReview';
 import { BOOKINGS_QUERY_KEY } from './useBookings';
 
 export type GuestDocAssetType =
@@ -105,6 +106,7 @@ export function useUploadBookingAsset() {
       // Refresh the booking detail so the new URL renders immediately
       await qc.invalidateQueries({ queryKey: BOOKING_QUERY_KEY(bookingId) });
       await qc.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY });
+      await invalidateBookingAiReviewQueries(qc, bookingId);
     },
   });
 }

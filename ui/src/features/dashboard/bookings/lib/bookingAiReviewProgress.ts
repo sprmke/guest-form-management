@@ -1,4 +1,7 @@
-import type { BookingAiReview } from '@/features/dashboard/bookings/lib/types';
+import type {
+  BookingAiReview,
+  BookingAiReviewSectionId,
+} from '@/features/dashboard/bookings/lib/types';
 
 /** No section movement for this long while still `processing` → orphaned job. */
 const STUCK_PROCESSING_MS = 60_000;
@@ -20,6 +23,7 @@ export function buildOptimisticProcessingReview(bookingId: string): BookingAiRev
     pricing_result: null,
     flag_count: 0,
     has_blocking_flag: false,
+    stale_sections: [],
   };
 }
 
@@ -46,8 +50,41 @@ export function isBookingAiReviewRunning(
   return mutationPending || review?.job_status === 'processing';
 }
 
-/** True once an admin has finished an AI Summary job for this booking. */
+export function hasPriorAiReviewResults(review: BookingAiReview | null | undefined): boolean {
+  if (!review) return false;
+  return Boolean(
+    review.stay_details_result ||
+    review.guests_result ||
+    review.parking_result ||
+    review.pets_result ||
+    review.pricing_result
+  );
+}
+
+/** True once an admin has finished an AI Summary job — including while a refresh is in flight. */
 export function hasBookingAiReviewRun(review: BookingAiReview | null | undefined): boolean {
   if (!review) return false;
-  return review.job_status === 'completed' || review.job_status === 'failed';
+  if (review.job_status === 'completed' || review.job_status === 'failed') return true;
+  return hasPriorAiReviewResults(review);
+}
+
+export function isBookingAiReviewStale(review: BookingAiReview | null | undefined): boolean {
+  return (review?.stale_sections?.length ?? 0) > 0;
+}
+
+export function isBookingAiReviewSectionStale(
+  review: BookingAiReview | null | undefined,
+  id: BookingAiReviewSectionId
+): boolean {
+  return review?.stale_sections?.includes(id) ?? false;
+}
+
+/** Refresh is allowed when inputs drifted, or the first attempt failed / got stuck. */
+export function canRefreshBookingAiReview(
+  review: BookingAiReview | null | undefined,
+  mutationPending = false
+): boolean {
+  if (isBookingAiReviewRunning(review, mutationPending)) return false;
+  if (!hasBookingAiReviewRun(review)) return false;
+  return isBookingAiReviewStale(review) || review?.job_status === 'failed';
 }
