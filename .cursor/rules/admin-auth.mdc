@@ -52,9 +52,16 @@ There is **no** separate test-booking mode, `?testing=true`, `is_test_booking` c
 
 ## 5. Workflow side effects (admin detail page)
 
-Confirm modals on `/bookings/:bookingId` (Proceed, Back, Cancel) **do not** expose per-click side-effect checkboxes. Every transition runs the orchestrator's default happy path; outbound emails are gated by **Property Settings → Email automations** (`propertyAutomationToggles.ts` / `PropertyEmailAutomationsSection`).
+Confirm modals on `/bookings/:bookingId` (Proceed, Back, Cancel) run the orchestrator default happy path for **non-email** effects (DB, PDFs, stay guide). **Outbound emails** are gated by **Property Settings → Email automations** (`propertyAutomationToggles.ts` / `PropertyEmailAutomationsSection`).
 
-Server-side `DevControlFlags` in `_shared/workflowOrchestrator.ts` remain for automated callers (Gmail listener, cron, tests) — the admin UI no longer sends them.
+**Optional email checkboxes** appear on **forward** Proceed confirms when either:
+
+1. **Past stay dates** — `status` is `PENDING_REVIEW`, `PENDING_DOCUMENTS`, or `READY_FOR_CHECKIN` and check-in or check-out is strictly before today (Asia/Manila); or
+2. **Re-forward after regression** — the booking still has artifacts from a later pipeline step (request/approved PDFs, doc completions, stay guide, SD form email, etc.) after admin **Return to …**, guest-field revert, or similar.
+
+In those cases, each email that would fire on that transition is shown as a checkbox **default unchecked**. Checked boxes send `devControls` on `transition-booking` (`sendGafRequestEmail`, `sendBookingAcknowledgementEmail`, `sendPetRequestEmail`, `sendParkingBroadcastEmail`, `sendReadyForCheckinEmail`, `sendSdRefundFormEmail`). Normal forward proceeds (no past dates, no regression) omit `devControls` — all applicable emails still follow property automations.
+
+Server-side `DevControlFlags` in `_shared/workflowOrchestrator.ts` are also used by automated callers (approval webhook, cron, import revert).
 
 | Email / effect                                                                 | Production control                                              |
 | ------------------------------------------------------------------------------ | --------------------------------------------------------------- |
@@ -78,9 +85,7 @@ Server-side `DevControlFlags` in `_shared/workflowOrchestrator.ts` remain for au
 | `SUPER_ADMIN_EMAILS`                   | edge  | Platform super-admin APIs (`/admin/*`).                                                                                                                                                                                                                                       |
 | `VITE_SUPER_ADMIN_EMAILS`              | UI    | Super-admin UX gate (`ModeSwitcher` Admin tab, `RequireSuperAdmin`).                                                                                                                                                                                                          |
 | `PARKING_OWNER_EMAILS`                 | edge  | _(Removed — use **`app_settings.parking_owner_emails`** per property.)                                                                                                                                                                                                        |
-| `GMAIL_API_WEB_CLIENT_JSON`            | edge  | Web OAuth client JSON for **Connect Google** on **`/settings`** (Gmail `readonly` scope); redirect URI `{SUPABASE_URL}/functions/v1/google-mail-oauth-callback`. Pair with `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`.                                                                |
-| `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`     | edge  | 32-byte AES key (64 hex or base64) for encrypting Gmail refresh tokens + Telegram bot tokens in DB.                                                                                                                                                                           |
-| `GMAIL_OAUTH_ALLOWED_RETURN_ORIGINS`   | edge  | Comma-separated SPA origins allowed by `google-mail-oauth-start` (defaults include local Vite).                                                                                                                                                                               |
+| `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`     | edge  | 32-byte AES key (64 hex or base64) for encrypting Telegram bot tokens in DB (`propertySecretCrypto.ts`). Legacy env name from Gmail OAuth era.                                                                                                                                |
 | `SD_REFUND_CRON_EMAIL_LEAD_MINUTES`    | edge  | _(Removed — use **`app_settings.sd_refund_cron_email_lead_minutes`** per property.)                                                                                                                                                                                           |
 | `SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS` | edge  | _(Removed — use **`app_settings.sd_refund_cron_max_checkout_age_days`** per property.)                                                                                                                                                                                        |
 | `TELEGRAM_*_CRON_SECRET`               | edge  | _(Optional)_ Cron auth headers only (`TELEGRAM_CRON_SECRET`, `TELEGRAM_STAFF_CRON_SECRET`, `TELEGRAM_ADMIN_CRON_SECRET`, `TELEGRAM_FINANCE_CRON_SECRET`, `TELEGRAM_MAINTENANCE_CRON_SECRET`). Bot tokens + chat IDs are **per-property DB** (`telegram_*_settings`), not env. |
