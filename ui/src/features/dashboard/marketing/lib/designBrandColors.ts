@@ -65,7 +65,7 @@ function contrastRatio(left: Rgb, right: Rgb): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-function foregroundFor(background: string): string {
+export function foregroundFor(background: string): string {
   const rgb = parseHex(background);
   const white = parseHex('#ffffff')!;
   const ink = parseHex(INK)!;

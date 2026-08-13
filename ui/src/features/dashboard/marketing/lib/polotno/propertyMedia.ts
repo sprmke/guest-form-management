@@ -21,3 +21,13 @@ export function propertyGalleryMediaItems(
   }
   return items;
 }
+
+/** Pick a random image URL from a list. Returns null if no images are available.
+ *  Used when generating AI marketing variations so each format/call can use a
+ *  different property photo instead of always defaulting to the cover image. */
+export function pickRandomPropertyPhoto(imageUrls: string[] | undefined | null): string | null {
+  const unique = [...new Set((imageUrls ?? []).filter(Boolean))];
+  if (unique.length === 0) return null;
+  const randomIndex = Math.floor(Math.random() * unique.length);
+  return unique[randomIndex] ?? null;
+}

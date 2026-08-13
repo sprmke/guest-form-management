@@ -18,25 +18,25 @@ import type { DesignTemplateFormat } from '@/features/dashboard/marketing/lib/te
  * Space Grotesk carries date numerals. No stars/hexagons/diamonds/sunbursts/rotation.
  */
 
-type PolotnoChild = Record<string, unknown>;
+export type PolotnoChild = Record<string, unknown>;
 
 let idCounter = 0;
 
-function uid(prefix: string): string {
+export function uid(prefix: string): string {
   idCounter += 1;
   return `${prefix}-${idCounter}`;
 }
 
-function resetIds(): void {
+export function resetIds(): void {
   idCounter = 0;
 }
 
-const FONT_DISPLAY = 'Fraunces';
-const FONT_LABEL = 'Jost';
-const FONT_BODY = 'Plus Jakarta Sans';
-const FONT_NUMERAL = 'Space Grotesk';
+export const FONT_DISPLAY = 'Fraunces';
+export const FONT_LABEL = 'Jost';
+export const FONT_BODY = 'Plus Jakarta Sans';
+export const FONT_NUMERAL = 'Space Grotesk';
 
-type CampaignLayout = {
+export type CampaignLayout = {
   width: number;
   height: number;
   short: number;
@@ -49,7 +49,7 @@ type CampaignLayout = {
   size: (ratio: number) => number;
 };
 
-function createCampaignLayout(width: number, height: number): CampaignLayout {
+export function createCampaignLayout(width: number, height: number): CampaignLayout {
   const short = Math.min(width, height);
   return {
     width,
@@ -65,13 +65,13 @@ function createCampaignLayout(width: number, height: number): CampaignLayout {
   };
 }
 
-function band<T>(layout: CampaignLayout, values: { portrait: T; square: T; wide: T }): T {
+export function band<T>(layout: CampaignLayout, values: { portrait: T; square: T; wide: T }): T {
   if (layout.isPortrait) return values.portrait;
   if (layout.isWide) return values.wide;
   return values.square;
 }
 
-function textBoxHeight(fontSize: number, lineCount = 1, lineHeight = 1.15): number {
+export function textBoxHeight(fontSize: number, lineCount = 1, lineHeight = 1.15): number {
   return Math.round(fontSize * lineCount * lineHeight * 1.05);
 }
 
@@ -83,7 +83,7 @@ function textBoxHeight(fontSize: number, lineCount = 1, lineHeight = 1.15): numb
  * `undefined`, which the Polotno model then fills with its own schema
  * default (often not what we want, e.g. `width` defaults to 100px).
  */
-function omitUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
+export function omitUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
   const out: Partial<T> = {};
   for (const key of Object.keys(obj) as (keyof T)[]) {
     if (obj[key] !== undefined) out[key] = obj[key];
@@ -91,14 +91,14 @@ function omitUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
   return out;
 }
 
-function campaignPageBackground(src: string | null, fallback: string): string {
+export function campaignPageBackground(src: string | null, fallback: string): string {
   return src ?? fallback;
 }
 
-type Scrim = { r: number; g: number; b: number; top: number; bottom: number };
+export type Scrim = { r: number; g: number; b: number; top: number; bottom: number };
 
 /** Bottom-anchored gradient scrim — lets the photo breathe up top, stays legible at the bottom. */
-function photoScrim(width: number, height: number, scrim: Scrim): PolotnoChild {
+export function photoScrim(width: number, height: number, scrim: Scrim): PolotnoChild {
   const { r, g, b, top, bottom } = scrim;
   return {
     id: uid('photo-scrim'),
@@ -115,7 +115,7 @@ function photoScrim(width: number, height: number, scrim: Scrim): PolotnoChild {
   };
 }
 
-type FigureOptions = {
+export type FigureOptions = {
   name?: string;
   subType?: string;
   x: number;
@@ -136,7 +136,7 @@ type FigureOptions = {
   shadowOpacity?: number;
 };
 
-function figure(options: FigureOptions): PolotnoChild {
+export function figure(options: FigureOptions): PolotnoChild {
   return {
     id: uid(options.name?.toLowerCase().replace(/ /g, '-') || options.subType || 'figure'),
     type: 'figure',
@@ -145,7 +145,7 @@ function figure(options: FigureOptions): PolotnoChild {
   };
 }
 
-type TextOptions = {
+export type TextOptions = {
   text: string;
   x: number;
   y: number;
@@ -165,7 +165,7 @@ type TextOptions = {
   opacity?: number;
 };
 
-function text(rawOptions: TextOptions): PolotnoChild {
+export function text(rawOptions: TextOptions): PolotnoChild {
   const options = omitUndefined(rawOptions) as TextOptions;
   const lineCount = Math.max(1, options.text.split('\n').length);
   const lineHeight = options.lineHeight ?? 1.15;
@@ -189,7 +189,7 @@ function text(rawOptions: TextOptions): PolotnoChild {
  * gap. Editorial tracked-caps read well around 0.14–0.2; anything above ~0.5
  * wraps single-character text boxes onto their own lines.
  */
-type InlineTextOptions = {
+export type InlineTextOptions = {
   fontFamily?: string;
   fontStyle?: 'normal' | 'italic';
   fontWeight?: string;
@@ -201,7 +201,7 @@ type InlineTextOptions = {
 };
 
 /** Full-width, centered, top-aligned text block — the default for most copy. */
-function centeredText(
+export function centeredText(
   copy: string,
   layout: CampaignLayout,
   topRatio: number,
@@ -222,7 +222,7 @@ function centeredText(
 }
 
 /** Small tracked uppercase label — the recurring "eyebrow" device. */
-function eyebrow(
+export function eyebrow(
   copy: string,
   layout: CampaignLayout,
   topRatio: number,
@@ -238,7 +238,7 @@ function eyebrow(
 }
 
 /** Large serif headline — typography carries the hero moment, not a shape. */
-function heroText(
+export function heroText(
   copy: string,
   layout: CampaignLayout,
   topRatio: number,
@@ -261,7 +261,7 @@ function heroText(
   });
 }
 
-function detailText(
+export function detailText(
   copy: string,
   layout: CampaignLayout,
   topRatio: number,
@@ -275,7 +275,7 @@ function detailText(
   });
 }
 
-function thinRule(
+export function thinRule(
   layout: CampaignLayout,
   leftRatio: number,
   topRatio: number,
@@ -294,7 +294,7 @@ function thinRule(
   });
 }
 
-function thinVRule(
+export function thinVRule(
   layout: CampaignLayout,
   xRatio: number,
   topRatio: number,
@@ -313,7 +313,7 @@ function thinVRule(
   });
 }
 
-function outlinePill(
+export function outlinePill(
   copy: string,
   layout: CampaignLayout,
   leftRatio: number,
@@ -363,7 +363,7 @@ function outlinePill(
 }
 
 /** Numeral + day-name, vertically centered on `centerY` (pixels). */
-function dateMark(
+export function dateMark(
   dateNum: string,
   dayName: string,
   layout: CampaignLayout,
@@ -417,7 +417,7 @@ function dateMark(
 }
 
 /** The one signature device repeated across every preset: a slim inset frame. */
-function galleryFooter(
+export function galleryFooter(
   binding: DesignBinding,
   layout: CampaignLayout,
   color: string
@@ -431,6 +431,49 @@ function galleryFooter(
     color,
     { fontFamily: FONT_LABEL, fontWeight: '600', letterSpacing: 0.18, textTransform: 'uppercase' }
   );
+}
+
+/** Small logo mark placed in the upper area. */
+export function logoImage(
+  url: string,
+  layout: CampaignLayout,
+  topRatio: number,
+  sizeRatio: number
+): PolotnoChild {
+  const size = layout.size(sizeRatio);
+  return {
+    id: uid('logo'),
+    type: 'image',
+    name: 'Org logo',
+    x: layout.width - size - layout.pad,
+    y: layout.y(topRatio),
+    width: size,
+    height: size,
+    src: url,
+    keepRatio: true,
+  };
+}
+
+/** Property photo as a real image node (figure `fill` URLs do not paint). */
+export function photoImage(
+  url: string,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  name = 'Property photo'
+): PolotnoChild {
+  return {
+    id: uid('photo'),
+    type: 'image',
+    name,
+    x,
+    y,
+    width,
+    height,
+    src: url,
+    keepRatio: false,
+  };
 }
 
 function buildPromo500OffPoster(
