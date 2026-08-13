@@ -29,6 +29,19 @@ import { SdFormPage } from '@/features/guest/sd-form/pages/SdFormPage';
 import { StayGuidePage } from '@/features/guest/stay-guide/pages/StayGuidePage';
 
 import { MainLayout } from '@/layouts/MainLayout';
+import { useFavicon } from '@/lib/favicon';
+import { propertyPublicPageTitle, usePageTitle } from '@/lib/pageTitle';
+
+function resolvePropertyPublicPageName(pathname: string): string {
+  if (pathname.includes('/parking/')) return 'Pay Parking';
+  if (pathname.endsWith('/calendar')) return 'Calendar';
+  if (pathname.endsWith('/messages')) return 'Messages';
+  if (pathname.endsWith('/form')) return 'Book';
+  if (pathname.endsWith('/success')) return 'Success';
+  if (pathname.endsWith('/sd-form')) return 'Security Deposit';
+  if (pathname.endsWith('/guest-review')) return 'Review';
+  return 'Guest';
+}
 
 function GuestPublicLayout() {
   const location = useLocation();
@@ -36,6 +49,11 @@ function GuestPublicLayout() {
   const { data: guestBrand } = useGuestPaymentInfo();
   const operationalHeader = pickGuestOperationalHeaderProps(guestBrand);
   const isCalendarRoute = /\/calendar\/?$/.test(location.pathname);
+  const propertyName = operationalHeader.propertyName ?? guestBrand?.residenceName ?? propertySlug;
+  usePageTitle(
+    propertyPublicPageTitle(propertyName, resolvePropertyPublicPageName(location.pathname))
+  );
+  useFavicon(guestBrand?.emailLogoUrl);
 
   return (
     <MainLayout

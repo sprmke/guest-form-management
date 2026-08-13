@@ -66,6 +66,7 @@ import type {
 } from '@/features/guest/search/types/search';
 
 import { Button } from '@/components/ui/button';
+import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
 
 type CategoryId = Exclude<SearchListingsType, 'all'>;
 
@@ -181,6 +182,7 @@ function toParkingSummary(item: PublicParkingListItem): ParkingSearchSummary {
 }
 
 export function SearchResultsPage() {
+  usePageTitle(publicPageTitle('Search'));
   const [searchParams, setSearchParams] = useSearchParams();
   const [locationRequesting, setLocationRequesting] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(true);

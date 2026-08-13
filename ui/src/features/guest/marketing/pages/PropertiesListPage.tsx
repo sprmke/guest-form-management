@@ -39,6 +39,7 @@ import {
 import { resolveListingImages } from '@/features/guest/marketing/shared/lib/mockListingImages';
 
 import { Button } from '@/components/ui/button';
+import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
 
 function toPropertyCard(item: PublicPropertyListItem): Property {
   return {
@@ -98,6 +99,7 @@ function isDefaultGroupedBrowse(query: PropertiesListingQuery, viewMode: ViewMod
 }
 
 export function PropertiesListPage() {
+  usePageTitle(publicPageTitle('Properties'));
   const [searchParams, setSearchParams] = useSearchParams();
   const query = useMemo(() => parsePropertiesQuery(searchParams), [searchParams]);
   const viewMode = parseViewMode(searchParams.get('view'));

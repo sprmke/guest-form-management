@@ -2,8 +2,8 @@ import { useRef } from 'react';
 
 import { ArrowUpDown, Check, ChevronDown } from 'lucide-react';
 
-import { useAdminToolbarMenuOpen } from '@/components/navigation/AdminToolbarMenuScope';
 import { MobileChoiceItem, MobileChoiceSheet } from '@/components/mobile/MobileChoiceSheet';
+import { useAdminToolbarMenuOpen } from '@/components/navigation/AdminToolbarMenuScope';
 import { useDismissOnOutsideClick } from '@/hooks/useDismissOnOutsideClick';
 import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { cn } from '@/lib/utils';

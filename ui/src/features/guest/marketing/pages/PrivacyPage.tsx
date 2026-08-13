@@ -1,6 +1,9 @@
 import { LegalSimplePage } from '@/features/guest/marketing/legal/components/LegalSimplePage';
 
+import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
+
 export function PrivacyPage() {
+  usePageTitle(publicPageTitle('Privacy'));
   return (
     <LegalSimplePage
       title="Privacy Policy"
@@ -38,7 +41,7 @@ export function PrivacyPage() {
         {
           title: 'Security and access',
           paragraphs: [
-            'Access to operational data is enforced primarily through authenticated edge-function checks (admin, organization, property, parking, and super-admin scopes), not by relying on database row-level security alone. Sensitive integration secrets such as Gmail OAuth refresh tokens are encrypted at rest.',
+            'Access to operational data is enforced primarily through authenticated edge-function checks (admin, organization, property, parking, and super-admin scopes), not by relying on database row-level security alone. Sensitive integration secrets such as Telegram bot tokens are encrypted at rest.',
             'No method of transmission or storage is perfectly secure. Use strong account credentials and share booking links only with people who need them.',
           ],
         },

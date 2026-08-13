@@ -1,6 +1,9 @@
 import { LegalSimplePage } from '@/features/guest/marketing/legal/components/LegalSimplePage';
 
+import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
+
 export function TermsPage() {
+  usePageTitle(publicPageTitle('Terms'));
   return (
     <LegalSimplePage
       title="Terms of Service"
