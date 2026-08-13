@@ -213,7 +213,7 @@ export function WorkflowActionsBar({
 
   if (inDocStep && selectedPendingDocRequired && !selectedPendingDocCompleted) {
     primary = {
-      label: `Mark ${activeDocShortLabel} complete`,
+      label: `Mark ${activeDocShortLabel} as complete`,
       enabled: selectedPendingDocCanMarkComplete,
       onSelect: () =>
         selectedPendingDocUsesApprovalModal
@@ -237,7 +237,7 @@ export function WorkflowActionsBar({
     };
   } else if (showLateParkingActions) {
     primary = {
-      label: `Mark ${shortDocStepLabel(statusLabel(PARKING_NESTED_KEY))} complete`,
+      label: `Mark ${shortDocStepLabel(statusLabel(PARKING_NESTED_KEY))} as complete`,
       enabled: selectedPendingDocCanMarkComplete,
       onSelect: () => onMarkPendingDocSubStatusComplete(PARKING_NESTED_KEY),
       blockedHint: 'Fill in the parking details above first.',

@@ -124,12 +124,10 @@ export function GuestBalanceSettlementForm({
   const [receiptImgSrc, setReceiptImgSrc] = useState<string | null>(null);
   const [receiptImgFailed, setReceiptImgFailed] = useState(false);
   const [receiptPreviewBust, setReceiptPreviewBust] = useState(0);
-  const [receiptAiVerdict, setReceiptAiVerdict] = useState<ReceiptAiVerdict>(
-    () => booking.balance_receipt_ai_verdict ?? null
-  );
-  const [receiptAiSummary, setReceiptAiSummary] = useState(
-    () => booking.balance_receipt_ai_summary?.trim() ?? ''
-  );
+  /** Only the check from this visit's upload — not a stored verdict from an earlier step. */
+  const [receiptAiVerdict, setReceiptAiVerdict] = useState<ReceiptAiVerdict>(null);
+  const [receiptAiSummary, setReceiptAiSummary] = useState('');
+  const blockingVerdict = receiptAiVerdict ?? booking.balance_receipt_ai_verdict ?? null;
 
   useEffect(() => {
     if (!receiptUrl.trim()) {
@@ -169,11 +167,6 @@ export function GuestBalanceSettlementForm({
     if (initialDraft) return;
     setReceiptUrl(booking.guest_balance_payment_receipt_url?.trim() ?? '');
   }, [booking.guest_balance_payment_receipt_url, initialDraft]);
-
-  useEffect(() => {
-    setReceiptAiVerdict(booking.balance_receipt_ai_verdict ?? null);
-    setReceiptAiSummary(booking.balance_receipt_ai_summary?.trim() ?? '');
-  }, [booking.balance_receipt_ai_verdict, booking.balance_receipt_ai_summary]);
 
   // Persist paid amount on RFCI so sd-refund-cron can auto-advance status once settlement matches total.
   useEffect(() => {
@@ -250,7 +243,7 @@ export function GuestBalanceSettlementForm({
       onChange(null);
       return;
     }
-    if (receiptRequired && receipt && receiptAiVerdictBlocksAdmin(receiptAiVerdict)) {
+    if (receiptRequired && receipt && receiptAiVerdictBlocksAdmin(blockingVerdict)) {
       onChange(null);
       return;
     }
@@ -264,7 +257,7 @@ export function GuestBalanceSettlementForm({
     paidInput,
     receiptUrl,
     receiptRequired,
-    receiptAiVerdict,
+    blockingVerdict,
     onChange,
     readOnly,
     editMode,
@@ -349,7 +342,12 @@ export function GuestBalanceSettlementForm({
       : 'Guest balance settlement';
 
   return (
-    <WorkflowFormShell title={cardTitle} variant={variant} bodyClassName="space-y-4">
+    <WorkflowFormShell
+      title={cardTitle}
+      variant={variant}
+      bodyClassName="space-y-4"
+      advanceMode="manual"
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-muted-foreground text-xs font-medium">Total guest balance</span>
         <span

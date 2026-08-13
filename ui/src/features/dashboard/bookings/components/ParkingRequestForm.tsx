@@ -30,8 +30,8 @@ import {
   workflowFormEditTitle,
   type WorkflowFormVariant,
 } from '@/features/dashboard/bookings/components/WorkflowFormShell';
-import { useClearBookingAsset } from '@/features/dashboard/bookings/hooks/useClearBookingAsset';
 import type { BookingAssetPreviewHandler } from '@/features/dashboard/bookings/hooks/useBookingAssetPreview';
+import { useClearBookingAsset } from '@/features/dashboard/bookings/hooks/useClearBookingAsset';
 import { useUploadBookingAsset } from '@/features/dashboard/bookings/hooks/useUploadBookingAsset';
 import { requiredPositiveMoney } from '@/features/dashboard/bookings/lib/moneyFieldSchema';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
@@ -150,12 +150,10 @@ export function ParkingRequestForm({
     if (initialDraft?.parking_payment_receipt_url) return initialDraft.parking_payment_receipt_url;
     return booking.parking_payment_receipt_url ?? '';
   });
-  const [receiptAiVerdict, setReceiptAiVerdict] = useState<ReceiptAiVerdict>(
-    () => booking.parking_receipt_ai_verdict ?? null
-  );
-  const [receiptAiSummary, setReceiptAiSummary] = useState(
-    () => booking.parking_receipt_ai_summary?.trim() ?? ''
-  );
+  /** Only the check from this visit's upload — not a stored verdict from an earlier step. */
+  const [receiptAiVerdict, setReceiptAiVerdict] = useState<ReceiptAiVerdict>(null);
+  const [receiptAiSummary, setReceiptAiSummary] = useState('');
+  const blockingVerdict = receiptAiVerdict ?? booking.parking_receipt_ai_verdict ?? null;
   const [endorsementPreviewBust, setEndorsementPreviewBust] = useState(0);
   const [receiptPreviewBust, setReceiptPreviewBust] = useState(0);
 
@@ -185,18 +183,13 @@ export function ParkingRequestForm({
   const includedInDownpayment = watch('parking_fee_included_in_downpayment');
 
   useEffect(() => {
-    setReceiptAiVerdict(booking.parking_receipt_ai_verdict ?? null);
-    setReceiptAiSummary(booking.parking_receipt_ai_summary?.trim() ?? '');
-  }, [booking.parking_receipt_ai_verdict, booking.parking_receipt_ai_summary]);
-
-  useEffect(() => {
     if (readOnly) return;
     if (editMode || isValid) {
       if (
         !editMode &&
         !includedInDownpayment &&
         currentReceiptUrl.trim() &&
-        receiptAiVerdictBlocksAdmin(receiptAiVerdict)
+        receiptAiVerdictBlocksAdmin(blockingVerdict)
       ) {
         onChange(null);
         return;
@@ -212,7 +205,7 @@ export function ParkingRequestForm({
     editMode,
     includedInDownpayment,
     currentReceiptUrl,
-    receiptAiVerdict,
+    blockingVerdict,
     onChange,
   ]);
 
@@ -332,7 +325,7 @@ export function ParkingRequestForm({
   const showNonRefundableWarning = isParkingRequestDraftComplete(getValues());
 
   return (
-    <WorkflowFormShell title={cardTitle} variant={variant}>
+    <WorkflowFormShell title={cardTitle} variant={variant} advanceMode="manual">
       <Field
         label="Parking Owner"
         required
@@ -430,12 +423,8 @@ export function ParkingRequestForm({
                   if (restoreUrl) {
                     setCurrentReceiptUrl(restoreUrl);
                     setReceiptPreviewBust(stash?.previewBust ?? 0);
-                    setReceiptAiVerdict(
-                      stash?.verdict ?? booking.parking_receipt_ai_verdict ?? null
-                    );
-                    setReceiptAiSummary(
-                      stash?.summary ?? booking.parking_receipt_ai_summary?.trim() ?? ''
-                    );
+                    setReceiptAiVerdict(stash?.verdict ?? null);
+                    setReceiptAiSummary(stash?.summary ?? '');
                     setValue('parking_payment_receipt_url', restoreUrl, {
                       shouldValidate: true,
                       shouldDirty: true,

@@ -21,8 +21,8 @@ import {
   workflowFormEditTitle,
   type WorkflowFormVariant,
 } from '@/features/dashboard/bookings/components/WorkflowFormShell';
-import { useClearBookingAsset } from '@/features/dashboard/bookings/hooks/useClearBookingAsset';
 import type { BookingAssetPreviewHandler } from '@/features/dashboard/bookings/hooks/useBookingAssetPreview';
+import { useClearBookingAsset } from '@/features/dashboard/bookings/hooks/useClearBookingAsset';
 import { useUploadBookingAsset } from '@/features/dashboard/bookings/hooks/useUploadBookingAsset';
 import type { BookingRow, SdSettlementLineItem } from '@/features/dashboard/bookings/lib/types';
 
@@ -113,12 +113,6 @@ function buildSdInitialState(
   };
 }
 
-/** Digits only — used for `gcash://` deep links. */
-function phoneDigitsOnly(raw: string | null | undefined): string {
-  if (!raw?.trim()) return '';
-  return raw.replace(/\D/g, '');
-}
-
 export type SdRefundValues = {
   sd_additional_expense_items: SdSettlementLineItem[];
   sd_additional_profit_items: SdSettlementLineItem[];
@@ -175,22 +169,6 @@ export function SdRefundForm({
   const totalProfits = profitItems.reduce((s, r) => s + (Number(r.amount) || 0), 0);
   /** Refund = base SD + additional expenses charged to guest − profits retained from guest. */
   const netSD = baseSd + totalExpenses - totalProfits;
-
-  const phoneDigits = phoneDigitsOnly(booking.guest_phone_number);
-  const otherBankGcashDigits = phoneDigitsOnly(booking.sd_refund_account_number);
-  /** GCash app send link: on-file phone (same_phone) or guest-submitted GCash number (other_bank + GCash). */
-  const gcashDestinationDigits =
-    guestMethod === 'same_phone'
-      ? phoneDigits
-      : guestMethod === 'other_bank' && booking.sd_refund_bank === 'GCash'
-        ? otherBankGcashDigits
-        : '';
-  const refundAmountForGcash =
-    netSD > 0 && Number.isFinite(netSD) ? (Math.round(netSD * 100) / 100).toFixed(2) : '';
-  const gcashSendHref =
-    gcashDestinationDigits.length >= 10 && refundAmountForGcash
-      ? `gcash://send?mobile=${gcashDestinationDigits}&amount=${refundAmountForGcash}`
-      : null;
 
   useEffect(() => {
     setReceiptUrl(booking.sd_refund_receipt_url?.trim() ?? '');
@@ -262,7 +240,12 @@ export function SdRefundForm({
     variant === 'edit' ? workflowFormEditTitle('SD settlement') : 'Security deposit settlement';
 
   return (
-    <WorkflowFormShell title={cardTitle} variant={variant} bodyClassName="space-y-4">
+    <WorkflowFormShell
+      title={cardTitle}
+      variant={variant}
+      bodyClassName="space-y-4"
+      advanceMode="manual"
+    >
       {showGuestDetails && guestMethod ? (
         <GuestSdRefundDetailsSection booking={booking} variant="workflow" />
       ) : null}
@@ -296,33 +279,23 @@ export function SdRefundForm({
         readOnly={readOnly}
       />
 
-      <div className="space-y-2">
-        <div className="space-y-1">
-          <label className="text-muted-foreground block text-xs">
-            Actual Refund Amount{' '}
-            <span className="text-muted-foreground font-normal">(base + expenses − profits)</span>
-          </label>
-          <div
-            className={cn(
-              'flex h-10 w-full items-center justify-between rounded-md border px-3 text-sm',
-              netSD < 0
-                ? 'border-red-300 bg-red-50 text-red-700 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300'
-                : 'border-border bg-muted/50 text-foreground'
-            )}
-            aria-readonly="true"
-          >
-            <span className="font-semibold">{formatMoney(netSD)}</span>
-            {netSD < 0 && <span className="text-[11px] font-medium">Net cannot be negative</span>}
-          </div>
+      <div className="space-y-1">
+        <label className="text-muted-foreground block text-xs">
+          Actual Refund Amount{' '}
+          <span className="text-muted-foreground font-normal">(base + expenses − profits)</span>
+        </label>
+        <div
+          className={cn(
+            'flex h-10 w-full items-center justify-between rounded-md border px-3 text-sm',
+            netSD < 0
+              ? 'border-red-300 bg-red-50 text-red-700 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300'
+              : 'border-border bg-muted/50 text-foreground'
+          )}
+          aria-readonly="true"
+        >
+          <span className="font-semibold">{formatMoney(netSD)}</span>
+          {netSD < 0 && <span className="text-[11px] font-medium">Net cannot be negative</span>}
         </div>
-        {gcashSendHref && (
-          <a
-            href={gcashSendHref}
-            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-[#0074FF] px-3 py-2.5 text-sm font-semibold text-white shadow-sm ring-1 ring-[#0066CC] transition-colors hover:bg-[#0066E6] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0074FF] focus-visible:ring-offset-2 active:bg-[#005AD9]"
-          >
-            Pay now with GCash
-          </a>
-        )}
       </div>
 
       <div className="space-y-1">

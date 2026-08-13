@@ -133,7 +133,12 @@ export function GuestSdRefundEditForm({
     showError(field) ? 'border-red-400 ring-1 ring-red-400/30' : undefined;
 
   return (
-    <WorkflowFormShell title="SD Refund Form" variant={variant} bodyClassName="space-y-4">
+    <WorkflowFormShell
+      title="SD Refund Form"
+      variant={variant}
+      bodyClassName="space-y-4"
+      advanceMode="manual"
+    >
       <Field label="Refund method" required>
         <NativeSelect
           value={values.method}

@@ -163,7 +163,7 @@ export function ReviewPricingForm({
   const cardTitle = variant === 'edit' ? workflowFormEditTitle('Review pricing') : 'Review pricing';
 
   return (
-    <WorkflowFormShell title={cardTitle} variant={variant}>
+    <WorkflowFormShell title={cardTitle} variant={variant} advanceMode="manual">
       <div className="grid grid-cols-2 gap-3">
         <Field label="Booking Rate" required error={errors.booking_rate?.message}>
           <input
@@ -290,7 +290,7 @@ export function ReviewPricingForm({
           ) : null}
         </span>
         <span
-          className={`shrink-0 text-lg font-extrabold tracking-tight ${totalGuestBalance < 0 ? 'text-red-600' : 'text-foreground'}`}
+          className={`text-md shrink-0 font-bold tracking-tight ${totalGuestBalance < 0 ? 'text-red-600' : 'text-foreground'}`}
         >
           {formatMoney(totalGuestBalance)}
         </span>
