@@ -36,7 +36,6 @@ import {
 import { resolveVideoTypographyContext } from '@/features/dashboard/marketing/lib/video/videoTemplateTypography';
 import { scaleForVideoFormat } from '@/features/dashboard/marketing/lib/video/videoTextSlotContent';
 
-
 import { cn } from '@/lib/utils';
 
 import type { PlayerRef } from '@remotion/player';

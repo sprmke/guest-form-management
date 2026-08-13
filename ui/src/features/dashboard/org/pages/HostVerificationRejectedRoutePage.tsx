@@ -11,7 +11,6 @@ import {
 } from '@/features/dashboard/org/lib/orgVerificationTiers';
 import { HostVerificationRejectedPage } from '@/features/dashboard/org/pages/HostVerificationRejectedPage';
 
-
 /**
  * Hub for hard-rejected hosts after login (`/verification-rejected`).
  * If they somehow have an accessible org, send them there instead.

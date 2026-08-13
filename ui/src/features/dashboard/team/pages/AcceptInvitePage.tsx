@@ -31,7 +31,6 @@ import {
   type TeamInvitePreview,
 } from '@/features/dashboard/team/lib/acceptInviteApi';
 
-
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { Button } from '@/components/ui/button';
