@@ -7,6 +7,8 @@ import { MarketingPublicPageContent } from '@/features/guest/marketing/shared/co
 import { MarketingPublicPageHero } from '@/features/guest/marketing/shared/components/MarketingPublicPageHero';
 import { MarketingPublicSectionHeading } from '@/features/guest/marketing/shared/components/MarketingPublicSectionHeading';
 
+import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
+
 const contactCards = [
   {
     icon: Mail,
@@ -32,6 +34,7 @@ const contactCards = [
 ] as const;
 
 export function ContactPage() {
+  usePageTitle(publicPageTitle('Contact'));
   return (
     <div className="bg-background min-h-screen">
       <MarketingPublicPageHero

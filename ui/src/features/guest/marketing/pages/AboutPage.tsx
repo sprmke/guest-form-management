@@ -17,6 +17,7 @@ import { MarketingPublicPageHero } from '@/features/guest/marketing/shared/compo
 import { MarketingPublicSectionHeading } from '@/features/guest/marketing/shared/components/MarketingPublicSectionHeading';
 
 import { Button } from '@/components/ui/button';
+import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
 
 const capabilities = [
   {
@@ -52,6 +53,7 @@ const capabilities = [
 ] as const;
 
 export function AboutPage() {
+  usePageTitle(publicPageTitle('About'));
   return (
     <div className="bg-background min-h-screen">
       <MarketingPublicPageHero

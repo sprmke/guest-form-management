@@ -1,6 +1,9 @@
 import { LegalSimplePage } from '@/features/guest/marketing/legal/components/LegalSimplePage';
 
+import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
+
 export function CookiesPage() {
+  usePageTitle(publicPageTitle('Cookies'));
   return (
     <LegalSimplePage
       title="Cookie Policy"

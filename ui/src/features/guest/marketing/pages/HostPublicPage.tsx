@@ -9,6 +9,8 @@ import { usePublicHost } from '@/features/guest/marketing/properties/hooks/usePu
 import { GuestPublicBrandShell } from '@/features/guest/marketing/shared/components/GuestPublicBrandShell';
 import { useMarketingBrandColor } from '@/features/guest/marketing/shared/context/ModeSwitchTransitionContext';
 
+import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
+
 function HostPublicPageSkeleton() {
   return (
     <div className="bg-background min-h-screen pb-16 pt-20 sm:pb-20">
@@ -43,6 +45,7 @@ function listingCountLabel(count: number, singular: string, plural: string): str
 export function HostPublicPage() {
   const { orgSlug = '' } = useParams<{ orgSlug: string }>();
   const { data: host, isLoading, isError } = usePublicHost(orgSlug);
+  usePageTitle(publicPageTitle(host?.name ? `${host.name}` : 'Host'));
   const { setBrandColor } = useMarketingBrandColor();
 
   useEffect(() => {

@@ -38,6 +38,7 @@ import {
 } from '@/features/guest/marketing/shared/lib/listingMapMarkers';
 
 import { Button } from '@/components/ui/button';
+import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
 
 function parseViewMode(raw: string | null): DevelopmentViewMode {
   if (raw === 'list' || raw === 'map') return raw;
@@ -69,6 +70,7 @@ function isDefaultGroupedBrowse(
 }
 
 export function DevelopmentsListPage() {
+  usePageTitle(publicPageTitle('Developments'));
   const [searchParams, setSearchParams] = useSearchParams();
   const query = useMemo(() => parseDevelopmentsQuery(searchParams), [searchParams]);
   const viewMode = parseViewMode(searchParams.get('view'));

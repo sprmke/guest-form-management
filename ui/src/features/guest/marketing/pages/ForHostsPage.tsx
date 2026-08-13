@@ -12,8 +12,10 @@ import { scrollToSection } from '@/features/guest/marketing/for-hosts/lib/scroll
 import { AbstractBackground } from '@/features/guest/marketing/shared/components/AbstractBackground';
 
 import { Button } from '@/components/ui/button';
+import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
 
 export function ForHostsPage() {
+  usePageTitle(publicPageTitle('For Hosts'));
   const reduceMotion = useReducedMotion();
 
   return (

@@ -8,7 +8,10 @@ import { GuestHero } from '@/features/guest/marketing/guest-landing/components/G
 import { LandingSocialProof } from '@/features/guest/marketing/guest-landing/components/LandingSocialProof';
 import { PopularDestinations } from '@/features/guest/marketing/guest-landing/components/PopularDestinations';
 
+import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
+
 export function GuestLandingPage() {
+  usePageTitle(publicPageTitle('Home'));
   const [searchParams] = useSearchParams();
   const property = readGuestPropertySlug(searchParams);
 

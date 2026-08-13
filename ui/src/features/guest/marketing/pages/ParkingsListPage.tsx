@@ -29,6 +29,7 @@ import {
 } from '@/features/guest/marketing/shared/lib/listingFilterChips';
 
 import { Button } from '@/components/ui/button';
+import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
 
 function isDefaultGroupedBrowse(query: ParkingsListingQuery): boolean {
   return (
@@ -53,6 +54,7 @@ function isDefaultGroupedBrowse(query: ParkingsListingQuery): boolean {
 }
 
 export function ParkingsListPage() {
+  usePageTitle(publicPageTitle('Parkings'));
   const [searchParams, setSearchParams] = useSearchParams();
   const query = useMemo(() => parseParkingsQuery(searchParams), [searchParams]);
   const groupedBrowse = isDefaultGroupedBrowse(query);
