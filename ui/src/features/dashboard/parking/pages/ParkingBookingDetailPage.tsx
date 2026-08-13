@@ -9,6 +9,7 @@ import { useTransitionParkingBooking } from '@/features/dashboard/parking/hooks/
 import { FloatingPanel } from '@/components/mobile/FloatingPanel';
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { Button } from '@/components/ui/button';
+import { parkingDashboardPageTitle, usePageTitle } from '@/lib/pageTitle';
 import { formatBookingDate } from '@/utils/format/bookingDisplay';
 
 const NEXT_STATUS: Record<string, { label: string; to: string } | undefined> = {
@@ -18,8 +19,18 @@ const NEXT_STATUS: Record<string, { label: string; to: string } | undefined> = {
 
 export function ParkingBookingDetailPage() {
   const { bookingId } = useParams<{ bookingId: string }>();
-  const { parking, orgSlug, parkingSlug } = useParkingContext();
+  const { parking, org, orgSlug, parkingSlug } = useParkingContext();
   const { data: booking, isLoading, error } = useBooking(bookingId, { parkingId: parking.id });
+  const guestName = booking?.primary_guest_name || booking?.guest_facebook_name;
+  usePageTitle(
+    booking
+      ? parkingDashboardPageTitle(
+          org.name,
+          parking.name,
+          guestName ? `Booking: ${guestName}` : `Booking ${booking.id.slice(0, 8)}`
+        )
+      : undefined
+  );
   const transition = useTransitionParkingBooking(parking.id);
 
   const next = booking?.status ? NEXT_STATUS[String(booking.status)] : undefined;

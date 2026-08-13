@@ -6,11 +6,14 @@ import {
 } from '@/features/guest/account/components/WishlistPropertyCard';
 import { useSavedPropertySlugsQuery } from '@/features/guest/marketing/properties/hooks/useSavedPropertySlugsQuery';
 
+import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
+
 /** Fixed ~240px tracks (same scale as explore carousels); 2-up on mobile. */
 const WISHLIST_GRID_CLASS =
   'grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,15rem)] sm:gap-x-4 sm:gap-y-5';
 
 export function GuestWishlistPage() {
+  usePageTitle(publicPageTitle('Favorites'));
   const { data: slugs = [], isLoading } = useSavedPropertySlugsQuery();
 
   if (isLoading) {

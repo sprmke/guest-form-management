@@ -5,9 +5,11 @@ import {
 } from '@/features/guest/account/components/GuestMessagesHub';
 import { useGuestMessages } from '@/features/guest/account/hooks/useGuestMessages';
 
+import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
 import { cn } from '@/lib/utils';
 
 export function GuestMessagesPage() {
+  usePageTitle(publicPageTitle('Stays'));
   const { data, isLoading, isError } = useGuestMessages();
   const threads = data?.threads ?? [];
 

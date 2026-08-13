@@ -364,7 +364,7 @@ function BookingScene() {
         <div className="space-y-3">
           {[
             { icon: Receipt, label: 'Receipt validated', sub: 'AI confidence 98%', delay: 24 },
-            { icon: FileCheck2, label: 'GAF approved', sub: 'Matched from Gmail', delay: 58 },
+            { icon: FileCheck2, label: 'GAF approved', sub: 'Matched from inbound email', delay: 58 },
             { icon: PawPrint, label: 'Pet request cleared', sub: 'Document saved', delay: 92 },
             { icon: CalendarDays, label: 'Event updated', sub: 'Event updated', delay: 126 },
           ].map((event) => (
@@ -1030,7 +1030,7 @@ function AiScene() {
   });
   const tasks = [
     ['Payment receipt', 'Validated · 98% confidence', Receipt, 22],
-    ['Gmail approval', 'Matched and archived', FileCheck2, 58],
+    ['Inbound approval', 'Matched and archived', FileCheck2, 58],
     ['Guest message', 'Reply draft prepared', MessageSquare, 94],
     ['Workflow step', 'Status and dates synced', CalendarDays, 130],
   ] as const;

@@ -116,10 +116,12 @@ export function VoiceSessionPanel({ propertySlug, onClose, className }: Props) {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       event.preventDefault();
+      event.stopPropagation();
       handleClose();
     };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    // Capture so a parent Dialog (Contact host) does not dismiss on Escape mid-call.
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- end via endingRef; stable for session lifetime
   }, []);
 

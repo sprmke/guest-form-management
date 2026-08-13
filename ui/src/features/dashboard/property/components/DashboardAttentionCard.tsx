@@ -131,7 +131,7 @@ export function DashboardAttentionCard({
             ? rangeLabel
               ? `Check-ins · ${rangeLabel}`
               : 'Check-ins in period'
-            : 'Bookings, Google & reviews'
+            : 'Bookings & reviews'
         }
         iconClassName="bg-muted/80"
         action={

@@ -44,8 +44,8 @@ import {
   hasStrippedGuestQueryKeys,
   stripLegacyFromQueryParam,
 } from '@/features/guest/form/lib/bookingSourceFromSearchParams';
-import { computeGuestCountsByAge } from '@/features/guest/form/lib/guestCounts';
 import { FIND_US_OPTIONS } from '@/features/guest/form/lib/findUsOptions';
+import { computeGuestCountsByAge } from '@/features/guest/form/lib/guestCounts';
 import {
   formatGafEmailHint,
   formatGuestCopyPasteHint,
