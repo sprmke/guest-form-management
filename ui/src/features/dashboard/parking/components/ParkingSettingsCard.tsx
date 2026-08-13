@@ -747,7 +747,6 @@ export function ParkingSettingsCard() {
                 primaryKeysConfigured: settings.platformSecrets?.geminiApiKeyConfigured ?? false,
                 fallbackKeyConfigured: settings.platformSecrets?.groqApiKeyConfigured ?? false,
               }}
-              hideGoogleOAuth
               telegramLayout="parking"
               notificationsPath={(module) =>
                 parkingNotificationsPath(

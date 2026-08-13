@@ -16,7 +16,6 @@ export type ParkingSettingsPayload = {
   gcashNumber: string | null;
   gcashQrImageUrl: string | null;
   paymentMethods: unknown[];
-  gmailConnected: boolean;
   parkingNotificationTemplates: Record<string, string>;
   updatedAt: string;
   parkingIntegrations?: PropertyIntegrationStatus;

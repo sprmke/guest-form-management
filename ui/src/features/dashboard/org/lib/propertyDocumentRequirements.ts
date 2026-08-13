@@ -2,6 +2,7 @@ import type {
   DocumentApprovalSource,
   DocumentRequirement,
   DocumentTriggerCondition,
+  RequestPdfTemplateId,
 } from '@/features/dashboard/bookings/lib/documentRequirements';
 
 export const DOCUMENT_TRIGGER_CONDITIONS: DocumentTriggerCondition[] = [
@@ -11,6 +12,16 @@ export const DOCUMENT_TRIGGER_CONDITIONS: DocumentTriggerCondition[] = [
 ];
 
 export const DOCUMENT_APPROVAL_SOURCES: DocumentApprovalSource[] = ['manual', 'email-listener'];
+
+/**
+ * Binding a row to a template is what makes the orchestrator generate the request
+ * PDF and send the request email for it (`requirementMatchesPdfTemplate`). An
+ * unbound row is tracked as a checklist step only.
+ */
+export const DOCUMENT_PDF_TEMPLATES: RequestPdfTemplateId[] = ['gaf', 'pet'];
+
+/** Sentinel for the Select — Radix cannot hold an empty string value. */
+export const DOCUMENT_PDF_TEMPLATE_NONE = 'none';
 
 export const DOCUMENT_TRIGGER_CONDITION_LABELS: Record<DocumentTriggerCondition, string> = {
   always: 'Always required',
@@ -22,6 +33,17 @@ export const DOCUMENT_APPROVAL_SOURCE_LABELS: Record<DocumentApprovalSource, str
   manual: 'Manual — admin marks complete',
   'email-listener': 'Email listener — auto-approve',
 };
+
+export const DOCUMENT_PDF_TEMPLATE_LABELS: Record<RequestPdfTemplateId, string> = {
+  gaf: 'GAF request form',
+  pet: 'Pet request form',
+};
+
+export function isRequestPdfTemplateId(value: unknown): value is RequestPdfTemplateId {
+  return (
+    typeof value === 'string' && DOCUMENT_PDF_TEMPLATES.includes(value as RequestPdfTemplateId)
+  );
+}
 
 export function documentRequirementsOverrideEqual(
   a: DocumentRequirement[] | null,
