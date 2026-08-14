@@ -53,8 +53,21 @@ export function useBooking(
       const { data, error } = await request.single();
 
       if (error) {
-        if (error.code === 'PGRST116') return null;
-        throw new Error(error.message);
+        if (error.code !== 'PGRST116') throw new Error(error.message);
+        // Parking-scoped, not found: may be a pre-claim broadcast request
+        // (parking_id still null). Caller must verify candidacy separately
+        // (see useParkingBroadcastStatus) before treating this as authorized.
+        if (parkingId) {
+          const { data: unclaimed, error: unclaimedError } = await supabase
+            .from('guest_submissions')
+            .select('*')
+            .eq('id', bookingId)
+            .is('parking_id', null)
+            .maybeSingle();
+          if (unclaimedError) throw new Error(unclaimedError.message);
+          return (unclaimed ?? null) as BookingRow | null;
+        }
+        return null;
       }
 
       return (data ?? null) as BookingRow | null;
