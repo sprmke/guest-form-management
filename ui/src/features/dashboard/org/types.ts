@@ -31,6 +31,7 @@ export type Parking = {
   slotLabel: string;
   parkingType: string;
   ratePerNight: number | null;
+  acceptedVehicleTypes: string[];
   settings: Record<string, unknown>;
   stats?: ParkingListStats;
   createdAt: string;

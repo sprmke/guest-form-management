@@ -51,6 +51,13 @@ import { cn } from '@/lib/utils';
 
 type AddEntityTarget = { id: string; slug: string };
 
+/**
+ * The sidebar header sits the notification bell (`size="icon"`, 2.5rem) beside this trigger with
+ * `gap-2`, so the trigger is 3rem narrower than the sidebar's padded content box. Adding that back
+ * lets the menu span the full sidebar width instead of stopping short under the bell.
+ */
+const SWITCHER_MENU_WIDTH = 'w-[calc(var(--radix-dropdown-menu-trigger-width)+3rem)]';
+
 /** Menu row — a Radix `DropdownMenuItem` in the desktop dropdown, a plain tappable row in the mobile sheet. */
 function SwitcherRow({
   variant,
@@ -473,10 +480,7 @@ export function SidebarTenantScope({
       <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
         <DropdownMenuTrigger asChild>{switcherTrigger}</DropdownMenuTrigger>
 
-        <DropdownMenuContent
-          className="w-[var(--radix-dropdown-menu-trigger-width)] overflow-hidden"
-          align="start"
-        >
+        <DropdownMenuContent className={cn(SWITCHER_MENU_WIDTH, 'overflow-hidden')} align="start">
           <ContextSwitcherMenu {...menuProps} />
         </DropdownMenuContent>
       </DropdownMenu>

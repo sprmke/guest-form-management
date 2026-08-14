@@ -13,14 +13,10 @@ import type { DashboardRecentBooking } from '@/features/dashboard/property/lib/t
 import { AdminSurfaceCardHeader } from '@/components/shared/AdminSurfaceCardHeader';
 import { cn } from '@/lib/utils';
 import { formatMoney } from '@/utils/format/currency';
-import { formatDateToLongFormat } from '@/utils/format/dates';
+import { formatStayDateRange } from '@/utils/format/dates';
 
 function formatStayRange(checkInIso: string, checkOutIso: string): string {
-  const checkIn = formatDateToLongFormat(checkInIso);
-  const checkOut = formatDateToLongFormat(checkOutIso);
-  if (!checkIn && !checkOut) return '';
-  if (!checkOut) return checkIn;
-  return `${checkIn} → ${checkOut}`;
+  return formatStayDateRange(checkInIso, checkOutIso) ?? '';
 }
 
 function resourceName(booking: DashboardRecentBooking): string {
