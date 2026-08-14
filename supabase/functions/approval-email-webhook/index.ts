@@ -23,6 +23,7 @@ import { bookingAssetStorageKey } from '../_shared/bookingStoragePaths.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { jsonError } from '../_shared/httpResponse.ts';
 import { createNotification } from '../_shared/notificationService.ts';
+import { bookingNotificationMetadata } from '../_shared/notificationEnrichment.ts';
 import { resolveOrganizationIdForProperty } from '../_shared/propertyScope.ts';
 import { verifyResendWebhookSignature } from '../_shared/resendWebhookVerify.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
@@ -383,6 +384,7 @@ async function processReceivedEmail(event: ResendReceivedEvent): Promise<{
       title: parsed.kind === 'gaf' ? 'GAF auto-approved' : 'Pet document auto-approved',
       body: `${guestName}'s ${parsed.kind === 'gaf' ? 'GAF' : 'pet'} document was auto-approved.`,
       bookingId,
+      metadata: bookingNotificationMetadata(match.booking),
       dedupeKey: `${bookingId}:${parsed.kind === 'gaf' ? 'booking_gaf_auto_approved' : 'booking_pet_auto_approved'}`,
     });
   } catch (err) {

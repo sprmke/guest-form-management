@@ -20,6 +20,7 @@ import {
   findParkingSlotConflict,
   parseParkingSlotFromBody,
 } from '../_shared/parkingSlotUnit.ts';
+import { parseAcceptedVehicleTypes } from '../_shared/parkingDimensionDefaults.ts';
 import { seedParkingSettings } from '../_shared/parkingSettingsSeed.ts';
 import {
   azureNorthLocationSeed,
@@ -53,6 +54,16 @@ serveAuthenticated('create-parking', async (req) => {
 
   const ratePerNight =
     typeof body.ratePerNight === 'number' && body.ratePerNight >= 0 ? body.ratePerNight : null;
+
+  let acceptedVehicleTypes: string[] =
+    parsed.parkingType === 'motorcycle' ? ['motorcycle'] : ['car'];
+  if (body.acceptedVehicleTypes !== undefined) {
+    const parsedTypes = parseAcceptedVehicleTypes(body.acceptedVehicleTypes);
+    if (!parsedTypes.ok) {
+      return jsonError(req, parsedTypes.error);
+    }
+    acceptedVehicleTypes = parsedTypes.value;
+  }
 
   const supabase = createServiceClient();
 
@@ -90,6 +101,7 @@ serveAuthenticated('create-parking', async (req) => {
       slot_label: parsed.slotLabel,
       parking_type: parsed.parkingType,
       rate_per_night: ratePerNight,
+      accepted_vehicle_types: acceptedVehicleTypes,
       settings: {
         enabledParkingAmenities: ['cctv', 'security_24_7'],
         customParkingAmenities: [],
