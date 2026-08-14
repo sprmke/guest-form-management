@@ -51,12 +51,15 @@ export type ParkingOperationalDraft = {
   gcashNumber: string;
 };
 
+export type ParkingVehicleTypeDraft = 'car' | 'motorcycle';
+
 export type ParkingDetailsDraft = {
   spaceLengthM: string;
   spaceWidthM: string;
   heightClearanceM: string;
   checkInTime: string;
   checkOutTime: string;
+  acceptedVehicleTypes: ParkingVehicleTypeDraft[];
 };
 
 const DESCRIPTION_MAX = 1000;
@@ -242,8 +245,18 @@ export function parkingLocationSettingsPatch(draft: ParkingLocationDraft): Recor
   };
 }
 
+function normalizeAcceptedVehicleTypes(
+  value: ReadonlyArray<string> | null | undefined
+): ParkingVehicleTypeDraft[] {
+  const valid = (value ?? []).filter(
+    (v): v is ParkingVehicleTypeDraft => v === 'car' || v === 'motorcycle'
+  );
+  return valid.length > 0 ? Array.from(new Set(valid)) : ['car'];
+}
+
 export function parkingDetailsDraftFromSettings(
-  settings: Record<string, unknown>
+  settings: Record<string, unknown>,
+  acceptedVehicleTypes?: ReadonlyArray<string> | null
 ): ParkingDetailsDraft {
   return {
     spaceLengthM: readParkingDimensionString(
@@ -259,6 +272,7 @@ export function parkingDetailsDraftFromSettings(
     ),
     checkInTime: readSettingsString(settings, 'checkInTime') || '14:00',
     checkOutTime: readSettingsString(settings, 'checkOutTime') || '12:00',
+    acceptedVehicleTypes: normalizeAcceptedVehicleTypes(acceptedVehicleTypes),
   };
 }
 
@@ -271,7 +285,9 @@ export function parkingDetailsDraftIsDirty(
     draft.spaceWidthM.trim() !== baseline.spaceWidthM.trim() ||
     draft.heightClearanceM.trim() !== baseline.heightClearanceM.trim() ||
     draft.checkInTime !== baseline.checkInTime ||
-    draft.checkOutTime !== baseline.checkOutTime
+    draft.checkOutTime !== baseline.checkOutTime ||
+    draft.acceptedVehicleTypes.length !== baseline.acceptedVehicleTypes.length ||
+    draft.acceptedVehicleTypes.some((t) => !baseline.acceptedVehicleTypes.includes(t))
   );
 }
 

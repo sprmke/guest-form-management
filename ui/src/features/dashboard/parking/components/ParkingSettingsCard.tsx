@@ -173,7 +173,7 @@ export function ParkingSettingsCard() {
   );
   const [locationDraft, setLocationDraft] = useState(locationBaseline);
   const [detailsBaseline, setDetailsBaseline] = useState(() =>
-    parkingDetailsDraftFromSettings(parking.settings)
+    parkingDetailsDraftFromSettings(parking.settings, parking.acceptedVehicleTypes)
   );
   const [detailsDraft, setDetailsDraft] = useState(detailsBaseline);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -247,10 +247,10 @@ export function ParkingSettingsCard() {
 
   useEffect(() => {
     if (detailsDirtyRef.current) return;
-    const next = parkingDetailsDraftFromSettings(parking.settings);
+    const next = parkingDetailsDraftFromSettings(parking.settings, parking.acceptedVehicleTypes);
     setDetailsDraft(next);
     setDetailsBaseline(next);
-  }, [parking.id, parking.updatedAt, parking.settings]);
+  }, [parking.id, parking.updatedAt, parking.settings, parking.acceptedVehicleTypes]);
 
   useEffect(() => {
     if (!settings) return;
@@ -413,6 +413,7 @@ export function ParkingSettingsCard() {
             ...(locationDirty ? parkingLocationSettingsPatch(locationDraft) : {}),
             ...(detailsDirty ? parkingDetailsSettingsPatch(detailsDraft) : {}),
           },
+          ...(detailsDirty ? { acceptedVehicleTypes: detailsDraft.acceptedVehicleTypes } : {}),
         });
         if (featuresDirty) setFeaturesBaseline(featuresDraft);
         if (locationDirty) setLocationBaseline(locationDraft);
