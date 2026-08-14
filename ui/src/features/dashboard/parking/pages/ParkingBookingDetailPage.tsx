@@ -1,14 +1,22 @@
+import { useState } from 'react';
+
 import { Link, useParams } from 'react-router-dom';
 
 import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
 import { useBooking } from '@/features/dashboard/bookings/hooks/useBooking';
 import { useParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
 import { parkingSectionPath } from '@/features/dashboard/org/lib/tenantPaths';
-import { useTransitionParkingBooking } from '@/features/dashboard/parking/hooks/useParkingBookingMutations';
+import {
+  useClaimParkingBooking,
+  useDeclineParkingBooking,
+  useTransitionParkingBooking,
+} from '@/features/dashboard/parking/hooks/useParkingBookingMutations';
+import { useParkingBroadcastStatus } from '@/features/dashboard/parking/hooks/useParkingBroadcastStatus';
 
 import { FloatingPanel } from '@/components/mobile/FloatingPanel';
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { parkingDashboardPageTitle, usePageTitle } from '@/lib/pageTitle';
 import { formatBookingDate } from '@/utils/format/bookingDisplay';
 
@@ -16,6 +24,8 @@ const NEXT_STATUS: Record<string, { label: string; to: string } | undefined> = {
   PENDING_REVIEW: { label: 'Mark active', to: 'READY_FOR_CHECKIN' },
   READY_FOR_CHECKIN: { label: 'Complete', to: 'COMPLETED' },
 };
+
+const ENDORSEMENT_NOTE_MAX = 500;
 
 export function ParkingBookingDetailPage() {
   const { bookingId } = useParams<{ bookingId: string }>();
@@ -32,12 +42,26 @@ export function ParkingBookingDetailPage() {
       : undefined
   );
   const transition = useTransitionParkingBooking(parking.id);
+  const claim = useClaimParkingBooking(parking.id);
+  const decline = useDeclineParkingBooking(parking.id);
+  const [endorsementNote, setEndorsementNote] = useState('');
+
+  const isPendingAcceptance = booking?.status === 'PENDING_HOST_ACCEPTANCE';
+  const { data: broadcastStatus, isLoading: broadcastLoading } = useParkingBroadcastStatus(
+    bookingId,
+    parking.id,
+    isPendingAcceptance
+  );
 
   const next = booking?.status ? NEXT_STATUS[String(booking.status)] : undefined;
   const canCancel =
-    booking?.status && booking.status !== 'CANCELLED' && booking.status !== 'COMPLETED';
+    booking?.status &&
+    !isPendingAcceptance &&
+    booking.status !== 'CANCELLED' &&
+    booking.status !== 'COMPLETED' &&
+    booking.status !== 'NO_HOST_AVAILABLE';
 
-  if (isLoading) {
+  if (isLoading || (isPendingAcceptance && broadcastLoading)) {
     return (
       <AdminMobilePage title="Booking" subtitle={parking.name} titleId="parking-booking-heading">
         <p className="text-muted-foreground text-sm">Loading…</p>
@@ -45,7 +69,9 @@ export function ParkingBookingDetailPage() {
     );
   }
 
-  if (error || !booking) {
+  const notFound = error || !booking || (isPendingAcceptance && !broadcastStatus?.exists);
+
+  if (notFound) {
     return (
       <AdminMobilePage title="Booking" subtitle={parking.name} titleId="parking-booking-heading">
         <FloatingPanel padding="lg" className="space-y-3">
@@ -61,12 +87,39 @@ export function ParkingBookingDetailPage() {
     );
   }
 
+  const myBroadcastPending = isPendingAcceptance && broadcastStatus?.response === 'pending';
+  const busy = claim.isPending || decline.isPending;
+
   const desktopActions = (
     <div className="flex flex-wrap gap-2">
+      {myBroadcastPending ? (
+        <>
+          <Button
+            type="button"
+            disabled={busy}
+            className="min-h-[44px]"
+            onClick={() =>
+              claim.mutate({ bookingId: booking.id, endorsementNote: endorsementNote.trim() })
+            }
+          >
+            Accept
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={busy}
+            className="min-h-[44px]"
+            onClick={() => decline.mutate({ bookingId: booking.id })}
+          >
+            Decline
+          </Button>
+        </>
+      ) : null}
       {next ? (
         <Button
           type="button"
           disabled={transition.isPending}
+          className="min-h-[44px]"
           onClick={() => transition.mutate({ bookingId: booking.id, toStatus: next.to })}
         >
           {next.label}
@@ -77,6 +130,7 @@ export function ParkingBookingDetailPage() {
           type="button"
           variant="outline"
           disabled={transition.isPending}
+          className="min-h-[44px]"
           onClick={() => transition.mutate({ bookingId: booking.id, toStatus: 'CANCELLED' })}
         >
           Cancel
@@ -92,7 +146,7 @@ export function ParkingBookingDetailPage() {
       titleId="parking-booking-heading"
       desktopActions={desktopActions}
     >
-      {(next || canCancel) && (
+      {(myBroadcastPending || next || canCancel) && (
         <div className="flex flex-wrap gap-2 lg:hidden">{desktopActions}</div>
       )}
 
@@ -100,6 +154,39 @@ export function ParkingBookingDetailPage() {
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={booking.status} />
         </div>
+
+        {myBroadcastPending && (
+          <div className="space-y-1.5">
+            <label htmlFor="endorsement-note" className="text-muted-foreground text-sm">
+              Access instructions (optional)
+            </label>
+            <Textarea
+              id="endorsement-note"
+              value={endorsementNote}
+              onChange={(event) =>
+                setEndorsementNote(event.target.value.slice(0, ENDORSEMENT_NOTE_MAX))
+              }
+              disabled={busy}
+              rows={3}
+              placeholder="Shown to the guest after Accept"
+              className="resize-y"
+            />
+            <p className="text-muted-foreground text-xs tabular-nums">
+              {endorsementNote.length}/{ENDORSEMENT_NOTE_MAX}
+            </p>
+          </div>
+        )}
+
+        {isPendingAcceptance && !myBroadcastPending && (
+          <p className="text-muted-foreground text-sm">
+            {broadcastStatus?.response === 'claimed'
+              ? 'Claimed by another host.'
+              : broadcastStatus?.response === 'declined'
+                ? 'You declined this request.'
+                : 'This request is no longer available.'}
+          </p>
+        )}
+
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-muted-foreground">Email</dt>
