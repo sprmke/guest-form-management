@@ -9,6 +9,7 @@ import {
   readJsonBody,
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
+import { parseAcceptedVehicleTypes } from '../_shared/parkingDimensionDefaults.ts';
 import { resolveScopedParkingAccess } from '../_shared/parkingScope.ts';
 import {
   DUPLICATE_PARKING_SLOT_MESSAGE,
@@ -95,6 +96,14 @@ serveAuthenticated('update-parking', async (req) => {
       return jsonError(req, 'ratePerNight must be non-negative');
     }
     patch.rate_per_night = body.ratePerNight;
+  }
+
+  if (body.acceptedVehicleTypes !== undefined) {
+    const parsedTypes = parseAcceptedVehicleTypes(body.acceptedVehicleTypes);
+    if (!parsedTypes.ok) {
+      return jsonError(req, parsedTypes.error);
+    }
+    patch.accepted_vehicle_types = parsedTypes.value;
   }
 
   if (typeof body.status === 'string') {

@@ -14,6 +14,7 @@ import {
 import { refreshGuestStayGuideAccessWindow } from '../_shared/guestStayGuide.ts';
 import type { GuestSubmission } from '../_shared/types.ts';
 import { createNotification } from '../_shared/notificationService.ts';
+import { bookingNotificationMetadata } from '../_shared/notificationEnrichment.ts';
 import {
   resolvePublicPropertyId,
   resolveOrganizationIdForProperty,
@@ -289,6 +290,7 @@ serve(async (req) => {
           title: 'New booking submitted',
           body: `${guestName} submitted a new booking request.`,
           bookingId: submissionData.id,
+          metadata: bookingNotificationMetadata(notifyBooking),
           dedupeKey: `${submissionData.id}:booking_pending_review`,
         });
       } catch (notifErr) {

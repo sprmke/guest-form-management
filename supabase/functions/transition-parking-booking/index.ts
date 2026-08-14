@@ -12,12 +12,8 @@ import {
 } from '../_shared/httpResponse.ts';
 import { verifyParkingTeamAccess } from '../_shared/orgAuth.ts';
 import { verifyBookingBelongsToParking } from '../_shared/parkingScope.ts';
+import { canTransition, isParkingStatus } from '../_shared/parkingStatusMachine.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
-
-const ALLOWED: Record<string, readonly string[]> = {
-  PENDING_REVIEW: ['READY_FOR_CHECKIN', 'CANCELLED'],
-  READY_FOR_CHECKIN: ['COMPLETED', 'CANCELLED'],
-};
 
 serveAuthenticated('transition-parking-booking', async (req) => {
   requireHttpMethod(req, 'POST');
@@ -27,6 +23,9 @@ serveAuthenticated('transition-parking-booking', async (req) => {
 
   if (!bookingId || !toStatus) {
     return jsonError(req, 'bookingId and toStatus are required');
+  }
+  if (!isParkingStatus(toStatus)) {
+    return jsonError(req, `Unknown parking status: ${toStatus}`);
   }
 
   const booking = await DatabaseService.getBookingById(bookingId);
@@ -39,8 +38,14 @@ serveAuthenticated('transition-parking-booking', async (req) => {
   await verifyBookingBelongsToParking(bookingId, parkingId);
 
   const fromStatus = String(booking.status ?? '');
-  const allowed = ALLOWED[fromStatus] ?? [];
-  if (!allowed.includes(toStatus)) {
+  if (!isParkingStatus(fromStatus)) {
+    return jsonError(req, `Unknown parking status: ${fromStatus}`);
+  }
+  // PENDING_HOST_ACCEPTANCE only resolves via claim/decline/expire — never a plain transition.
+  if (fromStatus === 'PENDING_HOST_ACCEPTANCE') {
+    return jsonError(req, `Cannot transition from ${fromStatus} to ${toStatus}`);
+  }
+  if (!canTransition(fromStatus, toStatus)) {
     return jsonError(req, `Cannot transition from ${fromStatus} to ${toStatus}`);
   }
 
