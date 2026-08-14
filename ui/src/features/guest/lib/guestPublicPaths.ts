@@ -210,6 +210,12 @@ export function absoluteGuestParkingFormUrl(parkingSlug: string): string {
   return `${window.location.origin}${guestParkingFormPath(parkingSlug)}`;
 }
 
+export function guestParkingRequestStatusPath(bookingId: string): string {
+  const id = bookingId.trim();
+  if (!id) return '/parkings';
+  return `/parkings/requests/${encodeURIComponent(id)}`;
+}
+
 export function absoluteGuestFormUrl(propertySlug: string): string {
   return absoluteGuestPath(guestFormPath(propertySlug));
 }

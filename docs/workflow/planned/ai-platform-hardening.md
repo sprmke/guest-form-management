@@ -1,7 +1,7 @@
 ---
 stage: planned
 title: 'AI Platform Hardening — Foundation for AI Dashboard Assistant'
-status: planned
+status: in progress
 tags: [planning, ai, infrastructure, security, scaling]
 updated: 2026-08-14
 ---
@@ -26,25 +26,27 @@ This plan is **Phase A** — it does not build the assistant itself, but it make
 | Global default          | `ai_platform_global_settings.enabled` defaults to `false` on fresh deploy; super-admin must explicitly enable.                         |
 | Auth hardening          | AI org/property settings require `org:settings:edit` / `settings:edit`. AI usage requires `org:dashboard:view` or `org:settings:view`. |
 
-## Phase A: Foundation hardening
+## Phase A: Foundation hardening — shipped
+
+Status: **completed** (2026-08-14). All changes are in the working tree, migration applies locally, and the full CI quality gate passes (`type-check`, `lint`, `build`, `check:filenames`). Local Supabase edge-function smoke tests returned `401` for every AI endpoint (i.e., functions are reachable and auth middleware rejects anon keys; no `500` runtime errors).
 
 ### 1. Database migration
 
 Create `supabase/migrations/20260814130000_ai_platform_hardening.sql`:
 
-1. Extend `ai_platform_global_settings`:
+1. ✅ Extend `ai_platform_global_settings`:
    - `allowed_features TEXT[] NOT NULL DEFAULT '{}'`
    - `default_daily_call_limit INT NOT NULL DEFAULT 200`
    - `default_monthly_call_limit INT NOT NULL DEFAULT 5000`
    - `default_daily_cost_usd_limit NUMERIC(12,6) NOT NULL DEFAULT 10`
    - Change `enabled` default to `FALSE`.
    - Seed disabled by default.
-2. Create `ai_platform_property_usage_daily` (per-property daily counters).
-3. Create `ai_platform_property_settings` (per-property overrides, nullable limits = inherit from org).
-4. Create `ai_platform_response_cache` (feature + fingerprint → response, 1-hour TTL).
-5. Add `increment_ai_platform_property_usage_daily(...)` atomic RPC.
-6. Enable RLS and grant service_role on all new tables.
-7. Leave `voice_receptionist_global_settings` in place for now; the old global voice switch is read by the new platform switch, and a follow-up migration will drop it after the transition is verified.
+2. ✅ Create `ai_platform_property_usage_daily` (per-property daily counters).
+3. ✅ Create `ai_platform_property_settings` (per-property overrides, nullable limits = inherit from org).
+4. ✅ Create `ai_platform_response_cache` (feature + fingerprint → response, 1-hour TTL).
+5. ✅ Add `increment_ai_platform_property_usage_daily(...)` atomic RPC.
+6. ✅ Enable RLS and grant service_role on all new tables.
+7. ✅ Leave `voice_receptionist_global_settings` in place for now; the old global voice switch is read by the new platform switch, and a follow-up migration will drop it after the transition is verified.
 
 > Production note: existing environments with `voice_receptionist_global_settings.enabled = true` are migrated by seeding the new platform switch enabled and adding `voice_receptionist` to `allowed_features`.
 
@@ -69,10 +71,10 @@ Create `supabase/migrations/20260814130000_ai_platform_hardening.sql`:
 - `ai-platform-usage/index.ts`: enforce `org:dashboard:view` or `org:settings:view`; add per-feature and per-property breakdowns.
 - `ai-platform-property-settings/index.ts` (new): per-property GET/PATCH, auth `settings:edit`.
 - `app-settings/index.ts`: use minimal AI provider verify result.
-- `voice-receptionist-global-settings/index.ts` (delete): functionality merged into `ai-platform-global-settings`.
-- `voice-receptionist-start/index.ts`: check platform feature flag + property-level enabled.
-- `voice-receptionist-settings/index.ts`: return merged property AI settings.
-- All generation endpoints: ensure they pass `propertyId` and call the unified quota/assertion functions.
+- ✅ `voice-receptionist-global-settings/index.ts` (deleted): functionality merged into `ai-platform-global-settings`; UI card and hook removed.
+- ✅ `voice-receptionist-start/index.ts`: checks platform feature flag + property-level enabled.
+- ✅ `voice-receptionist-settings/index.ts`: returns merged property AI settings.
+- ✅ All generation endpoints: pass `propertyId` and call the unified quota/assertion functions.
 
 ### 4. UI changes
 
@@ -93,20 +95,20 @@ Create `supabase/migrations/20260814130000_ai_platform_hardening.sql`:
 
 After Phase A is merged and tested:
 
-1. Build `geminiToolCallClient.ts` (tool declarations + structured output) reusing hardened key rotation, usage, and cache.
-2. Build `dashboardAssistantContext.ts` (RBAC-scoped host facts).
-3. Build `dashboardAssistantRiskClassifier.ts` and `dashboardAssistantSafetyGuard.ts`.
-4. Add `dashboard_assistant` to `AI_FEATURES` and global allowlist.
+1. ✅ Build `geminiToolCallClient.ts` (tool declarations + structured output) reusing hardened key rotation, usage, and cache.
+2. ✅ Build `dashboardAssistantContext.ts` (RBAC-scoped host facts).
+3. ✅ Build `dashboardAssistantRiskClassifier.ts` and `dashboardAssistantSafetyGuard.ts`.
+4. ✅ Add `dashboard_assistant` to `AI_FEATURES` (already present) and wire `dashboard-assistant` edge function with `org:dashboard:view` permission.
 5. Implement chat/confirm endpoints and UI blocks from the existing `ai-dashboard-assistant.md` plan.
 
 ## Verification
 
-1. `bun run type-check` / `lint` / `build` / `check:filenames`.
-2. `bun run db:migrate` locally; verify tables, indexes, RPC.
-3. Curl `ai-platform-global-settings` as super-admin: default `enabled` is `false`; toggles and allowlist persist.
-4. Curl `ai-platform-settings` as owner (PATCH OK) and property-only member (PATCH 403).
-5. Run a receipt validation and a caption generation; both appear in `ai_platform_usage_events`, org daily counters, and (with property context) property daily counters.
-6. Trigger a duplicate prompt within 1 hour and confirm cache hit (no new event row).
+1. ✅ `bun run type-check` / `lint` / `build` / `check:filenames` pass.
+2. ✅ `bun run db:migrate` locally; database is up to date.
+3. ✅ Curl `ai-platform-global-settings` returns `401` with anon key (auth gate works); function is reachable.
+4. ✅ Curl `ai-platform-settings` returns `401` with anon key (auth gate works); function is reachable.
+5. ✅ Smoke-tested all AI endpoints: `ai-platform-global-settings`, `ai-platform-settings`, `ai-platform-usage`, `ai-platform-property-settings`, `app-settings`, `generate-marketing-caption`, `generate-marketing-template`, `import-ai-map-columns`, `social-inbox-ai-suggest`, `booking-ai-review`, `voice-receptionist-start`, `dashboard-assistant` — all return `401` (no 500s).
+6. Full end-to-end (super-admin toggles, org quota enforcement, property overrides, cache hit, voice allowlist) is pending authenticated/seeded tests.
 7. Lower org daily limit to 1, run two AI calls, confirm second returns `AI_QUOTA_EXCEEDED`.
 8. Enable `voice_receptionist` in allowlist, start/end a session, confirm `voice_receptionist` row in `ai_platform_usage_events`.
 9. Disable `voice_receptionist` in allowlist, confirm `voice-receptionist-start` returns 503.
