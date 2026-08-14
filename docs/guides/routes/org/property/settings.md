@@ -426,18 +426,33 @@ Production GAF/pet approvals use **Resend inbound** (`approval-email-webhook`); 
 
 ---
 
+## AI Overrides
+
+Per-property overrides for the platform AI usage limits. NULL limits inherit the organization settings.
+
+| Field                | Column                 | Notes                                              |
+| -------------------- | ---------------------- | -------------------------------------------------- |
+| Enable               | `enabled`              | Master per-property AI toggle; also gated globally |
+| Daily call limit     | `daily_call_limit`     | Blank = inherit from organization                  |
+| Monthly call limit   | `monthly_call_limit`   | Blank = inherit from organization                  |
+| Daily cost USD limit | `daily_cost_usd_limit` | Blank = inherit from organization                  |
+
+Save path: section-local **Save** button → `PATCH ai-platform-property-settings?property_id=` (`settings:edit`). Hook: `useAiPlatformPropertySettings.ts` (added to `useAiPlatformSettings.ts`). UI: `PropertyAiPlatformSection.tsx`.
+
+---
+
 ## Voice Receptionist
 
-Opt-in AI voice assistant guests can talk to (check-in, wifi, parking, and other stay questions). Own table (`voice_receptionist_settings`) and **own GET/PATCH edge function** — draft state lives on the property Settings page and saves with the shared **Save Changes** footer (same as profile / `app_settings`), not a section-local Save button.
+Opt-in AI voice assistant guests can talk to (check-in, wifi, parking, and other stay questions). Config is now stored inside `ai_platform_property_settings.feature_configs.voice_receptionist`. The section still uses `voice-receptionist-settings` for reads/writes and saves with the shared **Save Changes** footer.
 
-| Field               | Column                           | Notes                                                                          |
-| ------------------- | -------------------------------- | ------------------------------------------------------------------------------ |
-| Enable              | `enabled`                        | Also gated by the platform-wide super-admin kill switch                        |
-| Voice               | `voice_id`                       | Gemini Live prebuilt voice; options from `availableVoices` (labeled in UI)     |
-| Persona prompt      | `persona_prompt`                 | Optional tone guidance; guest-safe grounding is fixed and cannot be overridden |
-| Max session (sec)   | `max_session_seconds`            | Default 300; allowed **60–3600**                                               |
-| Max per guest / day | `max_sessions_per_guest_per_day` | Default 3; allowed **1–999**                                                   |
-| Max concurrent      | `max_concurrent_sessions`        | Default 3, property-wide; allowed **1–50**                                     |
+| Field               | Storage path                                                               | Notes                                                                           |
+| ------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Enable              | `ai_platform_property_settings.feature_configs.voice_receptionist.enabled` | Also gated by the platform-wide AI kill switch + `voice_receptionist` allowlist |
+| Voice               | `voice_id`                                                                 | Gemini Live prebuilt voice; options from `availableVoices` (labeled in UI)      |
+| Persona prompt      | `persona_prompt`                                                           | Optional tone guidance; guest-safe grounding is fixed and cannot be overridden  |
+| Max session (sec)   | `max_session_seconds`                                                      | Default 300; allowed **60–3600**                                                |
+| Max per guest / day | `max_sessions_per_guest_per_day`                                           | Default 3; allowed **1–999**                                                    |
+| Max concurrent      | `max_concurrent_sessions`                                                  | Default 3, property-wide; allowed **1–50**                                      |
 
 Save path: page **Save Changes** → `PATCH voice-receptionist-settings?property_id=` when this section is dirty (`settings:edit`). Hook: `useVoiceReceptionistSettings.ts`. UI: `PropertyVoiceReceptionistSection.tsx` (controlled from `PropertySettingsCard.tsx`).
 
@@ -447,7 +462,7 @@ Save path: page **Save Changes** → `PATCH voice-receptionist-settings?property
 length, estimated cost) below the form fields. `GET voice-receptionist-usage?property_id=`
 (`settings:view`), hook `useVoiceReceptionistUsage`. Estimated cost is a rough per-minute
 blended-rate estimate persisted on `voice_receptionist_sessions.estimated_cost_usd` when a
-session ends — visibility only, not a billing figure (Gemini Live bills by token, not duration).
+session ends; the same session is also recorded in `ai_platform_usage_events` (feature `voice_receptionist`) for unified platform usage.
 
 **Guest-side hardening (Task 5):** sessions also end with `end_reason='timeout'` after 45s of
 no guest/assistant speech activity (idle timeout, distinct from the max-session-length cap);
@@ -489,18 +504,19 @@ booth UI; premium human concierge portrait). Admin settings fields above are unc
 
 ## API reference (this page)
 
-| Action                                                            | Endpoint                                               |
-| ----------------------------------------------------------------- | ------------------------------------------------------ |
-| Profile + settings                                                | `PATCH update-property`                                |
-| Payment + building forms + email automations + workflow documents | `PATCH app-settings?property_id=`                      |
-| Media upload/delete                                               | `POST` / `DELETE upload-property-media?property_id=`   |
-| Payment QR / signature                                            | `POST upload-app-settings-asset?property_id=`          |
-| Voice receptionist settings                                       | `GET`/`PATCH voice-receptionist-settings?property_id=` |
-| Voice receptionist voice preview (TTS)                            | `POST voice-receptionist-voice-preview?property_id=`   |
-| Voice receptionist usage/cost read                                | `GET voice-receptionist-usage?property_id=`            |
-| Archive                                                           | `PATCH update-property` `{ status: "INACTIVE" }`       |
-| Restore                                                           | `PATCH update-property` `{ status: "ACTIVE" }`         |
-| Delete                                                            | `DELETE delete-property` `{ propertyId }`              |
+| Action                                                            | Endpoint                                                 |
+| ----------------------------------------------------------------- | -------------------------------------------------------- |
+| Profile + settings                                                | `PATCH update-property`                                  |
+| Payment + building forms + email automations + workflow documents | `PATCH app-settings?property_id=`                        |
+| Media upload/delete                                               | `POST` / `DELETE upload-property-media?property_id=`     |
+| Payment QR / signature                                            | `POST upload-app-settings-asset?property_id=`            |
+| AI platform overrides (property)                                  | `GET`/`PATCH ai-platform-property-settings?property_id=` |
+| Voice receptionist settings                                       | `GET`/`PATCH voice-receptionist-settings?property_id=`   |
+| Voice receptionist voice preview (TTS)                            | `POST voice-receptionist-voice-preview?property_id=`     |
+| Voice receptionist usage/cost read                                | `GET voice-receptionist-usage?property_id=`              |
+| Archive                                                           | `PATCH update-property` `{ status: "INACTIVE" }`         |
+| Restore                                                           | `PATCH update-property` `{ status: "ACTIVE" }`           |
+| Delete                                                            | `DELETE delete-property` `{ propertyId }`                |
 
 ---
 
@@ -519,9 +535,19 @@ Keep UI and edge copies in sync when changing rules.
 
 ---
 
+## Related docs
+
+- [Organization Settings — AI platform](../settings.md) § AI platform
+- [Super Admin Settings — Platform AI](../../admin/settings.md) § Platform AI
+- [`docs/archive/operations/ai-platform-billing.md`](../../../../archive/operations/ai-platform-billing.md) — billing and quota guidance
+
+---
+
 ## Pending / follow-ups
 
 - [ ] Org-level residence catalog (DB-driven instead of code constants)
 - [ ] Location: optional per-org Maps API key override
 - [ ] Soft-delete flag instead of hard delete for edge cases
 - [ ] Automated tests for property settings validation
+- [x] Remove deprecated `voice-receptionist-global-settings` edge function and UI card
+- [ ] Drop legacy `voice_receptionist_global_settings` table after verifying the platform switch is seeded on hosted environments

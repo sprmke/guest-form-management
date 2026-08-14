@@ -17,6 +17,7 @@ Route: `/org/:orgSlug/settings`
 | ----------------- | -------- | ------------ | ---- | ------------------------------------------------------------------------- |
 | Basic information | Yes      | Yes          | Done | Logo, name, slug, brand color, tagline, description, contact info         |
 | Socials           | Yes      | Yes          | Done | Social URLs; main platform auto-derived on save                           |
+| AI platform       | Yes      | Server       | Done | Per-org usage quotas and enabled features; read-only when platform AI off |
 | Danger zone       | Partial  | Slug confirm | Done | Delete when no bookings; finance/maintenance can block; see § Danger zone |
 
 ---
@@ -31,6 +32,8 @@ Organization settings uses `AdminSectionNavLayout` with **two save paths**. The 
 Logo upload is immediate via `upload-org-settings-asset` (`team_logo` → `org_settings.email_logo_url` + `organizations.logo_url`).
 
 **Email routing, SD cron tuning, parking defaults, and automation toggles** are **per property** in **`app_settings`** — see **[[guides/routes/org/property/settings|Property Settings — operator guide]]** § Email automations.
+
+**AI platform quotas** are set per organization and inherited by all properties unless overridden per property — see § AI platform.
 
 ---
 
@@ -68,19 +71,34 @@ Guest/operator **contact name, phone, and email** for templates and public surfa
 
 ### Socials
 
-| Field         | Storage                             | Notes                                                                                                  |
-| ------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| Airbnb        | `org_settings.airbnb_url`           | Optional; DB value wins over `AIRBNB_URL` env                                                          |
-| Facebook page | `org_settings.facebook_reviews_url` | Optional; saved DB value wins over `FACEBOOK_REVIEWS_URL` env; env used only when column is null/empty |
-| Instagram     | `org_settings.instagram_url`        | Optional; DB value wins over `INSTAGRAM_URL` env                                                       |
-| TikTok        | `org_settings.tiktok_url`           | Optional; DB value wins over `TIKTOK_URL` env                                                          |
-| Main platform | `org_settings.main_social_platform` | Auto-set on save from filled URLs (first valid platform); properties inherit when empty                |
+| Field         | Storage                             | Notes                                                                                            |
+| ------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Airbnb        | `org_settings.airbnb_url`           | Optional; DB value wins over `AIRBNB_URL` env                                                    |
+| Facebook page | `org_settings.facebook_reviews_url` | Optional; DB value wins over `FACEBOOK_REVIEWS_URL` env; env used only when column is null/empty |
+| Instagram     | `org_settings.instagram_url`        | Optional; DB value wins over `INSTAGRAM_URL` env                                                 |
+| TikTok        | `org_settings.tiktok_url`           | Optional; DB value wins over `TIKTOK_URL` env                                                    |
+| Main platform | `org_settings.main_social_platform` | Auto-set on save from filled URLs (first valid platform); properties inherit when empty          |
 
 **Validation:** at least one social URL. Main platform is derived automatically on save (not editable at org level).
 
 Properties inherit org social URLs and main platform when their `app_settings` columns are empty — see **property settings** § Socials.
 
 **App origin** (email links, default GCash QR base URL) is **not** per-org — set deployment env **`PUBLIC_GUEST_APP_ORIGIN`**. Legacy `org_settings.public_guest_app_origin` is used only when the env var is unset.
+
+### AI platform
+
+| Field                | Storage                                         | Notes                                                                                     |
+| -------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Platform AI enabled  | `ai_platform_global_settings.enabled`           | Read-only; controlled by super-admin. Section is disabled when false.                     |
+| Allowed features     | `ai_platform_global_settings.allowed_features`  | Read-only; controlled by super-admin.                                                     |
+| Daily call limit     | `ai_platform_org_settings.daily_call_limit`     | Default 200; blank falls back to platform default.                                        |
+| Monthly call limit   | `ai_platform_org_settings.monthly_call_limit`   | Default 5000; blank falls back to platform default.                                       |
+| Daily cost USD limit | `ai_platform_org_settings.daily_cost_usd_limit` | Default 10; blank falls back to platform default.                                         |
+| Voice receptionist   | inherited from platform allowlist               | Can be enabled per property only when the platform allows the voice receptionist feature. |
+
+Save path: section-local **Save** button → `PATCH ai-platform-settings` (org owner / org admin only). Hook: `useAiPlatformSettings.ts`.
+
+Usage summary: `GET ai-platform-usage` (today, this month, per-feature breakdown, per-property breakdown). Hook: `useAiPlatformSettings.ts`.
 
 ### Danger zone — delete organization
 
@@ -169,6 +187,7 @@ Danger zone: slug confirmation + `delete-organization`; blocked when booking his
 | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Page                             | `ui/src/features/dashboard/org/pages/OrgSettingsPage.tsx`                                                                                                                          |
 | Basic + socials + email sections | `ui/src/features/dashboard/org/components/org-settings/OrgProfileSettingsSections.tsx`                                                                                             |
+| AI platform section              | `ui/src/features/dashboard/org/components/org-settings/OrgAiPlatformSection.tsx`                                                                                                   |
 | Client validation                | `ui/src/features/dashboard/org/lib/orgSettingsCompletion.ts`, `ui/src/features/dashboard/org/lib/orgSettingsFieldError.ts`, `ui/src/features/dashboard/org/lib/orgSettingsSave.ts` |
 | Sidebar issue sync               | `ui/src/features/dashboard/org/components/OrgSettingsIssuesSync.tsx`, `ui/src/features/dashboard/org/lib/orgSettingsIssuesStore.ts`                                                |
 | Saved completion hook            | `ui/src/features/dashboard/org/hooks/useOrgSettingsCompletion.ts`                                                                                                                  |
@@ -178,12 +197,18 @@ Danger zone: slug confirmation + `delete-organization`; blocked when booking his
 | App origin resolver              | `supabase/functions/_shared/publicAppOrigin.ts`                                                                                                                                    |
 | Social URL resolver              | `supabase/functions/_shared/orgSocialLinks.ts`                                                                                                                                     |
 | `org-settings`                   | `supabase/functions/org-settings/index.ts`                                                                                                                                         |
+| `ai-platform-settings`           | `supabase/functions/ai-platform-settings/index.ts`                                                                                                                                 |
+| `ai-platform-usage`              | `supabase/functions/ai-platform-usage/index.ts`                                                                                                                                    |
 | `delete-organization`            | `supabase/functions/delete-organization/index.ts`                                                                                                                                  |
 | Social columns migration         | `supabase/migrations/20260821190000_org_settings_social_links.sql`                                                                                                                 |
+| AI platform migration            | `supabase/migrations/20260814130000_ai_platform_hardening.sql`                                                                                                                     |
 
 ---
 
 ## Related docs
 
 - [Route index](../README.md)
+- [Property Settings — AI overrides](./property/settings.md) § AI Overrides
+- [Super Admin Settings — Platform AI](../admin/settings.md) § Platform AI
 - [`docs/architecture/validation-and-env.md`](../../../architecture/validation-and-env.md) — `PUBLIC_GUEST_APP_ORIGIN`, `FACEBOOK_REVIEWS_URL`
+- [`docs/archive/operations/ai-platform-billing.md`](../../../archive/operations/ai-platform-billing.md) — billing and quota guidance
