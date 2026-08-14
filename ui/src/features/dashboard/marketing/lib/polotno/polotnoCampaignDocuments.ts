@@ -7,6 +7,7 @@ import {
   getCampaignTemplate,
 } from '@/features/dashboard/marketing/lib/designCampaignTemplates';
 import type { DesignBinding } from '@/features/dashboard/marketing/lib/designCanvasTypes';
+import { squareImageCoverCrop } from '@/features/dashboard/marketing/lib/polotno/orgLogoCircle';
 import { roundedOutlineSvgUrl } from '@/features/dashboard/marketing/lib/polotno/roundedOutlineSvg';
 import { DESIGN_FORMAT_DIMENSIONS } from '@/features/dashboard/marketing/lib/templateRegistry';
 import type { DesignTemplateFormat } from '@/features/dashboard/marketing/lib/templateRegistry';
@@ -433,14 +434,18 @@ export function galleryFooter(
   );
 }
 
-/** Small logo mark placed in the upper area. */
+/** Small circular logo mark (1×1, full corner radius) placed in the upper area. */
 export function logoImage(
   url: string,
   layout: CampaignLayout,
   topRatio: number,
-  sizeRatio: number
+  sizeRatio: number,
+  naturalSize?: { width: number; height: number }
 ): PolotnoChild {
   const size = layout.size(sizeRatio);
+  const crop = naturalSize
+    ? squareImageCoverCrop(naturalSize.width, naturalSize.height)
+    : { cropX: 0, cropY: 0, cropWidth: 1, cropHeight: 1 };
   return {
     id: uid('logo'),
     type: 'image',
@@ -450,7 +455,10 @@ export function logoImage(
     width: size,
     height: size,
     src: url,
-    keepRatio: true,
+    keepRatio: false,
+    stretchEnabled: false,
+    cornerRadius: size / 2,
+    ...crop,
   };
 }
 

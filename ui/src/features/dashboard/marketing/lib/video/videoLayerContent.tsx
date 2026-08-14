@@ -98,9 +98,11 @@ export function VideoLayerBody({
         alt=""
         style={{
           width: '100%',
+          aspectRatio: '1 / 1',
           height: 'auto',
           display: 'block',
-          objectFit: 'contain',
+          objectFit: 'cover',
+          borderRadius: '9999px',
         }}
       />
     );

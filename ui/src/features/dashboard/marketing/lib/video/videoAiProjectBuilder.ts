@@ -6,6 +6,7 @@
  */
 
 import type { DesignBinding } from '@/features/dashboard/marketing/lib/designCanvasTypes';
+import type { CampaignPalette } from '@/features/dashboard/marketing/lib/designBrandColors';
 import {
   resolveDesignBindingMedia,
   pickBindingMediaAt,
@@ -181,6 +182,8 @@ export type ResolveAiGeneratedVideoOptions = {
   includePropertyName?: boolean;
   /** Rotates which property photo lands on which scene — vary per saved format. */
   mediaOffset?: number;
+  /** Look-suggestion palette stamped onto the project. */
+  palette?: CampaignPalette;
 };
 
 /** Compile AI tokens into a fully editable VideoProject for one format. */
@@ -248,6 +251,7 @@ export function resolveAiGeneratedVideoProject(
     fps: VIDEO_FPS,
     scenes,
     music,
+    ...(options?.palette ? { palette: options.palette } : {}),
   };
 }
 

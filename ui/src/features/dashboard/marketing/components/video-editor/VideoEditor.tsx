@@ -118,7 +118,10 @@ import {
 } from '@/features/dashboard/marketing/lib/video/videoProjectUtils';
 import { getSceneLayers } from '@/features/dashboard/marketing/lib/video/videoSceneLayers';
 import { resolveVideoTypographyContext } from '@/features/dashboard/marketing/lib/video/videoTemplateTypography';
-import { applyVideoAiPreferencesToTokens } from '@/features/dashboard/marketing/lib/videoAiGenerateOptions';
+import {
+  applyVideoAiPreferencesToTokens,
+  campaignPaletteFromLookMood,
+} from '@/features/dashboard/marketing/lib/videoAiGenerateOptions';
 import {
   getVideoCampaignTemplate,
   videoTemplatePalette,
@@ -390,8 +393,13 @@ export function VideoEditor({ onPublish }: Props) {
   }, [showEditorSettings, project, selectedSceneIndex, selectedScene?.id]);
 
   const templateTypography = useMemo(
-    () => resolveVideoTypographyContext(project?.templateId ?? selected?.id, brandColor),
-    [project?.templateId, selected?.id, brandColor]
+    () =>
+      resolveVideoTypographyContext(
+        project?.templateId ?? selected?.id,
+        brandColor,
+        project?.palette
+      ),
+    [project?.templateId, project?.palette, selected?.id, brandColor]
   );
 
   const motionProfile = useMemo(
@@ -732,8 +740,10 @@ export function VideoEditor({ onPublish }: Props) {
               input.preferences.duration === 'auto'
                 ? undefined
                 : String(input.preferences.duration),
-            fontPairing: input.preferences.fontPairing,
-            backgroundMood: input.preferences.motionMood,
+            fontPairing:
+              input.preferences.fontPairing === 'auto' ? undefined : input.preferences.fontPairing,
+            backgroundMood:
+              input.preferences.motionMood === 'auto' ? undefined : input.preferences.motionMood,
             category: input.preferences.category,
           },
         });
@@ -749,12 +759,16 @@ export function VideoEditor({ onPublish }: Props) {
           tokens.category === 'custom'
             ? (catalog.findOrCreateCategoryByLabel('Custom') ?? 'custom')
             : tokens.category;
+        const lookPalette = input.preferences.lookMood
+          ? campaignPaletteFromLookMood(input.preferences.lookMood)
+          : undefined;
         const variants = resolveAiGeneratedVideoProjectsForAllFormats(tokens, binding, {
           includePropertyPhoto: input.includeContext.propertyPhoto,
           orgLogoUrl,
           includeOrgLogo: input.includeContext.orgLogo ?? true,
           includeCta: input.includeContext.cta ?? true,
           includePropertyName: input.includeContext.propertyName ?? true,
+          palette: lookPalette,
         });
 
         const aiGenerationId =
