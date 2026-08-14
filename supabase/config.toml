@@ -182,6 +182,27 @@ verify_jwt = false
 [functions.transition-parking-booking]
 verify_jwt = false
 
+[functions.claim-parking-booking]
+verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
+
+[functions.decline-parking-booking]
+verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
+
+[functions.expire-parking-broadcasts]
+verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
+
 [functions.transition-booking]
 verify_jwt = false
 static_files = [
@@ -698,6 +719,12 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.ai-platform-usage]
+verify_jwt = false
+
+[functions.notifications-list]
+verify_jwt = false
+
+[functions.notifications-mark-read]
 verify_jwt = false
 
 # ── kept for reference (cloud schedule lines, never uncomment locally) ─────────
