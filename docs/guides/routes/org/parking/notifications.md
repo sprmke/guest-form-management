@@ -9,20 +9,36 @@ updated: 2026-08-02
 
 Route: `/org/:orgSlug/parking/:parkingSlug/notifications`
 
+Deep links:
+
+- `?section=activity` or `#section-activity` — in-app activity feed (bell **View all**)
+- `?module=finance` — Finance Telegram section
+- `?module=parking` (legacy `?module=marketing` maps to Parking)
+
 > **Status:** Documented
 
 ## Progress overview
 
-| Section | E2E save | Docs       | Notes                                       |
-| ------- | -------- | ---------- | ------------------------------------------- |
-| Parking | ✓        | Documented | Ops alerts (reservation, check-in, payment) |
-| Finance | ✓        | Documented | Due-date reminders for parking transactions |
+| Section  | E2E save | Docs       | Notes                                       |
+| -------- | -------- | ---------- | ------------------------------------------- |
+| Activity | ✓        | Documented | In-app bell feed (org-wide, paginated)      |
+| Parking  | ✓        | Documented | Ops alerts (reservation, check-in, payment) |
+| Finance  | ✓        | Documented | Due-date reminders for parking transactions |
 
 ---
 
 ## Overview
 
-Two Telegram sections (same layout as property notifications):
+Hub for **in-app activity** (same org-wide feed as the header bell) and **Telegram** alerts for this parking slot.
+
+### In-app activity
+
+- **Activity** section lists in-app notifications for the org (booking + inbox events).
+- Bell dropdown shows the latest **5**; **View all** opens this page at **Activity** when more exist.
+- **Activity** card scrolls inside a max height; additional pages load as you scroll (20 per request).
+- Rows show guest name and stay dates (inquiry or booked) when available; realtime toasts match the same layout.
+
+### Telegram sections
 
 ### Shared bot token (recommended default)
 
@@ -81,15 +97,17 @@ Cron: global `telegram-finance-cron` (hourly) processes unpaid `finance_line_ite
 
 ## Implementation map
 
-| Concern       | Path                                                                            |
-| ------------- | ------------------------------------------------------------------------------- |
-| Page          | `ui/src/features/dashboard/parking/pages/ParkingNotificationsPage.tsx`          |
-| Parking card  | `ui/src/features/dashboard/parking/components/TelegramParkingSettingsCard.tsx`  |
-| Finance card  | `ui/src/features/dashboard/bookings/components/TelegramFinanceSettingsCard.tsx` |
-| Finance hooks | `ui/src/features/dashboard/bookings/hooks/useTelegramFinanceSettings.ts`        |
-| Parking edge  | `supabase/functions/telegram-parking-settings/index.ts`                         |
-| Finance edge  | `supabase/functions/telegram-finance-settings/index.ts`                         |
-| Cron          | `supabase/functions/telegram-finance-cron/index.ts`                             |
+| Concern       | Path                                                                             |
+| ------------- | -------------------------------------------------------------------------------- |
+| Page          | `ui/src/features/dashboard/parking/pages/ParkingNotificationsPage.tsx`           |
+| In-app list   | `ui/src/features/dashboard/notifications/components/InAppNotificationsPanel.tsx` |
+| Bell          | `ui/src/features/dashboard/notifications/components/NotificationBell.tsx`        |
+| Parking card  | `ui/src/features/dashboard/parking/components/TelegramParkingSettingsCard.tsx`   |
+| Finance card  | `ui/src/features/dashboard/bookings/components/TelegramFinanceSettingsCard.tsx`  |
+| Finance hooks | `ui/src/features/dashboard/bookings/hooks/useTelegramFinanceSettings.ts`         |
+| Parking edge  | `supabase/functions/telegram-parking-settings/index.ts`                          |
+| Finance edge  | `supabase/functions/telegram-finance-settings/index.ts`                          |
+| Cron          | `supabase/functions/telegram-finance-cron/index.ts`                              |
 
 ---
 

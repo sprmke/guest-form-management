@@ -9,7 +9,10 @@ updated: 2026-08-02
 
 Route: `/org/:orgSlug/property/:propertySlug/notifications`
 
-Deep link: `?module=chat|marketing|staff|operations|finance|maintenance` scrolls to that module section.
+Deep links:
+
+- `?section=activity` or `#section-activity` — in-app activity feed (bell **View all**)
+- `?module=chat|marketing|staff|operations|finance|maintenance` — scrolls to that Telegram module section
 
 > **Status:** Documented
 
@@ -17,6 +20,7 @@ Deep link: `?module=chat|marketing|staff|operations|finance|maintenance` scrolls
 
 | Section     | E2E save | Validation | Docs       | Notes                                      |
 | ----------- | -------- | ---------- | ---------- | ------------------------------------------ |
+| Activity    | ✅       | ✅         | Documented | In-app bell feed (org-wide, paginated)     |
 | Chat        | ✅       | ✅         | Documented | Inbound guest web chat → Telegram template |
 | Marketing   | ✅       | ✅         | Documented | Gated setup + manage cards                 |
 | Staff       | ✅       | ✅         | Documented | Gated setup + manage cards                 |
@@ -28,9 +32,22 @@ Deep link: `?module=chat|marketing|staff|operations|finance|maintenance` scrolls
 
 ## Overview
 
-Single hub for all **Telegram notification bots** on a property.
+Single hub for **in-app activity** (booking workflow + inbox events in the bell) and **Telegram notification bots** on a property.
 
-### Shared bot token (recommended default)
+### In-app activity
+
+- **Activity** section lists org-wide in-app notifications (same data as the header bell).
+- Bell dropdown shows the latest **5** items; **View all** opens this page at **Activity** when more exist.
+- Bell opens a **slide-over panel** (right on desktop, bottom sheet on phone) — not a popover over the sidebar nav.
+- Rows open the related booking or inbox thread; **Mark all as read** on the full list.
+- Inbox rows show the guest **participant name** as the title (latest message preview in the body), matching the Inbox thread list — **one row per conversation**, not per message.
+- When available, a **stay date range** appears under the name (e.g. `Aug 14 - 15, 2026` for inquiry or booked dates).
+- The realtime **toast** uses the same guest name as the title, a **category glyph** matching the list row (chat bubble for inbox, calendar/check-in/check-out/wallet/document/paw for booking events), the latest message preview, and the stay range beneath it. Its **View** action uses the brand primary colour, and repeat messages in one conversation replace the open toast instead of stacking.
+- List is capped in height inside the **Activity** card; scroll within the card loads the next page (20 per request) — not a full-page dump.
+
+### Telegram notifications
+
+#### Shared bot token (recommended default)
 
 Save **one** BotFather token at the top. It pre-fills each module’s bot token field when you enable that module. You can still type a **different token on any module** — credentials are stored per module in the database.
 
@@ -75,20 +92,22 @@ Legacy URLs redirect here — see [previous guide version](./notifications.md) r
 
 ### Section nav
 
-Page header subtitle: **Configure Telegram notifications for this property.**
+**Sidebar:** **In-app notifications** group (**Activity**) then **Telegram notifications** (**Chat → Marketing → Staff → Operations → Finance → Maintenance**).
 
-**Sidebar:** uppercase **Telegram notifications** group label above module links in order **Chat → Marketing → Staff → Operations → Finance → Maintenance** (PMA templates pattern), with separator before additional groups when added later (e.g. email).
-
-**Main content:** **Shared bot token** card, then **Telegram notifications** group heading with module count badge before the six module cards (same order as the sidebar). Each module card includes a short description of what it sends.
+**Main content:** **In-app notifications** group heading (no count badge), **Activity** card with a bounded scroll list (20 rows per fetch, loads more as you scroll), then Telegram module cards.
 
 ---
 
 ## Host-facing knowledge
 
-Notifications is the one place to set up Telegram alerts for this property — new guest chat messages, marketing schedules, staff summaries, booking workflow updates, and finance and maintenance reminders. Each module has its own on/off switch, Telegram connection, and message templates.
+Notifications is the one place to review in-app alerts and set up Telegram for this property — booking workflow events, inbox messages, schedules, staff summaries, and finance/maintenance reminders. Each Telegram module has its own on/off switch, connection, and templates.
 
 **Common host questions**
 
+- Q: Where do I see everything the bell showed me?
+  A: Open **Notifications** → **Activity**, or tap **View all** in the bell when you have more than five items.
+- Q: Why does a toast say "Guest" or "New guest message"?
+  A: Older notifications may lack stored guest context. New inbox and booking alerts include the guest name and stay dates when the thread or booking has them.
 - Q: Do I have to save again after connecting Telegram?
   A: No — once you enter your bot token and chat ID and tap **Connect** successfully, credentials save automatically. Template and schedule changes save when you confirm in each modal.
 - Q: Can I turn off just one type of alert?
@@ -135,6 +154,8 @@ Credentials unlock logic: `telegramCredentialsReady()` — saved token **and** c
 | Concern                                            | Path                                                                                                                   |
 | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | Page                                               | `ui/src/features/dashboard/bookings/pages/NotificationsPage.tsx`                                                       |
+| In-app list (bell + page)                          | `ui/src/features/dashboard/notifications/components/InAppNotificationsPanel.tsx`, `InAppNotificationsSection.tsx`      |
+| Bell (5-item preview + View all)                   | `ui/src/features/dashboard/notifications/components/NotificationBell.tsx`                                              |
 | Shared bot token card                              | `…/telegram-notifications/TelegramGlobalBotTokenCard.tsx`                                                              |
 | Help dialogs                                       | `…/telegram-notifications/TelegramHelpDialog.tsx`, `…/lib/telegramHelpContent.ts`                                      |
 | Global bot hook + context                          | `…/hooks/useTelegramGlobalBotToken.ts`, `…/TelegramNotificationsGlobalBotContext.tsx`                                  |

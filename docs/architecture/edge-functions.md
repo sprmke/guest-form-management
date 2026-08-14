@@ -2,7 +2,7 @@
 title: 'Edge functions (API surface)'
 status: active
 tags: [architecture, edge-functions]
-updated: 2026-08-02
+updated: 2026-08-14
 ---
 
 # Edge functions (API surface)
@@ -107,6 +107,8 @@ The shared `_shared/publicListingRows.ts` loader pages lean candidates in 1,000-
 | `ai-platform-settings` | GET/PATCH | authenticated JWT + property/parking | Per-org AI enable + daily/monthly call limits. |
 | `ai-platform-usage` | GET | authenticated JWT + property/parking | Org AI usage summary (calls, estimated USD, remaining quota). |
 | `social-inbox-settings` | GET, PATCH | authenticated JWT + property/parking | Automation toggles on **`social_inbox_settings`**. **`inbox:manage`**. |
+| `notifications-list` | GET | authenticated JWT + org/property/parking | Keyset-paginated **`notifications`** for the caller's org (`?cursor`, `?limit`, default 20/max 50) + capped (100) **`unreadCount`** via a PostgREST left-join on **`notification_reads`** filtered to the caller. **`org:dashboard:view`** (org scope) or **`bookings:view`** (property/parking scope) — not **`notifications:view`**, which gates the Telegram settings pages below. |
+| `notifications-mark-read` | POST | authenticated JWT + org/property/parking | `{ notificationId }` (single) or `{ markAll: true }` (optionally narrowed to the resolved property/parking scope, capped at 500). Upserts **`notification_reads`** `(notification_id, user_id)`, `ignoreDuplicates: true`. Same access gate as `notifications-list`. |
 | `guest-web-chat-start` | POST | authenticated JWT (guest) | Create **`platform=web`** thread for **`propertySlug`** + inquiry dates (first inquiry). Upserts **`social_conversations`**. Not admin allow-list. Response includes **`voiceReceptionistEnabled`** (global kill switch AND property opt-in) so the UI can show the voice receptionist entry point. |
 | `guest-web-chat-resume` | GET | authenticated JWT (guest) | `?property_slug=` — returns existing web thread when guest already has messages on that property (`hasMessages`, `conversationId`, inquiry dates). Always includes **`voiceReceptionistEnabled`** (global kill switch AND property opt-in), including when there is no existing thread, so Contact host and the messages page can show the voice receptionist entry. |
 | `guest-web-chat-messages` | GET, POST, PATCH | authenticated JWT (guest) | GET paginated messages; POST send (text and/or **`attachments`**), **`mark_read`**, or **`unsend`**; PATCH edit own inbound until read/host reply. Auto-reply via **`webInboxAutoReply`** when automation enabled. |
