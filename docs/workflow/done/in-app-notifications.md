@@ -1,7 +1,7 @@
 ---
-stage: in-progress
+stage: done
 title: 'In-App Notification Center — Implementation Plan'
-status: planned
+status: done
 tags: [planning, planned-modules, notifications, realtime, inbox, booking-workflow]
 updated: 2026-08-14
 ---

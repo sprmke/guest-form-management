@@ -44,6 +44,8 @@ import {
   type SidebarNavSection,
 } from '@/features/dashboard/bookings/lib/adminSidebarNav';
 import { resolveActiveNavHref } from '@/features/dashboard/bookings/lib/navActive';
+import { NotificationBell } from '@/features/dashboard/notifications/components/NotificationBell';
+import { NotificationsProvider } from '@/features/dashboard/notifications/components/NotificationsProvider';
 import { OrgSettingsIssuesSync } from '@/features/dashboard/org/components/OrgSettingsIssuesSync';
 import { SectionNavIssueDot } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import {
@@ -427,6 +429,7 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
     <>
       {isOrgAdminPath(location.pathname) ? <OrgSettingsIssuesSync /> : null}
       {!superAdmin ? <HostVerificationChangesGate /> : null}
+      {!superAdmin ? <NotificationsProvider /> : null}
       <AdminMobileHeroProvider>
         <BottomBarSlotProvider tabBar={mobileTabBar}>
           <div className="bg-background flex h-screen overflow-hidden" style={brandStyle}>
@@ -522,6 +525,7 @@ function AdminMobileTopBar({ superAdmin }: { superAdmin: boolean }) {
           <SidebarTenantScope collapsed={false} />
         )}
       </div>
+      {!superAdmin ? <NotificationBell /> : null}
     </header>
   );
 }
@@ -617,14 +621,19 @@ function AdminSidebarContent({
       <div
         className={cn(
           'border-sidebar-border shrink-0 border-b py-3',
-          collapsed ? 'flex justify-center px-2' : 'px-3',
+          collapsed ? 'flex flex-col items-center gap-2 px-2' : 'flex items-center gap-2 px-3',
           onClose && 'pt-3'
         )}
       >
         {superAdmin ? (
           <SuperAdminSidebarScope collapsed={collapsed} />
         ) : (
-          <SidebarTenantScope collapsed={collapsed} />
+          <>
+            <div className={collapsed ? undefined : 'min-w-0 flex-1'}>
+              <SidebarTenantScope collapsed={collapsed} />
+            </div>
+            <NotificationBell />
+          </>
         )}
       </div>
 

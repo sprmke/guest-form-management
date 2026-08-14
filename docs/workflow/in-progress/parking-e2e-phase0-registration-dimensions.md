@@ -1,9 +1,9 @@
 ---
-stage: planned
+stage: in-progress
 title: 'Parking E2E — Phase 0: Registration & Dimensions'
 status: planned
 tags: [planning, planned-modules, parking, multi-tenancy]
-updated: 2026-08-07
+updated: 2026-08-14
 ---
 
 # Parking E2E — Phase 0: Registration & Dimensions

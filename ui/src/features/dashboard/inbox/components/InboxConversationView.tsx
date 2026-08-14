@@ -68,6 +68,7 @@ import { focusComposerInput, type ComposerFocusMode } from '@/lib/chat/focusComp
 import { useChatThreadSearch } from '@/lib/chat/useChatThreadSearch';
 import { useChatTyping } from '@/lib/chat/useChatTyping';
 import { cn } from '@/lib/utils';
+import { formatStayDateRange } from '@/utils/format/dates';
 
 type ComposerMode =
   | { kind: 'compose' }
@@ -358,7 +359,10 @@ export function InboxConversationView({
               <>
                 <span aria-hidden>·</span>
                 <span>
-                  {conversation.inquiry_check_in} – {conversation.inquiry_check_out}
+                  {formatStayDateRange(
+                    conversation.inquiry_check_in,
+                    conversation.inquiry_check_out
+                  )}
                 </span>
               </>
             ) : null}

@@ -258,12 +258,26 @@ export function bookingsStatusFilterRows(): BookingsStatusFilterRow[] {
   return rows;
 }
 
+/**
+ * Parking-only statuses (see `_shared/parkingStatusMachine.ts`) share this badge/label
+ * rendering but are not part of the property `BookingStatus` enum above.
+ */
+const PARKING_ONLY_STATUS_LABELS: Record<string, string> = {
+  PENDING_HOST_ACCEPTANCE: 'Awaiting Host',
+  NO_HOST_AVAILABLE: 'No Host Available',
+};
+
+const PARKING_ONLY_STATUS_TONE: Record<string, StatusTone> = {
+  PENDING_HOST_ACCEPTANCE: 'amber',
+  NO_HOST_AVAILABLE: 'neutral',
+};
+
 export function statusLabel(value: string): string {
   if (isBookingStatus(value)) return STATUS_LABELS[value];
-  return value;
+  return PARKING_ONLY_STATUS_LABELS[value] ?? value;
 }
 
 export function statusTone(value: string): StatusTone {
   if (isBookingStatus(value)) return STATUS_TONE[value];
-  return 'neutral';
+  return PARKING_ONLY_STATUS_TONE[value] ?? 'neutral';
 }

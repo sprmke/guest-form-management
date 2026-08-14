@@ -535,6 +535,7 @@ type AdminSectionProps = {
   title: string;
   icon?: LucideIcon;
   description?: string;
+  headerAction?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
 };
@@ -544,17 +545,23 @@ export const AdminSection = React.memo(function AdminSection({
   title,
   icon: Icon,
   description,
+  headerAction,
   children,
   className,
 }: AdminSectionProps) {
   return (
     <Card id={`section-${id}`} className={cn('scroll-mt-2', className)}>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          {Icon ? <Icon className="size-5 shrink-0" aria-hidden /> : null}
-          {title}
-        </CardTitle>
-        {description ? <CardDescription>{description}</CardDescription> : null}
+      <CardHeader
+        className={cn(headerAction && 'flex flex-row items-center justify-between gap-3 space-y-0')}
+      >
+        <div className={cn(headerAction && 'min-w-0 space-y-1.5')}>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            {Icon ? <Icon className="size-5 shrink-0" aria-hidden /> : null}
+            {title}
+          </CardTitle>
+          {description ? <CardDescription>{description}</CardDescription> : null}
+        </div>
+        {headerAction ? <div className="shrink-0">{headerAction}</div> : null}
       </CardHeader>
       <CardContent className="space-y-6">{children}</CardContent>
     </Card>

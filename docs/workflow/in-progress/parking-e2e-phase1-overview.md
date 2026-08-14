@@ -1,9 +1,9 @@
 ---
-stage: planned
+stage: in-progress
 title: 'Parking E2E — Phase 0 & Phase 1 Overview'
 status: planned
 tags: [planning, planned-modules, parking, booking-workflow, multi-tenancy]
-updated: 2026-08-07
+updated: 2026-08-14
 ---
 
 # Parking E2E — Phase 0 & Phase 1 Implementation Plan
