@@ -307,13 +307,24 @@ export function MarketingAiGeneratePanel({
 
   const canGenerate = prompt.trim().length > 0 && !generating;
 
+  // Suggestions are Look vibes: fill the prompt, and for video also stamp mood
+  // colors + soft Look locks. Never touch Category/Content.
   const handleSuggestion = (
     suggestion: CalendarAiSuggestion | DesignAiSuggestion | VideoAiSuggestion
   ) => {
     setSelectedSuggestionId(suggestion.id);
     setPrompt(suggestion.prompt);
-    if (isVideo && isVideoSuggestion(suggestion)) {
-      setVideoPreferences((prev) => ({ ...prev, category: suggestion.category }));
+    if (isVideoSuggestion(suggestion)) {
+      setVideoPreferences((prev) => ({
+        ...prev,
+        lookMood: suggestion.mood,
+        ...(suggestion.lookLocks?.motionMood
+          ? { motionMood: suggestion.lookLocks.motionMood }
+          : null),
+        ...(suggestion.lookLocks?.fontPairing
+          ? { fontPairing: suggestion.lookLocks.fontPairing }
+          : null),
+      }));
     }
   };
 
@@ -547,7 +558,10 @@ export function MarketingAiGeneratePanel({
                               )}
                             >
                               {isVideoSuggestion(suggestion) ? (
-                                <VideoSuggestionPreview sceneHint={suggestion.sceneHint} />
+                                <VideoSuggestionPreview
+                                  mood={suggestion.mood}
+                                  sceneHint={suggestion.sceneHint}
+                                />
                               ) : isCalendarSuggestion(suggestion) ? (
                                 <SuggestionThemePreview palette={suggestion.palette} />
                               ) : (
@@ -788,7 +802,10 @@ export function MarketingAiGeneratePanel({
                               )}
                             >
                               {isVideoSuggestion(suggestion) ? (
-                                <VideoSuggestionPreview sceneHint={suggestion.sceneHint} />
+                                <VideoSuggestionPreview
+                                  mood={suggestion.mood}
+                                  sceneHint={suggestion.sceneHint}
+                                />
                               ) : null}
                               <span className="px-0.5 pb-0.5">
                                 <span className="text-foreground block text-sm font-semibold leading-tight">
@@ -812,6 +829,9 @@ export function MarketingAiGeneratePanel({
                     onChange={(next) => {
                       setSelectedSuggestionId(null);
                       setPrompt(next);
+                      setVideoPreferences((prev) =>
+                        prev.lookMood ? { ...prev, lookMood: undefined } : prev
+                      );
                     }}
                     rows={4}
                     className="min-h-[112px]"
@@ -937,7 +957,10 @@ export function MarketingAiGeneratePanel({
                             )}
                           >
                             {isVideoSuggestion(suggestion) ? (
-                              <VideoSuggestionPreview sceneHint={suggestion.sceneHint} />
+                              <VideoSuggestionPreview
+                                mood={suggestion.mood}
+                                sceneHint={suggestion.sceneHint}
+                              />
                             ) : isCalendarSuggestion(suggestion) ? (
                               <SuggestionThemePreview palette={suggestion.palette} />
                             ) : (

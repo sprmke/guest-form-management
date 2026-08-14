@@ -4,7 +4,6 @@ import { InputGroup } from '@blueprintjs/core';
 import { Search } from '@blueprintjs/icons';
 import { observer } from 'mobx-react-lite';
 import { NounprojectPanel } from 'openpolotno/side-panel/elements-panel';
-import { selectImage } from 'openpolotno/side-panel/select-image';
 import { ImagesGrid } from 'openpolotno/side-panel/side-panel';
 
 import {
@@ -16,6 +15,10 @@ import {
   KAME_POLOTNO_DEFAULT_SHAPE_FILL,
   type KamePolotnoShape,
 } from '@/features/dashboard/marketing/lib/polotno/kamePolotnoShapes';
+import {
+  loadLogoNaturalSize,
+  squareImageCoverCrop,
+} from '@/features/dashboard/marketing/lib/polotno/orgLogoCircle';
 import type { PolotnoStore } from '@/features/dashboard/marketing/lib/polotno/polotnoStore';
 import { roundedOutlineSvgUrl } from '@/features/dashboard/marketing/lib/polotno/roundedOutlineSvg';
 
@@ -161,7 +164,40 @@ const KameLogoGrid = observer(function KameLogoGrid({
         isLoading={false}
         itemHeight={100}
         onSelect={async (item: ImageGridItem) => {
-          await selectImage({ src: item.url, store: store as never });
+          const page = (
+            store as {
+              activePage?: {
+                computedWidth: number;
+                computedHeight: number;
+                addElement: (el: Record<string, unknown>) => void;
+              };
+            }
+          ).activePage;
+          if (!page) return;
+
+          const ratio = (page.computedWidth + page.computedHeight) / 2160;
+          const size = Math.max(64, Math.round(120 * ratio));
+          let crop = { cropX: 0, cropY: 0, cropWidth: 1, cropHeight: 1 };
+          try {
+            const dims = await loadLogoNaturalSize(item.url);
+            crop = squareImageCoverCrop(dims.width, dims.height);
+          } catch {
+            // Keep full-frame crop.
+          }
+
+          page.addElement({
+            type: 'image',
+            name: 'Org logo',
+            src: item.url,
+            x: page.computedWidth / 2 - size / 2,
+            y: page.computedHeight / 2 - size / 2,
+            width: size,
+            height: size,
+            keepRatio: false,
+            stretchEnabled: false,
+            cornerRadius: size / 2,
+            ...crop,
+          });
         }}
       />
     </div>

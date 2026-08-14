@@ -12,29 +12,31 @@ import { cn } from '@/lib/utils';
 export { VisualChoiceButton } from '@/features/dashboard/marketing/components/shared/CalendarAiGenerateVisuals';
 
 export function VideoSuggestionPreview({
+  mood,
   sceneHint,
   className,
 }: {
+  mood: { from: string; to: string };
   sceneHint: number;
   className?: string;
 }) {
   const bars = Math.max(3, Math.min(5, sceneHint));
   return (
     <div
-      className={cn(
-        'bg-muted/70 relative flex h-16 w-full items-end gap-1 overflow-hidden rounded-lg p-2',
-        className
-      )}
+      className={cn('relative h-16 w-full overflow-hidden rounded-lg', className)}
+      style={{ background: `linear-gradient(135deg, ${mood.from}, ${mood.to})` }}
       aria-hidden
     >
-      {Array.from({ length: bars }).map((_, index) => (
-        <span
-          key={index}
-          className="bg-primary/60 flex-1 rounded-sm"
-          style={{ height: `${30 + ((index * 17) % 55)}%` }}
-        />
-      ))}
-      <Film className="text-muted-foreground absolute right-2 top-2 size-3.5" aria-hidden />
+      <Film className="absolute right-2 top-2 size-3.5 text-white/80" aria-hidden />
+      <div className="absolute inset-x-2 bottom-2 flex items-end gap-1">
+        {Array.from({ length: bars }).map((_, index) => (
+          <span
+            key={index}
+            className="flex-1 rounded-sm bg-white/70"
+            style={{ height: `${9 + ((index * 5) % 12)}px` }}
+          />
+        ))}
+      </div>
     </div>
   );
 }

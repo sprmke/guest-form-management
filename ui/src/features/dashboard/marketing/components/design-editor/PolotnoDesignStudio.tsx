@@ -59,6 +59,7 @@ import {
   savedDesignThumbnailKey,
 } from '@/features/dashboard/marketing/lib/marketingTemplateThumbnailCache';
 import { ensurePolotnoConfigured } from '@/features/dashboard/marketing/lib/polotno/initPolotno';
+import { polishOrgLogoElements } from '@/features/dashboard/marketing/lib/polotno/orgLogoCircle';
 import {
   DESIGN_AI_FORMATS,
   resolveAiGeneratedDesignDocument,
@@ -208,6 +209,8 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
           setSavedTemplateId(autosave.id);
           store.loadJSON(autosave.designJson.polotno as Record<string, unknown>);
           store.history.clear();
+          await store.waitLoading();
+          await polishOrgLogoElements(store);
           await syncPolotnoTextBounds(store);
           return;
         }
@@ -218,6 +221,8 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
         setSavedTemplateId(null);
         store.loadJSON(doc);
         store.history.clear();
+        await store.waitLoading();
+        await polishOrgLogoElements(store);
         await syncPolotnoTextBounds(store);
       } catch {
         toast.error('Could not load template');
@@ -273,6 +278,7 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
         store.loadJSON(polotno);
         store.history.clear();
         await store.waitLoading();
+        await polishOrgLogoElements(store);
         await syncPolotnoTextBounds(store);
         await waitForThumbnailPaint();
         const thumbnailDataUrl = await renderDesignStoreThumbnail(store);
@@ -444,9 +450,11 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
             store.loadJSON(variant.document);
             store.history.clear();
             await store.waitLoading();
+            await polishOrgLogoElements(store);
             await syncPolotnoTextBounds(store);
             await waitForThumbnailPaint();
             const thumbnailDataUrl = await renderDesignStoreThumbnail(store);
+            const polishedDocument = store.toJSON() as Record<string, unknown>;
             const record = await saveMarketingTemplate(propertyId, {
               name: tokens.label,
               contentType: 'design',
@@ -462,7 +470,7 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
                 aiGenerated: true,
                 aiGenerationId,
                 aiTokens: tokens,
-                polotno: variant.document,
+                polotno: polishedDocument,
                 ...(thumbnailDataUrl ? { thumbnailDataUrl } : {}),
               },
             });
