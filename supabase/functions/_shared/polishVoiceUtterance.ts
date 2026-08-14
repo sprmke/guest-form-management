@@ -11,10 +11,17 @@ import {
   shouldTryNextProvider,
 } from './aiGeminiKeys.ts';
 import { geminiGenerateContentUrl, getModelConfig } from './aiModelRouter.ts';
-import { assertOrgAiQuotaOptional, recordAiUsageOptional } from './aiUsageService.ts';
+import { assertPropertyAiQuotaOptional, recordAiUsageOptional } from './aiUsageService.ts';
+import {
+  buildCacheInputs,
+  computePromptFingerprint,
+  getCachedAiResponse,
+  setCachedAiResponse,
+} from './aiQuotaCache.ts';
 
 const VOICE_POLISH_FEATURE = 'voice_polish' as const;
-const GEMINI_MODEL = getModelConfig(VOICE_POLISH_FEATURE).model;
+const CONFIG = getModelConfig(VOICE_POLISH_FEATURE);
+const GEMINI_MODEL = CONFIG.model;
 const GEMINI_URL = geminiGenerateContentUrl(GEMINI_MODEL);
 
 export const VOICE_POLISH_MAX_TURNS = 40;
@@ -64,7 +71,11 @@ export async function polishVoiceTranscriptTurns(
   if (!keys.length) return capped;
 
   try {
-    await assertOrgAiQuotaOptional(usageContext?.organizationId);
+    await assertPropertyAiQuotaOptional(
+      usageContext?.organizationId,
+      usageContext?.propertyId,
+      VOICE_POLISH_FEATURE
+    );
   } catch {
     console.warn('[polishVoiceTranscriptTurns] quota exceeded — using raw transcript');
     return capped;
@@ -72,6 +83,20 @@ export async function polishVoiceTranscriptTurns(
 
   const payload = capped.map(({ role, text }) => ({ role, text }));
   const userPrompt = `Clean this transcript JSON:\n${JSON.stringify(payload)}`;
+  const cacheKey = computePromptFingerprint(
+    buildCacheInputs(VOICE_POLISH_FEATURE, SYSTEM_PROMPT, userPrompt)
+  );
+  const cached = await getCachedAiResponse(cacheKey);
+  if (cached) {
+    try {
+      const parsed = JSON.parse(cached) as unknown;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return applyPolishedArray(capped, parsed);
+      }
+    } catch {
+      // ignore stale cache
+    }
+  }
 
   let lastError = 'polish unavailable';
   for (const apiKey of keys) {
@@ -87,7 +112,7 @@ export async function polishVoiceTranscriptTurns(
           contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
           generationConfig: {
             temperature: 0.2,
-            maxOutputTokens: 4096,
+            maxOutputTokens: CONFIG.defaultMaxOutputTokens,
             responseMimeType: 'application/json',
             responseSchema: {
               type: 'ARRAY',
@@ -100,7 +125,7 @@ export async function polishVoiceTranscriptTurns(
                 required: ['role', 'text'],
               },
             },
-            thinkingConfig: { thinkingBudget: 0 },
+            thinkingConfig: { thinkingBudget: CONFIG.thinkingBudget },
           },
         }),
       });
@@ -135,19 +160,8 @@ export async function polishVoiceTranscriptTurns(
         outputTokens: usage.outputTokens,
       });
 
-      const out: VoicePolishTurn[] = [];
-      for (let i = 0; i < capped.length; i++) {
-        const src = capped[i]!;
-        const row = parsed[i] as Record<string, unknown> | undefined;
-        const polished =
-          row && typeof row.text === 'string' ? normalizeWhitespace(row.text) : src.text;
-        out.push({
-          role: src.role,
-          text: polished || src.text,
-          at: src.at,
-        });
-      }
-      return out;
+      await setCachedAiResponse(cacheKey, text, CONFIG.cacheTtlSeconds);
+      return applyPolishedArray(capped, parsed);
     } catch (e) {
       lastError = (e as Error).message;
       if ((e as Error).name === 'AbortError') break;
@@ -156,4 +170,19 @@ export async function polishVoiceTranscriptTurns(
 
   console.warn('[polishVoiceTranscriptTurns] fallback to raw:', lastError);
   return capped;
+}
+
+function applyPolishedArray(capped: VoicePolishTurn[], parsed: unknown): VoicePolishTurn[] {
+  const out: VoicePolishTurn[] = [];
+  for (let i = 0; i < capped.length; i++) {
+    const src = capped[i]!;
+    const row = (parsed as Array<Record<string, unknown>>)[i];
+    const polished = row && typeof row.text === 'string' ? normalizeWhitespace(row.text) : src.text;
+    out.push({
+      role: src.role,
+      text: polished || src.text,
+      at: src.at,
+    });
+  }
+  return out;
 }

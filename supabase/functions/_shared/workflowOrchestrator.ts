@@ -32,6 +32,7 @@ import {
   type PropertyAutomationToggleKey,
 } from './propertyAutomationToggles.ts';
 import { createNotification } from './notificationService.ts';
+import { bookingNotificationMetadata } from './notificationEnrichment.ts';
 import { resolveOrganizationIdForProperty } from './propertyScope.ts';
 import {
   BookingStatus,
@@ -1008,6 +1009,7 @@ export class WorkflowOrchestrator {
           title: STATUS_HUMAN_LABEL.READY_FOR_CHECKIN,
           body: `${updatedBooking.primary_guest_name ?? 'A guest'}'s booking is ready for check-in.`,
           bookingId,
+          metadata: bookingNotificationMetadata(updatedBooking),
           dedupeKey: `${bookingId}:${toStatus}`,
         });
       }
@@ -1029,6 +1031,7 @@ export class WorkflowOrchestrator {
           title: STATUS_HUMAN_LABEL.READY_FOR_CHECKOUT,
           body: `${updatedBooking.primary_guest_name ?? 'A guest'}'s booking is ready for check-out.`,
           bookingId,
+          metadata: bookingNotificationMetadata(updatedBooking),
           dedupeKey: `${bookingId}:${toStatus}`,
         });
       }
@@ -1048,6 +1051,7 @@ export class WorkflowOrchestrator {
           title: STATUS_HUMAN_LABEL.PENDING_SD_REFUND,
           body: `${updatedBooking.primary_guest_name ?? 'A guest'} submitted their SD refund details.`,
           bookingId,
+          metadata: bookingNotificationMetadata(updatedBooking),
           dedupeKey: `${bookingId}:${toStatus}`,
         });
       }

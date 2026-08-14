@@ -13,7 +13,11 @@ import {
   upsertConversation,
 } from './socialInboxService.ts';
 import { maybeAutoReplyToWebInbound } from './webInboxAutoReply.ts';
-import { createNotification } from './notificationService.ts';
+import {
+  createOrCoalesceNotification,
+  inboxNotificationParticipantLabel,
+} from './notificationService.ts';
+import { inboxNotificationMetadata } from './notificationEnrichment.ts';
 import type { AuthenticatedUser } from './orgAuth.ts';
 import type { SocialConversationRow, SocialMessageRow } from './socialInboxTypes.ts';
 
@@ -325,15 +329,20 @@ export async function sendGuestWebMessage(
   }
 
   try {
-    await createNotification({
+    const participantLabel = inboxNotificationParticipantLabel(
+      conv.participant_name,
+      conv.conversation_type
+    );
+    await createOrCoalesceNotification({
       organizationId: conv.organization_id,
       propertyId: conv.property_id ?? null,
       parkingId: conv.parking_id ?? null,
       type: 'inbox_new_message',
-      title: 'New guest message',
+      title: participantLabel,
       body: preview.slice(0, 200),
       conversationId: conv.id,
-      dedupeKey: `${externalId}:inbox_new_message`,
+      metadata: inboxNotificationMetadata(conv),
+      dedupeKey: `${conv.id}:inbox_new_message`,
     });
   } catch (notifErr) {
     console.warn('[webGuestChat] notification create:', notifErr);

@@ -15,12 +15,13 @@ import {
   getGeminiApiKeys,
   getGroqApiKey,
   nextGeminiKeyStartIndex,
+  probeAiProviderMinimal,
   shouldTryNextProvider,
   extractGeminiUsage,
 } from './aiGeminiKeys.ts';
 import { geminiGenerateContentUrl, getModelConfig } from './aiModelRouter.ts';
 import {
-  assertOrgAiQuotaOptional,
+  assertPropertyAiQuotaOptional,
   AiQuotaExceededError,
   recordAiUsageOptional,
   type RecordAiUsageInput,
@@ -48,99 +49,36 @@ export type ReceiptValidationResult = {
 
 const RECEIPT_FEATURE = 'receipt_validation' as const;
 const VERIFY_FEATURE = 'ai_integration_verify' as const;
-const GEMINI_MODEL = getModelConfig(RECEIPT_FEATURE).model;
+const CONFIG = getModelConfig(RECEIPT_FEATURE);
+const GEMINI_MODEL = CONFIG.model;
 const VERIFY_GEMINI_MODEL = getModelConfig(VERIFY_FEATURE).model;
 const GEMINI_URL = geminiGenerateContentUrl(GEMINI_MODEL);
-const VERIFY_GEMINI_URL = geminiGenerateContentUrl(VERIFY_GEMINI_MODEL);
-
 const GROQ_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
-// --- Multi-key rotation state (in-memory, per isolate) ---
-
-function getGeminiApiKeysLocal(): string[] {
-  return getGeminiApiKeys();
-}
-
-function getGroqApiKeyLocal(): string | null {
-  return getGroqApiKey();
-}
-
 // --- Verify integration ---
 
-export type GeminiIntegrationVerifyResult = {
-  apiKeyConfigured: boolean;
+export type AiProviderVerifyResult = {
   model: string;
   ok: boolean;
   latencyMs?: number;
-  statusCode?: number;
   error?: string;
-  geminiKeysCount?: number;
-  groqConfigured?: boolean;
 };
 
-/** Admin-only: ping Gemini with a minimal text request + report Groq availability. */
-export async function verifyGeminiIntegration(): Promise<GeminiIntegrationVerifyResult> {
-  const keys = getGeminiApiKeysLocal();
-  const groqKey = getGroqApiKeyLocal();
-  const base: GeminiIntegrationVerifyResult = {
-    apiKeyConfigured: keys.length > 0,
+/** Admin-only: minimal provider health probe that does not expose key counts. */
+export async function verifyAiProviders(): Promise<AiProviderVerifyResult> {
+  const probe = await probeAiProviderMinimal();
+  return {
     model: VERIFY_GEMINI_MODEL,
-    ok: false,
-    geminiKeysCount: keys.length,
-    groqConfigured: !!groqKey,
+    ok: probe.ok,
+    latencyMs: probe.latencyMs,
+    error: probe.error,
   };
+}
 
-  if (keys.length === 0) {
-    return {
-      ...base,
-      error: 'No Gemini API keys configured (set GEMINI_API_KEYS or GEMINI_API_KEY)',
-    };
-  }
-
-  const apiKey = keys[0];
-  const started = Date.now();
-  try {
-    const res = await fetch(`${VERIFY_GEMINI_URL}?key=${encodeURIComponent(apiKey)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [{ text: 'Reply with exactly: ok' }],
-          },
-        ],
-        generationConfig: {
-          temperature: 0,
-          maxOutputTokens: 8,
-        },
-      }),
-    });
-
-    const latencyMs = Date.now() - started;
-    const statusCode = res.status;
-
-    if (!res.ok) {
-      const errText = await res.text().catch(() => '');
-      let message = `Gemini API returned ${statusCode}`;
-      try {
-        const parsed = JSON.parse(errText) as { error?: { message?: string } };
-        if (parsed.error?.message) message = parsed.error.message;
-      } catch {
-        if (errText.trim()) message = errText.trim().slice(0, 240);
-      }
-      return { ...base, latencyMs, statusCode, error: message };
-    }
-
-    await res.json().catch(() => ({}));
-    return { ...base, ok: true, latencyMs, statusCode };
-  } catch (err) {
-    return {
-      ...base,
-      latencyMs: Date.now() - started,
-      error: err instanceof Error ? err.message : String(err),
-    };
-  }
+/** @deprecated Use verifyAiProviders() which does not expose key counts. */
+export async function verifyGeminiIntegration(): Promise<AiProviderVerifyResult> {
+  return verifyAiProviders();
 }
 
 const RECEIPT_PROMPT = `You are validating a payment proof image for a vacation rental booking in the Philippines.
@@ -309,7 +247,9 @@ async function tryGeminiKey(
         ],
         generationConfig: {
           temperature: 0.1,
+          maxOutputTokens: CONFIG.defaultMaxOutputTokens,
           responseMimeType: 'application/json',
+          thinkingConfig: { thinkingBudget: CONFIG.thinkingBudget },
         },
       }),
     });
@@ -398,7 +338,7 @@ async function tryGroq(
           },
         ],
         temperature: 0.1,
-        max_tokens: 512,
+        max_tokens: CONFIG.defaultMaxOutputTokens,
         response_format: { type: 'json_object' },
       }),
     });
@@ -451,7 +391,11 @@ async function callGeminiVision(
   usageContext?: AiUsageContext | null
 ): Promise<ReceiptValidationResult> {
   try {
-    await assertOrgAiQuotaOptional(usageContext?.organizationId);
+    await assertPropertyAiQuotaOptional(
+      usageContext?.organizationId,
+      usageContext?.propertyId,
+      RECEIPT_FEATURE
+    );
   } catch (error) {
     if (error instanceof AiQuotaExceededError) {
       return aiModelFailure('AI quota exceeded', error.message);
