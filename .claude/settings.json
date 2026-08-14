@@ -86,7 +86,11 @@
       "Bash(curl -s -X OPTIONS http://127.0.0.1:54321/functions/v1/transition-parking-booking -w \"\\\\nHTTP:%{http_code}\\\\n\")",
       "Bash(curl -s -X POST http://127.0.0.1:54321/functions/v1/claim-parking-booking -H \"Content-Type: application/json\" -d '{\"bookingId\":\"x\",\"parkingId\":\"y\"}' -w \"\\\\nHTTP:%{http_code}\\\\n\")",
       "Bash(curl -s -X POST http://127.0.0.1:54321/functions/v1/decline-parking-booking -H \"Content-Type: application/json\" -d '{\"bookingId\":\"x\",\"parkingId\":\"y\"}' -w \"\\\\nHTTP:%{http_code}\\\\n\")",
-      "Bash(curl -s -X POST http://127.0.0.1:54321/functions/v1/transition-parking-booking -H \"Content-Type: application/json\" -d '{\"bookingId\":\"x\",\"toStatus\":\"COMPLETED\"}' -w \"\\\\nHTTP:%{http_code}\\\\n\")"
+      "Bash(curl -s -X POST http://127.0.0.1:54321/functions/v1/transition-parking-booking -H \"Content-Type: application/json\" -d '{\"bookingId\":\"x\",\"toStatus\":\"COMPLETED\"}' -w \"\\\\nHTTP:%{http_code}\\\\n\")",
+      "Bash(pkill -f \"supabase functions serve\")",
+      "Bash(pkill -f \"bun run dev:api\")",
+      "Bash(curl -s -X POST http://127.0.0.1:54321/functions/v1/submit-parking-booking-request -H 'Content-Type: application/json' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0' -d '{ *)",
+      "Bash(curl -s http://127.0.0.1:54321/functions/v1/get-parking-booking-status?bookingId=272e7399-3dbb-42eb-b47d-1f820518901d -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0' -w '\\\\nHTTP:%{http_code}\\\\n')"
     ],
     "additionalDirectories": ["/Users/michaelmanlulu/.claude", "/tmp"]
   },
