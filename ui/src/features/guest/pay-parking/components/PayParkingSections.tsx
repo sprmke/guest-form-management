@@ -3,7 +3,7 @@ import { AlertCircle, CalendarDays, Car, ParkingCircle, type LucideIcon } from '
 import { formatPayParkingLastMinuteWarning } from '@/features/guest/form/lib/guestFormBranding';
 import type { PayParkingBootstrap } from '@/features/guest/pay-parking/lib/api';
 
-import { formatBookingDate } from '@/utils/format/bookingDisplay';
+import { formatStayDateRange } from '@/utils/format/dates';
 import { formatMoney } from '@/utils/format/currency';
 
 function PayParkingSectionShell({
@@ -54,7 +54,7 @@ export function PayParkingIntro({ data }: { data: PayParkingBootstrap }) {
       <div className="space-y-2">
         <p className="text-foreground text-xl font-bold">{data.primary_guest_name}</p>
         <p className="font-base text-foreground text-sm font-medium leading-snug">
-          {formatBookingDate(data.check_in_date)} – {formatBookingDate(data.check_out_date)}
+          {formatStayDateRange(data.check_in_date, data.check_out_date)}
         </p>
         <p className="text-primary/70 text-sm font-semibold">
           {nights} night{nights !== 1 ? 's' : ''} · {data.pax} guest
@@ -79,8 +79,7 @@ function PayParkingDetailsCard({ data }: { data: PayParkingBootstrap }) {
       <PayParkingHighlightBox ariaLabel="Parking details breakdown">
         <div className="space-y-2">
           <p className="text-foreground text-sm font-medium leading-snug">
-            {formatBookingDate(data.parking_check_in_date)} –{' '}
-            {formatBookingDate(data.parking_check_out_date)}
+            {formatStayDateRange(data.parking_check_in_date, data.parking_check_out_date)}
           </p>
           <div className="border-primary/15 flex items-center justify-between gap-4 border-t pt-2">
             <span className="text-primary text-2xl font-bold tabular-nums tracking-tight sm:text-3xl">

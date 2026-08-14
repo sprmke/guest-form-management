@@ -15,7 +15,7 @@ import { MarketingImage as Image } from '@/features/guest/marketing/shared/compo
 import { Button } from '@/components/ui/button';
 import { useChatThreadSearch } from '@/lib/chat/useChatThreadSearch';
 import { cn } from '@/lib/utils';
-import { formatIsoDateForDisplay } from '@/utils/format/dates';
+import { formatStayDateRange } from '@/utils/format/dates';
 
 type Props = {
   threads: GuestMessageThreadDto[];
@@ -133,7 +133,10 @@ export function GuestMessagesHub({ threads }: Props) {
                       [
                         selectedThread.hostName,
                         selectedThread.inquiryCheckIn && selectedThread.inquiryCheckOut
-                          ? `${formatIsoDateForDisplay(selectedThread.inquiryCheckIn)} → ${formatIsoDateForDisplay(selectedThread.inquiryCheckOut)}`
+                          ? formatStayDateRange(
+                              selectedThread.inquiryCheckIn,
+                              selectedThread.inquiryCheckOut
+                            )
                           : null,
                       ]
                         .filter(Boolean)

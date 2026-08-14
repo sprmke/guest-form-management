@@ -36,7 +36,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { useChatThreadSearch } from '@/lib/chat/useChatThreadSearch';
-import { formatDateToYYYYMMDD, formatIsoDateForDisplay } from '@/utils/format/dates';
+import { formatDateToYYYYMMDD, formatStayDateRange } from '@/utils/format/dates';
 
 export type ContactHostSheetProps = {
   open: boolean;
@@ -127,7 +127,7 @@ export function ContactHostSheet({
   const displayCheckOutDate = checkOutDate || resumeCheckOutDate;
   const dateLabel =
     displayCheckInDate && displayCheckOutDate
-      ? `${formatIsoDateForDisplay(displayCheckInDate)} – ${formatIsoDateForDisplay(displayCheckOutDate)}`
+      ? (formatStayDateRange(displayCheckInDate, displayCheckOutDate) ?? '')
       : '';
 
   const showThread =

@@ -5,27 +5,14 @@ import type { GuestStayGuideDto } from '@/features/guest/stay-guide/lib/api';
 
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { cn } from '@/lib/utils';
+import { formatStayDateRange } from '@/utils/format/dates';
 
 interface StayGuideHeroProps {
   guide: GuestStayGuideDto;
 }
 
 function formatStayDates(checkIn: string, checkOut: string): string {
-  const normalize = (raw: string) => {
-    const t = raw.trim();
-    if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
-    if (/^\d{2}-\d{2}-\d{4}$/.test(t)) {
-      const [m, d, y] = t.split('-');
-      return `${y}-${m}-${d}`;
-    }
-    return t;
-  };
-  const inYmd = normalize(checkIn);
-  const outYmd = normalize(checkOut);
-  const fmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  const inDate = inYmd.includes('-') ? fmt.format(new Date(`${inYmd}T12:00:00Z`)) : checkIn;
-  const outDate = outYmd.includes('-') ? fmt.format(new Date(`${outYmd}T12:00:00Z`)) : checkOut;
-  return `${inDate} – ${outDate}`;
+  return formatStayDateRange(checkIn, checkOut) ?? checkIn;
 }
 
 function resolveGalleryImages(guide: GuestStayGuideDto): string[] {

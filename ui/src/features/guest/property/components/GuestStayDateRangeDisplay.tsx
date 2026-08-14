@@ -3,6 +3,7 @@ import { ArrowRight, CalendarRange, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { formatDateRangeFromDates } from '@/utils/format/dates';
 
 export type GuestStayDateRangeDisplayProps = {
   checkIn: Date;
@@ -70,9 +71,10 @@ export function GuestStayDateRangeDisplay({
     className
   );
 
-  const ariaLabel = checkOut
-    ? `Stay ${formatStayDate(checkIn, true)} to ${formatStayDate(checkOut, true)}`
-    : `Check-in ${formatStayDate(checkIn, true)}`;
+  const ariaLabel =
+    checkOut && checkOut > checkIn
+      ? formatDateRangeFromDates(checkIn, checkOut)
+      : `Check-in ${formatStayDate(checkIn, true)}`;
 
   const clearButton = onClear ? (
     <Button
@@ -110,16 +112,9 @@ export function GuestStayDateRangeDisplay({
           isCompact ? 'text-sm' : 'text-[13px]'
         )}
       >
-        {formatStayDate(checkIn, true)}
-        <ArrowRight
-          className={cn(
-            'mx-1.5 inline align-[-2px]',
-            isCompact ? 'size-3.5' : 'size-3',
-            isSuccess ? 'text-emerald-600/50' : 'text-primary/45'
-          )}
-          aria-hidden
-        />
-        {checkOut ? formatStayDate(checkOut, true) : 'Select date'}
+        {checkOut && checkOut > checkIn
+          ? formatDateRangeFromDates(checkIn, checkOut)
+          : formatStayDate(checkIn, true)}
       </p>
       {nights > 0 ? (
         <span className={nightsPillClass}>
