@@ -189,6 +189,9 @@ static_files = [
   "./functions/_shared/email-templates/fragments/*.html",
 ]
 
+[functions.get-parking-broadcast-status]
+verify_jwt = false
+
 [functions.decline-parking-booking]
 verify_jwt = false
 static_files = [
@@ -467,6 +470,16 @@ verify_jwt = false
 [functions.get-public-parking]
 verify_jwt = false
 
+[functions.submit-parking-booking-request]
+verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
+
+[functions.get-parking-booking-status]
+verify_jwt = false
+
 [functions.search-suggestions]
 verify_jwt = false
 
@@ -628,9 +641,6 @@ verify_jwt = false
 [functions.voice-receptionist-voice-preview]
 verify_jwt = false
 
-[functions.voice-receptionist-global-settings]
-verify_jwt = false
-
 [functions.guest-profile]
 verify_jwt = false
 
@@ -719,6 +729,12 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.ai-platform-usage]
+verify_jwt = false
+
+[functions.ai-platform-property-settings]
+verify_jwt = false
+
+[functions.dashboard-assistant]
 verify_jwt = false
 
 [functions.notifications-list]
