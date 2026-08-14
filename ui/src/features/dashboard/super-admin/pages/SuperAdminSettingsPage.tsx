@@ -1,5 +1,4 @@
 import { AiPlatformKillSwitchCard } from '@/features/dashboard/super-admin/components/AiPlatformKillSwitchCard';
-import { VoiceReceptionistKillSwitchCard } from '@/features/dashboard/super-admin/components/VoiceReceptionistKillSwitchCard';
 
 export function SuperAdminSettingsPage() {
   return (
@@ -7,7 +6,6 @@ export function SuperAdminSettingsPage() {
       <h1 className="text-admin-page-title sm:text-xl">Settings</h1>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <AiPlatformKillSwitchCard />
-        <VoiceReceptionistKillSwitchCard />
       </div>
     </div>
   );

@@ -5,7 +5,20 @@ import { callEdgeFunction } from '@/features/dashboard/org/lib/edgeClient';
 export type AiPlatformGlobalSettingsDto = {
   enabled: boolean;
   enforceQuotas: boolean;
+  allowedFeatures: string[];
+  defaultDailyCallLimit: number;
+  defaultMonthlyCallLimit: number;
+  defaultDailyCostUsdLimit: number;
   updatedAt: string | null;
+};
+
+export type AiPlatformGlobalSettingsPatch = {
+  enabled?: boolean;
+  enforceQuotas?: boolean;
+  allowedFeatures?: string[];
+  defaultDailyCallLimit?: number;
+  defaultMonthlyCallLimit?: number;
+  defaultDailyCostUsdLimit?: number;
 };
 
 const QUERY_KEY = ['super-admin', 'ai-platform-global-settings'] as const;
@@ -20,7 +33,7 @@ export function useAiPlatformGlobalSettings() {
 export function useUpdateAiPlatformGlobalSettings() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (patch: { enabled?: boolean; enforceQuotas?: boolean }) =>
+    mutationFn: (patch: AiPlatformGlobalSettingsPatch) =>
       callEdgeFunction<AiPlatformGlobalSettingsDto>('ai-platform-global-settings', {
         method: 'PATCH',
         body: JSON.stringify(patch),
