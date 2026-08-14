@@ -109,7 +109,7 @@ Same with marketing design templates goal.
 
 ===
 
-🚧 Marketing 4: Use AI to generate marketing calendar, design and video templates
+✅ Marketing 4: Use AI to generate marketing calendar, design and video templates
 
 Now that we made some improvements on marketing calendar, canvas and video editors, I want to really extend by having AI feature that will generate design and video templates from scratch that looks very beautiful, elegant, instagrammable and has wow factor to hosts.
 
@@ -125,9 +125,9 @@ The end goal is that with the help of AI, we should be able to generate calendar
 
 🔵 Marketing 5: Refine & finalize Marketing module
 
-- Make sure each module is optimized. Right now, something is not right and kinda laggy when we visit it
-- Make sure publish to social platform is supported
-- Revisit and review each template, refine it more to be more social and case updated
+- Make sure each module is optimized. Right now, something looks broken and when we visit the page and each tab, the app becomes kinda laggy and have performance issues. The thumbnails are not loading properly, creating new item somewhat breaks other thumbnails, switching to other orientation feels like rendering broken thumbnails, playing video preview does not fully play the video, it requires 2-3x click to fully play it which is broken.
+- Make sure AI generations for 3 modules are production ready, renders beautiful designs, content are engaging and easy to read, designs and videos are instagrammable and ready to post, etc.
+- If app is connected to social platform like Facebook and Instagram, make sure we support quick and easy publishing for post & story.
 
 ===
 
@@ -213,7 +213,7 @@ Do /impeccable critique, audit, review, harden & polish of our current e2e booki
 
 ===
 
-📋 Avail parking e2e flow
+🚧 Avail parking e2e flow
 
 Phase 1: Plan how host received parking booking
 The first phase than we need to finalize for parking e2e is how host should receive and handle parking bookings. Should we follow how property bookings? Create new workflow and different status for parking? Also, how we should notify parking host that they received parking and need immediate review? Same telegram flow?
@@ -427,7 +427,7 @@ After we refine the roles & permissions that we have on both org and property le
 
 ===
 
-🚧 In app notification for chat & other activity
+✅ In app notification for chat & other activity
 
 When we receive new chat or guest message from inbox, we should display a toast or notification message on our app as long as we are using the app and even we are not on inbox page.
 
