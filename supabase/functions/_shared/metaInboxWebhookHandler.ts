@@ -4,7 +4,11 @@
 
 import { metaMessagingWindowExpiry, normalizeMetaWebhookTimestamp } from './metaTimestamp.ts';
 import { fetchMetaMessengerParticipantProfile, getPageAccessToken } from './metaInboxGraph.ts';
-import { createNotification } from './notificationService.ts';
+import {
+  createOrCoalesceNotification,
+  inboxNotificationParticipantLabel,
+} from './notificationService.ts';
+import { inboxNotificationMetadata } from './notificationEnrichment.ts';
 import {
   buildDmThreadId,
   getConnectionByMetaPageId,
@@ -124,15 +128,20 @@ export async function handleMetaMessagingWebhook(
       console.warn('[handleMetaMessagingWebhook] telegram notify:', e);
     }
     try {
-      await createNotification({
+      const participantLabel = inboxNotificationParticipantLabel(
+        conv.participant_name,
+        conv.conversation_type
+      );
+      await createOrCoalesceNotification({
         organizationId: orgId,
         propertyId: conv.property_id ?? null,
         parkingId: conv.parking_id ?? null,
         type: 'inbox_new_message',
-        title: 'New guest message',
+        title: participantLabel,
         body: preview.slice(0, 200),
         conversationId: conv.id,
-        dedupeKey: `${eventId}:inbox_new_message`,
+        metadata: inboxNotificationMetadata(conv),
+        dedupeKey: `${conv.id}:inbox_new_message`,
       });
     } catch (e) {
       console.warn('[handleMetaMessagingWebhook] notification create:', e);

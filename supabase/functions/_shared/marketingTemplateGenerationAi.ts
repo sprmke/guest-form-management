@@ -12,10 +12,17 @@ import {
   shouldTryNextProvider,
 } from './aiGeminiKeys.ts';
 import { geminiGenerateContentUrl, getModelConfig } from './aiModelRouter.ts';
-import { assertOrgAiQuota, recordAiUsage } from './aiUsageService.ts';
+import { assertOrgAndPropertyAiQuota, recordAiUsage } from './aiUsageService.ts';
+import {
+  buildCacheInputs,
+  computePromptFingerprint,
+  getCachedAiResponse,
+  setCachedAiResponse,
+} from './aiQuotaCache.ts';
 
 const FEATURE = 'marketing_template' as const;
-const GEMINI_MODEL = getModelConfig(FEATURE).model;
+const CONFIG = getModelConfig(FEATURE);
+const GEMINI_MODEL = CONFIG.model;
 const GEMINI_URL = geminiGenerateContentUrl(GEMINI_MODEL);
 const GROQ_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
@@ -762,8 +769,12 @@ async function generateJsonText(
   systemPrompt: string,
   userPrompt: string,
   responseSchema: unknown,
-  usage: { organizationId: string; propertyId: string }
+  usage: { organizationId: string; propertyId: string },
+  cacheKey: string
 ): Promise<string> {
+  const cached = await getCachedAiResponse(cacheKey);
+  if (cached && isValidAiJsonText(cached)) return cached;
+
   const keys = getGeminiApiKeys();
   let geminiSawKeys = keys.length > 0;
   let geminiQuotaHit = false;
@@ -782,10 +793,10 @@ async function generateJsonText(
           contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
           generationConfig: {
             temperature: 0.85,
-            maxOutputTokens: 1024,
+            maxOutputTokens: CONFIG.defaultMaxOutputTokens,
             responseMimeType: 'application/json',
             responseSchema: responseSchema,
-            thinkingConfig: { thinkingBudget: 0 },
+            thinkingConfig: { thinkingBudget: CONFIG.thinkingBudget },
           },
         }),
       });
@@ -814,6 +825,7 @@ async function generateJsonText(
           inputTokens: tokenUsage.inputTokens,
           outputTokens: tokenUsage.outputTokens,
         });
+        await setCachedAiResponse(cacheKey, text, CONFIG.cacheTtlSeconds);
         return text;
       }
       if (text) geminiParseFailures += 1;
@@ -839,7 +851,7 @@ async function generateJsonText(
             { role: 'user', content: userPrompt },
           ],
           temperature: 0.85,
-          max_tokens: 512,
+          max_tokens: CONFIG.defaultMaxOutputTokens,
           response_format: { type: 'json_object' },
         }),
       });
@@ -860,6 +872,7 @@ async function generateJsonText(
             inputTokens: Number(json.usage?.prompt_tokens ?? 0),
             outputTokens: Number(json.usage?.completion_tokens ?? 0),
           });
+          await setCachedAiResponse(cacheKey, text, CONFIG.cacheTtlSeconds);
           return text;
         }
       }
@@ -906,17 +919,21 @@ export async function generateMarketingTemplateTokens(
     );
   }
 
-  await assertOrgAiQuota(input.organizationId);
+  await assertOrgAndPropertyAiQuota(input.organizationId, input.propertyId, FEATURE);
 
   if (input.contentType === 'calendar') {
+    const system = calendarSystemPrompt();
+    const user = buildUserPrompt(input);
+    const cacheKey = computePromptFingerprint(buildCacheInputs(FEATURE, system, user));
     const rawText = await generateJsonText(
-      calendarSystemPrompt(),
-      buildUserPrompt(input),
+      system,
+      user,
       CALENDAR_RESPONSE_SCHEMA,
       {
         organizationId: input.organizationId,
         propertyId: input.propertyId,
-      }
+      },
+      cacheKey
     );
     const parsed = parseAiJsonPayload(rawText);
     return {
@@ -926,14 +943,18 @@ export async function generateMarketingTemplateTokens(
   }
 
   if (input.contentType === 'video') {
+    const system = videoSystemPrompt();
+    const user = buildVideoUserPrompt(input);
+    const cacheKey = computePromptFingerprint(buildCacheInputs(FEATURE, system, user));
     const rawText = await generateJsonText(
-      videoSystemPrompt(),
-      buildVideoUserPrompt(input),
+      system,
+      user,
       VIDEO_RESPONSE_SCHEMA,
       {
         organizationId: input.organizationId,
         propertyId: input.propertyId,
-      }
+      },
+      cacheKey
     );
     const parsed = parseAiJsonPayload(rawText);
     return {
@@ -942,14 +963,20 @@ export async function generateMarketingTemplateTokens(
     };
   }
 
+  const designSystem = designSystemPrompt();
+  const designUser = buildDesignUserPrompt(input);
+  const designCacheKey = computePromptFingerprint(
+    buildCacheInputs(FEATURE, designSystem, designUser)
+  );
   const rawText = await generateJsonText(
-    designSystemPrompt(),
-    buildDesignUserPrompt(input),
+    designSystem,
+    designUser,
     DESIGN_RESPONSE_SCHEMA,
     {
       organizationId: input.organizationId,
       propertyId: input.propertyId,
-    }
+    },
+    designCacheKey
   );
   const parsed = parseAiJsonPayload(rawText);
 

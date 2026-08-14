@@ -24,7 +24,7 @@ import {
 } from './aiGeminiKeys.ts';
 import { geminiGenerateContentUrl, getModelConfig, type AiFeature } from './aiModelRouter.ts';
 import {
-  assertOrgAiQuotaOptional,
+  assertPropertyAiQuotaOptional,
   type AiQuotaExceededError,
   type AiPlatformDisabledError,
   recordAiUsageOptional,
@@ -469,7 +469,11 @@ async function callGeminiBatched(
   usageContext: AiUsageContext | null,
   logTag: string
 ): Promise<string> {
-  await assertOrgAiQuotaOptional(usageContext?.organizationId);
+  await assertPropertyAiQuotaOptional(
+    usageContext?.organizationId,
+    usageContext?.propertyId,
+    feature
+  );
 
   const geminiKeys = getGeminiApiKeys();
   const groqKey = getGroqApiKey();
@@ -504,7 +508,9 @@ async function callGeminiBatched(
             ],
             generationConfig: {
               temperature: 0.1,
+              maxOutputTokens: config.defaultMaxOutputTokens,
               responseMimeType: 'application/json',
+              thinkingConfig: { thinkingBudget: config.thinkingBudget },
             },
           }),
         });
@@ -566,7 +572,7 @@ async function callGeminiBatched(
               },
             ],
             temperature: 0.1,
-            max_tokens: 512,
+            max_tokens: config.defaultMaxOutputTokens,
             response_format: { type: 'json_object' },
           }),
         });

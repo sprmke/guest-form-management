@@ -12,6 +12,7 @@ import { UploadService } from './uploadService.ts';
 import { assertPropertyGuestPartyRules, guestPartySlotsFromFormData } from './guestCounts.ts';
 import { resolveGuestFormSettings } from './guestFormSettings.ts';
 import { createNotification } from './notificationService.ts';
+import { bookingNotificationMetadata } from './notificationEnrichment.ts';
 import { resolveOrganizationIdForParking } from './parkingScope.ts';
 import {
   formatDate,
@@ -634,6 +635,7 @@ export class DatabaseService {
         title: 'New booking submitted',
         body: `${guestName} submitted a new parking booking request.`,
         bookingId: data.id,
+        metadata: bookingNotificationMetadata(data),
         dedupeKey: `${data.id}:booking_pending_review`,
       });
     } catch (notifErr) {

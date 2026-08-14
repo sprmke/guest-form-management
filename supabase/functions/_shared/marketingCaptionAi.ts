@@ -9,10 +9,17 @@ import {
   getGroqApiKey,
 } from './aiGeminiKeys.ts';
 import { geminiGenerateContentUrl, getModelConfig } from './aiModelRouter.ts';
-import { assertOrgAiQuota, recordAiUsage } from './aiUsageService.ts';
+import { assertOrgAndPropertyAiQuota, recordAiUsage } from './aiUsageService.ts';
+import {
+  buildCacheInputs,
+  computePromptFingerprint,
+  getCachedAiResponse,
+  setCachedAiResponse,
+} from './aiQuotaCache.ts';
 
 const FEATURE = 'marketing_caption' as const;
-const GEMINI_MODEL = getModelConfig(FEATURE).model;
+const CONFIG = getModelConfig(FEATURE);
+const GEMINI_MODEL = CONFIG.model;
 const GEMINI_URL = geminiGenerateContentUrl(GEMINI_MODEL);
 const GROQ_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
@@ -29,7 +36,7 @@ export type MarketingCaptionInput = {
 };
 
 export async function generateMarketingCaption(input: MarketingCaptionInput): Promise<string> {
-  await assertOrgAiQuota(input.organizationId);
+  await assertOrgAndPropertyAiQuota(input.organizationId, input.propertyId, FEATURE);
 
   const systemPrompt =
     'You write short, engaging social media captions for vacation rental properties in the Philippines. ' +
@@ -47,6 +54,10 @@ export async function generateMarketingCaption(input: MarketingCaptionInput): Pr
     'Write one caption only — no quotes or labels.';
 
   const maxLen = input.postType === 'story' ? 220 : 400;
+  const cacheKey = computePromptFingerprint(buildCacheInputs(FEATURE, systemPrompt, userPrompt));
+  const cached = await getCachedAiResponse(cacheKey);
+  if (cached) return cached.slice(0, maxLen);
+
   const keys = getGeminiApiKeys();
   for (const apiKey of keys) {
     try {
@@ -58,8 +69,8 @@ export async function generateMarketingCaption(input: MarketingCaptionInput): Pr
           contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
           generationConfig: {
             temperature: 0.7,
-            maxOutputTokens: 256,
-            thinkingConfig: { thinkingBudget: 0 },
+            maxOutputTokens: CONFIG.defaultMaxOutputTokens,
+            thinkingConfig: { thinkingBudget: CONFIG.thinkingBudget },
           },
         }),
       });
@@ -76,6 +87,7 @@ export async function generateMarketingCaption(input: MarketingCaptionInput): Pr
           inputTokens: usage.inputTokens,
           outputTokens: usage.outputTokens,
         });
+        await setCachedAiResponse(cacheKey, text, CONFIG.cacheTtlSeconds);
         return text.slice(0, maxLen);
       }
     } catch {
@@ -98,7 +110,7 @@ export async function generateMarketingCaption(input: MarketingCaptionInput): Pr
           { role: 'user', content: userPrompt },
         ],
         temperature: 0.7,
-        max_tokens: 256,
+        max_tokens: CONFIG.defaultMaxOutputTokens,
       }),
     });
     const json = (await res.json()) as {
@@ -116,6 +128,7 @@ export async function generateMarketingCaption(input: MarketingCaptionInput): Pr
         inputTokens: Number(json.usage?.prompt_tokens ?? 0),
         outputTokens: Number(json.usage?.completion_tokens ?? 0),
       });
+      await setCachedAiResponse(cacheKey, text, CONFIG.cacheTtlSeconds);
       return text.slice(0, maxLen);
     }
   }

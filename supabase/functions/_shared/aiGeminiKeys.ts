@@ -5,6 +5,8 @@
  * Local/dev: comma-separated GEMINI_API_KEYS from different projects is still supported for free-tier rotation.
  */
 
+import { geminiGenerateContentUrl } from './aiModelRouter.ts';
+
 let geminiKeyIndex = 0;
 
 export function getGeminiApiKeys(): string[] {
@@ -69,4 +71,50 @@ export function providerError(json: unknown, fallback: string): string {
   const err = json as { error?: { message?: string } };
   const message = err.error?.message?.trim();
   return message || fallback;
+}
+
+export type AiProviderProbeResult = {
+  ok: boolean;
+  latencyMs?: number;
+  error?: string;
+};
+
+/** Minimal provider probe for health checks — never exposes key counts or IDs. */
+export async function probeAiProviderMinimal(): Promise<AiProviderProbeResult> {
+  const keys = getGeminiApiKeys();
+  if (keys.length === 0) {
+    return { ok: false, error: 'No Gemini API keys configured' };
+  }
+
+  const url = `${geminiGenerateContentUrl('gemini-2.0-flash-lite')}?key=${encodeURIComponent(keys[0])}`;
+  const started = Date.now();
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: 'Reply with exactly: ok' }] }],
+        generationConfig: { temperature: 0, maxOutputTokens: 8 },
+      }),
+    });
+    const latencyMs = Date.now() - started;
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      let message = `Gemini API returned ${res.status}`;
+      try {
+        const parsed = JSON.parse(errText) as { error?: { message?: string } };
+        if (parsed.error?.message) message = parsed.error.message;
+      } catch {
+        if (errText.trim()) message = errText.trim().slice(0, 240);
+      }
+      return { ok: false, latencyMs, error: message };
+    }
+    return { ok: true, latencyMs };
+  } catch (err) {
+    return {
+      ok: false,
+      latencyMs: Date.now() - started,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
 }
