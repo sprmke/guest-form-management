@@ -1294,6 +1294,51 @@
   color: hsl(0 0% 92%) !important;
 }
 
+/* Sonner ships an inverted (near-black) action chip — use the brand primary instead. */
+[data-sonner-toast] [data-button] {
+  height: 32px !important;
+  border: none !important;
+  border-radius: 0.5rem !important;
+  padding: 0 0.75rem !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  background: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+[data-sonner-toast] [data-button]:hover {
+  background: hsl(var(--primary) / 0.9) !important;
+}
+
+[data-sonner-toast] [data-button]:focus-visible {
+  box-shadow: none !important;
+  outline: 2px solid hsl(var(--ring)) !important;
+  outline-offset: 2px !important;
+}
+
+[data-sonner-toast] [data-button][data-cancel] {
+  background: hsl(var(--muted)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+/* Notification toasts swap the 16px status glyph for a 32px category badge. */
+[data-sonner-toast]:has([data-notification-toast-icon]) [data-icon] {
+  width: 32px !important;
+  height: 32px !important;
+  align-self: flex-start !important;
+  margin-left: 0 !important;
+  margin-right: 12px !important;
+}
+
+[data-sonner-toast]:has([data-notification-toast-icon]) [data-content] {
+  min-width: 0 !important;
+}
+
+/* Sonner pushes the action chip with `margin-left: auto`, so text can wrap flush against it. */
+[data-sonner-toast]:has([data-button]) [data-content] {
+  padding-right: 12px !important;
+}
+
 [data-sonner-toast][data-type='success'] {
   border-color: hsl(var(--success) / 0.45) !important;
   box-shadow:

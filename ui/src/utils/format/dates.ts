@@ -1,4 +1,4 @@
-import { parse, startOfDay } from 'date-fns';
+import { format, isSameMonth, isSameYear, parse, startOfDay } from 'date-fns';
 import dayjs from 'dayjs';
 import timezone from 'dayjs/plugin/timezone';
 import utc from 'dayjs/plugin/utc';
@@ -141,6 +141,50 @@ export const stringToDate = (dateString: string): Date => {
   const normalized = normalizeDateString(dateString);
   return parse(normalized, 'yyyy-MM-dd', new Date());
 };
+
+/** Readable range from two `Date`s, e.g. `Aug 11 - 18, 2026`. */
+export function formatDateRangeFromDates(from: Date, to: Date): string {
+  if (isSameYear(from, to)) {
+    if (isSameMonth(from, to)) {
+      return `${format(from, 'MMM d')} - ${format(to, 'd, yyyy')}`;
+    }
+    return `${format(from, 'MMM d')} - ${format(to, 'MMM d, yyyy')}`;
+  }
+  return `${format(from, 'MMM d, yyyy')} - ${format(to, 'MMM d, yyyy')}`;
+}
+
+function parseStayBoundaryDate(raw: string): Date | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  try {
+    const normalized = normalizeDateString(trimmed);
+    if (!normalized) return null;
+    const date = stringToDate(normalized);
+    return Number.isNaN(date.getTime()) ? null : date;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * ISO `YYYY-MM-DD` or booking `MM-DD-YYYY` → readable stay range, e.g. `Aug 11 - 18, 2026`.
+ */
+export function formatStayDateRange(
+  checkIn: string | null | undefined,
+  checkOut: string | null | undefined
+): string | null {
+  const from = checkIn ? parseStayBoundaryDate(checkIn) : null;
+  if (!from) return null;
+
+  if (!checkOut?.trim()) {
+    return format(from, 'MMM d, yyyy');
+  }
+
+  const to = parseStayBoundaryDate(checkOut);
+  if (!to) return format(from, 'MMM d, yyyy');
+
+  return formatDateRangeFromDates(from, to);
+}
 
 // Convert Date object to YYYY-MM-DD string
 export const dateToString = (date: Date): string => {
