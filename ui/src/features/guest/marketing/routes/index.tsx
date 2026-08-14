@@ -26,6 +26,7 @@ import { PropertyFormPage } from '@/features/guest/marketing/pages/PropertyFormP
 import { ServicesPage } from '@/features/guest/marketing/pages/ServicesPage';
 import { SupportPage } from '@/features/guest/marketing/pages/SupportPage';
 import { TermsPage } from '@/features/guest/marketing/pages/TermsPage';
+import { ParkingRequestStatusPage } from '@/features/guest/marketing/parkings/pages/ParkingRequestStatusPage';
 import { MarketingLayoutShell } from '@/features/guest/marketing/shared/components/MarketingLayoutShell';
 import { SearchResultsPage } from '@/features/guest/search/pages/SearchResultsPage';
 
@@ -53,6 +54,7 @@ export const marketingRoutes = [
     <Route path="properties/in/:location" element={<PropertiesLocationPage />} />
     <Route path="parkings" element={<ParkingsListPage />} />
     <Route path="parkings/in/:location" element={<ParkingsLocationPage />} />
+    <Route path="parkings/requests/:bookingId" element={<ParkingRequestStatusPage />} />
     <Route path="parkings/:parkingSlug/form" element={<ParkingFormPage />} />
     <Route path="parkings/:parkingSlug" element={<ParkingDetailPage />} />
     <Route path="properties/:propertySlug" element={<PropertyDetailPage />} />

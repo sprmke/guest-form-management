@@ -30,6 +30,10 @@ interface FormPageWrapperProps {
   backLabel?: string;
   /** 'property' | 'development' — affects header label copy */
   sourceType?: 'property' | 'development';
+  /** When set, replaces the mock sleep()+fake-id submit with a real edge call. */
+  onSubmit?: (data: Record<string, unknown>) => Promise<{ submissionId: string }>;
+  /** When set, the success screen links to this URL for tracking the submission. */
+  buildStatusUrl?: (submissionId: string) => string;
 }
 
 export function FormPageWrapper({
@@ -48,13 +52,21 @@ export function FormPageWrapper({
   backUrl,
   backLabel,
   sourceType = 'property',
+  onSubmit,
+  buildStatusUrl,
 }: FormPageWrapperProps) {
   const resolvedBackLabel =
     backLabel ?? (sourceType === 'development' ? 'View development' : 'View property');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submissionId, setSubmissionId] = useState<string | undefined>();
 
-  const handleSubmit = async (_data: Record<string, unknown>) => {
+  const handleSubmit = async (data: Record<string, unknown>) => {
+    if (onSubmit) {
+      const result = await onSubmit(data);
+      setSubmissionId(result.submissionId);
+      setIsSubmitted(true);
+      return;
+    }
     await new Promise((resolve) => setTimeout(resolve, 2000));
     const id = `KH-${Date.now().toString(36).toUpperCase().slice(-6)}`;
     setSubmissionId(id);
@@ -96,6 +108,7 @@ export function FormPageWrapper({
               submissionId={submissionId}
               propertyId={propertyId}
               propertyName={propertyName}
+              statusUrl={submissionId && buildStatusUrl ? buildStatusUrl(submissionId) : undefined}
             />
           ) : (
             <div className="border-border bg-card overflow-hidden rounded-2xl border shadow-[0_4px_40px_-12px_rgba(0,0,0,0.10)]">
