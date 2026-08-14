@@ -5,37 +5,25 @@ import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org
 import { supabase } from '@/lib/supabase/client';
 
 export type AiIntegrationVerifyDto = {
-  apiKeyConfigured: boolean;
   model: string;
   ok: boolean;
   latencyMs?: number;
-  statusCode?: number;
   error?: string;
-  primaryKeysCount?: number;
-  fallbackConfigured?: boolean;
 };
 
 type AiIntegrationVerifyResponse = {
-  apiKeyConfigured: boolean;
   model: string;
   ok: boolean;
   latencyMs?: number;
-  statusCode?: number;
   error?: string;
-  geminiKeysCount?: number;
-  groqConfigured?: boolean;
 };
 
 function mapVerifyResponse(raw: AiIntegrationVerifyResponse): AiIntegrationVerifyDto {
   return {
-    apiKeyConfigured: raw.apiKeyConfigured,
     model: raw.model,
     ok: raw.ok,
     latencyMs: raw.latencyMs,
-    statusCode: raw.statusCode,
     error: raw.error,
-    primaryKeysCount: raw.geminiKeysCount,
-    fallbackConfigured: raw.groqConfigured,
   };
 }
 
