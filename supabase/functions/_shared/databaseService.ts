@@ -751,7 +751,18 @@ export class DatabaseService {
     let request = this.supabase.from('guest_submissions').select('*', { count: 'exact' });
 
     if (parkingId) {
-      request = request.eq('parking_id', parkingId);
+      // Broadcast pre-claim requests still have parking_id = null — surface this
+      // parking's pending candidacy rows alongside its already-claimed bookings.
+      const { data: pendingBroadcasts } = await this.supabase
+        .from('parking_booking_broadcasts')
+        .select('booking_id')
+        .eq('parking_id', parkingId)
+        .eq('response', 'pending');
+      const pendingBookingIds = (pendingBroadcasts ?? []).map((row) => String(row.booking_id));
+      request =
+        pendingBookingIds.length > 0
+          ? request.or(`parking_id.eq.${parkingId},id.in.(${pendingBookingIds.join(',')})`)
+          : request.eq('parking_id', parkingId);
     } else if (propertyId) {
       request = request.eq('property_id', propertyId);
     } else if (propertyIds) {
@@ -863,18 +874,27 @@ export class DatabaseService {
       paged = await this.enrichBookingsWithPropertyMeta(paged);
     }
     if (includeParkingMeta && paged.length > 0) {
-      paged = await this.enrichBookingsWithParkingMeta(paged);
+      paged = await this.enrichBookingsWithParkingMeta(paged, parkingId);
     }
 
     paged = paged.map((row) => ({
       ...row,
-      booking_kind: row.parking_id ? 'parking' : 'property',
+      // A pre-claim broadcast row (parking_id null) scoped by parkingId is still
+      // parking-kind — it just hasn't been claimed by this parking yet.
+      booking_kind: row.parking_id || parkingId ? 'parking' : 'property',
     }));
 
     return { rows: paged, total };
   }
 
-  private static async enrichBookingsWithParkingMeta(rows: Record<string, unknown>[]) {
+  /**
+   * `scopedParkingId` is set when the list call is scoped to a single parking — its
+   * meta backfills rows with no `parking_id` of their own (pre-claim broadcast rows).
+   */
+  private static async enrichBookingsWithParkingMeta(
+    rows: Record<string, unknown>[],
+    scopedParkingId?: string
+  ) {
     const ids = [
       ...new Set(
         rows
@@ -882,6 +902,7 @@ export class DatabaseService {
           .filter((id): id is string => typeof id === 'string' && id.length > 0)
       ),
     ];
+    if (scopedParkingId) ids.push(scopedParkingId);
     if (ids.length === 0) return rows;
 
     const { data: parkingRows, error } = await this.supabase
@@ -904,7 +925,7 @@ export class DatabaseService {
     );
 
     return rows.map((row) => {
-      const parkingId = typeof row.parking_id === 'string' ? row.parking_id : null;
+      const parkingId = typeof row.parking_id === 'string' ? row.parking_id : scopedParkingId;
       const meta = parkingId ? byId.get(parkingId) : undefined;
       return {
         ...row,
