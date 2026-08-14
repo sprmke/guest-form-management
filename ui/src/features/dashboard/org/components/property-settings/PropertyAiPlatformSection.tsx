@@ -4,11 +4,12 @@ import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import {
-  useAiPlatformSettings,
-  useAiPlatformUsage,
-  useUpdateAiPlatformSettings,
+  useAiPlatformPropertySettings,
+  useUpdateAiPlatformPropertySettings,
+  type AiPlatformPropertySettingsDto,
 } from '@/features/dashboard/org/hooks/useAiPlatformSettings';
-import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermissions';
+import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
+import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,13 +23,21 @@ type Draft = {
   dailyCostUsdLimit: string;
 };
 
-export function OrgAiPlatformSection() {
-  const { data: settings, isLoading: settingsLoading } = useAiPlatformSettings();
-  const { data: usage, isLoading: usageLoading } = useAiPlatformUsage();
-  const { data: orgAccess } = useOrgPermissions();
-  const update = useUpdateAiPlatformSettings();
+function settingsToDraft(settings: AiPlatformPropertySettingsDto): Draft {
+  return {
+    enabled: settings.enabled,
+    dailyCallLimit: settings.dailyCallLimit == null ? '' : String(settings.dailyCallLimit),
+    monthlyCallLimit: settings.monthlyCallLimit == null ? '' : String(settings.monthlyCallLimit),
+    dailyCostUsdLimit: settings.dailyCostUsdLimit == null ? '' : String(settings.dailyCostUsdLimit),
+  };
+}
 
-  const canEdit = orgAccess?.canEditSettings ?? false;
+export function PropertyAiPlatformSection() {
+  const { data: settings, isLoading: settingsLoading } = useAiPlatformPropertySettings();
+  const { data: propertyAccess } = usePropertyPermissions();
+  const update = useUpdateAiPlatformPropertySettings();
+
+  const canEdit = hasPropertyPermission(propertyAccess?.permissions, 'settings:edit');
   const readOnly = !canEdit;
 
   const [draft, setDraft] = React.useState<Draft | null>(null);
@@ -36,12 +45,7 @@ export function OrgAiPlatformSection() {
 
   React.useEffect(() => {
     if (!settings) return;
-    const next: Draft = {
-      enabled: settings.enabled,
-      dailyCallLimit: String(settings.dailyCallLimit),
-      monthlyCallLimit: String(settings.monthlyCallLimit),
-      dailyCostUsdLimit: String(settings.dailyCostUsdLimit),
-    };
+    const next = settingsToDraft(settings);
     setDraft((current) => (current === null ? next : current));
     setBaseline((current) => (current === null ? next : current));
   }, [settings]);
@@ -56,27 +60,32 @@ export function OrgAiPlatformSection() {
 
   const handleSave = () => {
     if (!draft) return;
-    const dailyCallLimit = Number(draft.dailyCallLimit);
-    const monthlyCallLimit = Number(draft.monthlyCallLimit);
-    const dailyCostUsdLimit = Number(draft.dailyCostUsdLimit);
+    const dailyCallLimit = draft.dailyCallLimit === '' ? null : Number(draft.dailyCallLimit);
+    const monthlyCallLimit = draft.monthlyCallLimit === '' ? null : Number(draft.monthlyCallLimit);
+    const dailyCostUsdLimit =
+      draft.dailyCostUsdLimit === '' ? null : Number(draft.dailyCostUsdLimit);
+
     if (
-      !Number.isFinite(dailyCallLimit) ||
-      dailyCallLimit <= 0 ||
-      !Number.isInteger(dailyCallLimit)
+      dailyCallLimit != null &&
+      (!Number.isFinite(dailyCallLimit) || dailyCallLimit <= 0 || !Number.isInteger(dailyCallLimit))
     ) {
-      toast.error('Daily limit must be a positive integer');
+      toast.error('Daily limit must be a positive integer or blank');
       return;
     }
     if (
-      !Number.isFinite(monthlyCallLimit) ||
-      monthlyCallLimit <= 0 ||
-      !Number.isInteger(monthlyCallLimit)
+      monthlyCallLimit != null &&
+      (!Number.isFinite(monthlyCallLimit) ||
+        monthlyCallLimit <= 0 ||
+        !Number.isInteger(monthlyCallLimit))
     ) {
-      toast.error('Monthly limit must be a positive integer');
+      toast.error('Monthly limit must be a positive integer or blank');
       return;
     }
-    if (!Number.isFinite(dailyCostUsdLimit) || dailyCostUsdLimit <= 0) {
-      toast.error('Daily cost limit must be a positive number');
+    if (
+      dailyCostUsdLimit != null &&
+      (!Number.isFinite(dailyCostUsdLimit) || dailyCostUsdLimit <= 0)
+    ) {
+      toast.error('Daily cost limit must be a positive number or blank');
       return;
     }
 
@@ -89,22 +98,18 @@ export function OrgAiPlatformSection() {
       },
       {
         onSuccess: (saved) => {
-          const next: Draft = {
-            enabled: saved.enabled,
-            dailyCallLimit: String(saved.dailyCallLimit),
-            monthlyCallLimit: String(saved.monthlyCallLimit),
-            dailyCostUsdLimit: String(saved.dailyCostUsdLimit),
-          };
+          const next = settingsToDraft(saved);
           setDraft(next);
           setBaseline(next);
-          toast.success('AI limits saved');
+          toast.success('Property AI settings saved');
         },
-        onError: (err: unknown) => toast.error(friendlyToastError(err, 'Could not save AI limits')),
+        onError: (err: unknown) =>
+          toast.error(friendlyToastError(err, 'Could not save property AI settings')),
       }
     );
   };
 
-  if (settingsLoading || usageLoading || !draft) {
+  if (settingsLoading || !draft) {
     return (
       <section id="section-ai" className="scroll-mt-24">
         <div className="flex justify-center py-8">
@@ -114,50 +119,15 @@ export function OrgAiPlatformSection() {
     );
   }
 
-  const showUpgradeStub = usage?.quotaExceeded || usage?.planTier === 'included';
-
   return (
     <section id="section-ai" className="scroll-mt-24 space-y-4">
       <div>
-        <h2 className="text-lg font-semibold">AI usage</h2>
+        <h2 className="text-lg font-semibold">AI overrides</h2>
       </div>
-
-      {usage ? (
-        <dl className="grid gap-3 text-sm sm:grid-cols-2">
-          <div>
-            <dt className="text-muted-foreground">Today</dt>
-            <dd>
-              {usage.todayCallCount} / {usage.dailyCallLimit} calls
-            </dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">This month</dt>
-            <dd>
-              {usage.monthCallCount} / {usage.monthlyCallLimit} calls
-            </dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Est. cost today</dt>
-            <dd>
-              ${usage.todayCostUsd.toFixed(4)} / ${usage.dailyCostUsdLimit}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Plan</dt>
-            <dd className="capitalize">{usage.planTier.replace('_', ' ')}</dd>
-          </div>
-        </dl>
-      ) : null}
-
-      {showUpgradeStub ? (
-        <p className="text-muted-foreground text-sm">
-          Need more AI capacity? Upgrade for higher limits — billing integration coming soon.
-        </p>
-      ) : null}
 
       {readOnly ? (
         <p className="text-muted-foreground text-sm">
-          Contact the organization owner to change AI settings.
+          Contact the property manager to change AI overrides.
         </p>
       ) : null}
 
@@ -169,14 +139,14 @@ export function OrgAiPlatformSection() {
             onCheckedChange={(enabled) =>
               setDraft((current) => (current ? { ...current, enabled } : current))
             }
-            aria-label="Enable AI for organization"
+            aria-label="Enable AI for this property"
           />
-          AI enabled
+          AI enabled for this property
         </label>
 
         <div className="grid gap-3 sm:grid-cols-3">
           <label className="space-y-1 text-sm">
-            <span className="text-muted-foreground">Daily call limit</span>
+            <span className="text-muted-foreground">Daily call limit (blank = inherit)</span>
             <Input
               inputMode="numeric"
               value={draft.dailyCallLimit}
@@ -186,11 +156,11 @@ export function OrgAiPlatformSection() {
                   current ? { ...current, dailyCallLimit: e.target.value } : current
                 )
               }
-              aria-label="Daily AI call limit"
+              aria-label="Daily AI call limit override"
             />
           </label>
           <label className="space-y-1 text-sm">
-            <span className="text-muted-foreground">Monthly call limit</span>
+            <span className="text-muted-foreground">Monthly call limit (blank = inherit)</span>
             <Input
               inputMode="numeric"
               value={draft.monthlyCallLimit}
@@ -200,11 +170,11 @@ export function OrgAiPlatformSection() {
                   current ? { ...current, monthlyCallLimit: e.target.value } : current
                 )
               }
-              aria-label="Monthly AI call limit"
+              aria-label="Monthly AI call limit override"
             />
           </label>
           <label className="space-y-1 text-sm">
-            <span className="text-muted-foreground">Daily cost USD limit</span>
+            <span className="text-muted-foreground">Daily cost USD limit (blank = inherit)</span>
             <Input
               inputMode="decimal"
               value={draft.dailyCostUsdLimit}
@@ -214,7 +184,7 @@ export function OrgAiPlatformSection() {
                   current ? { ...current, dailyCostUsdLimit: e.target.value } : current
                 )
               }
-              aria-label="Daily AI cost USD limit"
+              aria-label="Daily AI cost USD limit override"
             />
           </label>
         </div>
@@ -227,7 +197,7 @@ export function OrgAiPlatformSection() {
           disabled={update.isPending}
           onClick={handleSave}
         >
-          {update.isPending ? 'Saving…' : 'Save AI limits'}
+          {update.isPending ? 'Saving…' : 'Save property AI overrides'}
         </Button>
       ) : null}
     </section>
