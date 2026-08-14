@@ -1,7 +1,8 @@
 import {
-  VIDEO_CATEGORY_LABELS,
-  type VideoCategory,
-} from '@/features/dashboard/marketing/lib/video/videoCategories';
+  resolveCampaignPalette,
+  type CampaignPalette,
+} from '@/features/dashboard/marketing/lib/designBrandColors';
+import { VIDEO_CATEGORY_LABELS } from '@/features/dashboard/marketing/lib/video/videoCategories';
 import type { VideoMotionOverride } from '@/features/dashboard/marketing/lib/video/videoMotionProfiles';
 import {
   fitVideoAiSceneDurations,
@@ -22,86 +23,105 @@ export type VideoAiSuggestion = {
   title: string;
   summary: string;
   prompt: string;
-  category: VideoCategory;
-  /** Roughly how many scenes this vibe implies — drives the preview bars only. */
+  /** Look/mood colors — applied to the generated video palette (not brand teal). */
+  mood: { from: string; to: string };
+  /** Roughly how many scenes this vibe implies — drives the preview pacing bars only. */
   sceneHint: number;
+  /** Soft locks applied when this suggestion is picked (host can still change Look controls). */
+  lookLocks?: {
+    motionMood?: 'calm' | 'energetic' | 'cinematic';
+    fontPairing?: VideoFontPairingId;
+  };
 };
 
 /** Featured count shown before "View more" in the generate modal. */
 export const VIDEO_AI_SUGGESTIONS_PREVIEW_COUNT = 4;
 
+/**
+ * Pure look/motion vibes — deliberately independent of Category (Content). A host picks
+ * *what* the video is about via Category/Content, and *how it looks* here, same split as
+ * the Design tab's suggestions.
+ */
 export const VIDEO_AI_SUGGESTIONS: VideoAiSuggestion[] = [
   {
-    id: 'quiet-welcome',
-    title: 'Quiet Welcome',
-    summary: 'Slow pans · soft hook · calm CTA',
-    category: 'soft-stay',
+    id: 'slow-pans-soft-light',
+    title: 'Slow Pans & Soft Light',
+    summary: 'Gentle Ken Burns · airy scrims · calm close',
+    mood: { from: '#f3ede2', to: '#d9c9b3' },
     sceneHint: 4,
+    lookLocks: { motionMood: 'calm', fontPairing: 'editorial-serif' },
     prompt:
-      'Quiet editorial welcome reel: slow zoom hook on the property, one calm b-roll beat, a soft amenity highlight, gentle CTA close, Instagram Story pace',
+      'Quiet editorial look: slow gentle zooms and drifts, airy soft scrims, generous breathing room between beats, calm unhurried pace, elegant serif type',
   },
   {
-    id: 'golden-hour-glow',
-    title: 'Golden Hour Glow',
-    summary: 'Warm light · drift pans · romantic close',
-    category: 'soft-stay',
+    id: 'golden-hour-drift',
+    title: 'Golden Hour Drift',
+    summary: 'Warm light · drifting pans · romantic fade',
+    mood: { from: '#f0c56a', to: '#b8622a' },
     sceneHint: 4,
+    lookLocks: { motionMood: 'calm', fontPairing: 'cinematic-serif' },
     prompt:
-      'Golden hour ambience reel: warm drifting pans across the stay at sunset, one detail beat, a soft evening offer line, elegant closing CTA',
+      'Golden hour cinematography: warm amber light, slow drifting pans, soft romantic fades between beats, intimate unhurried mood, elegant serif type',
   },
   {
-    id: 'flash-deal-punch',
-    title: 'Flash Deal Punch',
-    summary: 'Fast cuts · punch-in zoom · bold offer',
-    category: 'flash-deal',
+    id: 'punch-in-energy',
+    title: 'Punch-In Energy',
+    summary: 'Fast punch-in zooms · bold cuts · high contrast',
+    mood: { from: '#f0806a', to: '#7a2030' },
     sceneHint: 4,
+    lookLocks: { motionMood: 'energetic', fontPairing: 'modern-sans' },
     prompt:
-      'High-energy flash deal reel: punchy zoom-in hook, quick offer reveal with percent-off, fast cut to the stay, urgent CTA close, upbeat Reels pace',
+      'High-energy edit: punchy zoom-in hooks, fast hard cuts, bold high-contrast type, quick confident pacing, scroll-stopping social energy',
   },
   {
-    id: 'countdown-clock',
-    title: 'Countdown Clock',
-    summary: 'Clock wipe · urgency · limited window',
-    category: 'flash-deal',
+    id: 'clockwipe-countdown',
+    title: 'Clockwipe Countdown',
+    summary: 'Clock-wipe transitions · ticking urgency · tight cuts',
+    mood: { from: '#e8c56a', to: '#2a2a35' },
     sceneHint: 3,
+    lookLocks: { motionMood: 'energetic', fontPairing: 'modern-sans' },
     prompt:
-      'Limited-time countdown reel: bold hook, clock-wipe transition into the offer, tight urgent CTA — feels like a ticking clock, Instagram Reel energy',
+      'Countdown-style edit: clock-wipe and push-cut transitions between beats, tight urgent pacing that feels like a ticking clock, bold modern sans type',
   },
   {
-    id: 'last-dates-reveal',
-    title: 'Last Dates Reveal',
-    summary: 'Date reveal · hold shot · book-now close',
-    category: 'last-openings',
+    id: 'cinematic-sweep',
+    title: 'Cinematic Sweep',
+    summary: 'Wide pans · moody reveal · editorial serif',
+    mood: { from: '#3a4a5c', to: '#0f1a24' },
     sceneHint: 4,
+    lookLocks: { motionMood: 'cinematic', fontPairing: 'cinematic-serif' },
     prompt:
-      'Last-openings reel: hook announcing limited dates, a hold shot of the space, a dates reveal beat, decisive book-now CTA, urgent but elegant tone',
+      'Cinematic wide pans left and right, moody slow reveal of the space, deep confident color, editorial serif headline, deliberate unhurried cuts',
   },
   {
-    id: 'guest-love-story',
-    title: 'Guest Love Story',
-    summary: 'Warm quote beat · gentle b-roll · plan-yours CTA',
-    category: 'social-proof',
+    id: 'warm-closeup-hold',
+    title: 'Warm Close-Up Hold',
+    summary: 'Still holds · intimate framing · soft close',
+    mood: { from: '#e8b0a8', to: '#7a3a42' },
     sceneHint: 4,
+    lookLocks: { motionMood: 'calm', fontPairing: 'warm-serif' },
     prompt:
-      'Guest-love social proof reel: warm hook, a quote-style highlight beat, cozy b-roll of the stay, inviting "plan yours" CTA close',
+      'Warm intimate framing: still hold shots, gentle soft fades, close and personal feel, tender unhurried close, rounded friendly type',
   },
   {
-    id: 'waitlist-invite',
-    title: 'Waitlist Invite',
-    summary: 'Soft hold · fully booked · join waitlist',
-    category: 'fully-booked',
+    id: 'quiet-hold-fade',
+    title: 'Quiet Hold & Fade',
+    summary: 'Minimal motion · soft fades · understated close',
+    mood: { from: '#c8d4c0', to: '#5a6e52' },
     sceneHint: 3,
+    lookLocks: { motionMood: 'calm', fontPairing: 'editorial-serif' },
     prompt:
-      'Fully booked waitlist reel: calm hook announcing the month is full, a soft message beat inviting guests to join the waitlist, warm closing CTA',
+      'Minimal-motion edit: mostly still holds, soft cross-fades, quiet understated pacing, generous negative space, refined restrained type',
   },
   {
-    id: 'seasonal-glow',
-    title: 'Seasonal Glow',
-    summary: 'Diagonal drift · festive offer · reserve early',
-    category: 'seasonal',
+    id: 'diagonal-drift-glow',
+    title: 'Diagonal Drift Glow',
+    summary: 'Diagonal drifts · festive warm glow · soft wipes',
+    mood: { from: '#e8a860', to: '#c45a4a' },
     sceneHint: 4,
+    lookLocks: { motionMood: 'cinematic', fontPairing: 'warm-serif' },
     prompt:
-      'Seasonal getaway reel: cozy hook tied to the season, a diagonal drift b-roll beat, a festive offer line, reserve-early CTA close',
+      'Festive warm glow: diagonal drifting pans, soft wipe transitions, cozy golden color, inviting celebratory mood, warm rounded type',
   },
 ];
 
@@ -211,6 +231,8 @@ export type VideoAiGeneratePreferences = {
   motionMood: VideoAiMotionOption['value'];
   category: VideoAiCategory;
   content: string;
+  /** From a Look suggestion — stamps the generated video's accent/cream palette. */
+  lookMood?: { from: string; to: string };
 };
 
 export const DEFAULT_VIDEO_AI_PREFERENCES: VideoAiGeneratePreferences = {
@@ -220,6 +242,18 @@ export const DEFAULT_VIDEO_AI_PREFERENCES: VideoAiGeneratePreferences = {
   category: 'soft-stay',
   content: VIDEO_AI_DEFAULT_CONTENTS['soft-stay'],
 };
+
+/** Map a Look suggestion mood gradient onto the Quiet Coast campaign palette. */
+export function campaignPaletteFromLookMood(mood: { from: string; to: string }): CampaignPalette {
+  const base = resolveCampaignPalette(undefined, {
+    preservePresetPalette: true,
+    presetAccent: mood.to,
+  });
+  return {
+    ...base,
+    cream: mood.from,
+  };
+}
 
 /** Apply host style locks after AI returns (Auto leaves AI's choice, still floored). */
 export function applyVideoAiPreferencesToTokens(

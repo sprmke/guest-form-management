@@ -14,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ATTENTION_SEVERITY_STYLES } from '@/lib/statusToneColors';
 import { cn } from '@/lib/utils';
 import { formatMoney } from '@/utils/format/currency';
-import { formatDateToLongFormat } from '@/utils/format/dates';
+import { formatStayDateRange } from '@/utils/format/dates';
 
 const MAX_ITEMS = 5;
 
@@ -32,11 +32,7 @@ type Props = {
 };
 
 function formatStayRange(checkInIso: string, checkOutIso: string): string {
-  const checkIn = formatDateToLongFormat(checkInIso);
-  const checkOut = formatDateToLongFormat(checkOutIso);
-  if (!checkIn && !checkOut) return '';
-  if (!checkOut) return checkIn;
-  return `${checkIn} → ${checkOut}`;
+  return formatStayDateRange(checkInIso, checkOutIso) ?? '';
 }
 
 function RecentBookingsBody({

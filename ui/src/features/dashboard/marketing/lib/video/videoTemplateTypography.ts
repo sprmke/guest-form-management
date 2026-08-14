@@ -320,10 +320,11 @@ export function resolveVideoTemplateLook(templateId: string | undefined): VideoT
 
 export function resolveVideoTypographyContext(
   templateId: string | undefined,
-  brandColor?: string
+  brandColor?: string,
+  paletteOverride?: CampaignPalette | null
 ): VideoTypographyContext {
   return {
-    palette: videoTemplatePalette(templateId ?? '', brandColor),
+    palette: paletteOverride ?? videoTemplatePalette(templateId ?? '', brandColor),
     fontPairing: resolveVideoFontPairing(templateId),
     look: resolveVideoTemplateLook(templateId),
   };
