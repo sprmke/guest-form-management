@@ -81,6 +81,7 @@ Run **`bun run check:ai-tooling-sync`** after changing hooks, commands, agents, 
 | `workflow-docs.mdc`           | Workflow lifecycle — in-progress tracking, no silent moves  |
 | `github-issues.mdc`           | GitHub Issues backlog + shipped archive                     |
 | `social-inbox.mdc`            | Meta inbox                                                  |
+| `notifications.mdc`           | In-app Notification Center (bell, realtime toasts)          |
 
 ## Skills (`.cursor/skills/` — invoke `/name` or agent decides)
 
@@ -104,6 +105,7 @@ Run **`bun run check:ai-tooling-sync`** after changing hooks, commands, agents, 
 | `bookings-table`                  | Bookings table UI                |
 | `gmail-listener`                  | Gmail approvals                  |
 | `social-inbox` / `meta-messaging` | Guest Inbox                      |
+| `notifications`                   | In-app Notification Center       |
 | `integrations`                    | Google, Telegram, Meta, Resend   |
 | `emails`                          | HTML templates + Resend          |
 | `forms`                           | Guest + admin forms              |
