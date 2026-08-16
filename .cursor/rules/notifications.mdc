@@ -43,7 +43,7 @@ New type → new migration extending the CHECK constraint (never edit the shippe
 - **No OS-level `Notification` popups** — that stays inbox-chat-only (`inboxNotifications.ts`). New event types get in-app toast + bell entry only.
 - **A new type needs a `NOTIFICATION_ICONS` entry** in `notificationsDisplay.ts` — the `Record<NotificationType, LucideIcon>` is exhaustive, and both the bell list and the realtime toast (`notificationToast.tsx`) read from it so they can't drift.
 - **Toast chrome is CSS, not props.** `[data-sonner-toast] [data-button]` in `index.css` overrides Sonner's near-black action chip to `--primary` app-wide; the 32px category badge needs the `data-notification-toast-icon` hook to override Sonner's fixed 16×16 `[data-icon]`. Toasts are keyed by `row.id` so coalesced inbox `UPDATE`s replace rather than stack.
-- **Mobile bell placement:** most admin pages render `MobileBrandHero`, not the plain `AdminMobileTopBar` — the bell is wired into **both**. A new mobile chrome surface needs it wired in explicitly.
+- **Mobile bell placement:** do **not** put the bell in the hero or top bar. Desktop (`lg+`): floating bell above the AI assistant FAB, same slide-over panel. Mobile (`max-lg`): **Notifications** bottom tab opens the same sheet. The full Notifications page stays in **More**.
 
 ## Permissions
 

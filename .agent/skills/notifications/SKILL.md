@@ -47,7 +47,7 @@ Adding a new type: extend `notifications_type_check` in a **new** migration (nev
 - **A new event type needs a row in `NOTIFICATION_ICONS`** (`notificationsDisplay.ts`) — the `Record<NotificationType, LucideIcon>` is exhaustive, so `type-check` fails until you add one. Both the bell/Activity rows and the realtime toast read from it, so they can't drift.
 - **Toast chrome lives in CSS, not props.** Sonner's default action chip is a near-black inverted button; `[data-sonner-toast] [data-button]` in `index.css` overrides it to `--primary` for every toast in the app. The 32px category badge needs `[data-sonner-toast]:has([data-notification-toast-icon]) [data-icon]` to override Sonner's fixed 16×16 `[data-icon]` box — drop the `data-notification-toast-icon` attribute and the badge overflows.
 - **Toasts are keyed by `row.id`.** Coalesced inbox rows fire an `UPDATE` per message, so a stable id replaces the visible toast instead of stacking one per message.
-- **Bell placement on mobile:** most admin pages render `MobileBrandHero`, not the plain `AdminMobileTopBar` — the bell is wired into **both** (`MobileBrandHero.tsx`'s `trailing` slot with the `onPrimary` variant, and `AdminMobileTopBar` in `AdminLayout.tsx`). A new mobile chrome surface needs the bell wired in explicitly or it becomes unreachable there.
+- **Bell placement:** do **not** put the bell in the hero or top bar. Desktop (`lg+`): floating bell above the AI assistant FAB, same slide-over panel. Mobile (`max-lg`): **Notifications** bottom tab opens the same sheet. The full Notifications page stays in **More**.
 
 ## Permissions
 
