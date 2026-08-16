@@ -31,7 +31,7 @@ type Props = {
   resolvedColor: string;
   disabled?: boolean;
   error?: string | null;
-  hint?: string;
+  help?: string;
   layout?: 'property' | 'org';
   /** Value applied when Reset is clicked — org uses default hex; property clears override. */
   resetValue?: string;
@@ -115,7 +115,7 @@ export function BrandColorField({
   resolvedColor,
   disabled,
   error,
-  hint,
+  help,
   layout = 'property',
   resetValue,
   onChange,
@@ -125,7 +125,7 @@ export function BrandColorField({
 
   if (layout === 'org') {
     return (
-      <OrgSettingsField id={id} label="Brand color" hint={hint} error={error}>
+      <OrgSettingsField id={id} label="Brand color" help={help} error={error}>
         <BrandColorControls
           id={id}
           value={value}
@@ -139,7 +139,7 @@ export function BrandColorField({
   }
 
   return (
-    <SettingsField id={id} label="Brand color" error={error} hintBelow={hint}>
+    <SettingsField id={id} label="Brand color" error={error} help={help}>
       <BrandColorControls
         id={id}
         value={value}
