@@ -73,6 +73,13 @@ export type BookingRow = {
   parking_receipt_ai_verdict?: string | null;
   parking_receipt_ai_summary?: string | null;
 
+  // ── Parking broadcast (Phase 1: PENDING_HOST_ACCEPTANCE race-to-claim) ─────
+  /** TTL deadline while status is PENDING_HOST_ACCEPTANCE — null once claimed/terminal. */
+  parking_broadcast_expires_at?: string | null;
+  parking_claimed_at?: string | null;
+  parking_endorsement_note?: string | null;
+  parking_request_organization_id?: string | null;
+
   // ── Pets ──────────────────────────────────────────────────────────────────
   has_pets: boolean | null;
   pet_name: string | null;

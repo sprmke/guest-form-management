@@ -231,15 +231,22 @@ export const PENDING_DOCUMENTS_SUB_STATUSES = [
 const PENDING_DOCS_SUB_SET = new Set<string>(PENDING_DOCUMENTS_SUB_STATUSES);
 
 export type BookingsStatusFilterRow =
-  | { type: 'status'; value: BookingStatus }
+  | { type: 'status'; value: string }
   | {
       type: 'group';
       parent: 'PENDING_DOCUMENTS';
       children: typeof PENDING_DOCUMENTS_SUB_STATUSES;
     };
 
-/** Order for `/bookings` status filter (parent → indented sub-stages). */
-export function bookingsStatusFilterRows(): BookingsStatusFilterRow[] {
+/**
+ * Order for `/bookings` status filter (parent → indented sub-stages).
+ * `extraStatuses` appends plain rows after the property enum — used by the parking
+ * bookings page to surface PENDING_HOST_ACCEPTANCE / NO_HOST_AVAILABLE as explicit
+ * filter chips (see PARKING_ONLY_STATUSES below).
+ */
+export function bookingsStatusFilterRows(
+  extraStatuses?: readonly string[]
+): BookingsStatusFilterRow[] {
   const rows: BookingsStatusFilterRow[] = [];
   const all = [...BOOKING_STATUSES] as BookingStatus[];
 
@@ -255,8 +262,14 @@ export function bookingsStatusFilterRows(): BookingsStatusFilterRow[] {
     }
     rows.push({ type: 'status', value });
   }
+  for (const value of extraStatuses ?? []) {
+    rows.push({ type: 'status', value });
+  }
   return rows;
 }
+
+/** Parking-only statuses — see PARKING_ONLY_STATUS_LABELS below. */
+export const PARKING_ONLY_STATUSES = ['PENDING_HOST_ACCEPTANCE', 'NO_HOST_AVAILABLE'] as const;
 
 /**
  * Parking-only statuses (see `_shared/parkingStatusMachine.ts`) share this badge/label
