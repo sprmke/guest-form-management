@@ -10,6 +10,7 @@ import {
   type AdminSectionNavItem,
 } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
 import { RequireAdmin } from '@/features/dashboard/bookings/components/RequireAdmin';
+import { OrgAiDashboardAssistantSection } from '@/features/dashboard/org/components/org-settings/OrgAiDashboardAssistantSection';
 import { OrgAiPlatformSection } from '@/features/dashboard/org/components/org-settings/OrgAiPlatformSection';
 import { OrgDangerZoneSection } from '@/features/dashboard/org/components/org-settings/OrgDangerZoneSection';
 import {
@@ -55,6 +56,7 @@ const SETTINGS_SECTIONS: AdminSectionNavItem[] = [
   { id: 'basic', label: 'Basic information', icon: Info },
   { id: 'branding', label: 'Socials', icon: Share2 },
   { id: 'ai', label: 'AI usage', icon: Sparkles },
+  { id: 'ai-assistant', label: 'AI assistant', icon: Sparkles },
   { id: 'danger', label: 'Danger zone', icon: AlertTriangle },
 ];
 
@@ -395,6 +397,8 @@ export function OrgSettingsPage() {
             />
 
             <OrgAiPlatformSection />
+
+            <OrgAiDashboardAssistantSection />
 
             <OrgDangerZoneSection
               orgName={org.name}

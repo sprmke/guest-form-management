@@ -15,9 +15,10 @@ import type {
   NotificationRealtimeRow,
   NotificationType,
 } from '@/features/dashboard/notifications/lib/notificationsApi';
-import { formatStayDateRange } from '@/utils/format/dates';
 
 import { supabase } from '@/lib/supabase/client';
+import { formatStayDateRange } from '@/utils/format/dates';
+
 
 export const LEGACY_INBOX_NOTIFICATION_TITLE = 'New guest message';
 

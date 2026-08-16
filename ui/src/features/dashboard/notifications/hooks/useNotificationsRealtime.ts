@@ -3,8 +3,8 @@ import { useEffect, useRef } from 'react';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 
 import { NOTIFICATIONS_KEY } from '@/features/dashboard/notifications/hooks/useNotifications';
-import { showNotificationToast } from '@/features/dashboard/notifications/lib/notificationToast';
 import type { NotificationRealtimeRow } from '@/features/dashboard/notifications/lib/notificationsApi';
+import { showNotificationToast } from '@/features/dashboard/notifications/lib/notificationToast';
 
 import { supabase } from '@/lib/supabase/client';
 
