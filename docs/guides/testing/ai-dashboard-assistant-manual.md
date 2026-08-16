@@ -2,7 +2,7 @@
 title: 'AI dashboard assistant — manual test flows'
 status: active
 tags: [guides, testing, ai]
-updated: 2026-08-15
+updated: 2026-08-16
 ---
 
 # AI dashboard assistant — step-by-step manual testing
@@ -36,6 +36,8 @@ This flow has **never been run through an actual browser** as of 2026-08-15 — 
 | 13  | Per-property opt-out       | Disabling the assistant on one property hides the launcher only there, not org-wide                                     |
 | 14  | Quota                      | Hitting the daily message limit shows the upgrade message instead of erroring                                           |
 | 15  | Mobile 375px               | Launcher + slide-over panel usable at iPhone SE width, 44×44px targets                                                  |
+| 16  | Starter prompts            | Empty chat shows a Questions / Actions switcher (not page tabs), 5 randomized items for the active side                 |
+| 17  | Attachments + booking pin  | Paperclip attaches JPEG/PNG/WebP/PDF; calendar pins a stay; send works with files and no text                           |
 
 ---
 
@@ -65,13 +67,29 @@ This flow has **never been run through an actual browser** as of 2026-08-15 — 
 4. Turn the org switch back on, then add the current property to **Disable on specific properties**. Reload that property's pages → button gone; switch to a different property in the same org → button present.
 5. Turn the **platform-wide** switch off (super-admin). Expect the button gone everywhere, even with the org switch on. Turn it back on before continuing.
 
+### 2.1 Starter prompts (#16)
+
+1. Open the assistant on a **new** conversation. Expect the starter cluster **centered** in the panel: a teal **Questions / Actions** mode switch (not a page tab bar) and **5** tappable prompt cards, ≥ 44×44px.
+2. Switch to **Actions** — list swaps to 5 action starters. Tap one — it should send as a chat message (not only fill the composer).
+3. Open **History** (clock icon). Expect past conversations only (no Questions/Actions switcher). Titles wrap inside the panel (no overflow). Long IDs are shortened. Rows group by day; search filters the list. Trash → confirm → the row is gone. Deleting the open chat starts a new one.
+4. Tap **New conversation** (plus). Expect a **different** set of 5 questions and 5 actions (random, so a rare duplicate set is OK).
+
+### 2.2 Attachments + booking pin (#17)
+
+1. Open a new chat. Expect a paperclip and a calendar icon beside the composer (each ≥ 44×44px), not a second chat mode.
+2. Paperclip → **Photo** — pick a JPEG/PNG/WebP. Expect a chip above the textarea. Same for **File** with a PDF.
+3. Try a 5th file or a non-allowed type — expect a short error toast, no send.
+4. Calendar → search or pick a stay grouped by check-in month (guest, dates, status). On a booking detail, **This page** is listed first. Expect a chip with guest name and dates. Send with the chip still pinned and empty text + a file — the turn should go through.
+5. Ask the assistant to check the receipt against the pinned booking. Expect it to use that booking (and `run_receipt_validation` when you ask to validate).
+6. Reload the conversation from History — user bubble should still list file names (not the raw bytes).
+
 ---
 
 ## 3. Tier 0 — read questions (#2)
 
 1. Open the assistant panel. Ask: **"How many bookings are pending review right now?"**
 2. Expect a plain-language answer with a real number (cross-check against the bookings list) — no Confirm/Cancel buttons anywhere in the response.
-3. Ask: **"What does PENDING_DOCUMENTS mean?"** — expect an answer sourced from the route-guide knowledge base, not a generic LLM explanation.
+3. Ask: **"What does PENDING_DOCUMENTS mean?"** — expect an answer sourced from the route-guide knowledge base, not a generic LLM explanation. If this comes back empty/generic, the `ai_dashboard_assistant_knowledge_base` table is stale — re-run `bun run sync:ai-knowledge-base` (or `:dev` against hosted dev) to re-ingest the "Host-facing knowledge" sections from `docs/guides/routes/**/*.md`. This has no automatic trigger yet — re-run it manually whenever a route guide's knowledge section changes.
 4. Ask about a specific booking by ID (copy one from the bookings list): **"Tell me about booking `<id>`"** — expect a `booking_card`-style rendering: guest name, status badge, dates, property, balance.
 5. Ask: **"What can I do next with booking `<id>`?"** — expect the same set of transitions the booking's own Workflow panel shows.
 
@@ -153,8 +171,8 @@ If the assistant instead proposes and waits for confirmation, check whether the 
 ## 9. Mobile (#15)
 
 1. Resize to 375×667 (iPhone SE) or use device emulation.
-2. Confirm the launcher button doesn't overlap the bottom tab bar and is at least 44×44px.
-3. Open the panel — it should take the full viewport width, composer stays reachable above the keyboard, Confirm/Cancel buttons are each ≥44px tall.
+2. Confirm **Assistant** is a bottom tab (not a floating button overlapping the dock) and is at least 44×44px. Tap it — the same slide-over opens.
+3. Open the panel — it should be wider than a typical `md` sheet on desktop (`sm:max-w-xl`), composer stays one row (attach, pin, input, send) and reachable above the keyboard, Confirm/Cancel buttons are each ≥44px tall.
 4. Scroll a long conversation — thread scrolls independently of the page.
 
 ---

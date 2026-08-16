@@ -40,7 +40,8 @@ Layout order:
 
 ### Mobile layout (`max-lg`)
 
-- **Brand hero** — teal band with tenant/property switcher (light-on-primary) and page title. Subtitle is `lg+` only. On scroll the hero **sticks**; title compresses/fades and the arc flattens while switcher + guest-pages action stay visible (`useMobileHeroCollapseProgress`).
+- **Brand hero** — teal band with tenant/property switcher (light-on-primary) and page title. Subtitle is `lg+` only. On scroll the hero **sticks**; title compresses/fades and the arc flattens while switcher + guest-pages action stay visible (`useMobileHeroCollapseProgress`). In-app alerts are **not** in the hero — use the **Notifications** bottom tab (or the floating bell on `lg+`).
+- **Bottom tabs** — Dashboard, Bookings, Finance, Assistant (when enabled), Notifications, More.
 - **Overlap toolbar** — first floating white card pulled up over the hero lower edge: date range + **Guest pages**.
 - **Canvas** — denser KPI cards first (no icon tiles / “vs last period” text), then the six board cards stack full-width in the same reading order. Chart/calendar headers use a compact icon + centered title (`AdminSurfaceCardHeader`; descriptions `lg+` only). Section/card gaps stay comfortable (`gap-2.5`–`3.5`, `p-3`+), not cramped.
 - **Desktop (`lg+`)** — standard `AdminPageHeader` with inline date filter and Guest pages actions; board is `lg:grid-cols-2`.

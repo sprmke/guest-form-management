@@ -115,7 +115,7 @@ Expect `count = 1` regardless of how many times you called the endpoint.
 3. **Pass:** one card, **Stay Guide** — icon, one line of copy ("Guests get their personalized link automatically at check-in."), a **Preview** button (external-link icon).
 4. Click **Preview** → opens `/properties/:slug/stay-guide?preview=1&property_id=...` in a new tab.
 5. **Permission check:** as a property member whose custom role has `templates:view` unchecked, navigate directly to `/custom-pages`. **Pass:** redirected to the first section that member _can_ view (or an access-denied screen) — no crash, no blank page.
-6. Resize to 375px. **Pass:** teal hero band + title, card stacks full-width, bottom tab bar shows **More** (Custom Pages is reachable from there since it isn't one of the 4 pinned mobile tabs).
+6. Resize to 375px. **Pass:** teal hero band + title, card stacks full-width, bottom tab bar shows **More** (Custom Pages is reachable from there since it isn't one of the pinned mobile tabs).
 
 ---
 

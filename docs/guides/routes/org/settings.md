@@ -2,7 +2,7 @@
 title: 'Organization Settings — operator guide'
 status: active
 tags: [guides, routes, org, settings]
-updated: 2026-08-02
+updated: 2026-08-16
 ---
 
 # Organization Settings — operator guide
@@ -13,12 +13,13 @@ Route: `/org/:orgSlug/settings`
 
 ## Progress overview
 
-| Section           | E2E save | Validation   | Docs | Notes                                                                     |
-| ----------------- | -------- | ------------ | ---- | ------------------------------------------------------------------------- |
-| Basic information | Yes      | Yes          | Done | Logo, name, slug, brand color, tagline, description, contact info         |
-| Socials           | Yes      | Yes          | Done | Social URLs; main platform auto-derived on save                           |
-| AI platform       | Yes      | Server       | Done | Per-org usage quotas and enabled features; read-only when platform AI off |
-| Danger zone       | Partial  | Slug confirm | Done | Delete when no bookings; finance/maintenance can block; see § Danger zone |
+| Section                | E2E save | Validation   | Docs | Notes                                                                     |
+| ---------------------- | -------- | ------------ | ---- | ------------------------------------------------------------------------- |
+| Basic information      | Yes      | Yes          | Done | Logo, name, slug, brand color, tagline, description, contact info         |
+| Socials                | Yes      | Yes          | Done | Social URLs; main platform auto-derived on save                           |
+| AI platform            | Yes      | Server       | Done | Per-org usage quotas and enabled features; read-only when platform AI off |
+| AI dashboard assistant | Yes      | Server       | Done | Opt-in + quotas; chat starters, file attach, booking pin, history delete  |
+| Danger zone            | Partial  | Slug confirm | Done | Delete when no bookings; finance/maintenance can block; see § Danger zone |
 
 ---
 
@@ -49,6 +50,12 @@ Organization settings control your brand identity and public presence: logo, nam
   A: Deletion is permanent and only allowed when there is no booking history (and no blocking finance or maintenance records). You must type the organization slug to confirm. Your Google sign-in account stays; only this org and its properties are removed.
 - Q: Does changing brand color affect every property?
   A: Org brand color tints organization-level admin pages and can serve as a fallback. Each property can still set its own color for guest pages and property admin.
+- Q: What can I ask the AI assistant?
+  A: Open the sparkles button on any dashboard page. A new chat has a Questions / Actions switcher with five starters on each side. Questions cover check-ins, occupancy, balances, maintenance, and what a status means. Actions can move a booking forward, re-check receipts, or cancel — risky changes still ask you to confirm. Parking, inbox, and marketing are not covered yet.
+- Q: Can I attach a receipt or GAF in the assistant?
+  A: Yes. Use the paperclip next to the message box for a photo or PDF (up to three files, 4 MB each). Use the calendar button to pin a stay so the assistant knows which booking you mean.
+- Q: Can I delete an old assistant chat?
+  A: Yes. Open History (clock), then the trash on that conversation. That chat is gone for good.
 
 ---
 
@@ -99,6 +106,21 @@ Properties inherit org social URLs and main platform when their `app_settings` c
 Save path: section-local **Save** button → `PATCH ai-platform-settings` (org owner / org admin only). Hook: `useAiPlatformSettings.ts`.
 
 Usage summary: `GET ai-platform-usage` (today, this month, per-feature breakdown, per-property breakdown). Hook: `useAiPlatformSettings.ts`.
+
+### AI dashboard assistant
+
+Independent of **AI platform** (receipt validation, marketing, inbox). Off by default per org; also gated by a super-admin kill switch.
+
+| Field                    | Storage                                                     | Notes                                                   |
+| ------------------------ | ----------------------------------------------------------- | ------------------------------------------------------- |
+| Assistant enabled        | `ai_dashboard_assistant_org_settings.enabled`               | Org owner/admin; hidden on `/admin/*` regardless        |
+| Disable on properties    | `ai_dashboard_assistant_org_settings.disabled_property_ids` | Per-property opt-out                                    |
+| Daily / monthly messages | `…daily_message_limit`, `…monthly_message_limit`            | Hitting the cap shows an upgrade line in the chat panel |
+| Daily write-action limit | `…daily_write_action_limit`                                 | Counts confirmed/auto-executed writes                   |
+
+Save path: section-local **Save assistant settings** → `PATCH dashboard-assistant-settings` (`org:settings:edit`). Hook: `useAiDashboardAssistantSettings.ts`.
+
+**Chat panel** (not this page): floating sparkles button → slide-over (`sm:max-w-xl`). Empty chat centers a **Questions / Actions** mode switch (5 randomized prompt cards from `assistantSuggestions.ts`, 20+20 pool). Tap sends the prompt. Composer is one row: paperclip (JPEG/PNG/WebP/PDF, max 3 × 4 MB) + booking pin (month-grouped picker) + input + send. History (clock) lists your chats grouped by day, with search, wrapping titles, and delete (confirm).
 
 ### Danger zone — delete organization
 
@@ -183,25 +205,31 @@ Danger zone: slug confirmation + `delete-organization`; blocked when booking his
 
 ## Implementation map
 
-| Concern                          | Path                                                                                                                                                                               |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Page                             | `ui/src/features/dashboard/org/pages/OrgSettingsPage.tsx`                                                                                                                          |
-| Basic + socials + email sections | `ui/src/features/dashboard/org/components/org-settings/OrgProfileSettingsSections.tsx`                                                                                             |
-| AI platform section              | `ui/src/features/dashboard/org/components/org-settings/OrgAiPlatformSection.tsx`                                                                                                   |
-| Client validation                | `ui/src/features/dashboard/org/lib/orgSettingsCompletion.ts`, `ui/src/features/dashboard/org/lib/orgSettingsFieldError.ts`, `ui/src/features/dashboard/org/lib/orgSettingsSave.ts` |
-| Sidebar issue sync               | `ui/src/features/dashboard/org/components/OrgSettingsIssuesSync.tsx`, `ui/src/features/dashboard/org/lib/orgSettingsIssuesStore.ts`                                                |
-| Saved completion hook            | `ui/src/features/dashboard/org/hooks/useOrgSettingsCompletion.ts`                                                                                                                  |
-| `update-organization`            | `supabase/functions/update-organization/index.ts`                                                                                                                                  |
-| Brand color resolution           | `supabase/functions/_shared/orgBrandColor.ts`, `supabase/functions/_shared/appSettings.ts#resolveAppSettings`                                                                      |
-| Guest + admin theme CSS          | `ui/src/lib/brandColor.ts`, `ui/src/layouts/MainLayout.tsx`, `ui/src/features/dashboard/bookings/components/AdminBrandTheme.tsx`                                                   |
-| App origin resolver              | `supabase/functions/_shared/publicAppOrigin.ts`                                                                                                                                    |
-| Social URL resolver              | `supabase/functions/_shared/orgSocialLinks.ts`                                                                                                                                     |
-| `org-settings`                   | `supabase/functions/org-settings/index.ts`                                                                                                                                         |
-| `ai-platform-settings`           | `supabase/functions/ai-platform-settings/index.ts`                                                                                                                                 |
-| `ai-platform-usage`              | `supabase/functions/ai-platform-usage/index.ts`                                                                                                                                    |
-| `delete-organization`            | `supabase/functions/delete-organization/index.ts`                                                                                                                                  |
-| Social columns migration         | `supabase/migrations/20260821190000_org_settings_social_links.sql`                                                                                                                 |
-| AI platform migration            | `supabase/migrations/20260814130000_ai_platform_hardening.sql`                                                                                                                     |
+| Concern                             | Path                                                                                                                                                                                                                  |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Page                                | `ui/src/features/dashboard/org/pages/OrgSettingsPage.tsx`                                                                                                                                                             |
+| Basic + socials + email sections    | `ui/src/features/dashboard/org/components/org-settings/OrgProfileSettingsSections.tsx`                                                                                                                                |
+| AI platform section                 | `ui/src/features/dashboard/org/components/org-settings/OrgAiPlatformSection.tsx`                                                                                                                                      |
+| AI dashboard assistant section      | `ui/src/features/dashboard/org/components/org-settings/OrgAiDashboardAssistantSection.tsx`                                                                                                                            |
+| Assistant chat panel                | `ui/src/features/dashboard/ai-assistant/components/AiAssistantPanel.tsx`, `ChatComposer.tsx`, `ChatComposerBookingPicker.tsx`, `ConversationHistoryList.tsx`, `lib/assistantSuggestions.ts`, `lib/chatAttachments.ts` |
+| Client validation                   | `ui/src/features/dashboard/org/lib/orgSettingsCompletion.ts`, `ui/src/features/dashboard/org/lib/orgSettingsFieldError.ts`, `ui/src/features/dashboard/org/lib/orgSettingsSave.ts`                                    |
+| Sidebar issue sync                  | `ui/src/features/dashboard/org/components/OrgSettingsIssuesSync.tsx`, `ui/src/features/dashboard/org/lib/orgSettingsIssuesStore.ts`                                                                                   |
+| Saved completion hook               | `ui/src/features/dashboard/org/hooks/useOrgSettingsCompletion.ts`                                                                                                                                                     |
+| `update-organization`               | `supabase/functions/update-organization/index.ts`                                                                                                                                                                     |
+| Brand color resolution              | `supabase/functions/_shared/orgBrandColor.ts`, `supabase/functions/_shared/appSettings.ts#resolveAppSettings`                                                                                                         |
+| Guest + admin theme CSS             | `ui/src/lib/brandColor.ts`, `ui/src/layouts/MainLayout.tsx`, `ui/src/features/dashboard/bookings/components/AdminBrandTheme.tsx`                                                                                      |
+| App origin resolver                 | `supabase/functions/_shared/publicAppOrigin.ts`                                                                                                                                                                       |
+| Social URL resolver                 | `supabase/functions/_shared/orgSocialLinks.ts`                                                                                                                                                                        |
+| `org-settings`                      | `supabase/functions/org-settings/index.ts`                                                                                                                                                                            |
+| `ai-platform-settings`              | `supabase/functions/ai-platform-settings/index.ts`                                                                                                                                                                    |
+| `ai-platform-usage`                 | `supabase/functions/ai-platform-usage/index.ts`                                                                                                                                                                       |
+| `dashboard-assistant-settings`      | `supabase/functions/dashboard-assistant-settings/index.ts`                                                                                                                                                            |
+| `dashboard-assistant-chat`          | `supabase/functions/dashboard-assistant-chat/index.ts`, `_shared/dashboardAssistantAttachments.ts`                                                                                                                    |
+| `dashboard-assistant-conversations` | `supabase/functions/dashboard-assistant-conversations/index.ts`                                                                                                                                                       |
+| Assistant attachments migration     | `supabase/migrations/20261019120000_ai_assistant_attachments.sql`                                                                                                                                                     |
+| `delete-organization`               | `supabase/functions/delete-organization/index.ts`                                                                                                                                                                     |
+| Social columns migration            | `supabase/migrations/20260821190000_org_settings_social_links.sql`                                                                                                                                                    |
+| AI platform migration               | `supabase/migrations/20260814130000_ai_platform_hardening.sql`                                                                                                                                                        |
 
 ---
 
@@ -210,5 +238,7 @@ Danger zone: slug confirmation + `delete-organization`; blocked when booking his
 - [Route index](../README.md)
 - [Property Settings — AI overrides](./property/settings.md) § AI Overrides
 - [Super Admin Settings — Platform AI](../admin/settings.md) § Platform AI
+- [AI dashboard assistant — feature list](../../../workflow/done/ai-dashboard-assistant-features.md)
+- [AI dashboard assistant — manual tests](../../testing/ai-dashboard-assistant-manual.md)
 - [`docs/architecture/validation-and-env.md`](../../../architecture/validation-and-env.md) — `PUBLIC_GUEST_APP_ORIGIN`, `FACEBOOK_REVIEWS_URL`
 - [`docs/archive/operations/ai-platform-billing.md`](../../../archive/operations/ai-platform-billing.md) — billing and quota guidance

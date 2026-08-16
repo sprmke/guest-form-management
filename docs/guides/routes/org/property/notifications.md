@@ -2,7 +2,7 @@
 title: 'Notifications — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-02
+updated: 2026-08-16
 ---
 
 # Notifications — operator guide
@@ -36,9 +36,8 @@ Single hub for **in-app activity** (booking workflow + inbox events in the bell)
 
 ### In-app activity
 
-- **Activity** section lists org-wide in-app notifications (same data as the header bell).
-- Bell dropdown shows the latest **5** items; **View all** opens this page at **Activity** when more exist.
-- Bell opens a **slide-over panel** (right on desktop, bottom sheet on phone) — not a popover over the sidebar nav.
+- **Activity** section lists org-wide in-app notifications (same data as the bell).
+- Desktop: the bell floats above the AI assistant button and opens a **slide-over panel**. Phone: tap **Notifications** in the bottom menu for the same sheet. **View all** opens this page at **Activity** when more than five items exist.
 - Rows open the related booking or inbox thread; **Mark all as read** on the full list.
 - Inbox rows show the guest **participant name** as the title (latest message preview in the body), matching the Inbox thread list — **one row per conversation**, not per message.
 - When available, a **stay date range** appears under the name (e.g. `Aug 14 - 15, 2026` for inquiry or booked dates).
@@ -105,7 +104,9 @@ Notifications is the one place to review in-app alerts and set up Telegram for t
 **Common host questions**
 
 - Q: Where do I see everything the bell showed me?
-  A: Open **Notifications** → **Activity**, or tap **View all** in the bell when you have more than five items.
+  A: Open **Notifications** from the sidebar or **More** on a phone, then **Activity**. Or tap **View all** in the bell when you have more than five items.
+- Q: Where did the bell go on my phone?
+  A: It is in the bottom menu as **Notifications**. On a computer it floats above the AI assistant button.
 - Q: Why does a toast say "Guest" or "New guest message"?
   A: Older notifications may lack stored guest context. New inbox and booking alerts include the guest name and stay dates when the thread or booking has them.
 - Q: Do I have to save again after connecting Telegram?
@@ -151,28 +152,28 @@ Credentials unlock logic: `telegramCredentialsReady()` — saved token **and** c
 
 ## Implementation map
 
-| Concern                                            | Path                                                                                                                   |
-| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Page                                               | `ui/src/features/dashboard/bookings/pages/NotificationsPage.tsx`                                                       |
-| In-app list (bell + page)                          | `ui/src/features/dashboard/notifications/components/InAppNotificationsPanel.tsx`, `InAppNotificationsSection.tsx`      |
-| Bell (5-item preview + View all)                   | `ui/src/features/dashboard/notifications/components/NotificationBell.tsx`                                              |
-| Shared bot token card                              | `…/telegram-notifications/TelegramGlobalBotTokenCard.tsx`                                                              |
-| Help dialogs                                       | `…/telegram-notifications/TelegramHelpDialog.tsx`, `…/lib/telegramHelpContent.ts`                                      |
-| Global bot hook + context                          | `…/hooks/useTelegramGlobalBotToken.ts`, `…/TelegramNotificationsGlobalBotContext.tsx`                                  |
-| Edge: shared token                                 | `supabase/functions/telegram-global-settings/index.ts`                                                                 |
-| Chat settings card                                 | `ui/src/features/dashboard/bookings/components/TelegramChatSettingsCard.tsx`                                           |
-| Chat notify (inbound)                              | `supabase/functions/_shared/telegramChat.ts` → `notifyTelegramChatInbound`                                             |
-| Module shell (enable → credentials → manage cards) | `ui/src/features/dashboard/bookings/components/telegram-notifications/TelegramNotificationModuleLayout.tsx`            |
-| Module loading skeleton                            | `…/TelegramNotificationModuleSkeleton.tsx`                                                                             |
-| Manage summary card                                | `…/TelegramSettingsManageCard.tsx`                                                                                     |
-| Manage / template dialogs                          | `…/TelegramManageDialog.tsx`, `…/TelegramTemplatesManageDialog.tsx`                                                    |
-| Credential auto-save on Connect                    | `ui/src/features/dashboard/bookings/hooks/useTelegramCredentialAutoSave.ts`                                            |
-| Stacked placeholders modal                         | `…/TelegramPlaceholdersNestedDialog.tsx`                                                                               |
-| Credentials helpers                                | `…/telegramCredentials.ts`                                                                                             |
-| Chat ID scan + picker (setup)                      | `…/telegram-notifications/TelegramChatIdField.tsx` — inline scan; dropdown after scan; masked label when **Connected** |
-| Friendly credential mask + reveal                  | `…/telegram-notifications/TelegramSecretInput.tsx`, `…/lib/telegramConnectionLabels.ts`                                |
-| Section nav                                        | `ui/src/features/dashboard/bookings/components/AdminSectionNavLayout.tsx`                                              |
-| Dialog stacking (`overlayClassName`)               | `ui/src/components/ui/dialog.tsx`                                                                                      |
+| Concern                                            | Path                                                                                                                               |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Page                                               | `ui/src/features/dashboard/bookings/pages/NotificationsPage.tsx`                                                                   |
+| In-app list (bell + page)                          | `ui/src/features/dashboard/notifications/components/InAppNotificationsPanel.tsx`, `InAppNotificationsSection.tsx`                  |
+| Bell (5-item preview + View all)                   | `ui/src/features/dashboard/notifications/components/NotificationBell.tsx` (desktop FAB in `AdminLayout`; mobile Notifications tab) |
+| Shared bot token card                              | `…/telegram-notifications/TelegramGlobalBotTokenCard.tsx`                                                                          |
+| Help dialogs                                       | `…/telegram-notifications/TelegramHelpDialog.tsx`, `…/lib/telegramHelpContent.ts`                                                  |
+| Global bot hook + context                          | `…/hooks/useTelegramGlobalBotToken.ts`, `…/TelegramNotificationsGlobalBotContext.tsx`                                              |
+| Edge: shared token                                 | `supabase/functions/telegram-global-settings/index.ts`                                                                             |
+| Chat settings card                                 | `ui/src/features/dashboard/bookings/components/TelegramChatSettingsCard.tsx`                                                       |
+| Chat notify (inbound)                              | `supabase/functions/_shared/telegramChat.ts` → `notifyTelegramChatInbound`                                                         |
+| Module shell (enable → credentials → manage cards) | `ui/src/features/dashboard/bookings/components/telegram-notifications/TelegramNotificationModuleLayout.tsx`                        |
+| Module loading skeleton                            | `…/TelegramNotificationModuleSkeleton.tsx`                                                                                         |
+| Manage summary card                                | `…/TelegramSettingsManageCard.tsx`                                                                                                 |
+| Manage / template dialogs                          | `…/TelegramManageDialog.tsx`, `…/TelegramTemplatesManageDialog.tsx`                                                                |
+| Credential auto-save on Connect                    | `ui/src/features/dashboard/bookings/hooks/useTelegramCredentialAutoSave.ts`                                                        |
+| Stacked placeholders modal                         | `…/TelegramPlaceholdersNestedDialog.tsx`                                                                                           |
+| Credentials helpers                                | `…/telegramCredentials.ts`                                                                                                         |
+| Chat ID scan + picker (setup)                      | `…/telegram-notifications/TelegramChatIdField.tsx` — inline scan; dropdown after scan; masked label when **Connected**             |
+| Friendly credential mask + reveal                  | `…/telegram-notifications/TelegramSecretInput.tsx`, `…/lib/telegramConnectionLabels.ts`                                            |
+| Section nav                                        | `ui/src/features/dashboard/bookings/components/AdminSectionNavLayout.tsx`                                                          |
+| Dialog stacking (`overlayClassName`)               | `ui/src/components/ui/dialog.tsx`                                                                                                  |
 
 ---
 
