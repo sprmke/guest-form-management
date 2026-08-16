@@ -1,9 +1,9 @@
 ---
-stage: planned
+stage: done
 title: 'AI Dashboard Assistant — Implementation Plan'
-status: planned
-tags: [planning, planned-modules]
-updated: 2026-08-01
+status: v1 shipped — see ../done/ai-platform-hardening-handoff.md for the build log
+tags: [planning, planned-modules, done]
+updated: 2026-08-15
 ---
 
 # AI Dashboard Assistant — Implementation Plan

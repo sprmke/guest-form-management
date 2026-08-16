@@ -2,7 +2,7 @@
 title: 'Claude To Plan'
 status: archived
 tags: [planning]
-updated: 2026-08-14
+updated: 2026-08-16
 ---
 
 **Status legend:** ✅ done · 🚧 in progress · 📋 planned (plan doc written) · 🔵 pending / open · ❌ cancelled / won't do
@@ -34,7 +34,7 @@ Then, we should support for host to add new template for each tab/category.
 
 ===
 
-📋 OPTION A: Improve stay guide UI/UX page
+✅ OPTION A: Improve stay guide UI/UX page
 
 The stay guide page looks very plain and not appealing at all. This needs to be mobile friendly, looks professional, interactive and has wow factor so that when hosts send this link to their guests, they will be happy using it.
 
@@ -42,7 +42,7 @@ The stay guide page looks very plain and not appealing at all. This needs to be 
 
 ===
 
-📋 OPTION B: Templated configurable & shareable custom pages
+✅ OPTION B: Templated configurable & shareable custom pages
 
 Generate 3-5 templated stunning and professional looking landing pages/stay guide pages that contains these standard templates, property information and booking information for hosts to send their to their guests.
 
@@ -123,11 +123,13 @@ The end goal is that with the help of AI, we should be able to generate calendar
 
 ===
 
-🔵 Marketing 5: Refine & finalize Marketing module
+🚧 Marketing 5: Refine & finalize Marketing module
 
 - Make sure each module is optimized. Right now, something looks broken and when we visit the page and each tab, the app becomes kinda laggy and have performance issues. The thumbnails are not loading properly, creating new item somewhat breaks other thumbnails, switching to other orientation feels like rendering broken thumbnails, playing video preview does not fully play the video, it requires 2-3x click to fully play it which is broken.
 - Make sure AI generations for 3 modules are production ready, renders beautiful designs, content are engaging and easy to read, designs and videos are instagrammable and ready to post, etc.
 - If app is connected to social platform like Facebook and Instagram, make sure we support quick and easy publishing for post & story.
+
+→ **In progress:** [`../in-progress/marketing-module-refinement.md`](../in-progress/marketing-module-refinement.md) — perf/thumbnail/playback bugs + AI-gen/publish correctness fixes shipped; Meta scheduling/confirmation gaps remain open
 
 ===
 
@@ -170,7 +172,7 @@ I think there are a lot of existing projects like this, what we need to plan and
 
 ===
 
-📋 Provide chat app that can access and manage entire dashboard
+✅ Provide chat app that can access and manage entire dashboard
 
 Another big module that I'd like to support is to have a chat app that can access and manage entire dashboard. This should be a chat app that can understand natural language, and can do actions like booking, check-in, check-out, etc. It should be able to understand the context of the conversation and respond accordingly.
 
@@ -193,7 +195,7 @@ Also, this should be tied app with our pricing and subscription module so that w
 
 ===
 
-🔵 Booking from listing e2e
+✅ Booking from listing e2e
 
 I want you to review our whole booking end to end flow and make sure it's production ready. When a guest book from our listing page or from our guest form. Please review each step, flow and process that we have. Improve UI/UX or flow that we need to improve.
 

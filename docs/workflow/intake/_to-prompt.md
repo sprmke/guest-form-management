@@ -2,7 +2,7 @@
 title: 'Tasks To Prompt'
 status: archived
 tags: [planning]
-updated: 2026-08-14
+updated: 2026-08-16
 ---
 
 **Status legend:** ✅ done · 🚧 in progress · 📋 planned (plan doc written) · 🔵 pending / open · ❌ cancelled / won't do
@@ -97,7 +97,7 @@ Guide: `docs/guides/routes/org/property/calendar.md`
 
 ===
 
-🔵 Display animated popup party when hosts open calendar and we have 20+ bookings this month
+🚧 Display animated popup party when hosts open calendar and we have 20+ bookings this month
 
 ===
 
