@@ -1,93 +1,76 @@
-import { Car, DoorOpen, KeyRound, LogOut, ScrollText, type LucideIcon } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
-import { StayGuideSection } from '@/features/guest/stay-guide/components/StayGuideSection';
-import type { GuestStayGuideDto, StayGuideSectionDto } from '@/features/guest/stay-guide/lib/api';
+import type { StayGuideChapterNavItem } from '@/features/guest/stay-guide/lib/stayGuideChapters';
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 
-interface StayGuideTabsProps {
-  sections: StayGuideSectionDto[];
-  property: Pick<GuestStayGuideDto['property'], 'location' | 'towerAndUnit'>;
+interface StayGuideQuickNavProps {
+  items: StayGuideChapterNavItem[];
 }
 
-const TAB_META: Record<string, { short: string; icon: LucideIcon }> = {
-  'check-in-instructions': { short: 'Check-in', icon: KeyRound },
-  'house-rules': { short: 'House rules', icon: ScrollText },
-  'parking-reminders': { short: 'Parking', icon: Car },
-  'check-out-instructions': { short: 'Check-out', icon: LogOut },
-};
-
-function tabLabel(section: StayGuideSectionDto): string {
-  const meta = TAB_META[section.key];
-  if (meta) return meta.short;
-  const label = section.displayHeading?.trim() || section.label;
-  return label.length <= 18 ? label : `${label.slice(0, 16)}…`;
+function scrollToAnchor(id: string) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-function tabIcon(section: StayGuideSectionDto): LucideIcon {
-  return TAB_META[section.key]?.icon ?? DoorOpen;
-}
+/** Sticky pill quick-nav — jump-scrolls to chapter anchors, highlights the one in view. */
+export function StayGuideTabs({ items }: StayGuideQuickNavProps) {
+  const [activeId, setActiveId] = useState<string>(items[0]?.id ?? '');
+  const observerRef = useRef<IntersectionObserver | null>(null);
 
-function tabGridClass(count: number): string {
-  if (count <= 2) return 'grid-cols-2';
-  if (count === 3) return 'grid-cols-3';
-  return 'grid-cols-2 sm:grid-cols-4';
-}
+  useEffect(() => {
+    const elements = items
+      .map((item) => document.getElementById(item.id))
+      .filter((el): el is HTMLElement => Boolean(el));
+    if (elements.length === 0) return;
 
-export function StayGuideTabs({ sections, property }: StayGuideTabsProps) {
-  if (sections.length === 0) return null;
+    observerRef.current?.disconnect();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (visible[0]) setActiveId(visible[0].target.id);
+      },
+      { rootMargin: '-30% 0px -55% 0px', threshold: [0, 1] }
+    );
+    elements.forEach((el) => observer.observe(el));
+    observerRef.current = observer;
 
-  const defaultValue = sections[0]!.key;
+    return () => observer.disconnect();
+  }, [items]);
+
+  if (items.length === 0) return null;
 
   return (
-    <Tabs defaultValue={defaultValue} className="w-full">
-      <div className="bg-background/95 border-border/50 sticky top-0 z-40 border-b backdrop-blur-md">
-        <div className="mx-auto max-w-6xl px-3 py-2.5 sm:px-6 sm:py-3 lg:px-8">
-          <TabsList
-            className={cn(
-              'bg-muted/45 grid h-auto w-full gap-1 rounded-2xl p-1',
-              tabGridClass(sections.length)
-            )}
-          >
-            {sections.map((section) => {
-              const Icon = tabIcon(section);
-              const label = tabLabel(section);
-              return (
-                <TabsTrigger
-                  key={section.key}
-                  value={section.key}
-                  className={cn(
-                    'text-muted-foreground flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2',
-                    'text-[11px] font-semibold leading-tight transition-colors',
-                    'data-[state=active]:text-foreground',
-                    'sm:min-h-[48px] sm:flex-row sm:gap-2 sm:px-3 sm:text-sm'
-                  )}
-                >
-                  <Icon className="h-[18px] w-[18px] shrink-0 sm:h-4 sm:w-4" aria-hidden />
-                  <span className="max-w-full text-center leading-snug">{label}</span>
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
-        </div>
-      </div>
-
-      <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
-        {sections.map((section) => (
-          <TabsContent
-            key={section.key}
-            value={section.key}
-            className="mt-0 focus-visible:outline-none"
-          >
-            <StayGuideSection
-              section={section}
-              propertyLocation={property.location}
-              towerAndUnit={property.towerAndUnit}
-            />
-          </TabsContent>
-        ))}
-      </div>
-    </Tabs>
+    <div className="sticky top-0 z-40 border-b border-[#171717]/10 bg-[#FFFFFF]/95 backdrop-blur-md dark:border-[#FAFAFA]/10 dark:bg-[#0A0A0A]/95">
+      <nav
+        aria-label="Stay guide chapters"
+        className="mx-auto flex max-w-[720px] gap-1.5 overflow-x-auto px-4 py-2.5 sm:px-6 sm:py-3 lg:px-8 [&::-webkit-scrollbar]:hidden"
+      >
+        {items.map((item) => {
+          const Icon = item.icon;
+          const isActive = item.id === activeId;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => scrollToAnchor(item.id)}
+              aria-current={isActive ? 'true' : undefined}
+              className={cn(
+                'flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition-colors sm:text-sm',
+                isActive
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-[#737373] hover:bg-[#171717]/5 dark:text-[#A3A3A3] dark:hover:bg-[#FAFAFA]/5'
+              )}
+            >
+              <Icon className="size-3.5 shrink-0" aria-hidden />
+              {item.shortLabel}
+            </button>
+          );
+        })}
+      </nav>
+    </div>
   );
 }

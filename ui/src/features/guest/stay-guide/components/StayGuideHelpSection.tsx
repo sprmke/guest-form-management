@@ -1,4 +1,4 @@
-import { ExternalLink, Mail, Phone } from 'lucide-react';
+import { ExternalLink, Mail, MessageCircle, Phone } from 'lucide-react';
 
 import type { GuestStayGuideDto } from '@/features/guest/stay-guide/lib/api';
 
@@ -26,87 +26,93 @@ export function StayGuideHelpSection({ host, contact }: StayGuideHelpSectionProp
   const avatarUrl = host.avatarUrl?.trim() || null;
 
   return (
-    <footer className="px-4 py-10 sm:px-6 sm:py-12 lg:px-8 lg:py-14">
-      <div className="mx-auto max-w-6xl">
-        <div
-          className={cn(
-            'border-border/60 bg-card overflow-hidden rounded-3xl border shadow-lg',
-            'from-primary/[0.06] via-card to-card bg-gradient-to-br'
-          )}
-        >
-          <div className="p-6 sm:p-8 lg:p-10">
-            <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-10">
-              <div className="flex items-center gap-4 sm:gap-5 lg:max-w-[220px] lg:flex-col lg:items-center lg:text-center">
-                <HostAvatar name={hostName} avatarUrl={avatarUrl} />
-                <div className="min-w-0">
-                  <p className="text-muted-foreground text-xs font-semibold uppercase tracking-[0.2em]">
-                    Hosted by
-                  </p>
-                  <p className="text-foreground mt-1 text-xl font-semibold tracking-tight sm:text-2xl">
-                    {hostName}
-                  </p>
-                  {showOrg ? (
-                    <p className="text-muted-foreground mt-1 text-sm font-medium">{orgName}</p>
-                  ) : null}
-                </div>
-              </div>
+    <section id="need-anything" className="scroll-mt-24 px-4 py-10 sm:scroll-mt-28 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[720px]">
+        <div className="mb-5 flex items-center gap-2.5">
+          <span className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-full">
+            <MessageCircle className="size-4" aria-hidden />
+          </span>
+          <div>
+            <p className="text-primary text-[11px] font-bold uppercase tracking-[0.2em]">
+              One more thing
+            </p>
+            <h2 className="font-fraunces text-2xl font-semibold tracking-tight text-[#171717] sm:text-3xl dark:text-[#FAFAFA]">
+              Need Anything?
+            </h2>
+          </div>
+        </div>
 
-              {hasContact ? (
-                <div className="lg:border-border/50 min-w-0 flex-1 lg:border-l lg:pl-10">
-                  <h2 className="text-primary text-xl font-semibold tracking-tight sm:text-2xl">
-                    Need help?
-                  </h2>
-                  <ul className="mt-4 grid gap-2.5 sm:grid-cols-2">
-                    {phone ? (
-                      <li className="sm:col-span-2">
-                        <ContactAction
-                          href={`tel:${phone.replace(/\s/g, '')}`}
-                          icon={Phone}
-                          label={displayPhone || phone}
-                          sublabel="Call"
-                        />
-                      </li>
-                    ) : null}
-                    {email ? (
-                      <li className="sm:col-span-2">
-                        <ContactAction
-                          href={`mailto:${email}`}
-                          icon={Mail}
-                          label={email}
-                          sublabel="Email"
-                        />
-                      </li>
-                    ) : null}
-                    {facebookUrl ? (
-                      <li>
-                        <ContactAction
-                          href={facebookUrl}
-                          icon={ExternalLink}
-                          label="Facebook"
-                          sublabel="Message"
-                          external
-                        />
-                      </li>
-                    ) : null}
-                    {airbnbUrl ? (
-                      <li>
-                        <ContactAction
-                          href={airbnbUrl}
-                          icon={ExternalLink}
-                          label="Airbnb"
-                          sublabel="Message"
-                          external
-                        />
-                      </li>
-                    ) : null}
-                  </ul>
-                </div>
-              ) : null}
+        <div className="overflow-hidden rounded-3xl border border-[#171717]/10 bg-white p-5 sm:p-8 dark:border-[#FAFAFA]/10 dark:bg-[#0A0A0A]">
+          <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-10">
+            <div className="flex items-center gap-4 sm:gap-5 lg:max-w-[220px] lg:flex-col lg:items-center lg:text-center">
+              <HostAvatar name={hostName} avatarUrl={avatarUrl} />
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#737373] dark:text-[#A3A3A3]">
+                  Hosted by
+                </p>
+                <p className="font-fraunces mt-1 text-xl font-semibold tracking-tight text-[#171717] sm:text-2xl dark:text-[#FAFAFA]">
+                  {hostName}
+                </p>
+                {showOrg ? (
+                  <p className="mt-1 text-sm font-medium text-[#737373] dark:text-[#A3A3A3]">
+                    {orgName}
+                  </p>
+                ) : null}
+              </div>
             </div>
+
+            {hasContact ? (
+              <div className="min-w-0 flex-1 border-[#171717]/10 lg:border-l lg:pl-10 dark:border-[#FAFAFA]/10">
+                <ul className="grid gap-2.5 sm:grid-cols-2">
+                  {phone ? (
+                    <li className="sm:col-span-2">
+                      <ContactAction
+                        href={`tel:${phone.replace(/\s/g, '')}`}
+                        icon={Phone}
+                        label={displayPhone || phone}
+                        sublabel="Call"
+                      />
+                    </li>
+                  ) : null}
+                  {email ? (
+                    <li className="sm:col-span-2">
+                      <ContactAction
+                        href={`mailto:${email}`}
+                        icon={Mail}
+                        label={email}
+                        sublabel="Email"
+                      />
+                    </li>
+                  ) : null}
+                  {facebookUrl ? (
+                    <li>
+                      <ContactAction
+                        href={facebookUrl}
+                        icon={ExternalLink}
+                        label="Facebook"
+                        sublabel="Message"
+                        external
+                      />
+                    </li>
+                  ) : null}
+                  {airbnbUrl ? (
+                    <li>
+                      <ContactAction
+                        href={airbnbUrl}
+                        icon={ExternalLink}
+                        label="Airbnb"
+                        sublabel="Message"
+                        external
+                      />
+                    </li>
+                  ) : null}
+                </ul>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
-    </footer>
+    </section>
   );
 }
 
@@ -153,7 +159,8 @@ function ContactAction({
       target={external ? '_blank' : undefined}
       rel={external ? 'noopener noreferrer' : undefined}
       className={cn(
-        'border-border/60 bg-background/80 hover:border-primary/30 hover:bg-background group flex min-h-[52px] items-center gap-3 rounded-2xl border px-4 py-3 transition-colors',
+        'hover:border-primary/30 group flex min-h-[52px] items-center gap-3 rounded-2xl border border-[#171717]/10 bg-[#F5F5F5] px-4 py-3 transition-colors hover:bg-[#EEEEEE]',
+        'dark:border-[#FAFAFA]/10 dark:bg-[#171717] dark:hover:bg-[#1F1F1F]',
         'focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2'
       )}
     >
@@ -161,10 +168,10 @@ function ContactAction({
         <Icon className="h-4 w-4" aria-hidden />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="text-muted-foreground block text-[11px] font-semibold uppercase tracking-wider">
+        <span className="block text-[11px] font-semibold uppercase tracking-wider text-[#737373] dark:text-[#A3A3A3]">
           {sublabel}
         </span>
-        <span className="text-foreground block truncate text-sm font-semibold sm:text-base">
+        <span className="block truncate text-sm font-semibold text-[#171717] sm:text-base dark:text-[#FAFAFA]">
           {label}
         </span>
       </span>

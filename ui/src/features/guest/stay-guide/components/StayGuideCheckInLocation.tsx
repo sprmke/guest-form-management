@@ -79,7 +79,7 @@ export function StayGuideCheckInLocation({
   return (
     <article
       className={cn(
-        'border-border/60 bg-card overflow-hidden rounded-2xl border shadow-sm sm:rounded-3xl',
+        'overflow-hidden rounded-2xl border border-[#171717]/10 bg-white shadow-sm sm:rounded-3xl dark:border-[#FAFAFA]/10 dark:bg-[#0A0A0A]',
         className
       )}
     >
@@ -96,7 +96,7 @@ export function StayGuideCheckInLocation({
         />
       </div>
 
-      <div className="from-primary/[0.04] border-border/50 border-t bg-gradient-to-b to-transparent p-5 sm:p-6 lg:p-8">
+      <div className="border-t border-[#171717]/10 p-5 sm:p-6 lg:p-8 dark:border-[#FAFAFA]/10">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
           <div className="flex min-w-0 items-start gap-3.5">
             <span className="bg-primary/10 text-primary ring-primary/10 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ring-1">
@@ -109,11 +109,11 @@ export function StayGuideCheckInLocation({
                 </p>
               ) : null}
               {streetLine ? (
-                <p className="text-muted-foreground mt-1 text-sm leading-relaxed sm:text-[15px]">
+                <p className="mt-1 text-sm leading-relaxed text-[#737373] sm:text-[15px] dark:text-[#A3A3A3]">
                   {streetLine}
                 </p>
               ) : fullAddress ? (
-                <p className="text-muted-foreground mt-1 text-sm leading-relaxed sm:text-[15px]">
+                <p className="mt-1 text-sm leading-relaxed text-[#737373] sm:text-[15px] dark:text-[#A3A3A3]">
                   {fullAddress}
                 </p>
               ) : null}

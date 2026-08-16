@@ -1,6 +1,14 @@
 const STAY_GUIDE_RICH_TEXT_CLASS = 'stay-guide-rich-text';
 
 const richTextStyles = `
+  .${STAY_GUIDE_RICH_TEXT_CLASS} {
+    color: #404040;
+  }
+
+  .dark .${STAY_GUIDE_RICH_TEXT_CLASS} {
+    color: #D4D4D4;
+  }
+
   .${STAY_GUIDE_RICH_TEXT_CLASS} h2 {
     font-size: 1.25rem;
     font-weight: 700;
@@ -19,7 +27,11 @@ const richTextStyles = `
   .${STAY_GUIDE_RICH_TEXT_CLASS} p {
     margin: 0 0 1rem;
     line-height: 1.75;
-    color: hsl(var(--muted-foreground));
+    color: #404040;
+  }
+
+  .dark .${STAY_GUIDE_RICH_TEXT_CLASS} p {
+    color: #D4D4D4;
   }
 
   .${STAY_GUIDE_RICH_TEXT_CLASS} p + h3,
