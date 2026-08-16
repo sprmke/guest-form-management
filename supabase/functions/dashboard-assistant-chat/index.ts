@@ -2,7 +2,7 @@
  * dashboard-assistant-chat — main AI dashboard assistant turn endpoint.
  * Docs: docs/workflow/planned/ai-dashboard-assistant.md §1 (turn flow), §2 (tools), §5 (guardrails).
  *
- * Body: { conversationId?: string, orgSlug: string, pageContext: { propertyId?, bookingId? }, message: string }
+ * Body: { conversationId?, orgSlug, pageContext: { propertyId?, bookingId? }, message, attachments?: [{ name, mimeType, dataBase64 }] }
  *
  * Tier-2 actions are never executed here — a proposal short-circuits the tool loop and returns
  * an `action_confirmation` block with status "proposed"; dashboard-assistant-confirm executes it.
@@ -20,6 +20,7 @@ import {
   isDashboardAssistantAccessible,
 } from '../_shared/dashboardAssistantSettings.ts';
 import {
+  isExternalSendTool,
   TIER1_ONLY_TOOL_NAMES,
   TIER2_ONLY_TOOL_NAMES,
 } from '../_shared/dashboardAssistantRiskClassifier.ts';
@@ -30,6 +31,10 @@ import {
   quickSafetyScan,
   type ChatBlock,
 } from '../_shared/dashboardAssistantSafetyGuard.ts';
+import {
+  parseIncomingAttachments,
+  persistAssistantAttachments,
+} from '../_shared/dashboardAssistantAttachments.ts';
 import {
   executeTool,
   TOOL_DECLARATIONS,
@@ -139,13 +144,16 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
     const orgSlug = String(body.orgSlug ?? '').trim();
     const message = String(body.message ?? '').trim();
     const conversationIdInput = body.conversationId ? String(body.conversationId).trim() : null;
+    const incomingAttachments = parseIncomingAttachments(body.attachments);
     const pageContext = {
       propertyId: body.pageContext?.propertyId ? String(body.pageContext.propertyId) : null,
       bookingId: body.pageContext?.bookingId ? String(body.pageContext.bookingId) : null,
     };
 
     if (!orgSlug) return jsonError(req, 'orgSlug is required', 400);
-    if (!message) return jsonError(req, 'message is required', 400);
+    if (!message && incomingAttachments.length === 0) {
+      return jsonError(req, 'message or attachments required', 400);
+    }
 
     const orgCtx = await verifyOrgAccess(req, { orgSlug });
     const { permissions, propertyId: effectivePropertyId } = await resolveEffectivePermissions(
@@ -195,7 +203,7 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
           organization_id: orgCtx.org.id,
           user_id: user.id,
           property_id: effectivePropertyId,
-          title: message.slice(0, 80),
+          title: (message || incomingAttachments[0]?.name || 'New conversation').slice(0, 80),
         })
         .select('id')
         .single();
@@ -209,9 +217,35 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
       conversationId = created.id;
     }
 
+    let storedAttachments: Awaited<ReturnType<typeof persistAssistantAttachments>>['stored'] = [];
+    let attachmentParts: Awaited<ReturnType<typeof persistAssistantAttachments>>['geminiParts'] =
+      [];
+    try {
+      const persisted = await persistAssistantAttachments({
+        organizationId: orgCtx.org.id,
+        userId: user.id,
+        conversationId,
+        attachments: incomingAttachments,
+      });
+      storedAttachments = persisted.stored;
+      attachmentParts = persisted.geminiParts;
+    } catch (err) {
+      return jsonError(
+        req,
+        err instanceof Error ? err.message : 'Failed to store attachments',
+        400
+      );
+    }
+
     const { data: userMessageRow, error: userMessageError } = await sb
       .from('ai_dashboard_assistant_messages')
-      .insert({ conversation_id: conversationId, role: 'user', content_text: message, blocks: [] })
+      .insert({
+        conversation_id: conversationId,
+        role: 'user',
+        content_text: message || null,
+        blocks: [],
+        attachments: storedAttachments,
+      })
       .select('id')
       .single();
     if (userMessageError || !userMessageRow) {
@@ -224,21 +258,34 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
 
     const facts = await buildHostSafeGroundingFacts(
       orgCtx.org.id,
+      user.id,
       effectivePropertyId,
       permissions
     );
     const groundingPrompt = hostSafeGroundingFactsToPrompt(facts);
-    const systemPrompt = `${SYSTEM_PROMPT_PREFIX}\n\nKnown facts:\n${groundingPrompt}\n\npageContext: ${JSON.stringify(pageContext)}`;
+    const pinnedBookingLine = pageContext.bookingId
+      ? `\nThe host pinned booking ${pageContext.bookingId} as the reference for this turn. Prefer this booking for get_booking / transitions unless they name a different one.`
+      : '';
+    const attachmentLine =
+      storedAttachments.length > 0
+        ? `\nThe host attached ${storedAttachments.length} file(s): ${storedAttachments.map((a) => `${a.name} (${a.mimeType})`).join(', ')}. Use the file content. For payment receipts, call run_receipt_validation when they ask to check the receipt against a booking.`
+        : '';
+    const systemPrompt = `${SYSTEM_PROMPT_PREFIX}\n\nKnown facts:\n${groundingPrompt}\n\npageContext: ${JSON.stringify(pageContext)}${pinnedBookingLine}${attachmentLine}`;
 
     const toolCtx: ToolExecutionContext = {
       req,
       organizationId: orgCtx.org.id,
       userId: user.id,
+      userEmail: user.email ?? '',
       pageContext,
       isBulk: false,
     };
 
-    const history: GeminiContent[] = [{ role: 'user', parts: [{ text: message }] }];
+    const userTurnText =
+      message || (storedAttachments.length > 0 ? 'Please review the attached file(s).' : '');
+    const history: GeminiContent[] = [
+      { role: 'user', parts: [{ text: userTurnText }, ...attachmentParts] },
+    ];
     const toolResultsForGrounding: unknown[] = [];
     let proposedAction: { toolName: string; result: ToolResult } | null = null;
     let executedActions: Array<{ toolName: string; result: ToolResult }> = [];
@@ -250,7 +297,7 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
         organizationId: orgCtx.org.id,
         propertyId: effectivePropertyId,
         systemPrompt,
-        userPrompt: message,
+        userPrompt: userTurnText,
         tools: TOOL_DECLARATIONS,
         toolMode: 'auto',
         history,
@@ -338,6 +385,7 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
           .filter(([k]) => k !== 'summary')
           .map(([label, value]) => ({ label, value: String(value) })),
         status: 'proposed',
+        isExternalSend: isExternalSendTool(proposedAction.toolName),
       });
     } else {
       // Final structured block synthesis — reuses the accumulated tool-call history so blocks
@@ -348,7 +396,7 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
           organizationId: orgCtx.org.id,
           propertyId: effectivePropertyId,
           systemPrompt,
-          userPrompt: message,
+          userPrompt: userTurnText,
           history:
             history.length > 0
               ? [
@@ -374,7 +422,7 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
             },
           ];
 
-      const groundingText = `${groundingPrompt}\n${JSON.stringify(toolResultsForGrounding)}`;
+      const groundingText = `${groundingPrompt}\n${JSON.stringify(toolResultsForGrounding)}${attachmentLine}${pinnedBookingLine}`;
       const grounded = assertBlocksGrounded(candidateBlocks, groundingText);
       const safeBlocks = grounded.ok
         ? candidateBlocks

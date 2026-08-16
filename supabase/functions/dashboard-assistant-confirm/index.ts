@@ -98,6 +98,7 @@ serveAuthenticated('dashboard-assistant-confirm', async (req, user) => {
       req,
       organizationId: conversation.organization_id as string,
       userId: user.id,
+      userEmail: user.email ?? '',
       pageContext: {
         propertyId: (conversation.property_id as string | null) ?? null,
         bookingId: (inputPayload.bookingId as string | undefined) ?? null,
