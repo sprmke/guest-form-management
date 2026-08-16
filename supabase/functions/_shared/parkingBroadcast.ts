@@ -5,17 +5,29 @@
 
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
+import { resolveAppSettings } from './appSettings.ts';
 import { createServiceClient, type ParkingRow } from './orgAuth.ts';
 import { parkingDatesOverlap } from './parkingDateOverlap.ts';
 import {
+  getOrgSlug,
   sendParkingReservationRequestEmail,
   type ParkingReservationRequestEmailInput,
 } from './parkingBroadcastEmail.ts';
 import { loadParkingTelegramSettingsRow, templateTextForKey } from './telegramParking.ts';
 import { resolvePropertyTelegramCredentials } from './propertyTelegramCredentials.ts';
 
-/** Non-terminal statuses that still occupy a parking slot for date-overlap purposes. */
-const OCCUPYING_STATUSES = ['PENDING_HOST_ACCEPTANCE', 'PENDING_REVIEW', 'READY_FOR_CHECKIN'];
+/**
+ * Non-terminal (or effectively-still-occupying) statuses for date-overlap purposes.
+ * Matches the host-broadcast spec: exclude only CANCELLED / NO_HOST_AVAILABLE — a
+ * COMPLETED booking still occupied its dates and must still block an overlapping
+ * new request for the same slot.
+ */
+const OCCUPYING_STATUSES = [
+  'PENDING_HOST_ACCEPTANCE',
+  'PENDING_REVIEW',
+  'READY_FOR_CHECKIN',
+  'COMPLETED',
+];
 
 /** Same-day check-in (Asia/Manila) gets a short TTL; everything else gets the standard window. */
 export function parkingBroadcastTtlMs(
@@ -205,6 +217,18 @@ function parkingSlotLabel(candidate: ParkingBroadcastCandidate): string {
   return [candidate.slot_label, candidate.tower].filter(Boolean).join(' · ') || candidate.name;
 }
 
+/** Deep link straight to the specific booking's Accept/Decline screen — Telegram has no CTA button. */
+async function buildParkingBookingDeepLink(
+  candidate: ParkingBroadcastCandidate,
+  bookingId: string
+): Promise<string | null> {
+  if (!candidate.slug) return null;
+  const orgSlug = await getOrgSlug(candidate.organization_id);
+  if (!orgSlug) return null;
+  const { publicGuestAppOrigin } = await resolveAppSettings(null);
+  return `${publicGuestAppOrigin.replace(/\/+$/, '')}/org/${orgSlug}/parking/${candidate.slug}/bookings/${bookingId}`;
+}
+
 async function notifyParkingCandidate(
   supabase: SupabaseClient,
   booking: ParkingBroadcastBookingInput,
@@ -263,13 +287,16 @@ async function sendParkingReservationRequestTelegram(
     .replaceAll('{{expires_at}}', expiresLabel)
     .replaceAll('{{booking_id}}', booking.id.slice(0, 8));
 
+  const deepLink = await buildParkingBookingDeepLink(candidate, booking.id);
+  const fullText = deepLink ? `${text}\n\n${deepLink}` : text;
+
   const url = `https://api.telegram.org/bot${creds.token}/sendMessage`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       chat_id: creds.chatId,
-      text: text.slice(0, 4096),
+      text: fullText.slice(0, 4096),
       disable_web_page_preview: true,
     }),
   });

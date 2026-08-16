@@ -39,7 +39,8 @@ export type GeminiStructuredResult<T> = {
 export type GeminiContentPart =
   | { text: string }
   | { functionCall: { name: string; args: Record<string, unknown> } }
-  | { functionResponse: { name: string; response: Record<string, unknown> } };
+  | { functionResponse: { name: string; response: Record<string, unknown> } }
+  | { inlineData: { mimeType: string; data: string } };
 
 export type GeminiContent = { role: 'user' | 'model'; parts: GeminiContentPart[] };
 

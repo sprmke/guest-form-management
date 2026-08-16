@@ -25,7 +25,7 @@ async function getFirstPropertyIdForOrg(organizationId: string): Promise<string 
   return (data?.id as string | undefined) ?? null;
 }
 
-async function getOrgSlug(organizationId: string): Promise<string | null> {
+export async function getOrgSlug(organizationId: string): Promise<string | null> {
   const supabase = createServiceClient();
   const { data } = await supabase
     .from('organizations')
@@ -146,7 +146,7 @@ export async function sendParkingReservationRequestEmail(
 
   const viewUrl =
     orgSlug && input.parking.slug
-      ? `${settings.publicGuestAppOrigin.replace(/\/+$/, '')}/org/${orgSlug}/parking/${input.parking.slug}/bookings`
+      ? `${settings.publicGuestAppOrigin.replace(/\/+$/, '')}/org/${orgSlug}/parking/${input.parking.slug}/bookings/${input.bookingId}`
       : '';
 
   const html = await renderPropertyTemplateSendEmail({

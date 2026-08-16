@@ -80,21 +80,96 @@ export const READ_TOOL_NAMES = new Set([
   'get_booking',
   'list_bookings',
   'get_available_transitions',
+  'get_available_dates',
   'get_dashboard_stats',
   'get_finance_summary',
   'list_finance_bookings',
   'get_maintenance_summary',
   'list_maintenance_items',
+  'get_org_profile',
+  'get_org_verification_status',
+  'list_team_members',
+  'list_pending_invitations',
+  'get_property_profile',
+  'list_property_team_members',
+  'list_property_pending_invitations',
+  'get_property_settings',
+  'list_parkings',
+  'get_parking_booking',
+  'list_parking_bookings',
+  'get_parking_available_transitions',
+  'get_property_pricing',
+  'get_parking_pricing',
+  'list_inbox_threads',
+  'get_inbox_thread',
+  'get_inbox_settings',
+  'list_inbox_quick_reply_templates',
+  'draft_inbox_reply',
+  'list_marketing_templates',
+  'get_marketing_publish_history',
+  'search_marketing_music',
+  'draft_marketing_caption',
+  'draft_marketing_template',
 ]);
 
 /** Idempotent write tools with no status/financial change — tier1 by construction. */
 export const TIER1_ONLY_TOOL_NAMES = new Set([
   'sync_booking_integrations',
   'run_receipt_validation',
+  'propose_revoke_invitation',
+  'propose_revoke_property_invitation',
+  'propose_mark_inbox_thread_read',
 ]);
 
 /** Always tier2, regardless of payload — destructive by definition. */
-export const TIER2_ONLY_TOOL_NAMES = new Set(['propose_cancel_booking']);
+export const TIER2_ONLY_TOOL_NAMES = new Set([
+  'propose_cancel_booking',
+  'propose_add_finance_line_item',
+  'propose_create_maintenance_item',
+  // Both carry contact fields (contactEmail/contactPhone/contactName) that feed guest-facing
+  // communication — a silent auto-executed change here could redirect guest inquiries to an
+  // attacker's contact info with no human review. Always confirm, same reasoning as
+  // propose_update_property_settings.
+  'propose_update_org_profile',
+  'propose_update_property_profile',
+  'propose_invite_team_member',
+  'propose_update_team_member_role',
+  'propose_remove_team_member',
+  'propose_invite_property_team_member',
+  'propose_update_property_team_member_role',
+  'propose_remove_property_team_member',
+  'propose_update_property_settings',
+  'propose_claim_parking_booking',
+  'propose_decline_parking_booking',
+  'propose_transition_parking_booking',
+  'propose_update_property_base_rate',
+  'propose_set_property_date_rate_override',
+  'propose_add_property_holiday_rule',
+  'propose_block_property_dates',
+  'propose_unblock_property_dates',
+  'propose_update_parking_base_rate',
+  'propose_set_parking_date_rate_override',
+  'propose_send_inbox_reply',
+  'propose_publish_to_meta',
+]);
+
+/**
+ * External-facing actions — a categorically stricter risk class than any internal DB write.
+ * These are visible to a guest or the public and irreversible once sent/published (a message
+ * a guest actually reads, a post that actually goes live), unlike an internal status change
+ * that only ever affects our own DB state. Always tier2, and the confirm UI must show distinct
+ * "this sends/publishes for real" copy — see dashboardAssistantSafetyGuard.ts's
+ * EXTERNAL_SEND_CONFIRM_COPY. Add a tool name here (and to TIER2_ONLY_TOOL_NAMES) the moment it
+ * sends a guest message or publishes anywhere public — never let it ride the generic Tier 2 path.
+ */
+export const EXTERNAL_SEND_TOOL_NAMES = new Set<string>([
+  'propose_send_inbox_reply',
+  'propose_publish_to_meta',
+]);
+
+export function isExternalSendTool(toolName: string): boolean {
+  return EXTERNAL_SEND_TOOL_NAMES.has(toolName);
+}
 
 /**
  * `TransitionPayload` fields (workflowOrchestrator.ts) whose presence with a non-null,

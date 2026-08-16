@@ -4,6 +4,7 @@
  */
 
 import { createServiceClient } from './orgAuth.ts';
+import { loadAuthUserProfile } from './authUserProfile.ts';
 import { computeFinanceSummary } from './financeService.ts';
 import { computeMaintenanceSummary } from './maintenanceService.ts';
 import { manilaTodayIso } from './bookingsListSort.ts';
@@ -166,6 +167,8 @@ User permissions: ${context.effectivePermissions.join(', ')}.`;
  * Docs: docs/workflow/planned/ai-dashboard-assistant.md §1 step 4 / §5.
  */
 export type HostSafeGroundingFacts = {
+  today: string;
+  requester: { name: string };
   org: { id: string; name: string; slug: string } | null;
   properties: Array<{ id: string; name: string; slug: string; status: string; type: string }>;
   bookingsSummary: DashboardAssistantContext['bookingsSummary'];
@@ -178,17 +181,19 @@ const FINANCE_SUMMARY_PROPERTY_CAP = 5;
 
 export async function buildHostSafeGroundingFacts(
   organizationId: string,
+  userId: string,
   propertyId: string | null | undefined,
   permissions: string[]
 ): Promise<HostSafeGroundingFacts> {
   const sb = createServiceClient();
   const permissionSet = new Set(permissions);
 
-  const { data: org } = await sb
-    .from('organizations')
-    .select('id, name, slug')
-    .eq('id', organizationId)
-    .maybeSingle();
+  // Independent of each other — run concurrently rather than paying two sequential round trips
+  // (an Auth-API call plus a DB query) on every single chat turn.
+  const [requesterProfile, { data: org }] = await Promise.all([
+    loadAuthUserProfile(sb, userId),
+    sb.from('organizations').select('id, name, slug').eq('id', organizationId).maybeSingle(),
+  ]);
 
   const propertiesQuery = sb
     .from('properties')
@@ -274,6 +279,8 @@ export async function buildHostSafeGroundingFacts(
   }
 
   return {
+    today: manilaTodayIso(),
+    requester: { name: requesterProfile.name },
     org: org ? { id: org.id, name: org.name, slug: org.slug } : null,
     properties: (properties ?? []).map((p) => ({
       id: p.id,
@@ -291,6 +298,8 @@ export async function buildHostSafeGroundingFacts(
 
 export function hostSafeGroundingFactsToPrompt(facts: HostSafeGroundingFacts): string {
   const lines = [
+    `Today's date: ${facts.today} (Asia/Manila) — use this to resolve relative dates like "this weekend" or "next month".`,
+    `You are talking to: ${facts.requester.name}.`,
     `Organization: ${facts.org?.name ?? 'Unknown'} (${facts.org?.slug ?? ''})`,
     `Properties: ${facts.properties.map((p) => `${p.name} (${p.status}, ${p.type})`).join(', ') || 'none'}`,
     `Bookings: ${JSON.stringify(facts.bookingsSummary)}`,

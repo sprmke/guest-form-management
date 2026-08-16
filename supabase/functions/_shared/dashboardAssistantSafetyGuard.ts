@@ -115,6 +115,8 @@ export type ChatBlock =
       summary: string;
       details: Array<{ label: string; value: string }>;
       status: 'proposed' | 'confirmed' | 'executed' | 'denied' | 'expired';
+      /** True for EXTERNAL_SEND_TOOL_NAMES tools — the confirm UI must show distinct "this sends/publishes for real, right now" copy, not the generic Tier-2 confirmation text. */
+      isExternalSend?: boolean;
     };
 
 const KNOWN_BLOCK_TYPES = new Set<ChatBlock['type']>([
