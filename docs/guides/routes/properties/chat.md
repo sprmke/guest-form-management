@@ -2,7 +2,7 @@
 title: 'Guest web chat (/properties/:propertySlug/messages)'
 status: active
 tags: [guides, routes]
-updated: 2026-08-13
+updated: 2026-08-17
 ---
 
 # Guest web chat (`/properties/:propertySlug/messages`)
@@ -17,6 +17,7 @@ Route: `/properties/:propertySlug/messages`
 | ------------ | ------- | ---------- | ---- | ------------------------------------------- |
 | Contact host | Partial | Yes        | Yes  | Auth on Contact host; dates in chat modal   |
 | Chat thread  | Partial | Yes        | Yes  | Phase 1 bubble UX shipped; see § UX roadmap |
+| Empty FAQs   | Yes     | Yes        | Yes  | Five starter questions; no Actions          |
 | Host inbox   | Partial | Yes        | Yes  | **Web** tab on Guest Inbox                  |
 
 ## Overview
@@ -39,6 +40,8 @@ Guests message you from a property listing before they book — first through a 
   A: In Guest Inbox under the Web tab, alongside your other guest conversations.
 - Q: Can guests talk to the AI receptionist from the listing chat popup?
   A: Yes — when the voice receptionist is enabled for the property, **Talk to receptionist** is in the chat ⋮ menu on both the Contact host popup and the full messages page.
+- Q: What are the suggested questions guests see before they message me?
+  A: When a guest opens chat with no messages yet, they see five starter questions about the stay — check-in times, parking, pets, WiFi, payments, and similar. Tapping one sends that question to you like a normal first message. There are no action buttons, only questions. The Stays inbox (existing threads) does not show these starters.
 
 ---
 
@@ -47,7 +50,7 @@ Guests message you from a property listing before they book — first through a 
 1. **Contact host** on **`ListingHostCard`** → **`GuestAuthModal`** if signed out, then centered **`ContactHostSheet`** chat modal.
 2. **First inquiry:** if no prior messages with this host on this property, **`BookingCalendarModal`** is required before the first send.
 3. **Return visit:** existing thread loads via **`guest-web-chat-resume`** — dates optional; chat history shows immediately.
-4. Guest composes message → **Send** → thread stays in modal.
+4. Guest composes message → **Send** → thread stays in modal. If the thread is empty, five FAQ starter cards appear above the composer (same card UI as the host AI assistant, questions only — no Actions switcher). Tapping a card sends that question. On a first inquiry without dates, tapping a starter fills the message and opens the date picker; after dates are saved the question sends automatically.
 5. **Voice receptionist** (when enabled): header ⋮ **Talk to receptionist** — same in-modal **`VoiceSessionPanel`** as the full messages page. Available on first inquiry (dates not required) and return visits. Escape / overlay do not close the chat modal mid-call; hang-up returns to the text thread.
 
 **Reserve** remains separate: dates → **`requireGuestAuth`** when anonymous → **`GuestBookingFormModal`** (`GuestForm` embed) — never chat.
@@ -67,6 +70,8 @@ Use for deep links, **Open full chat**, and future guest Messages hub — not fi
 ## Page behavior (full-screen)
 
 **UI:** Host header, compact inquiry stay strip (`GuestStayContextBar` `density="compact"`), scrollable messages, composer. Shared horizontal gutter (`px-3`) across header, stay strip, thread, and composer. Guest messages align right; host replies align left. Conversation shell uses **`bg-card`** (pure white in light theme — not canvas `--background`) with `sm:rounded-3xl` so bottom corners match the MainLayout surface card. Height fills remaining viewport on mobile; on `md+` a balanced cap (`min(44–52rem, calc(100dvh − chrome))`, `max-w-3xl`).
+
+**Empty thread:** when there are no messages yet, the thread shows five random FAQ starters from `guestChatSuggestions.ts` (listing questions the inbox AI can already answer from property facts — check-in, parking, pets, WiFi, GCash, house rules, cancellation, security deposit). Same interactive cards as the host assistant (`ChatSuggestionList`); no Questions/Actions toggle. Tapping sends the prompt as the first message. Starters hide as soon as any message exists. `/account/stays` does not show them (`faqSuggestions={false}`).
 
 **Realtime:** Supabase channel on **`social_messages`** (guest RLS).
 
@@ -143,10 +148,10 @@ Backlog: [GitHub Issue #110 — Epic 10](https://github.com/sprmke/kame-homes/is
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Sheet (primary) | `ui/src/features/guest/chat/components/ContactHostSheet.tsx`                                                                                                                                      |
 | Full page       | `ui/src/features/guest/chat/pages/PropertyChatPage.tsx`                                                                                                                                           |
-| Thread UI       | `ui/src/features/guest/chat/components/GuestChatThread.tsx`, `GuestChatHeaderBar.tsx`                                                                                                             |
-| Shared bubble   | `ui/src/components/chat/ChatMessageBubble.tsx`, `ChatMessageList.tsx`, `ChatDateSeparator.tsx`, `ChatThreadSearch.tsx`, `ChatHighlightedText.tsx`                                                 |
+| Thread UI       | `ui/src/features/guest/chat/components/GuestChatThread.tsx`, `GuestChatHeaderBar.tsx`, `GuestChatFaqSuggestions.tsx`                                                                              |
+| Shared bubble   | `ui/src/components/chat/ChatMessageBubble.tsx`, `ChatMessageList.tsx`, `ChatDateSeparator.tsx`, `ChatThreadSearch.tsx`, `ChatHighlightedText.tsx`, `ChatSuggestionList.tsx`                       |
 | Format helpers  | `ui/src/lib/chat/chatMessageFormat.ts`, `useChatTyping.ts`, `useChatThreadSearch.ts`, `chatThreadSearch.ts`, `chatAttachments.ts`                                                                 |
-| Hooks / API     | `ui/src/features/guest/chat/hooks/useGuestChat.ts`, `lib/guestChatApi.ts`                                                                                                                         |
+| Hooks / API     | `ui/src/features/guest/chat/hooks/useGuestChat.ts`, `lib/guestChatApi.ts`, `lib/guestChatSuggestions.ts`                                                                                          |
 | Voice UI        | `VoiceSessionPanel` (inline in conversation column; `VoiceSessionOverlay` is a deprecated alias); `ReceptionistAvatar` circular muted turtle video + idle still; `ReceptionistFacePlate` fallback |
 | Voice hooks/API | `ui/src/features/guest/chat/hooks/useVoiceSession.ts`, `lib/voiceReceptionistApi.ts`, `lib/voiceAudioCodec.ts`, `public/worklets/voice-pcm-recorder.js`                                           |
 | Voice polish    | `_shared/polishVoiceUtterance.ts` (batch on end); `ChatUrlLinkCard` for https in bubbles                                                                                                          |

@@ -551,3 +551,7 @@ P3499/month/listing
 - Edit marketing designs, manual and scheduled post to Facebook & Instagram
 
 Extra AI token in org: PXXX/1000 credits
+
+===
+
+🔵 Integrate paymongo for payment transactions
