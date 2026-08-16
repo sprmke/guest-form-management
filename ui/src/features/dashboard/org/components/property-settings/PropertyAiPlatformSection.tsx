@@ -1,8 +1,9 @@
 import * as React from 'react';
 
-import { Loader2 } from 'lucide-react';
+import { Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { AdminSection } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
 import {
   useAiPlatformPropertySettings,
   useUpdateAiPlatformPropertySettings,
@@ -111,20 +112,16 @@ export function PropertyAiPlatformSection() {
 
   if (settingsLoading || !draft) {
     return (
-      <section id="section-ai" className="scroll-mt-24">
+      <AdminSection id="ai" title="AI overrides" icon={Sparkles}>
         <div className="flex justify-center py-8">
           <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
         </div>
-      </section>
+      </AdminSection>
     );
   }
 
   return (
-    <section id="section-ai" className="scroll-mt-24 space-y-4">
-      <div>
-        <h2 className="text-lg font-semibold">AI overrides</h2>
-      </div>
-
+    <AdminSection id="ai" title="AI overrides" icon={Sparkles}>
       {readOnly ? (
         <p className="text-muted-foreground text-sm">
           Contact the property manager to change AI overrides.
@@ -200,6 +197,6 @@ export function PropertyAiPlatformSection() {
           {update.isPending ? 'Saving…' : 'Save property AI overrides'}
         </Button>
       ) : null}
-    </section>
+    </AdminSection>
   );
 }

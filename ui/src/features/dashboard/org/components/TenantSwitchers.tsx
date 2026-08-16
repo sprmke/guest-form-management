@@ -52,11 +52,10 @@ import { cn } from '@/lib/utils';
 type AddEntityTarget = { id: string; slug: string };
 
 /**
- * The sidebar header sits the notification bell (`size="icon"`, 2.5rem) beside this trigger with
- * `gap-2`, so the trigger is 3rem narrower than the sidebar's padded content box. Adding that back
- * lets the menu span the full sidebar width instead of stopping short under the bell.
+ * Workspace switcher menus match the trigger width. The header no longer
+ * sits a notification bell beside this trigger, so no extra offset is needed.
  */
-const SWITCHER_MENU_WIDTH = 'w-[calc(var(--radix-dropdown-menu-trigger-width)+3rem)]';
+const SWITCHER_MENU_WIDTH = 'w-[var(--radix-dropdown-menu-trigger-width)]';
 
 /** Menu row — a Radix `DropdownMenuItem` in the desktop dropdown, a plain tappable row in the mobile sheet. */
 function SwitcherRow({

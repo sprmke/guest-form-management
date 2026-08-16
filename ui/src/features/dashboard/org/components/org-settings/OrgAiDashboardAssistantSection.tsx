@@ -1,12 +1,13 @@
 import * as React from 'react';
 
-import { Loader2 } from 'lucide-react';
+import { Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 import {
   useAiDashboardAssistantSettings,
   useUpdateAiDashboardAssistantSettings,
 } from '@/features/dashboard/ai-assistant/hooks/useAiDashboardAssistantSettings';
+import { AdminSection } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
 import { useProperties } from '@/features/dashboard/org/hooks/useOrganizations';
 import { useOrgSlugParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermissions';
@@ -119,22 +120,18 @@ export function OrgAiDashboardAssistantSection() {
 
   if (settingsLoading || !draft) {
     return (
-      <section id="section-ai-assistant" className="scroll-mt-24">
+      <AdminSection id="ai-assistant" title="AI dashboard assistant" icon={Sparkles}>
         <div className="flex justify-center py-8">
           <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
         </div>
-      </section>
+      </AdminSection>
     );
   }
 
   const properties = propertiesData?.properties ?? [];
 
   return (
-    <section id="section-ai-assistant" className="scroll-mt-24 space-y-4">
-      <div>
-        <h2 className="text-lg font-semibold">AI dashboard assistant</h2>
-      </div>
-
+    <AdminSection id="ai-assistant" title="AI dashboard assistant" icon={Sparkles}>
       {!settings?.platformEnabled ? (
         <p className="text-muted-foreground text-sm">
           The AI assistant is currently off platform-wide.
@@ -241,6 +238,6 @@ export function OrgAiDashboardAssistantSection() {
           {update.isPending ? 'Saving…' : 'Save assistant settings'}
         </Button>
       ) : null}
-    </section>
+    </AdminSection>
   );
 }

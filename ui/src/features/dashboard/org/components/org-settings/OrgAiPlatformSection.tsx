@@ -1,8 +1,9 @@
 import * as React from 'react';
 
-import { Loader2 } from 'lucide-react';
+import { Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { AdminSection } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
 import {
   useAiPlatformSettings,
   useAiPlatformUsage,
@@ -106,22 +107,18 @@ export function OrgAiPlatformSection() {
 
   if (settingsLoading || usageLoading || !draft) {
     return (
-      <section id="section-ai" className="scroll-mt-24">
+      <AdminSection id="ai" title="AI usage" icon={Sparkles}>
         <div className="flex justify-center py-8">
           <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
         </div>
-      </section>
+      </AdminSection>
     );
   }
 
   const showUpgradeStub = usage?.quotaExceeded || usage?.planTier === 'included';
 
   return (
-    <section id="section-ai" className="scroll-mt-24 space-y-4">
-      <div>
-        <h2 className="text-lg font-semibold">AI usage</h2>
-      </div>
-
+    <AdminSection id="ai" title="AI usage" icon={Sparkles}>
       {usage ? (
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
           <div>
@@ -230,6 +227,6 @@ export function OrgAiPlatformSection() {
           {update.isPending ? 'Saving…' : 'Save AI limits'}
         </Button>
       ) : null}
-    </section>
+    </AdminSection>
   );
 }
