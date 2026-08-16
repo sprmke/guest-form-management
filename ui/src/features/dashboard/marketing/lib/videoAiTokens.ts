@@ -93,9 +93,17 @@ function pickEnum<T extends string>(value: unknown, allowed: readonly T[], fallb
   return fallback;
 }
 
+/** Truncates at the last whitespace before `max` so AI copy never gets cut mid-word. */
+function truncateAtWordBoundary(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const slice = text.slice(0, max);
+  const lastSpace = slice.lastIndexOf(' ');
+  return lastSpace > max * 0.4 ? slice.slice(0, lastSpace).trimEnd() : slice;
+}
+
 function clampText(value: unknown, fallback: string, max: number): string {
   if (typeof value !== 'string') return fallback;
-  const cleaned = value.replace(/\s+/g, ' ').trim().slice(0, max);
+  const cleaned = truncateAtWordBoundary(value.replace(/\s+/g, ' ').trim(), max);
   return cleaned || fallback;
 }
 
@@ -103,7 +111,7 @@ function clampStringArray(value: unknown, max: number, itemMax: number): string[
   if (!Array.isArray(value)) return [];
   return value
     .filter((item): item is string => typeof item === 'string')
-    .map((item) => item.replace(/\s+/g, ' ').trim().slice(0, itemMax))
+    .map((item) => truncateAtWordBoundary(item.replace(/\s+/g, ' ').trim(), itemMax))
     .filter(Boolean)
     .slice(0, max);
 }

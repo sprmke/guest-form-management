@@ -5,8 +5,8 @@
  * templates (`VideoCompositions.tsx`) — no bespoke rendering logic here.
  */
 
-import type { DesignBinding } from '@/features/dashboard/marketing/lib/designCanvasTypes';
 import type { CampaignPalette } from '@/features/dashboard/marketing/lib/designBrandColors';
+import type { DesignBinding } from '@/features/dashboard/marketing/lib/designCanvasTypes';
 import {
   resolveDesignBindingMedia,
   pickBindingMediaAt,

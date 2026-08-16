@@ -81,6 +81,7 @@ import {
   savedVideoThumbnailKey,
   videoPresetThumbnailKey,
 } from '@/features/dashboard/marketing/lib/marketingTemplateThumbnailCache';
+import { withGlobalRenderSlot } from '@/features/dashboard/marketing/lib/marketingThumbnailQueue';
 import {
   propertyMediaItems,
   propertyGalleryMediaItems,
@@ -175,6 +176,8 @@ export function VideoEditor({ onPublish }: Props) {
   const [showEditorSettings, setShowEditorSettings] = useState(false);
   const [previewMode, setPreviewMode] = useState<VideoPreviewMode>('all');
   const [previewPlaying, setPreviewPlaying] = useState(false);
+  const previewPlayingRef = useRef(previewPlaying);
+  previewPlayingRef.current = previewPlaying;
   const [relativeZoom, setRelativeZoom] = useState(100);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [elementFocusRequest, setElementFocusRequest] = useState(0);
@@ -541,20 +544,31 @@ export function VideoEditor({ onPublish }: Props) {
     [format, brandColor]
   );
 
-  const formatPresetIds = useMemo(
-    () => presetTemplates.map((template) => template.id),
-    [presetTemplates]
-  );
+  // Background pre-warm order: current category first, so it never sits
+  // queued behind off-screen categories the host isn't looking at — the
+  // panel's own on-demand queue already covers the current category, this
+  // just avoids this loop's (redundant, cache-checked) pass wasting the
+  // shared render slot on hidden categories first.
+  const formatPresetIdsForWarm = useMemo(() => {
+    const current = presetTemplates.filter((template) => template.category === category);
+    const rest = presetTemplates.filter((template) => template.category !== category);
+    return [...current, ...rest].map((template) => template.id);
+  }, [presetTemplates, category]);
 
   useEffect(() => {
-    return registerVideoThumbnailPlaybackPause(() => {
-      playerRef.current?.pause();
-      setPreviewPlaying(false);
-    });
+    return registerVideoThumbnailPlaybackPause(
+      () => {
+        playerRef.current?.pause();
+        setPreviewPlaying(false);
+      },
+      () => previewPlayingRef.current
+    );
   }, []);
 
+  const hasProjectForThumbWarm = Boolean(project);
+
   useEffect(() => {
-    if (!project) return;
+    if (!hasProjectForThumbWarm) return;
 
     let cancelled = false;
 
@@ -562,7 +576,7 @@ export function VideoEditor({ onPublish }: Props) {
       await waitForMarketingIdle(500);
       if (cancelled) return;
 
-      for (const templateId of formatPresetIds) {
+      for (const templateId of formatPresetIdsForWarm) {
         if (cancelled) break;
 
         const thumbBinding = resolveMarketingThumbBinding(binding);
@@ -574,11 +588,12 @@ export function VideoEditor({ onPublish }: Props) {
         );
         if (getCachedMarketingThumbnail(cacheKey)) continue;
 
-        const dataUrl = await renderVideoPresetThumbnail(
-          templateId,
-          format,
-          thumbBinding,
-          brandColor
+        // Shares the same global render slot as the visible template grid's
+        // own thumbnail queue — this background pre-warm must never run a
+        // heavy Remotion capture at the same time as the one the host is
+        // actually looking at, or both stall each other.
+        const dataUrl = await withGlobalRenderSlot(() =>
+          renderVideoPresetThumbnail(templateId, format, thumbBinding, brandColor)
         );
         if (cancelled || !dataUrl) continue;
 
@@ -591,7 +606,13 @@ export function VideoEditor({ onPublish }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [project, format, formatPresetIds, brandColor, binding]);
+    // Intentionally excludes `project` — this only warms sidebar preset thumbnails
+    // and must not restart on every edit (autosave changes `project`'s reference
+    // on every keystroke, which previously retriggered this full async
+    // scan-and-render loop continuously while editing, causing jank). `binding`
+    // is a stable useMemo that only changes for real property/photo changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasProjectForThumbWarm, format, formatPresetIdsForWarm, brandColor, binding]);
 
   const handleExportVideo = useCallback(async () => {
     if (!project) throw new Error('No project');

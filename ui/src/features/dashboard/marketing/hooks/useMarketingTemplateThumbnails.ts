@@ -278,24 +278,6 @@ export function useMarketingTemplateThumbnails(options: Options) {
   }, [contentType, savedCalendarTemplates, savedRecords]);
 
   useEffect(() => {
-    if (contentType !== 'calendar' || !calendarFormat) return;
-
-    setThumbnails((prev) => {
-      const next = { ...prev };
-      let changed = false;
-      for (const id of presetIds) {
-        for (const key of [id, `preset:${id}`]) {
-          if (key in next) {
-            delete next[key];
-            changed = true;
-          }
-        }
-      }
-      return changed ? next : prev;
-    });
-  }, [contentType, calendarFormat, presetIds]);
-
-  useEffect(() => {
     if (contentType !== 'design' && contentType !== 'video') return;
     return subscribeMarketingThumbnailUpdates((templateId, dataUrl) => {
       setThumbnails((prev) =>
@@ -336,6 +318,25 @@ export function useMarketingTemplateThumbnails(options: Options) {
           if (contentType === 'calendar') {
             next[`preset:${id}`] = memory;
           }
+        }
+      }
+
+      // Commit in-memory hits immediately (additive only — never drop existing
+      // entries here) so flipping back to a previously viewed orientation/format
+      // redisplays instantly instead of waiting on an IndexedDB round trip, while
+      // leaving other presets' current thumbnails in place until they resolve.
+      if (Object.keys(next).length > 0) {
+        let changed = false;
+        const memoryMerged = { ...thumbnailsRef.current };
+        for (const [id, url] of Object.entries(next)) {
+          if (memoryMerged[id] !== url) {
+            memoryMerged[id] = url;
+            changed = true;
+          }
+        }
+        if (changed) {
+          thumbnailsRef.current = memoryMerged;
+          setThumbnails(memoryMerged);
         }
       }
 

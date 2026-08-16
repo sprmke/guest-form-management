@@ -132,7 +132,15 @@ export function useVideoPlayerTransport({
       }
       const { start } = sceneFrameRange(currentProject, selectedSceneIndex);
       player.seekTo(start);
-      void player.play();
+      // seekTo() needs a couple of frames to settle before play() reliably
+      // takes effect on the Remotion player — calling them back-to-back can
+      // silently no-op the play, which read as the loop "stalling" after one pass.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (isPageHidden()) return;
+          void player.play();
+        });
+      });
     };
 
     syncFrame();
@@ -160,6 +168,27 @@ export function useVideoPlayerTransport({
     [playerRef, project, durationInFrames]
   );
 
+  /**
+   * Seeks then plays. seekTo() needs a couple of frames to settle before
+   * play() reliably takes — calling them synchronously back-to-back can
+   * silently no-op the play call, which read as needing 2-3 clicks to start.
+   */
+  const playFromFrame = useCallback(
+    (frame: number) => {
+      const player = playerRef.current;
+      if (!player || !project) return;
+      const clamped = Math.max(0, Math.min(frame, durationInFrames - 1));
+      player.seekTo(clamped);
+      setCurrentFrame(clamped);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          void playerRef.current?.play();
+        });
+      });
+    },
+    [playerRef, project, durationInFrames]
+  );
+
   const play = useCallback(() => {
     void playerRef.current?.play();
   }, [playerRef]);
@@ -171,7 +200,14 @@ export function useVideoPlayerTransport({
   const togglePlay = useCallback(() => {
     const player = playerRef.current;
     if (!player) return;
-    if (isPlayingRef.current) {
+    // Query Remotion's own authoritative playing state rather than our
+    // isPlayingRef mirror — that mirror is only updated by the player's
+    // 'play'/'pause' events once our listener effect has attached, which lags
+    // a render behind mount/scene-switch. A click landing in that window
+    // would read the mirror as "not playing" and call play() on an already
+    // (or about-to-be) playing player, which Remotion silently no-ops —
+    // exactly what read as needing 2-3 clicks to start.
+    if (player.isPlaying()) {
       player.pause();
     } else {
       void player.play();
@@ -200,15 +236,13 @@ export function useVideoPlayerTransport({
 
   const playFromStart = useCallback(() => {
     if (!project) return;
-    seekToFrame(0);
-    void playerRef.current?.play();
-  }, [project, playerRef, seekToFrame]);
+    playFromFrame(0);
+  }, [project, playFromFrame]);
 
   const playSelectedClip = useCallback(() => {
     if (!project) return;
-    seekToScene(selectedSceneIndex);
-    void playerRef.current?.play();
-  }, [project, playerRef, seekToScene, selectedSceneIndex]);
+    playFromFrame(sceneSettledPreviewFrame(project, selectedSceneIndex));
+  }, [project, playFromFrame, selectedSceneIndex]);
 
   const toggleMute = useCallback(() => {
     setIsMuted((value) => !value);
@@ -247,6 +281,7 @@ export function useVideoPlayerTransport({
     pause,
     togglePlay,
     stop,
+    playFromFrame,
     playFromStart,
     playSelectedClip,
     toggleMute,
