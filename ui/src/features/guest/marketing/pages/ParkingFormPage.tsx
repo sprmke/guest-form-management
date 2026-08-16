@@ -13,6 +13,14 @@ import { GuestFormPageSkeleton } from '@/components/skeletons/GuestPageSkeletons
 
 const PARKING_REGISTRATION_FORM_ID = 'dev-parking-form';
 
+/** Server error codes/messages mapped to guest-facing copy — anything unmapped falls back to a generic message. */
+const GUEST_FACING_SUBMIT_ERRORS: Record<string, string> = {
+  no_parking_available: 'No parking slots are available for these dates',
+  'Parking not found': 'This parking listing is no longer available',
+  'Organization not found': 'This parking listing is no longer available',
+  'checkOutDate must be after checkInDate': 'Check-out date must be after check-in date',
+};
+
 function readString(data: Record<string, unknown>, key: string): string {
   const value = data[key];
   return typeof value === 'string' ? value.trim() : '';
@@ -63,11 +71,7 @@ export function ParkingFormPage() {
       return { submissionId: result.bookingId };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Could not submit parking request';
-      toast.error(
-        message === 'no_parking_available'
-          ? 'No parking slots are available for these dates'
-          : message
-      );
+      toast.error(GUEST_FACING_SUBMIT_ERRORS[message] ?? 'Could not submit parking request');
       throw error;
     }
   };

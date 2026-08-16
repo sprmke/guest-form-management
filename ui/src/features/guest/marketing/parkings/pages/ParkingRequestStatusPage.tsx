@@ -32,7 +32,10 @@ const TONE_STYLES: Record<'waiting' | 'accepted' | 'ended', string> = {
   ended: 'bg-muted text-muted-foreground',
 };
 
-function useCountdown(expiresAt: string | null): string | null {
+function useCountdown(expiresAt: string | null): {
+  display: string | null;
+  minutesLabel: string | null;
+} {
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -41,18 +44,24 @@ function useCountdown(expiresAt: string | null): string | null {
     return () => clearInterval(id);
   }, [expiresAt]);
 
-  if (!expiresAt) return null;
+  if (!expiresAt) return { display: null, minutesLabel: null };
   const remainingMs = new Date(expiresAt).getTime() - now;
-  if (remainingMs <= 0) return null;
+  if (remainingMs <= 0) return { display: null, minutesLabel: null };
 
   const minutes = Math.floor(remainingMs / 60_000);
   const seconds = Math.floor((remainingMs % 60_000) / 1000);
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  const display = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  // Rounded-minute text only changes at minute boundaries, so an aria-live region
+  // showing it naturally announces once a minute instead of every second tick.
+  const roundedMinutes = Math.ceil(remainingMs / 60_000);
+  const minutesLabel =
+    roundedMinutes <= 1 ? 'Less than a minute remaining' : `${roundedMinutes} minutes remaining`;
+  return { display, minutesLabel };
 }
 
 export function ParkingRequestStatusPage() {
   const { bookingId = '' } = useParams<{ bookingId: string }>();
-  const { data, isLoading, isError } = useParkingBookingStatus(bookingId);
+  const { data, isLoading, isError, refetch, isRefetching } = useParkingBookingStatus(bookingId);
   const countdown = useCountdown(data?.expiresAt ?? null);
 
   if (!bookingId) {
@@ -68,9 +77,15 @@ export function ParkingRequestStatusPage() {
       <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center gap-3 px-4 text-center">
         <XCircle className="text-muted-foreground h-8 w-8" aria-hidden />
         <p className="text-foreground font-medium">Request not found</p>
-        <Button asChild variant="outline">
-          <Link to="/parkings">Browse Parking</Link>
-        </Button>
+        <p className="text-muted-foreground text-sm">This may be a temporary connection issue.</p>
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" onClick={() => refetch()} disabled={isRefetching}>
+            Try again
+          </Button>
+          <Button asChild variant="outline">
+            <Link to="/parkings">Browse Parking</Link>
+          </Button>
+        </div>
       </div>
     );
   }
@@ -81,14 +96,17 @@ export function ParkingRequestStatusPage() {
     <ParkingPublicBrandShell>
       <div className="bg-background min-h-screen pb-24 pt-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="border-border bg-card mx-auto w-full max-w-md space-y-5 rounded-2xl border p-6 shadow-[0_4px_40px_-12px_rgba(0,0,0,0.10)] sm:p-8">
+          <div
+            className="border-border bg-card mx-auto w-full max-w-md space-y-5 rounded-2xl border p-6 shadow-[0_4px_40px_-12px_rgba(0,0,0,0.10)] sm:p-8"
+            aria-live="polite"
+          >
             <div
               className={cn(
                 'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium',
                 TONE_STYLES[meta.tone]
               )}
             >
-              <meta.icon className="h-4 w-4 motion-safe:animate-none" aria-hidden />
+              <meta.icon className="h-4 w-4" aria-hidden />
               {meta.label}
             </div>
 
@@ -101,8 +119,11 @@ export function ParkingRequestStatusPage() {
               )}
             </div>
 
-            {data.status === 'PENDING_HOST_ACCEPTANCE' && countdown && (
-              <p className="text-muted-foreground text-sm tabular-nums">Expires in {countdown}</p>
+            {data.status === 'PENDING_HOST_ACCEPTANCE' && countdown.display && (
+              <p className="text-muted-foreground text-sm tabular-nums">
+                Expires in {countdown.display}
+                <span className="sr-only">{countdown.minutesLabel}</span>
+              </p>
             )}
 
             {data.parkingLabel &&
@@ -119,6 +140,12 @@ export function ParkingRequestStatusPage() {
             {data.status === 'NO_HOST_AVAILABLE' && (
               <p className="text-muted-foreground text-sm">
                 No host was available for these dates. Try another listing or contact us for help.
+              </p>
+            )}
+
+            {data.status === 'CANCELLED' && (
+              <p className="text-muted-foreground text-sm">
+                This request was cancelled. Browse other listings or contact us for help.
               </p>
             )}
 

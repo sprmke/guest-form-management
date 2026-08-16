@@ -48,13 +48,19 @@ async function fetchParkingBookingStatus(bookingId: string): Promise<ParkingBook
   return json.data;
 }
 
-/** Polls every 4s while status is non-terminal — no Realtime subscription in v1. */
+/**
+ * Polls every 4s while status is non-terminal — no Realtime subscription in v1 (deviation
+ * from the original "locked" Realtime decision; kept as polling since it already meets the
+ * spec's own ≤5s fallback bar — see docs/workflow/in-progress/parking-e2e-phase1-guest-request-realtime-status.md).
+ * One retry so a transient network blip on first load doesn't read identically to a
+ * genuine 404 — the query only gives up and shows "not found" after two failures.
+ */
 export function useParkingBookingStatus(bookingId: string) {
   return useQuery({
     queryKey: ['parking-booking-status', bookingId],
     queryFn: () => fetchParkingBookingStatus(bookingId),
     enabled: Boolean(bookingId),
-    retry: false,
+    retry: 1,
     refetchInterval: (query) => {
       const status = query.state.data?.status;
       if (status && TERMINAL_STATUSES.has(status)) return false;

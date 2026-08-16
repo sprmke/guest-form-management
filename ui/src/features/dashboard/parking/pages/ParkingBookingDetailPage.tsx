@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { Link, useParams } from 'react-router-dom';
 
+import { ParkingBroadcastCountdown } from '@/features/dashboard/bookings/components/ParkingBroadcastCountdown';
 import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
 import { useBooking } from '@/features/dashboard/bookings/hooks/useBooking';
 import { useParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
@@ -97,6 +98,7 @@ export function ParkingBookingDetailPage() {
           <Button
             type="button"
             disabled={busy}
+            loading={claim.isPending}
             className="min-h-[44px]"
             onClick={() =>
               claim.mutate({ bookingId: booking.id, endorsementNote: endorsementNote.trim() })
@@ -108,6 +110,7 @@ export function ParkingBookingDetailPage() {
             type="button"
             variant="outline"
             disabled={busy}
+            loading={decline.isPending}
             className="min-h-[44px]"
             onClick={() => decline.mutate({ bookingId: booking.id })}
           >
@@ -153,6 +156,9 @@ export function ParkingBookingDetailPage() {
       <FloatingPanel padding="lg" className="space-y-4">
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={booking.status} />
+          {isPendingAcceptance && booking.parking_broadcast_expires_at && (
+            <ParkingBroadcastCountdown expiresAt={booking.parking_broadcast_expires_at} />
+          )}
         </div>
 
         {myBroadcastPending && (
@@ -178,7 +184,7 @@ export function ParkingBookingDetailPage() {
         )}
 
         {isPendingAcceptance && !myBroadcastPending && (
-          <p className="text-muted-foreground text-sm">
+          <p className="text-muted-foreground text-sm" aria-live="polite">
             {broadcastStatus?.response === 'claimed'
               ? 'Claimed by another host.'
               : broadcastStatus?.response === 'declined'

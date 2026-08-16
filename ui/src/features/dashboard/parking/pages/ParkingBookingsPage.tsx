@@ -27,6 +27,7 @@ import {
   parseBookingStage,
   type BookingStage,
 } from '@/features/dashboard/bookings/lib/bookingStages';
+import { PARKING_ONLY_STATUSES } from '@/features/dashboard/bookings/lib/bookingStatus';
 import {
   DEFAULT_BOOKINGS_QUERY,
   type BookingsQuery,
@@ -333,6 +334,7 @@ export function ParkingBookingsPage() {
       showPerPage={view !== 'calendar'}
       hideGuestStayFilters
       searchPlaceholder="Search guest, email, phone, plate…"
+      extraStatuses={PARKING_ONLY_STATUSES}
     />
   );
 
