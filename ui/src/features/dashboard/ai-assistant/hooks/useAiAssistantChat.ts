@@ -4,17 +4,20 @@ import {
   confirmAssistantAction,
   fetchAiAssistantConversationMessages,
   sendChatMessage,
+  type ChatAttachmentMeta,
   type ChatBlock,
   type PageContext,
 } from '@/features/dashboard/ai-assistant/lib/aiAssistantApi';
+import type { ChatSendInput } from '@/features/dashboard/ai-assistant/lib/chatAttachments';
 import { useOrgSlugParam } from '@/features/dashboard/org/lib/adminApiScope';
-
 
 export type ChatThreadMessage = {
   id: string;
   role: 'user' | 'assistant';
   text: string | null;
   blocks: ChatBlock[];
+  attachments?: ChatAttachmentMeta[];
+  bookingLabel?: string | null;
 };
 
 export function useAiAssistantChat(pageContext: PageContext) {
@@ -37,6 +40,7 @@ export function useAiAssistantChat(pageContext: PageContext) {
           role: row.role,
           text: row.content_text,
           blocks: row.blocks,
+          attachments: row.attachments,
         }))
       );
     } catch (err) {
@@ -54,8 +58,11 @@ export function useAiAssistantChat(pageContext: PageContext) {
   }, []);
 
   const sendMessage = useCallback(
-    async (text: string) => {
-      if (!orgSlug || !text.trim()) return;
+    async (input: string | ChatSendInput) => {
+      const payload: ChatSendInput = typeof input === 'string' ? { text: input } : input;
+      const text = (payload.text ?? '').trim();
+      const attachments = payload.attachments ?? [];
+      if (!orgSlug || (!text && attachments.length === 0)) return;
       setPending(true);
       setError(null);
       setUpgradeHook(false);
@@ -63,8 +70,10 @@ export function useAiAssistantChat(pageContext: PageContext) {
       const userMessage: ChatThreadMessage = {
         id: `local-${Date.now()}`,
         role: 'user',
-        text,
-        blocks: [{ type: 'text', text }],
+        text: text || null,
+        blocks: text ? [{ type: 'text', text }] : [],
+        attachments: attachments.map(({ name, mimeType }) => ({ name, mimeType })),
+        bookingLabel: payload.bookingLabel ?? null,
       };
       setMessages((prev) => [...prev, userMessage]);
 
@@ -72,8 +81,12 @@ export function useAiAssistantChat(pageContext: PageContext) {
         const res = await sendChatMessage({
           orgSlug,
           conversationId,
-          pageContext,
+          pageContext: {
+            propertyId: payload.propertyId ?? pageContext.propertyId,
+            bookingId: payload.bookingId ?? pageContext.bookingId,
+          },
           message: text,
+          attachments: attachments.length > 0 ? attachments : undefined,
         });
         setConversationId(res.conversationId);
         setUpgradeHook(Boolean(res.upgradeHook));

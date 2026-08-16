@@ -9,12 +9,18 @@ import type {
 
 import { Button } from '@/components/ui/button';
 
-
 type Props = Extract<ChatBlock, { type: 'action_confirmation' }> & {
   onResolve: (actionId: string, confirm: boolean) => Promise<ConfirmActionResponse | null>;
 };
 
-export function ActionConfirmationBlock({ actionId, summary, details, status, onResolve }: Props) {
+export function ActionConfirmationBlock({
+  actionId,
+  summary,
+  details,
+  status,
+  isExternalSend,
+  onResolve,
+}: Props) {
   const [busy, setBusy] = useState<'confirm' | 'deny' | null>(null);
 
   const handle = async (confirm: boolean) => {
@@ -23,22 +29,44 @@ export function ActionConfirmationBlock({ actionId, summary, details, status, on
     setBusy(null);
   };
 
+  const externalSendPending = isExternalSend && status === 'proposed';
+  const safeDetails = details ?? [];
+
   return (
-    <div className="border-border/60 bg-card space-y-2 rounded-xl border p-3">
+    <div
+      className={
+        externalSendPending
+          ? 'border-destructive/50 bg-destructive/5 space-y-2 rounded-xl border p-3'
+          : 'border-border/60 bg-card space-y-2 rounded-xl border p-3'
+      }
+    >
       <div className="flex items-start gap-2">
         {status === 'executed' ? (
           <CheckCircle2 className="text-success mt-0.5 h-4 w-4 shrink-0" aria-hidden />
         ) : status === 'denied' || status === 'expired' ? (
           <AlertCircle className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" aria-hidden />
         ) : (
-          <AlertCircle className="text-warning mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <AlertCircle
+            className={
+              externalSendPending
+                ? 'text-destructive mt-0.5 h-4 w-4 shrink-0'
+                : 'text-warning mt-0.5 h-4 w-4 shrink-0'
+            }
+            aria-hidden
+          />
         )}
         <p className="text-foreground text-sm font-medium">{summary}</p>
       </div>
 
-      {details.length > 0 && (
+      {externalSendPending && (
+        <p className="text-destructive pl-6 text-xs font-medium">
+          This sends or publishes for real, right now — this can&apos;t be undone.
+        </p>
+      )}
+
+      {safeDetails.length > 0 && (
         <dl className="space-y-0.5 pl-6">
-          {details.map((d) => (
+          {safeDetails.map((d) => (
             <div key={d.label} className="flex gap-2 text-xs">
               <dt className="text-muted-foreground">{d.label}:</dt>
               <dd className="text-foreground">{d.value}</dd>
@@ -49,9 +77,16 @@ export function ActionConfirmationBlock({ actionId, summary, details, status, on
 
       {status === 'proposed' && (
         <div className="flex gap-2 pl-6">
-          <Button size="sm" onClick={() => void handle(true)} disabled={busy !== null}>
+          <Button
+            size="sm"
+            variant={externalSendPending ? 'destructive' : 'default'}
+            onClick={() => void handle(true)}
+            disabled={busy !== null}
+          >
             {busy === 'confirm' ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+            ) : externalSendPending ? (
+              'Send'
             ) : (
               'Confirm'
             )}

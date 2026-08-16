@@ -11,7 +11,7 @@ export function LinkListBlock({ title, links }: Props) {
     <div className="border-border/60 bg-card space-y-1 rounded-xl border p-3">
       {title && <p className="text-foreground text-sm font-semibold">{title}</p>}
       <ul className="divide-border/60 -mx-1 divide-y">
-        {links.map((link) => (
+        {(links ?? []).map((link) => (
           <li key={link.href}>
             <Link
               to={link.href}

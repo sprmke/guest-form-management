@@ -1,7 +1,6 @@
 import type { ChatBlock } from '@/features/dashboard/ai-assistant/lib/aiAssistantApi';
 import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
 
-
 type Props = Extract<ChatBlock, { type: 'booking_card' }>;
 
 export function BookingCardBlock({
@@ -23,7 +22,7 @@ export function BookingCardBlock({
         <span>
           {checkIn} → {checkOut}
         </span>
-        {balanceDue !== null && (
+        {balanceDue != null && (
           <span className={balanceDue > 0 ? 'text-destructive font-medium' : undefined}>
             Balance: ₱{balanceDue.toLocaleString()}
           </span>

@@ -7,7 +7,7 @@ export function StatListBlock({ title, items }: Props) {
     <div className="border-border/60 bg-card space-y-2 rounded-xl border p-3">
       {title && <p className="text-foreground text-sm font-semibold">{title}</p>}
       <dl className="grid grid-cols-2 gap-2">
-        {items.map((item) => (
+        {(items ?? []).map((item) => (
           <div key={item.label} className="space-y-0.5">
             <dt className="text-muted-foreground text-xs">{item.label}</dt>
             <dd className="text-foreground text-sm font-semibold tabular-nums">{item.value}</dd>
