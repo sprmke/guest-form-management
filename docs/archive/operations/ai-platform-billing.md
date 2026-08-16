@@ -43,11 +43,11 @@ Shared server modules:
 
 ## Model tiering (defaults)
 
-| Feature                                                             | Model                                   |
-| ------------------------------------------------------------------- | --------------------------------------- |
-| Receipt / marketing templates / booking AI review / voice polish    | `gemini-2.5-flash`                      |
-| Inbox suggest / auto-reply / marketing captions / import column map | `gemini-2.0-flash-lite`                 |
-| Voice Live                                                          | `gemini-2.5-flash-native-audio-preview` |
+| Feature                                                                                                 | Model                                   |
+| ------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| Receipt validation / marketing templates / booking AI review / dashboard assistant                      | `gemini-2.5-flash`                      |
+| Inbox suggest / auto-reply / marketing captions / import column map / voice polish / integration verify | `gemini-3.1-flash-lite`                 |
+| Voice Live                                                                                              | `gemini-2.5-flash-native-audio-preview` |
 
 Verify current rates at [ai.google.dev/pricing](https://ai.google.dev/gemini-api/docs/pricing) before budgeting.
 
