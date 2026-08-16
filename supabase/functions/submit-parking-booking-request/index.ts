@@ -141,16 +141,30 @@ servePublic('submit-parking-booking-request', async (req) => {
     return jsonError(req, 'Failed to submit parking request', 500);
   }
 
-  await fanOutParkingBroadcast(
-    {
-      id: String(inserted.id),
-      guestName,
-      checkInDate: checkInDb,
-      checkOutDate: checkOutDb,
-      expiresAtIso,
-    },
-    candidates
-  );
+  try {
+    await fanOutParkingBroadcast(
+      {
+        id: String(inserted.id),
+        guestName,
+        checkInDate: checkInDb,
+        checkOutDate: checkOutDb,
+        expiresAtIso,
+      },
+      candidates
+    );
+  } catch (err) {
+    // Broadcast insert itself failed (not just a per-candidate notify failure, which
+    // fanOutParkingBroadcast already swallows) — the booking row would otherwise sit at
+    // PENDING_HOST_ACCEPTANCE with zero broadcast rows until the TTL cron eventually
+    // times it out with a misleading "no host available" email. Roll it back instead so
+    // the guest gets an honest error and can safely resubmit.
+    console.error(
+      '[submit-parking-booking-request] fan-out failed, rolling back booking:',
+      err instanceof Error ? err.message : err
+    );
+    await supabase.from('guest_submissions').delete().eq('id', inserted.id);
+    return jsonError(req, 'Failed to notify hosts, please try again', 500);
+  }
 
   return jsonSuccess(req, {
     bookingId: inserted.id,
