@@ -44,7 +44,7 @@ export function HostHowItWorks() {
           </h2>
         </motion.div>
 
-        <div className="relative mx-auto grid max-w-6xl gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:gap-4">
+        <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:gap-4">
           <div
             className="bg-border absolute left-[12.5%] right-[12.5%] top-8 hidden h-px lg:block"
             aria-hidden

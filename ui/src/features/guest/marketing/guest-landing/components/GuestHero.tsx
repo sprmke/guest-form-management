@@ -26,7 +26,7 @@ export function GuestHero() {
       </div>
 
       <div className="container relative mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)] lg:gap-12 xl:gap-16">
+        <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)] lg:gap-12 xl:gap-16">
           <div className="mx-auto w-full max-w-xl lg:max-w-none">
             <motion.div
               initial={{ opacity: 0, y: 16 }}

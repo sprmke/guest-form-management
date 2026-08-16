@@ -45,7 +45,7 @@ export function ContactPage() {
       />
 
       <MarketingPublicPageContent>
-        <ul className="grid gap-6 md:grid-cols-3">
+        <ul className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {contactCards.map(({ icon, title, body, href, action }) => (
             <li key={title}>
               <MarketingPublicIconCard
@@ -59,7 +59,7 @@ export function ContactPage() {
           ))}
         </ul>
 
-        <div className="border-border bg-muted/40 mt-10 grid gap-8 rounded-2xl border p-6 sm:grid-cols-2 sm:p-8">
+        <div className="border-border bg-muted/40 mt-10 grid grid-cols-1 gap-8 rounded-2xl border p-6 sm:grid-cols-2 sm:p-8">
           <div>
             <MarketingPublicSectionHeading title="Office" titleClassName="text-xl sm:text-xl" />
             <address className="text-muted-foreground mt-4 space-y-3 text-sm not-italic">

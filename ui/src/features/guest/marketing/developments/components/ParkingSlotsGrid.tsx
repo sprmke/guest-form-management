@@ -36,7 +36,7 @@ export function ParkingSlotsGrid({ entries, showPlacementSubtitle = true }: Park
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -4 }}
         transition={{ duration: 0.2 }}
-        className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
+        className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
       >
         {entries.map((entry, idx) => (
           <motion.div

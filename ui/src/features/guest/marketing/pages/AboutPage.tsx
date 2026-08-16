@@ -83,7 +83,7 @@ export function AboutPage() {
           className="mx-auto max-w-3xl"
         />
 
-        <ul className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {capabilities.map(({ icon, title, body }) => (
             <li key={title}>
               <MarketingPublicIconCard icon={icon} title={title} body={body} />
