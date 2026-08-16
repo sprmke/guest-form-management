@@ -9,7 +9,6 @@ import {
 
 import { useAdminLayoutIsFillMain } from '@/features/dashboard/bookings/components/AdminLayout';
 import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
-import { NotificationBell } from '@/features/dashboard/notifications/components/NotificationBell';
 import { SidebarTenantScope } from '@/features/dashboard/org/components/TenantSwitchers';
 import { SuperAdminSidebarScope } from '@/features/dashboard/super-admin/components/SuperAdminSidebarScope';
 
@@ -97,10 +96,7 @@ export const MobileBrandHero = forwardRef<HTMLElement, MobileBrandHeroProps>(
               <SidebarTenantScope collapsed={false} variant="onPrimary" />
             )}
           </div>
-          <div className="flex shrink-0 items-center gap-0.5">
-            {trailing}
-            {!superAdmin ? <NotificationBell onPrimary /> : null}
-          </div>
+          {trailing ? <div className="flex shrink-0 items-center gap-0.5">{trailing}</div> : null}
         </div>
 
         <div

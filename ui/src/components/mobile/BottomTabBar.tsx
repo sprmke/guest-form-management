@@ -14,7 +14,8 @@ export type BottomTabItem = {
   label: string;
   href?: string;
   Icon: ComponentType<{ className?: string; strokeWidth?: number }>;
-  badge?: boolean;
+  /** Dot when `true`; compact count when a positive number. */
+  badge?: boolean | number;
   /** When set, tab acts as a button (e.g. More) instead of a link. */
   onClick?: () => void;
 };
@@ -48,6 +49,7 @@ export function BottomTabBar({
   className,
   'aria-label': ariaLabel = 'Main',
 }: Props) {
+  const dense = items.length > 5;
   const { containerRef, setItemRef, bounds } = useSlidingActivePill(activeKey, [
     items.map((i) => i.key).join('\0'),
   ]);
@@ -65,7 +67,10 @@ export function BottomTabBar({
       <div className={mobileFloatingDockClassName}>
         <div
           ref={containerRef}
-          className="relative flex items-stretch justify-around gap-0.5 px-1.5 py-1"
+          className={cn(
+            'relative flex items-stretch justify-around py-1',
+            dense ? 'gap-0 px-1' : 'gap-0.5 px-1.5'
+          )}
           role="list"
         >
           {bounds ? (
@@ -84,6 +89,15 @@ export function BottomTabBar({
               active ? 'text-primary-foreground' : 'text-muted-foreground active:text-foreground'
             );
 
+            const badgeCount = typeof item.badge === 'number' ? item.badge : 0;
+            const showCount = badgeCount > 0;
+            const showDot = item.badge === true;
+            const itemAriaLabel = showCount
+              ? `${item.label}, ${badgeCount} unread`
+              : item.badge
+                ? `${item.label}, has updates`
+                : item.label;
+
             const content = (
               <>
                 <span className="relative inline-flex size-5 items-center justify-center">
@@ -95,7 +109,19 @@ export function BottomTabBar({
                     )}
                     aria-hidden
                   />
-                  {item.badge ? (
+                  {showCount ? (
+                    <span
+                      className={cn(
+                        'absolute -right-2 -top-1.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-0.5',
+                        'bg-destructive text-destructive-foreground text-[8px] font-semibold leading-none',
+                        'ring-2',
+                        active ? 'ring-primary' : 'ring-background'
+                      )}
+                      aria-hidden
+                    >
+                      {badgeCount > 99 ? '99+' : badgeCount}
+                    </span>
+                  ) : showDot ? (
                     <span
                       className={cn(
                         'absolute -right-0.5 -top-0.5 size-1.5 rounded-full',
@@ -108,7 +134,8 @@ export function BottomTabBar({
                 </span>
                 <span
                   className={cn(
-                    'w-full truncate text-center text-[10px] leading-none tracking-tight',
+                    'w-full truncate text-center leading-none tracking-tight',
+                    dense ? 'text-[9px]' : 'text-[10px]',
                     active ? 'font-semibold' : 'font-medium'
                   )}
                 >
@@ -126,7 +153,8 @@ export function BottomTabBar({
                   role="listitem"
                   onClick={item.onClick}
                   aria-current={active ? 'page' : undefined}
-                  aria-label={item.badge ? `${item.label}, has updates` : item.label}
+                  aria-label={itemAriaLabel}
+                  aria-expanded={item.onClick ? active : undefined}
                   className={sharedClass}
                 >
                   {content}
@@ -141,7 +169,7 @@ export function BottomTabBar({
                 to={item.href}
                 role="listitem"
                 aria-current={active ? 'page' : undefined}
-                aria-label={item.badge ? `${item.label}, has updates` : item.label}
+                aria-label={itemAriaLabel}
                 className={sharedClass}
                 onClick={() => scrollAdminViewToTop('auto')}
               >
