@@ -1,6 +1,5 @@
 import { scopedOrgFunctionsUrl } from '@/features/dashboard/org/lib/adminApiScope';
-
-import { supabase } from '@/lib/supabase/client';
+import { getSessionJwt } from '@/features/dashboard/org/lib/edgeClient';
 
 export type ChatBlock =
   | { type: 'text'; text: string }
@@ -30,7 +29,15 @@ export type ChatBlock =
       summary: string;
       details: Array<{ label: string; value: string }>;
       status: 'proposed' | 'confirmed' | 'executed' | 'denied' | 'expired';
+      isExternalSend?: boolean;
     };
+
+export type ChatAttachmentMeta = {
+  name: string;
+  mimeType: string;
+  size?: number;
+  path?: string;
+};
 
 export type PageContext = { propertyId?: string | null; bookingId?: string | null };
 
@@ -66,15 +73,8 @@ export type AiDashboardAssistantGlobalSettings = {
   updatedAt: string;
 };
 
-async function getAdminJwt(): Promise<string> {
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
-  if (!token) throw new Error('No active session — please sign in');
-  return token;
-}
-
 async function callAiAssistantFn<T>(url: string, init?: RequestInit): Promise<T> {
-  const jwt = await getAdminJwt();
+  const jwt = await getSessionJwt();
   const res = await fetch(url, {
     ...init,
     headers: {
@@ -108,6 +108,7 @@ export function sendChatMessage(input: {
   conversationId?: string | null;
   pageContext: PageContext;
   message: string;
+  attachments?: Array<{ name: string; mimeType: string; dataBase64: string }>;
 }): Promise<ChatTurnResponse> {
   return callAiAssistantFn<ChatTurnResponse>(`${baseUrl()}/dashboard-assistant-chat`, {
     method: 'POST',
@@ -182,6 +183,7 @@ export type AiAssistantMessageRow = {
   role: 'user' | 'assistant';
   content_text: string | null;
   blocks: ChatBlock[];
+  attachments?: ChatAttachmentMeta[];
   created_at: string;
 };
 
@@ -199,5 +201,14 @@ export function fetchAiAssistantConversationMessages(
 ): Promise<{ conversation: AiAssistantConversationSummary; messages: AiAssistantMessageRow[] }> {
   return callAiAssistantFn(
     `${baseUrl()}/dashboard-assistant-conversations?conversation_id=${encodeURIComponent(conversationId)}`
+  );
+}
+
+export function deleteAiAssistantConversation(
+  conversationId: string
+): Promise<{ deleted: boolean }> {
+  return callAiAssistantFn(
+    `${baseUrl()}/dashboard-assistant-conversations?conversation_id=${encodeURIComponent(conversationId)}`,
+    { method: 'DELETE' }
   );
 }
