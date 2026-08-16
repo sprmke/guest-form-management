@@ -1,0 +1,478 @@
+/**
+ * Meta Graph API client for inbox OAuth, webhooks, send, and backfill.
+ */
+
+import { decryptMetaInboxToken, encryptMetaInboxToken } from './metaInboxCrypto.ts';
+import {
+  META_GRAPH_BASE,
+  getMetaOAuthScopes,
+  META_WEBHOOK_SUBSCRIBED_FIELDS,
+  getMetaAppCredentials,
+  metaInboxOAuthRedirectUri,
+} from './metaInboxConfig.ts';
+import type { SocialChannelConnectionRow, SocialPlatform } from './socialInboxTypes.ts';
+import { upsertChannelConnection } from './socialInboxService.ts';
+
+/** Parse Meta Graph responses; empty bodies become `{}` instead of throwing. */
+export async function parseMetaGraphJson(res: Response): Promise<Record<string, unknown>> {
+  const text = await res.text();
+  if (!text.trim()) {
+    if (!res.ok) throw new Error(`Meta API error (${res.status})`);
+    return {};
+  }
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    throw new Error(`Meta API returned invalid JSON (${res.status})`);
+  }
+}
+
+export type MetaPageAccount = {
+  id: string;
+  name: string;
+  access_token: string;
+  picture?: { data?: { url?: string } };
+  instagram_business_account?: { id: string };
+};
+
+export async function exchangeMetaCodeForToken(code: string): Promise<{
+  access_token: string;
+  token_type?: string;
+  expires_in?: number;
+}> {
+  const { appId, appSecret } = getMetaAppCredentials();
+  const redirectUri = metaInboxOAuthRedirectUri();
+  const url = new URL(`${META_GRAPH_BASE}/oauth/access_token`);
+  url.searchParams.set('client_id', appId);
+  url.searchParams.set('client_secret', appSecret);
+  url.searchParams.set('redirect_uri', redirectUri);
+  url.searchParams.set('code', code);
+  const res = await fetch(url.toString());
+  const json = await parseMetaGraphJson(res);
+  if (!res.ok || !json.access_token) {
+    throw new Error(
+      (json.error as { message?: string } | undefined)?.message ?? 'Meta token exchange failed'
+    );
+  }
+  return json as { access_token: string; token_type?: string; expires_in?: number };
+}
+
+export async function exchangeMetaLongLivedUserToken(shortLivedToken: string): Promise<string> {
+  const { appId, appSecret } = getMetaAppCredentials();
+  const url = new URL(`${META_GRAPH_BASE}/oauth/access_token`);
+  url.searchParams.set('grant_type', 'fb_exchange_token');
+  url.searchParams.set('client_id', appId);
+  url.searchParams.set('client_secret', appSecret);
+  url.searchParams.set('fb_exchange_token', shortLivedToken);
+  const res = await fetch(url.toString());
+  const json = await parseMetaGraphJson(res);
+  if (!res.ok || !json.access_token) {
+    throw new Error(
+      (json.error as { message?: string } | undefined)?.message ??
+        'Meta long-lived token exchange failed'
+    );
+  }
+  return json.access_token as string;
+}
+
+export async function fetchMetaUserPages(userAccessToken: string): Promise<MetaPageAccount[]> {
+  const url = new URL(`${META_GRAPH_BASE}/me/accounts`);
+  url.searchParams.set('fields', 'id,name,access_token,picture,instagram_business_account');
+  url.searchParams.set('access_token', userAccessToken);
+  const res = await fetch(url.toString());
+  const json = await parseMetaGraphJson(res);
+  if (!res.ok) {
+    throw new Error(
+      (json.error as { message?: string } | undefined)?.message ?? 'Failed to fetch Meta pages'
+    );
+  }
+  return (json.data ?? []) as MetaPageAccount[];
+}
+
+export async function fetchMetaIgProfile(
+  igUserId: string,
+  pageAccessToken: string
+): Promise<{ username?: string; profile_picture_url?: string }> {
+  const url = new URL(`${META_GRAPH_BASE}/${igUserId}`);
+  url.searchParams.set('fields', 'username,profile_picture_url');
+  url.searchParams.set('access_token', pageAccessToken);
+  const res = await fetch(url.toString());
+  const json = await parseMetaGraphJson(res);
+  if (!res.ok) return {};
+  return json as { username?: string; profile_picture_url?: string };
+}
+
+export async function subscribeMetaPageWebhooks(
+  pageId: string,
+  pageAccessToken: string
+): Promise<void> {
+  const url = new URL(`${META_GRAPH_BASE}/${pageId}/subscribed_apps`);
+  url.searchParams.set('subscribed_fields', META_WEBHOOK_SUBSCRIBED_FIELDS);
+  url.searchParams.set('access_token', pageAccessToken);
+  const res = await fetch(url.toString(), { method: 'POST' });
+  const json = await parseMetaGraphJson(res);
+  if (!res.ok || json.success !== true) {
+    throw new Error(
+      (json.error as { message?: string } | undefined)?.message ??
+        'Failed to subscribe Meta webhooks'
+    );
+  }
+}
+
+export async function unsubscribeMetaPageWebhooks(
+  pageId: string,
+  pageAccessToken: string
+): Promise<void> {
+  const url = new URL(`${META_GRAPH_BASE}/${pageId}/subscribed_apps`);
+  url.searchParams.set('access_token', pageAccessToken);
+  await fetch(url.toString(), { method: 'DELETE' });
+}
+
+export async function getPageAccessToken(connection: SocialChannelConnectionRow): Promise<string> {
+  const enc = connection.encrypted_access_token;
+  if (!enc) throw new Error('Channel not connected');
+  return decryptMetaInboxToken(enc);
+}
+
+/** Resolve Messenger / Instagram DM sender display name from PSID. */
+export async function fetchMetaMessengerParticipantProfile(
+  psid: string,
+  pageAccessToken: string
+): Promise<{ name: string | null; profilePic: string | null }> {
+  try {
+    const url = new URL(`${META_GRAPH_BASE}/${psid}`);
+    url.searchParams.set('fields', 'first_name,last_name,name,profile_pic');
+    url.searchParams.set('access_token', pageAccessToken);
+    const res = await fetch(url.toString());
+    const json = await parseMetaGraphJson(res);
+    if (!res.ok) {
+      const msg = (json.error as { message?: string } | undefined)?.message;
+      console.warn('[fetchMetaMessengerParticipantProfile]', msg ?? res.status);
+      return { name: null, profilePic: null };
+    }
+    const fullName = typeof json.name === 'string' ? json.name.trim() : '';
+    const first = typeof json.first_name === 'string' ? json.first_name.trim() : '';
+    const last = typeof json.last_name === 'string' ? json.last_name.trim() : '';
+    const name = fullName || [first, last].filter(Boolean).join(' ').trim() || null;
+    const profilePic = typeof json.profile_pic === 'string' ? json.profile_pic : null;
+    return { name, profilePic };
+  } catch (e) {
+    console.warn('[fetchMetaMessengerParticipantProfile]', (e as Error).message);
+    return { name: null, profilePic: null };
+  }
+}
+
+export type PersistMetaPageScope = {
+  propertyId?: string | null;
+  parkingId?: string | null;
+};
+
+async function assertMetaPageAvailable(
+  pageId: string,
+  opts: { orgId: string; propertyId?: string | null; parkingId?: string | null }
+): Promise<void> {
+  const sb = (await import('./socialInboxService.ts')).socialInboxDb();
+  const { data, error } = await sb
+    .from('social_channel_connections')
+    .select('id, organization_id, property_id, parking_id')
+    .eq('meta_page_id', pageId)
+    .eq('platform', 'facebook')
+    .eq('status', 'connected')
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) return;
+
+  const sameOrg = data.organization_id === opts.orgId;
+  const sameProperty =
+    opts.propertyId != null && data.property_id === opts.propertyId && !data.parking_id;
+  const sameParking =
+    opts.parkingId != null && data.parking_id === opts.parkingId && !data.property_id;
+  const sameOrgDefault =
+    !opts.propertyId && !opts.parkingId && !data.property_id && !data.parking_id && sameOrg;
+
+  if (sameOrgDefault || sameProperty || sameParking) return;
+  throw new Error('This Facebook Page is already connected to another inbox');
+}
+
+export async function persistMetaPageConnection(
+  orgId: string,
+  page: MetaPageAccount,
+  scope: PersistMetaPageScope = {}
+): Promise<{ facebook: SocialChannelConnectionRow; instagram: SocialChannelConnectionRow | null }> {
+  const propertyId = scope.propertyId ?? null;
+  const parkingId = scope.parkingId ?? null;
+  if (propertyId && parkingId) {
+    throw new Error('Cannot set both property and parking scope on a Meta connection');
+  }
+
+  await assertMetaPageAvailable(page.id, { orgId, propertyId, parkingId });
+
+  const encrypted = await encryptMetaInboxToken(page.access_token);
+  const scopeFields = {
+    property_id: propertyId,
+    parking_id: parkingId,
+  };
+
+  const facebook = await upsertChannelConnection({
+    organization_id: orgId,
+    platform: 'facebook',
+    external_account_id: page.id,
+    display_name: page.name,
+    profile_image_url: page.picture?.data?.url ?? null,
+    encrypted_access_token: encrypted,
+    meta_page_id: page.id,
+    status: 'connected',
+    webhook_subscribed_at: null,
+    last_sync_at: null,
+    error_message: null,
+    ...scopeFields,
+  });
+
+  let instagram: SocialChannelConnectionRow | null = null;
+  const igId = page.instagram_business_account?.id;
+  if (igId) {
+    const igProfile = await fetchMetaIgProfile(igId, page.access_token);
+    instagram = await upsertChannelConnection({
+      organization_id: orgId,
+      platform: 'instagram',
+      external_account_id: igId,
+      display_name: igProfile.username ? `@${igProfile.username}` : 'Instagram',
+      profile_image_url: igProfile.profile_picture_url ?? null,
+      encrypted_access_token: encrypted,
+      meta_page_id: page.id,
+      meta_ig_user_id: igId,
+      status: 'connected',
+      webhook_subscribed_at: null,
+      last_sync_at: null,
+      error_message: null,
+      ...scopeFields,
+    });
+  }
+
+  const sb = (await import('./socialInboxService.ts')).socialInboxDb();
+  try {
+    await subscribeMetaPageWebhooks(page.id, page.access_token);
+    const now = new Date().toISOString();
+    await sb
+      .from('social_channel_connections')
+      .update({ webhook_subscribed_at: now, error_message: null, updated_at: now })
+      .eq('id', facebook.id);
+    if (instagram) {
+      await sb
+        .from('social_channel_connections')
+        .update({ webhook_subscribed_at: now, error_message: null, updated_at: now })
+        .eq('id', instagram.id);
+    }
+  } catch (e) {
+    const msg = (e as Error).message ?? 'Webhook subscribe failed';
+    console.error('[metaInboxGraph] webhook subscribe:', e);
+    const errText = `Webhook subscribe failed: ${msg}`;
+    await sb
+      .from('social_channel_connections')
+      .update({ error_message: errText, updated_at: new Date().toISOString() })
+      .eq('id', facebook.id);
+    if (instagram) {
+      await sb
+        .from('social_channel_connections')
+        .update({ error_message: errText, updated_at: new Date().toISOString() })
+        .eq('id', instagram.id);
+    }
+  }
+
+  return { facebook, instagram };
+}
+
+export async function sendMetaMessage(opts: {
+  pageId: string;
+  pageAccessToken: string;
+  recipientId: string;
+  text: string;
+  platform: SocialPlatform;
+  replyToMid?: string;
+  commentId?: string;
+}): Promise<{ message_id: string }> {
+  const url = new URL(`${META_GRAPH_BASE}/${opts.pageId}/messages`);
+  url.searchParams.set('access_token', opts.pageAccessToken);
+
+  let recipient: Record<string, string>;
+  if (opts.commentId) {
+    recipient = { comment_id: opts.commentId };
+  } else {
+    recipient = { id: opts.recipientId };
+  }
+
+  const body: Record<string, unknown> = {
+    recipient,
+    message: { text: opts.text },
+    messaging_type: 'RESPONSE',
+  };
+  if (opts.replyToMid) {
+    body.reply_to = { mid: opts.replyToMid };
+  }
+
+  const res = await fetch(url.toString(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.error?.message ?? 'Failed to send Meta message');
+  }
+  return { message_id: json.message_id as string };
+}
+
+export async function replyMetaPublicComment(opts: {
+  commentId: string;
+  pageAccessToken: string;
+  text: string;
+  platform: SocialPlatform;
+}): Promise<{ id: string }> {
+  const path =
+    opts.platform === 'instagram' ? `${opts.commentId}/replies` : `${opts.commentId}/comments`;
+  const url = new URL(`${META_GRAPH_BASE}/${path}`);
+  url.searchParams.set('access_token', opts.pageAccessToken);
+  const res = await fetch(url.toString(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: opts.text }),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.error?.message ?? 'Failed to reply to comment');
+  }
+  return { id: (json.id ?? json.message_id) as string };
+}
+
+/** Fetch attachment metadata for a single message (media-only rows from backfill). */
+export async function fetchMetaMessageAttachments(
+  messageId: string,
+  pageAccessToken: string
+): Promise<unknown[]> {
+  const url = new URL(`${META_GRAPH_BASE}/${messageId}`);
+  url.searchParams.set(
+    'fields',
+    'attachments{type,mime_type,name,image_data,video_data,file_url,payload}'
+  );
+  url.searchParams.set('access_token', pageAccessToken);
+  const res = await fetch(url);
+  const json = await parseMetaGraphJson(res);
+  if (!res.ok) {
+    const msg = (json.error as { message?: string } | undefined)?.message;
+    console.warn('[fetchMetaMessageAttachments]', messageId, msg ?? res.status);
+    return [];
+  }
+  const attachments = json.attachments as { data?: unknown[] } | undefined;
+  return attachments?.data ?? [];
+}
+
+export type MetaConversationItem = {
+  id: string;
+  updated_time?: string;
+  participants?: { data?: Array<{ id: string; name?: string; email?: string }> };
+  messages?: {
+    data?: Array<{
+      id: string;
+      message?: string;
+      created_time?: string;
+      from?: { id: string; name?: string };
+      attachments?: { data?: unknown[] };
+    }>;
+  };
+};
+
+const META_MESSAGE_FIELDS =
+  'id,message,created_time,from,attachments{type,mime_type,name,image_data,video_data,file_url,payload}';
+
+export function buildMetaConversationsUrl(
+  pageId: string,
+  pageAccessToken: string,
+  platform: 'messenger' | 'instagram',
+  opts?: { light?: boolean }
+): string {
+  const url = new URL(`${META_GRAPH_BASE}/${pageId}/conversations`);
+  url.searchParams.set('platform', platform);
+  const msgLimit = opts?.light ? 3 : 10;
+  const fields = `id,updated_time,participants,messages.limit(${msgLimit}){${META_MESSAGE_FIELDS}}`;
+  url.searchParams.set('fields', fields);
+  url.searchParams.set('limit', opts?.light ? '25' : '50');
+  url.searchParams.set('access_token', pageAccessToken);
+  return url.toString();
+}
+
+export async function fetchMetaConversationsPage(
+  pageId: string,
+  pageAccessToken: string,
+  platform: 'messenger' | 'instagram',
+  nextUrl?: string | null,
+  opts?: { light?: boolean }
+): Promise<{ conversations: MetaConversationItem[]; nextUrl: string | null }> {
+  const url = nextUrl ?? buildMetaConversationsUrl(pageId, pageAccessToken, platform, opts);
+  const res = await fetch(url);
+  const json = await parseMetaGraphJson(res);
+  if (!res.ok) {
+    const msg =
+      (json.error as { message?: string } | undefined)?.message ?? `Meta API error (${res.status})`;
+    throw new Error(msg);
+  }
+  const paging = json.paging as { next?: string } | undefined;
+  return {
+    conversations: (json.data ?? []) as MetaConversationItem[],
+    nextUrl: paging?.next ?? null,
+  };
+}
+
+export async function backfillMetaConversations(
+  pageId: string,
+  pageAccessToken: string,
+  platform: 'messenger' | 'instagram',
+  opts?: { maxPages?: number }
+): Promise<MetaConversationItem[]> {
+  const all: MetaConversationItem[] = [];
+  const maxPages = opts?.maxPages ?? Number.POSITIVE_INFINITY;
+  let pagesFetched = 0;
+  let nextUrl: string | null = null;
+
+  do {
+    const page = await fetchMetaConversationsPage(pageId, pageAccessToken, platform, nextUrl);
+    all.push(...page.conversations);
+    pagesFetched += 1;
+    nextUrl = pagesFetched < maxPages ? page.nextUrl : null;
+  } while (nextUrl);
+
+  return all;
+}
+
+export async function verifyMetaWebhookSignatureAsync(
+  rawBody: string,
+  signatureHeader: string | null
+): Promise<boolean> {
+  if (!signatureHeader?.startsWith('sha256=')) return false;
+  const { appSecret } = getMetaAppCredentials();
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(appSecret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(rawBody));
+  const hex = Array.from(new Uint8Array(sig))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+  const expected = signatureHeader.slice('sha256='.length);
+  return hex === expected;
+}
+
+export function buildMetaOAuthUrl(state: string): string {
+  const { appId } = getMetaAppCredentials();
+  const redirectUri = metaInboxOAuthRedirectUri();
+  const url = new URL(`https://www.facebook.com/v21.0/dialog/oauth`);
+  url.searchParams.set('client_id', appId);
+  url.searchParams.set('redirect_uri', redirectUri);
+  url.searchParams.set('state', state);
+  url.searchParams.set('scope', getMetaOAuthScopes());
+  url.searchParams.set('response_type', 'code');
+  return url.toString();
+}

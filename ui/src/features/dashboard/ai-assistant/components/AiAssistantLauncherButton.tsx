@@ -1,0 +1,47 @@
+import { Sparkles } from 'lucide-react';
+
+import { AiAssistantPanel } from '@/features/dashboard/ai-assistant/components/AiAssistantPanel';
+import { useAiAssistantAccess } from '@/features/dashboard/ai-assistant/hooks/useAiAssistantAccess';
+import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
+
+import { cn } from '@/lib/utils';
+
+type Props = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** When false, only the slide-over mounts (mobile tab is the trigger). */
+  showFab?: boolean;
+};
+
+/** Mounted once in AdminLayout — visible only when both kill-switch layers are on for this org. */
+export function AiAssistantLauncherButton({ open, onOpenChange, showFab = true }: Props) {
+  const propertyId = usePropertyIdParam();
+  const { accessible } = useAiAssistantAccess(propertyId);
+
+  if (!accessible) return null;
+
+  return (
+    <>
+      {showFab ? (
+        <button
+          type="button"
+          onClick={() => onOpenChange(true)}
+          aria-label="Open AI assistant"
+          aria-expanded={open}
+          aria-haspopup="dialog"
+          className={cn(
+            'gradient-primary text-primary-foreground shadow-elevated-lg',
+            'fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-5 z-40',
+            'hidden min-h-[52px] min-w-[52px] items-center justify-center rounded-full lg:flex',
+            'transition-transform hover:scale-105',
+            'focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+            'motion-reduce:transform-none motion-reduce:hover:scale-100'
+          )}
+        >
+          <Sparkles className="h-5 w-5" aria-hidden />
+        </button>
+      ) : null}
+      <AiAssistantPanel open={open} onOpenChange={onOpenChange} />
+    </>
+  );
+}

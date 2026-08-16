@@ -1,67 +1,72 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
+import { GuestFormData, GuestSubmission, transformFormToSubmission } from './types.ts';
+import { applyGafDefaultsToFormData } from './appSettings.ts';
+import { hasBlockedNightsInRange } from './propertyBlockedDates.ts';
 import {
-  GuestFormData,
-  GuestSubmission,
-  transformFormToSubmission,
-} from "./types.ts";
-import { applyGafDefaultsToFormData } from "./appSettings.ts";
-import {
+  pendingDocumentsClearCompletionsJsonbPatch,
   pendingDocumentsClearPatchForGuestEditRevert,
+  requestPdfClearPatchForChangedFormFields,
   shouldRevertGuestFieldEditsToPendingReview,
-} from "./statusMachine.ts";
-import { UploadService } from "./uploadService.ts";
-import {
-  assertAzureGuestPartyRules,
-  guestPartySlotsFromFormData,
-} from "./guestCounts.ts";
+} from './statusMachine.ts';
+import { UploadService } from './uploadService.ts';
+import { assertPropertyGuestPartyRules, guestPartySlotsFromFormData } from './guestCounts.ts';
+import { resolveGuestFormSettings } from './guestFormSettings.ts';
+import { createNotification } from './notificationService.ts';
+import { bookingNotificationMetadata } from './notificationEnrichment.ts';
+import { resolveOrganizationIdForParking } from './parkingScope.ts';
 import {
   formatDate,
   formatTime,
   DEFAULT_CHECK_IN_TIME,
   DEFAULT_CHECK_OUT_TIME,
   formatPublicUrl,
-} from "./utils.ts";
+} from './utils.ts';
+import {
+  applyAssetScopeFilter,
+  applyPropertyOrLegacySingletonFilter,
+  callRpcObject,
+  updateAssetScopedSingleton,
+  updatePropertyScopedSingleton,
+} from './supabaseQuery.ts';
 import {
   compareBookingsForListSort,
   manilaTodayIso,
   matchesDefaultBookingsListVisibility,
   passesListCheckInDateRangeFilter,
   type BookingsListSort,
-} from "./bookingsListSort.ts";
+} from './bookingsListSort.ts';
 
 export class DatabaseService {
   private static supabase = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
   );
 
   static async getRawData(bookingId: string) {
-    console.log("Fetching raw data for booking:", bookingId);
+    console.log('Fetching raw data for booking:', bookingId);
 
     try {
       const { data, error } = await this.supabase
-        .from("guest_submissions")
-        .select("*")
-        .eq("id", bookingId)
+        .from('guest_submissions')
+        .select('*')
+        .eq('id', bookingId)
         .single();
 
       // PGRST116 means no rows found - this is expected for new bookings
-      if (error && error.code === "PGRST116") {
-        console.log(
-          "No existing booking found (this is normal for new bookings)",
-        );
+      if (error && error.code === 'PGRST116') {
+        console.log('No existing booking found (this is normal for new bookings)');
         return null;
       }
 
       if (error) {
         // PGRST116 means "not found" - this is expected for new submissions
-        if (error.code === "PGRST116") {
-          console.log("Booking not found in database (new submission)");
+        if (error.code === 'PGRST116') {
+          console.log('Booking not found in database (new submission)');
           return null;
         }
 
-        console.error("Database error:", error);
-        throw new Error("Failed to fetch guest submission");
+        console.error('Database error:', error);
+        throw new Error('Failed to fetch guest submission');
       }
 
       if (!data) {
@@ -70,30 +75,30 @@ export class DatabaseService {
 
       return data;
     } catch (error) {
-      console.error("Error fetching raw data:", error);
+      console.error('Error fetching raw data:', error);
       throw error;
     }
   }
 
   static async getFormData(bookingId: string) {
-    console.log("Fetching form data for booking:", bookingId);
+    console.log('Fetching form data for booking:', bookingId);
 
     try {
       const { data, error } = await this.supabase
-        .from("guest_submissions")
-        .select("*")
-        .eq("id", bookingId)
+        .from('guest_submissions')
+        .select('*')
+        .eq('id', bookingId)
         .single();
 
       // PGRST116 means no rows found - return null for non-existent bookings
-      if (error && error.code === "PGRST116") {
-        console.log("No existing booking found");
+      if (error && error.code === 'PGRST116') {
+        console.log('No existing booking found');
         return null;
       }
 
       if (error) {
-        console.error("Database error:", error);
-        throw new Error("Failed to fetch guest submission");
+        console.error('Database error:', error);
+        throw new Error('Failed to fetch guest submission');
       }
 
       if (!data) {
@@ -103,82 +108,69 @@ export class DatabaseService {
       // Format dates and times
       const checkInDate = formatDate(data.check_in_date);
       const checkOutDate = formatDate(data.check_out_date);
-      const parkingCheckInDate =
-        formatDate(data.parking_check_in_date) || checkInDate;
-      const parkingCheckOutDate =
-        formatDate(data.parking_check_out_date) || checkOutDate;
+      const parkingCheckInDate = formatDate(data.parking_check_in_date) || checkInDate;
+      const parkingCheckOutDate = formatDate(data.parking_check_out_date) || checkOutDate;
       const parkingSameAsBookingDuration =
-        parkingCheckInDate === checkInDate &&
-        parkingCheckOutDate === checkOutDate;
+        parkingCheckInDate === checkInDate && parkingCheckOutDate === checkOutDate;
 
-      const checkInTime =
-        formatTime(data.check_in_time) || DEFAULT_CHECK_IN_TIME;
-      const checkOutTime =
-        formatTime(data.check_out_time) || DEFAULT_CHECK_OUT_TIME;
+      const checkInTime = formatTime(data.check_in_time) || DEFAULT_CHECK_IN_TIME;
+      const checkOutTime = formatTime(data.check_out_time) || DEFAULT_CHECK_OUT_TIME;
 
       // Transform the database record back to form data format
       const formData: GuestFormData = {
-        guestFacebookName: data.guest_facebook_name || "",
-        guestEmail: data.guest_email || "",
-        guestPhoneNumber: data.guest_phone_number || "",
-        guestAddress: data.guest_address || "",
+        guestFacebookName: data.guest_facebook_name || '',
+        guestEmail: data.guest_email || '',
+        guestPhoneNumber: data.guest_phone_number || '',
+        guestAddress: data.guest_address || '',
         checkInDate,
         checkInTime,
         checkOutDate,
         checkOutTime,
-        nationality: data.nationality || "",
+        nationality: data.nationality || '',
         numberOfAdults: data.number_of_adults || 1,
         numberOfChildren: data.number_of_children || 0,
-        primaryGuestName: data.primary_guest_name || "",
+        primaryGuestName: data.primary_guest_name || '',
         primaryGuestAge: data.primary_guest_age ?? 18,
-        guest2Name: data.guest2_name || "",
-        guest2Age: data.guest2_name?.trim()
-          ? (data.guest2_age ?? 18)
-          : undefined,
-        guest3Name: data.guest3_name || "",
-        guest3Age: data.guest3_name?.trim()
-          ? (data.guest3_age ?? 18)
-          : undefined,
-        guest4Name: data.guest4_name || "",
-        guest4Age: data.guest4_name?.trim()
-          ? (data.guest4_age ?? 18)
-          : undefined,
-        guest5Name: data.guest5_name || "",
-        guest5Age: data.guest5_name?.trim()
-          ? (data.guest5_age ?? 3)
-          : undefined,
-        guestSpecialRequests: data.guest_special_requests || "",
-        findUs: data.find_us || "Facebook",
-        findUsDetails: data.find_us_details || "",
-        bookingSource: data.booking_source || "Facebook",
+        guest2Name: data.guest2_name || '',
+        guest2Age: data.guest2_name?.trim() ? (data.guest2_age ?? 18) : undefined,
+        guest3Name: data.guest3_name || '',
+        guest3Age: data.guest3_name?.trim() ? (data.guest3_age ?? 18) : undefined,
+        guest4Name: data.guest4_name || '',
+        guest4Age: data.guest4_name?.trim() ? (data.guest4_age ?? 18) : undefined,
+        guest5Name: data.guest5_name || '',
+        guest5Age: data.guest5_name?.trim() ? (data.guest5_age ?? 3) : undefined,
+        guestSpecialRequests: data.guest_special_requests || '',
+        findUs: data.find_us || 'Facebook',
+        findUsDetails: data.find_us_details || '',
+        bookingSource: data.booking_source || 'Direct',
         guestRequestsSurpriseDecor: !!data.guest_requests_surprise_decor,
         needParking: data.need_parking || false,
         parkingSameAsBookingDuration,
         parkingCheckInDate,
         parkingCheckOutDate,
-        carPlateNumber: data.car_plate_number || "",
-        carBrandModel: data.car_brand_model || "",
-        carColor: data.car_color || "",
+        carPlateNumber: data.car_plate_number || '',
+        carBrandModel: data.car_brand_model || '',
+        carColor: data.car_color || '',
         hasPets: data.has_pets || false,
-        petName: data.pet_name || "",
-        petType: data.pet_type || "",
-        petBreed: data.pet_breed || "",
-        petAge: data.pet_age || "",
+        petName: data.pet_name || '',
+        petType: data.pet_type || '',
+        petBreed: data.pet_breed || '',
+        petAge: data.pet_age || '',
         petVaccinationDate: formatDate(data.pet_vaccination_date),
-        petVaccinationUrl: formatPublicUrl(data.pet_vaccination_url) || "",
-        petImageUrl: formatPublicUrl(data.pet_image_url) || "",
-        paymentReceiptUrl: formatPublicUrl(data.payment_receipt_url) || "",
-        validIdUrl: formatPublicUrl(data.valid_id_url) || "",
-        guest2ValidIdUrl: formatPublicUrl(data.guest2_valid_id_url) || "",
-        guest3ValidIdUrl: formatPublicUrl(data.guest3_valid_id_url) || "",
-        guest4ValidIdUrl: formatPublicUrl(data.guest4_valid_id_url) || "",
-        guest5ValidIdUrl: formatPublicUrl(data.guest5_valid_id_url) || "",
+        petVaccinationUrl: formatPublicUrl(data.pet_vaccination_url) || '',
+        petImageUrl: formatPublicUrl(data.pet_image_url) || '',
+        paymentReceiptUrl: formatPublicUrl(data.payment_receipt_url) || '',
+        validIdUrl: formatPublicUrl(data.valid_id_url) || '',
+        guest2ValidIdUrl: formatPublicUrl(data.guest2_valid_id_url) || '',
+        guest3ValidIdUrl: formatPublicUrl(data.guest3_valid_id_url) || '',
+        guest4ValidIdUrl: formatPublicUrl(data.guest4_valid_id_url) || '',
+        guest5ValidIdUrl: formatPublicUrl(data.guest5_valid_id_url) || '',
       };
 
-      console.log("Form data fetched successfully:", formData);
+      console.log('Form data fetched successfully:', formData);
       return formData;
     } catch (error) {
-      console.error("Error fetching form data:", error);
+      console.error('Error fetching form data:', error);
       throw error;
     }
   }
@@ -188,6 +180,9 @@ export class DatabaseService {
     saveToDatabase = true,
     saveImagesToStorage = true,
     revertReadyForCheckinToPendingReview = false,
+    propertyId?: string,
+    guestUserId?: string,
+    revertChangedFormFields: string[] = []
   ): Promise<{
     data: GuestFormData;
     submissionData: any;
@@ -197,29 +192,29 @@ export class DatabaseService {
     petImageUrl?: string;
   }> {
     try {
-      console.log("Processing form data...");
+      console.log('Processing form data...');
 
       // Get required form fields
-      const fullName = formData.get("primaryGuestName") as string;
-      const checkInDate = formData.get("checkInDate") as string;
-      const checkOutDate = formData.get("checkOutDate") as string;
-      const guestEmail = formData.get("guestEmail") as string;
-      const bookingId = formData.get("bookingId") as string;
+      const fullName = formData.get('primaryGuestName') as string;
+      const checkInDate = formData.get('checkInDate') as string;
+      const checkOutDate = formData.get('checkOutDate') as string;
+      const guestEmail = formData.get('guestEmail') as string;
+      const bookingId = formData.get('bookingId') as string;
 
       if (!fullName) {
-        throw new Error("Full Name is required");
+        throw new Error('Full Name is required');
       }
 
       if (!checkInDate || !checkOutDate) {
-        throw new Error("Check-in and check-out dates are required");
+        throw new Error('Check-in and check-out dates are required');
       }
 
       if (!guestEmail) {
-        throw new Error("Email is required");
+        throw new Error('Email is required');
       }
 
       if (!bookingId) {
-        throw new Error("Booking ID is required");
+        throw new Error('Booking ID is required');
       }
 
       // Format dates
@@ -227,28 +222,28 @@ export class DatabaseService {
       const formattedCheckOut = formatDate(checkOutDate);
 
       if (!formattedCheckIn || !formattedCheckOut) {
-        throw new Error("Invalid check-in or check-out date format");
+        throw new Error('Invalid check-in or check-out date format');
       }
 
       // Check if booking already exists using the booking ID (only if saving to database or storage)
       let existingBooking = null;
       if (saveToDatabase || saveImagesToStorage) {
         const { data, error: fetchError } = await this.supabase
-          .from("guest_submissions")
-          .select("*")
-          .eq("id", bookingId)
+          .from('guest_submissions')
+          .select('*')
+          .eq('id', bookingId)
           .single();
 
-        if (fetchError && fetchError.code !== "PGRST116") {
+        if (fetchError && fetchError.code !== 'PGRST116') {
           // PGRST116 is "not found" error
-          console.error("Error fetching existing booking:", fetchError);
-          throw new Error("Failed to check for existing booking");
+          console.error('Error fetching existing booking:', fetchError);
+          throw new Error('Failed to check for existing booking');
         }
 
         existingBooking = data;
       } else {
         console.log(
-          "⚠️ Skipping existing booking check (both saveToDatabase and saveImagesToStorage are false)",
+          '⚠️ Skipping existing booking check (both saveToDatabase and saveImagesToStorage are false)'
         );
       }
 
@@ -258,138 +253,129 @@ export class DatabaseService {
       let paymentReceiptUrl: string;
 
       // Get the pet vaccination file and pet image file
-      const petVaccination = formData.get("petVaccination") as File;
-      const petImage = formData.get("petImage") as File;
-      const hasPets = formData.get("hasPets") === "true";
+      const petVaccination = formData.get('petVaccination') as File;
+      const petImage = formData.get('petImage') as File;
+      const hasPets = formData.get('hasPets') === 'true';
 
       if (hasPets) {
         // Handle pet vaccination upload
         if (petVaccination) {
-          const petVaccinationFileName = formData.get(
-            "petVaccinationFileName",
-          ) as string;
+          const petVaccinationFileName = formData.get('petVaccinationFileName') as string;
           const prefixedFileName = petVaccinationFileName;
           if (saveImagesToStorage) {
             petVaccinationUrl = await UploadService.uploadPetVaccination(
               petVaccination,
               prefixedFileName,
+              propertyId
             );
           } else {
-            console.log(
-              "⚠️ Skipping pet vaccination upload (saveImagesToStorage=false)",
-            );
-            petVaccinationUrl = "dev-mode-skipped";
+            console.log('⚠️ Skipping pet vaccination upload (saveImagesToStorage=false)');
+            petVaccinationUrl = 'dev-mode-skipped';
           }
         } else if (existingBooking) {
           petVaccinationUrl = existingBooking.pet_vaccination_url;
         } else if (!saveImagesToStorage) {
-          petVaccinationUrl = "dev-mode-skipped";
+          petVaccinationUrl = 'dev-mode-skipped';
         } else {
-          throw new Error(
-            "Pet vaccination record is required when bringing pets",
-          );
+          throw new Error('Pet vaccination record is required when bringing pets');
         }
 
         // Handle pet image upload
         if (petImage) {
-          const petImageFileName = formData.get("petImageFileName") as string;
+          const petImageFileName = formData.get('petImageFileName') as string;
           const prefixedFileName = petImageFileName;
           if (saveImagesToStorage) {
             petImageUrl = await UploadService.uploadPetImage(
               petImage,
               prefixedFileName,
+              propertyId
             );
           } else {
-            console.log(
-              "⚠️ Skipping pet image upload (saveImagesToStorage=false)",
-            );
-            petImageUrl = "dev-mode-skipped";
+            console.log('⚠️ Skipping pet image upload (saveImagesToStorage=false)');
+            petImageUrl = 'dev-mode-skipped';
           }
         } else if (existingBooking) {
           petImageUrl = existingBooking.pet_image_url;
         } else if (!saveImagesToStorage) {
-          petImageUrl = "dev-mode-skipped";
+          petImageUrl = 'dev-mode-skipped';
         } else {
-          throw new Error("Pet image is required when bringing pets");
+          throw new Error('Pet image is required when bringing pets');
         }
       }
 
       // Get the downpayment receipt file (FormData: paymentReceipt → payment_receipt_url)
       // Airbnb bookings skip the payment step — receipt is not required.
-      const isAirbnbSource =
-        (formData.get("bookingSource") as string)?.trim() === "Airbnb";
-      const paymentReceipt = formData.get("paymentReceipt") as File;
+      const isAirbnbSource = (formData.get('bookingSource') as string)?.trim() === 'Airbnb';
+      const paymentReceipt = formData.get('paymentReceipt') as File;
       if (paymentReceipt) {
-        const paymentReceiptFileName = formData.get(
-          "paymentReceiptFileName",
-        ) as string;
+        const paymentReceiptFileName = formData.get('paymentReceiptFileName') as string;
         const prefixedFileName = paymentReceiptFileName;
         if (saveImagesToStorage) {
           paymentReceiptUrl = await UploadService.uploadPaymentReceipt(
             paymentReceipt,
             prefixedFileName,
+            propertyId
           );
         } else {
-          console.log(
-            "⚠️ Skipping downpayment receipt upload (saveImagesToStorage=false)",
-          );
-          paymentReceiptUrl = "dev-mode-skipped";
+          console.log('⚠️ Skipping downpayment receipt upload (saveImagesToStorage=false)');
+          paymentReceiptUrl = 'dev-mode-skipped';
         }
       } else if (existingBooking) {
         paymentReceiptUrl = existingBooking.payment_receipt_url;
       } else if (!saveImagesToStorage) {
-        paymentReceiptUrl = "dev-mode-skipped";
+        paymentReceiptUrl = 'dev-mode-skipped';
       } else if (isAirbnbSource) {
-        paymentReceiptUrl = "";
+        paymentReceiptUrl = '';
       } else {
-        throw new Error("Downpayment receipt is required");
+        throw new Error('Downpayment receipt is required');
       }
 
       // Get the valid ID files (primary + additional guests)
-      const primaryGuestAge = Number(formData.get("primaryGuestAge") || 0);
+      const primaryGuestAge = Number(formData.get('primaryGuestAge') || 0);
       if (primaryGuestAge < 18) {
-        throw new Error("Primary guest must be 18 years or older");
+        throw new Error('Primary guest must be 18 years or older');
       }
 
-      const guest2Age = Number(formData.get("guest2Age") || 0);
-      const guest3Age = Number(formData.get("guest3Age") || 0);
-      const guest4Age = Number(formData.get("guest4Age") || 0);
-      const guest5Age = Number(formData.get("guest5Age") || 0);
-      const primaryGuestName =
-        (formData.get("primaryGuestName") as string)?.trim() || "";
-      const guest2Name = (formData.get("guest2Name") as string)?.trim() || "";
-      const guest3Name = (formData.get("guest3Name") as string)?.trim() || "";
-      const guest4Name = (formData.get("guest4Name") as string)?.trim() || "";
-      const guest5Name = (formData.get("guest5Name") as string)?.trim() || "";
+      const guest2Age = Number(formData.get('guest2Age') || 0);
+      const guest3Age = Number(formData.get('guest3Age') || 0);
+      const guest4Age = Number(formData.get('guest4Age') || 0);
+      const guest5Age = Number(formData.get('guest5Age') || 0);
+      const primaryGuestName = (formData.get('primaryGuestName') as string)?.trim() || '';
+      const guest2Name = (formData.get('guest2Name') as string)?.trim() || '';
+      const guest3Name = (formData.get('guest3Name') as string)?.trim() || '';
+      const guest4Name = (formData.get('guest4Name') as string)?.trim() || '';
+      const guest5Name = (formData.get('guest5Name') as string)?.trim() || '';
 
       const partySlots = guestPartySlotsFromFormData(formData);
-      assertAzureGuestPartyRules(partySlots);
+      const guestFormSettings = await resolveGuestFormSettings(propertyId);
+      assertPropertyGuestPartyRules(partySlots, {
+        maxAdults: guestFormSettings.maxAdults,
+        maxChildren: guestFormSettings.maxChildren,
+      });
 
       const uploadValidIdIfPresent = async (
         field: string,
         fileNameField: string,
-        required: boolean,
+        required: boolean
       ): Promise<string | undefined> => {
         const file = formData.get(field) as File;
         if (file && file.size > 0) {
           const prefixedFileName = formData.get(fileNameField) as string;
           if (saveImagesToStorage) {
-            return await UploadService.uploadValidId(file, prefixedFileName);
+            return await UploadService.uploadValidId(file, prefixedFileName, propertyId);
           }
-          console.log(
-            `⚠️ Skipping ${field} upload (saveImagesToStorage=false)`,
-          );
-          return "dev-mode-skipped";
+          console.log(`⚠️ Skipping ${field} upload (saveImagesToStorage=false)`);
+          return 'dev-mode-skipped';
         }
         if (existingBooking) {
           const dbField =
-            field === "validId"
-              ? "valid_id_url"
-              : `${field.replace("ValidId", "_valid_id_url").replace("guest", "guest")}`;
+            field === 'validId'
+              ? 'valid_id_url'
+              : `${field.replace('ValidId', '_valid_id_url').replace('guest', 'guest')}`;
           return existingBooking[dbField];
         }
         if (!saveImagesToStorage) {
-          return required ? "dev-mode-skipped" : undefined;
+          return required ? 'dev-mode-skipped' : undefined;
         }
         if (required) {
           throw new Error(`${field} is required`);
@@ -397,53 +383,35 @@ export class DatabaseService {
         return undefined;
       };
 
-      const validIdUrl =
-        (await uploadValidIdIfPresent("validId", "validIdFileName", true)) ||
-        "";
+      const validIdUrl = (await uploadValidIdIfPresent('validId', 'validIdFileName', true)) || '';
       const guest2ValidIdUrl =
         guest2Age >= 18
-          ? await uploadValidIdIfPresent(
-              "guest2ValidId",
-              "guest2ValidIdFileName",
-              true,
-            )
+          ? await uploadValidIdIfPresent('guest2ValidId', 'guest2ValidIdFileName', true)
           : undefined;
       const guest3ValidIdUrl =
         guest3Age >= 18
-          ? await uploadValidIdIfPresent(
-              "guest3ValidId",
-              "guest3ValidIdFileName",
-              true,
-            )
+          ? await uploadValidIdIfPresent('guest3ValidId', 'guest3ValidIdFileName', true)
           : undefined;
       const guest4ValidIdUrl =
         guest4Age >= 18
-          ? await uploadValidIdIfPresent(
-              "guest4ValidId",
-              "guest4ValidIdFileName",
-              true,
-            )
+          ? await uploadValidIdIfPresent('guest4ValidId', 'guest4ValidIdFileName', true)
           : undefined;
       const guest5ValidIdUrl =
         guest5Age >= 18
-          ? await uploadValidIdIfPresent(
-              "guest5ValidId",
-              "guest5ValidIdFileName",
-              true,
-            )
+          ? await uploadValidIdIfPresent('guest5ValidId', 'guest5ValidIdFileName', true)
           : undefined;
 
       // Convert form data to an object
       const formDataObj: Partial<GuestFormData> = {};
       const excludedFormFields = new Set([
-        "paymentReceipt",
-        "validId",
-        "guest2ValidId",
-        "guest3ValidId",
-        "guest4ValidId",
-        "guest5ValidId",
-        "petVaccination",
-        "petImage",
+        'paymentReceipt',
+        'validId',
+        'guest2ValidId',
+        'guest3ValidId',
+        'guest4ValidId',
+        'guest5ValidId',
+        'petVaccination',
+        'petImage',
       ]);
       formData.forEach((value, key) => {
         if (!excludedFormFields.has(key)) {
@@ -456,17 +424,17 @@ export class DatabaseService {
         ...(formDataObj as GuestFormData),
       };
 
-      const dataWithGafDefaults = await applyGafDefaultsToFormData(data);
+      const dataWithGafDefaults = await applyGafDefaultsToFormData(data, propertyId);
 
-      console.log("Form data processed successfully");
+      console.log('Form data processed successfully');
 
       // Transform data for database — Airbnb bookings may have no receipt
       if (!paymentReceiptUrl && !isAirbnbSource) {
-        throw new Error("Failed to upload downpayment receipt");
+        throw new Error('Failed to upload downpayment receipt');
       }
 
       if (!validIdUrl) {
-        throw new Error("Failed to upload valid ID");
+        throw new Error('Failed to upload valid ID');
       }
 
       const dbData = transformFormToSubmission(
@@ -480,8 +448,16 @@ export class DatabaseService {
           guest3ValidIdUrl,
           guest4ValidIdUrl,
           guest5ValidIdUrl,
-        },
+        }
       );
+
+      if (propertyId) {
+        (dbData as Record<string, unknown>).property_id = propertyId;
+      }
+
+      if (guestUserId) {
+        (dbData as Record<string, unknown>).guest_user_id = guestUserId;
+      }
 
       // Save or update in database using the booking ID
       let submissionData;
@@ -492,11 +468,13 @@ export class DatabaseService {
             revertReadyForCheckinToPendingReview &&
             shouldRevertGuestFieldEditsToPendingReview(existingBooking.status)
           ) {
-            Object.assign(
-              patch,
-              pendingDocumentsClearPatchForGuestEditRevert(),
-            );
-            patch.status = "PENDING_REVIEW";
+            Object.assign(patch, pendingDocumentsClearPatchForGuestEditRevert());
+            Object.assign(patch, requestPdfClearPatchForChangedFormFields(revertChangedFormFields));
+            (patch as Record<string, unknown>).document_requirement_completions =
+              pendingDocumentsClearCompletionsJsonbPatch(
+                existingBooking.document_requirement_completions
+              );
+            patch.status = 'PENDING_REVIEW';
             patch.status_updated_at = new Date().toISOString();
           }
           submissionData = await this.updateGuestSubmission(bookingId, patch);
@@ -507,7 +485,7 @@ export class DatabaseService {
           });
         }
       } else {
-        console.log("⚠️ Skipping database save (saveToDatabase=false)");
+        console.log('⚠️ Skipping database save (saveToDatabase=false)');
         // Return mock data for development
         submissionData = {
           id: bookingId,
@@ -525,45 +503,45 @@ export class DatabaseService {
         paymentReceiptUrl: formatPublicUrl(paymentReceiptUrl),
       };
     } catch (error) {
-      console.error("Error processing form data:", error);
-      throw new Error("Failed to process form data: " + error.message);
+      console.error('Error processing form data:', error);
+      throw new Error('Failed to process form data: ' + error.message);
     }
   }
 
   private static async saveGuestSubmission(formData: any) {
-    console.log("Saving new submission to database...");
+    console.log('Saving new submission to database...');
 
     const { data, error } = await this.supabase
-      .from("guest_submissions")
+      .from('guest_submissions')
       .insert([formData])
       .select()
       .single();
 
     if (error) {
-      console.error("Database error:", error);
-      throw new Error("Failed to save guest submission");
+      console.error('Database error:', error);
+      throw new Error('Failed to save guest submission');
     }
 
-    console.log("Database submission successful");
+    console.log('Database submission successful');
     return data;
   }
 
   private static async updateGuestSubmission(bookingId: string, formData: any) {
-    console.log("Updating existing submission in database...");
+    console.log('Updating existing submission in database...');
 
     const { data, error } = await this.supabase
-      .from("guest_submissions")
+      .from('guest_submissions')
       .update(formData)
-      .eq("id", bookingId)
+      .eq('id', bookingId)
       .select()
       .single();
 
     if (error) {
-      console.error("Database error:", error);
-      throw new Error("Failed to update guest submission");
+      console.error('Database error:', error);
+      throw new Error('Failed to update guest submission');
     }
 
-    console.log("Database update successful");
+    console.log('Database update successful');
     return data;
   }
 
@@ -575,14 +553,96 @@ export class DatabaseService {
    */
   static async getBookingById(bookingId: string) {
     const { data, error } = await this.supabase
-      .from("guest_submissions")
-      .select("*")
-      .eq("id", bookingId)
+      .from('guest_submissions')
+      .select('*')
+      .eq('id', bookingId)
       .single();
 
     if (error) {
-      if (error.code === "PGRST116") return null;
+      if (error.code === 'PGRST116') return null;
       throw new Error(`Failed to fetch booking ${bookingId}: ${error.message}`);
+    }
+
+    return data;
+  }
+
+  /** Insert a parking-only reservation row (no property stay workflow). */
+  static async createParkingBooking(input: {
+    parkingId: string;
+    primaryGuestName: string;
+    guestEmail: string;
+    guestPhoneNumber: string;
+    checkInDate: string;
+    checkOutDate: string;
+    numberOfNights: number;
+    carPlateNumber: string;
+    carBrandModel?: string | null;
+    carColor?: string | null;
+    parkingLabel: string;
+    residenceName?: string | null;
+  }) {
+    const now = new Date().toISOString();
+    const guestName = input.primaryGuestName.trim();
+    const locationLabel =
+      [input.residenceName, input.parkingLabel].filter(Boolean).join(' · ') || input.parkingLabel;
+
+    const row = {
+      parking_id: input.parkingId,
+      property_id: null,
+      status: 'PENDING_REVIEW',
+      status_updated_at: now,
+      guest_facebook_name: guestName,
+      primary_guest_name: guestName,
+      guest_email: input.guestEmail.trim(),
+      guest_phone_number: input.guestPhoneNumber.trim(),
+      guest_address: locationLabel,
+      check_in_date: input.checkInDate,
+      check_out_date: input.checkOutDate,
+      parking_check_in_date: input.checkInDate,
+      parking_check_out_date: input.checkOutDate,
+      number_of_nights: input.numberOfNights,
+      number_of_adults: 1,
+      number_of_children: 0,
+      need_parking: true,
+      car_plate_number: input.carPlateNumber.trim(),
+      car_brand_model: input.carBrandModel?.trim() || null,
+      car_color: input.carColor?.trim() || null,
+      has_pets: false,
+      find_us: 'Parking',
+      booking_source: 'Parking',
+      payment_receipt_url: 'parking-only',
+      valid_id_url: null,
+      unit_owner: input.parkingLabel,
+      tower_and_unit_number: locationLabel,
+      owner_onsite_contact_person: 'N/A',
+      owner_contact_number: 'N/A',
+    };
+
+    const { data, error } = await this.supabase
+      .from('guest_submissions')
+      .insert(row)
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to create parking booking: ${error.message}`);
+
+    try {
+      const organizationId = await resolveOrganizationIdForParking(input.parkingId);
+      await createNotification({
+        organizationId,
+        parkingId: input.parkingId,
+        type: 'booking_pending_review',
+        title: 'New booking submitted',
+        body: `${guestName} submitted a new parking booking request.`,
+        bookingId: data.id,
+        metadata: bookingNotificationMetadata(data),
+        dedupeKey: `${data.id}:booking_pending_review`,
+      });
+    } catch (notifErr) {
+      console.error(
+        '[databaseService] Could not create parking notification (non-fatal):',
+        notifErr
+      );
     }
 
     return data;
@@ -594,18 +654,17 @@ export class DatabaseService {
    */
   static async updateBookingStatus(bookingId: string, status: string) {
     const { data, error } = await this.supabase
-      .from("guest_submissions")
+      .from('guest_submissions')
       .update({
         status,
         status_updated_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq("id", bookingId)
+      .eq('id', bookingId)
       .select()
       .single();
 
-    if (error)
-      throw new Error(`Failed to update booking status: ${error.message}`);
+    if (error) throw new Error(`Failed to update booking status: ${error.message}`);
     return data;
   }
 
@@ -614,19 +673,15 @@ export class DatabaseService {
    * SD refund fields, approved PDF URLs, etc.).  Called by the orchestrator after
    * validating the transition.
    */
-  static async setWorkflowFields(
-    bookingId: string,
-    fields: Record<string, unknown>,
-  ) {
+  static async setWorkflowFields(bookingId: string, fields: Record<string, unknown>) {
     const { data, error } = await this.supabase
-      .from("guest_submissions")
+      .from('guest_submissions')
       .update({ ...fields, updated_at: new Date().toISOString() })
-      .eq("id", bookingId)
+      .eq('id', bookingId)
       .select()
       .single();
 
-    if (error)
-      throw new Error(`Failed to set workflow fields: ${error.message}`);
+    if (error) throw new Error(`Failed to set workflow fields: ${error.message}`);
     return data;
   }
 
@@ -642,6 +697,16 @@ export class DatabaseService {
    * for admin pages with ≤1000 active rows).
    */
   static async listBookings(params: {
+    propertyId?: string;
+    propertyIds?: string[];
+    parkingId?: string;
+    parkingIds?: string[];
+    /** Org-wide union: property stays OR parking reservations. */
+    orgPropertyIds?: string[];
+    orgParkingIds?: string[];
+    includePropertyMeta?: boolean;
+    includeParkingMeta?: boolean;
+    bookingKind?: 'property' | 'parking' | null;
     q?: string;
     status?: string[];
     from?: string | null; // YYYY-MM-DD
@@ -649,24 +714,33 @@ export class DatabaseService {
     hasPets?: boolean | null;
     needParking?: boolean | null;
     sort?:
-      | "status_priority:asc"
-      | "check_in_date:asc"
-      | "check_in_date:desc"
-      | "created_at:asc"
-      | "created_at:desc";
+      | 'status_priority:asc'
+      | 'check_in_date:asc'
+      | 'check_in_date:desc'
+      | 'created_at:asc'
+      | 'created_at:desc';
     page?: number;
     limit?: number;
     /** When true, include COMPLETED rows (cancelled stays hidden unless status filter). */
     showCompletedBookings?: boolean;
   }) {
     const {
-      q = "",
+      propertyId,
+      propertyIds,
+      parkingId,
+      parkingIds,
+      orgPropertyIds,
+      orgParkingIds,
+      includePropertyMeta = false,
+      includeParkingMeta = false,
+      bookingKind = null,
+      q = '',
       status = [],
       from = null,
       to = null,
       hasPets = null,
       needParking = null,
-      sort = "status_priority:asc",
+      sort = 'status_priority:asc',
       page = 1,
       limit = 31,
       showCompletedBookings = false,
@@ -674,9 +748,54 @@ export class DatabaseService {
 
     const todayManila = manilaTodayIso();
 
-    let request = this.supabase
-      .from("guest_submissions")
-      .select("*", { count: "exact" });
+    let request = this.supabase.from('guest_submissions').select('*', { count: 'exact' });
+
+    if (parkingId) {
+      // Broadcast pre-claim requests still have parking_id = null — surface this
+      // parking's pending candidacy rows alongside its already-claimed bookings.
+      const { data: pendingBroadcasts } = await this.supabase
+        .from('parking_booking_broadcasts')
+        .select('booking_id')
+        .eq('parking_id', parkingId)
+        .eq('response', 'pending');
+      const pendingBookingIds = (pendingBroadcasts ?? []).map((row) => String(row.booking_id));
+      request =
+        pendingBookingIds.length > 0
+          ? request.or(`parking_id.eq.${parkingId},id.in.(${pendingBookingIds.join(',')})`)
+          : request.eq('parking_id', parkingId);
+    } else if (propertyId) {
+      request = request.eq('property_id', propertyId);
+    } else if (propertyIds) {
+      if (propertyIds.length === 0) {
+        return { rows: [], total: 0 };
+      }
+      request = request.in('property_id', propertyIds);
+    } else if (parkingIds) {
+      if (parkingIds.length === 0) {
+        return { rows: [], total: 0 };
+      }
+      request = request.in('parking_id', parkingIds);
+    } else if (orgPropertyIds || orgParkingIds) {
+      const propIds = orgPropertyIds ?? [];
+      const parkIds = orgParkingIds ?? [];
+      if (propIds.length === 0 && parkIds.length === 0) {
+        return { rows: [], total: 0 };
+      }
+      const orParts: string[] = [];
+      if (propIds.length > 0) {
+        orParts.push(`property_id.in.(${propIds.join(',')})`);
+      }
+      if (parkIds.length > 0) {
+        orParts.push(`parking_id.in.(${parkIds.join(',')})`);
+      }
+      request = request.or(orParts.join(','));
+    }
+
+    if (bookingKind === 'property') {
+      request = request.not('property_id', 'is', null);
+    } else if (bookingKind === 'parking') {
+      request = request.not('parking_id', 'is', null);
+    }
 
     // --- Filters ---
     // Free-text search now spans the full guest record:
@@ -713,53 +832,147 @@ export class DatabaseService {
           // Free-text notes
           `guest_special_requests.ilike.${needle}`,
           `find_us_details.ilike.${needle}`,
-        ].join(","),
+        ].join(',')
       );
     }
 
     if (status.length > 0) {
-      request = request.in("status", status);
+      request = request.in('status', status);
     }
 
-    if (hasPets === true) request = request.eq("has_pets", true);
-    if (hasPets === false) request = request.eq("has_pets", false);
+    if (hasPets === true) request = request.eq('has_pets', true);
+    if (hasPets === false) request = request.eq('has_pets', false);
 
-    if (needParking === true) request = request.eq("need_parking", true);
-    if (needParking === false) request = request.eq("need_parking", false);
+    if (needParking === true) request = request.eq('need_parking', true);
+    if (needParking === false) request = request.eq('need_parking', false);
 
     // Fetch all matching rows first (required for MM-DD-YYYY client-side sort)
     // Then paginate in memory. This is acceptable for admin (≤ a few thousand rows).
-    const {
-      data: allData,
-      error,
-      count,
-    } = await request.order("created_at", { ascending: false });
+    const { data: allData, error, count } = await request.order('created_at', { ascending: false });
 
     if (error) throw new Error(`listBookings query failed: ${error.message}`);
 
     let rows = (allData ?? []) as any[];
 
-    // Date-range filter — PENDING_REVIEW always included (see passesListCheckInDateRangeFilter)
+    // Check-in date-range filter (all statuses)
     if (from || to) {
       rows = rows.filter((r) => passesListCheckInDateRangeFilter(r, from, to));
     }
 
     // Default list: hide cancelled + completed unless toggle is on
-    rows = rows.filter((r) =>
-      matchesDefaultBookingsListVisibility(r, showCompletedBookings),
-    );
+    rows = rows.filter((r) => matchesDefaultBookingsListVisibility(r, showCompletedBookings));
 
     const listSort = sort as BookingsListSort;
-    rows.sort((a, b) =>
-      compareBookingsForListSort(a, b, listSort, todayManila),
-    );
+    rows.sort((a, b) => compareBookingsForListSort(a, b, listSort, todayManila));
 
     // Paginate
     const total = rows.length;
     const from_idx = (page - 1) * limit;
-    const paged = rows.slice(from_idx, from_idx + limit);
+    let paged = rows.slice(from_idx, from_idx + limit);
+
+    if (includePropertyMeta && paged.length > 0) {
+      paged = await this.enrichBookingsWithPropertyMeta(paged);
+    }
+    if (includeParkingMeta && paged.length > 0) {
+      paged = await this.enrichBookingsWithParkingMeta(paged, parkingId);
+    }
+
+    paged = paged.map((row) => ({
+      ...row,
+      // A pre-claim broadcast row (parking_id null) scoped by parkingId is still
+      // parking-kind — it just hasn't been claimed by this parking yet.
+      booking_kind: row.parking_id || parkingId ? 'parking' : 'property',
+    }));
 
     return { rows: paged, total };
+  }
+
+  /**
+   * `scopedParkingId` is set when the list call is scoped to a single parking — its
+   * meta backfills rows with no `parking_id` of their own (pre-claim broadcast rows).
+   */
+  private static async enrichBookingsWithParkingMeta(
+    rows: Record<string, unknown>[],
+    scopedParkingId?: string
+  ) {
+    const ids = [
+      ...new Set(
+        rows
+          .map((row) => row.parking_id)
+          .filter((id): id is string => typeof id === 'string' && id.length > 0)
+      ),
+    ];
+    if (scopedParkingId) ids.push(scopedParkingId);
+    if (ids.length === 0) return rows;
+
+    const { data: parkingRows, error } = await this.supabase
+      .from('parkings')
+      .select('id, name, slug')
+      .in('id', ids);
+    if (error) {
+      console.warn('[DatabaseService] enrichBookingsWithParkingMeta failed:', error.message);
+      return rows;
+    }
+
+    const byId = new Map(
+      (parkingRows ?? []).map((row) => [
+        String(row.id),
+        {
+          name: typeof row.name === 'string' ? row.name : 'Parking',
+          slug: typeof row.slug === 'string' ? row.slug : '',
+        },
+      ])
+    );
+
+    return rows.map((row) => {
+      const parkingId = typeof row.parking_id === 'string' ? row.parking_id : scopedParkingId;
+      const meta = parkingId ? byId.get(parkingId) : undefined;
+      return {
+        ...row,
+        parking_name: meta?.name ?? null,
+        parking_slug: meta?.slug ?? null,
+      };
+    });
+  }
+
+  private static async enrichBookingsWithPropertyMeta(rows: Record<string, unknown>[]) {
+    const ids = [
+      ...new Set(
+        rows
+          .map((row) => row.property_id)
+          .filter((id): id is string => typeof id === 'string' && id.length > 0)
+      ),
+    ];
+    if (ids.length === 0) return rows;
+
+    const { data: propertyRows, error } = await this.supabase
+      .from('properties')
+      .select('id, name, slug')
+      .in('id', ids);
+    if (error) {
+      console.warn('[DatabaseService] enrichBookingsWithPropertyMeta failed:', error.message);
+      return rows;
+    }
+
+    const byId = new Map(
+      (propertyRows ?? []).map((row) => [
+        String(row.id),
+        {
+          name: typeof row.name === 'string' ? row.name : 'Property',
+          slug: typeof row.slug === 'string' ? row.slug : '',
+        },
+      ])
+    );
+
+    return rows.map((row) => {
+      const propertyId = typeof row.property_id === 'string' ? row.property_id : null;
+      const meta = propertyId ? byId.get(propertyId) : undefined;
+      return {
+        ...row,
+        property_name: meta?.name ?? null,
+        property_slug: meta?.slug ?? null,
+      };
+    });
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -768,16 +981,10 @@ export class DatabaseService {
     checkInDate: string,
     checkOutDate: string,
     bookingId?: string,
+    propertyId?: string
   ) {
-    console.log("Checking for overlapping bookings...");
-    console.log(
-      "Check-in:",
-      checkInDate,
-      "Check-out:",
-      checkOutDate,
-      "Booking ID:",
-      bookingId,
-    );
+    console.log('Checking for overlapping bookings...');
+    console.log('Check-in:', checkInDate, 'Check-out:', checkOutDate, 'Booking ID:', bookingId);
 
     try {
       // Normalize dates to YYYY-MM-DD format for comparison
@@ -791,25 +998,20 @@ export class DatabaseService {
         }
         // Check if date is in MM-DD-YYYY format
         if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
-          const [month, day, year] = dateStr.split("-");
-          const normalized = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+          const [month, day, year] = dateStr.split('-');
+          const normalized = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
           console.log(`  → Converted from MM-DD-YYYY to: ${normalized}`);
           return normalized;
         }
         // Return as-is if format is unknown
-        console.warn("  ⚠️ Unknown date format:", dateStr);
+        console.warn('  ⚠️ Unknown date format:', dateStr);
         return dateStr;
       };
 
       const newCheckIn = normalizeDate(checkInDate);
       const newCheckOut = normalizeDate(checkOutDate);
 
-      console.log(
-        "Normalized dates - Check-in:",
-        newCheckIn,
-        "Check-out:",
-        newCheckOut,
-      );
+      console.log('Normalized dates - Check-in:', newCheckIn, 'Check-out:', newCheckOut);
 
       // Query for overlapping bookings
       // Two date ranges overlap if:
@@ -820,35 +1022,34 @@ export class DatabaseService {
       // - New check-out === existing check-in
 
       // Phase 2+: only CANCELLED bookings free dates — every other status blocks.
-      // We push the CANCELLED filter to the DB query for efficiency.
-      // Belt-and-suspenders: legacy 'canceled' is also excluded in JS below.
+      // IMPORTED bookings are historical records — must not block live availability,
+      // same as CANCELLED. A host importing a past stay should not prevent new bookings.
       let query = this.supabase
-        .from("guest_submissions")
-        .select("id, check_in_date, check_out_date, status, primary_guest_name")
-        .neq("status", "CANCELLED");
+        .from('guest_submissions')
+        .select('id, check_in_date, check_out_date, status, primary_guest_name')
+        .neq('status', 'CANCELLED')
+        .neq('status', 'IMPORTED');
+
+      if (propertyId) {
+        query = query.eq('property_id', propertyId);
+      }
 
       // Exclude the current booking if updating
       if (bookingId) {
-        query = query.neq("id", bookingId);
+        query = query.neq('id', bookingId);
       }
 
       const { data: allBookings, error } = await query;
 
       if (error) {
-        console.error("Database error:", error);
-        throw new Error("Failed to check for overlapping bookings");
+        console.error('Database error:', error);
+        throw new Error('Failed to check for overlapping bookings');
       }
 
-      // Belt-and-suspenders: also filter legacy 'canceled' rows in case the
-      // Phase 2 migration hasn't been applied on a fresh local clone.
-      const activeBookings =
-        allBookings?.filter(
-          (booking) =>
-            booking.status !== "canceled" && booking.status !== "CANCELLED",
-        ) || [];
+      const activeBookings = allBookings || [];
 
       console.log(
-        `Found ${allBookings?.length || 0} non-CANCELLED bookings, ${activeBookings.length} active bookings to check for overlaps`,
+        `Found ${allBookings?.length || 0} non-CANCELLED bookings, ${activeBookings.length} active bookings to check for overlaps`
       );
 
       // Filter overlapping bookings in memory
@@ -869,27 +1070,25 @@ export class DatabaseService {
           const overlaps =
             newCheckIn < existingCheckOut &&
             newCheckOut > existingCheckIn &&
-            !(
-              newCheckIn === existingCheckOut || newCheckOut === existingCheckIn
-            );
+            !(newCheckIn === existingCheckOut || newCheckOut === existingCheckIn);
 
           console.log(`  Overlap detected: ${overlaps}`);
           console.log(
-            `    - newCheckIn (${newCheckIn}) < existingCheckOut (${existingCheckOut}): ${newCheckIn < existingCheckOut}`,
+            `    - newCheckIn (${newCheckIn}) < existingCheckOut (${existingCheckOut}): ${newCheckIn < existingCheckOut}`
           );
           console.log(
-            `    - newCheckOut (${newCheckOut}) > existingCheckIn (${existingCheckIn}): ${newCheckOut > existingCheckIn}`,
+            `    - newCheckOut (${newCheckOut}) > existingCheckIn (${existingCheckIn}): ${newCheckOut > existingCheckIn}`
           );
           console.log(
-            `    - Allowing check-in on checkout date: ${newCheckIn === existingCheckOut ? "YES (no overlap)" : "N/A"}`,
+            `    - Allowing check-in on checkout date: ${newCheckIn === existingCheckOut ? 'YES (no overlap)' : 'N/A'}`
           );
 
           if (overlaps) {
             console.warn(
-              "⚠️ OVERLAP DETECTED with booking:",
+              '⚠️ OVERLAP DETECTED with booking:',
               booking.id,
-              "- Guest:",
-              booking.primary_guest_name,
+              '- Guest:',
+              booking.primary_guest_name
             );
           }
 
@@ -897,47 +1096,109 @@ export class DatabaseService {
         }) || [];
 
       console.log(
-        `✓ Overlap check complete: Found ${overlappingBookings.length} overlapping booking(s)`,
+        `✓ Overlap check complete: Found ${overlappingBookings.length} overlapping booking(s)`
       );
+
+      // Owner-managed date blocks (`property_blocked_dates`) are unavailable to guests
+      // the same way an existing booking is — checked alongside the overlap query so
+      // every caller (submit-form today, future update paths) gets both signals at once.
+      const blockedByOwner = propertyId
+        ? await hasBlockedNightsInRange(propertyId, newCheckIn, newCheckOut)
+        : false;
 
       return {
         hasOverlap: overlappingBookings.length > 0,
         overlappingBookings,
+        blockedByOwner,
       };
     } catch (error) {
-      console.error("Error checking overlapping bookings:", error);
+      console.error('Error checking overlapping bookings:', error);
       throw error;
     }
   }
 
   /**
+   * Adjacent bookings that immediately precede or follow the requested stay on the
+   * same day. Used for cleaning-window / turnover warnings in the AI summary.
+   */
+  static async getAdjacentBookings(
+    checkInDate: string,
+    checkOutDate: string,
+    bookingId?: string,
+    propertyId?: string
+  ) {
+    const normalizeDate = (dateStr: string): string => {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+      if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
+        const [month, day, year] = dateStr.split('-');
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      }
+      return dateStr;
+    };
+
+    const newCheckIn = normalizeDate(checkInDate);
+    const newCheckOut = normalizeDate(checkOutDate);
+
+    let query = this.supabase
+      .from('guest_submissions')
+      .select(
+        'id, check_in_date, check_out_date, check_in_time, check_out_time, status, primary_guest_name'
+      )
+      .neq('status', 'CANCELLED')
+      .neq('status', 'IMPORTED')
+      .or(`check_out_date.eq.${newCheckIn},check_in_date.eq.${newCheckOut}`);
+
+    if (propertyId) {
+      query = query.eq('property_id', propertyId);
+    }
+    if (bookingId) {
+      query = query.neq('id', bookingId);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.error('getAdjacentBookings error:', error);
+      throw new Error('Failed to load adjacent bookings');
+    }
+    return (data || []).map((b) => ({
+      ...b,
+      check_in_date: normalizeDate(b.check_in_date),
+      check_out_date: normalizeDate(b.check_out_date),
+    }));
+  }
+
+  /**
    * All non-cancelled stays for calendar availability / Telegram marketing copy.
    */
-  static async listBookingRangesForAvailability(): Promise<
-    { checkInYmd: string; checkOutYmd: string }[]
-  > {
-    const { data, error } = await this.supabase
-      .from("guest_submissions")
-      .select("check_in_date, check_out_date, status")
-      .neq("status", "CANCELLED");
+  static async listBookingRangesForAvailability(
+    propertyId?: string
+  ): Promise<{ checkInYmd: string; checkOutYmd: string }[]> {
+    let query = this.supabase
+      .from('guest_submissions')
+      .select('check_in_date, check_out_date, status')
+      .neq('status', 'CANCELLED')
+      // IMPORTED bookings are historical records — must not block live availability.
+      .neq('status', 'IMPORTED');
+    if (propertyId) {
+      query = query.eq('property_id', propertyId);
+    }
+    const { data, error } = await query;
 
     if (error) {
-      console.error("listBookingRangesForAvailability:", error);
-      throw new Error("Failed to load booking ranges");
+      console.error('listBookingRangesForAvailability:', error);
+      throw new Error('Failed to load booking ranges');
     }
 
     const normalizeDate = (dateStr: string): string | null => {
       if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
       if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
-        const [month, day, year] = dateStr.split("-");
-        return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+        const [month, day, year] = dateStr.split('-');
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
       }
       return null;
     };
 
-    const rows = (data ?? []).filter(
-      (r) => r.status !== "canceled" && r.status !== "CANCELLED",
-    );
+    const rows = data ?? [];
 
     const out: { checkInYmd: string; checkOutYmd: string }[] = [];
     for (const r of rows) {
@@ -948,23 +1209,21 @@ export class DatabaseService {
     return out;
   }
 
-  static async getTelegramMarketingSettings(): Promise<Record<
-    string,
-    unknown
-  > | null> {
-    const { data, error } = await this.supabase
-      .from("telegram_marketing_settings")
-      .select("*")
-      .eq("id", 1)
-      .maybeSingle();
+  static async getTelegramMarketingSettings(
+    propertyId?: string,
+    parkingId?: string
+  ): Promise<Record<string, unknown> | null> {
+    let query = this.supabase.from('telegram_marketing_settings').select('*');
+    query = applyAssetScopeFilter(query, { propertyId, parkingId });
+    const { data, error } = await query.maybeSingle();
 
     if (error) {
-      console.error("getTelegramMarketingSettings:", error);
-      const pg = `${error.code ?? ""} ${error.message ?? ""}`.trim();
+      console.error('getTelegramMarketingSettings:', error);
+      const pg = `${error.code ?? ''} ${error.message ?? ''}`.trim();
       throw new Error(
-        `Failed to load Telegram marketing settings${pg ? `: ${pg}` : ""}. ` +
+        `Failed to load Telegram marketing settings${pg ? `: ${pg}` : ''}. ` +
           `On production this usually means the table is missing — run migration ` +
-          `20260614120000_telegram_marketing_settings.sql (or “supabase db push”) on this project.`,
+          `20260614120000_telegram_marketing_settings.sql (or “supabase db push”) on this project.`
       );
     }
     return data;
@@ -972,76 +1231,93 @@ export class DatabaseService {
 
   static async updateTelegramMarketingSettings(
     patch: Record<string, unknown>,
+    propertyId?: string,
+    parkingId?: string
   ): Promise<Record<string, unknown>> {
-    const { data, error } = await this.supabase
-      .from("telegram_marketing_settings")
-      .update({ ...patch, updated_at: new Date().toISOString() })
-      .eq("id", 1)
-      .select()
-      .single();
-
-    if (error) {
-      console.error("updateTelegramMarketingSettings:", error);
-      throw new Error("Failed to update Telegram marketing settings");
-    }
-    return data;
+    return updateAssetScopedSingleton(
+      this.supabase,
+      'telegram_marketing_settings',
+      patch,
+      { propertyId, parkingId },
+      'updateTelegramMarketingSettings',
+      'Failed to update Telegram marketing settings'
+    );
   }
 
   static async updateAppSettings(
     patch: Record<string, unknown>,
+    propertyId?: string
+  ): Promise<Record<string, unknown>> {
+    return updatePropertyScopedSingleton(
+      this.supabase,
+      'app_settings',
+      patch,
+      propertyId,
+      'updateAppSettings',
+      'Failed to update app settings'
+    );
+  }
+
+  static async updateOrgSettings(
+    patch: Record<string, unknown>,
+    organizationId: string
   ): Promise<Record<string, unknown>> {
     const { data, error } = await this.supabase
-      .from("app_settings")
+      .from('org_settings')
       .update({ ...patch, updated_at: new Date().toISOString() })
-      .eq("id", 1)
+      .eq('organization_id', organizationId)
       .select()
       .single();
 
     if (error) {
-      console.error("updateAppSettings:", error);
-      throw new Error(
-        `Failed to update app settings: ${error.message ?? "unknown error"}`,
-      );
+      console.error('updateOrgSettings:', error);
+      throw new Error(`Failed to update org settings: ${error.message ?? 'unknown error'}`);
     }
     return data;
   }
 
   static async syncTelegramMarketingDailyCronJobs(
-    slots: { hour: number; minute: number }[],
+    slots: { hour: number; minute: number }[]
   ): Promise<{ ok?: boolean; error?: string; scheduled?: number }> {
-    const { data, error } = await this.supabase.rpc(
-      "sync_telegram_marketing_daily_cron_jobs",
+    return callRpcObject(
+      this.supabase,
+      'sync_telegram_marketing_daily_cron_jobs',
       {
         p_slots: slots as never,
       },
+      'syncTelegramMarketingDailyCronJobs rpc:'
     );
-    if (error) {
-      console.error("syncTelegramMarketingDailyCronJobs rpc:", error);
-      return { ok: false, error: error.message ?? "rpc failed" };
-    }
-    if (data && typeof data === "object" && data !== null) {
-      return data as { ok?: boolean; error?: string; scheduled?: number };
-    }
-    return { ok: false, error: "unexpected rpc response" };
   }
 
-  static async getTelegramStaffSettings(): Promise<Record<
-    string,
-    unknown
-  > | null> {
-    const { data, error } = await this.supabase
-      .from("telegram_staff_settings")
-      .select("*")
-      .eq("id", 1)
-      .maybeSingle();
+  /** Property-scoped dispatch: single 5-min pg_cron tick; handlers filter by Manila schedule. */
+  static async ensureTelegramMultiPropertyCronDispatch(): Promise<{
+    ok?: boolean;
+    error?: string;
+    cronExpr?: string;
+  }> {
+    return callRpcObject(
+      this.supabase,
+      'ensure_telegram_multi_property_cron_dispatch',
+      undefined,
+      'ensureTelegramMultiPropertyCronDispatch rpc:'
+    );
+  }
+
+  static async getTelegramStaffSettings(
+    propertyId?: string,
+    parkingId?: string
+  ): Promise<Record<string, unknown> | null> {
+    let query = this.supabase.from('telegram_staff_settings').select('*');
+    query = applyAssetScopeFilter(query, { propertyId, parkingId });
+    const { data, error } = await query.maybeSingle();
 
     if (error) {
-      console.error("getTelegramStaffSettings:", error);
-      const pg = `${error.code ?? ""} ${error.message ?? ""}`.trim();
+      console.error('getTelegramStaffSettings:', error);
+      const pg = `${error.code ?? ''} ${error.message ?? ''}`.trim();
       throw new Error(
-        `Failed to load Telegram staff settings${pg ? `: ${pg}` : ""}. ` +
+        `Failed to load Telegram staff settings${pg ? `: ${pg}` : ''}. ` +
           `On production this usually means the table is missing — run migration ` +
-          `20260622120000_telegram_staff_settings.sql (or "supabase db push") on this project.`,
+          `20260622120000_telegram_staff_settings.sql (or "supabase db push") on this project.`
       );
     }
     return data;
@@ -1049,57 +1325,47 @@ export class DatabaseService {
 
   static async updateTelegramStaffSettings(
     patch: Record<string, unknown>,
+    propertyId?: string,
+    parkingId?: string
   ): Promise<Record<string, unknown>> {
-    const { data, error } = await this.supabase
-      .from("telegram_staff_settings")
-      .update({ ...patch, updated_at: new Date().toISOString() })
-      .eq("id", 1)
-      .select()
-      .single();
-
-    if (error) {
-      console.error("updateTelegramStaffSettings:", error);
-      throw new Error("Failed to update Telegram staff settings");
-    }
-    return data;
+    return updateAssetScopedSingleton(
+      this.supabase,
+      'telegram_staff_settings',
+      patch,
+      { propertyId, parkingId },
+      'updateTelegramStaffSettings',
+      'Failed to update Telegram staff settings'
+    );
   }
 
   static async syncTelegramStaffDailyCronJob(slot: {
     hour: number;
     minute: number;
   }): Promise<{ ok?: boolean; error?: string; cronExpr?: string }> {
-    const { data, error } = await this.supabase.rpc(
-      "sync_telegram_staff_daily_cron_job",
+    return callRpcObject(
+      this.supabase,
+      'sync_telegram_staff_daily_cron_job',
       {
         p_slot: slot as never,
       },
+      'syncTelegramStaffDailyCronJob rpc:'
     );
-    if (error) {
-      console.error("syncTelegramStaffDailyCronJob rpc:", error);
-      return { ok: false, error: error.message ?? "rpc failed" };
-    }
-    if (data && typeof data === "object" && data !== null) {
-      return data as { ok?: boolean; error?: string; cronExpr?: string };
-    }
-    return { ok: false, error: "unexpected rpc response" };
   }
 
-  static async getTelegramFinanceSettings(): Promise<Record<
-    string,
-    unknown
-  > | null> {
-    const { data, error } = await this.supabase
-      .from("telegram_finance_settings")
-      .select("*")
-      .eq("id", 1)
-      .maybeSingle();
+  static async getTelegramFinanceSettings(
+    propertyId?: string,
+    parkingId?: string
+  ): Promise<Record<string, unknown> | null> {
+    let query = this.supabase.from('telegram_finance_settings').select('*');
+    query = applyAssetScopeFilter(query, { propertyId, parkingId });
+    const { data, error } = await query.maybeSingle();
 
     if (error) {
-      console.error("getTelegramFinanceSettings:", error);
-      const pg = `${error.code ?? ""} ${error.message ?? ""}`.trim();
+      console.error('getTelegramFinanceSettings:', error);
+      const pg = `${error.code ?? ''} ${error.message ?? ''}`.trim();
       throw new Error(
-        `Failed to load Telegram finance settings${pg ? `: ${pg}` : ""}. ` +
-          `Run migration 20260710120000_finance_telegram_reminders.sql on this project.`,
+        `Failed to load Telegram finance settings${pg ? `: ${pg}` : ''}. ` +
+          `Run migration 20260710120000_finance_telegram_reminders.sql on this project.`
       );
     }
     return data;
@@ -1107,77 +1373,99 @@ export class DatabaseService {
 
   static async updateTelegramFinanceSettings(
     patch: Record<string, unknown>,
+    propertyId?: string,
+    parkingId?: string
   ): Promise<Record<string, unknown>> {
-    const { data, error } = await this.supabase
-      .from("telegram_finance_settings")
-      .update({ ...patch, updated_at: new Date().toISOString() })
-      .eq("id", 1)
-      .select()
-      .single();
-
-    if (error) {
-      console.error("updateTelegramFinanceSettings:", error);
-      throw new Error("Failed to update Telegram finance settings");
-    }
-    return data;
+    return updateAssetScopedSingleton(
+      this.supabase,
+      'telegram_finance_settings',
+      patch,
+      { propertyId, parkingId },
+      'updateTelegramFinanceSettings',
+      'Failed to update Telegram finance settings'
+    );
   }
 
   static async syncTelegramFinanceDailyCronJob(slot: {
     hour: number;
     minute: number;
   }): Promise<{ ok?: boolean; error?: string; cronExpr?: string }> {
-    const { data, error } = await this.supabase.rpc(
-      "sync_telegram_finance_daily_cron_job",
+    return callRpcObject(
+      this.supabase,
+      'sync_telegram_finance_daily_cron_job',
       {
         p_slot: slot as never,
       },
+      'syncTelegramFinanceDailyCronJob rpc:'
     );
-    if (error) {
-      console.error("syncTelegramFinanceDailyCronJob rpc:", error);
-      return { ok: false, error: error.message ?? "rpc failed" };
-    }
-    if (data && typeof data === "object" && data !== null) {
-      return data as { ok?: boolean; error?: string; cronExpr?: string };
-    }
-    return { ok: false, error: "unexpected rpc response" };
   }
 
-  static async getTelegramMaintenanceSettings(): Promise<Record<
-    string,
-    unknown
-  > | null> {
-    const { data, error } = await this.supabase
-      .from("telegram_maintenance_settings")
-      .select("*")
-      .eq("id", 1)
-      .maybeSingle();
+  static async getTelegramMaintenanceSettings(
+    propertyId?: string,
+    parkingId?: string
+  ): Promise<Record<string, unknown> | null> {
+    let query = this.supabase.from('telegram_maintenance_settings').select('*');
+    query = applyAssetScopeFilter(query, { propertyId, parkingId });
+    const { data, error } = await query.maybeSingle();
 
     if (error) {
-      console.error("getTelegramMaintenanceSettings:", error);
-      const pg = `${error.code ?? ""} ${error.message ?? ""}`.trim();
+      console.error('getTelegramMaintenanceSettings:', error);
+      const pg = `${error.code ?? ''} ${error.message ?? ''}`.trim();
       throw new Error(
-        `Failed to load Telegram maintenance settings${pg ? `: ${pg}` : ""}. ` +
-          `Run migration 20260818120000_maintenance_module.sql on this project.`,
+        `Failed to load Telegram maintenance settings${pg ? `: ${pg}` : ''}. ` +
+          `Run migration 20260818120000_maintenance_module.sql on this project.`
       );
     }
     return data;
   }
 
-  static async updateTelegramMaintenanceSettings(
-    patch: Record<string, unknown>,
-  ): Promise<Record<string, unknown>> {
+  static async getTelegramChatSettings(
+    propertyId: string
+  ): Promise<Record<string, unknown> | null> {
     const { data, error } = await this.supabase
-      .from("telegram_maintenance_settings")
-      .update({ ...patch, updated_at: new Date().toISOString() })
-      .eq("id", 1)
-      .select()
-      .single();
+      .from('telegram_chat_settings')
+      .select('*')
+      .eq('property_id', propertyId)
+      .maybeSingle();
 
     if (error) {
-      console.error("updateTelegramMaintenanceSettings:", error);
-      throw new Error("Failed to update Telegram maintenance settings");
+      console.error('getTelegramChatSettings:', error);
+      const pg = `${error.code ?? ''} ${error.message ?? ''}`.trim();
+      throw new Error(
+        `Failed to load Telegram chat settings${pg ? `: ${pg}` : ''}. ` +
+          `Run migration 20260929120000_telegram_chat_settings.sql on this project.`
+      );
     }
     return data;
+  }
+
+  static async updateTelegramChatSettings(
+    patch: Record<string, unknown>,
+    propertyId: string
+  ): Promise<Record<string, unknown>> {
+    return updateAssetScopedSingleton(
+      this.supabase,
+      'telegram_chat_settings',
+      patch,
+      { propertyId },
+      'updateTelegramChatSettings',
+      'Failed to update Telegram chat settings'
+    );
+  }
+
+  static async updateTelegramMaintenanceSettings(
+    patch: Record<string, unknown>,
+    propertyId?: string,
+    parkingId?: string
+  ): Promise<Record<string, unknown>> {
+    return updateAssetScopedSingleton(
+      this.supabase,
+      'telegram_maintenance_settings',
+      patch,
+      { propertyId, parkingId },
+      'updateTelegramMaintenanceSettings',
+      'Failed to update Telegram maintenance settings'
+    );
   }
 
   static async syncTelegramMaintenanceHourlyCronJob(): Promise<{
@@ -1185,35 +1473,62 @@ export class DatabaseService {
     error?: string;
     cronExpr?: string;
   }> {
-    const { data, error } = await this.supabase.rpc(
-      "sync_telegram_maintenance_hourly_cron_job",
+    return callRpcObject(
+      this.supabase,
+      'sync_telegram_maintenance_hourly_cron_job',
+      undefined,
+      'syncTelegramMaintenanceHourlyCronJob rpc:'
     );
-    if (error) {
-      console.error("syncTelegramMaintenanceHourlyCronJob rpc:", error);
-      return { ok: false, error: error.message ?? "rpc failed" };
-    }
-    if (data && typeof data === "object" && data !== null) {
-      return data as { ok?: boolean; error?: string; cronExpr?: string };
-    }
-    return { ok: false, error: "unexpected rpc response" };
   }
 
-  static async getTelegramAdminSettings(): Promise<Record<
-    string,
-    unknown
-  > | null> {
+  static async getTelegramParkingSettings(
+    parkingId: string
+  ): Promise<Record<string, unknown> | null> {
     const { data, error } = await this.supabase
-      .from("telegram_admin_settings")
-      .select("*")
-      .eq("id", 1)
+      .from('telegram_parking_settings')
+      .select('*')
+      .eq('parking_id', parkingId)
       .maybeSingle();
 
     if (error) {
-      console.error("getTelegramAdminSettings:", error);
-      const pg = `${error.code ?? ""} ${error.message ?? ""}`.trim();
+      console.error('getTelegramParkingSettings:', error);
+      const pg = `${error.code ?? ''} ${error.message ?? ''}`.trim();
       throw new Error(
-        `Failed to load Telegram admin settings${pg ? `: ${pg}` : ""}. ` +
-          `Run migration 20260702120000_telegram_admin_settings.sql on this project.`,
+        `Failed to load Telegram parking settings${pg ? `: ${pg}` : ''}. ` +
+          `Run migration 20260918150000_telegram_parking_settings.sql on this project.`
+      );
+    }
+    return data;
+  }
+
+  static async updateTelegramParkingSettings(
+    patch: Record<string, unknown>,
+    parkingId: string
+  ): Promise<Record<string, unknown>> {
+    return updateAssetScopedSingleton(
+      this.supabase,
+      'telegram_parking_settings',
+      patch,
+      { parkingId },
+      'updateTelegramParkingSettings',
+      'Failed to update Telegram parking settings'
+    );
+  }
+
+  static async getTelegramAdminSettings(
+    propertyId?: string,
+    parkingId?: string
+  ): Promise<Record<string, unknown> | null> {
+    let query = this.supabase.from('telegram_admin_settings').select('*');
+    query = applyAssetScopeFilter(query, { propertyId, parkingId });
+    const { data, error } = await query.maybeSingle();
+
+    if (error) {
+      console.error('getTelegramAdminSettings:', error);
+      const pg = `${error.code ?? ''} ${error.message ?? ''}`.trim();
+      throw new Error(
+        `Failed to load Telegram admin settings${pg ? `: ${pg}` : ''}. ` +
+          `Run migration 20260702120000_telegram_admin_settings.sql on this project.`
       );
     }
     return data;
@@ -1221,19 +1536,17 @@ export class DatabaseService {
 
   static async updateTelegramAdminSettings(
     patch: Record<string, unknown>,
+    propertyId?: string,
+    parkingId?: string
   ): Promise<Record<string, unknown>> {
-    const { data, error } = await this.supabase
-      .from("telegram_admin_settings")
-      .update({ ...patch, updated_at: new Date().toISOString() })
-      .eq("id", 1)
-      .select()
-      .single();
-
-    if (error) {
-      console.error("updateTelegramAdminSettings:", error);
-      throw new Error("Failed to update Telegram admin settings");
-    }
-    return data;
+    return updateAssetScopedSingleton(
+      this.supabase,
+      'telegram_admin_settings',
+      patch,
+      { propertyId, parkingId },
+      'updateTelegramAdminSettings',
+      'Failed to update Telegram admin settings'
+    );
   }
 
   static async syncTelegramAdminHourlyCronJob(): Promise<{
@@ -1241,16 +1554,11 @@ export class DatabaseService {
     error?: string;
     cronExpr?: string;
   }> {
-    const { data, error } = await this.supabase.rpc(
-      "sync_telegram_admin_hourly_cron_job",
+    return callRpcObject(
+      this.supabase,
+      'sync_telegram_admin_hourly_cron_job',
+      undefined,
+      'syncTelegramAdminHourlyCronJob rpc:'
     );
-    if (error) {
-      console.error("syncTelegramAdminHourlyCronJob rpc:", error);
-      return { ok: false, error: error.message ?? "rpc failed" };
-    }
-    if (data && typeof data === "object" && data !== null) {
-      return data as { ok?: boolean; error?: string; cronExpr?: string };
-    }
-    return { ok: false, error: "unexpected rpc response" };
   }
 }

@@ -1,0 +1,362 @@
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { immer } from 'zustand/middleware/immer';
+
+import { applyBrandAccentToCalendarStyles } from '@/features/dashboard/marketing/lib/calendarBrandColors';
+import {
+  canvasFrameDefaultsForFormat,
+  canvasFrameBackgroundForFormat,
+  type CalendarCanvasFormat,
+} from '@/features/dashboard/marketing/lib/calendarCanvasFormats';
+import { CALENDAR_PRESET_STYLES } from '@/features/dashboard/marketing/lib/calendarPresets';
+import { applyPropertyPhotoToCalendarStyles } from '@/features/dashboard/marketing/lib/calendarPropertyPhoto';
+
+import {
+  type CalendarStyles,
+  type CalendarBuilderState,
+  type PreviewBooking,
+  createDefaultStyles,
+  normalizeCalendarStyles,
+} from '../types';
+
+// ========================================
+// Store Actions Interface
+// ========================================
+interface CalendarBuilderActions {
+  // Style updates
+  setStyles: (styles: CalendarStyles, options?: { markDirty?: boolean }) => void;
+  updateStyles: (path: string, value: unknown) => void;
+  resetStyles: (brandColor?: string) => void;
+
+  // Section navigation
+  setActiveSection: (section: string | null) => void;
+  setActiveSubSection: (subSection: string | null) => void;
+
+  // Preview controls
+  setPreviewMonth: (date: Date) => void;
+  nextMonth: () => void;
+  prevMonth: () => void;
+
+  // Export controls
+  setExportFormat: (format: 'png' | 'jpeg' | 'webp') => void;
+  setExportQuality: (quality: number) => void;
+  setIsExporting: (isExporting: boolean) => void;
+
+  // History (undo/redo)
+  undo: () => void;
+  redo: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
+  saveToHistory: () => void;
+
+  // Presets
+  applyPreset: (preset: string, brandColor?: string, propertyPhotoUrl?: string) => void;
+
+  // Dirty state
+  setIsDirty: (isDirty: boolean) => void;
+}
+
+// ========================================
+// Combined Store Type
+// ========================================
+type CalendarBuilderStore = CalendarBuilderState & CalendarBuilderActions;
+
+// ========================================
+// Helper: Deep set value by path
+// ========================================
+function setNestedValue(obj: Record<string, unknown>, path: string, value: unknown): void {
+  const keys = path.split('.');
+  let current = obj;
+
+  for (let i = 0; i < keys.length - 1; i++) {
+    const key = keys[i];
+    if (!key) continue;
+    if (!(key in current) || typeof current[key] !== 'object' || current[key] === null) {
+      current[key] = {};
+    }
+    current = current[key] as Record<string, unknown>;
+  }
+
+  const lastKey = keys[keys.length - 1];
+  if (lastKey) {
+    current[lastKey] = value;
+  }
+}
+
+// Preset styles — see lib/calendarPresets.ts (12 designer templates)
+const presets: Record<string, Partial<CalendarStyles>> = CALENDAR_PRESET_STYLES;
+
+// ========================================
+// Mock Preview Data
+// ========================================
+export const MOCK_PREVIEW_BOOKINGS: PreviewBooking[] = [
+  { id: '1', guestName: 'John Smith', startDay: 5, endDay: 8, status: 'confirmed' },
+  { id: '2', guestName: 'Sarah Johnson', startDay: 12, endDay: 14, status: 'checkedIn' },
+  { id: '3', guestName: 'Mike Williams', startDay: 20, endDay: 25, status: 'pending' },
+];
+
+export const MOCK_BLOCKED_DAYS = [1, 2, 28, 29, 30];
+
+export function resolveCalendarPresetStyles(preset: string): CalendarStyles {
+  if (preset === 'default') {
+    return createDefaultStyles();
+  }
+
+  const presetStyles = presets[preset];
+  if (!presetStyles) {
+    return createDefaultStyles();
+  }
+
+  const defaultStyles = createDefaultStyles();
+  return normalizeCalendarStyles({
+    ...defaultStyles,
+    ...presetStyles,
+    container: { ...defaultStyles.container, ...presetStyles.container },
+    header: { ...defaultStyles.header, ...presetStyles.header },
+    dayNames: { ...defaultStyles.dayNames, ...presetStyles.dayNames },
+    grid: { ...defaultStyles.grid, ...presetStyles.grid },
+    cell: { ...defaultStyles.cell, ...presetStyles.cell },
+    today: { ...defaultStyles.today, ...presetStyles.today },
+    booked: { ...defaultStyles.booked, ...presetStyles.booked },
+    available: { ...defaultStyles.available, ...presetStyles.available },
+    blocked: { ...defaultStyles.blocked, ...presetStyles.blocked },
+    bookingBar: { ...defaultStyles.bookingBar, ...presetStyles.bookingBar },
+    legend: { ...defaultStyles.legend, ...presetStyles.legend },
+    watermark: { ...defaultStyles.watermark, ...presetStyles.watermark },
+  } as CalendarStyles);
+}
+
+/** Preset styles with canvas frame matched to the active export format (sidebar thumbnails). */
+export function resolveCalendarPresetStylesForFormat(
+  preset: string,
+  format: CalendarCanvasFormat,
+  brandColor?: string,
+  propertyPhotoUrl?: string
+): CalendarStyles {
+  const styles = resolveCalendarPresetStyles(preset);
+  const defaults = canvasFrameDefaultsForFormat(format, brandColor);
+  return applyPropertyPhotoToCalendarStyles(
+    applyBrandAccentToCalendarStyles(
+      normalizeCalendarStyles({
+        ...styles,
+        canvasFrame: {
+          format,
+          padding: defaults.padding,
+          calendarScale: defaults.calendarScale,
+          background: defaults.background,
+        },
+      }),
+      brandColor,
+      { preservePresetPalette: preset !== 'default' }
+    ),
+    propertyPhotoUrl
+  );
+}
+
+// ========================================
+// Create Store
+// ========================================
+export const useCalendarBuilderStore = create<CalendarBuilderStore>()(
+  persist(
+    immer((set, get) => ({
+      // Initial state
+      styles: createDefaultStyles(),
+      activeSection: null,
+      activeSubSection: null,
+      previewMonth: new Date(),
+      isDirty: false,
+      isExporting: false,
+      exportFormat: 'png',
+      exportQuality: 1,
+      history: [createDefaultStyles()],
+      historyIndex: 0,
+
+      // Actions
+      setStyles: (styles, options) =>
+        set((state) => {
+          state.styles = normalizeCalendarStyles(styles);
+          if (options?.markDirty !== false) {
+            state.isDirty = true;
+          }
+        }),
+
+      updateStyles: (path, value) =>
+        set((state) => {
+          setNestedValue(state.styles as unknown as Record<string, unknown>, path, value);
+          state.isDirty = true;
+        }),
+
+      resetStyles: (brandColor) =>
+        set((state) => {
+          const next = applyBrandAccentToCalendarStyles(
+            createDefaultStyles(brandColor),
+            brandColor
+          );
+          state.styles = next;
+          state.isDirty = false;
+          state.history = [next];
+          state.historyIndex = 0;
+        }),
+
+      setActiveSection: (section) =>
+        set((state) => {
+          state.activeSection = section;
+          state.activeSubSection = null;
+        }),
+
+      setActiveSubSection: (subSection) =>
+        set((state) => {
+          state.activeSubSection = subSection;
+        }),
+
+      setPreviewMonth: (date) =>
+        set((state) => {
+          state.previewMonth = date;
+        }),
+
+      nextMonth: () =>
+        set((state) => {
+          const current = new Date(state.previewMonth);
+          current.setMonth(current.getMonth() + 1);
+          state.previewMonth = current;
+        }),
+
+      prevMonth: () =>
+        set((state) => {
+          const current = new Date(state.previewMonth);
+          current.setMonth(current.getMonth() - 1);
+          state.previewMonth = current;
+        }),
+
+      setExportFormat: (format) =>
+        set((state) => {
+          state.exportFormat = format;
+        }),
+
+      setExportQuality: (quality) =>
+        set((state) => {
+          state.exportQuality = quality;
+        }),
+
+      setIsExporting: (isExporting) =>
+        set((state) => {
+          state.isExporting = isExporting;
+        }),
+
+      undo: () =>
+        set((state) => {
+          if (state.historyIndex > 0) {
+            state.historyIndex -= 1;
+            const previousStyles = state.history[state.historyIndex];
+            if (previousStyles) {
+              state.styles = previousStyles;
+              state.isDirty = true;
+            }
+          }
+        }),
+
+      redo: () =>
+        set((state) => {
+          if (state.historyIndex < state.history.length - 1) {
+            state.historyIndex += 1;
+            const nextStyles = state.history[state.historyIndex];
+            if (nextStyles) {
+              state.styles = nextStyles;
+              state.isDirty = true;
+            }
+          }
+        }),
+
+      canUndo: () => {
+        const { historyIndex } = get();
+        return historyIndex > 0;
+      },
+
+      canRedo: () => {
+        const { historyIndex, history } = get();
+        return historyIndex < history.length - 1;
+      },
+
+      saveToHistory: () =>
+        set((state) => {
+          // Remove any future history if we're not at the end
+          const newHistory = state.history.slice(0, state.historyIndex + 1);
+          newHistory.push(JSON.parse(JSON.stringify(state.styles)));
+
+          // Limit history to 50 entries
+          if (newHistory.length > 50) {
+            newHistory.shift();
+          }
+
+          state.history = newHistory;
+          state.historyIndex = newHistory.length - 1;
+        }),
+
+      applyPreset: (preset, brandColor, propertyPhotoUrl) =>
+        set((state) => {
+          const preservedFrame = state.styles.canvasFrame;
+          const preservedFormat = preservedFrame?.format ?? 'square';
+          const frameDefaults = canvasFrameDefaultsForFormat(preservedFormat, brandColor);
+
+          if (preset === 'default') {
+            state.styles = applyBrandAccentToCalendarStyles(
+              normalizeCalendarStyles({
+                ...createDefaultStyles(brandColor),
+                canvasFrame: {
+                  format: preservedFormat,
+                  padding: frameDefaults.padding,
+                  calendarScale: frameDefaults.calendarScale,
+                  background: frameDefaults.background,
+                },
+              }),
+              brandColor
+            );
+            state.isDirty = false;
+            return;
+          }
+
+          state.styles = applyPropertyPhotoToCalendarStyles(
+            applyBrandAccentToCalendarStyles(resolveCalendarPresetStyles(preset), brandColor, {
+              preservePresetPalette: preset !== 'default',
+            }),
+            propertyPhotoUrl
+          );
+          if (preservedFrame) {
+            const format = preservedFrame.format ?? 'square';
+            state.styles.canvasFrame = {
+              ...preservedFrame,
+              background:
+                format === 'square'
+                  ? preservedFrame.background
+                  : canvasFrameBackgroundForFormat(format, brandColor),
+            };
+          }
+          state.isDirty = true;
+        }),
+
+      setIsDirty: (isDirty) =>
+        set((state) => {
+          state.isDirty = isDirty;
+        }),
+    })),
+    {
+      name: 'calendar-builder-storage',
+      partialize: (state) => ({
+        styles: state.styles,
+        exportFormat: state.exportFormat,
+        exportQuality: state.exportQuality,
+      }),
+      merge: (persisted, current) => {
+        const saved = persisted as Partial<typeof current> | undefined;
+        const styles = saved?.styles
+          ? normalizeCalendarStyles(saved.styles as CalendarStyles)
+          : current.styles;
+        return {
+          ...current,
+          ...saved,
+          styles,
+        };
+      },
+    }
+  )
+);

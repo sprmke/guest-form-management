@@ -14,8 +14,17 @@
 **/.env
 **/.env.local
 **/.env.development
+**/.env.development.dev
+**/.env.development.local
 **/.env.test
 **/.env.production
+supabase/.env.dev.local
+supabase/.env.prod.local
+supabase/.env.*.local
+
+# Deploy artifacts (DB backups, deploy audit log — may contain PII/refs, never commit)
+backups/
+.worktrees/
 
 # Logs
 **/logs
@@ -29,6 +38,9 @@
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
 .idea
 .DS_Store
 **/*.suo
@@ -63,7 +75,26 @@ supabase_backup*.dump
 # Local development
 **/.local
 
-# Gmail OAuth credentials (contain secrets — never commit)
-scripts/gmail-credentials.json
+# Obsidian local UI state (vault content stays tracked)
+docs/.obsidian/workspace.json
+docs/.obsidian/graph.json
+
+# Tests / local agent tooling (keep .fallowrc.json tracked)
+.playwright-mcp/
+.playwright-cli/
+.worktrees/
+.superpowers/
+.impeccable/
+.fallow/
+
+# Personal Claude Code overrides (team config is .claude/settings.json)
+.claude/settings.local.json
+
+# Superpowers lean mode session marker (hooks — local only)
+.cursor/.superpowers-lean-active
+
+# OpenCode local plugin install cache (committed config is opencode.json + .opencode/)
+.opencode/node_modules/
+.opencode/package-lock.json
 
 cli-develop

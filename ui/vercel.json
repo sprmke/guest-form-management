@@ -1,7 +1,8 @@
 {
   "framework": "vite",
-  "buildCommand": "npm run build",
-  "devCommand": "npm run dev",
+  "installCommand": "cd .. && rm -rf node_modules ui/node_modules && bun install && node ./scripts/dev/dedupe-react-types.mjs",
+  "buildCommand": "bun run build",
+  "devCommand": "bun run dev",
   "outputDirectory": "dist",
   "rewrites": [
     {
@@ -9,4 +10,4 @@
       "destination": "/index.html"
     }
   ]
-} 
+}

@@ -1,0 +1,241 @@
+import { useCallback, useEffect, useState } from 'react';
+
+import { ArrowLeft } from 'lucide-react';
+
+import { AuthDivider } from '@/features/guest/auth/components/AuthDivider';
+import { useGuestAuthActions } from '@/features/guest/auth/hooks/useGuestAuthActions';
+
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { FacebookIcon, GoogleIcon, SpinnerIcon } from '@/components/ui/icons';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
+
+type Step = 'email' | 'otp';
+
+interface GuestAuthModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  oauthRedirectPath: string;
+}
+
+export function GuestAuthModal({ open, onOpenChange, oauthRedirectPath }: GuestAuthModalProps) {
+  const { sendEmailOtp, verifyEmailOtp, signInWithOAuth } = useGuestAuthActions();
+  const [step, setStep] = useState<Step>('email');
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isSending, setIsSending] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [oauthProvider, setOauthProvider] = useState<'google' | 'facebook' | null>(null);
+
+  const resetForm = useCallback(() => {
+    setStep('email');
+    setEmail('');
+    setCode('');
+    setError(null);
+    setIsSending(false);
+    setIsVerifying(false);
+    setOauthProvider(null);
+  }, []);
+
+  useEffect(() => {
+    if (!open) resetForm();
+  }, [open, resetForm]);
+
+  const handleContinueEmail = async () => {
+    const trimmed = email.trim();
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setError('Enter a valid email');
+      return;
+    }
+    setError(null);
+    setIsSending(true);
+    const otpError = await sendEmailOtp(trimmed);
+    setIsSending(false);
+    if (otpError) {
+      setError(otpError.message);
+      return;
+    }
+    setStep('otp');
+  };
+
+  const handleVerifyCode = async () => {
+    const trimmedCode = code.trim();
+    if (!trimmedCode) {
+      setError('Enter the code from your email');
+      return;
+    }
+    setError(null);
+    setIsVerifying(true);
+    const verifyError = await verifyEmailOtp(email, trimmedCode);
+    setIsVerifying(false);
+    if (verifyError) {
+      setError(verifyError.message);
+      return;
+    }
+  };
+
+  const handleOAuth = async (provider: 'google' | 'facebook') => {
+    setError(null);
+    setOauthProvider(provider);
+    const oauthError = await signInWithOAuth(provider, oauthRedirectPath);
+    if (oauthError) {
+      setError(oauthError.message);
+      setOauthProvider(null);
+    }
+  };
+
+  const busy = isSending || isVerifying || oauthProvider !== null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="gap-0 p-0 sm:max-w-[min(calc(100vw-1.5rem),26rem)]">
+        <DialogHeader className="border-border/60 space-y-4 border-b px-4 pb-4 pt-5 text-center sm:px-6">
+          <div className="from-primary to-primary/80 mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br shadow-md">
+            <span className="text-lg font-bold text-white">K</span>
+          </div>
+          <DialogTitle className="text-center text-xl font-bold">
+            {step === 'email' ? 'Log in or sign up' : 'Confirm your email'}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 px-4 py-5 sm:px-6">
+          {step === 'otp' && (
+            <button
+              type="button"
+              onClick={() => {
+                setStep('email');
+                setCode('');
+                setError(null);
+              }}
+              className="text-muted-foreground hover:text-foreground flex min-h-[44px] items-center gap-1.5 text-sm font-medium transition-colors"
+            >
+              <ArrowLeft className="size-4 shrink-0" aria-hidden />
+              Back
+            </button>
+          )}
+
+          {step === 'email' ? (
+            <div className="space-y-2">
+              <Label htmlFor="guest-auth-email" className="sr-only">
+                Email
+              </Label>
+              <Input
+                id="guest-auth-email"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (error) setError(null);
+                }}
+                disabled={busy}
+                className="h-12 rounded-xl text-base"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void handleContinueEmail();
+                }}
+              />
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-muted-foreground text-center text-sm">{email}</p>
+              <Label htmlFor="guest-auth-code" className="sr-only">
+                Verification code
+              </Label>
+              <Input
+                id="guest-auth-code"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder="Enter code"
+                value={code}
+                onChange={(e) => {
+                  setCode(e.target.value);
+                  if (error) setError(null);
+                }}
+                disabled={busy}
+                className="h-12 rounded-xl text-center text-base tracking-widest"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void handleVerifyCode();
+                }}
+              />
+            </div>
+          )}
+
+          {error ? (
+            <p className="text-destructive text-center text-sm" role="alert">
+              {error}
+            </p>
+          ) : null}
+
+          <Button
+            type="button"
+            className="h-12 w-full rounded-xl text-base font-semibold"
+            disabled={busy}
+            onClick={() => void (step === 'email' ? handleContinueEmail() : handleVerifyCode())}
+          >
+            {isSending || isVerifying ? (
+              <SpinnerIcon className="size-5" />
+            ) : step === 'email' ? (
+              'Continue'
+            ) : (
+              'Verify'
+            )}
+          </Button>
+
+          {step === 'email' ? (
+            <>
+              <AuthDivider text="or" />
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={busy}
+                  className="h-12 rounded-xl font-medium"
+                  onClick={() => void handleOAuth('google')}
+                >
+                  {oauthProvider === 'google' ? (
+                    <SpinnerIcon className="size-4" />
+                  ) : (
+                    <GoogleIcon className="size-5" />
+                  )}
+                  <span className="sr-only sm:not-sr-only sm:ml-2">Google</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={busy}
+                  className="h-12 rounded-xl font-medium"
+                  onClick={() => void handleOAuth('facebook')}
+                >
+                  {oauthProvider === 'facebook' ? (
+                    <SpinnerIcon className="size-4" />
+                  ) : (
+                    <FacebookIcon className="size-5" />
+                  )}
+                  <span className="sr-only sm:not-sr-only sm:ml-2">Facebook</span>
+                </Button>
+              </div>
+            </>
+          ) : (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void handleContinueEmail()}
+              className={cn(
+                'text-muted-foreground hover:text-foreground mx-auto flex min-h-[44px] items-center text-sm font-medium transition-colors',
+                busy && 'pointer-events-none opacity-50'
+              )}
+            >
+              Resend code
+            </button>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

@@ -1,4 +1,5 @@
 import { Toaster } from 'sonner';
+
 import { useTheme } from '@/components/theme/ThemeProvider';
 
 export function ThemedToaster() {
@@ -29,8 +30,7 @@ export function ThemedToaster() {
           borderRadius: '12px',
         },
         className: 'shadow-lg',
-        descriptionClassName:
-          'text-[14px] font-semibold leading-relaxed text-muted-foreground',
+        descriptionClassName: 'text-[14px] font-semibold leading-relaxed text-muted-foreground',
       }}
     />
   );

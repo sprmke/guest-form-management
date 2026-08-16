@@ -1,0 +1,162 @@
+import { useEffect, useState } from 'react';
+
+import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+
+import {
+  platformFromQuickReplyGroup,
+  quickReplyGroupFromPlatform,
+  QUICK_REPLY_ASSIGN_GROUPS,
+  quickReplyGroupLabel,
+  type QuickReplyGroup,
+} from '@/features/dashboard/inbox/lib/quickReplyGroups';
+import type {
+  InboxTemplate,
+  SaveInboxTemplatePayload,
+} from '@/features/dashboard/inbox/types/inbox';
+
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
+import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
+
+type Props = {
+  open: boolean;
+  template: InboxTemplate | null;
+  defaultGroup: QuickReplyGroup;
+  saving: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSave: (payload: SaveInboxTemplatePayload) => Promise<void>;
+};
+
+export function InboxQuickReplyFormDialog({
+  open,
+  template,
+  defaultGroup,
+  saving,
+  onOpenChange,
+  onSave,
+}: Props) {
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [group, setGroup] = useState<QuickReplyGroup>('all');
+
+  useEffect(() => {
+    if (!open) return;
+    setTitle(template?.title ?? '');
+    setBody(template?.body_text ?? '');
+    setGroup(template ? quickReplyGroupFromPlatform(template.platform) : defaultGroup);
+  }, [open, template, defaultGroup]);
+
+  const handleSubmit = async () => {
+    if (!title.trim() || !body.trim()) {
+      toast.error('Title and message required');
+      return;
+    }
+    try {
+      await onSave({
+        id: template?.id,
+        title: title.trim(),
+        bodyText: body.trim(),
+        platform: platformFromQuickReplyGroup(group),
+      });
+      toast.success(template ? 'Updated' : 'Saved');
+      onOpenChange(false);
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
+  return (
+    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
+      <ResponsiveModalContent
+        className="z-[103] max-w-[min(calc(100vw-1.5rem),28rem)] sm:max-w-[min(90vw,36rem)]"
+        overlayClassName="z-[102]"
+      >
+        <ResponsiveModalHeader>
+          <ResponsiveModalTitle>{template ? 'Edit reply' : 'New reply'}</ResponsiveModalTitle>
+        </ResponsiveModalHeader>
+
+        <div className="space-y-4 py-1">
+          <div className="space-y-1.5">
+            <Label htmlFor="inbox-qr-form-title">Title</Label>
+            <Input
+              id="inbox-qr-form-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Availability check"
+              className="h-10"
+              autoFocus
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="inbox-qr-form-body">Message</Label>
+            <Textarea
+              id="inbox-qr-form-body"
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder="Thanks for reaching out! Please share your dates…"
+              className="min-h-[140px] resize-none font-normal"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Group</Label>
+            <div
+              className="border-border bg-muted/30 flex overflow-x-auto rounded-lg border p-1"
+              role="group"
+              aria-label="Quick reply group"
+            >
+              {QUICK_REPLY_ASSIGN_GROUPS.map((option) => {
+                const active = group === option;
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setGroup(option)}
+                    className={cn(
+                      'flex min-h-[44px] flex-1 items-center justify-center rounded-md px-2 text-xs font-semibold transition-colors sm:text-sm',
+                      active
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    {quickReplyGroupLabel(option)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <ResponsiveModalFooter className="gap-2 sm:gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-[44px] sm:min-h-10"
+            disabled={saving}
+            onClick={() => onOpenChange(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            className="min-h-[44px] sm:min-h-10"
+            disabled={saving || !title.trim() || !body.trim()}
+            onClick={() => void handleSubmit()}
+          >
+            {saving ? <Loader2 className="size-4 animate-spin" aria-hidden /> : 'Save'}
+          </Button>
+        </ResponsiveModalFooter>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
+  );
+}

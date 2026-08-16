@@ -5,11 +5,7 @@
 import {
   runTelegramDailyReminder,
   verifyTelegramCronSecret,
-} from "../_shared/telegramMarketing.ts";
-import { serveCronPost } from "../_shared/serveEdge.ts";
+} from '../_shared/telegramMarketing.ts';
+import { serveCronPost } from '../_shared/serveEdge.ts';
 
-serveCronPost(
-  "telegram-marketing-cron",
-  verifyTelegramCronSecret,
-  runTelegramDailyReminder,
-);
+serveCronPost('telegram-marketing-cron', verifyTelegramCronSecret, runTelegramDailyReminder);

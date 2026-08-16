@@ -27,6 +27,8 @@ function rowsToCsv(headers: string[], rows: (string | number)[][]): string {
 }
 
 export type FinanceExportParams = {
+  propertyId?: string;
+  parkingId?: string;
   type: 'overview' | 'stays' | 'operating' | 'combined';
   from: string | null;
   to: string | null;
@@ -66,20 +68,14 @@ export async function buildFinanceExportCsv(params: FinanceExportParams): Promis
     const definitions = rowsToCsv(
       ['metric', 'formula'],
       [
-        [
-          'booking_rate',
-          'down_payment + guest_balance (booking_rate - down_payment)',
-        ],
+        ['booking_rate', 'down_payment + guest_balance (booking_rate - down_payment)'],
         [
           'other_fees',
           'pet_fee + parking_margin + additional_guest_fee + (security_deposit - sd_refund)',
         ],
-        [
-          'host_net_completed',
-          'booking_rate + other_fees per completed stay (Breakdown net)',
-        ],
+        ['host_net_completed', 'booking_rate + other_fees per completed stay (Breakdown net)'],
         ['grand_net', 'host_net_completed + operating_net'],
-      ],
+      ]
     );
     return {
       filename: `finance-overview-${periodLabel}.csv`,
@@ -89,6 +85,8 @@ export async function buildFinanceExportCsv(params: FinanceExportParams): Promis
 
   if (params.type === 'operating') {
     const items = await listOperatingLineItems({
+      propertyId: params.propertyId,
+      parkingId: params.parkingId,
       from: params.from,
       to: params.to,
       q: params.q,
@@ -100,6 +98,12 @@ export async function buildFinanceExportCsv(params: FinanceExportParams): Promis
   }
 
   if (params.type === 'stays') {
+    if (params.parkingId) {
+      return {
+        filename: `finance-stays-${periodLabel}.csv`,
+        body: rowsToCsv(['note'], [['No stays ledger for parking slots']]),
+      };
+    }
     const body = await staysExportCsv(params);
     return { filename: `finance-stays-${periodLabel}.csv`, body };
   }
@@ -108,6 +112,8 @@ export async function buildFinanceExportCsv(params: FinanceExportParams): Promis
   const summary = await computeFinanceSummary(params);
   const staysBody = await staysExportCsv(params);
   const operatingItems = await listOperatingLineItems({
+    propertyId: params.propertyId,
+    parkingId: params.parkingId,
     from: params.from,
     to: params.to,
   });
@@ -127,17 +133,14 @@ export async function buildFinanceExportCsv(params: FinanceExportParams): Promis
         ['operating_net', summary.operating.net],
         ['operating_income', summary.operating.income],
         ['operating_expenses', summary.operating.expenses],
-      ],
+      ]
     ),
     '',
     '# Definitions',
     rowsToCsv(
       ['metric', 'formula'],
       [
-        [
-          'booking_rate',
-          'down_payment + guest_balance (booking_rate - down_payment)',
-        ],
+        ['booking_rate', 'down_payment + guest_balance (booking_rate - down_payment)'],
         [
           'other_fees',
           'pet_fee + parking_margin + additional_guest_fee + (security_deposit - sd_refund)',
@@ -147,7 +150,7 @@ export async function buildFinanceExportCsv(params: FinanceExportParams): Promis
           'booking_rate + other_fees per completed stay (Breakdown net: income + SD lines - expenses)',
         ],
         ['grand_net', 'host_net_completed + operating_net'],
-      ],
+      ]
     ),
     '',
     '# Stays',
@@ -190,10 +193,13 @@ function operatingItemsToCsv(items: FinanceLineItemRow[]): string {
 async function staysExportCsv(params: FinanceExportParams): Promise<string> {
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
   );
   const { data } = await supabase.from('guest_submissions').select('*');
-  const all = (data ?? []) as Record<string, unknown>[];
+  const scoped = params.propertyId
+    ? (data ?? []).filter((row) => row.property_id === params.propertyId)
+    : (data ?? []);
+  const all = scoped as Record<string, unknown>[];
   const filtered = all.filter((row) => {
     if (!params.includeCancelled && isCancelledBooking(row)) return false;
     if (params.completedOnly && row.status !== 'COMPLETED') return false;
@@ -202,11 +208,7 @@ async function staysExportCsv(params: FinanceExportParams): Promise<string> {
     }
     const needle = params.q?.trim().toLowerCase() ?? '';
     if (needle) {
-      const hay = [
-        row.guest_facebook_name,
-        row.primary_guest_name,
-        row.guest_email,
-      ]
+      const hay = [row.guest_facebook_name, row.primary_guest_name, row.guest_email]
         .map((v) => String(v ?? '').toLowerCase())
         .join(' ');
       if (!hay.includes(needle)) return false;

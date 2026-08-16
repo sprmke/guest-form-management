@@ -1,0 +1,37 @@
+/**
+ * get-guest-stay-guide — Public GET for the token-gated guest stay brochure page.
+ *
+ * GET ?token=<opaque>
+ * Optional path context: property slug in SPA route must match booking property when present.
+ */
+
+import { loadGuestStayGuideByToken } from '../_shared/guestStayGuide.ts';
+import { jsonError, jsonSuccess } from '../_shared/httpResponse.ts';
+import { servePublic } from '../_shared/serveEdge.ts';
+
+const NOT_AVAILABLE = {
+  success: false,
+  error: 'not_available',
+  message: 'This guide is not available. Please use the link from your check-in email.',
+};
+
+servePublic('get-guest-stay-guide', async (req) => {
+  if (req.method !== 'GET') {
+    return jsonError(req, `Method ${req.method} not allowed`, 405);
+  }
+
+  const url = new URL(req.url);
+  const token = (url.searchParams.get('token') ?? '').trim();
+  const propertySlug = (url.searchParams.get('property') ?? '').trim() || null;
+
+  if (!token) {
+    return jsonError(req, NOT_AVAILABLE, 404);
+  }
+
+  const data = await loadGuestStayGuideByToken(token, propertySlug);
+  if (!data) {
+    return jsonError(req, NOT_AVAILABLE, 404);
+  }
+
+  return jsonSuccess(req, data);
+});

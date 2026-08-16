@@ -1,0 +1,155 @@
+---
+name: mobile-responsive
+description: >-
+  Mobile-first, responsive UI standards for every screen and component in this
+  project — breakpoints, touch targets, tables, admin shell layout, modals.
+  Use for any new or changed UI in ui/src/**; this is an always-on rule on the
+  Cursor side (mobile-responsive.mdc) with no automatic Claude Code
+  equivalent, so invoke it explicitly for UI work.
+---
+
+# Mobile-first responsive UI
+
+Every UI component in this project must work correctly at **375 px** (iPhone SE), **390 px** (iPhone 15), **768 px** (iPad), **1024 px** (laptop), and **1440 px** (desktop). Design mobile first; use Tailwind breakpoints to scale up, not down.
+
+## 1. Breakpoint strategy
+
+Use **Tailwind's default min-width breakpoints** in this order:
+
+| Prefix   | Min width | Context                            |
+| -------- | --------- | ---------------------------------- |
+| _(none)_ | 0 px      | Mobile default — design here first |
+| `sm:`    | 640 px    | Large phone / small tablet         |
+| `md:`    | 768 px    | Tablet portrait                    |
+| `lg:`    | 1024 px   | Laptop — sidebar becomes visible   |
+| `xl:`    | 1280 px   | Desktop                            |
+
+Rules: write the mobile style first (no prefix), then add `sm:`/`md:`/`lg:` overrides. Never write desktop-only styles without a mobile fallback. Never use `max-w-` breakpoints (max-width queries); always min-width.
+
+## 2. Layout — admin dashboard
+
+The admin shell (`AdminLayout` / `PropertyAdminShell`) follows this pattern:
+
+```
+Mobile (<lg):
+  ┌────────────────────────────────────┐
+  │ Topbar (tenant switcher)           │
+  ├────────────────────────────────────┤
+  │ Page content (scrolls)             │
+  │  p-3 sm:p-4 + bottom tab inset     │
+  ├────────────────────────────────────┤
+  │ BottomTabBar (primary + More)      │
+  │  or ContextualActionBar (edit)     │
+  └────────────────────────────────────┘
+
+Desktop (lg+):
+  ┌──────────┬─────────────────────────┐
+  │ Sidebar  │ Page content            │
+  │ (flex,   │  p-5 lg:p-6             │
+  │  collapsible) │                    │
+  └──────────┴─────────────────────────┘
+```
+
+- Desktop sidebar is `hidden lg:flex` (collapsible width); main column fills the rest.
+- On mobile, **bottom tabs** are the primary navigation: **Dashboard**, **Bookings**, **Finance** (when present), **Assistant** (when enabled), **Notifications**, and **More**. Assistant and Notifications open the same slide-over / sheet as desktop — they are not extra header icons. Remaining pages live in the More sheet. The hamburger drawer is retired.
+- Screens with a dominant primary action (e.g. booking edit Save/Cancel) mount `ContextualActionBar`, which hides the tab bar for that route.
+- Shared primitives: `ui/src/components/mobile/` (`BottomTabBar`, `BottomBarSlot`, `ContextualActionBar`, `MobileAppShell`, `PageTransition`, `MobileHeroActionMenu`, `AdminListRefineSheet`).
+- **Hero trailing:** never render multiple icon buttons. Use `MobileHeroActionMenu` (1 item = direct icon; 2+ = one ··· dropdown). Same idea as Guest pages menu.
+- **List toolbars (`max-lg`):** progressive disclosure — search + refine icon (opens `AdminListRefineSheet` for filters/sort/per-page) + view toggle. Do not stack Status/Filters/Sort/Per-page as separate full-width rows on mobile. Desktop (`lg+`) keeps the inline multi-control toolbar.
+- **Dashboard density (`max-lg`):** hide hero subtitles, KPI decorative icons, repeated “vs last period” labels, chart icon wells/descriptions, and period eyebrows when the date filter already conveys the range. Prefer title-only section headers. Keep comfortable card/section gaps (≈10–14px gutters, `p-3`+ padding) — dense chrome, not cramped type. Keep comfortable card/section gaps (≈10–14px gutters, `p-3`+ padding) — dense chrome, not cramped type.
+- **Choice pickers (`max-lg`):** option lists open as `MobileChoiceSheet` (full-width ≥48px rows), not tiny floating dropdowns. Desktop (`lg+`) keeps `DropdownMenu` / absolute panels. Shared: `ui/src/components/mobile/MobileChoiceSheet.tsx`.
+- **Choice pickers (`max-lg`):** option lists open as `MobileChoiceSheet` (full-width ≥48px rows), not tiny floating dropdowns. Desktop (`lg+`) keeps `DropdownMenu` / absolute panels. Shared: `ui/src/components/mobile/MobileChoiceSheet.tsx`.
+- Floating pill tab bar — content uses `max-lg:pb-[calc(7.75rem+env(safe-area-inset-bottom))]` via `bottomTabBarOffsetClassName()`. On document-scroll pages apply it on `MobileAppShell`; on **fill-main** pages (`AdminSectionNavLayout`, Inbox) apply it on the **inner scrollport / content root** instead — shell `pb` shrinks the flex area into a dead white gap and clips mid-card. Avoid shell `p-*` shorthand (twMerge drops the clearance). Active tab uses a solid brand pill + on-primary labels; icons ~18px / stroke 1.75 (not chunky); dock chrome is `mobileFloatingDockClassName`.
+- Sticky brand hero (`max-lg`): scroll collapses title/arc (parallax). Float toolbar morphs into fixed `MobileStickyChrome` when its top hits the viewport (`useMobileStickyChrome`). Heavy lists: compact sticky row + More sheet.
+- Prefer `surface-card` / `native-cta` / `native-stagger` / `native-press` for dashboard content on mobile.
+- Hybrid modals: short confirms stay `Dialog`; longer forms use `ResponsiveModal` / bottom sheet (`ui/src/components/ui/responsive-modal.tsx`).
+
+## 3. Touch targets
+
+All interactive elements must meet **WCAG 2.5.5 (AAA) / iOS HIG**: minimum **44 × 44 px**.
+
+```tsx
+// Good — icon button with explicit min size
+<button className="p-2.5 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center">
+
+// Bad — too small
+<button className="p-1 rounded">
+```
+
+Table row actions, filter buttons, nav items, and pagination chips must all meet this threshold (`py-2.5` or `min-h-[44px]`).
+
+## 4. Typography scaling
+
+| Use               | Mobile                                        | Desktop          |
+| ----------------- | --------------------------------------------- | ---------------- |
+| Page title        | `text-lg font-bold` (`text-admin-page-title`) | `sm:text-xl`     |
+| Page subtitle     | `text-sm` (`text-admin-page-subtitle`)        | `sm:text-[15px]` |
+| Table data        | `text-sm`                                     | `text-[13px]`    |
+| Secondary / muted | `text-xs`                                     | `text-[11px]`    |
+| Section labels    | `text-xs font-bold uppercase tracking-wider`  | same             |
+
+## 5. Tables
+
+Tables must never cause horizontal overflow on the page:
+
+```tsx
+<div className="overflow-x-auto rounded-xl">
+  <table className="w-full min-w-[600px]">...</table>
+</div>
+```
+
+Hide non-critical columns on small screens:
+
+| Column                    | Visible from                 |
+| ------------------------- | ---------------------------- |
+| Status                    | always                       |
+| Guest (name + email)      | always                       |
+| Stay (dates + nights)     | always                       |
+| Pax                       | `md:`                        |
+| Flags (parking/pet icons) | `sm:`                        |
+| Amount                    | `lg:`                        |
+| Created                   | `md:`                        |
+| Actions                   | always (icon only on mobile) |
+
+## 6. Forms and filter bars
+
+Search input always full-width (`w-full`). Filter button strips: `overflow-x-auto` horizontal scroll on mobile — never wrap into multiple rows. Dropdown panels: `absolute`, `max-h-[60vh] overflow-y-auto`, max-width `min(90vw, 320px)`. Input height `h-10` (40 px) minimum.
+
+## 7. Spacing
+
+| Context            | Mobile       | Desktop        |
+| ------------------ | ------------ | -------------- |
+| Page padding       | `p-3 sm:p-4` | `lg:p-6`       |
+| Card / section gap | `space-y-3`  | `sm:space-y-4` |
+| Form field gap     | `space-y-4`  | same           |
+| Inline button gap  | `gap-1.5`    | same           |
+
+Never use `px-6` or larger without a mobile fallback like `px-4`.
+
+## 8. Images and media
+
+Always set explicit `width`/`height` or `aspect-*` classes. Use `object-cover` inside fixed containers. Never put an `<img>` inside a flex container without `shrink-0` or `min-w-0`.
+
+## 9. Modals and dropdowns
+
+Modals: hybrid — short confirms stay centered `Dialog`; longer forms/detail panels use `ResponsiveModal` (bottom sheet on phone). Dropdowns: `max-w-[calc(100vw-24px)]` safety net on mobile. `z-50` for overlays, `z-40` for sticky headers and the bottom tab / contextual bar.
+
+## 10. Don'ts
+
+- Hardcoded pixel widths that assume desktop (`width: 800px` without `max-w-full`).
+- `whitespace-nowrap` on text that should wrap at mobile sizes.
+- Hiding entire feature sections behind `hidden lg:block` without a mobile alternative.
+- `overflow-hidden` on `<body>`/root layout — breaks iOS momentum scrolling.
+- `hover:` effects without a touch-safe fallback.
+- Fixed `height` on containers holding dynamic text content.
+
+## 11. Before shipping any UI change
+
+- [ ] Works at 375 px and 768 px width
+- [ ] No horizontal scroll at any breakpoint (unless an intentional scrollable container)
+- [ ] All tap targets ≥ 44 × 44 px
+- [ ] Text readable without zooming at 375 px
+- [ ] Table and dropdown panels don't overflow the viewport
+- [ ] Filter bar usable on mobile (scrollable strip or dropdown)
+
+If Playwright MCP is available (see `.mcp.json` / `verify` skill), actually resize the viewport and check these instead of eyeballing the code.

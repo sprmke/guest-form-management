@@ -1,0 +1,132 @@
+import { useState } from 'react';
+
+import { Save } from 'lucide-react';
+
+import {
+  useSaveMarketingTemplate,
+  useUpdateMarketingTemplate,
+  type MarketingTemplateRecord,
+} from '@/features/dashboard/marketing/hooks/useMarketingTemplates';
+
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
+
+type Props = {
+  contentType: 'calendar' | 'design' | 'video';
+  designJson: Record<string, unknown>;
+  defaultName?: string;
+  platform?: string;
+  aspectPreset?: string;
+  /** When set, Save updates the existing row instead of creating a new one */
+  existingTemplateId?: string | null;
+  buttonLabel?: string;
+  updateLabel?: string;
+  onSaved?: (record: MarketingTemplateRecord) => void;
+};
+
+export function SaveMarketingTemplateButton({
+  contentType,
+  designJson,
+  defaultName = 'My template',
+  platform,
+  aspectPreset,
+  existingTemplateId,
+  buttonLabel = 'Save',
+  updateLabel = 'Update',
+  onSaved,
+}: Props) {
+  const save = useSaveMarketingTemplate();
+  const update = useUpdateMarketingTemplate();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(defaultName);
+
+  const handleSave = async () => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+
+    if (existingTemplateId) {
+      const record = await update.mutateAsync({
+        id: existingTemplateId,
+        name: trimmed,
+        aspectPreset,
+        platform,
+        designJson,
+      });
+      onSaved?.(record);
+    } else {
+      const record = await save.mutateAsync({
+        name: trimmed,
+        contentType,
+        platform,
+        aspectPreset,
+        designJson,
+      });
+      onSaved?.(record);
+    }
+    setOpen(false);
+  };
+
+  const isPending = save.isPending || update.isPending;
+
+  return (
+    <>
+      <Button
+        type="button"
+        className="min-h-[44px] gap-2"
+        onClick={() => {
+          if (existingTemplateId) {
+            void update
+              .mutateAsync({
+                id: existingTemplateId,
+                name: defaultName.trim() || 'Template',
+                aspectPreset,
+                platform,
+                designJson,
+              })
+              .then((record) => onSaved?.(record));
+            return;
+          }
+          setName(defaultName);
+          setOpen(true);
+        }}
+        disabled={isPending}
+      >
+        <Save className="size-4" aria-hidden />
+        {existingTemplateId ? updateLabel : buttonLabel}
+      </Button>
+
+      <ResponsiveModal open={open} onOpenChange={setOpen}>
+        <ResponsiveModalContent className="max-w-[min(calc(100vw-1.5rem),24rem)]">
+          <ResponsiveModalHeader>
+            <ResponsiveModalTitle>Save template</ResponsiveModalTitle>
+          </ResponsiveModalHeader>
+          <div className="space-y-2">
+            <Label htmlFor="template-name">Name</Label>
+            <Input
+              id="template-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="h-10"
+            />
+          </div>
+          <ResponsiveModalFooter className="gap-2">
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" disabled={isPending} onClick={() => void handleSave()}>
+              Save
+            </Button>
+          </ResponsiveModalFooter>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
+    </>
+  );
+}

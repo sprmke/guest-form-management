@@ -1,0 +1,69 @@
+name: CD Prod (mt-prod — gated until release)
+
+# INACTIVE until Phase B (prod release):
+#   1. Create MULTI_TENANT_PROD Supabase + legacy data migration
+#   2. Merge develop → main; kame-homes Production branch = main
+#   3. GitHub Environment `production` secrets → mt-prod ref
+#   4. Set repository variable CUTOVER_ENABLED=true
+# See docs/workflow/in-progress/ci-cd-environments/multi-tenant-dev-prod-environments.md § Phase B
+
+on:
+  workflow_dispatch:
+    inputs:
+      acknowledge:
+        description: 'Type CUTover to acknowledge production Supabase deploy'
+        required: true
+        type: string
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cutover gate
+        env:
+          CUTOVER_ENABLED: ${{ vars.CUTOVER_ENABLED }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          LEGACY_PROD_PROJECT_REF: ${{ secrets.LEGACY_PROD_PROJECT_REF }}
+          ACK: ${{ github.event.inputs.acknowledge }}
+        run: |
+          if [[ "${CUTOVER_ENABLED:-}" != "true" ]]; then
+            echo "Cutover not enabled."
+            echo "Set repository variable CUTOVER_ENABLED=true only after Phase B (mt-prod release)."
+            echo "See docs/workflow/in-progress/ci-cd-environments/multi-tenant-dev-prod-environments.md § Phase B."
+            exit 1
+          fi
+          if [[ "$ACK" != "CUTover" ]]; then
+            echo "Workflow input acknowledge must be exactly: CUTover"
+            exit 1
+          fi
+          if [[ -z "${SUPABASE_PROJECT_REF:-}" ]]; then
+            echo "production environment secrets not configured (SUPABASE_PROJECT_REF)."
+            exit 1
+          fi
+          echo "Cutover gate passed for ref ...${SUPABASE_PROJECT_REF: -4}"
+
+  deploy:
+    needs: gate
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Production deploy placeholder
+        env:
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          LEGACY_PROD_PROJECT_REF: ${{ secrets.LEGACY_PROD_PROJECT_REF }}
+        run: |
+          echo "Production CD scaffold only — mt-prod not created yet."
+          echo "At release: deploy to MULTI_TENANT_PROD after legacy migration."
+          echo "Until then, use local deploy with kamewave + docs/archive/operations/production-deployment.md"
+          if [[ -n "${LEGACY_PROD_PROJECT_REF:-}" && "${SUPABASE_PROJECT_REF}" == "${LEGACY_PROD_PROJECT_REF}" ]]; then
+            echo "WARNING: production SUPABASE_PROJECT_REF equals LEGACY — verify cutover strategy."
+          fi

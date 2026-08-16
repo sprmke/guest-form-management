@@ -1,0 +1,122 @@
+/**
+ * getPropertyFact tool boundary for the voice receptionist — the hard security boundary
+ * (see .superpowers/sdd/2026-07-30-ai-voice-receptionist Architecture §1). Even if a guest
+ * tampers with the locked system instructions, this allowlist is the only path to data,
+ * and it only ever reads the same guest-safe fields as the text-AI inbox context.
+ */
+
+import {
+  loadGuestSafeAvailabilityContext,
+  loadGuestSafePropertyContext,
+  type PropertyGuestContextDto,
+} from './inboxAiGuestContext.ts';
+
+type TopicMatcher = { key: string; pattern: RegExp };
+
+/**
+ * Ordered allowlist — first match wins. Anything that matches none of these (finance,
+ * other guests, staff/internal ops, maintenance, etc.) is rejected by the caller.
+ */
+const TOPIC_MATCHERS: TopicMatcher[] = [
+  { key: 'checkin', pattern: /check[- ]?in/i },
+  { key: 'checkout', pattern: /check[- ]?out/i },
+  { key: 'wifi', pattern: /wifi|internet|network/i },
+  { key: 'parking', pattern: /park/i },
+  { key: 'pets', pattern: /pet/i },
+  { key: 'pricing', pattern: /rate|price|pricing|cost|deposit|fee/i },
+  { key: 'availability', pattern: /available|availability|vacan|book(?:ed|ing)?/i },
+  { key: 'payment', pattern: /pay|gcash|bank|cash/i },
+  { key: 'cancellation', pattern: /cancel|refund/i },
+  { key: 'location', pattern: /location|address|map|direction|where/i },
+  { key: 'houseRules', pattern: /house rule|rule/i },
+  { key: 'capacity', pattern: /guest|capacity|bedroom|bathroom|max|sleep|occupan/i },
+  { key: 'amenities', pattern: /amenit|facilit/i },
+  { key: 'overview', pattern: /overview|general|about|property|residence|unit/i },
+];
+
+export function matchGuestSafeVoiceTopic(rawTopic: string): string | null {
+  const topic = rawTopic.trim();
+  if (!topic) return null;
+  const match = TOPIC_MATCHERS.find(({ pattern }) => pattern.test(topic));
+  return match?.key ?? null;
+}
+
+function findAmenityMatching(property: PropertyGuestContextDto, pattern: RegExp): string | null {
+  return property.amenities.find((amenity) => pattern.test(amenity)) ?? null;
+}
+
+async function renderAvailabilityAnswer(propertyId: string): Promise<string> {
+  const availability = await loadGuestSafeAvailabilityContext(propertyId);
+  if (availability.blockedRanges.length === 0) {
+    return `As of ${availability.asOfDate}, there are no blocked dates on record for the near term — check the booking calendar for exact availability.`;
+  }
+  const upcoming = availability.blockedRanges
+    .slice(0, 5)
+    .map((range) => `${range.checkIn} to ${range.checkOut}`)
+    .join('; ');
+  return `As of ${availability.asOfDate}, these date ranges are already booked: ${upcoming}. Other dates are open — check the booking calendar to confirm.`;
+}
+
+/**
+ * Builds a guest-safe answer for an allowlisted topic. Every field read here comes from
+ * `loadGuestSafePropertyContext` / `loadGuestSafeAvailabilityContext` — the same DTOs the
+ * text-AI inbox uses, which explicitly never include finance, maintenance, or guest PII.
+ */
+export async function answerGuestSafeVoiceTopic(
+  propertyId: string,
+  topicKey: string
+): Promise<string> {
+  const property = await loadGuestSafePropertyContext(propertyId);
+  if (!property) {
+    throw new Error('Property not found');
+  }
+
+  switch (topicKey) {
+    case 'checkin':
+      return `Check-in is at ${property.checkInTime}. Self check-in: ${property.selfCheckIn ? 'yes' : 'no'}.`;
+    case 'checkout':
+      return `Check-out is at ${property.checkOutTime}.`;
+    case 'wifi': {
+      const wifiAmenity = findAmenityMatching(property, /wifi|internet/i);
+      return wifiAmenity
+        ? `Wifi is included: ${wifiAmenity}.`
+        : 'Wifi details are not listed — ask the host team to confirm.';
+    }
+    case 'parking':
+      return property.pricing.parkingRateGuest != null
+        ? `Guest parking is available for ${property.pricing.parkingRateGuest} pesos — ask the host team to arrange it.`
+        : 'Parking is not listed for this property — ask the host team to confirm.';
+    case 'pets':
+      return property.pricing.petFee != null
+        ? `Pets are welcome with a ${property.pricing.petFee} pesos pet fee.`
+        : 'Pet policy is not listed for this property — ask the host team to confirm.';
+    case 'pricing':
+      return (
+        `Weekday rate is ${property.pricing.weekdayNightlyRate} pesos per night, weekend rate is ${property.pricing.weekendNightlyRate} pesos per night.` +
+        (property.pricing.securityDeposit != null
+          ? ` Security deposit is ${property.pricing.securityDeposit} pesos.`
+          : '')
+      );
+    case 'availability':
+      return renderAvailabilityAnswer(propertyId);
+    case 'payment':
+      return property.paymentMethodsSummary;
+    case 'cancellation':
+      return `${property.cancellationPolicyTitle}. ${property.cancellationPolicyDescription}`;
+    case 'location':
+      return `${property.address || property.locationLabel}.${property.mapsUrl ? ` Map: ${property.mapsUrl}` : ''}`;
+    case 'houseRules':
+      return property.houseRules.length
+        ? `House rules: ${property.houseRules.join('; ')}.`
+        : 'No specific house rules are listed.';
+    case 'capacity':
+      return `This property sleeps up to ${property.maxGuests} guests, with ${property.bedrooms} bedroom(s) and ${property.bathrooms} bathroom(s).`;
+    case 'amenities':
+      return property.amenities.length
+        ? `Amenities include: ${property.amenities.join(', ')}.`
+        : 'No amenities are listed for this property.';
+    case 'overview':
+    default:
+      return `${property.name} is located in ${property.locationLabel}, sleeps up to ${property.maxGuests} guests, with check-in at ${property.checkInTime} and check-out at ${property.checkOutTime}.`;
+  }
+}

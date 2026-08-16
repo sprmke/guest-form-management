@@ -11,5 +11,5 @@ export const corsHeaders = (req: Request) => ({
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PATCH, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, apikey, x-client-info, content-type',
-  'Access-Control-Max-Age': '7200',  // 2 hours - Chrome's maximum limit
+  'Access-Control-Max-Age': '7200', // 2 hours - Chrome's maximum limit
 });

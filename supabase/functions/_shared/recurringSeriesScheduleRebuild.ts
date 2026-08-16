@@ -3,15 +3,10 @@
  * Shared by finance_line_items and maintenance_items update paths.
  */
 
-import {
-  generateRecurrenceDates,
-  type RecurrenceInterval,
-} from './financeRecurrence.ts';
+import { generateRecurrenceDates, type RecurrenceInterval } from './financeRecurrence.ts';
 
 type RebuildParams<TRow> = {
-  supabase: ReturnType<
-    typeof import('https://esm.sh/@supabase/supabase-js@2.38.4').createClient
-  >;
+  supabase: ReturnType<typeof import('https://esm.sh/@supabase/supabase-js@2.38.4').createClient>;
   table: 'finance_line_items' | 'maintenance_items';
   dateColumn: 'occurred_on' | 'scheduled_on';
   seriesId: string;
@@ -21,18 +16,18 @@ type RebuildParams<TRow> = {
   buildRowPatch: (
     existing: Record<string, unknown>,
     dateYmd: string,
-    now: string,
+    now: string
   ) => Record<string, unknown>;
   mapRow: (row: Record<string, unknown>) => TRow;
   buildInsertRow: (
     template: Record<string, unknown>,
     dateYmd: string,
-    now: string,
+    now: string
   ) => Record<string, unknown>;
 };
 
 export async function rebuildMaterializedRecurrenceSeries<TRow>(
-  params: RebuildParams<TRow>,
+  params: RebuildParams<TRow>
 ): Promise<{ row: TRow; updated_count: number }> {
   const {
     supabase,
@@ -62,13 +57,7 @@ export async function rebuildMaterializedRecurrenceSeries<TRow>(
   const seriesStart = String(rows[0][dateColumn]).slice(0, 10);
   const primaryDay = Number(seriesStart.slice(8, 10));
   const until = newUntil >= seriesStart ? newUntil.slice(0, 10) : seriesStart;
-  const newDates = generateRecurrenceDates(
-    seriesStart,
-    newInterval,
-    until,
-    500,
-    primaryDay,
-  );
+  const newDates = generateRecurrenceDates(seriesStart, newInterval, until, 500, primaryDay);
   if (newDates.length === 0) throw new Error('recurrence_generated_no_dates');
 
   const now = new Date().toISOString();
@@ -100,14 +89,9 @@ export async function rebuildMaterializedRecurrenceSeries<TRow>(
   }
 
   if (idsToDelete.length > 0) {
-    const { error: deleteErr } = await supabase
-      .from(table)
-      .delete()
-      .in('id', idsToDelete);
+    const { error: deleteErr } = await supabase.from(table).delete().in('id', idsToDelete);
     if (deleteErr) {
-      throw new Error(
-        `delete ${table} after series rebuild failed: ${deleteErr.message}`,
-      );
+      throw new Error(`delete ${table} after series rebuild failed: ${deleteErr.message}`);
     }
   }
 
@@ -115,11 +99,7 @@ export async function rebuildMaterializedRecurrenceSeries<TRow>(
   for (let i = rows.length; i < newDates.length; i += 1) {
     const newDate = newDates[i]!;
     const insertRow = buildInsertRow(template, newDate, now);
-    const { data, error } = await supabase
-      .from(table)
-      .insert(insertRow)
-      .select('*')
-      .single();
+    const { data, error } = await supabase.from(table).insert(insertRow).select('*').single();
     if (error) {
       throw new Error(`insert ${table} series rebuild failed: ${error.message}`);
     }
@@ -136,9 +116,7 @@ export async function rebuildMaterializedRecurrenceSeries<TRow>(
       .eq('id', anchorId)
       .maybeSingle();
     if (refetchErr) {
-      throw new Error(
-        `fetch ${table} anchor after rebuild failed: ${refetchErr.message}`,
-      );
+      throw new Error(`fetch ${table} anchor after rebuild failed: ${refetchErr.message}`);
     }
     anchor = (refetched as Record<string, unknown> | null) ?? rows[0];
   }

@@ -9,18 +9,12 @@
  * Does not change booking workflow status.
  */
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { corsHeaders } from "../_shared/cors.ts";
-import { DatabaseService } from "../_shared/databaseService.ts";
-import { CalendarService } from "../_shared/calendarService.ts";
-import { SheetsService } from "../_shared/sheetsService.ts";
-import { sendParkingBroadcast } from "../_shared/emailService.ts";
-import {
-  isBookingStatus,
-  isPostPendingDocumentsStatus,
-  STATUS_HUMAN_LABEL,
-  type BookingStatus,
-} from "../_shared/statusMachine.ts";
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { corsHeaders } from '../_shared/cors.ts';
+import { DatabaseService } from '../_shared/databaseService.ts';
+import { sendParkingBroadcast } from '../_shared/emailService.ts';
+import { propertyAutomationEnabled } from '../_shared/propertyAutomationToggles.ts';
+import { isBookingStatus, isPostPendingDocumentsStatus } from '../_shared/statusMachine.ts';
 
 type SubmitBody = {
   bookingId?: string;
@@ -35,7 +29,7 @@ type SubmitBody = {
 
 function resolveParkingRateGuest(row: Record<string, unknown>): number {
   const raw = row.parking_rate_guest;
-  if (raw != null && raw !== "") {
+  if (raw != null && raw !== '') {
     const n = Number(raw);
     if (!Number.isNaN(n) && n > 0) return n;
   }
@@ -43,58 +37,45 @@ function resolveParkingRateGuest(row: Record<string, unknown>): number {
 }
 
 function validateBody(body: SubmitBody): string | null {
-  const plate = (body.carPlateNumber ?? "").trim();
-  const brand = (body.carBrandModel ?? "").trim();
-  const color = (body.carColor ?? "").trim();
-  if (!plate) return "Car plate number is required";
-  if (!brand) return "Car brand and model is required";
-  if (!color) return "Car color is required";
+  const plate = (body.carPlateNumber ?? '').trim();
+  const brand = (body.carBrandModel ?? '').trim();
+  const color = (body.carColor ?? '').trim();
+  if (!plate) return 'Car plate number is required';
+  if (!brand) return 'Car brand and model is required';
+  if (!color) return 'Car color is required';
   return null;
 }
 
-function buildPaxNights(booking: Record<string, unknown>): {
-  pax: number;
-  nights: number;
-} {
-  const pax =
-    (Number(booking.number_of_adults) || 1) +
-    (Number(booking.number_of_children) || 0);
-  const nights = Number(booking.number_of_nights) || 1;
-  return { pax, nights };
-}
-
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders(req) });
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders(req) });
   }
 
   try {
-    if (req.method !== "POST") {
+    if (req.method !== 'POST') {
       throw new Error(`Method ${req.method} not allowed`);
     }
 
     const body = (await req.json().catch(() => null)) as SubmitBody | null;
-    const bookingId = (body?.bookingId ?? "").trim();
-    if (!bookingId) throw new Error("bookingId is required");
+    const bookingId = (body?.bookingId ?? '').trim();
+    if (!bookingId) throw new Error('bookingId is required');
 
-    const validationError = body ? validateBody(body) : "Invalid body";
+    const validationError = body ? validateBody(body) : 'Invalid body';
     if (validationError) throw new Error(validationError);
 
     const existing = await DatabaseService.getBookingById(bookingId);
-    if (!existing) throw new Error("Booking not found");
-    if (existing.status === "CANCELLED") {
-      throw new Error("This booking was cancelled — parking cannot be added");
+    if (!existing) throw new Error('Booking not found');
+    if (existing.status === 'CANCELLED') {
+      throw new Error('This booking was cancelled — parking cannot be added');
     }
 
-    const parkingRateGuest = resolveParkingRateGuest(
-      existing as Record<string, unknown>,
-    );
+    const parkingRateGuest = resolveParkingRateGuest(existing as Record<string, unknown>);
 
     const patch: Record<string, unknown> = {
       need_parking: true,
-      car_plate_number: (body!.carPlateNumber ?? "").trim().toUpperCase(),
-      car_brand_model: (body!.carBrandModel ?? "").trim(),
-      car_color: (body!.carColor ?? "").trim(),
+      car_plate_number: (body!.carPlateNumber ?? '').trim().toUpperCase(),
+      car_brand_model: (body!.carBrandModel ?? '').trim(),
+      car_color: (body!.carColor ?? '').trim(),
       parking_rate_guest: parkingRateGuest,
     };
 
@@ -109,56 +90,43 @@ serve(async (req) => {
     const updated = await DatabaseService.setWorkflowFields(bookingId, patch);
 
     const shouldSendBroadcast = body!.sendParkingBroadcast !== false;
-    const parkingOwnerEmail = (body!.parkingOwnerEmail ?? "").trim();
+    const parkingOwnerEmail = (body!.parkingOwnerEmail ?? '').trim();
+
+    const hadParkingVehicle = Boolean(
+      existing.need_parking &&
+      (String(existing.car_plate_number ?? '').trim() ||
+        String(existing.car_brand_model ?? '').trim() ||
+        String(existing.car_color ?? '').trim())
+    );
 
     let broadcastResult: unknown = null;
     let broadcastSent = false;
     let sentToOwnerEmail: string | null = null;
+    const propertyId = typeof updated.property_id === 'string' ? updated.property_id.trim() : '';
+    const broadcastAllowed = propertyId
+      ? await propertyAutomationEnabled(propertyId, 'emailParkingBroadcast')
+      : true;
     try {
-      if (parkingOwnerEmail) {
+      if (!broadcastAllowed) {
+        console.log('[submit-pay-parking] Parking broadcast skipped (org automation off)');
+      } else if (parkingOwnerEmail) {
         broadcastResult = await sendParkingBroadcast(updated, {
           to: parkingOwnerEmail,
+          isUpdate: hadParkingVehicle,
         });
         broadcastSent = broadcastResult !== null;
         sentToOwnerEmail = broadcastSent ? parkingOwnerEmail : null;
       } else if (shouldSendBroadcast) {
-        broadcastResult = await sendParkingBroadcast(updated);
+        broadcastResult = await sendParkingBroadcast(updated, {
+          isUpdate: hadParkingVehicle,
+        });
         broadcastSent = broadcastResult !== null;
       }
     } catch (broadcastErr) {
-      console.error(
-        "[submit-pay-parking] Parking broadcast failed:",
-        broadcastErr,
-      );
+      console.error('[submit-pay-parking] Parking broadcast failed:', broadcastErr);
       throw new Error(
-        "Parking details were saved but the owner broadcast email failed. Please ask your host to resend from the admin dashboard.",
+        'Parking details were saved but the owner broadcast email failed. Please ask your host to resend from the admin dashboard.'
       );
-    }
-
-    const rawStatusAfter = updated.status as string;
-    if (isBookingStatus(rawStatusAfter)) {
-      const status = rawStatusAfter as BookingStatus;
-      const { pax, nights } = buildPaxNights(
-        updated as Record<string, unknown>,
-      );
-      const guestName = String(updated.guest_facebook_name ?? "");
-      const statusLabel = STATUS_HUMAN_LABEL[status];
-      try {
-        await CalendarService.updateCalendarEventStatus(
-          bookingId,
-          status,
-          pax,
-          nights,
-          guestName,
-          updated,
-        );
-        await SheetsService.syncFullRowFromDbBooking(updated, statusLabel);
-      } catch (syncErr) {
-        console.warn(
-          "[submit-pay-parking] Calendar/sheet sync failed (non-fatal):",
-          syncErr,
-        );
-      }
     }
 
     return new Response(
@@ -173,17 +141,14 @@ serve(async (req) => {
       }),
       {
         status: 200,
-        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
-      },
+        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+      }
     );
   } catch (error) {
-    console.error("[submit-pay-parking]", error);
-    return new Response(
-      JSON.stringify({ success: false, error: (error as Error).message }),
-      {
-        status: 400,
-        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
-      },
-    );
+    console.error('[submit-pay-parking]', error);
+    return new Response(JSON.stringify({ success: false, error: (error as Error).message }), {
+      status: 400,
+      headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+    });
   }
 });

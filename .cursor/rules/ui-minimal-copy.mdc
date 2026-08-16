@@ -1,8 +1,8 @@
 ---
 description: Keep UI copy minimal — no extra labels, descriptions, or helper text unless requested or required.
 globs:
-  - "ui/src/**/*.tsx"
-  - "ui/src/**/*.ts"
+  - 'ui/src/**/*.tsx'
+  - 'ui/src/**/*.ts'
 alwaysApply: true
 ---
 

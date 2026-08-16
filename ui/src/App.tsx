@@ -1,4 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+import { GuestAuthProvider } from '@/features/guest/auth/context/GuestAuthContext';
+import { SavedPropertiesSync } from '@/features/guest/marketing/properties/components/SavedPropertiesSync';
+import { ModeSwitchTransitionProvider } from '@/features/guest/marketing/shared/context/ModeSwitchTransitionContext';
+
 import { AppRoutes } from '@/routes';
 
 // Conservative defaults: short stale time so admins see fresh data, but refetch on window focus
@@ -16,7 +21,13 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AppRoutes />
+      <GuestAuthProvider>
+        {/* Global so the curtain survives AdminLayout ↔ MarketingLayoutShell remounts. */}
+        <ModeSwitchTransitionProvider>
+          <SavedPropertiesSync />
+          <AppRoutes />
+        </ModeSwitchTransitionProvider>
+      </GuestAuthProvider>
     </QueryClientProvider>
   );
 }
