@@ -1,9 +1,15 @@
 /**
- * Risk classifier for dashboard assistant messages.
- * Determines whether the user intent is safe, sensitive, or disallowed for an ops assistant.
+ * Risk classifiers for the AI dashboard assistant.
+ * Two independent concerns, both server-side and deterministic where it matters:
+ *   1. Message-intent classification (safe/sensitive/disallowed) — model-assisted, best-effort.
+ *   2. Action-intent tiering (tier0/tier1/tier2) — the actual safety mechanism. Never asks the
+ *      model; reads the same statusMachine.ts graph the orchestrator itself enforces, per
+ *      docs/workflow/planned/ai-dashboard-assistant.md §5. A wrong tier here is the one bug
+ *      class that must not exist — see the exhaustive-walk requirement in the plan's phase 6.
  */
 
 import { callGeminiStructured, type GeminiToolCallOptions } from './geminiToolCallClient.ts';
+import { canTransition, isBookingStatus, type BookingStatus } from './statusMachine.ts';
 
 export type MessageRisk = 'safe' | 'sensitive' | 'disallowed';
 
@@ -61,4 +67,122 @@ export async function classifyDashboardMessage(
 
 export function isRiskAllowed(risk: MessageRisk): boolean {
   return risk !== 'disallowed';
+}
+
+// ─── Action-intent risk tiering (deterministic, tool-execution safety gate) ──
+
+export type ActionRiskTier = 'tier0_read' | 'tier1_auto' | 'tier2_confirmed';
+
+/** Read-only tools — always tier0, never touch WorkflowOrchestrator. */
+export const READ_TOOL_NAMES = new Set([
+  'search_knowledge_base',
+  'explain_booking_status',
+  'get_booking',
+  'list_bookings',
+  'get_available_transitions',
+  'get_dashboard_stats',
+  'get_finance_summary',
+  'list_finance_bookings',
+  'get_maintenance_summary',
+  'list_maintenance_items',
+]);
+
+/** Idempotent write tools with no status/financial change — tier1 by construction. */
+export const TIER1_ONLY_TOOL_NAMES = new Set([
+  'sync_booking_integrations',
+  'run_receipt_validation',
+]);
+
+/** Always tier2, regardless of payload — destructive by definition. */
+export const TIER2_ONLY_TOOL_NAMES = new Set(['propose_cancel_booking']);
+
+/**
+ * `TransitionPayload` fields (workflowOrchestrator.ts) whose presence with a non-null,
+ * non-undefined value always escalates a transition proposal to Tier 2 — pricing/refund/
+ * settlement fields are financially consequential even on an otherwise-forward, non-override edge.
+ */
+export const FINANCIAL_PAYLOAD_FIELDS = new Set([
+  'booking_rate',
+  'down_payment',
+  'security_deposit',
+  'pet_fee',
+  'parking_rate_guest',
+  'guest_additional_fee',
+  'parking_rate_paid',
+  'sd_additional_expenses',
+  'sd_additional_profits',
+  'sd_refund_amount',
+  'guest_balance_paid_amount',
+]);
+
+export type ActionRiskInput = {
+  toolName: string;
+  /** Only meaningful for propose_transition_booking. */
+  fromStatus?: string | null;
+  toStatus?: string | null;
+  payload?: Record<string, unknown> | null;
+  /** The booking/property this specific tool call targets. */
+  targetBookingId?: string | null;
+  targetPropertyId?: string | null;
+  /** The route the chat panel was opened from/is currently viewing — see plan §1. */
+  pageContext?: { bookingId?: string | null; propertyId?: string | null } | null;
+  /** True when the model requested more than one write tool call in this turn. */
+  isBulk?: boolean;
+};
+
+function hasFinancialPayloadValue(payload: Record<string, unknown> | null | undefined): boolean {
+  if (!payload) return false;
+  for (const field of FINANCIAL_PAYLOAD_FIELDS) {
+    const value = payload[field];
+    if (value !== undefined && value !== null) return true;
+  }
+  return false;
+}
+
+function isCrossScope(input: ActionRiskInput): boolean {
+  const ctx = input.pageContext;
+  if (!ctx) return false;
+  if (ctx.bookingId && input.targetBookingId && ctx.bookingId !== input.targetBookingId) {
+    return true;
+  }
+  if (ctx.propertyId && input.targetPropertyId && ctx.propertyId !== input.targetPropertyId) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Deterministic tier classifier — reads statusMachine.ts's canTransition() (never the model,
+ * never a stored/asserted value) as the source of truth for "is this a plain forward edge or
+ * a manual-override edge". Highest-tier rule wins. Must be called both at proposal time and
+ * again, independently, immediately before execution (dashboardAssistantSafetyGuard.ts).
+ */
+export function classifyActionRisk(input: ActionRiskInput): ActionRiskTier {
+  if (READ_TOOL_NAMES.has(input.toolName)) return 'tier0_read';
+  if (TIER2_ONLY_TOOL_NAMES.has(input.toolName)) return 'tier2_confirmed';
+
+  if (input.isBulk) return 'tier2_confirmed';
+  if (isCrossScope(input)) return 'tier2_confirmed';
+
+  if (TIER1_ONLY_TOOL_NAMES.has(input.toolName)) return 'tier1_auto';
+
+  if (input.toolName === 'propose_transition_booking') {
+    const from = input.fromStatus ?? '';
+    const to = input.toStatus ?? '';
+    if (!isBookingStatus(from) || !isBookingStatus(to)) return 'tier2_confirmed';
+
+    const isPrimaryGraphEdge = canTransition(from as BookingStatus, to as BookingStatus, {
+      manual: false,
+    });
+    if (!isPrimaryGraphEdge) return 'tier2_confirmed'; // manual-override-only edge
+    if (to === 'CANCELLED') return 'tier2_confirmed';
+    if (from === 'PENDING_SD_REFUND' && to === 'COMPLETED') return 'tier2_confirmed'; // refund finalization
+    if (hasFinancialPayloadValue(input.payload)) return 'tier2_confirmed';
+
+    return 'tier1_auto';
+  }
+
+  // Unknown/uncatalogued write tool — the executor's tool-catalog check should already have
+  // hard-blocked this before classification is ever reached; tier2 is the safe fallback.
+  return 'tier2_confirmed';
 }

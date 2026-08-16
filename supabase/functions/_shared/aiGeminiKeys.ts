@@ -86,7 +86,7 @@ export async function probeAiProviderMinimal(): Promise<AiProviderProbeResult> {
     return { ok: false, error: 'No Gemini API keys configured' };
   }
 
-  const url = `${geminiGenerateContentUrl('gemini-2.0-flash-lite')}?key=${encodeURIComponent(keys[0])}`;
+  const url = `${geminiGenerateContentUrl('gemini-3.1-flash-lite')}?key=${encodeURIComponent(keys[0])}`;
   const started = Date.now();
   try {
     const res = await fetch(url, {

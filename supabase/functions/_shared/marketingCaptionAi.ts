@@ -54,9 +54,9 @@ export async function generateMarketingCaption(input: MarketingCaptionInput): Pr
     'Write one caption only — no quotes or labels.';
 
   const maxLen = input.postType === 'story' ? 220 : 400;
-  const cacheKey = computePromptFingerprint(buildCacheInputs(FEATURE, systemPrompt, userPrompt));
-  const cached = await getCachedAiResponse(cacheKey);
-  if (cached) return cached.slice(0, maxLen);
+  const cacheKey = await computePromptFingerprint(buildCacheInputs(systemPrompt, userPrompt));
+  const cached = await getCachedAiResponse(FEATURE, cacheKey);
+  if (cached) return cached.responseText.slice(0, maxLen);
 
   const keys = getGeminiApiKeys();
   for (const apiKey of keys) {
@@ -75,6 +75,13 @@ export async function generateMarketingCaption(input: MarketingCaptionInput): Pr
         }),
       });
       const json = await res.json();
+      if (!res.ok) {
+        console.warn(
+          '[marketingCaptionAi] gemini non-ok response:',
+          res.status,
+          JSON.stringify(json)
+        );
+      }
       const text = extractGeminiText(json);
       if (text) {
         const usage = extractGeminiUsage(json);
@@ -87,11 +94,18 @@ export async function generateMarketingCaption(input: MarketingCaptionInput): Pr
           inputTokens: usage.inputTokens,
           outputTokens: usage.outputTokens,
         });
-        await setCachedAiResponse(cacheKey, text, CONFIG.cacheTtlSeconds);
+        await setCachedAiResponse(FEATURE, cacheKey, {
+          provider: 'gemini',
+          model: GEMINI_MODEL,
+          responseText: text,
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
+          estimatedCostUsd: 0,
+        });
         return text.slice(0, maxLen);
       }
-    } catch {
-      /* try next key */
+    } catch (err) {
+      console.warn('[marketingCaptionAi] gemini key failed, trying next:', err);
     }
   }
 
@@ -119,16 +133,25 @@ export async function generateMarketingCaption(input: MarketingCaptionInput): Pr
     };
     const text = json.choices?.[0]?.message?.content?.trim();
     if (text) {
+      const groqInputTokens = Number(json.usage?.prompt_tokens ?? 0);
+      const groqOutputTokens = Number(json.usage?.completion_tokens ?? 0);
       await recordAiUsage({
         organizationId: input.organizationId,
         propertyId: input.propertyId,
         feature: FEATURE,
         provider: 'groq',
         model: GROQ_MODEL,
-        inputTokens: Number(json.usage?.prompt_tokens ?? 0),
-        outputTokens: Number(json.usage?.completion_tokens ?? 0),
+        inputTokens: groqInputTokens,
+        outputTokens: groqOutputTokens,
       });
-      await setCachedAiResponse(cacheKey, text, CONFIG.cacheTtlSeconds);
+      await setCachedAiResponse(FEATURE, cacheKey, {
+        provider: 'groq',
+        model: GROQ_MODEL,
+        responseText: text,
+        inputTokens: groqInputTokens,
+        outputTokens: groqOutputTokens,
+        estimatedCostUsd: 0,
+      });
       return text.slice(0, maxLen);
     }
   }

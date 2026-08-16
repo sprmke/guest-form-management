@@ -338,7 +338,14 @@ async function tryGeminiMapping(
           inputTokens: tokenUsage.inputTokens,
           outputTokens: tokenUsage.outputTokens,
         });
-        await setCachedAiResponse(cacheKey, text, CONFIG.cacheTtlSeconds);
+        await setCachedAiResponse(IMPORT_FEATURE, cacheKey, {
+          provider: 'gemini',
+          model: GEMINI_MODEL,
+          responseText: text,
+          inputTokens: tokenUsage.inputTokens,
+          outputTokens: tokenUsage.outputTokens,
+          estimatedCostUsd: 0,
+        });
         return mappings;
       }
     } catch (error) {
@@ -392,16 +399,25 @@ async function tryGroqMapping(
     const text = body.choices?.[0]?.message?.content ?? '';
     const mappings = parseMappingsPayload(text, headers);
     if (mappings) {
+      const groqInputTokens = Number(body.usage?.prompt_tokens ?? 0);
+      const groqOutputTokens = Number(body.usage?.completion_tokens ?? 0);
       await recordAiUsage({
         organizationId: usage.organizationId,
         propertyId: usage.propertyId,
         feature: IMPORT_FEATURE,
         provider: 'groq',
         model: GROQ_MODEL,
-        inputTokens: Number(body.usage?.prompt_tokens ?? 0),
-        outputTokens: Number(body.usage?.completion_tokens ?? 0),
+        inputTokens: groqInputTokens,
+        outputTokens: groqOutputTokens,
       });
-      await setCachedAiResponse(cacheKey, text, CONFIG.cacheTtlSeconds);
+      await setCachedAiResponse(IMPORT_FEATURE, cacheKey, {
+        provider: 'groq',
+        model: GROQ_MODEL,
+        responseText: text,
+        inputTokens: groqInputTokens,
+        outputTokens: groqOutputTokens,
+        estimatedCostUsd: 0,
+      });
       return mappings;
     }
   } catch (error) {
@@ -434,10 +450,10 @@ export async function suggestImportColumnMappings(
   }
 
   const prompt = buildPrompt({ ...input, headers });
-  const cacheKey = computePromptFingerprint(buildCacheInputs(IMPORT_FEATURE, prompt, ''));
-  const cached = await getCachedAiResponse(cacheKey);
+  const cacheKey = await computePromptFingerprint(buildCacheInputs(prompt, ''));
+  const cached = await getCachedAiResponse(IMPORT_FEATURE, cacheKey);
   if (cached) {
-    const cachedMappings = parseMappingsPayload(cached, headers);
+    const cachedMappings = parseMappingsPayload(cached.responseText, headers);
     if (cachedMappings) {
       return {
         mappings: applyDeterministicHeaderMatches(cachedMappings),

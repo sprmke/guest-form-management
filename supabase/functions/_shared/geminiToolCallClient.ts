@@ -35,6 +35,14 @@ export type GeminiStructuredResult<T> = {
   text: string | null;
 };
 
+/** One turn of multi-round tool-calling conversation history (see `history` below). */
+export type GeminiContentPart =
+  | { text: string }
+  | { functionCall: { name: string; args: Record<string, unknown> } }
+  | { functionResponse: { name: string; response: Record<string, unknown> } };
+
+export type GeminiContent = { role: 'user' | 'model'; parts: GeminiContentPart[] };
+
 export type GeminiToolCallOptions = {
   feature: AiFeature;
   organizationId: string;
@@ -47,6 +55,13 @@ export type GeminiToolCallOptions = {
   temperature?: number;
   cacheInputs?: Record<string, unknown>;
   cacheDisabled?: boolean;
+  /**
+   * Full conversation turns (user message / model function calls / function responses) for a
+   * multi-round tool-calling loop — used instead of the single `userPrompt` turn when set.
+   * Callers looping rounds (e.g. dashboard-assistant-chat) should also pass `cacheDisabled: true`
+   * since history differs every round and a cache hit would return a stale tool response.
+   */
+  history?: GeminiContent[];
 };
 
 function buildGeminiRequestBody(
@@ -60,14 +75,19 @@ function buildGeminiRequestBody(
   const generationConfig: Record<string, unknown> = {
     temperature: options.temperature ?? 0,
     maxOutputTokens: options.maxOutputTokens ?? modelConfig.defaultMaxOutputTokens,
-    thinkingBudget: modelConfig.thinkingBudget,
+    thinkingConfig: { thinkingBudget: modelConfig.thinkingBudget },
   };
+
+  const conversationTurns =
+    options.history && options.history.length > 0
+      ? options.history
+      : [{ role: 'user' as const, parts: [{ text: options.userPrompt }] }];
 
   const body: Record<string, unknown> = {
     contents: [
       { role: 'user', parts: [{ text: options.systemPrompt }] },
       { role: 'model', parts: [{ text: 'Understood.' }] },
-      { role: 'user', parts: [{ text: options.userPrompt }] },
+      ...conversationTurns,
     ],
     generationConfig,
   };

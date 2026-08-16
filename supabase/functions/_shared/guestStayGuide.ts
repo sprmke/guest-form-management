@@ -7,6 +7,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { resolveAppSettings } from './appSettings.ts';
 import { loadAuthUserProfile } from './authUserProfile.ts';
 import { manilaTodayYmd, normalizeBookingDateToYmd } from './calendarAvailabilityManila.ts';
+import { resolveStayGuideTemplateKey } from './customPages.ts';
 import { loadGuestFacingContactInfo } from './guestContactInfo.ts';
 import { loadPropertyEmailBranding } from './propertyEmailBranding.ts';
 import {
@@ -258,6 +259,7 @@ export type GuestStayGuideDto = {
   sections: StayGuideSectionDto[];
   validUntil: string;
   todayManila: string;
+  templateKey: string;
 };
 
 async function resolveSectionHtml(
@@ -531,6 +533,8 @@ async function buildGuestStayGuidePayload(
     orgLogoUrl: property.host.organizationLogoUrl,
   });
 
+  const templateKey = await resolveStayGuideTemplateKey(propertyId);
+
   return {
     property: {
       slug: property.slug,
@@ -573,6 +577,7 @@ async function buildGuestStayGuidePayload(
     sections,
     validUntil,
     todayManila: manilaTodayYmd(),
+    templateKey,
   };
 }
 
