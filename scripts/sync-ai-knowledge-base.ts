@@ -22,6 +22,7 @@ const GUIDES_DIR = join(ROOT, 'docs/guides/routes');
 type KnowledgeEntry = {
   routeGuidePath: string;
   routePath: string | null;
+  routeGuideTitle: string | null;
   question: string;
   answer: string;
 };
@@ -46,6 +47,12 @@ function extractRoutePath(content: string): string | null {
   return match ? match[1] : null;
 }
 
+/** Pulls the `title:` frontmatter line, if present (e.g. 'Bookings List — operator guide'). */
+function extractTitle(content: string): string | null {
+  const match = content.match(/^title:\s*['"]?(.+?)['"]?\s*$/m);
+  return match ? match[1] : null;
+}
+
 function extractHostFacingKnowledge(content: string): KnowledgeEntry[] {
   const headingMatch = content.match(/^## Host-facing knowledge\n/m);
   if (!headingMatch || headingMatch.index === undefined) return [];
@@ -62,7 +69,13 @@ function extractHostFacingKnowledge(content: string): KnowledgeEntry[] {
     const question = match[1].trim();
     const answer = match[2].replace(/\s+/g, ' ').trim();
     if (question && answer) {
-      entries.push({ routeGuidePath: '', routePath: null, question, answer });
+      entries.push({
+        routeGuidePath: '',
+        routePath: null,
+        routeGuideTitle: null,
+        question,
+        answer,
+      });
     }
   }
   return entries;
@@ -97,8 +110,9 @@ async function main() {
     const content = readFileSync(file, 'utf8');
     const routeGuidePath = relative(ROOT, file);
     const routePath = extractRoutePath(content);
+    const routeGuideTitle = extractTitle(content);
     for (const entry of extractHostFacingKnowledge(content)) {
-      entries.push({ ...entry, routeGuidePath, routePath });
+      entries.push({ ...entry, routeGuidePath, routePath, routeGuideTitle });
     }
   }
 
@@ -108,7 +122,9 @@ async function main() {
 
   if (dryRun) {
     for (const entry of entries) {
-      console.log(`\n[${entry.routeGuidePath}] Q: ${entry.question}\n  A: ${entry.answer}`);
+      console.log(
+        `\n[${entry.routeGuidePath} | ${entry.routeGuideTitle ?? 'NO TITLE'}] Q: ${entry.question}\n  A: ${entry.answer}`
+      );
     }
     return;
   }
@@ -125,6 +141,7 @@ async function main() {
     entries.map((e) => ({
       route_guide_path: e.routeGuidePath,
       route_path: e.routePath,
+      route_guide_title: e.routeGuideTitle,
       question: e.question,
       answer: e.answer,
       updated_at: new Date().toISOString(),
