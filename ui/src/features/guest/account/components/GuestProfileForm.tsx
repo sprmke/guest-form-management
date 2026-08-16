@@ -138,7 +138,7 @@ export function GuestProfileForm() {
 
   return (
     <div className="border-border bg-card w-full overflow-hidden rounded-2xl border shadow-sm">
-      <div className="grid gap-8 p-6 sm:p-8 lg:grid-cols-[minmax(240px,320px)_minmax(0,1fr)] lg:items-start lg:gap-10 lg:p-10">
+      <div className="grid grid-cols-1 gap-8 p-6 sm:p-8 lg:grid-cols-[minmax(240px,320px)_minmax(0,1fr)] lg:items-start lg:gap-10 lg:p-10">
         <div className="space-y-5">
           <div className="flex flex-col items-center gap-4 sm:items-start">
             <button
@@ -204,7 +204,7 @@ export function GuestProfileForm() {
         </div>
 
         <div className="space-y-6 lg:space-y-8">
-          <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
             <div className="space-y-2 lg:col-span-2">
               <Label htmlFor="guest-display-name">Display name</Label>
               <Input
