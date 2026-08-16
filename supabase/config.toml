@@ -501,6 +501,9 @@ verify_jwt = false
 [functions.property-templates-settings]
 verify_jwt = false
 
+[functions.custom-pages-settings]
+verify_jwt = false
+
 [functions.property-pricing]
 verify_jwt = false
 
@@ -735,6 +738,30 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.dashboard-assistant]
+verify_jwt = false
+
+[functions.dashboard-assistant-settings]
+verify_jwt = false
+
+[functions.dashboard-assistant-global-settings]
+verify_jwt = false
+
+[functions.get-booking]
+verify_jwt = false
+
+[functions.dashboard-assistant-chat]
+verify_jwt = false
+
+[functions.dashboard-assistant-confirm]
+verify_jwt = false
+
+[functions.dashboard-assistant-conversations]
+verify_jwt = false
+
+[functions.get-booking-ai-assistant-audit]
+verify_jwt = false
+
+[functions.dashboard-assistant-expire-pending-actions]
 verify_jwt = false
 
 [functions.notifications-list]
