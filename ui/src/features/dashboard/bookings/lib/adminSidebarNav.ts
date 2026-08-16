@@ -13,6 +13,7 @@ import {
   Inbox,
   Landmark,
   LayoutDashboard,
+  LayoutTemplate,
   Megaphone,
   Settings,
   Tags,
@@ -169,6 +170,11 @@ export function buildPropertyNavSections(
           label: 'Templates',
           href: propertySectionPath(orgSlug, propertySlug, 'templates'),
           Icon: FileText,
+        },
+        {
+          label: 'Custom Pages',
+          href: propertySectionPath(orgSlug, propertySlug, 'custom-pages'),
+          Icon: LayoutTemplate,
         },
         {
           label: 'Settings',

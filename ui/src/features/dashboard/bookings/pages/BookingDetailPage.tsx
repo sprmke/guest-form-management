@@ -24,6 +24,7 @@ import { toast } from 'sonner';
 import { buildPayParkingPath } from '@/features/guest/pay-parking/lib/api';
 import { hasPayParkingAvailed } from '@/features/guest/pay-parking/lib/payParkingHelpers';
 
+import { BookingAiAssistantAuditCard } from '@/features/dashboard/ai-assistant/components/BookingAiAssistantAuditCard';
 import { BookingDetailAssetPreviewModal } from '@/features/dashboard/bookings/components/booking-detail/BookingDetailAssetPreviewModal';
 import { BookingDetailHeader } from '@/features/dashboard/bookings/components/booking-detail/BookingDetailHeader';
 import {
@@ -298,6 +299,7 @@ export function BookingDetailPage() {
                           booking={booking}
                           onCopyBookingId={() => void copyBookingIdToClipboard()}
                         />
+                        <BookingAiAssistantAuditCard bookingId={booking.id} />
                       </div>
                     )}
                     {viewTab === 'guests' && (

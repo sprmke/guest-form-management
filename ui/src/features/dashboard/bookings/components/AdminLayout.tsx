@@ -18,6 +18,7 @@ import { ChevronUp, ChevronLeft, ChevronRight, LogOut } from 'lucide-react';
 import { hostLoginPath } from '@/features/guest/auth/lib/hostAuthPaths';
 import { ModeSwitcher } from '@/features/guest/marketing/shared/components/ModeSwitcher';
 
+import { AiAssistantLauncherButton } from '@/features/dashboard/ai-assistant/components/AiAssistantLauncherButton';
 import {
   AdminBrandTheme,
   useAdminBrandThemeStyle,
@@ -506,6 +507,8 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
             onSignOutNavigate={() => navigate(hostLoginPath(), { replace: true })}
             superAdmin={superAdmin}
           />
+
+          {!superAdmin && <AiAssistantLauncherButton />}
         </BottomBarSlotProvider>
       </AdminMobileHeroProvider>
     </>
