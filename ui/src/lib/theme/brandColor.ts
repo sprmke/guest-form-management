@@ -50,11 +50,13 @@ function hslString({ h, s, l }: Hsl): string {
   return `${Math.round(h)} ${Math.round(s)}% ${Math.round(l)}%`;
 }
 
-/** 3-stop 135° brand gradient — same lightness stops as default teal UX. */
-export function buildBrandGradientCss(h: number, s: number, isDark: boolean): string {
-  const brandS = Math.round(clamp(s, 35, 95));
+/** 3-stop 135° sheen around the selected color — same hue/saturation, slight lightness steps. */
+export function buildBrandGradientCss(h: number, s: number, l: number): string {
+  const brandS = Math.round(clamp(s, 0, 100));
   const hR = Math.round(h);
-  const [l1, l2, l3] = isDark ? [50, 46, 42] : [46, 42, 38];
+  const l1 = Math.round(clamp(l + 4, 0, 100));
+  const l2 = Math.round(clamp(l, 0, 100));
+  const l3 = Math.round(clamp(l - 5, 0, 100));
   return `linear-gradient(135deg, hsl(${hR} ${brandS}% ${l1}%) 0%, hsl(${hR} ${brandS}% ${l2}%) 45%, hsl(${hR} ${brandS}% ${l3}%) 100%)`;
 }
 
@@ -105,11 +107,8 @@ export function resolveBrandTransitionGradientStops(
 }
 
 /**
- * Mode-switch overlay wordmark colors — "Kame" stays white (the gradient stops are always
- * pinned to 38–50% lightness, so white reads at AA contrast for any org brand hue). "Homes"
- * uses the same secondary hue-shift (`shiftHue(h, -49)`) as `--sidebar-primary`/`--mesh-a`
- * elsewhere in the brand theme, lightened into a pastel tint for a complementary two-tone
- * lockup instead of a flat single color.
+ * Mode-switch overlay wordmark. "Kame" stays white on the brand fill. "Homes"
+ * uses a complementary pastel tint for a two-tone lockup.
  */
 export function resolveBrandWordmarkTextColors(
   brandColor: string | null | undefined,
@@ -228,73 +227,61 @@ const DEFAULT_DARK_THEME: Record<string, string> = {
     'linear-gradient(135deg, hsl(168 65% 50%) 0%, hsl(168 65% 46%) 45%, hsl(168 65% 42%) 100%)',
 };
 
+/** Tokens use the picker hex as `--primary`; labels on fills stay white. */
 function generateBrandTheme(hex: string, isDark: boolean): Record<string, string> {
-  const base = rgbToHsl(parseHexColor(hex)!);
-  const { h, s, l } = base;
+  const rgb = parseHexColor(hex)!;
+  const { h, s, l } = rgbToHsl(rgb);
+  const primary = hslString({ h, s, l });
+  const primaryFg = '0 0% 100%';
+  const brandGradient = buildBrandGradientCss(h, s, l);
+  const gradientFrom = hslString({ h, s, l: clamp(l + 4, 0, 100) });
+  const gradientMid = primary;
+  const gradientTo = hslString({ h, s, l: clamp(l - 5, 0, 100) });
 
-  const primaryS = clamp(s, 35, 95);
-  const primaryL = isDark ? clamp(l + 5, 42, 62) : clamp(l - 2, 38, 55);
-  const primary = hslString({ h, s: primaryS, l: primaryL });
-
-  const [gradientL1, gradientL2, gradientL3] = isDark ? [50, 46, 42] : [46, 42, 38];
-  const brandGradient = buildBrandGradientCss(h, primaryS, isDark);
-  const gradientFrom = hslString({ h, s: primaryS, l: gradientL1 });
-  const gradientMid = hslString({ h, s: primaryS, l: gradientL2 });
-  const gradientTo = hslString({ h, s: primaryS, l: gradientL3 });
-
-  const secondaryH = shiftHue(h, -49);
-  const secondaryS = clamp(s * 0.72, 45, 75);
-  const secondaryL = isDark ? 45 : 40;
-  const secondary = hslString({ h: secondaryH, s: secondaryS, l: secondaryL });
-
-  const brandHighlight = gradientFrom;
-  const brandHighlightEnd = gradientTo;
-
-  const infoL = isDark ? clamp(primaryL + 7, 55, 70) : clamp(primaryL + 7, 55, 65);
-  const chart2L = isDark ? clamp(primaryL + 10, 50, 75) : clamp(primaryL + 10, 48, 68);
-
+  const infoL = clamp(l + 6, 0, 92);
+  const chart2L = clamp(l + 10, 0, 92);
   const meshB = hslString({
-    h: shiftHue(secondaryH, 10),
-    s: clamp(secondaryS, 45, 75),
-    l: clamp(secondaryL + 10, 35, 58),
+    h,
+    s: clamp(s * 0.75, 20, 90),
+    l: clamp(l + 8, 0, 92),
   });
 
   const rangeBgStart = hslString({
-    h: secondaryH,
-    s: clamp(secondaryS - 10, 35, 65),
+    h,
+    s: clamp(s * 0.45, 20, 60),
     l: isDark ? 18 : 92,
   });
   const rangeBgEnd = hslString({
-    h: secondaryH,
-    s: clamp(secondaryS - 15, 30, 60),
+    h,
+    s: clamp(s * 0.4, 18, 55),
     l: isDark ? 14 : 88,
   });
   const rangeFg = hslString({
-    h: secondaryH,
-    s: clamp(secondaryS, 45, 80),
+    h,
+    s: clamp(s, 35, 80),
     l: isDark ? 72 : 28,
   });
 
   return {
     '--primary': primary,
-    '--primary-foreground': '0 0% 100%',
+    '--primary-foreground': primaryFg,
     '--ring': primary,
     '--success': primary,
-    '--info': hslString({ h, s: primaryS, l: infoL }),
+    '--info': hslString({ h, s, l: infoL }),
     '--glow-color': primary,
-    '--sidebar-primary': secondary,
-    '--sidebar-primary-foreground': '0 0% 100%',
-    '--sidebar-ring': secondary,
+    '--sidebar-primary': primary,
+    '--sidebar-primary-foreground': primaryFg,
+    '--sidebar-ring': primary,
     '--chart-1': primary,
-    '--chart-2': hslString({ h, s: clamp(primaryS - 10, 40, 90), l: chart2L }),
+    '--chart-2': hslString({ h, s: clamp(s * 0.85, 20, 90), l: chart2L }),
     '--gradient-primary-from': gradientFrom,
     '--gradient-primary-to': gradientTo,
     '--gradient-primary-mid': gradientMid,
     '--brand-gradient': brandGradient,
-    '--mesh-a': secondary,
+    '--mesh-a': primary,
     '--mesh-b': meshB,
-    '--brand-highlight': brandHighlight,
-    '--brand-highlight-end': brandHighlightEnd,
+    '--brand-highlight': gradientFrom,
+    '--brand-highlight-end': gradientTo,
     '--brand-range-bg-start': rangeBgStart,
     '--brand-range-bg-end': rangeBgEnd,
     '--brand-range-fg': rangeFg,
