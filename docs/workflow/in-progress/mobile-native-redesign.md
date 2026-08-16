@@ -2,7 +2,7 @@
 title: 'Mobile native redesign'
 stage: in-progress
 status: in-progress
-updated: 2026-08-14
+updated: 2026-08-17
 ---
 
 # Ground-Up Mobile Redesign — "Feels Like a Native App"
@@ -131,7 +131,7 @@ Net: roughly 35-40 of 55 sites convert; ~15 (destructive confirms, single-field 
 - **Phase 0 — Foundation**: build everything in §1 (no visible route changes). Refactor `BookingCardGrid`/`FinanceLedgerCardGrid` onto the new `AdminCardGrid`/`AdminCardRow` shells to prove the extraction against two already-shipped consumers before anything new depends on it. No skill-doc edits yet.
 - **Phase 1 — Guest booking flow** (highest traffic, highest risk — the 2100-line `GuestForm.tsx`): `MainLayout` gets `BottomBarSlot` + tab bar; `GuestFormStepNavigation` promoted to `ContextualActionBar` across `form`/`sd-form`/`guest-review`/`parking/:bookingId`. Ship and verify alone before touching anything else.
 - **Phase 2 — Guest portal + public marketing/browsing**: migrate `GuestAccountMobileNav` onto shared `BottomTabBar`/`BottomBarSlot` (top→bottom placement change, call out explicitly); add bottom tabs + "More" sheet to `MarketingLayoutShell`, retiring the hamburger overlay; PDP CTAs become `ContextualActionBar` consumers. Host auth pages get lower priority — confirm during implementation whether they need a tab bar at all.
-- **Phase 3 — Dashboard admin shell**: `AdminLayout` mobile path rebuilt on `MobileAppShell`/`BottomTabBar`/`BottomBarSlot`; tab items = top 3-4 nav sections per surface (property/org/parking/super-admin) from existing `buildPropertyNavSections`/`buildOrgNavSections`/etc. (`ui/src/features/dashboard/bookings/lib/adminSidebarNav.ts`) + "More" sheet for the rest. Desktop untouched. `BookingEditStickyBar` migrated onto `ContextualActionBar`.
+- **Phase 3 — Dashboard admin shell**: `AdminLayout` mobile path rebuilt on `MobileAppShell`/`BottomTabBar`/`BottomBarSlot`; tab items prefer Dashboard / Bookings / Finance, then **Assistant** and **Notifications** overlay actions + "More" sheet for the rest. Desktop sidebar has no bell — notifications float above the AI FAB. `BookingEditStickyBar` migrated onto `ContextualActionBar`.
 - **Phase 4 — Remaining dashboard modules**: list/card conversions for every table page not already covered; Dialog → `ResponsiveModal` sweep per §5, splittable into sub-PRs per module group (mechanical, low interdependency).
 - **Phase 5 — Doc updates**: amend `.cursor/rules/mobile-responsive.mdc` + mirrored `.claude/skills/mobile-responsive/SKILL.md` — admin shell diagram (3-zone: topbar/content/`BottomBarSlot`, hamburger retired), modal guidance reversal (hybrid rule replaces "avoid full-screen sheets"), new "Bottom navigation & contextual bars" + "Animation standard" sections, updated testing checklist. Landed last, once shipped behavior is the source of truth. Note PWA as an explicit future follow-up, not built here.
 

@@ -2,10 +2,25 @@
 title: 'Claude To Plan'
 status: archived
 tags: [planning]
-updated: 2026-08-16
+updated: 2026-08-17
 ---
 
-**Status legend:** ✅ done · 🚧 in progress · 📋 planned (plan doc written) · 🔵 pending / open · ❌ cancelled / won't do
+**Status legend:** ❌ cancelled / won't do · ✅ done · 📋 planned (plan doc written) · 🚧 in progress · 🔵 pending / open
+
+===
+
+❌ Do ground up redesign in dashboard UI to not make it look like AI generated app
+
+Even after multiple redesign changes, it looks and feel like our dashboard UI looks like AI generated dashboard app.
+We need to do /impeccable critique, audit then do plan, shape, document then do layout, optimize, bolder & polish.
+The end goal is to make our boring or current dashboard UI to level up and looks more beautiful, elegant, clean & professional, animated & interactive that offers best UI/UX and specially, does not look like AI generated design and application.
+You can refer to our public pages design. See how elegant and clean it is.
+
+We can separate our dashboard redesign to different phases. Maybe start with base styles, fonts & sizing, colors & theme and designs, etc. Then, next phases are structural change, text copy change, alignment, responsiveness, etc.
+
+Just make sure that we don't change or affect any public related pages that we have. make sure not even one single style on our public pages will be affected. We need to make sure that the design in our dashboard is scoped & isolated and will not affect our public UIs.
+
+→ **Won't do:** [`../wont-do/dashboard-ground-up-redesign.md`](../wont-do/dashboard-ground-up-redesign.md) — incremental dashboard polish only; no dedicated ground-up pass
 
 ===
 
@@ -16,14 +31,6 @@ For host mode, we should improve the landing page for /for-hosts that showcase a
 Reviews section from hosts is also good. We can use mock data for now.
 
 We should also need to update our header menus for hosts mode
-
-===
-
-🔵 Improve onboarding flow UI/UX page
-
-I want to update the left section of the onboarding page and showcase all the features that we have for our system.
-Maybe an auto-play carousel of animated features that we have on our dashboard.
-I want this to look very interactive, animated, looks professional and looks good on any resolution.
 
 ===
 
@@ -123,16 +130,6 @@ The end goal is that with the help of AI, we should be able to generate calendar
 
 ===
 
-🚧 Marketing 5: Refine & finalize Marketing module
-
-- Make sure each module is optimized. Right now, something looks broken and when we visit the page and each tab, the app becomes kinda laggy and have performance issues. The thumbnails are not loading properly, creating new item somewhat breaks other thumbnails, switching to other orientation feels like rendering broken thumbnails, playing video preview does not fully play the video, it requires 2-3x click to fully play it which is broken.
-- Make sure AI generations for 3 modules are production ready, renders beautiful designs, content are engaging and easy to read, designs and videos are instagrammable and ready to post, etc.
-- If app is connected to social platform like Facebook and Instagram, make sure we support quick and easy publishing for post & story.
-
-→ **In progress:** [`../in-progress/marketing-module-refinement.md`](../in-progress/marketing-module-refinement.md) — perf/thumbnail/playback bugs + AI-gen/publish correctness fixes shipped; Meta scheduling/confirmation gaps remain open
-
-===
-
 ✅ Refine footer & create public pages
 
 Plan only — not implemented. Footer links point at `/about`, `/contact`, `/support`, `/cookies` but routes/pages do not exist yet.
@@ -215,6 +212,65 @@ Do /impeccable critique, audit, review, harden & polish of our current e2e booki
 
 ===
 
+✅ Optimize how AI integrated in our app
+
+Make a research and find the best optimal way to connect our application with AI for faster info retrieval, action execution, etc.
+
+Maybe we can use our docs guide or obsedian vault or RAG/light RAG or something like graphify? Or if there's better library or technology that we can use.
+
+Also, I'm wondering if having docs/guides for each page of the app is the best optimal way to document and use this for AI to have context of our entire application?
+
+The goal is to find and implement the best way to document each flow, logic, process of each feature, pages, sections that's happening on our entire application that's fastest, optimal, and best lowest token consumption. It should be production ready
+
+Let's update our implementation that's using or relying with AI like the AI-auto reply, AI receptionist, and other future related features that will use AI.
+
+→ **Done:** [`../done/docs-obsidian-tooling-sync.md`](../done/docs-obsidian-tooling-sync.md)
+
+===
+
+✅ In app notification for chat & other activity
+
+When we receive new chat or guest message from inbox, we should display a toast or notification message on our app as long as we are using the app and even we are not on inbox page.
+
+For now, I think this would be helpful for chat events, but if you can see other features and functionality that you think we can add to our notification. Feel free to suggest and plan it as well
+
+Maybe analyze all the activities, events and actions that we have on Notifications page module as support in app notification on all activities, events or actions that you think it's helpful to display within our app.
+
+Analyze how popular apps how handle this and make sure we implement the way possible and make sure it will not result to any kind of performance or heavy process issues.
+
+→ **Plan:** [`../planned/in-app-notifications.md`](../planned/in-app-notifications.md)
+
+===
+
+✅ Smart import data with use of AI
+
+Shipped: [`../done/smart-ai-data-importer.md`](../done/smart-ai-data-importer.md) + [`../done/import-preview-fix-queue.md`](../done/import-preview-fix-queue.md)
+
+===
+
+📋 Analyze entire app pages & features and brainstorm how AI can help us for each feature
+
+Analyze the entire codebase, pages and features that we have, and see how AI can help hosts, guests, admin, and us developers on anything
+
+Example:
+
+- Use AI to analyze and suggest marketing strategies
+- Use AI to help managing finance, analyze big expenses, how to fix and suggest financial strats, etc
+
+→ **Plan / backlog:** [`../planned/ai-opportunities-roadmap.md`](../planned/ai-opportunities-roadmap.md)
+
+===
+
+🚧 Marketing 5: Refine & finalize Marketing module
+
+- Make sure each module is optimized. Right now, something looks broken and when we visit the page and each tab, the app becomes kinda laggy and have performance issues. The thumbnails are not loading properly, creating new item somewhat breaks other thumbnails, switching to other orientation feels like rendering broken thumbnails, playing video preview does not fully play the video, it requires 2-3x click to fully play it which is broken.
+- Make sure AI generations for 3 modules are production ready, renders beautiful designs, content are engaging and easy to read, designs and videos are instagrammable and ready to post, etc.
+- If app is connected to social platform like Facebook and Instagram, make sure we support quick and easy publishing for post & story.
+
+→ **In progress:** [`../in-progress/marketing-module-refinement.md`](../in-progress/marketing-module-refinement.md) — perf/thumbnail/playback bugs + AI-gen/publish correctness fixes shipped; Meta scheduling/confirmation gaps remain open
+
+===
+
 🚧 Avail parking e2e flow
 
 Phase 1: Plan how host received parking booking
@@ -269,6 +325,66 @@ Phase 4: Manual & Physical on site tasks:
 
 ===
 
+🚧 Do an ground up redesign for mobile view
+
+I want to have a rebuilt or groundup redesign for mobile view to make our app look and feels like a native mobile app.
+Not just simply a website or page that's adjusted to be responsive to different resolution.
+We need to consider the best UI/UX for each page, section and components that we have in our app
+The end goal is when we resize to mobile view, it should look and feel like a native mobile app where we have main navigation on the bottom, mobile element animation and transitions, etc
+
+Apply to all pages including both public and dashboard pages
+
+→ **In progress:** [`../in-progress/mobile-native-redesign.md`](../in-progress/mobile-native-redesign.md)
+
+===
+
+🚧 Document, refine, finalize booking detail & workflow
+
+I want you to carefully review our booking detail page, booking edit and booking workflow and see how we can improve, refine, make other flow, logic and settings to be configurable from our property settings and make the whole flow to be multi users and multi property. What we have in prod, we are focused and only support Kame Home 2604. Now we are building our system to be used with different tenant, users, multi-properties, multi residence or property type and I want every little things to be configurable and refined for production used.
+
+I believe we already have docs for this, I just want you to review our latest implementation and make sure it's up to date, then create a one file doc that documents everything.
+
+After that, I want you to list down tasks, suggestion and improvements that we need to do to make our booking workflow to be used by different users and properties.
+
+The current booking status that we have is only applied for Azure North residence, again we should have config for this residence.
+
+Also, I want you to review each section, field, settings, flow, logic & process and if there's something we can improve or change, please suggest it.
+
+Also, for parking request step, skip this for now. The whole flow for this will be TBD later on.
+
+Also, another important thing I'd like to improve is to automate everything as much as possible. Right now, there's still some step or transition that require manual admin transition. Analyze and check how we can automate everything.
+
+The end goal is after this, our booking detail, edit and workflow is refined & finalize and production ready.
+
+→ **In progress:** [`../in-progress/booking-workflow-multi-tenancy.md`](../in-progress/booking-workflow-multi-tenancy.md) · v1 slice **done:** [`../done/booking-workflow-configurable-docs.md`](../done/booking-workflow-configurable-docs.md)
+
+===
+
+🚧 CI/CD + multi-tenant environments — [`multi-tenant-dev-prod-environments.md`](../in-progress/ci-cd-environments/multi-tenant-dev-prod-environments.md) · matrix [`ci-cd-environment-matrix.md`](../../archive/operations/ci-cd-environment-matrix.md)
+
+**Now:** `develop` → `dev.kamehomes.space` → **fwor…** (`cd-dev.yml` + Vercel Preview). Legacy unchanged (`main` → `kamehomes.space` → **zftt…**).
+
+**Pending at prod release (Phase B):**
+
+- Create **MULTI_TENANT_PROD** Supabase project
+- Implement **`scripts/migrate/legacy-to-mt-prod/`** — Postgres + Storage **`zftt…` → mt-prod**
+- Merge **`develop` → `main`**; **`kame-homes`** Production branch = **`main`** (not a `production` git branch)
+- Wire **`app.kamehomes.space`** + Vercel Production `VITE_*` → mt-prod
+- Google OAuth **prod** client + Auth on mt-prod
+- Enable GitHub **`production`** secrets + **`cd-prod.yml`**
+
+Design: [`ci-cd-dev-prod-design.md`](../in-progress/ci-cd-environments/ci-cd-dev-prod-design.md) · plan: [`ci-cd-dev-prod.md`](../in-progress/ci-cd-environments/ci-cd-dev-prod.md) · index [`ci-cd-environments/README.md`](../in-progress/ci-cd-environments/README.md)
+
+===
+
+🔵 Improve onboarding flow UI/UX page
+
+I want to update the left section of the onboarding page and showcase all the features that we have for our system.
+Maybe an auto-play carousel of animated features that we have on our dashboard.
+I want this to look very interactive, animated, looks professional and looks good on any resolution.
+
+===
+
 🔵 Host/Guest booking payment e2e
 
 ===
@@ -294,34 +410,6 @@ Phase 4: Manual & Physical on site tasks:
 ===
 
 🔵 Implement Sentry & Posthog
-
-===
-
-🚧 Do an ground up redesign for mobile view
-
-I want to have a rebuilt or groundup redesign for mobile view to make our app look and feels like a native mobile app.
-Not just simply a website or page that's adjusted to be responsive to different resolution.
-We need to consider the best UI/UX for each page, section and components that we have in our app
-The end goal is when we resize to mobile view, it should look and feel like a native mobile app where we have main navigation on the bottom, mobile element animation and transitions, etc
-
-Apply to all pages including both public and dashboard pages
-
-→ **In progress:** [`../in-progress/mobile-native-redesign.md`](../in-progress/mobile-native-redesign.md)
-
-===
-
-❌ Do ground up redesign in dashboard UI to not make it look like AI generated app
-
-Even after multiple redesign changes, it looks and feel like our dashboard UI looks like AI generated dashboard app.
-We need to do /impeccable critique, audit then do plan, shape, document then do layout, optimize, bolder & polish.
-The end goal is to make our boring or current dashboard UI to level up and looks more beautiful, elegant, clean & professional, animated & interactive that offers best UI/UX and specially, does not look like AI generated design and application.
-You can refer to our public pages design. See how elegant and clean it is.
-
-We can separate our dashboard redesign to different phases. Maybe start with base styles, fonts & sizing, colors & theme and designs, etc. Then, next phases are structural change, text copy change, alignment, responsiveness, etc.
-
-Just make sure that we don't change or affect any public related pages that we have. make sure not even one single style on our public pages will be affected. We need to make sure that the design in our dashboard is scoped & isolated and will not affect our public UIs.
-
-→ **Won't do:** [`../wont-do/dashboard-ground-up-redesign.md`](../wont-do/dashboard-ground-up-redesign.md) — incremental dashboard polish only; no dedicated ground-up pass
 
 ===
 
@@ -372,80 +460,9 @@ Review the implementation on the following modules and make sure we simplify, re
 
 ===
 
-✅ Optimize how AI integrated in our app
-
-Make a research and find the best optimal way to connect our application with AI for faster info retrieval, action execution, etc.
-
-Maybe we can use our docs guide or obsedian vault or RAG/light RAG or something like graphify? Or if there's better library or technology that we can use.
-
-Also, I'm wondering if having docs/guides for each page of the app is the best optimal way to document and use this for AI to have context of our entire application?
-
-The goal is to find and implement the best way to document each flow, logic, process of each feature, pages, sections that's happening on our entire application that's fastest, optimal, and best lowest token consumption. It should be production ready
-
-Let's update our implementation that's using or relying with AI like the AI-auto reply, AI receptionist, and other future related features that will use AI.
-
-→ **Done:** [`../done/docs-obsidian-tooling-sync.md`](../done/docs-obsidian-tooling-sync.md)
-
-===
-
-📋 Analyze entire app pages & features and brainstorm how AI can help us for each feature
-
-Analyze the entire codebase, pages and features that we have, and see how AI can help hosts, guests, admin, and us developers on anything
-
-Example:
-
-- Use AI to analyze and suggest marketing strategies
-- Use AI to help managing finance, analyze big expenses, how to fix and suggest financial strats, etc
-
-→ **Plan / backlog:** [`../planned/ai-opportunities-roadmap.md`](../planned/ai-opportunities-roadmap.md)
-
-===
-
-🚧 Document, refine, finalize booking detail & workflow
-
-I want you to carefully review our booking detail page, booking edit and booking workflow and see how we can improve, refine, make other flow, logic and settings to be configurable from our property settings and make the whole flow to be multi users and multi property. What we have in prod, we are focused and only support Kame Home 2604. Now we are building our system to be used with different tenant, users, multi-properties, multi residence or property type and I want every little things to be configurable and refined for production used.
-
-I believe we already have docs for this, I just want you to review our latest implementation and make sure it's up to date, then create a one file doc that documents everything.
-
-After that, I want you to list down tasks, suggestion and improvements that we need to do to make our booking workflow to be used by different users and properties.
-
-The current booking status that we have is only applied for Azure North residence, again we should have config for this residence.
-
-Also, I want you to review each section, field, settings, flow, logic & process and if there's something we can improve or change, please suggest it.
-
-Also, for parking request step, skip this for now. The whole flow for this will be TBD later on.
-
-Also, another important thing I'd like to improve is to automate everything as much as possible. Right now, there's still some step or transition that require manual admin transition. Analyze and check how we can automate everything.
-
-The end goal is after this, our booking detail, edit and workflow is refined & finalize and production ready.
-
-→ **In progress:** [`../in-progress/booking-workflow-multi-tenancy.md`](../in-progress/booking-workflow-multi-tenancy.md) · v1 slice **done:** [`../done/booking-workflow-configurable-docs.md`](../done/booking-workflow-configurable-docs.md)
-
-===
-
 🔵 Review each dashboard pages, section & actions based on user role
 
 After we refine the roles & permissions that we have on both org and property level, we need to revisit and review each pages within the dashboard and make sure that each section, elements, action, process, flow, basically everything is well thought and only be accessible based on user role
-
-===
-
-✅ In app notification for chat & other activity
-
-When we receive new chat or guest message from inbox, we should display a toast or notification message on our app as long as we are using the app and even we are not on inbox page.
-
-For now, I think this would be helpful for chat events, but if you can see other features and functionality that you think we can add to our notification. Feel free to suggest and plan it as well
-
-Maybe analyze all the activities, events and actions that we have on Notifications page module as support in app notification on all activities, events or actions that you think it's helpful to display within our app.
-
-Analyze how popular apps how handle this and make sure we implement the way possible and make sure it will not result to any kind of performance or heavy process issues.
-
-→ **Plan:** [`../planned/in-app-notifications.md`](../planned/in-app-notifications.md)
-
-===
-
-✅ Smart import data with use of AI
-
-Shipped: [`../done/smart-ai-data-importer.md`](../done/smart-ai-data-importer.md) + [`../done/import-preview-fix-queue.md`](../done/import-preview-fix-queue.md)
 
 ===
 
@@ -461,25 +478,76 @@ Shipped: [`../done/smart-ai-data-importer.md`](../done/smart-ai-data-importer.md
 
 ===
 
-🚧 CI/CD + multi-tenant environments — [`multi-tenant-dev-prod-environments.md`](../in-progress/ci-cd-environments/multi-tenant-dev-prod-environments.md) · matrix [`ci-cd-environment-matrix.md`](../../archive/operations/ci-cd-environment-matrix.md)
-
-**Now:** `develop` → `dev.kamehomes.space` → **fwor…** (`cd-dev.yml` + Vercel Preview). Legacy unchanged (`main` → `kamehomes.space` → **zftt…**).
-
-**Pending at prod release (Phase B):**
-
-- Create **MULTI_TENANT_PROD** Supabase project
-- Implement **`scripts/migrate/legacy-to-mt-prod/`** — Postgres + Storage **`zftt…` → mt-prod**
-- Merge **`develop` → `main`**; **`kame-homes`** Production branch = **`main`** (not a `production` git branch)
-- Wire **`app.kamehomes.space`** + Vercel Production `VITE_*` → mt-prod
-- Google OAuth **prod** client + Auth on mt-prod
-- Enable GitHub **`production`** secrets + **`cd-prod.yml`**
-
-Design: [`ci-cd-dev-prod-design.md`](../in-progress/ci-cd-environments/ci-cd-dev-prod-design.md) · plan: [`ci-cd-dev-prod.md`](../in-progress/ci-cd-environments/ci-cd-dev-prod.md) · index [`ci-cd-environments/README.md`](../in-progress/ci-cd-environments/README.md)
-
-===
-
 🔵 Cancellation Process
 
 ===
 
 🔵 Able to send documents through chat
+
+===
+
+🔵 Scheduled marketing posts/story
+
+===
+
+🚧 Help & Support page (org + property level)
+
+Now that we have the AI assistant in the dashboard, build a Help & Support page for hosts at both org and property level: Documentation (from docs/guides Host-facing knowledge, filtered to never expose sensitive/internal info), AI Chat (opens the existing dashboard assistant sidebar), Ticket/App Support (dynamic per-category fields — bug/inquiry/suggestion/business — replied to from a new super-admin page), and FAQs (20-50 items generated from the docs). Every docs/guides change should stay synced to whatever powers this automatically.
+
+→ **Plan:** [`../planned/help-support-center.md`](../planned/help-support-center.md)
+
+===
+
+📋 Host plans and pricing tiers for property listings
+Based on all the features that we have, we should analyze all thea features & functionalities that we have and create different pricing tiers.
+Also, we need these pricing to be easy to understand for hosts and not looks very complicated.
+The idea that I have in mind is we will have 4 tiers of pricing for our hosts.
+For now, this is for property listing. We can plan the parking later on.
+
+Level 1:
+Free forever
+Basic features to use our dashboard
+
+Level 2:
+P349/month/listing
+
+Automated booking flow
+Verified badge
+Telegram notification
+Mange team members
+
+Level 3:
+P499/month/listing
+
+Everything from previous
+
+- Recommended badge
+- Always visible in top 20 search/recommended list
+- Up to 5 marketing download/publish per group
+- AI validations
+- AI tokens: 1000 credits
+- Marketing features
+- Custom pages
+
+Level 4:
+P1499/month/listing
+
+Everything from previous
+
+- Always visible in top 10 search/recommended list
+- Up to 5 marketing download/publish per group
+- AI dashboard assistant
+- AI receptionist
+- AI marketing generation
+- AI chat auto-reply to chat app, facebook & instagram
+- AI tokens: x10
+
+Level 5:
+P3499/month/listing
+
+- We will invite our admin as team member to give access to org/property
+- Then, we will handle everything
+- From bookings management, manual reply to chat inquiries
+- Edit marketing designs, manual and scheduled post to Facebook & Instagram
+
+Extra AI token in org: PXXX/1000 credits
