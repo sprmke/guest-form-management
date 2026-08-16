@@ -32,3 +32,15 @@ function baseUrl(): string {
 export function fetchHelpCenterArticles(): Promise<{ articles: HelpCenterArticle[] }> {
   return callHelpCenterFn(`${baseUrl()}/list-help-center-articles`);
 }
+
+export type HelpCenterFaq = {
+  id: string;
+  category: string;
+  question: string;
+  answer: string;
+  sort_order: number;
+};
+
+export function fetchHelpCenterFaqs(): Promise<{ faqs: HelpCenterFaq[] }> {
+  return callHelpCenterFn(`${baseUrl()}/list-help-center-faqs`);
+}
