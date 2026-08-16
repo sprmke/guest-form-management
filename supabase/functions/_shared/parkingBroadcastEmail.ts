@@ -4,6 +4,7 @@
  */
 
 import { resolveAppSettings } from './appSettings.ts';
+import { resolveEmailOnPrimaryHex, resolveEmailPrimaryHex } from './emailBrandColor.ts';
 import { createServiceClient, type ParkingRow } from './orgAuth.ts';
 import {
   formatEmailDateRange,
@@ -105,8 +106,9 @@ const GUEST_NO_HOST_BODY_TEMPLATE = `<p style="margin:0 0 16px 0;font-size:15px;
 
 function buildCtaHtml(url: string, label: string, brandColor: string): string {
   if (!url.trim()) return '';
-  const safeColor = brandColor.trim() || '#111827';
-  return `<div style="margin:28px 0 8px 0;text-align:center;"><a style="display:inline-block;padding:12px 24px;border-radius:8px;background:${safeColor};color:#ffffff;text-decoration:none;font-weight:600;" href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(label)}</a></div>`;
+  const fill = resolveEmailPrimaryHex(brandColor);
+  const onFill = resolveEmailOnPrimaryHex(brandColor);
+  return `<div style="margin:28px 0 8px 0;text-align:center;"><a style="display:inline-block;padding:12px 24px;border-radius:8px;background:${fill};color:${onFill};text-decoration:none;font-weight:600;" href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(label)}</a></div>`;
 }
 
 function formatExpiresAt(iso: string): string {

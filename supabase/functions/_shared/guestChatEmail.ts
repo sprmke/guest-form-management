@@ -3,8 +3,8 @@
  */
 
 import { loadAuthUserProfile } from './authUserProfile.ts';
+import { resolveEmailOnPrimaryHex, resolveEmailPrimaryHex } from './emailBrandColor.ts';
 import { parseInboxAttachmentPreviews } from './inboxAttachments.ts';
-import { DEFAULT_ORG_BRAND_COLOR } from './orgSettingsValidation.ts';
 import { resolvePublicGuestAppOrigin } from './publicAppOrigin.ts';
 import { escapeHtml, loadEmailTemplate, replacePlaceholders } from './renderEmailHtml.ts';
 import { socialInboxDb } from './socialInboxService.ts';
@@ -81,8 +81,10 @@ export async function maybeNotifyGuestOfHostWebReply(opts: {
   }
 
   const template = await loadEmailTemplate('guest-chat-reply');
+  const brandColor = (orgRow?.brand_color_hex as string | undefined)?.trim() || null;
   const html = replacePlaceholders(template, {
-    brand_color: (orgRow?.brand_color_hex as string | undefined)?.trim() || DEFAULT_ORG_BRAND_COLOR,
+    brand_color: resolveEmailPrimaryHex(brandColor),
+    brand_on_color: resolveEmailOnPrimaryHex(brandColor),
     property_name: escapeHtml(propertyName),
     guest_name: escapeHtml(guest.name || 'there'),
     host_name: escapeHtml((orgRow?.name as string | undefined)?.trim() || 'Your host'),

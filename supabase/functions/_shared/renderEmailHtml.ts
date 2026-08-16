@@ -3,7 +3,10 @@
  * in template files under ./email-templates/*.html
  */
 
+import { resolveEmailOnPrimaryHex, resolveEmailPrimaryHex } from './emailBrandColor.ts';
 import { DEFAULT_ORG_BRAND_COLOR } from './orgSettingsValidation.ts';
+
+export { resolveEmailOnPrimaryHex, resolveEmailPrimaryHex } from './emailBrandColor.ts';
 
 /** Public absolute URL for `<img src>` (same asset as `ui/public/images/logo.png` on the live site). */
 export const DEFAULT_EMAIL_LOGO_URL = 'https://kamehomes.space/images/logo.png';
@@ -36,95 +39,6 @@ export function lightenHexColor(hex: string, amount: number): string {
     g: rgb.g + (255 - rgb.g) * t,
     b: rgb.b + (255 - rgb.b) * t,
   });
-}
-
-function resolveBrandHex(brandColorHex?: string | null): string {
-  const trimmed = brandColorHex?.trim();
-  if (trimmed && parseHexColor(trimmed)) return trimmed;
-  return DEFAULT_ORG_BRAND_COLOR;
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
-}
-
-function rgbToHsl(rgb: { r: number; g: number; b: number }): {
-  h: number;
-  s: number;
-  l: number;
-} {
-  const rn = rgb.r / 255;
-  const gn = rgb.g / 255;
-  const bn = rgb.b / 255;
-  const max = Math.max(rn, gn, bn);
-  const min = Math.min(rn, gn, bn);
-  const delta = max - min;
-
-  let h = 0;
-  if (delta !== 0) {
-    if (max === rn) h = ((gn - bn) / delta) % 6;
-    else if (max === gn) h = (bn - rn) / delta + 2;
-    else h = (rn - gn) / delta + 4;
-    h *= 60;
-    if (h < 0) h += 360;
-  }
-
-  const l = (max + min) / 2;
-  const s = delta === 0 ? 0 : delta / (1 - Math.abs(2 * l - 1));
-  return { h, s: s * 100, l: l * 100 };
-}
-
-function hslToRgb(
-  h: number,
-  s: number,
-  l: number
-): {
-  r: number;
-  g: number;
-  b: number;
-} {
-  s /= 100;
-  l /= 100;
-  const c = (1 - Math.abs(2 * l - 1)) * s;
-  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-  const m = l - c / 2;
-  let rp = 0;
-  let gp = 0;
-  let bp = 0;
-  if (h < 60) {
-    rp = c;
-    gp = x;
-  } else if (h < 120) {
-    rp = x;
-    gp = c;
-  } else if (h < 180) {
-    gp = c;
-    bp = x;
-  } else if (h < 240) {
-    gp = x;
-    bp = c;
-  } else if (h < 300) {
-    rp = x;
-    bp = c;
-  } else {
-    rp = c;
-    bp = x;
-  }
-  return { r: (rp + m) * 255, g: (gp + m) * 255, b: (bp + m) * 255 };
-}
-
-/**
- * Match `ui/src/lib/brandColor.ts` light-mode `--primary` so email accents align
- * with admin `bg-primary` (not the raw picker hex when saturation/lightness differ).
- */
-export function resolveEmailPrimaryHex(brandColorHex?: string | null): string {
-  const hex = resolveBrandHex(brandColorHex);
-  const rgb = parseHexColor(hex);
-  if (!rgb) return DEFAULT_ORG_BRAND_COLOR;
-  const { h, s, l } = rgbToHsl(rgb);
-  const primaryS = clamp(s, 35, 95);
-  const primaryL = clamp(l - 2, 38, 55);
-  return toHexColor(hslToRgb(h, primaryS, primaryL));
 }
 
 /** Inline style for guest-facing social links in email copy. */
@@ -207,7 +121,7 @@ const EMAIL_SHELL_STYLE_VARS: Record<string, string> = {
   emailShellTextSubheadingStyle:
     "font-size:15px;font-weight:700;color:#333333;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;",
   emailShellTextArrowStyle: 'color:#94a3b8;',
-  emailShellCtaBtnStyle: `display:inline-block;padding:14px 28px;background-color:${resolveEmailPrimaryHex(null)} !important;color:#ffffff !important;text-decoration:none;border-radius:14px;font-weight:700;font-size:15px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;`,
+  emailShellCtaBtnStyle: `display:inline-block;padding:14px 28px;background-color:${resolveEmailPrimaryHex(null)} !important;color:${resolveEmailOnPrimaryHex(null)} !important;text-decoration:none;border-radius:14px;font-weight:700;font-size:15px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;`,
   emailStepCardOuterStyle:
     'width:100%;border-collapse:separate;border-spacing:0;background-color:#f1f5f9;border:1px solid #e2e8f0;border-radius:16px;',
   emailStepCardInnerWrapStyle: 'padding:0;border-radius:16px;',
@@ -229,11 +143,12 @@ const EMAIL_SHELL_STYLE_VARS: Record<string, string> = {
 
 function buildBrandedEmailShellStyleVars(brandColorHex?: string | null): Record<string, string> {
   const primary = resolveEmailPrimaryHex(brandColorHex);
+  const onPrimary = resolveEmailOnPrimaryHex(brandColorHex);
   const attachAccent = lightenHexColor(primary, 0.55);
   return {
     emailShellPrimaryHex: primary,
     emailShellTdAccentStyle: `height:5px;line-height:5px;font-size:0;background-color:${primary};`,
-    emailShellCtaBtnStyle: `display:inline-block;padding:14px 28px;background-color:${primary} !important;color:#ffffff !important;text-decoration:none;border-radius:14px;font-weight:700;font-size:15px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;`,
+    emailShellCtaBtnStyle: `display:inline-block;padding:14px 28px;background-color:${primary} !important;color:${onPrimary} !important;text-decoration:none;border-radius:14px;font-weight:700;font-size:15px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;`,
     emailStepNumCellStyle: `width:68px;min-width:68px;padding:14px 10px 14px 12px;border-right:1px solid #e2e8f0;text-align:center;vertical-align:middle;background-color:#f1f5f9;color:${primary};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:32px;font-weight:700;line-height:1;`,
     emailStepNumTextStyle: `font-size:32px;font-weight:700;line-height:1;color:${primary};display:inline-block;`,
     emailAttachListCellStyle: `padding:18px 20px;background-color:#f1f5f9;border:1px solid #e2e8f0;border-left:4px solid ${attachAccent};border-radius:16px;color:#333333;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.6;`,
