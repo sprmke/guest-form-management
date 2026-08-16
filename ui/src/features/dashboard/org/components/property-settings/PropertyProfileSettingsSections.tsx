@@ -319,7 +319,7 @@ export function PropertyProfileMainSections({
           resetValue={inheritedBrandColor}
           disabled={disabled}
           error={fieldError('property-brand-color')}
-          hint="Tints this property's admin pages, guest forms, emails, and accents."
+          help="Applies to this property’s dashboard pages & public-facing pages such as guest forms, email templates, and other related content."
           onChange={(value) => {
             markFieldInteracted('property-brand-color');
             onBrandColorChange(value);

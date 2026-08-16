@@ -544,7 +544,7 @@ export function ParkingSettingsCard() {
             resolvedColor={inheritedBrandColor}
             resetValue={inheritedBrandColor}
             disabled={busy}
-            hint="Tints this parking slot's admin pages, guest listing, and accents."
+            help="Tints this parking slot's admin pages, guest listing, and accents."
             onChange={(value) => {
               setProfileField('brandColor', value);
               setBrandColorPreview(value.trim() || inheritedBrandColor);
