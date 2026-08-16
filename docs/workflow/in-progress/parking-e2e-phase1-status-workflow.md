@@ -1,9 +1,9 @@
 ---
 stage: in-progress
 title: 'Parking E2E — Phase 1c: Status Workflow'
-status: planned
+status: implemented
 tags: [planning, planned-modules, parking, booking-workflow]
-updated: 2026-08-14
+updated: 2026-08-17
 ---
 
 # Parking E2E — Phase 1c: Parking Status Machine (Backend Spine)
@@ -119,7 +119,7 @@ CREATE INDEX guest_submissions_parking_broadcast_expiry_idx
 
 **Files:** Create `supabase/migrations/<ts>_parking_booking_broadcast.sql`
 
-- [ ] Write full SQL per sections above (status CHECK list must copy **all** existing values + two new).
+- [x] Write full SQL per sections above (status CHECK list must copy **all** existing values + two new). (`20261017120000_parking_booking_broadcast.sql`, fixed up in `20261017130000_parking_broadcast_terminal_check_fix.sql`)
 - [ ] `bun run db:migrate`.
 - [ ] Commit.
 
@@ -153,8 +153,8 @@ export function availableTransitions(from: ParkingStatus): ParkingStatus[];
 
 Side effects stay **out** of this module (Doc 3 owns notify/claim). `transition-parking-booking` continues to allow only post-claim hops (`PENDING_REVIEW` onward) for hosts with `bookings:edit`; it must **reject** transitions from `PENDING_HOST_ACCEPTANCE` (those go through claim/decline/expire functions).
 
-- [ ] Implement machine + wire `transition-parking-booking`.
-- [ ] Extend `bookingStatus.ts` / `StatusBadge` labels:
+- [x] Implement machine + wire `transition-parking-booking`.
+- [x] Extend `bookingStatus.ts` / `StatusBadge` labels:
 
 | Status                    | Label             | Tone          |
 | ------------------------- | ----------------- | ------------- |

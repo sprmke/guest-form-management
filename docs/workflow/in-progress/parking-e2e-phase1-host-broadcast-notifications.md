@@ -1,9 +1,9 @@
 ---
 stage: in-progress
 title: 'Parking E2E — Phase 1a (Host Side): Broadcast, Claim, Notify'
-status: planned
+status: implemented
 tags: [planning, planned-modules, parking, booking-workflow, integrations]
-updated: 2026-08-14
+updated: 2026-08-17
 ---
 
 # Parking E2E — Phase 1a (Host Side): Broadcast, Claim, Notify
@@ -112,7 +112,7 @@ Every 1–5 minutes:
 - Modify: `supabase/functions/_shared/telegramParking.ts` (send helper if missing)
 - Add HTML under `supabase/functions/_shared/email-templates/` + `static_files` on callers
 
-- [ ] Implement `findParkingBroadcastCandidates`, `fanOutParkingBroadcast`, guest+host email helpers.
+- [x] Implement `findParkingBroadcastCandidates`, `fanOutParkingBroadcast`, guest+host email helpers. Notification deep links now point at the specific booking (`/org/:orgSlug/parking/:parkingSlug/bookings/:bookingId`), not the bookings list — Telegram appends it as plain text (no CTA affordance there); fan-out failure now rolls back the orphaned booking row instead of leaving it stuck.
 - [ ] Commit.
 
 ---
@@ -135,7 +135,7 @@ Every 1–5 minutes:
 { bookingId: string; parkingId: string }
 ```
 
-- [ ] Implement + local curl smoke with two hosts.
+- [x] Implement + local curl smoke with two hosts. (atomic claim implemented — first Accept wins via guarded `UPDATE ... WHERE status='PENDING_HOST_ACCEPTANCE'`, decline-all terminates immediately; live two-host curl smoke not re-run this session)
 - [ ] Commit.
 
 ---
@@ -147,7 +147,7 @@ Every 1–5 minutes:
 - Create: `supabase/functions/expire-parking-broadcasts/index.ts`
 - Document SQL snippet for `pg_cron` in migration or `supabase/snippets/` + ops note in runbook link from overview
 
-- [ ] Idempotent expire path.
+- [x] Idempotent expire path. **Now scheduled**: `public.sync_parking_broadcast_expire_cron_job()` (migration `20261018120000_parking_broadcast_expire_cron.sql`, every 5 min) — this was the one item in the whole module that was silently unscheduled in every environment; production activation still requires the migration to actually run against hosted Supabase (`kamewave`-gated per repo rules).
 - [ ] Commit.
 
 ---

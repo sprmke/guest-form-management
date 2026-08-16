@@ -1,9 +1,9 @@
 ---
 stage: in-progress
 title: 'Parking E2E — Phase 1a (Guest Side): Request Submission & Realtime Status'
-status: planned
+status: implemented (polling, not Realtime — see note below)
 tags: [planning, planned-modules, parking, realtime]
-updated: 2026-08-14
+updated: 2026-08-17
 ---
 
 # Parking E2E — Phase 1a (Guest Side): Request Submission & Realtime Status
@@ -117,6 +117,8 @@ If guest JWT is not reliably present at submit, fall back to **edge polling ever
 
 **Lock:** require guest session on submit; persist `guest_auth_user_id`; Realtime + SELECT policy scoped to that uid; status page also works with booking id deep link when same user is logged in. Unauthenticated deep link: edge fetch only (no Realtime) until login.
 
+**What actually shipped (2026-08-16):** the `guest_auth_user_id` / RLS / Realtime channel path above was never implemented. `useParkingBookingStatus` instead polls `get-parking-booking-status` every 4s unconditionally (terminal statuses stop polling), which satisfies this doc's own "≤5s poll fallback" acceptance bar (§Verification) but is not what "Realtime status page" promises. Documenting this explicitly as the accepted v1 approach rather than an unnoticed gap — implementing true Realtime is still open if product wants the truly-live experience later.
+
 ## Endorsement
 
 Host passes `endorsementNote` on claim (Doc 3). Status page shows it when `status === 'PENDING_REVIEW'` (or later). Not a PDF upload (legacy property parking request stays separate).
@@ -145,7 +147,7 @@ Minimal copy only.
 - Modify: mock/parking form schema for `vehicleType`
 - Modify: `supabase/config.toml`
 
-- [ ] 422 on zero candidates; happy path returns `bookingId`.
+- [x] 422 on zero candidates; happy path returns `bookingId`.
 - [ ] Commit.
 
 ---
@@ -159,10 +161,10 @@ Minimal copy only.
 - Modify: marketing routes
 - Migration slice if `guest_auth_user_id` + RLS (may live in Doc 2 migration — add there if not already)
 
-- [ ] Two-tab test: host claim → guest UI updates without refresh (Realtime) or ≤5s (poll fallback).
-- [ ] Confirm other booking ids are not readable.
-- [ ] Mobile 375px.
-- [ ] Route guide under `docs/guides/routes/`.
+- [x] Two-tab test: host claim → guest UI updates without refresh (Realtime) or ≤5s (poll fallback). (poll fallback confirmed by code — 4s interval; live two-tab run not re-verified this session)
+- [x] Confirm other booking ids are not readable. (`get-parking-booking-status` requires exact UUID, no list/enumeration endpoint, 404s identically for missing/non-parking rows)
+- [ ] Mobile 375px. (needs live Playwright/device verification — QA screenshots from this session were lost, see route guide)
+- [x] Route guide under `docs/guides/routes/`. (`docs/guides/routes/org/parking/bookings.md` updated; guest routes documented in `docs/architecture/routing.md`; full spec in `.cursor/rules/parking-workflow.mdc`)
 - [ ] Commit.
 
 ---

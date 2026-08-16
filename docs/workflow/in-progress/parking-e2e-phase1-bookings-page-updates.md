@@ -1,9 +1,9 @@
 ---
 stage: in-progress
 title: 'Parking E2E — Phase 1d: Bookings Dashboard Updates'
-status: planned
+status: implemented
 tags: [planning, planned-modules, parking, booking-workflow]
-updated: 2026-08-14
+updated: 2026-08-17
 ---
 
 # Parking E2E — Phase 1d: Bookings Dashboard Updates
@@ -55,7 +55,7 @@ useClaimParkingBooking(parkingId: string); // → claim-parking-booking
 useDeclineParkingBooking(parkingId: string); // → decline-parking-booking
 ```
 
-- [ ] Wire mutations with toast success/error; invalidate booking queries.
+- [x] Wire mutations with toast success/error; invalidate booking queries. Accept/Decline now also show an inline spinner (`Button loading` prop) while pending, not just disabled state.
 - [ ] Commit.
 
 ---
@@ -72,8 +72,8 @@ Replace/extend `NEXT_STATUS` map:
 - Else keep Mark active / Complete / Cancel for post-claim statuses.
 - Hide Cancel or keep? **Lock:** guest-pending requests may be Cancelled only by host with `bookings:edit` if product wants abort — allow Cancel → `CANCELLED` and mark broadcasts `expired` (edge must support; if not in Doc 3, add cancel-broadcast cleanup in `transition-parking-booking` or dedicated path). Prefer: Cancel from `PENDING_HOST_ACCEPTANCE` calls decline-all/expire helper so candidates clear.
 
-- [ ] Implement UI + endorsement field (optional, max ~500 chars in UI; server 2000).
-- [ ] Mobile ContextualActionBar / button row meets touch targets.
+- [x] Implement UI + endorsement field (optional, max ~500 chars in UI; server 2000).
+- [x] Mobile ContextualActionBar / button row meets touch targets. (`min-h-[44px]` on Accept/Decline)
 - [ ] Commit.
 
 ---
@@ -86,9 +86,9 @@ Replace/extend `NEXT_STATUS` map:
 - Modify: list fetch mapping if statuses filtered client-side
 - Org bookings list: ensure new statuses display via shared `StatusBadge` (no crash on unknown)
 
-- [ ] Filters include new statuses.
-- [ ] Countdown component (client tick 1s; `aria-live="polite"` on minute changes only to avoid SR noise).
-- [ ] Empty state one short line.
+- [x] Filters include new statuses. (explicit "Awaiting Host" / "No Host Available" chips via `BookingFilters extraStatuses`; stage cards already bucketed them correctly)
+- [x] Countdown component (client tick 1s; `aria-live="polite"` on minute changes only to avoid SR noise). (`ParkingBroadcastCountdown` — was previously only on the guest page, now also on host detail, list table, and card grid)
+- [x] Empty state one short line. ("No bookings found" — shared with property bookings, satisfies minimal-copy convention)
 - [ ] Commit.
 
 ---

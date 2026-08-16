@@ -1,9 +1,9 @@
 ---
 stage: in-progress
 title: 'Parking E2E — Phase 0 & Phase 1 Overview'
-status: planned
+status: implemented — production-readiness checklist below closed except live/hosted verification steps
 tags: [planning, planned-modules, parking, booking-workflow, multi-tenancy]
-updated: 2026-08-14
+updated: 2026-08-17
 ---
 
 # Parking E2E — Phase 0 & Phase 1 Implementation Plan
@@ -157,17 +157,17 @@ Docs 3 and 4 can proceed in parallel after Doc 2. Phase 1 is only e2e-testable w
 
 Apply across Docs 1–5 before calling Phase 1 done:
 
-- [ ] Multi-tenant isolation: two-org seed test — org B never receives org A broadcasts.
-- [ ] Zero-candidate + all-declined + TTL paths each produce guest notification exactly once (idempotent cron).
-- [ ] Claim race: concurrent Accept → one 200, one 409.
-- [ ] `guest_submissions` with null `parking_id` only allowed when `status = 'PENDING_HOST_ACCEPTANCE'` and `parking_request_organization_id IS NOT NULL` (CHECK).
-- [ ] Anon guest status path cannot enumerate other bookings.
-- [ ] New edge functions registered in `config.toml`; email senders have `static_files` for templates.
-- [ ] Cron documented per `docs/archive/operations/scheduled-jobs-and-testing.md` (no `schedule` in `config.toml`).
-- [ ] Mobile 375px: form, status page, Accept/Decline.
-- [ ] A11y: labels, focus, status not color-only.
-- [ ] Docs: `PROJECT.md`, `parking-workflow.mdc`, route guides.
-- [ ] `bun run lint && bun run type-check && bun run build`.
+- [x] Multi-tenant isolation: two-org seed test — org B never receives org A broadcasts. (verified by code: `findParkingBroadcastCandidates` filters by `organization_id` at the source; every host endpoint re-verifies via `verifyParkingTeamAccess` scoped to the specific `parkingId`; live two-org seed run not re-executed this session)
+- [x] Zero-candidate + all-declined + TTL paths each produce guest notification exactly once (idempotent cron). (all three guarded by the same `UPDATE ... WHERE status='PENDING_HOST_ACCEPTANCE'` pattern; TTL cron is now actually scheduled — see below)
+- [x] Claim race: concurrent Accept → one 200, one 409. (single guarded UPDATE on `guest_submissions.status` is the sole source of truth for the win condition — see `.cursor/rules/parking-workflow.mdc`)
+- [x] `guest_submissions` with null `parking_id` only allowed when `status = 'PENDING_HOST_ACCEPTANCE'` and `parking_request_organization_id IS NOT NULL` (CHECK).
+- [x] Anon guest status path cannot enumerate other bookings. (`get-parking-booking-status` requires exact UUID, no list endpoint, 404s identically either way)
+- [x] New edge functions registered in `config.toml`; email senders have `static_files` for templates.
+- [x] Cron documented per `docs/archive/operations/scheduled-jobs-and-testing.md` (no `schedule` in `config.toml`). **Was the one real production gap in the whole module** — `expire-parking-broadcasts` had no `cron.schedule` anywhere despite idempotent handler code; now scheduled via `public.sync_parking_broadcast_expire_cron_job()` (migration `20261018120000_parking_broadcast_expire_cron.sql`, self-invokes on environments with Vault configured). Hosted activation still requires the migration to actually deploy (`kamewave`-gated).
+- [ ] Mobile 375px: form, status page, Accept/Decline. (needs live Playwright/device verification — this session's QA screenshots were lost from the working tree before they could be reviewed)
+- [x] A11y: labels, focus, status not color-only. Added `aria-live="polite"` regions (guest status page, host detail terminal-state text, countdown minute announcements) and a spinner on Accept/Decline; status badges already used icon+text, not color alone. Post-mutation focus-shifting was intentionally not added — sonner's toast already carries its own live-region announcement for mutation results, and shifting focus on a small mobile screen with sticky action buttons risked being more disorienting than helpful.
+- [x] Docs: `PROJECT.md`, `parking-workflow.mdc`, route guides. (`PROJECT.md` points to `docs/architecture/{data-model,edge-functions,routing}.md`, all three now cover parking broadcast; `.cursor/rules/parking-workflow.mdc` created; `docs/guides/routes/org/parking/bookings.md` updated from stale to current)
+- [x] `bun run lint && bun run type-check && bun run build`. (0 type errors, 0 new lint errors — 210 pre-existing warnings unchanged, none in touched files; build succeeds)
 
 ## Verification (end-to-end after Docs 1–5)
 

@@ -1,9 +1,9 @@
 ---
 stage: in-progress
 title: 'Parking E2E — Phase 0: Registration & Dimensions'
-status: planned
+status: implemented
 tags: [planning, planned-modules, parking, multi-tenancy]
-updated: 2026-08-14
+updated: 2026-08-17
 ---
 
 # Parking E2E — Phase 0: Registration & Dimensions
@@ -56,7 +56,7 @@ A slot “supports” a tier when **all three** dimensions meet that tier’s mi
 
 - Produces: `parkings.accepted_vehicle_types: text[]`
 
-- [ ] **Step 1:** Add column + check + backfill + index for containment queries.
+- [x] **Step 1:** Add column + check + backfill + index for containment queries. (`20261016120000_parking_accepted_vehicle_types.sql`)
 
 ```sql
 ALTER TABLE public.parkings
@@ -105,7 +105,7 @@ export function resolveVehicleFit(input: {
 }): { carTiers: CarSizeTier[]; acceptsMotorcycle: boolean };
 ```
 
-- [ ] **Step 1:** Implement pure function + export thresholds as named constants.
+- [x] **Step 1:** Implement pure function + export thresholds as named constants.
 - [ ] **Step 2:** Manual boundary checks (or Deno/UI unit test when harness exists): clearance 1.7 → compact only among cars; 2.2+ with large L/W → includes van.
 - [ ] **Step 3:** Commit.
 
@@ -126,10 +126,10 @@ export function resolveVehicleFit(input: {
 - Consumes: `resolveVehicleFit`
 - API body field: `acceptedVehicleTypes: ('car'|'motorcycle')[]` (camelCase at edge; snake in DB)
 
-- [ ] **Step 1:** Validate non-empty subset of `{car, motorcycle}` server-side; reject empty array.
-- [ ] **Step 2:** Wire UI checkboxes + fit preview that updates as length/width/height change.
-- [ ] **Step 3:** Save round-trip: edit → reload → values persist.
-- [ ] **Step 4:** `bun run lint && bun run type-check`.
+- [x] **Step 1:** Validate non-empty subset of `{car, motorcycle}` server-side; reject empty array.
+- [x] **Step 2:** Wire UI checkboxes + fit preview that updates as length/width/height change.
+- [ ] **Step 3:** Save round-trip: edit → reload → values persist. (needs live/manual verification)
+- [x] **Step 4:** `bun run lint && bun run type-check`. (0 errors, 210 pre-existing warnings unrelated to parking)
 - [ ] **Step 5:** Commit.
 
 ---
