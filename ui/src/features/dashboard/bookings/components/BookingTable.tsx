@@ -153,7 +153,10 @@ function BookingTableRow({
     >
       {/* Status */}
       <td className={adminTableCell.status}>
-        <AdminTableStatusBadge status={row.status} />
+        <AdminTableStatusBadge
+          status={row.status}
+          parkingBroadcastExpiresAt={row.parking_broadcast_expires_at}
+        />
       </td>
 
       {showProperty ? (

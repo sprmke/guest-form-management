@@ -19,6 +19,11 @@ import { hostLoginPath } from '@/features/guest/auth/lib/hostAuthPaths';
 import { ModeSwitcher } from '@/features/guest/marketing/shared/components/ModeSwitcher';
 
 import { AiAssistantLauncherButton } from '@/features/dashboard/ai-assistant/components/AiAssistantLauncherButton';
+import { useAiAssistantAccess } from '@/features/dashboard/ai-assistant/hooks/useAiAssistantAccess';
+import {
+  getAssistantOpenRequestId,
+  subscribeAssistantOpenRequest,
+} from '@/features/dashboard/ai-assistant/lib/assistantOpenStore';
 import {
   AdminBrandTheme,
   useAdminBrandThemeStyle,
@@ -26,6 +31,8 @@ import {
 import { AdminMoreSheet } from '@/features/dashboard/bookings/components/AdminMoreSheet';
 import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
 import {
+  ASSISTANT_TAB_KEY,
+  NOTIFICATIONS_TAB_KEY,
   resolveBottomTabActiveKey,
   splitAdminBottomNav,
 } from '@/features/dashboard/bookings/lib/adminBottomNav';
@@ -47,6 +54,7 @@ import {
 import { resolveActiveNavHref } from '@/features/dashboard/bookings/lib/navActive';
 import { NotificationBell } from '@/features/dashboard/notifications/components/NotificationBell';
 import { NotificationsProvider } from '@/features/dashboard/notifications/components/NotificationsProvider';
+import { useNotificationsList } from '@/features/dashboard/notifications/hooks/useNotifications';
 import { OrgSettingsIssuesSync } from '@/features/dashboard/org/components/OrgSettingsIssuesSync';
 import { SectionNavIssueDot } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import {
@@ -64,6 +72,7 @@ import {
 } from '@/features/dashboard/org/components/verification/GetVerifiedModal';
 import { useOrganizations, useProperties } from '@/features/dashboard/org/hooks/useOrganizations';
 import { useParkings } from '@/features/dashboard/org/hooks/useParkings';
+import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import {
   hasOrgSettingsIssues,
   subscribeOrgSettingsIssues,
@@ -329,12 +338,31 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
     hasOrgSettingsIssues,
     () => false
   );
+  const assistantOpenRequestId = useSyncExternalStore(
+    subscribeAssistantOpenRequest,
+    getAssistantOpenRequestId,
+    () => 0
+  );
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed);
+  const propertyId = usePropertyIdParam();
+  const { accessible: assistantAccessible } = useAiAssistantAccess(propertyId);
+  const { data: notificationsPreview } = useNotificationsList('preview');
+  const unreadNotificationCount = notificationsPreview?.pages[0]?.unreadCount ?? 0;
 
   useEffect(() => {
     setMoreSheetOpen(false);
+    setNotificationsOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (assistantOpenRequestId === 0) return;
+    setMoreSheetOpen(false);
+    setNotificationsOpen(false);
+    setAssistantOpen(true);
+  }, [assistantOpenRequestId]);
 
   const pageTitle = useMemo(
     () =>
@@ -388,14 +416,59 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
   const initial = displayName[0]?.toUpperCase() ?? 'A';
   const superAdmin = isSuperAdminPath(location.pathname);
 
-  const openMoreSheet = useCallback(() => setMoreSheetOpen(true), []);
+  const openMoreSheet = useCallback(() => {
+    setAssistantOpen(false);
+    setNotificationsOpen(false);
+    setMoreSheetOpen(true);
+  }, []);
+
+  const toggleAssistant = useCallback(() => {
+    setMoreSheetOpen(false);
+    setNotificationsOpen(false);
+    setAssistantOpen((open) => !open);
+  }, []);
+
+  const toggleNotifications = useCallback(() => {
+    setMoreSheetOpen(false);
+    setAssistantOpen(false);
+    setNotificationsOpen((open) => !open);
+  }, []);
 
   const { tabItems, moreItems, primaryHrefs } = useMemo(
-    () => splitAdminBottomNav(navSections, openMoreSheet),
-    [navSections, openMoreSheet]
+    () =>
+      splitAdminBottomNav(navSections, {
+        onMoreClick: openMoreSheet,
+        assistant: !superAdmin && assistantAccessible ? { onClick: toggleAssistant } : undefined,
+        notifications: !superAdmin
+          ? {
+              onClick: toggleNotifications,
+              badge: unreadNotificationCount > 0 ? unreadNotificationCount : undefined,
+            }
+          : undefined,
+      }),
+    [
+      navSections,
+      openMoreSheet,
+      superAdmin,
+      assistantAccessible,
+      toggleAssistant,
+      toggleNotifications,
+      unreadNotificationCount,
+    ]
   );
 
-  const tabActiveKey = resolveBottomTabActiveKey(activeNavHref, primaryHrefs, moreSheetOpen);
+  const overlayTabKey = assistantOpen
+    ? ASSISTANT_TAB_KEY
+    : notificationsOpen
+      ? NOTIFICATIONS_TAB_KEY
+      : null;
+
+  const tabActiveKey = resolveBottomTabActiveKey(
+    activeNavHref,
+    primaryHrefs,
+    moreSheetOpen,
+    overlayTabKey
+  );
 
   const settingsIssueOnTabs =
     (propertySettingsHasIssues && isPropertyAdminPath(location.pathname)) ||
@@ -494,7 +567,13 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
 
           <AdminMoreSheet
             open={moreSheetOpen}
-            onOpenChange={setMoreSheetOpen}
+            onOpenChange={(open) => {
+              setMoreSheetOpen(open);
+              if (open) {
+                setAssistantOpen(false);
+                setNotificationsOpen(false);
+              }
+            }}
             moreItems={moreItems}
             activeNavHref={activeNavHref}
             pathname={location.pathname}
@@ -508,7 +587,36 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
             superAdmin={superAdmin}
           />
 
-          {!superAdmin && <AiAssistantLauncherButton />}
+          {!superAdmin ? (
+            <NotificationBell
+              variant="fab"
+              open={notificationsOpen}
+              onOpenChange={(open) => {
+                if (open) {
+                  setMoreSheetOpen(false);
+                  setAssistantOpen(false);
+                }
+                setNotificationsOpen(open);
+              }}
+              className={
+                assistantAccessible
+                  ? 'bottom-[calc(max(1.25rem,env(safe-area-inset-bottom))+4rem)]'
+                  : undefined
+              }
+            />
+          ) : null}
+          {!superAdmin ? (
+            <AiAssistantLauncherButton
+              open={assistantOpen}
+              onOpenChange={(open) => {
+                if (open) {
+                  setMoreSheetOpen(false);
+                  setNotificationsOpen(false);
+                }
+                setAssistantOpen(open);
+              }}
+            />
+          ) : null}
         </BottomBarSlotProvider>
       </AdminMobileHeroProvider>
     </>
@@ -528,7 +636,6 @@ function AdminMobileTopBar({ superAdmin }: { superAdmin: boolean }) {
           <SidebarTenantScope collapsed={false} />
         )}
       </div>
-      {!superAdmin ? <NotificationBell /> : null}
     </header>
   );
 }
@@ -624,19 +731,14 @@ function AdminSidebarContent({
       <div
         className={cn(
           'border-sidebar-border shrink-0 border-b py-3',
-          collapsed ? 'flex flex-col items-center gap-2 px-2' : 'flex items-center gap-2 px-3',
+          collapsed ? 'px-2' : 'px-3',
           onClose && 'pt-3'
         )}
       >
         {superAdmin ? (
           <SuperAdminSidebarScope collapsed={collapsed} />
         ) : (
-          <>
-            <div className={collapsed ? undefined : 'min-w-0 flex-1'}>
-              <SidebarTenantScope collapsed={collapsed} />
-            </div>
-            <NotificationBell />
-          </>
+          <SidebarTenantScope collapsed={collapsed} />
         )}
       </div>
 

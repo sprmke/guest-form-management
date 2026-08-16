@@ -52,6 +52,8 @@ type Props = {
   showBookingKindFilter?: boolean;
   hideKanbanView?: boolean;
   searchPlaceholder?: string;
+  /** Extra plain status rows appended after the property enum (e.g. parking-only statuses). */
+  extraStatuses?: readonly string[];
 };
 
 export function BookingFilters({
@@ -68,6 +70,7 @@ export function BookingFilters({
   showBookingKindFilter = false,
   hideKanbanView = false,
   searchPlaceholder = 'Search guests, email, phone, plate, pet…',
+  extraStatuses,
 }: Props) {
   const [draft, setDraft] = useState(query.q);
   const [refineOpen, setRefineOpen] = useState(false);
@@ -112,7 +115,7 @@ export function BookingFilters({
 
   const statusList = (
     <>
-      {bookingsStatusFilterRows().map((row) =>
+      {bookingsStatusFilterRows(extraStatuses).map((row) =>
         row.type === 'group' ? (
           <PendingDocumentsStatusGroup
             key={row.parent}
@@ -487,7 +490,7 @@ function StatusFilterOption({
   nested = false,
   indeterminate = false,
 }: {
-  value: BookingStatus;
+  value: string;
   isChecked: boolean;
   onToggle: () => void;
   nested?: boolean;

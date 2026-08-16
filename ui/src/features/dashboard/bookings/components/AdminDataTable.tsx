@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { ArrowUpRight, Car, Dog, PartyPopper, X } from 'lucide-react';
 
 import { GuestAvatar } from '@/features/dashboard/bookings/components/GuestAvatar';
+import { ParkingBroadcastCountdown } from '@/features/dashboard/bookings/components/ParkingBroadcastCountdown';
 import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
 import {
   bookingFlagIconChipClass,
@@ -179,10 +180,20 @@ export function adminTableMoneyClass(colorClass?: string) {
 }
 
 /** Status column — same wrapper as Bookings table. */
-export function AdminTableStatusBadge({ status }: { status: string }) {
+export function AdminTableStatusBadge({
+  status,
+  parkingBroadcastExpiresAt,
+}: {
+  status: string;
+  /** Renders a live countdown under the badge when status is PENDING_HOST_ACCEPTANCE. */
+  parkingBroadcastExpiresAt?: string | null;
+}) {
   return (
     <div className="inline-flex flex-col gap-1">
       <StatusBadge status={status} />
+      {status === 'PENDING_HOST_ACCEPTANCE' && parkingBroadcastExpiresAt && (
+        <ParkingBroadcastCountdown expiresAt={parkingBroadcastExpiresAt} />
+      )}
     </div>
   );
 }
