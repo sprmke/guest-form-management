@@ -1,18 +1,31 @@
 import { useEffect, useRef } from 'react';
 
-import { Loader2, Sparkles } from 'lucide-react';
+import { FileText, ImagePlus, Loader2 } from 'lucide-react';
 
+import { AssistantSuggestionGroups } from '@/features/dashboard/ai-assistant/components/AssistantSuggestionGroups';
 import { ChatBlockRenderer } from '@/features/dashboard/ai-assistant/components/ChatBlockRenderer';
 import type { ChatThreadMessage } from '@/features/dashboard/ai-assistant/hooks/useAiAssistantChat';
 import type { ConfirmActionResponse } from '@/features/dashboard/ai-assistant/lib/aiAssistantApi';
+import type { AssistantSuggestion } from '@/features/dashboard/ai-assistant/lib/assistantSuggestions';
+import { isAssistantImageMime } from '@/features/dashboard/ai-assistant/lib/chatAttachments';
 
 type Props = {
   messages: ChatThreadMessage[];
   pending: boolean;
   onResolveAction: (actionId: string, confirm: boolean) => Promise<ConfirmActionResponse | null>;
+  questions: AssistantSuggestion[];
+  actions: AssistantSuggestion[];
+  onPickSuggestion: (prompt: string) => void;
 };
 
-export function ChatThread({ messages, pending, onResolveAction }: Props) {
+export function ChatThread({
+  messages,
+  pending,
+  onResolveAction,
+  questions,
+  actions,
+  onPickSuggestion,
+}: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -21,10 +34,12 @@ export function ChatThread({ messages, pending, onResolveAction }: Props) {
 
   if (messages.length === 0) {
     return (
-      <div className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center text-sm">
-        <Sparkles className="h-6 w-6" aria-hidden />
-        <p>Ask what&apos;s checking in today, why a booking is stuck, or move a booking forward.</p>
-      </div>
+      <AssistantSuggestionGroups
+        questions={questions}
+        actions={actions}
+        onPick={onPickSuggestion}
+        disabled={pending}
+      />
     );
   }
 
@@ -43,7 +58,29 @@ export function ChatThread({ messages, pending, onResolveAction }: Props) {
             }
           >
             {msg.role === 'user' ? (
-              <p className="text-sm">{msg.text}</p>
+              <div className="space-y-1.5">
+                {msg.bookingLabel ? (
+                  <p className="text-primary-foreground/80 text-xs">{msg.bookingLabel}</p>
+                ) : null}
+                {msg.attachments && msg.attachments.length > 0 ? (
+                  <ul className="flex flex-wrap gap-1">
+                    {msg.attachments.map((file, index) => (
+                      <li
+                        key={`${file.name}-${index}`}
+                        className="bg-primary-foreground/15 inline-flex max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-xs"
+                      >
+                        {isAssistantImageMime(file.mimeType) ? (
+                          <ImagePlus className="h-3 w-3 shrink-0" aria-hidden />
+                        ) : (
+                          <FileText className="h-3 w-3 shrink-0" aria-hidden />
+                        )}
+                        <span className="truncate">{file.name}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                {msg.text ? <p className="text-sm">{msg.text}</p> : null}
+              </div>
             ) : (
               <ChatBlockRenderer blocks={msg.blocks} onResolveAction={onResolveAction} />
             )}
