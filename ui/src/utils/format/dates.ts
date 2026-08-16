@@ -166,6 +166,18 @@ function parseStayBoundaryDate(raw: string): Date | null {
   }
 }
 
+/** ISO `YYYY-MM-DD` or booking `MM-DD-YYYY` → single readable date, e.g. `Aug 11, 2026`. */
+export function formatStayBoundaryDate(raw: string | null | undefined): string {
+  const date = raw ? parseStayBoundaryDate(raw) : null;
+  return date ? format(date, 'MMM d, yyyy') : '';
+}
+
+/** Compact variant for tight layouts (e.g. boarding-pass cards), e.g. `Aug 11`. */
+export function formatStayBoundaryDateShort(raw: string | null | undefined): string {
+  const date = raw ? parseStayBoundaryDate(raw) : null;
+  return date ? format(date, 'MMM d') : '';
+}
+
 /**
  * ISO `YYYY-MM-DD` or booking `MM-DD-YYYY` → readable stay range, e.g. `Aug 11 - 18, 2026`.
  */

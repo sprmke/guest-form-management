@@ -274,10 +274,10 @@ export async function suggestInboxReply(input: AiSuggestInput): Promise<AiSugges
     `Reply to the guest's latest message: "${latestGuestText}"\n` +
     'Write only the reply text — no quotes, labels, or markdown.';
 
-  const cacheKey = computePromptFingerprint(buildCacheInputs(feature, systemPrompt, userPrompt));
-  const cached = await getCachedAiResponse(cacheKey);
+  const cacheKey = await computePromptFingerprint(buildCacheInputs(systemPrompt, userPrompt));
+  const cached = await getCachedAiResponse(feature, cacheKey);
   if (cached) {
-    return { suggestion: cached, flagged: false };
+    return { suggestion: cached.responseText, flagged: false };
   }
 
   const errors: string[] = [];
@@ -340,7 +340,16 @@ export async function suggestInboxReply(input: AiSuggestInput): Promise<AiSugges
     return { suggestion: AI_SUGGEST_FALLBACK_REPLY, flagged: true };
   }
 
-  await setCachedAiResponse(cacheKey, draft, CONFIG.cacheTtlSeconds);
+  if (usageRecord) {
+    await setCachedAiResponse(feature, cacheKey, {
+      provider: usageRecord.provider,
+      model: usageRecord.model,
+      responseText: draft,
+      inputTokens: usageRecord.inputTokens ?? 0,
+      outputTokens: usageRecord.outputTokens ?? 0,
+      estimatedCostUsd: 0,
+    });
+  }
   return { suggestion: draft, flagged: false };
 }
 

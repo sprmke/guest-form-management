@@ -16,7 +16,7 @@ export function TeamLogoMark({ src, alt = 'Kame Home', className, imageClassName
   return (
     <div
       className={cn(
-        'bg-card shadow-soft ring-border/40 flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl ring-1',
+        'bg-card shadow-soft flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl',
         className
       )}
     >

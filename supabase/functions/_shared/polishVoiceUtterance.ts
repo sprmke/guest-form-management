@@ -83,13 +83,11 @@ export async function polishVoiceTranscriptTurns(
 
   const payload = capped.map(({ role, text }) => ({ role, text }));
   const userPrompt = `Clean this transcript JSON:\n${JSON.stringify(payload)}`;
-  const cacheKey = computePromptFingerprint(
-    buildCacheInputs(VOICE_POLISH_FEATURE, SYSTEM_PROMPT, userPrompt)
-  );
-  const cached = await getCachedAiResponse(cacheKey);
+  const cacheKey = await computePromptFingerprint(buildCacheInputs(SYSTEM_PROMPT, userPrompt));
+  const cached = await getCachedAiResponse(VOICE_POLISH_FEATURE, cacheKey);
   if (cached) {
     try {
-      const parsed = JSON.parse(cached) as unknown;
+      const parsed = JSON.parse(cached.responseText) as unknown;
       if (Array.isArray(parsed) && parsed.length > 0) {
         return applyPolishedArray(capped, parsed);
       }
@@ -160,7 +158,14 @@ export async function polishVoiceTranscriptTurns(
         outputTokens: usage.outputTokens,
       });
 
-      await setCachedAiResponse(cacheKey, text, CONFIG.cacheTtlSeconds);
+      await setCachedAiResponse(VOICE_POLISH_FEATURE, cacheKey, {
+        provider: 'gemini',
+        model: GEMINI_MODEL,
+        responseText: text,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+        estimatedCostUsd: 0,
+      });
       return applyPolishedArray(capped, parsed);
     } catch (e) {
       lastError = (e as Error).message;
