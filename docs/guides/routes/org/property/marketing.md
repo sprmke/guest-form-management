@@ -2,7 +2,7 @@
 title: 'Marketing — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-02
+updated: 2026-08-15
 ---
 
 # Marketing — operator guide
@@ -133,7 +133,7 @@ Or use **`platform`** + **`postType`** (`post` | `story`) instead of **`publishT
 
 - Resolves **`social_channel_connections`** for the property org (Meta inbox connect flow).
 - **Facebook:** `POST /{page-id}/photos` with `url` + `message`; future **`scheduledAt`** uses `scheduled_publish_time`.
-- **Instagram:** media container + `media_publish` (`STORIES` for stories, `IMAGE` for feed).
+- **Instagram:** media container + `media_publish` (`STORIES` for stories, `IMAGE` for feed). Video containers are polled for `status_code: FINISHED` (up to ~60s) before `media_publish` — calling it immediately after container creation intermittently failed for anything but the smallest clips since Meta transcodes video containers asynchronously.
 - Every attempt logged on **`marketing_publications`** (`pending` \| `published` \| `failed`).
 - Future IG schedule: stored as **`pending`** (no native schedule API in v1).
 
