@@ -20,6 +20,7 @@ module.exports = {
           'Segoe UI',
           'sans-serif',
         ],
+        fraunces: ['Fraunces', 'Georgia', 'serif'],
       },
       fontSize: {
         '2xs': ['0.625rem', { lineHeight: '0.875rem' }],
