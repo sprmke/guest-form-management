@@ -17,9 +17,11 @@ import {
   quickSafetyScan,
 } from '../_shared/dashboardAssistantSafetyGuard.ts';
 import { callGeminiToolCall } from '../_shared/geminiToolCallClient.ts';
+import { isAiPlatformDisabledError, isAiQuotaError } from '../_shared/aiUsageService.ts';
 import {
   handleEdgeError,
   jsonError,
+  jsonResponse,
   jsonSuccess,
   readJsonBody,
   requireHttpMethod,
@@ -92,6 +94,16 @@ serveAuthenticated('dashboard-assistant', async (req, user) => {
 
     return jsonSuccess(req, { reply, risk, guard, toolCalls: ai.toolCalls });
   } catch (error) {
+    if (isAiQuotaError(error)) {
+      return jsonResponse(
+        req,
+        { success: false, error: (error as Error).message, upgradeHook: true },
+        429
+      );
+    }
+    if (isAiPlatformDisabledError(error)) {
+      return jsonError(req, (error as Error).message, 503);
+    }
     return handleEdgeError(req, error, 'dashboard-assistant');
   }
 });
