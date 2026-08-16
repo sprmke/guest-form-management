@@ -2,7 +2,7 @@
 title: 'AI Dashboard Assistant — Feature List'
 status: v1 shipped
 tags: [workflow, done, ai, reference]
-updated: 2026-08-15
+updated: 2026-08-16
 ---
 
 # AI Dashboard Assistant — what shipped
@@ -59,6 +59,9 @@ If the assistant tries to act on a booking or property the host isn't currently 
 
 - A floating assistant button on every admin dashboard page (org, property, and parking admin views) — hidden on super-admin pages and hidden entirely if the assistant isn't turned on.
 - A slide-over chat panel: ask a question, get an answer rendered as readable cards (booking cards, stat lists, tables, link lists) — never raw text dumps or hallucinated HTML.
+- **Starter prompts:** new chat centers a **Questions / Actions** mode switch (filled teal pill, not page tabs) and **5 randomized** prompt cards. Tapping one sends it as a message. The pool only covers tools that exist today (bookings, finance, maintenance, status moves, receipt re-check, cancel) — not parking, inbox, or marketing.
+- **Composer attachments + booking pin:** paperclip menu (Photo / File) and a calendar picker beside the message box. The picker groups property stays by check-in month, with search (guest / date / status) and rows showing guest, dates, and status. Pinning a stay sets `pageContext` for that turn.
+- **History:** clock icon lists your chats grouped by day, with search. Titles wrap (UUIDs stripped for the preview). Trash deletes that conversation after confirm — only yours, and it cannot be undone.
 - Every proposed action renders as a card with **Confirm** / **Cancel** buttons; once resolved it flips to "done automatically" / "cancelled" / "expired" so the history stays readable.
 - **Booking detail pages** show a read-only "Actions taken by AI assistant" trail — every automatic or confirmed action taken on that specific booking, with when and what.
 
@@ -72,6 +75,7 @@ If the assistant tries to act on a booking or property the host isn't currently 
 ## What it can't do (by design, not by accident)
 
 - No parking bookings/broadcasts yet — v1 only covers property stays.
+- Attached files are sent to the model on the turn they are uploaded, not replayed on later messages in the same thread.
 - No direct editing of arbitrary booking fields (guest info, pricing line items outside a status-change payload) — those backend endpoints don't exist yet, so there's nothing for the assistant to wrap.
 - No cross-organization actions, ever.
 - No unattended/scheduled runs — every action is a direct result of something a signed-in user typed.

@@ -29,17 +29,18 @@ See epics #101–#119 in historical [`archive/todos/BACKLOG_DRAFT.md`](./archive
 
 ## Architecture (live)
 
-| Doc                                                                          | Purpose                                        |
-| ---------------------------------------------------------------------------- | ---------------------------------------------- |
-| [`PROJECT.md`](./PROJECT.md)                                                 | Thin index into `architecture/`                |
-| [`architecture/overview.md`](./architecture/overview.md)                     | Stack, repo layout, key files                  |
-| [`architecture/routing.md`](./architecture/routing.md)                       | Routes and user flows                          |
-| [`architecture/data-model.md`](./architecture/data-model.md)                 | Postgres schema                                |
-| [`architecture/edge-functions.md`](./architecture/edge-functions.md)         | Edge function inventory                        |
-| [`architecture/integrations.md`](./architecture/integrations.md)             | Resend, Google, PDF                            |
-| [`architecture/validation-and-env.md`](./architecture/validation-and-env.md) | Validation + env vars                          |
-| [`architecture/deployment.md`](./architecture/deployment.md)                 | Deployment summary (links runbooks in archive) |
-| [`architecture/roadmap.md`](./architecture/roadmap.md)                       | Roadmap / gaps                                 |
+| Doc                                                                                  | Purpose                                                             |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------- |
+| [`PROJECT.md`](./PROJECT.md)                                                         | Thin index into `architecture/`                                     |
+| [`architecture/overview.md`](./architecture/overview.md)                             | Stack, repo layout, key files                                       |
+| [`architecture/routing.md`](./architecture/routing.md)                               | Routes and user flows                                               |
+| [`architecture/data-model.md`](./architecture/data-model.md)                         | Postgres schema                                                     |
+| [`architecture/edge-functions.md`](./architecture/edge-functions.md)                 | Edge function inventory                                             |
+| [`architecture/integrations.md`](./architecture/integrations.md)                     | Resend, Google, PDF                                                 |
+| [`architecture/validation-and-env.md`](./architecture/validation-and-env.md)         | Validation + env vars                                               |
+| [`architecture/deployment.md`](./architecture/deployment.md)                         | Deployment summary (links runbooks in archive)                      |
+| [`architecture/roadmap.md`](./architecture/roadmap.md)                               | Roadmap / gaps                                                      |
+| [`architecture/ai-dashboard-assistant.md`](./architecture/ai-dashboard-assistant.md) | AI dashboard assistant — full tool catalog, tiers, RBAC, exclusions |
 
 ## Guides (live — per-route behavior)
 
