@@ -8,7 +8,10 @@ import {
   readListingAuthorizationSummary,
   type ListingKind,
 } from '@/features/dashboard/org/lib/listingAuthorization';
-import { readListingContractRenewalDismissedYmd } from '@/features/dashboard/org/lib/listingContractRenewalDismiss';
+import {
+  persistsListingContractRenewalDailyDismiss,
+  readListingContractRenewalDismissedYmd,
+} from '@/features/dashboard/org/lib/listingContractRenewalDismiss';
 import type { Parking, Property } from '@/features/dashboard/org/types';
 
 const PHASE_PRIORITY: Record<ListingContractRenewalPhase, number> = {
@@ -49,7 +52,10 @@ function pushCandidate(
   if (phase === 'none') return;
 
   const dismissible = phase !== 'locked';
-  if (dismissible && readListingContractRenewalDismissedYmd(listingKind, listing.id) === todayYmd) {
+  if (
+    persistsListingContractRenewalDailyDismiss(phase) &&
+    readListingContractRenewalDismissedYmd(listingKind, listing.id) === todayYmd
+  ) {
     return;
   }
 

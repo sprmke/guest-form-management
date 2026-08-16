@@ -1,6 +1,14 @@
+import type { ListingContractRenewalPhase } from '@/features/dashboard/org/lib/contractLifecycle';
 import type { ListingKind } from '@/features/dashboard/org/lib/listingAuthorization';
 
 const PREFIX = 'listing-contract-renewal-dismiss';
+
+/** Daily localStorage snooze. Grace re-opens on refresh; locked is not daily-snoozed. */
+export function persistsListingContractRenewalDailyDismiss(
+  phase: ListingContractRenewalPhase
+): boolean {
+  return phase === 'pre_expiry' || phase === 'granted';
+}
 
 export function listingContractRenewalDismissKey(
   listingKind: ListingKind,

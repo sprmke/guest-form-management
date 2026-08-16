@@ -2,7 +2,7 @@
 title: 'Organization Dashboard — operator guide'
 status: active
 tags: [guides, routes, org]
-updated: 2026-08-09
+updated: 2026-08-17
 ---
 
 # Organization Dashboard — operator guide
@@ -137,6 +137,8 @@ This is the landing page for an organization — it rolls up revenue, bookings, 
   A: Hover or tap a slice of the chart to see the status name and count.
 - Q: Can I create a new property or parking listing from here?
   A: Yes, if you have permission — use **Add listing** in the header.
+- Q: A contract-expired reminder appeared. If I close it, will it come back?
+  A: Yes after you refresh the page. Closing it only hides it while you keep using the dashboard.
 
 ---
 

@@ -2,7 +2,7 @@
 title: 'Property Dashboard — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-09
+updated: 2026-08-17
 ---
 
 # Property Dashboard — operator guide
@@ -165,6 +165,8 @@ This is the home page for a single property — period performance first, then t
   A: No, changing the date range here only changes which period the numbers, maintenance list, and calendar reflect — it doesn't modify anything.
 - Q: What does the calendar Price toggle show?
   A: The full booking amount for that stay (all nights added together), not the nightly rate.
+- Q: A contract-expired reminder appeared. If I close it, will it come back?
+  A: Yes after you refresh the page. Closing it only hides it while you keep using the dashboard.
 
 ---
 

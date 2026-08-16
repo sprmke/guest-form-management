@@ -2,7 +2,7 @@
 title: 'Contract expiry lifecycle — manual test flows'
 status: active
 tags: [guides, testing, contract-expiry]
-updated: 2026-08-03
+updated: 2026-08-17
 ---
 
 # Contract expiry lifecycle — step-by-step manual testing
@@ -17,19 +17,19 @@ Manual E2E for **sublessee / Auth Rep contract end** (notices, grace, considerat
 
 ## 0. What you are proving
 
-| #   | Capability                | Pass criteria                                                                          |
-| --- | ------------------------- | -------------------------------------------------------------------------------------- |
-| 1   | Pre-expiry notices        | Owner gets T−15 / T−7 / T−1 emails once each; cron re-run does not double-send         |
-| 2   | T+0 archive               | Listing → `INACTIVE` on contract end day; renewal modal on listing shell (dismissible) |
-| 3   | Grace consideration       | Owner uploads proof + note + date → pending; non-owner cannot submit                   |
-| 4   | SA grant                  | Temp `ACTIVE` until `grantedUntil` ≤ 14d; banner shows grant; Approvals badge clears   |
-| 5   | SA deny / changes         | Status updates; host cannot stack a second self-serve in same cycle                    |
-| 6   | Phase A conflict on grant | Grant blocked with clear error when another ACTIVE peer holds tower+unit               |
-| 7   | T+5 lock                  | All members see lock screen; owner must full renew (unless SA override)                |
-| 8   | Grant expiry              | After `grantedUntil`, cron revokes access / locks as designed                          |
-| 9   | Full renew                | New contract end + SA approve clears consideration + notice markers                    |
-| 10  | Parking leg               | Same lifecycle independently of property leg                                           |
-| 11  | Mobile 375px              | Banner, form, Approvals Grant/Deny usable at iPhone SE width                           |
+| #   | Capability                | Pass criteria                                                                                 |
+| --- | ------------------------- | --------------------------------------------------------------------------------------------- |
+| 1   | Pre-expiry notices        | Owner gets T−15 / T−7 / T−1 emails once each; cron re-run does not double-send                |
+| 2   | T+0 archive               | Listing → `INACTIVE` on contract end day; renewal modal; grace dismiss re-opens after refresh |
+| 3   | Grace consideration       | Owner uploads proof + note + date → pending; non-owner cannot submit                          |
+| 4   | SA grant                  | Temp `ACTIVE` until `grantedUntil` ≤ 14d; banner shows grant; Approvals badge clears          |
+| 5   | SA deny / changes         | Status updates; host cannot stack a second self-serve in same cycle                           |
+| 6   | Phase A conflict on grant | Grant blocked with clear error when another ACTIVE peer holds tower+unit                      |
+| 7   | T+5 lock                  | All members see lock screen; owner must full renew (unless SA override)                       |
+| 8   | Grant expiry              | After `grantedUntil`, cron revokes access / locks as designed                                 |
+| 9   | Full renew                | New contract end + SA approve clears consideration + notice markers                           |
+| 10  | Parking leg               | Same lifecycle independently of property leg                                                  |
+| 11  | Mobile 375px              | Banner, form, Approvals Grant/Deny usable at iPhone SE width                                  |
 
 ---
 
@@ -179,14 +179,14 @@ Clear lifecycle + set a future end date, set listings `ACTIVE` again, then re-se
 
 ## 4. Flow B — T+0 archive + grace UI
 
-**Goal:** On/after end date, listing goes offline; owner sees dismissible renewal modal on that listing shell.
+**Goal:** On/after end date, listing goes offline; owner sees dismissible renewal modal (`Contract expired — renewal required`).
 
 1. Seed end = Manila **today** (or yesterday within T+0…T+4). Clear lock + consideration. Set property `ACTIVE`.
 2. Run `contract-expiry-cron`.
 3. **Expect DB:** property `status = INACTIVE`; `noticesSent.t_plus_0_archived` set.
-4. Sign in as **owner**. Open property dashboard (any property child route).
-5. **Expect UI:** amber banner — contract ended / renew or request consideration; **children still render** (not lock screen).
-6. At **375px:** banner + controls readable; no horizontal page scroll; tap targets ≥ 44px on **Request consideration**.
+4. Sign in as **owner**. Open org dashboard or the property dashboard.
+5. **Expect UI:** renewal modal (not an amber strip). Dismiss hides it while you keep browsing; **full page refresh shows it again** the same Manila day. **Request consideration** and **Submit renewal contract** still work. Children still render (not lock screen).
+6. At **375px:** modal + controls readable; no horizontal page scroll; tap targets ≥ 44px on **Request consideration** / **Dismiss**.
 
 **Optional T+3:** seed end = today − 3; run cron; expect grace reminder notice (`t_plus_3`) once.
 

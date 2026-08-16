@@ -2,7 +2,7 @@
 stage: intake
 title: 'Listing contract renewal modal — design'
 status: approved
-updated: 2026-08-11
+updated: 2026-08-17
 tags: [verification, listing-authorization, contract-lifecycle, ux]
 related:
   - docs/workflow/in-progress/listing-contract-renewal-modal.md
@@ -19,7 +19,7 @@ After the host/listing verification scope split, contract end + lifecycle live o
 
 - Replace strip + lock UI with a **listing-scoped** renewal reminder modal.
 - Distinct copy for **pre-expiry** vs **grace** vs **locked**.
-- Dismissible once per Manila day until lock; **non-dismissible when locked on that listing’s admin shell only** (org dashboard + sibling listings stay closeable).
+- Dismissible once per Manila day for **pre-expiry** and **granted**; **grace** stays closed only until a full page refresh (in-memory login gate); **non-dismissible when locked on that listing’s admin shell only** (org dashboard + sibling listings stay closeable).
 - Show **once per login session** (browser session + Manila day), not on every route change.
 - Show at **org dashboard** as well as property/parking — highest-urgency listing only.
 - **Never** stack with `ListingVerificationModal`.
@@ -34,14 +34,14 @@ After the host/listing verification scope split, contract end + lifecycle live o
 
 ## Decisions
 
-| Topic        | Decision                                                                                                       |
-| ------------ | -------------------------------------------------------------------------------------------------------------- |
-| Who          | Any listing with a contract-end lifecycle (sublessee, authorized rep, residual lifecycle after rights changes) |
-| Strip / lock | Removed — modal only                                                                                           |
-| Dismiss      | Daily Manila snooze T−15→grace; locked non-dismissible **only on affected listing shell**                      |
-| Scope        | Org-wide scan; one modal at a time (highest urgency listing)                                                   |
-| First show   | T−15 (same as first email); auto on admin login once per session/day                                           |
-| Status enum  | UI labels only; map onto `baseStatus` + lifecycle                                                              |
+| Topic        | Decision                                                                                                                               |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Who          | Any listing with a contract-end lifecycle (sublessee, authorized rep, residual lifecycle after rights changes)                         |
+| Strip / lock | Removed — modal only                                                                                                                   |
+| Dismiss      | Daily Manila snooze for pre-expiry + granted; **grace re-opens on refresh**; locked non-dismissible **only on affected listing shell** |
+| Scope        | Org-wide scan; one modal at a time (highest urgency listing)                                                                           |
+| First show   | T−15 (same as first email); auto on admin login once per session/day                                                                   |
+| Status enum  | UI labels only; map onto `baseStatus` + lifecycle                                                                                      |
 
 ## Modal phases and copy (approved)
 
@@ -52,12 +52,12 @@ After the host/listing verification scope split, contract end + lifecycle live o
 - **Primary:** Submit renewal contract → `ListingVerificationModal`
 - **Secondary:** Dismiss
 
-### Grace (T+0 → T+4, not locked) — dismissible
+### Grace (T+0 → T+4, not locked) — dismissible until refresh
 
 - **Title:** Contract expired — renewal required
 - **Body:** Your hosting contract for **[Listing Name]** ended on **[January 1, 2026]** (bold). You have **[N] day(s)** (bold) to renew or request consideration before access is locked and this listing cannot be accessed.
 - **Primary:** Submit renewal contract
-- **Secondary:** Dismiss · Request consideration
+- **Secondary:** Dismiss (hides until full page refresh; does **not** write the daily `localStorage` snooze) · Request consideration
 
 ### Locked — non-dismissible on affected listing shell only
 
@@ -100,7 +100,7 @@ flowchart TD
 
 ## Technical shape
 
-- **Dismiss key:** `listing-contract-renewal-dismiss:{listingKind}:{listingId}` → Manila YMD (`localStorage`).
+- **Dismiss key:** `listing-contract-renewal-dismiss:{listingKind}:{listingId}` → Manila YMD (`localStorage`) for **pre-expiry** and **granted** only (`persistsListingContractRenewalDailyDismiss`). Grace does not persist; refresh re-opens.
 - **Session key:** in-memory per auth login (`userId + orgId + Manila YMD`); cleared on sign-out. Legacy `sessionStorage` keys are removed on load/sign-out.
 - **Mount:** `ListingContractRenewalProvider` in `AdminLayoutOutlet` (org + property + parking routes).
 - **Mutual exclusion:** sidebar / deep-link `ListingVerificationModal` registers open state; renewal hides while verification is open.
@@ -113,7 +113,7 @@ flowchart TD
 
 - One listing per session/day for dismissible phases; locked always surfaces on that listing’s shell until resolved.
 - Multi-listing org: locked reminder closeable at org level; sibling listings fully usable.
-- Soft phases snooze one Manila day; locked cannot dismiss.
+- Soft phases: pre-expiry/granted snooze one Manila day; **grace re-opens on every full page refresh**; locked cannot dismiss on the affected listing shell.
 - Renew submit works; SA sees pending listing verification.
 - Consideration still available in grace.
 

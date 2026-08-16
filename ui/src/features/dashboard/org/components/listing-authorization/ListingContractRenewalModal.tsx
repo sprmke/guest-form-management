@@ -17,7 +17,10 @@ import {
   LISTING_CONTRACT_RENEWAL_PRIMARY,
   listingContractRenewalTitle,
 } from '@/features/dashboard/org/lib/listingContractRenewalCopy';
-import { dismissListingContractRenewalForToday } from '@/features/dashboard/org/lib/listingContractRenewalDismiss';
+import {
+  dismissListingContractRenewalForToday,
+  persistsListingContractRenewalDailyDismiss,
+} from '@/features/dashboard/org/lib/listingContractRenewalDismiss';
 import { todayManilaYmd } from '@/features/dashboard/org/lib/orgVerification';
 
 import { Button } from '@/components/ui/button';
@@ -87,7 +90,9 @@ export function ListingContractRenewalModal({
   };
 
   const handleDismiss = () => {
-    dismissListingContractRenewalForToday(listingKind, listingId, today);
+    if (persistsListingContractRenewalDailyDismiss(phase)) {
+      dismissListingContractRenewalForToday(listingKind, listingId, today);
+    }
     handleOpenChange(false);
   };
 
