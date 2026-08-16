@@ -3,8 +3,8 @@ import { AlertCircle, CalendarDays, Car, ParkingCircle, type LucideIcon } from '
 import { formatPayParkingLastMinuteWarning } from '@/features/guest/form/lib/guestFormBranding';
 import type { PayParkingBootstrap } from '@/features/guest/pay-parking/lib/api';
 
-import { formatStayDateRange } from '@/utils/format/dates';
 import { formatMoney } from '@/utils/format/currency';
+import { formatStayDateRange } from '@/utils/format/dates';
 
 function PayParkingSectionShell({
   icon: Icon,

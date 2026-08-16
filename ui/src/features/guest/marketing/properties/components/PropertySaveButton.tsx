@@ -186,7 +186,7 @@ export function PropertySaveButton({
   const revealOnHover = variant === 'card';
 
   const buttonClass = cn(
-    'absolute right-3 top-3 flex min-h-[35px] min-w-[35px] items-center justify-center rounded-full p-2 shadow-lg backdrop-blur-sm',
+    'absolute right-3 top-3 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full p-2 shadow-lg backdrop-blur-sm',
     revealOnHover &&
       !isSaved &&
       'translate-y-1 opacity-0 group-hover:translate-y-0 group-hover:opacity-100',

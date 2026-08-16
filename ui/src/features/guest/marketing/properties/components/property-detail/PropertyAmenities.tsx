@@ -237,7 +237,7 @@ function AmenitiesByCategory({
       {Object.entries(categorizedAmenities).map(([key, items]) => (
         <div key={key} className="space-y-3">
           <h3 className="text-foreground font-medium">{amenityCategories[key]?.label}</h3>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {items.map((amenity) => (
               <AmenityRow key={amenity} amenity={amenity} variant="compact" />
             ))}
@@ -248,7 +248,7 @@ function AmenitiesByCategory({
       {uncategorizedAmenities.length > 0 ? (
         <div className="space-y-3">
           <h3 className="text-foreground font-medium">Other</h3>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {uncategorizedAmenities.map((amenity) => (
               <AmenityRow key={amenity} amenity={amenity} variant="compact" />
             ))}
@@ -274,7 +274,7 @@ export function PropertyAmenities({ amenities }: PropertyAmenitiesProps) {
       >
         <h2 className="text-foreground text-xl font-semibold">What this place offers</h2>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {previewAmenities.map((amenity, index) => (
             <motion.div
               key={amenity}

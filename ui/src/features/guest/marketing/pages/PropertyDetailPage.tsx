@@ -265,7 +265,7 @@ export function PropertyDetailPage() {
         </div>
 
         <div className="container mx-auto px-4 py-8 sm:px-6 lg:px-8">
-          <div className="grid gap-8 lg:grid-cols-3 lg:gap-12">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 lg:gap-12">
             <div className="space-y-10 lg:col-span-2">
               <PropertyOverview
                 name={propertyData.name}
