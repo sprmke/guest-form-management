@@ -45,7 +45,15 @@ export function BookingDetailCard({
         <h3 className="text-card-title min-w-0 flex-1 truncate !text-sm sm:!text-base">{title}</h3>
         {action ? <div className="shrink-0">{action}</div> : null}
       </div>
-      <div className={cn('px-4 sm:px-5', bodyClassName)}>{children}</div>
+      {/*
+       * Rows/list items carry their own `py-2.5`, so the body only adds what the
+       * edges are missing: enough top padding to match the 20px gap between rows,
+       * and more at the bottom, where the content terminates on the card edge
+       * instead of a divider.
+       */}
+      <div className={cn('px-4 pb-4 pt-2 sm:px-5 sm:pb-5 sm:pt-2.5', bodyClassName)}>
+        {children}
+      </div>
     </Card>
   );
 }

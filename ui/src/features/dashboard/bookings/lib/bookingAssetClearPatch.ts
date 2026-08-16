@@ -34,6 +34,22 @@ const AI_COLUMNS: Partial<Record<AssetType, { verdict: string; summary: string }
     verdict: 'valid_id_ai_verdict',
     summary: 'valid_id_ai_summary',
   },
+  guest2_valid_id: {
+    verdict: 'guest2_valid_id_ai_verdict',
+    summary: 'guest2_valid_id_ai_summary',
+  },
+  guest3_valid_id: {
+    verdict: 'guest3_valid_id_ai_verdict',
+    summary: 'guest3_valid_id_ai_summary',
+  },
+  guest4_valid_id: {
+    verdict: 'guest4_valid_id_ai_verdict',
+    summary: 'guest4_valid_id_ai_summary',
+  },
+  guest5_valid_id: {
+    verdict: 'guest5_valid_id_ai_verdict',
+    summary: 'guest5_valid_id_ai_summary',
+  },
 };
 
 /** DB patch to clear a booking asset URL and related AI verdict columns. */

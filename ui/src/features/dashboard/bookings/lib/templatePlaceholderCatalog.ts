@@ -248,6 +248,7 @@ const TELEGRAM_PAYMENT_AI = [
   'dp_receipt_ai_summary',
   'balance_receipt_ai_verdict',
   'balance_receipt_ai_summary',
+  'ai_stay_summary',
 ] as const;
 
 const TELEGRAM_WORKFLOW = ['urgent_notice', 'status', 'status_label', 'pending_docs_list'] as const;

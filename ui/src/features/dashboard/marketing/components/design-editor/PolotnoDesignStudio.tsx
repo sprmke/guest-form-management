@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { useQueryClient } from '@tanstack/react-query';
 import { Download, Loader2, Send } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -7,6 +8,10 @@ import { usePublicPropertyDetail } from '@/features/guest/marketing/properties/h
 
 import { useAppSettings } from '@/features/dashboard/bookings/hooks/useAppSettings';
 import { KamePolotnoEditor } from '@/features/dashboard/marketing/components/design-editor/polotno/KamePolotnoEditor';
+import {
+  MarketingAiGeneratePanel,
+  type MarketingAiGenerateInput,
+} from '@/features/dashboard/marketing/components/shared/MarketingAiGeneratePanel';
 import { MarketingAutoSaveStatus } from '@/features/dashboard/marketing/components/shared/MarketingAutoSaveStatus';
 import { MarketingEditorSidebar } from '@/features/dashboard/marketing/components/shared/MarketingEditorSidebar';
 import type { MarketingFormatOption } from '@/features/dashboard/marketing/components/shared/MarketingFormatPicker';
@@ -16,15 +21,18 @@ import {
   type PresetTemplateItem,
 } from '@/features/dashboard/marketing/components/shared/MarketingTemplatesPanel';
 import { useDesignTemplateCleanup } from '@/features/dashboard/marketing/hooks/useDesignTemplateCleanup';
+import { useGenerateMarketingTemplate } from '@/features/dashboard/marketing/hooks/useGenerateMarketingTemplate';
 import { useMarketingAutoSave } from '@/features/dashboard/marketing/hooks/useMarketingAutoSave';
 import { useMarketingAutoSaveSuspension } from '@/features/dashboard/marketing/hooks/useMarketingAutoSaveSuspension';
 import { useMarketingBookedDates } from '@/features/dashboard/marketing/hooks/useMarketingBookedDates';
 import { useMarketingCatalog } from '@/features/dashboard/marketing/hooks/useMarketingCatalog';
 import {
+  saveMarketingTemplate,
   useMarketingTemplates,
   type MarketingTemplateRecord,
 } from '@/features/dashboard/marketing/hooks/useMarketingTemplates';
 import { usePolotnoStoreFingerprint } from '@/features/dashboard/marketing/hooks/usePolotnoStoreFingerprint';
+import { applyDesignAiPreferencesToTokens } from '@/features/dashboard/marketing/lib/designAiGenerateOptions';
 import {
   DESIGN_CUSTOM_SOURCE_PRESET_ID,
   findDesignAutosaveTemplate,
@@ -46,19 +54,33 @@ import {
   marketingDesignSidebarRecords,
   marketingSavedTemplateCategoryId,
 } from '@/features/dashboard/marketing/lib/marketingSavedTemplates';
+import {
+  publishMarketingPresetThumbnail,
+  savedDesignThumbnailKey,
+} from '@/features/dashboard/marketing/lib/marketingTemplateThumbnailCache';
 import { ensurePolotnoConfigured } from '@/features/dashboard/marketing/lib/polotno/initPolotno';
+import { polishOrgLogoElements } from '@/features/dashboard/marketing/lib/polotno/orgLogoCircle';
+import {
+  DESIGN_AI_FORMATS,
+  resolveAiGeneratedDesignDocument,
+} from '@/features/dashboard/marketing/lib/polotno/polotnoAiCampaignDocuments';
 import { buildPolotnoCampaignDocument } from '@/features/dashboard/marketing/lib/polotno/polotnoCampaignDocuments';
 import {
   createPolotnoStore,
   exportPolotnoStorePng,
   type PolotnoStore,
 } from '@/features/dashboard/marketing/lib/polotno/polotnoStore';
+import { pickRandomPropertyPhoto } from '@/features/dashboard/marketing/lib/polotno/propertyMedia';
 import { syncPolotnoTextBounds } from '@/features/dashboard/marketing/lib/polotno/syncPolotnoTextBounds';
-import { renderDesignStoreThumbnail } from '@/features/dashboard/marketing/lib/renderMarketingDesignThumbnail';
+import {
+  renderDesignStoreThumbnail,
+  waitForThumbnailPaint,
+} from '@/features/dashboard/marketing/lib/renderMarketingDesignThumbnail';
 import type { DesignTemplateFormat } from '@/features/dashboard/marketing/lib/templateRegistry';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useOrgBrandColor } from '@/features/dashboard/org/hooks/useOrgBrandColor';
 import { useOrgSettings } from '@/features/dashboard/org/hooks/useOrgSettings';
+import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -100,7 +122,12 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
   const [loadingTemplate, setLoadingTemplate] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [savedTemplateId, setSavedTemplateId] = useState<string | null>(null);
+  const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
+  const [aiGenerateBusy, setAiGenerateBusy] = useState(false);
 
+  const propertyId = usePropertyIdParam();
+  const queryClient = useQueryClient();
+  const generateTemplate = useGenerateMarketingTemplate();
   const { data: savedTemplates = [] } = useMarketingTemplates('design');
   useDesignTemplateCleanup(true);
   const customSavedTemplates = useMemo(
@@ -182,6 +209,8 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
           setSavedTemplateId(autosave.id);
           store.loadJSON(autosave.designJson.polotno as Record<string, unknown>);
           store.history.clear();
+          await store.waitLoading();
+          await polishOrgLogoElements(store);
           await syncPolotnoTextBounds(store);
           return;
         }
@@ -192,6 +221,8 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
         setSavedTemplateId(null);
         store.loadJSON(doc);
         store.history.clear();
+        await store.waitLoading();
+        await polishOrgLogoElements(store);
         await syncPolotnoTextBounds(store);
       } catch {
         toast.error('Could not load template');
@@ -246,7 +277,18 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
 
         store.loadJSON(polotno);
         store.history.clear();
+        await store.waitLoading();
+        await polishOrgLogoElements(store);
         await syncPolotnoTextBounds(store);
+        await waitForThumbnailPaint();
+        const thumbnailDataUrl = await renderDesignStoreThumbnail(store);
+        if (thumbnailDataUrl) {
+          publishMarketingPresetThumbnail(
+            record.id,
+            savedDesignThumbnailKey(record.id, record.updatedAt),
+            thumbnailDataUrl
+          );
+        }
       } catch {
         toast.error('Could not load template');
       } finally {
@@ -332,6 +374,173 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
       markBaseline();
     },
     [markBaseline]
+  );
+
+  const handleAiGenerate = useCallback(
+    async (input: MarketingAiGenerateInput) => {
+      if (!('content' in input.preferences) || !('backgroundMood' in input.preferences)) return;
+      const store = storeRef.current;
+      if (!store) return;
+
+      setAiGenerateBusy(true);
+      beginAutoSaveSuspension();
+      let aiSucceeded = false;
+      try {
+        const amenities = publicProperty?.amenities ?? [];
+        const amenitiesText = amenities.slice(0, 8).join(', ') || undefined;
+        const result = await generateTemplate.mutateAsync({
+          contentType: 'design',
+          prompt: input.prompt,
+          includeContext: input.includeContext,
+          amenitiesText: input.includeContext.amenities ? amenitiesText : undefined,
+          availabilityText: input.includeContext.availability
+            ? binding.availabilityText
+            : undefined,
+          content: input.preferences.content,
+          preferences: {
+            layoutArchetype: input.preferences.layoutArchetype,
+            fontPairing: input.preferences.fontPairing,
+            backgroundMood: input.preferences.backgroundMood,
+            category: input.preferences.category,
+          },
+        });
+        if (result.contentType !== 'design') {
+          throw new Error('Unexpected content type from AI generation');
+        }
+        aiSucceeded = true;
+
+        const tokens = applyDesignAiPreferencesToTokens(result.tokens, input.preferences);
+        // "Custom" is a content flavor, not a real sidebar folder — find or create one so the
+        // generated design lands somewhere the host can find it again.
+        const sidebarCategoryId =
+          tokens.category === 'custom'
+            ? (catalog.findOrCreateCategoryByLabel('Custom') ?? 'custom')
+            : tokens.category;
+        const imageUrls =
+          publicProperty?.images?.filter(Boolean) ??
+          (binding.propertyPhoto ? [binding.propertyPhoto] : []);
+        const variants = DESIGN_AI_FORMATS.map((format) => {
+          const photoUrl = input.includeContext.propertyPhoto
+            ? pickRandomPropertyPhoto(imageUrls)
+            : null;
+          return {
+            format,
+            document: resolveAiGeneratedDesignDocument(binding, tokens, format, {
+              brandColor,
+              propertyPhotoUrl: photoUrl,
+              orgLogoUrl,
+              includeCta: input.includeContext.cta ?? true,
+              includePropertyName: input.includeContext.propertyName ?? true,
+              includeOrgLogo: input.includeContext.orgLogo ?? true,
+            }),
+          };
+        });
+
+        const aiGenerationId =
+          typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+            ? crypto.randomUUID()
+            : `ai-${Date.now()}`;
+
+        // Capture each format against the mounted Workspace. Headless toBlob
+        // resolves Konva stages by pageId and would snapshot the live canvas.
+        const savedRecords: Awaited<ReturnType<typeof saveMarketingTemplate>>[] = [];
+        let failedCount = 0;
+        for (const variant of variants) {
+          try {
+            store.loadJSON(variant.document);
+            store.history.clear();
+            await store.waitLoading();
+            await polishOrgLogoElements(store);
+            await syncPolotnoTextBounds(store);
+            await waitForThumbnailPaint();
+            const thumbnailDataUrl = await renderDesignStoreThumbnail(store);
+            const polishedDocument = store.toJSON() as Record<string, unknown>;
+            const record = await saveMarketingTemplate(propertyId, {
+              name: tokens.label,
+              contentType: 'design',
+              aspectPreset: variant.format,
+              platform: variant.format.includes('facebook') ? 'facebook' : 'instagram',
+              designJson: {
+                templateId: '',
+                sourcePresetId: DESIGN_CUSTOM_SOURCE_PRESET_ID,
+                format: variant.format,
+                categoryId: sidebarCategoryId,
+                category: sidebarCategoryId,
+                binding,
+                aiGenerated: true,
+                aiGenerationId,
+                aiTokens: tokens,
+                polotno: polishedDocument,
+                ...(thumbnailDataUrl ? { thumbnailDataUrl } : {}),
+              },
+            });
+            savedRecords.push(record);
+            if (thumbnailDataUrl) {
+              publishMarketingPresetThumbnail(
+                record.id,
+                savedDesignThumbnailKey(record.id, record.updatedAt),
+                thumbnailDataUrl
+              );
+            }
+          } catch {
+            failedCount += 1;
+          }
+        }
+
+        void queryClient.invalidateQueries({ queryKey: ['marketing-templates', propertyId] });
+
+        if (savedRecords.length === 0) {
+          throw new Error('Could not save generated designs');
+        }
+
+        const current =
+          savedRecords.find((record) => record.aspectPreset === format) ?? savedRecords[0];
+        const currentDoc = variants.find(
+          (variant) => variant.format === current?.aspectPreset
+        )?.document;
+
+        if (current && currentDoc) {
+          setSavedTemplateId(current.id);
+          setSelectedId('');
+          setCategory(sidebarCategoryId);
+          skipPresetApplyRef.current = true;
+          appliedDocumentKeyRef.current = `saved:${current.id}`;
+          store.loadJSON(currentDoc);
+          store.history.clear();
+          await syncPolotnoTextBounds(store);
+          markBaseline();
+        }
+
+        setAiGenerateOpen(false);
+        if (failedCount > 0) {
+          toast.warning(`Saved ${savedRecords.length} of 3 formats — retry Generate for the rest`);
+        } else {
+          toast.success('Custom designs added for Instagram Post, Story, and Facebook Post');
+        }
+      } catch (error) {
+        if (aiSucceeded) {
+          toast.error((error as Error).message || 'Could not save generated designs');
+        }
+      } finally {
+        endAutoSaveSuspension();
+        setAiGenerateBusy(false);
+      }
+    },
+    [
+      beginAutoSaveSuspension,
+      binding,
+      brandColor,
+      catalog,
+      endAutoSaveSuspension,
+      format,
+      generateTemplate,
+      markBaseline,
+      orgLogoUrl,
+      propertyId,
+      publicProperty?.amenities,
+      publicProperty?.images,
+      queryClient,
+    ]
   );
 
   const handleResetDesign = useCallback(() => {
@@ -527,6 +736,8 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
           }
           onSelectSaved={(record) => void applySavedTemplate(record)}
           onSavedTemplate={handleSavedTemplateCreated}
+          onOpenAiGenerate={() => setAiGenerateOpen(true)}
+          aiGenerateBusy={aiGenerateBusy || generateTemplate.isPending}
           designJsonForSave={designJsonForSave}
           aspectPreset={format}
           platform={format.includes('facebook') ? 'facebook' : 'instagram'}
@@ -563,6 +774,39 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
           )}
         </div>
       </div>
+
+      <MarketingAiGeneratePanel
+        open={aiGenerateOpen}
+        onOpenChange={(open) => {
+          if (aiGenerateBusy && !open) return;
+          setAiGenerateOpen(open);
+        }}
+        contentType="design"
+        generating={aiGenerateBusy || generateTemplate.isPending}
+        contextOptions={[
+          {
+            key: 'propertyPhoto',
+            label: 'Property photo',
+            available: Boolean(binding.propertyPhoto),
+          },
+          {
+            key: 'orgLogo',
+            label: 'Org logo',
+            available: Boolean(orgLogoUrl),
+          },
+          {
+            key: 'propertyName',
+            label: 'Property name',
+            available: Boolean(property.name),
+          },
+          {
+            key: 'cta',
+            label: 'Call-to-action',
+            available: true,
+          },
+        ]}
+        onGenerate={handleAiGenerate}
+      />
     </div>
   );
 }

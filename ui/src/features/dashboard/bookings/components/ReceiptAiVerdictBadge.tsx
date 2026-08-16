@@ -1,7 +1,23 @@
-import { AlertTriangle, CheckCircle2, HelpCircle, XCircle } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+
+import {
+  AlertTriangle,
+  Check,
+  CheckCircle2,
+  HelpCircle,
+  Loader2,
+  X,
+  XCircle,
+  type LucideIcon,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
-import { softBadgeClasses, softSurfaceClasses } from '@/lib/statusToneColors';
+import {
+  semanticBadgeClasses,
+  semanticSurfaceClasses,
+  softSurfaceClasses,
+  type SemanticBadgeVariant,
+} from '@/lib/statusToneColors';
 import { cn } from '@/lib/utils';
 
 /** Dedupes AI service failure toasts (backfill + upload). */
@@ -53,7 +69,7 @@ export function showDocumentAiModelErrorToast(rawError?: string | null): void {
 export type ReceiptAiVerdict =
   'valid' | 'likely_valid' | 'unclear' | 'invalid' | 'skipped' | string | null | undefined;
 
-function formatReceiptAiVerdictLabel(verdict: ReceiptAiVerdict): string {
+export function formatReceiptAiVerdictLabel(verdict: ReceiptAiVerdict): string {
   switch (String(verdict ?? '').toLowerCase()) {
     case 'valid':
       return 'Valid';
@@ -70,8 +86,154 @@ function formatReceiptAiVerdictLabel(verdict: ReceiptAiVerdict): string {
   }
 }
 
+/** Soft tone for the verdict mark — teal passed, rose failed, amber needs a look. */
+export function receiptAiVerdictTone(verdict: ReceiptAiVerdict): SemanticBadgeVariant {
+  const v = String(verdict ?? '').toLowerCase();
+  if (v === 'valid' || v === 'likely_valid') return 'success';
+  if (v === 'invalid') return 'danger';
+  return 'pending';
+}
+
+/** Check passed, cross failed, triangle inconclusive — so the shape reads without color. */
+export function receiptAiVerdictGlyph(verdict: ReceiptAiVerdict): LucideIcon {
+  const tone = receiptAiVerdictTone(verdict);
+  if (tone === 'success') return Check;
+  if (tone === 'danger') return X;
+  return AlertTriangle;
+}
+
+type VerdictMarkSize = 'sm' | 'md';
+
+/**
+ * Icon-only verdict mark for dense rows and thumbnails. Shape carries pass /
+ * fail / inconclusive and color reinforces it; the full "AI: …" wording stays
+ * on `aria-label` / `title` so neither is the only signal.
+ */
+export function ReceiptAiVerdictMark({
+  verdict,
+  className,
+  size = 'md',
+}: {
+  verdict: ReceiptAiVerdict;
+  className?: string;
+  size?: VerdictMarkSize;
+}) {
+  if (!verdict || String(verdict).toLowerCase() === 'skipped') return null;
+
+  const label = `AI: ${formatReceiptAiVerdictLabel(verdict)}`;
+  const Glyph = receiptAiVerdictGlyph(verdict);
+  return (
+    <span
+      role="img"
+      aria-label={label}
+      title={label}
+      className={cn(
+        'inline-flex shrink-0 items-center justify-center rounded-full border',
+        size === 'sm' ? 'size-5' : 'size-6',
+        semanticBadgeClasses(receiptAiVerdictTone(verdict)),
+        className
+      )}
+    >
+      <Glyph className={size === 'sm' ? 'size-3' : 'size-3.5'} strokeWidth={2.75} aria-hidden />
+    </span>
+  );
+}
+
 export function receiptAiVerdictBlocksAdmin(verdict: ReceiptAiVerdict): boolean {
   return String(verdict ?? '').toLowerCase() === 'invalid';
+}
+
+/** Summary line color in dense status-report rows (e.g. Document checks list). */
+export function receiptAiVerdictReportTextClass(
+  verdict: ReceiptAiVerdict,
+  loading = false
+): string {
+  if (loading) return 'text-muted-foreground';
+  const v = String(verdict ?? '').toLowerCase();
+  if (!v || v === 'skipped') return 'text-muted-foreground';
+  return semanticSurfaceClasses(receiptAiVerdictTone(verdict)).color;
+}
+
+/**
+ * Full-bleed verdict strip for preview surfaces. Sits under a preview header and
+ * states, in this order, that a check ran, what it concluded, and why — so the
+ * host reads the verdict against the document without hunting for a chip.
+ *
+ * The tinted band and the check / cross glyph are the verdict; both are
+ * restated in text because neither color nor shape can carry a result alone.
+ */
+export function ReceiptAiVerdictBanner({
+  verdict,
+  summary,
+  loading = false,
+  className,
+}: {
+  verdict: ReceiptAiVerdict;
+  summary?: string | null;
+  /** A check is in flight — no verdict yet, but the host should know one is coming. */
+  loading?: boolean;
+  className?: string;
+}) {
+  const detail = summary?.trim();
+  const detailRef = useRef<HTMLParagraphElement | null>(null);
+  /** A capped summary that overflows is a scroll region, so it needs a tab stop. */
+  const [detailScrolls, setDetailScrolls] = useState(false);
+
+  useEffect(() => {
+    const el = detailRef.current;
+    if (!el) {
+      setDetailScrolls(false);
+      return;
+    }
+    const measure = () => setDetailScrolls(el.scrollHeight - el.clientHeight > 1);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [detail]);
+
+  const settled = Boolean(verdict) && String(verdict).toLowerCase() !== 'skipped';
+  if (!loading && !settled) return null;
+
+  const surface = semanticSurfaceClasses(loading ? 'neutral' : receiptAiVerdictTone(verdict));
+  const BannerGlyph = receiptAiVerdictGlyph(verdict);
+
+  return (
+    <div
+      role="status"
+      className={cn(
+        'flex shrink-0 items-start gap-2.5 border-b px-2.5 py-2 sm:px-4 sm:py-2.5',
+        surface.borderColor,
+        surface.bgColor,
+        className
+      )}
+    >
+      {loading ? (
+        <Loader2 className={cn('mt-0.5 size-4 shrink-0 animate-spin', surface.color)} aria-hidden />
+      ) : (
+        <BannerGlyph
+          className={cn('mt-0.5 size-4 shrink-0', surface.color)}
+          strokeWidth={2.75}
+          aria-hidden
+        />
+      )}
+      <div className={cn('min-w-0 flex-1 space-y-0.5', surface.color)}>
+        <p className="flex flex-wrap items-baseline gap-x-1.5 text-xs font-semibold leading-snug sm:text-sm">
+          {loading ? 'Checking document' : formatReceiptAiVerdictLabel(verdict)}
+          <span className="text-[11px] font-medium opacity-70">AI document check</span>
+        </p>
+        {!loading && detail ? (
+          <p
+            ref={detailRef}
+            tabIndex={detailScrolls ? 0 : undefined}
+            className="focus-ring max-h-20 overflow-y-auto overscroll-contain rounded-sm text-xs leading-relaxed [overflow-wrap:anywhere]"
+          >
+            {detail}
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 type NoticeCopy = {
@@ -143,13 +305,6 @@ function noticeCopy(
   }
 }
 
-function compactBadgeClass(verdict: ReceiptAiVerdict): string {
-  const v = String(verdict ?? '').toLowerCase();
-  if (v === 'valid' || v === 'likely_valid') return softBadgeClasses('success');
-  if (v === 'invalid') return softBadgeClasses('danger');
-  return softBadgeClasses('pending');
-}
-
 function cardClass(verdict: ReceiptAiVerdict): string {
   const v = String(verdict ?? '').toLowerCase();
   if (v === 'valid' || v === 'likely_valid') return softSurfaceClasses('success');
@@ -203,17 +358,7 @@ export function ReceiptAiVerdictBadge({
   if (!copy) return null;
 
   if (compact) {
-    return (
-      <span
-        className={cn(
-          'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1',
-          compactBadgeClass(verdict),
-          className
-        )}
-      >
-        AI: {formatReceiptAiVerdictLabel(verdict)}
-      </span>
-    );
+    return <ReceiptAiVerdictMark verdict={verdict} className={className} />;
   }
 
   return (

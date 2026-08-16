@@ -48,7 +48,9 @@ Flags: `bun run setup:ai-tooling -- --skip-agents-skills` · `--skip-playwright-
 | [Playwright CLI](https://github.com/microsoft/playwright-cli)       | skill `playwright-cli` + `bun x playwright-cli` (`@playwright/cli`)                                | `bun run setup:playwright-cli` |
 | [awesome-design-md](https://github.com/VoltAgent/awesome-design-md) | root `DESIGN.md` + `.agents/design-md/*` refs + skill `design-md`                                  | `bun run setup:design-md`      |
 
-**Intentionally user-scoped (do not commit):** `~/.cursor/mcp.json` (e.g. claude-mem), `~/.cursor/hooks.json` (claude-mem session hooks), `~/.claude/settings.json` (model, status line, extra plugins), `~/.config/opencode/opencode.json` (OpenCode providers/models), Cursor built-in `~/.cursor/skills-cursor/*`, marketplace plugins (Notion, Figma, Vercel) unless a task needs them.
+**Intentionally user-scoped (do not commit):** `~/.claude/settings.json` (model, status line, extra plugins), `~/.config/opencode/opencode.json` (OpenCode providers/models), Cursor built-in `~/.cursor/skills-cursor/*`, marketplace plugins (Notion, Figma, Vercel) unless a task needs them.
+
+**Do not install claude-mem** — use repo docs for session context. If present from an old setup: **`bun run cleanup:claude-mem`** (removes global Cursor MCP/hooks + disables Claude plugin).
 
 **Personal skill copies in `~/.claude/skills/`** (design, brand, ui-styling, …) are superseded by this repo's `.agent/skills/` — do not edit the home-directory copies when working here.
 
@@ -79,6 +81,7 @@ Run **`bun run check:ai-tooling-sync`** after changing hooks, commands, agents, 
 | `workflow-docs.mdc`           | Workflow lifecycle — in-progress tracking, no silent moves  |
 | `github-issues.mdc`           | GitHub Issues backlog + shipped archive                     |
 | `social-inbox.mdc`            | Meta inbox                                                  |
+| `notifications.mdc`           | In-app Notification Center (bell, realtime toasts)          |
 
 ## Skills (`.cursor/skills/` — invoke `/name` or agent decides)
 
@@ -102,6 +105,7 @@ Run **`bun run check:ai-tooling-sync`** after changing hooks, commands, agents, 
 | `bookings-table`                  | Bookings table UI                |
 | `gmail-listener`                  | Gmail approvals                  |
 | `social-inbox` / `meta-messaging` | Guest Inbox                      |
+| `notifications`                   | In-app Notification Center       |
 | `integrations`                    | Google, Telegram, Meta, Resend   |
 | `emails`                          | HTML templates + Resend          |
 | `forms`                           | Guest + admin forms              |
@@ -130,6 +134,22 @@ Run **`bun run check:ai-tooling-sync`** after changing hooks, commands, agents, 
 
 **No dedicated skill yet** (fall back to `docs-first` + `docs/PROJECT.md` directly): Finance module, Maintenance module, Marketing Studio (AI captions/video/Meta publish), Guest Inbox AI suggestions, guest portal (authenticated guest profile/trips), pricing calendars, super-admin platform ops (`/admin/*`, developments, hosts), org verification (base/enhanced tiers). These are real, shipped parts of the app — don't assume they don't exist just because there's no skill card for them yet.
 
+## Commands (`.cursor/commands/` — also mirrored in Claude / OpenCode)
+
+**Teammate / QA set** (start with `/kh-help`):
+
+| Command                 | Purpose                                          |
+| ----------------------- | ------------------------------------------------ |
+| `/kh-help`              | Cheat sheet for all `/kh-*` commands             |
+| `/kh-create-new-ticket` | File issue or sub-issue (standard body template) |
+| `/kh-start-work`        | Branch from `develop` for issue #N               |
+| `/kh-pull-new-changes`  | Pull latest `develop` safely                     |
+| `/kh-start-app`         | Run app (default UI → hosted multi-tenant dev)   |
+| `/kh-check-before-pr`   | `bun run ci:quality` before review               |
+| `/kh-submit-for-review` | Push + open PR **into `develop`**                |
+
+Also: `/github-issue`, `/fix-merge-conflicts`, `/workflow-*`, `/superpowers-*` — see `.claude/README.md`.
+
 ## Subagents (`.cursor/agents/`)
 
 | Agent              | Model   | Use for                       |
@@ -143,10 +163,17 @@ Do **not** spawn Explore / Plan subagents by default — see `ai-usage.mdc`.
 
 ## Hooks (`.cursor/hooks.json`)
 
-| Hook                   | Script                                                                          |
-| ---------------------- | ------------------------------------------------------------------------------- |
-| `afterFileEdit`        | `format-edited-file.sh`, `check-stack-terminology.sh`                           |
-| `beforeShellExecution` | `guard-shell.sh` (denies prod Supabase deploy unless **`kamewave`** in command) |
+| Hook                   | Script                                                                                           |
+| ---------------------- | ------------------------------------------------------------------------------------------------ |
+| `beforeSubmitPrompt`   | `superpowers-lean-mode.sh` (activates lean mode for any `/superpowers-*` command)                |
+| `subagentStart`        | `guard-superpowers-subagents.sh` (denies subagents while lean mode active)                       |
+| `stop`                 | `superpowers-lean-cleanup.sh` (clears lean mode marker)                                          |
+| `sessionStart`         | `session-superpowers-opt-in.sh`, `session-ai-tooling-sync.sh`, `session-workflow-in-progress.sh` |
+| `afterFileEdit`        | `format-edited-file.sh`, `check-stack-terminology.sh`                                            |
+| `beforeShellExecution` | `guard-shell.sh` (denies prod Supabase deploy unless **`kamewave`** in command)                  |
+| `preToolUse`           | `guard-shipped-migrations.sh` (StrReplace), impeccable hook when installed                       |
+
+Lean mode lib: `scripts/dev/superpowers-lean-lib.sh`. See `.agent/skills/superpowers/SKILL.md` § Lean mode.
 
 ## Token budget
 

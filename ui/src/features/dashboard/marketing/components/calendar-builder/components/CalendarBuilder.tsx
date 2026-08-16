@@ -12,6 +12,7 @@ import {
   Download,
   Send,
   ChevronLeft as ChevronLeftIcon,
+  Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -39,8 +40,12 @@ import { saveMarketingTemplate } from '@/features/dashboard/marketing/hooks/useM
 import {
   applyCalendarAiElementsToStyles,
   applyCalendarAiPreferencesToTokens,
+  type CalendarAiGeneratePreferences,
 } from '@/features/dashboard/marketing/lib/calendarAiGenerateOptions';
-import { resolveAiGeneratedCalendarStylesForAllFormats } from '@/features/dashboard/marketing/lib/calendarAiTokens';
+import {
+  CALENDAR_AI_FORMATS,
+  resolveAiGeneratedCalendarStyles,
+} from '@/features/dashboard/marketing/lib/calendarAiTokens';
 import {
   aspectPresetForCalendarFormat,
   calendarTemplateMatchesAspectPreset,
@@ -69,6 +74,7 @@ import {
 import { marketingContentFingerprint } from '@/features/dashboard/marketing/lib/marketingContentFingerprint';
 import { marketingEditorWorkspaceClassName } from '@/features/dashboard/marketing/lib/marketingEditorWorkspace';
 import {
+  pickRandomPropertyPhoto,
   propertyGalleryMediaItems,
   propertyMediaItems,
 } from '@/features/dashboard/marketing/lib/polotno/propertyMedia';
@@ -822,6 +828,8 @@ export function CalendarBuilder({
 
   const handleAiGenerate = useCallback(
     async (input: MarketingAiGenerateInput) => {
+      if (!('elements' in input.preferences)) return;
+      const calendarPreferences = input.preferences as CalendarAiGeneratePreferences;
       setAiGenerateBusy(true);
       beginAutoSaveSuspension();
       let aiSucceeded = false;
@@ -833,22 +841,34 @@ export function CalendarBuilder({
           amenitiesText: input.includeContext.amenities ? amenitiesText : undefined,
           availabilityText: input.includeContext.availability ? availabilityText : undefined,
           preferences: {
-            layoutArchetype: input.preferences.layoutArchetype,
-            fontPairing: input.preferences.fontPairing,
-            backgroundMood: input.preferences.backgroundMood,
+            layoutArchetype: calendarPreferences.layoutArchetype,
+            fontPairing: calendarPreferences.fontPairing,
+            backgroundMood: calendarPreferences.backgroundMood,
           },
         });
         aiSucceeded = true;
+        if (result.contentType !== 'calendar') {
+          throw new Error('Unexpected content type from AI generation');
+        }
 
-        const tokens = applyCalendarAiPreferencesToTokens(result.tokens, input.preferences);
-        const photoUrl = input.includeContext.propertyPhoto ? propertyPhotoUrl : undefined;
-        const variants = resolveAiGeneratedCalendarStylesForAllFormats(tokens, {
-          brandColor,
-          propertyPhotoUrl: photoUrl,
-        }).map((variant) => ({
-          ...variant,
-          styles: applyCalendarAiElementsToStyles(variant.styles, input.preferences.elements),
-        }));
+        const tokens = applyCalendarAiPreferencesToTokens(result.tokens, calendarPreferences);
+        const imageUrls = calendarPropertyImages.map((item) => item.url);
+        const variants = CALENDAR_AI_FORMATS.map((format) => {
+          const randomPhoto = input.includeContext.propertyPhoto
+            ? pickRandomPropertyPhoto(imageUrls)
+            : null;
+          const photoUrl = randomPhoto ?? undefined;
+          const styles = resolveAiGeneratedCalendarStyles(tokens, {
+            format,
+            brandColor,
+            propertyPhotoUrl: photoUrl,
+          });
+          return {
+            format,
+            aspectPreset: calendarFormatToAspectPreset(format),
+            styles: applyCalendarAiElementsToStyles(styles, calendarPreferences.elements),
+          };
+        });
         const aiGenerationId =
           typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
             ? crypto.randomUUID()
@@ -930,12 +950,12 @@ export function CalendarBuilder({
       availabilityText,
       beginAutoSaveSuspension,
       brandColor,
+      calendarPropertyImages,
       canvasFrame.format,
       endAutoSaveSuspension,
       generateTemplate,
       markBaseline,
       propertyId,
-      propertyPhotoUrl,
       queryClient,
       saveToHistory,
       setIsDirty,
@@ -1047,6 +1067,18 @@ export function CalendarBuilder({
                 </div>
               ) : (
                 <div className="space-y-4 pb-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="min-h-[44px] w-full gap-2"
+                    disabled={aiGenerateBusy || generateTemplate.isPending}
+                    onClick={() => setAiGenerateOpen(true)}
+                  >
+                    <Sparkles className="size-4" aria-hidden />
+                    {aiGenerateBusy || generateTemplate.isPending
+                      ? 'Generating…'
+                      : 'Generate with AI'}
+                  </Button>
                   <CalendarFormatPicker
                     brandColor={brandColor}
                     onFormatChange={handleCanvasFormatChange}
@@ -1064,8 +1096,6 @@ export function CalendarBuilder({
                     onCustomizeCustom={handleCustomizeCustom}
                     onRenameCustom={handleRenameCustom}
                     onRemoveCustom={handleRemoveCustom}
-                    onOpenAiGenerate={() => setAiGenerateOpen(true)}
-                    aiGenerateBusy={aiGenerateBusy || generateTemplate.isPending}
                   />
                 </div>
               )}

@@ -2,7 +2,7 @@
 title: 'Host verification tiers'
 stage: in-progress
 status: in-progress
-updated: 2026-08-10
+updated: 2026-08-17
 tags: [workflow, in-progress, verification, onboarding]
 ---
 

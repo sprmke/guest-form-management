@@ -2,7 +2,7 @@
 title: "Won't do"
 status: active
 tags: [workflow, wont-do]
-updated: 2026-08-10
+updated: 2026-08-13
 stage: wont-do
 kind: reference
 ---
@@ -11,10 +11,11 @@ kind: reference
 
 Explicit **cancelled** or **rejected** plans — kept for history, not implementation.
 
-| Doc                                                            | Reason                                                                                                          |
-| -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| [`dashboard-top-header-bar.md`](./dashboard-top-header-bar.md) | Profile, theme toggle, and mode switch stay in sidebar footer                                                   |
-| [`listing-authorization.md`](./listing-authorization.md)       | Never started; superseded by [`../planned/verification-scope-split.md`](../planned/verification-scope-split.md) |
+| Doc                                                                    | Reason                                                                                                          |
+| ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| [`dashboard-ground-up-redesign.md`](./dashboard-ground-up-redesign.md) | Cancelled; incremental dashboard polish only — no dedicated ground-up pass scoped from public pages             |
+| [`dashboard-top-header-bar.md`](./dashboard-top-header-bar.md)         | Profile, theme toggle, and mode switch stay in sidebar footer                                                   |
+| [`listing-authorization.md`](./listing-authorization.md)               | Never started; superseded by [`../planned/verification-scope-split.md`](../planned/verification-scope-split.md) |
 
 Move plans here with **`/workflow-wont-do`** or `bash scripts/dev/workflow-move.sh wont-do <slug>`. Scratchpad item → **❌** + `→ **Won't do:**` link (sync runs automatically).
 

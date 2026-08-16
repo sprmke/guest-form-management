@@ -83,8 +83,15 @@ export const STAGE_META: Record<Exclude<BookingStage, 'all'>, StageMeta> = {
 };
 
 /** Statuses included when a stage summary card is active. */
-export const STAGE_STATUS_MAP: Record<Exclude<BookingStage, 'all'>, readonly BookingStatus[]> = {
-  action_required: ['PENDING_REVIEW', 'READY_FOR_CHECKOUT', 'PENDING_SD_REFUND'],
+export const STAGE_STATUS_MAP: Record<Exclude<BookingStage, 'all'>, readonly string[]> = {
+  // PENDING_HOST_ACCEPTANCE is parking-only (see parkingStatusMachine.ts) — not part
+  // of the property BookingStatus enum, so this map is typed as string[] not BookingStatus[].
+  action_required: [
+    'PENDING_REVIEW',
+    'READY_FOR_CHECKOUT',
+    'PENDING_SD_REFUND',
+    'PENDING_HOST_ACCEPTANCE',
+  ],
   pending_docs: [
     'PENDING_DOCUMENTS',
     'PENDING_GAF',
@@ -92,12 +99,12 @@ export const STAGE_STATUS_MAP: Record<Exclude<BookingStage, 'all'>, readonly Boo
     'PENDING_PET_REQUEST',
   ],
   confirmed: ['READY_FOR_CHECKIN'],
-  history: ['COMPLETED', 'CANCELLED', 'IMPORTED'],
+  history: ['COMPLETED', 'CANCELLED', 'IMPORTED', 'NO_HOST_AVAILABLE'],
 };
 
 export function getBookingStage(status: string): BookingStage {
   for (const stage of Object.keys(STAGE_STATUS_MAP) as Array<keyof typeof STAGE_STATUS_MAP>) {
-    if ((STAGE_STATUS_MAP[stage] as readonly string[]).includes(status)) {
+    if (STAGE_STATUS_MAP[stage].includes(status)) {
       return stage;
     }
   }
@@ -230,7 +237,7 @@ export const KANBAN_COLUMNS: readonly BookingStatus[] = [
 
 /**
  * `PENDING_DOCUMENTS` is a parent status — place the card in the first
- * incomplete nested step (GAF → parking → pet), matching calendar summary logic.
+ * incomplete nested step (GAF → parking → pet for kanban column placement).
  *
  * `requirements` defaults to `DEFAULT_DOCUMENT_REQUIREMENTS` (Azure parity) —
  * pass the property's resolved list when available so an empty or custom
@@ -243,11 +250,9 @@ export function kanbanColumnForBooking(
     | 'need_parking'
     | 'has_pets'
     | 'gaf_completed_at'
-    | 'gaf_manual_incomplete'
     | 'approved_gaf_pdf_url'
     | 'parking_completed_at'
     | 'pet_completed_at'
-    | 'pet_manual_incomplete'
     | 'approved_pet_pdf_url'
   >,
   requirements: DocumentRequirement[] = DEFAULT_DOCUMENT_REQUIREMENTS
@@ -312,11 +317,9 @@ function kanbanDocStepsBeforeTargetComplete(
     | 'need_parking'
     | 'has_pets'
     | 'gaf_completed_at'
-    | 'gaf_manual_incomplete'
     | 'approved_gaf_pdf_url'
     | 'parking_completed_at'
     | 'pet_completed_at'
-    | 'pet_manual_incomplete'
     | 'approved_pet_pdf_url'
   >,
   target: BookingStatus,

@@ -57,6 +57,7 @@ export type GuestStayGuideDto = {
   sections: StayGuideSectionDto[];
   validUntil: string;
   todayManila: string;
+  templateKey: string;
 };
 
 type ApiSuccess<T> = { success: true; data: T };

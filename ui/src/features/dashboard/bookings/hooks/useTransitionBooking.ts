@@ -8,10 +8,6 @@ import {
 } from '@/features/dashboard/bookings/hooks/useBooking';
 import { BOOKINGS_QUERY_KEY } from '@/features/dashboard/bookings/hooks/useBookings';
 import type { BookingStatus } from '@/features/dashboard/bookings/lib/bookingStatus';
-import {
-  messageIndicatesGmailNeedsReconnect,
-  toGmailNeedsReconnectError,
-} from '@/features/dashboard/bookings/lib/gmailReconnect';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 
@@ -53,18 +49,14 @@ export type TransitionPayload = {
    * id) — mirrors `workflowOrchestrator.ts` §`LEGACY_DOC_TARGET_TO_REQUIREMENT_ID`.
    */
   document_completion_target?: string | null;
-  document_completion_clear_target?: string | null;
 };
 
-export type DevControlFlags = {
-  saveToDatabase?: boolean;
-  generatePdf?: boolean;
-  updateGoogleCalendar?: boolean;
-  updateGoogleSheets?: boolean;
+/** Mirrors `_shared/workflowOrchestrator.ts#DevControlFlags` email keys. */
+export type TransitionEmailDevControls = {
   sendGafRequestEmail?: boolean;
-  sendParkingBroadcastEmail?: boolean;
-  sendPetRequestEmail?: boolean;
   sendBookingAcknowledgementEmail?: boolean;
+  sendPetRequestEmail?: boolean;
+  sendParkingBroadcastEmail?: boolean;
   sendReadyForCheckinEmail?: boolean;
   sendSdRefundFormEmail?: boolean;
 };
@@ -73,7 +65,7 @@ type TransitionInput = {
   bookingId: string;
   toStatus: BookingStatus;
   payload?: TransitionPayload;
-  devControls?: DevControlFlags;
+  devControls?: TransitionEmailDevControls;
   manual?: boolean;
 };
 
@@ -81,8 +73,6 @@ type TransitionResult = {
   success: boolean;
   booking: BookingRow;
   sideEffects?: {
-    calendar?: boolean;
-    sheet?: boolean;
     emails?: string[];
   };
 };
@@ -107,21 +97,14 @@ async function callTransitionBooking(input: TransitionInput, propertyId: string 
       bookingId: input.bookingId,
       toStatus: input.toStatus,
       payload: input.payload ?? {},
-      devControls: input.devControls ?? {},
+      ...(input.devControls ? { devControls: input.devControls } : {}),
       manual: input.manual ?? true,
     }),
   });
 
   const json = await res.json();
-  if (json.needsReAuth) {
-    throw toGmailNeedsReconnectError(new Error(json.error))!;
-  }
   if (!res.ok || !json.success) {
-    const errMsg = json.error ?? `HTTP ${res.status}`;
-    if (messageIndicatesGmailNeedsReconnect(errMsg)) {
-      throw toGmailNeedsReconnectError(new Error(errMsg))!;
-    }
-    throw new Error(errMsg);
+    throw new Error(json.error ?? `HTTP ${res.status}`);
   }
 
   return json.data as TransitionResult;
@@ -155,13 +138,7 @@ export function useCancelBooking() {
   const propertyId = usePropertyIdParam();
 
   return useMutation({
-    mutationFn: async ({
-      bookingId,
-      devControls = {},
-    }: {
-      bookingId: string;
-      devControls?: DevControlFlags;
-    }) => {
+    mutationFn: async ({ bookingId }: { bookingId: string }) => {
       const jwt = await getAdminJwt();
 
       const res = await fetch(scopedFunctionsUrl('/cancel-booking', propertyId), {
@@ -170,7 +147,7 @@ export function useCancelBooking() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${jwt}`,
         },
-        body: JSON.stringify({ bookingId, confirm: true, devControls }),
+        body: JSON.stringify({ bookingId, confirm: true }),
       });
 
       const json = await res.json();
@@ -195,10 +172,6 @@ type RunAutomationResult = {
   applied?: number;
   skipped?: number;
   failed?: number;
-  /** Sub-steps re-completed from existing `approved_*_pdf_url` after admin “mark incomplete”. */
-  reconciled?: number;
-  reconciledGaf?: number;
-  reconciledPet?: number;
   transitioned?: number;
   scanned?: number;
   /** True when `sd-refund-cron` was called with `{ bookingId }` (admin detail only). */
@@ -211,46 +184,6 @@ type RunAutomationResult = {
   historyReset?: boolean;
   [key: string]: unknown;
 };
-
-/**
- * Manually trigger the Gmail listener poll (Phase 4 — Q6.6).
- * Use when PENDING_GAF / PENDING_PET_REQUEST is stuck and the cron hasn't fired.
- * Invalidates the booking detail so status updates show immediately.
- */
-export function useRunGmailPoll(bookingId?: string) {
-  const qc = useQueryClient();
-  const propertyId = usePropertyIdParam();
-
-  return useMutation({
-    mutationFn: async (): Promise<RunAutomationResult> => {
-      const jwt = await getAdminJwt();
-
-      const res = await fetch(scopedFunctionsUrl('/gmail-listener', propertyId), {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${jwt}` },
-      });
-
-      const json = await res.json();
-      if (!json.success && json.needsReAuth) {
-        throw toGmailNeedsReconnectError(new Error(json.error))!;
-      }
-      if (!res.ok) {
-        const errMsg = json.error ?? `HTTP ${res.status}`;
-        if (messageIndicatesGmailNeedsReconnect(errMsg)) {
-          throw toGmailNeedsReconnectError(new Error(errMsg))!;
-        }
-        throw new Error(errMsg);
-      }
-      return json as RunAutomationResult;
-    },
-    onSuccess: async () => {
-      if (!bookingId) return;
-      // Await so mutateAsync does not resolve until detail + list refetches finish (avoids stale UI).
-      await qc.invalidateQueries({ queryKey: BOOKING_QUERY_KEY(bookingId) });
-      await qc.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY });
-    },
-  });
-}
 
 /**
  * Manually trigger the SD refund cron (Phase 4 — Q6.6).
@@ -289,7 +222,7 @@ export function useRunSdRefundCron(bookingId?: string) {
 }
 
 /**
- * Re-send the guest Check-out & SD Refund Details email (READY_FOR_CHECKIN or READY_FOR_CHECKOUT).
+ * Re-send the guest Check-out & SD Refund Details email (Ready for Check-out).
  */
 export function useResendSdRefundFormEmail(bookingId?: string) {
   const qc = useQueryClient();

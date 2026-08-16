@@ -29,22 +29,18 @@ Applies whenever a change touches the `/bookings` routes, the new admin-only edg
 - Single shared Supabase client: `ui/src/lib/supabase/client.ts`.
 - Entry point: **`/for-hosts/login`** — calls `supabase.auth.signInWithOAuth({ provider: 'google' })`. Legacy **`/sign-in`** redirects here.
 
-## 2. Allow list
+## 2. Allow list (server)
 
-- Only these emails may access admin routes and admin edge functions:
-  - **Config**: `ADMIN_ALLOWED_EMAILS` — comma-separated env var in `supabase/.env.local` and Supabase dashboard.
-  - **Default value**: `kamehome.azurenorth@gmail.com`.
-- The allow list is enforced **server-side** on every admin edge function via `_shared/auth.ts#verifyAdminJwt(req)`. Never trust the client.
-- Client also reads `ADMIN_ALLOWED_EMAILS` (via `VITE_ADMIN_ALLOWED_EMAILS`) for an immediate UX reject, but never as the only gate.
+- **`ADMIN_ALLOWED_EMAILS`** (edge only) — comma-separated emails for `verifyAdminJwt` and `isPlatformAdmin`. Org **owners** can pass `verifyAdminJwt` without being on this list.
+- **`SUPER_ADMIN_EMAILS`** (edge only) — platform `/admin/*` APIs (`serveSuperAdmin`, `list-developments`, …).
+- **`VITE_SUPER_ADMIN_EMAILS`** (UI / Vercel) — client UX gate for the Admin mode tab and `RequireSuperAdmin`; **not** the security boundary.
+- There is **no** `VITE_ADMIN_ALLOWED_EMAILS` — host dashboard access is Google sign-in + org/team RBAC; do not reintroduce a client allow list.
 
 ## 3. Route guards (UI)
 
-- New component: `ui/src/features/dashboard/bookings/components/RequireAdmin.tsx`.
-  - Shows a loader while the session hydrates.
-  - Redirects to **`/for-hosts/login`** (via `hostLoginPath`) if unauthenticated.
-  - Shows a generic "access restricted" message if the signed-in email is not allow-listed (no disclosure of which emails are allowed; signs the user out from that view).
-- Applied to: `/bookings`, `/bookings/:bookingId`, `/finance`, `/maintenance`, `/notifications`, `/settings`, and any other admin route added later.
-- The existing public routes (`/`, `/form`, `/success`, `/calendar`) stay unauthenticated.
+- `RequireAdmin.tsx` — loader while session hydrates; redirects to **`/for-hosts/login`** if unsigned. **No client email allow list.**
+- `RequireSuperAdmin.tsx` — checks `VITE_SUPER_ADMIN_EMAILS` (UX only); server enforces `SUPER_ADMIN_EMAILS`.
+- Applied to org/property dashboard routes via `RequireAdmin`; `/admin/*` via `RequireSuperAdmin`.
 
 ## 4. Guest form dev controls (`GuestForm.tsx`)
 
@@ -54,51 +50,50 @@ Applies whenever a change touches the `/bookings` routes, the new admin-only edg
 
 There is **no** separate test-booking mode, `?testing=true`, `is_test_booking` column, or test-data cleanup edge function — use local/staging projects instead.
 
-## 5. Dev controls panel (admin detail page)
+## 5. Workflow side effects (admin detail page)
 
-Shown on `/bookings/:bookingId`. Checkbox list driving what happens on the next action click:
+Confirm modals on `/bookings/:bookingId` (Proceed, Back, Cancel) run the orchestrator default happy path for **non-email** effects (DB, PDFs, stay guide). **Outbound emails** are gated by **Property Settings → Email automations** (`propertyAutomationToggles.ts` / `PropertyEmailAutomationsSection`).
 
-| Checkbox                          | Shown when                              | Replaces the old                                                  |
-| --------------------------------- | --------------------------------------- | ----------------------------------------------------------------- |
-| Save to database                  | always                                  | `saveToDatabase`                                                  |
-| Save images to storage            | always                                  | `saveImagesToStorage`                                             |
-| Generate GAF / pet request PDFs   | only from `PENDING_REVIEW`              | `generatePdf` (was guest-form query param; now transition-only)   |
-| **Send GAF request email**        | only from `PENDING_REVIEW`              | renamed from `Send email notification`                            |
-| **Send Parking broadcast email**  | only when `need_parking`                | new                                                               |
-| **Send Pet request email**        | only when `has_pets`                    | new                                                               |
-| **Send Acknowledgement email**    | only from `PENDING_REVIEW`              | renamed / split from legacy                                       |
-| **Send Ready-for-check-in email** | only from GAF / parking / pet stages    | gates server + UI                                                 |
-| **Send SD refund form email**     | only when status is `READY_FOR_CHECKIN` | email guest `/sd-form` link on transition to `READY_FOR_CHECKOUT` |
-| Update Google Calendar            | always                                  | `updateGoogleCalendar`                                            |
-| Update Google Sheets              | always                                  | `updateGoogleSheets`                                              |
+**Optional email checkboxes** appear on **forward** Proceed confirms when either:
 
-All checkboxes start **checked** so the next action runs the full happy path (DB + Calendar + Sheet + the emails that apply to that transition). Admins **uncheck** the specific side effects they want to skip for that run. In production they are authoritative — flipping a checkbox off means "really don't do it". The server's `flag()` helper in `_shared/workflowOrchestrator.ts` treats `undefined` as `true`, so this UI default mirrors the server default.
+1. **Past stay dates** — `status` is `PENDING_REVIEW`, `PENDING_DOCUMENTS`, or `READY_FOR_CHECKIN` and check-in or check-out is strictly before today (Asia/Manila); or
+2. **Re-forward after regression** — the booking still has artifacts from a later pipeline step (request/approved PDFs, doc completions, stay guide, SD form email, etc.) after admin **Return to …**, guest-field revert, or similar.
+
+In those cases, each email that would fire on that transition is shown as a checkbox **default unchecked**. Checked boxes send `devControls` on `transition-booking` (`sendGafRequestEmail`, `sendBookingAcknowledgementEmail`, `sendPetRequestEmail`, `sendParkingBroadcastEmail`, `sendReadyForCheckinEmail`, `sendSdRefundFormEmail`). Normal forward proceeds (no past dates, no regression) omit `devControls` — all applicable emails still follow property automations.
+
+Server-side `DevControlFlags` in `_shared/workflowOrchestrator.ts` are also used by automated callers (approval webhook, cron, import revert).
+
+| Email / effect                                                                 | Production control                                              |
+| ------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| New booking request (guest submit)                                             | Guest form dev **Send email** (non-prod only; §4)               |
+| GAF / pet request PDFs + emails                                                | Property automation toggles + resolved `documentRequirements[]` |
+| Booking acknowledgement, parking broadcast, ready-for-check-in, SD refund form | Property automation toggles                                     |
+| Manual re-send SD refund form                                                  | **Automation Triggers** on booking detail                       |
 
 ## 6. Server contract
 
-- All admin edge functions (`list-bookings`, `transition-booking`, `sync-booking-integrations`, `upload-booking-asset`, `send-sd-refund-form-email`, `parking-broadcast-email`, `cancel-booking`, …) set **`verify_jwt = false`** in `supabase/config.toml` **and** must call `verifyAdminJwt(req)` as the first line of the handler.
+- All admin edge functions (`list-bookings`, `transition-booking`, `upload-booking-asset`, `send-sd-refund-form-email`, `parking-broadcast-email`, `cancel-booking`, …) set **`verify_jwt = false`** in `supabase/config.toml` **and** must call `verifyAdminJwt(req)` as the first line of the handler.
   - **Why `false` in config.toml:** Kong's `verify_jwt = true` gate uses the legacy HS256 JWT secret and rejects newer ES256 auth tokens issued by Supabase local dev (≥ 1.x). Our `verifyAdminJwt` calls `supabase.auth.getUser(jwt)` which handles both algorithms correctly **and** also enforces the `ADMIN_ALLOWED_EMAILS` allow-list — making it a strictly stronger gate than Kong's check.
   - **The function body check IS the security boundary** — never skip `verifyAdminJwt(req)` on the assumption that Kong already validated the token.
 - The public functions (`submit-form`, `get-form`, `get-booked-dates`, `get-guest-payment-info`, `get-sd-form`, `submit-sd-form`) keep `verify_jwt = false` — guests must still be able to hit them with only the anon key.
 
 ## 7. Env vars summary (new)
 
-| Var                                    | Scope | Purpose                                                                                                                                                                                                                                                                                        |
-| -------------------------------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ADMIN_ALLOWED_EMAILS`                 | edge  | Comma-separated allow list (server-enforced).                                                                                                                                                                                                                                                  |
-| `VITE_ADMIN_ALLOWED_EMAILS`            | UI    | UX reject only; never the only gate.                                                                                                                                                                                                                                                           |
-| `PARKING_OWNER_EMAILS`                 | edge  | _(Removed — use **`app_settings.parking_owner_emails`** per property.)                                                                                                                                                                                                                         |
-| `GMAIL_API_WEB_CLIENT_JSON`            | edge  | Web OAuth client JSON for **Connect Google** on **`/settings`** (Gmail + Calendar + Sheets scopes); redirect URI `{SUPABASE_URL}/functions/v1/google-mail-oauth-callback`. Pair with `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`. Enable Calendar + Sheets APIs and scopes on the OAuth consent screen. |
-| `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`     | edge  | 32-byte AES key (64 hex or base64) for encrypting Gmail refresh tokens + Telegram bot tokens in DB.                                                                                                                                                                                            |
-| `GMAIL_OAUTH_ALLOWED_RETURN_ORIGINS`   | edge  | Comma-separated SPA origins allowed by `google-mail-oauth-start` (defaults include local Vite).                                                                                                                                                                                                |
-| `SD_REFUND_CRON_EMAIL_LEAD_MINUTES`    | edge  | _(Removed — use **`app_settings.sd_refund_cron_email_lead_minutes`** per property.)                                                                                                                                                                                                            |
-| `SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS` | edge  | _(Removed — use **`app_settings.sd_refund_cron_max_checkout_age_days`** per property.)                                                                                                                                                                                                         |
-| `TELEGRAM_*_CRON_SECRET`               | edge  | _(Optional)_ Cron auth headers only (`TELEGRAM_CRON_SECRET`, `TELEGRAM_STAFF_CRON_SECRET`, `TELEGRAM_ADMIN_CRON_SECRET`, `TELEGRAM_FINANCE_CRON_SECRET`, `TELEGRAM_MAINTENANCE_CRON_SECRET`). Bot tokens + chat IDs are **per-property DB** (`telegram_*_settings`), not env.                  |
-| `GEMINI_API_KEYS`                      | edge  | _(Optional)_ Comma-separated Gemini API keys from **different** Google Cloud projects; round-robin with 429 failover. Falls back to `GEMINI_API_KEY` if unset.                                                                                                                                 |
-| `GEMINI_API_KEY`                       | edge  | _(Optional, legacy)_ Single Gemini key. Used only when `GEMINI_API_KEYS` is not set.                                                                                                                                                                                                           |
-| `GROQ_API_KEY`                         | edge  | _(Optional)_ Groq free-tier key (Llama 4 Scout vision). Fallback when all Gemini keys are rate-limited. Sign up at `https://console.groq.com`.                                                                                                                                                 |
-| `TELEGRAM_FINANCE_CRON_SECRET`         | edge  | _(Optional)_ When set, `telegram-finance-cron` requires header `X-Telegram-Cron-Secret` with the same value.                                                                                                                                                                                   |
-| `TELEGRAM_MAINTENANCE_CRON_SECRET`     | edge  | _(Optional)_ When set, `telegram-maintenance-cron` requires header `X-Telegram-Cron-Secret` with the same value.                                                                                                                                                                               |
+| Var                                    | Scope | Purpose                                                                                                                                                                                                                                                                       |
+| -------------------------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ADMIN_ALLOWED_EMAILS`                 | edge  | `verifyAdminJwt` allow list + `isPlatformAdmin`; org owners bypass.                                                                                                                                                                                                           |
+| `SUPER_ADMIN_EMAILS`                   | edge  | Platform super-admin APIs (`/admin/*`).                                                                                                                                                                                                                                       |
+| `VITE_SUPER_ADMIN_EMAILS`              | UI    | Super-admin UX gate (`ModeSwitcher` Admin tab, `RequireSuperAdmin`).                                                                                                                                                                                                          |
+| `PARKING_OWNER_EMAILS`                 | edge  | _(Removed — use **`app_settings.parking_owner_emails`** per property.)                                                                                                                                                                                                        |
+| `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`     | edge  | 32-byte AES key (64 hex or base64) for encrypting Telegram bot tokens in DB (`propertySecretCrypto.ts`). Legacy env name from Gmail OAuth era.                                                                                                                                |
+| `SD_REFUND_CRON_EMAIL_LEAD_MINUTES`    | edge  | _(Removed — use **`app_settings.sd_refund_cron_email_lead_minutes`** per property.)                                                                                                                                                                                           |
+| `SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS` | edge  | _(Removed — use **`app_settings.sd_refund_cron_max_checkout_age_days`** per property.)                                                                                                                                                                                        |
+| `TELEGRAM_*_CRON_SECRET`               | edge  | _(Optional)_ Cron auth headers only (`TELEGRAM_CRON_SECRET`, `TELEGRAM_STAFF_CRON_SECRET`, `TELEGRAM_ADMIN_CRON_SECRET`, `TELEGRAM_FINANCE_CRON_SECRET`, `TELEGRAM_MAINTENANCE_CRON_SECRET`). Bot tokens + chat IDs are **per-property DB** (`telegram_*_settings`), not env. |
+| `GEMINI_API_KEYS`                      | edge  | _(Optional)_ Comma-separated Gemini API keys from **different** Google Cloud projects; round-robin with 429 failover. Falls back to `GEMINI_API_KEY` if unset.                                                                                                                |
+| `GEMINI_API_KEY`                       | edge  | _(Optional, legacy)_ Single Gemini key. Used only when `GEMINI_API_KEYS` is not set.                                                                                                                                                                                          |
+| `GROQ_API_KEY`                         | edge  | _(Optional)_ Groq free-tier key (Llama 4 Scout vision). Fallback when all Gemini keys are rate-limited. Sign up at `https://console.groq.com`.                                                                                                                                |
+| `TELEGRAM_FINANCE_CRON_SECRET`         | edge  | _(Optional)_ When set, `telegram-finance-cron` requires header `X-Telegram-Cron-Secret` with the same value.                                                                                                                                                                  |
+| `TELEGRAM_MAINTENANCE_CRON_SECRET`     | edge  | _(Optional)_ When set, `telegram-maintenance-cron` requires header `X-Telegram-Cron-Secret` with the same value.                                                                                                                                                              |
 
 Remember to update `docs/architecture/validation-and-env.md` Environment variables in the same commit that introduces any of these.
 

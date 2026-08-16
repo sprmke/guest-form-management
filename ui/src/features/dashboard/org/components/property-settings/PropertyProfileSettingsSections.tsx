@@ -319,7 +319,7 @@ export function PropertyProfileMainSections({
           resetValue={inheritedBrandColor}
           disabled={disabled}
           error={fieldError('property-brand-color')}
-          hint="Tints this property's admin pages, guest forms, emails, and accents."
+          help="Applies to this property’s dashboard pages & public-facing pages such as guest forms, email templates, and other related content."
           onChange={(value) => {
             markFieldInteracted('property-brand-color');
             onBrandColorChange(value);
@@ -1194,7 +1194,7 @@ export function PropertyDangerZoneSection({
               <div className="text-muted-foreground space-y-2 text-sm">
                 <p>
                   This permanently deletes the property profile, gallery media, payment settings,
-                  Telegram configs, and Google integration for this property.
+                  and Telegram configs for this property.
                 </p>
                 <p>
                   Deletion is blocked if any bookings exist. Use{' '}

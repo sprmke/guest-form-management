@@ -1,8 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { DatabaseService } from '../_shared/databaseService.ts';
-import { CalendarService } from '../_shared/calendarService.ts';
-import { SheetsService } from '../_shared/sheetsService.ts';
 import { sendNewBookingRequestNotify } from '../_shared/emailService.ts';
 import { propertyAutomationEnabled } from '../_shared/propertyAutomationToggles.ts';
 import { notifyTelegramNewBookingRequest } from '../_shared/telegramMarketing.ts';
@@ -14,17 +12,13 @@ import {
   canGuestPublicUpdateForm,
 } from '../_shared/statusMachine.ts';
 import { refreshGuestStayGuideAccessWindow } from '../_shared/guestStayGuide.ts';
-import {
-  dbPatchForDocumentAiValidation,
-  dbPatchForReceiptValidation,
-  shouldPersistReceiptValidation,
-  validateReceiptFile,
-  validateValidIdFile,
-  type AiUsageContext,
-} from '../_shared/receiptValidationService.ts';
-import { resolveOrgIdForProperty } from '../_shared/aiUsageService.ts';
 import type { GuestSubmission } from '../_shared/types.ts';
-import { resolvePublicPropertyId } from '../_shared/propertyScope.ts';
+import { createNotification } from '../_shared/notificationService.ts';
+import { bookingNotificationMetadata } from '../_shared/notificationEnrichment.ts';
+import {
+  resolvePublicPropertyId,
+  resolveOrganizationIdForProperty,
+} from '../_shared/propertyScope.ts';
 import { tryGetAuthenticatedUser } from '../_shared/orgAuth.ts';
 
 serve(async (req) => {
@@ -66,8 +60,6 @@ serve(async (req) => {
 
     const isSaveToDatabaseEnabled = readSubmitFlag('saveToDatabase', true);
     const isSaveImagesToStorageEnabled = readSubmitFlag('saveImagesToStorage', true);
-    const isCalendarUpdateEnabled = readSubmitFlag('updateGoogleCalendar', true);
-    const isSheetsUpdateEnabled = readSubmitFlag('updateGoogleSheets', true);
     /** New Booking Request → `EMAIL_REPLY_TO`; guest form dev panel sends explicit `sendEmail=false` when unchecked. */
     const isSendEmailEnabled = readSubmitFlag('sendEmail', true);
 
@@ -83,8 +75,6 @@ serve(async (req) => {
     console.log(
       `  New Booking Request email (EMAIL_REPLY_TO): ${isSendEmailEnabled ? '✅' : '❌'} (FormData/sendEmail, default on — only sent after a DB save with an id; not this flag alone)`
     );
-    console.log(`  Update Calendar: ${isCalendarUpdateEnabled ? '✅' : '❌'}`);
-    console.log(`  Update Google Sheets: ${isSheetsUpdateEnabled ? '✅' : '❌'}`);
     console.log('---');
 
     // Extract check-in and check-out dates and booking ID to check for overlaps
@@ -213,7 +203,8 @@ serve(async (req) => {
         isSaveImagesToStorageEnabled,
         revertReadyForCheckinToPendingReview,
         propertyId,
-        guestUser?.id
+        guestUser?.id,
+        revertReadyForCheckinToPendingReview ? guestFormChangedFields : []
       );
 
     let notifyBooking = submissionData as GuestSubmission;
@@ -231,71 +222,6 @@ serve(async (req) => {
         await refreshGuestStayGuideAccessWindow(notifyBooking);
       } catch (stayGuideErr) {
         console.error('[submit-form] Stay guide window refresh failed (non-fatal):', stayGuideErr);
-      }
-    }
-
-    const aiOrgId = await resolveOrgIdForProperty(propertyId);
-    const aiUsage: AiUsageContext | null = aiOrgId ? { organizationId: aiOrgId, propertyId } : null;
-
-    // AI downpayment receipt check (non-blocking for guest submit).
-    // Skipped for Airbnb bookings — no payment step.
-    const bookingSource = (formData.get('bookingSource') as string)?.trim() || 'Facebook';
-    const isAirbnbSource = bookingSource === 'Airbnb';
-    const paymentReceiptFile = formData.get('paymentReceipt') as File | null;
-    if (
-      !isAirbnbSource &&
-      isSaveToDatabaseEnabled &&
-      submissionData?.id &&
-      paymentReceiptFile &&
-      paymentReceiptFile.size > 0
-    ) {
-      try {
-        const receiptValidation = await validateReceiptFile(paymentReceiptFile, aiUsage);
-        if (shouldPersistReceiptValidation(receiptValidation)) {
-          const aiPatch = dbPatchForReceiptValidation('downpayment', receiptValidation);
-          await DatabaseService.setWorkflowFields(submissionData.id, aiPatch);
-          notifyBooking = { ...submissionData, ...aiPatch } as GuestSubmission;
-        }
-        console.log(
-          `[submit-form] Downpayment receipt AI: ${receiptValidation.verdict} — ${receiptValidation.summary}`
-        );
-      } catch (aiErr) {
-        console.error('[submit-form] Downpayment receipt AI validation failed (non-fatal):', aiErr);
-      }
-    }
-
-    // AI valid ID check (non-blocking for guest submit) — primary + additional guests.
-    const validIdUploads: Array<{ field: string; persistKind: 'valid_id' | null }> = [
-      { field: 'validId', persistKind: 'valid_id' },
-      { field: 'guest2ValidId', persistKind: null },
-      { field: 'guest3ValidId', persistKind: null },
-      { field: 'guest4ValidId', persistKind: null },
-      { field: 'guest5ValidId', persistKind: null },
-    ];
-
-    for (const { field, persistKind } of validIdUploads) {
-      const validIdFile = formData.get(field) as File | null;
-      if (
-        !isSaveToDatabaseEnabled ||
-        !submissionData?.id ||
-        !validIdFile ||
-        validIdFile.size <= 0
-      ) {
-        continue;
-      }
-
-      try {
-        const validIdValidation = await validateValidIdFile(validIdFile, aiUsage);
-        if (persistKind && shouldPersistReceiptValidation(validIdValidation)) {
-          const aiPatch = dbPatchForDocumentAiValidation(persistKind, validIdValidation);
-          await DatabaseService.setWorkflowFields(submissionData.id, aiPatch);
-          notifyBooking = { ...notifyBooking, ...aiPatch } as GuestSubmission;
-        }
-        console.log(
-          `[submit-form] ${field} AI: ${validIdValidation.verdict} — ${validIdValidation.summary}`
-        );
-      } catch (aiErr) {
-        console.error(`[submit-form] ${field} AI validation failed (non-fatal):`, aiErr);
       }
     }
 
@@ -354,30 +280,22 @@ serve(async (req) => {
           staffTgErr
         );
       }
-    }
-
-    // Create or update calendar event if enabled
-    if (isCalendarUpdateEnabled) {
-      await CalendarService.createOrUpdateCalendarEvent(
-        data,
-        validIdUrl,
-        paymentReceiptUrl,
-        petVaccinationUrl,
-        petImageUrl,
-        submissionData.id
-      );
-    }
-
-    // Append to Google Sheet if enabled
-    if (isSheetsUpdateEnabled) {
-      await SheetsService.appendToSheet(
-        data,
-        validIdUrl,
-        paymentReceiptUrl,
-        petVaccinationUrl,
-        petImageUrl,
-        submissionData.id
-      );
+      try {
+        const organizationId = await resolveOrganizationIdForProperty(propertyId);
+        const guestName = String(notifyBooking.primary_guest_name ?? '').trim() || 'A guest';
+        await createNotification({
+          organizationId,
+          propertyId,
+          type: 'booking_pending_review',
+          title: 'New booking submitted',
+          body: `${guestName} submitted a new booking request.`,
+          bookingId: submissionData.id,
+          metadata: bookingNotificationMetadata(notifyBooking),
+          dedupeKey: `${submissionData.id}:booking_pending_review`,
+        });
+      } catch (notifErr) {
+        console.error('[submit-form] Could not create notification (non-fatal):', notifErr);
+      }
     }
 
     console.log('Form submission process completed successfully');

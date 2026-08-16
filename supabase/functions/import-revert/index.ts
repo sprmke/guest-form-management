@@ -12,8 +12,7 @@
  * Pass `includeMoved: true` to also cancel those moved rows.
  *
  * Transitions use WorkflowOrchestrator with manual=true and ALL side-effect flags
- * explicitly set to false — IMPORTED bookings have no calendar events, no email
- * history, and no sheets rows (all bypassed at commit time).
+ * explicitly set to false — imported bookings have no email history from the import path.
  */
 
 import { resolveImportAccess } from '../_shared/importAccess.ts';
@@ -50,8 +49,6 @@ type RevertFailure = {
  * sheets rows, PDFs, or emails were created, so none should fire on cancel.
  */
 const REVERT_DEV_CONTROLS: DevControlFlags = {
-  updateGoogleCalendar: false,
-  updateGoogleSheets: false,
   generatePdf: false,
   sendGafRequestEmail: false,
   sendBookingAcknowledgementEmail: false,

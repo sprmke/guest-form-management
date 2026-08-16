@@ -26,7 +26,7 @@ Multi-tenant property + parking ops with a real booking status machine (document
 
 - Shell: `/org/:orgSlug/property/:propertySlug` under AdminLayout (sidebar desktop, bottom tabs mobile).
 - Period filter (`?from` / `?to`) drives KPIs, finance charts, calendar, and related summaries.
-- Attention items merge booking/finance server alerts with client chips (Connect Google, rejected external reviews).
+- Attention items merge booking/finance server alerts with client chips (rejected external reviews).
 - Maintenance reminders live under `/maintenance` with pending/completed + Telegram reminders.
 - Light-first admin UI; Asia/Manila dates.
 

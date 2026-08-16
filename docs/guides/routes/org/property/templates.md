@@ -13,7 +13,7 @@ Route: `/org/:orgSlug/property/:propertySlug/templates`
 
 ## Purpose
 
-Each template card shows a **title**, **subtitle** (built-in description from the server registry; custom templates use a generic fallback), Edit/Preview tabs, WYSIWYG editor, placeholders, and reset-to-default.
+Each template card shows a **title**, **subtitle** (built-in description from the server registry; custom templates use a generic fallback), Edit/Preview tabs, WYSIWYG editor (white `bg-card` surface on light theme), placeholders, and reset-to-default.
 
 On **phone/tablet**, the page scrolls inside the section layout (`AdminSectionNavLayout` + `AdminMobilePage` flex height chain). Desktop keeps the sticky section sidebar + content scrollport.
 
@@ -162,16 +162,16 @@ Table **`property_template_contents`**: `property_id`, `template_key`, `category
 
 Workflow emails resolve labels from the database via **`propertyEmailBranding.ts`**:
 
-| Field                                                           | Source                                                                                                                                                              |
-| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Organization name** (shell `{{brandName}}`, logo alt, footer) | `organizations.name`                                                                                                                                                |
-| **Property name** (`{{property_name}}` placeholder)             | `properties.name`                                                                                                                                                   |
-| **Unit label** (shell subtitle, subjects, From display name)    | Booking/form `tower_and_unit_number` → **`app_settings.gaf_tower_and_unit_number`** → **`properties.tower_and_unit`** → property name                               |
-| **From email address**                                          | **`RESEND_FROM_EMAIL`** env, else **`app_settings.email_reply_to`**                                                                                                 |
-| **From display name**                                           | e.g. `{unit} - GAF Request` or `{unit} - {org}` for guest mail                                                                                                      |
-| **Logo**                                                        | **`org_settings.email_logo_url`** (via merged app settings)                                                                                                         |
-| **Brand color**                                                 | Org/property `brandColor` (property override → org settings), resolved to the same **primary** hex as admin `bg-primary` for shell accent, CTAs, and section labels |
-| **Body copy**                                                   | **`property_template_contents`** (Templates page)                                                                                                                   |
+| Field                                                           | Source                                                                                                                                                |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Organization name** (shell `{{brandName}}`, logo alt, footer) | `organizations.name`                                                                                                                                  |
+| **Property name** (`{{property_name}}` placeholder)             | `properties.name`                                                                                                                                     |
+| **Unit label** (shell subtitle, subjects, From display name)    | Booking/form `tower_and_unit_number` → **`app_settings.gaf_tower_and_unit_number`** → **`properties.tower_and_unit`** → property name                 |
+| **From email address**                                          | **`RESEND_FROM_EMAIL`** env, else **`app_settings.email_reply_to`**                                                                                   |
+| **From display name**                                           | e.g. `{unit} - GAF Request` or `{unit} - {org}` for guest mail                                                                                        |
+| **Logo**                                                        | **`org_settings.email_logo_url`** (via merged app settings)                                                                                           |
+| **Brand color**                                                 | Org/property `brandColor` (property override → org settings) — the picker hex, same as admin `--primary` / `bg-primary`. Email CTA labels stay white. |
+| **Body copy**                                                   | **`property_template_contents`** (Templates page)                                                                                                     |
 
 Platform defaults (not property-specific): **`DEFAULT_EMAIL_LOGO_URL`** when org has no logo; **`PUBLIC_GUEST_APP_ORIGIN`** for link absolutization; preview sample placeholders still use demo values in the UI catalog.
 

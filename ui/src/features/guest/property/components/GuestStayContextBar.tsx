@@ -14,6 +14,7 @@ type GuestStayContextBarProps = {
   checkOutDate?: string | null;
   onClear?: () => void;
   width?: 'constrained' | 'full';
+  density?: 'default' | 'compact';
   className?: string;
 };
 
@@ -33,6 +34,7 @@ export function GuestStayContextBar({
   checkOutDate,
   onClear,
   width = 'constrained',
+  density = 'default',
   className,
 }: GuestStayContextBarProps) {
   const [searchParams] = useSearchParams();
@@ -53,6 +55,7 @@ export function GuestStayContextBar({
       checkOut={checkOut}
       onClear={onClear}
       width={width}
+      density={density}
       className={cn(className)}
     />
   );

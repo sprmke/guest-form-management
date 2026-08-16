@@ -39,7 +39,6 @@ import {
   type Voucher,
 } from '@/features/guest/sd-form/lib/voucher';
 
-
 import { GuestFormBrandHeader } from '@/components/branding/GuestFormBrandHeader';
 import { SdFormPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
 import { Button } from '@/components/ui/button';

@@ -17,6 +17,7 @@ import { MarketingPublicPageHero } from '@/features/guest/marketing/shared/compo
 import { MarketingPublicSectionHeading } from '@/features/guest/marketing/shared/components/MarketingPublicSectionHeading';
 
 import { Button } from '@/components/ui/button';
+import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
 
 const capabilities = [
   {
@@ -52,6 +53,7 @@ const capabilities = [
 ] as const;
 
 export function AboutPage() {
+  usePageTitle(publicPageTitle('About'));
   return (
     <div className="bg-background min-h-screen">
       <MarketingPublicPageHero
@@ -77,11 +79,11 @@ export function AboutPage() {
       <MarketingPublicPageContent>
         <MarketingPublicSectionHeading
           title="What the platform covers"
-          description="Guests book through property calendars and forms. Hosts and teams run each stay through a status workflow with email, calendar, and spreadsheet sync where configured."
+          description="Guests book through property calendars and forms. Hosts and teams run each stay through a status workflow with email automation where configured."
           className="mx-auto max-w-3xl"
         />
 
-        <ul className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {capabilities.map(({ icon, title, body }) => (
             <li key={title}>
               <MarketingPublicIconCard icon={icon} title={title} body={body} />

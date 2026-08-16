@@ -197,6 +197,8 @@ export function SlidingTabsContent({ value, children, className }: SlidingTabsCo
 export type SegmentedControlOption<T extends string = string> = {
   value: T;
   label?: React.ReactNode;
+  /** Accessible name + tooltip when `label` is a node (or is visually truncated). */
+  ariaLabel?: string;
   icon?: LucideIcon;
   disabled?: boolean;
   className?: string;
@@ -247,22 +249,42 @@ export function SegmentedControl<T extends string>({
         )}
         pillClassName={resolvedPillClassName}
         aria-label={ariaLabel}
-        remeasureDeps={[visible.length, value, size]}
+        remeasureDeps={[
+          visible.length,
+          value,
+          size,
+          visible.map((option) => option.ariaLabel ?? '').join('|'),
+        ]}
       >
         {visible.map(
-          ({ value: optionValue, label, icon: Icon, disabled, className: optionClassName }) => (
-            <SlidingTabsTrigger
-              key={optionValue}
-              value={optionValue}
-              disabled={disabled}
-              aria-label={typeof label === 'string' ? label : optionValue}
-              title={typeof label === 'string' ? label : optionValue}
-              className={cn(size !== 'dense' && 'segment-item', triggerClassName, optionClassName)}
-            >
-              {Icon ? <Icon className={iconClassName} aria-hidden /> : null}
-              {label}
-            </SlidingTabsTrigger>
-          )
+          ({
+            value: optionValue,
+            label,
+            ariaLabel,
+            icon: Icon,
+            disabled,
+            className: optionClassName,
+          }) => {
+            const accessibleName =
+              ariaLabel ?? (typeof label === 'string' ? label : String(optionValue));
+            return (
+              <SlidingTabsTrigger
+                key={optionValue}
+                value={optionValue}
+                disabled={disabled}
+                aria-label={accessibleName}
+                title={accessibleName}
+                className={cn(
+                  size !== 'dense' && 'segment-item',
+                  triggerClassName,
+                  optionClassName
+                )}
+              >
+                {Icon ? <Icon className={iconClassName} aria-hidden /> : null}
+                {label}
+              </SlidingTabsTrigger>
+            );
+          }
         )}
       </SlidingTabsList>
     </SlidingTabs>

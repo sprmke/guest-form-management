@@ -174,6 +174,41 @@ const VIDEO_TEMPLATE_FONT_PAIRINGS: Record<string, VideoFontPairing> = {
     label: 'Jost',
     cta: 'Plus Jakarta Sans',
   },
+  // AI-generated storyboards (`videoAiProjectBuilder.ts`) use one of these four
+  // ids as their VideoProject.templateId so the existing typography/motion
+  // resolution pipeline picks up the host's chosen font pairing unchanged.
+  'ai-editorial-serif': {
+    title: 'Fraunces',
+    subtitle: 'Jost',
+    promo: 'Fraunces',
+    body: 'Plus Jakarta Sans',
+    label: 'Jost',
+    cta: 'Plus Jakarta Sans',
+  },
+  'ai-cinematic-serif': {
+    title: 'Cormorant Garamond',
+    subtitle: 'Jost',
+    promo: 'Cormorant Garamond',
+    body: 'Plus Jakarta Sans',
+    label: 'Jost',
+    cta: 'Plus Jakarta Sans',
+  },
+  'ai-modern-sans': {
+    title: 'Space Grotesk',
+    subtitle: 'Jost',
+    promo: 'Space Grotesk',
+    body: 'Plus Jakarta Sans',
+    label: 'Jost',
+    cta: 'Plus Jakarta Sans',
+  },
+  'ai-warm-serif': {
+    title: 'Lora',
+    subtitle: 'Jost',
+    promo: 'Lora',
+    body: 'Plus Jakarta Sans',
+    label: 'Jost',
+    cta: 'Plus Jakarta Sans',
+  },
 };
 
 const VIDEO_TEMPLATE_LOOKS: Record<
@@ -227,6 +262,32 @@ const VIDEO_TEMPLATE_LOOKS: Record<
   'join-waitlist': { scrimAccentMix: 0.35, scrimBottomOpacity: 0.66, ctaChrome: 'filled' },
   'ber-months': { scrimAccentMix: 0.4, scrimBottomOpacity: 0.7 },
   'holiday-glow': { scrimAccentMix: 0.55, scrimBottomOpacity: 0.72, titleLetterSpacing: 2 },
+  // AI-generated storyboards (`videoAiProjectBuilder.ts`) — each font pairing also carries
+  // a distinct look so the 4 choices feel like genuinely different templates, not just
+  // different type on an identical frame.
+  'ai-editorial-serif': { scrimAccentMix: 0.3, scrimBottomOpacity: 0.62, pillStyle: 'outline' },
+  'ai-cinematic-serif': {
+    scrimAccentMix: 0.18,
+    scrimBottomOpacity: 0.56,
+    pillStyle: 'bare',
+    titleScale: 1.12,
+    titleLetterSpacing: 1.5,
+  },
+  'ai-modern-sans': {
+    scrimAccentMix: 0.5,
+    scrimBottomOpacity: 0.72,
+    pillStyle: 'filled',
+    ctaChrome: 'filled',
+    titleScale: 0.92,
+    titleFontWeight: 700,
+  },
+  'ai-warm-serif': {
+    scrimAccentMix: 0.38,
+    scrimBottomOpacity: 0.66,
+    pillStyle: 'compact',
+    titleScale: 1.05,
+    promoScale: 1.1,
+  },
 };
 
 export type VideoTypographyContext = {
@@ -259,10 +320,11 @@ export function resolveVideoTemplateLook(templateId: string | undefined): VideoT
 
 export function resolveVideoTypographyContext(
   templateId: string | undefined,
-  brandColor?: string
+  brandColor?: string,
+  paletteOverride?: CampaignPalette | null
 ): VideoTypographyContext {
   return {
-    palette: videoTemplatePalette(templateId ?? '', brandColor),
+    palette: paletteOverride ?? videoTemplatePalette(templateId ?? '', brandColor),
     fontPairing: resolveVideoFontPairing(templateId),
     look: resolveVideoTemplateLook(templateId),
   };

@@ -6,12 +6,12 @@
  * Payment balance receipt is required only when total > ₱0.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ExternalLink, FileImage, Loader2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { BookingCompactAssetControl } from '@/features/dashboard/bookings/components/BookingCompactAssetControl';
 import {
   ReceiptAiVerdictBadge,
   receiptAiUploadToastMessage,
@@ -19,13 +19,13 @@ import {
   receiptAiVerdictBlocksAdmin,
   type ReceiptAiVerdict,
 } from '@/features/dashboard/bookings/components/ReceiptAiVerdictBadge';
-import { WorkflowAssetPreviewWithRemove } from '@/features/dashboard/bookings/components/WorkflowAssetPreviewWithRemove';
 import {
   WorkflowFormShell,
   workflowFormEditTitle,
   type WorkflowFormVariant,
 } from '@/features/dashboard/bookings/components/WorkflowFormShell';
 import { BOOKING_QUERY_KEY } from '@/features/dashboard/bookings/hooks/useBooking';
+import type { BookingAssetPreviewHandler } from '@/features/dashboard/bookings/hooks/useBookingAssetPreview';
 import { useClearBookingAsset } from '@/features/dashboard/bookings/hooks/useClearBookingAsset';
 import { useUploadBookingAsset } from '@/features/dashboard/bookings/hooks/useUploadBookingAsset';
 import {
@@ -37,11 +37,6 @@ import {
   guestBalancePaymentReceiptRequired,
 } from '@/features/dashboard/bookings/lib/totalGuestBalance';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
-import {
-  workflowAssetPreviewCard,
-  workflowAssetViewLink,
-  workflowUploadButtonClass,
-} from '@/features/dashboard/bookings/lib/workflowActionButtonStyles';
 
 import { supabase } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
@@ -61,6 +56,7 @@ type Props = {
   /** Booking edit form: skip RFCI auto-save and strict settlement validation. */
   editMode?: boolean;
   variant?: WorkflowFormVariant;
+  onPreview: BookingAssetPreviewHandler;
 };
 
 function defaultPaidFromBooking(booking: BookingRow): number {
@@ -89,11 +85,11 @@ export function GuestBalanceSettlementForm({
   readOnly = false,
   editMode = false,
   variant = 'workflow',
+  onPreview,
 }: Props) {
   const qc = useQueryClient();
   const uploadMut = useUploadBookingAsset();
   const clearAssetMut = useClearBookingAsset();
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const savePaidMut = useMutation({
     mutationFn: async (paid: number) => {
@@ -128,12 +124,10 @@ export function GuestBalanceSettlementForm({
   const [receiptImgSrc, setReceiptImgSrc] = useState<string | null>(null);
   const [receiptImgFailed, setReceiptImgFailed] = useState(false);
   const [receiptPreviewBust, setReceiptPreviewBust] = useState(0);
-  const [receiptAiVerdict, setReceiptAiVerdict] = useState<ReceiptAiVerdict>(
-    () => booking.balance_receipt_ai_verdict ?? null
-  );
-  const [receiptAiSummary, setReceiptAiSummary] = useState(
-    () => booking.balance_receipt_ai_summary?.trim() ?? ''
-  );
+  /** Only the check from this visit's upload — not a stored verdict from an earlier step. */
+  const [receiptAiVerdict, setReceiptAiVerdict] = useState<ReceiptAiVerdict>(null);
+  const [receiptAiSummary, setReceiptAiSummary] = useState('');
+  const blockingVerdict = receiptAiVerdict ?? booking.balance_receipt_ai_verdict ?? null;
 
   useEffect(() => {
     if (!receiptUrl.trim()) {
@@ -173,11 +167,6 @@ export function GuestBalanceSettlementForm({
     if (initialDraft) return;
     setReceiptUrl(booking.guest_balance_payment_receipt_url?.trim() ?? '');
   }, [booking.guest_balance_payment_receipt_url, initialDraft]);
-
-  useEffect(() => {
-    setReceiptAiVerdict(booking.balance_receipt_ai_verdict ?? null);
-    setReceiptAiSummary(booking.balance_receipt_ai_summary?.trim() ?? '');
-  }, [booking.balance_receipt_ai_verdict, booking.balance_receipt_ai_summary]);
 
   // Persist paid amount on RFCI so sd-refund-cron can auto-advance status once settlement matches total.
   useEffect(() => {
@@ -254,7 +243,7 @@ export function GuestBalanceSettlementForm({
       onChange(null);
       return;
     }
-    if (receiptRequired && receipt && receiptAiVerdictBlocksAdmin(receiptAiVerdict)) {
+    if (receiptRequired && receipt && receiptAiVerdictBlocksAdmin(blockingVerdict)) {
       onChange(null);
       return;
     }
@@ -268,7 +257,7 @@ export function GuestBalanceSettlementForm({
     paidInput,
     receiptUrl,
     receiptRequired,
-    receiptAiVerdict,
+    blockingVerdict,
     onChange,
     readOnly,
     editMode,
@@ -299,7 +288,8 @@ export function GuestBalanceSettlementForm({
     setReceiptAiVerdict(null);
     setReceiptAiSummary('');
     setReceiptPreviewBust(0);
-    if (fileRef.current) fileRef.current.value = '';
+    setReceiptImgSrc(null);
+    setReceiptImgFailed(false);
 
     if (readOnly) return;
 
@@ -310,12 +300,11 @@ export function GuestBalanceSettlementForm({
       });
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to remove receipt');
+      throw err;
     }
   }
 
-  async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function handleReceiptFile(file: File) {
     try {
       const result = await uploadMut.mutateAsync({
         bookingId: booking.id,
@@ -343,8 +332,7 @@ export function GuestBalanceSettlementForm({
       }
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to upload receipt');
-    } finally {
-      if (fileRef.current) fileRef.current.value = '';
+      throw err;
     }
   }
 
@@ -354,7 +342,12 @@ export function GuestBalanceSettlementForm({
       : 'Guest balance settlement';
 
   return (
-    <WorkflowFormShell title={cardTitle} variant={variant} bodyClassName="space-y-4">
+    <WorkflowFormShell
+      title={cardTitle}
+      variant={variant}
+      bodyClassName="space-y-4"
+      advanceMode="manual"
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-muted-foreground text-xs font-medium">Total guest balance</span>
         <span
@@ -397,100 +390,28 @@ export function GuestBalanceSettlementForm({
             </>
           ) : null}
         </span>
-        <div className="space-y-2">
-          {receiptUrl ? (
-            <WorkflowAssetPreviewWithRemove
-              readOnly={readOnly}
-              removing={clearAssetMut.isPending}
-              uploading={uploadMut.isPending}
-              removeAriaLabel="Remove payment balance receipt"
-              onRemove={() => void handleRemoveReceipt()}
-              preview={
-                <a
-                  href={receiptImgSrc ?? receiptUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={workflowAssetPreviewCard}
-                >
-                  <div className="bg-muted relative h-12 w-12 shrink-0 overflow-hidden rounded-md">
-                    {!receiptImgSrc ? (
-                      <div className="flex h-full w-full items-center justify-center">
-                        <Loader2
-                          className="text-muted-foreground size-5 animate-spin"
-                          aria-hidden
-                        />
-                      </div>
-                    ) : receiptImgFailed ? (
-                      <div className="flex h-full w-full items-center justify-center">
-                        <FileImage className="text-muted-foreground size-5" aria-hidden />
-                      </div>
-                    ) : (
-                      <img
-                        key={receiptPreviewBust}
-                        src={receiptImgSrc}
-                        alt=""
-                        className="h-full w-full shrink-0 object-cover"
-                        width={48}
-                        height={48}
-                        onError={() => setReceiptImgFailed(true)}
-                      />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-foreground text-xs font-medium">Current receipt</p>
-                    <p className={workflowAssetViewLink}>
-                      <ExternalLink className="size-3 shrink-0" aria-hidden />
-                      View image
-                    </p>
-                  </div>
-                </a>
-              }
-            />
-          ) : (
-            <div className="border-border bg-card text-muted-foreground flex min-h-[44px] items-center justify-center rounded-lg border border-dashed px-2 text-xs">
-              <span className="inline-flex items-center gap-1.5">
-                <FileImage className="size-3.5 shrink-0" aria-hidden />
-                No payment balance receipt uploaded
-              </span>
-            </div>
-          )}
-
-          {!readOnly ? (
-            <>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={onFileChange}
-                disabled={uploadMut.isPending}
-              />
-              <button
-                type="button"
-                disabled={uploadMut.isPending || totalDue === null}
-                onClick={() => fileRef.current?.click()}
-                className={workflowUploadButtonClass(uploadMut.isPending || totalDue === null)}
-              >
-                {uploadMut.isPending ? (
-                  <>
-                    <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden />
-                    Uploading image…
-                  </>
-                ) : (
-                  <>
-                    <Upload className="size-3.5 shrink-0" aria-hidden />
-                    {receiptUrl
-                      ? 'Replace payment balance receipt'
-                      : 'Upload payment balance receipt'}
-                  </>
-                )}
-              </button>
-            </>
-          ) : null}
-        </div>
-        {receiptRequired && receiptAiVerdict ? (
-          <ReceiptAiVerdictBadge verdict={receiptAiVerdict} summary={receiptAiSummary} />
-        ) : null}
+        <BookingCompactAssetControl
+          label="Payment balance receipt"
+          showLabel={false}
+          currentUrl={receiptUrl}
+          accept="image/*"
+          readOnly={readOnly}
+          disabled={totalDue === null}
+          uploading={uploadMut.isPending}
+          removing={clearAssetMut.isPending}
+          previewCacheBust={receiptPreviewBust}
+          thumbSrc={receiptImgSrc}
+          thumbPending={Boolean(receiptUrl.trim()) && !receiptImgSrc && !receiptImgFailed}
+          suppressNormalizedThumb={receiptImgFailed}
+          onSelectFile={handleReceiptFile}
+          onRemove={handleRemoveReceipt}
+          onPreview={onPreview}
+          footer={
+            receiptRequired && receiptAiVerdict ? (
+              <ReceiptAiVerdictBadge verdict={receiptAiVerdict} summary={receiptAiSummary} />
+            ) : null
+          }
+        />
       </div>
     </WorkflowFormShell>
   );

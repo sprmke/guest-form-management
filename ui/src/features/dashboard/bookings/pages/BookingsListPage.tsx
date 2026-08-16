@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -16,6 +16,10 @@ import { BookingKanban } from '@/features/dashboard/bookings/components/BookingK
 import { BookingsSummaryCards } from '@/features/dashboard/bookings/components/BookingsSummaryCards';
 import { BookingTable } from '@/features/dashboard/bookings/components/BookingTable';
 import type { BookingView } from '@/features/dashboard/bookings/components/BookingViewToggle';
+import {
+  CalendarBookingCelebration,
+  type CalendarBookingCelebrationTrigger,
+} from '@/features/dashboard/bookings/components/calendar/CalendarBookingCelebration';
 import { useAppSettings } from '@/features/dashboard/bookings/hooks/useAppSettings';
 import { useBookings } from '@/features/dashboard/bookings/hooks/useBookings';
 import {
@@ -57,6 +61,8 @@ import { buildPageItems, normalizeAdminPageLimit } from '@/lib/table/pagination'
 
 const BOARD_BOOKINGS_LIMIT = 100;
 const VIEWS: ReadonlyArray<BookingView> = ['table', 'card', 'calendar', 'kanban'];
+/** Calendar view: a viewed month at/above this count triggers the busy-month celebration. */
+const BUSY_MONTH_CELEBRATION_THRESHOLD = 20;
 
 // ─── URL ↔ query helpers ─────────────────────────────────────
 
@@ -348,6 +354,21 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
   const pageCount = Math.max(1, Math.ceil(total / query.limit));
   const pageItems = buildPageItems(query.page, pageCount);
 
+  // Busy-month celebration: fires once per distinct month reaching the
+  // threshold, and again on navigating to another month that also qualifies.
+  const [celebration, setCelebration] = useState<CalendarBookingCelebrationTrigger | null>(null);
+  const celebratedMonthsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (view !== 'calendar' || isLoading || isFetching) return;
+    const monthStart = dateNav.dateRange.from;
+    if (!monthStart || total < BUSY_MONTH_CELEBRATION_THRESHOLD) return;
+    const monthKey = format(monthStart, 'yyyy-MM');
+    if (celebratedMonthsRef.current.has(monthKey)) return;
+    celebratedMonthsRef.current.add(monthKey);
+    setCelebration({ key: monthKey, count: total });
+  }, [view, isLoading, isFetching, total, dateNav.dateRange.from]);
+
   // Calendar view: fetch a higher cap so an entire month range can render.
   // We don't want pagination chopping a month view in half. The list-bookings
   // edge function caps `limit` at 100 — good enough for a single month at this
@@ -518,6 +539,8 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
       </AdminMobilePage>
 
       {canImport ? <ImportWizardModal open={importOpen} onOpenChange={setImportOpen} /> : null}
+
+      <CalendarBookingCelebration trigger={celebration} onDone={() => setCelebration(null)} />
     </>
   );
 }

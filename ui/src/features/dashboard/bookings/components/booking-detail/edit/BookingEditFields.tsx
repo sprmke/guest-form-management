@@ -1,7 +1,6 @@
 /**
- * Shared RHF field glue for the booking edit tabs (and the nested Workflow
- * Details sub-forms, which still use `Section` via `WorkflowFormShell`'s
- * `variant="edit"` — see GuestSdRefundEditForm.tsx / GuestSdRefundDetailsSection.tsx).
+ * Shared RHF field glue for the booking edit tabs.
+ * Progress-rail forms use `WorkflowFormShell` separately.
  *
  * Relocated verbatim from the retired `BookingEditLayout.tsx` — no visual
  * changes here, `CollapsibleGroup` and `EditSectionJumpNav` were the only
@@ -16,9 +15,9 @@ import { cn } from '@/lib/utils';
 
 import type { FieldError } from 'react-hook-form';
 
-/** Matches shadcn Input — edit workspace fields (high contrast vs view rows). */
+/** Matches shadcn Input — quiet border like view surfaces; focus via `field-focus`. */
 export const fieldControlClass =
-  'flex w-full rounded-lg border-2 border-border/70 bg-card px-4 py-2.5 text-sm font-medium text-foreground transition-colors placeholder:text-muted-foreground/70 disabled:cursor-not-allowed disabled:opacity-50 hover:border-primary/35 field-focus';
+  'flex w-full min-w-0 rounded-lg border border-border/70 bg-card px-3.5 py-2.5 text-sm font-medium text-foreground transition-colors placeholder:text-muted-foreground/70 disabled:cursor-not-allowed disabled:opacity-50 hover:border-primary/30 field-focus';
 
 /** @deprecated Prefer `fieldControlClass` — kept for textarea in tab files. */
 export const inputClass = cn(fieldControlClass, 'resize-none');
@@ -53,10 +52,9 @@ export function fieldErrorMessage(error: FieldError | undefined): string | undef
 }
 
 /**
- * Sub-heading + divider for grouping fields inside a tab body (e.g. "Guest
- * Identity" / "Additional Guests" / "More details" inside the Guest tab, or
- * the nested Workflow Details sub-forms). Not a collapsible — tabs already
- * own the top-level section switch.
+ * Sub-heading + divider for grouping fields inside a card body (nested workflow
+ * forms, or multi-block tabs). Prefer separate `BookingDetailCard`s when the
+ * groups match view-mode panels. Not a collapsible — tabs own top-level switch.
  */
 export function Section({
   id,
@@ -77,23 +75,18 @@ export function Section({
         className
       )}
     >
-      <div className="flex items-center gap-2">
-        <span className="bg-primary/70 h-4 w-0.5 shrink-0 rounded-full" aria-hidden />
-        <h3 className="text-foreground/80 text-[11px] font-bold uppercase tracking-[0.14em]">
-          {title}
-        </h3>
-      </div>
+      <h3 className="text-overline">{title}</h3>
       {children}
     </section>
   );
 }
 
 export function Row2({ children }: { children: ReactNode }) {
-  return <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">{children}</div>;
+  return <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 sm:gap-4">{children}</div>;
 }
 
 export function Row3({ children }: { children: ReactNode }) {
-  return <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">{children}</div>;
+  return <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3 sm:gap-4">{children}</div>;
 }
 
 export function Field({
@@ -103,6 +96,7 @@ export function Field({
   htmlFor,
   fieldKey,
   children,
+  className,
 }: {
   label: string;
   required?: boolean;
@@ -111,18 +105,22 @@ export function Field({
   /** Used for scroll-to-error (`data-field`) when htmlFor is absent. */
   fieldKey?: string;
   children: ReactNode;
+  className?: string;
 }) {
   const errorId = htmlFor ? fieldErrorId(htmlFor) : fieldKey ? fieldErrorId(fieldKey) : undefined;
 
   return (
-    <div className="flex flex-col gap-1.5" data-field={fieldKey ?? htmlFor}>
-      <label htmlFor={htmlFor} className="text-foreground/75 text-xs font-semibold">
+    <div
+      className={cn('flex min-w-0 flex-col gap-1.5', className)}
+      data-field={fieldKey ?? htmlFor}
+    >
+      <label htmlFor={htmlFor} className="text-muted-foreground text-xs font-medium">
         {label}
-        {required && (
+        {required ? (
           <span className="text-destructive ml-0.5" aria-hidden>
             *
           </span>
-        )}
+        ) : null}
       </label>
       {children}
       {error ? (
@@ -159,9 +157,10 @@ export function CheckboxOption({
     <label
       htmlFor={id}
       className={cn(
-        'border-border/55 bg-muted/25 flex min-h-[44px] cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-2.5',
-        'hover:border-primary/25 hover:bg-muted/40 transition-colors',
-        checked && 'border-primary/35 bg-primary/5',
+        'border-border/60 bg-muted/20 flex min-h-[44px] cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-2.5',
+        'hover:border-primary/25 hover:bg-muted/35 transition-colors',
+        checked && 'border-primary/30 bg-primary/[0.04]',
+        disabled && 'cursor-not-allowed opacity-50',
         className
       )}
     >
@@ -174,7 +173,9 @@ export function CheckboxOption({
         onBlur={onBlur}
         className={checkboxClassName}
       />
-      <span className="text-foreground text-sm font-medium leading-snug">{label}</span>
+      <span className="text-foreground min-w-0 text-sm font-medium leading-snug [overflow-wrap:anywhere]">
+        {label}
+      </span>
     </label>
   );
 }

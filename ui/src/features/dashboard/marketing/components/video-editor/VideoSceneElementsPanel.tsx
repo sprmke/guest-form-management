@@ -328,7 +328,9 @@ function LayerRow({
                 <img
                   src={layer.imageUrl}
                   alt=""
-                  className="mx-auto max-h-16 w-auto max-w-full object-contain"
+                  width={64}
+                  height={64}
+                  className="mx-auto size-16 rounded-lg object-cover object-center"
                 />
               ) : null}
               <VideoLayerWidthControl

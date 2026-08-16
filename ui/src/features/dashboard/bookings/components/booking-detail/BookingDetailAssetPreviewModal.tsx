@@ -4,11 +4,12 @@ import { Loader2, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
 import {
-  ReceiptAiVerdictBadge,
+  ReceiptAiVerdictBanner,
   type DocumentAiVerdictVariant,
   type ReceiptAiVerdict,
 } from '@/features/dashboard/bookings/components/ReceiptAiVerdictBadge';
 import { receiptAiPreviewLoading } from '@/features/dashboard/bookings/hooks/useReceiptAiBackfill';
+import { ADMIN_GUEST_VIEW_SLOTS } from '@/features/dashboard/bookings/lib/adminGuestSlots';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
 import { cn } from '@/lib/utils';
@@ -26,6 +27,7 @@ export function receiptAiMetaForPreviewAsset(
   isBackfilling: boolean
 ): {
   verdict: ReceiptAiVerdict;
+  summary: string | null;
   loading: boolean;
   variant: DocumentAiVerdictVariant;
 } | null {
@@ -38,6 +40,7 @@ export function receiptAiMetaForPreviewAsset(
   if (asset.label === 'Downpayment receipt' || matches(booking.payment_receipt_url)) {
     return {
       verdict: booking.dp_receipt_ai_verdict,
+      summary: booking.dp_receipt_ai_summary?.trim() || null,
       loading: receiptAiPreviewLoading(
         isBackfilling,
         booking.payment_receipt_url,
@@ -53,6 +56,7 @@ export function receiptAiMetaForPreviewAsset(
   ) {
     return {
       verdict: booking.balance_receipt_ai_verdict,
+      summary: booking.balance_receipt_ai_summary?.trim() || null,
       loading: receiptAiPreviewLoading(
         isBackfilling,
         booking.guest_balance_payment_receipt_url,
@@ -69,6 +73,7 @@ export function receiptAiMetaForPreviewAsset(
   ) {
     return {
       verdict: booking.parking_receipt_ai_verdict,
+      summary: booking.parking_receipt_ai_summary?.trim() || null,
       loading: receiptAiPreviewLoading(
         isBackfilling,
         booking.parking_payment_receipt_url,
@@ -78,14 +83,21 @@ export function receiptAiMetaForPreviewAsset(
     };
   }
 
-  if (asset.label === 'Valid ID' || matches(booking.valid_id_url)) {
+  for (const slot of ADMIN_GUEST_VIEW_SLOTS) {
+    const url = booking[slot.validIdUrlKey];
+    const isPrimary = slot.index === 1;
+    const labelMatch =
+      (isPrimary && asset.label === 'Valid ID') ||
+      asset.label === `${slot.label} valid ID` ||
+      asset.label === `${slot.label} guest valid ID`;
+    if (!labelMatch && !matches(url)) continue;
+    const verdictKey = slot.validIdAiVerdictKey;
+    const summaryKey = slot.validIdAiSummaryKey;
+    if (!verdictKey) return null;
     return {
-      verdict: booking.valid_id_ai_verdict,
-      loading: receiptAiPreviewLoading(
-        isBackfilling,
-        booking.valid_id_url,
-        booking.valid_id_ai_verdict
-      ),
+      verdict: booking[verdictKey],
+      summary: (summaryKey ? booking[summaryKey]?.trim() : null) || null,
+      loading: receiptAiPreviewLoading(isBackfilling, url, booking[verdictKey]),
       variant: 'valid_id',
     };
   }
@@ -96,7 +108,7 @@ export function receiptAiMetaForPreviewAsset(
 export function BookingDetailAssetPreviewModal({
   asset,
   booking,
-  isReceiptAiBackfilling,
+  isReceiptAiBackfilling = false,
   loading,
   onClose,
 }: {
@@ -107,7 +119,7 @@ export function BookingDetailAssetPreviewModal({
     type: 'image' | 'pdf' | 'file';
   } | null;
   booking: BookingRow | null | undefined;
-  isReceiptAiBackfilling: boolean;
+  isReceiptAiBackfilling?: boolean;
   loading: boolean;
   onClose: () => void;
 }) {
@@ -145,19 +157,6 @@ export function BookingDetailAssetPreviewModal({
             <p className="text-foreground truncate text-xs font-semibold sm:text-sm">
               {asset?.label ?? 'Loading preview...'}
             </p>
-            {receiptAi?.loading ? (
-              <Loader2
-                className="text-muted-foreground size-3.5 shrink-0 animate-spin"
-                aria-label="Checking receipt"
-              />
-            ) : receiptAi?.verdict && String(receiptAi.verdict).toLowerCase() !== 'skipped' ? (
-              <ReceiptAiVerdictBadge
-                verdict={receiptAi.verdict}
-                compact
-                className="shrink-0"
-                variant={receiptAi.variant}
-              />
-            ) : null}
           </div>
           <div className="flex items-center gap-2">
             {asset && (
@@ -180,6 +179,13 @@ export function BookingDetailAssetPreviewModal({
             </button>
           </div>
         </div>
+        {receiptAi ? (
+          <ReceiptAiVerdictBanner
+            verdict={receiptAi.verdict}
+            summary={receiptAi.summary}
+            loading={receiptAi.loading}
+          />
+        ) : null}
         <div className="bg-muted flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto overscroll-contain p-1.5 sm:min-h-[12rem] sm:p-3">
           {loading && (
             <div className="text-muted-foreground flex flex-1 items-center justify-center gap-2">

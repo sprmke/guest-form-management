@@ -76,7 +76,6 @@ Each step validates its own fields (via `getFieldsForGuestFormStep`) before **Ne
    - Associates the submission with the signed-in guest's account (`guest_user_id`) when a valid session JWT is present.
    - Runs non-blocking AI validation on the downpayment receipt and each valid ID upload (logged, not submit-blocking).
    - Sends the **New Booking Request** notify email (to `EMAIL_REPLY_TO`, not the guest) when enabled and this is a genuine change.
-   - Updates Google Calendar + Sheets when those flags are on.
 5. On success, guest is redirected to `/properties/:slug/success?bookingId=`.
 
 ### Behavior / edge cases
@@ -94,7 +93,7 @@ Each step validates its own fields (via `getFieldsForGuestFormStep`) before **Ne
 
 ## Developer controls (non-production only)
 
-Shown on the last step, never gated by `?dev=true`. Checkboxes (all on by default): save to database, save images to storage, send email (New Booking Request only), update Google Calendar, update Google Sheets. Also includes **Paste Booking Info from Clipboard** and **Generate New Data** (new submissions) and **Cancel This Booking** (existing submissions). Production always runs the full happy path regardless of client input.
+Shown on the last step, never gated by `?dev=true`. Checkboxes (all on by default): save to database, save images to storage, send email (New Booking Request only). Also includes **Paste Booking Info from Clipboard** and **Generate New Data** (new submissions) and **Cancel This Booking** (existing submissions). Production always runs the full happy path regardless of client input.
 
 ---
 

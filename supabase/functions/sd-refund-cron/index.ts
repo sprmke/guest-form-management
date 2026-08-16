@@ -19,7 +19,7 @@
  * Email guard (stale check-outs):
  *   If check-out is older than `SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS` (default 30; set `0` to disable),
  *   the cron **does not** send the check-out email and passes **`sendSdRefundFormEmail: false`** on transition
- *   so guests who departed long ago are not surprised. Calendar/sheet still update when the transition runs.
+ *   so guests who departed long ago are not surprised. Email side effects still run when the transition fires.
  *
  * Idempotency:
  *   - The status machine (`canTransition`) prevents re-processing: a booking
@@ -385,8 +385,6 @@ serve(async (req) => {
           {
             saveToDatabase: true,
             generatePdf: false,
-            updateGoogleCalendar: true,
-            updateGoogleSheets: true,
             sendGafRequestEmail: false,
             sendParkingBroadcastEmail: false,
             sendPetRequestEmail: false,

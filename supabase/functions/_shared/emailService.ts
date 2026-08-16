@@ -1,5 +1,6 @@
 import { guestSdFormPath } from './publicGuestPaths.ts';
 import { buildGuestStayGuideUrl } from './guestStayGuide.ts';
+import { buildApprovalInboundAddress } from './approvalInboundAddress.ts';
 import { resolvePropertySlugById } from './propertyScope.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
@@ -454,6 +455,13 @@ export async function sendEmail(
 
   const updatePrefix = isUpdate ? 'UPDATED - ' : '';
 
+  const propertySlug = propertyId ? await resolvePropertySlugById(propertyId) : null;
+  const inboundReplyTo =
+    (propertySlug ? buildApprovalInboundAddress(propertySlug) : null) ?? EMAIL_REPLY_TO;
+  // Ops keeps a human copy; Azure Reply-To routes into approval-email-webhook.
+  // Never CC the guest — per booking-workflow.mdc §3.
+  const cc = inboundReplyTo !== EMAIL_REPLY_TO && EMAIL_REPLY_TO ? [EMAIL_REPLY_TO] : undefined;
+
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -463,8 +471,8 @@ export async function sendEmail(
     body: JSON.stringify({
       from: formatResendFromAddress(`${unitLabel} - GAF Request`, branding.fromEmail),
       to: [EMAIL_TO],
-      // Never CC the guest on the GAF request email — per booking-workflow.mdc §3
-      reply_to: EMAIL_REPLY_TO,
+      reply_to: inboundReplyTo,
+      ...(cc ? { cc } : {}),
       subject: `${urgentPrefix}${updatePrefix}${unitLabel} - GAF Request ${formatEmailDateRange(displayCheckInDate, displayCheckOutDate)}`,
       html: emailContent,
       ...(attachments.length > 0 ? { attachments } : {}),
@@ -596,6 +604,12 @@ export async function sendPetEmail(
 
   const updatePrefix = isUpdate ? 'UPDATED - ' : '';
 
+  const petPropertyId = propertyId ?? null;
+  const propertySlug = petPropertyId ? await resolvePropertySlugById(petPropertyId) : null;
+  const inboundReplyTo =
+    (propertySlug ? buildApprovalInboundAddress(propertySlug) : null) ?? EMAIL_REPLY_TO;
+  const cc = inboundReplyTo !== EMAIL_REPLY_TO && EMAIL_REPLY_TO ? [EMAIL_REPLY_TO] : undefined;
+
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -605,8 +619,8 @@ export async function sendPetEmail(
     body: JSON.stringify({
       from: formatResendFromAddress(`${unitLabel} - Pet Request`, branding.fromEmail),
       to: [EMAIL_TO],
-      // Never CC the guest on the Pet request email — per booking-workflow.mdc §3
-      reply_to: EMAIL_REPLY_TO,
+      reply_to: inboundReplyTo,
+      ...(cc ? { cc } : {}),
       subject: `${urgentPrefix}${updatePrefix}${unitLabel} - Pet Request ${formatEmailDateRange(displayCheckInDate, displayCheckOutDate)}`,
       html: emailContent,
       attachments: attachments,

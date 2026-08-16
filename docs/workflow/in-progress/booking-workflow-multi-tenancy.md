@@ -2,7 +2,7 @@
 title: 'Booking workflow multi-tenancy: audit, design & backlog'
 status: in-progress
 tags: [workflow, in-progress, booking-workflow, multi-tenancy]
-updated: 2026-08-07
+updated: 2026-08-17
 stage: in-progress
 kind: plan
 ---
@@ -11,7 +11,9 @@ kind: plan
 
 Back to [in progress work](./README.md).
 
-**Implementation plan (v1 slice):** [`booking-workflow-configurable-docs.md`](../done/booking-workflow-configurable-docs.md) — **done** (2026-08-03). Tasks 1–8 shipped. Post-ship: document requirements editor on Super Admin → Developments; property override retired; property settings = Workflow sync only.
+**Implementation plan (v1 slice):** [`booking-workflow-configurable-docs.md`](../done/booking-workflow-configurable-docs.md) — **done** (2026-08-03). Tasks 1–8 shipped. Post-ship: document requirements editor on Super Admin → Developments; property override retired.
+
+> **2026-08-11 update:** Google Calendar / Sheets sync and the Gmail API listener were **removed** (see [`remove-google-calendar-sheets.md`](../done/remove-google-calendar-sheets.md)). Production GAF/pet approvals use Resend inbound (`approval-email-webhook`). Sections below that still describe CalendarService / SheetsService / `gmail-listener` are **historical audit notes**, not current behavior.
 
 ## Why this doc exists
 
@@ -39,7 +41,7 @@ The platform is now expanding to multiple tenants, properties, and residence/pro
 `supabase/functions/_shared/workflowOrchestrator.ts` (870 lines) is already **partially** multi-tenant:
 
 - **Already configurable per property:** `propertyAutomationEnabled()` / `PropertyAutomationToggleKey` (imported `:33-36`, read from `app_settings.automation_toggles` via `propertyAutomationToggles.ts`) lets each property turn each outbound email on/off independently — `emailNewBookingRequest`, `emailGafRequest`, `emailBookingAcknowledgement`, `emailPetRequest`, `emailParkingBroadcast`, `emailReadyForCheckin`, `emailSdRefundCheckout` (`propertyAutomationToggles.ts:8-16`, all default `true`). A `DevControlFlags` mechanism (`:114-127`) additionally lets an admin or dev toggle Calendar, Sheets, and each email at call time for testing.
-- **Structurally hardcoded:** the toggles above only gate _whether the email fires_ — they don't make GAF/pet _optional as a workflow concept_. `TransitionPayload` types `document_completion_target` / `document_completion_clear_target` to the literal union `'PENDING_GAF' | 'PENDING_PARKING_REQUEST' | 'PENDING_PET_REQUEST'` (`:54-108`), and PDF generation is unconditional in the `PENDING_REVIEW → PENDING_DOCUMENTS`-family transition: `generatePDF(fd, propertyId)` / `generatePetPDF(fd, propertyId)` (`:600, 606`) and the corresponding `sendEmail(...)` / `sendPetEmail(...)` calls (`:662, 691`) always run for that transition (subject to the on/off toggle, not to "does this property even have a GAF requirement"). There is no path for a property that has zero document requirements to skip `PENDING_DOCUMENTS` entirely — the parent status is always visited.
+- **Structurally hardcoded:** the toggles above only gate _whether the email fires_ — they don't make GAF/pet _optional as a workflow concept_. `TransitionPayload` types `document_completion_target` to the literal union `'PENDING_GAF' | 'PENDING_PARKING_REQUEST' | 'PENDING_PET_REQUEST'` (`:54-108`), and PDF generation is unconditional in the `PENDING_REVIEW → PENDING_DOCUMENTS`-family transition: `generatePDF(fd, propertyId)` / `generatePetPDF(fd, propertyId)` (`:600, 606`) and the corresponding `sendEmail(...)` / `sendPetEmail(...)` calls (`:662, 691`) always run for that transition (subject to the on/off toggle, not to "does this property even have a GAF requirement"). There is no path for a property that has zero document requirements to skip `PENDING_DOCUMENTS` entirely — the parent status is always visited.
 - **Calendar/Sheets sync is not property-optional at all.** `CalendarService.updateCalendarEventStatus()` (`:543`) and `SheetsService.updateSheetWorkflowStatus()` (`:566`) run for every transition unless the `DevControlFlags` (developer/testing override, not a per-property setting) disable them. A property that doesn't use Google Sheets, or doesn't want a shared calendar, has no way to opt out in production.
 
 ### 1.3 UI — independent hardcoded mirror, plus property-specific PDF modules
@@ -151,7 +153,7 @@ Two places carry the new config, following the existing `developments`/`app_sett
 
 A new shared module `documentRequirements.ts` (sibling to `propertyAutomationToggles.ts`) would own: the `DocumentRequirement` type, `DEFAULT_DOCUMENT_REQUIREMENTS` (today's GAF+Pet, so the existing Azure North property's behavior is unchanged after migration), and a `resolveDocumentRequirements(propertyId)` function that reads `app_settings.document_requirements_override` if present, else falls back to the property's `developments.settings.workflowDefaults`, else the hardcoded default. This mirrors `mergePropertyAutomationToggles()`'s fallback shape (`propertyAutomationToggles.ts:32-40`).
 
-**Per-requirement completion tracking:** rather than one DB column per document type (`gaf_completed_at`, `pet_completed_at`, …, which doesn't scale to arbitrary requirement lists), add a single `document_requirement_completions JSONB NOT NULL DEFAULT '{}'` column to `guest_submissions`, shaped `{ "gaf": { "completedAt": "...", "approvedPdfUrl": "...", "manualIncomplete": false }, "pet": {...} }`. Existing named columns (`gaf_completed_at`, `approved_gaf_pdf_url`, etc.) stay as-is for the existing Azure North rows during migration — a follow-up implementation plan should decide whether to backfill into the JSONB shape or keep named columns as a special case indefinitely (the latter is simpler short-term but reintroduces hardcoding; flagged as a decision point, not resolved here).
+**Per-requirement completion tracking:** rather than one DB column per document type (`gaf_completed_at`, `pet_completed_at`, …, which doesn't scale to arbitrary requirement lists), add a single `document_requirement_completions JSONB NOT NULL DEFAULT '{}'` column to `guest_submissions`, shaped `{ "gaf": { "completedAt": "...", "approvedPdfUrl": "..." }, "pet": {...} }`. Existing named columns (`gaf_completed_at`, `approved_gaf_pdf_url`, etc.) stay as-is for the existing Azure North rows during migration — a follow-up implementation plan should decide whether to backfill into the JSONB shape or keep named columns as a special case indefinitely (the latter is simpler short-term but reintroduces hardcoding; flagged as a decision point, not resolved here).
 
 ## 3. Section-by-section review — booking detail, edit, workflow
 

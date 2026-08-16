@@ -2,6 +2,7 @@ import { Fragment } from 'react';
 import type { ReactNode } from 'react';
 
 import { adminPropertyRoutes } from '@/features/dashboard/bookings/routes/propertyRoutes';
+import { customPagesPropertyRoute } from '@/features/dashboard/custom-pages/routes';
 import { financePropertyRoute } from '@/features/dashboard/finance/routes';
 import { propertyInboxRoute } from '@/features/dashboard/inbox/routes';
 import { maintenancePropertyRoute } from '@/features/dashboard/maintenance/routes';
@@ -35,6 +36,7 @@ export const dashboardRoutes: ReactNode[] = [
       <>
         {dashboardPropertyRoute(propertyRoute)}
         {adminPropertyRoutes(propertyRoute)}
+        {customPagesPropertyRoute(propertyRoute)}
         {financePropertyRoute(propertyRoute)}
         {pricingPropertyRoute(propertyRoute)}
         {maintenancePropertyRoute(propertyRoute)}

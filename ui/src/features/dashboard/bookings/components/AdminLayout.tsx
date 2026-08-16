@@ -18,14 +18,21 @@ import { ChevronUp, ChevronLeft, ChevronRight, LogOut } from 'lucide-react';
 import { hostLoginPath } from '@/features/guest/auth/lib/hostAuthPaths';
 import { ModeSwitcher } from '@/features/guest/marketing/shared/components/ModeSwitcher';
 
+import { AiAssistantLauncherButton } from '@/features/dashboard/ai-assistant/components/AiAssistantLauncherButton';
+import { useAiAssistantAccess } from '@/features/dashboard/ai-assistant/hooks/useAiAssistantAccess';
+import {
+  getAssistantOpenRequestId,
+  subscribeAssistantOpenRequest,
+} from '@/features/dashboard/ai-assistant/lib/assistantOpenStore';
 import {
   AdminBrandTheme,
   useAdminBrandThemeStyle,
 } from '@/features/dashboard/bookings/components/AdminBrandTheme';
 import { AdminMoreSheet } from '@/features/dashboard/bookings/components/AdminMoreSheet';
-import { GmailReconnectProvider } from '@/features/dashboard/bookings/components/GmailReconnectProvider';
 import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
 import {
+  ASSISTANT_TAB_KEY,
+  NOTIFICATIONS_TAB_KEY,
   resolveBottomTabActiveKey,
   splitAdminBottomNav,
 } from '@/features/dashboard/bookings/lib/adminBottomNav';
@@ -45,10 +52,19 @@ import {
   type SidebarNavSection,
 } from '@/features/dashboard/bookings/lib/adminSidebarNav';
 import { resolveActiveNavHref } from '@/features/dashboard/bookings/lib/navActive';
+import { NotificationBell } from '@/features/dashboard/notifications/components/NotificationBell';
+import { NotificationsProvider } from '@/features/dashboard/notifications/components/NotificationsProvider';
+import { useNotificationsList } from '@/features/dashboard/notifications/hooks/useNotifications';
 import { OrgSettingsIssuesSync } from '@/features/dashboard/org/components/OrgSettingsIssuesSync';
 import { SectionNavIssueDot } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
-import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
-import { useOptionalParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
+import {
+  type OrgContextValue,
+  useOptionalOrgContext,
+} from '@/features/dashboard/org/components/RequireOrgContext';
+import {
+  type ParkingContextValue,
+  useOptionalParkingContext,
+} from '@/features/dashboard/org/components/RequireParkingContext';
 import { SidebarTenantScope } from '@/features/dashboard/org/components/TenantSwitchers';
 import { ListingContractRenewalProvider } from '@/features/dashboard/org/components/listing-authorization/ListingContractRenewalProvider';
 import { ListingVerificationSidebarCta } from '@/features/dashboard/org/components/listing-authorization/ListingVerificationSidebarCta';
@@ -58,6 +74,7 @@ import {
 } from '@/features/dashboard/org/components/verification/GetVerifiedModal';
 import { useOrganizations, useProperties } from '@/features/dashboard/org/hooks/useOrganizations';
 import { useParkings } from '@/features/dashboard/org/hooks/useParkings';
+import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import {
   hasOrgSettingsIssues,
   subscribeOrgSettingsIssues,
@@ -66,6 +83,7 @@ import {
   hasPropertySettingsIssues,
   subscribePropertySettingsIssues,
 } from '@/features/dashboard/org/lib/propertySettingsIssuesStore';
+import type { Organization, Parking, Property } from '@/features/dashboard/org/types';
 import { SuperAdminSidebarScope } from '@/features/dashboard/super-admin/components/SuperAdminSidebarScope';
 import { superAdminOrgSlugFromPath } from '@/features/dashboard/super-admin/lib/superAdminPaths';
 import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermissions';
@@ -83,6 +101,14 @@ import { PageTransition } from '@/components/mobile/PageTransition';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { SlidingActivePill } from '@/components/ui/SlidingActivePill';
 import { useSlidingActivePill } from '@/hooks/useSlidingActivePill';
+import { useFavicon } from '@/lib/favicon';
+import {
+  appPageTitle,
+  orgPageTitle,
+  parkingDashboardPageTitle,
+  propertyDashboardPageTitle,
+  usePageTitle,
+} from '@/lib/pageTitle';
 import { cn } from '@/lib/utils';
 
 const SIDEBAR_COLLAPSED_KEY = 'kame-admin-sidebar-collapsed';
@@ -98,19 +124,67 @@ function readSidebarCollapsed(): boolean {
   return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true';
 }
 
+function resolveAdminPageTitle(
+  pathname: string,
+  navSections: SidebarNavSection[],
+  activeNavHref: string | null,
+  tenant: OrgContextValue | null,
+  parkingTenant: ParkingContextValue | null,
+  orgsData: { organizations: Organization[] } | undefined,
+  propertiesData: { properties: Property[] } | undefined,
+  parkingsData: { parkings: Parking[] } | undefined,
+  routeOrgSlug: string | undefined,
+  routePropertySlug: string | undefined,
+  routeParkingSlug: string | undefined
+): string | undefined {
+  const activeItem = navSections
+    .flatMap((s) => s.items)
+    .find((item) => item.href && item.href === activeNavHref);
+  const pageName = activeItem?.label;
+
+  if (isSuperAdminPath(pathname)) {
+    return appPageTitle(pageName ?? 'Admin');
+  }
+
+  const orgSlug = tenant?.orgSlug ?? parkingTenant?.orgSlug ?? routeOrgSlug;
+  const org = orgsData?.organizations.find((o) => o.slug === orgSlug);
+  const orgName = org?.name;
+
+  if (isPropertyAdminPath(pathname)) {
+    const propertySlug = tenant?.propertySlug ?? routePropertySlug;
+    const property =
+      tenant?.property ?? propertiesData?.properties.find((p) => p.slug === propertySlug);
+    if (property?.name && pageName) {
+      return propertyDashboardPageTitle(property.name, pageName);
+    }
+    return undefined;
+  }
+
+  if (isParkingAdminPath(pathname)) {
+    const parkingSlug = parkingTenant?.parkingSlug ?? routeParkingSlug;
+    const parking =
+      parkingTenant?.parking ?? parkingsData?.parkings.find((p) => p.slug === parkingSlug);
+    if (orgName && parking?.name && pageName) {
+      return parkingDashboardPageTitle(orgName, parking.name, pageName);
+    }
+    return undefined;
+  }
+
+  if (isOrgAdminPath(pathname)) {
+    if (orgName && pageName) {
+      return orgPageTitle(orgName, pageName);
+    }
+    return undefined;
+  }
+
+  return undefined;
+}
+
 type Props = {
   children: ReactNode;
   /** Fill main column height (inbox-style layouts). */
   fillMain?: boolean;
 };
-
-export function AdminLayout({ children, fillMain }: Props) {
-  return (
-    <AdminBrandTheme>
-      <AdminLayoutShell fillMain={fillMain}>{children}</AdminLayoutShell>
-    </AdminBrandTheme>
-  );
-}
 
 const AdminLayoutFillMainContext = createContext<((fill: boolean) => void) | null>(null);
 const AdminLayoutFillMainActiveContext = createContext(false);
@@ -133,25 +207,34 @@ export function useAdminLayoutIsFillMain(): boolean {
   return useContext(AdminLayoutFillMainActiveContext);
 }
 
-/** Persistent admin chrome for React Router layout routes — keeps sidebar mounted across navigations. */
-export function AdminLayoutOutlet() {
-  const [fillMain, setFillMain] = useState(false);
+export function AdminLayout({ children, fillMain: fillMainProp = false }: Props) {
+  const [fillMainOptIn, setFillMainOptIn] = useState(false);
   const fillCountRef = useRef(0);
   const setFill = useCallback((fill: boolean) => {
     fillCountRef.current = Math.max(0, fillCountRef.current + (fill ? 1 : -1));
-    setFillMain(fillCountRef.current > 0);
+    setFillMainOptIn(fillCountRef.current > 0);
   }, []);
+  const fillMain = fillMainProp || fillMainOptIn;
 
   return (
     <AdminLayoutFillMainContext.Provider value={setFill}>
       <AdminLayoutFillMainActiveContext.Provider value={fillMain}>
-        <ListingContractRenewalProvider>
-          <AdminLayout fillMain={fillMain}>
-            <Outlet />
-          </AdminLayout>
-        </ListingContractRenewalProvider>
+        <AdminBrandTheme>
+          <ListingContractRenewalProvider>
+            <AdminLayoutShell fillMain={fillMain}>{children}</AdminLayoutShell>
+          </ListingContractRenewalProvider>
+        </AdminBrandTheme>
       </AdminLayoutFillMainActiveContext.Provider>
     </AdminLayoutFillMainContext.Provider>
+  );
+}
+
+/** Persistent admin chrome for React Router layout routes — keeps sidebar mounted across navigations. */
+export function AdminLayoutOutlet() {
+  return (
+    <AdminLayout>
+      <Outlet />
+    </AdminLayout>
   );
 }
 
@@ -259,25 +342,137 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
     hasOrgSettingsIssues,
     () => false
   );
+  const assistantOpenRequestId = useSyncExternalStore(
+    subscribeAssistantOpenRequest,
+    getAssistantOpenRequestId,
+    () => 0
+  );
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed);
+  const propertyId = usePropertyIdParam();
+  const { accessible: assistantAccessible } = useAiAssistantAccess(propertyId);
+  const { data: notificationsPreview } = useNotificationsList('preview');
+  const unreadNotificationCount = notificationsPreview?.pages[0]?.unreadCount ?? 0;
 
   useEffect(() => {
     setMoreSheetOpen(false);
+    setNotificationsOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (assistantOpenRequestId === 0) return;
+    setMoreSheetOpen(false);
+    setNotificationsOpen(false);
+    setAssistantOpen(true);
+  }, [assistantOpenRequestId]);
+
+  const pageTitle = useMemo(
+    () =>
+      resolveAdminPageTitle(
+        location.pathname,
+        navSections,
+        activeNavHref,
+        tenant,
+        parkingTenant,
+        orgsData,
+        propertiesData,
+        parkingsData,
+        routeOrgSlug,
+        routePropertySlug,
+        routeParkingSlug
+      ),
+    [
+      location.pathname,
+      navSections,
+      activeNavHref,
+      tenant,
+      parkingTenant,
+      orgsData,
+      propertiesData,
+      parkingsData,
+      routeOrgSlug,
+      routePropertySlug,
+      routeParkingSlug,
+    ]
+  );
+  usePageTitle(pageTitle);
+
+  const faviconUrl = useMemo(() => {
+    if (isSuperAdminPath(location.pathname)) return undefined;
+    if (isPropertyAdminPath(location.pathname)) return tenant?.org.logoUrl ?? undefined;
+    if (isParkingAdminPath(location.pathname)) return parkingTenant?.org.logoUrl ?? undefined;
+    if (isOrgAdminPath(location.pathname)) {
+      return orgsData?.organizations.find((o) => o.slug === routeOrgSlug)?.logoUrl ?? undefined;
+    }
+    return undefined;
+  }, [
+    location.pathname,
+    tenant?.org.logoUrl,
+    parkingTenant?.org.logoUrl,
+    orgsData?.organizations,
+    routeOrgSlug,
+  ]);
+  useFavicon(faviconUrl);
 
   const displayName = name ?? email?.split('@')[0] ?? 'Admin';
   const initial = displayName[0]?.toUpperCase() ?? 'A';
   const superAdmin = isSuperAdminPath(location.pathname);
 
-  const openMoreSheet = useCallback(() => setMoreSheetOpen(true), []);
+  const openMoreSheet = useCallback(() => {
+    setAssistantOpen(false);
+    setNotificationsOpen(false);
+    setMoreSheetOpen(true);
+  }, []);
+
+  const toggleAssistant = useCallback(() => {
+    setMoreSheetOpen(false);
+    setNotificationsOpen(false);
+    setAssistantOpen((open) => !open);
+  }, []);
+
+  const toggleNotifications = useCallback(() => {
+    setMoreSheetOpen(false);
+    setAssistantOpen(false);
+    setNotificationsOpen((open) => !open);
+  }, []);
 
   const { tabItems, moreItems, primaryHrefs } = useMemo(
-    () => splitAdminBottomNav(navSections, openMoreSheet),
-    [navSections, openMoreSheet]
+    () =>
+      splitAdminBottomNav(navSections, {
+        onMoreClick: openMoreSheet,
+        assistant: !superAdmin && assistantAccessible ? { onClick: toggleAssistant } : undefined,
+        notifications: !superAdmin
+          ? {
+              onClick: toggleNotifications,
+              badge: unreadNotificationCount > 0 ? unreadNotificationCount : undefined,
+            }
+          : undefined,
+      }),
+    [
+      navSections,
+      openMoreSheet,
+      superAdmin,
+      assistantAccessible,
+      toggleAssistant,
+      toggleNotifications,
+      unreadNotificationCount,
+    ]
   );
 
-  const tabActiveKey = resolveBottomTabActiveKey(activeNavHref, primaryHrefs, moreSheetOpen);
+  const overlayTabKey = assistantOpen
+    ? ASSISTANT_TAB_KEY
+    : notificationsOpen
+      ? NOTIFICATIONS_TAB_KEY
+      : null;
+
+  const tabActiveKey = resolveBottomTabActiveKey(
+    activeNavHref,
+    primaryHrefs,
+    moreSheetOpen,
+    overlayTabKey
+  );
 
   const settingsIssueOnTabs =
     (propertySettingsHasIssues && isPropertyAdminPath(location.pathname)) ||
@@ -309,9 +504,10 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
   );
 
   return (
-    <GmailReconnectProvider>
+    <>
       {isOrgAdminPath(location.pathname) ? <OrgSettingsIssuesSync /> : null}
       {!superAdmin ? <HostVerificationChangesGate /> : null}
+      {!superAdmin ? <NotificationsProvider /> : null}
       <AdminMobileHeroProvider>
         <BottomBarSlotProvider tabBar={mobileTabBar}>
           <div className="bg-background flex h-screen overflow-hidden" style={brandStyle}>
@@ -375,7 +571,13 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
 
           <AdminMoreSheet
             open={moreSheetOpen}
-            onOpenChange={setMoreSheetOpen}
+            onOpenChange={(open) => {
+              setMoreSheetOpen(open);
+              if (open) {
+                setAssistantOpen(false);
+                setNotificationsOpen(false);
+              }
+            }}
             moreItems={moreItems}
             activeNavHref={activeNavHref}
             pathname={location.pathname}
@@ -388,9 +590,40 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
             onSignOutNavigate={() => navigate(hostLoginPath(), { replace: true })}
             superAdmin={superAdmin}
           />
+
+          {!superAdmin ? (
+            <NotificationBell
+              variant="fab"
+              open={notificationsOpen}
+              onOpenChange={(open) => {
+                if (open) {
+                  setMoreSheetOpen(false);
+                  setAssistantOpen(false);
+                }
+                setNotificationsOpen(open);
+              }}
+              className={
+                assistantAccessible
+                  ? 'bottom-[calc(max(1.25rem,env(safe-area-inset-bottom))+4rem)]'
+                  : undefined
+              }
+            />
+          ) : null}
+          {!superAdmin ? (
+            <AiAssistantLauncherButton
+              open={assistantOpen}
+              onOpenChange={(open) => {
+                if (open) {
+                  setMoreSheetOpen(false);
+                  setNotificationsOpen(false);
+                }
+                setAssistantOpen(open);
+              }}
+            />
+          ) : null}
         </BottomBarSlotProvider>
       </AdminMobileHeroProvider>
-    </GmailReconnectProvider>
+    </>
   );
 }
 
@@ -502,7 +735,7 @@ function AdminSidebarContent({
       <div
         className={cn(
           'border-sidebar-border shrink-0 border-b py-3',
-          collapsed ? 'flex justify-center px-2' : 'px-3',
+          collapsed ? 'px-2' : 'px-3',
           onClose && 'pt-3'
         )}
       >

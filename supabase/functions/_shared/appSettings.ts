@@ -13,7 +13,6 @@ import {
   resolveResidenceDefaultDocumentRequirements,
   type DocumentRequirement,
 } from './documentRequirements.ts';
-import { mergePropertySyncToggles } from './propertySyncToggles.ts';
 
 type AppSettingsRow = {
   id: number;
@@ -34,8 +33,6 @@ type AppSettingsRow = {
   gaf_guests_onsite_contact_person: string | null;
   gaf_owner_contact_number: string | null;
   gaf_unit_owner_signature_url: string | null;
-  google_calendar_id: string | null;
-  google_spreadsheet_id: string | null;
   brand_color: string | null;
   facebook_reviews_url: string | null;
   airbnb_url: string | null;
@@ -48,8 +45,6 @@ type AppSettingsRow = {
   superhost_proof_image_url: string | null;
   superhost_status: string | null;
   document_requirements_override: unknown;
-  sync_calendar: boolean | null;
-  sync_sheets: boolean | null;
 };
 
 const EMPTY_GAF_DEFAULT = '';
@@ -119,7 +114,6 @@ export type {
   IntegrationFieldSource,
   IntegrationFieldStatus,
   PlatformSecretsStatus,
-  PropertyGmailIntegrationStatus,
   PropertyIntegrationStatus,
 } from './propertyIntegrationStatus.ts';
 
@@ -199,8 +193,6 @@ export type AppSettingsDto = AppSettingsResolved & {
   resolvedDocumentRequirements: DocumentRequirement[];
   /** Residence-type default → `DEFAULT_DOCUMENT_REQUIREMENTS` — ignores property override. */
   residenceDefaultDocumentRequirements: DocumentRequirement[];
-  syncCalendar: boolean;
-  syncSheets: boolean;
   updatedAt: string | null;
   fieldSources: Record<
     | keyof AppSettingsResolved
@@ -597,10 +589,8 @@ export async function serializeGuestPaymentInfo(
   };
 }
 
-/** Gmail GAF/pet approval replies must match Documents Approver (`EMAIL_TO`) when set. */
-export async function getGmailApprovalSenderAllowList(
-  propertyId?: string | null
-): Promise<string[]> {
+/** Documents Approver / development PMO (`emailTo`) — Azure reply sender allow-list for inbound approvals. */
+export async function getApprovalSenderAllowList(propertyId?: string | null): Promise<string[]> {
   const s = await resolveAppSettings(propertyId);
   return parseCommaSeparatedEmailsLower(s.emailTo);
 }
@@ -661,10 +651,6 @@ export async function serializeAppSettingsForAdmin(
     ).catch((e) => {
       console.warn('[appSettings] resolveResidenceDefaultDocumentRequirements failed:', e);
       return [];
-    }),
-    ...mergePropertySyncToggles({
-      sync_calendar: row?.sync_calendar,
-      sync_sheets: row?.sync_sheets,
     }),
     updatedAt: row?.updated_at ?? null,
     fieldSources: {

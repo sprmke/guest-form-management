@@ -221,7 +221,7 @@ export function PublicFormRenderer({ form, onSubmit }: PublicFormRendererProps) 
             exit={{ opacity: 0, y: -15 }}
             transition={{ duration: 0.3 }}
           >
-            <div className="grid gap-5 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               {visibleFields.map((field, index) => {
                 const width = field.styling?.width || 'full';
                 return (

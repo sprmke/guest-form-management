@@ -49,6 +49,7 @@ This is where you read and reply to guest messages for this property — website
 
 ## Behavior
 
+- **Manage actions:** Desktop (`lg+`) shows separate header buttons — **Channels**, **Quick replies**, **Automation** — each opening its modal. Mobile (`max-lg`) groups them in the hero **Inbox actions** menu (bottom sheet).
 - **View property** on web threads → admin property dashboard (`propertyDashboardPath`), not the public listing.
 - **First Meta connect** from a property (when no org-default Page exists) writes the **org-default** connection so Marketing Studio and other properties can inherit it.
 - Later Connect from a property that already has an org-default writes a **property override** (`property_id` set); does **not** wipe the org default.

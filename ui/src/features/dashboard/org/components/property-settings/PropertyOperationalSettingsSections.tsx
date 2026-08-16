@@ -16,7 +16,6 @@ import { PropertyEmailAutomationsSection } from '@/features/dashboard/org/compon
 import { PropertyPaymentMethodsSection } from '@/features/dashboard/org/components/property-settings/PropertyPaymentMethodsSection';
 import { PropertySettingsSectionAlert } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import { PropertyVoiceReceptionistSection } from '@/features/dashboard/org/components/property-settings/PropertyVoiceReceptionistSection';
-import { PropertyWorkflowDocumentsSection } from '@/features/dashboard/org/components/property-settings/PropertyWorkflowDocumentsSection';
 import {
   syncLegacyPaymentFieldsFromMethods,
   type PropertyPaymentMethod,
@@ -151,14 +150,7 @@ export function PropertyOperationalSettingsSections({
         onAutomationToggleChange={onAutomationToggleChange}
       />
 
-      <PropertyWorkflowDocumentsSection draft={draft} disabled={disabled} onChange={onChange} />
-
-      <AdminSection
-        id="integrations"
-        title="Integrations"
-        icon={Globe}
-        description="Gmail, Calendar, Sheets, and AI key status."
-      >
+      <AdminSection id="integrations" title="Integrations" icon={Globe}>
         {propertySettingsSectionBanner('integrations', sectionMessages) ? (
           <PropertySettingsSectionAlert
             message={propertySettingsSectionBanner('integrations', sectionMessages)!}

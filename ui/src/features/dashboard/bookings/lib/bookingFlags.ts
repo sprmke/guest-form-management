@@ -2,7 +2,7 @@
  * Shared booleans for booking list / card / calendar flag chips.
  */
 
-import { flagIconChipClasses, flagLabelChipClasses } from '@/lib/statusToneColors';
+import { flagIconChipClasses } from '@/lib/statusToneColors';
 
 /** Guest requested surprise decor / room setup (DB may use bool or legacy string). */
 export function bookingRequestsSurpriseDecor(value: unknown): boolean {
@@ -18,7 +18,7 @@ type ReceiptAiFlagBooking = {
   parking_receipt_ai_verdict?: string | null;
 };
 
-/** True when any on-file payment receipt has AI verdict `invalid`. */
+/** True when any on-file payment receipt has AI verdict `invalid` (list chip: "AI: Needs review"). */
 export function bookingHasInvalidReceiptAi(booking: ReceiptAiFlagBooking): boolean {
   const isInvalid = (url: string | null | undefined, verdict: string | null | undefined) =>
     Boolean(url?.trim()) && String(verdict ?? '').toLowerCase() === 'invalid';
@@ -36,11 +36,4 @@ export const bookingFlagIconChipClass = {
   pet: flagIconChipClasses('pet'),
   decor: flagIconChipClasses('decor'),
   invalidReceipt: flagIconChipClasses('invalidReceipt'),
-} as const;
-
-/** Compact labeled flag chips (mobile summary, detail header). */
-export const bookingFlagLabelChipClass = {
-  parking: flagLabelChipClasses('parking'),
-  pet: flagLabelChipClasses('pet'),
-  decor: flagLabelChipClasses('decor'),
 } as const;

@@ -4,11 +4,7 @@ import {
   CAMPAIGN_CATEGORY_LABELS,
   type CampaignCategory,
 } from '@/features/dashboard/marketing/lib/designCanvasTypes';
-import {
-  HIDDEN_CATEGORY_ID,
-  HIDDEN_CATEGORY_LABEL,
-  isHiddenCategoryId,
-} from '@/features/dashboard/marketing/lib/marketingCatalogHidden';
+import { isHiddenCategoryId } from '@/features/dashboard/marketing/lib/marketingCatalogHidden';
 import {
   VIDEO_CATEGORIES,
   VIDEO_CATEGORY_LABELS,
@@ -111,7 +107,7 @@ function savePrefs(
 export type MarketingCategoryItem = {
   id: string;
   label: string;
-  kind: 'builtin' | 'custom' | 'hidden';
+  kind: 'builtin' | 'custom';
 };
 
 export function useMarketingCatalog(tab: MarketingCatalogTab) {
@@ -127,48 +123,24 @@ export function useMarketingCatalog(tab: MarketingCatalogTab) {
   );
 
   const categories = useMemo<MarketingCategoryItem[]>(() => {
-    const builtIn = builtinCategoriesForTab(tab)
-      .filter((id) => !prefs.hiddenBuiltinCategories.includes(id))
-      .map((id) => ({
-        id,
-        label: prefs.categoryLabels[id] ?? builtinLabel(tab, id),
-        kind: 'builtin' as const,
-      }));
+    const builtIn = builtinCategoriesForTab(tab).map((id) => ({
+      id,
+      label: prefs.categoryLabels[id] ?? builtinLabel(tab, id),
+      kind: 'builtin' as const,
+    }));
     const custom = prefs.customCategories.map((item) => ({
       id: item.id,
       label: item.label,
       kind: 'custom' as const,
     }));
-    return [
-      ...builtIn,
-      ...custom,
-      { id: HIDDEN_CATEGORY_ID, label: HIDDEN_CATEGORY_LABEL, kind: 'hidden' as const },
-    ];
+    return [...builtIn, ...custom];
   }, [prefs, tab]);
 
-  const movableCategories = useMemo(
-    () => categories.filter((item) => item.kind !== 'hidden'),
-    [categories]
-  );
+  const movableCategories = categories;
 
   const getTemplateLabel = useCallback(
     (templateId: string, fallback: string) => prefs.templateLabels[templateId] ?? fallback,
     [prefs.templateLabels]
-  );
-
-  const isPresetHidden = useCallback(
-    (templateId: string) => prefs.hiddenBuiltinTemplates.includes(templateId),
-    [prefs.hiddenBuiltinTemplates]
-  );
-
-  const isSavedTemplateHidden = useCallback(
-    (templateId: string) => prefs.hiddenSavedTemplateIds.includes(templateId),
-    [prefs.hiddenSavedTemplateIds]
-  );
-
-  const getHiddenBuiltinCategoryLabel = useCallback(
-    (categoryId: string) => prefs.categoryLabels[categoryId] ?? builtinLabel(tab, categoryId),
-    [prefs.categoryLabels, tab]
   );
 
   const addCategory = useCallback(
@@ -183,6 +155,20 @@ export function useMarketingCatalog(tab: MarketingCatalogTab) {
       return item.id;
     },
     [prefs, persist]
+  );
+
+  /** Reuse an existing category with this label (any case), else create one. */
+  const findOrCreateCategoryByLabel = useCallback(
+    (label: string) => {
+      const trimmed = label.trim();
+      if (!trimmed) return null;
+      const existing = categories.find(
+        (item) => item.label.trim().toLowerCase() === trimmed.toLowerCase()
+      );
+      if (existing) return existing.id;
+      return addCategory(trimmed);
+    },
+    [categories, addCategory]
   );
 
   const renameCategory = useCallback(
@@ -213,27 +199,6 @@ export function useMarketingCatalog(tab: MarketingCatalogTab) {
       persist({
         ...prefs,
         customCategories: prefs.customCategories.filter((item) => item.id !== categoryId),
-      });
-    },
-    [prefs, persist]
-  );
-
-  const hideBuiltinCategory = useCallback(
-    (categoryId: string) => {
-      if (prefs.hiddenBuiltinCategories.includes(categoryId)) return;
-      persist({
-        ...prefs,
-        hiddenBuiltinCategories: [...prefs.hiddenBuiltinCategories, categoryId],
-      });
-    },
-    [prefs, persist]
-  );
-
-  const unhideBuiltinCategory = useCallback(
-    (categoryId: string) => {
-      persist({
-        ...prefs,
-        hiddenBuiltinCategories: prefs.hiddenBuiltinCategories.filter((id) => id !== categoryId),
       });
     },
     [prefs, persist]
@@ -275,48 +240,6 @@ export function useMarketingCatalog(tab: MarketingCatalogTab) {
       });
     },
     [prefs, persist, movableCategories]
-  );
-
-  const hidePresetTemplate = useCallback(
-    (templateId: string) => {
-      if (prefs.hiddenBuiltinTemplates.includes(templateId)) return;
-      persist({
-        ...prefs,
-        hiddenBuiltinTemplates: [...prefs.hiddenBuiltinTemplates, templateId],
-      });
-    },
-    [prefs, persist]
-  );
-
-  const unhidePresetTemplate = useCallback(
-    (templateId: string) => {
-      persist({
-        ...prefs,
-        hiddenBuiltinTemplates: prefs.hiddenBuiltinTemplates.filter((id) => id !== templateId),
-      });
-    },
-    [prefs, persist]
-  );
-
-  const hideSavedTemplate = useCallback(
-    (templateId: string) => {
-      if (prefs.hiddenSavedTemplateIds.includes(templateId)) return;
-      persist({
-        ...prefs,
-        hiddenSavedTemplateIds: [...prefs.hiddenSavedTemplateIds, templateId],
-      });
-    },
-    [prefs, persist]
-  );
-
-  const unhideSavedTemplate = useCallback(
-    (templateId: string) => {
-      persist({
-        ...prefs,
-        hiddenSavedTemplateIds: prefs.hiddenSavedTemplateIds.filter((id) => id !== templateId),
-      });
-    },
-    [prefs, persist]
   );
 
   const hideCalendarCategory = useCallback(
@@ -431,21 +354,12 @@ export function useMarketingCatalog(tab: MarketingCatalogTab) {
     prefs,
     getTemplateLabel,
     getPresetCategory,
-    getHiddenBuiltinCategoryLabel,
-    isPresetHidden,
-    isSavedTemplateHidden,
-    isHiddenCategoryId,
     addCategory,
+    findOrCreateCategoryByLabel,
     renameCategory,
     deleteCategory,
-    hideBuiltinCategory,
-    unhideBuiltinCategory,
     renamePresetTemplate,
     movePresetTemplate,
-    hidePresetTemplate,
-    unhidePresetTemplate,
-    hideSavedTemplate,
-    unhideSavedTemplate,
     hideCalendarCategory,
     unhideCalendarCategory,
     isCalendarCategoryHidden,

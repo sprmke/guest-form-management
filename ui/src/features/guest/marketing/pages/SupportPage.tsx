@@ -11,6 +11,7 @@ import { MarketingPublicPageContent } from '@/features/guest/marketing/shared/co
 import { MarketingPublicPageHero } from '@/features/guest/marketing/shared/components/MarketingPublicPageHero';
 
 import { Button } from '@/components/ui/button';
+import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
 
 const guestFaqs: MarketingPublicFaqItem[] = [
   {
@@ -60,7 +61,7 @@ const hostFaqs: MarketingPublicFaqItem[] = [
   {
     question: 'What does the booking status flow cover?',
     answer:
-      'Pending review → documents → ready for check-in → ready for check-out → security-deposit refund → completed, plus cancel when needed. Email, calendar, and sheet updates run through the shared workflow.',
+      'Pending review → documents → ready for check-in → ready for check-out → security-deposit refund → completed, plus cancel when needed. Email and related automations run through the shared workflow.',
   },
   {
     question: 'Where is pricing explained?',
@@ -78,6 +79,7 @@ const hostFaqs: MarketingPublicFaqItem[] = [
 ];
 
 export function SupportPage() {
+  usePageTitle(publicPageTitle('Support'));
   return (
     <div className="bg-background min-h-screen">
       <MarketingPublicPageHero

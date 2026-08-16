@@ -1,6 +1,24 @@
 {
   "version": 1,
   "hooks": {
+    "beforeSubmitPrompt": [
+      {
+        "command": ".cursor/hooks/superpowers-lean-mode.sh",
+        "timeout": 5
+      }
+    ],
+    "subagentStart": [
+      {
+        "command": ".cursor/hooks/guard-superpowers-subagents.sh",
+        "timeout": 5
+      }
+    ],
+    "stop": [
+      {
+        "command": ".cursor/hooks/superpowers-lean-cleanup.sh",
+        "timeout": 5
+      }
+    ],
     "sessionStart": [
       {
         "command": ".cursor/hooks/session-superpowers-opt-in.sh",

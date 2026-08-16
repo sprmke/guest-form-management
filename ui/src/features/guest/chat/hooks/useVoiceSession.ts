@@ -3,7 +3,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { GUEST_MESSAGES_QUERY_KEY } from '@/features/guest/account/lib/guestAccountApi';
-import { GUEST_CHAT_MESSAGES_KEY } from '@/features/guest/chat/hooks/useGuestChat';
+import {
+  GUEST_CHAT_MESSAGES_KEY,
+  GUEST_CHAT_RESUME_KEY,
+} from '@/features/guest/chat/hooks/useGuestChat';
 import {
   base64ToInt16,
   computeRms,
@@ -356,6 +359,7 @@ export function useVoiceSession(propertySlug: string) {
             // stay open until the thread actually has the new turns.
             await Promise.all([
               qc.invalidateQueries({ queryKey: [GUEST_CHAT_MESSAGES_KEY] }),
+              qc.invalidateQueries({ queryKey: [GUEST_CHAT_RESUME_KEY] }),
               qc.invalidateQueries({ queryKey: GUEST_MESSAGES_QUERY_KEY }),
             ]);
           } catch (e) {

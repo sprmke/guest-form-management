@@ -5,9 +5,10 @@
  * When `revertToPendingReview` is true and `currentStatus` is in the documents pipeline
  * or Ready for check-in (see `shouldRevertGuestFieldEditsToPendingReview` in
  * `bookingStatus.ts`), this also resets status → PENDING_REVIEW and merges
- * `pendingDocumentsClearPatchForGuestEditRevert` (nested doc completion, PDF URLs,
- * parking settlement, guest balance settlement — **not** pricing snapshot fields)
- * plus `pendingDocumentsClearCompletionsJsonbPatch` (gaf/pet reset merged into the
+ * `pendingDocumentsClearPatchForGuestEditRevert` (nested doc completion, approved
+ * PDF URLs, parking settlement, guest balance settlement — **not** pricing snapshot
+ * fields or request PDF URLs unless PDF fill fields changed) plus
+ * `pendingDocumentsClearCompletionsJsonbPatch` (gaf/pet reset merged into the
  * `document_requirement_completions` JSONB map so the dual-read stepper doesn't show
  * a stale "complete" substep). The caller must pass the currently-loaded row's
  * `document_requirement_completions` via `currentDocumentRequirementCompletions`.
@@ -16,23 +17,22 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
 
 import type { SdBank } from '@/features/guest/sd-form/lib/sdFormSchema';
 
-import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
-
-import { friendlyToastError } from '@/lib/feedback/toastMessages';
 import { supabase } from '@/lib/supabase/client';
 import { toGuestSubmissionDate, toGuestSubmissionTime } from '@/utils/format/dates';
 
 import { BOOKING_QUERY_KEY } from './useBooking';
+import { invalidateBookingAiReviewQueries } from './useBookingAiReview';
 import {
   pendingDocumentsClearCompletionsJsonbPatch,
   pendingDocumentsClearPatchForGuestEditRevert,
   shouldRevertGuestFieldEditsToPendingReview,
 } from '../lib/bookingStatus';
+import { requestPdfClearPatchForAdminGuestEdit } from '../lib/workflowSensitiveGuestDiff';
 
+import type { DocumentRequirement } from '../lib/documentRequirements';
 import type { BookingRow } from '../lib/types';
 
 function patchGuestSubmissionForDb(patch: Record<string, unknown>): Record<string, unknown> {
@@ -55,63 +55,6 @@ function patchGuestSubmissionForDb(patch: Record<string, unknown>): Record<strin
 function computeBalance(bookingRate?: number | null, downPayment?: number | null): number | null {
   if (bookingRate == null || downPayment == null) return null;
   return Math.round((bookingRate - downPayment) * 100) / 100;
-}
-
-const FUNCTIONS_URL = (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? '';
-
-/**
- * Refreshes Google Calendar + Sheets from the saved row (edge: `sync-booking-integrations`).
- * Best-effort: DB save already succeeded; warns when Google returns a hard failure.
- */
-async function syncBookingIntegrationsAfterSave(
-  bookingId: string,
-  propertyId: string | null
-): Promise<void> {
-  if (!FUNCTIONS_URL.trim()) return;
-
-  const { data: sessionData } = await supabase.auth.getSession();
-  const jwt = sessionData.session?.access_token;
-  if (!jwt) return;
-
-  try {
-    const res = await fetch(scopedFunctionsUrl('/sync-booking-integrations', propertyId), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${jwt}`,
-      },
-      body: JSON.stringify({ bookingId }),
-    });
-
-    const json = (await res.json().catch(() => ({}))) as {
-      success?: boolean;
-      error?: string;
-      data?: {
-        calendar?: { success?: boolean; skipped?: boolean };
-        sheet?: { success?: boolean; skipped?: boolean };
-      };
-    };
-
-    if (!res.ok || json.success !== true) {
-      toast.warning(
-        friendlyToastError(
-          new Error(json.error),
-          'Booking saved, but Calendar or Sheets could not be updated'
-        )
-      );
-      return;
-    }
-
-    const cal = json.data?.calendar;
-    const sh = json.data?.sheet;
-    const calOk = cal?.skipped || cal?.success;
-    const shOk = sh?.skipped || sh?.success;
-    if (!calOk || !shOk) {
-      toast.warning('Booking saved, but Calendar or Sheets reported an error');
-    }
-  } catch {
-    toast.warning('Booking saved, but Calendar or Sheets could not be refreshed');
-  }
 }
 
 export type UpdateBookingPayload = {
@@ -164,7 +107,7 @@ export type UpdateBookingPayload = {
   guest_special_requests?: string | null;
   guest_requests_surprise_decor?: boolean;
 
-  // Progress / workflow fields (admin edit form)
+  // Progress / workflow fields (rail Save + transitions)
   booking_rate?: number;
   down_payment?: number;
   balance?: number | null;
@@ -172,6 +115,7 @@ export type UpdateBookingPayload = {
   pet_fee?: number;
   parking_rate_guest?: number;
   guest_additional_fee?: number;
+  surprise_decor_staff_acknowledged?: boolean;
   parking_owner?: string | null;
   parking_rate_paid?: number;
   parking_endorsement_url?: string | null;
@@ -211,11 +155,16 @@ type MutationArgs = {
    * `revertToPendingReview` ends up applying.
    */
   currentDocumentRequirementCompletions?: unknown;
+  /**
+   * Baseline payload before the edit — used to clear request PDF URLs only when
+   * PDF fill fields changed. Required when `revertToPendingReview` may apply.
+   */
+  revertBaselinePayload?: UpdateBookingPayload;
+  documentRequirements?: DocumentRequirement[];
 };
 
 export function useUpdateBooking() {
   const qc = useQueryClient();
-  const propertyId = usePropertyIdParam();
 
   return useMutation({
     mutationFn: async ({
@@ -224,6 +173,8 @@ export function useUpdateBooking() {
       payload,
       revertToPendingReview,
       currentDocumentRequirementCompletions,
+      revertBaselinePayload,
+      documentRequirements,
     }: MutationArgs) => {
       let patch: Record<string, unknown> = {
         ...payload,
@@ -250,6 +201,16 @@ export function useUpdateBooking() {
 
       if (revertToPendingReview && shouldRevertGuestFieldEditsToPendingReview(currentStatus)) {
         Object.assign(patch, pendingDocumentsClearPatchForGuestEditRevert());
+        if (revertBaselinePayload) {
+          Object.assign(
+            patch,
+            requestPdfClearPatchForAdminGuestEdit(
+              revertBaselinePayload,
+              payload,
+              documentRequirements
+            )
+          );
+        }
         patch.document_requirement_completions = pendingDocumentsClearCompletionsJsonbPatch(
           currentDocumentRequirementCompletions
         );
@@ -271,7 +232,7 @@ export function useUpdateBooking() {
     onSuccess: async (updated, { bookingId }) => {
       qc.setQueryData(BOOKING_QUERY_KEY(bookingId), updated);
       await qc.invalidateQueries({ queryKey: ['bookings'] });
-      await syncBookingIntegrationsAfterSave(bookingId, propertyId);
+      await invalidateBookingAiReviewQueries(qc, bookingId);
     },
   });
 }

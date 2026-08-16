@@ -12,7 +12,13 @@ import {
   shouldTryNextProvider,
 } from './aiGeminiKeys.ts';
 import { geminiGenerateContentUrl, getModelConfig } from './aiModelRouter.ts';
-import { assertOrgAiQuota, recordAiUsage } from './aiUsageService.ts';
+import { assertOrgAndPropertyAiQuota, recordAiUsage } from './aiUsageService.ts';
+import {
+  buildCacheInputs,
+  computePromptFingerprint,
+  getCachedAiResponse,
+  setCachedAiResponse,
+} from './aiQuotaCache.ts';
 import {
   isBookingImportTargetFieldId,
   resolveBookingImportTargetId,
@@ -50,7 +56,8 @@ export type ImportColumnMappingInput = {
 };
 
 const IMPORT_FEATURE = 'import_column_map' as const;
-const GEMINI_MODEL = getModelConfig(IMPORT_FEATURE).model;
+const CONFIG = getModelConfig(IMPORT_FEATURE);
+const GEMINI_MODEL = CONFIG.model;
 const GEMINI_URL = geminiGenerateContentUrl(GEMINI_MODEL);
 const GROQ_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
@@ -261,7 +268,8 @@ function parseMappingsPayload(text: string, headers: string[]): ImportColumnMapp
 async function tryGeminiMapping(
   prompt: string,
   headers: string[],
-  usage: { organizationId: string; propertyId: string }
+  usage: { organizationId: string; propertyId: string },
+  cacheKey: string
 ): Promise<ImportColumnMappingEntry[] | null> {
   const keys = getGeminiApiKeys();
   if (!keys.length) return null;
@@ -282,7 +290,7 @@ async function tryGeminiMapping(
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: {
             temperature: 0.1,
-            maxOutputTokens: 4096,
+            maxOutputTokens: CONFIG.defaultMaxOutputTokens,
             responseMimeType: 'application/json',
             responseSchema: {
               type: 'OBJECT',
@@ -303,7 +311,7 @@ async function tryGeminiMapping(
               },
               required: ['mappings'],
             },
-            thinkingConfig: { thinkingBudget: 0 },
+            thinkingConfig: { thinkingBudget: CONFIG.thinkingBudget },
           },
         }),
       });
@@ -330,6 +338,14 @@ async function tryGeminiMapping(
           inputTokens: tokenUsage.inputTokens,
           outputTokens: tokenUsage.outputTokens,
         });
+        await setCachedAiResponse(IMPORT_FEATURE, cacheKey, {
+          provider: 'gemini',
+          model: GEMINI_MODEL,
+          responseText: text,
+          inputTokens: tokenUsage.inputTokens,
+          outputTokens: tokenUsage.outputTokens,
+          estimatedCostUsd: 0,
+        });
         return mappings;
       }
     } catch (error) {
@@ -344,7 +360,8 @@ async function tryGeminiMapping(
 async function tryGroqMapping(
   prompt: string,
   headers: string[],
-  usage: { organizationId: string; propertyId: string }
+  usage: { organizationId: string; propertyId: string },
+  cacheKey: string
 ): Promise<ImportColumnMappingEntry[] | null> {
   const groqKey = getGroqApiKey();
   if (!groqKey) return null;
@@ -364,7 +381,7 @@ async function tryGroqMapping(
         model: GROQ_MODEL,
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.1,
-        max_tokens: 4096,
+        max_tokens: CONFIG.defaultMaxOutputTokens,
         response_format: { type: 'json_object' },
       }),
     });
@@ -382,14 +399,24 @@ async function tryGroqMapping(
     const text = body.choices?.[0]?.message?.content ?? '';
     const mappings = parseMappingsPayload(text, headers);
     if (mappings) {
+      const groqInputTokens = Number(body.usage?.prompt_tokens ?? 0);
+      const groqOutputTokens = Number(body.usage?.completion_tokens ?? 0);
       await recordAiUsage({
         organizationId: usage.organizationId,
         propertyId: usage.propertyId,
         feature: IMPORT_FEATURE,
         provider: 'groq',
         model: GROQ_MODEL,
-        inputTokens: Number(body.usage?.prompt_tokens ?? 0),
-        outputTokens: Number(body.usage?.completion_tokens ?? 0),
+        inputTokens: groqInputTokens,
+        outputTokens: groqOutputTokens,
+      });
+      await setCachedAiResponse(IMPORT_FEATURE, cacheKey, {
+        provider: 'groq',
+        model: GROQ_MODEL,
+        responseText: text,
+        inputTokens: groqInputTokens,
+        outputTokens: groqOutputTokens,
+        estimatedCostUsd: 0,
       });
       return mappings;
     }
@@ -412,7 +439,7 @@ export async function suggestImportColumnMappings(
   }
 
   try {
-    await assertOrgAiQuota(input.organizationId);
+    await assertOrgAndPropertyAiQuota(input.organizationId, input.propertyId, IMPORT_FEATURE);
   } catch (error) {
     console.warn('[importColumnMappingAi] quota blocked:', (error as Error).message);
     return {
@@ -423,8 +450,20 @@ export async function suggestImportColumnMappings(
   }
 
   const prompt = buildPrompt({ ...input, headers });
+  const cacheKey = await computePromptFingerprint(buildCacheInputs(prompt, ''));
+  const cached = await getCachedAiResponse(IMPORT_FEATURE, cacheKey);
+  if (cached) {
+    const cachedMappings = parseMappingsPayload(cached.responseText, headers);
+    if (cachedMappings) {
+      return {
+        mappings: applyDeterministicHeaderMatches(cachedMappings),
+        provider: 'none',
+        degraded: false,
+      };
+    }
+  }
   const usage = { organizationId: input.organizationId, propertyId: input.propertyId };
-  const geminiMappings = await tryGeminiMapping(prompt, headers, usage);
+  const geminiMappings = await tryGeminiMapping(prompt, headers, usage, cacheKey);
   if (geminiMappings) {
     return {
       mappings: applyDeterministicHeaderMatches(geminiMappings),
@@ -433,7 +472,7 @@ export async function suggestImportColumnMappings(
     };
   }
 
-  const groqMappings = await tryGroqMapping(prompt, headers, usage);
+  const groqMappings = await tryGroqMapping(prompt, headers, usage, cacheKey);
   if (groqMappings) {
     return {
       mappings: applyDeterministicHeaderMatches(groqMappings),

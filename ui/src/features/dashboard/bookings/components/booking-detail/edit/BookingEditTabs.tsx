@@ -2,11 +2,14 @@
  * Real-tabs shell for the booking edit form — replaces `BookingEditShell`
  * (banner + ring container) and the old scroll-anchor `EditSectionJumpNav`.
  *
- * Owns local tab state (not a URL param — edit mode itself is transient) and
- * renders one tab's content at a time inside `BookingDetailCard tone="edit"`,
- * the same primitive view-mode panels use, so edit and view read as one
- * visual system. The single `useForm` instance stays in `BookingEditForm.tsx`
- * — RHF keeps every field's value even while its tab isn't mounted.
+ * Owns local tab state (not a URL param — edit mode itself is transient).
+ * Tab labels mirror view-mode `BookingDetailTabs` where the domains overlap
+ * (Guests / Parking / Pets); Stay leads the strip and is edit-only. Each tab
+ * owns its own `BookingDetailCard`(s) so edit and view share one card language.
+ * Document uploads live on Stay (downpayment), Guests (Valid ID), and Pets
+ * (vaccination / photo). Pricing and settlement edits live on the Progress rail.
+ * The single `useForm` instance stays in `BookingEditForm.tsx` — RHF keeps
+ * every field's value even while its tab isn't mounted.
  */
 
 import {
@@ -19,19 +22,12 @@ import {
   type ReactNode,
 } from 'react';
 
-import {
-  Car,
-  CalendarRange,
-  FileText,
-  ListChecks,
-  PawPrint,
-  PencilLine,
-  UserRound,
-  X,
-  type LucideIcon,
-} from 'lucide-react';
+import { PencilLine } from 'lucide-react';
 
-import { BookingDetailCard } from '@/features/dashboard/bookings/components/booking-detail/primitives/BookingDetailCard';
+import {
+  BookingEditActions,
+  type BookingEditActionsProps,
+} from '@/features/dashboard/bookings/components/booking-detail/edit/BookingEditStickyBar';
 import type { BookingEditFormValues } from '@/features/dashboard/bookings/components/BookingEditForm';
 import { ReadyForCheckinSensitiveFieldsNotice } from '@/features/dashboard/bookings/components/ReadyForCheckinSensitiveFieldsNotice';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
@@ -42,17 +38,16 @@ import { formatBookingDate } from '@/utils/format/bookingDisplay';
 
 import type { FieldErrors } from 'react-hook-form';
 
-export type BookingEditTabId = 'guest' | 'stay' | 'parking' | 'pets' | 'docs' | 'workflow';
+export type BookingEditTabId = 'guest' | 'stay' | 'parking' | 'pets';
 
-const TAB_ORDER: BookingEditTabId[] = ['guest', 'stay', 'parking', 'pets', 'docs', 'workflow'];
+const TAB_ORDER: BookingEditTabId[] = ['stay', 'guest', 'parking', 'pets'];
 
-const TAB_META: Record<BookingEditTabId, { label: string; icon: LucideIcon }> = {
-  guest: { label: 'Guest', icon: UserRound },
-  stay: { label: 'Stay', icon: CalendarRange },
-  parking: { label: 'Parking', icon: Car },
-  pets: { label: 'Pets', icon: PawPrint },
-  docs: { label: 'Docs', icon: FileText },
-  workflow: { label: 'Workflow', icon: ListChecks },
+/** Labels aligned with view-mode tabs where domains overlap (Guests). */
+const TAB_LABEL: Record<BookingEditTabId, string> = {
+  stay: 'Stay',
+  guest: 'Guests',
+  parking: 'Parking',
+  pets: 'Pets',
 };
 
 /** Maps every RHF-registered top-level field to the tab that owns it, for error-dot badges and cross-tab error jump. */
@@ -120,42 +115,26 @@ export type BookingEditTabsHandle = {
 
 type Props = {
   booking: BookingRow;
-  onDiscard: () => void;
-  discardDisabled?: boolean;
+  /** Cancel + Save in the editing header (same props as the sticky footer). */
+  actions: Omit<BookingEditActionsProps, 'density'>;
   errors: FieldErrors<BookingEditFormValues>;
-  showDocsTab: boolean;
   sensitiveNoticeVisible: boolean;
   /** Content for each tab, built by `BookingEditForm.tsx` from the shared `useForm` instance. */
   tabs: Partial<Record<BookingEditTabId, ReactNode>>;
   footer: ReactNode;
+  /** Open on a specific tab (e.g. Add parking → parking). */
+  initialTab?: BookingEditTabId;
 };
 
 export const BookingEditTabs = forwardRef<BookingEditTabsHandle, Props>(function BookingEditTabs(
-  {
-    booking,
-    onDiscard,
-    discardDisabled,
-    errors,
-    showDocsTab,
-    sensitiveNoticeVisible,
-    tabs,
-    footer,
-  },
+  { booking, actions, errors, sensitiveNoticeVisible, tabs, footer, initialTab = 'stay' },
   ref
 ) {
-  const orderedTabs = useMemo(
-    () => TAB_ORDER.filter((id) => id !== 'docs' || showDocsTab),
-    [showDocsTab]
+  const orderedTabs = TAB_ORDER;
+  const [activeTab, setActiveTab] = useState<BookingEditTabId>(() =>
+    orderedTabs.includes(initialTab) ? initialTab : 'stay'
   );
-  const [activeTab, setActiveTab] = useState<BookingEditTabId>('guest');
   const pendingScrollErrorsRef = useRef<FieldErrors<BookingEditFormValues> | null>(null);
-
-  // Docs tab can appear/disappear as the admin edits booking source / pets — keep the active tab valid.
-  useEffect(() => {
-    if (!orderedTabs.includes(activeTab)) {
-      setActiveTab(orderedTabs[0] ?? 'guest');
-    }
-  }, [orderedTabs, activeTab]);
 
   useImperativeHandle(
     ref,
@@ -187,7 +166,7 @@ export const BookingEditTabs = forwardRef<BookingEditTabsHandle, Props>(function
 
   const options: SegmentedControlOption<BookingEditTabId>[] = orderedTabs.map((id) => ({
     value: id,
-    label: TAB_META[id].label,
+    label: TAB_LABEL[id],
     className: cn(
       'relative',
       tabsWithErrors.has(id) &&
@@ -199,52 +178,45 @@ export const BookingEditTabs = forwardRef<BookingEditTabsHandle, Props>(function
     booking.guest_facebook_name?.trim() || booking.primary_guest_name?.trim() || 'Booking';
 
   return (
-    <div
-      className="ring-primary/40 bg-muted/30 ring-offset-background overflow-hidden rounded-2xl ring-2 ring-offset-2"
-      data-mode="edit"
-    >
-      <div className="bg-primary/12 border-primary/25 flex flex-col gap-2 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+    <div className="border-border/80 bg-card overflow-hidden rounded-2xl border" data-mode="edit">
+      <div className="border-border/70 bg-muted/25 flex flex-col gap-2.5 border-b px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-5">
         <div className="flex min-w-0 items-start gap-2.5 sm:items-center">
-          <span className="bg-primary/20 text-primary flex size-9 shrink-0 items-center justify-center rounded-lg">
-            <PencilLine className="size-4" aria-hidden />
+          <span className="icon-well-sm inline-flex !size-8 shrink-0 items-center justify-center sm:!size-9">
+            <PencilLine className="text-primary size-4" aria-hidden />
           </span>
           <div className="min-w-0">
-            <p className="text-primary text-sm font-bold">Editing booking</p>
-            <p className="text-muted-foreground truncate text-xs font-medium">
-              {guestLabel} · {formatBookingDate(booking.check_in_date)} →{' '}
+            <p className="text-foreground text-sm font-semibold tracking-tight sm:text-base">
+              Editing booking
+            </p>
+            <p className="text-muted-foreground min-w-0 truncate text-xs font-medium">
+              <span className="[overflow-wrap:anywhere]">{guestLabel}</span>
+              <span className="text-muted-foreground/50 mx-1" aria-hidden>
+                ·
+              </span>
+              {formatBookingDate(booking.check_in_date)}
+              <span className="text-muted-foreground/50 mx-1" aria-hidden>
+                →
+              </span>
               {formatBookingDate(booking.check_out_date)}
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={onDiscard}
-          disabled={discardDisabled}
-          className="border-border/80 bg-background/90 text-muted-foreground hover:bg-background inline-flex min-h-[44px] shrink-0 items-center gap-1.5 self-end rounded-lg border px-3 text-xs font-semibold shadow-sm transition-colors disabled:opacity-50 sm:self-auto"
-        >
-          <X className="size-3.5" aria-hidden />
-          Discard
-        </button>
+        <BookingEditActions {...actions} density="header" />
       </div>
 
-      <div className="bg-background/60 space-y-4 px-3 py-4 sm:px-5 sm:py-5">
+      <div className="space-y-4 px-3 py-4 sm:px-5 sm:py-5">
         <ReadyForCheckinSensitiveFieldsNotice visible={sensitiveNoticeVisible} />
 
         <SegmentedControl
           value={activeTab}
           onChange={setActiveTab}
           options={options}
+          size="compact"
           aria-label="Edit booking sections"
+          className="max-w-full"
         />
 
-        <BookingDetailCard
-          title={TAB_META[activeTab].label}
-          icon={TAB_META[activeTab].icon}
-          tone="edit"
-          bodyClassName="space-y-4 py-4 sm:space-y-5 sm:py-5"
-        >
-          {tabs[activeTab]}
-        </BookingDetailCard>
+        <div className="min-w-0 space-y-4">{tabs[activeTab]}</div>
       </div>
 
       {footer}

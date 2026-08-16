@@ -20,7 +20,7 @@ The application supports **short-term rental guest onboarding** for a specific u
 - Optional parking and pet information with uploads
 - Required uploads: **downpayment receipt** (Facebook bookings); **valid government ID per guest aged 18+** (up to 5 guests; ages collected per guest; adults/children derived from ages ≤3 = child; fifth guest capped at age 3; Azure allows 4 adults + 1 child — UI shows Azure reminder when the 5th guest slot is added or when more than 4 adults)
 
-Submissions are persisted in **Supabase Postgres**, files go to **Supabase Storage**, and optional automation sends **emails (Resend)**, creates/updates **Google Calendar** events, and appends/updates rows in **Google Sheets**—all behind **Supabase Edge Functions** (Deno).
+Submissions are persisted in **Supabase Postgres**, files go to **Supabase Storage**, and optional automation sends **emails (Resend)** and runs the booking status workflow — all behind **Supabase Edge Functions** (Deno).
 
 ---
 
@@ -38,15 +38,11 @@ flowchart LR
   end
   subgraph external [External services]
     R[Resend Email]
-    GC[Google Calendar]
-    GS[Google Sheets]
   end
   UI -->|JWT anon key + FormData/JSON| EF
   EF --> DB
   EF --> ST
   EF --> R
-  EF --> GC
-  EF --> GS
 ```
 
 - **UI**: React 18, Vite, React Router, React Hook Form + Zod, Tailwind, Radix/shadcn-style components, Sonner toasts.

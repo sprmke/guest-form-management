@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-**Guest Form Management (GFM)** — a multi-tenant property-management platform, not just a guest form. Core loop: guests submit a booking form; admins run each booking through a status workflow (`PENDING_REVIEW` → … → `COMPLETED`) with Google Calendar/Sheets sync, Resend email, and a Gmail listener that auto-approves Azure GAF/pet documents.
+**Guest Form Management (GFM)** — a multi-tenant property-management platform, not just a guest form. Core loop: guests submit a booking form; admins run each booking through a status workflow (`PENDING_REVIEW` → … → `COMPLETED`) with Resend email and inbound approval email for Azure GAF/pet documents.
 
 Beyond that loop: org/property/**parking** multi-tenancy (parking is a separate vertical + RBAC, not a property sub-feature) with org verification tiers and a super-admin layer (`/admin/*`); Guest Inbox (Meta + web chat, AI replies); Marketing Studio (AI content, Meta publishing); Finance/Maintenance modules; pricing calendars; an authenticated guest portal (separate identity from the anon booking form); AI receipt validation; a voucher system. Not all of these have a dedicated skill yet — check `.claude/README.md` before assuming coverage.
 
@@ -62,14 +62,14 @@ Root `bun run *:supabase` wrappers source `ui/.env.development` before invoking 
 ui/src/main.tsx → App.tsx → routes/index.tsx → merges guest/sd-form/pay-parking/dashboard routes
 ```
 
-| Path                   | Role                                                                                                                                                                                                                         |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ui/`                  | Vite SPA — guest flows, calendar, admin dashboard                                                                                                                                                                            |
-| `supabase/migrations/` | Postgres schema, RLS, storage policies — plain SQL, no ORM                                                                                                                                                                   |
-| `supabase/functions/`  | Deno edge functions; `_shared/` services (`databaseService`, `calendarService`, `sheetsService`, `emailService`, `pdfService`, `uploadService`, `statusMachine`, `workflowOrchestrator`, `auth`, `propertyScope`, `orgAuth`) |
-| `supabase/config.toml` | Local Supabase config + per-function JWT policy                                                                                                                                                                              |
-| `scripts/`             | Dev/deploy/data-sync — `scripts/README.md`                                                                                                                                                                                   |
-| `docs/`                | Doc index at `docs/README.md`                                                                                                                                                                                                |
+| Path                   | Role                                                                                                                                                                                     |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ui/`                  | Vite SPA — guest flows, calendar, admin dashboard                                                                                                                                        |
+| `supabase/migrations/` | Postgres schema, RLS, storage policies — plain SQL, no ORM                                                                                                                               |
+| `supabase/functions/`  | Deno edge functions; `_shared/` services (`databaseService`, `emailService`, `pdfService`, `uploadService`, `statusMachine`, `workflowOrchestrator`, `auth`, `propertyScope`, `orgAuth`) |
+| `supabase/config.toml` | Local Supabase config + per-function JWT policy                                                                                                                                          |
+| `scripts/`             | Dev/deploy/data-sync — `scripts/README.md`                                                                                                                                               |
+| `docs/`                | Doc index at `docs/README.md`                                                                                                                                                            |
 
 ### Frontend feature layout
 
@@ -153,7 +153,7 @@ Doc index: `docs/README.md`. Full rules/skills index: `.cursor/rules/README.md`.
 
 ## Agent tooling
 
-Full index: `.claude/README.md` (Claude Code) · `.cursor/rules/README.md` (Cursor) · **`.opencode/README.md`** (OpenCode) · root **`opencode.json`**. Skills (mirrors `.cursor/skills/` + Claude-only `verify`), subagents (`security-auditor`, `debugger`, `test-runner`, `verifier`), commands (`/fix-merge-conflicts`, `/github-issue`, `/workflow-*`, `/superpowers-*`), hooks (auto-format, wrong-stack warning, shell/migration guards — OpenCode via `.opencode/plugins/gfm-ai-tooling.ts`), and MCP servers (`supabase`, `playwright`, `context7`, `markitdown` — need `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_REF` exported locally, never committed). Check those indexes before re-deriving conventions.
+Full index: `.claude/README.md` (Claude Code) · `.cursor/rules/README.md` (Cursor) · **`.opencode/README.md`** (OpenCode) · root **`opencode.json`**. Skills (mirrors `.cursor/skills/` + Claude-only `verify`), subagents (`security-auditor`, `debugger`, `test-runner`, `verifier`), commands (`/kh-*` teammate helpers — start with `/kh-help`, `/fix-merge-conflicts`, `/github-issue`, `/workflow-*`, `/superpowers-*`), hooks (auto-format, wrong-stack warning, shell/migration guards — OpenCode via `.opencode/plugins/gfm-ai-tooling.ts`), and MCP servers (`supabase`, `playwright`, `context7`, `markitdown` — need `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_REF` exported locally, never committed). Check those indexes before re-deriving conventions.
 
 ## Don'ts
 

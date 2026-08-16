@@ -1,8 +1,8 @@
 import * as React from 'react';
 
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 
-import { Car, DollarSign } from 'lucide-react';
+import { Bell, Car, DollarSign } from 'lucide-react';
 
 import {
   AdminSection,
@@ -15,9 +15,17 @@ import { TelegramGlobalBotTokenCard } from '@/features/dashboard/bookings/compon
 import { TelegramHelpDialog } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramHelpDialog';
 import { TelegramNotificationsGlobalBotProvider } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramNotificationsGlobalBotContext';
 import { TelegramFinanceSettingsCard } from '@/features/dashboard/bookings/components/TelegramFinanceSettingsCard';
+import { InAppNotificationsSection } from '@/features/dashboard/notifications/components/InAppNotificationsSection';
+import {
+  IN_APP_NOTIFICATIONS_NAV_GROUP_LABEL,
+  IN_APP_NOTIFICATIONS_SECTION_ID,
+  notificationsHubActivityHash,
+} from '@/features/dashboard/notifications/lib/notificationsPaths';
+import { useOptionalParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
 import { TelegramParkingSettingsCard } from '@/features/dashboard/parking/components/TelegramParkingSettingsCard';
 
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
+import { parkingDashboardPageTitle, usePageTitle } from '@/lib/pageTitle';
 
 const PARKING_NOTIFICATION_MODULES = ['parking', 'finance'] as const;
 
@@ -32,7 +40,14 @@ const MODULE_SECTIONS: AdminSectionNavItem[] = [
   { id: 'finance', label: 'Finance', icon: DollarSign },
 ];
 
+const IN_APP_SECTION: AdminSectionNavItem = {
+  id: IN_APP_NOTIFICATIONS_SECTION_ID,
+  label: 'Activity',
+  icon: Bell,
+};
+
 const NOTIFICATION_SECTION_GROUPS: AdminSectionNavGroup[] = [
+  { label: IN_APP_NOTIFICATIONS_NAV_GROUP_LABEL, sections: [IN_APP_SECTION] },
   { label: 'Telegram notifications', sections: MODULE_SECTIONS },
 ];
 
@@ -43,28 +58,49 @@ const MODULE_DESCRIPTIONS: Record<ParkingNotificationModule, string> = {
 };
 
 export function ParkingNotificationsPage() {
+  const parkingTenant = useOptionalParkingContext();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const moduleParam = searchParams.get('module');
+  const sectionParam = searchParams.get('section');
   const deepLinkModule = isParkingNotificationModule(moduleParam)
     ? moduleParam
     : moduleParam === 'marketing'
       ? 'parking'
       : null;
+  const deepLinkSection =
+    sectionParam === IN_APP_NOTIFICATIONS_SECTION_ID ||
+    location.hash === notificationsHubActivityHash()
+      ? IN_APP_NOTIFICATIONS_SECTION_ID
+      : null;
+
+  usePageTitle(
+    parkingTenant
+      ? parkingDashboardPageTitle(
+          parkingTenant.org.name,
+          parkingTenant.parking.name,
+          'Notifications'
+        )
+      : undefined
+  );
 
   React.useEffect(() => {
-    if (!deepLinkModule) return;
+    const targetId = deepLinkSection
+      ? `section-${deepLinkSection}`
+      : deepLinkModule
+        ? `section-${deepLinkModule}`
+        : null;
+    if (!targetId) return;
     const timer = window.setTimeout(() => {
-      const element = document.getElementById(`section-${deepLinkModule}`);
-      element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 150);
     return () => window.clearTimeout(timer);
-  }, [deepLinkModule]);
+  }, [deepLinkModule, deepLinkSection, location.hash]);
 
   return (
     <TelegramNotificationsGlobalBotProvider>
       <AdminMobilePage
         title="Notifications"
-        subtitle="Telegram alerts for this parking slot."
         titleId="parking-notifications-heading"
         className="flex min-h-0 flex-1 flex-col"
       >
@@ -73,6 +109,10 @@ export function ParkingNotificationsPage() {
           sectionGroups={NOTIFICATION_SECTION_GROUPS}
         >
           <div className="space-y-3 sm:space-y-4">
+            <AdminSectionGroupHeading title={IN_APP_NOTIFICATIONS_NAV_GROUP_LABEL} />
+
+            <InAppNotificationsSection />
+
             <AdminSectionGroupHeading
               title="Telegram notifications"
               count={MODULE_SECTIONS.length}

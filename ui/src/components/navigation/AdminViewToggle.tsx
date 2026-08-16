@@ -36,8 +36,8 @@ export function AdminViewToggle<T extends string>({
         icon: Icon,
       }))}
       hideValues={hideValues}
-      className={cn('w-full sm:w-auto', className)}
-      listClassName="!w-full max-w-none justify-between sm:!w-fit sm:justify-start lg:p-0.5"
+      className={cn('w-full shrink-0 sm:w-auto', className)}
+      listClassName="!w-full max-w-none justify-between sm:!w-fit sm:justify-start lg:h-10 lg:min-h-[44px] lg:p-0.5"
       triggerClassName="min-w-0 flex-1 px-2 sm:min-w-[36px] sm:flex-initial lg:min-w-0 lg:px-2.5"
       aria-label={ariaLabel}
     />

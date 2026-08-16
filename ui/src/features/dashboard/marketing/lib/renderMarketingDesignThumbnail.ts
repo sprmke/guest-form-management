@@ -24,7 +24,7 @@ function createThumbnailStore() {
   return createStore({ key: '', showCredit: false });
 }
 
-async function waitForThumbnailPaint(): Promise<void> {
+export async function waitForThumbnailPaint(): Promise<void> {
   await Promise.race([
     document.fonts.ready,
     new Promise<void>((resolve) => window.setTimeout(resolve, 400)),
@@ -51,21 +51,6 @@ export async function renderDesignPresetThumbnail(
     await store.waitLoading();
     await syncPolotnoTextBounds(store);
     await waitForThumbnailPaint();
-    return await storeToThumbnailDataUrl(store);
-  } catch {
-    return null;
-  } finally {
-    (store as { destroy?: () => void }).destroy?.();
-  }
-}
-
-export async function renderDesignPolotnoJsonThumbnail(
-  polotnoJson: Record<string, unknown>
-): Promise<string | null> {
-  const store = createThumbnailStore();
-  try {
-    store.loadJSON(polotnoJson);
-    store.history.clear();
     return await storeToThumbnailDataUrl(store);
   } catch {
     return null;

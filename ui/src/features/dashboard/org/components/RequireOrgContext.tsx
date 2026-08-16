@@ -9,7 +9,7 @@ import { useOrganizations, useProperties } from '@/features/dashboard/org/hooks/
 import { setLastTenantContext } from '@/features/dashboard/org/lib/tenantPaths';
 import type { Organization, Property } from '@/features/dashboard/org/types';
 
-type OrgContextValue = {
+export type OrgContextValue = {
   org: Organization;
   property: Property;
   orgSlug: string;

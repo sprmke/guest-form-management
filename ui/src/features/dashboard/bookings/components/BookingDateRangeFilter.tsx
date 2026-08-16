@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { format } from 'date-fns';
 import {
   CalendarDays,
   Calendar as CalendarIcon,
@@ -21,7 +20,6 @@ import {
   isCurrentPeriod,
 } from '@/lib/date/navigation';
 import { cn } from '@/lib/utils';
-import { DATE_FNS_PICKER_DISPLAY_FORMAT } from '@/utils/format/dates';
 
 import type { DateRange as DayPickerDateRange } from 'react-day-picker';
 
@@ -190,45 +188,28 @@ export function BookingDateRangeFilter({
 
   const calendarBody = (
     <>
-      <div className={cn('p-2 sm:p-3', calendarMonths === 2 && 'overflow-x-auto')}>
+      <div
+        className={cn('flex justify-center p-2 sm:p-3', calendarMonths === 2 && 'overflow-x-auto')}
+      >
         <Calendar
           mode="range"
+          navLayout="around"
           defaultMonth={dateRange.from}
           selected={localRange}
           onSelect={setLocalRange}
           numberOfMonths={calendarMonths}
           weekStartsOn={0}
+          className="admin-date-range-calendar"
           classNames={calendarMonths === 2 ? CALENDAR_CLASSNAMES_TWO_MONTHS : CALENDAR_CLASSNAMES}
         />
       </div>
       <div
         className={cn(
-          'border-separator flex items-center justify-between gap-2 border-t px-3.5 py-2.5',
-          isMobileLayout && 'flex-col items-stretch gap-3 px-4 pb-1 pt-3'
+          'border-separator flex items-center justify-end gap-2 border-t px-3.5 py-2.5',
+          isMobileLayout && 'gap-2 px-4 pb-1 pt-3'
         )}
       >
-        <div className="text-muted-foreground min-w-0 text-[12px] sm:text-sm">
-          {localRange?.from ? (
-            <>
-              <span className="text-foreground font-semibold">
-                {format(localRange.from, DATE_FNS_PICKER_DISPLAY_FORMAT)}
-              </span>
-              {localRange.to ? (
-                <>
-                  <span className="text-muted-foreground/50 mx-1.5">→</span>
-                  <span className="text-foreground font-semibold">
-                    {format(localRange.to, DATE_FNS_PICKER_DISPLAY_FORMAT)}
-                  </span>
-                </>
-              ) : (
-                <span className="text-muted-foreground"> · select end date</span>
-              )}
-            </>
-          ) : (
-            <span className="text-muted-foreground">Select start date</span>
-          )}
-        </div>
-        <div className={cn('flex shrink-0 gap-1.5', isMobileLayout && 'w-full gap-2')}>
+        {isMobileLayout ? (
           <button
             type="button"
             onClick={() => {
@@ -236,29 +217,26 @@ export function BookingDateRangeFilter({
               setCalendarOpen(false);
             }}
             className={cn(
-              'inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-[12px] font-semibold',
-              'bg-card text-sidebar-muted border-sidebar-border border',
-              'hover:border-sidebar-primary/40 hover:bg-sidebar-accent/50 transition-all duration-100',
-              isMobileLayout && 'min-h-[48px] flex-1 rounded-xl text-sm'
+              'bg-card text-sidebar-muted border-sidebar-border inline-flex min-h-12 flex-1 items-center justify-center rounded-xl border px-3 py-1.5 text-sm font-semibold',
+              'hover:border-sidebar-primary/40 hover:bg-sidebar-accent/50 transition-all duration-100'
             )}
           >
-            {isMobileLayout ? 'Presets' : 'Back to presets'}
+            Presets
           </button>
-          <button
-            type="button"
-            onClick={handleApplyRange}
-            disabled={!localRange?.from || !localRange?.to}
-            className={cn(
-              'inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-[12px] font-semibold',
-              'bg-primary text-primary-foreground shadow-sm transition-all duration-100',
-              'disabled:pointer-events-none disabled:opacity-40',
-              'hover:brightness-[1.03] active:scale-[0.98]',
-              isMobileLayout && 'min-h-[48px] flex-1 rounded-xl text-sm'
-            )}
-          >
-            Apply
-          </button>
-        </div>
+        ) : null}
+        <button
+          type="button"
+          onClick={handleApplyRange}
+          disabled={!localRange?.from || !localRange?.to}
+          className={cn(
+            'bg-primary text-primary-foreground inline-flex min-h-11 items-center justify-center rounded-lg px-3 py-1.5 text-[12px] font-semibold shadow-sm transition-all duration-100',
+            'disabled:pointer-events-none disabled:opacity-40',
+            'hover:brightness-[1.03] active:scale-[0.98]',
+            isMobileLayout && 'min-h-12 flex-1 rounded-xl text-sm'
+          )}
+        >
+          Apply
+        </button>
       </div>
     </>
   );
@@ -453,59 +431,53 @@ export function BookingDateRangeFilter({
   );
 }
 
-/** Tailwind classes for `react-day-picker` v9 styled to match this app. */
+/** Tailwind classes for `react-day-picker` v9 — centered month + primary range. */
+const navButtonClass = cn(
+  'inline-flex size-8 shrink-0 items-center justify-center rounded-full p-0',
+  'border-sidebar-border bg-card text-muted-foreground border',
+  'hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground transition-colors duration-100'
+);
+
 const CALENDAR_CLASSNAMES = {
-  months: 'flex flex-col gap-4',
-  month: 'space-y-2',
-  month_caption: 'flex justify-center pt-1 relative items-center h-8',
+  months: 'flex w-full flex-col items-center',
+  month: 'grid w-full max-w-[17.5rem] grid-cols-[auto_1fr_auto] items-center gap-x-1 gap-y-2',
+  month_caption: 'col-start-2 row-start-1 flex items-center justify-center',
   caption_label: 'text-[13px] font-bold text-foreground',
-  nav: 'space-x-1 flex items-center',
-  button_previous: cn(
-    'absolute left-1 inline-flex size-7 items-center justify-center rounded-md p-0',
-    'border-sidebar-border bg-card text-muted-foreground border',
-    'hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
-    'transition-colors duration-100'
-  ),
-  button_next: cn(
-    'absolute right-1 inline-flex size-7 items-center justify-center rounded-md p-0',
-    'border-sidebar-border bg-card text-muted-foreground border',
-    'hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
-    'transition-colors duration-100'
-  ),
-  month_grid: 'w-full border-collapse',
-  weekdays: 'flex',
+  nav: 'hidden',
+  button_previous: cn(navButtonClass, 'col-start-1 row-start-1'),
+  button_next: cn(navButtonClass, 'col-start-3 row-start-1'),
+  month_grid: 'col-span-3 row-start-2 w-full border-collapse',
+  weekdays: 'grid grid-cols-7',
   weekday:
-    'text-muted-foreground rounded-md w-9 font-semibold text-[10px] uppercase tracking-wider',
-  week: 'flex w-full mt-1',
+    'text-muted-foreground py-1 text-center text-[10px] font-semibold uppercase tracking-wider',
+  week: 'mt-1 grid grid-cols-7',
   day: cn(
-    'relative size-9 p-0 text-center text-[12px] font-medium',
+    'relative flex items-center justify-center p-0 text-center text-[12px] font-medium',
     '[&:has([aria-selected].day-range-end)]:rounded-r-md',
-    '[&:has([aria-selected])]:bg-sidebar-accent/40',
+    '[&:has([aria-selected])]:bg-primary/10',
     'first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md',
     'focus-within:relative focus-within:z-20'
   ),
   day_button: cn(
-    'inline-flex size-9 items-center justify-center rounded-md p-0 text-[12px] font-medium',
-    'text-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
-    'transition-colors duration-100 aria-selected:opacity-100'
+    'inline-flex size-9 min-h-9 min-w-9 items-center justify-center rounded-md p-0 text-[12px] font-medium',
+    'text-foreground hover:bg-muted transition-colors duration-100 aria-selected:opacity-100'
   ),
   range_start: 'day-range-start',
   range_end: 'day-range-end',
   selected: cn(
-    'text-background',
-    '[&_button]:bg-foreground [&_button]:text-background',
-    '[&_button:hover]:bg-foreground [&_button:hover]:text-background'
+    '[&_button]:bg-primary [&_button]:text-primary-foreground',
+    '[&_button:hover]:bg-primary [&_button:hover]:text-primary-foreground'
   ),
-  today: 'font-bold [&_button]:ring-2 [&_button]:ring-border',
+  today: 'font-bold [&_button]:ring-2 [&_button]:ring-primary/30',
   outside:
-    'day-outside text-muted-foreground/50 aria-selected:bg-sidebar-accent/30 aria-selected:text-muted-foreground',
+    'day-outside text-muted-foreground/50 aria-selected:bg-primary/10 aria-selected:text-muted-foreground',
   disabled: 'text-muted-foreground/50 opacity-50 pointer-events-none',
-  range_middle: 'aria-selected:bg-sidebar-accent/60 aria-selected:text-sidebar-accent-foreground',
+  range_middle: 'aria-selected:bg-primary/15 aria-selected:text-foreground',
   hidden: 'invisible',
 };
 
 const CALENDAR_CLASSNAMES_TWO_MONTHS = {
   ...CALENDAR_CLASSNAMES,
-  months: 'flex flex-nowrap gap-4',
-  month: 'min-w-[16.5rem] shrink-0 space-y-2',
+  months: 'flex w-max max-w-none flex-nowrap items-start gap-4',
+  month: cn('grid grid-cols-[auto_1fr_auto] items-center gap-x-1 gap-y-2', 'w-[17.5rem] shrink-0'),
 };

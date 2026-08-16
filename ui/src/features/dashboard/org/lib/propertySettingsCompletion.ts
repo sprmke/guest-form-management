@@ -92,7 +92,6 @@ export type PropertySettingsSectionId =
   | 'payment'
   | 'building-forms'
   | 'email-automations'
-  | 'workflow-documents'
   | 'integrations';
 
 export type PropertySettingsCompletionInput = {
@@ -100,8 +99,6 @@ export type PropertySettingsCompletionInput = {
   operational: AppSettingsFormValues | null;
   appSettings: AppSettingsDto | null;
   orgSocialLinks: OrgSocialLinks | null;
-  gmailConnected: boolean;
-  gmailNeedsReconnect: boolean;
   nameConflict?: boolean;
   towerConflict?: boolean;
 };
@@ -114,17 +111,6 @@ export type PropertySettingsCompletionResult = {
   firstErrorMessage: string | null;
   isComplete: boolean;
 };
-
-function googleIntegrationReady(input: PropertySettingsCompletionInput): boolean {
-  const integrations = input.appSettings?.propertyIntegrations;
-  return (
-    input.gmailConnected &&
-    !input.gmailNeedsReconnect &&
-    Boolean(integrations?.googleCalendar.configured) &&
-    Boolean(integrations?.googleSpreadsheet.configured) &&
-    Boolean(integrations?.gmail.connected)
-  );
-}
 
 function paymentQrConfigured(appSettings: AppSettingsDto | null): boolean {
   if (!appSettings) return false;
@@ -492,14 +478,6 @@ export function computePropertySettingsCompletion(
     if (!Number.isFinite(maxAgeDays) || maxAgeDays < 0 || maxAgeDays > 365) {
       addFieldError('sd-max-age', 'Days after checkout must be 0–365', 'email-automations');
     }
-  }
-
-  // ── Integrations ──
-  if (!googleIntegrationReady(input)) {
-    addSectionIssue(
-      'integrations',
-      'Connect Google (Gmail, Calendar, and Spreadsheet) to automate bookings, calendar updates, and sheet sync.'
-    );
   }
 
   const firstIssueSectionId = issueSectionIds[0] ?? null;

@@ -2,7 +2,7 @@
 title: 'Guest stay guide (token-gated brochure)'
 status: active
 tags: [guides, routes]
-updated: 2026-08-02
+updated: 2026-08-15
 ---
 
 # Guest stay guide (token-gated brochure)
@@ -11,9 +11,11 @@ Route: `/properties/:propertySlug/stay-guide?token=<opaque>`
 
 > **Status:** Documented
 
+**Manual testing:** [`custom-pages-module-manual.md`](../testing/custom-pages-module-manual.md)
+
 ## Purpose
 
-Mobile-first **brochure-style** page for booked guests: house rules, check-in/out instructions, and parking reminders from **Property Templates** (standard keys), interleaved with property photos. Linked from the **ready-for-checkin** email (`{{stay_guide_cta_section}}`).
+Mobile-first **"digital pamphlet"** page for booked guests: a warm-neutral, chaptered brochure with house rules, check-in/out instructions, and parking reminders from **Property Templates** (standard keys), interleaved with property photos. Linked from the **ready-for-checkin** email (`{{stay_guide_cta_section}}`). This is the **v1 template** of the **[[custom-pages|Custom Pages]]** module — see that doc for the `custom_pages` table and `template_key` plumbing.
 
 ---
 
@@ -88,28 +90,34 @@ On **Templates → Standard templates**, each card has an optional **Section ima
 - The **first h1–h3** in template body becomes the section card title (duplicate heading stripped from body).
 - **`ul` / `ol`** render as proper lists with bullets/numbers.
 
-## UI
+## UI (v1 template: `stay-guide-warm-arrival`)
 
-- **Hero carousel** — full-width swipeable property gallery (up to 12 images, primary first); auto-advances every 5s (pauses on hover/drag; respects `prefers-reduced-motion`); no dot or count UI
-- **Meta chips** — stay dates on the hero carousel (welcome + dates pills); address only on check-in map card
-- **Section tabs** — equal-width grid on mobile (icon + label); segmented pill bar on larger screens; **section image** only from template `section_image_url` when uploaded
-- **Section cards** — optional template section image (only when uploaded): stacked on top on mobile, **left column beside content on `lg+`**; title from first template heading, rich HTML body; **Check-in** adds a **second card below** with full-bleed map, address, and Directions
-- Brand color from property/org via CSS variables
-- **Need help** footer — host avatar + **team member name** (first active property team member, else org team member — not settings contact name), phone, email, Facebook, Airbnb in a card layout
+Warm-neutral "digital pamphlet" redesign — page-scoped palette (Paper/Ink/Sand/Umber, both light + dark variants) and `Fraunces` display type layered on the existing brand teal accent. Content is capped to a centered ~720px column at every breakpoint (mobile-first, no separate desktop layout).
+
+- **Hero** — full-bleed static hero photo (`property.heroImageUrl`, primary gallery image) with bottom gradient scrim + `Fraunces` title overlay (property/unit name); one-time scale-settle + fade-up on load (`framer-motion`, `useReducedMotion`-gated)
+- **Stay pass card** (`StayPassCard.tsx`) — boarding-pass-styled summary (guest name, property, check-in/out date + time) that overlaps the hero's bottom edge; the signature "wow" element, surfacing practical booking facts immediately per competitive UX research
+- **Gallery film strip** (`StayGuideGalleryCarousel.tsx`) — editorial horizontal scroll-snap strip of gallery images, placed after the hero/pass (not a full-bleed carousel at the top)
+- **Quick-nav** (`StayGuideTabs.tsx`) — sticky pill bar under the gallery; jump-scrolls to chapter anchors, scrollspy-highlights the chapter in view (`IntersectionObserver`)
+- **Chapters** (`StayGuideChapter.tsx`, grouped by `lib/stayGuideChapters.ts`) — standard sections regrouped into "Getting In" (check-in), "Make Yourself at Home" (house rules + parking when applicable), "Before You Go" (check-out); each chapter: eyebrow + `Fraunces` heading + Sand-surfaced body, quiet scroll-reveal on enter; **Check-in** chapter appends the full-bleed map card below its content
+- **Need Anything?** — restyled `StayGuideHelpSection.tsx` (same host/contact data), now a chapter target (`id="need-anything"`) for quick-nav
+- Brand color from property/org via CSS variables (interactive accent only — buttons, active nav pill, links)
+
+**Preview parity** — `preview-guest-stay-guide` renders the identical template; hosts see exactly what guests see.
 
 ## Implementation map
 
-| Layer           | Path                                                                                            |
-| --------------- | ----------------------------------------------------------------------------------------------- |
-| Page            | `ui/src/features/guest/stay-guide/pages/StayGuidePage.tsx`                                      |
-| Components      | `ui/src/features/guest/stay-guide/components/*`                                                 |
-| Hook            | `ui/src/features/guest/stay-guide/hooks/useGuestStayGuide.ts` (`useGuestStayGuidePreview`)      |
-| Preview client  | `ui/src/features/guest/stay-guide/lib/previewApi.ts`                                            |
-| Edge            | `supabase/functions/get-guest-stay-guide/index.ts`                                              |
-| Preview edge    | `supabase/functions/preview-guest-stay-guide/index.ts`                                          |
-| Issue link API  | `supabase/functions/issue-guest-stay-guide-token/index.ts`                                      |
-| Token + payload | `supabase/functions/_shared/guestStayGuide.ts` (`loadGuestStayGuidePreview`, mock booking)      |
-| Admin UI        | `WorkflowPanel.tsx` (Stay guide row); **`TemplatesPage.tsx`** (Preview stay guide)              |
-| Orchestrator    | `workflowOrchestrator.ts` — token on `READY_FOR_CHECKIN`                                        |
-| Email CTA       | `propertyTemplateEmailSections.ts#buildStayGuideCtaHtml`, `emailService.ts#sendReadyForCheckin` |
-| Migration       | `supabase/migrations/20260916120000_guest_stay_guide_token.sql`                                 |
+| Layer            | Path                                                                                                                                                                                                |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Page             | `ui/src/features/guest/stay-guide/pages/StayGuidePage.tsx`                                                                                                                                          |
+| Components       | `ui/src/features/guest/stay-guide/components/*` (`StayPassCard`, `StayGuideChapter`, `StayGuideHero`, `StayGuideTabs` (quick-nav), `StayGuideGalleryCarousel` (film strip), `StayGuideHelpSection`) |
+| Chapter grouping | `ui/src/features/guest/stay-guide/lib/stayGuideChapters.ts`                                                                                                                                         |
+| Hook             | `ui/src/features/guest/stay-guide/hooks/useGuestStayGuide.ts` (`useGuestStayGuidePreview`)                                                                                                          |
+| Preview client   | `ui/src/features/guest/stay-guide/lib/previewApi.ts`                                                                                                                                                |
+| Edge             | `supabase/functions/get-guest-stay-guide/index.ts`                                                                                                                                                  |
+| Preview edge     | `supabase/functions/preview-guest-stay-guide/index.ts`                                                                                                                                              |
+| Issue link API   | `supabase/functions/issue-guest-stay-guide-token/index.ts`                                                                                                                                          |
+| Token + payload  | `supabase/functions/_shared/guestStayGuide.ts` (`loadGuestStayGuidePreview`, mock booking; includes `templateKey` via `_shared/customPages.ts`)                                                     |
+| Admin UI         | `WorkflowPanel.tsx` (Stay guide row); **`TemplatesPage.tsx`** and **[[custom-pages\|Custom Pages]]** (Preview stay guide)                                                                           |
+| Orchestrator     | `workflowOrchestrator.ts` — token on `READY_FOR_CHECKIN`                                                                                                                                            |
+| Email CTA        | `propertyTemplateEmailSections.ts#buildStayGuideCtaHtml`, `emailService.ts#sendReadyForCheckin`                                                                                                     |
+| Migration        | `supabase/migrations/20260916120000_guest_stay_guide_token.sql`, `supabase/migrations/20261018130000_custom_pages.sql`                                                                              |

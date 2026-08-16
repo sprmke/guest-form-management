@@ -32,12 +32,19 @@ Do **not** use high-thinking or Opus for spacing, copy tweaks, or mechanical ref
 
 - Opt-in only (see `superpowers-opt-in.mdc`). Do not auto-invoke brainstorming.
 - When used: keep it single-threaded; do not fan out extra explore agents.
+- **Lean mode (hooks):** all `/superpowers-*` commands (including **`/superpowers-execute`**) activate lean mode — subagents/Task blocked via `.cursor/hooks/superpowers-lean-mode.sh` + `guard-superpowers-subagents.sh`. See `.agent/skills/superpowers/SKILL.md` § Lean mode.
 
 ## MCP
 
 - Use project MCP when needed (`supabase` read-only, `context7`, `markitdown` for binaries, `playwright` for `/verify`).
 - Do not discover or call unused servers. Skip failed/unauth servers instead of retrying auth loops.
 - Prefer `rg` / `Read` over Playwright for code questions.
+
+## Memory (no claude-mem)
+
+- **Do not use claude-mem** — it bills Haiku on every tool use and usually costs more than it saves in this repo.
+- Cross-session context: **`docs/PROJECT.md`**, matching **`docs/guides/routes/*`**, **`docs/workflow/in-progress/`**, then `/clear` between tasks.
+- Machine cleanup: **`bun run cleanup:claude-mem`** (add `-- --purge` to delete `~/.claude-mem` data).
 
 ## Account routing (humans)
 

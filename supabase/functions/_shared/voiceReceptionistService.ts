@@ -6,8 +6,11 @@
 import { createServiceClient } from './orgAuth.ts';
 import { GEMINI_LIVE_VOICES, type GeminiLiveVoice } from './geminiLiveEphemeral.ts';
 import { insertMessageIfNew, updateConversationAfterMessage } from './socialInboxService.ts';
+import { getModelConfig, isValidAiFeature } from './aiModelRouter.ts';
+import { recordAiUsage } from './aiUsageService.ts';
 
 const MANILA_TZ = 'Asia/Manila';
+const VOICE_FEATURE = 'voice_receptionist' as const;
 
 /**
  * Rough Gemini Live native-audio blended rate (input $0.005/min + output $0.018/min,
@@ -48,10 +51,27 @@ function db() {
   return createServiceClient();
 }
 
+async function getOrganizationIdForProperty(propertyId: string): Promise<string> {
+  const sb = db();
+  const { data, error } = await sb
+    .from('properties')
+    .select('organization_id')
+    .eq('id', propertyId)
+    .maybeSingle();
+  if (error) {
+    console.error('[voiceReceptionistService] lookup property org:', error.message);
+    throw new Error('Failed to load voice receptionist settings');
+  }
+  if (!data?.organization_id) {
+    throw new Error('Property not found');
+  }
+  return data.organization_id as string;
+}
+
 export async function getGlobalVoiceReceptionistSettings(): Promise<VoiceReceptionistGlobalSettingsDto> {
   const sb = db();
   const { data, error } = await sb
-    .from('voice_receptionist_global_settings')
+    .from('ai_platform_global_settings')
     .select('*')
     .eq('id', 1)
     .maybeSingle();
@@ -59,8 +79,12 @@ export async function getGlobalVoiceReceptionistSettings(): Promise<VoiceRecepti
     console.error('[voiceReceptionistService] load global settings:', error.message);
     throw new Error('Failed to load global voice receptionist settings');
   }
+  const globalEnabled = data?.enabled ?? false;
+  const allowedFeatures = (data?.allowed_features as string[] | undefined) ?? [];
+  const allowed =
+    globalEnabled && (allowedFeatures.length === 0 || allowedFeatures.includes(VOICE_FEATURE));
   return {
-    enabled: data?.enabled ?? false,
+    enabled: allowed,
     updatedBy: (data?.updated_by as string | null) ?? null,
     updatedAt: (data?.updated_at as string | undefined) ?? new Date().toISOString(),
   };
@@ -71,9 +95,35 @@ export async function setGlobalVoiceReceptionistEnabled(
   updatedByUserId: string
 ): Promise<VoiceReceptionistGlobalSettingsDto> {
   const sb = db();
+  // Ensure row exists first.
+  await sb
+    .from('ai_platform_global_settings')
+    .upsert({ id: 1 }, { onConflict: 'id', ignoreDuplicates: true });
+
+  const { data: current, error: readError } = await sb
+    .from('ai_platform_global_settings')
+    .select('allowed_features')
+    .eq('id', 1)
+    .single();
+
+  if (readError) {
+    console.error('[voiceReceptionistService] read global settings:', readError.message);
+    throw new Error('Failed to update global voice receptionist settings');
+  }
+
+  const allowedFeatures = (current?.allowed_features as string[] | undefined) ?? [];
+  const updatedFeatures = enabled
+    ? Array.from(new Set([...allowedFeatures, VOICE_FEATURE]))
+    : allowedFeatures.filter((f) => f !== VOICE_FEATURE);
+
   const { data, error } = await sb
-    .from('voice_receptionist_global_settings')
-    .update({ enabled, updated_by: updatedByUserId, updated_at: new Date().toISOString() })
+    .from('ai_platform_global_settings')
+    .update({
+      enabled,
+      allowed_features: updatedFeatures,
+      updated_by: updatedByUserId,
+      updated_at: new Date().toISOString(),
+    })
     .eq('id', 1)
     .select('*')
     .single();
@@ -82,44 +132,78 @@ export async function setGlobalVoiceReceptionistEnabled(
     throw new Error('Failed to update global voice receptionist settings');
   }
   return {
-    enabled: data.enabled,
+    enabled:
+      (data.enabled as boolean) &&
+      (updatedFeatures.length === 0 || updatedFeatures.includes(VOICE_FEATURE)),
     updatedBy: (data.updated_by as string | null) ?? null,
     updatedAt: data.updated_at as string,
   };
 }
 
-async function ensureVoiceReceptionistSettingsRow(propertyId: string): Promise<void> {
-  const sb = db();
-  await sb
-    .from('voice_receptionist_settings')
-    .upsert({ property_id: propertyId }, { onConflict: 'property_id', ignoreDuplicates: true });
+type VoiceFeatureConfig = {
+  enabled?: boolean;
+  voiceId?: string;
+  personaPrompt?: string | null;
+  maxSessionSeconds?: number;
+  maxSessionsPerGuestPerDay?: number;
+  maxConcurrentSessions?: number;
+};
+
+function getVoiceFeatureConfig(row: Record<string, unknown> | null): VoiceFeatureConfig {
+  const configs = (row?.feature_configs as Record<string, unknown> | undefined) ?? {};
+  const config = configs[VOICE_FEATURE] as Record<string, unknown> | undefined;
+  return {
+    enabled: config?.enabled as boolean | undefined,
+    voiceId: config?.voice_id as string | undefined,
+    personaPrompt: config?.persona_prompt as string | null | undefined,
+    maxSessionSeconds: config?.max_session_seconds as number | undefined,
+    maxSessionsPerGuestPerDay: config?.max_sessions_per_guest_per_day as number | undefined,
+    maxConcurrentSessions: config?.max_concurrent_sessions as number | undefined,
+  };
 }
 
 function serializeSettingsRow(
   propertyId: string,
   row: Record<string, unknown> | null
 ): VoiceReceptionistSettingsDto {
+  const config = getVoiceFeatureConfig(row);
+  const rowEnabled = row?.enabled as boolean | undefined;
   return {
     propertyId,
-    enabled: (row?.enabled as boolean | undefined) ?? false,
-    voiceId: (row?.voice_id as string | undefined) ?? 'Kore',
-    personaPrompt: (row?.persona_prompt as string | null | undefined) ?? null,
-    maxSessionSeconds: (row?.max_session_seconds as number | undefined) ?? 300,
-    maxSessionsPerGuestPerDay: (row?.max_sessions_per_guest_per_day as number | undefined) ?? 3,
-    maxConcurrentSessions: (row?.max_concurrent_sessions as number | undefined) ?? 3,
+    enabled: rowEnabled !== false && (config.enabled ?? false),
+    voiceId: config.voiceId ?? 'Kore',
+    personaPrompt: config.personaPrompt ?? null,
+    maxSessionSeconds: config.maxSessionSeconds ?? 300,
+    maxSessionsPerGuestPerDay: config.maxSessionsPerGuestPerDay ?? 3,
+    maxConcurrentSessions: config.maxConcurrentSessions ?? 3,
     availableVoices: GEMINI_LIVE_VOICES,
   };
+}
+
+async function ensureVoiceReceptionistSettingsRow(
+  propertyId: string,
+  organizationId: string
+): Promise<void> {
+  const sb = db();
+  await sb
+    .from('ai_platform_property_settings')
+    .upsert(
+      { property_id: propertyId, organization_id: organizationId, feature_configs: {} },
+      { onConflict: 'property_id, organization_id', ignoreDuplicates: true }
+    );
 }
 
 export async function getVoiceReceptionistSettings(
   propertyId: string
 ): Promise<VoiceReceptionistSettingsDto> {
-  await ensureVoiceReceptionistSettingsRow(propertyId);
+  const organizationId = await getOrganizationIdForProperty(propertyId);
+  await ensureVoiceReceptionistSettingsRow(propertyId, organizationId);
   const sb = db();
   const { data, error } = await sb
-    .from('voice_receptionist_settings')
+    .from('ai_platform_property_settings')
     .select('*')
     .eq('property_id', propertyId)
+    .eq('organization_id', organizationId)
     .maybeSingle();
   if (error) {
     console.error('[voiceReceptionistService] load property settings:', error.message);
@@ -203,24 +287,49 @@ export async function updateVoiceReceptionistSettings(
   propertyId: string,
   patch: VoiceReceptionistSettingsPatch
 ): Promise<VoiceReceptionistSettingsDto> {
-  await ensureVoiceReceptionistSettingsRow(propertyId);
+  const organizationId = await getOrganizationIdForProperty(propertyId);
+  await ensureVoiceReceptionistSettingsRow(propertyId, organizationId);
   const sb = db();
-  const dbPatch: Record<string, unknown> = { updated_at: new Date().toISOString() };
-  if (patch.enabled !== undefined) dbPatch.enabled = patch.enabled;
-  if (patch.voiceId !== undefined) dbPatch.voice_id = patch.voiceId;
-  if (patch.personaPrompt !== undefined) dbPatch.persona_prompt = patch.personaPrompt;
-  if (patch.maxSessionSeconds !== undefined) dbPatch.max_session_seconds = patch.maxSessionSeconds;
-  if (patch.maxSessionsPerGuestPerDay !== undefined) {
-    dbPatch.max_sessions_per_guest_per_day = patch.maxSessionsPerGuestPerDay;
-  }
-  if (patch.maxConcurrentSessions !== undefined) {
-    dbPatch.max_concurrent_sessions = patch.maxConcurrentSessions;
+
+  const { data: current, error: readError } = await sb
+    .from('ai_platform_property_settings')
+    .select('*')
+    .eq('property_id', propertyId)
+    .eq('organization_id', organizationId)
+    .single();
+  if (readError) {
+    console.error('[voiceReceptionistService] read property settings:', readError.message);
+    throw new Error('Failed to update voice receptionist settings');
   }
 
+  const configs = (current?.feature_configs as Record<string, unknown> | undefined) ?? {};
+  const voiceConfig = (configs[VOICE_FEATURE] as Record<string, unknown> | undefined) ?? {};
+
+  const updatedVoiceConfig: Record<string, unknown> = { ...voiceConfig };
+  if (patch.enabled !== undefined) updatedVoiceConfig.enabled = patch.enabled;
+  if (patch.voiceId !== undefined) updatedVoiceConfig.voice_id = patch.voiceId;
+  if (patch.personaPrompt !== undefined) updatedVoiceConfig.persona_prompt = patch.personaPrompt;
+  if (patch.maxSessionSeconds !== undefined)
+    updatedVoiceConfig.max_session_seconds = patch.maxSessionSeconds;
+  if (patch.maxSessionsPerGuestPerDay !== undefined) {
+    updatedVoiceConfig.max_sessions_per_guest_per_day = patch.maxSessionsPerGuestPerDay;
+  }
+  if (patch.maxConcurrentSessions !== undefined) {
+    updatedVoiceConfig.max_concurrent_sessions = patch.maxConcurrentSessions;
+  }
+
+  const updatedConfigs = { ...configs, [VOICE_FEATURE]: updatedVoiceConfig };
+  const enabled = patch.enabled ?? (current?.enabled as boolean | undefined) ?? true;
+
   const { data, error } = await sb
-    .from('voice_receptionist_settings')
-    .update(dbPatch)
+    .from('ai_platform_property_settings')
+    .update({
+      enabled,
+      feature_configs: updatedConfigs,
+      updated_at: new Date().toISOString(),
+    })
     .eq('property_id', propertyId)
+    .eq('organization_id', organizationId)
     .select('*')
     .single();
   if (error) {
@@ -421,6 +530,21 @@ export async function endVoiceReceptionistSession(
   if (error) {
     console.error('[voiceReceptionistService] end session:', error.message);
     throw new Error('Failed to end voice session');
+  }
+
+  try {
+    const orgId = await getOrganizationIdForProperty(session.propertyId);
+    const voiceConfig = getModelConfig(VOICE_FEATURE);
+    await recordAiUsage({
+      organizationId: orgId,
+      propertyId: session.propertyId,
+      feature: VOICE_FEATURE,
+      provider: 'gemini',
+      model: voiceConfig.model,
+      estimatedCostUsd,
+    });
+  } catch (err) {
+    console.warn('[voiceReceptionistService] usage record failed:', (err as Error).message);
   }
 
   return { endedAt, durationSeconds };

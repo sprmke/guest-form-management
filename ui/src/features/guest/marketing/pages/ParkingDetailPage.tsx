@@ -21,6 +21,7 @@ import type { ListingHostInfo } from '@/features/guest/marketing/shared/componen
 import { useMarketingBrandColor } from '@/features/guest/marketing/shared/context/ModeSwitchTransitionContext';
 
 import { Button } from '@/components/ui/button';
+import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
 
 function formatRate(amount: number): string {
   return new Intl.NumberFormat('en-PH', {
@@ -38,6 +39,7 @@ function buildGalleryImages(coverImage: string | null, images: string[]): string
 export function ParkingDetailPage() {
   const { parkingSlug = '' } = useParams<{ parkingSlug: string }>();
   const { data, isLoading, isError } = usePublicParkingDetail(parkingSlug);
+  usePageTitle(publicPageTitle(data?.name ? `${data.name}` : 'Parking'));
   const { data: hostProfile } = usePublicHost(data?.orgSlug ?? '');
   const { setBrandColor } = useMarketingBrandColor();
 
@@ -116,7 +118,7 @@ export function ParkingDetailPage() {
         </div>
 
         <div className="container mx-auto px-4 py-8 sm:px-6 lg:px-8">
-          <div className="grid gap-8 lg:grid-cols-3 lg:gap-12">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 lg:gap-12">
             <div className="space-y-10 lg:col-span-2">
               <ParkingOverview
                 name={data.name}

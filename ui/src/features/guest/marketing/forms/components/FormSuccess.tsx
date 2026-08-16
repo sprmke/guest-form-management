@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 
 import { motion } from 'framer-motion';
-import { CheckCircle, ArrowRight, Building2, FileText } from 'lucide-react';
+import { CheckCircle, ArrowRight, Building2, FileText, Clock } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 
@@ -11,6 +11,8 @@ interface FormSuccessProps {
   submissionId?: string;
   propertyId?: string;
   propertyName?: string;
+  /** When set, shows a "Track Request" link (e.g. parking broadcast status page). */
+  statusUrl?: string;
 }
 
 export function FormSuccess({
@@ -19,6 +21,7 @@ export function FormSuccess({
   submissionId,
   propertyId,
   propertyName,
+  statusUrl,
 }: FormSuccessProps) {
   return (
     <motion.div
@@ -78,17 +81,26 @@ export function FormSuccess({
         transition={{ delay: 0.5 }}
         className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center"
       >
-        {propertyId && (
+        {statusUrl ? (
           <Button asChild className="w-full gap-2 sm:w-auto" size="lg">
-            <Link to={`/properties/${propertyId}`}>
-              <Building2 className="h-4 w-4" />
-              {propertyName ?? 'View Property'}
+            <Link to={statusUrl}>
+              <Clock className="h-4 w-4" />
+              Track Request
             </Link>
           </Button>
+        ) : (
+          propertyId && (
+            <Button asChild className="w-full gap-2 sm:w-auto" size="lg">
+              <Link to={`/properties/${propertyId}`}>
+                <Building2 className="h-4 w-4" />
+                {propertyName ?? 'View Property'}
+              </Link>
+            </Button>
+          )
         )}
         <Button
           asChild
-          variant={propertyId ? 'outline' : 'default'}
+          variant={propertyId || statusUrl ? 'outline' : 'default'}
           className="w-full gap-2 sm:w-auto"
           size="lg"
         >

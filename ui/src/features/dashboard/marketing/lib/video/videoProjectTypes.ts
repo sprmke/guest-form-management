@@ -1,3 +1,4 @@
+import type { CampaignPalette } from '@/features/dashboard/marketing/lib/designBrandColors';
 import type { VideoMotionOverride } from '@/features/dashboard/marketing/lib/video/videoMotionProfiles';
 import type { VideoOverlayMode } from '@/features/dashboard/marketing/lib/video/videoStoryboardRecipes';
 import type { VideoSceneTextLayout } from '@/features/dashboard/marketing/lib/video/videoTextSlots';
@@ -123,6 +124,8 @@ export type VideoProject = {
   fps: number;
   scenes: VideoScene[];
   music?: VideoProjectMusic;
+  /** Optional look palette (AI suggestion mood) — overrides brand-tinted template palette. */
+  palette?: CampaignPalette;
 };
 
 export const VIDEO_TRANSITION_FRAMES = 15;

@@ -21,7 +21,7 @@ Route: `/admin`
 
 ## Overview
 
-Landing page for the **platform super-admin** area — a distinct tier from org/property admin and from the legacy `ADMIN_ALLOWED_EMAILS` gate. It renders four navigation cards (Developments, Properties, Approvals, Hosts) and makes no API calls of its own; all data lives on the destination pages.
+Landing page for the **platform super-admin** area — a distinct tier from org/property admin and from the legacy `ADMIN_ALLOWED_EMAILS` gate. It renders four navigation cards (Developments, Properties, Approvals, Hosts) and makes no API calls of its own; all data lives on the destination pages. Platform AI settings live on [`/admin/settings`](./settings.md).
 
 **Access:** `RequireSuperAdmin` — email must be in `SUPER_ADMIN_EMAILS` (server) / `VITE_SUPER_ADMIN_EMAILS` (client UX gate). Uses the same signed-in session as the legacy admin dashboard (`useAdminSession`), so a super admin must already be signed in via Google OAuth; being super admin does not require being in `ADMIN_ALLOWED_EMAILS`.
 

@@ -66,13 +66,15 @@ export const STATUS_TONE_STYLES: Record<StatusTone, StatusToneStyle> = {
   },
 };
 
-/** Kanban columns, workflow cards — text + surface + border from the same tone. */
-export function statusToneSurfaceClasses(tone: StatusTone): {
+export type StatusToneSurface = {
   color: string;
   bgColor: string;
   borderColor: string;
-} {
-  const map: Record<StatusTone, { color: string; bgColor: string; borderColor: string }> = {
+};
+
+/** Kanban columns, workflow cards — text + surface + border from the same tone. */
+export function statusToneSurfaceClasses(tone: StatusTone): StatusToneSurface {
+  const map: Record<StatusTone, StatusToneSurface> = {
     red: {
       color: 'text-rose-800 dark:text-rose-200',
       bgColor: 'bg-rose-50 dark:bg-rose-950/40',
@@ -120,28 +122,21 @@ export function statusToneSurfaceClasses(tone: StatusTone): {
 export type SemanticBadgeVariant =
   'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'pending';
 
+const SEMANTIC_TONE: Record<SemanticBadgeVariant, StatusTone> = {
+  success: 'green',
+  warning: 'amber',
+  danger: 'red',
+  info: 'blue',
+  neutral: 'neutral',
+  pending: 'yellow',
+};
+
 export function semanticBadgeClasses(variant: SemanticBadgeVariant): string {
-  const map: Record<SemanticBadgeVariant, StatusTone> = {
-    success: 'green',
-    warning: 'amber',
-    danger: 'red',
-    info: 'blue',
-    neutral: 'neutral',
-    pending: 'yellow',
-  };
-  return STATUS_TONE_STYLES[map[variant]].badge;
+  return STATUS_TONE_STYLES[SEMANTIC_TONE[variant]].badge;
 }
 
 export function semanticBadgeDotClasses(variant: SemanticBadgeVariant): string {
-  const map: Record<SemanticBadgeVariant, StatusTone> = {
-    success: 'green',
-    warning: 'amber',
-    danger: 'red',
-    info: 'blue',
-    neutral: 'neutral',
-    pending: 'yellow',
-  };
-  return STATUS_TONE_STYLES[map[variant]].dot;
+  return STATUS_TONE_STYLES[SEMANTIC_TONE[variant]].dot;
 }
 
 /** Uppercase compact chips (resource kind, finance ledger, import mapping). */
@@ -154,17 +149,14 @@ export function softBadgeClasses(variant: SemanticBadgeVariant): string {
   return `inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${semanticBadgeClasses(variant)}`;
 }
 
+/** Border + fill + on-surface text for a semantic variant, kept as parts. */
+export function semanticSurfaceClasses(variant: SemanticBadgeVariant): StatusToneSurface {
+  return statusToneSurfaceClasses(SEMANTIC_TONE[variant]);
+}
+
 /** Callout / notice surfaces (AI verdict cards, alert strips). */
 export function softSurfaceClasses(variant: SemanticBadgeVariant): string {
-  const toneMap: Record<SemanticBadgeVariant, StatusTone> = {
-    success: 'green',
-    warning: 'amber',
-    danger: 'red',
-    info: 'blue',
-    neutral: 'neutral',
-    pending: 'yellow',
-  };
-  const surface = statusToneSurfaceClasses(toneMap[variant]);
+  const surface = semanticSurfaceClasses(variant);
   return `${surface.borderColor} ${surface.bgColor}`;
 }
 

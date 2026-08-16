@@ -1,9 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { format, eachDayOfInterval, isSameDay, isBefore, startOfToday } from 'date-fns';
+import {
+  format,
+  eachDayOfInterval,
+  isSameDay,
+  isBefore,
+  startOfToday,
+  getDaysInMonth,
+} from 'date-fns';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import {
+  CalendarBookingCelebration,
+  type CalendarBookingCelebrationTrigger,
+} from '@/features/dashboard/bookings/components/calendar/CalendarBookingCelebration';
 import { buildOccupancyByDay } from '@/features/dashboard/bookings/components/calendar/calendarDateUtils';
 import { PricingCalendarBookingModal } from '@/features/dashboard/pricing/components/PricingCalendarBookingModal';
 import { PricingCalendarGrid } from '@/features/dashboard/pricing/components/PricingCalendarGrid';
@@ -57,6 +68,9 @@ import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPer
 
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { formatMoneyCompact } from '@/utils/format/currency';
+
+/** A viewed month at/above this many bookings triggers the busy-month celebration. */
+const BUSY_MONTH_CELEBRATION_THRESHOLD = 20;
 
 export function PropertyPricingPage() {
   const { data: access } = usePropertyPermissions();
@@ -116,6 +130,28 @@ export function PropertyPricingPage() {
   }, [pricingData, hasChanges, syncBaselineFromDto]);
 
   const calendarBookings = pricingData?.calendarBookings ?? [];
+
+  // Busy-month celebration: fires once per distinct month reaching the
+  // occupied-days threshold, and again on navigating to another month that
+  // also qualifies. Occupied days (not distinct booking count) tracks how
+  // "full" the month looks on the grid.
+  const [celebration, setCelebration] = useState<CalendarBookingCelebrationTrigger | null>(null);
+  const celebratedMonthsRef = useRef<Set<string>>(new Set());
+  const occupiedDaysThisMonth = pricingData?.bookedDateKeys.length ?? 0;
+
+  useEffect(() => {
+    if (isLoading || !pricingData) return;
+    if (occupiedDaysThisMonth < BUSY_MONTH_CELEBRATION_THRESHOLD) return;
+    const monthKey = format(currentMonth, 'yyyy-MM');
+    if (celebratedMonthsRef.current.has(monthKey)) return;
+    celebratedMonthsRef.current.add(monthKey);
+    setCelebration({
+      key: monthKey,
+      count: occupiedDaysThisMonth,
+      unitLabel: 'days booked',
+      fullyBooked: occupiedDaysThisMonth >= getDaysInMonth(currentMonth),
+    });
+  }, [isLoading, pricingData, occupiedDaysThisMonth, currentMonth]);
 
   const pricingDefaults = useMemo((): PropertyPricingDefaults => {
     return {
@@ -572,6 +608,8 @@ export function PropertyPricingPage() {
         onOpenChange={setBookingModalOpen}
         displayAmount={selectedBooking ? getBookingDisplayTotal(selectedBooking) : null}
       />
+
+      <CalendarBookingCelebration trigger={celebration} onDone={() => setCelebration(null)} />
     </>
   );
 }

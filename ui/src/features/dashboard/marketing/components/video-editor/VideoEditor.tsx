@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { useQueryClient } from '@tanstack/react-query';
 import {
   ChevronLeft,
   Download,
@@ -14,6 +15,10 @@ import { toast } from 'sonner';
 
 import { usePublicPropertyDetail } from '@/features/guest/marketing/properties/hooks/usePublicPropertyDetail';
 
+import {
+  MarketingAiGeneratePanel,
+  type MarketingAiGenerateInput,
+} from '@/features/dashboard/marketing/components/shared/MarketingAiGeneratePanel';
 import { MarketingAutoSaveStatus } from '@/features/dashboard/marketing/components/shared/MarketingAutoSaveStatus';
 import { MarketingEditorHistoryControls } from '@/features/dashboard/marketing/components/shared/MarketingEditorHistoryControls';
 import { MarketingEditorSidebar } from '@/features/dashboard/marketing/components/shared/MarketingEditorSidebar';
@@ -36,14 +41,17 @@ import {
 } from '@/features/dashboard/marketing/components/video-editor/VideoPreviewWorkspace';
 import { VideoTimeline } from '@/features/dashboard/marketing/components/video-editor/VideoTimeline';
 import { useEnsureDefaultVideoMusic } from '@/features/dashboard/marketing/hooks/useEnsureDefaultVideoMusic';
+import { useGenerateMarketingTemplate } from '@/features/dashboard/marketing/hooks/useGenerateMarketingTemplate';
 import { useMarketingAutoSave } from '@/features/dashboard/marketing/hooks/useMarketingAutoSave';
 import { useMarketingBookedDates } from '@/features/dashboard/marketing/hooks/useMarketingBookedDates';
 import { useMarketingCatalog } from '@/features/dashboard/marketing/hooks/useMarketingCatalog';
 import { useMarketingSidebarLayout } from '@/features/dashboard/marketing/hooks/useMarketingSidebarLayout';
 import {
+  saveMarketingTemplate,
   useDeleteMarketingTemplate,
   useMarketingTemplates,
   useUpdateMarketingTemplate,
+  type MarketingTemplateRecord,
 } from '@/features/dashboard/marketing/hooks/useMarketingTemplates';
 import { captureLiveVideoProjectThumbnail } from '@/features/dashboard/marketing/hooks/useMarketingTemplateThumbnails';
 import {
@@ -70,8 +78,10 @@ import {
   getCachedMarketingThumbnail,
   marketingBindingCacheKey,
   publishMarketingPresetThumbnail,
+  savedVideoThumbnailKey,
   videoPresetThumbnailKey,
 } from '@/features/dashboard/marketing/lib/marketingTemplateThumbnailCache';
+import { withGlobalRenderSlot } from '@/features/dashboard/marketing/lib/marketingThumbnailQueue';
 import {
   propertyMediaItems,
   propertyGalleryMediaItems,
@@ -81,8 +91,12 @@ import {
   primaryBindingPhoto,
   resolveDesignBindingMedia,
 } from '@/features/dashboard/marketing/lib/propertyBindingMedia';
-import { renderVideoPresetThumbnail } from '@/features/dashboard/marketing/lib/renderMarketingVideoThumbnail';
+import {
+  renderVideoPresetThumbnail,
+  renderVideoProjectThumbnail,
+} from '@/features/dashboard/marketing/lib/renderMarketingVideoThumbnail';
 import { ensureVideoMusicForExport } from '@/features/dashboard/marketing/lib/video/importVideoMusic';
+import { resolveAiGeneratedVideoProjectsForAllFormats } from '@/features/dashboard/marketing/lib/video/videoAiProjectBuilder';
 import { VIDEO_CATEGORIES } from '@/features/dashboard/marketing/lib/video/videoCategories';
 import {
   VIDEO_FORMAT_DIMENSIONS,
@@ -105,6 +119,10 @@ import {
 } from '@/features/dashboard/marketing/lib/video/videoProjectUtils';
 import { getSceneLayers } from '@/features/dashboard/marketing/lib/video/videoSceneLayers';
 import { resolveVideoTypographyContext } from '@/features/dashboard/marketing/lib/video/videoTemplateTypography';
+import {
+  applyVideoAiPreferencesToTokens,
+  campaignPaletteFromLookMood,
+} from '@/features/dashboard/marketing/lib/videoAiGenerateOptions';
 import {
   getVideoCampaignTemplate,
   videoTemplatePalette,
@@ -141,6 +159,8 @@ export function VideoEditor({ onPublish }: Props) {
   const { data: savedTemplates = [] } = useMarketingTemplates('video');
   const updateTemplate = useUpdateMarketingTemplate();
   const deleteTemplate = useDeleteMarketingTemplate();
+  const queryClient = useQueryClient();
+  const generateTemplate = useGenerateMarketingTemplate();
 
   const [category, setCategory] = useState<string>('soft-stay');
   const [selectedId, setSelectedId] = useState('quiet-morning');
@@ -148,12 +168,16 @@ export function VideoEditor({ onPublish }: Props) {
   const [autoSaveSuspended, setAutoSaveSuspended] = useState(false);
   const [format, setFormat] = useState<VideoFormat>('instagram-story');
   const [exporting, setExporting] = useState(false);
+  const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
+  const [aiGenerateBusy, setAiGenerateBusy] = useState(false);
   const { project, setProject, replaceProject, undo, redo, canUndo, canRedo } =
     useVideoProjectHistory();
   const [selectedSceneId, setSelectedSceneId] = useState<string | null>(null);
   const [showEditorSettings, setShowEditorSettings] = useState(false);
   const [previewMode, setPreviewMode] = useState<VideoPreviewMode>('all');
   const [previewPlaying, setPreviewPlaying] = useState(false);
+  const previewPlayingRef = useRef(previewPlaying);
+  previewPlayingRef.current = previewPlaying;
   const [relativeZoom, setRelativeZoom] = useState(100);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [elementFocusRequest, setElementFocusRequest] = useState(0);
@@ -252,6 +276,38 @@ export function VideoEditor({ onPublish }: Props) {
     [templates, binding, format, replaceProject]
   );
 
+  const applySavedVideoTemplate = useCallback(
+    (record: MarketingTemplateRecord) => {
+      const savedProject = record.designJson.project as VideoProject | undefined;
+      if (!savedProject) {
+        toast.error('Could not load template');
+        return;
+      }
+
+      const savedFormat: VideoFormat =
+        (record.aspectPreset as VideoFormat | null) ??
+        (typeof record.designJson.format === 'string'
+          ? (record.designJson.format as VideoFormat)
+          : format);
+      const savedCategory =
+        (typeof record.designJson.categoryId === 'string' && record.designJson.categoryId) ||
+        (typeof record.designJson.category === 'string' && record.designJson.category) ||
+        category;
+
+      setAutoSaveSuspended(true);
+      if (savedFormat !== format) setFormat(savedFormat);
+      if (savedCategory !== category) setCategory(savedCategory);
+      setSavedTemplateId(record.id);
+      replaceProject({ ...savedProject, format: savedFormat });
+      setSelectedSceneId(savedProject.scenes[0]?.id ?? null);
+      setPreviewMode('all');
+      playerRef.current?.pause();
+      playerRef.current?.seekTo(0);
+      window.setTimeout(() => setAutoSaveSuspended(false), 0);
+    },
+    [category, format, replaceProject]
+  );
+
   const propertyMediaKey = useMemo(
     () =>
       binding.propertyMedia?.map((item) => `${item.type}:${item.url}`).join('|') ??
@@ -340,8 +396,13 @@ export function VideoEditor({ onPublish }: Props) {
   }, [showEditorSettings, project, selectedSceneIndex, selectedScene?.id]);
 
   const templateTypography = useMemo(
-    () => resolveVideoTypographyContext(project?.templateId ?? selected?.id, brandColor),
-    [project?.templateId, selected?.id, brandColor]
+    () =>
+      resolveVideoTypographyContext(
+        project?.templateId ?? selected?.id,
+        brandColor,
+        project?.palette
+      ),
+    [project?.templateId, project?.palette, selected?.id, brandColor]
   );
 
   const motionProfile = useMemo(
@@ -445,6 +506,14 @@ export function VideoEditor({ onPublish }: Props) {
     }
   }, [autoSaveSuspended, markBaseline]);
 
+  const handleSavedVideoTemplateCreated = useCallback(
+    (record: MarketingTemplateRecord) => {
+      setSavedTemplateId(record.id);
+      markBaseline();
+    },
+    [markBaseline]
+  );
+
   const formatOptions = useMemo<MarketingFormatOption[]>(
     () =>
       (Object.keys(VIDEO_FORMAT_DIMENSIONS) as VideoFormat[]).map((key) => ({
@@ -475,20 +544,31 @@ export function VideoEditor({ onPublish }: Props) {
     [format, brandColor]
   );
 
-  const formatPresetIds = useMemo(
-    () => presetTemplates.map((template) => template.id),
-    [presetTemplates]
-  );
+  // Background pre-warm order: current category first, so it never sits
+  // queued behind off-screen categories the host isn't looking at — the
+  // panel's own on-demand queue already covers the current category, this
+  // just avoids this loop's (redundant, cache-checked) pass wasting the
+  // shared render slot on hidden categories first.
+  const formatPresetIdsForWarm = useMemo(() => {
+    const current = presetTemplates.filter((template) => template.category === category);
+    const rest = presetTemplates.filter((template) => template.category !== category);
+    return [...current, ...rest].map((template) => template.id);
+  }, [presetTemplates, category]);
 
   useEffect(() => {
-    return registerVideoThumbnailPlaybackPause(() => {
-      playerRef.current?.pause();
-      setPreviewPlaying(false);
-    });
+    return registerVideoThumbnailPlaybackPause(
+      () => {
+        playerRef.current?.pause();
+        setPreviewPlaying(false);
+      },
+      () => previewPlayingRef.current
+    );
   }, []);
 
+  const hasProjectForThumbWarm = Boolean(project);
+
   useEffect(() => {
-    if (!project) return;
+    if (!hasProjectForThumbWarm) return;
 
     let cancelled = false;
 
@@ -496,7 +576,7 @@ export function VideoEditor({ onPublish }: Props) {
       await waitForMarketingIdle(500);
       if (cancelled) return;
 
-      for (const templateId of formatPresetIds) {
+      for (const templateId of formatPresetIdsForWarm) {
         if (cancelled) break;
 
         const thumbBinding = resolveMarketingThumbBinding(binding);
@@ -508,11 +588,12 @@ export function VideoEditor({ onPublish }: Props) {
         );
         if (getCachedMarketingThumbnail(cacheKey)) continue;
 
-        const dataUrl = await renderVideoPresetThumbnail(
-          templateId,
-          format,
-          thumbBinding,
-          brandColor
+        // Shares the same global render slot as the visible template grid's
+        // own thumbnail queue — this background pre-warm must never run a
+        // heavy Remotion capture at the same time as the one the host is
+        // actually looking at, or both stall each other.
+        const dataUrl = await withGlobalRenderSlot(() =>
+          renderVideoPresetThumbnail(templateId, format, thumbBinding, brandColor)
         );
         if (cancelled || !dataUrl) continue;
 
@@ -525,7 +606,13 @@ export function VideoEditor({ onPublish }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [project, format, formatPresetIds, brandColor, binding]);
+    // Intentionally excludes `project` — this only warms sidebar preset thumbnails
+    // and must not restart on every edit (autosave changes `project`'s reference
+    // on every keystroke, which previously retriggered this full async
+    // scan-and-render loop continuously while editing, causing jank). `binding`
+    // is a stable useMemo that only changes for real property/photo changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasProjectForThumbWarm, format, formatPresetIdsForWarm, brandColor, binding]);
 
   const handleExportVideo = useCallback(async () => {
     if (!project) throw new Error('No project');
@@ -646,6 +733,155 @@ export function VideoEditor({ onPublish }: Props) {
       setElementFocusRequest((count) => count + 1);
     },
     [expandSidebar]
+  );
+
+  const handleAiGenerate = useCallback(
+    async (input: MarketingAiGenerateInput) => {
+      if (!('duration' in input.preferences)) return;
+
+      setAiGenerateBusy(true);
+      setAutoSaveSuspended(true);
+      let aiSucceeded = false;
+      try {
+        const amenities = publicProperty?.amenities ?? [];
+        const amenitiesText = amenities.slice(0, 8).join(', ') || undefined;
+        const result = await generateTemplate.mutateAsync({
+          contentType: 'video',
+          prompt: input.prompt,
+          includeContext: input.includeContext,
+          amenitiesText: input.includeContext.amenities ? amenitiesText : undefined,
+          availabilityText: input.includeContext.availability
+            ? binding.availabilityText
+            : undefined,
+          content: input.preferences.content,
+          preferences: {
+            // Reuses the shared preferences bag's `layoutArchetype` slot to carry the
+            // duration-in-seconds hint (client enforces the real floor either way).
+            layoutArchetype:
+              input.preferences.duration === 'auto'
+                ? undefined
+                : String(input.preferences.duration),
+            fontPairing:
+              input.preferences.fontPairing === 'auto' ? undefined : input.preferences.fontPairing,
+            backgroundMood:
+              input.preferences.motionMood === 'auto' ? undefined : input.preferences.motionMood,
+            category: input.preferences.category,
+          },
+        });
+        if (result.contentType !== 'video') {
+          throw new Error('Unexpected content type from AI generation');
+        }
+        aiSucceeded = true;
+
+        const tokens = applyVideoAiPreferencesToTokens(result.tokens, input.preferences);
+        // "Custom" is a content flavor, not a real sidebar folder — find or create one so the
+        // generated video lands somewhere the host can find it again.
+        const sidebarCategoryId =
+          tokens.category === 'custom'
+            ? (catalog.findOrCreateCategoryByLabel('Custom') ?? 'custom')
+            : tokens.category;
+        const lookPalette = input.preferences.lookMood
+          ? campaignPaletteFromLookMood(input.preferences.lookMood)
+          : undefined;
+        const variants = resolveAiGeneratedVideoProjectsForAllFormats(tokens, binding, {
+          includePropertyPhoto: input.includeContext.propertyPhoto,
+          orgLogoUrl,
+          includeOrgLogo: input.includeContext.orgLogo ?? true,
+          includeCta: input.includeContext.cta ?? true,
+          includePropertyName: input.includeContext.propertyName ?? true,
+          palette: lookPalette,
+        });
+
+        const aiGenerationId =
+          typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+            ? crypto.randomUUID()
+            : `ai-${Date.now()}`;
+
+        const savedRecords: MarketingTemplateRecord[] = [];
+        let failedCount = 0;
+        for (const variant of variants) {
+          try {
+            const thumbnailDataUrl = await renderVideoProjectThumbnail(variant.project, brandColor);
+            const record = await saveMarketingTemplate(propertyId, {
+              name: tokens.label,
+              contentType: 'video',
+              aspectPreset: variant.format,
+              platform: variant.format === 'landscape' ? 'facebook' : 'instagram',
+              designJson: {
+                templateId: variant.project.templateId,
+                format: variant.format,
+                category: sidebarCategoryId,
+                categoryId: sidebarCategoryId,
+                binding,
+                project: variant.project,
+                aiGenerated: true,
+                aiGenerationId,
+                aiTokens: tokens,
+                ...(thumbnailDataUrl ? { thumbnailDataUrl } : {}),
+              },
+            });
+            savedRecords.push(record);
+            if (thumbnailDataUrl) {
+              publishMarketingPresetThumbnail(
+                record.id,
+                savedVideoThumbnailKey(record.id, record.updatedAt),
+                thumbnailDataUrl
+              );
+            }
+          } catch {
+            failedCount += 1;
+          }
+        }
+
+        void queryClient.invalidateQueries({ queryKey: ['marketing-templates', propertyId] });
+
+        if (savedRecords.length === 0) {
+          throw new Error('Could not save generated videos');
+        }
+
+        const current =
+          savedRecords.find((record) => record.aspectPreset === format) ?? savedRecords[0];
+        const currentVariant = variants.find((variant) => variant.format === current?.aspectPreset);
+
+        if (current && currentVariant) {
+          setSavedTemplateId(current.id);
+          setCategory(sidebarCategoryId);
+          replaceProject(currentVariant.project);
+          setSelectedSceneId(currentVariant.project.scenes[0]?.id ?? null);
+          setPreviewMode('all');
+          playerRef.current?.pause();
+          playerRef.current?.seekTo(0);
+          markBaseline();
+        }
+
+        setAiGenerateOpen(false);
+        if (failedCount > 0) {
+          toast.warning(`Saved ${savedRecords.length} of 3 formats — retry Generate for the rest`);
+        } else {
+          toast.success('Custom videos added for Story, Post, and Landscape');
+        }
+      } catch (error) {
+        if (aiSucceeded) {
+          toast.error((error as Error).message || 'Could not save generated videos');
+        }
+      } finally {
+        setAutoSaveSuspended(false);
+        setAiGenerateBusy(false);
+      }
+    },
+    [
+      binding,
+      brandColor,
+      catalog,
+      format,
+      generateTemplate,
+      markBaseline,
+      orgLogoUrl,
+      propertyId,
+      publicProperty?.amenities,
+      queryClient,
+      replaceProject,
+    ]
   );
 
   const handleResetProject = useCallback(() => {
@@ -804,12 +1040,22 @@ export function VideoEditor({ onPublish }: Props) {
             selectedId={selectedId}
             onSelectPreset={(templateId) => applyTemplate(templateId, false)}
             onCustomizePreset={(templateId) => applyTemplate(templateId, true)}
+            savedRecords={savedTemplates}
+            selectedSavedId={
+              savedTemplateId && savedTemplates.some((record) => record.id === savedTemplateId)
+                ? savedTemplateId
+                : null
+            }
+            onSelectSaved={applySavedVideoTemplate}
+            onSavedTemplate={handleSavedVideoTemplateCreated}
             designJsonForSave={designJson}
             aspectPreset={format}
             platform={format === 'landscape' ? 'facebook' : 'instagram'}
             videoTemplateMenus="minimal"
             brandColor={brandColor}
             binding={binding}
+            onOpenAiGenerate={() => setAiGenerateOpen(true)}
+            aiGenerateBusy={aiGenerateBusy || generateTemplate.isPending}
             captureSaveThumbnail={async () => {
               if (!project) return null;
               return captureLiveVideoProjectThumbnail(project, brandColor);
@@ -945,6 +1191,39 @@ export function VideoEditor({ onPublish }: Props) {
           </div>
         )}
       </div>
+
+      <MarketingAiGeneratePanel
+        open={aiGenerateOpen}
+        onOpenChange={(open) => {
+          if (aiGenerateBusy && !open) return;
+          setAiGenerateOpen(open);
+        }}
+        contentType="video"
+        generating={aiGenerateBusy || generateTemplate.isPending}
+        contextOptions={[
+          {
+            key: 'propertyPhoto',
+            label: 'Property photo',
+            available: Boolean(binding.propertyPhoto),
+          },
+          {
+            key: 'orgLogo',
+            label: 'Org logo',
+            available: Boolean(orgLogoUrl),
+          },
+          {
+            key: 'propertyName',
+            label: 'Property name',
+            available: Boolean(property.name),
+          },
+          {
+            key: 'cta',
+            label: 'Call-to-action',
+            available: true,
+          },
+        ]}
+        onGenerate={handleAiGenerate}
+      />
     </div>
   );
 }

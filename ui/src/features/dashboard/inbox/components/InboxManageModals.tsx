@@ -1,4 +1,4 @@
-import { MoreHorizontal, Plug, Sparkles, Zap } from 'lucide-react';
+import { Plug, Sparkles, Zap } from 'lucide-react';
 
 import { InboxAutomationTab } from '@/features/dashboard/inbox/components/InboxAutomationTab';
 import { InboxChannelsTab } from '@/features/dashboard/inbox/components/InboxChannelsTab';
@@ -16,12 +16,6 @@ import {
   type MobileHeroActionMenuItem,
 } from '@/components/mobile/MobileHeroActionButton';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   ResponsiveModal,
   ResponsiveModalContent,
@@ -87,6 +81,16 @@ function buildInboxManageItems(
   return items;
 }
 
+function InboxManageActionButton({ item }: { item: MobileHeroActionMenuItem }) {
+  const Icon = item.Icon;
+  return (
+    <Button type="button" variant="outline" onClick={item.onSelect}>
+      <Icon aria-hidden />
+      {item.label}
+    </Button>
+  );
+}
+
 export function InboxManageToolbar({
   canManage,
   showSettingsManageTabs = true,
@@ -107,52 +111,15 @@ export function InboxManageToolbar({
   }
 
   if (items.length === 1) {
-    const only = items[0]!;
-    const Icon = only.Icon;
-    return (
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="h-9 min-h-[44px] gap-1.5 px-2.5 sm:min-h-9 sm:px-3"
-        onClick={only.onSelect}
-      >
-        <Icon className="size-4 shrink-0" aria-hidden />
-        <span className="hidden sm:inline">{only.label}</span>
-      </Button>
-    );
+    return <InboxManageActionButton item={items[0]!} />;
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-9 min-h-[44px] gap-1.5 px-2.5 sm:min-h-9 sm:px-3"
-          aria-label="Inbox actions"
-        >
-          <MoreHorizontal className="size-4 shrink-0" aria-hidden />
-          <span className="hidden sm:inline">Manage</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-52">
-        {items.map((item) => {
-          const Icon = item.Icon;
-          return (
-            <DropdownMenuItem
-              key={item.key}
-              onSelect={() => item.onSelect()}
-              className="min-h-[44px] gap-2"
-            >
-              <Icon className="size-4 shrink-0" aria-hidden />
-              {item.label}
-            </DropdownMenuItem>
-          );
-        })}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      {items.map((item) => (
+        <InboxManageActionButton key={item.key} item={item} />
+      ))}
+    </div>
   );
 }
 

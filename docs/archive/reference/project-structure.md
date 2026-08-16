@@ -59,16 +59,16 @@ utils/
 
 ## Top-level `ui/src/`
 
-| Path                  | Role                                                                             |
-| --------------------- | -------------------------------------------------------------------------------- |
-| `components/`         | Shared UI — `ui/`, `branding/`, `navigation/`, `charts/`, `skeletons/`, `theme/` |
-| `features/guest/`     | Public guest-facing modules                                                      |
-| `features/dashboard/` | Admin / operator dashboard modules                                               |
-| `hooks/`              | Cross-feature hooks (if any)                                                     |
-| `layouts/`            | `MainLayout`, `layouts/guest/navState`                                           |
-| `lib/`                | Categorized shared logic — see **Shared `lib/`** above                           |
-| `routes/`             | `AppRoutes` — composes guest + dashboard trees                                   |
-| `utils/`              | Categorized formatters — see **Shared `utils/`** above                           |
+| Path                  | Role                                                                                                      |
+| --------------------- | --------------------------------------------------------------------------------------------------------- |
+| `components/`         | Shared UI — `ui/`, `forms/` (`FieldLabel`), `branding/`, `navigation/`, `charts/`, `skeletons/`, `theme/` |
+| `features/guest/`     | Public guest-facing modules                                                                               |
+| `features/dashboard/` | Admin / operator dashboard modules                                                                        |
+| `hooks/`              | Cross-feature hooks (if any)                                                                              |
+| `layouts/`            | `MainLayout`, `layouts/guest/navState`                                                                    |
+| `lib/`                | Categorized shared logic — see **Shared `lib/`** above                                                    |
+| `routes/`             | `AppRoutes` — composes guest + dashboard trees                                                            |
+| `utils/`              | Categorized formatters — see **Shared `utils/`** above                                                    |
 
 ## Guest features (`features/guest/`)
 

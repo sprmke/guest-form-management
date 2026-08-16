@@ -349,8 +349,9 @@ export function CampaignVideoComposition({
   const musicVolume = previewMuted ? 0 : (music?.volume ?? VIDEO_MUSIC_DEFAULT_VOLUME);
 
   const resolvedTypography = useMemo(
-    () => typography ?? resolveVideoTypographyContext(project.templateId, brandColor),
-    [typography, project.templateId, brandColor]
+    () =>
+      typography ?? resolveVideoTypographyContext(project.templateId, brandColor, project.palette),
+    [typography, project.templateId, project.palette, brandColor]
   );
   const resolvedMotion = useMemo(
     () => motionProfile ?? resolveVideoMotionProfile(project.templateId),

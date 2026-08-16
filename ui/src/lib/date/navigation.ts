@@ -14,11 +14,12 @@ import {
   format,
   isSameDay,
   isSameMonth,
-  isSameYear,
   isThisWeek,
   isThisMonth,
   isThisYear,
 } from 'date-fns';
+
+import { formatDateRangeFromDates } from '@/utils/format/dates';
 
 export type DatePreset = 'week' | 'month' | 'year' | 'custom';
 
@@ -115,30 +116,15 @@ export function navigateReferenceDate(
  */
 export function formatDateRangeDisplay(from: Date, to: Date, preset: DatePreset): string {
   switch (preset) {
-    case 'week': {
-      if (isSameMonth(from, to)) {
-        return `${format(from, 'MMM d')} - ${format(to, 'd, yyyy')}`;
-      }
-      if (isSameYear(from, to)) {
-        return `${format(from, 'MMM d')} - ${format(to, 'MMM d, yyyy')}`;
-      }
-      return `${format(from, 'MMM d, yyyy')} - ${format(to, 'MMM d, yyyy')}`;
-    }
+    case 'week':
+    case 'custom':
+    default:
+      return formatDateRangeFromDates(from, to);
     case 'month': {
       return format(from, 'MMMM yyyy');
     }
     case 'year': {
       return format(from, 'yyyy');
-    }
-    case 'custom':
-    default: {
-      if (isSameYear(from, to)) {
-        if (isSameMonth(from, to)) {
-          return `${format(from, 'MMM d')} - ${format(to, 'd, yyyy')}`;
-        }
-        return `${format(from, 'MMM d')} - ${format(to, 'MMM d, yyyy')}`;
-      }
-      return `${format(from, 'MMM d, yyyy')} - ${format(to, 'MMM d, yyyy')}`;
     }
   }
 }

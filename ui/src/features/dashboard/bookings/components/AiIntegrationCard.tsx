@@ -30,10 +30,6 @@ function formatVerifySummary(v: AiIntegrationVerifyDto): string | undefined {
 function formatConnectionDetail(v: AiIntegrationVerifyDto): string {
   const parts = ['Connection OK'];
   if (v.latencyMs != null) parts[0] += ` (${v.latencyMs} ms)`;
-  if (v.primaryKeysCount != null && v.primaryKeysCount > 1) {
-    parts.push(`${v.primaryKeysCount} keys`);
-  }
-  if (v.fallbackConfigured) parts.push('Fallback ready');
   return parts.join(' · ');
 }
 

@@ -7,38 +7,33 @@ import {
 } from '@/features/dashboard/bookings/components/booking-detail/primitives/BookingDetailRow';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
-import { semanticBadgeClasses, toneBadgeClasses } from '@/lib/statusToneColors';
+import { toneBadgeClasses } from '@/lib/statusToneColors';
 import { cn } from '@/lib/utils';
 
 export function OtherInfoPanel({ booking }: { booking: BookingRow }) {
-  const source = booking.booking_source || 'Direct';
-  const isAirbnb = source === 'Airbnb';
+  const hasNotes = Boolean(
+    booking.guest_requests_surprise_decor ||
+    booking.find_us ||
+    booking.find_us_details ||
+    booking.guest_special_requests
+  );
+  if (!hasNotes) return null;
 
   return (
-    <BookingDetailCard title="Other information" icon={Info}>
+    <BookingDetailCard title="Notes" icon={Info}>
       <BookingDetailRowGroup>
-        <BookingDetailRow label="Booking source">
-          <span
-            className={cn(
-              'inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold',
-              isAirbnb ? toneBadgeClasses('orange') : 'border-primary/25 bg-primary/10 text-primary'
-            )}
-          >
-            {source}
-          </span>
-        </BookingDetailRow>
-        <BookingDetailRow label="Surprise decor">
-          <span
-            className={cn(
-              'inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold',
-              booking.guest_requests_surprise_decor
-                ? toneBadgeClasses('purple')
-                : semanticBadgeClasses('neutral')
-            )}
-          >
-            {booking.guest_requests_surprise_decor ? 'Requested' : 'Not requested'}
-          </span>
-        </BookingDetailRow>
+        {booking.guest_requests_surprise_decor ? (
+          <BookingDetailRow label="Surprise decor">
+            <span
+              className={cn(
+                'inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold',
+                toneBadgeClasses('purple')
+              )}
+            >
+              Requested
+            </span>
+          </BookingDetailRow>
+        ) : null}
         {(booking.find_us || booking.find_us_details) && (
           <BookingDetailRow label="How they found us">
             <span className="text-foreground flex min-w-0 flex-wrap items-center justify-end gap-2 text-right text-sm font-semibold">
@@ -49,7 +44,7 @@ export function OtherInfoPanel({ booking }: { booking: BookingRow }) {
                 </span>
               ) : null}
               {booking.find_us_details ? (
-                <span className="text-muted-foreground text-xs font-medium">
+                <span className="text-muted-foreground max-w-full break-words text-xs font-medium [overflow-wrap:anywhere]">
                   {booking.find_us_details}
                 </span>
               ) : null}
@@ -63,7 +58,9 @@ export function OtherInfoPanel({ booking }: { booking: BookingRow }) {
                 className="text-muted-foreground mt-0.5 size-3.5 shrink-0"
                 aria-hidden
               />
-              <span className="min-w-0 break-words">{booking.guest_special_requests}</span>
+              <span className="min-w-0 [overflow-wrap:anywhere]">
+                {booking.guest_special_requests}
+              </span>
             </span>
           </BookingDetailRow>
         ) : null}

@@ -57,6 +57,14 @@ const FONT_PAIRINGS: Record<CalendarFontPairing, { display: string; body: string
   };
 
 const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
+
+/** Truncates at the last whitespace before `max` so AI copy never gets cut mid-word. */
+function truncateAtWordBoundary(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const slice = text.slice(0, max);
+  const lastSpace = slice.lastIndexOf(' ');
+  return lastSpace > max * 0.4 ? slice.slice(0, lastSpace).trimEnd() : slice;
+}
 const INK_FALLBACK = '#1e293b';
 const WHITE = '#ffffff';
 /** WCAG AA for normal text on fills (date numbers, labels). */
@@ -539,8 +547,9 @@ export function normalizeCalendarTemplateTokens(
     },
     fontPairing: raw?.fontPairing ?? 'soft-sans',
     backgroundMood: raw?.backgroundMood ?? 'solid-cream',
-    subtitle: (raw?.subtitle ?? 'Available dates').trim().slice(0, 48) || 'Available dates',
-    label: (raw?.label ?? 'AI calendar').trim().slice(0, 40) || 'AI calendar',
+    subtitle:
+      truncateAtWordBoundary((raw?.subtitle ?? 'Available dates').trim(), 48) || 'Available dates',
+    label: truncateAtWordBoundary((raw?.label ?? 'AI calendar').trim(), 40) || 'AI calendar',
   };
 }
 

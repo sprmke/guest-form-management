@@ -23,6 +23,7 @@ import {
   DEFAULT_DOCUMENT_REQUIREMENTS,
   type DocumentRequirement,
 } from '@/features/dashboard/bookings/lib/documentRequirements';
+import { pendingDocStepUsesApprovalModal } from '@/features/dashboard/bookings/lib/pendingDocApproval';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import {
   bookingPipeline,
@@ -39,6 +40,7 @@ import {
   type PendingDocNestedKey,
   type ViewedWorkflowStep,
 } from '@/features/dashboard/bookings/lib/workflow';
+import { pendingDocumentsProceedBlockedHint } from '@/features/dashboard/bookings/lib/workflowStageDeck';
 
 export function useWorkflowActions(
   booking: BookingRow,
@@ -64,20 +66,30 @@ export function useWorkflowActions(
   const nestedCompletion = getPendingDocumentsNestedCompletion(booking, documentRequirements);
   const pendingDocumentsComplete =
     nestedCompletion.allConfigurableDocsDone && nestedCompletion.parkingDone;
+  const pendingDocumentsBlockedHint = pendingDocumentsProceedBlockedHint(
+    booking,
+    documentRequirements
+  );
 
   const nestedItems = pendingDocumentsNestedItems(booking, documentRequirements);
   const activeItem = nestedItems.find((item) => item.key === activePendingDocSubStatus);
   const selectedPendingDocRequired = !!activeItem;
   const selectedPendingDocCompleted = activeItem?.completed ?? false;
   const selectedPendingDocIsParking = activePendingDocSubStatus === PARKING_NESTED_KEY;
+  const selectedPendingDocUsesApprovalModal = pendingDocStepUsesApprovalModal(
+    activePendingDocSubStatus,
+    documentRequirements
+  );
   const selectedPendingDocCanMarkComplete =
     selectedPendingDocRequired &&
     !selectedPendingDocCompleted &&
-    (!selectedPendingDocIsParking || isParkingRequestDraftComplete(parkingValues));
-  const selectedPendingDocCanMarkIncomplete =
-    selectedPendingDocRequired && selectedPendingDocCompleted;
+    (selectedPendingDocUsesApprovalModal ||
+      !selectedPendingDocIsParking ||
+      isParkingRequestDraftComplete(parkingValues));
   const isLiveView = isLiveWorkflowView(viewedStep, status, booking);
-  const contentReadOnly = !isLiveView || status === 'COMPLETED' || status === 'CANCELLED';
+  // Cancelled / imported stay locked. Completed and earlier browsed stages are
+  // editable in the rail (Save) — hosts no longer need Edit Booking → Workflow.
+  const contentReadOnly = status === 'CANCELLED' || status === 'IMPORTED';
   const viewedContent = workflowContentForView(viewedStep, booking, documentRequirements);
   const viewingPendingDocSub = viewedStep.kind === 'pending-doc-sub';
 
@@ -112,11 +124,12 @@ export function useWorkflowActions(
     prev,
     inPendingDocuments,
     pendingDocumentsComplete,
+    pendingDocumentsBlockedHint,
     selectedPendingDocRequired,
     selectedPendingDocCompleted,
     selectedPendingDocIsParking,
+    selectedPendingDocUsesApprovalModal,
     selectedPendingDocCanMarkComplete,
-    selectedPendingDocCanMarkIncomplete,
     isLiveView,
     contentReadOnly,
     viewedContent,

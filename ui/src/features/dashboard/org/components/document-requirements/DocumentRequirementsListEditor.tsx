@@ -9,8 +9,12 @@ import {
   addDocumentRequirement,
   DOCUMENT_APPROVAL_SOURCE_LABELS,
   DOCUMENT_APPROVAL_SOURCES,
+  DOCUMENT_PDF_TEMPLATE_LABELS,
+  DOCUMENT_PDF_TEMPLATE_NONE,
+  DOCUMENT_PDF_TEMPLATES,
   DOCUMENT_TRIGGER_CONDITION_LABELS,
   DOCUMENT_TRIGGER_CONDITIONS,
+  isRequestPdfTemplateId,
   moveDocumentRequirement,
   removeDocumentRequirement,
   updateDocumentRequirement,
@@ -92,6 +96,9 @@ function DocumentRequirementEditRow({
   onRemove: () => void;
 }) {
   const rowId = `document-requirement-${index}`;
+  const pdfTemplateValue = isRequestPdfTemplateId(requirement.pdfTemplateId)
+    ? requirement.pdfTemplateId
+    : DOCUMENT_PDF_TEMPLATE_NONE;
 
   return (
     <div className="border-border/40 bg-muted/15 space-y-3 rounded-lg border px-3 py-3">
@@ -139,7 +146,7 @@ function DocumentRequirementEditRow({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <div className="space-y-1.5">
           <Label htmlFor={`${rowId}-trigger`} className="text-muted-foreground text-xs">
             Trigger
@@ -179,6 +186,32 @@ function DocumentRequirementEditRow({
               {DOCUMENT_APPROVAL_SOURCES.map((source) => (
                 <SelectItem key={source} value={source}>
                   {DOCUMENT_APPROVAL_SOURCE_LABELS[source]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor={`${rowId}-pdf-template`} className="text-muted-foreground text-xs">
+            PDF template
+          </Label>
+          <Select
+            value={pdfTemplateValue}
+            onValueChange={(value) =>
+              onChange({
+                pdfTemplateId: value === DOCUMENT_PDF_TEMPLATE_NONE ? null : value,
+              })
+            }
+            disabled={disabled}
+          >
+            <SelectTrigger id={`${rowId}-pdf-template`} className="h-10">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={DOCUMENT_PDF_TEMPLATE_NONE}>None</SelectItem>
+              {DOCUMENT_PDF_TEMPLATES.map((template) => (
+                <SelectItem key={template} value={template}>
+                  {DOCUMENT_PDF_TEMPLATE_LABELS[template]}
                 </SelectItem>
               ))}
             </SelectContent>

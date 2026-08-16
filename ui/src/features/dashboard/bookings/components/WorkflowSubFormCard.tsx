@@ -5,6 +5,9 @@
 
 import type { ReactNode } from 'react';
 
+import { WorkflowAdvanceModeBadge } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowAdvanceModeBadge';
+import type { WorkflowAdvanceMode } from '@/features/dashboard/bookings/lib/workflowAdvanceMode';
+
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -15,6 +18,8 @@ type Props = {
   bodyClassName?: string;
   /** Flat layout for dialogs — no nested card chrome. */
   plain?: boolean;
+  /** How this step advances — shown next to the card title on the rail. */
+  advanceMode?: WorkflowAdvanceMode | null;
 };
 
 export function WorkflowSubFormCard({
@@ -23,6 +28,7 @@ export function WorkflowSubFormCard({
   children,
   bodyClassName,
   plain = false,
+  advanceMode,
 }: Props) {
   if (plain) {
     return <div className={cn('space-y-3', bodyClassName)}>{children}</div>;
@@ -31,9 +37,12 @@ export function WorkflowSubFormCard({
   return (
     <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm ring-1 ring-slate-950/[0.04]">
       <div className="border-separator bg-muted/50/80 border-b px-4 py-3.5 sm:px-5">
-        <h3 className="text-muted-foreground text-xs font-bold uppercase tracking-wider">
-          {title}
-        </h3>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-muted-foreground min-w-0 truncate text-xs font-bold uppercase tracking-wider">
+            {title}
+          </h3>
+          {advanceMode ? <WorkflowAdvanceModeBadge mode={advanceMode} /> : null}
+        </div>
         {description ? (
           <p className="text-muted-foreground mt-1 text-[11px] leading-snug">{description}</p>
         ) : null}

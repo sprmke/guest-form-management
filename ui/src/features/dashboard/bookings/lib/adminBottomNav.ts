@@ -1,3 +1,5 @@
+import { Bell, Sparkles } from 'lucide-react';
+
 import type {
   SidebarNavItem,
   SidebarNavSection,
@@ -6,7 +8,22 @@ import type {
 import type { BottomTabItem } from '@/components/mobile/BottomTabBar';
 import { MORE_TAB_KEY, moreTabItem } from '@/components/mobile/BottomTabBar';
 
-const MAX_PRIMARY_TABS = 3;
+export const ASSISTANT_TAB_KEY = 'assistant';
+export const NOTIFICATIONS_TAB_KEY = 'notifications';
+
+const MAX_PRIMARY_ROUTE_TABS = 3;
+const CORE_ROUTE_LABELS = ['Dashboard', 'Bookings', 'Finance'] as const;
+
+export type AdminBottomNavOverlays = {
+  onMoreClick: () => void;
+  assistant?: {
+    onClick: () => void;
+  };
+  notifications?: {
+    onClick: () => void;
+    badge?: boolean | number;
+  };
+};
 
 export function flattenNavigableNavItems(sections: SidebarNavSection[]): SidebarNavItem[] {
   return sections.flatMap((section) =>
@@ -16,17 +33,39 @@ export function flattenNavigableNavItems(sections: SidebarNavSection[]): Sidebar
   );
 }
 
+function pickPrimaryRouteTabs(navigable: SidebarNavItem[]): SidebarNavItem[] {
+  const picked: SidebarNavItem[] = [];
+  const used = new Set<string>();
+
+  for (const label of CORE_ROUTE_LABELS) {
+    const item = navigable.find((candidate) => candidate.label === label);
+    if (item?.href && !used.has(item.href)) {
+      picked.push(item);
+      used.add(item.href);
+    }
+  }
+
+  for (const item of navigable) {
+    if (picked.length >= MAX_PRIMARY_ROUTE_TABS) break;
+    if (!item.href || used.has(item.href)) continue;
+    picked.push(item);
+    used.add(item.href);
+  }
+
+  return picked;
+}
+
 /**
  * Split permission-filtered sidebar nav into primary bottom tabs + full list for the More sheet.
- * Primary tabs keep the first N items for quick access; More includes every page (including those).
+ * Route tabs prefer Dashboard / Bookings / Finance, then fill from remaining nav.
+ * Assistant and Notifications are overlay actions (not routes) when provided.
  */
 export function splitAdminBottomNav(
   sections: SidebarNavSection[],
-  onMoreClick: () => void
+  overlays: AdminBottomNavOverlays
 ): { tabItems: BottomTabItem[]; moreItems: SidebarNavItem[]; primaryHrefs: string[] } {
   const navigable = flattenNavigableNavItems(sections);
-  const primary = navigable.slice(0, MAX_PRIMARY_TABS);
-  // Full nav in More — mirrors desktop sidebar, not only overflow past the dock.
+  const primary = pickPrimaryRouteTabs(navigable);
   const moreItems = navigable;
 
   const tabItems: BottomTabItem[] = [
@@ -36,8 +75,28 @@ export function splitAdminBottomNav(
       href: item.href,
       Icon: item.Icon,
     })),
-    moreTabItem(onMoreClick),
   ];
+
+  if (overlays.assistant) {
+    tabItems.push({
+      key: ASSISTANT_TAB_KEY,
+      label: 'Assistant',
+      Icon: Sparkles,
+      onClick: overlays.assistant.onClick,
+    });
+  }
+
+  if (overlays.notifications) {
+    tabItems.push({
+      key: NOTIFICATIONS_TAB_KEY,
+      label: 'Notifications',
+      Icon: Bell,
+      onClick: overlays.notifications.onClick,
+      badge: overlays.notifications.badge,
+    });
+  }
+
+  tabItems.push(moreTabItem(overlays.onMoreClick));
 
   return {
     tabItems,
@@ -49,9 +108,11 @@ export function splitAdminBottomNav(
 export function resolveBottomTabActiveKey(
   activeNavHref: string | null,
   primaryHrefs: string[],
-  moreOpen: boolean
+  moreOpen: boolean,
+  overlayKey?: string | null
 ): string | null {
   if (moreOpen) return MORE_TAB_KEY;
+  if (overlayKey) return overlayKey;
   if (activeNavHref && primaryHrefs.includes(activeNavHref)) return activeNavHref;
   if (activeNavHref) return MORE_TAB_KEY;
   return primaryHrefs[0] ?? null;

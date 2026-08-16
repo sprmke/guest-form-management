@@ -1,6 +1,6 @@
 # AI platform billing and production keys
 
-Operational guide for shared Gemini/Groq AI features (receipt validation, inbox suggest, marketing captions, import column mapping, voice polish).
+Operational guide for shared Gemini/Groq AI features (receipt validation, inbox suggest, marketing captions, import column mapping, voice polish, and voice receptionist sessions).
 
 ## Production model
 
@@ -16,33 +16,38 @@ Operational guide for shared Gemini/Groq AI features (receipt validation, inbox 
 
 ## Usage metering (in-app)
 
-Migration `20261009120000_ai_platform_usage.sql` adds:
+Migrations `20261009120000_ai_platform_usage.sql` and `20260814130000_ai_platform_hardening.sql` add:
 
-| Table                         | Purpose                                                         |
-| ----------------------------- | --------------------------------------------------------------- |
-| `ai_platform_global_settings` | Platform kill switch + `enforce_quotas`                         |
-| `ai_platform_org_settings`    | Per-org daily/monthly call caps (defaults: 200/day, 5000/month) |
-| `ai_platform_usage_daily`     | Aggregated counters per org per UTC day                         |
-| `ai_platform_usage_events`    | Append-only audit log per AI call                               |
+| Table                              | Purpose                                                                                   |
+| ---------------------------------- | ----------------------------------------------------------------------------------------- |
+| `ai_platform_global_settings`      | Platform kill switch + `enforce_quotas` + `allowed_features` + default quotas             |
+| `ai_platform_org_settings`         | Per-org daily/monthly call + daily USD cost caps (defaults: 200/day, 5000/month, $10/day) |
+| `ai_platform_property_settings`    | Per-property enable + optional override caps (NULL = inherit org)                         |
+| `ai_platform_property_usage_daily` | Aggregated counters per property per UTC day                                              |
+| `ai_platform_usage_daily`          | Aggregated counters per org per UTC day                                                   |
+| `ai_platform_usage_events`         | Append-only audit log per AI call                                                         |
+| `ai_platform_response_cache`       | Deterministic prompt response cache (1-hour TTL)                                          |
 
 Edge functions:
 
-- `ai-platform-global-settings` — super-admin GET/PATCH
+- `ai-platform-global-settings` — super-admin GET/PATCH (kill switch + feature allowlist + default quotas)
 - `ai-platform-settings` — org GET/PATCH limits
-- `ai-platform-usage` — org GET summary
+- `ai-platform-usage` — org GET summary + per-feature + per-property breakdown
+- `ai-platform-property-settings` — per-property GET/PATCH overrides
 
 Shared server modules:
 
 - `supabase/functions/_shared/aiModelRouter.ts` — feature → Gemini model tier
-- `supabase/functions/_shared/aiUsageService.ts` — quota checks + `recordAiUsage`
+- `supabase/functions/_shared/aiUsageService.ts` — quota checks + `recordAiUsage` + property settings
+- `supabase/functions/_shared/aiQuotaCache.ts` — deterministic prompt cache
 
 ## Model tiering (defaults)
 
-| Feature                     | Model                                          |
-| --------------------------- | ---------------------------------------------- |
-| Receipt / inbox / marketing | `gemini-2.5-flash`                             |
-| Import column map           | `gemini-2.5-flash-lite`                        |
-| Voice Live                  | separate session caps (`voice_receptionist_*`) |
+| Feature                                                                                                 | Model                                   |
+| ------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| Receipt validation / marketing templates / booking AI review / dashboard assistant                      | `gemini-2.5-flash`                      |
+| Inbox suggest / auto-reply / marketing captions / import column map / voice polish / integration verify | `gemini-3.1-flash-lite`                 |
+| Voice Live                                                                                              | `gemini-2.5-flash-native-audio-preview` |
 
 Verify current rates at [ai.google.dev/pricing](https://ai.google.dev/gemini-api/docs/pricing) before budgeting.
 

@@ -4,8 +4,9 @@
 
 import type { ReactNode } from 'react';
 
-import { Section } from '@/features/dashboard/bookings/components/BookingEditLayout';
+import { Section } from '@/features/dashboard/bookings/components/booking-detail/edit/BookingEditFields';
 import { WorkflowSubFormCard } from '@/features/dashboard/bookings/components/WorkflowSubFormCard';
+import type { WorkflowAdvanceMode } from '@/features/dashboard/bookings/lib/workflowAdvanceMode';
 
 import { cn } from '@/lib/utils';
 
@@ -17,6 +18,7 @@ type Props = {
   variant?: WorkflowFormVariant;
   bodyClassName?: string;
   children: ReactNode;
+  advanceMode?: WorkflowAdvanceMode | null;
 };
 
 export function WorkflowFormShell({
@@ -25,6 +27,7 @@ export function WorkflowFormShell({
   variant = 'workflow',
   bodyClassName,
   children,
+  advanceMode,
 }: Props) {
   if (variant === 'edit') {
     return <Section title={title}>{children}</Section>;
@@ -35,7 +38,12 @@ export function WorkflowFormShell({
   }
 
   return (
-    <WorkflowSubFormCard title={title} description={description} bodyClassName={bodyClassName}>
+    <WorkflowSubFormCard
+      title={title}
+      description={description}
+      bodyClassName={bodyClassName}
+      advanceMode={advanceMode}
+    >
       {children}
     </WorkflowSubFormCard>
   );

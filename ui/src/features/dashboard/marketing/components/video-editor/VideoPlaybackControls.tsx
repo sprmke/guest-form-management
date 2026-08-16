@@ -68,8 +68,18 @@ export function VideoPlaybackControls({
   }, [transport.isMuted, onMutedChange]);
 
   const handleTogglePlay = () => {
-    if (!transport.isPlaying && previewMode === 'clip') {
-      transport.seekToScene(selectedSceneIndex);
+    // Decide off the player's own live state, not `transport.isPlaying` —
+    // that's React state updated via a player event listener and can lag a
+    // render behind a mount/scene-switch, which was enough to make an early
+    // click branch the wrong way and appear to do nothing.
+    const playingNow = playerRef.current?.isPlaying() ?? transport.isPlaying;
+    if (playingNow) {
+      transport.togglePlay();
+      return;
+    }
+    if (previewMode === 'clip') {
+      transport.playSelectedClip();
+      return;
     }
     transport.togglePlay();
   };

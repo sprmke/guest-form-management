@@ -80,10 +80,10 @@ Add **Required reviewers** for human promote. Enable `CUTOVER_ENABLED=true` only
 
 Configure in **kame-homes** → Settings → Environment Variables:
 
-| Vercel column  | Git branch (now / at release) | URL                   | Supabase                           |
-| -------------- | ----------------------------- | --------------------- | ---------------------------------- |
-| **Preview**    | **`develop`** (now)           | `dev.kamehomes.space` | fwor anon URL + key                |
-| **Production** | **`main`** (at release)       | `app.kamehomes.space` | mt-prod anon URL + key _(Phase B)_ |
+| Vercel column  | Git branch (now / at release) | URL                   | Supabase                                                 |
+| -------------- | ----------------------------- | --------------------- | -------------------------------------------------------- |
+| **Preview**    | **`develop`** (now)           | `dev.kamehomes.space` | fwor anon URL + key + optional `VITE_SUPER_ADMIN_EMAILS` |
+| **Production** | **`main`** (at release)       | `app.kamehomes.space` | mt-prod anon URL + key _(Phase B)_                       |
 
 See [`multi-tenant-dev-prod-setup.md`](./multi-tenant-dev-prod-setup.md).
 

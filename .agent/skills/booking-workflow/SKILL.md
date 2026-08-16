@@ -11,7 +11,7 @@ This skill is the **playbook** for the redesign. The **rules of engagement** liv
 
 1. `docs/archive/planning/NEW_FLOW_PLAN.md` — plan, open questions, phased rollout.
 2. `docs/archive/planning/NEW_FLOW.md` — original product spec.
-3. `.cursor/rules/booking-workflow.mdc` — canonical status/transition/color map.
+3. `.cursor/rules/booking-workflow.mdc` — canonical status/transition map.
 4. `.cursor/rules/admin-auth.mdc` — who can transition and how.
 5. `.cursor/rules/supabase-edge-functions.mdc` — function conventions.
 
@@ -51,8 +51,6 @@ Do not skip phases. Ship each as a separate PR that is independently deployable.
 - Build `/bookings/:bookingId` detail page: reuse `GuestForm.tsx` (dev-mode on) + a right-side `WorkflowPanel` component that shows available transitions for the current status.
 - Stage-specific sub-forms: `ReviewPricingForm` (PENDING_REVIEW), `ParkingRequestForm` (PENDING_PARKING_REQUEST), `SdRefundForm` (PENDING_SD_REFUND).
 - Wire the new emails (booking acknowledgement, ready-for-check-in, parking broadcast).
-- Update `calendarService.ts` to use the status → colorId map.
-- Widen `sheetsService.ts` to include all new columns.
 
 ### Phase 4 — Gmail listener + cron
 
@@ -61,19 +59,19 @@ Do not skip phases. Ship each as a separate PR that is independently deployable.
 
 ### Phase 5 — Submit-form cleanup (shipped)
 
-- `submit-form` is **DB + storage** (optional calendar/sheet via FormData flags in non-prod; production forces all on). **No PDF** on submit; **no workflow emails** (GAF / ack / pet / parking — orchestrator only).
+- `submit-form` is **DB + storage** (+ optional email notify). **No PDF** on submit; **no workflow emails** (GAF / ack / pet / parking — orchestrator only).
 - After a successful DB save, when **`sendEmail` ≠ `false`** (guest dev **Send email**; default on), **`sendNewBookingRequestNotify`** emails **New Booking Request** to **`EMAIL_REPLY_TO`** only (`new-booking-request.html`); failures are non-fatal for the guest.
 - **No test-booking mode** — use staging/local Supabase; non-prod checkbox panel only (no `?dev=true`).
 
 ### Phase 6 — Prod backfill
 
-- One-shot admin edge function or Deno script that resyncs every non-cancelled booking’s calendar title/color and sheet row per the new mapping.
+- One-shot admin edge function or Deno script that resyncs legacy booking rows if needed after major workflow changes.
 - Write results to a log; run during low-traffic window.
 
 ## Implementation rules (please follow)
 
-- **Single source of truth for status/color/prefix** — in `_shared/statusMachine.ts`. Mirror to `ui/src/features/dashboard/bookings/lib/workflow.ts` via a shared JSON file or duplicated literal with a lint test.
-- **All transitions go through the orchestrator.** UI → `transition-booking` → orchestrator. Gmail listener → orchestrator. Cron → orchestrator. Never call `calendarService` / `sheetsService` / Azure GAF `sendEmail` / `sendPetEmail` directly from a handler for workflow work — **exception:** `submit-form` may call **`sendNewBookingRequestNotify`** (owner inbox only).
+- **Single source of truth for status** — in `_shared/statusMachine.ts`. Mirror to `ui/src/features/dashboard/bookings/lib/workflow.ts` via a shared JSON file or duplicated literal with a lint test.
+- **All transitions go through the orchestrator.** UI → `transition-booking` → orchestrator. Gmail listener → orchestrator. Cron → orchestrator. Never call Azure GAF `sendEmail` / `sendPetEmail` directly from a handler for workflow work — **exception:** `submit-form` may call **`sendNewBookingRequestNotify`** (owner inbox only).
 - **Never CC the guest** on GAF or pet request emails.
 - **Pricing math** lives in one helper (`_shared/pricing.ts`): **`balance = booking_rate - down_payment`**. SD (`security_deposit`, default ₱1500) and parking/pet line items are **not** in balance — they are separate fields shown in breakdown UIs/emails. UI must import the same helper (or call a tiny `compute-pricing` edge function) — no duplicated math.
 - **Update the docs** in the same change (`PROJECT.md`, ship the GitHub issue via `gh-issue.mjs ship`, and flip the relevant question/phase in `NEW_FLOW_PLAN.md`).
@@ -81,15 +79,11 @@ Do not skip phases. Ship each as a separate PR that is independently deployable.
 ## Testing checklist for a transition PR
 
 - [ ] DB status moves as expected (with `status_updated_at`).
-- [ ] Calendar event exists with correct `colorId` + title prefix.
-- [ ] Sheet row has the new column values.
 - [ ] Expected email(s) sent, none of the forbidden ones (e.g. no guest CC on GAF).
-- [ ] Idempotent: running the transition twice does not duplicate emails or calendar events.
+- [ ] Idempotent: running the transition twice does not duplicate emails.
 - [ ] `get-booked-dates` still blocks this booking (unless CANCELLED).
 - [ ] Admin allow-list rejects non-allow-listed users.
 
 ## Common pitfalls (seen in current code)
 
-- Calendar `colorId: 2` is **hardcoded** in `calendarService.ts#createEventData`. Replace with the map. Don’t forget updating `cancel-booking` which sets `colorId: 11`.
 - `compareFormData` in `_shared/utils.ts` is a hand-maintained list. **Add the new pricing + parking + SD fields** or updates will silently no-op.
-- The `submissionData.id` return chain from `DatabaseService.processFormData` is used by calendar/sheet services; don’t break that while moving side effects out of the submit handler.

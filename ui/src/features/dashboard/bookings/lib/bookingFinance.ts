@@ -197,7 +197,7 @@ export function buildHostNetBreakdown(
   if (bookingFlagTrue(booking.need_parking) || parkingPaid > 0) {
     expenses.push({
       key: 'parking_paid',
-      label: 'Parking Owner Rate',
+      label: 'Parking owner rate',
       amount: parkingPaid,
     });
   }

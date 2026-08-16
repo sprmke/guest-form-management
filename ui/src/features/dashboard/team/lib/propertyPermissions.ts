@@ -23,6 +23,7 @@ export type PropertySection =
   | 'marketing'
   | 'notifications'
   | 'templates'
+  | 'custom-pages'
   | 'team'
   | 'settings'
   | 'inbox';
@@ -44,6 +45,7 @@ export const PROPERTY_NAV_VIEW_PERMISSION: Record<string, TeamPermissionId> = {
   Marketing: 'notifications:view',
   Notifications: 'notifications:view',
   Templates: 'templates:view',
+  'Custom Pages': 'templates:view',
   Team: 'team:view',
   Settings: 'settings:view',
   Inbox: 'inbox:view',
@@ -59,6 +61,7 @@ export const PROPERTY_SECTION_VIEW_PERMISSION = {
   marketing: 'notifications:view',
   notifications: 'notifications:view',
   templates: 'templates:view',
+  'custom-pages': 'templates:view',
   team: 'team:view',
   settings: 'settings:view',
   inbox: 'inbox:view',

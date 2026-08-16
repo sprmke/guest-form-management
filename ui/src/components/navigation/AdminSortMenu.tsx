@@ -1,8 +1,9 @@
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 
 import { ArrowUpDown, Check, ChevronDown } from 'lucide-react';
 
 import { MobileChoiceItem, MobileChoiceSheet } from '@/components/mobile/MobileChoiceSheet';
+import { useAdminToolbarMenuOpen } from '@/components/navigation/AdminToolbarMenuScope';
 import { useDismissOnOutsideClick } from '@/hooks/useDismissOnOutsideClick';
 import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { cn } from '@/lib/utils';
@@ -32,7 +33,7 @@ export function AdminSortMenu<T extends string>({
   menuWidthClass = 'w-[min(calc(100vw-24px),14rem)]',
   resolveLabel,
 }: Props<T>) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useAdminToolbarMenuOpen();
   const ref = useRef<HTMLDivElement>(null);
   const isMobileLayout = useIsBelowLg();
   const label =
@@ -49,17 +50,17 @@ export function AdminSortMenu<T extends string>({
       aria-expanded={open}
       aria-haspopup={isMobileLayout ? 'dialog' : 'listbox'}
       className={cn(
-        'inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 py-2.5 text-[13px] font-semibold',
-        'select-none whitespace-nowrap border transition-all duration-100 lg:min-h-0 lg:rounded-lg',
+        'inline-flex min-h-[44px] min-w-0 max-w-[11.5rem] items-center gap-1.5 rounded-xl px-3 py-2.5 text-[13px] font-semibold',
+        'select-none border transition-all duration-100 lg:h-10 lg:max-w-[13rem] lg:rounded-lg lg:py-0',
         'native-press',
-        fullWidth && 'w-full justify-center sm:w-auto sm:justify-start',
+        fullWidth && 'w-full max-w-none justify-center sm:w-auto sm:max-w-[13rem] sm:justify-start',
         open
           ? 'interactive-primary border-border'
           : 'border-border bg-card text-foreground hover:bg-muted/60'
       )}
     >
       <ArrowUpDown className="size-3.5 shrink-0" aria-hidden />
-      <span className="truncate">{label}</span>
+      <span className="min-w-0 truncate">{label}</span>
       <ChevronDown
         className={cn('size-3.5 shrink-0 transition-transform duration-150', open && 'rotate-180')}
         aria-hidden

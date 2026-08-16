@@ -736,3 +736,22 @@ export async function searchConversationsByMessageText(
     .limit(limit);
   return (data ?? []) as SocialConversationRow[];
 }
+
+/**
+ * True if `conv` falls within the given property/parking/Meta-connection scope. Single source of
+ * truth for this check — import it rather than redefining it (it was previously duplicated
+ * privately in `social-inbox-send`/`social-inbox-messages`; add call sites there too when next
+ * touching either file, rather than leaving a third private copy).
+ */
+export function conversationAllowedInScope(
+  conv: SocialConversationRow,
+  ctx: { propertyId: string | null; parkingId: string | null; metaIds: Set<string> }
+): boolean {
+  if (!ctx.propertyId && !ctx.parkingId) return true;
+  if (conv.platform === 'web') {
+    if (ctx.propertyId) return conv.property_id === ctx.propertyId;
+    if (ctx.parkingId) return conv.parking_id === ctx.parkingId;
+    return false;
+  }
+  return ctx.metaIds.has(conv.connection_id);
+}

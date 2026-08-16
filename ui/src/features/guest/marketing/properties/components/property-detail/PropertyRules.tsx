@@ -96,7 +96,7 @@ function HouseRuleCard({ rule }: { rule: ResolvedHouseRule }) {
 
 function HouseRulesGrid({ rules }: { rules: ResolvedHouseRule[] }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {rules.map((rule) => (
         <HouseRuleCard key={rule.id} rule={rule} />
       ))}
@@ -161,7 +161,7 @@ export function PropertyRules({
                 <AlertCircle className="text-primary h-5 w-5" />
                 <h3 className="text-foreground font-medium">Safety features</h3>
               </div>
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {safetyFeatures.map((feature) => (
                   <div key={feature} className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-green-600 dark:text-green-400" />

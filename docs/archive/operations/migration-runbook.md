@@ -76,7 +76,8 @@ Supabase applies migrations in **filename sort order**. Among workflow redesign 
 | `20260710170000_app_settings_gaf_details.sql`                             | GAF PDF defaults (`app_settings` GAF columns)                                                                           |
 | `20260710180000_app_settings_gaf_signature.sql`                           | GAF unit-owner signature URL column                                                                                     |
 | `20260710190000_app_settings_gaf_guests_onsite_contact.sql`               | Rename GAF on-site contact column                                                                                       |
-| `20260602120000_document_substep_manual_incomplete.sql`                   | Manual incomplete flags / doc pipeline                                                                                  |
+| `20260602120000_document_substep_manual_incomplete.sql`                   | Manual incomplete flags / doc pipeline (dropped in `20261014120000`)                                                    |
+| `20261014120000_drop_document_manual_incomplete.sql`                      | Drops `gaf_manual_incomplete` / `pet_manual_incomplete`; strips JSONB `manualIncomplete`                                |
 | `20260603120000_guest_balance_settlement.sql`                             | Guest balance settlement columns                                                                                        |
 | `20260604140000_parking_owner.sql`                                        | `parking_owner` display name                                                                                            |
 | `20260605120000_rename_status_to_ready_for_checkout.sql`                  | Rename intermediate status to `READY_FOR_CHECKOUT`                                                                      |
@@ -161,7 +162,7 @@ Set or replace these (see template in [`ui/.env.example`](../../ui/.env.example)
 | `VITE_API_URL`              | Same as `VITE_SUPABASE_URL`                                     |
 | `VITE_SUPABASE_ANON_KEY`    | **anon** `eyJ…` from `supabase status`                          |
 | `VITE_SUPABASE_PROJECT_URL` | Optional but clear: `http://127.0.0.1:54321`                    |
-| `VITE_ADMIN_ALLOWED_EMAILS` | Same comma-separated emails you use for `/sign-in`              |
+| `# VITE_SUPER_ADMIN_EMAILS` | Optional — platform super-admin UX (`/admin/*`)                 |
 | `GOOGLE_CLIENT_ID`          | OAuth **Web** client ID (not `VITE_*`; not sent to the browser) |
 | `GOOGLE_CLIENT_SECRET`      | Same client’s secret — used by local GoTrue only                |
 
@@ -346,18 +347,18 @@ You do **not** need to change any Supabase _database_ setting for Phase 1.
 
 ### 7.2 Env vars
 
-Added to **`ui/.env.development` only** (safe — the prod file was intentionally not touched):
+Host dashboard access uses Google sign-in + org/team RBAC — **no** `VITE_ADMIN_ALLOWED_EMAILS`.
 
-- `VITE_ADMIN_ALLOWED_EMAILS` — comma-separated list of Google emails allowed to access `/bookings`. Default in dev: `kamehome.azurenorth@gmail.com`.
+Optional for platform super-admin UX:
+
+- `VITE_SUPER_ADMIN_EMAILS` — comma-separated emails for `/admin/*` and the Admin mode tab (server: `SUPER_ADMIN_EMAILS`).
 - `VITE_SUPABASE_PROJECT_URL` — optional override. Unset, the client derives the project URL by stripping `/functions/v1` from `VITE_SUPABASE_URL`.
 
-**For production,** add `VITE_ADMIN_ALLOWED_EMAILS` in the Vercel project env (or wherever the prod UI is built) when you're ready to roll out Phase 1 to production. If the var is missing, the UI allow list is empty and every email is rejected — failing closed is the right default.
-
-**Reference:** a fully documented, placeholder-only template of every UI env var lives at [`ui/.env.example`](../../ui/.env.example). The equivalent for edge functions — including variables that land in later phases — is at [`supabase/.env.example`](../../supabase/.env.example). Both files are committed; never put real secrets in them.
+**Reference:** placeholder-only templates at [`ui/.env.example`](../../ui/.env.example) and [`supabase/.env.example`](../../supabase/.env.example).
 
 ### 7.3 Allow-list philosophy (important)
 
-The UI allow list (`VITE_ADMIN_ALLOWED_EMAILS`) is **UX-only**. **Authoritative enforcement** is **`ADMIN_ALLOWED_EMAILS`** on Edge Functions via **`verifyAdminJwt`** (`list-bookings`, `transition-booking`, `upload-booking-asset`, `parking-broadcast-email`, etc.). Existing **`guest_submissions` RLS** may still allow broad read for authenticated users depending on project policies — treat **`ADMIN_ALLOWED_EMAILS`** + JWT as the gate for **mutating** admin APIs; tighten RLS separately if you require stronger isolation at the PostgREST layer.
+**`ADMIN_ALLOWED_EMAILS`** (edge) is enforced by **`verifyAdminJwt`** on legacy-style admin edge functions; org **owners** bypass without being on the list. **`SUPER_ADMIN_EMAILS`** (edge) + **`VITE_SUPER_ADMIN_EMAILS`** (UI) gate platform `/admin/*`. There is no client allow list for host dashboard routes — **`RequireAdmin`** only checks for a signed-in session.
 
 ### 7.4 Verify locally
 
@@ -468,7 +469,8 @@ Copy names from **`supabase/.env.example`**. Typical production set:
 
 | Group                              | Variables                                                                                                                       | Notes                                                                                                                                                                                  |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Admin / workflow**               | **`ADMIN_ALLOWED_EMAILS`**                                                                                                      | Comma-separated; **authoritative** allow list for **`verifyAdminJwt`**. Must align operationally with **`VITE_ADMIN_ALLOWED_EMAILS`**.                                                 |
+| **Admin / workflow**               | **`ADMIN_ALLOWED_EMAILS`**                                                                                                      | `verifyAdminJwt` allow list; org owners bypass.                                                                                                                                        |
+|                                    | **`SUPER_ADMIN_EMAILS`**                                                                                                        | Platform `/admin/*` (`serveSuperAdmin`).                                                                                                                                               |
 |                                    | **`PARKING_OWNER_EMAILS`**                                                                                                      | BCC list for parking broadcast — **[[NEW_FLOW_PLAN]] §6.1 Q4.1** seed; rotate via env only.                                                                                            |
 | **Email (Resend)**                 | **`RESEND_API_KEY`**, **`EMAIL_TO`**, **`EMAIL_REPLY_TO`**                                                                      | Production vs dev routing — see **`.env.example`**. **`EMAIL_REPLY_TO`** is also the **To:** address for **New Booking Request** (`submit-form` → `sendNewBookingRequestNotify`).      |
 |                                    | **`EMAIL_LOGO_URL`**, **`PUBLIC_GUEST_APP_ORIGIN`**, **`FACEBOOK_REVIEWS_URL`**                                                 | Optional guest links / branding ([`docs/architecture/validation-and-env.md`](../architecture/validation-and-env.md)).                                                                  |
@@ -484,14 +486,14 @@ Copy names from **`supabase/.env.example`**. Typical production set:
 
 Set in the **production** build environment (`bun run build` reads **`ui/.env.production`** locally; Vercel uses project **Environment Variables**):
 
-| Variable                        | Purpose                                                                                           |
-| ------------------------------- | ------------------------------------------------------------------------------------------------- |
-| **`VITE_NODE_ENV`**             | **`production`** — guest form production behavior.                                                |
-| **`VITE_SUPABASE_URL`**         | `https://<ref>.supabase.co/functions/v1`                                                          |
-| **`VITE_API_URL`**              | Same as **`VITE_SUPABASE_URL`**.                                                                  |
-| **`VITE_SUPABASE_ANON_KEY`**    | Dashboard → **Project Settings → API** → anon **public** key.                                     |
-| **`VITE_ADMIN_ALLOWED_EMAILS`** | Same comma-separated list as **`ADMIN_ALLOWED_EMAILS`** (UX gate). Empty ⇒ everyone denied at UI. |
-| **`VITE_SUPABASE_PROJECT_URL`** | Optional; default derives from **`VITE_SUPABASE_URL`**.                                           |
+| Variable                        | Purpose                                                           |
+| ------------------------------- | ----------------------------------------------------------------- |
+| **`VITE_NODE_ENV`**             | **`production`** — guest form production behavior.                |
+| **`VITE_SUPABASE_URL`**         | `https://<ref>.supabase.co/functions/v1`                          |
+| **`VITE_API_URL`**              | Same as **`VITE_SUPABASE_URL`**.                                  |
+| **`VITE_SUPABASE_ANON_KEY`**    | Dashboard → **Project Settings → API** → anon **public** key.     |
+| **`VITE_SUPER_ADMIN_EMAILS`**   | Platform super-admin UX; pair with edge **`SUPER_ADMIN_EMAILS`**. |
+| **`VITE_SUPABASE_PROJECT_URL`** | Optional; default derives from **`VITE_SUPABASE_URL`**.           |
 
 **Note:** **`GOOGLE_CLIENT_ID`** / **`GOOGLE_CLIENT_SECRET`** in **`ui/.env.development`** exist for **local** `supabase start` + **`config.toml`** substitution only. **Hosted** Auth uses **Dashboard** credentials (**§11.2**), not Vite env.
 

@@ -75,7 +75,7 @@ export function OrgBasicInformationSection({
           <OrgSettingsImageField
             id="org-logo"
             label="Organization logo"
-            hint="This logo will appear on guest forms, emails, and invoices."
+            help="This logo will appear on guest forms, emails, and invoices."
             source={logoSource}
             disabled={disabled}
             imageUrl={storedOrgSettingsMediaUrl(logoUrl, logoSource)}
@@ -142,7 +142,7 @@ export function OrgBasicInformationSection({
             resolvedColor={DEFAULT_ORG_BRAND_COLOR}
             disabled={disabled}
             error={brandColorError}
-            hint="Tints org dashboard pages (org dashboard, org settings, org properties)."
+            help="Tints org dashboard pages (org dashboard, org settings, org properties)."
             onChange={setBrandColor}
           />
         </OrgSettingsFieldSpan>

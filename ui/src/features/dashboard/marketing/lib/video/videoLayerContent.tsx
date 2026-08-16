@@ -98,9 +98,11 @@ export function VideoLayerBody({
         alt=""
         style={{
           width: '100%',
+          aspectRatio: '1 / 1',
           height: 'auto',
           display: 'block',
-          objectFit: 'contain',
+          objectFit: 'cover',
+          borderRadius: '9999px',
         }}
       />
     );
@@ -162,9 +164,20 @@ export function VideoLayerBody({
       isCta: layer.kind === 'cta',
       ctaChrome: typographyContext.look.ctaChrome,
     });
-    const whiteSpace = layer.text.includes('\n') ? 'pre-wrap' : 'nowrap';
+    // Always allow wrapping (and respect literal newlines) — short hand-authored
+    // captions never reach their max-width so this is a no-op for them, but it
+    // stops long AI-generated copy from overflowing past the frame edge.
     return (
-      <div style={{ ...css, whiteSpace, display: 'inline-block', maxWidth: '100%' }}>
+      <div
+        style={{
+          ...css,
+          whiteSpace: 'pre-wrap',
+          overflowWrap: 'break-word',
+          wordBreak: 'break-word',
+          display: 'inline-block',
+          maxWidth: '100%',
+        }}
+      >
         {layer.text}
       </div>
     );

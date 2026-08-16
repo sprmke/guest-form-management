@@ -5,11 +5,14 @@
  * `useWorkflowActions`.
  */
 
-import { Info, Loader2, RefreshCw } from 'lucide-react';
+import { Copy, ExternalLink, Loader2 } from 'lucide-react';
 
 import { GuestBalanceSettlementForm } from '@/features/dashboard/bookings/components/GuestBalanceSettlementForm';
 import type { GuestBalanceSettlementValues } from '@/features/dashboard/bookings/components/GuestBalanceSettlementForm';
-import { InlineCopyIconButton } from '@/features/dashboard/bookings/components/InlineCopyIconButton';
+import {
+  GuestSdRefundEditForm,
+  type GuestSdRefundEditValues,
+} from '@/features/dashboard/bookings/components/GuestSdRefundEditForm';
 import { ParkingRequestForm } from '@/features/dashboard/bookings/components/ParkingRequestForm';
 import type { ParkingRequestValues } from '@/features/dashboard/bookings/components/ParkingRequestForm';
 import { ReviewPricingForm } from '@/features/dashboard/bookings/components/ReviewPricingForm';
@@ -17,28 +20,35 @@ import type { ReviewPricingFormValues } from '@/features/dashboard/bookings/comp
 import { SdRefundForm } from '@/features/dashboard/bookings/components/SdRefundForm';
 import type { SdRefundValues } from '@/features/dashboard/bookings/components/SdRefundForm';
 import { SurpriseDecorAckCard } from '@/features/dashboard/bookings/components/SurpriseDecorAckCard';
+import { WorkflowCompletedSummaryCard } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowCompletedSummaryCard';
 import { PendingDocSubStatusCard } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowPendingDocStatusCard';
 import { WorkflowSubFormCard } from '@/features/dashboard/bookings/components/WorkflowSubFormCard';
+import type { BookingAssetPreviewHandler } from '@/features/dashboard/bookings/hooks/useBookingAssetPreview';
 import type { DocumentRequirement } from '@/features/dashboard/bookings/lib/documentRequirements';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import type {
   PendingDocNestedKey,
   WorkflowViewContent,
 } from '@/features/dashboard/bookings/lib/workflow';
-import {
-  workflowInlineLink,
-  workflowNeutralActionClass,
-} from '@/features/dashboard/bookings/lib/workflowActionButtonStyles';
+import { isProgressEditFormEnabled } from '@/features/dashboard/bookings/lib/workflow';
 import type { PricingHolidayRuleDto } from '@/features/dashboard/pricing/lib/phHolidayRules';
 import type { PropertyPricingDefaults } from '@/features/dashboard/pricing/lib/pricingCompute';
 
 import { cn } from '@/lib/utils';
+
+const SD_GUEST_CHECK_ACTION =
+  'focus-ring inline-flex min-h-11 min-w-11 shrink-0 items-center justify-end rounded-md px-1 text-xs font-semibold text-primary underline-offset-2 hover:underline hover:text-primary/90 disabled:pointer-events-none disabled:opacity-50';
+
+const SD_FORM_LINK_ICON =
+  'focus-ring inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground';
 
 type Props = {
   isModal: boolean;
   booking: BookingRow;
   viewedContent: WorkflowViewContent | null;
   contentReadOnly: boolean;
+  /** When true, drafts emit even if incomplete (rail Save without Proceed). */
+  persistPartialDrafts: boolean;
   activePendingDocSubStatus: PendingDocNestedKey;
   documentRequirements: DocumentRequirement[];
 
@@ -63,12 +73,14 @@ type Props = {
   // SD refund sub-form
   sdRefundValues: SdRefundValues | null;
   onSdRefundChange: (values: SdRefundValues | null) => void;
+  onSdRefundGuestChange: (values: GuestSdRefundEditValues | null) => void;
 
   // SD guest-info card (READY_FOR_CHECKOUT)
   sdGuestFormUrl: string;
   onCopySdGuestFormUrl: () => void;
   recheckSdGuestSubmitPending: boolean;
   onRecheckGuestSdSubmission: () => void;
+  onPreview: BookingAssetPreviewHandler;
 };
 
 export function WorkflowSubFormHost({
@@ -76,6 +88,7 @@ export function WorkflowSubFormHost({
   booking,
   viewedContent,
   contentReadOnly,
+  persistPartialDrafts,
   activePendingDocSubStatus,
   documentRequirements,
   pricingValues,
@@ -92,10 +105,12 @@ export function WorkflowSubFormHost({
   onGuestBalanceChange,
   sdRefundValues,
   onSdRefundChange,
+  onSdRefundGuestChange,
   sdGuestFormUrl,
   onCopySdGuestFormUrl,
   recheckSdGuestSubmitPending,
   onRecheckGuestSdSubmission,
+  onPreview,
 }: Props) {
   const needsPricing = viewedContent === 'pricing';
   const needsParking = viewedContent === 'parking';
@@ -103,17 +118,22 @@ export function WorkflowSubFormHost({
   const needsGuestBalance = viewedContent === 'guest_balance';
   const needsDocSubStatus = viewedContent === 'doc_sub_status';
   const showSdGuestInfoCard = viewedContent === 'sd_guest_info';
+  const showCompletedSummary = viewedContent === 'completed_summary';
   const showStageContent =
     needsPricing ||
     needsParking ||
     needsSdRefund ||
     needsGuestBalance ||
     needsDocSubStatus ||
-    showSdGuestInfoCard;
+    showSdGuestInfoCard ||
+    showCompletedSummary;
 
   if (!showStageContent) return null;
 
   const formVariant = isModal ? 'modal' : 'workflow';
+  const editMode = persistPartialDrafts && !contentReadOnly;
+  const showGuestSdEdit =
+    needsSdRefund && !contentReadOnly && isProgressEditFormEnabled(booking, 'sd_refund_guest');
 
   return (
     <div
@@ -123,60 +143,56 @@ export function WorkflowSubFormHost({
           : 'border-separator space-y-6 border-b px-4 py-4'
       )}
     >
-      {contentReadOnly && !isModal ? (
-        <div
-          role="status"
-          className="border-primary/25 bg-primary/5 dark:border-primary/30 dark:bg-primary/10 flex gap-2.5 rounded-xl border px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3"
-        >
-          <Info
-            className="text-primary dark:text-primary mt-0.5 size-4 shrink-0 sm:size-[18px]"
-            aria-hidden
-          />
-          <p className="text-foreground dark:text-foreground min-w-0 text-[12px] leading-snug sm:text-[13px]">
-            Completed steps are read-only here. Edit them in{' '}
-            <span className="font-semibold">Edit Booking Details</span>.
-          </p>
-        </div>
-      ) : null}
       {showSdGuestInfoCard && (
-        <WorkflowSubFormCard title="Guest SD refund form" plain={isModal}>
-          <p className="text-muted-foreground text-[11.5px] leading-relaxed">
-            Waiting for the guest SD refund form. Submitting moves this booking to{' '}
-            <span className="text-foreground font-medium">Pending SD Refund</span>.
-          </p>
-          <div>
-            <span className="inline-flex max-w-full flex-wrap items-center gap-x-1 gap-y-1">
-              <a
-                href={sdGuestFormUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={workflowInlineLink}
-              >
-                SD Refund Link
-              </a>
-              <InlineCopyIconButton
-                aria-label="Copy SD refund form link to clipboard"
-                onClick={onCopySdGuestFormUrl}
-              />
-            </span>
+        <WorkflowSubFormCard title="Guest SD refund form" plain={isModal} advanceMode="auto">
+          <div className="flex min-h-11 items-center justify-between gap-3">
+            <p className="text-muted-foreground min-w-0 text-xs leading-snug">
+              Guest hasn’t submitted the SD refund form yet
+            </p>
+            <button
+              type="button"
+              disabled={recheckSdGuestSubmitPending}
+              onClick={onRecheckGuestSdSubmission}
+              aria-label="Check for guest submission"
+              aria-busy={recheckSdGuestSubmitPending}
+              className={SD_GUEST_CHECK_ACTION}
+            >
+              {recheckSdGuestSubmitPending ? (
+                <Loader2 className="size-3.5 animate-spin" aria-hidden />
+              ) : (
+                'Check'
+              )}
+            </button>
           </div>
-          <button
-            type="button"
-            disabled={recheckSdGuestSubmitPending}
-            onClick={onRecheckGuestSdSubmission}
-            className={cn(workflowNeutralActionClass(), 'justify-center gap-2')}
-          >
-            {recheckSdGuestSubmitPending ? (
-              <Loader2
-                className="text-muted-foreground size-3.5 shrink-0 animate-spin"
-                aria-hidden
-              />
-            ) : (
-              <RefreshCw className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
-            )}
-            Check for guest submission
-          </button>
+          <div className="border-border/70 bg-muted/40 flex min-h-11 min-w-0 items-center rounded-lg border pl-3">
+            <p
+              className="text-foreground min-w-0 flex-1 truncate text-xs font-medium"
+              title={sdGuestFormUrl}
+            >
+              SD refund form link
+            </p>
+            <a
+              href={sdGuestFormUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Open SD refund form"
+              className={SD_FORM_LINK_ICON}
+            >
+              <ExternalLink className="size-3.5" aria-hidden />
+            </a>
+            <button
+              type="button"
+              onClick={onCopySdGuestFormUrl}
+              aria-label="Copy SD refund form link"
+              className={SD_FORM_LINK_ICON}
+            >
+              <Copy className="size-3.5" aria-hidden />
+            </button>
+          </div>
         </WorkflowSubFormCard>
+      )}
+      {showCompletedSummary && (
+        <WorkflowCompletedSummaryCard booking={booking} plain={isModal} onPreview={onPreview} />
       )}
       {needsDocSubStatus && (
         <PendingDocSubStatusCard
@@ -184,6 +200,7 @@ export function WorkflowSubFormHost({
           sub={activePendingDocSubStatus}
           requirements={documentRequirements}
           plain={isModal}
+          onPreview={onPreview}
         />
       )}
       {needsPricing && (
@@ -194,6 +211,7 @@ export function WorkflowSubFormHost({
             initialDraft={pricingValues}
             onChange={onPricingChange}
             readOnly={contentReadOnly}
+            editMode={editMode}
             propertyDefaults={propertyPricingDefaults}
             dateOverrides={propertyPricingDateOverrides}
             holidayRules={propertyPricingHolidayRules}
@@ -215,7 +233,9 @@ export function WorkflowSubFormHost({
           initialDraft={parkingValues}
           onChange={onParkingChange}
           readOnly={contentReadOnly}
+          editMode={editMode}
           variant={formVariant}
+          onPreview={onPreview}
         />
       )}
       {needsGuestBalance && (
@@ -224,17 +244,33 @@ export function WorkflowSubFormHost({
           initialDraft={guestBalanceValues}
           onChange={onGuestBalanceChange}
           readOnly={contentReadOnly}
+          editMode={editMode}
           variant={formVariant}
+          onPreview={onPreview}
         />
       )}
       {needsSdRefund && (
-        <SdRefundForm
-          booking={booking}
-          initialDraft={sdRefundValues}
-          onChange={onSdRefundChange}
-          readOnly={contentReadOnly}
-          variant={formVariant}
-        />
+        <>
+          {showGuestSdEdit ? (
+            <GuestSdRefundEditForm
+              key={`${booking.id}-sd-guest`}
+              booking={booking}
+              onChange={onSdRefundGuestChange}
+              editMode={editMode}
+              variant={formVariant === 'modal' ? 'modal' : 'workflow'}
+            />
+          ) : null}
+          <SdRefundForm
+            booking={booking}
+            initialDraft={sdRefundValues}
+            onChange={onSdRefundChange}
+            readOnly={contentReadOnly}
+            editMode={editMode}
+            variant={formVariant}
+            showGuestDetails={!showGuestSdEdit}
+            onPreview={onPreview}
+          />
+        </>
       )}
     </div>
   );

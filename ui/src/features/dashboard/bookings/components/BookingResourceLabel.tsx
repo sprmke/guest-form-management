@@ -16,7 +16,7 @@ export function bookingResourceName(row: BookingRow): string | null {
 
 type Props = {
   row: Pick<BookingRow, 'booking_kind' | 'parking_id' | 'property_name' | 'parking_name'>;
-  /** Org list: show Property / Parking badge. */
+  /** Optional Property / Parking badge (org lists show name only by default). */
   showKindBadge?: boolean;
   className?: string;
 };

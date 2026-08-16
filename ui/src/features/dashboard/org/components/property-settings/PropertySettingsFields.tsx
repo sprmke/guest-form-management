@@ -2,35 +2,11 @@ import type { ReactNode } from 'react';
 
 import { AlertCircle } from 'lucide-react';
 
+import { FieldLabel, RequiredMark } from '@/components/forms/FieldLabel';
 import { Input, type InputProps } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
-export function RequiredMark() {
-  return (
-    <span className="text-destructive" aria-hidden>
-      {' '}
-      *
-    </span>
-  );
-}
-
-export function SettingsFieldLabel({
-  htmlFor,
-  label,
-  required = false,
-}: {
-  htmlFor?: string;
-  label: string;
-  required?: boolean;
-}) {
-  return (
-    <Label htmlFor={htmlFor}>
-      {label}
-      {required ? <RequiredMark /> : null}
-    </Label>
-  );
-}
+export { FieldLabel as SettingsFieldLabel, RequiredMark };
 
 export function SettingsField({
   id,
@@ -38,6 +14,7 @@ export function SettingsField({
   required = false,
   error,
   children,
+  help,
   hintBelow,
   className,
 }: {
@@ -46,12 +23,14 @@ export function SettingsField({
   required?: boolean;
   error?: string | null;
   children: ReactNode;
+  /** Tooltip on a ? next to the label. Prefer this over `hintBelow` for explanatory copy. */
+  help?: string;
   hintBelow?: string;
   className?: string;
 }) {
   return (
     <div className={cn('space-y-2', className)}>
-      <SettingsFieldLabel htmlFor={id} label={label} required={required} />
+      <FieldLabel htmlFor={id} label={label} required={required} help={help} />
       {children}
       {error ? (
         <p className="text-destructive text-xs">{error}</p>

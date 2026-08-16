@@ -34,7 +34,7 @@ export function DevelopmentsGrid({ developments, viewMode = 'grid' }: Developmen
       transition={{ duration: 0.2 }}
       className={
         viewMode === 'grid'
-          ? 'grid gap-6 sm:grid-cols-3 xl:grid-cols-4'
+          ? 'grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
           : 'mx-auto max-w-3xl space-y-4'
       }
     >

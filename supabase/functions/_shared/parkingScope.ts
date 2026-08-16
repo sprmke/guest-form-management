@@ -38,6 +38,19 @@ export function readParkingSlugFromUrl(url: URL): string | null {
   return slug || null;
 }
 
+export async function resolveOrganizationIdForParking(parkingId: string): Promise<string> {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from('parkings')
+    .select('organization_id')
+    .eq('id', parkingId)
+    .maybeSingle();
+  if (error || !data?.organization_id) {
+    throw new Error('Parking not found');
+  }
+  return data.organization_id as string;
+}
+
 /** All parking slot ids belonging to an organization (org bookings list scope). */
 export async function listParkingIdsForOrganization(orgId: string): Promise<string[]> {
   const supabase = createServiceClient();

@@ -2,10 +2,18 @@
 title: 'Tasks To Prompt'
 status: archived
 tags: [planning]
-updated: 2026-08-10
+updated: 2026-08-17
 ---
 
-**Status legend:** ✅ done · 🚧 in progress · 📋 planned (plan doc written) · 🔵 pending / open · ❌ cancelled / won't do
+**Status legend:** ❌ cancelled / won't do · ✅ done · 📋 planned (plan doc written) · 🚧 in progress · 🔵 pending / open
+
+===
+
+❌ Add main header in dashboard
+
+Won't do — profile, theme toggle, and Explore/Host mode stay in the sidebar footer (`AdminLayout`); separate top header bar rejected.
+
+→ **Won't do:** [`../wont-do/dashboard-top-header-bar.md`](../wont-do/dashboard-top-header-bar.md)
 
 ===
 
@@ -43,15 +51,6 @@ The end goal is that we should support both properties & parking modules in book
 
 ===
 
-🔵 Socials at org and property level
-
-We should refine how we can improve the socials management for org and property level to prevent any redundant fill up.
-Provide a best UI/UX so that on property/parking level, we have option to reuse the same value of org level per fields.
-Maybe, we will offer a global button that if click, we will make all social fields read only and populate it with org values.
-Or maybe it's better if we have individual toggle per field? Or support both? Provide the best UI/UX for our scenario.
-
-===
-
 ✅ Refine Notifications module
 
 - Shared bot token card (one token for all modules; pre-fills module fields; editable per module)
@@ -74,14 +73,6 @@ Lastly, let's provide card description for each section, for what each module is
 
 ===
 
-❌ Add main header in dashboard
-
-Won't do — profile, theme toggle, and Explore/Host mode stay in the sidebar footer (`AdminLayout`); separate top header bar rejected.
-
-→ **Won't do:** [`../wont-do/dashboard-top-header-bar.md`](../wont-do/dashboard-top-header-bar.md)
-
-===
-
 ✅ Update pricing menu/page to be "Calendar"
 
 We will have different tabs or switch view inside our calendar page.
@@ -93,24 +84,11 @@ Guide: `docs/guides/routes/org/property/calendar.md`
 
 ===
 
-🔵 Improve dashboard UI at org & property level
-
-===
-
-🔵 Display animated popup party when hosts open calendar and we have 20+ bookings this month
+✅ Improve dashboard UI at org & property level
 
 ===
 
 ✅ Make sure all media uploader default image is empty (ex. org logo). Please analyze all our dashboard image uploader and make sure we don't have static or default images that's tied to Kame Home (2604)
-
-===
-
-🔵 Redesign hosts page to be similar UI with developments page.
-
-Maybe add org photos/banner from org settings?
-
-- http://localhost:5173/hosts/kame-homes
-- http://localhost:5173/developments/azure-north-residences
 
 ===
 
@@ -126,20 +104,6 @@ Maybe add org photos/banner from org settings?
 Again, our detector should be smart and use detector, adding pre, post and between characters should not also be allowed. PLease be very smart. We are doing this so that hosts cannot register general names or use the any residence name and disguise as the official or main host/org/property
 
 Make sure we apply this validation on onboarding, settings and all other locations
-
-===
-
-🚧 Branch deployment guide + dev/staging environment
-
-Meaning, I want to deploy our app in vercel with ou current branch with our new changes.
-
-Same for supabase, but instead of having branch deployment with Suapabase which is not free. I want to create new supabase project with different account to intialize and setup everything.
-
-The goal in the end is for us to deploy and see fully working application with our new changes.
-
-Also, another important setup I'd like to have is to point or use supabase deployed dev in our local so that we don't need to run docker from our local to test and work locally. Meaning, when we have any supabase related changes locally, and test our app, I still want to see our changes and fully working on it with our local frontend. Meaning, when we are working locally, we can still work on it without running docker and without deploying our backend/supabase related changes to dev. Then, once good, we can deploy our changes to dev. I'm not sure how is this possible but this is how we do it on other projects and I'd like to implement in our app
-
-→ **Runbook shipped; operator bootstrap pending:** [`../in-progress/ci-cd-environments/dev-staging-environment.md`](../in-progress/ci-cd-environments/dev-staging-environment.md)
 
 ===
 
@@ -159,32 +123,13 @@ Also, another thing that we need to improve is that we should display or redesig
 
 ===
 
-🔵 Update for-hosts landing page animation section with updated features and more refined text/voice
-
-===
-
-🔵 Improve avatar video animation
-
-===
-
 ✅ Make google map view mode in search or public page listing
 
 Shipped: [`../done/google-map-listing-view.md`](../done/google-map-listing-view.md). Real Google Maps on `/properties`, `/developments`, and `/search` category tabs. `/parkings` index map toggle still optional follow-up.
 
 ===
 
-🔵 Generate more real world mock data
-
-Generate more real world and hundreds of mock data for different properties, developments, parking, and other type of place so that we can fully test and simulate real world test data and fully verify if our search, filters, lazy load, and any app performance optimization implementation are working properly.
-
-===
-
-🔵 Cleanup unused ui and backend env vars:
-EMAIL_TO / EMAIL_REPLY_TO
-
-===
-
-🔵 Update each page browser title to be dynamic.
+✅ Update each page browser title to be dynamic.
 
 Public Pages - Kame Homes - ${page name}
 
@@ -201,9 +146,114 @@ Please list them down and if you have suggestion to name differently or grouped 
 
 ===
 
-🔵 UI/UX improvements
+✅ UI/UX improvements
 
 - Improve dashboard search, filter, sort and action buttons. Notice how we simplify it on mobile, maybe apply for desktop
 - Improve pagination UI/UX
 - Add table column sort
 - Update modal to be scrollable inside modal content;
+
+===
+
+✅ Analyze our AI dashboard assistant and analyze the common questions and actions that host can ask/do.
+
+This should be a tab within the chat history when they open our sidebar chat or when they click new chat.
+These would be helpful list of questions and actions that host can do.
+
+Let's generate 20 common questions and 20 actions, but only list 5 randomized items on our chat.
+
+→ **Done:** starter prompts in the AI assistant panel. New chat centers a **Questions / Actions** mode switch (5 randomized prompt cards). Pool: `ui/src/features/dashboard/ai-assistant/lib/assistantSuggestions.ts`.
+
+===
+
+✅ Another feature that we need to do in our AI assistant chat is to support uploading images (ex. receipt, approved GAF) & files.
+Beside from this, it's also helpful to add or include context of booked dates, so that host can select a booking and use it as reference to chat.
+So we will have dropdowns for actions beside the input chat
+
+→ **Done:** composer paperclip (Photo / File, JPEG/PNG/WebP/PDF, max 3 × 4 MB) and booking pin beside the input. Files stored in `ai-assistant-attachments`; pin sets `pageContext.bookingId` for that turn. See [`../done/ai-dashboard-assistant-features.md`](../done/ai-dashboard-assistant-features.md).
+
+===
+
+🚧 Update brand color picker to provide pastel and good looking for different colors and still have an option to choose custom color from color picker
+
+===
+
+🚧 Display animated popup party when hosts open calendar and we have 20+ bookings this month
+
+===
+
+🚧 Branch deployment guide + dev/staging environment
+
+Meaning, I want to deploy our app in vercel with ou current branch with our new changes.
+
+Same for supabase, but instead of having branch deployment with Suapabase which is not free. I want to create new supabase project with different account to intialize and setup everything.
+
+The goal in the end is for us to deploy and see fully working application with our new changes.
+
+Also, another important setup I'd like to have is to point or use supabase deployed dev in our local so that we don't need to run docker from our local to test and work locally. Meaning, when we have any supabase related changes locally, and test our app, I still want to see our changes and fully working on it with our local frontend. Meaning, when we are working locally, we can still work on it without running docker and without deploying our backend/supabase related changes to dev. Then, once good, we can deploy our changes to dev. I'm not sure how is this possible but this is how we do it on other projects and I'd like to implement in our app
+
+→ **Runbook shipped; operator bootstrap pending:** [`../in-progress/ci-cd-environments/dev-staging-environment.md`](../in-progress/ci-cd-environments/dev-staging-environment.md)
+
+===
+
+🔵 Socials at org and property level
+
+We should refine how we can improve the socials management for org and property level to prevent any redundant fill up.
+Provide a best UI/UX so that on property/parking level, we have option to reuse the same value of org level per fields.
+Maybe, we will offer a global button that if click, we will make all social fields read only and populate it with org values.
+Or maybe it's better if we have individual toggle per field? Or support both? Provide the best UI/UX for our scenario.
+
+===
+
+🔵 Redesign hosts page to be similar UI with developments page.
+
+Maybe add org photos/banner from org settings?
+
+- http://localhost:5173/hosts/kame-homes
+- http://localhost:5173/developments/azure-north-residences
+
+===
+
+🔵 Update for-hosts landing page animation section with updated features and more refined text/voice
+
+===
+
+🔵 Improve avatar video animation
+
+===
+
+🔵 Generate more real world mock data
+
+Generate more real world and hundreds of mock data for different properties, developments, parking, and other type of place so that we can fully test and simulate real world test data and fully verify if our search, filters, lazy load, and any app performance optimization implementation are working properly.
+
+===
+
+🔵 Improve UI/UX of exported reports
+
+===
+
+🔵 Cleanup all env variables and example for both ui and supabase
+
+EMAIL_TO / EMAIL_REPLY_TO
+
+===
+
+🔵 Update all app, screen and skeleton loaders
+
+===
+
+🔵 Update all payment AI validation to make sure that we achieve the actual minimum amount, date is reasonable, etc
+
+===
+
+🔵 Make sure the SD refund payments is reflecting based on payment methods available from property settings
+
+===
+
+🔵 Refine add pay parking and add/edit parking from booking detail page
+
+===
+
+🔵 Improve marketing generate modal > suggestions thumbnail is confusing
+
+Update marketing generate design suggestion thumbnail to be more closed to calendar template, design and video clips

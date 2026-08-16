@@ -10,7 +10,7 @@ import { useParkings } from '@/features/dashboard/org/hooks/useParkings';
 import { setLastParkingContext } from '@/features/dashboard/org/lib/tenantPaths';
 import type { Organization, Parking } from '@/features/dashboard/org/types';
 
-type ParkingContextValue = {
+export type ParkingContextValue = {
   org: Organization;
   parking: Parking;
   orgSlug: string;

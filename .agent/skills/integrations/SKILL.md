@@ -1,18 +1,15 @@
 ---
 name: integrations
-description: Google (Gmail, Calendar, Sheets), Telegram crons, Meta inbox, Resend. Use when connecting OAuth, webhooks, scheduled jobs, or integration settings UI.
+description: Telegram crons, Meta inbox, Resend inbound approvals. Use when connecting webhooks, scheduled jobs, or integration settings UI.
 ---
 
 # Integrations (GFM)
 
-## Google (per property)
+## GAF/pet approvals (platform)
 
-- OAuth: Settings → Connect Google — `google-mail-oauth-*` functions
-- Stored: `gmail_mail_integration` encrypted refresh token
-- Calendar + Sheets IDs on `app_settings` — auto-provision on connect
-- Skills: `gmail-listener` | Rules: `booking-workflow.mdc` (calendar/sheet side effects)
-
-Env: `GMAIL_API_WEB_CLIENT_JSON`, `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`, `GMAIL_OAUTH_ALLOWED_RETURN_ORIGINS`
+- Production intake: Resend Receiving → `approval-email-webhook` (see `docs/archive/operations/approval-email-inbound.md`)
+- Skill: `gmail-listener` (documents inbound path) | Rules: `booking-workflow.mdc`
+- Hosts do **not** connect Google accounts for approvals.
 
 ## Telegram (per property)
 
@@ -20,6 +17,7 @@ Env: `GMAIL_API_WEB_CLIENT_JSON`, `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`, `GMAIL_OAU
 - Settings UI: `/notifications` (property) — bot token + chat id encrypted in DB
 - Crons: `telegram-*-cron` + `docs/archive/operations/scheduled-jobs-and-testing.md`
 - Reference: `docs/archive/reference/telegram-marketing-reminders.md`
+- Env: `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY` (legacy name) encrypts Telegram tokens via `propertySecretCrypto.ts`
 
 ## Meta Guest Inbox (org)
 
@@ -31,16 +29,18 @@ Env: `GMAIL_API_WEB_CLIENT_JSON`, `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`, `GMAIL_OAU
 
 - Skill: `emails`
 - `RESEND_API_KEY` edge secret
+- `RESEND_APPROVAL_INBOUND_DOMAIN`, `RESEND_INBOUND_WEBHOOK_SECRET` for inbound approvals
 
 ## AI (receipt validation)
 
 - `GEMINI_API_KEYS` / `GROQ_API_KEY` — `docs/archive/reference/ai-payment-receipt-validation.md`
 
-## Local scripts
+## Google Maps (property location)
 
-- `bun run gmail-auth` → `scripts/integrations/gmail-auth.mjs` (legacy Desktop OAuth for listener)
+- UI: `VITE_GOOGLE_MAPS_API_KEY` — Places + map pin on property settings (not Gmail/Calendar/Sheets)
 
 ## Don'ts
 
 - Store refresh tokens in UI env
 - Add integration side effects outside `workflowOrchestrator` for booking transitions
+- Reintroduce Gmail listener or Connect Google OAuth for hosts

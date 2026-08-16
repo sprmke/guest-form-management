@@ -65,6 +65,13 @@ Same as Cursor's `.cursor/commands/`; Claude Code commands and skills both creat
 
 | Command                 | Purpose                                                                                            |
 | ----------------------- | -------------------------------------------------------------------------------------------------- |
+| `/kh-help`              | Teammate cheat sheet for all `/kh-*` commands (QA / junior-friendly)                               |
+| `/kh-create-new-ticket` | Create GitHub issue or sub-issue with the standard ticket template                                 |
+| `/kh-start-work`        | Update `develop`, branch for issue #N, load ticket                                                 |
+| `/kh-pull-new-changes`  | Safely pull latest `develop`                                                                       |
+| `/kh-start-app`         | Run the app (default: UI → hosted multi-tenant dev)                                                |
+| `/kh-check-before-pr`   | Run `bun run ci:quality` before review                                                             |
+| `/kh-submit-for-review` | Push branch + open PR **into `develop`**                                                           |
 | `/fix-merge-conflicts`  | Resolve merge conflicts without breaking either side's changes                                     |
 | `/fix-migration-issues` | Apply pending **local** migrations (`bun run db:migrate`) — no reset/deploy by default             |
 | `/github-issue`         | View / create / update / ship issues on `sprmke/kame-homes` (backed by `scripts/dev/gh-issue.mjs`) |
@@ -90,12 +97,15 @@ To regenerate the status line script: `/statusline show model, effort, context b
 
 Ported from `.cursor/hooks.json` + `.cursor/hooks/*.sh`, translated to Claude Code's stdin JSON shape (`tool_input.file_path` / `tool_input.command`) and output contract (`hookSpecificOutput.permissionDecision`). See `.claude/skills/README.md` for the exact translation notes if re-syncing after a Cursor-side hook change.
 
-| Hook                          | Event / matcher          | Purpose                                                                                                                                                                                                                            |
-| ----------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `format-edited-file.sh`       | PostToolUse, Edit\|Write | Prettier-format the file that was just touched                                                                                                                                                                                     |
-| `check-stack-terminology.sh`  | PostToolUse, Edit\|Write | Warns (non-blocking) on Next.js/tRPC/Drizzle terms — wrong stack for this repo                                                                                                                                                     |
-| `guard-shell.sh`              | PreToolUse, Bash         | **Deny prod Supabase deploy** (`deploy:supabase`, `db push`, `functions deploy`, remote migrations) unless command contains unlock **`kamewave`**; deny `rm -rf /`/`~`; ask before `DROP TABLE`, `stop:supabase:clean`, force-push |
-| `guard-shipped-migrations.sh` | PreToolUse, Edit         | Deny editing an existing file under `supabase/migrations/` — add a new migration instead                                                                                                                                           |
+| Hook                             | Event / matcher                                         | Purpose                                                                                                                                                                                                                            |
+| -------------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `format-edited-file.sh`          | PostToolUse, Edit\|Write                                | Prettier-format the file that was just touched                                                                                                                                                                                     |
+| `check-stack-terminology.sh`     | PostToolUse, Edit\|Write                                | Warns (non-blocking) on Next.js/tRPC/Drizzle terms — wrong stack for this repo                                                                                                                                                     |
+| `guard-shell.sh`                 | PreToolUse, Bash                                        | **Deny prod Supabase deploy** (`deploy:supabase`, `db push`, `functions deploy`, remote migrations) unless command contains unlock **`kamewave`**; deny `rm -rf /`/`~`; ask before `DROP TABLE`, `stop:supabase:clean`, force-push |
+| `guard-shipped-migrations.sh`    | PreToolUse, Edit                                        | Deny editing an existing file under `supabase/migrations/` — add a new migration instead                                                                                                                                           |
+| `superpowers-lean-mode.sh`       | beforeSubmitPrompt (Cursor) / UserPromptSubmit (Claude) | Activate lean mode for any `/superpowers-*` command; inject mode-specific constraints (Claude)                                                                                                                                     |
+| `guard-superpowers-subagents.sh` | subagentStart (Cursor) / PreToolUse Task (Claude)       | Deny Task/subagents while lean mode marker is active                                                                                                                                                                               |
+| `superpowers-lean-cleanup.sh`    | stop (Cursor) / Stop (Claude)                           | Clear lean mode marker when agent completes                                                                                                                                                                                        |
 
 ## MCP servers (`.mcp.json`, shared with Cursor via `.cursor/mcp.json` symlink)
 
@@ -134,7 +144,7 @@ Canonical: **`.cursor/rules/ai-usage.mdc`**. Summary:
 | `/superpowers-*` when you want that workflow   | Auto-invoke Superpowers brainstorming             |
 | `/effort medium` for chores                    | `effort=high` on every rename                     |
 
-**User-scope Claude plugins (`~/.claude/settings.json`):** keep what you use. Strong candidates to **disable** if unused (they still cost discovery/context): `skill-creator`, `claude-code-setup`, `feature-dev`, `vercel` (unless deploying), `obsidian` (unless vault tasks), `code-review` (if you use Bugbot/PR review elsewhere). Keep **`superpowers`** only if you still run `/superpowers-*`; otherwise disable the plugin entirely to cut accidental brainstorming spend.
+**User-scope Claude plugins (`~/.claude/settings.json`):** keep what you use. **Do not enable `claude-mem@thedotmack`** — use `docs/PROJECT.md` + route guides; run **`bun run cleanup:claude-mem`** if it was installed earlier. Strong candidates to **disable** if unused: `skill-creator`, `claude-code-setup`, `feature-dev`, `vercel` (unless deploying), `obsidian` (unless vault tasks), `code-review` (if you use Bugbot/PR review elsewhere). Keep **`superpowers`** only if you still run `/superpowers-*`; otherwise disable the plugin entirely to cut accidental brainstorming spend.
 
 ## Updating
 

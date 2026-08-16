@@ -36,7 +36,6 @@ import {
 import { resolveVideoTypographyContext } from '@/features/dashboard/marketing/lib/video/videoTemplateTypography';
 import { scaleForVideoFormat } from '@/features/dashboard/marketing/lib/video/videoTextSlotContent';
 
-
 import { cn } from '@/lib/utils';
 
 import type { PlayerRef } from '@remotion/player';
@@ -119,8 +118,8 @@ export const VideoPreviewWorkspace = forwardRef<VideoPreviewWorkspaceHandle, Pro
     const templateTypography = useMemo(
       () =>
         inputProps.typography ??
-        resolveVideoTypographyContext(project.templateId, inputProps.brandColor),
-      [inputProps.typography, inputProps.brandColor, project.templateId]
+        resolveVideoTypographyContext(project.templateId, inputProps.brandColor, project.palette),
+      [inputProps.typography, inputProps.brandColor, project.templateId, project.palette]
     );
 
     const handlePlayerInstance = useCallback((instance: PlayerRef | null) => {

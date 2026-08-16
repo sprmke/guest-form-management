@@ -1,12 +1,13 @@
 import type { DesignTemplateFormat } from '@/features/dashboard/marketing/lib/templateRegistry';
 
-export type CampaignCategory = 'promo' | 'slots' | 'giveaway' | 'fully-booked';
+export type CampaignCategory = 'promo' | 'slots' | 'giveaway' | 'fully-booked' | 'custom';
 
 export const CAMPAIGN_CATEGORY_LABELS: Record<CampaignCategory, string> = {
   promo: 'Promos',
   slots: 'Last slots',
   giveaway: 'Giveaway',
   'fully-booked': 'Fully booked',
+  custom: 'Custom',
 };
 
 export type DesignBindingMedia = {

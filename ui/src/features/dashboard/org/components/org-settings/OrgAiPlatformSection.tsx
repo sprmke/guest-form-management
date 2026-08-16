@@ -1,13 +1,15 @@
 import * as React from 'react';
 
-import { Loader2 } from 'lucide-react';
+import { Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { AdminSection } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
 import {
   useAiPlatformSettings,
   useAiPlatformUsage,
   useUpdateAiPlatformSettings,
 } from '@/features/dashboard/org/hooks/useAiPlatformSettings';
+import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermissions';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,12 +20,17 @@ type Draft = {
   enabled: boolean;
   dailyCallLimit: string;
   monthlyCallLimit: string;
+  dailyCostUsdLimit: string;
 };
 
 export function OrgAiPlatformSection() {
   const { data: settings, isLoading: settingsLoading } = useAiPlatformSettings();
   const { data: usage, isLoading: usageLoading } = useAiPlatformUsage();
+  const { data: orgAccess } = useOrgPermissions();
   const update = useUpdateAiPlatformSettings();
+
+  const canEdit = orgAccess?.canEditSettings ?? false;
+  const readOnly = !canEdit;
 
   const [draft, setDraft] = React.useState<Draft | null>(null);
   const [baseline, setBaseline] = React.useState<Draft | null>(null);
@@ -34,6 +41,7 @@ export function OrgAiPlatformSection() {
       enabled: settings.enabled,
       dailyCallLimit: String(settings.dailyCallLimit),
       monthlyCallLimit: String(settings.monthlyCallLimit),
+      dailyCostUsdLimit: String(settings.dailyCostUsdLimit),
     };
     setDraft((current) => (current === null ? next : current));
     setBaseline((current) => (current === null ? next : current));
@@ -43,19 +51,33 @@ export function OrgAiPlatformSection() {
     draft && baseline
       ? draft.enabled !== baseline.enabled ||
         draft.dailyCallLimit !== baseline.dailyCallLimit ||
-        draft.monthlyCallLimit !== baseline.monthlyCallLimit
+        draft.monthlyCallLimit !== baseline.monthlyCallLimit ||
+        draft.dailyCostUsdLimit !== baseline.dailyCostUsdLimit
       : false;
 
   const handleSave = () => {
     if (!draft) return;
     const dailyCallLimit = Number(draft.dailyCallLimit);
     const monthlyCallLimit = Number(draft.monthlyCallLimit);
-    if (!Number.isFinite(dailyCallLimit) || dailyCallLimit <= 0) {
-      toast.error('Daily limit must be a positive number');
+    const dailyCostUsdLimit = Number(draft.dailyCostUsdLimit);
+    if (
+      !Number.isFinite(dailyCallLimit) ||
+      dailyCallLimit <= 0 ||
+      !Number.isInteger(dailyCallLimit)
+    ) {
+      toast.error('Daily limit must be a positive integer');
       return;
     }
-    if (!Number.isFinite(monthlyCallLimit) || monthlyCallLimit <= 0) {
-      toast.error('Monthly limit must be a positive number');
+    if (
+      !Number.isFinite(monthlyCallLimit) ||
+      monthlyCallLimit <= 0 ||
+      !Number.isInteger(monthlyCallLimit)
+    ) {
+      toast.error('Monthly limit must be a positive integer');
+      return;
+    }
+    if (!Number.isFinite(dailyCostUsdLimit) || dailyCostUsdLimit <= 0) {
+      toast.error('Daily cost limit must be a positive number');
       return;
     }
 
@@ -64,6 +86,7 @@ export function OrgAiPlatformSection() {
         enabled: draft.enabled,
         dailyCallLimit,
         monthlyCallLimit,
+        dailyCostUsdLimit,
       },
       {
         onSuccess: (saved) => {
@@ -71,6 +94,7 @@ export function OrgAiPlatformSection() {
             enabled: saved.enabled,
             dailyCallLimit: String(saved.dailyCallLimit),
             monthlyCallLimit: String(saved.monthlyCallLimit),
+            dailyCostUsdLimit: String(saved.dailyCostUsdLimit),
           };
           setDraft(next);
           setBaseline(next);
@@ -83,22 +107,18 @@ export function OrgAiPlatformSection() {
 
   if (settingsLoading || usageLoading || !draft) {
     return (
-      <section id="section-ai" className="scroll-mt-24">
+      <AdminSection id="ai" title="AI usage" icon={Sparkles}>
         <div className="flex justify-center py-8">
           <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
         </div>
-      </section>
+      </AdminSection>
     );
   }
 
   const showUpgradeStub = usage?.quotaExceeded || usage?.planTier === 'included';
 
   return (
-    <section id="section-ai" className="scroll-mt-24 space-y-4">
-      <div>
-        <h2 className="text-lg font-semibold">AI usage</h2>
-      </div>
-
+    <AdminSection id="ai" title="AI usage" icon={Sparkles}>
       {usage ? (
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
           <div>
@@ -114,8 +134,10 @@ export function OrgAiPlatformSection() {
             </dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Est. cost (month)</dt>
-            <dd>${usage.monthEstimatedCostUsd.toFixed(4)}</dd>
+            <dt className="text-muted-foreground">Est. cost today</dt>
+            <dd>
+              ${usage.todayCostUsd.toFixed(4)} / ${usage.dailyCostUsdLimit}
+            </dd>
           </div>
           <div>
             <dt className="text-muted-foreground">Plan</dt>
@@ -130,10 +152,17 @@ export function OrgAiPlatformSection() {
         </p>
       ) : null}
 
+      {readOnly ? (
+        <p className="text-muted-foreground text-sm">
+          Contact the organization owner to change AI settings.
+        </p>
+      ) : null}
+
       <div className="space-y-3">
         <label className="flex min-h-[44px] items-center gap-2 text-sm">
           <Switch
             checked={draft.enabled}
+            disabled={readOnly}
             onCheckedChange={(enabled) =>
               setDraft((current) => (current ? { ...current, enabled } : current))
             }
@@ -142,12 +171,13 @@ export function OrgAiPlatformSection() {
           AI enabled
         </label>
 
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-3">
           <label className="space-y-1 text-sm">
             <span className="text-muted-foreground">Daily call limit</span>
             <Input
               inputMode="numeric"
               value={draft.dailyCallLimit}
+              disabled={readOnly}
               onChange={(e) =>
                 setDraft((current) =>
                   current ? { ...current, dailyCallLimit: e.target.value } : current
@@ -161,6 +191,7 @@ export function OrgAiPlatformSection() {
             <Input
               inputMode="numeric"
               value={draft.monthlyCallLimit}
+              disabled={readOnly}
               onChange={(e) =>
                 setDraft((current) =>
                   current ? { ...current, monthlyCallLimit: e.target.value } : current
@@ -169,10 +200,24 @@ export function OrgAiPlatformSection() {
               aria-label="Monthly AI call limit"
             />
           </label>
+          <label className="space-y-1 text-sm">
+            <span className="text-muted-foreground">Daily cost USD limit</span>
+            <Input
+              inputMode="decimal"
+              value={draft.dailyCostUsdLimit}
+              disabled={readOnly}
+              onChange={(e) =>
+                setDraft((current) =>
+                  current ? { ...current, dailyCostUsdLimit: e.target.value } : current
+                )
+              }
+              aria-label="Daily AI cost USD limit"
+            />
+          </label>
         </div>
       </div>
 
-      {dirty ? (
+      {dirty && !readOnly ? (
         <Button
           type="button"
           className="min-h-[44px]"
@@ -182,6 +227,6 @@ export function OrgAiPlatformSection() {
           {update.isPending ? 'Saving…' : 'Save AI limits'}
         </Button>
       ) : null}
-    </section>
+    </AdminSection>
   );
 }

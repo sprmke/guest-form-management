@@ -118,28 +118,15 @@ export class UploadService {
     }
     console.log(`Processing ${bucket} upload...`);
 
-    // Only skip upload if we have an exact filename match (search can return partial matches)
-    const { data: listedFiles } = await this.supabase.storage.from(bucket).list('', {
-      search: storageKey,
-    });
-
-    const exactMatch =
-      Array.isArray(listedFiles) &&
-      listedFiles.some((item: { name?: string }) => item.name === storageKey);
-
-    if (exactMatch) {
-      console.log(`File ${storageKey} already exists in ${bucket}, skipping upload`);
-      const {
-        data: { publicUrl },
-      } = this.supabase.storage.from(bucket).getPublicUrl(storageKey);
-
-      return { url: formatPublicUrl(publicUrl) };
-    }
-
-    // Otherwise, upload the new file using sanitized key
+    // `generateFileName` (client) is deterministic per guest + stay, so re-submitting
+    // a booking reuses the same key. Upsert overwrites instead of returning 409
+    // Duplicate, and — unlike the old skip-if-exists check — a genuinely edited file
+    // replaces the stored one rather than silently keeping the stale copy. The old
+    // check also listed at the root prefix, so it never matched property-scoped
+    // (`{propertyId}/…`) keys and every re-upload hit the 409 path.
     const { error: uploadError } = await this.supabase.storage
       .from(bucket)
-      .upload(storageKey, file);
+      .upload(storageKey, file, { upsert: true });
 
     if (uploadError) {
       console.error(`${bucket} upload error:`, uploadError);
@@ -172,6 +159,8 @@ export class UploadService {
     const {
       data: { publicUrl },
     } = this.supabase.storage.from(bucket).getPublicUrl(objectPath);
-    return formatPublicUrl(publicUrl);
+    const base = formatPublicUrl(publicUrl);
+    const sep = base.includes('?') ? '&' : '?';
+    return `${base}${sep}v=${Date.now()}`;
   }
 }

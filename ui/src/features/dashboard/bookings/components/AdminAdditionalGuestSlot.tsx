@@ -2,8 +2,11 @@ import { Minus } from 'lucide-react';
 
 import { requiresValidId } from '@/features/guest/form/lib/guestCounts';
 
+import {
+  Field,
+  Input,
+} from '@/features/dashboard/bookings/components/booking-detail/edit/BookingEditFields';
 import type { BookingEditFormValues } from '@/features/dashboard/bookings/components/BookingEditForm';
-import { Field, Input } from '@/features/dashboard/bookings/components/BookingEditLayout';
 import { BookingGuestDocReplacer } from '@/features/dashboard/bookings/components/BookingGuestDocReplacer';
 import type { GuestDocAssetType } from '@/features/dashboard/bookings/hooks/useUploadBookingAsset';
 
@@ -45,39 +48,49 @@ export function AdminAdditionalGuestSlot({
   onRemove,
 }: AdminAdditionalGuestSlotProps) {
   const showValidId = guestAge != null && !Number.isNaN(guestAge) && requiresValidId(guestAge);
+  const nameId = `${nameField}`;
+  const ageId = `${ageField}`;
 
   return (
-    <div className="border-border/70 bg-muted/15 space-y-3 rounded-xl border p-4">
+    <div className="border-border/60 bg-muted/15 min-w-0 space-y-3 rounded-xl border p-3.5 sm:p-4">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-foreground/80 text-xs font-bold uppercase tracking-wider">{slotLabel}</p>
-        {onRemove && (
+        <p className="text-muted-foreground min-w-0 truncate text-xs font-medium">{slotLabel}</p>
+        {onRemove ? (
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="text-muted-foreground min-h-[44px] shrink-0"
+            className="text-muted-foreground hover:text-destructive min-h-[44px] min-w-[44px] shrink-0 cursor-pointer"
             onClick={onRemove}
             aria-label={`Remove ${slotLabel.toLowerCase()}`}
           >
             <Minus className="size-4" aria-hidden />
           </Button>
-        )}
+        ) : null}
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field label="Name">
-          <Input {...register(nameField)} placeholder="Full name (optional)" />
-        </Field>
-        <Field label="Age">
+        <Field label="Name" htmlFor={nameId}>
           <Input
+            id={nameId}
+            {...register(nameField)}
+            placeholder="Full name (optional)"
+            autoComplete="off"
+          />
+        </Field>
+        <Field label="Age" htmlFor={ageId}>
+          <Input
+            id={ageId}
             type="number"
             min={0}
             max={maxAge ?? 120}
+            inputMode="numeric"
             placeholder={agePlaceholder}
+            className="tabular-nums"
             {...register(ageField, { valueAsNumber: true })}
           />
         </Field>
       </div>
-      {showValidId && (
+      {showValidId ? (
         <BookingGuestDocReplacer
           bookingId={bookingId}
           assetType={assetType}
@@ -86,7 +99,7 @@ export function AdminAdditionalGuestSlot({
           accept="image/*,.pdf"
           onPreview={onPreview}
         />
-      )}
+      ) : null}
     </div>
   );
 }

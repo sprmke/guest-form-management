@@ -4,7 +4,7 @@ status: active
 stage: in-progress
 kind: plan
 tags: [workflow, in-progress, deployment, ci-cd, supabase, vercel, multi-tenancy]
-updated: 2026-08-09
+updated: 2026-08-17
 ---
 
 # CI/CD Dual-Track Implementation Plan
@@ -206,13 +206,13 @@ Use only if Quick verify failed or this was never wired. Estimated time: **45–
 6. Use the environment filter → select **Production** only.
 7. Confirm these exist and point at **LEGACY** (`zftt…`):
 
-| Name                        | Expected shape                                          | Where to verify                                                            |
-| --------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `VITE_SUPABASE_URL`         | `https://zfttdwtceyqszyeyhilc.supabase.co/functions/v1` | Must contain **`zfttdwtceyqszyeyhilc`**, must end with **`/functions/v1`** |
-| `VITE_API_URL`              | Same string as `VITE_SUPABASE_URL`                      | Character-for-character match                                              |
-| `VITE_SUPABASE_ANON_KEY`    | Long JWT starting with `eyJ…`                           | From Supabase **`zftt…`** → Settings → API → **anon public**               |
-| `VITE_NODE_ENV`             | `production`                                            | Guest form hides dev toggles when production                               |
-| `VITE_ADMIN_ALLOWED_EMAILS` | Comma-separated emails                                  | Who can open admin routes in the UI (server has its own list too)          |
+| Name                      | Expected shape                                          | Where to verify                                                            |
+| ------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `VITE_SUPABASE_URL`       | `https://zfttdwtceyqszyeyhilc.supabase.co/functions/v1` | Must contain **`zfttdwtceyqszyeyhilc`**, must end with **`/functions/v1`** |
+| `VITE_API_URL`            | Same string as `VITE_SUPABASE_URL`                      | Character-for-character match                                              |
+| `VITE_SUPABASE_ANON_KEY`  | Long JWT starting with `eyJ…`                           | From Supabase **`zftt…`** → Settings → API → **anon public**               |
+| `VITE_NODE_ENV`           | `production`                                            | Guest form hides dev toggles when production                               |
+| `VITE_SUPER_ADMIN_EMAILS` | Comma-separated platform team emails                    | Admin tab + `/admin/*` UX (server: `SUPER_ADMIN_EMAILS`)                   |
 
 8. Open your **live** public URL (the domain real guests use — from **Settings → Domains** on this project).
 9. Browser → **DevTools** → **Network** tab → reload.
@@ -282,13 +282,13 @@ For **each** variable below:
 - Optional: also enable **Preview** ✓ (same values — useful for PR deploys)
 - **Never** enable Production on `guest-form-management-app` for these fwor values
 
-| Key                         | Value (exact)                                                                                      |
-| --------------------------- | -------------------------------------------------------------------------------------------------- |
-| `VITE_NODE_ENV`             | `development`                                                                                      |
-| `VITE_SUPABASE_URL`         | `https://fworvijbrwpyngycotbz.supabase.co/functions/v1`                                            |
-| `VITE_API_URL`              | `https://fworvijbrwpyngycotbz.supabase.co/functions/v1` _(must match `VITE_SUPABASE_URL` exactly)_ |
-| `VITE_SUPABASE_ANON_KEY`    | _(paste anon key from Part B)_                                                                     |
-| `VITE_ADMIN_ALLOWED_EMAILS` | _(your staging admin emails, comma-separated)_                                                     |
+| Key                       | Value (exact)                                                                                      |
+| ------------------------- | -------------------------------------------------------------------------------------------------- |
+| `VITE_NODE_ENV`           | `development`                                                                                      |
+| `VITE_SUPABASE_URL`       | `https://fworvijbrwpyngycotbz.supabase.co/functions/v1`                                            |
+| `VITE_API_URL`            | `https://fworvijbrwpyngycotbz.supabase.co/functions/v1` _(must match `VITE_SUPABASE_URL` exactly)_ |
+| `VITE_SUPABASE_ANON_KEY`  | _(paste anon key from Part B)_                                                                     |
+| `VITE_SUPER_ADMIN_EMAILS` | _(platform team emails, comma-separated)_                                                          |
 
 2. After saving all five, the **Production** column on `kame-homes` should list all five keys.
 3. **Do not** set `VITE_GOOGLE_MAPS_API_KEY` unless you need maps on staging — optional.
@@ -413,12 +413,13 @@ https://fworvijbrwpyngycotbz.supabase.co/auth/v1/callback
 
 In Supabase **`fwor…`** → **Project Settings** → **Edge Functions** → **Secrets** (or Dashboard → Edge Functions → Manage secrets):
 
-| Secret                        | Value                                       |
-| ----------------------------- | ------------------------------------------- |
-| `ENVIRONMENT`                 | `development`                               |
-| `ADMIN_ALLOWED_EMAILS`        | Same emails as `VITE_ADMIN_ALLOWED_EMAILS`  |
-| `RESEND_API_KEY`              | Your dev/test Resend key (if testing email) |
-| `EMAIL_TO` / `EMAIL_REPLY_TO` | Dev inbox addresses                         |
+| Secret                        | Value                                                     |
+| ----------------------------- | --------------------------------------------------------- |
+| `ENVIRONMENT`                 | `development`                                             |
+| `ADMIN_ALLOWED_EMAILS`        | Platform bypass + pre-org API testing (org owners bypass) |
+| `SUPER_ADMIN_EMAILS`          | Platform `/admin/*` APIs                                  |
+| `RESEND_API_KEY`              | Your dev/test Resend key (if testing email)               |
+| `EMAIL_TO` / `EMAIL_REPLY_TO` | Dev inbox addresses                                       |
 
 Optional later: `GOOGLE_SERVICE_ACCOUNT`, calendar/sheet IDs, Gmail OAuth secrets — see [`dev-staging-environment.md`](../../../archive/operations/dev-staging-environment.md) §2.5.
 
@@ -450,11 +451,11 @@ Do every row before marking Task 2 done.
 
 **C. Auth (if testing login)**
 
-| #   | Check            | How                                                                                  | Pass                                           |
-| --- | ---------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------- |
-| 7   | Admin login page | `KAME_HOMES_URL/for-hosts/login`                                                     | Google button loads                            |
-| 8   | OAuth redirect   | Sign in with allow-listed email                                                      | Returns to app without `redirect_uri_mismatch` |
-| 9   | Allow list       | Email in both `VITE_ADMIN_ALLOWED_EMAILS` and Supabase `ADMIN_ALLOWED_EMAILS` secret | Dashboard reachable after login                |
+| #   | Check            | How                                                                    | Pass                                           |
+| --- | ---------------- | ---------------------------------------------------------------------- | ---------------------------------------------- |
+| 7   | Admin login page | `KAME_HOMES_URL/for-hosts/login`                                       | Google button loads                            |
+| 8   | OAuth redirect   | Sign in with allow-listed email                                        | Returns to app without `redirect_uri_mismatch` |
+| 9   | Super admin      | `VITE_SUPER_ADMIN_EMAILS` on Vercel + `SUPER_ADMIN_EMAILS` on Supabase | Admin tab visible; `/admin` loads after login  |
 
 **Quick Network tab tip (Chrome):**  
 Reload → filter `fwor` or `zftt` → click any `/functions/v1/` request → **Headers** → Request URL shows which Supabase project the browser uses.
@@ -470,7 +471,8 @@ Reload → filter `fwor` or `zftt` → click any `/functions/v1/` request → **
 | `kame-homes` hits `fwor…` but 404/502 on API | Backend not deployed (Task 3)   | Run `bun run deploy:supabase:dev` on mt branch                                                                                    |
 | Google `redirect_uri_mismatch`               | Redirect URI typo               | GCP redirect must be exactly `https://fworvijbrwpyngycotbz.supabase.co/auth/v1/callback`                                          |
 | Google `origin_mismatch`                     | Missing JS origin               | Add exact `KAME_HOMES_URL` to GCP authorized origins                                                                              |
-| Login works but "access restricted"          | Email not allow-listed          | Match `VITE_ADMIN_ALLOWED_EMAILS` + Edge secret `ADMIN_ALLOWED_EMAILS`                                                            |
+| Login works but `/admin` access restricted   | Super admin not configured      | Set `VITE_SUPER_ADMIN_EMAILS` (Vercel Preview) + `SUPER_ADMIN_EMAILS` (Supabase); redeploy Vercel                                 |
+| Host APIs 403 before org exists              | Not on allow list               | Set `ADMIN_ALLOWED_EMAILS` on Supabase or complete org onboarding (owner bypass)                                                  |
 | Live site broke after Task 2                 | Edited wrong Vercel project     | Revert env changes on **`guest-form-management-app`** only                                                                        |
 | Two deploys on push to same branch           | Both projects watch same branch | Normal if both have same Production Branch — **avoid** pointing both at same branch long-term; legacy should stay **`main` only** |
 
@@ -698,12 +700,13 @@ Deploy uploads **code**; **secrets** are set in Dashboard (or CLI secrets push).
 
 Dashboard → **`fwor…`** → **Project Settings → Edge Functions → Secrets**
 
-| Secret                        | Purpose                                                    |
-| ----------------------------- | ---------------------------------------------------------- |
-| `ENVIRONMENT`                 | `development`                                              |
-| `ADMIN_ALLOWED_EMAILS`        | Same emails as `VITE_ADMIN_ALLOWED_EMAILS` on `kame-homes` |
-| `RESEND_API_KEY`              | Dev/test email                                             |
-| `EMAIL_TO` / `EMAIL_REPLY_TO` | Dev inbox                                                  |
+| Secret                        | Purpose                               |
+| ----------------------------- | ------------------------------------- |
+| `ENVIRONMENT`                 | `development`                         |
+| `ADMIN_ALLOWED_EMAILS`        | Platform bypass + pre-org API testing |
+| `SUPER_ADMIN_EMAILS`          | Platform `/admin/*`                   |
+| `RESEND_API_KEY`              | Dev/test email                        |
+| `EMAIL_TO` / `EMAIL_REPLY_TO` | Dev inbox                             |
 
 **Defer until feature testing:** Gmail listener, Meta inbox, Telegram, AI keys, Google Calendar/Sheets SA — see [`dev-staging-environment.md`](../../../archive/operations/dev-staging-environment.md) §2.5–2.8.
 

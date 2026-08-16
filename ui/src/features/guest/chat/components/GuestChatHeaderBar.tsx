@@ -75,9 +75,8 @@ export function GuestChatHeaderBar({
             {onStartVoiceSession ? (
               <DropdownMenuItem
                 onSelect={() => {
-                  // Defer opening the voice Dialog — Radix menu dismiss + focus restore
-                  // otherwise fires Dialog onOpenChange(false) in the same tick and
-                  // the overlay closes immediately.
+                  // Defer opening voice — Radix menu dismiss + focus restore can race
+                  // the same tick as the panel mount.
                   window.setTimeout(() => onStartVoiceSession(), 0);
                 }}
               >

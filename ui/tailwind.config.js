@@ -20,6 +20,7 @@ module.exports = {
           'Segoe UI',
           'sans-serif',
         ],
+        fraunces: ['Fraunces', 'Georgia', 'serif'],
       },
       fontSize: {
         '2xs': ['0.625rem', { lineHeight: '0.875rem' }],
@@ -169,6 +170,36 @@ module.exports = {
           from: { transform: 'translateX(-100%)' },
           to: { transform: 'translateX(0)' },
         },
+        // Stage deck push. Pure translation, no cross-fade: the arriving stage is
+        // opaque and slides over the one it replaces, the way a native
+        // navigation push does. Fading both layers instead reads as a dissolve
+        // and lets text ghost through. Percentages keep the travel proportional
+        // to the rail width rather than a fixed nudge, and exits match entrances
+        // exactly so the pair moves as one strip.
+        'stage-in-forward': {
+          from: { transform: 'translate3d(38%, 0, 0)' },
+          to: { transform: 'translate3d(0, 0, 0)' },
+        },
+        'stage-in-back': {
+          from: { transform: 'translate3d(-38%, 0, 0)' },
+          to: { transform: 'translate3d(0, 0, 0)' },
+        },
+        'stage-out-forward': {
+          from: { transform: 'translate3d(0, 0, 0)' },
+          to: { transform: 'translate3d(-38%, 0, 0)' },
+        },
+        'stage-out-back': {
+          from: { transform: 'translate3d(0, 0, 0)' },
+          to: { transform: 'translate3d(38%, 0, 0)' },
+        },
+        'stage-label-in-forward': {
+          from: { opacity: '0', transform: 'translate3d(12px, 0, 0)' },
+          to: { opacity: '1', transform: 'translate3d(0, 0, 0)' },
+        },
+        'stage-label-in-back': {
+          from: { opacity: '0', transform: 'translate3d(-12px, 0, 0)' },
+          to: { opacity: '1', transform: 'translate3d(0, 0, 0)' },
+        },
         'slide-in-from-right': {
           from: { transform: 'translateX(100%)' },
           to: { transform: 'translateX(0)' },
@@ -215,6 +246,13 @@ module.exports = {
           '0%, 100%': { opacity: '0.35', transform: 'translateY(0)' },
           '50%': { opacity: '1', transform: 'translateY(-3px)' },
         },
+        // Light passing down the AI review list while checks run. Travel is a
+        // multiple of the band's own height, so it clears a list of any length.
+        'ai-scan': {
+          '0%': { transform: 'translateY(0)', opacity: '0' },
+          '12%, 82%': { opacity: '1' },
+          '100%': { transform: 'translateY(460%)', opacity: '0' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
@@ -229,6 +267,18 @@ module.exports = {
         'slide-in-from-top': 'slide-in-from-top 0.3s ease-out',
         'slide-in-from-bottom': 'slide-in-from-bottom 0.3s ease-out',
         'slide-in-from-left': 'slide-in-from-left 0.3s ease-out',
+        // Both directions share one timing so the deck reads as a single strip.
+        // The curve starts immediately (no lazy ease-in) but keeps visible travel
+        // past 200ms — a sharper expo-out is ~90% done by 100ms, which is what
+        // made the old transition read as a fade with a nudge rather than a slide.
+        // `STAGE_TRANSITION_MS` in WorkflowStageSlide.tsx must match it.
+        'stage-in-forward': 'stage-in-forward 0.32s cubic-bezier(0.22, 0.61, 0.36, 1) both',
+        'stage-in-back': 'stage-in-back 0.32s cubic-bezier(0.22, 0.61, 0.36, 1) both',
+        'stage-out-forward': 'stage-out-forward 0.32s cubic-bezier(0.22, 0.61, 0.36, 1) both',
+        'stage-out-back': 'stage-out-back 0.32s cubic-bezier(0.22, 0.61, 0.36, 1) both',
+        'stage-label-in-forward':
+          'stage-label-in-forward 0.28s cubic-bezier(0.22, 0.61, 0.36, 1) both',
+        'stage-label-in-back': 'stage-label-in-back 0.28s cubic-bezier(0.22, 0.61, 0.36, 1) both',
         'slide-in-from-right': 'slide-in-from-right 0.3s ease-out',
         'scale-in': 'scale-in 0.2s ease-out',
         'scale-out': 'scale-out 0.2s ease-out',
@@ -239,6 +289,7 @@ module.exports = {
         'spin-slow': 'spin-slow 3s linear infinite',
         'turtle-blink': 'turtle-blink 5s ease-in-out infinite',
         'think-dot': 'think-dot 1.2s ease-in-out infinite',
+        'ai-scan': 'ai-scan 2.6s cubic-bezier(0.37, 0, 0.63, 1) infinite',
       },
       boxShadow: {
         'soft-xs': '0 1px 2px 0 rgb(0 0 0 / 0.03)',

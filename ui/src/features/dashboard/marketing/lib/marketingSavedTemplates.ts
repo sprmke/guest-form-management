@@ -49,3 +49,29 @@ export function marketingDesignSidebarRecords(
     return isDesignCustomTemplate(record);
   });
 }
+
+/**
+ * Related saved rows (Instagram Post / Story / Facebook Post) for rename/move/archive/remove.
+ * Groups by `aiGenerationId` so one AI generate’s three formats stay in sync.
+ */
+export function planSavedTemplateRelatedIds(
+  templates: MarketingTemplateRecord[],
+  targetId: string
+): string[] {
+  const target = templates.find((template) => template.id === targetId);
+  if (!target) return [targetId];
+
+  const generationId =
+    typeof target.designJson.aiGenerationId === 'string' && target.designJson.aiGenerationId.trim()
+      ? target.designJson.aiGenerationId.trim()
+      : null;
+  if (!generationId) return [targetId];
+
+  const related = templates.filter((template) => {
+    if (template.contentType !== target.contentType) return false;
+    const value = template.designJson.aiGenerationId;
+    return typeof value === 'string' && value.trim() === generationId;
+  });
+  const ids = related.map((template) => template.id);
+  return ids.length > 0 ? [...new Set(ids)] : [targetId];
+}

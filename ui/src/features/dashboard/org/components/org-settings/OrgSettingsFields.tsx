@@ -1,13 +1,12 @@
 import type { ReactNode } from 'react';
 
-import { RequiredMark } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
-
-import { Label } from '@/components/ui/label';
+import { FieldLabel } from '@/components/forms/FieldLabel';
 import { cn } from '@/lib/utils';
 
 export function OrgSettingsField({
   id,
   label,
+  help,
   hint,
   required = false,
   error,
@@ -16,6 +15,8 @@ export function OrgSettingsField({
 }: {
   id: string;
   label: string;
+  /** Tooltip on a ? next to the label. Prefer this over `hint` for explanatory copy. */
+  help?: string;
   hint?: string;
   required?: boolean;
   error?: string | null;
@@ -24,10 +25,7 @@ export function OrgSettingsField({
 }) {
   return (
     <div className={cn('space-y-1.5', className)}>
-      <Label htmlFor={id}>
-        {label}
-        {required ? <RequiredMark /> : null}
-      </Label>
+      <FieldLabel htmlFor={id} label={label} required={required} help={help} />
       {hint ? <p className="text-muted-foreground text-xs leading-snug">{hint}</p> : null}
       {children}
       {error ? <p className="text-destructive text-xs">{error}</p> : null}

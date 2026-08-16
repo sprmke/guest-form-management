@@ -88,6 +88,11 @@ public = false
 file_size_limit = "5MiB"
 allowed_mime_types = ["image/png", "image/jpeg", "image/webp", "application/pdf"]
 
+[storage.buckets.ai-assistant-attachments]
+public = false
+file_size_limit = "4MiB"
+allowed_mime_types = ["image/jpeg", "image/png", "image/webp", "application/pdf"]
+
 [storage.buckets.property-media]
 public = true
 file_size_limit = "25MiB"
@@ -182,6 +187,30 @@ verify_jwt = false
 [functions.transition-parking-booking]
 verify_jwt = false
 
+[functions.claim-parking-booking]
+verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
+
+[functions.get-parking-broadcast-status]
+verify_jwt = false
+
+[functions.decline-parking-booking]
+verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
+
+[functions.expire-parking-broadcasts]
+verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
+
 [functions.transition-booking]
 verify_jwt = false
 static_files = [
@@ -190,13 +219,16 @@ static_files = [
   "./functions/_shared/email-assets/kame-home-gcash-qr-payment.jpg",
 ]
 
-[functions.sync-booking-integrations]
-verify_jwt = false
-
 [functions.upload-booking-asset]
 verify_jwt = false
 
 [functions.validate-booking-receipts]
+verify_jwt = false
+
+[functions.booking-ai-review]
+verify_jwt = false
+
+[functions.get-booking-ai-review]
 verify_jwt = false
 
 [functions.get-booking-asset-url]
@@ -232,43 +264,17 @@ verify_jwt = false
 [functions.issue-guest-stay-guide-token]
 verify_jwt = false
 
-[functions.google-mail-oauth-start]
+[functions.approval-email-webhook]
 verify_jwt = false
-
-[functions.google-mail-oauth-callback]
-verify_jwt = false
-
-[functions.google-mail-oauth-status]
-verify_jwt = false
-
-[functions.google-mail-oauth-disconnect]
-verify_jwt = false
-
-[functions.backfill-calendar-event-dates]
-verify_jwt = false
-
-[functions.gmail-backfill-approvals]
-verify_jwt = false
-# Orchestrator may auto-advance to READY_FOR_CHECKIN and send RFCI (same as gmail-listener).
 static_files = [
   "./functions/_shared/email-templates/*.html",
   "./functions/_shared/email-templates/fragments/*.html",
-  "./functions/_shared/email-assets/kame-home-gcash-qr-payment.jpg",
 ]
 
 # ── Scheduled / internal — served locally + triggered by cron in cloud ────────
 # The `schedule` key is Cloud-only — do NOT add it here or the local CLI will
 # fail to parse config.toml. Set the cron schedule in the Supabase dashboard.
-# Both functions are served locally (so the "Run now" admin buttons work) and
-# callable with an admin JWT from the WorkflowPanel (Q6.6).
-[functions.gmail-listener]
-verify_jwt = false
-static_files = [
-  "./functions/_shared/email-templates/*.html",
-  "./functions/_shared/email-templates/fragments/*.html",
-  "./functions/_shared/email-assets/kame-home-gcash-qr-payment.jpg",
-]
-
+# Callable with an admin JWT from the WorkflowPanel (Q6.6).
 [functions.sd-refund-cron]
 verify_jwt = false
 static_files = [
@@ -493,6 +499,16 @@ verify_jwt = false
 [functions.get-public-parking]
 verify_jwt = false
 
+[functions.submit-parking-booking-request]
+verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
+
+[functions.get-parking-booking-status]
+verify_jwt = false
+
 [functions.search-suggestions]
 verify_jwt = false
 
@@ -512,6 +528,9 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.property-templates-settings]
+verify_jwt = false
+
+[functions.custom-pages-settings]
 verify_jwt = false
 
 [functions.property-pricing]
@@ -654,9 +673,6 @@ verify_jwt = false
 [functions.voice-receptionist-voice-preview]
 verify_jwt = false
 
-[functions.voice-receptionist-global-settings]
-verify_jwt = false
-
 [functions.guest-profile]
 verify_jwt = false
 
@@ -747,8 +763,46 @@ verify_jwt = false
 [functions.ai-platform-usage]
 verify_jwt = false
 
+[functions.ai-platform-property-settings]
+verify_jwt = false
+
+[functions.dashboard-assistant-settings]
+verify_jwt = false
+
+[functions.dashboard-assistant-global-settings]
+verify_jwt = false
+
+[functions.get-booking]
+verify_jwt = false
+
+[functions.dashboard-assistant-chat]
+verify_jwt = false
+
+[functions.dashboard-assistant-confirm]
+verify_jwt = false
+
+[functions.dashboard-assistant-conversations]
+verify_jwt = false
+
+[functions.get-booking-ai-assistant-audit]
+verify_jwt = false
+
+[functions.dashboard-assistant-expire-pending-actions]
+verify_jwt = false
+
+[functions.notifications-list]
+verify_jwt = false
+
+[functions.notifications-mark-read]
+verify_jwt = false
+
+[functions.list-help-center-articles]
+verify_jwt = false
+
+[functions.list-help-center-faqs]
+verify_jwt = false
+
 # ── kept for reference (cloud schedule lines, never uncomment locally) ─────────
-# [functions.gmail-listener] schedule = "*/5 * * * *"
 # [functions.sd-refund-cron] schedule = "*/5 * * * *"
 # schedule = "*/5 * * * *"
 # [functions.telegram-marketing-cron] Manila 10:00 / 15:00 / 21:00 → UTC cron: 0 2,7,13 * * *

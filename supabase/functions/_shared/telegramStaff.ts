@@ -174,7 +174,29 @@ function displayStaffBookingTime(time: unknown, default24h: string): string {
   return formatTimeForDisplay(raw, fallback);
 }
 
-function buildBookingPlaceholders(booking: BookingRow): Record<string, string> {
+async function getBookingAiReviewForTelegram(
+  bookingId: string
+): Promise<Record<string, unknown> | null> {
+  if (!bookingId) return null;
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  );
+  const { data, error } = await supabase
+    .from('booking_ai_reviews')
+    .select('*')
+    .eq('booking_id', bookingId)
+    .maybeSingle();
+  if (error) {
+    console.warn('[telegram-staff] booking_ai_reviews fetch failed:', error.message);
+  }
+  return data ? (data as Record<string, unknown>) : null;
+}
+
+async function buildBookingPlaceholders(
+  booking: BookingRow,
+  aiReview?: Record<string, unknown> | null
+): Promise<Record<string, string>> {
   const ciRaw = String(booking.check_in_date ?? '');
   const coRaw = String(booking.check_out_date ?? '');
   const ciYmd = normalizeBookingDateToYmd(ciRaw) ?? ciRaw;
@@ -188,6 +210,10 @@ function buildBookingPlaceholders(booking: BookingRow): Record<string, string> {
   const adults = Number(booking.number_of_adults ?? 1) || 1;
   const children = Number(booking.number_of_children ?? 0) || 0;
   const totalPax = adults + children;
+
+  const aiStaySummary = String(
+    (aiReview?.stay_details_result as Record<string, unknown> | undefined)?.summary ?? ''
+  ).trim();
 
   return {
     check_in_date: formatDateHumanFull(ciYmd),
@@ -207,6 +233,7 @@ function buildBookingPlaceholders(booking: BookingRow): Record<string, string> {
     pet_flag: hasPets ? '🐶 Has pets' : '',
     special_requests: specialReqs || 'None',
     total_guest_balance: formatCurrency(balance),
+    ai_stay_summary: aiStaySummary || 'Not yet reviewed',
   };
 }
 
@@ -308,9 +335,10 @@ export async function notifyTelegramStaffSameDayCheckIn(
     return { sent: false, skip: 'already_sent' };
   }
 
+  const aiReview = await getBookingAiReviewForTelegram(bookingId);
   const text = applyPlaceholders(
     sanitizeStaffDailySummaryTemplate(settings.same_day_checkin_template),
-    buildBookingPlaceholders(booking)
+    await buildBookingPlaceholders(booking, aiReview)
   );
   const r = await sendStaffTelegramMessage(text.slice(0, 4096), propertyIdFromRow(booking));
   if (!r.ok) {
@@ -512,7 +540,8 @@ export async function renderStaffSameDayCheckinDraftPreview(
     };
   }
 
-  const placeholders = buildBookingPlaceholders(booking);
+  const aiReview = await getBookingAiReviewForTelegram(String(booking.id ?? ''));
+  const placeholders = await buildBookingPlaceholders(booking, aiReview);
   const renderedText = applyPlaceholders(sanitizeStaffDailySummaryTemplate(trimmed), placeholders);
   return {
     renderedText,
@@ -569,7 +598,8 @@ export async function renderStaffDraftPreview(
   const nextBookings = await queryNextDaysBookings(todayYmd, 3, propertyId);
   const nextBookingsText = buildNextBookingsText(nextBookings);
   const booking = todayBookings[0]!;
-  const placeholders = buildBookingPlaceholders(booking);
+  const aiReview = await getBookingAiReviewForTelegram(String(booking.id ?? ''));
+  const placeholders = await buildBookingPlaceholders(booking, aiReview);
   placeholders.next_bookings = nextBookingsText;
 
   const renderedText = applyPlaceholders(sanitizeStaffDailySummaryTemplate(trimmed), placeholders);
@@ -763,7 +793,8 @@ export async function runStaffDailySummary(opts?: {
   const errors: string[] = [];
 
   for (const booking of todayBookings) {
-    const vars = buildBookingPlaceholders(booking);
+    const aiReview = await getBookingAiReviewForTelegram(String(booking.id ?? ''));
+    const vars = await buildBookingPlaceholders(booking, aiReview);
     vars.next_bookings = nextBookingsText;
 
     const text = applyPlaceholders(
@@ -853,6 +884,7 @@ export function serializeStaffSettings(row: TelegramStaffSettings) {
       '{{pet_flag}} — "🐶 Has pets" or empty',
       '{{special_requests}} — guest requests or "None"',
       '{{total_guest_balance}} — guest balance due (₱ formatted)',
+      '{{ai_stay_summary}} — AI stay-details summary or "Not yet reviewed"',
       '{{next_bookings}} — next 3 days (decor + pet flags only)',
     ],
     scenarios: [

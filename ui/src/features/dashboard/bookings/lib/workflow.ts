@@ -13,6 +13,7 @@ import { statusLabel, type BookingStatus } from '@/features/dashboard/bookings/l
 import {
   DEFAULT_DOCUMENT_REQUIREMENTS,
   requirementApplies,
+  requirementNeedsApprovedPdf,
   type DocumentApprovalSource,
   type DocumentRequirement,
   type DocumentRequirementCompletion,
@@ -43,7 +44,7 @@ const TRANSITION_GRAPH: Record<string, ReadonlyArray<BookingStatus>> = {
 
 /**
  * Admin-only override edges — exposed in the WorkflowPanel for manual recovery
- * when cron / Gmail listener is late or skipped, or when the admin needs to
+ * when cron / inbound approval is late or skipped, or when the admin needs to
  * step the booking back one stage to redo a step.
  *
  * Mirrors MANUAL_OVERRIDE_GRAPH in statusMachine.ts.
@@ -125,8 +126,6 @@ type ApplicabilityFlags = {
   gaf_completed_at?: string | null;
   parking_completed_at?: string | null;
   pet_completed_at?: string | null;
-  gaf_manual_incomplete?: boolean | null;
-  pet_manual_incomplete?: boolean | null;
   security_deposit?: number | string | null;
 };
 
@@ -149,10 +148,6 @@ export function isSubStatusRequired(
   const requirementId = subStatus === 'PENDING_GAF' ? 'gaf' : 'pet';
   const req = requirements.find((r) => r.id === requirementId);
   return !!req && requirementApplies(req, booking);
-}
-
-function flagTrue(v: unknown): boolean {
-  return v === true || v === 'true';
 }
 
 /** Statuses at or after Ready for Check-in (parent Pending Documents is behind). */
@@ -189,16 +184,14 @@ export function isSubStatusCompleted(
 ): boolean {
   if (!isSubStatusRequired(subStatus, booking, requirements)) return true;
   if (subStatus === 'PENDING_GAF') {
-    if (flagTrue(booking.gaf_manual_incomplete)) return false;
-    return !!booking.gaf_completed_at || !!booking.approved_gaf_pdf_url;
+    return Boolean(booking.approved_gaf_pdf_url?.trim());
   }
   if (subStatus === 'PENDING_PARKING_REQUEST') {
     // Endorsement upload only fills `parking_endorsement_url`; admin must still
     // click "Mark as Complete" so `transition-booking` sets `parking_completed_at`.
     return !!booking.parking_completed_at;
   }
-  if (flagTrue(booking.pet_manual_incomplete)) return false;
-  return !!booking.pet_completed_at || !!booking.approved_pet_pdf_url;
+  return Boolean(booking.approved_pet_pdf_url?.trim());
 }
 
 /**
@@ -240,7 +233,6 @@ function parseCompletionEntry(raw: unknown): DocumentRequirementCompletion | und
   return {
     completedAt: typeof entry.completedAt === 'string' ? entry.completedAt : null,
     approvedPdfUrl: typeof entry.approvedPdfUrl === 'string' ? entry.approvedPdfUrl : null,
-    manualIncomplete: flagTrue(entry.manualIncomplete),
   };
 }
 
@@ -265,21 +257,23 @@ export function readDocumentCompletions(booking: ConfigurableDocsBooking): Docum
     map.gaf = {
       completedAt: booking.gaf_completed_at ?? null,
       approvedPdfUrl: booking.approved_gaf_pdf_url ?? null,
-      manualIncomplete: flagTrue(booking.gaf_manual_incomplete),
     };
   }
   if (!map.pet) {
     map.pet = {
       completedAt: booking.pet_completed_at ?? null,
       approvedPdfUrl: booking.approved_pet_pdf_url ?? null,
-      manualIncomplete: flagTrue(booking.pet_manual_incomplete),
     };
   }
   return map;
 }
 
-function isCompletionDone(completion: DocumentRequirementCompletion | undefined): boolean {
-  if (!completion || completion.manualIncomplete) return false;
+function isCompletionDone(
+  completion: DocumentRequirementCompletion | undefined,
+  requiresApprovedPdf: boolean
+): boolean {
+  if (!completion) return false;
+  if (requiresApprovedPdf) return Boolean(completion.approvedPdfUrl?.trim());
   return !!completion.completedAt || !!completion.approvedPdfUrl;
 }
 
@@ -304,7 +298,7 @@ export function getPendingDocumentsNestedCompletion(
   let allConfigurableDocsDone = true;
   for (const req of requirements) {
     if (!requirementApplies(req, booking)) continue;
-    const done = isCompletionDone(completions[req.id]);
+    const done = isCompletionDone(completions[req.id], requirementNeedsApprovedPdf(req));
     byRequirementId[req.id] = done;
     if (!done) allConfigurableDocsDone = false;
   }
@@ -322,38 +316,6 @@ export function getPendingDocumentsNestedCompletion(
     byRequirementId,
     allConfigurableDocsDone,
   };
-}
-
-/** Mirrors `statusMachine.ts#buildPendingDocumentsCalendarSummaryPrefix`. */
-export function buildPendingDocumentsCalendarSummaryPrefix(
-  booking: ConfigurableDocsBooking,
-  requirements: DocumentRequirement[]
-): string {
-  const { needParking, parkingDone, byRequirementId } = getPendingDocumentsNestedCompletion(
-    booking,
-    requirements
-  );
-
-  const applicable = [...requirements]
-    .sort((a, b) => a.order - b.order)
-    .filter((req) => requirementApplies(req, booking));
-
-  const segments: string[] = [];
-  let parkingInserted = false;
-  const insertParkingIfNeeded = () => {
-    if (parkingInserted) return;
-    parkingInserted = true;
-    if (needParking && !parkingDone) segments.push('PARKING');
-  };
-
-  for (const req of applicable) {
-    if (req.triggerCondition === 'has_pets') insertParkingIfNeeded();
-    if (!byRequirementId[req.id]) segments.push(req.id.toUpperCase());
-  }
-  insertParkingIfNeeded();
-
-  if (segments.length === 0) return 'PENDING DOCUMENTS';
-  return `PENDING_${segments.join('_')}_DOCS`;
 }
 
 // ─── Generalized nested-doc stepper keys (Task 7) ────────────────────────────
@@ -378,8 +340,8 @@ export type PendingDocNestedItem = {
 
 /**
  * Ordered nested items under Pending Documents: `requirements.filter(requirementApplies)`
- * sorted by `order`, with the parking subtree inserted where a `has_pets`-triggered
- * requirement would land (same insertion point as `buildPendingDocumentsCalendarSummaryPrefix`).
+ * sorted by `order`, with the parking subtree appended last when `need_parking`
+ * (GAF → pet → parking display order when using defaults).
  * Empty requirements + no parking → empty list (D2: no nested tree to show).
  */
 export function pendingDocumentsNestedItems(
@@ -410,7 +372,6 @@ export function pendingDocumentsNestedItems(
   };
 
   for (const req of applicable) {
-    if (req.triggerCondition === 'has_pets') insertParkingIfNeeded();
     items.push({
       key: req.id,
       label: req.label,
@@ -449,27 +410,38 @@ export function nestedKeyLabel(
   return requirements.find((req) => req.id === key)?.label ?? key;
 }
 
-/** First applicable nested doc key for the Pending Documents preview, or `null` when none apply (D2). */
+/**
+ * Nested doc key the Pending Documents view should open on, or `null` when none
+ * apply (D2). Prefers the first *incomplete* step so the rail lands on the work
+ * that is actually outstanding; falls back to the first step once all are done.
+ */
 export function defaultPendingDocNestedKey(
   booking: ConfigurableDocsBooking,
   requirements: DocumentRequirement[]
 ): PendingDocNestedKey | null {
-  return pendingDocumentsNestedItems(booking, requirements)[0]?.key ?? null;
+  const items = pendingDocumentsNestedItems(booking, requirements);
+  if (items.length === 0) return null;
+  return (items.find((item) => !item.completed) ?? items[0]).key;
 }
 
 /**
- * Whether an automatic `gmail-listener` poll on page load could still apply
- * inbox approvals (GAF / pet). Parking is admin-only — not Gmail-driven.
+ * Tab to focus after marking a nested doc step complete: next incomplete in
+ * display order, or — when the host completed steps out of order (e.g. Parking
+ * before Pet) — the first incomplete step anywhere. `null` when all are done.
  */
-export function bookingNeedsGmailListenerPoll(booking: ApplicabilityFlags): boolean {
-  if (!isSubStatusCompleted('PENDING_GAF', booking)) return true;
-  if (
-    isSubStatusRequired('PENDING_PET_REQUEST', booking) &&
-    !isSubStatusCompleted('PENDING_PET_REQUEST', booking)
-  ) {
-    return true;
+export function nextIncompletePendingDocKeyAfter(
+  booking: ConfigurableDocsBooking,
+  requirements: DocumentRequirement[],
+  afterKey: PendingDocNestedKey
+): PendingDocNestedKey | null {
+  const items = pendingDocumentsNestedItems(booking, requirements);
+  const startIdx = items.findIndex((item) => item.key === afterKey);
+  if (startIdx >= 0) {
+    for (let i = startIdx + 1; i < items.length; i++) {
+      if (!items[i].completed) return items[i].key;
+    }
   }
-  return false;
+  return items.find((item) => !item.completed)?.key ?? null;
 }
 
 /**
@@ -685,7 +657,12 @@ export function requiredSubForm(from: string, to: BookingStatus): SubFormKind {
 
 // ─── Progress stepper — read-only preview ─────────────────────────────────────
 
-export type WorkflowViewContent = SubFormKind | 'sd_guest_info' | 'doc_sub_status';
+export type WorkflowViewContent =
+  | SubFormKind
+  | 'sd_guest_info'
+  | 'doc_sub_status'
+  /** Terminal stage has no form — the rail shows what the booking closed with. */
+  | 'completed_summary';
 
 export type ViewedWorkflowStep =
   | { kind: 'pipeline'; status: BookingStatus }
@@ -729,7 +706,7 @@ export function workflowContentForView(
     case 'PENDING_SD_REFUND':
       return 'sd_refund';
     case 'COMPLETED':
-      return null;
+      return 'completed_summary';
     default:
       return null;
   }
@@ -764,7 +741,7 @@ export function isLiveWorkflowView(
 export type ProgressEditFormKind =
   'pricing' | 'parking' | 'guest_balance' | 'sd_refund_guest' | 'sd_settlement';
 
-/** Pipeline stage when each Workflow Details form first becomes editable. */
+/** Pipeline stage when each Progress-rail form first becomes editable. */
 export const PROGRESS_EDIT_FORM_UNLOCK: Record<ProgressEditFormKind, BookingStatus> = {
   pricing: 'PENDING_REVIEW',
   parking: 'PENDING_DOCUMENTS',
@@ -788,7 +765,7 @@ function progressEditStatusRank(status: string): number {
   return -1;
 }
 
-/** True when the booking has reached the pipeline stage for this Workflow Details form. */
+/** True when the booking has reached the pipeline stage for this Progress-rail form. */
 export function isProgressEditFormEnabled(
   booking: ApplicabilityFlags & { status?: string | null },
   form: ProgressEditFormKind

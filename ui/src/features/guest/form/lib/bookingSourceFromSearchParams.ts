@@ -13,9 +13,9 @@ export const STRIPPED_GUEST_QUERY_KEYS = [
   'testing',
   'saveToDatabase',
   'saveImagesToStorage',
+  'sendEmail',
   'updateGoogleCalendar',
   'updateGoogleSheets',
-  'sendEmail',
 ] as const;
 
 export function normalizeBookingSource(value: string | null | undefined): BookingSource {

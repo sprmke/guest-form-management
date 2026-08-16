@@ -5,6 +5,7 @@ import { ChevronRight } from 'lucide-react';
 import { AdminTableFlagsCell } from '@/features/dashboard/bookings/components/AdminDataTable';
 import { BookingResourceLabel } from '@/features/dashboard/bookings/components/BookingResourceLabel';
 import { GuestAvatar } from '@/features/dashboard/bookings/components/GuestAvatar';
+import { ParkingBroadcastCountdown } from '@/features/dashboard/bookings/components/ParkingBroadcastCountdown';
 import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
 import {
   bookingHasInvalidReceiptAi,
@@ -127,10 +128,13 @@ function BookingCard({
             </div>
             <ChevronRight className="text-muted-foreground/60 mt-0.5 size-4 shrink-0" aria-hidden />
           </div>
-          <StatusBadge status={row.status} className="w-fit max-w-full" />
-          {showProperty ? (
-            <BookingResourceLabel row={row} showKindBadge className="font-medium" />
-          ) : null}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <StatusBadge status={row.status} className="w-fit max-w-full" />
+            {row.status === 'PENDING_HOST_ACCEPTANCE' && row.parking_broadcast_expires_at && (
+              <ParkingBroadcastCountdown expiresAt={row.parking_broadcast_expires_at} />
+            )}
+          </div>
+          {showProperty ? <BookingResourceLabel row={row} className="font-medium" /> : null}
           <p className="text-foreground text-[13px] font-semibold tabular-nums leading-snug">
             {formatBookingDateShort(row.check_in_date)}
             <span className="text-muted-foreground/50 mx-1 font-light">→</span>
@@ -167,14 +171,19 @@ function BookingCard({
       {/* sm+: stacked card (unchanged hierarchy, more room) */}
       <div className="hidden sm:block">
         <div className="space-y-4 p-4 pb-3">
-          <StatusBadge status={row.status} className="w-fit max-w-full" />
+          <div className="flex flex-wrap items-center gap-1.5">
+            <StatusBadge status={row.status} className="w-fit max-w-full" />
+            {row.status === 'PENDING_HOST_ACCEPTANCE' && row.parking_broadcast_expires_at && (
+              <ParkingBroadcastCountdown expiresAt={row.parking_broadcast_expires_at} />
+            )}
+          </div>
           <div className="flex items-center gap-3">
             <GuestAvatar name={name} validIdUrl={row.valid_id_url} size="lg" className="shrink-0" />
             <div className="min-w-0">
               <p className="text-foreground truncate text-sm font-bold leading-tight">{name}</p>
               <p className="text-data-secondary mt-0.5 truncate">{row.guest_email}</p>
               {showProperty ? (
-                <BookingResourceLabel row={row} showKindBadge className="mt-0.5 font-medium" />
+                <BookingResourceLabel row={row} className="mt-0.5 font-medium" />
               ) : null}
             </div>
           </div>

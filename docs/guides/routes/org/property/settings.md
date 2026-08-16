@@ -27,8 +27,7 @@ Route: `/org/:orgSlug/property/:propertySlug/settings`
 | Payment            | Done     | Done       | Done | Server-enforced; QR via upload only                                       |
 | Building Forms     | Done     | Done       | Done | Shared GAF + pet PDF fields                                               |
 | Email automations  | Done     | Done       | Done | Recipients, timing, toggles per property                                  |
-| Booking Workflow   | Done     | Done       | Done | Calendar/Sheets sync toggles per property                                 |
-| Integrations       | Done     | Done       | Done | Google (Gmail + Calendar + Sheet) required; Telegram optional             |
+| Integrations       | Done     | Done       | Done | Telegram + AI optional; GAF/pet via Resend inbound                        |
 | Voice Receptionist | Done     | Done       | Done | Opt-in AI voice assistant; own settings row; saves with page Save Changes |
 | Danger Zone        | Done     | Done       | Done | Archive + delete with confirmations                                       |
 
@@ -54,6 +53,10 @@ Property Settings is where you complete your listing and day-to-day setup — ba
   A: House rules and cancellation policy appear on your public property listing. Automated email wording is edited separately on the Templates page.
 - Q: Where do I configure which documents guests must submit (GAF, pet approval, etc.)?
   A: Document requirements are set at the **development** level by the platform team (Super Admin → Developments → Document Requirements). All properties in that development inherit the same list.
+- Q: Where is the PMO / documents-approver email set?
+  A: On the development in Super Admin (**Developments → Email automations → PMO email**). Property Settings only has your property/team ops email (alerts, Reply-To, CC on GAF/pet) — not the PMO To address.
+- Q: What does brand color change?
+  A: It tints this property’s dashboard and guest-facing pages such as forms and emails. Buttons, the selected settings section, and similar accents use the exact color you pick. Gradient buttons are a slight sheen of that same color. Hover or tap the **?** next to Brand color for the same explanation.
 
 ---
 
@@ -61,7 +64,7 @@ Property Settings is where you complete your listing and day-to-day setup — ba
 
 **Save Changes** saves **only dirty sections that pass validation** — you do not need every section complete first. Within a section, only **changed fields** are validated for that save (e.g. contact information can save even when other basic fields are still incomplete). Valid filled sections persist; invalid dirty sections are skipped and highlighted. If some sections save and others do not, you get a toast: _New changes has been saved._
 
-Incomplete sections still show a **red dot** on the in-page section nav (**desktop `lg+` sidebar only** — the mobile horizontal chip strip is hidden) and on the sidebar **Settings** link (for setup tracking). On phone/tablet, Settings uses the same **brand hero** shell as other admin pages (`AdminMobilePage`); Save appears as a hero icon when there are unsaved changes.
+Incomplete sections still show a **red dot** on the in-page section nav (**desktop `lg+` sidebar only** — the mobile horizontal chip strip is hidden) and on the sidebar **Settings** link (for setup tracking). On phone/tablet, Settings uses the same **brand hero** shell as other admin pages (`AdminMobilePage`); Save appears as a hero icon when there are unsaved changes. On desktop, the amber **Unsaved changes** bar is pinned to the **main content column** only (`max-w-4xl`, same measure as the form) so it does not cover the secondary section nav.
 
 | Rule                                                           | Required?                                                    |
 | -------------------------------------------------------------- | ------------------------------------------------------------ |
@@ -75,8 +78,7 @@ Incomplete sections still show a **red dot** on the in-page section nav (**deskt
 | Brand color (Basic information)                                | No — defaults to `#24a88e`; property inherits org when unset |
 | Payment (provider, account, QR upload)                         | Yes                                                          |
 | Building forms (GAF fields + signature)                        | Yes                                                          |
-| Email automations (PMO/property email, timing, toggles)        | Yes                                                          |
-| Google integration (Gmail, Calendar, Spreadsheet)              | Yes                                                          |
+| Email automations (property/team email, timing, toggles)       | Yes                                                          |
 | Telegram integrations                                          | No                                                           |
 
 Field-level errors appear **as you edit** a field (on change). After **Save Changes**, all remaining issues are shown at once. Section banners (orange) appear only for **Photos & Videos**, **Amenities**, and **Integrations** — not for sections with individual inputs.
@@ -104,20 +106,20 @@ Both use the same column: `properties.status` (`ACTIVE` | `INACTIVE`).
 
 ### Fields
 
-| Field         | Storage                            | Validation                                                                                                                                                                                                                                            |
-| ------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Property name | `properties.name`                  | 2–120 chars; **globally unique** (case-insensitive); **reserved names blocked** (see [onboarding.md](../../onboarding.md) § Reserved organization / property names); availability checked after typing pauses                                         |
-| URL slug      | `properties.slug`                  | Auto-derived from name on save; globally unique                                                                                                                                                                                                       |
-| Brand color   | `app_settings.brand_color`         | Optional hex `#RRGGBB`; UI shows **inherited** org color when unset; **Reset** clears property override back to org / `#24a88e`                                                                                                                       |
-| Property type | `properties.type`                  | **Read-only** in settings (set at property creation). Condo enables residence / tower / unit display                                                                                                                                                  |
-| Residence     | `properties.residence_name`        | **Read-only** in settings. Known residences apply defaults at creation (see below)                                                                                                                                                                    |
-| Tower         | `properties.tower`                 | **Read-only** in settings. Options from residence config (Azure North: Monaco, Bali, Barbados)                                                                                                                                                        |
-| Unit          | `properties.unit_number`           | **Read-only** in settings. 4-digit. Unique per tower among **`ACTIVE`** properties only ([#120](https://github.com/sprmke/kame-homes/issues/120)); many `INACTIVE` peers allowed (succession). Republish / stay ACTIVE with an ACTIVE peer → **409**. |
-| Description   | `properties.settings.description`  | Max 1000 chars                                                                                                                                                                                                                                        |
-| Contact name  | `properties.settings.contactName`  | Required; full name when non-empty; inline error on blur                                                                                                                                                                                              |
-| Contact role  | `properties.settings.contactRole`  | Required                                                                                                                                                                                                                                              |
-| Phone         | `properties.settings.contactPhone` | Required; PH mobile `09XXXXXXXXX`                                                                                                                                                                                                                     |
-| Email         | `properties.settings.contactEmail` | Required; valid email                                                                                                                                                                                                                                 |
+| Field         | Storage                            | Validation                                                                                                                                                                                                                                                                                        |
+| ------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Property name | `properties.name`                  | 2–120 chars; **globally unique** (case-insensitive); **reserved names blocked** (see [onboarding.md](../../onboarding.md) § Reserved organization / property names); availability checked after typing pauses                                                                                     |
+| URL slug      | `properties.slug`                  | Auto-derived from name on save; globally unique                                                                                                                                                                                                                                                   |
+| Brand color   | `app_settings.brand_color`         | Optional hex `#RRGGBB`; UI shows **inherited** org color when unset; **Reset** clears property override back to org / `#24a88e`. Admin `--primary` and email accents use this hex (not a darkened cousin). Where it applies is a **?** tooltip on the label (`FieldLabel`), not inline help text. |
+| Property type | `properties.type`                  | **Read-only** in settings (set at property creation). Condo enables residence / tower / unit display                                                                                                                                                                                              |
+| Residence     | `properties.residence_name`        | **Read-only** in settings. Known residences apply defaults at creation (see below)                                                                                                                                                                                                                |
+| Tower         | `properties.tower`                 | **Read-only** in settings. Options from residence config (Azure North: Monaco, Bali, Barbados)                                                                                                                                                                                                    |
+| Unit          | `properties.unit_number`           | **Read-only** in settings. 4-digit. Unique per tower among **`ACTIVE`** properties only ([#120](https://github.com/sprmke/kame-homes/issues/120)); many `INACTIVE` peers allowed (succession). Republish / stay ACTIVE with an ACTIVE peer → **409**.                                             |
+| Description   | `properties.settings.description`  | Max 1000 chars                                                                                                                                                                                                                                                                                    |
+| Contact name  | `properties.settings.contactName`  | Required; full name when non-empty; inline error on blur                                                                                                                                                                                                                                          |
+| Contact role  | `properties.settings.contactRole`  | Required                                                                                                                                                                                                                                                                                          |
+| Phone         | `properties.settings.contactPhone` | Required; PH mobile `09XXXXXXXXX`                                                                                                                                                                                                                                                                 |
+| Email         | `properties.settings.contactEmail` | Required; valid email                                                                                                                                                                                                                                                                             |
 
 ### Save path
 
@@ -344,7 +346,7 @@ Per-property operational settings in `app_settings`. Empty link / main-platform 
 
 **Public API:** `get-public-property` merges **approved** external reviews with Kame guest reviews; pending/rejected never publish. Super-admin approves/rejects at **`/admin/approvals`** (Type = Reviews). On **reject**, the property **Dashboard** shows a **Needs attention** chip linking here (no email); the review row shows a **Rejected** badge until the host edits and resubmits (returns to **pending**).
 
-**Admin theme:** Property admin routes use the **resolved** property brand color (property → org → default). Org admin routes use org brand color only (set under **Basic information**).
+**Admin theme:** Property admin routes use the **resolved** property brand color (property → org → default) as `--primary` — the same hex as the Brand color swatch. Gradient buttons are a slight lightness sheen of that hex, not a different hue. Labels on those fills stay white. Org admin routes use org brand color only (set under **Basic information**).
 
 **Guest/runtime:** `resolveAppSettings(propertyId)` merges property branding for guest forms, emails, SD form, and pay-parking.
 
@@ -392,13 +394,14 @@ Per-property operational settings in `app_settings` (below Building Forms in the
 
 ### Recipients
 
-| Field                                                | Column                 | Notes                                                                   |
-| ---------------------------------------------------- | ---------------------- | ----------------------------------------------------------------------- |
-| PMO email (Azure North) / Documents approver (other) | `email_to`             | Required; GAF/pet approval requests                                     |
-| Property email (Azure North) / Team email (other)    | `email_reply_to`       | Required; new booking alert + guest reply-to; Gmail listener allow-list |
-| Parking owners                                       | `parking_owner_emails` | Comma-separated BCC for parking broadcast                               |
+| Field                                             | Column                 | Notes                                                                                            |
+| ------------------------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------ |
+| Property email (Azure North) / Team email (other) | `email_reply_to`       | Required. Ops inbox: new booking alerts + CC on GAF/pet requests; Reply-To on most guest emails. |
+| Parking owners                                    | `parking_owner_emails` | Comma-separated BCC for parking broadcast                                                        |
 
-**Azure North Residences** uses residence-specific labels and defaults (`propertyEmailAutomationDefaults.ts`): PMO default **`stlmonaco.theresortresidences@azurenorth.com.ph`**.
+**GAF / pet request `To:`** is **not** edited here. It comes from the property’s development **PMO email** (`developments.settings.pmoEmail` via super-admin `/admin/developments/:slug`), then legacy `app_settings.email_to`, then the Azure North default. The Automation toggles panel shows that resolved address as read-only.
+
+**Azure North Residences** uses residence-specific labels and defaults (`propertyEmailAutomationDefaults.ts`): PMO fallback **`stlmonaco.theresortresidences@azurenorth.com.ph`**.
 
 ### Check-out timing & defaults
 
@@ -415,39 +418,43 @@ Master switches in `app_settings.automation_toggles` (JSONB). Missing keys defau
 
 ---
 
-## Booking Workflow
+## Integrations
 
-Per-property Calendar/Sheets sync switches in `app_settings` (document requirements are configured on the development — see [`/admin/developments/:slug`](../../admin/development-detail.md) § Document Requirements).
+**Telegram** — status cards link to `/notifications` per module (Marketing, Staff, Operations, Finance, Maintenance, Chat).
 
-| Field                | Column          | Notes                                                                     |
-| -------------------- | --------------- | ------------------------------------------------------------------------- |
-| Sync Google Calendar | `sync_calendar` | Off skips Calendar event writes on workflow transitions for this property |
-| Sync Google Sheets   | `sync_sheets`   | Off skips Sheet row writes on workflow transitions for this property      |
+**AI services** — read-only platform key status + **Test AI** card (uses property/org context).
 
-Save path: **Save Changes** → `app-settings` PATCH (dirty `workflow-documents` section).
-
-Implementation: `PropertyWorkflowDocumentsSection.tsx`; edge gating: `supabase/functions/_shared/propertySyncToggles.ts`.
+Production GAF/pet approvals use **Resend inbound** (`approval-email-webhook`); hosts do not connect Google accounts here.
 
 ---
 
-## Integrations
+## AI Overrides
 
-Read-only status on this page. Connect/disconnect via cards linking to dedicated settings flows.
+Per-property overrides for the platform AI usage limits. NULL limits inherit the organization settings.
+
+| Field                | Column                 | Notes                                              |
+| -------------------- | ---------------------- | -------------------------------------------------- |
+| Enable               | `enabled`              | Master per-property AI toggle; also gated globally |
+| Daily call limit     | `daily_call_limit`     | Blank = inherit from organization                  |
+| Monthly call limit   | `monthly_call_limit`   | Blank = inherit from organization                  |
+| Daily cost USD limit | `daily_cost_usd_limit` | Blank = inherit from organization                  |
+
+Save path: section-local **Save** button → `PATCH ai-platform-property-settings?property_id=` (`settings:edit`). Hook: `useAiPlatformPropertySettings.ts` (added to `useAiPlatformSettings.ts`). UI: `PropertyAiPlatformSection.tsx`.
 
 ---
 
 ## Voice Receptionist
 
-Opt-in AI voice assistant guests can talk to (check-in, wifi, parking, and other stay questions). Own table (`voice_receptionist_settings`) and **own GET/PATCH edge function** — draft state lives on the property Settings page and saves with the shared **Save Changes** footer (same as profile / `app_settings`), not a section-local Save button.
+Opt-in AI voice assistant guests can talk to (check-in, wifi, parking, and other stay questions). Config is now stored inside `ai_platform_property_settings.feature_configs.voice_receptionist`. The section still uses `voice-receptionist-settings` for reads/writes and saves with the shared **Save Changes** footer.
 
-| Field               | Column                           | Notes                                                                          |
-| ------------------- | -------------------------------- | ------------------------------------------------------------------------------ |
-| Enable              | `enabled`                        | Also gated by the platform-wide super-admin kill switch                        |
-| Voice               | `voice_id`                       | Gemini Live prebuilt voice; options from `availableVoices` (labeled in UI)     |
-| Persona prompt      | `persona_prompt`                 | Optional tone guidance; guest-safe grounding is fixed and cannot be overridden |
-| Max session (sec)   | `max_session_seconds`            | Default 300; allowed **60–3600**                                               |
-| Max per guest / day | `max_sessions_per_guest_per_day` | Default 3; allowed **1–999**                                                   |
-| Max concurrent      | `max_concurrent_sessions`        | Default 3, property-wide; allowed **1–50**                                     |
+| Field               | Storage path                                                               | Notes                                                                           |
+| ------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Enable              | `ai_platform_property_settings.feature_configs.voice_receptionist.enabled` | Also gated by the platform-wide AI kill switch + `voice_receptionist` allowlist |
+| Voice               | `voice_id`                                                                 | Gemini Live prebuilt voice; options from `availableVoices` (labeled in UI)      |
+| Persona prompt      | `persona_prompt`                                                           | Optional tone guidance; guest-safe grounding is fixed and cannot be overridden  |
+| Max session (sec)   | `max_session_seconds`                                                      | Default 300; allowed **60–3600**                                                |
+| Max per guest / day | `max_sessions_per_guest_per_day`                                           | Default 3; allowed **1–999**                                                    |
+| Max concurrent      | `max_concurrent_sessions`                                                  | Default 3, property-wide; allowed **1–50**                                      |
 
 Save path: page **Save Changes** → `PATCH voice-receptionist-settings?property_id=` when this section is dirty (`settings:edit`). Hook: `useVoiceReceptionistSettings.ts`. UI: `PropertyVoiceReceptionistSection.tsx` (controlled from `PropertySettingsCard.tsx`).
 
@@ -457,7 +464,7 @@ Save path: page **Save Changes** → `PATCH voice-receptionist-settings?property
 length, estimated cost) below the form fields. `GET voice-receptionist-usage?property_id=`
 (`settings:view`), hook `useVoiceReceptionistUsage`. Estimated cost is a rough per-minute
 blended-rate estimate persisted on `voice_receptionist_sessions.estimated_cost_usd` when a
-session ends — visibility only, not a billing figure (Gemini Live bills by token, not duration).
+session ends; the same session is also recorded in `ai_platform_usage_events` (feature `voice_receptionist`) for unified platform usage.
 
 **Guest-side hardening (Task 5):** sessions also end with `end_reason='timeout'` after 45s of
 no guest/assistant speech activity (idle timeout, distinct from the max-session-length cap);
@@ -499,18 +506,19 @@ booth UI; premium human concierge portrait). Admin settings fields above are unc
 
 ## API reference (this page)
 
-| Action                                                            | Endpoint                                               |
-| ----------------------------------------------------------------- | ------------------------------------------------------ |
-| Profile + settings                                                | `PATCH update-property`                                |
-| Payment + building forms + email automations + workflow documents | `PATCH app-settings?property_id=`                      |
-| Media upload/delete                                               | `POST` / `DELETE upload-property-media?property_id=`   |
-| Payment QR / signature                                            | `POST upload-app-settings-asset?property_id=`          |
-| Voice receptionist settings                                       | `GET`/`PATCH voice-receptionist-settings?property_id=` |
-| Voice receptionist voice preview (TTS)                            | `POST voice-receptionist-voice-preview?property_id=`   |
-| Voice receptionist usage/cost read                                | `GET voice-receptionist-usage?property_id=`            |
-| Archive                                                           | `PATCH update-property` `{ status: "INACTIVE" }`       |
-| Restore                                                           | `PATCH update-property` `{ status: "ACTIVE" }`         |
-| Delete                                                            | `DELETE delete-property` `{ propertyId }`              |
+| Action                                                            | Endpoint                                                 |
+| ----------------------------------------------------------------- | -------------------------------------------------------- |
+| Profile + settings                                                | `PATCH update-property`                                  |
+| Payment + building forms + email automations + workflow documents | `PATCH app-settings?property_id=`                        |
+| Media upload/delete                                               | `POST` / `DELETE upload-property-media?property_id=`     |
+| Payment QR / signature                                            | `POST upload-app-settings-asset?property_id=`            |
+| AI platform overrides (property)                                  | `GET`/`PATCH ai-platform-property-settings?property_id=` |
+| Voice receptionist settings                                       | `GET`/`PATCH voice-receptionist-settings?property_id=`   |
+| Voice receptionist voice preview (TTS)                            | `POST voice-receptionist-voice-preview?property_id=`     |
+| Voice receptionist usage/cost read                                | `GET voice-receptionist-usage?property_id=`              |
+| Archive                                                           | `PATCH update-property` `{ status: "INACTIVE" }`         |
+| Restore                                                           | `PATCH update-property` `{ status: "ACTIVE" }`           |
+| Delete                                                            | `DELETE delete-property` `{ propertyId }`                |
 
 ---
 
@@ -529,9 +537,19 @@ Keep UI and edge copies in sync when changing rules.
 
 ---
 
+## Related docs
+
+- [Organization Settings — AI platform](../settings.md) § AI platform
+- [Super Admin Settings — Platform AI](../../admin/settings.md) § Platform AI
+- [`docs/archive/operations/ai-platform-billing.md`](../../../../archive/operations/ai-platform-billing.md) — billing and quota guidance
+
+---
+
 ## Pending / follow-ups
 
 - [ ] Org-level residence catalog (DB-driven instead of code constants)
 - [ ] Location: optional per-org Maps API key override
 - [ ] Soft-delete flag instead of hard delete for edge cases
 - [ ] Automated tests for property settings validation
+- [x] Remove deprecated `voice-receptionist-global-settings` edge function and UI card
+- [ ] Drop legacy `voice_receptionist_global_settings` table after verifying the platform switch is seeded on hosted environments

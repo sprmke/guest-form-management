@@ -5,7 +5,6 @@ import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
   ClipboardList,
-  FileCheck2,
   FormInput,
   Globe,
   Home,
@@ -46,6 +45,7 @@ import {
   pickBuildingFormsTeamContact,
 } from '@/features/dashboard/bookings/lib/buildingFormsTeamDefaults';
 import { PaymentSettingsSaveConfirmDialog } from '@/features/dashboard/org/components/property-settings/PaymentSettingsSaveConfirmDialog';
+import { PropertyAiPlatformSection } from '@/features/dashboard/org/components/property-settings/PropertyAiPlatformSection';
 import {
   operationalSettingsDraftIsDirty,
   PropertyOperationalSettingsSections,
@@ -117,9 +117,9 @@ const SETTINGS_SECTIONS: AdminSectionNavItem[] = [
   { id: 'payment', label: 'Payment', icon: Wallet },
   { id: 'building-forms', label: 'Building Forms', icon: ClipboardList },
   { id: 'email-automations', label: 'Email Automations', icon: Mail },
-  { id: 'workflow-documents', label: 'Booking Workflow', icon: FileCheck2 },
   { id: 'integrations', label: 'Integrations', icon: Globe },
   { id: 'voice-receptionist', label: 'Voice Receptionist', icon: Mic },
+  { id: 'ai', label: 'AI Overrides', icon: Sparkles },
   { id: 'danger', label: 'Danger Zone', icon: AlertTriangle },
 ];
 
@@ -770,6 +770,8 @@ export function PropertySettingsCard() {
               onChange: setVoiceField,
             }}
           />
+
+          <PropertyAiPlatformSection />
 
           <PropertyDangerZoneSection
             propertyName={profileDraft.name.trim() || property.name}

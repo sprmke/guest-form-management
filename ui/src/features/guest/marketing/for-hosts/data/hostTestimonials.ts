@@ -4,7 +4,7 @@ export const hostTestimonials = [
     name: 'Ana Dela Cruz',
     role: 'Host, 4 properties · Tagaytay',
     quote:
-      'The status pipeline plus Gmail auto-approval means GAF and pet documents clear themselves overnight. I used to spend my mornings checking inboxes — now I just check the dashboard.',
+      'The status pipeline plus inbound approval email means GAF and pet documents clear themselves overnight. I used to spend my mornings checking inboxes — now I just check the dashboard.',
     rating: 5,
   },
   {

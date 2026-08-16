@@ -13,7 +13,7 @@ const starterBullets = [
 const starterIncludes = [
   'Booking workflow and guest forms',
   'Document review and status automation',
-  'Calendar, email, and sheet sync where configured',
+  'Email automations and inbox where configured',
   'Finance and maintenance modules',
   'Guest inbox and team permissions',
 ] as const;

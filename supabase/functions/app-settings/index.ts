@@ -34,7 +34,7 @@ import {
   serializePaymentMethodsForDb,
   type PropertyPaymentMethod,
 } from '../_shared/paymentMethods.ts';
-import { verifyGeminiIntegration } from '../_shared/receiptValidationService.ts';
+import { verifyAiProviders } from '../_shared/receiptValidationService.ts';
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
 import {
   parseAction,
@@ -67,7 +67,7 @@ serveAuthenticated('app-settings', async (req) => {
     const action = parseAction(body).trim();
 
     if (action === 'verify_ai' || action === 'verify_gemini') {
-      return telegramVerifyResponse(req, await verifyGeminiIntegration());
+      return telegramVerifyResponse(req, await verifyAiProviders());
     }
 
     return telegramUnknownAction(req, action, 'Use verify_ai');
@@ -337,13 +337,6 @@ serveAuthenticated('app-settings', async (req) => {
         (await loadAppSettingsRow(propertyId))?.automation_toggles
       );
       patch.automation_toggles = { ...existing, ...automationPatch };
-    }
-
-    if (typeof body.syncCalendar === 'boolean') {
-      patch.sync_calendar = body.syncCalendar;
-    }
-    if (typeof body.syncSheets === 'boolean') {
-      patch.sync_sheets = body.syncSheets;
     }
 
     if (Object.keys(patch).length === 0) {

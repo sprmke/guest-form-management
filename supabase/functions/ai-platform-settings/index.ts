@@ -11,7 +11,10 @@ import { resolveOrgAccessContext } from '../_shared/propertyScope.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('ai-platform-settings', async (req, user) => {
-  const ctx = await resolveOrgAccessContext(req);
+  const ctx = await resolveOrgAccessContext(
+    req,
+    req.method === 'PATCH' ? 'org:settings:edit' : 'org:settings:view'
+  );
 
   if (req.method === 'GET') {
     const settings = await getAiPlatformOrgSettings(ctx.org.id);
@@ -20,6 +23,7 @@ serveAuthenticated('ai-platform-settings', async (req, user) => {
       enabled: settings.enabled,
       dailyCallLimit: settings.dailyCallLimit,
       monthlyCallLimit: settings.monthlyCallLimit,
+      dailyCostUsdLimit: settings.dailyCostUsdLimit,
       planTier: settings.planTier,
       updatedAt: settings.updatedAt,
     });
@@ -32,11 +36,22 @@ serveAuthenticated('ai-platform-settings', async (req, user) => {
     }
     const daily = body.dailyCallLimit !== undefined ? Number(body.dailyCallLimit) : undefined;
     const monthly = body.monthlyCallLimit !== undefined ? Number(body.monthlyCallLimit) : undefined;
-    if (daily !== undefined && (!Number.isFinite(daily) || daily <= 0)) {
-      return jsonError(req, 'dailyCallLimit must be a positive number', 400);
+    const dailyCost =
+      body.dailyCostUsdLimit !== undefined ? Number(body.dailyCostUsdLimit) : undefined;
+    if (
+      daily !== undefined &&
+      (!Number.isFinite(daily) || daily <= 0 || !Number.isInteger(daily))
+    ) {
+      return jsonError(req, 'dailyCallLimit must be a positive integer', 400);
     }
-    if (monthly !== undefined && (!Number.isFinite(monthly) || monthly <= 0)) {
-      return jsonError(req, 'monthlyCallLimit must be a positive number', 400);
+    if (
+      monthly !== undefined &&
+      (!Number.isFinite(monthly) || monthly <= 0 || !Number.isInteger(monthly))
+    ) {
+      return jsonError(req, 'monthlyCallLimit must be a positive integer', 400);
+    }
+    if (dailyCost !== undefined && (!Number.isFinite(dailyCost) || dailyCost <= 0)) {
+      return jsonError(req, 'dailyCostUsdLimit must be a positive number', 400);
     }
 
     const settings = await upsertAiPlatformOrgSettings({
@@ -44,6 +59,7 @@ serveAuthenticated('ai-platform-settings', async (req, user) => {
       enabled: typeof body.enabled === 'boolean' ? body.enabled : undefined,
       dailyCallLimit: daily,
       monthlyCallLimit: monthly,
+      dailyCostUsdLimit: dailyCost,
       updatedBy: user.id,
     });
 
@@ -52,6 +68,7 @@ serveAuthenticated('ai-platform-settings', async (req, user) => {
       enabled: settings.enabled,
       dailyCallLimit: settings.dailyCallLimit,
       monthlyCallLimit: settings.monthlyCallLimit,
+      dailyCostUsdLimit: settings.dailyCostUsdLimit,
       planTier: settings.planTier,
       updatedAt: settings.updatedAt,
     });

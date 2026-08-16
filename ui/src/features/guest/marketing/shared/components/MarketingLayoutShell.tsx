@@ -13,6 +13,9 @@ import {
   getListingSearchWhereSegment,
 } from '@/features/guest/marketing/shared/lib/listingSearchFields';
 
+import { useFavicon } from '@/lib/favicon';
+import { APP_TITLE, usePageTitle } from '@/lib/pageTitle';
+
 function isPublicFormRoute(pathname: string) {
   return pathname.includes('/forms/');
 }
@@ -57,6 +60,9 @@ export function MarketingLayoutShell() {
       window.cancelAnimationFrame(frame);
     };
   }, [pathname, hash, navigate]);
+
+  usePageTitle(APP_TITLE);
+  useFavicon(undefined);
 
   const shell = (
     <div className="relative flex min-h-screen flex-col">

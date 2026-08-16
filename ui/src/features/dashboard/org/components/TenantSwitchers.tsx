@@ -51,6 +51,12 @@ import { cn } from '@/lib/utils';
 
 type AddEntityTarget = { id: string; slug: string };
 
+/**
+ * Workspace switcher menus match the trigger width. The header no longer
+ * sits a notification bell beside this trigger, so no extra offset is needed.
+ */
+const SWITCHER_MENU_WIDTH = 'w-[var(--radix-dropdown-menu-trigger-width)]';
+
 /** Menu row — a Radix `DropdownMenuItem` in the desktop dropdown, a plain tappable row in the mobile sheet. */
 function SwitcherRow({
   variant,
@@ -473,10 +479,7 @@ export function SidebarTenantScope({
       <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
         <DropdownMenuTrigger asChild>{switcherTrigger}</DropdownMenuTrigger>
 
-        <DropdownMenuContent
-          className="w-[var(--radix-dropdown-menu-trigger-width)] overflow-hidden"
-          align="start"
-        >
+        <DropdownMenuContent className={cn(SWITCHER_MENU_WIDTH, 'overflow-hidden')} align="start">
           <ContextSwitcherMenu {...menuProps} />
         </DropdownMenuContent>
       </DropdownMenu>

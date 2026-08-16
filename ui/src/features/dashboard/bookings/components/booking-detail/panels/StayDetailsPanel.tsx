@@ -10,11 +10,11 @@ import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import { formatBookingDateTime } from '@/utils/format/bookingDisplay';
 
 export function StayDetailsPanel({ booking }: { booking: BookingRow }) {
-  const pax = (booking.number_of_adults ?? 0) + (booking.number_of_children ?? 0);
-  const guestSummary = `${booking.number_of_adults ?? 0} adult${(booking.number_of_adults ?? 0) !== 1 ? 's' : ''}${
-    booking.number_of_children
-      ? `, ${booking.number_of_children} child${booking.number_of_children !== 1 ? 'ren' : ''}`
-      : ''
+  const adults = booking.number_of_adults ?? 0;
+  const children = booking.number_of_children ?? 0;
+  const pax = adults + children;
+  const guestSummary = `${adults} adult${adults !== 1 ? 's' : ''}${
+    children ? `, ${children} child${children !== 1 ? 'ren' : ''}` : ''
   } (${pax} pax)`;
 
   return (

@@ -10,13 +10,24 @@ import {
   providerError,
 } from './aiGeminiKeys.ts';
 import { geminiGenerateContentUrl, getModelConfig } from './aiModelRouter.ts';
-import { assertOrgAiQuota, recordAiUsage, type RecordAiUsageInput } from './aiUsageService.ts';
+import {
+  assertOrgAndPropertyAiQuota,
+  recordAiUsage,
+  type RecordAiUsageInput,
+} from './aiUsageService.ts';
+import {
+  buildCacheInputs,
+  computePromptFingerprint,
+  getCachedAiResponse,
+  setCachedAiResponse,
+} from './aiQuotaCache.ts';
 import { createServiceClient } from './orgAuth.ts';
 import { buildAiGroundingFacts } from './inboxAiGuestContext.ts';
 import { AI_SUGGEST_FALLBACK_REPLY, assertSafeGuestReply } from './inboxAiSafetyGuard.ts';
 
 const INBOX_FEATURE = 'inbox_suggest' as const;
-const GEMINI_MODEL = getModelConfig(INBOX_FEATURE).model;
+const CONFIG = getModelConfig(INBOX_FEATURE);
+const GEMINI_MODEL = CONFIG.model;
 const GEMINI_URL = geminiGenerateContentUrl(GEMINI_MODEL);
 const GROQ_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
@@ -42,10 +53,8 @@ async function tryGeminiReply(
           contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
           generationConfig: {
             temperature: 0.5,
-            maxOutputTokens: 512,
-            // Gemini 2.5 Flash thinks by default; thinking tokens share maxOutputTokens
-            // and can truncate guest-visible replies mid-sentence.
-            thinkingConfig: { thinkingBudget: 0 },
+            maxOutputTokens: CONFIG.defaultMaxOutputTokens,
+            thinkingConfig: { thinkingBudget: CONFIG.thinkingBudget },
           },
         }),
       });
@@ -98,7 +107,7 @@ async function tryGroqReply(
         { role: 'user', content: userPrompt },
       ],
       temperature: 0.5,
-      max_tokens: 512,
+      max_tokens: CONFIG.defaultMaxOutputTokens,
     }),
   });
   const json = await res.json();
@@ -201,7 +210,12 @@ export type AiSuggestResult = {
 };
 
 export async function suggestInboxReply(input: AiSuggestInput): Promise<AiSuggestResult> {
-  await assertOrgAiQuota(input.orgId);
+  const feature =
+    input.platform === 'web' && input.conversationType === 'web_chat'
+      ? ('inbox_auto_reply' as const)
+      : INBOX_FEATURE;
+
+  await assertOrgAndPropertyAiQuota(input.orgId, input.propertyId ?? null, feature);
 
   const sb = createServiceClient();
   const { data: orgRow } = await sb
@@ -260,13 +274,15 @@ export async function suggestInboxReply(input: AiSuggestInput): Promise<AiSugges
     `Reply to the guest's latest message: "${latestGuestText}"\n` +
     'Write only the reply text — no quotes, labels, or markdown.';
 
+  const cacheKey = await computePromptFingerprint(buildCacheInputs(systemPrompt, userPrompt));
+  const cached = await getCachedAiResponse(feature, cacheKey);
+  if (cached) {
+    return { suggestion: cached.responseText, flagged: false };
+  }
+
   const errors: string[] = [];
   let draft: string | null = null;
   let usageRecord: RecordAiUsageInput | null = null;
-  const feature =
-    input.platform === 'web' && input.conversationType === 'web_chat'
-      ? ('inbox_auto_reply' as const)
-      : INBOX_FEATURE;
   const usageBase = {
     organizationId: input.orgId,
     propertyId: input.propertyId ?? null,
@@ -324,6 +340,16 @@ export async function suggestInboxReply(input: AiSuggestInput): Promise<AiSugges
     return { suggestion: AI_SUGGEST_FALLBACK_REPLY, flagged: true };
   }
 
+  if (usageRecord) {
+    await setCachedAiResponse(feature, cacheKey, {
+      provider: usageRecord.provider,
+      model: usageRecord.model,
+      responseText: draft,
+      inputTokens: usageRecord.inputTokens ?? 0,
+      outputTokens: usageRecord.outputTokens ?? 0,
+      estimatedCostUsd: 0,
+    });
+  }
   return { suggestion: draft, flagged: false };
 }
 

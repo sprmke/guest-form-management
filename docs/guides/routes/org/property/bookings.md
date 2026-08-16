@@ -35,7 +35,7 @@ Layout (top → bottom):
 3. **Summary cards** — Action Required, Pending Docs, Confirmed Stays, History (Finance-style `surface-card`; count + inline status hints; click toggles `?stage=` filter)
 4. **Toolbar** (`BookingFilters` in page body — always visible, matches Finance / Maintenance):
    - **Mobile (`max-lg`):** search + refine icon (opens sheet for status / more filters / sort / per-page) + view toggle
-   - **Desktop (`lg+`):** Row 1: search + Status + More filters + Clear; Row 2: sort + per-page | view toggle
+   - **Desktop (`lg+`):** **Status** · **Filters** (more only) · **search (flex)** · sort · per-page · **View**. Filters left of search; presentation controls on the right. Toolbar controls match Team height (`h-10` + `min-h-[44px]` → 44px). Status/Filters popovers omit redundant titles and use comfortable row spacing.
 5. Active view content + pagination (table/card only)
 
 ---
@@ -115,8 +115,8 @@ When a stage is active, the list query sends the matching `status[]` values to `
 ## Kanban
 
 - Columns follow workflow order: Pending Review → GAF / Parking / Pet → Ready for Check-in → Ready for Check-out → Pending SD Refund → Completed. There is **no** separate **Pending Documents** column — bookings with `status = PENDING_DOCUMENTS` appear in the first incomplete nested step (GAF, then parking, then pet; all complete → Ready for Check-in). **Cancelled** bookings are omitted from the board.
-- **Click** a card or **drop** on a valid column → opens **workflow modal** with stage-specific forms and actions only (no progress stepper — kanban column is the pipeline). Uses `WorkflowPanel` `variant="modal"` + `PendingReviewWorkflowGate` `layout="inline"`. Forms use `WorkflowFormShell` `variant="modal"` (no nested sub-form card). Dropping on **GAF / Parking / Pet** from **Pending Review** is valid when **Proceed to Pending Documents** would place the booking on that sub-step (there is no separate Docs column).
-- Invalid drops show “Cannot drop here”; valid drops open the modal so the admin completes transitions with the same forms and dev controls as `/bookings/:bookingId` (automation triggers stay on the detail page).
+- **Click** a card or **drop** on a valid column → opens **workflow modal** with stage-specific forms and actions only (no progress stepper — kanban column is the pipeline). Uses `WorkflowPanel` `variant="modal"`, which swaps its body for the Pending Review confirmation card while the booking sits on that status. Forms use `WorkflowFormShell` `variant="modal"` (no nested sub-form card). Dropping on **GAF / Parking / Pet** from **Pending Review** is valid when **Proceed to Pending Documents** would place the booking on that sub-step (there is no separate Docs column).
+- Invalid drops show “Cannot drop here”; valid drops open the modal so the admin completes transitions with the same forms and confirm flow as `/bookings/:bookingId` (automation triggers stay on the detail page).
 - **Open booking** outline button in the modal header opens the full detail page in a new tab.
 - Drag-drop does **not** auto-transition without going through the workflow panel.
 
@@ -125,6 +125,8 @@ When a stage is active, the list query sends the matching `status[]` values to `
 ## Filters & query params
 
 Existing params unchanged: `q`, `status`, `from`, `to`, `hasPets`, `needParking`, `sort`, `page`, `limit`, `view`.
+
+`from` / `to` filter on **check-in date** and apply to **every status** — navigating to a month with no check-ins shows an empty list. (Pending Review rows used to be exempt so new submissions were never hidden; that made month navigation look broken and was removed.) No range is applied until the host picks one, so the default landing view still lists all active bookings.
 
 `showCompletedBookings` remains supported for calendar/kanban (auto-enabled in those views); there is no UI toggle — use the **History** stage card or status filter for completed rows.
 

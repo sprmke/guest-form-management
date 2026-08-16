@@ -59,6 +59,41 @@ export async function publishToFacebookPagePhoto(input: {
 }
 
 /**
+ * Meta processes an IG video container asynchronously — calling media_publish
+ * immediately after container creation intermittently fails with a
+ * `media ... unavailable`-style Graph API error for anything but the
+ * smallest clips, since the container isn't done transcoding yet. Poll
+ * status_code until FINISHED (or ERROR/timeout) before publishing.
+ */
+async function waitForInstagramContainerReady(
+  creationId: string,
+  pageAccessToken: string
+): Promise<void> {
+  const maxAttempts = 20;
+  const intervalMs = 3000;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const statusUrl = new URL(`${META_GRAPH_BASE}/${creationId}`);
+    statusUrl.searchParams.set('fields', 'status_code');
+    statusUrl.searchParams.set('access_token', pageAccessToken);
+
+    const res = await fetch(statusUrl.toString());
+    const json = await parseMetaGraphJson(res);
+    const statusCode = typeof json.status_code === 'string' ? json.status_code : null;
+
+    if (statusCode === 'FINISHED') return;
+    if (statusCode === 'ERROR') {
+      throw new Error(metaApiError(json, 'Instagram media processing failed'));
+    }
+    if (attempt < maxAttempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+  }
+
+  throw new Error('Instagram media is still processing — try publishing again in a moment');
+}
+
+/**
  * Publish image media to Instagram (feed post or story).
  * IG: container creation + media_publish.
  */
@@ -100,6 +135,10 @@ export async function publishToInstagramMedia(input: {
   }
 
   const creationId = String(containerJson.id);
+
+  if (input.videoUrl) {
+    await waitForInstagramContainerReady(creationId, input.pageAccessToken);
+  }
 
   const publishUrl = new URL(`${META_GRAPH_BASE}/${input.igUserId}/media_publish`);
   publishUrl.searchParams.set('creation_id', creationId);

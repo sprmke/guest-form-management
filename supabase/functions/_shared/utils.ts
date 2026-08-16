@@ -20,55 +20,6 @@ export const normalizeDateToYYYYMMDD = (dateStr: string): string => {
 };
 
 /**
- * RFC3339-style local dateTime (no offset) for Google Calendar `dateTime` + `timeZone`.
- * Parses times with {@link formatTime} so "2:00 PM" maps to 14:00, not 02:00.
- */
-export const buildGoogleCalendarDateTime = (
-  dateStr: string,
-  timeStr: string | null | undefined,
-  defaultTime: string
-): string => {
-  const ymd = normalizeDateToYYYYMMDD(dateStr);
-  if (!ymd) return '';
-  const hm = formatTime(timeStr ?? '') || defaultTime;
-  const parts = hm.split(':');
-  const h = (parts[0] ?? '0').padStart(2, '0');
-  const m = (parts[1] ?? '00').padStart(2, '0');
-  return `${ymd}T${h}:${m}:00`;
-};
-
-/**
- * Google Calendar event end for occupied stay nights.
- * Checkout morning is not an occupied calendar date — the event ends 23:59 on the last night.
- * 1-night (Mon check-in, Tue checkout) → Mon 23:59 (one calendar date).
- * 2-night (Mon check-in, Wed checkout) → Tue 23:59 (Mon + Tue).
- */
-export function buildGoogleCalendarOccupiedEndDateTime(
-  checkInDate: string,
-  checkOutDate: string | null | undefined,
-  nights?: number
-): string {
-  const checkInYmd = normalizeDateToYYYYMMDD(checkInDate);
-  if (!checkInYmd) return '';
-
-  const checkoutYmd = checkOutDate ? normalizeDateToYYYYMMDD(checkOutDate) : '';
-  const lastNightYmd = checkoutYmd
-    ? dayjs(checkoutYmd, 'YYYY-MM-DD', true).subtract(1, 'day').format('YYYY-MM-DD')
-    : dayjs(checkInYmd, 'YYYY-MM-DD', true)
-        .add(Math.max(1, nights ?? 1) - 1, 'day')
-        .format('YYYY-MM-DD');
-
-  return buildGoogleCalendarDateTime(lastNightYmd, '23:59', '23:59');
-}
-
-/**
- * @deprecated Prefer {@link buildGoogleCalendarDateTime}; kept for call sites that pass explicit HH:mm.
- */
-const formatDateTime = (date: string, time: string): string => {
-  return buildGoogleCalendarDateTime(date, time, '00:00');
-};
-
-/**
  * Formats a date string to YYYY-MM-DD format
  * @param dateStr - The date string to format
  * @returns Formatted date string or empty string if invalid

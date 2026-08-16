@@ -6,6 +6,12 @@
 
 import { getPageAccessToken } from '../_shared/metaInboxGraph.ts';
 import { resolvePublicMarketingMediaUrl } from '../_shared/marketingMediaUpload.ts';
+import {
+  isVideoUrl,
+  mapPublishType,
+  META_PUBLISH_TYPES as PUBLISH_TYPES,
+  type MetaPublishType as PublishType,
+} from '../_shared/marketingPublishAction.ts';
 import { publishToFacebookPagePhoto, publishToInstagramMedia } from '../_shared/metaPublishing.ts';
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
@@ -15,15 +21,6 @@ import {
 } from '../_shared/propertyScope.ts';
 import { serveAdmin } from '../_shared/serveEdge.ts';
 import type { SocialChannelConnectionRow } from '../_shared/socialInboxTypes.ts';
-
-const PUBLISH_TYPES = new Set([
-  'facebook_post',
-  'instagram_post',
-  'instagram_story',
-  'instagram_reel',
-]);
-
-type PublishType = 'facebook_post' | 'instagram_post' | 'instagram_story' | 'instagram_reel';
 
 type PublicationRow = {
   id: string;
@@ -41,22 +38,6 @@ type PublicationRow = {
   published_at: string | null;
   created_at: string;
 };
-
-function mapPublishType(publishType: PublishType): {
-  platform: string;
-  dbPublishType: 'post' | 'story' | 'reel';
-} {
-  if (publishType === 'facebook_post') {
-    return { platform: 'facebook', dbPublishType: 'post' };
-  }
-  if (publishType === 'instagram_story') {
-    return { platform: 'instagram', dbPublishType: 'story' };
-  }
-  if (publishType === 'instagram_reel') {
-    return { platform: 'instagram', dbPublishType: 'reel' };
-  }
-  return { platform: 'instagram', dbPublishType: 'post' };
-}
 
 function resolvePublishType(input: {
   platform?: string;
@@ -99,10 +80,6 @@ function isFutureSchedule(scheduledAt: string | null | undefined): boolean {
   if (!scheduledAt) return false;
   const ms = new Date(scheduledAt).getTime();
   return !Number.isNaN(ms) && ms > Date.now();
-}
-
-function isVideoUrl(url: string): boolean {
-  return /\.(mp4|webm|mov)(\?|$)/i.test(url) || url.includes('video/');
 }
 
 serveAdmin('publish-to-meta', async (req, admin) => {

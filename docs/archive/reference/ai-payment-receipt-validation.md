@@ -2,7 +2,7 @@
 title: 'AI document validation (payment receipts + valid ID)'
 status: active
 tags: [reference, payments]
-updated: 2026-08-02
+updated: 2026-08-13
 ---
 
 # AI document validation (payment receipts + valid ID)
@@ -92,6 +92,7 @@ Admin uploads via upload-booking-asset
   → validateReceiptFile(file) when assetType is a payment receipt type
   → PATCH *_receipt_ai_* columns
   → Response JSON includes receiptValidation for immediate UI badge
+  → (balance only) syncPricingReviewBalanceReceipt — merge invalid/unclear flags into AI Summary Pricing
   → (balance only) notifyTelegramAdminBalanceReceiptUploaded
 ```
 
@@ -159,11 +160,12 @@ Parking AI is shown in **`ParkingRequestForm`** on the booking detail workflow p
 
 ### Admin UI
 
-| Location                            | Component                                                 | What shows                                                                                         |
-| ----------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| Booking detail → Pricing card       | `BookingDetailPage` `DocPreview` + `useReceiptAiBackfill` | Compact AI pill on downpayment / balance receipt preview label; auto-backfill when verdict missing |
-| Workflow → Guest balance settlement | `GuestBalanceSettlementForm`                              | Inline badge, toast, blocks proceed if `invalid`                                                   |
-| Workflow → Parking request          | `ParkingRequestForm`                                      | Inline badge, toast, blocks complete if `invalid`                                                  |
+| Location                            | Component                                                 | What shows                                                                                               |
+| ----------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Booking detail → Pricing card       | `BookingDetailPage` `DocPreview` + `useReceiptAiBackfill` | Compact AI pill on downpayment / balance receipt preview label; auto-backfill when verdict missing       |
+| Workflow → Guest balance settlement | `GuestBalanceSettlementForm`                              | Inline badge, toast, blocks proceed if `invalid`. Auto-validates on upload (no separate Validate button) |
+| AI Summary → Pricing                | `BookingAiSummaryResults`                                 | Invalid / unclear balance receipt (or missing at check-in) appears as a Pricing finding                  |
+| Workflow → Parking request          | `ParkingRequestForm`                                      | Inline badge, toast, blocks complete if `invalid`                                                        |
 
 ---
 

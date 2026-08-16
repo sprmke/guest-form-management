@@ -1,0 +1,150 @@
+---
+description: Parking booking status machine (broadcast/claim/decline/expire), invariants, and the "which file do I edit?" map
+globs:
+  - 'supabase/functions/_shared/parkingStatusMachine.ts'
+  - 'supabase/functions/_shared/parkingBroadcast.ts'
+  - 'supabase/functions/_shared/parkingBroadcastEmail.ts'
+  - 'supabase/functions/_shared/parkingBroadcastExpireCron.ts'
+  - 'supabase/functions/_shared/parkingDateOverlap.ts'
+  - 'supabase/functions/_shared/telegramParking.ts'
+  - 'supabase/functions/submit-parking-booking-request/**/*'
+  - 'supabase/functions/claim-parking-booking/**/*'
+  - 'supabase/functions/decline-parking-booking/**/*'
+  - 'supabase/functions/expire-parking-broadcasts/**/*'
+  - 'supabase/functions/get-parking-booking-status/**/*'
+  - 'supabase/functions/get-parking-broadcast-status/**/*'
+  - 'supabase/functions/transition-parking-booking/**/*'
+  - 'ui/src/features/dashboard/parking/**/*'
+  - 'ui/src/features/guest/marketing/parkings/**/*'
+alwaysApply: false
+---
+
+# Parking workflow — agent reference
+
+Canonical spec for the **parking broadcast-and-claim lifecycle**. Parking keeps its own status
+machine and its own edge functions — it is **never** routed through the property
+`workflowOrchestrator.ts` / `statusMachine.ts` (see `[[booking-workflow]]`). Design history and
+locked decisions: `docs/workflow/in-progress/parking-e2e-phase1-overview.md` and its companion
+docs (status-workflow, host-broadcast-notifications, guest-request-realtime-status,
+bookings-page-updates, phase0-registration-dimensions).
+
+## Status graph
+
+```
+PENDING_HOST_ACCEPTANCE → PENDING_REVIEW | NO_HOST_AVAILABLE | CANCELLED
+PENDING_REVIEW          → READY_FOR_CHECKIN | CANCELLED
+READY_FOR_CHECKIN       → COMPLETED | CANCELLED
+NO_HOST_AVAILABLE       → (terminal)
+CANCELLED               → (terminal)
+COMPLETED               → (terminal)
+```
+
+`parkingStatusMachine.ts` is the source of truth (`canTransition` / `availableTransitions`).
+`transition-parking-booking/index.ts` explicitly **rejects** any transition where
+`fromStatus === 'PENDING_HOST_ACCEPTANCE'` — that state only resolves via the three
+dedicated functions below, never the generic transition endpoint.
+
+## The broadcast round (PENDING_HOST_ACCEPTANCE)
+
+1. **Submit** (`submit-parking-booking-request`, public/anon): resolves eligible candidates
+   (`parkingBroadcast.ts#findParkingBroadcastCandidates` — same `organization_id`, `status =
+'ACTIVE'`, `accepted_vehicle_types @> [...]`, no date-overlapping non-terminal booking).
+   Zero candidates → **422 `no_parking_available`, no row inserted**. Otherwise inserts a
+   `guest_submissions` row at `PENDING_HOST_ACCEPTANCE` with `parking_id = null` and fans out
+   (`fanOutParkingBroadcast`): one `parking_booking_broadcasts` row per candidate + Telegram +
+   per-recipient email (never BCC). **If the fan-out insert itself throws**, the booking row is
+   rolled back (deleted) and the guest gets a 500 to retry cleanly — never leave an orphaned
+   `PENDING_HOST_ACCEPTANCE` row with zero broadcast rows.
+2. **TTL**: 15 min if check-in is today (Asia/Manila), else 1 hr (`parkingBroadcastTtlMs`).
+   Single round only — v1 has no re-broadcast.
+3. **Claim** (`claim-parking-booking`, host, `verifyParkingTeamAccess(..., 'bookings:edit')`
+   scoped to the specific `parkingId`): first-Accept-wins is enforced by a single guarded
+   `UPDATE guest_submissions ... WHERE id = $bookingId AND status = 'PENDING_HOST_ACCEPTANCE'`.
+   **This status-guarded UPDATE on the booking row is the actual source of truth for the
+   win condition** — the broadcast-row pre-check (`response = 'pending'`) is a fast-fail UX
+   optimization only, not a second authority; a concurrent claim/decline/expire always loses
+   the race at the `guest_submissions.status` guard, so it can never double-win even if the
+   broadcast-row pre-check briefly disagrees. A losing claim gets `409 already_claimed`.
+   Optional endorsement note (host-authored, shown to guest after Accept; ≤500 chars in the
+   UI, ≤2000 server-side).
+4. **Decline** (`decline-parking-booking`, host, same access check): marks the caller's
+   broadcast row `declined`. If it was the **last** `pending` row, the booking terminates to
+   `NO_HOST_AVAILABLE` immediately — do not wait for TTL.
+5. **Expire** (`expire-parking-broadcasts`, cron): sweeps rows past
+   `parking_broadcast_expires_at` to `NO_HOST_AVAILABLE`, same guarded-UPDATE idempotency
+   pattern (safe to re-run). **Scheduling**: `public.sync_parking_broadcast_expire_cron_job()`
+   (migration `20261018120000_parking_broadcast_expire_cron.sql`) — see
+   `docs/archive/operations/scheduled-jobs-and-testing.md` for activation.
+
+All three terminal paths (claim / decline-all / expire) send the guest exactly one email,
+guaranteed by the same guarded-UPDATE-only-fires-once pattern — never add a second write path
+to `guest_submissions.status` for this state.
+
+## Multi-tenancy
+
+Candidate queries filter by `organization_id` at the source (`findParkingBroadcastCandidates`).
+Every host-facing endpoint (`claim`, `decline`, `get-parking-broadcast-status`,
+`transition-parking-booking`) re-verifies access via `verifyParkingTeamAccess` scoped to the
+**specific `parkingId` in the request**, not just "any authenticated org member" — never trust
+a client-supplied `organizationId` for authorization, only for candidate matching.
+
+## Guest status surface
+
+`get-parking-booking-status` (public/anon) takes a booking UUID (unguessable, bearer-capability
+style) and returns a narrow projection — no listing/enumeration endpoint exists, and it 404s
+identically whether the row doesn't exist or isn't a parking row. The guest status page
+(`ParkingRequestStatusPage.tsx`) **polls every 4s**, not Supabase Realtime — this is a
+documented deviation from the original "locked" Realtime decision in
+`parking-e2e-phase1-guest-request-realtime-status.md`; it was kept because it already satisfies
+that doc's own ≤5s fallback acceptance bar. If true Realtime is ever implemented, it needs a
+`guest_auth_user_id` column + RLS-scoped channel per that doc's "locked approach" section — do
+not silently half-implement it.
+
+## Notification deep links
+
+Both Telegram and email host notifications deep-link straight to
+`/org/:orgSlug/parking/:parkingSlug/bookings/:bookingId` (`ParkingBookingDetailPage`) — not the
+bare bookings list. Telegram has no button/CTA affordance, so the link is appended as plain text
+after the templated message body (not part of the user-editable template).
+
+## Host dashboard
+
+`ParkingBookingDetailPage.tsx` shows Accept/Decline only when
+`broadcastStatus.response === 'pending'` for **this** parking (`useParkingBroadcastStatus`).
+`BookingRow.parking_broadcast_expires_at` (already returned by `select('*')` / list-bookings —
+just was missing from the TS type) drives `ParkingBroadcastCountdown`
+(`ui/src/features/dashboard/bookings/components/ParkingBroadcastCountdown.tsx`), shown next to
+the status badge on the detail page, list table, and card grid whenever status is
+`PENDING_HOST_ACCEPTANCE` — this is the host's only urgency signal while racing to Accept, keep
+it wired whenever `BookingRow` or the broadcast payload shape changes.
+
+## File map
+
+| Concern                                                   | File                                                                                                                                       |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Status graph                                              | `supabase/functions/_shared/parkingStatusMachine.ts`                                                                                       |
+| Candidate matching, TTL, fan-out, Telegram/email dispatch | `supabase/functions/_shared/parkingBroadcast.ts`                                                                                           |
+| Email templates (request/confirmed/no-host)               | `supabase/functions/_shared/parkingBroadcastEmail.ts`                                                                                      |
+| Telegram templates/settings                               | `supabase/functions/_shared/telegramParking.ts`                                                                                            |
+| Date-overlap check                                        | `supabase/functions/_shared/parkingDateOverlap.ts`                                                                                         |
+| TTL sweep handler                                         | `supabase/functions/_shared/parkingBroadcastExpireCron.ts`                                                                                 |
+| Cron scheduling                                           | `supabase/migrations/20261018120000_parking_broadcast_expire_cron.sql`                                                                     |
+| Guest submit                                              | `supabase/functions/submit-parking-booking-request/index.ts`                                                                               |
+| Guest status read                                         | `supabase/functions/get-parking-booking-status/index.ts`                                                                                   |
+| Host claim / decline                                      | `supabase/functions/claim-parking-booking/`, `supabase/functions/decline-parking-booking/`                                                 |
+| Host broadcast-row read                                   | `supabase/functions/get-parking-broadcast-status/index.ts`                                                                                 |
+| Non-broadcast transitions (`PENDING_REVIEW` → …)          | `supabase/functions/transition-parking-booking/index.ts`                                                                                   |
+| Guest form + status UI                                    | `ui/src/features/guest/marketing/pages/ParkingFormPage.tsx`, `ui/src/features/guest/marketing/parkings/pages/ParkingRequestStatusPage.tsx` |
+| Host list/detail UI                                       | `ui/src/features/dashboard/parking/pages/ParkingBookingsPage.tsx`, `ui/src/features/dashboard/parking/pages/ParkingBookingDetailPage.tsx`  |
+| Client status labels/tones                                | `ui/src/features/dashboard/bookings/lib/bookingStatus.ts` (`PARKING_ONLY_STATUSES`)                                                        |
+
+## Don'ts
+
+- Don't route `PENDING_HOST_ACCEPTANCE` through `transition-parking-booking` — it's explicitly
+  blocked; use claim/decline/expire.
+- Don't add a second write path to `guest_submissions.status` for the terminal transitions —
+  the guarded UPDATE pattern is what makes emails/notifications exactly-once.
+- Don't trust a client-supplied `organizationId`/`parkingId` for authorization — always
+  re-verify via `verifyParkingTeamAccess` scoped to the specific parking in the request.
+- Don't add a "settings UI" for the TTL cron cadence unless product actually asks for a
+  configurable schedule — it's intentionally fixed at 5 min, unlike the Telegram cron jobs.

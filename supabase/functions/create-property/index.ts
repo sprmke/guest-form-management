@@ -29,7 +29,6 @@ import {
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
 import { seedPropertySettings } from '../_shared/propertySettingsSeed.ts';
-import { seedGoogleIntegrationForNewProperty } from '../_shared/propertyGoogleIntegrationSeed.ts';
 import { ensureOrgHostMode } from '../_shared/parkingSlotUnit.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
@@ -131,12 +130,6 @@ serveAuthenticated('create-property', async (req) => {
   } catch (e) {
     console.error('[create-property] settings seed:', e);
     return jsonError(req, 'Property created but settings seed failed', 500);
-  }
-
-  try {
-    await seedGoogleIntegrationForNewProperty(orgId, data.id as string, name);
-  } catch (e) {
-    console.error('[create-property] Google integration seed:', e);
   }
 
   return jsonSuccess(req, { property: serializeProperty(data) });

@@ -1,10 +1,4 @@
-import { HelpCircle } from 'lucide-react';
-
-import { RequiredMark } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
-
-import { Label } from '@/components/ui/label';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils';
+import { FieldLabel } from '@/components/forms/FieldLabel';
 
 type Props = {
   htmlFor?: string;
@@ -14,41 +8,7 @@ type Props = {
   className?: string;
 };
 
-export function VerificationFieldLabel({
-  htmlFor,
-  label,
-  help,
-  required = false,
-  className,
-}: Props) {
-  return (
-    <div className={cn('flex items-center gap-1.5', className)}>
-      <Label htmlFor={htmlFor} className="mb-0">
-        {label}
-        {required ? <RequiredMark /> : null}
-      </Label>
-      <TooltipProvider delayDuration={200}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className="text-muted-foreground hover:text-foreground inline-flex shrink-0 items-center justify-center rounded-full transition-colors"
-              aria-label={`About ${label}`}
-            >
-              <HelpCircle className="size-3.5" aria-hidden />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent
-            side="bottom"
-            align="start"
-            sideOffset={6}
-            collisionPadding={16}
-            className="max-w-[min(calc(100vw-2rem),18rem)] text-left text-xs leading-snug"
-          >
-            {help}
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    </div>
-  );
+/** Verification forms always include help — use `FieldLabel` directly when help is optional. */
+export function VerificationFieldLabel(props: Props) {
+  return <FieldLabel {...props} />;
 }

@@ -1,8 +1,9 @@
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 
 import { Check, ChevronDown } from 'lucide-react';
 
 import { MobileChoiceItem, MobileChoiceSheet } from '@/components/mobile/MobileChoiceSheet';
+import { useAdminToolbarMenuOpen } from '@/components/navigation/AdminToolbarMenuScope';
 import { useDismissOnOutsideClick } from '@/hooks/useDismissOnOutsideClick';
 import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { cn } from '@/lib/utils';
@@ -21,6 +22,8 @@ type Props<T extends string> = {
   isActive?: (value: T) => boolean;
   panelAlign?: 'left' | 'right';
   panelWidthClassName?: string;
+  /** Keep parent Filters/Status open when this menu toggles (nested in popover). */
+  toolbarExclusive?: boolean;
 };
 
 export function AdminSingleSelectFilter<T extends string>({
@@ -32,8 +35,9 @@ export function AdminSingleSelectFilter<T extends string>({
   isActive = (v) => v !== ('all' as T),
   panelAlign = 'right',
   panelWidthClassName = 'w-[min(calc(100vw-24px),12rem)]',
+  toolbarExclusive = true,
 }: Props<T>) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useAdminToolbarMenuOpen(undefined, { exclusive: toolbarExclusive });
   const ref = useRef<HTMLDivElement>(null);
   const isMobileLayout = useIsBelowLg();
   const close = () => setOpen(false);
@@ -49,6 +53,7 @@ export function AdminSingleSelectFilter<T extends string>({
       aria-haspopup={isMobileLayout ? 'dialog' : 'listbox'}
       className={cn(
         'inline-flex min-h-[44px] w-full items-center justify-between gap-1.5 rounded-lg border px-3 py-2.5 text-[13px] font-semibold',
+        'lg:h-10 lg:py-0',
         triggerWidthClassName,
         open || isActive(value)
           ? 'border-primary bg-primary/10 text-primary'

@@ -47,14 +47,14 @@ Parking **Settings** is where you set up a single slot before guests book it —
 
 ### Basic info fields
 
-| Field                | Storage                                                                                        | Public page                                       |
-| -------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| URL Slug             | `parkings.slug` (read-only preview; regenerates when tower/level/slot change the display name) | `/parkings/:slug`                                 |
-| Brand color          | `parkings.settings.brandColor` (empty = inherit org)                                           | Listing accents via **`ParkingPublicBrandShell`** |
-| Parking type         | `parkings.parking_type`                                                                        | Type badge on **`ParkingOverview`**               |
-| Residence            | `parkings.residence_name`                                                                      | Development link in **`ListingPlaceMeta`**        |
-| Tower / Level / Slot | `parkings.tower`, `level`, `slot_label`                                                        | **`ListingPlaceMeta`** placement labels           |
-| Description          | `parkings.settings.description` (legacy `notes` migrated on save)                              | **About this parking** section                    |
+| Field                | Storage                                                                                                                                                                       | Public page                                       |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| URL Slug             | `parkings.slug` (read-only preview; regenerates when tower/level/slot change the display name)                                                                                | `/parkings/:slug`                                 |
+| Brand color          | `parkings.settings.brandColor` (empty = inherit org). Where it applies is a **?** tooltip on the label (`FieldLabel`). Admin and listing accents use that hex as `--primary`. | Listing accents via **`ParkingPublicBrandShell`** |
+| Parking type         | `parkings.parking_type`                                                                                                                                                       | Type badge on **`ParkingOverview`**               |
+| Residence            | `parkings.residence_name`                                                                                                                                                     | Development link in **`ListingPlaceMeta`**        |
+| Tower / Level / Slot | `parkings.tower`, `level`, `slot_label`                                                                                                                                       | **`ListingPlaceMeta`** placement labels           |
+| Description          | `parkings.settings.description` (legacy `notes` migrated on save)                                                                                                             | **About this parking** section                    |
 
 ### Parking details fields
 
@@ -88,6 +88,7 @@ When the display name changes and the slug is regenerated, the app navigates to 
 | -------------------- | ------------------------------------------------------------------------ |
 | Page                 | `ui/src/features/dashboard/parking/pages/ParkingSettingsPage.tsx`        |
 | Card                 | `ui/src/features/dashboard/parking/components/ParkingSettingsCard.tsx`   |
+| Field label + help   | `ui/src/components/forms/FieldLabel.tsx`                                 |
 | Details section      | `ui/src/features/dashboard/parking/components/ParkingDetailsSection.tsx` |
 | Form draft           | `ui/src/features/dashboard/parking/lib/parkingSettingsForm.ts`           |
 | Brand resolve (edge) | `supabase/functions/_shared/parkingBranding.ts`                          |

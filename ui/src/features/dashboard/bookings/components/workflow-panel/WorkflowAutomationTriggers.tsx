@@ -1,42 +1,46 @@
 /**
- * Automation-triggers collapsible section — ported from the pre-decomposition
- * `WorkflowPanel.tsx`. Rail-only: renders `null` in modal mode.
+ * Automation-triggers collapsible — rail only.
+ *
+ * Ready for Check-in: run this booking’s check-out automation (email + settle).
+ * Ready for Check-out: resend the Check-out Instructions email.
  */
 
 import { ChevronDown, ChevronRight, Loader2, Mail, RefreshCw, Timer } from 'lucide-react';
 
 import { workflowNeutralActionClass } from '@/features/dashboard/bookings/lib/workflowActionButtonStyles';
+import { formatSdRefundLeadPhrase } from '@/features/dashboard/bookings/lib/workflowAdvanceMode';
+
+const DEFAULT_LEAD_MINUTES = 120;
 
 type Props = {
   isModal: boolean;
-  showGmailPoll: boolean;
   showSdCron: boolean;
   showSdFormResend: boolean;
+  /** Property setting `sd_refund_cron_email_lead_minutes`. */
+  sdRefundEmailLeadMinutes?: number;
   automationHelpOpen: boolean;
   onToggleAutomationHelp: () => void;
-  gmailPollPending: boolean;
   sdCronPending: boolean;
   resendSdFormPending: boolean;
-  onRunGmailPoll: () => void;
   onRunSdCron: () => void;
   onResendSdFormEmail: () => void;
 };
 
 export function WorkflowAutomationTriggers({
   isModal,
-  showGmailPoll,
   showSdCron,
   showSdFormResend,
+  sdRefundEmailLeadMinutes = DEFAULT_LEAD_MINUTES,
   automationHelpOpen,
   onToggleAutomationHelp,
-  gmailPollPending,
   sdCronPending,
   resendSdFormPending,
-  onRunGmailPoll,
   onRunSdCron,
   onResendSdFormEmail,
 }: Props) {
-  if (isModal || !(showGmailPoll || showSdCron || showSdFormResend)) return null;
+  if (isModal || !(showSdCron || showSdFormResend)) return null;
+
+  const leadPhrase = formatSdRefundLeadPhrase(sdRefundEmailLeadMinutes);
 
   return (
     <div className="border-separator border-b">
@@ -63,91 +67,52 @@ export function WorkflowAutomationTriggers({
         <div className="text-muted-foreground space-y-2 px-4 pb-3 text-[11.5px] leading-relaxed">
           {showSdCron ? (
             <>
-              <p className="text-muted-foreground">
-                Two hours before checkout, guests get the check-out/SD email—even if balance is
-                unsettled. Settlement is still required to advance status.
+              <p>
+                {leadPhrase}, the guest gets the Check-out Instructions email automatically, even if
+                the balance is unpaid. If the remaining balance is settled with a receipt uploaded,
+                the booking also moves automatically to Ready for Check-out at that time.
               </p>
-              <p className="text-muted-foreground">
-                <span className="text-muted-foreground font-medium">Run SD refund cron</span> checks{' '}
-                <span className="text-muted-foreground font-medium">this booking only</span>. The
-                same job also runs for other ready-for-check-in stays.
-              </p>
-              <p className="text-muted-foreground">
-                <span className="text-muted-foreground font-medium">Send SD refund form email</span>{' '}
-                resends the link only. It does{' '}
-                <span className="text-muted-foreground font-medium">not</span> change booking
-                status.
-              </p>
+              <p>If the email or move did not happen, run the check-out automation below.</p>
             </>
-          ) : showGmailPoll ? (
-            <>
-              <p className="text-muted-foreground">
-                Use when inbox approvals look stuck. Shown while this booking awaits pipeline
-                documents.
-              </p>
-              <ol className="marker:text-muted-foreground list-decimal space-y-1.5 pl-4">
-                <li>
-                  <span className="text-muted-foreground font-medium">Run Gmail poll now</span>{' '}
-                  checks the inbox for all bookings awaiting that reply—not just this one. Safe to
-                  rerun.
-                </li>
-              </ol>
-            </>
-          ) : (
-            <>
-              <p className="text-muted-foreground">
-                <span className="text-muted-foreground font-medium">Send SD refund form email</span>{' '}
-                resends the check-out/SD link. It does not advance the booking—email only.
-              </p>
-            </>
-          )}
+          ) : null}
+          {showSdFormResend ? (
+            <p>
+              Resend the Check-out Instructions email. It does not move the booking to the next
+              step.
+            </p>
+          ) : null}
 
           <div className="border-separator flex flex-col gap-1.5 border-t pt-3">
-            {showGmailPoll && (
-              <button
-                type="button"
-                disabled={gmailPollPending}
-                onClick={onRunGmailPoll}
-                className={workflowNeutralActionClass()}
-              >
-                <span>Run Gmail poll now</span>
-                {gmailPollPending ? (
-                  <Loader2 className="size-3.5 shrink-0 animate-spin" />
-                ) : (
-                  <Mail className="size-3.5 shrink-0" aria-hidden />
-                )}
-              </button>
-            )}
-            {showSdCron && (
+            {showSdCron ? (
               <button
                 type="button"
                 disabled={sdCronPending}
                 onClick={onRunSdCron}
                 className={workflowNeutralActionClass()}
               >
-                <span>Run SD refund cron</span>
+                <span>Run check-out automation</span>
                 {sdCronPending ? (
                   <Loader2 className="size-3.5 shrink-0 animate-spin" />
                 ) : (
                   <RefreshCw className="size-3.5 shrink-0" aria-hidden />
                 )}
               </button>
-            )}
-            {showSdFormResend && (
+            ) : null}
+            {showSdFormResend ? (
               <button
                 type="button"
                 disabled={resendSdFormPending}
                 onClick={onResendSdFormEmail}
                 className={workflowNeutralActionClass()}
               >
-                <span>Send SD refund form email</span>
+                <span>Resend Check-out Instructions email</span>
                 {resendSdFormPending ? (
                   <Loader2 className="size-3.5 shrink-0 animate-spin" />
                 ) : (
                   <Mail className="size-3.5 shrink-0" aria-hidden />
                 )}
               </button>
-            )}
+            ) : null}
           </div>
         </div>
       )}

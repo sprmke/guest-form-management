@@ -5,14 +5,6 @@ import { AdminMetricCardSkeleton } from '@/features/dashboard/bookings/component
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
-function AdminSurfaceCard({ className, children, ...props }: React.ComponentProps<'section'>) {
-  return (
-    <section className={cn('mb-3 w-full', className)} {...props}>
-      {children}
-    </section>
-  );
-}
-
 function AdminPageHeaderSkeleton({
   compact = false,
   card,
@@ -100,43 +92,6 @@ export function AppSettingsCardSkeleton() {
         <Skeleton className="ml-auto h-11 w-full rounded-lg sm:w-32" />
       </div>
     </div>
-  );
-}
-
-export function GmailMailIntegrationCardSkeleton({ embedded = false }: { embedded?: boolean }) {
-  const inner = (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex min-w-0 items-start gap-3">
-        <Skeleton className="size-10 shrink-0 rounded-lg sm:size-11" />
-        <div className="min-w-0 flex-1 space-y-2">
-          <Skeleton className="h-4 w-16" />
-          <Skeleton className="h-3 w-full max-w-md" />
-          <Skeleton className="h-3 w-40" />
-        </div>
-      </div>
-      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-        <Skeleton className="h-11 w-full rounded-lg sm:w-36" />
-        <Skeleton className="h-11 w-full rounded-lg sm:w-32" />
-      </div>
-    </div>
-  );
-
-  if (embedded) {
-    return (
-      <div
-        aria-busy="true"
-        aria-label="Loading Gmail integration"
-        className="bg-muted/20 rounded-lg px-3 py-3"
-      >
-        {inner}
-      </div>
-    );
-  }
-
-  return (
-    <AdminSurfaceCard aria-busy="true" aria-label="Loading Gmail integration">
-      {inner}
-    </AdminSurfaceCard>
   );
 }
 
@@ -586,7 +541,6 @@ export function DashboardSkeleton() {
       aria-label="Loading dashboard"
     >
       <section aria-hidden>
-        <Skeleton className="section-eyebrow mb-2 hidden h-3 w-28 px-0.5 sm:mb-3 lg:block" />
         <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4 lg:gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <DashboardTrendStatCardSkeleton key={`trend-${i}`} />
@@ -698,7 +652,6 @@ export function OrgDashboardSkeleton() {
       aria-label="Loading organization dashboard"
     >
       <section aria-hidden>
-        <Skeleton className="section-eyebrow mb-2 hidden h-3 w-28 px-0.5 sm:mb-3 lg:block" />
         <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4 lg:gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <DashboardTrendStatCardSkeleton key={`org-trend-${i}`} />

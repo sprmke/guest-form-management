@@ -66,6 +66,7 @@ Platform-level control panel, distinct from org/property admin and the legacy `A
 | `/admin/hosts/:hostId/orgs`            | [admin/host-detail/orgs.md](./admin/host-detail/orgs.md)             | Documented                                  |
 | `/admin/hosts/:hostId/orgs/properties` | [admin/host-detail/properties.md](./admin/host-detail/properties.md) | Documented                                  |
 | `/admin/orgs/:orgSlug/properties`      | [admin/org-properties.md](./admin/org-properties.md)                 | Documented — minimal scaffold               |
+| `/admin/settings`                      | [admin/settings.md](./admin/settings.md)                             | Documented — platform AI controls           |
 
 ## Public (guest)
 

@@ -6,12 +6,14 @@ import { toast } from 'sonner';
 
 import { useGuestAuth } from '@/features/guest/auth/context/GuestAuthContext';
 import { takeContactHostDraft } from '@/features/guest/auth/lib/guestAuthResume';
+import { GuestChatFaqSuggestions } from '@/features/guest/chat/components/GuestChatFaqSuggestions';
 import {
   GuestChatHeaderBar,
   GuestChatSearchPanelRow,
   headerIconButtonClass,
 } from '@/features/guest/chat/components/GuestChatHeaderBar';
 import { GuestChatThread } from '@/features/guest/chat/components/GuestChatThread';
+import { VoiceSessionPanel } from '@/features/guest/chat/components/voice/VoiceSessionPanel';
 import {
   GUEST_CHAT_MESSAGES_KEY,
   GUEST_CHAT_RESUME_KEY,
@@ -35,7 +37,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { useChatThreadSearch } from '@/lib/chat/useChatThreadSearch';
-import { formatDateToYYYYMMDD, formatIsoDateForDisplay } from '@/utils/format/dates';
+import { formatDateToYYYYMMDD, formatStayDateRange } from '@/utils/format/dates';
 
 export type ContactHostSheetProps = {
   open: boolean;
@@ -72,6 +74,7 @@ export function ContactHostSheet({
   const [sendingFirst, setSendingFirst] = useState(false);
   const [localConversationId, setLocalConversationId] = useState<string | null>(null);
   const [datesModalOpen, setDatesModalOpen] = useState(false);
+  const [voiceSessionOpen, setVoiceSessionOpen] = useState(false);
   const pendingAutoSendRef = useRef(false);
 
   const checkInDate = checkIn ? formatDateToYYYYMMDD(checkIn) : '';
@@ -125,7 +128,7 @@ export function ContactHostSheet({
   const displayCheckOutDate = checkOutDate || resumeCheckOutDate;
   const dateLabel =
     displayCheckInDate && displayCheckOutDate
-      ? `${formatIsoDateForDisplay(displayCheckInDate)} – ${formatIsoDateForDisplay(displayCheckOutDate)}`
+      ? (formatStayDateRange(displayCheckInDate, displayCheckOutDate) ?? '')
       : '';
 
   const showThread =
@@ -196,6 +199,7 @@ export function ContactHostSheet({
     setSendingFirst(false);
     setLocalConversationId(null);
     setDatesModalOpen(false);
+    setVoiceSessionOpen(false);
     pendingAutoSendRef.current = false;
     if (!showThread) setComposeDraft('');
   }, [open, initialDraft, showThread]);
@@ -258,7 +262,44 @@ export function ContactHostSheet({
     sendFirstMessage,
   ]);
 
+  const handlePickFaq = useCallback(
+    (prompt: string) => {
+      const text = prompt.trim();
+      if (!text || sendingFirst || send.isPending) return;
+
+      if (requiresDatesForSend && !hasDates) {
+        setComposeDraft(text);
+        pendingAutoSendRef.current = true;
+        openDatesModal();
+        return;
+      }
+
+      if (status !== 'authenticated') return;
+
+      void sendFirstMessage(text);
+    },
+    [
+      sendingFirst,
+      send.isPending,
+      requiresDatesForSend,
+      hasDates,
+      status,
+      openDatesModal,
+      sendFirstMessage,
+    ]
+  );
+
   const canComposeWithoutDates = !requiresDatesForSend || hasDates;
+
+  const voiceReceptionistEnabled =
+    status === 'authenticated' &&
+    (resumeQuery.data?.voiceReceptionistEnabled === true ||
+      startQuery.data?.voiceReceptionistEnabled === true);
+
+  const startVoiceSession = useCallback(() => {
+    threadSearch.close();
+    setVoiceSessionOpen(true);
+  }, [threadSearch.close]);
 
   const hostAvatarNode = (
     <div className="from-primary to-primary/80 ring-background relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gradient-to-br ring-2">
@@ -303,39 +344,42 @@ export function ContactHostSheet({
         <DialogContent
           showCloseButton={false}
           className="flex h-[min(90dvh,720px)] max-h-[min(92dvh,720px)] w-full max-w-[min(calc(100vw-1.5rem),32rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg sm:p-0"
+          onEscapeKeyDown={(event) => {
+            if (voiceSessionOpen) event.preventDefault();
+          }}
+          onPointerDownOutside={(event) => {
+            if (voiceSessionOpen) event.preventDefault();
+          }}
+          onInteractOutside={(event) => {
+            if (voiceSessionOpen) event.preventDefault();
+          }}
         >
           <DialogHeader className="border-border shrink-0 gap-0 space-y-0 border-b px-5 py-4 text-left">
-            {showThread ? (
-              <GuestChatHeaderBar
-                avatar={hostAvatarNode}
-                title={hostLabel}
-                subtitle={dateLabel ? `${propertyName} · ${dateLabel}` : propertyName}
-                replyStatus={replyStatus}
-                threadSearch={threadSearch}
-                searchEnabled={!messagesLoading && messages.length > 0}
-                trailing={headerCloseButton}
-              />
-            ) : (
-              <div className="flex items-center gap-2 sm:gap-2.5">
-                {hostAvatarNode}
-                <div className="min-w-0 flex-1">
-                  <DialogTitle className="truncate text-sm font-semibold leading-tight">
-                    {hostLabel}
-                  </DialogTitle>
-                  <p className="text-muted-foreground truncate text-xs leading-tight">
-                    {dateLabel ? `${propertyName} · ${dateLabel}` : propertyName}
-                  </p>
-                </div>
-                {headerCloseButton}
-              </div>
-            )}
+            <DialogTitle className="sr-only">{hostLabel}</DialogTitle>
+            <GuestChatHeaderBar
+              avatar={hostAvatarNode}
+              title={hostLabel}
+              subtitle={dateLabel ? `${propertyName} · ${dateLabel}` : propertyName}
+              replyStatus={showThread ? replyStatus : undefined}
+              threadSearch={threadSearch}
+              searchEnabled={showThread && !messagesLoading && messages.length > 0}
+              onStartVoiceSession={
+                voiceReceptionistEnabled && !voiceSessionOpen ? startVoiceSession : undefined
+              }
+              trailing={headerCloseButton}
+            />
           </DialogHeader>
-          {showThread ? (
+          {showThread && !voiceSessionOpen ? (
             <GuestChatSearchPanelRow threadSearch={threadSearch} className="px-5" />
           ) : null}
 
           <div className="bg-muted/20 flex min-h-0 flex-1 flex-col">
-            {loading ? (
+            {voiceSessionOpen ? (
+              <VoiceSessionPanel
+                propertySlug={propertySlug}
+                onClose={() => setVoiceSessionOpen(false)}
+              />
+            ) : loading ? (
               <div className="flex flex-1 items-center justify-center p-4">
                 <Skeleton className="h-24 w-full max-w-xs rounded-2xl" />
               </div>
@@ -370,7 +414,13 @@ export function ContactHostSheet({
                 unsending={unsend.isPending}
               />
             ) : (
-              <div className="flex min-h-0 flex-1 flex-col justify-end">
+              <div className="flex min-h-0 flex-1 flex-col">
+                <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+                  <GuestChatFaqSuggestions
+                    onPick={handlePickFaq}
+                    disabled={sendingFirst || send.isPending}
+                  />
+                </div>
                 <div className="border-border bg-background shrink-0 border-t px-5 py-4 pb-[max(env(safe-area-inset-bottom,0px),1rem)]">
                   <div className="flex items-end gap-2">
                     {canComposeWithoutDates ? (

@@ -35,10 +35,7 @@ import {
   videoPresetThumbnailKey,
 } from '@/features/dashboard/marketing/lib/marketingTemplateThumbnailCache';
 import { runWithConcurrency } from '@/features/dashboard/marketing/lib/marketingThumbnailQueue';
-import {
-  renderDesignPolotnoJsonThumbnail,
-  renderDesignPresetThumbnail,
-} from '@/features/dashboard/marketing/lib/renderMarketingDesignThumbnail';
+import { renderDesignPresetThumbnail } from '@/features/dashboard/marketing/lib/renderMarketingDesignThumbnail';
 import {
   renderVideoPresetThumbnail,
   renderVideoProjectThumbnail,
@@ -281,24 +278,6 @@ export function useMarketingTemplateThumbnails(options: Options) {
   }, [contentType, savedCalendarTemplates, savedRecords]);
 
   useEffect(() => {
-    if (contentType !== 'calendar' || !calendarFormat) return;
-
-    setThumbnails((prev) => {
-      const next = { ...prev };
-      let changed = false;
-      for (const id of presetIds) {
-        for (const key of [id, `preset:${id}`]) {
-          if (key in next) {
-            delete next[key];
-            changed = true;
-          }
-        }
-      }
-      return changed ? next : prev;
-    });
-  }, [contentType, calendarFormat, presetIds]);
-
-  useEffect(() => {
     if (contentType !== 'design' && contentType !== 'video') return;
     return subscribeMarketingThumbnailUpdates((templateId, dataUrl) => {
       setThumbnails((prev) =>
@@ -339,6 +318,25 @@ export function useMarketingTemplateThumbnails(options: Options) {
           if (contentType === 'calendar') {
             next[`preset:${id}`] = memory;
           }
+        }
+      }
+
+      // Commit in-memory hits immediately (additive only — never drop existing
+      // entries here) so flipping back to a previously viewed orientation/format
+      // redisplays instantly instead of waiting on an IndexedDB round trip, while
+      // leaving other presets' current thumbnails in place until they resolve.
+      if (Object.keys(next).length > 0) {
+        let changed = false;
+        const memoryMerged = { ...thumbnailsRef.current };
+        for (const [id, url] of Object.entries(next)) {
+          if (memoryMerged[id] !== url) {
+            memoryMerged[id] = url;
+            changed = true;
+          }
+        }
+        if (changed) {
+          thumbnailsRef.current = memoryMerged;
+          setThumbnails(memoryMerged);
         }
       }
 
@@ -636,6 +634,12 @@ export function useMarketingTemplateThumbnails(options: Options) {
           return;
         }
 
+        // OpenPolotno `toBlob` finds Konva stages by pageId. Compiled docs reuse
+        // `page-1`, so a headless store captures the live editor canvas instead
+        // of this record. Saved design thumbs must come from thumbnailDataUrl
+        // (captured against the mounted Workspace at save/select time).
+        if (contentType === 'design') return;
+
         if (contentType === 'video') {
           if (!isThumbnailRequested(record.id, requestedIdsRef.current)) return;
           await waitForMarketingIdle();
@@ -645,12 +649,7 @@ export function useMarketingTemplateThumbnails(options: Options) {
         setLoadingIds((prev) => new Set(prev).add(record.id));
 
         let dataUrl: string | null = null;
-        if (contentType === 'design') {
-          const polotno = record.designJson.polotno;
-          if (polotno && typeof polotno === 'object') {
-            dataUrl = await renderDesignPolotnoJsonThumbnail(polotno as Record<string, unknown>);
-          }
-        } else {
+        if (contentType === 'video') {
           const template = getVideoCampaignTemplate(
             typeof record.designJson.templateId === 'string'
               ? record.designJson.templateId

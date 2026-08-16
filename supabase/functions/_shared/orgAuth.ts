@@ -61,6 +61,7 @@ export type ParkingRow = {
   slot_label: string;
   parking_type: string;
   rate_per_night: number | null;
+  accepted_vehicle_types: string[];
   settings: Record<string, unknown>;
   created_at: string;
   updated_at: string;
@@ -966,6 +967,7 @@ export function serializeParking(parking: ParkingRow) {
     slotLabel: parking.slot_label,
     parkingType: parking.parking_type,
     ratePerNight: parking.rate_per_night,
+    acceptedVehicleTypes: parking.accepted_vehicle_types ?? ['car'],
     settings: parking.settings ?? {},
     createdAt: parking.created_at,
     updatedAt: parking.updated_at,

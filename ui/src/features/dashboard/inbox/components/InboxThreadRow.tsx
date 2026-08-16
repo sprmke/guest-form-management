@@ -4,7 +4,7 @@ import type { InboxConversation } from '@/features/dashboard/inbox/types/inbox';
 
 import { softBadgeClasses, toneBadgeClasses } from '@/lib/statusToneColors';
 import { cn } from '@/lib/utils';
-import { formatIsoDateForDisplay } from '@/utils/format/dates';
+import { formatStayDateRange } from '@/utils/format/dates';
 
 type Props = {
   conversation: InboxConversation;
@@ -71,8 +71,7 @@ export function InboxThreadRow({ conversation, selected, showPlatform, onSelect 
           conversation.inquiry_check_in &&
           conversation.inquiry_check_out ? (
             <span className="bg-muted/80 text-muted-foreground rounded-md px-1.5 py-0.5 text-[10px] font-medium">
-              {formatIsoDateForDisplay(conversation.inquiry_check_in)} –{' '}
-              {formatIsoDateForDisplay(conversation.inquiry_check_out)}
+              {formatStayDateRange(conversation.inquiry_check_in, conversation.inquiry_check_out)}
             </span>
           ) : null}
           {showPlatform && (

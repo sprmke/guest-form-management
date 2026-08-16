@@ -32,12 +32,14 @@ import type { ListingHostInfo } from '@/features/guest/marketing/shared/componen
 import { useMarketingBrandColor } from '@/features/guest/marketing/shared/context/ModeSwitchTransitionContext';
 
 import { Button } from '@/components/ui/button';
+import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
 import { parseGuestInquiryDateRange, formatDateToYYYYMMDD } from '@/utils/format/dates';
 
 export function PropertyDetailPage() {
   const { propertySlug = '' } = useParams<{ propertySlug: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: propertyData, isLoading, isError } = usePublicPropertyDetail(propertySlug);
+  usePageTitle(publicPageTitle(propertyData?.name ? `${propertyData.name}` : 'Property'));
   const { setBrandColor } = useMarketingBrandColor();
   const { status, requireGuestAuth } = useGuestAuth();
 
@@ -263,7 +265,7 @@ export function PropertyDetailPage() {
         </div>
 
         <div className="container mx-auto px-4 py-8 sm:px-6 lg:px-8">
-          <div className="grid gap-8 lg:grid-cols-3 lg:gap-12">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 lg:gap-12">
             <div className="space-y-10 lg:col-span-2">
               <PropertyOverview
                 name={propertyData.name}

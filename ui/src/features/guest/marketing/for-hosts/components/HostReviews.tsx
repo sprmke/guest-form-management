@@ -36,7 +36,7 @@ export function HostReviews() {
   return (
     <section id="reviews" className="scroll-mt-24 overflow-hidden py-16 sm:py-20 lg:py-28">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-[0.72fr_1.28fr] lg:gap-16">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 lg:grid-cols-[0.72fr_1.28fr] lg:gap-16">
           <div>
             <p className="text-primary mb-3 text-xs font-bold uppercase tracking-[0.2em]">
               Host stories

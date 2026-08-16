@@ -2,9 +2,10 @@ import type { ReactNode } from 'react';
 
 import { Link } from 'react-router-dom';
 
-import { ArrowUpRight, Car, Dog, PartyPopper } from 'lucide-react';
+import { ArrowUpRight, Car, Dog, PartyPopper, X } from 'lucide-react';
 
 import { GuestAvatar } from '@/features/dashboard/bookings/components/GuestAvatar';
+import { ParkingBroadcastCountdown } from '@/features/dashboard/bookings/components/ParkingBroadcastCountdown';
 import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
 import {
   bookingFlagIconChipClass,
@@ -92,7 +93,7 @@ export function AdminTableTh({
   className?: string;
 }) {
   return (
-    <th scope="col" className={cn('text-table-head py-3 text-left', className)}>
+    <th scope="col" className={cn('text-table-head py-3', className, 'text-left')}>
       {children}
     </th>
   );
@@ -179,10 +180,20 @@ export function adminTableMoneyClass(colorClass?: string) {
 }
 
 /** Status column — same wrapper as Bookings table. */
-export function AdminTableStatusBadge({ status }: { status: string }) {
+export function AdminTableStatusBadge({
+  status,
+  parkingBroadcastExpiresAt,
+}: {
+  status: string;
+  /** Renders a live countdown under the badge when status is PENDING_HOST_ACCEPTANCE. */
+  parkingBroadcastExpiresAt?: string | null;
+}) {
   return (
     <div className="inline-flex flex-col gap-1">
       <StatusBadge status={status} />
+      {status === 'PENDING_HOST_ACCEPTANCE' && parkingBroadcastExpiresAt && (
+        <ParkingBroadcastCountdown expiresAt={parkingBroadcastExpiresAt} />
+      )}
     </div>
   );
 }
@@ -247,7 +258,7 @@ export function AdminTableFlagsCell({
   if (!hasAny && hideEmpty) return null;
 
   return (
-    <div className="inline-flex items-center justify-center gap-1.5">
+    <div className="inline-flex items-center justify-start gap-1.5">
       {need_parking ? (
         <span
           title="Needs parking"
@@ -277,13 +288,11 @@ export function AdminTableFlagsCell({
       ) : null}
       {has_invalid_receipt_ai ? (
         <span
-          title="AI: Invalid payment receipt"
-          aria-label="AI detected invalid payment receipt"
+          title="AI: Needs review"
+          aria-label="AI: Needs review"
           className={cn('size-7', bookingFlagIconChipClass.invalidReceipt)}
         >
-          <span className="text-sm font-black leading-none" aria-hidden>
-            !
-          </span>
+          <X className="size-3.5" strokeWidth={2.75} aria-hidden />
         </span>
       ) : null}
       {!hasAny ? (
