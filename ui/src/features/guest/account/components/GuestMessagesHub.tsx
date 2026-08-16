@@ -156,6 +156,7 @@ export function GuestMessagesHub({ threads }: Props) {
                 isLoading={messagesLoading && !!selectedId}
                 threadSearch={threadSearch}
                 searchInHeader
+                faqSuggestions={false}
                 onSend={async (text, opts) => {
                   await send.mutateAsync({
                     text,

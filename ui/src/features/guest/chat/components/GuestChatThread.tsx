@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Loader2, Paperclip, Pencil, Reply, SendHorizontal, Undo2, X } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { GuestChatFaqSuggestions } from '@/features/guest/chat/components/GuestChatFaqSuggestions';
 import {
   canGuestEditMessage,
   canGuestUnsendMessage,
@@ -73,6 +74,8 @@ type Props = {
   /** When set, search UI is rendered in `GuestChatHeaderBar` instead of this thread. */
   threadSearch?: ChatThreadSearchController;
   searchInHeader?: boolean;
+  /** FAQ starters when the thread has no messages yet. Default true. */
+  faqSuggestions?: boolean;
 };
 
 const ACCEPTED_FILE_TYPES =
@@ -97,8 +100,10 @@ export function GuestChatThread({
   onLoadOlder,
   threadSearch: threadSearchProp,
   searchInHeader = false,
+  faqSuggestions = true,
 }: Props) {
   const [draft, setDraft] = useState('');
+  const [pickingFaq, setPickingFaq] = useState(false);
   const [pendingAttachments, setPendingAttachments] = useState<GuestChatAttachment[]>([]);
   const [previewAttachment, setPreviewAttachment] = useState<InboxAttachmentPreview | null>(null);
   const [composerMode, setComposerMode] = useState<ComposerMode>({ kind: 'compose' });
@@ -119,7 +124,7 @@ export function GuestChatThread({
   const headerSearch = searchInHeader || !!threadSearchProp;
 
   const messageTailKey = messages[messages.length - 1]?.id ?? '';
-  const isBusy = sending || editing || unsending || uploadingAttachment;
+  const isBusy = sending || editing || unsending || uploadingAttachment || pickingFaq;
   const canSend =
     composerMode.kind !== 'edit' &&
     (draft.trim().length > 0 || pendingAttachments.length > 0) &&
@@ -128,6 +133,7 @@ export function GuestChatThread({
   useEffect(() => {
     setComposerMode({ kind: 'compose' });
     setDraft('');
+    setPickingFaq(false);
     threadSearch.close();
     setPendingAttachments([]);
   }, [conversationId, threadSearch.close]);
@@ -286,6 +292,22 @@ export function GuestChatThread({
     }
   };
 
+  const handlePickFaq = (prompt: string) => {
+    const text = prompt.trim();
+    if (!text || isBusy || composerMode.kind !== 'compose') return;
+    shouldSmoothScrollRef.current = true;
+    setPickingFaq(true);
+    void onSend(text)
+      .catch((e) => {
+        const message = (e as Error).message;
+        if (isChatActionEligibilityError(message)) return;
+        toast.error(message);
+      })
+      .finally(() => {
+        setPickingFaq(false);
+      });
+  };
+
   const composerBar =
     composerMode.kind === 'reply' ? (
       <ChatComposerContextBar
@@ -325,7 +347,10 @@ export function GuestChatThread({
 
       <div
         ref={scrollContainerRef}
-        className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain px-3 py-2"
+        className={cn(
+          'min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain',
+          !isLoading && faqSuggestions && messages.length === 0 ? 'flex flex-col' : 'px-3 py-2'
+        )}
       >
         {isLoading ? (
           <div className="space-y-3">
@@ -333,6 +358,8 @@ export function GuestChatThread({
               <Skeleton key={i} className="h-14 w-2/3 rounded-2xl" />
             ))}
           </div>
+        ) : faqSuggestions && messages.length === 0 ? (
+          <GuestChatFaqSuggestions onPick={handlePickFaq} disabled={isBusy} />
         ) : (
           <>
             <div ref={topSentinelRef} className="h-px w-full shrink-0" aria-hidden />

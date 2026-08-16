@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 
 import { useGuestAuth } from '@/features/guest/auth/context/GuestAuthContext';
 import { takeContactHostDraft } from '@/features/guest/auth/lib/guestAuthResume';
+import { GuestChatFaqSuggestions } from '@/features/guest/chat/components/GuestChatFaqSuggestions';
 import {
   GuestChatHeaderBar,
   GuestChatSearchPanelRow,
@@ -261,6 +262,33 @@ export function ContactHostSheet({
     sendFirstMessage,
   ]);
 
+  const handlePickFaq = useCallback(
+    (prompt: string) => {
+      const text = prompt.trim();
+      if (!text || sendingFirst || send.isPending) return;
+
+      if (requiresDatesForSend && !hasDates) {
+        setComposeDraft(text);
+        pendingAutoSendRef.current = true;
+        openDatesModal();
+        return;
+      }
+
+      if (status !== 'authenticated') return;
+
+      void sendFirstMessage(text);
+    },
+    [
+      sendingFirst,
+      send.isPending,
+      requiresDatesForSend,
+      hasDates,
+      status,
+      openDatesModal,
+      sendFirstMessage,
+    ]
+  );
+
   const canComposeWithoutDates = !requiresDatesForSend || hasDates;
 
   const voiceReceptionistEnabled =
@@ -386,7 +414,13 @@ export function ContactHostSheet({
                 unsending={unsend.isPending}
               />
             ) : (
-              <div className="flex min-h-0 flex-1 flex-col justify-end">
+              <div className="flex min-h-0 flex-1 flex-col">
+                <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+                  <GuestChatFaqSuggestions
+                    onPick={handlePickFaq}
+                    disabled={sendingFirst || send.isPending}
+                  />
+                </div>
                 <div className="border-border bg-background shrink-0 border-t px-5 py-4 pb-[max(env(safe-area-inset-bottom,0px),1rem)]">
                   <div className="flex items-end gap-2">
                     {canComposeWithoutDates ? (
