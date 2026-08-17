@@ -766,6 +766,9 @@ verify_jwt = false
 [functions.ai-platform-property-settings]
 verify_jwt = false
 
+[functions.ai-platform-credit-wallet]
+verify_jwt = false
+
 [functions.dashboard-assistant-settings]
 verify_jwt = false
 
