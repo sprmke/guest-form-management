@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { ClipboardCheck, Filter, Loader2, Search } from 'lucide-react';
 
 import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
+import { SuperAdminListViewToggle } from '@/features/dashboard/super-admin/components/shared/SuperAdminListViewToggle';
 import { SuperAdminApprovalReviewDialog } from '@/features/dashboard/super-admin/components/super-admin-approvals/SuperAdminApprovalReviewDialog';
 import { SuperAdminApprovalsCardGrid } from '@/features/dashboard/super-admin/components/super-admin-approvals/SuperAdminApprovalsCardGrid';
 import { SuperAdminApprovalsTable } from '@/features/dashboard/super-admin/components/super-admin-approvals/SuperAdminApprovalsTable';
@@ -18,6 +19,7 @@ import {
   superAdminApprovalsHasActiveFilters,
   type SuperAdminApprovalsFilters,
 } from '@/features/dashboard/super-admin/lib/superAdminApprovalsFilters';
+import type { SuperAdminListViewMode } from '@/features/dashboard/super-admin/lib/superAdminListViewMode';
 import type {
   ApprovalQueueItem,
   ExternalReviewApprovalSummary,
@@ -33,6 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useAdminMobileGridViewGuard } from '@/hooks/useAdminMobileGridViewGuard';
 import { useIsBelowLg } from '@/hooks/useMediaQuery';
 
 function ApprovalsEmptyState({ filtered }: { filtered: boolean }) {
@@ -54,13 +57,16 @@ export function SuperAdminApprovalsPage() {
     null
   );
   const [selectedReview, setSelectedReview] = useState<ExternalReviewApprovalSummary | null>(null);
+  const [viewMode, setViewMode] = useState<SuperAdminListViewMode>('table');
   const isMobileLayout = useIsBelowLg();
+  useAdminMobileGridViewGuard(isMobileLayout, viewMode, setViewMode);
 
   const filteredApprovals = useMemo(
     () => filterSuperAdminApprovals(approvals, filters),
     [approvals, filters]
   );
   const hasActiveFilters = superAdminApprovalsHasActiveFilters(filters);
+  const showTableView = viewMode === 'table' && !isMobileLayout;
 
   function handleSelect(item: ApprovalQueueItem) {
     if (isOrgApprovalSummary(item)) {
@@ -155,13 +161,20 @@ export function SuperAdminApprovalsPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            <SuperAdminListViewToggle
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+              hideTableView={isMobileLayout}
+              className="self-end sm:self-auto"
+            />
           </div>
 
           {filteredApprovals.length > 0 ? (
-            isMobileLayout ? (
-              <SuperAdminApprovalsCardGrid approvals={filteredApprovals} onSelect={handleSelect} />
-            ) : (
+            showTableView ? (
               <SuperAdminApprovalsTable approvals={filteredApprovals} onSelect={handleSelect} />
+            ) : (
+              <SuperAdminApprovalsCardGrid approvals={filteredApprovals} onSelect={handleSelect} />
             )
           ) : (
             <ApprovalsEmptyState filtered={hasActiveFilters} />

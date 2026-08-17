@@ -1,5 +1,5 @@
-import { LISTING_VERIFICATION_DOC_LABELS } from '@/features/dashboard/org/lib/listingVerificationCopy';
 import type { ListingAuthorizationAssetsPayload } from '@/features/dashboard/org/lib/listingAuthorizationApi';
+import { LISTING_VERIFICATION_DOC_LABELS } from '@/features/dashboard/org/lib/listingVerificationCopy';
 import type { ListingApprovalReviewTier } from '@/features/dashboard/super-admin/lib/listingApprovalReviewTier';
 
 export type ListingChangeDocId = 'proof' | 'additionalProof' | 'azurePmoConfirmation';

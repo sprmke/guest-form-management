@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 
-import { ArrowDown, ArrowUp, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, HelpCircle, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
@@ -168,8 +168,8 @@ export function SuperAdminHelpFaqsPage() {
   return (
     <div className="space-y-3 sm:space-y-4">
       <AdminPageHeader
-        title="Help Center FAQs"
-        subtitle="Curated cross-cutting FAQs shown to hosts."
+        title="FAQs"
+        subtitle="Curated FAQs shown to hosts."
         actions={
           <Button type="button" onClick={() => setEditingFaq('new')} className="min-h-[44px]">
             <Plus className="size-4" aria-hidden />
@@ -185,7 +185,10 @@ export function SuperAdminHelpFaqsPage() {
       ) : error ? (
         <p className="text-destructive text-sm">Could not load FAQs.</p>
       ) : groupedByCategory.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No FAQs yet.</p>
+        <div className="surface-card flex flex-col items-center justify-center gap-3 px-4 py-14 text-center">
+          <HelpCircle className="text-muted-foreground size-10" aria-hidden />
+          <p className="text-foreground text-sm font-medium">No FAQs yet</p>
+        </div>
       ) : (
         groupedByCategory.map(([category, items]) => (
           <div key={category} className="space-y-2">
@@ -217,7 +220,10 @@ export function SuperAdminHelpFaqsPage() {
         }}
       />
 
-      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+      <AlertDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this FAQ?</AlertDialogTitle>

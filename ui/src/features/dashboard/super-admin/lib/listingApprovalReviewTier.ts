@@ -1,5 +1,5 @@
-import type { ListingVerificationApprovalSummary } from '@/features/dashboard/super-admin/types/approval';
 import type { ListingAuthorizationAssetsPayload } from '@/features/dashboard/org/lib/listingAuthorizationApi';
+import type { ListingVerificationApprovalSummary } from '@/features/dashboard/super-admin/types/approval';
 
 export type ListingApprovalReviewTier = 'base' | 'recommended';
 
