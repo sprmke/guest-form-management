@@ -2,7 +2,7 @@
 title: 'Parking Team — operator guide'
 status: active
 tags: [guides, routes, org, parking]
-updated: 2026-08-02
+updated: 2026-08-17
 ---
 
 # Parking Team — operator guide
@@ -38,7 +38,7 @@ Parking-scoped team management mirrors the property team page:
 
 ## Host-facing knowledge
 
-Parking **Team** controls who can access this slot’s dashboard — bookings (when live), pricing, finance, inbox, and settings. Invite managers, staff, or viewers by Gmail address, or create custom roles with a tailored permission set. The organization owner and org admins appear as managers automatically and aren’t edited from this page.
+Parking **Team** controls who can access this slot's dashboard: bookings (when live), pricing, finance, inbox, and settings. Invite managers, staff, or viewers by Gmail address, or create custom roles with a tailored permission set. The organization owner and org admins appear as managers automatically, and you can't edit them from this page.
 
 **Common host questions**
 

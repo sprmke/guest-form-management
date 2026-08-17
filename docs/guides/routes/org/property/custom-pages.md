@@ -2,7 +2,7 @@
 title: 'Custom Pages'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-15
+updated: 2026-08-17
 ---
 
 # Custom Pages
@@ -19,16 +19,16 @@ Template/visual selection for guest-facing pages, general enough to support mult
 
 ## Host-facing knowledge
 
-Custom Pages shows which visual template is applied to each guest-facing page for this property. In v1 there's one page — the Stay Guide — always rendered with the "Warm Arrival" template; **Preview** opens it exactly as guests will see it.
+Custom Pages shows which visual template is applied to each guest-facing page for this property. In v1 there's one page, the Stay Guide, and it's always rendered with the "Warm Arrival" template. **Preview** opens it exactly as guests will see it.
 
 **Common host questions**
 
 - Q: Can I change how the stay guide looks?
-  A: Not yet — v1 ships one design ("Warm Arrival"). A template picker is planned for a future release.
+  A: Not yet. v1 ships one design ("Warm Arrival"). A template picker is planned for a future release.
 - Q: How do I get a shareable link for the stay guide?
-  A: There isn't a single static link — each guest gets a personalized, token-gated link automatically when their booking reaches ready-for-check-in.
+  A: There isn't one link you can reuse. Each guest gets their own personal link automatically once their booking reaches ready-for-check-in.
 - Q: Where do I edit the actual text (house rules, check-in steps)?
-  A: On **Templates**, not here — Custom Pages only controls the visual template.
+  A: On **Templates**, not here. Custom Pages only controls the visual template.
 
 ## Data model
 

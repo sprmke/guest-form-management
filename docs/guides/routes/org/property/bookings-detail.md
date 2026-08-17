@@ -2,7 +2,7 @@
 title: 'Booking Detail — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-13
+updated: 2026-08-17
 ---
 
 # Booking Detail — operator guide
@@ -15,7 +15,7 @@ Route: `/org/:orgSlug/property/:propertySlug/bookings/:bookingId` (legacy flat: 
 
 | Section                 | E2E save | Validation | Docs       | Notes                                                             |
 | ----------------------- | -------- | ---------- | ---------- | ----------------------------------------------------------------- |
-| View mode               | —        | —          | Documented | Simplified header + regrouped tabs                                |
+| View mode               | —        | —          | Documented | One parent card (`BookingDetailShell`) + tabs inside              |
 | Edit mode               | Yes      | Yes        | Documented | `BookingEditTabs` (real tabs) + sticky save bar                   |
 | Progress panel          | Yes      | —          | Documented | `WorkflowPanel` — separate from the edit form                     |
 | AI Summary & Validation | Yes      | —          | Documented | Admin-triggered job; stale sections stay visible + opt-in Recheck |
@@ -30,8 +30,8 @@ The page auto-refreshes the booking every **60 seconds** while the tab is visibl
 
 **View mode** and **edit mode** are visually distinct on the same route (no modal):
 
-- **View:** `BookingDetailHeader` (identity + quiet stay line + **Edit booking** and `⋯`) + `BookingDetailTabs` (`SegmentedControl`) — **AI Summary** (only after a finished AI Summary run; stays visible while a refresh is in flight), Stay, Guests, Parking (when `need_parking`), Pets (when `has_pets`), Pricing (hidden while `PENDING_REVIEW`), Files. Content renders through read-only panel components in `booking-detail/panels/`. **Landing tab:** AI Summary when a finished run exists, otherwise Stay — decided once per booking after the review query settles, so a later manual tab choice (or a run finishing while the host reads another tab) never moves them. An amber dot on the AI Summary tab means the stored run no longer matches the live booking (outdated) — the tab is not hidden.
-- **Edit:** `BookingEditTabs` — quiet bordered shell (same card language as view) with an "Editing booking" header + **Cancel** / **Save**, then a `SegmentedControl` strip (**Stay** / **Guests** / **Parking** / **Pets**). Document uploaders live on those domain tabs (downpayment on Stay, Valid ID on Guests, pet files on Pets) — there is no separate Edit Files tab. Each tab owns its own `BookingDetailCard tone="edit"` panel(s). Hero and view tabs are hidden while editing. The same **Cancel** / **Save** pair repeats on the sticky footer (desktop) or mobile contextual bar so actions stay reachable while scrolling. Pricing, parking settlement, guest balance, and SD refund edits live on the **Progress** rail — not in this form.
+- **View:** one parent card (`BookingDetailShell`, same chrome as edit) — `BookingDetailHeader` in the card header + `BookingDetailTabs` (`SegmentedControl`) inside the card body — **AI Summary** (only after a finished AI Summary run; stays visible while a refresh is in flight), Stay, Guests, Parking (when `need_parking`), Pets (when `has_pets`), Pricing (hidden while `PENDING_REVIEW`), Files. Content renders through read-only panel components in `booking-detail/panels/` (each still a `BookingDetailCard` inside the shell). **Landing tab:** AI Summary when a finished run exists, otherwise Stay — decided once per booking after the review query settles, so a later manual tab choice (or a run finishing while the host reads another tab) never moves them. An amber dot on the AI Summary tab means the stored run no longer matches the live booking (outdated) — the tab is not hidden.
+- **Edit:** `BookingEditTabs` — same `BookingDetailShell` as view, with an "Editing booking" header + **Cancel** / **Save**, then a `SegmentedControl` strip (**Stay** / **Guests** / **Parking** / **Pets**). Document uploaders live on those domain tabs (downpayment on Stay, Valid ID on Guests, pet files on Pets) — there is no separate Edit Files tab. Each tab owns its own `BookingDetailCard tone="edit"` panel(s). Hero and view tabs are hidden while editing. The same **Cancel** / **Save** pair repeats on the sticky footer (desktop) or mobile contextual bar so actions stay reachable while scrolling. Pricing, parking settlement, guest balance, and SD refund edits live on the **Progress** rail — not in this form.
 
 **Edit booking** on the header (desktop) or mobile summary opens edit mode inline in the left column.
 
@@ -39,7 +39,7 @@ The page auto-refreshes the booking every **60 seconds** while the tab is visibl
 
 ## View mode
 
-**Header** (`BookingDetailHeader`): guest name, `StatusBadge`, booking-source badge, one muted stay line (dates + pax/nights), and the page's only primary action — **Edit booking** — beside a single **More actions** (`⋯`) trigger.
+**Header** (`BookingDetailHeader`): guest name, `StatusBadge`, booking-source badge, one muted stay line (dates + pax/nights), and the page's only primary action — **Edit booking** — beside a single **More actions** (`⋯`) trigger. It is the header band of `BookingDetailShell`, not a separate card. Tabs sit in the same parent card.
 
 **Actions** (`BookingDetailActionsMenu`, fed by `buildBookingDetailActions`), in two groups separated by a divider:
 
@@ -229,66 +229,66 @@ Property-scoped admin session + allow list (`RequireAdmin` / org context). Same 
 
 ## Host-facing knowledge
 
-This is the page a host opens to manage one specific booking end to end — guest details, documents, pricing, and every step of the check-in/check-out workflow.
+This is the page a host opens to manage one specific booking end to end: guest details, documents, pricing, and every step of the check-in/check-out workflow.
 
 **Common host questions**
 
 - Q: Why can't I see the pricing yet?
-  A: Pricing only appears once you've moved the booking past the initial review step — this keeps the page focused on reviewing the guest's request first.
+  A: Pricing only appears once you've moved the booking past the initial review step. This keeps the page focused on reviewing the guest's request first.
 - Q: A fee I expected isn't listed under Rates & fees.
-  A: The list only shows amounts that are actually recorded on this booking. Pet and additional-guest fees appear once they apply, so a missing line means there's nothing to charge for it — not that a value is hidden.
+  A: The list only shows amounts that are actually recorded on this booking. Pet and additional-guest fees appear once they apply, so a missing line just means there's nothing to charge for it, not that a value is hidden.
 - Q: What's the difference between "Balance after down payment" and "Total guest balance"?
-  A: "Balance after down payment" is what remains on the room rate after the down payment. "Total guest balance" under Guest settlement is everything the guest still owes you in total, including the security deposit and any pet or additional-guest fees — that's the figure to collect against, and "Unpaid" is what's left of it.
+  A: "Balance after down payment" is what remains on the room rate after the down payment. "Total guest balance" under Guest settlement is everything the guest still owes you in total, including the security deposit and any pet or additional-guest fees. That's the figure to collect against, and "Unpaid" is what's left of it.
 - Q: Why isn't parking part of the guest's total?
   A: Parking money is handled on the Parking Request step, not with the stay balance, so it's listed in its own Parking section. That section also shows what you pay the parking owner, which is your cost rather than a guest charge.
 - Q: Why does one guest show "Not required" instead of an ID?
   A: A government ID is only required for guests 18 and over, so under-age guests show "Not required". A dash means their age hasn't been recorded yet, so there's nothing to judge the requirement against.
 - Q: What is the document checks section?
-  A: It lists every receipt and ID the system has reviewed so far. A teal check means the check passed, a rose cross means it failed, and an amber triangle means it needs a closer look — hover or focus the mark for the exact wording. Each row also shows a thumbnail of the file and a short reason; tap the thumbnail or the document name to open it full size, where a colored banner above the file states the result and the reason so you can judge the file yourself. Items needing a second look are listed first, and the count beside the title tells you how many.
-- Q: I edited the guest's check-in date and now the booking jumped back to review — why?
+  A: It lists every receipt and ID the system has reviewed so far. A teal check means the check passed, a rose cross means it failed, and an amber triangle means it needs a closer look. Hover or focus the mark for the exact wording. Each row also shows a thumbnail of the file and a short reason; tap the thumbnail or the document name to open it full size, where a colored banner above the file states the result and the reason so you can judge the file yourself. Items needing a second look are listed first, and the count beside the title tells you how many.
+- Q: I edited the guest's check-in date and now the booking jumped back to review. Why?
   A: Changing a detail that affects the booking's documents or paperwork (dates, contact info, parking/pet info, uploaded IDs) automatically sends it back to the review stage so those steps get re-checked with the new information.
 - Q: Will editing a booking send the guest another email?
-  A: No — saving changes on this page only updates the booking record. It never re-sends guest emails on its own; those only go out from the workflow actions on the right side.
-- Q: The guest submitted their security deposit refund form — why doesn't it show yet?
+  A: No. Saving changes on this page only updates the booking record. It never re-sends guest emails on its own; those only go out from the workflow actions on the right side.
+- Q: The guest submitted their security deposit refund form. Why doesn't it show yet?
   A: The page checks for updates automatically every minute. Tap **Check** on the Guest SD refund form card if you need it right away.
 - Q: What does Run check-out automation do?
-  A: It checks **this booking only** — send the Check-out Instructions email if it is time (from Property Settings → SD refund email lead), even if the balance is unpaid, and move the booking to Ready for Check-out only if the remaining balance is settled with a receipt uploaded. Other stays are handled by the scheduled job in the background; this button does not touch them.
+  A: It checks **this booking only**: sends the Check-out Instructions email if it is time (from Property Settings → SD refund email lead), even if the balance is unpaid, and moves the booking to Ready for Check-out only if the remaining balance is settled with a receipt uploaded. Other stays are handled by the scheduled job in the background; this button does not touch them.
 - Q: Where do I resend the Check-out Instructions email?
   A: On **Ready for Check-out**, under Automation Triggers. It resends it and does not move the booking to the next step.
 - Q: Can I go back a step if I made a mistake?
-  A: Yes — **Return to \<step\>** at the bottom left moves the booking to previous status. Existing fields and documents will be reset, and no emails will be sent. It always names the step you're moving to and asks you to confirm.
+  A: Yes. **Return to \<step\>** at the bottom left moves the booking to previous status. Existing fields and documents will be reset, and no emails will be sent. It always names the step you're moving to and asks you to confirm.
 - Q: What do the dots under the step name mean?
-  A: One dot per step, left to right. The bigger colored dot is where the booking actually is right now, in that status's own color — the same colors you see on the bookings list and calendar. Solid teal dots are steps already done, hollow ones haven't been reached. Hover any dot to see its name and state, and tap a done dot to jump straight to it.
+  A: One dot per step, left to right. The bigger colored dot is where the booking actually is right now, shown in that status's own color, the same colors you see on the bookings list and calendar. Solid teal dots are steps already done, hollow ones haven't been reached. Hover any dot to see its name and state, and tap a done dot to jump straight to it.
 - Q: What do Auto and Manual mean on a step?
   A: Auto means this moves to the next step automatically once all required fields and documents are complete. Manual means you Proceed or mark it as complete. The same pills are on each section card and on the list icon checklist.
-- Q: The progress panel only shows one step now — where did the full list go?
-  A: The panel shows the step you're working on so the action you need is always in view. Tap the list icon in its top-right corner for the whole guide — what each step is for, what is required, Auto or Manual, when it moves (including Automation Triggers on check-in and check-out), and when the current stage started.
+- Q: The progress panel only shows one step now. Where did the full list go?
+  A: The panel shows the step you're working on so the action you need is always in view. Tap the list icon in its top-right corner for the whole guide: what each step is for, what is required, Auto or Manual, when it moves (including Automation Triggers on check-in and check-out), and when the current stage started.
 - Q: How do I look at an earlier step?
-  A: Tap any filled dot on the row of dots, use the arrows beside the step name, swipe the panel sideways on a phone, or pick the step from the checklist. You can only look back at steps the booking has already passed, so tapping the right arrow until it stops brings you back to where the booking actually is. While you're looking at an earlier step you can still edit that step's fields and tap **Save** — Proceed and Cancel stay hidden so you don't move the booking from the wrong stage.
+  A: Tap any filled dot on the row of dots, use the arrows beside the step name, swipe the panel sideways on a phone, or pick the step from the checklist. You can only look back at steps the booking has already passed, so tapping the right arrow until it stops brings you back to where the booking actually is. While you're looking at an earlier step you can still edit that step's fields and tap **Save**; Proceed and Cancel stay hidden so you don't move the booking from the wrong stage.
 - Q: How do I change pricing or fees after we've already moved past review?
-  A: On the current Progress step, edit the fields — they save on their own. To fix an earlier step, open it on the Progress panel (filled dots / arrows), edit, and tap **Save**. You don't need Edit Booking for pricing or settlement.
-- Q: The booking is finished — what does the progress panel show now?
-  A: A closing summary: the date it was completed, how much the guest settled at check-out, and how much of the deposit went back to them, plus a link to the refund receipt if you uploaded one. There are no step buttons because there is nothing left to move. To correct pricing or refund figures, tap back to that earlier step on the Progress panel and Save. The full refund details — method, bank, and the guest's feedback — are also on the Pricing tab.
-- Q: The arrows by the step name and the buttons at the bottom both point left and right — what's the difference?
+  A: On the current Progress step, edit the fields and they save on their own. To fix an earlier step, open it on the Progress panel (filled dots / arrows), edit, and tap **Save**. You don't need Edit Booking for pricing or settlement.
+- Q: The booking is finished. What does the progress panel show now?
+  A: A closing summary: the date it was completed, how much the guest settled at check-out, and how much of the deposit went back to them, plus a link to the refund receipt if you uploaded one. There are no step buttons because there is nothing left to move. To correct pricing or refund figures, tap back to that earlier step on the Progress panel and Save. The full refund details, including method, bank, and the guest's feedback, are also on the Pricing tab.
+- Q: The arrows by the step name and the buttons at the bottom both point left and right. What's the difference?
   A: The arrows next to the step name only change what you're looking at; nothing happens to the booking. **Return to …** and **Proceed to …** at the bottom actually move the booking, and always ask you to confirm first.
 - Q: Why can't I cancel this booking?
   A: Cancelling is only available up to Ready for Check-in. Once a booking reaches Ready for Check-out the stay has already happened, so it gets finished or refunded instead of cancelled.
 - Q: Where is the stay guide link?
   A: In the `⋯` menu next to **Edit booking**, as **Open stay guide** and **Copy stay guide link**. It used to sit in the progress panel, but it's something you send the guest rather than a step you work through, so it moved in with the other booking actions. It appears once the booking is Ready for Check-in or later and the link has been prepared.
 - Q: Where do I replace a receipt or pet file when editing?
-  A: On the matching Edit tab — downpayment receipt under Stay (not for Airbnb), guest IDs under Guests, vaccination record and pet photo under Pets when pets are on. Browse every uploaded file from the view-mode Files tab.
+  A: On the matching Edit tab: downpayment receipt under Stay (not for Airbnb), guest IDs under Guests, vaccination record and pet photo under Pets when pets are on. Browse every uploaded file from the view-mode Files tab.
 - Q: Where is the AI Summary & Validation button?
   A: In the `⋯` menu next to **Edit booking** as **AI Summary**.
 - Q: Can I open a file straight from the AI results?
-  A: Yes — file names in the AI notes (guest IDs, receipts, pet photo, vaccination record) are links. Clicking one opens the same file preview used elsewhere, on top of the summary.
+  A: Yes. File names in the AI notes (guest IDs, receipts, pet photo, vaccination record) are links. Clicking one opens the same file preview used elsewhere, on top of the summary.
 - Q: Why don't I see an AI Summary tab?
-  A: That tab appears only after you finish an **AI Summary** run for this booking. Opening the booking never runs AI on its own — that saves tokens. Re-open the panel from the `⋯` menu to read the same results, or use the tab once it is available.
-- Q: What’s the difference between Manual and AI check on Pending Review?
-  A: **Choose how to review this booking** sits above those two options. Manual: you review the booking yourself, then tick the confirmation. AI check: run the summary first, then confirm after you’ve looked at the results. If **Recheck** appears, it is optional — you can still tick the confirmation without running it again. Either path still needs the checkbox — the AI panel does not mark the booking reviewed on its own.
+  A: That tab appears only after you finish an **AI Summary** run for this booking. Opening the booking never runs AI on its own, which saves tokens. Re-open the panel from the `⋯` menu to read the same results, or use the tab once it is available.
+- Q: What's the difference between Manual and AI check on Pending Review?
+  A: **Choose how to review this booking** sits above those two options. Manual: you review the booking yourself, then tick the confirmation. AI check: run the summary first, then confirm after you've looked at the results. If **Recheck** appears, it is optional, so you can still tick the confirmation without running it again. Either path still needs the checkbox; the AI panel does not mark the booking reviewed on its own.
 - Q: Does the AI summary replace the manual review checkbox?
-  A: No — the AI panel is a read-only review aid. The checkbox on the **Pending Review** workflow card is still how you mark the booking as reviewed.
+  A: No. The AI panel is a read-only review aid. The checkbox on the **Pending Review** workflow card is still how you mark the booking as reviewed.
 - Q: Can I re-run AI Summary after it finishes?
-  A: Only when something the check looked at has changed (dates, guests, files, pricing) or the first check failed. Tap **Recheck** — unchanged sections are skipped so it does not spend extra AI. Going back a workflow step without editing the booking does not require a recheck.
+  A: Only when something the check looked at has changed (dates, guests, files, pricing) or the first check failed. Tap **Recheck**. Unchanged sections are skipped so it does not spend extra AI. Going back a workflow step without editing the booking does not require a recheck.
 - Q: Why does a section say Outdated?
   A: The booking details or files changed after the last check. The previous notes stay on the tab, muted, so you can still read them; tap **Recheck** to check the current data. The tab itself does not disappear.
 - Q: Why are some sections skipped or showing "No AI needed"?
@@ -306,6 +306,7 @@ This is the page a host opens to manage one specific booking end to end — gues
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Page                                       | `ui/src/features/dashboard/bookings/pages/BookingDetailPage.tsx`                                                                                                                        |
 | View header                                | `ui/src/features/dashboard/bookings/components/booking-detail/BookingDetailHeader.tsx`                                                                                                  |
+| View/edit parent card                      | `ui/src/features/dashboard/bookings/components/booking-detail/primitives/BookingDetailShell.tsx`                                                                                        |
 | View tabs                                  | `ui/src/features/dashboard/bookings/components/booking-detail/BookingDetailTabs.tsx`                                                                                                    |
 | View panels                                | `ui/src/features/dashboard/bookings/components/booking-detail/panels/*.tsx` (`AiSummaryPanel`, `StayDetailsPanel`, …)                                                                   |
 | AI Summary results (modal + tab)           | `ui/src/features/dashboard/bookings/components/booking-detail/BookingAiSummaryResults.tsx`                                                                                              |

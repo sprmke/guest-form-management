@@ -2,7 +2,7 @@
 title: 'Org parkings list — operator guide'
 status: active
 tags: [guides, routes, org, parking]
-updated: 2026-08-02
+updated: 2026-08-17
 ---
 
 # Org parkings list — operator guide
@@ -19,7 +19,7 @@ Lists all parking slots for the organization. **UI mirrors** `/org/:orgSlug/prop
 
 ## Host-facing knowledge
 
-This is your parking inventory hub — every slot your organization offers, with search, filters, and summary stats similar to the properties page. Each card shows location, type, cover photo, and high-level reservation metrics. From here you can open a slot’s dashboard, copy its public booking link, or add a new parking space.
+This is your parking inventory hub, showing every slot your organization offers, with search, filters, and summary stats similar to the properties page. Each card shows location, type, cover photo, and high-level reservation metrics. From here you can open a slot’s dashboard, copy its public booking link, or add a new parking space.
 
 **Common host questions**
 
@@ -28,7 +28,7 @@ This is your parking inventory hub — every slot your organization offers, with
 - Q: How do I add a new parking slot?
   A: Tap **Add parking** (or use the **+** menu in the sidebar switcher), then complete setup on the new slot’s settings page.
 - Q: What do the revenue and occupancy numbers mean?
-  A: They reflect reservation activity for each slot. Full reservation booking flows are still rolling out — treat dashboard-style metrics as previews until reservation data is connected end to end.
+  A: They reflect reservation activity for each slot. Full reservation booking flows are still rolling out, so treat dashboard-style metrics as previews until reservation data is connected end to end.
 
 ---
 

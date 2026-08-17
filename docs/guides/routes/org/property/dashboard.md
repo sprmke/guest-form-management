@@ -151,18 +151,18 @@ Cash flow / breakdown / transactions / calendar data still come from `finance-li
 
 ## Host-facing knowledge
 
-This is the home page for a single property — period performance first, then the calendar beside what needs attention, cash charts, and maintenance/transactions for the dates you picked.
+This is the home page for a single property. It starts with period performance, then the calendar beside what needs attention, cash charts, and maintenance/transactions for the dates you picked.
 
 **Common host questions**
 
 - Q: What is the Maintenance card?
   A: A short list of property reminders due in the selected period, with how many are still pending. Open **View** to manage all reminders.
 - Q: What does the "Total Bookings" number mean?
-  A: It shows how many nights you had booked out of the days in the selected period (for example, 18 out of 30 nights) — not a simple count of bookings.
+  A: It shows how many nights you had booked out of the days in the selected period (for example, 18 out of 30 nights), not a simple count of bookings.
 - Q: Can guests see this page?
   A: No, this is only visible to you and your team. Use **Guest pages** to open what guests see on your public site.
 - Q: Does changing the date range affect my actual bookings?
-  A: No, changing the date range here only changes which period the numbers, maintenance list, and calendar reflect — it doesn't modify anything.
+  A: No, changing the date range here only changes which period the numbers, maintenance list, and calendar reflect. It doesn't modify anything.
 - Q: What does the calendar Price toggle show?
   A: The full booking amount for that stay (all nights added together), not the nightly rate.
 - Q: A contract-expired reminder appeared. If I close it, will it come back?

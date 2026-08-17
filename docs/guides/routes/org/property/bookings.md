@@ -2,7 +2,7 @@
 title: 'Bookings List — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-05
+updated: 2026-08-17
 ---
 
 # Bookings List — operator guide
@@ -47,13 +47,13 @@ This page is your main dashboard for all bookings at this property. Summary card
 **Common host questions**
 
 - Q: What do the summary cards at the top mean?
-  A: They group bookings by where they are in your workflow — things needing your action, waiting on guest documents, confirmed upcoming stays, and past or cancelled bookings. Tap a card to filter the list.
+  A: They group bookings by where they are in your workflow: things needing your action, waiting on guest documents, confirmed upcoming stays, and past or cancelled bookings. Tap a card to filter the list.
 - Q: Can I move a booking forward without opening every detail page?
-  A: Yes — in kanban view you can drag bookings between columns or click a card to open a quick workflow panel with the same actions as the full booking page.
+  A: Yes. In kanban view you can drag bookings between columns or click a card to open a quick workflow panel with the same actions as the full booking page.
 - Q: How do I create a new booking?
-  A: Use **New booking** in the page header — it opens the guest booking form for this property.
+  A: Use **New booking** in the page header. It opens the guest booking form for this property.
 - Q: Can I bulk-import bookings from a spreadsheet?
-  A: Yes — use **Import** beside **New booking** (property bookings only). Upload a CSV or Excel file (or download your Google Sheet as Excel/CSV first), confirm column mapping, then review the rows. Select **Need fixing** to see problem rows; **Fix** opens the complete row so you can correct every invalid value together. **Skipped** rows stay openable the same way — use **Restore** to bring them back, or **Fix** to correct them. Imported bookings start in **Imported** status and do not trigger new-booking emails or calendar events.
+  A: Yes. Use **Import** beside **New booking** (property bookings only). Upload a CSV or Excel file (or download your Google Sheet as Excel/CSV first), confirm column mapping, then review the rows. Select **Need fixing** to see problem rows; **Fix** opens the complete row so you can correct every invalid value together. **Skipped** rows stay openable the same way, so use **Restore** to bring them back, or **Fix** to correct them. Imported bookings start in **Imported** status and don't trigger new-booking emails or calendar events.
 
 ---
 

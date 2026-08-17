@@ -2,7 +2,7 @@
 title: 'Finance — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-04
+updated: 2026-08-17
 ---
 
 # Finance — operator guide
@@ -44,18 +44,18 @@ The parking-scoped finance page (`/org/:orgSlug/parking/:parkingSlug/finance`) r
 
 ## Host-facing knowledge
 
-Finance gives hosts one place to see how much money is coming in and going out for a property over a chosen date range — booking income alongside manually-added expenses and other income, with charts and a combined transaction list. Hosts can add one-off or recurring expenses/income (like monthly utility bills), get a Telegram reminder before each is due, and export a PDF report for any period.
+Finance gives hosts one place to see how much money is coming in and going out for a property over a chosen date range. That includes booking income alongside manually-added expenses and other income, shown with charts and a combined transaction list. Hosts can add one-off or recurring expenses/income (like monthly utility bills), get a Telegram reminder before each is due, and export a PDF report for any period.
 
 **Common host questions**
 
-- Q: Why does a booking show up in my Finance list — did someone add it manually?
-  A: No — every stay's income is pulled in automatically alongside anything you add manually (like expenses). You don't need to add booking income yourself.
+- Q: A booking showed up in my Finance list. Did someone add it manually?
+  A: No. Every stay's income comes in automatically, alongside anything you add manually like expenses. You don't need to add booking income yourself.
 - Q: Can I get reminded before a bill is due?
-  A: Yes — when adding a transaction you can turn on a Telegram reminder with how many days before the due date (and how often) you want to be notified.
+  A: Yes. When adding a transaction you can turn on a Telegram reminder with how many days before the due date, and how often, you want to be notified.
 - Q: How do I get a report to send to my accountant?
-  A: Use **Export report** in the page header — you can export just the summary, just stays, just transactions, or a full combined report as a PDF for the selected date range.
-- Q: I set up a recurring expense — can I edit just one occurrence without changing future ones?
-  A: Yes — when editing or deleting a recurring transaction you're asked whether the change applies to just that occurrence, that one and all future ones, or the whole series.
+  A: Use **Export report** in the page header. You can export just the summary, just stays, just transactions, or a full combined report as a PDF for the date range you picked.
+- Q: I set up a recurring expense. Can I edit just one occurrence without changing future ones?
+  A: Yes. When editing or deleting a recurring transaction you're asked whether the change applies to just that occurrence, that one and all future ones, or the whole series.
 
 ---
 

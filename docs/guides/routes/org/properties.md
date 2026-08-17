@@ -2,7 +2,7 @@
 title: 'Organization Properties — operator guide'
 status: active
 tags: [guides, routes, org, properties]
-updated: 2026-08-02
+updated: 2026-08-17
 ---
 
 # Organization Properties — operator guide
@@ -44,7 +44,7 @@ This page is the catalog of every rental you operate under the organization. Sum
 - Q: Why can’t I see the **Add property** button?
   A: Only the organization owner (and platform admin) can create new properties. Org admins can view and edit existing ones but not add listings.
 - Q: How do I send a guest to book a specific unit?
-  A: Open the property’s actions menu and choose **Copy guest link** or **Guest calendar** — both point guests to that property’s public booking entry.
+  A: Open the property’s actions menu and choose **Copy guest link** or **Guest calendar**. Both point guests to that property’s public booking entry.
 
 ---
 

@@ -2,7 +2,7 @@
 title: 'Property Guest Inbox'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-09
+updated: 2026-08-17
 ---
 
 # Property Guest Inbox
@@ -28,7 +28,7 @@ Property operators open Guest Inbox scoped to this property. **Web** threads are
 
 ## Host-facing knowledge
 
-This is where you read and reply to guest messages for this property — website chat plus Facebook and Instagram when connected. Use **Manage** to connect Meta, save quick replies, and turn on AI automation. Web chat threads belong to this property only; social messages use your connected Facebook Page (this property’s own connection, or the shared organization Page).
+This is where you read and reply to guest messages for this property: website chat plus Facebook and Instagram when connected. Use **Manage** to connect Meta, save quick replies, and turn on AI automation. Web chat threads belong to this property only; social messages use your connected Facebook Page (this property’s own connection, or the shared organization Page).
 
 **Common host questions**
 
