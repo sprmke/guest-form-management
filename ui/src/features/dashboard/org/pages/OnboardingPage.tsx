@@ -12,11 +12,11 @@ import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSes
 import { OnboardingHostAccessVerificationSection } from '@/features/dashboard/org/components/onboarding/OnboardingHostAccessVerificationSection';
 import { OnboardingHostVerificationSection } from '@/features/dashboard/org/components/onboarding/OnboardingHostVerificationSection';
 import { OnboardingParkingVerificationSection } from '@/features/dashboard/org/components/onboarding/OnboardingParkingVerificationSection';
-import { OnboardingProofUpload } from '@/features/dashboard/org/components/onboarding/OnboardingProofUpload';
 import {
   OnboardingProfileHeader,
   readGoogleAvatarUrl,
 } from '@/features/dashboard/org/components/onboarding/OnboardingProfileHeader';
+import { OnboardingProofUpload } from '@/features/dashboard/org/components/onboarding/OnboardingProofUpload';
 import { OnboardingStepHeader } from '@/features/dashboard/org/components/onboarding/OnboardingStepHeader';
 import { OnboardingTrustNotice } from '@/features/dashboard/org/components/onboarding/OnboardingTrustNotice';
 import { VerificationFieldLabel } from '@/features/dashboard/org/components/onboarding/VerificationFieldLabel';

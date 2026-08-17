@@ -1,5 +1,5 @@
-import type { ListingContractRenewalCandidate } from '@/features/dashboard/org/lib/listingContractRenewalCandidates';
 import type { ListingKind } from '@/features/dashboard/org/lib/listingAuthorization';
+import type { ListingContractRenewalCandidate } from '@/features/dashboard/org/lib/listingContractRenewalCandidates';
 
 export type ListingContractRenewalRouteContext = {
   isOrgOnlyRoute: boolean;
