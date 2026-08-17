@@ -2,7 +2,7 @@
 title: 'Guest & host auth — operator guide'
 status: active
 tags: [guides, routes, auth]
-updated: 2026-08-02
+updated: 2026-08-17
 ---
 
 # Guest & host auth — operator guide
@@ -67,16 +67,16 @@ Guards send unauthenticated hosts to **`hostLoginPath(currentPath)`**.
 
 ## Host-facing knowledge
 
-Hosts sign in with their Google account — there's no separate host username/password to remember. Guests never need to create an account until the moment they're ready to actually book.
+Hosts sign in with their Google account, so there's no separate host username or password to remember. Guests never need to create an account until the moment they're ready to actually book.
 
 **Common host questions**
 
 - Q: How do I sign in to my dashboard?
-  A: Use "Continue with Google" on the host sign-in page — no separate password is needed.
-- Q: I can't find a password option — is that normal?
+  A: Use "Continue with Google" on the host sign-in page. No separate password is needed.
+- Q: I can't find a password option. Is that normal?
   A: Yes, right now signing in as a host only works through your Google account.
 - Q: Why does a guest get asked to sign in partway through booking, not at the start?
-  A: Guests can browse dates and start filling out the form freely — they're only asked to verify their identity right before the booking is actually submitted.
+  A: Guests can browse dates and start filling out the form freely. They're only asked to verify their identity right before the booking is actually submitted.
 - Q: What sign-in options do guests have?
   A: They can use a one-time code sent to their email, or sign in with Google or Facebook.
 

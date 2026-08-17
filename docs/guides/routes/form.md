@@ -2,7 +2,7 @@
 title: 'Guest Form — operator guide'
 status: active
 tags: [guides, routes]
-updated: 2026-08-03
+updated: 2026-08-17
 ---
 
 # Guest Form — operator guide
@@ -33,15 +33,15 @@ Legacy **`/form?property=<slug>`** redirects to the scoped route. Deprecated que
 
 ## Host-facing knowledge
 
-The booking form walks a guest through their info, stay dates and guest list, optional paid parking, optional pets, and — for non-Airbnb bookings — a downpayment receipt upload. A guest can reopen their own submission to make changes only while it's still awaiting your review; once you've started processing it, they're told to contact you directly instead of editing it themselves.
+The booking form walks a guest through their info, stay dates and guest list, optional paid parking, optional pets, and (for non-Airbnb bookings) a downpayment receipt upload. A guest can reopen their own submission to make changes only while it's still awaiting your review; once you've started processing it, they're told to contact you directly instead of editing it themselves.
 
 **Common host questions**
 
 - Q: A guest says they can no longer edit their booking form.
   A: Guests can only edit their own submission while it's still in the initial "awaiting review" stage. Once you've moved it forward, they're shown a message to contact you on Facebook or Airbnb for changes instead.
 - Q: Why doesn't the Airbnb booking form ask for a payment receipt?
-  A: Airbnb bookings skip the downpayment step entirely — Airbnb handles that payment on their platform, not through Kame Home.
-- Q: A guest tried to book dates that are already taken — what do they see?
+  A: Airbnb bookings skip the downpayment step entirely, since Airbnb handles that payment on their platform, not through Kame Home.
+- Q: A guest tried to book dates that are already taken. What do they see?
   A: An "already booked" message telling them those dates aren't available, so they can pick different ones.
 
 ---

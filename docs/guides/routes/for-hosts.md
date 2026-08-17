@@ -2,7 +2,7 @@
 title: 'For hosts — operator guide'
 status: active
 tags: [guides, routes]
-updated: 2026-08-02
+updated: 2026-08-17
 ---
 
 # For hosts — operator guide
@@ -49,14 +49,14 @@ The curtain closes over 500 ms, holds the Kame Homes wordmark for 350 ms, then r
 
 ## Host-facing knowledge
 
-This is the marketing page that introduces the platform to property owners before they sign up — it walks through what the dashboard can do without requiring an account.
+This is the marketing page that introduces the platform to property owners before they sign up. It walks through what the dashboard can do without requiring an account.
 
 **Common host questions**
 
 - Q: Can I try the dashboard without signing up?
   A: You can watch the interactive tour on this page to see how everything works, but you'll need to sign in with Google to access your own dashboard.
 - Q: Why is the narration muted when the tour starts?
-  A: Browsers block sound from auto-playing — tap the unmute button next to the play controls to hear the narration.
+  A: Browsers block sound from auto-playing, so tap the unmute button next to the play controls to hear the narration.
 - Q: I'm signed in as a guest, how do I get to my host dashboard?
   A: Use "Become a host?" to switch into host mode, then sign in or go straight to your dashboard from the account menu.
 

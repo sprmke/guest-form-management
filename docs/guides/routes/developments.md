@@ -2,7 +2,7 @@
 title: 'Developments (guest marketing) — operator guide'
 status: active
 tags: [guides, routes, developments]
-updated: 2026-08-06
+updated: 2026-08-17
 ---
 
 # Developments (guest marketing) — operator guide
@@ -42,14 +42,14 @@ Condominium / building marketing pages (PMA `features/marketing/developments/**`
 
 ## Host-facing knowledge
 
-Development pages market a whole building or condominium — guests can browse units, parking slots, and building amenities before opening an individual home listing.
+Development pages market a whole building or condominium, so guests can browse units, parking slots, and building amenities before opening an individual home listing.
 
 **Common host questions**
 
 - Q: When should I use a development page instead of a single property listing?
-  A: Use it when you manage multiple units or shared parking in one building — guests see the building first, then pick a unit or slot.
+  A: Use it when you manage multiple units or shared parking in one building. Guests see the building first, then pick a unit or slot.
 - Q: What are the custom form links on a development?
-  A: They're optional public questionnaires (for example parking interest surveys) — separate from the main guest booking form and not wired to live submissions yet.
+  A: They're optional public questionnaires, like parking interest surveys. They're separate from the main guest booking form and not wired to live submissions yet.
 - Q: Why can guests see parking on my development but not book it there?
   A: The parking list is informational today; operational parking payment still goes through the booking workflow after a guest reserves a stay.
 

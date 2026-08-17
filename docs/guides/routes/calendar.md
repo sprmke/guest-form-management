@@ -2,7 +2,7 @@
 title: 'Calendar (booking picker) — operator guide'
 status: active
 tags: [guides, routes, calendar]
-updated: 2026-08-04
+updated: 2026-08-17
 ---
 
 # Calendar (booking picker) — operator guide
@@ -53,14 +53,14 @@ Property slug is **not** passed as `?property=` on new links — it is the **`:p
 
 ## Host-facing knowledge
 
-This is the guest-facing date picker guests see before filling out a booking form — it shows which dates are already taken and blocks anything that overlaps an existing (non-cancelled) stay.
+This is the guest-facing date picker guests see before filling out a booking form. It shows which dates are already taken and blocks anything that overlaps an existing (non-cancelled) stay.
 
 **Common host questions**
 
 - Q: Why does a guest need to sign in just to pick dates?
-  A: They don't — browsing and picking dates is open to everyone. Signing in is only required at the very last step, right before they move on to the actual booking form.
+  A: They don't. Browsing and picking dates is open to everyone; signing in is only required at the very last step, right before they move on to the actual booking form.
 - Q: If I cancel a booking, do those dates open back up here right away?
-  A: Yes — cancelled bookings no longer block dates on this calendar.
+  A: Yes, cancelled bookings no longer block dates on this calendar.
 - Q: Can I send a guest directly to this page for a specific property?
   A: Yes, each property has its own calendar link you can share (found next to the property in your dashboard).
 

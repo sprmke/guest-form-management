@@ -2,7 +2,7 @@
 title: 'Legal & company pages — operator guide'
 status: active
 tags: [guides, routes]
-updated: 2026-08-06
+updated: 2026-08-17
 ---
 
 # Legal & company pages — operator guide
@@ -39,11 +39,11 @@ These public pages explain the company, how to reach support, common guest/host 
 **Common host questions**
 
 - Q: Can I edit the terms or privacy text from my dashboard?
-  A: Not today — the copy lives in the app and needs a product update for changes. Have a lawyer review before a major marketing launch.
+  A: Not today. The copy lives in the app, so changes need a product update. Have a lawyer review before a major marketing launch.
 - Q: Do guests have to accept these before booking?
   A: Not on a separate checkbox step; the pages are available from the footer.
 - Q: Are my verification documents covered by the privacy policy?
-  A: Yes — the policy describes host verification uploads and how they are stored privately.
+  A: Yes. The policy describes host verification uploads and how they're stored privately.
 - Q: Where do guests go for help?
   A: Support (`/support`) for FAQs, or Contact (`/contact`) / hello@kamehomes.com.
 

@@ -2,7 +2,7 @@
 title: 'Org Bookings List — operator guide'
 status: active
 tags: [guides, routes, org, booking-workflow]
-updated: 2026-08-02
+updated: 2026-08-17
 ---
 
 # Org Bookings List — operator guide
@@ -41,7 +41,7 @@ Stay-side `need_parking` on property bookings is unchanged — that is nested st
 
 ## Host-facing knowledge
 
-This page combines every property stay and every parking-slot reservation in your organization. The type badge tells you whether a row is a stay or a parking-only booking before you open it.
+This page combines every property stay and every parking-slot reservation across your organization. Each row's **Listing** column shows the property or parking name, and the **Booking type** filter lets you narrow the list to stays only or parking only.
 
 **Common host questions**
 

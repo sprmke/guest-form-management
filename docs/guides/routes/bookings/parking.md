@@ -2,7 +2,7 @@
 title: 'Pay Parking — operator guide'
 status: active
 tags: [guides, routes, parking]
-updated: 2026-08-09
+updated: 2026-08-17
 ---
 
 # Pay Parking — operator guide
@@ -37,11 +37,11 @@ Guests who requested paid parking get a simple link where they enter their car's
 **Common host questions**
 
 - Q: Does submitting this form change the booking's status?
-  A: No — it only saves the vehicle details and (optionally) emails parking owners. It doesn't move the booking forward in its workflow.
+  A: No, it only saves the vehicle details and (optionally) emails parking owners. It doesn't move the booking forward in its workflow.
 - Q: What if a guest submits this very close to their check-in date?
   A: They see a heads-up that parking arrangements this close to arrival may not be guaranteed, since owners need lead time to confirm a slot.
 - Q: Can I update a guest's parking details myself after they've already submitted?
-  A: Yes — opening the same link in admin mode lets you edit the saved vehicle details and choose whether to re-notify owners (all of them, one specific owner, or no email at all).
+  A: Yes, opening the same link in admin mode lets you edit the saved vehicle details and choose whether to re-notify owners (all of them, one specific owner, or no email at all).
 
 ---
 

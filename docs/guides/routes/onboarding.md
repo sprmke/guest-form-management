@@ -2,7 +2,7 @@
 title: 'Onboarding — operator guide'
 status: active
 tags: [guides, routes, onboarding]
-updated: 2026-08-04
+updated: 2026-08-17
 ---
 
 # Onboarding — operator guide
@@ -32,16 +32,22 @@ If the user already has an **accessible** organization (owned or assigned, and n
 
 ## Host-facing knowledge
 
-First-time hosts complete this wizard right after signing in with Google — organization details, what you host (property and/or parking), and identity verification uploads.
+First-time hosts complete this wizard right after signing in with Google: organization details, what you host (property and/or parking), and identity verification uploads.
 
 **Common host questions**
 
 - Q: How long does verification take after I finish onboarding?
   A: Review usually takes a few hours up to about three business days before listings can go fully live.
 - Q: Can I host both a rental unit and a parking slot?
-  A: Yes — select both Property and Parking in the hosting step and complete the matching verification sections.
-- Q: I already belong to another host's team — why did onboarding skip?
+  A: Yes. Select both Property and Parking in the hosting step, then complete the matching verification sections.
+- Q: I already have access to another host's organization. Why did onboarding skip the setup steps?
   A: If you already have access to an organization, you're sent to that dashboard instead of creating a second one you own.
+- Q: Why did a contract renewal popup appear when I logged in?
+  A: One of your property or parking listings has a hosting contract ending soon, in grace, or past grace. The reminder shows the listing name and how many days you have left.
+- Q: Can I dismiss the renewal reminder and deal with it later?
+  A: Before the contract ends, yes — dismiss snoozes it until tomorrow (Manila time). During grace you can dismiss until you refresh the page. Once access is locked for that listing, submit a renewal from inside that listing's dashboard.
+- Q: Where do I upload a renewed hosting contract?
+  A: Tap **Submit renewal contract** in the reminder, or open **Verification** from the property or parking sidebar.
 
 ---
 
@@ -117,11 +123,24 @@ Two-tier model (see **Get Verified** sidebar modal):
 | 1    | **Verified**    | Required to host (onboarding)           | Valid ID + Facebook Page screenshot                                        |
 | 2    | **Recommended** | Org-wide Recommended badge on host page | Selfie with ID; other-platform admin screenshot; optional legitimacy / BIR |
 
-**Listing verification** (separate scope, per property/parking): Tier 1 ownership/authorization proof + rights; Tier 2 additional proof + Azure PMO → listing Recommended badge. See [`verification-scope-split`](../../workflow/in-progress/verification-scope-split.md) / property settings guide.
+**Listing verification** (separate scope, per property/parking): Tier 1 ownership/authorization proof + rights; Tier 2 additional proof + Azure PMO → listing Recommended badge. Property/parking sidebars show a **Verification** CTA (not the org **Get Verified** modal). See [`verification-scope-split`](../../workflow/in-progress/verification-scope-split.md).
 
 Tier names are display-only. Server tiers stay **`base`** (Tier 1) and **`enhanced`** (Tier 2), and the public flag stays **`verifiedBadge`**.
 
-### Phase 1 UX (shipped)
+### Listing contract renewal
+
+When a property or parking listing's hosting contract nears expiry, is in grace, or is locked, an org-wide **renewal reminder modal** appears on admin login (one listing at a time, highest urgency first). It replaces the old full-page strip/lock gate.
+
+| Phase               | When                                | Dismiss?                                           |
+| ------------------- | ----------------------------------- | -------------------------------------------------- |
+| Pre-expiry          | T−15 days → day before contract end | Yes — daily snooze (Manila date, per listing)      |
+| Grace               | Contract end → T+4                  | Yes until page refresh (no daily snooze write)     |
+| Locked              | After grace                         | Non-dismissible on that listing's admin shell only |
+| Consideration grant | Super-admin temporary access        | Dismissible once per day                           |
+
+**Submit renewal contract** opens **Listing Verification** in renew mode → `submit-listing-authorization` renew path. Mutual exclusion: renewal modal never stacks with an open Listing Verification modal.
+
+---
 
 - Modal persuasion when Tier 2 is editable: benefit bullets + compact **Recommended badge preview** live **inside** the Tier 2 card (above documents), not above Tier 1. Hidden on Tier 1 changes-requested and when Tier 2 is pending/approved.
 - **Tier rank cards** in the modal header: clickable Verified / Recommended cards with status badges; one tier panel visible at a time. Opens on the most relevant step (e.g. Recommended when Tier 1 is approved).
