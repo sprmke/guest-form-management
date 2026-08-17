@@ -1,13 +1,17 @@
 /**
  * AI Voice Receptionist — global kill switch, per-property settings, and session caps.
  * Mirrors the social_inbox_settings ensure/get/patch pattern.
+ *
+ * Cost note: session cost is a per-minute estimate (`cost_basis: 'duration'`), not real
+ * Gemini Live billing — see the quarterly reconciliation process documented on
+ * `endVoiceReceptionistSession()` below.
  */
 
 import { createServiceClient } from './orgAuth.ts';
 import { GEMINI_LIVE_VOICES, type GeminiLiveVoice } from './geminiLiveEphemeral.ts';
 import { insertMessageIfNew, updateConversationAfterMessage } from './socialInboxService.ts';
 import { getModelConfig, isValidAiFeature } from './aiModelRouter.ts';
-import { recordAiUsage } from './aiUsageService.ts';
+import { getAiPlatformGlobalSettings, recordAiUsage } from './aiUsageService.ts';
 
 const MANILA_TZ = 'Asia/Manila';
 const VOICE_FEATURE = 'voice_receptionist' as const;
@@ -17,8 +21,11 @@ const VOICE_FEATURE = 'voice_receptionist' as const;
  * published per-minute equivalents as of this writing) applied to wall-clock duration.
  * Actual billing is token-based and re-bills prior turns each round-trip, so real cost is
  * higher for longer conversations — this is a visibility estimate, not an invoice figure.
+ * Default only — the live value is configurable via
+ * ai_platform_global_settings.voice_receptionist_cost_per_minute_usd (super-admin only);
+ * see quarterly reconciliation note on endVoiceReceptionistSession() below.
  */
-const ESTIMATED_COST_PER_MINUTE_USD = 0.023;
+const FALLBACK_ESTIMATED_COST_PER_MINUTE_USD = 0.023;
 
 export type VoiceReceptionistGlobalSettingsDto = {
   enabled: boolean;
@@ -493,10 +500,24 @@ export async function loadVoiceReceptionistSessionForEnd(
   };
 }
 
-/** Sets ended_at/duration/end_reason once — safe to call again for an already-ended session. */
+/**
+ * Sets ended_at/duration/end_reason once — safe to call again for an already-ended session.
+ *
+ * Cost reconciliation: `estimatedCostUsd` is a per-minute estimate, not real Gemini Live
+ * billing (which re-bills prior turns each round-trip, so real cost runs higher for longer
+ * calls). Quarterly, compare SUM(estimated_cost_usd) for voice_receptionist against the
+ * actual Gemini Live invoice line-item for the same period and adjust
+ * ai_platform_global_settings.voice_receptionist_cost_per_minute_usd if drifting.
+ * Intentionally manual, not automated — reconciliation cadence/owner is an open decision
+ * (see docs/workflow/planned/ai-usage-metering-credits-foundation.md).
+ * Fast-follow (not required now): if the Gemini Live SDK ever exposes real input/output
+ * audio token counts for a completed session, switch to cost_basis 'tokens' via
+ * estimateTokenCostUsd() like every other feature.
+ */
 export async function endVoiceReceptionistSession(
   session: VoiceReceptionistSessionForEnd,
-  endReason: VoiceReceptionistEndReason
+  endReason: VoiceReceptionistEndReason,
+  guestUserId?: string
 ): Promise<{ endedAt: string; durationSeconds: number }> {
   if (session.endedAt) {
     const durationSeconds = Math.max(
@@ -513,11 +534,15 @@ export async function endVoiceReceptionistSession(
     0,
     Math.round((new Date(endedAt).getTime() - new Date(session.startedAt).getTime()) / 1000)
   );
-  const estimatedCostUsd =
-    Math.round((durationSeconds / 60) * ESTIMATED_COST_PER_MINUTE_USD * 10000) / 10000;
+  const costPerMinuteUsd = await getVoiceReceptionistCostPerMinuteUsd();
+  const estimatedCostUsd = Math.round((durationSeconds / 60) * costPerMinuteUsd * 10000) / 10000;
 
   const sb = db();
-  const { error } = await sb
+  // .is('ended_at', null) means a concurrent call that already ended this session (guest End
+  // racing a timeout handler, or a retried request) matches 0 rows here rather than erroring —
+  // .select() + checking the returned row is required to detect that and skip double-recording
+  // usage below, since Postgres/PostgREST doesn't otherwise surface "0 rows affected".
+  const { data: updated, error } = await sb
     .from('voice_receptionist_sessions')
     .update({
       ended_at: endedAt,
@@ -526,10 +551,16 @@ export async function endVoiceReceptionistSession(
       estimated_cost_usd: estimatedCostUsd,
     })
     .eq('id', session.id)
-    .is('ended_at', null);
+    .is('ended_at', null)
+    .select('id')
+    .maybeSingle();
   if (error) {
     console.error('[voiceReceptionistService] end session:', error.message);
     throw new Error('Failed to end voice session');
+  }
+  if (!updated) {
+    // Another concurrent call already ended this session — don't double-record usage.
+    return { endedAt, durationSeconds };
   }
 
   try {
@@ -542,12 +573,28 @@ export async function endVoiceReceptionistSession(
       provider: 'gemini',
       model: voiceConfig.model,
       estimatedCostUsd,
+      durationSeconds,
+      actorUserId: guestUserId ?? null,
+      actorType: 'guest',
     });
   } catch (err) {
     console.warn('[voiceReceptionistService] usage record failed:', (err as Error).message);
   }
 
   return { endedAt, durationSeconds };
+}
+
+async function getVoiceReceptionistCostPerMinuteUsd(): Promise<number> {
+  try {
+    const global = await getAiPlatformGlobalSettings();
+    return global.voiceReceptionistCostPerMinuteUsd;
+  } catch (err) {
+    console.warn(
+      '[voiceReceptionistService] failed to load configurable rate, using fallback:',
+      (err as Error).message
+    );
+    return FALLBACK_ESTIMATED_COST_PER_MINUTE_USD;
+  }
 }
 
 export type VoiceReceptionistUsageSummary = {

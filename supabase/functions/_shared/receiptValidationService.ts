@@ -24,12 +24,15 @@ import {
   assertPropertyAiQuotaOptional,
   AiQuotaExceededError,
   recordAiUsageOptional,
+  type AiActorType,
   type RecordAiUsageInput,
 } from './aiUsageService.ts';
 
 export type AiUsageContext = {
   organizationId: string;
   propertyId?: string | null;
+  actorUserId?: string | null;
+  actorType?: AiActorType;
 };
 
 export type ReceiptValidationVerdict = 'valid' | 'likely_valid' | 'unclear' | 'invalid' | 'skipped';
@@ -472,6 +475,8 @@ async function recordVisionUsage(
     model: provider === 'gemini' ? GEMINI_MODEL : GROQ_MODEL,
     inputTokens: tokenUsage?.inputTokens,
     outputTokens: tokenUsage?.outputTokens,
+    actorUserId: usageContext.actorUserId ?? null,
+    actorType: usageContext.actorType,
   };
   await recordAiUsageOptional(usageContext.organizationId, usage);
 }

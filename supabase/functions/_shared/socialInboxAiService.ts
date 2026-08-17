@@ -13,6 +13,7 @@ import { geminiGenerateContentUrl, getModelConfig } from './aiModelRouter.ts';
 import {
   assertOrgAndPropertyAiQuota,
   recordAiUsage,
+  type AiActorType,
   type RecordAiUsageInput,
 } from './aiUsageService.ts';
 import {
@@ -198,6 +199,9 @@ export type AiSuggestInput = {
   participantName: string | null;
   messages: Array<{ direction: string; body: string | null; sentAt: string }>;
   systemPromptOverride?: string | null;
+  /** Who triggered this suggestion/reply, when known (unset for automated auto-reply). */
+  actorUserId?: string | null;
+  actorType?: AiActorType;
   propertyId?: string | null;
   propertyName?: string | null;
   inquiryCheckIn?: string | null;
@@ -287,6 +291,8 @@ export async function suggestInboxReply(input: AiSuggestInput): Promise<AiSugges
     organizationId: input.orgId,
     propertyId: input.propertyId ?? null,
     feature,
+    actorUserId: input.actorUserId ?? null,
+    actorType: input.actorType ?? (feature === 'inbox_auto_reply' ? 'system' : 'staff'),
   };
 
   if (getGeminiApiKeys().length) {

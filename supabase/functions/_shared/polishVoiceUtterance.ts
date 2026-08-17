@@ -11,7 +11,11 @@ import {
   shouldTryNextProvider,
 } from './aiGeminiKeys.ts';
 import { geminiGenerateContentUrl, getModelConfig } from './aiModelRouter.ts';
-import { assertPropertyAiQuotaOptional, recordAiUsageOptional } from './aiUsageService.ts';
+import {
+  assertPropertyAiQuotaOptional,
+  recordAiUsageOptional,
+  type AiActorType,
+} from './aiUsageService.ts';
 import {
   buildCacheInputs,
   computePromptFingerprint,
@@ -32,6 +36,8 @@ export type VoicePolishTurn = { role: 'guest' | 'assistant'; text: string; at?: 
 export type VoicePolishUsageContext = {
   organizationId: string;
   propertyId?: string | null;
+  actorUserId?: string | null;
+  actorType?: AiActorType;
 };
 
 const SYSTEM_PROMPT =
@@ -156,6 +162,8 @@ export async function polishVoiceTranscriptTurns(
         model: GEMINI_MODEL,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens,
+        actorUserId: usageContext?.actorUserId ?? null,
+        actorType: usageContext?.actorType ?? 'guest',
       });
 
       await setCachedAiResponse(VOICE_POLISH_FEATURE, cacheKey, {
