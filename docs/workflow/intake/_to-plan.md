@@ -2,7 +2,7 @@
 title: 'Claude To Plan'
 status: archived
 tags: [planning]
-updated: 2026-08-17
+updated: 2026-08-18
 ---
 
 **Status legend:** ❌ cancelled / won't do · ✅ done · 📋 planned (plan doc written) · 🚧 in progress · 🔵 pending / open
@@ -377,6 +377,14 @@ Design: [`ci-cd-dev-prod-design.md`](../in-progress/ci-cd-environments/ci-cd-dev
 
 ===
 
+🚧 Help & Support page (org + property level)
+
+Now that we have the AI assistant in the dashboard, build a Help & Support page for hosts at both org and property level: Documentation (from docs/guides Host-facing knowledge, filtered to never expose sensitive/internal info), AI Chat (opens the existing dashboard assistant sidebar), Ticket/App Support (dynamic per-category fields — bug/inquiry/suggestion/business — replied to from a new super-admin page), and FAQs (20-50 items generated from the docs). Every docs/guides change should stay synced to whatever powers this automatically.
+
+→ **Plan:** [`../planned/help-support-center.md`](../planned/help-support-center.md)
+
+===
+
 🔵 Improve onboarding flow UI/UX page
 
 I want to update the left section of the onboarding page and showcase all the features that we have for our system.
@@ -484,17 +492,39 @@ After we refine the roles & permissions that we have on both org and property le
 
 🔵 Able to send documents through chat
 
+In our Inbox > Chat section. it's also helpful for our hosts if they can send the available links, files, documents, etc that we have per property & booking.
+Best examples of this are:
+
+Files: Approved GAF, Approved Pet, Parking Endorsement,
+Links: Stay Guide, Property, Calendar, Messages
+
+Let's put a new icon for these beside the Quick reply & suggest sectionWhy
+
 ===
 
 🔵 Scheduled marketing posts/story
 
 ===
 
-🚧 Help & Support page (org + property level)
+🔵 Plans & Pricing
 
-Now that we have the AI assistant in the dashboard, build a Help & Support page for hosts at both org and property level: Documentation (from docs/guides Host-facing knowledge, filtered to never expose sensitive/internal info), AI Chat (opens the existing dashboard assistant sidebar), Ticket/App Support (dynamic per-category fields — bug/inquiry/suggestion/business — replied to from a new super-admin page), and FAQs (20-50 items generated from the docs). Every docs/guides change should stay synced to whatever powers this automatically.
+Now, I think we are ready to implement the plans & pricing for our application.
+Now, we have different separate plans for this which will be work on next phases.
+For this, we need to create a foundation plan to implement the plans & pricing.
 
-→ **Plan:** [`../planned/help-support-center.md`](../planned/help-support-center.md)
+First, we need to build the Plans page for this. Generate the best UI/UX for payment, displaying different plans, end to end flow of subscribing & payment, etc.
+
+For the pricing tiers, check for this plan:
+docs/workflow/in-progress/ai-usage-metering-credits-foundation.md
+
+For payment integration with Pay mongo, check for this plan:
+docs/workflow/planned/paymongo-subscription-billing.md
+
+For the AI credits usage, check for this plan:
+docs/workflow/in-progress/ai-usage-metering-credits-foundation.md
+
+Again, the goal of this plan is scoped only to build the Pricing page.
+Do not work on these referenced plan. We will work on it one by one.
 
 ===
 
@@ -550,8 +580,53 @@ P3499/month/listing
 - From bookings management, manual reply to chat inquiries
 - Edit marketing designs, manual and scheduled post to Facebook & Instagram
 
-Extra AI token in org: PXXX/1000 credits
+Extra AI token in org: PXXX/1000 credits.
+
+Again, these are just the initial pricing. This should not be final and we need to plan and implement this that' it's easy to configure the pricing from our super admin.
+
+There's also another pricing model that user can choose of which is commission based on the successful/completed booking. But we can plan this further but make sure that our plan is also considered this and can easily support this pricing model.
 
 ===
 
-🔵 Integrate paymongo for payment transactions
+📋 Integrate paymongo for payment subscription to our app
+
+Now, want I you to plan is how we can integrate Paymongo as payment platform when hosts subscribe to our application.
+For now, let's also support Paymongo as payment to subscribe to our app and not offer hosts to support Paymongo to accept payment using it. That is needs to be plan and finalized since this Paymongo fees is little expensive as well.
+Right now, our goal is to create a detailed and executable e2e plan to integrate Paymongo in our app.
+We need to make sure our implementation is solid, secure, and handles payment smoothly and apply the fallback or standard approach when payment failed.
+Then, on super admin, we should have new menu and settings there to configure the accepted banks and bank information that we support to accept payment. For the payment methods or cards, I want to use the lowest fee as much as possible, upon checking, I think it's the QR Ph, we can also support paying with Maribank or Maya. I think those 3 methods are the lowest.
+For the actual amount, this maybe vary and to follow up, but I want you that our implementation is ready to support different pricing.
+Also, please give me detailed step how to properly set Paymongo, how to setup sandbox or test account and real account.
+Please create a detailed plan for this and put it on our planned directory
+
+===
+
+🔵 Allow features based on subscription plan & show payment subscription modal
+
+Now that we build the pricing page, integrate payment subscription flow, etc.
+The next part that we need to do is to check all each pages and features that we have on our app, and implement the validation of access based on subscription plan. Then, we should also display our subscription or payment modal if a feature they are trying to access is not within their plan.
+
+The important part here is we should analyze each feature and functionality and we should display the subscription modal on the best UX possible. My end goal is that user can still play around on these features but to do important action, that's when they need to pay or subscribe.
+
+Best example of this is that on marketing module, I would like user to access and see the potential of the feature so that we can showcase every feature that we have. They can edit, create template but the preview should have watermark and they need to publish or save that's when we display the subscription or payment modal to fully use each feature that we have.
+
+The goal of this plan is to analyze the paid features that we have, check when's and what's the best time or moment we will display these subscription modal.
+
+Again, please generate a detailed plan and separate docs for this so that we have mapping the flow and when we are triggering the payment gate modal.
+
+===
+
+🚧 Accurately track AI usages for each AI actions and features, decide limit granularity, prep for paid AI credits
+
+Next module that I would like you to analyze, review carefully and create a plan on how we can accurately track AI usages for each AI actions and features that we have on the entire app.
+This should covers the booking validation, AI dashboard assistant, AI receptionist, and all other AI features that we have.
+The reason for this is that so that we can set proper and exact limit for each user, each property or org.
+Analyze each features that we have because sometimes every AI actions have different usages.
+
+After that, analyze how much do you think is the average AI token or usages. Also, analyze if we set the AI limits per user or per org or per property?
+
+One reason we need to finalize this is that on next phase, we will offer user to pay to get extra AI tokens/credits.
+
+Make a research and analyze what's the best practices to manage AI tokens properly. What's the standard process or solid companies handles AI tokens for free usages and for pay more to get more tokens.
+
+→ **In progress:** [`../in-progress/ai-usage-metering-credits-foundation.md`](../in-progress/ai-usage-metering-credits-foundation.md) — Phase 1 (attribution + credit shadow-ledger) shipped; Phases 2–4 open
