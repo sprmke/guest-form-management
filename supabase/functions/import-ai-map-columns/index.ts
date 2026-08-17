@@ -144,6 +144,8 @@ serveAuthenticated('import-ai-map-columns', async (req) => {
     propertyId: batch.property_id as string,
     headers,
     samplesByHeader: buildSamplesByHeader(headers, (sampleRows ?? []) as ImportBatchRow[]),
+    actorUserId: access.user.id,
+    actorType: 'staff',
   });
 
   const columnMapping = {

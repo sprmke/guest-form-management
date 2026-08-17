@@ -127,6 +127,8 @@ serveAdmin('generate-marketing-template', async (req, admin) => {
       includeOrgLogo,
       includePropertyName,
       includeCta,
+      actorUserId: admin.id,
+      actorType: 'staff',
     });
 
     return jsonSuccess(req, result);

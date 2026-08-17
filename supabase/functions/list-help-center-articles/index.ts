@@ -38,6 +38,20 @@ function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
+function displayArticleTitle(rawTitle: string | null, routeGuidePath: string): string {
+  const fallback = routeGuidePath.split('/').pop()?.replace(/\.md$/, '') ?? 'Guide';
+  let title = (rawTitle ?? fallback)
+    .replace(/\s*[—–-]\s*operator guide\s*/gi, '')
+    .replace(/\s*\((?:`[^`]+`|[^)]*\/:[^)]+)\)\s*/g, '')
+    .replace(/`[^`]+`/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  if (!title || title.startsWith('docs/') || title.includes('/:')) {
+    title = fallback.replace(/-/g, ' ');
+  }
+  return title;
+}
+
 serveAuthenticated('list-help-center-articles', async (req) => {
   requireHttpMethod(req, 'GET');
 
@@ -61,7 +75,7 @@ serveAuthenticated('list-help-center-articles', async (req) => {
     if (!article) {
       article = {
         routeGuidePath: row.route_guide_path,
-        title: row.route_guide_title ?? row.route_guide_path,
+        title: displayArticleTitle(row.route_guide_title, row.route_guide_path),
         routePath: row.route_path,
         module: deriveModule(row.route_guide_path),
         qaItems: [],

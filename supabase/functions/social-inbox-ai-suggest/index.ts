@@ -10,7 +10,7 @@ import { getConversationById, listMessages } from '../_shared/socialInboxService
 import { jsonError, jsonResponse, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
-serveAuthenticated('social-inbox-ai-suggest', async (req) => {
+serveAuthenticated('social-inbox-ai-suggest', async (req, user) => {
   if (req.method !== 'POST') {
     return jsonError(req, 'Method not allowed', 405);
   }
@@ -50,6 +50,8 @@ serveAuthenticated('social-inbox-ai-suggest', async (req) => {
         sentAt: m.sent_at,
       })),
       systemPromptOverride: (settings?.ai_system_prompt as string | null) ?? null,
+      actorUserId: user.id,
+      actorType: 'staff',
     });
     return jsonSuccess(req, {
       suggestion: result.suggestion,

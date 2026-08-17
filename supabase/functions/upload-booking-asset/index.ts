@@ -131,7 +131,7 @@ function isWorkflowAssetType(t: AssetType): boolean {
   );
 }
 
-serveAuthenticated('upload-booking-asset', async (req) => {
+serveAuthenticated('upload-booking-asset', async (req, user) => {
   requireHttpMethod(req, 'POST');
 
   const formData = await req.formData();
@@ -193,7 +193,9 @@ serveAuthenticated('upload-booking-asset', async (req) => {
   if (docAiKind) {
     try {
       const orgId = await resolveOrgIdForProperty(propertyId);
-      const aiUsage: AiUsageContext | null = orgId ? { organizationId: orgId, propertyId } : null;
+      const aiUsage: AiUsageContext | null = orgId
+        ? { organizationId: orgId, propertyId, actorUserId: user.id }
+        : null;
       receiptValidation =
         docAiKind === 'valid_id'
           ? await validateValidIdFile(file, aiUsage)

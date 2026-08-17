@@ -46,6 +46,8 @@ serveAdmin('generate-marketing-caption', async (req, admin) => {
       contentHint: contentHint || undefined,
       nightlyRate: nightlyRate || undefined,
       availabilityText: availabilityText || undefined,
+      actorUserId: admin.id,
+      actorType: 'staff',
     });
 
     return jsonSuccess(req, { caption });

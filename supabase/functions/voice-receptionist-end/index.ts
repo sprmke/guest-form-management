@@ -49,7 +49,7 @@ serveAuthenticated('voice-receptionist-end', async (req, user) => {
     return jsonError(req, 'Voice session not found', 404);
   }
 
-  const result = await endVoiceReceptionistSession(session, endReason);
+  const result = await endVoiceReceptionistSession(session, endReason, user.id);
 
   if (session.conversationId && turns.length) {
     try {
@@ -57,6 +57,8 @@ serveAuthenticated('voice-receptionist-end', async (req, user) => {
       const polishedTurns = await polishVoiceTranscriptTurns(turns, {
         organizationId,
         propertyId: session.propertyId,
+        actorUserId: user.id,
+        actorType: 'guest',
       });
       await writeVoiceTranscriptToConversation(
         session.id,
