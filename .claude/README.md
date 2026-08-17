@@ -37,10 +37,11 @@ Install the **ponytail** marketplace once per machine if you want the plugin com
 
 Symlinked from `.agent/skills/` (canonical source — see `.claude/skills/README.md`) plus one Claude Code–only addition:
 
-| Skill               | Use for                                                                                                                                                                                      |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `verify`            | **Claude Code only.** Recorded recipe for the bundled `/verify` skill — type-check/lint/build, curl edge functions locally, drive the UI with Playwright MCP. No Cursor equivalent.          |
-| `mobile-responsive` | Breakpoints, touch targets, admin shell, tables — mirrors an **always-on** Cursor rule (`mobile-responsive.mdc`) that has no automatic Claude Code equivalent, so invoke it for any UI task. |
+| Skill               | Use for                                                                                                                                                                                                                                                                                              |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `verify`            | **Claude Code only.** Recorded recipe for the bundled `/verify` skill — type-check/lint/build, curl edge functions locally, drive the UI with Playwright MCP. No Cursor equivalent.                                                                                                                  |
+| `mobile-responsive` | Breakpoints, touch targets, admin shell, tables — mirrors an **always-on** Cursor rule (`mobile-responsive.mdc`) that has no automatic Claude Code equivalent, so invoke it for any UI task.                                                                                                         |
+| `route-guides`      | Per-route operator guides in `docs/guides/routes/*.md` — mirrors an **always-on** Cursor rule (`route-guides.mdc`) that has no automatic Claude Code equivalent, so invoke it for **every** route/page/section change, no exceptions. Also summarized in `CLAUDE.md` § Docs are the source of truth. |
 
 All other skills (booking-workflow, admin-dashboard, forms, multi-tenancy, gmail-listener, supabase-stack, tanstack-query, accessibility, github-issues, …) are the same `SKILL.md` on both tools via the `.agent/skills/` symlink — see `.agent/skills/<name>/SKILL.md` for what each covers.
 

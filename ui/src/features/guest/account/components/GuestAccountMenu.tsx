@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 
-import { LogOut } from 'lucide-react';
+import { LayoutDashboard, LogOut } from 'lucide-react';
 
 import { useGuestProfile } from '@/features/guest/account/hooks/useGuestProfile';
 import { useGuestSignOut } from '@/features/guest/account/hooks/useGuestSignOut';
@@ -10,14 +10,19 @@ import {
   resolveGuestDisplayName,
 } from '@/features/guest/account/lib/guestAccountIdentity';
 import { GUEST_ACCOUNT_NAV_ITEMS } from '@/features/guest/account/lib/guestAccountNav';
+import { getHostMarketingNavCta } from '@/features/guest/auth/config/auth-navigation';
 import { useGuestSession } from '@/features/guest/auth/hooks/useGuestSession';
+
+import { useOrganizations } from '@/features/dashboard/org/hooks/useOrganizations';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -25,6 +30,7 @@ import {
 export function GuestAccountMenu() {
   const { status, session } = useGuestSession();
   const { data: profile } = useGuestProfile({ enabled: status === 'authenticated' });
+  const { data: orgsData } = useOrganizations({ enabled: status === 'authenticated' });
   const signOut = useGuestSignOut();
 
   if (status !== 'authenticated' || !session) {
@@ -34,6 +40,8 @@ export function GuestAccountMenu() {
   const displayName = resolveGuestDisplayName(session, profile);
   const avatarUrl = resolveGuestAvatarUrl(session, profile);
   const initials = guestInitials(displayName);
+  const hasHostAccess = (orgsData?.organizations?.length ?? 0) > 0;
+  const dashboardHref = getHostMarketingNavCta(true).href;
 
   const handleSignOut = async () => {
     await signOut();
@@ -55,14 +63,31 @@ export function GuestAccountMenu() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="z-[60] w-52">
-        {GUEST_ACCOUNT_NAV_ITEMS.map((item) => (
-          <DropdownMenuItem key={item.href} asChild>
-            <Link to={item.href}>{item.label}</Link>
-          </DropdownMenuItem>
-        ))}
+        {hasHostAccess ? (
+          <>
+            <DropdownMenuLabel>Host</DropdownMenuLabel>
+            <DropdownMenuGroup>
+              <DropdownMenuItem asChild>
+                <Link to={dashboardHref}>
+                  <LayoutDashboard aria-hidden />
+                  Dashboard
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Explore</DropdownMenuLabel>
+          </>
+        ) : null}
+        <DropdownMenuGroup>
+          {GUEST_ACCOUNT_NAV_ITEMS.map((item) => (
+            <DropdownMenuItem key={item.href} asChild>
+              <Link to={item.href}>{item.label}</Link>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => void handleSignOut()}>
-          <LogOut className="mr-2 size-4" aria-hidden />
+          <LogOut aria-hidden />
           Log out
         </DropdownMenuItem>
       </DropdownMenuContent>

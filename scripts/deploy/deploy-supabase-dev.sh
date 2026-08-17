@@ -16,8 +16,11 @@ source "$ROOT/scripts/deploy/ci-deploy-lib.sh"
 
 DB_ONLY=false
 FUNCTIONS_ONLY=false
-INCLUDE_ALL=false
-ALLOW_MULTI_TENANCY=false
+# Dev often has out-of-order migration history (parallel branches merging to develop).
+# Default on; pass --no-include-all to mirror prod-style strict ordering.
+INCLUDE_ALL=true
+# MULTI_TENANT_DEV (fwor…) always uses multi-tenant edge code — same default as ci-deploy.sh.
+ALLOW_MULTI_TENANCY=true
 SKIP_BACKUP=false
 CI_MODE=false
 
@@ -32,8 +35,10 @@ the dev project first (schema + data) unless --skip-backup is passed.
 Options:
   --db-only              Run supabase db push only
   --functions-only       Run supabase functions deploy only
-  --include-all          Pass --include-all to db push
-  --allow-multi-tenancy  Skip multi-tenancy guard on function deploy
+  --include-all          Pass --include-all to db push (default for dev deploys)
+  --no-include-all       Omit --include-all (strict migration order; may fail on develop)
+  --allow-multi-tenancy  Allow multi-tenant edge function deploy (default for dev)
+  --no-allow-multi-tenancy  Refuse function deploy when multi-tenant edge code is present
   --skip-backup          Skip the automatic pre-db-push backup (loud warning; not recommended)
   --ci                   CI mode (requires DEPLOY_CONFIRM=dev; no interactive prompt)
   -h, --help             Show this help
@@ -50,7 +55,9 @@ while [[ $# -gt 0 ]]; do
     --db-only) DB_ONLY=true; shift ;;
     --functions-only) FUNCTIONS_ONLY=true; shift ;;
     --include-all) INCLUDE_ALL=true; shift ;;
+    --no-include-all) INCLUDE_ALL=false; shift ;;
     --allow-multi-tenancy) ALLOW_MULTI_TENANCY=true; shift ;;
+    --no-allow-multi-tenancy) ALLOW_MULTI_TENANCY=false; shift ;;
     --skip-backup) SKIP_BACKUP=true; shift ;;
     --ci) CI_MODE=true; export CI=1; shift ;;
     -h | --help) usage; exit 0 ;;
@@ -88,6 +95,10 @@ if [[ -f "$ENV_FILE" ]]; then
   # shellcheck source=/dev/null
   source "$ENV_FILE"
   set +a
+  # Local deploy uses `supabase login`; a stale PAT in .env.dev.local overrides the CLI session.
+  if ! ci_deploy_is_ci; then
+    unset SUPABASE_ACCESS_TOKEN
+  fi
 fi
 
 if [[ -z "${DEV_REF:-}" ]]; then
@@ -126,8 +137,12 @@ echo "════════════════════════�
 echo ""
 ci_deploy_confirm "dev"
 
-echo "→ supabase link --project-ref $DEV_REF"
-"${SUPABASE[@]}" link --project-ref "$DEV_REF"
+if [[ "$LINKED_REF" == "$DEV_REF" ]]; then
+  echo "Already linked to $DEV_REF — skipping supabase link"
+else
+  echo "→ supabase link --project-ref $DEV_REF"
+  "${SUPABASE[@]}" link --project-ref "$DEV_REF"
+fi
 
 LINKED_AFTER="$(tr -d '[:space:]' <"$PROJECT_REF_FILE")"
 if ci_deploy_is_ci; then
@@ -165,6 +180,7 @@ run_db_push() {
   local -a push_args=(db push)
   if [[ "$INCLUDE_ALL" == true ]]; then
     push_args+=(--include-all)
+    echo "Using db push --include-all (dev default — applies migrations even when timestamps predate remote head)"
   fi
   echo "→ supabase ${push_args[*]}"
   "${SUPABASE[@]}" "${push_args[@]}"

@@ -1,6 +1,7 @@
 name: CD Dev (multi-tenant Supabase)
 
 # Push to git branch `develop` → deploy backend to MULTI_TENANT_DEV (fwor…).
+# ci-deploy.sh uses db push --include-all so out-of-order migration history does not block deploy.
 # UI deploys separately via Vercel Preview → dev.kamehomes.space.
 # Secrets: GitHub Environment `development` (not Vercel).
 # Matrix: docs/archive/operations/ci-cd-environment-matrix.md

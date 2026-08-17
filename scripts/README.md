@@ -62,17 +62,17 @@ Requires `pip3 install --user edge-tts`. Flags: `--voice` (default `en-US-AriaNe
 
 ## Deploy (`scripts/deploy/`)
 
-| Script                   | npm script                                 | Purpose                                                                                                        |
-| ------------------------ | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
-| `deploy-supabase.sh`     | `bun run deploy:supabase`                  | `db push` + `functions deploy` to linked **prod** project (backup first, typed `prod` confirm, kamewave-gated) |
-| `deploy-supabase-dev.sh` | `bun run deploy:supabase:dev`              | `db push` + `functions deploy` to linked **dev** project (backup first, typed `dev` confirm, no kamewave)      |
-| `backup-supabase.sh`     | `bun run backup:supabase:dev` / `:prod`    | `supabase db dump --linked` (schema + data) → `backups/<env>/` (gitignored); read-only                         |
-| `rollback-supabase.sh`   | `bun run rollback:supabase:dev` / `:prod`  | Restore most recent (or `--file`) backup via `psql`; prod is kamewave-gated                                    |
-| `rollback-functions.sh`  | `bun run rollback:functions:dev` / `:prod` | Redeploy Edge Functions from an older git ref via a throwaway `git worktree`; prod is kamewave-gated           |
-| `migration-status.sh`    | `bun run migrations:status:dev` / `:prod`  | Read-only `supabase migration list --linked` per environment                                                   |
-| `ci-deploy-lib.sh`       | (sourced)                                  | CI confirm, legacy ref deny-list, skip-backup guard                                                            |
-| `ci-deploy.sh`           | (CI / manual)                              | GitHub Actions entry → `deploy-supabase-dev.sh --allow-multi-tenancy` with env secrets                         |
-| `ci-smoke.sh`            | (CI / manual)                              | Post-deploy: functions list + edge OPTIONS smoke                                                               |
+| Script                   | npm script                                 | Purpose                                                                                                                           |
+| ------------------------ | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| `deploy-supabase.sh`     | `bun run deploy:supabase`                  | `db push` + `functions deploy` to linked **prod** project (backup first, typed `prod` confirm, kamewave-gated)                    |
+| `deploy-supabase-dev.sh` | `bun run deploy:supabase:dev`              | `db push --include-all` (default) + `functions deploy` to linked **dev** project (backup first, typed `dev` confirm, no kamewave) |
+| `backup-supabase.sh`     | `bun run backup:supabase:dev` / `:prod`    | `supabase db dump --linked` (schema + data) → `backups/<env>/` (gitignored); read-only                                            |
+| `rollback-supabase.sh`   | `bun run rollback:supabase:dev` / `:prod`  | Restore most recent (or `--file`) backup via `psql`; prod is kamewave-gated                                                       |
+| `rollback-functions.sh`  | `bun run rollback:functions:dev` / `:prod` | Redeploy Edge Functions from an older git ref via a throwaway `git worktree`; prod is kamewave-gated                              |
+| `migration-status.sh`    | `bun run migrations:status:dev` / `:prod`  | Read-only `supabase migration list --linked` per environment                                                                      |
+| `ci-deploy-lib.sh`       | (sourced)                                  | CI confirm, legacy ref deny-list, skip-backup guard                                                                               |
+| `ci-deploy.sh`           | (CI / manual)                              | GitHub Actions entry → `deploy-supabase-dev.sh --allow-multi-tenancy --include-all` with env secrets                              |
+| `ci-smoke.sh`            | (CI / manual)                              | Post-deploy: functions list + edge OPTIONS smoke                                                                                  |
 
 GitHub Actions: `ci.yml`, `cd-dev.yml`, `cd-preprod.yml`, `cd-prod.yml`, `cd-rollback.yml`. Secrets: [`github-environments-setup.md`](../docs/archive/operations/github-environments-setup.md). **mt-dev (now) + mt-prod (at release):** [`multi-tenant-dev-prod-setup.md`](../docs/archive/operations/multi-tenant-dev-prod-setup.md) · status [`multi-tenant-dev-prod-environments.md`](../docs/workflow/in-progress/ci-cd-environments/multi-tenant-dev-prod-environments.md).
 

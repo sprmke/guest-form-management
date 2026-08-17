@@ -43,13 +43,15 @@ export function StayGuideHero({ guide }: StayGuideHeroProps) {
         <div className="mx-auto flex min-h-[56px] max-w-[720px] items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             {guide.property.logoUrl ? (
-              <img
-                src={guide.property.logoUrl}
-                alt=""
-                className="h-8 w-auto max-w-[120px] shrink-0 rounded-md object-contain shadow-sm sm:h-9"
-              />
+              <span className="size-9 shrink-0 overflow-hidden rounded-md bg-white/15 shadow-sm sm:size-10">
+                <img
+                  src={guide.property.logoUrl}
+                  alt=""
+                  className="size-full object-cover object-center"
+                />
+              </span>
             ) : (
-              <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20 text-sm font-bold text-white shadow-sm backdrop-blur-sm">
+              <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-md bg-white/20 text-sm font-bold text-white shadow-sm backdrop-blur-sm sm:size-10">
                 {propertyName.charAt(0).toUpperCase()}
               </span>
             )}

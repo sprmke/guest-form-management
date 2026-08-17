@@ -137,19 +137,20 @@ Superpowers uses the same **`docs/workflow/planned/`** paths as Plan mode — se
 
 ## Docs are the source of truth
 
-Update the matching doc in the same change that alters behavior, per `.cursor/rules/documentation-maintenance.mdc`:
+Whenever you implement or materially change behavior (features, routes, validation, edge functions, DB schema/migrations, env vars, integrations, or user-visible flows), **update documentation in the same change** — not as a follow-up the user must request. This is not optional; it mirrors `.cursor/rules/documentation-maintenance.mdc`, Cursor's always-on (`alwaysApply: true`) version of this same rule — Claude Code can't auto-load `.mdc` files, so this section is the equivalent always-loaded copy and must be kept in sync with that file whenever it changes.
 
-| Change                                          | Update                                           |
-| ----------------------------------------------- | ------------------------------------------------ |
-| Architecture, routes, env vars, API, data model | `docs/PROJECT.md`                                |
-| Booking status/transition/side-effects          | `.cursor/rules/booking-workflow.mdc` (canonical) |
-| Admin auth, allow list, new admin endpoints     | `.cursor/rules/admin-auth.mdc`                   |
-| Edge function conventions / JWT policy          | `.cursor/rules/supabase-edge-functions.mdc`      |
-| Page/section behavior, save flows, validation   | `docs/guides/routes/*.md`                        |
-| Backlog / shipped work                          | GitHub Issues + `docs/todos/`                    |
-| Booking-flow redesign decisions                 | `docs/archive/planning/NEW_FLOW_PLAN.md`         |
+| Change                                                          | Update                                                                                                                                                                                                                                                                                                                          |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Architecture, routes, env vars, API, data model                 | `docs/PROJECT.md`                                                                                                                                                                                                                                                                                                               |
+| **Page/section behavior, save flows, validation, per-route UX** | **`docs/guides/routes/*.md`** — invoke the `route-guides` skill for **every** route/page/section change, no exceptions. Mirrors a **second, separate** always-on Cursor rule (`.cursor/rules/route-guides.mdc`) — read it for the full route→file mapping, per-page section checklist, and Host-facing-knowledge writing rules. |
+| Booking status/transition/side-effects                          | `.cursor/rules/booking-workflow.mdc` (canonical)                                                                                                                                                                                                                                                                                |
+| Admin auth, allow list, new admin endpoints                     | `.cursor/rules/admin-auth.mdc`                                                                                                                                                                                                                                                                                                  |
+| Edge function conventions / JWT policy                          | `.cursor/rules/supabase-edge-functions.mdc`                                                                                                                                                                                                                                                                                     |
+| Database migration or one-shot backfill instructions            | `docs/archive/operations/migration-runbook.md`                                                                                                                                                                                                                                                                                  |
+| Backlog / shipped work                                          | GitHub Issues + `docs/README.md` (Product backlog section); shipped history in `docs/archive/todos/shipped/`                                                                                                                                                                                                                    |
+| Booking-flow redesign decisions                                 | `docs/archive/planning/NEW_FLOW_PLAN.md`                                                                                                                                                                                                                                                                                        |
 
-Doc index: `docs/README.md`. Full rules/skills index: `.cursor/rules/README.md`.
+Trivial fixes (typos, internal renames with no behavior/API/UX impact) don't need doc updates — everything else does. Doc index: `docs/README.md`. Full rules/skills index: `.cursor/rules/README.md`.
 
 ## Agent tooling
 

@@ -19,9 +19,10 @@ Environment (required for dev):
   CI=1                      Set automatically in GitHub Actions
 
 Optional passthrough flags after `--`:
-  --db-only, --functions-only, --include-all
+  --db-only, --functions-only, --no-include-all
 
-Always passes --allow-multi-tenancy for dev CD (multi-tenant branch).
+Always passes --allow-multi-tenancy and --include-all for dev CD (multi-tenant branch).
+Dev deploys default to --include-all so parallel-branch migration history does not block cd-dev.yml.
 
 Example (GitHub Actions):
   env:
@@ -71,4 +72,4 @@ EOF
 
 export SUPABASE_ACCESS_TOKEN
 
-exec "$ROOT/scripts/deploy/deploy-supabase-dev.sh" --allow-multi-tenancy "$@"
+exec "$ROOT/scripts/deploy/deploy-supabase-dev.sh" --allow-multi-tenancy --include-all "$@"
