@@ -7,11 +7,14 @@ import type { ChatBlock } from '@/features/dashboard/ai-assistant/lib/aiAssistan
 type Props = Extract<ChatBlock, { type: 'link_list' }>;
 
 export function LinkListBlock({ title, links }: Props) {
+  const visibleLinks = (links ?? []).filter((link) => link.label?.trim() && link.href?.trim());
+  if (visibleLinks.length === 0) return null;
+
   return (
     <div className="border-border/60 bg-card space-y-1 rounded-xl border p-3">
       {title && <p className="text-foreground text-sm font-semibold">{title}</p>}
       <ul className="divide-border/60 -mx-1 divide-y">
-        {(links ?? []).map((link) => (
+        {visibleLinks.map((link) => (
           <li key={link.href}>
             <Link
               to={link.href}

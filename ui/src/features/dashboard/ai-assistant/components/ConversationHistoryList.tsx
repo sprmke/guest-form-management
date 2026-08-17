@@ -155,7 +155,11 @@ export function ConversationHistoryList({ activeConversationId, onSelect, onDele
                     <li key={conversation.id} className="min-w-0">
                       <div
                         className={cn(
-                          'surface-card-interactive native-press flex min-w-0 items-start gap-0.5',
+                          'surface-card native-press group flex min-w-0 items-center gap-0.5',
+                          'transition-[background-color,box-shadow,border-color] duration-200 ease-out motion-reduce:transition-none',
+                          !isActive && '[@media(hover:hover)]:hover:bg-muted/50',
+                          'lg:[@media(hover:hover)]:hover:border-primary/20 lg:[@media(hover:hover)]:hover:shadow-card-hover',
+                          'dark:lg:[@media(hover:hover)]:hover:border-[hsl(0_0%_100%_/_0.08)]',
                           isActive && 'bg-primary/10 ring-primary/20 ring-1'
                         )}
                       >
@@ -165,7 +169,7 @@ export function ConversationHistoryList({ activeConversationId, onSelect, onDele
                           aria-current={isActive ? 'true' : undefined}
                           className="focus-visible:ring-ring flex min-h-[44px] min-w-0 flex-1 cursor-pointer items-start gap-3 px-3 py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset"
                         >
-                          <span className="bg-primary/12 text-primary mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-lg">
+                          <span className="bg-primary/12 text-primary [@media(hover:hover)]:group-hover:bg-primary/18 mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors duration-200 motion-reduce:transition-none">
                             <MessageCircle className="size-4" aria-hidden />
                           </span>
                           <span className="min-w-0 flex-1">

@@ -5,21 +5,19 @@ import {
   fetchAiDashboardAssistantSettings,
   updateAiDashboardAssistantGlobalSettings,
   updateAiDashboardAssistantSettings,
-  type AiDashboardAssistantOrgSettings,
 } from '@/features/dashboard/ai-assistant/lib/aiAssistantApi';
 import { useOrgScopeKey } from '@/features/dashboard/org/lib/adminApiScope';
-
 
 const settingsKey = (orgSlug: string | null, orgId: string | null) =>
   ['org', orgSlug ?? orgId, 'ai-dashboard-assistant-settings'] as const;
 const globalSettingsKey = ['super-admin', 'ai-dashboard-assistant-global-settings'] as const;
 
-export function useAiDashboardAssistantSettings() {
+export function useAiDashboardAssistantSettings(options?: { includeUsage?: boolean }) {
   const { orgSlug, orgId } = useOrgScopeKey();
   return useQuery({
-    queryKey: settingsKey(orgSlug, orgId),
+    queryKey: [...settingsKey(orgSlug, orgId), { includeUsage: Boolean(options?.includeUsage) }],
     enabled: Boolean(orgSlug || orgId),
-    queryFn: () => fetchAiDashboardAssistantSettings(orgSlug, orgId),
+    queryFn: () => fetchAiDashboardAssistantSettings(orgSlug, orgId, options),
   });
 }
 
@@ -34,8 +32,11 @@ export function useUpdateAiDashboardAssistantSettings() {
       monthlyMessageLimit?: number;
       dailyWriteActionLimit?: number;
     }) => updateAiDashboardAssistantSettings(orgSlug, orgId, patch),
-    onSuccess: (data: AiDashboardAssistantOrgSettings) => {
-      qc.setQueryData(settingsKey(orgSlug, orgId), data);
+    onSuccess: () => {
+      // PATCH response doesn't include `usage` — invalidate (prefix-matches both the
+      // plain and includeUsage:true query key variants) instead of setQueryData so the
+      // mounted settings page refetches with whichever variant it's using.
+      qc.invalidateQueries({ queryKey: settingsKey(orgSlug, orgId) });
     },
   });
 }

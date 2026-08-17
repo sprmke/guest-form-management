@@ -55,6 +55,15 @@ export type ConfirmActionResponse = {
   alreadyResolved?: boolean;
 };
 
+export type AiDashboardAssistantUsageSummary = {
+  todayMessageCount: number;
+  monthMessageCount: number;
+  todayWriteActionCount: number;
+  monthWriteActionCount: number;
+  todayCreditsConsumed: number;
+  monthCreditsConsumed: number;
+};
+
 export type AiDashboardAssistantOrgSettings = {
   organizationId: string;
   enabled: boolean;
@@ -65,6 +74,7 @@ export type AiDashboardAssistantOrgSettings = {
   updatedBy: string | null;
   updatedAt: string;
   platformEnabled: boolean;
+  usage: AiDashboardAssistantUsageSummary | null;
 };
 
 export type AiDashboardAssistantGlobalSettings = {
@@ -128,11 +138,14 @@ export function confirmAssistantAction(input: {
 
 export function fetchAiDashboardAssistantSettings(
   orgSlug: string | null,
-  orgId: string | null
+  orgId: string | null,
+  options?: { includeUsage?: boolean }
 ): Promise<AiDashboardAssistantOrgSettings> {
-  return callAiAssistantFn<AiDashboardAssistantOrgSettings>(
-    scopedOrgFunctionsUrl('dashboard-assistant-settings', orgSlug, orgId)
-  );
+  const url = scopedOrgFunctionsUrl('dashboard-assistant-settings', orgSlug, orgId);
+  const withUsage = options?.includeUsage
+    ? `${url}${url.includes('?') ? '&' : '?'}includeUsage=true`
+    : url;
+  return callAiAssistantFn<AiDashboardAssistantOrgSettings>(withUsage);
 }
 
 export function updateAiDashboardAssistantSettings(
