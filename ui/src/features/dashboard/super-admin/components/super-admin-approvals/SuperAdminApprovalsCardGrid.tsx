@@ -1,7 +1,7 @@
 import { AdminTableRowAffordance } from '@/features/dashboard/bookings/components/AdminDataTable';
 import { VerificationStatusBadge } from '@/features/dashboard/org/components/verification/VerificationStatusBadge';
-import { externalReviewSourceLabel } from '@/features/dashboard/org/lib/propertyExternalReviews';
 import { listingKindLabel } from '@/features/dashboard/org/lib/listingVerificationCopy';
+import { externalReviewSourceLabel } from '@/features/dashboard/org/lib/propertyExternalReviews';
 import {
   approvalHasDualTierQueue,
   latestApprovalSubmittedAt,

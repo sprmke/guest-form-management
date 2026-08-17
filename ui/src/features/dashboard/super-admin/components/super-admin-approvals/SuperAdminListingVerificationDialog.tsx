@@ -12,11 +12,11 @@ import {
 } from '@/features/dashboard/org/components/verification/VerificationDocPreview';
 import { VerificationDocThumbnail } from '@/features/dashboard/org/components/verification/VerificationDocThumbnail';
 import { VerificationStatusBadge } from '@/features/dashboard/org/components/verification/VerificationStatusBadge';
-import { ORG_VERIFICATION_RIGHTS } from '@/features/dashboard/org/lib/orgVerification';
 import {
   LISTING_VERIFICATION_DOC_LABELS,
   listingKindLabel,
 } from '@/features/dashboard/org/lib/listingVerificationCopy';
+import { ORG_VERIFICATION_RIGHTS } from '@/features/dashboard/org/lib/orgVerification';
 import { formatTowerAndUnit } from '@/features/dashboard/org/lib/propertyTowerUnit';
 import {
   formatSuperAdminApprovalDate,

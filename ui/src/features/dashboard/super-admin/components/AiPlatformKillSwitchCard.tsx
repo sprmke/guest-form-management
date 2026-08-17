@@ -21,12 +21,16 @@ const AI_FEATURES = [
   { id: 'booking_ai_summary', label: 'Booking AI review' },
 ];
 
+const CARD_CLASS = 'border-border bg-card flex h-full min-w-0 flex-col gap-5 rounded-xl border p-5';
+
 export function AiPlatformKillSwitchCard() {
   const { data, isLoading } = useAiPlatformGlobalSettings();
   const update = useUpdateAiPlatformGlobalSettings();
 
   const allowed = new Set(data?.allowedFeatures ?? []);
   const allEnabled = data?.enabled && allowed.size === 0;
+  const controlsDisabled = isLoading || update.isPending;
+  const featuresDisabled = controlsDisabled || !data?.enabled;
 
   const save = (patch: {
     enabled?: boolean;
@@ -35,6 +39,8 @@ export function AiPlatformKillSwitchCard() {
     defaultDailyCallLimit?: number;
     defaultMonthlyCallLimit?: number;
     defaultDailyCostUsdLimit?: number;
+    creditUnitUsd?: number;
+    voiceReceptionistCostPerMinuteUsd?: number;
   }) => {
     update.mutate(patch, {
       onSuccess: () => toast.success('AI platform settings updated'),
@@ -58,97 +64,140 @@ export function AiPlatformKillSwitchCard() {
   };
 
   const handleNumberChange = (
-    field: 'defaultDailyCallLimit' | 'defaultMonthlyCallLimit' | 'defaultDailyCostUsdLimit',
+    field:
+      | 'defaultDailyCallLimit'
+      | 'defaultMonthlyCallLimit'
+      | 'defaultDailyCostUsdLimit'
+      | 'creditUnitUsd'
+      | 'voiceReceptionistCostPerMinuteUsd',
     value: string
   ) => {
-    const num = field === 'defaultDailyCostUsdLimit' ? parseFloat(value) : parseInt(value, 10);
+    const num =
+      field === 'defaultDailyCallLimit' || field === 'defaultMonthlyCallLimit'
+        ? parseInt(value, 10)
+        : parseFloat(value);
     if (Number.isFinite(num) && num > 0) {
       save({ [field]: num });
     }
   };
 
   return (
-    <div className="border-border bg-card flex min-h-[88px] flex-col gap-4 rounded-xl border p-4 sm:flex-row">
-      <div className="bg-muted flex size-10 shrink-0 items-center justify-center rounded-lg">
-        <Sparkles className="text-muted-foreground size-5" aria-hidden />
-      </div>
-      <div className="min-w-0 flex-1 space-y-4">
-        <div>
+    <div className={CARD_CLASS}>
+      <div className="flex items-start gap-3">
+        <div className="bg-muted flex size-10 shrink-0 items-center justify-center rounded-lg">
+          <Sparkles className="text-muted-foreground size-5" aria-hidden />
+        </div>
+        <div className="min-w-0">
           <p className="font-medium">Platform AI</p>
           <p className="text-muted-foreground text-xs">Shared Gemini/Groq features</p>
         </div>
-        <div className="flex flex-wrap items-center gap-4">
-          <label className="flex min-h-[44px] items-center gap-2 text-sm">
-            <Switch
-              checked={Boolean(data?.enabled)}
-              disabled={isLoading || update.isPending}
-              onCheckedChange={handleEnabledChange}
-              aria-label="Enable platform AI"
-            />
-            Enabled
-          </label>
-          <label className="flex min-h-[44px] items-center gap-2 text-sm">
-            <Switch
-              checked={data?.enforceQuotas !== false}
-              disabled={isLoading || update.isPending || !data?.enabled}
-              onCheckedChange={handleQuotaChange}
-              aria-label="Enforce org AI quotas"
-            />
-            Enforce quotas
-          </label>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <label className="flex min-h-[44px] items-center justify-between gap-3 text-sm">
+          <span>Enabled</span>
+          <Switch
+            checked={Boolean(data?.enabled)}
+            disabled={controlsDisabled}
+            onCheckedChange={handleEnabledChange}
+            aria-label="Enable platform AI"
+          />
+        </label>
+        <label className="flex min-h-[44px] items-center justify-between gap-3 text-sm">
+          <span>Enforce quotas</span>
+          <Switch
+            checked={data?.enforceQuotas !== false}
+            disabled={featuresDisabled}
+            onCheckedChange={handleQuotaChange}
+            aria-label="Enforce org AI quotas"
+          />
+        </label>
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-sm font-medium">Allowed features</p>
+        <div className="grid grid-cols-1 gap-x-8 gap-y-1 sm:grid-cols-2">
+          {AI_FEATURES.map((feature) => {
+            const checked = allEnabled || allowed.has(feature.id);
+            return (
+              <label
+                key={feature.id}
+                className="flex min-h-[44px] items-center justify-between gap-3 text-sm"
+              >
+                <span className="min-w-0">{feature.label}</span>
+                <Switch
+                  checked={checked}
+                  disabled={featuresDisabled}
+                  onCheckedChange={(value) => handleFeatureChange(feature.id, value)}
+                  aria-label={`Allow ${feature.label}`}
+                />
+              </label>
+            );
+          })}
         </div>
-        <div className="space-y-2">
-          <p className="text-sm font-medium">Allowed features</p>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {AI_FEATURES.map((feature) => {
-              const checked = allEnabled || allowed.has(feature.id);
-              return (
-                <label key={feature.id} className="flex min-h-[44px] items-center gap-2 text-sm">
-                  <Switch
-                    checked={checked}
-                    disabled={isLoading || update.isPending || !data?.enabled}
-                    onCheckedChange={(value) => handleFeatureChange(feature.id, value)}
-                    aria-label={`Allow ${feature.label}`}
-                  />
-                  {feature.label}
-                </label>
-              );
-            })}
-          </div>
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <label className="space-y-1 text-sm">
-            <span>Daily calls</span>
-            <Input
-              type="number"
-              min={1}
-              value={data?.defaultDailyCallLimit ?? ''}
-              disabled={isLoading || update.isPending || !data?.enabled}
-              onChange={(e) => handleNumberChange('defaultDailyCallLimit', e.target.value)}
-            />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span>Monthly calls</span>
-            <Input
-              type="number"
-              min={1}
-              value={data?.defaultMonthlyCallLimit ?? ''}
-              disabled={isLoading || update.isPending || !data?.enabled}
-              onChange={(e) => handleNumberChange('defaultMonthlyCallLimit', e.target.value)}
-            />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span>Daily cost USD</span>
-            <Input
-              type="number"
-              min={0.01}
-              step={0.01}
-              value={data?.defaultDailyCostUsdLimit ?? ''}
-              disabled={isLoading || update.isPending || !data?.enabled}
-              onChange={(e) => handleNumberChange('defaultDailyCostUsdLimit', e.target.value)}
-            />
-          </label>
-        </div>
+      </div>
+
+      <div className="mt-auto grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <label className="flex min-w-0 flex-col gap-1.5 text-sm">
+          <span>Daily calls</span>
+          <Input
+            type="number"
+            min={1}
+            className="h-10"
+            value={data?.defaultDailyCallLimit ?? ''}
+            disabled={featuresDisabled}
+            onChange={(e) => handleNumberChange('defaultDailyCallLimit', e.target.value)}
+          />
+        </label>
+        <label className="flex min-w-0 flex-col gap-1.5 text-sm">
+          <span>Monthly calls</span>
+          <Input
+            type="number"
+            min={1}
+            className="h-10"
+            value={data?.defaultMonthlyCallLimit ?? ''}
+            disabled={featuresDisabled}
+            onChange={(e) => handleNumberChange('defaultMonthlyCallLimit', e.target.value)}
+          />
+        </label>
+        <label className="flex min-w-0 flex-col gap-1.5 text-sm">
+          <span>Daily cost USD</span>
+          <Input
+            type="number"
+            min={0.01}
+            step={0.01}
+            className="h-10"
+            value={data?.defaultDailyCostUsdLimit ?? ''}
+            disabled={featuresDisabled}
+            onChange={(e) => handleNumberChange('defaultDailyCostUsdLimit', e.target.value)}
+          />
+        </label>
+        <label className="flex min-w-0 flex-col gap-1.5 text-sm">
+          <span>Credit unit (USD)</span>
+          <Input
+            type="number"
+            min={0.0001}
+            step={0.0001}
+            className="h-10"
+            value={data?.creditUnitUsd ?? ''}
+            disabled={featuresDisabled}
+            onChange={(e) => handleNumberChange('creditUnitUsd', e.target.value)}
+          />
+        </label>
+        <label className="flex min-w-0 flex-col gap-1.5 text-sm">
+          <span>Voice cost/min (USD)</span>
+          <Input
+            type="number"
+            min={0.0001}
+            step={0.0001}
+            className="h-10"
+            value={data?.voiceReceptionistCostPerMinuteUsd ?? ''}
+            disabled={featuresDisabled}
+            onChange={(e) =>
+              handleNumberChange('voiceReceptionistCostPerMinuteUsd', e.target.value)
+            }
+          />
+        </label>
       </div>
     </div>
   );

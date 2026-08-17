@@ -9,6 +9,8 @@ export type AiPlatformGlobalSettingsDto = {
   defaultDailyCallLimit: number;
   defaultMonthlyCallLimit: number;
   defaultDailyCostUsdLimit: number;
+  creditUnitUsd: number;
+  voiceReceptionistCostPerMinuteUsd: number;
   updatedAt: string | null;
 };
 
@@ -19,6 +21,8 @@ export type AiPlatformGlobalSettingsPatch = {
   defaultDailyCallLimit?: number;
   defaultMonthlyCallLimit?: number;
   defaultDailyCostUsdLimit?: number;
+  creditUnitUsd?: number;
+  voiceReceptionistCostPerMinuteUsd?: number;
 };
 
 const QUERY_KEY = ['super-admin', 'ai-platform-global-settings'] as const;

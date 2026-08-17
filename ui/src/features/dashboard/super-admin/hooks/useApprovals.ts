@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { useListingAuthorizationAssets } from '@/features/dashboard/org/hooks/useListingAuthorization';
 import {
   orgVerificationAssetsQueryKey,
   useOrgVerificationAssets,
 } from '@/features/dashboard/org/hooks/useOrgVerificationAssets';
-import { useListingAuthorizationAssets } from '@/features/dashboard/org/hooks/useListingAuthorization';
 import { callEdgeFunction } from '@/features/dashboard/org/lib/edgeClient';
 import type {
   ListingAuthorizationRejectionKind,
