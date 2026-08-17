@@ -277,6 +277,16 @@ The linked database’s **`supabase_migrations.schema_migrations`** lists a **ve
 
 After **`repair --status reverted`**, if **`db push`** says **found local migrations to insert before the last migration on remote** — run **`bunx supabase@latest db push --include-all`**, or **`migration repair <MISSING_VERSION> --status applied`** when live schema already matches that file (**`migration list`** to see gaps). Prefer eyeballing the SQL (**`IF NOT EXISTS`** migrations are safest to replay).
 
+### 5.2 `db push`: duplicate key on `schema_migrations_pkey`
+
+Two files under `supabase/migrations/` must **never** share the same version prefix (`YYYYMMDDHHMMSS`). If **`db push --include-all`** fails with **`Key (version)=(… ) already exists`**, check for duplicates:
+
+```bash
+ls supabase/migrations/*.sql | sed 's|.*/||' | cut -d_ -f1 | sort | uniq -d
+```
+
+Rename the **later-added** file to a new unused timestamp (e.g. `…_booking_ai_reviews.sql` → `20261011120001_booking_ai_reviews.sql`), then **`bun run deploy:supabase:dev`** again. On dev, confirm which name is recorded: `SELECT version, name FROM supabase_migrations.schema_migrations WHERE version = '<VERSION>';`
+
 ---
 
 ## 6. Rollback

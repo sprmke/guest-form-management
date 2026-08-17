@@ -80,12 +80,12 @@ push main     →  guest-form-management-app only  →  kamehomes.space  →  zf
 
 ## GitHub Actions (current)
 
-| Workflow                                                      | Active     | Trigger                             | Target                |
-| ------------------------------------------------------------- | ---------- | ----------------------------------- | --------------------- |
-| [`ci.yml`](../../../.github/workflows/ci.yml)                 | ✅         | PR + push **`main`**, **`develop`** | Quality               |
-| [`cd-dev.yml`](../../../.github/workflows/cd-dev.yml)         | ✅         | push **`develop`**                  | Deploy **fwor…**      |
-| [`cd-prod.yml`](../../../.github/workflows/cd-prod.yml)       | ❌ pending | manual + `CUTOVER_ENABLED`          | **mt-prod** (Phase B) |
-| [`cd-preprod.yml`](../../../.github/workflows/cd-preprod.yml) | ❌         | manual                              | optional              |
+| Workflow                                                      | Active     | Trigger                             | Target                                                     |
+| ------------------------------------------------------------- | ---------- | ----------------------------------- | ---------------------------------------------------------- |
+| [`ci.yml`](../../../.github/workflows/ci.yml)                 | ✅         | PR + push **`main`**, **`develop`** | Quality                                                    |
+| [`cd-dev.yml`](../../../.github/workflows/cd-dev.yml)         | ✅         | push **`develop`**                  | Deploy **fwor…** (`db push --include-all` + all functions) |
+| [`cd-prod.yml`](../../../.github/workflows/cd-prod.yml)       | ❌ pending | manual + `CUTOVER_ENABLED`          | **mt-prod** (Phase B)                                      |
+| [`cd-preprod.yml`](../../../.github/workflows/cd-preprod.yml) | ❌         | manual                              | optional                                                   |
 
 ---
 
