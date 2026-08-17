@@ -2,7 +2,7 @@
 title: 'Organization Settings — operator guide'
 status: active
 tags: [guides, routes, org, settings]
-updated: 2026-08-16
+updated: 2026-08-17
 ---
 
 # Organization Settings — operator guide
@@ -45,7 +45,7 @@ Organization settings control your brand identity and public presence: logo, nam
 **Common host questions**
 
 - Q: Where do I set the email address guests see on booking messages?
-  A: Per-property settings and team contact info — not on this org profile page. Update the property’s operator settings or the owner’s contact row on **Org team**.
+  A: That's set in per-property settings and team contact info, not on this org profile page. Update the property’s operator settings or the owner’s contact row on **Org team**.
 - Q: What happens if I delete the organization?
   A: Deletion is permanent and only allowed when there is no booking history (and no blocking finance or maintenance records). You must type the organization slug to confirm. Your Google sign-in account stays; only this org and its properties are removed.
 - Q: Does changing brand color affect every property?
@@ -53,7 +53,7 @@ Organization settings control your brand identity and public presence: logo, nam
 - Q: Why does my logo look cropped in settings?
   A: The logo preview is a square, same as guest forms and your public host page. Upload a square image so nothing important sits at the edges.
 - Q: What can I ask the AI assistant?
-  A: Open the sparkles button on any dashboard page. A new chat has a Questions / Actions switcher with five starters on each side. Questions cover check-ins, occupancy, balances, maintenance, and what a status means. Actions can move a booking forward, re-check receipts, or cancel — risky changes still ask you to confirm. Parking, inbox, and marketing are not covered yet.
+  A: Open the sparkles button on any dashboard page. A new chat has a Questions / Actions switcher with five starters on each side. Ask about a pinned booking’s next steps, security deposit refund, or this month’s booked dates — answers should name the guest and dates, not show empty tables or raw status codes. Actions can move a booking forward, re-check receipts, or cancel a booking, though risky changes still ask you to confirm first.
 - Q: Can I attach a receipt or GAF in the assistant?
   A: Yes. Use the paperclip next to the message box for a photo or PDF (up to three files, 4 MB each). Use the calendar button to pin a stay so the assistant knows which booking you mean.
 - Q: Can I delete an old assistant chat?
@@ -107,7 +107,7 @@ Properties inherit org social URLs and main platform when their `app_settings` c
 
 Save path: section-local **Save** button → `PATCH ai-platform-settings` (org owner / org admin only). Hook: `useAiPlatformSettings.ts`.
 
-Usage summary: `GET ai-platform-usage` (today, this month, per-feature breakdown, per-property breakdown). Hook: `useAiPlatformSettings.ts`.
+Usage summary: `GET ai-platform-usage` (today, this month, per-feature breakdown, per-property breakdown, **`monthCreditsConsumed`**/**`monthlyCreditLimit`**, **`walletBalanceCredits`**). The section shows **Credits used this month** as a progress bar against the monthly credit allowance, with the top-up wallet balance shown once non-zero. Credit-based enforcement is **live** (org daily/monthly, inherited by properties unless overridden) — once exceeded, calls draw from the org's credit wallet if it has a positive balance, else fail with the same upgrade-hook toast as call/cost limits. The default daily/monthly credit limits ship deliberately generous (not real pricing numbers — see the linked plan doc) so this gate is inert under today's usage until pricing is confirmed; there is no org-editable UI for these limits yet, only super-admin defaults + manual wallet top-ups. Hook: `useAiPlatformSettings.ts`.
 
 ### AI dashboard assistant
 
@@ -121,6 +121,8 @@ Independent of **AI platform** (receipt validation, marketing, inbox). Off by de
 | Daily write-action limit | `…daily_write_action_limit`                                 | Counts confirmed/auto-executed writes                   |
 
 Save path: section-local **Save assistant settings** → `PATCH dashboard-assistant-settings` (`org:settings:edit`). Hook: `useAiDashboardAssistantSettings.ts`.
+
+When **Assistant enabled** is on, the section also shows read-only usage for this month: messages, write actions, and **credits consumed** (from `ai_dashboard_assistant_usage_daily.credits_consumed`, reconciled with platform AI metering). Opt-in via `GET dashboard-assistant-settings?includeUsage=true`.
 
 **Chat panel** (not this page): floating sparkles button → slide-over (`sm:max-w-xl`). Empty chat centers a **Questions / Actions** mode switch (5 randomized prompt cards from `assistantSuggestions.ts`, 20+20 pool). Tap sends the prompt. Composer is one row: paperclip (JPEG/PNG/WebP/PDF, max 3 × 4 MB) + booking pin (month-grouped picker) + input + send. History (clock) lists your chats grouped by day, with search, wrapping titles, and delete (confirm).
 
@@ -226,6 +228,8 @@ Danger zone: slug confirmation + `delete-organization`; blocked when booking his
 | `org-settings`                      | `supabase/functions/org-settings/index.ts`                                                                                                                                                                            |
 | `ai-platform-settings`              | `supabase/functions/ai-platform-settings/index.ts`                                                                                                                                                                    |
 | `ai-platform-usage`                 | `supabase/functions/ai-platform-usage/index.ts`                                                                                                                                                                       |
+| `ai-platform-credit-wallet`         | `supabase/functions/ai-platform-credit-wallet/index.ts`                                                                                                                                                               |
+| `_shared/aiCreditLedger.ts`         | Credit conversion + wallet/ledger helpers                                                                                                                                                                             |
 | `dashboard-assistant-settings`      | `supabase/functions/dashboard-assistant-settings/index.ts`                                                                                                                                                            |
 | `dashboard-assistant-chat`          | `supabase/functions/dashboard-assistant-chat/index.ts`, `_shared/dashboardAssistantAttachments.ts`                                                                                                                    |
 | `dashboard-assistant-conversations` | `supabase/functions/dashboard-assistant-conversations/index.ts`                                                                                                                                                       |
@@ -233,6 +237,9 @@ Danger zone: slug confirmation + `delete-organization`; blocked when booking his
 | `delete-organization`               | `supabase/functions/delete-organization/index.ts`                                                                                                                                                                     |
 | Social columns migration            | `supabase/migrations/20260821190000_org_settings_social_links.sql`                                                                                                                                                    |
 | AI platform migration               | `supabase/migrations/20260814130000_ai_platform_hardening.sql`                                                                                                                                                        |
+| AI credit foundation migration      | `supabase/migrations/20261022140000_ai_credit_foundation.sql`                                                                                                                                                         |
+| AI credit limits migration          | `supabase/migrations/20261022150000_ai_credit_limits.sql`                                                                                                                                                             |
+| AI credit hardening migration       | `supabase/migrations/20261022160000_ai_credit_foundation_hardening.sql`                                                                                                                                               |
 
 ---
 
@@ -240,8 +247,9 @@ Danger zone: slug confirmation + `delete-organization`; blocked when booking his
 
 - [Route index](../README.md)
 - [Property Settings — AI overrides](./property/settings.md) § AI Overrides
-- [Super Admin Settings — Platform AI](../admin/settings.md) § Platform AI
+- [Super Admin AI Management — Platform AI](../admin/settings.md) § Platform AI
 - [AI dashboard assistant — feature list](../../../workflow/done/ai-dashboard-assistant-features.md)
 - [AI dashboard assistant — manual tests](../../testing/ai-dashboard-assistant-manual.md)
 - [`docs/architecture/validation-and-env.md`](../../../architecture/validation-and-env.md) — `PUBLIC_GUEST_APP_ORIGIN`, `FACEBOOK_REVIEWS_URL`
 - [`docs/archive/operations/ai-platform-billing.md`](../../../archive/operations/ai-platform-billing.md) — billing and quota guidance
+- [`docs/workflow/in-progress/ai-usage-metering-credits-foundation.md`](../../../workflow/in-progress/ai-usage-metering-credits-foundation.md) — credits shadow ledger + wallet plan

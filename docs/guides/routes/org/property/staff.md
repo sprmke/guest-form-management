@@ -2,7 +2,7 @@
 title: 'Staff — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-02
+updated: 2026-08-17
 ---
 
 # Staff — operator guide
@@ -28,7 +28,7 @@ Staff Telegram settings have moved to the Notifications page. The old Staff link
 - Q: Where do I configure staff Telegram alerts now?
   A: Go to **Notifications** → **Staff**. Your old Staff settings URL redirects there automatically.
 - Q: What kind of messages does the Staff bot send?
-  A: Scheduled daily summaries and customizable templates — for example check-in/check-out reminders or task lists you define for your cleaning or front-desk team.
+  A: Scheduled daily summaries plus customizable templates, like check-in/check-out reminders or task lists you set up for your cleaning or front-desk team.
 - Q: Can I use the same Telegram bot for Staff and Operations?
   A: Each module on Notifications connects separately, so you can use different bots or chat groups for staff summaries versus booking workflow alerts if you prefer.
 

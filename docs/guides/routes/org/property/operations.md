@@ -2,7 +2,7 @@
 title: 'Operations — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-02
+updated: 2026-08-17
 ---
 
 # Operations — operator guide
@@ -28,9 +28,9 @@ Operations Telegram settings have moved to the Notifications page. Opening the o
 - Q: Where did Operations settings go?
   A: They're now under **Notifications** → **Operations**. The old Operations menu link redirects you there automatically.
 - Q: What alerts does Operations cover?
-  A: Booking workflow notifications — things like new bookings, status changes, and other admin alerts your team wants in Telegram.
+  A: Booking workflow notifications, things like new bookings, status changes, and other admin alerts your team wants in Telegram.
 - Q: Is this different from Staff or Marketing notifications?
-  A: Yes — Operations is specifically for workflow alerts. Staff and Marketing have their own modules on the same Notifications page with separate templates and schedules.
+  A: Yes. Operations is specifically for workflow alerts, while Staff and Marketing have their own modules on the same Notifications page, each with separate templates and schedules.
 
 ## Implementation map
 

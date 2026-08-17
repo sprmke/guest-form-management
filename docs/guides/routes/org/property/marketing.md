@@ -2,7 +2,7 @@
 title: 'Marketing — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-15
+updated: 2026-08-17
 ---
 
 # Marketing — operator guide
@@ -23,22 +23,22 @@ Property-scoped **Marketing Content Studio**: build availability calendars, soci
 
 ## Host-facing knowledge
 
-Marketing Content Studio is where you create promotional content for this property — availability calendars, social graphics, and short videos — then download or publish to connected Facebook and Instagram accounts. Marketing Telegram alerts are configured separately under Notifications.
+Marketing Content Studio is where you create promotional content for this property: availability calendars, social graphics, and short videos. You can download what you make or publish it straight to your connected Facebook and Instagram accounts. Marketing Telegram alerts live in a separate place, under Notifications.
 
 **Common host questions**
 
 - Q: Do I need to connect Facebook before I can publish?
-  A: Yes — connect your Facebook Page and Instagram through Guest Inbox first. Without that, you can still design and download assets but not publish from here.
+  A: Yes. Connect your Facebook Page and Instagram through Guest Inbox first. Without that connection, you can still design and download assets, just not publish from here.
 - Q: Will my edits save automatically?
   A: Design and video editors autosave as you work. Blank calendars need you to save manually the first time; designer presets remember your changes per template.
 - Q: Can AI create a calendar template for me?
-  A: Yes — on the Calendar tab, use **Generate with AI**, describe the look you want, then Generate. It adds matching custom templates for Square, Portrait, and Landscape so you can switch formats without regenerating.
+  A: Yes. Head to the Calendar tab, tap **Generate with AI**, describe the look you're after, and hit Generate. It creates matching templates for Square, Portrait, and Landscape so you can switch formats without starting over.
 - Q: Can AI create a social graphic for me?
-  A: Yes — on the Design tab, use **Generate with AI**. Choose a category and write the message first, then pick a look. It creates Instagram Post, Story, and Facebook Post versions you can edit after.
+  A: Yes. On the Design tab, use **Generate with AI**: pick a category, write your message first, then choose a look. You'll get Instagram Post, Story, and Facebook Post versions, all editable afterward.
 - Q: Can AI create a video clip for me?
-  A: Yes — on the Video tab, use **Generate with AI**. Choose a category and write the message first, then pick a look, length, and motion. It creates Instagram Story, Post, and Landscape versions you can edit after.
+  A: Yes. On the Video tab, use **Generate with AI** the same way: category and message first, then look, length, and motion. It generates Instagram Story, Post, and Landscape versions you can fine-tune afterward.
 - Q: Can I rename or move an AI-generated design?
-  A: Yes — use ⋮ on the card. Saved and AI-generated designs have Rename, Move, and Remove. Remove deletes that design (and its other formats). Built-in templates can be renamed or moved, not removed.
+  A: Yes. Use the ⋮ menu on the card. Saved and AI-generated designs have Rename, Move, and Remove options, and Remove deletes that design along with its other formats. Built-in templates can be renamed or moved, but not removed.
 - Q: Where do I set up marketing Telegram alerts?
   A: Those live on the **Notifications** page under the Marketing module, not on this Content Studio page.
 

@@ -2,7 +2,7 @@
 title: 'Property templates'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-04
+updated: 2026-08-17
 ---
 
 # Property templates
@@ -21,16 +21,16 @@ Operators edit per-property copy here. **Preview and live sends use the same ren
 
 ## Host-facing knowledge
 
-Templates is where you customize the text guests and your team receive — stay guide sections (house rules, check-in and check-out, parking) and automated emails (booking confirmations, document requests, ready-for-check-in). Preview shows the same layout guests will see or that goes out in email.
+Templates is where you customize the text guests and your team receive: stay guide sections (house rules, check-in and check-out, parking) and automated emails (booking confirmations, document requests, ready-for-check-in). Preview shows the same layout that goes out to guests, whether that's on the stay guide or in an email.
 
 **Common host questions**
 
 - Q: Which templates do guests actually see?
   A: The four standard templates (house rules, check-in instructions, check-out instructions, parking reminders) appear on the guest stay guide during their booking window. Email templates are used for automated messages throughout the booking process.
 - Q: If I mess up an email template, can I undo it?
-  A: Yes — use **Reset to default** on any built-in template to restore the original wording, including dynamic sections like payment tables and signatures.
+  A: Yes. Use **Reset to default** on any built-in template to restore the original wording, including dynamic sections like payment tables and signatures.
 - Q: Do custom templates get sent automatically?
-  A: Not yet — custom templates are saved for future use. Only the built-in standard and email templates are wired to guest-facing pages and automated sends today.
+  A: Not yet. Custom templates are saved for future use, but only the built-in standard and email templates are wired to guest-facing pages and automated sends today.
 
 ## Integration status
 

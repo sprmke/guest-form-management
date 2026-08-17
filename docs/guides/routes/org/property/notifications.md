@@ -2,7 +2,7 @@
 title: 'Notifications — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-16
+updated: 2026-08-17
 ---
 
 # Notifications — operator guide
@@ -99,7 +99,7 @@ Legacy URLs redirect here — see [previous guide version](./notifications.md) r
 
 ## Host-facing knowledge
 
-Notifications is the one place to review in-app alerts and set up Telegram for this property — booking workflow events, inbox messages, schedules, staff summaries, and finance/maintenance reminders. Each Telegram module has its own on/off switch, connection, and templates.
+Notifications is the one place to review in-app alerts and set up Telegram for this property: booking workflow events, inbox messages, schedules, staff summaries, and finance or maintenance reminders. Each Telegram module has its own on/off switch, connection, and templates.
 
 **Common host questions**
 
@@ -110,16 +110,16 @@ Notifications is the one place to review in-app alerts and set up Telegram for t
 - Q: Why does a toast say "Guest" or "New guest message"?
   A: Older notifications may lack stored guest context. New inbox and booking alerts include the guest name and stay dates when the thread or booking has them.
 - Q: Do I have to save again after connecting Telegram?
-  A: No — once you enter your bot token and chat ID and tap **Connect** successfully, credentials save automatically. Template and schedule changes save when you confirm in each modal.
+  A: No. Once you enter your bot token and chat ID and tap **Connect** successfully, the credentials save automatically. Template and schedule changes save when you confirm them in each modal.
 - Q: Can I turn off just one type of alert?
-  A: Yes — each module (Chat, Marketing, Staff, Operations, Finance, Maintenance) has its own **Enable notifications** toggle so you can opt in only to what you need.
+  A: Yes. Each module (Chat, Marketing, Staff, Operations, Finance, Maintenance) has its own **Enable notifications** toggle, so you can turn on only what you need.
 - Q: Do I need a different bot for every module?
-  A: No — one shared bot token is enough. Save it once at the top; each module can reuse it or override with its own token. Use different **Chat IDs** so each module posts to the right group.
+  A: No, one shared bot token is enough. Save it once at the top and each module can reuse it, or override with its own token if you'd rather. Use different **Chat IDs** so each module posts to the right group.
 - Q: How do I pick a Telegram group?
   A: Leave Chat ID empty, tap **Scan for chats** in that field, then choose your group from the dropdown. Add the bot to the group and send a message first if nothing appears.
 - Q: Where did the Find chat ID scanner go?
-  A: It moved into the Chat ID field — **Scan for chats**, then a group dropdown. After **Connected**, the field shows the group name; use **Reveal** for the numeric id.
-- Q: I used to have separate Staff or Operations pages — where did they go?
+  A: It moved into the Chat ID field. Tap **Scan for chats** to get a group dropdown, and once you're **Connected**, the field shows the group name. Use **Reveal** if you need the numeric id.
+- Q: I used to have separate Staff or Operations pages. Where did they go?
   A: They all moved here. Old links to Staff, Operations, Finance, or Maintenance settings redirect to the matching section on this Notifications page.
 
 ---

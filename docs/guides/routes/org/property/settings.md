@@ -2,7 +2,7 @@
 title: 'Property Settings — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-03
+updated: 2026-08-17
 ---
 
 # Property Settings — operator guide
@@ -41,22 +41,26 @@ Living operator spec for property settings: what each section does, how data is 
 
 ## Host-facing knowledge
 
-Property Settings is where you complete your listing and day-to-day setup — basic info, photos, amenities, location, payment details, building forms, email automations, and integrations. You can save section by section; incomplete required areas show a red dot until they're done.
+Property Settings is where you complete your listing and handle day-to-day setup: basic info, photos, amenities, location, payment details, building forms, email automations, and integrations. You can save section by section, and incomplete required areas show a red dot until they're done.
 
 **Common host questions**
 
 - Q: Do I have to fill out every section before anything saves?
-  A: No — **Save Changes** only saves sections you've edited that pass validation. You can finish photos today and payment details later; incomplete required areas still show a warning dot.
+  A: No. **Save Changes** only saves the sections you've edited that pass validation, so you can finish photos today and payment details later. Incomplete required areas still show a warning dot until you get to them.
 - Q: What's the difference between Archive and Delete?
-  A: Archive hides the property from active use but keeps all bookings and history. Delete permanently removes an empty property and is blocked if any bookings exist — use Archive for units with past stays.
+  A: Archive hides the property from active use but keeps all bookings and history. Delete permanently removes an empty property, and it's blocked if any bookings exist, so use Archive instead for units with past stays.
 - Q: Where do guests see my cancellation policy and house rules?
   A: House rules and cancellation policy appear on your public property listing. Automated email wording is edited separately on the Templates page.
 - Q: Where do I configure which documents guests must submit (GAF, pet approval, etc.)?
   A: Document requirements are set at the **development** level by the platform team (Super Admin → Developments → Document Requirements). All properties in that development inherit the same list.
 - Q: Where is the PMO / documents-approver email set?
-  A: On the development in Super Admin (**Developments → Email automations → PMO email**). Property Settings only has your property/team ops email (alerts, Reply-To, CC on GAF/pet) — not the PMO To address.
+  A: On the development in Super Admin (**Developments → Email automations → PMO email**). Property Settings only holds your property/team ops email (alerts, Reply-To, CC on GAF/pet), not the PMO To address.
 - Q: What does brand color change?
   A: It tints this property’s dashboard and guest-facing pages such as forms and emails. Buttons, the selected settings section, and similar accents use the exact color you pick. Gradient buttons are a slight sheen of that same color. Hover or tap the **?** next to Brand color for the same explanation.
+- Q: Where is listing verification?
+  A: Open **Verification** from the property sidebar (not org **Get Verified**). That flow covers ownership proof, contract dates, and the Recommended badge for this listing.
+- Q: My contract is ending — what should I do?
+  A: A renewal reminder may appear when you log in. Tap **Submit renewal contract** or use **Verification** in the sidebar to upload an updated contract before the grace period ends.
 
 ---
 
@@ -540,7 +544,7 @@ Keep UI and edge copies in sync when changing rules.
 ## Related docs
 
 - [Organization Settings — AI platform](../settings.md) § AI platform
-- [Super Admin Settings — Platform AI](../../admin/settings.md) § Platform AI
+- [Super Admin AI Management — Platform AI](../../admin/settings.md) § Platform AI
 - [`docs/archive/operations/ai-platform-billing.md`](../../../../archive/operations/ai-platform-billing.md) — billing and quota guidance
 
 ---
