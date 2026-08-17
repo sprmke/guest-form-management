@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 
 import { TrendingDown, TrendingUp } from 'lucide-react';
 
@@ -22,6 +23,8 @@ export type StatCardProps = {
   changeIsPoints?: boolean;
   footer?: ReactNode;
   onClick?: () => void;
+  /** When set, the card renders as a router link instead of a button. */
+  to?: string;
   active?: boolean;
 };
 
@@ -44,11 +47,12 @@ export function StatCard({
   changeIsPoints = false,
   footer,
   onClick,
+  to,
   active,
 }: StatCardProps) {
   const hasChange = change !== undefined;
   const isPositive = change !== undefined && change >= 0;
-  const interactive = onClick !== undefined;
+  const interactive = onClick !== undefined || to !== undefined;
 
   const shellClassName = cn(
     'surface-card group relative w-full overflow-hidden p-3 transition-all duration-300 sm:p-3.5 md:p-5',
@@ -56,7 +60,8 @@ export function StatCard({
     'sm:hover:shadow-elevated-lg sm:hover:-translate-y-0.5',
     interactive &&
       'focus-visible:ring-primary/40 text-left focus-visible:outline-none focus-visible:ring-2',
-    active && 'ring-primary/50 ring-offset-background ring-2 ring-offset-2',
+    active &&
+      'border-primary/50 bg-primary/[0.06] shadow-card-hover ring-primary/40 ring-2 ring-inset sm:hover:translate-y-0',
     className
   );
 
@@ -116,6 +121,19 @@ export function StatCard({
       </div>
     </>
   );
+
+  if (to) {
+    return (
+      <Link
+        to={to}
+        onClick={onClick}
+        aria-current={active ? 'page' : undefined}
+        className={shellClassName}
+      >
+        {body}
+      </Link>
+    );
+  }
 
   if (interactive) {
     return (
