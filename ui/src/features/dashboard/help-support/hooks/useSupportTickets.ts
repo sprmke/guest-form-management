@@ -56,7 +56,10 @@ export function useReplySupportTicket(ticketId: string) {
     mutationFn: (args: { message: string; attachments?: SupportTicketAttachmentDraft[] }) =>
       replySupportTicket(scope, ticketId, args.message, args.attachments),
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ['support-ticket', ticketId, ...scopeKey(scope)] });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['support-ticket', ticketId, ...scopeKey(scope)] }),
+        qc.invalidateQueries({ queryKey: ['support-tickets', ...scopeKey(scope)] }),
+      ]);
     },
   });
 }

@@ -17,9 +17,18 @@ const STATUS_CLASSES: Record<SupportTicketStatus, string> = {
   closed: 'bg-muted text-muted-foreground border-transparent',
 };
 
-export function SupportTicketStatusBadge({ status }: { status: SupportTicketStatus }) {
+export function SupportTicketStatusBadge({
+  status,
+  compact = false,
+}: {
+  status: SupportTicketStatus;
+  compact?: boolean;
+}) {
   return (
-    <Badge variant="outline" className={cn(STATUS_CLASSES[status])}>
+    <Badge
+      variant="outline"
+      className={cn(STATUS_CLASSES[status], compact && 'px-1.5 py-0 text-[10px] font-medium')}
+    >
       {STATUS_LABELS[status]}
     </Badge>
   );

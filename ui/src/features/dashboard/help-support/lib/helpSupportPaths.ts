@@ -20,6 +20,10 @@ export function useHelpSupportBasePath(): string | null {
   return `/org/${orgSlug}/help-support`;
 }
 
+export function helpSupportDocsPath(basePath: string): string {
+  return `${basePath}/docs`;
+}
+
 export function helpSupportTicketsPath(basePath: string): string {
   return `${basePath}/tickets`;
 }
@@ -30,4 +34,12 @@ export function helpSupportNewTicketPath(basePath: string): string {
 
 export function helpSupportTicketDetailPath(basePath: string, ticketId: string): string {
   return `${basePath}/tickets/${ticketId}`;
+}
+
+export type HelpSupportSection = 'faqs' | 'guides' | 'tickets';
+
+export function helpSupportSectionFromPath(pathname: string): HelpSupportSection {
+  if (pathname.includes('/help-support/tickets')) return 'tickets';
+  if (pathname.includes('/help-support/docs')) return 'guides';
+  return 'faqs';
 }
