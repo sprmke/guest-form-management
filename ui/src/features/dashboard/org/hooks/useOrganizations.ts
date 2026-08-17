@@ -7,10 +7,15 @@ import type { Organization, Property } from '@/features/dashboard/org/types';
 
 export const ORGANIZATIONS_QUERY_KEY = ['organizations'] as const;
 
-export function useOrganizations() {
+type UseOrganizationsOptions = {
+  enabled?: boolean;
+};
+
+export function useOrganizations(options?: UseOrganizationsOptions) {
   return useQuery({
     queryKey: ORGANIZATIONS_QUERY_KEY,
     queryFn: () => callEdgeFunction<{ organizations: Organization[] }>('list-organizations'),
+    enabled: options?.enabled ?? true,
   });
 }
 

@@ -12,11 +12,16 @@ export class AiQuotaExceededClientError extends Error {
 
 /** Surfaces the stub upgrade CTA when edge functions return upgradeHook. */
 export function toastAiQuotaExceeded(message?: string): void {
+  const isCreditMessage = /credit/i.test(message ?? '');
   toast.error(message ?? 'AI usage limit reached', {
     action: {
-      label: 'Upgrade',
+      label: isCreditMessage ? 'Buy credits' : 'Upgrade',
       onClick: () => {
-        toast.message('AI upgrade billing is coming soon — contact support for higher limits.');
+        toast.message(
+          isCreditMessage
+            ? 'Buy more AI credits — coming soon. Contact support for a manual top-up.'
+            : 'AI upgrade billing is coming soon — contact support for higher limits.'
+        );
       },
     },
   });

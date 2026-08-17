@@ -13,6 +13,7 @@ import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermiss
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
 
@@ -144,6 +145,31 @@ export function OrgAiPlatformSection() {
             <dd className="capitalize">{usage.planTier.replace('_', ' ')}</dd>
           </div>
         </dl>
+      ) : null}
+
+      {usage ? (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Credits used this month</span>
+            <span>
+              ~{Math.round(usage.monthCreditsConsumed).toLocaleString()} /{' '}
+              {usage.monthlyCreditLimit.toLocaleString()}
+            </span>
+          </div>
+          <Progress
+            value={Math.min(
+              100,
+              (usage.monthCreditsConsumed / Math.max(1, usage.monthlyCreditLimit)) * 100
+            )}
+            aria-label="Monthly AI credits used"
+          />
+          {usage.walletBalanceCredits > 0 ? (
+            <p className="text-muted-foreground text-sm">
+              Top-up wallet balance: {Math.round(usage.walletBalanceCredits).toLocaleString()}{' '}
+              credits
+            </p>
+          ) : null}
+        </div>
       ) : null}
 
       {showUpgradeStub ? (

@@ -38,9 +38,16 @@ export type AiPlatformUsageSummaryDto = {
   monthCallCount: number;
   todayCostUsd: number;
   monthCostUsd: number;
+  /** Derived from cost via the platform credit_unit_usd. */
+  todayCreditsConsumed: number;
+  monthCreditsConsumed: number;
   dailyCallLimit: number;
   monthlyCallLimit: number;
   dailyCostUsdLimit: number;
+  dailyCreditLimit: number;
+  monthlyCreditLimit: number;
+  /** Purchased top-up balance, drawn down once monthlyCreditLimit is exceeded. */
+  walletBalanceCredits: number;
   dailyRemaining: number;
   monthlyRemaining: number;
   dailyCostRemaining: number;

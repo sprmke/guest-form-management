@@ -3,10 +3,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Check, Home, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { OnboardingProofUpload } from '@/features/dashboard/org/components/onboarding/OnboardingProofUpload';
-import { OnboardingVerificationRightsFields } from '@/features/dashboard/org/components/onboarding/OnboardingVerificationRightsFields';
 import { ListingRecommendedBadgePreview } from '@/features/dashboard/org/components/listing-authorization/ListingRecommendedBadgePreview';
 import { ListingVerificationSubmittedDocs } from '@/features/dashboard/org/components/listing-authorization/ListingVerificationSubmittedDocs';
+import { OnboardingProofUpload } from '@/features/dashboard/org/components/onboarding/OnboardingProofUpload';
+import { OnboardingVerificationRightsFields } from '@/features/dashboard/org/components/onboarding/OnboardingVerificationRightsFields';
 import { VerificationTierProgress } from '@/features/dashboard/org/components/verification/VerificationTierProgress';
 import {
   useListingAuthorizationAssets,

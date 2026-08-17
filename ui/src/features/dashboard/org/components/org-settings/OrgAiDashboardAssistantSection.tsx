@@ -28,7 +28,9 @@ type Draft = {
 
 export function OrgAiDashboardAssistantSection() {
   const orgSlug = useOrgSlugParam();
-  const { data: settings, isLoading: settingsLoading } = useAiDashboardAssistantSettings();
+  const { data: settings, isLoading: settingsLoading } = useAiDashboardAssistantSettings({
+    includeUsage: true,
+  });
   const { data: propertiesData } = useProperties(orgSlug ?? undefined);
   const { data: orgAccess } = useOrgPermissions();
   const update = useUpdateAiDashboardAssistantSettings();
@@ -136,6 +138,25 @@ export function OrgAiDashboardAssistantSection() {
         <p className="text-muted-foreground text-sm">
           The AI assistant is currently off platform-wide.
         </p>
+      ) : null}
+
+      {settings?.usage ? (
+        <dl className="grid gap-3 text-sm sm:grid-cols-3">
+          <div>
+            <dt className="text-muted-foreground">This month</dt>
+            <dd>
+              {settings.usage.monthMessageCount} / {settings.monthlyMessageLimit} messages
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Write actions this month</dt>
+            <dd>{settings.usage.monthWriteActionCount}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Credits used this month</dt>
+            <dd>~{Math.round(settings.usage.monthCreditsConsumed).toLocaleString()}</dd>
+          </div>
+        </dl>
       ) : null}
 
       {readOnly ? (

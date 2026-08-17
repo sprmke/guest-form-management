@@ -2,6 +2,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { ORGANIZATIONS_QUERY_KEY } from '@/features/dashboard/org/hooks/useOrganizations';
 import { PARKINGS_QUERY_KEY } from '@/features/dashboard/org/hooks/useParkings';
+import type {
+  ListingAuthorizationAssetType,
+  ListingKind,
+} from '@/features/dashboard/org/lib/listingAuthorization';
 import {
   fetchListingAuthorizationAssets,
   fetchOrgListingVerifications,
@@ -9,10 +13,6 @@ import {
   submitListingRecommended,
   uploadListingAuthorizationAsset,
 } from '@/features/dashboard/org/lib/listingAuthorizationApi';
-import type {
-  ListingAuthorizationAssetType,
-  ListingKind,
-} from '@/features/dashboard/org/lib/listingAuthorization';
 import type { OrgVerificationRights } from '@/features/dashboard/org/lib/orgVerification';
 
 export function listingAuthorizationAssetsQueryKey(listingKind: ListingKind, listingId: string) {

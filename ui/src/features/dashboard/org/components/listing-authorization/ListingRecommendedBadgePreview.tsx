@@ -1,10 +1,12 @@
+import { Home } from 'lucide-react';
+
 import { ListingRecommendedBadge } from '@/features/guest/marketing/shared/components/ListingRecommendedBadge';
+
 import {
   LISTING_VERIFICATION_PREVIEW_CAPTION,
   LISTING_VERIFICATION_PREVIEW_FALLBACK,
 } from '@/features/dashboard/org/lib/listingVerificationCopy';
 
-import { Home } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 
