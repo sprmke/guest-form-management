@@ -2,7 +2,7 @@
 title: 'Organization Team — operator guide'
 status: active
 tags: [guides, routes, org, team]
-updated: 2026-08-02
+updated: 2026-08-17
 ---
 
 # Organization Team — operator guide
@@ -49,7 +49,7 @@ Organization **Team** is where the owner invites co-admins who can help run ever
 - Q: Why does the invite require a Gmail address?
   A: Hosts sign in with Google. The invite email must match the Google account the person will use to accept.
 - Q: Can an admin invite someone else?
-  A: Yes — org admins with team manage access can invite other admins, resend invites, and remove members (except the owner).
+  A: Yes. Org admins with team manage access can invite other admins, resend invites, and remove members, except the owner.
 
 ---
 

@@ -2,7 +2,7 @@
 title: 'Search results — operator guide'
 status: active
 tags: [guides, routes, public, search]
-updated: 2026-08-05
+updated: 2026-08-17
 ---
 
 # Search results — operator guide
@@ -60,7 +60,7 @@ Guests can search by place name, city, listing title, **Nearby**, or everyday wo
 - Q: Will my listing show up in search?
   A: Yes when the listing is active and matches the guest’s place text (or Nearby distance / type concepts). If they pick dates that overlap an existing booking (or a blocked period on a property), it will be hidden for that search.
 - Q: Do developments care about dates?
-  A: No — developments are shown as catalog results regardless of dates. Individual units and parking slots still respect availability.
+  A: No, developments are shown as catalog results regardless of dates. Individual units and parking slots still respect availability.
 - Q: Does Nearby need my address on the listing?
   A: Map pin coordinates in property/parking settings (`latitude` / `longitude`) improve Nearby ranking. Azure North listings can fall back to the residence default pin when unset.
 

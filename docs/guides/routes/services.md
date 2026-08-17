@@ -2,7 +2,7 @@
 title: 'Services (guest marketing) — operator guide'
 status: active
 tags: [guides, routes]
-updated: 2026-08-02
+updated: 2026-08-17
 ---
 
 # Services (guest marketing) — operator guide
@@ -24,9 +24,9 @@ This page previews add-on services (cleaning, maintenance, supplies, and similar
 **Common host questions**
 
 - Q: Can guests order services from this page today?
-  A: No — it's a coming-soon preview only; the service chips are not clickable.
+  A: No, it's a coming-soon preview only. The service chips aren't clickable yet.
 - Q: Will these services connect to my dashboard later?
-  A: That's the plan, but there's no live integration yet — hosts manage operations through existing Finance and Maintenance modules instead.
+  A: That's the plan, but there's no live integration yet. Hosts manage operations through existing Finance and Maintenance modules instead.
 - Q: Why is Services in the main navigation if it's empty?
   A: It sets expectations for guests and reserves space in the layout until the catalog ships.
 

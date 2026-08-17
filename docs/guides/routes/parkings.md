@@ -2,7 +2,7 @@
 title: 'Parkings (guest marketing) — operator guide'
 status: active
 tags: [guides, routes, parking]
-updated: 2026-08-06
+updated: 2026-08-17
 ---
 
 # Parkings (guest marketing) — operator guide
@@ -44,11 +44,11 @@ Guests browse standalone parking slots by city or building, open a slot detail p
 **Common host questions**
 
 - Q: Is parking booking fully self-serve for guests today?
-  A: Guests can browse and start a reserve flow from a slot page, but end-to-end parking payment is still evolving — many flows still tie back to a property stay.
+  A: Guests can browse and start a reserve flow from a slot page, but end-to-end parking payment is still evolving. Many flows still tie back to a property stay.
 - Q: Where does my parking slot show up besides the public Parkings browse pages?
   A: On your development's parking list, your public host page, and cross-links from related property listings when configured.
 - Q: What happens when a guest taps Reserve on a parking slot?
-  A: They open a parking registration form for that slot (dates carried from the picker when present). It is a marketing questionnaire today — not the same as the stay booking form or the paid-parking vehicle form after a guest books a stay.
+  A: They open a parking registration form for that slot (dates carried over from the picker when present). It's a marketing questionnaire today, not the same as the stay booking form or the paid-parking vehicle form a guest fills out after booking a stay.
 
 ---
 

@@ -2,7 +2,7 @@
 title: 'Guest stay guide (token-gated brochure)'
 status: active
 tags: [guides, routes]
-updated: 2026-08-15
+updated: 2026-08-17
 ---
 
 # Guest stay guide (token-gated brochure)
@@ -21,14 +21,14 @@ Mobile-first **"digital pamphlet"** page for booked guests: a warm-neutral, chap
 
 ## Host-facing knowledge
 
-After you approve a guest for check-in, they receive a private link to a mobile-friendly stay guide with your rules, check-in steps, parking notes, and contact details — all pulled from your property templates.
+After you approve a guest for check-in, they receive a private link to a mobile-friendly stay guide with your rules, check-in steps, parking notes, and contact details, all pulled from your property templates.
 
 **Common host questions**
 
 - Q: When does the guest get the stay guide link?
-  A: When the booking reaches ready-for-check-in — it's included in that email and also available from the booking in your dashboard.
+  A: When the booking reaches ready-for-check-in. It's included in that email, and it's also available from the booking in your dashboard.
 - Q: Can anyone open the link if they guess the URL?
-  A: No — each link uses a unique token tied to that booking and only works during the stay window.
+  A: No, each link uses a unique token tied to that booking, and it only works during the stay window.
 - Q: How do I change what appears in the guide?
   A: Edit the standard templates in your property settings; the guide updates from that content (hosts can preview it before sending).
 
@@ -94,7 +94,7 @@ On **Templates → Standard templates**, each card has an optional **Section ima
 
 Warm-neutral "digital pamphlet" redesign — page-scoped palette (Paper/Ink/Sand/Umber, both light + dark variants) and `Fraunces` display type layered on the existing brand teal accent. Content is capped to a centered ~720px column at every breakpoint (mobile-first, no separate desktop layout).
 
-- **Hero** — full-bleed static hero photo (`property.heroImageUrl`, primary gallery image) with bottom gradient scrim + `Fraunces` title overlay (property/unit name); one-time scale-settle + fade-up on load (`framer-motion`, `useReducedMotion`-gated)
+- **Hero** — full-bleed static hero photo (`property.heroImageUrl`, primary gallery image) with bottom gradient scrim + `Fraunces` title overlay (property/unit name); property logo in the top bar is a **1:1 square** (`size-9` / `sm:size-10`, `object-cover`, `rounded-md`) so portrait logo files do not render as a tall pill; one-time scale-settle + fade-up on load (`framer-motion`, `useReducedMotion`-gated)
 - **Stay pass card** (`StayPassCard.tsx`) — boarding-pass-styled summary (guest name, property, check-in/out date + time) that overlaps the hero's bottom edge; the signature "wow" element, surfacing practical booking facts immediately per competitive UX research
 - **Gallery film strip** (`StayGuideGalleryCarousel.tsx`) — editorial horizontal scroll-snap strip of gallery images, placed after the hero/pass (not a full-bleed carousel at the top)
 - **Quick-nav** (`StayGuideTabs.tsx`) — sticky pill bar under the gallery; jump-scrolls to chapter anchors, scrollspy-highlights the chapter in view (`IntersectionObserver`)

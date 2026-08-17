@@ -2,7 +2,7 @@
 title: 'SD Refund Form — operator guide'
 status: active
 tags: [guides, routes, sd-refund]
-updated: 2026-08-09
+updated: 2026-08-17
 ---
 
 # SD Refund Form — operator guide
@@ -40,16 +40,16 @@ Returning guests who already submitted a review or already have a voucher skip s
 
 ## Host-facing knowledge
 
-After check-out, guests are guided through three quick steps before their security deposit is refunded: leaving a review, spinning for a surprise next-stay voucher, and choosing how they want the refund paid out (same GCash number, a different GCash/bank account, or cash pickup). The form only unlocks once you've recorded their final balance and moved their stay to check-out — if they open the link too early, they'll see a short wait screen instead.
+After check-out, guests are guided through three quick steps before their security deposit is refunded: leaving a review, spinning for a surprise next-stay voucher, and choosing how they want the refund paid out (same GCash number, a different GCash/bank account, or cash pickup). The form only unlocks once you've recorded their final balance and moved their stay to check-out. If they open the link too early, they'll see a short wait screen instead.
 
 **Common host questions**
 
 - Q: A guest says the refund form says "almost there" and won't let them continue.
-  A: That means their stay hasn't been moved to check-out with a final balance recorded yet. The page updates automatically once that's done — no guest action needed.
+  A: That means their stay hasn't been moved to check-out with a final balance recorded yet. The page updates automatically once that's done, so the guest doesn't need to do anything.
 - Q: Can a guest change their review after voting on the surprise voucher?
-  A: No — once they've submitted a review or revealed a voucher, returning to the link skips straight back to where they left off; the review step won't show again.
+  A: No. Once they've submitted a review or revealed a voucher, returning to the link skips straight back to where they left off, and the review step won't show again.
 - Q: What if a guest wants a cash refund?
-  A: They can choose "Cash pickup" in step 3, but they're told to message the host first — cash refunds need on-site staff and can't be sent automatically like GCash/bank.
+  A: They can choose "Cash pickup" in step 3, but they're told to message the host first. Cash refunds need on-site staff, so they can't be sent automatically like GCash or bank transfers.
 
 ---
 

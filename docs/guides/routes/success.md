@@ -2,7 +2,7 @@
 title: 'Booking Success — operator guide'
 status: active
 tags: [guides, routes]
-updated: 2026-08-02
+updated: 2026-08-17
 ---
 
 # Booking Success — operator guide
@@ -29,14 +29,14 @@ Confirmation page shown immediately after a successful [guest form](./form.md) s
 
 ## Host-facing knowledge
 
-After a guest submits their booking form, they land on a confirmation screen recapping their stay dates, guest count and names, contact info, and pet info (if any) — with a short "what happens next" note telling them to wait for the booking-acknowledgment email and to keep the conversation open on Facebook Messenger or Airbnb for any changes.
+After a guest submits their booking form, they land on a confirmation screen recapping their stay dates, guest count and names, contact info, and pet info (if any). It also includes a short "what happens next" note telling them to wait for the booking-acknowledgment email and to keep the conversation open on Facebook Messenger or Airbnb for any changes.
 
 **Common host questions**
 
 - Q: A guest says the confirmation page didn't show their booking details after they refreshed it.
-  A: That's expected — the summary only shows right after submitting. Refreshing (or opening the link fresh) still confirms the booking was received, just without the detailed recap; the guest doesn't need to resubmit.
+  A: That's expected. The summary only shows right after submitting, so refreshing (or opening the link fresh) still confirms the booking was received, just without the detailed recap. The guest doesn't need to resubmit.
 - Q: Does this page mean the booking is approved?
-  A: No — it only means the request was received and is now awaiting review. Approval and the GAF process happen afterward.
+  A: No, it only means the request was received and is now awaiting review. Approval and the GAF process happen afterward.
 
 ---
 

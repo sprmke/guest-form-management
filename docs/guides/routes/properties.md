@@ -2,7 +2,7 @@
 title: 'Properties (guest marketing) — operator guide'
 status: active
 tags: [guides, routes, properties]
-updated: 2026-08-06
+updated: 2026-08-17
 ---
 
 # Properties (guest marketing) — operator guide
@@ -54,13 +54,13 @@ This is where guests browse homes, open a listing, save favorites, contact the h
 **Common host questions**
 
 - Q: Where do guests see my organization name and other listings?
-  A: On each property page, your name links to your public host page — guests see your logo, description, social links, and all active homes and parking you list.
+  A: On each property page, your name links to your public host page. There guests see your logo, description, social links, and all active homes and parking you list.
 - Q: What's the difference between the booking form and a custom form link on my listing?
-  A: The main booking flow uses the standard reservation form after guests pick dates. Separate form links are for custom questionnaires or previews — they don't replace the official booking form yet.
+  A: The main booking flow uses the standard reservation form after guests pick dates. Separate form links are for custom questionnaires or previews, and they don't replace the official booking form yet.
 - Q: Why doesn't my inactive property show on my public host page?
   A: Only active listings appear there; archived or draft units stay out of public view until you publish them again.
 - Q: Will cheaper listings bury mine in search?
-  A: Guests cannot sort by lowest price. The default is **Recommended** (ratings / reviews). Budget guests use price-range filters — those still keep Recommended order inside their budget.
+  A: Guests cannot sort by lowest price. The default is **Recommended** (ratings / reviews). Budget guests use price-range filters instead, and those still keep Recommended order inside their budget.
 
 ---
 

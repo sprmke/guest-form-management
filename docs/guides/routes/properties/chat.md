@@ -1,11 +1,11 @@
 ---
-title: 'Guest web chat (/properties/:propertySlug/messages)'
+title: 'Guest messages'
 status: active
 tags: [guides, routes]
 updated: 2026-08-17
 ---
 
-# Guest web chat (`/properties/:propertySlug/messages`)
+# Guest messages
 
 Route: `/properties/:propertySlug/messages`
 
@@ -28,20 +28,20 @@ Pre-booking messaging between an authenticated guest and the property host. Thre
 
 ## Host-facing knowledge
 
-Guests message you from a property listing before they book — first through a chat popup, then optionally on a full messages page. You reply from Guest Inbox like other channels.
+Guests message you from a property listing before they book. They start in a chat popup, then can optionally move to a full messages page. You reply from Guest Inbox like other channels.
 
 **Common host questions**
 
 - Q: Do guests need to pick dates before messaging me?
-  A: The first time they contact you about a listing, yes — return visits can open the thread without picking dates again.
+  A: The first time they contact you about a listing, yes. Return visits can open the thread without picking dates again.
 - Q: Is messaging the same as confirming a booking?
-  A: No — chatting does not hold dates or create a reservation; guests still use Reserve for that.
+  A: No, chatting doesn't hold dates or create a reservation. Guests still use Reserve for that.
 - Q: Where do I see and answer these messages?
   A: In Guest Inbox under the Web tab, alongside your other guest conversations.
 - Q: Can guests talk to the AI receptionist from the listing chat popup?
-  A: Yes — when the voice receptionist is enabled for the property, **Talk to receptionist** is in the chat ⋮ menu on both the Contact host popup and the full messages page.
+  A: Yes. When the voice receptionist is enabled for the property, **Talk to receptionist** shows up in the chat ⋮ menu on both the Contact host popup and the full messages page.
 - Q: What are the suggested questions guests see before they message me?
-  A: When a guest opens chat with no messages yet, they see five starter questions about the stay — check-in times, parking, pets, WiFi, payments, and similar. Tapping one sends that question to you like a normal first message. There are no action buttons, only questions. The Stays inbox (existing threads) does not show these starters.
+  A: When a guest opens chat with no messages yet, they see five starter questions about the stay: check-in times, parking, pets, WiFi, payments, and similar. Tapping one sends that question to you like a normal first message. There are no action buttons, only questions. The Stays inbox (existing threads) does not show these starters.
 
 ---
 

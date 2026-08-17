@@ -2,7 +2,7 @@
 title: 'Sign-in (legacy redirect)'
 status: active
 tags: [guides, routes, auth]
-updated: 2026-08-02
+updated: 2026-08-17
 ---
 
 # Sign-in (legacy redirect)
@@ -32,16 +32,16 @@ Guest sign-in is **not** served here — guests authenticate through the checkou
 
 ## Host-facing knowledge
 
-If someone shared an old "sign in" link with you, it still works — you'll land on the current host login page automatically.
+If someone shared an old "sign in" link with you, it still works. You'll land on the current host login page automatically.
 
 **Common host questions**
 
-- Q: My bookmark still says "sign-in" — is that still valid?
+- Q: Is my old "sign-in" bookmark still valid?
   A: Yes. It redirects to the host login page; sign in with Google there as usual.
-- Q: I expected a password field on the old sign-in link but the page changed — what happened?
+- Q: I expected a password field on the old sign-in link, but the page changed. What happened?
   A: Host sign-in moved to the For Hosts login page and uses Google only; the old link is just a shortcut that sends you there.
 - Q: Can guests use the old sign-in link to log in?
-  A: No — that path is for hosts. Guests sign in only when booking or saving a listing, through the popup on those pages.
+  A: No, that path is for hosts. Guests sign in only when booking or saving a listing, through the popup on those pages.
 
 ---
 
