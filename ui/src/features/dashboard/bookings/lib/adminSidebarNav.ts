@@ -6,12 +6,10 @@ import {
   Building2,
   CalendarDays,
   Car,
-  ClipboardCheck,
   DollarSign,
   FileText,
   HelpCircle,
   Inbox,
-  Landmark,
   LayoutDashboard,
   LayoutTemplate,
   Megaphone,
@@ -32,6 +30,7 @@ import {
   propertySectionPath,
 } from '@/features/dashboard/org/lib/tenantPaths';
 import { superAdminPaths } from '@/features/dashboard/super-admin/lib/superAdminPaths';
+import { SUPER_ADMIN_PLATFORM_DESTINATIONS } from '@/features/dashboard/super-admin/lib/superAdminPlatformNav';
 import type { OrgPermissionId } from '@/features/dashboard/team/lib/orgPermissions';
 import {
   hasOrgPermission,
@@ -345,11 +344,7 @@ export function buildSuperAdminNavSections(orgSlug: string | null): SidebarNavSe
       label: 'Platform',
       items: [
         { label: 'Overview', href: superAdminPaths.root, Icon: LayoutDashboard },
-        { label: 'Developments', href: superAdminPaths.developments, Icon: Landmark },
-        { label: 'Properties', href: superAdminPaths.properties, Icon: Building2 },
-        { label: 'Approvals', href: superAdminPaths.approvals, Icon: ClipboardCheck },
-        { label: 'Hosts', href: superAdminPaths.hosts, Icon: Users },
-        { label: 'Settings', href: superAdminPaths.settings, Icon: Settings },
+        ...SUPER_ADMIN_PLATFORM_DESTINATIONS,
       ],
     },
   ];

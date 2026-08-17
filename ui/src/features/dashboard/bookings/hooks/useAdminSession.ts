@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { supabase } from '@/lib/supabase/client';
-
 import {
   clearLegacyOrgRenewalSessionStorage,
   clearOrgRenewalAutoShownForUser,
 } from '@/features/dashboard/org/lib/listingContractRenewalSession';
+
+import { supabase } from '@/lib/supabase/client';
+
 
 import type { Session } from '@supabase/supabase-js';
 

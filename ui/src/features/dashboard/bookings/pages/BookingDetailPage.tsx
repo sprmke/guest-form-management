@@ -1,10 +1,9 @@
 /**
  * BookingDetailPage — /bookings/:bookingId
  *
- * View mode: header + tabbed read-only panels
- * (AI Summary? / Overview / Guests / Parking? / Pets? / Pricing? / Files).
- * Edit mode: `BookingEditForm` — Guests / Stay / Parking / Pets / Files / Workflow
- * (labels aligned with view tabs where domains overlap).
+ * View mode: one `BookingDetailShell` (header + tabs + panels) matching edit chrome
+ * (AI Summary? / Stay / Guests / Parking? / Pets? / Pricing? / Files).
+ * Edit mode: `BookingEditForm` / `BookingEditTabs` — same shell; Stay / Guests / Parking / Pets.
  *
  * Mobile: compact summary strip; Progress stays above the fold; detail panels collapse.
  *
@@ -40,6 +39,10 @@ import { ParkingPanel } from '@/features/dashboard/bookings/components/booking-d
 import { PetsPanel } from '@/features/dashboard/bookings/components/booking-detail/panels/PetsPanel';
 import { PricingSummaryPanel } from '@/features/dashboard/bookings/components/booking-detail/panels/PricingSummaryPanel';
 import { StayDetailsPanel } from '@/features/dashboard/bookings/components/booking-detail/panels/StayDetailsPanel';
+import {
+  BookingDetailShell,
+  BookingDetailShellBody,
+} from '@/features/dashboard/bookings/components/booking-detail/primitives/BookingDetailShell';
 import { BookingDetailMobileSummary } from '@/features/dashboard/bookings/components/BookingDetailMobileSummary';
 import { BookingEditForm } from '@/features/dashboard/bookings/components/BookingEditForm';
 import { BookingMetaCard } from '@/features/dashboard/bookings/components/BookingMetaCard';
@@ -278,7 +281,7 @@ export function BookingDetailPage() {
                     onPreview={handlePreview}
                   />
                 ) : (
-                  <>
+                  <BookingDetailShell>
                     <BookingDetailHeader
                       booking={booking}
                       onEdit={() => handleStartEdit()}
@@ -286,38 +289,40 @@ export function BookingDetailPage() {
                       className={cn(isMobileWorkflowFirst && 'hidden md:block')}
                     />
 
-                    <BookingDetailTabs value={viewTab} onChange={setViewTab} booking={booking} />
+                    <BookingDetailShellBody>
+                      <BookingDetailTabs value={viewTab} onChange={setViewTab} booking={booking} />
 
-                    {viewTab === 'ai_summary' && hasAiSummaryRun ? (
-                      <AiSummaryPanel booking={booking} onPreview={handlePreview} />
-                    ) : null}
-                    {viewTab === 'overview' && (
-                      <div className="space-y-4">
-                        <StayDetailsPanel booking={booking} />
-                        <OtherInfoPanel booking={booking} />
-                        <BookingMetaCard
-                          booking={booking}
-                          onCopyBookingId={() => void copyBookingIdToClipboard()}
-                        />
-                        <BookingAiAssistantAuditCard bookingId={booking.id} />
-                      </div>
-                    )}
-                    {viewTab === 'guests' && (
-                      <GuestsPanel booking={booking} onPreview={handlePreview} />
-                    )}
-                    {viewTab === 'parking' && booking.need_parking ? (
-                      <ParkingPanel booking={booking} onPreview={handlePreview} />
-                    ) : null}
-                    {viewTab === 'pets' && booking.has_pets ? (
-                      <PetsPanel booking={booking} onPreview={handlePreview} />
-                    ) : null}
-                    {viewTab === 'pricing' && booking.status !== 'PENDING_REVIEW' && (
-                      <PricingSummaryPanel booking={booking} onPreview={handlePreview} />
-                    )}
-                    {viewTab === 'files' && (
-                      <DocumentsPanel booking={booking} onPreview={handlePreview} />
-                    )}
-                  </>
+                      {viewTab === 'ai_summary' && hasAiSummaryRun ? (
+                        <AiSummaryPanel booking={booking} onPreview={handlePreview} />
+                      ) : null}
+                      {viewTab === 'overview' && (
+                        <div className="space-y-4">
+                          <StayDetailsPanel booking={booking} />
+                          <OtherInfoPanel booking={booking} />
+                          <BookingMetaCard
+                            booking={booking}
+                            onCopyBookingId={() => void copyBookingIdToClipboard()}
+                          />
+                          <BookingAiAssistantAuditCard bookingId={booking.id} />
+                        </div>
+                      )}
+                      {viewTab === 'guests' && (
+                        <GuestsPanel booking={booking} onPreview={handlePreview} />
+                      )}
+                      {viewTab === 'parking' && booking.need_parking ? (
+                        <ParkingPanel booking={booking} onPreview={handlePreview} />
+                      ) : null}
+                      {viewTab === 'pets' && booking.has_pets ? (
+                        <PetsPanel booking={booking} onPreview={handlePreview} />
+                      ) : null}
+                      {viewTab === 'pricing' && booking.status !== 'PENDING_REVIEW' && (
+                        <PricingSummaryPanel booking={booking} onPreview={handlePreview} />
+                      )}
+                      {viewTab === 'files' && (
+                        <DocumentsPanel booking={booking} onPreview={handlePreview} />
+                      )}
+                    </BookingDetailShellBody>
+                  </BookingDetailShell>
                 )}
               </CollapsibleContent>
             </Collapsible>

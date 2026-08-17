@@ -1,6 +1,7 @@
 import { Calendar, Edit2, Users } from 'lucide-react';
 
 import { BookingDetailActionsMenu } from '@/features/dashboard/bookings/components/booking-detail/BookingDetailActionsMenu';
+import { BookingDetailShellHeader } from '@/features/dashboard/bookings/components/booking-detail/primitives/BookingDetailShell';
 import { occupiedNightsFromStay } from '@/features/dashboard/bookings/components/calendar/calendarStayAmounts';
 import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
 import type { BookingDetailAction } from '@/features/dashboard/bookings/lib/bookingDetailActions';
@@ -35,12 +36,7 @@ export function BookingDetailHeader({ booking, onEdit, actions, className }: Pro
   const isAirbnb = source === 'Airbnb';
 
   return (
-    <header
-      className={cn(
-        'surface-card border-border/80 rounded-2xl border px-4 py-4 sm:px-5',
-        className
-      )}
-    >
+    <BookingDetailShellHeader as="header" className={className}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-5">
         <div className="min-w-0 space-y-1.5">
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
@@ -67,7 +63,7 @@ export function BookingDetailHeader({ booking, onEdit, actions, className }: Pro
           <p className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium">
             <span className="inline-flex min-w-0 items-center gap-1.5">
               <Calendar className="size-3.5 shrink-0 opacity-70" aria-hidden />
-              <span className="min-w-0 break-words">
+              <span className="min-w-0 [overflow-wrap:anywhere]">
                 {formatBookingDate(booking.check_in_date)}
                 <span className="text-muted-foreground/50 mx-1" aria-hidden>
                   →
@@ -87,7 +83,7 @@ export function BookingDetailHeader({ booking, onEdit, actions, className }: Pro
             type="button"
             size="sm"
             onClick={onEdit}
-            className="h-11 flex-1 gap-1.5 text-[13px] sm:flex-none lg:h-9"
+            className="h-11 min-h-[44px] flex-1 gap-1.5 text-[13px] sm:flex-none lg:h-9 lg:min-h-0"
           >
             <Edit2 className="size-4 shrink-0" aria-hidden />
             Edit booking
@@ -95,6 +91,6 @@ export function BookingDetailHeader({ booking, onEdit, actions, className }: Pro
           <BookingDetailActionsMenu actions={actions} />
         </div>
       </div>
-    </header>
+    </BookingDetailShellHeader>
   );
 }

@@ -36,6 +36,7 @@ import {
   resolveBottomTabActiveKey,
   splitAdminBottomNav,
 } from '@/features/dashboard/bookings/lib/adminBottomNav';
+import { adminPageTransitionKey } from '@/features/dashboard/bookings/lib/adminPageTransitionKey';
 import {
   buildOrgNavSections,
   buildParkingNavSections,
@@ -55,6 +56,8 @@ import { resolveActiveNavHref } from '@/features/dashboard/bookings/lib/navActiv
 import { NotificationBell } from '@/features/dashboard/notifications/components/NotificationBell';
 import { NotificationsProvider } from '@/features/dashboard/notifications/components/NotificationsProvider';
 import { useNotificationsList } from '@/features/dashboard/notifications/hooks/useNotifications';
+import { ListingContractRenewalProvider } from '@/features/dashboard/org/components/listing-authorization/ListingContractRenewalProvider';
+import { ListingVerificationSidebarCta } from '@/features/dashboard/org/components/listing-authorization/ListingVerificationSidebarCta';
 import { OrgSettingsIssuesSync } from '@/features/dashboard/org/components/OrgSettingsIssuesSync';
 import { SectionNavIssueDot } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import {
@@ -66,8 +69,6 @@ import {
   useOptionalParkingContext,
 } from '@/features/dashboard/org/components/RequireParkingContext';
 import { SidebarTenantScope } from '@/features/dashboard/org/components/TenantSwitchers';
-import { ListingContractRenewalProvider } from '@/features/dashboard/org/components/listing-authorization/ListingContractRenewalProvider';
-import { ListingVerificationSidebarCta } from '@/features/dashboard/org/components/listing-authorization/ListingVerificationSidebarCta';
 import {
   GetVerifiedSidebarCta,
   HostVerificationChangesGate,
@@ -347,6 +348,7 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
     getAssistantOpenRequestId,
     () => 0
   );
+  const lastHandledAssistantOpenRequestIdRef = useRef(assistantOpenRequestId);
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -363,6 +365,8 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
 
   useEffect(() => {
     if (assistantOpenRequestId === 0) return;
+    if (assistantOpenRequestId === lastHandledAssistantOpenRequestIdRef.current) return;
+    lastHandledAssistantOpenRequestIdRef.current = assistantOpenRequestId;
     setMoreSheetOpen(false);
     setNotificationsOpen(false);
     setAssistantOpen(true);
@@ -677,7 +681,7 @@ function AdminMainColumn({
         )}
       >
         <PageTransition
-          transitionKey={pathname}
+          transitionKey={adminPageTransitionKey(pathname)}
           className={cn(
             fillMain ? 'flex min-h-0 flex-1 flex-col' : 'space-y-3 sm:space-y-4 lg:space-y-6'
           )}

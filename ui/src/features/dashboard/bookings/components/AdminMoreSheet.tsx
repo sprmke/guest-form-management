@@ -10,9 +10,9 @@ import {
   isParkingAdminPath,
   isPropertyAdminPath,
 } from '@/features/dashboard/bookings/lib/adminSidebarNav';
+import { ListingVerificationSidebarCta } from '@/features/dashboard/org/components/listing-authorization/ListingVerificationSidebarCta';
 import { SectionNavIssueDot } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import { GetVerifiedSidebarCta } from '@/features/dashboard/org/components/verification/GetVerifiedModal';
-import { ListingVerificationSidebarCta } from '@/features/dashboard/org/components/listing-authorization/ListingVerificationSidebarCta';
 
 import { scrollAdminViewToTop } from '@/components/navigation/ScrollToTop';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';

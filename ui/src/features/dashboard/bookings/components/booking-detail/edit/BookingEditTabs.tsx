@@ -28,6 +28,11 @@ import {
   BookingEditActions,
   type BookingEditActionsProps,
 } from '@/features/dashboard/bookings/components/booking-detail/edit/BookingEditStickyBar';
+import {
+  BookingDetailShell,
+  BookingDetailShellBody,
+  BookingDetailShellHeader,
+} from '@/features/dashboard/bookings/components/booking-detail/primitives/BookingDetailShell';
 import type { BookingEditFormValues } from '@/features/dashboard/bookings/components/BookingEditForm';
 import { ReadyForCheckinSensitiveFieldsNotice } from '@/features/dashboard/bookings/components/ReadyForCheckinSensitiveFieldsNotice';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
@@ -178,8 +183,8 @@ export const BookingEditTabs = forwardRef<BookingEditTabsHandle, Props>(function
     booking.guest_facebook_name?.trim() || booking.primary_guest_name?.trim() || 'Booking';
 
   return (
-    <div className="border-border/80 bg-card overflow-hidden rounded-2xl border" data-mode="edit">
-      <div className="border-border/70 bg-muted/25 flex flex-col gap-2.5 border-b px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-5">
+    <BookingDetailShell mode="edit">
+      <BookingDetailShellHeader className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
         <div className="flex min-w-0 items-start gap-2.5 sm:items-center">
           <span className="icon-well-sm inline-flex !size-8 shrink-0 items-center justify-center sm:!size-9">
             <PencilLine className="text-primary size-4" aria-hidden />
@@ -202,9 +207,9 @@ export const BookingEditTabs = forwardRef<BookingEditTabsHandle, Props>(function
           </div>
         </div>
         <BookingEditActions {...actions} density="header" />
-      </div>
+      </BookingDetailShellHeader>
 
-      <div className="space-y-4 px-3 py-4 sm:px-5 sm:py-5">
+      <BookingDetailShellBody>
         <ReadyForCheckinSensitiveFieldsNotice visible={sensitiveNoticeVisible} />
 
         <SegmentedControl
@@ -217,9 +222,9 @@ export const BookingEditTabs = forwardRef<BookingEditTabsHandle, Props>(function
         />
 
         <div className="min-w-0 space-y-4">{tabs[activeTab]}</div>
-      </div>
+      </BookingDetailShellBody>
 
       {footer}
-    </div>
+    </BookingDetailShell>
   );
 });
