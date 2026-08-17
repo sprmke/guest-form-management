@@ -2,7 +2,7 @@
 title: 'Guest Stays — operator guide'
 status: active
 tags: [guides, routes, account, inbox]
-updated: 2026-08-09
+updated: 2026-08-17
 ---
 
 # Guest Stays — operator guide
@@ -33,12 +33,12 @@ Desktop: thread list (left) + selected conversation (right), first thread auto-s
 
 ## Host-facing knowledge
 
-Guests have one **Stays** inbox that lists every conversation they've had with any of your properties (or other hosts), similar to a normal messaging app. Sending, editing, or unsending a message here works the same as the single-property chat — it's the same conversation, just viewed from the guest's side in one place instead of per property.
+Guests have one **Stays** inbox that lists every conversation they've had with any of your properties (or other hosts), similar to a normal messaging app. Sending, editing, or unsending a message here works the same as the single-property chat. It's the same conversation, just viewed from the guest's side in one place instead of per property.
 
 **Common host questions**
 
 - Q: Is this a different conversation from the one I see in my Guest Inbox?
-  A: No — it's the exact same thread. The guest just sees all their conversations (across every property) in one list, while you see conversations for your property in your inbox.
+  A: No, it's the exact same thread. The guest just sees all their conversations (across every property) in one list, while you see conversations for your property in your inbox.
 - Q: Can a guest have more than one thread with the same property?
   A: No, there's one thread per guest-and-property pair.
 

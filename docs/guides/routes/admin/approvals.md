@@ -2,7 +2,7 @@
 title: 'Super Admin Approvals — operator guide'
 status: active
 tags: [guides, routes, admin]
-updated: 2026-08-04
+updated: 2026-08-17
 ---
 
 # Super Admin Approvals — operator guide
@@ -59,6 +59,7 @@ The platform team uses this page to approve host identity documents, **request c
 
 ## Behavior / edge cases
 
+- Desktop defaults to a table with a table/grid toggle (same control as Hosts, Developments, Support tickets). Phone/tablet layouts force the card grid.
 - Search filters org rows by organization name, owner name, and owner email; review rows by property name, organization name, review text, reviewer name, and source.
 - **Type filter:** All types / Property / Parking / **Listing verification** / Reviews. Property and Parking filter **org** rows by `hostModes`. Listing verification shows listing-scoped rows only. Reviews shows external review rows only.
 - Status filter: All / In review / Approved / Changes requested / Rejected. Default: In review. Review rows use pending / approved / rejected only (no changes-requested).
@@ -106,7 +107,7 @@ Data lives in **`organizations.settings.verification`** JSONB (org tiers) and **
 | Concern               | Path                                                                                                                                                                                                   |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Page                  | `ui/src/features/dashboard/super-admin/pages/SuperAdminApprovalsPage.tsx`                                                                                                                              |
-| Table                 | `ui/.../super-admin-approvals/SuperAdminApprovalsTable.tsx`                                                                                                                                            |
+| Table / cards         | `ui/.../super-admin-approvals/SuperAdminApprovalsTable.tsx`, `SuperAdminApprovalsCardGrid.tsx`                                                                                                         |
 | Org review dialog     | `ui/.../super-admin-approvals/SuperAdminApprovalReviewDialog.tsx`                                                                                                                                      |
 | Listing review dialog | `ui/.../super-admin-approvals/SuperAdminListingVerificationDialog.tsx`                                                                                                                                 |
 | Review dialog         | `ui/.../super-admin-approvals/SuperAdminExternalReviewDialog.tsx`                                                                                                                                      |

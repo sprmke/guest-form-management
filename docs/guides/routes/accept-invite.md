@@ -2,7 +2,7 @@
 title: 'Accept team invite — operator guide'
 status: active
 tags: [guides, routes, auth]
-updated: 2026-08-02
+updated: 2026-08-17
 ---
 
 # Accept team invite — operator guide
@@ -34,7 +34,7 @@ When you invite a teammate, they get an email with a link to this page. They sig
 
 **Common host questions**
 
-- Q: My teammate opened the link but nothing happened — why?
+- Q: My teammate opened the link but nothing happened. Why?
   A: They must sign in with the same Gmail address the invite was sent to, then tap Accept. The page does not join them automatically just by opening the link.
 - Q: What if they use a different Google account?
   A: Accept fails until they switch to the invited email (or you send a new invite to the account they actually use).

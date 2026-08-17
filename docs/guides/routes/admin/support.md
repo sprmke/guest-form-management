@@ -13,17 +13,17 @@ Route: `/admin/support` (+ `/admin/support/faqs`)
 
 ## Progress overview
 
-| Section              | E2E save | Validation | Docs | Notes                                      |
-| -------------------- | -------- | ---------- | ---- | ------------------------------------------ |
-| Ticket list          | Done     | N/A        | Done | Search + category/status filters, all orgs |
-| Ticket detail dialog | Done     | Done       | Done | Reply thread + status/priority controls    |
-| FAQ editor           | Done     | Done       | Done | Add/edit/reorder/publish-toggle/delete     |
+| Section              | E2E save | Validation | Docs | Notes                                                            |
+| -------------------- | -------- | ---------- | ---- | ---------------------------------------------------------------- |
+| Ticket list          | Done     | N/A        | Done | Search + filters; table/card toggle (grid on mobile)             |
+| Ticket detail dialog | Done     | Done       | Done | Reply thread + status/priority; inbox-style composer             |
+| FAQ editor           | Done     | Done       | Done | First-class nav + overview item; add/edit/reorder/publish/delete |
 
 ---
 
 ## Overview
 
-Platform super-admins triage every host-filed support ticket across all organizations, reply to hosts, and manage status/priority. A separate sub-page manages the curated FAQ list hosts see on their own Help & Support overview page.
+Platform super-admins triage every host-filed support ticket across all organizations, reply to hosts, and manage status/priority. FAQs are a separate first-class page (sidebar + overview card), not a button on the tickets list.
 
 **Access:** `RequireSuperAdmin` (`SUPER_ADMIN_EMAILS`), same tier as Approvals/Hosts/Developments.
 
@@ -42,7 +42,7 @@ The platform team reviews every ticket hosts file through their Help & Support p
 - Q: Does replying change the ticket status?
   A: An "Open" ticket automatically moves to "In progress" once you reply. You can also set status and priority manually from the same panel.
 - Q: How do I add or edit an FAQ?
-  A: Use the "Manage FAQs" button on this page, or go directly to `/admin/support/faqs`. Add, edit, reorder (up/down arrows within a category), publish/unpublish, or delete from there.
+  A: Open FAQs from the Super Admin sidebar or overview. Add, edit, reorder (up/down arrows within a category), publish/unpublish, or delete from there.
 
 ---
 
@@ -50,11 +50,11 @@ The platform team reviews every ticket hosts file through their Help & Support p
 
 ### Sections
 
-Search (subject / org name / submitter email) + category filter + status filter, all applied client-side over one full ticket fetch. Responsive card list (not a literal table — the four visible fields don't gain anything from tabular columns).
+Search (subject / org name / submitter name / email) + category filter + status filter, all applied client-side over one full ticket fetch. Desktop defaults to a table (subject, org, category, priority, status, date) with a table/grid toggle matching Hosts and Developments. Phone/tablet layouts force the card grid.
 
 ### Behavior / edge cases
 
-Clicking a ticket opens `SuperAdminTicketDetailDialog` (bottom sheet on mobile, centered dialog on desktop via `ResponsiveModal`).
+Clicking a ticket opens `SuperAdminTicketDetailDialog` (bottom sheet on mobile, centered dialog on desktop via `ResponsiveModal`). Empty copy distinguishes “no tickets yet” from “no tickets match your filters”.
 
 ## Ticket detail dialog
 
@@ -66,6 +66,8 @@ Clicking a ticket opens `SuperAdminTicketDetailDialog` (bottom sheet on mobile, 
 | Priority | `support_tickets.priority`     | low / medium / high / none             |
 | Reply    | `support_ticket_messages.body` | Required, ≤5000 chars                  |
 
+Header shows organization, category, and the host who submitted. Status and priority are the dropdowns (no duplicate status badge). Enter sends the reply; Shift+Enter inserts a new line. Send is disabled while a reply is in flight.
+
 ### Save path
 
 1. Reply → **`reply-support-ticket-admin`** (POST) → inserts a `sender_type='admin'` message, auto-reopens an `open` ticket to `in_progress`, sends `sendSupportTicketReplyNotify` to the host (best-effort).
@@ -73,7 +75,7 @@ Clicking a ticket opens `SuperAdminTicketDetailDialog` (bottom sheet on mobile, 
 
 ## FAQ editor (`/admin/support/faqs`)
 
-Category-grouped rows. Up/down arrows swap `sort_order` with the adjacent row in the same category (two `update-help-center-faq` calls). Publish toggle is a `Switch` bound directly to `is_published`. Delete asks for confirmation via `AlertDialog`. Add/edit opens a shared dialog form (category — free text with a datalist of existing categories, question, answer).
+First-class Platform nav item and overview card (label **FAQs**). Category-grouped rows. Up/down arrows swap `sort_order` with the adjacent row in the same category (two `update-help-center-faq` calls). Publish toggle is a `Switch` bound directly to `is_published`. Delete asks for confirmation via `AlertDialog`. Add/edit opens a shared dialog form (category — free text with a datalist of existing categories, question, answer).
 
 ## API reference
 
@@ -90,13 +92,15 @@ Category-grouped rows. Up/down arrows swap `sort_order` with the adjacent row in
 
 ## Implementation map
 
-| Concern            | Path                                                                                                                                       |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Pages              | `ui/src/features/dashboard/super-admin/pages/SuperAdminSupportPage.tsx`, `SuperAdminHelpFaqsPage.tsx`                                      |
-| Components         | `ui/src/features/dashboard/super-admin/components/super-admin-support/*.tsx`                                                               |
-| Hooks              | `ui/src/features/dashboard/super-admin/hooks/{useSupportTicketsAdmin,useHelpCenterFaqsAdmin}.ts`                                           |
-| Edge functions     | `supabase/functions/{list,get,reply}-support-ticket-admin`, `update-support-ticket-status`, `{list,create,update,delete}-help-center-faq*` |
-| Route registration | `ui/src/features/dashboard/super-admin/routes/index.tsx`, `superAdminPaths.ts`                                                             |
+| Concern            | Path                                                                                                                                                   |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Pages              | `ui/src/features/dashboard/super-admin/pages/SuperAdminSupportPage.tsx`, `SuperAdminHelpFaqsPage.tsx`                                                  |
+| List UI            | `ui/src/features/dashboard/super-admin/components/super-admin-support/{SuperAdminSupportTable,SuperAdminSupportCardGrid,SuperAdminSupportToolbar}.tsx` |
+| Detail             | `ui/src/features/dashboard/super-admin/components/super-admin-support/SuperAdminTicketDetailDialog.tsx`                                                |
+| Shared nav         | `ui/src/features/dashboard/super-admin/lib/superAdminPlatformNav.ts`                                                                                   |
+| Hooks              | `ui/src/features/dashboard/super-admin/hooks/{useSupportTicketsAdmin,useHelpCenterFaqsAdmin}.ts`                                                       |
+| Edge functions     | `supabase/functions/{list,get,reply}-support-ticket-admin`, `update-support-ticket-status`, `{list,create,update,delete}-help-center-faq*`             |
+| Route registration | `ui/src/features/dashboard/super-admin/routes/index.tsx`, `superAdminPaths.ts`                                                                         |
 
 ## Related docs
 

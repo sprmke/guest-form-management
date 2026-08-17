@@ -2,7 +2,7 @@
 title: 'Guest account — operator guide'
 status: active
 tags: [guides, routes, account]
-updated: 2026-08-09
+updated: 2026-08-17
 ---
 
 # Guest account — operator guide
@@ -18,18 +18,18 @@ Routes (authenticated explore mode):
 
 ## Progress overview
 
-| Section    | E2E save | Validation | Docs       | Notes                                          |
-| ---------- | -------- | ---------- | ---------- | ---------------------------------------------- |
-| Nav avatar | —        | —          | Documented | Explore: guest menu; host: Dashboard avatar    |
-| Profile    | ✅       | Client     | Documented | `guest-profile` + avatar upload                |
-| Stays      | ✅       | —          | Documented | Cross-property web chat hub (`guest-messages`) |
-| Favorites  | ✅       | —          | Documented | `guest_saved_properties`                       |
+| Section    | E2E save | Validation | Docs       | Notes                                                                               |
+| ---------- | -------- | ---------- | ---------- | ----------------------------------------------------------------------------------- |
+| Nav avatar | —        | —          | Documented | Explore: guest menu (Host + Explore groups when org access); host: Dashboard avatar |
+| Profile    | ✅       | Client     | Documented | `guest-profile` + avatar upload                                                     |
+| Stays      | ✅       | —          | Documented | Cross-property web chat hub (`guest-messages`)                                      |
+| Favorites  | ✅       | —          | Documented | `guest_saved_properties`                                                            |
 
 ---
 
 ## Overview
 
-Signed-in guests see a **rounded avatar** in the marketing nav (explore pages only). The dropdown links to account pages. Anonymous guests still use the **checkout auth modal** — no `/for-guests/login` pages.
+Signed-in guests see a **rounded avatar** in the marketing nav (explore pages only). The dropdown links to account pages. Guests who also own or belong to a host organization see a **Host** section with **Dashboard** above the **Explore** links (Profile · Stays · Favorites). Anonymous guests still use the **checkout auth modal** — no `/for-guests/login` pages.
 
 **Host marketing (`/for-hosts`):** signed-in hosts see the same pill + avatar pattern — **Explore** switches to guest mode; avatar menu opens **Dashboard**. Signed-out hosts see **Explore** + **Sign In**.
 
@@ -39,12 +39,12 @@ Stays and Favorites each have their own dedicated guide — see [stays.md](./sta
 
 ## Host-facing knowledge
 
-Guests manage their own display name, bio, phone, location, and photo from their account — hosts can't edit a guest's profile on their behalf. A guest's profile is separate from any individual booking; changing it doesn't change details already submitted on a booking form.
+Guests manage their own display name, bio, phone, location, and photo from their account. Hosts can't edit a guest's profile on their behalf. A guest's profile is separate from any individual booking; changing it doesn't change details already submitted on a booking form.
 
 **Common host questions**
 
 - Q: Can I update a guest's profile photo or bio for them?
-  A: No — that's guest-managed. If a booking has the wrong contact info, edit the booking itself rather than the guest's account profile.
+  A: No, that's guest-managed. If a booking has the wrong contact info, edit the booking itself rather than the guest's account profile.
 - Q: Does updating their profile change their existing bookings?
   A: No. Profile info (name, bio, phone, location, photo) is separate from booking details already submitted.
 

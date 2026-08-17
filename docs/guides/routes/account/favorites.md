@@ -2,7 +2,7 @@
 title: 'Guest Favorites — operator guide'
 status: active
 tags: [guides, routes, account]
-updated: 2026-08-09
+updated: 2026-08-17
 ---
 
 # Guest Favorites — operator guide
@@ -28,7 +28,7 @@ Grid of properties the signed-in guest has "hearted" (saved) while browsing the 
 
 ## Host-facing knowledge
 
-This is the guest's favorites list — properties they tapped the heart icon on while browsing. It doesn't affect availability, pricing, or bookings; it's purely a personal shortlist for the guest.
+This is the guest's favorites list: properties they tapped the heart icon on while browsing. It doesn't affect availability, pricing, or bookings; it's purely a personal shortlist for the guest.
 
 **Common host questions**
 

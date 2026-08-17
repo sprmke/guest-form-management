@@ -1,11 +1,11 @@
 ---
-title: 'Super Admin Settings — operator guide'
+title: 'Super Admin AI Management — operator guide'
 status: active
 tags: [guides, routes, admin]
-updated: 2026-08-11
+updated: 2026-08-17
 ---
 
-# Super Admin Settings — operator guide
+# Super Admin AI Management — operator guide
 
 Route: `/admin/settings`
 
@@ -13,15 +13,17 @@ Route: `/admin/settings`
 
 ## Progress overview
 
-| Section     | E2E save | Validation | Docs | Notes                                                                 |
-| ----------- | -------- | ---------- | ---- | --------------------------------------------------------------------- |
-| Platform AI | Done     | Server     | Done | Kill switch + feature allowlist + default quotas (voice is a feature) |
+| Section                | E2E save | Validation | Docs | Notes                                                                 |
+| ---------------------- | -------- | ---------- | ---- | --------------------------------------------------------------------- |
+| Platform AI            | Done     | Server     | Done | Kill switch + feature allowlist + default quotas + credit unit fields |
+| AI credit wallet       | Done     | Server     | Done | Super-admin manual top-up / adjustment per org                        |
+| AI dashboard assistant | Done     | Server     | Done | Independent platform kill switch                                      |
 
 ---
 
 ## Overview
 
-Platform-wide AI controls for the super-admin team. Changes apply across all organizations and properties immediately.
+Platform-wide AI controls for the super-admin team. Sidebar and overview label: **AI Management**. Changes apply across all organizations and properties immediately. Three cards: Platform AI, AI credit wallet, and AI dashboard assistant.
 
 **Access:** `RequireSuperAdmin` — email must be in `SUPER_ADMIN_EMAILS` (server) / `VITE_SUPER_ADMIN_EMAILS` (client UX gate).
 
@@ -42,41 +44,79 @@ These controls are internal to the platform team. Hosts do not see or manage the
 
 ## Platform AI
 
-| Control              | Effect                                                                                    |
-| -------------------- | ----------------------------------------------------------------------------------------- |
-| **Enabled**          | Master kill switch for all AI features across the platform                                |
-| **Enforce quotas**   | When on, org-level and per-property AI usage quotas are enforced                          |
-| **Allowed features** | Per-feature allowlist (`allowed_features`). Empty array = all allowed when enabled.       |
-| **Default quotas**   | Daily calls, monthly calls, and daily USD cost limits inherited by orgs without overrides |
+| Control                  | Effect                                                                                                                       |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| **Enabled**              | Master kill switch for all AI features across the platform                                                                   |
+| **Enforce quotas**       | When on, org-level and per-property AI usage quotas are enforced                                                             |
+| **Allowed features**     | Per-feature allowlist (`allowed_features`). Empty array = all allowed when enabled.                                          |
+| **Default quotas**       | Daily calls, monthly calls, and daily USD cost limits inherited by orgs without overrides                                    |
+| **Credit unit (USD)**    | Super-admin-only — USD value of one AI credit (`credit_unit_usd`; working default `0.001`)                                   |
+| **Voice cost/min (USD)** | Super-admin-only — per-minute Gemini Live estimate for voice receptionist billing (`voice_receptionist_cost_per_minute_usd`) |
 
 Voice receptionist is controlled by the **Allowed features** list — add or remove `voice_receptionist` to gate the product. The old standalone voice kill switch endpoint was removed.
 
 ### Save path
 
-1. Toggle in UI → `PATCH ai-platform-global-settings`
-2. Persists `ai_platform_global_settings` singleton row
+1. Toggle or edit in UI → `PATCH ai-platform-global-settings`
+2. Persists `ai_platform_global_settings` singleton row (including credit conversion fields)
+
+---
+
+## AI credit wallet
+
+Super-admin tool to inspect and manually adjust an org's **purchased top-up** balance (`ai_platform_org_credit_wallet`), atomically updated via a row-locked `adjust_ai_platform_org_credit_wallet` RPC. Separate from the monthly/daily credit allowance quotas on org Settings — once an org exceeds its allowance, `assertOrgAndPropertyAiQuota` checks this wallet and draws it down automatically (`recordAiUsage` inserts a `usage_debit` ledger row) if it has a positive balance; empty wallet fails the call. The default allowance limits ship deliberately generous (not real pricing — see the linked plan doc), so this wallet only actually gets drawn on for orgs with a tightened per-org/per-property override today. No UI yet to edit an org's own credit-limit overrides or the platform-wide defaults — only this manual top-up/adjustment tool.
+
+| Control        | Effect                                                                                    |
+| -------------- | ----------------------------------------------------------------------------------------- |
+| **Org lookup** | Enter org UUID or slug → **Load**                                                         |
+| **Balance**    | Current `balance_credits`                                                                 |
+| **Ledger**     | Recent `ai_platform_org_credit_ledger` rows (usage debits, purchases, manual adjustments) |
+| **Adjust**     | POST non-zero `creditsDelta` (+ add / − subtract) with optional description               |
+
+### Save path
+
+1. Load org → `GET ai-platform-credit-wallet?org_id=` or `?org_slug=`
+2. Adjust → `POST ai-platform-credit-wallet` with `{ creditsDelta, description? }`
+
+---
+
+## AI dashboard assistant
+
+| Control     | Effect                                              |
+| ----------- | --------------------------------------------------- |
+| **Enabled** | Platform-wide kill switch for the dashboard chat AI |
+
+Independent of Platform AI. Org-level opt-in still lives on organization Settings.
+
+### Save path
+
+1. Toggle in UI → `PATCH dashboard-assistant-global-settings`
+2. Persists the platform assistant singleton row
 
 ---
 
 ## API reference
 
-| Action                    | Endpoint                                    |
-| ------------------------- | ------------------------------------------- |
-| Read / update platform AI | `GET` / `PATCH ai-platform-global-settings` |
+| Action                                 | Endpoint                                            |
+| -------------------------------------- | --------------------------------------------------- |
+| Read / update platform AI              | `GET` / `PATCH ai-platform-global-settings`         |
+| Read / adjust org credit wallet        | `GET` / `POST ai-platform-credit-wallet`            |
+| Read / update dashboard assistant kill | `GET` / `PATCH dashboard-assistant-global-settings` |
 
 ---
 
 ## Implementation map
 
-| Concern | Path                                                                                   |
-| ------- | -------------------------------------------------------------------------------------- |
-| Page    | `ui/src/features/dashboard/super-admin/pages/SuperAdminSettingsPage.tsx`               |
-| Cards   | `AiPlatformKillSwitchCard.tsx`                                                         |
-| Hooks   | `useAiPlatformGlobalSettings.ts`                                                       |
-| Edge    | `supabase/functions/ai-platform-global-settings/`                                      |
-| Nav     | `ui/src/features/dashboard/bookings/lib/adminSidebarNav.ts#buildSuperAdminNavSections` |
-| Paths   | `ui/src/features/dashboard/super-admin/lib/superAdminPaths.ts`                         |
-| Routes  | `ui/src/features/dashboard/super-admin/routes/index.tsx`                               |
+| Concern    | Path                                                                                                                                                                          |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Page       | `ui/src/features/dashboard/super-admin/pages/SuperAdminSettingsPage.tsx`                                                                                                      |
+| Cards      | `AiPlatformKillSwitchCard.tsx`, `AiCreditWalletCard.tsx`, `AiDashboardAssistantKillSwitchCard.tsx`                                                                            |
+| Hooks      | `useAiPlatformGlobalSettings.ts`, `useAiCreditWallet.ts`, `useAiDashboardAssistantSettings.ts`                                                                                |
+| Edge       | `supabase/functions/ai-platform-global-settings/`, `ai-platform-credit-wallet/`, `dashboard-assistant-global-settings/`                                                       |
+| Nav        | `ui/src/features/dashboard/super-admin/lib/superAdminPlatformNav.ts`                                                                                                          |
+| Paths      | `ui/src/features/dashboard/super-admin/lib/superAdminPaths.ts`                                                                                                                |
+| Routes     | `ui/src/features/dashboard/super-admin/routes/index.tsx`                                                                                                                      |
+| Migrations | `supabase/migrations/20261022140000_ai_credit_foundation.sql`, `20261022150000_ai_credit_limits.sql`, `20261022160000_ai_credit_foundation_hardening.sql` (atomic wallet RPC) |
 
 ---
 
@@ -85,9 +125,11 @@ Voice receptionist is controlled by the **Allowed features** list — add or rem
 - [Super Admin Overview](./overview.md)
 - [`docs/architecture/edge-functions.md`](../../../architecture/edge-functions.md) — AI edge function inventory
 - [`docs/archive/operations/ai-platform-billing.md`](../../../archive/operations/ai-platform-billing.md)
+- [`docs/workflow/in-progress/ai-usage-metering-credits-foundation.md`](../../../workflow/in-progress/ai-usage-metering-credits-foundation.md) — credit conversion formula, wallet/ledger design, Phase 1–3 status
 
 ---
 
 ## Pending / follow-ups
 
 - [ ] Drop legacy `voice_receptionist_global_settings` table in a follow-up migration after verifying the platform switch is seeded on hosted environments.
+- [ ] No UI yet to edit `default_daily_credit_limit`/`default_monthly_credit_limit` (platform-wide) or an org's `daily_credit_limit`/`monthly_credit_limit` override — settable only via direct API/DB today. Deliberately deferred until real pricing numbers replace the current generous working defaults.

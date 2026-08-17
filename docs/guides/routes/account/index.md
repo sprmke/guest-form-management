@@ -2,7 +2,7 @@
 title: 'Guest Account (index) — operator guide'
 status: active
 tags: [guides, routes, account]
-updated: 2026-08-09
+updated: 2026-08-17
 ---
 
 # Guest Account (index) — operator guide
@@ -29,11 +29,11 @@ Route: `/account`
 
 ## Host-facing knowledge
 
-Guests who tap their account avatar and land on the account area always see their **Profile** tab first — there's no separate "account home" screen to design around.
+Guests who tap their account avatar and land on the account area always see their **Profile** tab first. There's no separate "account home" screen to design around.
 
 **Common host questions**
 
-- Q: A guest says they can't find an "Account" overview page — where does it go?
+- Q: A guest says they can't find an "Account" overview page. Where does it go?
   A: There isn't a separate overview page. Signing in and opening the account menu takes them straight to their Profile tab, with Stays and Favorites as other tabs in the same area.
 
 ---

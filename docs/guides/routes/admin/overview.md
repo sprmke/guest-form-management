@@ -2,7 +2,7 @@
 title: 'Super Admin Overview — operator guide'
 status: active
 tags: [guides, routes, admin]
-updated: 2026-08-02
+updated: 2026-08-17
 ---
 
 # Super Admin Overview — operator guide
@@ -13,15 +13,15 @@ Route: `/admin`
 
 ## Progress overview
 
-| Section       | E2E save         | Validation | Docs | Notes                          |
-| ------------- | ---------------- | ---------- | ---- | ------------------------------ |
-| Overview grid | Done (read-only) | —          | Done | Static link cards, no API call |
+| Section       | E2E save         | Validation | Docs | Notes                                                                  |
+| ------------- | ---------------- | ---------- | ---- | ---------------------------------------------------------------------- |
+| Overview grid | Done (read-only) | —          | Done | Cards match Platform sidebar destinations (`superAdminPlatformNav.ts`) |
 
 ---
 
 ## Overview
 
-Landing page for the **platform super-admin** area — a distinct tier from org/property admin and from the legacy `ADMIN_ALLOWED_EMAILS` gate. It renders four navigation cards (Developments, Properties, Approvals, Hosts) and makes no API calls of its own; all data lives on the destination pages. Platform AI settings live on [`/admin/settings`](./settings.md).
+Landing page for the **platform super-admin** area — a distinct tier from org/property admin and from the legacy `ADMIN_ALLOWED_EMAILS` gate. It renders the same destination cards as the Platform sidebar (minus Overview itself) and makes no API calls of its own; all data lives on the destination pages.
 
 **Access:** `RequireSuperAdmin` — email must be in `SUPER_ADMIN_EMAILS` (server) / `VITE_SUPER_ADMIN_EMAILS` (client UX gate). Uses the same signed-in session as the legacy admin dashboard (`useAdminSession`), so a super admin must already be signed in via Google OAuth; being super admin does not require being in `ADMIN_ALLOWED_EMAILS`.
 
@@ -42,12 +42,19 @@ The Super Admin area is an internal control panel for the platform team — it i
 
 ## Navigation cards
 
-| Card         | Destination           |
-| ------------ | --------------------- |
-| Developments | `/admin/developments` |
-| Properties   | `/admin/properties`   |
-| Approvals    | `/admin/approvals`    |
-| Hosts        | `/admin/hosts`        |
+Cards and sidebar labels come from one list (`SUPER_ADMIN_PLATFORM_DESTINATIONS`). Order:
+
+| Card            | Destination           |
+| --------------- | --------------------- |
+| Developments    | `/admin/developments` |
+| Properties      | `/admin/properties`   |
+| Approvals       | `/admin/approvals`    |
+| Hosts           | `/admin/hosts`        |
+| Support tickets | `/admin/support`      |
+| FAQs            | `/admin/support/faqs` |
+| AI Management   | `/admin/settings`     |
+
+The Platform sidebar prepends **Overview** (`/admin`) to that same list.
 
 ---
 
@@ -59,13 +66,15 @@ None — static navigation only.
 
 ## Implementation map
 
-| Concern | Path                                                                     |
-| ------- | ------------------------------------------------------------------------ |
-| Page    | `ui/src/features/dashboard/super-admin/pages/SuperAdminOverviewPage.tsx` |
-| Shell   | `ui/src/features/dashboard/super-admin/components/SuperAdminShell.tsx`   |
-| Guard   | `ui/src/features/dashboard/super-admin/components/RequireSuperAdmin.tsx` |
-| Paths   | `ui/src/features/dashboard/super-admin/lib/superAdminPaths.ts`           |
-| Routes  | `ui/src/features/dashboard/super-admin/routes/index.tsx`                 |
+| Concern    | Path                                                                                       |
+| ---------- | ------------------------------------------------------------------------------------------ |
+| Page       | `ui/src/features/dashboard/super-admin/pages/SuperAdminOverviewPage.tsx`                   |
+| Shared nav | `ui/src/features/dashboard/super-admin/lib/superAdminPlatformNav.ts`                       |
+| Sidebar    | `ui/src/features/dashboard/bookings/lib/adminSidebarNav.ts` (`buildSuperAdminNavSections`) |
+| Shell      | `ui/src/features/dashboard/super-admin/components/SuperAdminShell.tsx`                     |
+| Guard      | `ui/src/features/dashboard/super-admin/components/RequireSuperAdmin.tsx`                   |
+| Paths      | `ui/src/features/dashboard/super-admin/lib/superAdminPaths.ts`                             |
+| Routes     | `ui/src/features/dashboard/super-admin/routes/index.tsx`                                   |
 
 ---
 

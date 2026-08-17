@@ -38,6 +38,7 @@ Per-page documentation mirrors the app routes. Each guide tracks **behavior**, *
 | `/org/:orgSlug/property/:propertySlug/maintenance`                                                                | [org/property/maintenance.md](./org/property/maintenance.md)         | Documented                                                             |
 | `/org/:orgSlug/property/:propertySlug/notifications`                                                              | [org/property/notifications.md](./org/property/notifications.md)     | Documented                                                             |
 | `/org/:orgSlug/property/:propertySlug/templates`                                                                  | [org/property/templates.md](./org/property/templates.md)             | Documented — UI + DB + workflow email sends                            |
+| `/org/:orgSlug/property/:propertySlug/custom-pages`                                                               | [org/property/custom-pages.md](./org/property/custom-pages.md)       | Documented — Stay Guide template (v1)                                  |
 | `/org/:orgSlug/property/:propertySlug/team`                                                                       | [org/property/team.md](./org/property/team.md)                       | Documented — property team v1                                          |
 | `/org/:orgSlug/property/:propertySlug/marketing`                                                                  | [org/property/marketing.md](./org/property/marketing.md)             | Documented — Content Studio + Telegram (see guide)                     |
 | `/org/:orgSlug/property/:propertySlug/staff`                                                                      | [org/property/staff.md](./org/property/staff.md)                     | Redirect → notifications                                               |
@@ -58,19 +59,20 @@ Per-page documentation mirrors the app routes. Each guide tracks **behavior**, *
 
 Platform-level control panel, distinct from org/property admin and the legacy `ADMIN_ALLOWED_EMAILS` gate — see [`admin/overview.md`](./admin/overview.md) for the auth model.
 
-| Route                                      | Guide                                                                | Status                                      |
-| ------------------------------------------ | -------------------------------------------------------------------- | ------------------------------------------- |
-| `/admin`                                   | [admin/overview.md](./admin/overview.md)                             | Documented                                  |
-| `/admin/developments`                      | [admin/developments.md](./admin/developments.md)                     | Documented                                  |
-| `/admin/developments/:developmentSlug`     | [admin/development-detail.md](./admin/development-detail.md)         | Documented                                  |
-| `/admin/approvals`                         | [admin/approvals.md](./admin/approvals.md)                           | Documented — Tier 1 host verification queue |
-| `/admin/hosts`                             | [admin/hosts.md](./admin/hosts.md)                                   | Documented                                  |
-| `/admin/properties`                        | [admin/platform-properties.md](./admin/platform-properties.md)       | Documented                                  |
-| `/admin/hosts/:hostId/orgs`                | [admin/host-detail/orgs.md](./admin/host-detail/orgs.md)             | Documented                                  |
-| `/admin/hosts/:hostId/orgs/properties`     | [admin/host-detail/properties.md](./admin/host-detail/properties.md) | Documented                                  |
-| `/admin/orgs/:orgSlug/properties`          | [admin/org-properties.md](./admin/org-properties.md)                 | Documented — minimal scaffold               |
-| `/admin/settings`                          | [admin/settings.md](./admin/settings.md)                             | Documented — platform AI controls           |
-| `/admin/support` (+ `/admin/support/faqs`) | [admin/support.md](./admin/support.md)                               | Documented — ticket triage + FAQ editor     |
+| Route                                  | Guide                                                                | Status                                      |
+| -------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------- |
+| `/admin`                               | [admin/overview.md](./admin/overview.md)                             | Documented                                  |
+| `/admin/developments`                  | [admin/developments.md](./admin/developments.md)                     | Documented                                  |
+| `/admin/developments/:developmentSlug` | [admin/development-detail.md](./admin/development-detail.md)         | Documented                                  |
+| `/admin/approvals`                     | [admin/approvals.md](./admin/approvals.md)                           | Documented — Tier 1 host verification queue |
+| `/admin/hosts`                         | [admin/hosts.md](./admin/hosts.md)                                   | Documented                                  |
+| `/admin/properties`                    | [admin/platform-properties.md](./admin/platform-properties.md)       | Documented                                  |
+| `/admin/hosts/:hostId/orgs`            | [admin/host-detail/orgs.md](./admin/host-detail/orgs.md)             | Documented                                  |
+| `/admin/hosts/:hostId/orgs/properties` | [admin/host-detail/properties.md](./admin/host-detail/properties.md) | Documented                                  |
+| `/admin/orgs/:orgSlug/properties`      | [admin/org-properties.md](./admin/org-properties.md)                 | Documented — minimal scaffold               |
+| `/admin/settings`                      | [admin/settings.md](./admin/settings.md)                             | Documented — AI Management                  |
+| `/admin/support`                       | [admin/support.md](./admin/support.md)                               | Documented — ticket triage (table/card)     |
+| `/admin/support/faqs`                  | [admin/support.md](./admin/support.md)                               | Documented — FAQ editor (first-class nav)   |
 
 ## Public (guest)
 
