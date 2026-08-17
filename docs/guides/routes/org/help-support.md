@@ -23,12 +23,12 @@ Identical feature to [Property Help & Support](./property/help-support.md), moun
 
 ## Host-facing knowledge
 
-Same as the property-level page — documentation, AI Assistant, and support tickets — but for questions that aren't about a specific property or parking listing.
+Same as the property-level page: documentation, AI Assistant, and support tickets, just for questions that aren't about a specific property or parking listing.
 
 **Common host questions**
 
 - Q: Should I file a ticket from the org page or a property page?
-  A: Either works — pick whichever you're already on. We can still see which property or parking listing (if any) a ticket was filed from.
+  A: Either works, so pick whichever you're already on. We can still see which property or parking listing (if any) a ticket was filed from.
 
 ## API reference · Implementation map
 

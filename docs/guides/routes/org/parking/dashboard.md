@@ -2,7 +2,7 @@
 title: 'Parking dashboard — operator guide'
 status: active
 tags: [guides, routes, org, parking]
-updated: 2026-08-04
+updated: 2026-08-17
 ---
 
 # Parking dashboard — operator guide
@@ -19,7 +19,7 @@ Parking-scoped home. **UI mirrors** the property dashboard (`DashboardPage`): on
 
 ## Host-facing knowledge
 
-This dashboard is the home screen for one parking slot — same layout you know from property dashboards, but labeled for reservations instead of stays. You can filter by date range, open the public parking listing, and see where revenue and occupancy charts will appear. **Summary numbers may read zero** until reservation analytics are connected; finance and pricing data may still be edited on their own pages.
+This dashboard is the home screen for one parking slot. It's the same layout you know from property dashboards, just labeled for reservations instead of stays. You can filter by date range, open the public parking listing, and see where revenue and occupancy charts will appear. **Summary numbers may read zero** until reservation analytics are connected; finance and pricing data may still be edited on their own pages.
 
 **Common host questions**
 

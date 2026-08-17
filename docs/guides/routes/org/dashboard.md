@@ -125,7 +125,7 @@ When the org has **both** properties and parking listings, header tabs filter th
 
 ## Host-facing knowledge
 
-This is the landing page for an organization — it rolls up revenue, bookings, and occupancy across every property you manage, and parking slots when you have them.
+This is the landing page for an organization. It rolls up revenue, bookings, and occupancy across every property you manage, and parking slots when you have them.
 
 **Common host questions**
 
@@ -136,7 +136,7 @@ This is the landing page for an organization — it rolls up revenue, bookings, 
 - Q: Where did the booking status list go?
   A: Hover or tap a slice of the chart to see the status name and count.
 - Q: Can I create a new property or parking listing from here?
-  A: Yes, if you have permission — use **Add listing** in the header.
+  A: Yes, if you have permission. Use **Add listing** in the header.
 - Q: A contract-expired reminder appeared. If I close it, will it come back?
   A: Yes after you refresh the page. Closing it only hides it while you keep using the dashboard.
 

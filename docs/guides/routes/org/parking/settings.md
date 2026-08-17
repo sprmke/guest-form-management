@@ -2,7 +2,7 @@
 title: 'Parking settings — operator guide'
 status: active
 tags: [guides, routes, org, parking]
-updated: 2026-08-02
+updated: 2026-08-17
 ---
 
 # Parking settings — operator guide
@@ -19,7 +19,7 @@ Configure one parking slot: name and location, cover photo, dimensions and check
 
 ## Host-facing knowledge
 
-Parking **Settings** is where you set up a single slot before guests book it — photos, tower/level/slot labels, map location, size and clearance, amenities, brand color, and how guests pay. Telegram and other integrations link out to **Notifications** for credentials. Most sections save independently; deleting a slot is permanent and lives in the danger zone at the bottom.
+Parking **Settings** is where you set up a single slot before guests can book it: photos, tower/level/slot labels, map location, size and clearance, amenities, brand color, and how guests pay. Telegram and other integrations link out to **Notifications** for credentials. Most sections save independently, and deleting a slot is permanent, so that option lives in the danger zone at the bottom.
 
 **Common host questions**
 
@@ -28,7 +28,11 @@ Parking **Settings** is where you set up a single slot before guests book it —
 - Q: Why did my URL change after I edited the slot name?
   A: The public link slug can regenerate when tower, level, or slot labels change how the display name is built. The app redirects you to the new admin URL automatically.
 - Q: Where do I connect Telegram for this parking slot?
-  A: On **Notifications** for this slot — settings here only show integration status and shortcuts, not the bot token fields.
+  A: On **Notifications** for this slot. Settings here only show integration status and shortcuts, not the bot token fields.
+- Q: Where is listing verification for this slot?
+  A: Open **Verification** from the parking sidebar. That covers ownership proof, contract dates, and the Recommended badge for this parking listing.
+- Q: My hosting contract is ending — what should I do?
+  A: A renewal reminder may appear when you log in. Tap **Submit renewal contract** or use **Verification** in the sidebar to upload an updated contract before the grace period ends.
 
 ---
 

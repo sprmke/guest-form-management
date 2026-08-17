@@ -23,12 +23,12 @@ Identical feature to [Property Help & Support](../property/help-support.md), mou
 
 ## Host-facing knowledge
 
-Same as the property-level page — documentation, AI Assistant, and support tickets — but for this parking listing.
+Same as the property-level page: documentation, AI Assistant, and support tickets, just scoped to this parking listing.
 
 **Common host questions**
 
 - Q: If I file a ticket about a parking issue, does your team know it's about parking?
-  A: Yes — tickets filed from a parking listing's Help & Support page are tagged with that listing, so our team has the context automatically.
+  A: Yes. Tickets filed from a parking listing's Help & Support page are tagged with that listing, so our team has the context automatically.
 
 ## API reference · Implementation map
 

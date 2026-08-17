@@ -2,7 +2,7 @@
 title: 'Parking bookings — operator guide'
 status: active
 tags: [guides, routes, org, parking]
-updated: 2026-08-16
+updated: 2026-08-17
 ---
 
 # Parking bookings — operator guide
@@ -25,23 +25,18 @@ Parking-slot **reservations** for one slot — separate from stay `need_parking`
 
 ## Host-facing knowledge
 
-Manage guests who booked **this parking slot only**. Stays with parking bundled in the condo workflow stay on the **property** booking page.
+Manage guests who booked **this parking slot only**. If a guest's parking is bundled into their condo stay, that booking still lives on the **property's** bookings page, not here.
 
-**Two ways a booking reaches this parking:**
+**Common host questions**
 
-1. **Admin-created** (`create-parking-booking`): self-approved straight at `PENDING_REVIEW`, `parking_id` set immediately.
-2. **Guest broadcast request**: guest submits without picking a specific slot; every eligible parking in the org (same accepted vehicle type, no date conflict) gets notified via Telegram + email and races to Accept. `parking_id` stays `null` until claimed.
-
-**Full status path:**
-
-`PENDING_HOST_ACCEPTANCE` _(broadcast only)_ → **Accept** → `PENDING_REVIEW` → **Mark active** → `READY_FOR_CHECKIN` → **Complete** → `COMPLETED`, or **Cancel** → `CANCELLED`. A broadcast that nobody accepts ends in `NO_HOST_AVAILABLE` — either every candidate host **Declines**, or the request's TTL (15 min if check-in is today, 1 hr otherwise) expires via cron.
-
-**While a request is `PENDING_HOST_ACCEPTANCE`** (detail page):
-
-- A live countdown shows time remaining next to the status badge (warns under 2 minutes).
-- **Accept** / **Decline** only appear if _this_ parking still has a `pending` broadcast candidacy for the booking — already-declined or already-claimed-elsewhere hosts see a read-only summary instead.
-- Accept has an optional **access instructions** note (≤500 chars) shown to the guest immediately after.
-- If another host claims it first, clicking Accept shows "Already claimed" and the screen updates — never a stuck button.
+- Q: How do bookings end up on this page?
+  A: Either you create one yourself with **New booking**, or a guest sends a broadcast request without picking a specific slot. Broadcast requests notify every eligible parking slot in your organization at once, and whichever host accepts first gets the booking.
+- Q: What happens if I don't respond to a broadcast request in time?
+  A: You'll have about 15 minutes to Accept or Decline if check-in is today, or an hour otherwise, and a live countdown shows how much time is left. If nobody accepts in time, or every eligible host declines, the request closes with no host found.
+- Q: Can I leave a note for the guest when I accept a request?
+  A: Yes. Accepting lets you add a short access instructions note (up to 500 characters) that the guest sees right away.
+- Q: What if another host claims a broadcast request before I do?
+  A: You'll see "Already claimed" if you click Accept after someone else got there first, and the page updates automatically, so you're never left staring at a stuck button.
 
 ---
 

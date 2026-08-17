@@ -2,7 +2,7 @@
 title: 'Parking Guest Inbox'
 status: active
 tags: [guides, routes, org, parking]
-updated: 2026-08-02
+updated: 2026-08-17
 ---
 
 # Parking Guest Inbox
@@ -33,7 +33,7 @@ Parking **Guest Inbox** lets you answer Facebook (and Instagram when connected) 
 **Common host questions**
 
 - Q: Will I see the same Facebook messages as other properties using the shared Page?
-  A: If you use the org’s Page (shown as “Using org Meta”), yes — it’s the same Page inbox. Connecting a different Page here gives this slot its own thread list.
+  A: If you use the org’s Page (shown as “Using org Meta”), yes, it’s the same Page inbox. Connecting a different Page here gives this slot its own thread list.
 - Q: Why is the Web tab empty?
   A: On-site chat for parking listings is not shipped yet. Messenger is the live channel today when Meta is connected.
 - Q: Where do I edit canned replies or turn on auto-reply?

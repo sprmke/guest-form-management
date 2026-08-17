@@ -2,7 +2,7 @@
 title: 'Parking finance — operator guide'
 status: active
 tags: [guides, routes, org, parking]
-updated: 2026-08-02
+updated: 2026-08-17
 ---
 
 # Parking finance — operator guide
@@ -19,7 +19,7 @@ Same finance dashboard as property **`FinancePage`**, including the **brand hero
 
 ## Host-facing knowledge
 
-Parking **Finance** tracks money in and out for this slot only — rent collected, maintenance, supplies, and other operating lines. It works like property finance: add income or expenses, view them in a table or calendar, export reports, and set Telegram reminders for due dates. There is **no stays ledger** here because parking finance is separate from guest stay bookings.
+Parking **Finance** tracks money in and out for this slot only: rent collected, maintenance, supplies, and other operating lines. It works like property finance: add income or expenses, view them in a table or calendar, export reports, and set Telegram reminders for due dates. There is **no stays ledger** here because parking finance is separate from guest stay bookings.
 
 **Common host questions**
 

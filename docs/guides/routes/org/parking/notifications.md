@@ -2,7 +2,7 @@
 title: 'Parking notifications — operator guide'
 status: active
 tags: [guides, routes, org, parking]
-updated: 2026-08-02
+updated: 2026-08-17
 ---
 
 # Parking notifications — operator guide
@@ -63,7 +63,8 @@ Parking **Notifications** configures Telegram alerts for this slot. The **Parkin
 
 - Q: Where is the notification bell on my phone?
   A: Tap **Notifications** in the bottom menu. On a computer it floats above the AI assistant button.
-  A: No for the bot — one shared token is enough. Use separate **Chat IDs** if you want parking ops alerts and finance reminders in different groups. Each module can still use its own bot token if you override the field.
+- Q: Do I need a separate Telegram bot for parking and finance alerts?
+  A: No, one shared token is enough for both. Use separate **Chat IDs** if you want parking ops alerts and finance reminders posted to different groups, or override the bot token per module if you ever need to split them further.
 - Q: Why aren’t I getting parking reservation alerts yet?
   A: Reservation Telegram templates are wired for this slot, but some reservation events depend on the parking booking flow shipping. Finance due-date reminders work today when finance Telegram is enabled and transactions have due dates.
 - Q: How do I jump straight to finance reminders?
