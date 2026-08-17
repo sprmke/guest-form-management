@@ -2,7 +2,7 @@
 title: 'AI dashboard assistant — manual test flows'
 status: active
 tags: [guides, testing, ai]
-updated: 2026-08-16
+updated: 2026-08-18
 ---
 
 # AI dashboard assistant — step-by-step manual testing
@@ -92,6 +92,8 @@ This flow has **never been run through an actual browser** as of 2026-08-15 — 
 3. Ask: **"What does PENDING_DOCUMENTS mean?"** — expect an answer sourced from the route-guide knowledge base, not a generic LLM explanation. If this comes back empty/generic, the `ai_dashboard_assistant_knowledge_base` table is stale — re-run `bun run sync:ai-knowledge-base` (or `:dev` against hosted dev) to re-ingest the "Host-facing knowledge" sections from `docs/guides/routes/**/*.md`. This has no automatic trigger yet — re-run it manually whenever a route guide's knowledge section changes.
 4. Ask about a specific booking by ID (copy one from the bookings list): **"Tell me about booking `<id>`"** — expect a `booking_card`-style rendering: guest name, status badge, dates, property, balance.
 5. Ask: **"What can I do next with booking `<id>`?"** — expect the same set of transitions the booking's own Workflow panel shows.
+6. Pin a **Ready for Check-out** booking and ask **"What's pending, and how much is the SD refund?"** — expect a human status (**Ready for Check-out**, never `READY_FOR_CHECKOUT`), a real pending-task sentence (not an empty pill), and the peso refund amount.
+7. Ask **"What are the booked dates for this month?"** on a property that has stays — expect a table with guest names and check-in/out dates, not a header-only empty table. If the month is empty, expect a short "no booked stays" line instead of blank rows.
 
 ---
 
