@@ -26,7 +26,8 @@ export type PropertySection =
   | 'custom-pages'
   | 'team'
   | 'settings'
-  | 'inbox';
+  | 'inbox'
+  | 'help-support';
 
 export function hasPropertyPermission(
   permissions: readonly string[] | undefined,
@@ -65,4 +66,5 @@ export const PROPERTY_SECTION_VIEW_PERMISSION = {
   team: 'team:view',
   settings: 'settings:view',
   inbox: 'inbox:view',
+  'help-support': 'bookings:view',
 } as const satisfies Record<PropertySection, TeamPermissionId>;

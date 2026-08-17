@@ -2,6 +2,11 @@ import type { ReactNode } from 'react';
 
 import { Route } from 'react-router-dom';
 
+import { HelpDocumentationPage } from '@/features/dashboard/help-support/pages/HelpDocumentationPage';
+import { HelpSupportOverviewPage } from '@/features/dashboard/help-support/pages/HelpSupportOverviewPage';
+import { MyTicketsPage } from '@/features/dashboard/help-support/pages/MyTicketsPage';
+import { SubmitTicketPage } from '@/features/dashboard/help-support/pages/SubmitTicketPage';
+import { TicketDetailPage } from '@/features/dashboard/help-support/pages/TicketDetailPage';
 import { OrgInboxRedirect } from '@/features/dashboard/inbox/routes';
 import { LegacyAdminRedirect } from '@/features/dashboard/org/components/LegacyAdminRedirect';
 import { OrgAdminShell } from '@/features/dashboard/org/components/OrgAdminShell';
@@ -36,6 +41,20 @@ export function orgAdminRoutes(orgRoute: OrgRouteFn): ReactNode {
       <Route path="parkings" element={orgRoute('parkings', <OrgParkingsPage />)} />
       <Route path="team" element={orgRoute('team', <OrgTeamPage />)} />
       <Route path="inbox" element={<OrgInboxRedirect />} />
+      <Route path="help-support" element={orgRoute('help-support', <HelpSupportOverviewPage />)} />
+      <Route
+        path="help-support/docs"
+        element={orgRoute('help-support', <HelpDocumentationPage />)}
+      />
+      <Route path="help-support/tickets" element={orgRoute('help-support', <MyTicketsPage />)} />
+      <Route
+        path="help-support/tickets/new"
+        element={orgRoute('help-support', <SubmitTicketPage />)}
+      />
+      <Route
+        path="help-support/tickets/:ticketId"
+        element={orgRoute('help-support', <TicketDetailPage />)}
+      />
     </Route>
   );
 }

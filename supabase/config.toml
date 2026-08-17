@@ -802,6 +802,45 @@ verify_jwt = false
 [functions.list-help-center-faqs]
 verify_jwt = false
 
+[functions.submit-support-ticket]
+verify_jwt = false
+
+[functions.upload-support-ticket-attachment]
+verify_jwt = false
+
+[functions.list-support-tickets]
+verify_jwt = false
+
+[functions.get-support-ticket]
+verify_jwt = false
+
+[functions.reply-support-ticket]
+verify_jwt = false
+
+[functions.list-support-tickets-admin]
+verify_jwt = false
+
+[functions.get-support-ticket-admin]
+verify_jwt = false
+
+[functions.reply-support-ticket-admin]
+verify_jwt = false
+
+[functions.update-support-ticket-status]
+verify_jwt = false
+
+[functions.list-help-center-faqs-admin]
+verify_jwt = false
+
+[functions.create-help-center-faq]
+verify_jwt = false
+
+[functions.update-help-center-faq]
+verify_jwt = false
+
+[functions.delete-help-center-faq]
+verify_jwt = false
+
 # ── kept for reference (cloud schedule lines, never uncomment locally) ─────────
 # [functions.sd-refund-cron] schedule = "*/5 * * * *"
 # schedule = "*/5 * * * *"

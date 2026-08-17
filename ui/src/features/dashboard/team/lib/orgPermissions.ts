@@ -46,6 +46,7 @@ export const ORG_SECTION_VIEW_PERMISSION = {
   parkings: 'org:parkings:view',
   team: 'org:team:view',
   settings: 'org:settings:view',
+  'help-support': 'org:dashboard:view',
 } as const satisfies Record<string, OrgPermissionId>;
 
 export type OrgSection = keyof typeof ORG_SECTION_VIEW_PERMISSION;
@@ -64,6 +65,8 @@ export function orgSectionPath(orgSlug: string, section: OrgSection): string {
       return `/org/${orgSlug}/team`;
     case 'settings':
       return `/org/${orgSlug}/settings`;
+    case 'help-support':
+      return `/org/${orgSlug}/help-support`;
   }
 }
 

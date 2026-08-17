@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 
-import { ClipboardCheck, Landmark, Users, Building2 } from 'lucide-react';
+import { ClipboardCheck, LifeBuoy, Landmark, Users, Building2 } from 'lucide-react';
 
 import { superAdminPaths } from '@/features/dashboard/super-admin/lib/superAdminPaths';
 
@@ -8,6 +8,7 @@ const sections = [
   { title: 'Developments', href: superAdminPaths.developments, Icon: Landmark },
   { title: 'Properties', href: superAdminPaths.properties, Icon: Building2 },
   { title: 'Approvals', href: superAdminPaths.approvals, Icon: ClipboardCheck },
+  { title: 'Support tickets', href: superAdminPaths.support, Icon: LifeBuoy },
   { title: 'Hosts', href: superAdminPaths.hosts, Icon: Users },
 ] as const;
 

@@ -16,7 +16,8 @@ export type ParkingSection =
   | 'notifications'
   | 'team'
   | 'settings'
-  | 'inbox';
+  | 'inbox'
+  | 'help-support';
 
 export type ParkingPermissionId =
   | 'bookings:view'
@@ -66,4 +67,5 @@ export const PARKING_SECTION_VIEW_PERMISSION = {
   team: 'team:view',
   settings: 'settings:view',
   inbox: 'inbox:view',
+  'help-support': 'bookings:view',
 } as const satisfies Record<ParkingSection, ParkingPermissionId>;

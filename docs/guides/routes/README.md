@@ -13,60 +13,64 @@ Per-page documentation mirrors the app routes. Each guide tracks **behavior**, *
 
 ## Admin (authenticated)
 
-| Route                                                      | Guide                                                                | Status                                                                 |
-| ---------------------------------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `/sign-in`                                                 | [sign-in.md](./sign-in.md)                                           | Documented — legacy redirect → `/for-hosts/login`                      |
-| `/onboarding`                                              | [onboarding.md](./onboarding.md)                                     | Documented — host type + optional property/parking                     |
-| `/verification-rejected`                                   | [onboarding.md](./onboarding.md)                                     | Documented — hard-reject login screen                                  |
-| `/accept-invite`                                           | [accept-invite.md](./accept-invite.md)                               | Documented — org / property / parking team invites                     |
-| `/org`                                                     | [org/selector.md](./org/selector.md)                                 | Documented — auto-redirect (no picker)                                 |
-| `/org/:orgSlug/dashboard`                                  | [org/dashboard.md](./org/dashboard.md)                               | Documented                                                             |
-| `/org/:orgSlug/bookings`                                   | [org/bookings.md](./org/bookings.md)                                 | Documented — all properties; property column in views                  |
-| `/org/:orgSlug/settings`                                   | [org/settings.md](./org/settings.md)                                 | Documented                                                             |
-| `/org/:orgSlug/properties`                                 | [org/properties.md](./org/properties.md)                             | Documented                                                             |
-| `/org/:orgSlug/parkings`                                   | [org/parkings.md](./org/parkings.md)                                 | Documented                                                             |
-| `/org/:orgSlug/team`                                       | [org/team.md](./org/team.md)                                         | Documented — org owner + admin team                                    |
-| `/org/:orgSlug/inbox`                                      | [org/inbox.md](./org/inbox.md)                                       | Removed — redirects to Properties; use property inbox                  |
-| `/org/:orgSlug/property/:propertySlug/inbox`               | [org/property/inbox.md](./org/property/inbox.md)                     | Documented — Messages + Manage (Channels / Quick replies / Automation) |
-| `/org/:orgSlug/property/:propertySlug`                     | [org/property/dashboard.md](./org/property/dashboard.md)             | Documented                                                             |
-| `/org/:orgSlug/property/:propertySlug/bookings`            | [org/property/bookings.md](./org/property/bookings.md)               | Documented                                                             |
-| `/org/:orgSlug/property/:propertySlug/bookings/:bookingId` | [org/property/bookings-detail.md](./org/property/bookings-detail.md) | Documented                                                             |
-| `/org/:orgSlug/property/:propertySlug/finance`             | [org/property/finance.md](./org/property/finance.md)                 | Documented                                                             |
-| `/org/:orgSlug/property/:propertySlug/calendar`            | [org/property/calendar.md](./org/property/calendar.md)               | Documented — Occupancy + Pricing + date blocks                         |
-| `/org/:orgSlug/property/:propertySlug/pricing`             | [org/property/pricing.md](./org/property/pricing.md)                 | Redirect → `/calendar`                                                 |
-| `/org/:orgSlug/property/:propertySlug/maintenance`         | [org/property/maintenance.md](./org/property/maintenance.md)         | Documented                                                             |
-| `/org/:orgSlug/property/:propertySlug/notifications`       | [org/property/notifications.md](./org/property/notifications.md)     | Documented                                                             |
-| `/org/:orgSlug/property/:propertySlug/templates`           | [org/property/templates.md](./org/property/templates.md)             | Documented — UI + DB + workflow email sends                            |
-| `/org/:orgSlug/property/:propertySlug/team`                | [org/property/team.md](./org/property/team.md)                       | Documented — property team v1                                          |
-| `/org/:orgSlug/property/:propertySlug/marketing`           | [org/property/marketing.md](./org/property/marketing.md)             | Documented — Content Studio + Telegram (see guide)                     |
-| `/org/:orgSlug/property/:propertySlug/staff`               | [org/property/staff.md](./org/property/staff.md)                     | Redirect → notifications                                               |
-| `/org/:orgSlug/property/:propertySlug/operations`          | [org/property/operations.md](./org/property/operations.md)           | Redirect → notifications                                               |
-| `/org/:orgSlug/property/:propertySlug/settings`            | [org/property/settings.md](./org/property/settings.md)               | Documented                                                             |
-| `/org/:orgSlug/parking/:parkingSlug`                       | [org/parking/dashboard.md](./org/parking/dashboard.md)               | Documented — scaffold KPIs                                             |
-| `/org/:orgSlug/parking/:parkingSlug/bookings`              | [org/parking/bookings.md](./org/parking/bookings.md)                 | Documented — scaffold                                                  |
-| `/org/:orgSlug/parking/:parkingSlug/finance`               | [org/parking/finance.md](./org/parking/finance.md)                   | Documented — scaffold                                                  |
-| `/org/:orgSlug/parking/:parkingSlug/pricing`               | [org/parking/pricing.md](./org/parking/pricing.md)                   | Documented — base rates + calendar                                     |
-| `/org/:orgSlug/parking/:parkingSlug/team`                  | [org/parking/team.md](./org/parking/team.md)                         | Documented — Staff/Viewer only; no custom roles                        |
-| `/org/:orgSlug/parking/:parkingSlug/inbox`                 | [org/parking/inbox.md](./org/parking/inbox.md)                       | Documented — Meta inherit/override; web deferred                       |
-| `/org/:orgSlug/parking/:parkingSlug/notifications`         | [org/parking/notifications.md](./org/parking/notifications.md)       | Documented                                                             |
-| `/org/:orgSlug/parking/:parkingSlug/settings`              | [org/parking/settings.md](./org/parking/settings.md)                 | Documented                                                             |
+| Route                                                                                                             | Guide                                                                | Status                                                                 |
+| ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `/sign-in`                                                                                                        | [sign-in.md](./sign-in.md)                                           | Documented — legacy redirect → `/for-hosts/login`                      |
+| `/onboarding`                                                                                                     | [onboarding.md](./onboarding.md)                                     | Documented — host type + optional property/parking                     |
+| `/verification-rejected`                                                                                          | [onboarding.md](./onboarding.md)                                     | Documented — hard-reject login screen                                  |
+| `/accept-invite`                                                                                                  | [accept-invite.md](./accept-invite.md)                               | Documented — org / property / parking team invites                     |
+| `/org`                                                                                                            | [org/selector.md](./org/selector.md)                                 | Documented — auto-redirect (no picker)                                 |
+| `/org/:orgSlug/dashboard`                                                                                         | [org/dashboard.md](./org/dashboard.md)                               | Documented                                                             |
+| `/org/:orgSlug/bookings`                                                                                          | [org/bookings.md](./org/bookings.md)                                 | Documented — all properties; property column in views                  |
+| `/org/:orgSlug/settings`                                                                                          | [org/settings.md](./org/settings.md)                                 | Documented                                                             |
+| `/org/:orgSlug/properties`                                                                                        | [org/properties.md](./org/properties.md)                             | Documented                                                             |
+| `/org/:orgSlug/parkings`                                                                                          | [org/parkings.md](./org/parkings.md)                                 | Documented                                                             |
+| `/org/:orgSlug/team`                                                                                              | [org/team.md](./org/team.md)                                         | Documented — org owner + admin team                                    |
+| `/org/:orgSlug/inbox`                                                                                             | [org/inbox.md](./org/inbox.md)                                       | Removed — redirects to Properties; use property inbox                  |
+| `/org/:orgSlug/help-support` (+ `/docs`, `/tickets`, `/tickets/new`, `/tickets/:ticketId`)                        | [org/help-support.md](./org/help-support.md)                         | Documented                                                             |
+| `/org/:orgSlug/property/:propertySlug/inbox`                                                                      | [org/property/inbox.md](./org/property/inbox.md)                     | Documented — Messages + Manage (Channels / Quick replies / Automation) |
+| `/org/:orgSlug/property/:propertySlug`                                                                            | [org/property/dashboard.md](./org/property/dashboard.md)             | Documented                                                             |
+| `/org/:orgSlug/property/:propertySlug/bookings`                                                                   | [org/property/bookings.md](./org/property/bookings.md)               | Documented                                                             |
+| `/org/:orgSlug/property/:propertySlug/bookings/:bookingId`                                                        | [org/property/bookings-detail.md](./org/property/bookings-detail.md) | Documented                                                             |
+| `/org/:orgSlug/property/:propertySlug/finance`                                                                    | [org/property/finance.md](./org/property/finance.md)                 | Documented                                                             |
+| `/org/:orgSlug/property/:propertySlug/calendar`                                                                   | [org/property/calendar.md](./org/property/calendar.md)               | Documented — Occupancy + Pricing + date blocks                         |
+| `/org/:orgSlug/property/:propertySlug/pricing`                                                                    | [org/property/pricing.md](./org/property/pricing.md)                 | Redirect → `/calendar`                                                 |
+| `/org/:orgSlug/property/:propertySlug/maintenance`                                                                | [org/property/maintenance.md](./org/property/maintenance.md)         | Documented                                                             |
+| `/org/:orgSlug/property/:propertySlug/notifications`                                                              | [org/property/notifications.md](./org/property/notifications.md)     | Documented                                                             |
+| `/org/:orgSlug/property/:propertySlug/templates`                                                                  | [org/property/templates.md](./org/property/templates.md)             | Documented — UI + DB + workflow email sends                            |
+| `/org/:orgSlug/property/:propertySlug/team`                                                                       | [org/property/team.md](./org/property/team.md)                       | Documented — property team v1                                          |
+| `/org/:orgSlug/property/:propertySlug/marketing`                                                                  | [org/property/marketing.md](./org/property/marketing.md)             | Documented — Content Studio + Telegram (see guide)                     |
+| `/org/:orgSlug/property/:propertySlug/staff`                                                                      | [org/property/staff.md](./org/property/staff.md)                     | Redirect → notifications                                               |
+| `/org/:orgSlug/property/:propertySlug/operations`                                                                 | [org/property/operations.md](./org/property/operations.md)           | Redirect → notifications                                               |
+| `/org/:orgSlug/property/:propertySlug/settings`                                                                   | [org/property/settings.md](./org/property/settings.md)               | Documented                                                             |
+| `/org/:orgSlug/property/:propertySlug/help-support` (+ `/docs`, `/tickets`, `/tickets/new`, `/tickets/:ticketId`) | [org/property/help-support.md](./org/property/help-support.md)       | Documented                                                             |
+| `/org/:orgSlug/parking/:parkingSlug`                                                                              | [org/parking/dashboard.md](./org/parking/dashboard.md)               | Documented — scaffold KPIs                                             |
+| `/org/:orgSlug/parking/:parkingSlug/bookings`                                                                     | [org/parking/bookings.md](./org/parking/bookings.md)                 | Documented — scaffold                                                  |
+| `/org/:orgSlug/parking/:parkingSlug/finance`                                                                      | [org/parking/finance.md](./org/parking/finance.md)                   | Documented — scaffold                                                  |
+| `/org/:orgSlug/parking/:parkingSlug/pricing`                                                                      | [org/parking/pricing.md](./org/parking/pricing.md)                   | Documented — base rates + calendar                                     |
+| `/org/:orgSlug/parking/:parkingSlug/team`                                                                         | [org/parking/team.md](./org/parking/team.md)                         | Documented — Staff/Viewer only; no custom roles                        |
+| `/org/:orgSlug/parking/:parkingSlug/inbox`                                                                        | [org/parking/inbox.md](./org/parking/inbox.md)                       | Documented — Meta inherit/override; web deferred                       |
+| `/org/:orgSlug/parking/:parkingSlug/notifications`                                                                | [org/parking/notifications.md](./org/parking/notifications.md)       | Documented                                                             |
+| `/org/:orgSlug/parking/:parkingSlug/settings`                                                                     | [org/parking/settings.md](./org/parking/settings.md)                 | Documented                                                             |
+| `/org/:orgSlug/parking/:parkingSlug/help-support` (+ `/docs`, `/tickets`, `/tickets/new`, `/tickets/:ticketId`)   | [org/parking/help-support.md](./org/parking/help-support.md)         | Documented                                                             |
 
 ## Admin (super admin)
 
 Platform-level control panel, distinct from org/property admin and the legacy `ADMIN_ALLOWED_EMAILS` gate — see [`admin/overview.md`](./admin/overview.md) for the auth model.
 
-| Route                                  | Guide                                                                | Status                                      |
-| -------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------- |
-| `/admin`                               | [admin/overview.md](./admin/overview.md)                             | Documented                                  |
-| `/admin/developments`                  | [admin/developments.md](./admin/developments.md)                     | Documented                                  |
-| `/admin/developments/:developmentSlug` | [admin/development-detail.md](./admin/development-detail.md)         | Documented                                  |
-| `/admin/approvals`                     | [admin/approvals.md](./admin/approvals.md)                           | Documented — Tier 1 host verification queue |
-| `/admin/hosts`                         | [admin/hosts.md](./admin/hosts.md)                                   | Documented                                  |
-| `/admin/properties`                    | [admin/platform-properties.md](./admin/platform-properties.md)       | Documented                                  |
-| `/admin/hosts/:hostId/orgs`            | [admin/host-detail/orgs.md](./admin/host-detail/orgs.md)             | Documented                                  |
-| `/admin/hosts/:hostId/orgs/properties` | [admin/host-detail/properties.md](./admin/host-detail/properties.md) | Documented                                  |
-| `/admin/orgs/:orgSlug/properties`      | [admin/org-properties.md](./admin/org-properties.md)                 | Documented — minimal scaffold               |
-| `/admin/settings`                      | [admin/settings.md](./admin/settings.md)                             | Documented — platform AI controls           |
+| Route                                      | Guide                                                                | Status                                      |
+| ------------------------------------------ | -------------------------------------------------------------------- | ------------------------------------------- |
+| `/admin`                                   | [admin/overview.md](./admin/overview.md)                             | Documented                                  |
+| `/admin/developments`                      | [admin/developments.md](./admin/developments.md)                     | Documented                                  |
+| `/admin/developments/:developmentSlug`     | [admin/development-detail.md](./admin/development-detail.md)         | Documented                                  |
+| `/admin/approvals`                         | [admin/approvals.md](./admin/approvals.md)                           | Documented — Tier 1 host verification queue |
+| `/admin/hosts`                             | [admin/hosts.md](./admin/hosts.md)                                   | Documented                                  |
+| `/admin/properties`                        | [admin/platform-properties.md](./admin/platform-properties.md)       | Documented                                  |
+| `/admin/hosts/:hostId/orgs`                | [admin/host-detail/orgs.md](./admin/host-detail/orgs.md)             | Documented                                  |
+| `/admin/hosts/:hostId/orgs/properties`     | [admin/host-detail/properties.md](./admin/host-detail/properties.md) | Documented                                  |
+| `/admin/orgs/:orgSlug/properties`          | [admin/org-properties.md](./admin/org-properties.md)                 | Documented — minimal scaffold               |
+| `/admin/settings`                          | [admin/settings.md](./admin/settings.md)                             | Documented — platform AI controls           |
+| `/admin/support` (+ `/admin/support/faqs`) | [admin/support.md](./admin/support.md)                               | Documented — ticket triage + FAQ editor     |
 
 ## Public (guest)
 

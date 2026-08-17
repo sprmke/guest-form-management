@@ -36,6 +36,7 @@ import type { OrgPermissionId } from '@/features/dashboard/team/lib/orgPermissio
 import {
   hasOrgPermission,
   ORG_NAV_VIEW_PERMISSION,
+  orgSectionPath,
 } from '@/features/dashboard/team/lib/orgPermissions';
 import {
   hasParkingPermission,
@@ -106,7 +107,7 @@ export function buildOrgNavSections(
       href: orgSettingsPath(orgSlug),
       Icon: Settings,
     },
-    { label: 'Help & Support', Icon: HelpCircle, disabled: true }
+    { label: 'Help & Support', href: orgSectionPath(orgSlug, 'help-support'), Icon: HelpCircle }
   );
 
   return [{ label: 'Org', items }];
@@ -181,7 +182,11 @@ export function buildPropertyNavSections(
           href: propertySectionPath(orgSlug, propertySlug, 'settings'),
           Icon: Settings,
         },
-        { label: 'Help & Support', Icon: HelpCircle, disabled: true },
+        {
+          label: 'Help & Support',
+          href: propertySectionPath(orgSlug, propertySlug, 'help-support'),
+          Icon: HelpCircle,
+        },
       ],
     },
   ];
@@ -233,7 +238,11 @@ export function buildParkingNavSections(orgSlug: string, parkingSlug: string): S
           href: parkingSectionPath(orgSlug, parkingSlug, 'settings'),
           Icon: Settings,
         },
-        { label: 'Help & Support', Icon: HelpCircle, disabled: true },
+        {
+          label: 'Help & Support',
+          href: parkingSectionPath(orgSlug, parkingSlug, 'help-support'),
+          Icon: HelpCircle,
+        },
       ],
     },
   ];

@@ -4,6 +4,10 @@ import type { ReactNode } from 'react';
 import { adminPropertyRoutes } from '@/features/dashboard/bookings/routes/propertyRoutes';
 import { customPagesPropertyRoute } from '@/features/dashboard/custom-pages/routes';
 import { financePropertyRoute } from '@/features/dashboard/finance/routes';
+import {
+  helpSupportParkingRoute,
+  helpSupportPropertyRoute,
+} from '@/features/dashboard/help-support/routes';
 import { propertyInboxRoute } from '@/features/dashboard/inbox/routes';
 import { maintenancePropertyRoute } from '@/features/dashboard/maintenance/routes';
 import { marketingPropertyRoute } from '@/features/dashboard/marketing/routes';
@@ -43,6 +47,7 @@ export const dashboardRoutes: ReactNode[] = [
         {marketingPropertyRoute(propertyRoute)}
         {propertyTeamRoute(propertyRoute)}
         {propertyInboxRoute(propertyRoute)}
+        {helpSupportPropertyRoute(propertyRoute)}
       </>
     )}
   </Fragment>,
@@ -51,6 +56,7 @@ export const dashboardRoutes: ReactNode[] = [
       <>
         {parkingAdminRoutes(parkingRoute)}
         {parkingTeamRoute(parkingRoute)}
+        {helpSupportParkingRoute(parkingRoute)}
       </>
     )}
   </Fragment>,

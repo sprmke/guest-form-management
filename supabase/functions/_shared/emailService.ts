@@ -45,6 +45,7 @@ import {
   sanitizeAttachmentToken,
 } from './propertyEmailBranding.ts';
 import { escapeHtml } from './renderEmailHtml.ts';
+import { resolvePublicGuestAppOrigin } from './publicAppOrigin.ts';
 
 /** Resolve property scope for operator settings (email routing, GCash, logos, etc.). */
 export function resolveEmailPropertyId(
@@ -1202,5 +1203,121 @@ export async function sendSdRefundFormRequest(booking: GuestSubmission) {
   }
 
   console.log('SD refund form request email sent successfully');
+  return await res.json();
+}
+
+// ─── Help & Support — ticket notify (Module 3) ───────────────────────────────
+// Platform-level: tickets aren't tied to a single property, so this skips
+// resolveAppSettings/renderPropertyTemplateSendEmail (both property-scoped) and
+// builds a plain inline HTML body instead, mirroring orgVerificationEmail.ts.
+
+const SUPPORT_TICKET_CATEGORY_LABELS: Record<string, string> = {
+  bug_report: 'Bug report',
+  feature_suggestion: 'Feature suggestion',
+  general_inquiry: 'General inquiry',
+  business_inquiry: 'Business inquiry',
+};
+
+/** New ticket → notifies the support team inbox (SUPPORT_TEAM_EMAIL). */
+export async function sendSupportTicketNotify(ticket: {
+  organizationName: string;
+  propertyName: string | null;
+  parkingName: string | null;
+  category: string;
+  subject: string;
+  submittedByName: string;
+  submittedByEmail: string;
+  bodyPreview: string;
+}) {
+  const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
+  const SUPPORT_TEAM_EMAIL = Deno.env.get('SUPPORT_TEAM_EMAIL');
+  if (!RESEND_API_KEY) throw new Error('Missing RESEND_API_KEY environment variable');
+  if (!SUPPORT_TEAM_EMAIL) throw new Error('Missing SUPPORT_TEAM_EMAIL environment variable');
+
+  const scopeLabel = ticket.parkingName
+    ? `Parking — ${ticket.parkingName}`
+    : ticket.propertyName
+      ? `Property — ${ticket.propertyName}`
+      : 'Organization-level';
+  const categoryLabel = SUPPORT_TICKET_CATEGORY_LABELS[ticket.category] ?? ticket.category;
+
+  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#111827;">
+<p style="margin:0 0 16px 0;">New support ticket from <strong>${escapeHtml(ticket.organizationName)}</strong> (${escapeHtml(scopeLabel)}).</p>
+<table style="width:100%;border-collapse:collapse;margin:0 0 16px 0;">
+<tr><td style="padding:4px 8px 4px 0;color:#6b7280;">Category</td><td style="padding:4px 0;font-weight:600;">${escapeHtml(categoryLabel)}</td></tr>
+<tr><td style="padding:4px 8px 4px 0;color:#6b7280;">Subject</td><td style="padding:4px 0;font-weight:600;">${escapeHtml(ticket.subject)}</td></tr>
+<tr><td style="padding:4px 8px 4px 0;color:#6b7280;">From</td><td style="padding:4px 0;">${escapeHtml(ticket.submittedByName)} &lt;${escapeHtml(ticket.submittedByEmail)}&gt;</td></tr>
+</table>
+<div style="margin:0 0 16px 0;padding:12px 16px;background:#f9fafb;border-radius:8px;white-space:pre-wrap;">${escapeHtml(ticket.bodyPreview)}</div>
+</div>`;
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: `Kame Homes Support <${(Deno.env.get('RESEND_FROM_EMAIL') ?? SUPPORT_TEAM_EMAIL).trim()}>`,
+      to: [SUPPORT_TEAM_EMAIL],
+      reply_to: ticket.submittedByEmail,
+      subject: `[${categoryLabel}] ${ticket.subject}`,
+      html,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(
+      `Failed to send support ticket notify (${res.status})${body ? `: ${body.slice(0, 200)}` : ''}`
+    );
+  }
+
+  return await res.json();
+}
+
+/** Admin reply on a ticket → notifies the host who submitted it. */
+export async function sendSupportTicketReplyNotify(ticket: {
+  id: string;
+  orgSlug: string;
+  subject: string;
+  submittedByEmail: string;
+}) {
+  const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
+  const fromEmail = Deno.env.get('RESEND_FROM_EMAIL')?.trim();
+  if (!RESEND_API_KEY || !fromEmail) {
+    console.warn('[sendSupportTicketReplyNotify] RESEND_API_KEY or RESEND_FROM_EMAIL missing — skip');
+    return;
+  }
+
+  const appOrigin = resolvePublicGuestAppOrigin(null);
+  const ticketUrl = `${appOrigin}/org/${ticket.orgSlug}/help-support/tickets/${ticket.id}`;
+
+  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#111827;">
+<p style="margin:0 0 16px 0;">There's a new reply on your support ticket <strong>${escapeHtml(ticket.subject)}</strong>.</p>
+<div style="margin:28px 0 8px 0;text-align:center;"><a href="${escapeHtml(ticketUrl)}" target="_blank" rel="noopener" style="display:inline-block;padding:10px 20px;border-radius:8px;background:#111827;color:#ffffff;text-decoration:none;font-weight:600;">View the ticket</a></div>
+</div>`;
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: `Kame Homes Support <${fromEmail}>`,
+      to: [ticket.submittedByEmail],
+      subject: `Re: ${ticket.subject}`,
+      html,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(
+      `Failed to send support ticket reply notify (${res.status})${body ? `: ${body.slice(0, 200)}` : ''}`
+    );
+  }
+
   return await res.json();
 }

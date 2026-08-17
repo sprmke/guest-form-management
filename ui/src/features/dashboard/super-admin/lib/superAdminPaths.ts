@@ -3,6 +3,8 @@ export const superAdminPaths = {
   developments: '/admin/developments',
   developmentDetail: (slug: string) => `/admin/developments/${slug}`,
   approvals: '/admin/approvals',
+  support: '/admin/support',
+  supportFaqs: '/admin/support/faqs',
   hosts: '/admin/hosts',
   settings: '/admin/settings',
   properties: '/admin/properties',
