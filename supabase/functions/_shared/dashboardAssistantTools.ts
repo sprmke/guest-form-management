@@ -14,6 +14,8 @@
  * `index.ts`). Do not add a fake tool for functionality that doesn't exist.
  */
 
+import { pendingTasksForBooking, sdRefundAmountForBooking } from './dashboardAssistantBlocks.ts';
+import { manilaTodayIso } from './bookingsListSort.ts';
 import { DatabaseService } from './databaseService.ts';
 import { computeDashboardStats } from './dashboardService.ts';
 import {
@@ -250,6 +252,8 @@ async function toolGetBooking(
 
   const totalDue = computeTotalGuestBalanceFromBooking(booking as Record<string, unknown>);
   const balanceDue = totalDue === null ? null : totalDue - num(booking.guest_balance_paid_amount);
+  const status = String(booking.status ?? '');
+  const bookingRecord = booking as Record<string, unknown>;
 
   return {
     ok: true,
@@ -257,13 +261,18 @@ async function toolGetBooking(
     auditBookingId: bookingId,
     data: {
       bookingId: booking.id,
-      guestName: booking.primary_guest_name ?? '',
-      status: booking.status,
+      guestName: booking.primary_guest_name || booking.guest_facebook_name || '',
+      status,
+      statusLabel: isBookingStatus(status) ? STATUS_HUMAN_LABEL[status] : status,
       checkIn: booking.check_in_date,
       checkOut: booking.check_out_date,
       propertyId,
       propertyName: property?.name ?? '',
       balanceDue,
+      securityDeposit: num(booking.security_deposit),
+      sdRefundAmount: sdRefundAmountForBooking(bookingRecord),
+      sdRefundFormSubmitted: Boolean(booking.sd_refund_form_submitted_at),
+      pendingTasks: pendingTasksForBooking(bookingRecord),
     },
   };
 }
@@ -296,11 +305,46 @@ async function toolListBookings(
     from: str(args, 'from') ?? null,
     to: str(args, 'to') ?? null,
     page: 1,
-    limit: 10,
+    limit: 40,
     sort: 'check_in_date:asc',
+    showCompletedBookings: Boolean(str(args, 'from') || str(args, 'to')),
   });
 
-  return { ok: true, data: result };
+  const nameById = new Map<string, string>();
+  const ids = [
+    ...new Set(
+      result.rows
+        .map((row) => String((row as { property_id?: string }).property_id ?? ''))
+        .filter(Boolean)
+    ),
+  ];
+  if (ids.length > 0) {
+    const sb = createServiceClient();
+    const { data: properties } = await sb.from('properties').select('id, name').in('id', ids);
+    for (const property of properties ?? []) {
+      nameById.set(String(property.id), String(property.name ?? ''));
+    }
+  }
+
+  return {
+    ok: true,
+    data: {
+      total: result.total,
+      bookings: result.rows.map((row) => {
+        const r = row as Record<string, unknown>;
+        const rowStatus = String(r.status ?? '');
+        return {
+          bookingId: r.id,
+          guestName: r.primary_guest_name || r.guest_facebook_name || '',
+          status: rowStatus,
+          statusLabel: isBookingStatus(rowStatus) ? STATUS_HUMAN_LABEL[rowStatus] : rowStatus,
+          checkIn: r.check_in_date,
+          checkOut: r.check_out_date,
+          propertyName: nameById.get(String(r.property_id ?? '')) ?? '',
+        };
+      }),
+    },
+  };
 }
 
 async function toolGetAvailableTransitions(
@@ -322,6 +366,7 @@ async function toolGetAvailableTransitions(
     data: {
       bookingId,
       currentStatus: status,
+      currentStatusLabel: STATUS_HUMAN_LABEL[status],
       options: options.map((s) => ({ status: s, label: STATUS_HUMAN_LABEL[s] })),
     },
   };
@@ -355,55 +400,80 @@ async function toolGetAvailableDates(
 ): Promise<ToolResult> {
   const { propertyId } = await resolveTargetProperty(ctx, args, 'bookings:view');
 
-  const today = (() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  })();
+  const todayKey = manilaTodayIso();
+  const today = parseDateOnly(todayKey) ?? new Date();
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
 
   const fromArg = str(args, 'from');
-  let from = fromArg ? parseDateOnly(fromArg) : null;
-  if (!from || from < today) from = today;
+  const requestedFrom = fromArg ? parseDateOnly(fromArg) : monthStart;
+  const windowFrom = requestedFrom ?? monthStart;
 
   const toArg = str(args, 'to');
-  let to = toArg ? parseDateOnly(toArg) : null;
-  if (!to || to < from) {
-    // Default window: rest of the month containing `from`.
-    to = new Date(from.getFullYear(), from.getMonth() + 1, 0);
+  let windowTo = toArg ? parseDateOnly(toArg) : null;
+  if (!windowTo || windowTo < windowFrom) {
+    windowTo = new Date(windowFrom.getFullYear(), windowFrom.getMonth() + 1, 0);
   }
-  const maxTo = addDays(from, MAX_AVAILABILITY_WINDOW_DAYS);
-  if (to > maxTo) to = maxTo;
+  const maxTo = addDays(windowFrom, MAX_AVAILABILITY_WINDOW_DAYS);
+  if (windowTo > maxTo) windowTo = maxTo;
 
-  const fromKey = formatDateKey(from);
-  const toKey = formatDateKey(to);
+  const availabilityFrom = windowFrom < today ? today : windowFrom;
+  const fromKey = formatDateKey(availabilityFrom);
+  const toKey = formatDateKey(windowTo);
+  const bookedFromKey = formatDateKey(windowFrom);
 
   const sb = createServiceClient();
-  const { data: bookings, error } = await sb
-    .from('guest_submissions')
-    .select('check_in_date, check_out_date, status')
-    .eq('property_id', propertyId)
-    .neq('status', 'CANCELLED')
-    .neq('status', 'IMPORTED');
+  const [{ data: bookings, error }, { data: property }] = await Promise.all([
+    sb
+      .from('guest_submissions')
+      .select('id, primary_guest_name, guest_facebook_name, check_in_date, check_out_date, status')
+      .eq('property_id', propertyId)
+      .neq('status', 'CANCELLED')
+      .neq('status', 'IMPORTED'),
+    sb.from('properties').select('name').eq('id', propertyId).maybeSingle(),
+  ]);
   if (error) return { ok: false, error: error.message };
 
   const blockedKeys = new Set(await loadBlockedDateKeys(propertyId, fromKey, toKey));
+  const bookedStays: Array<{
+    bookingId: string;
+    guestName: string;
+    checkIn: string;
+    checkOut: string;
+    status: string;
+    statusLabel: string;
+  }> = [];
 
   for (const booking of bookings ?? []) {
     const ci = parseDateOnly(booking.check_in_date as string);
     const co = parseDateOnly(booking.check_out_date as string);
     if (!ci || !co) continue;
-    let cursor = ci > from ? ci : from;
+    if (co <= windowFrom || ci > windowTo) continue;
+
+    const rowStatus = String(booking.status ?? '');
+    bookedStays.push({
+      bookingId: String(booking.id),
+      guestName: String(booking.primary_guest_name || booking.guest_facebook_name || ''),
+      checkIn: formatDateKey(ci),
+      checkOut: formatDateKey(co),
+      status: rowStatus,
+      statusLabel: isBookingStatus(rowStatus) ? STATUS_HUMAN_LABEL[rowStatus] : rowStatus,
+    });
+
+    let night = ci > availabilityFrom ? ci : availabilityFrom;
     const lastNight = addDays(co, -1);
-    const end = lastNight < to ? lastNight : to;
-    while (cursor <= end) {
-      blockedKeys.add(formatDateKey(cursor));
-      cursor = addDays(cursor, 1);
+    const end = lastNight < windowTo ? lastNight : windowTo;
+    while (night <= end) {
+      blockedKeys.add(formatDateKey(night));
+      night = addDays(night, 1);
     }
   }
 
+  bookedStays.sort((a, b) => a.checkIn.localeCompare(b.checkIn));
+
   const availableRanges: Array<{ start: string; end: string }> = [];
   let rangeStart: Date | null = null;
-  let cursor = from;
-  while (cursor <= to) {
+  let cursor = availabilityFrom;
+  while (cursor <= windowTo) {
     const isFree = !blockedKeys.has(formatDateKey(cursor));
     if (isFree && rangeStart === null) {
       rangeStart = cursor;
@@ -417,7 +487,7 @@ async function toolGetAvailableDates(
     cursor = addDays(cursor, 1);
   }
   if (rangeStart !== null) {
-    availableRanges.push({ start: formatDateKey(rangeStart), end: formatDateKey(to) });
+    availableRanges.push({ start: formatDateKey(rangeStart), end: formatDateKey(windowTo) });
   }
 
   const availableNightCount = availableRanges.reduce((sum, range) => {
@@ -431,8 +501,11 @@ async function toolGetAvailableDates(
     auditPropertyId: propertyId,
     data: {
       propertyId,
-      from: fromKey,
+      propertyName: property?.name ?? '',
+      from: bookedFromKey,
       to: toKey,
+      bookedStays,
+      bookedStayCount: bookedStays.length,
       availableRanges,
       availableNightCount,
       fullyBooked: availableRanges.length === 0,
@@ -1129,6 +1202,8 @@ async function toolDraftMarketingCaption(
       contentHint: str(args, 'contentHint'),
       nightlyRate: str(args, 'nightlyRate'),
       availabilityText: str(args, 'availabilityText'),
+      actorUserId: ctx.userId,
+      actorType: 'staff',
     });
     return { ok: true, auditPropertyId: access.propertyId, data: { caption } };
   } catch (err) {
@@ -1169,6 +1244,8 @@ async function toolDraftMarketingTemplate(
       prompt,
       propertyName: propertyLabel || String(propertyRow.name),
       availabilityText: str(args, 'availabilityText'),
+      actorUserId: ctx.userId,
+      actorType: 'staff',
     });
     return { ok: true, auditPropertyId: access.propertyId, data: result };
   } catch (err) {
@@ -1313,6 +1390,8 @@ async function toolRunReceiptValidation(
     {
       organizationId: access.org.id,
       propertyId,
+      actorUserId: ctx.userId,
+      actorType: 'staff',
     }
   );
   if (validated.length > 0) {
@@ -2380,6 +2459,8 @@ async function toolDraftInboxReply(
         sentAt: m.sent_at,
       })),
       systemPromptOverride: (settings?.ai_system_prompt as string | null) ?? null,
+      actorUserId: ctx.userId,
+      actorType: 'staff',
     });
     return {
       ok: true,
@@ -2569,6 +2650,8 @@ export async function executeConfirmedAction(
       {
         organizationId: access.org.id,
         propertyId,
+        actorUserId: ctx.userId,
+        actorType: 'staff',
       }
     );
     if (validated.length > 0) {
@@ -3591,7 +3674,8 @@ export const TOOL_DECLARATIONS = [
   },
   {
     name: 'get_booking',
-    description: 'Fetch a single booking by id.',
+    description:
+      'Fetch a single booking by id, including human statusLabel, pendingTasks, securityDeposit, and sdRefundAmount.',
     parameters: {
       type: 'object',
       properties: { bookingId: { type: 'string' } },
@@ -3600,7 +3684,8 @@ export const TOOL_DECLARATIONS = [
   },
   {
     name: 'list_bookings',
-    description: 'List bookings, optionally filtered by property, status, or date range.',
+    description:
+      'List bookings (guest name, human statusLabel, dates). Optionally filter by property, status, or check-in date range. Date-range queries include completed stays.',
     parameters: {
       type: 'object',
       properties: {
@@ -3623,7 +3708,7 @@ export const TOOL_DECLARATIONS = [
   {
     name: 'get_available_dates',
     description:
-      'Get open (unbooked) date ranges for a property in a window — use this to answer "what dates are available/free/open" questions. Defaults to today through the end of the current month if from/to are omitted.',
+      'Get booked stays AND open (unbooked) nights for a property in a date window. Use this for "what dates are booked/available this month". Defaults to the current calendar month (Asia/Manila). bookedStays lists guest name + check-in/out overlapping the window (non-cancelled). availableRanges are unbooked nights from today forward.',
     parameters: {
       type: 'object',
       properties: {

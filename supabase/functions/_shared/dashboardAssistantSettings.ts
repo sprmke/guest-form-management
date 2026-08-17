@@ -150,6 +150,13 @@ function monthStartIso(): string {
   return `${todayIso().slice(0, 7)}-01`;
 }
 
+/**
+ * Message/day and message/month spam-abuse guard (prevents burst chat-turn spam) — NOT the
+ * billing-relevant limit. The authoritative, billing-relevant check is the shared
+ * `ai_platform_*` credit/cost quota (`assertOrgAndPropertyAiQuota` in aiUsageService.ts),
+ * already invoked every round via `callGeminiToolCall()`. This function's counts are a
+ * cheap pre-check that runs before the tool-calling loop starts, independent of it.
+ */
 export async function checkDashboardAssistantQuota(
   organizationId: string,
   orgSettings: DashboardAssistantOrgSettings
@@ -204,20 +211,21 @@ export async function checkDashboardAssistantQuota(
 
 export async function incrementDashboardAssistantUsage(
   organizationId: string,
-  input: { message?: boolean; writeAction?: boolean }
+  input: { message?: boolean; writeAction?: boolean; creditsConsumed?: number }
 ): Promise<void> {
   const sb = createServiceClient();
   const today = todayIso();
 
   const { data: existing } = await sb
     .from('ai_dashboard_assistant_usage_daily')
-    .select('message_count, write_action_count')
+    .select('message_count, write_action_count, credits_consumed')
     .eq('organization_id', organizationId)
     .eq('usage_date', today)
     .maybeSingle();
 
   const messageCount = Number(existing?.message_count ?? 0) + (input.message ? 1 : 0);
   const writeActionCount = Number(existing?.write_action_count ?? 0) + (input.writeAction ? 1 : 0);
+  const creditsConsumed = Number(existing?.credits_consumed ?? 0) + (input.creditsConsumed ?? 0);
 
   const { error } = await sb.from('ai_dashboard_assistant_usage_daily').upsert(
     {
@@ -225,12 +233,62 @@ export async function incrementDashboardAssistantUsage(
       usage_date: today,
       message_count: messageCount,
       write_action_count: writeActionCount,
+      credits_consumed: creditsConsumed,
     },
     { onConflict: 'organization_id,usage_date' }
   );
   if (error) {
     console.error('[dashboardAssistantSettings] usage increment failed:', error.message);
   }
+}
+
+export type DashboardAssistantUsageSummary = {
+  todayMessageCount: number;
+  monthMessageCount: number;
+  todayWriteActionCount: number;
+  monthWriteActionCount: number;
+  todayCreditsConsumed: number;
+  monthCreditsConsumed: number;
+};
+
+/** Informational read for the org settings page — not used for any gating decision. */
+export async function getDashboardAssistantUsageSummary(
+  organizationId: string
+): Promise<DashboardAssistantUsageSummary> {
+  const sb = createServiceClient();
+  const today = todayIso();
+
+  const { data: todayRow } = await sb
+    .from('ai_dashboard_assistant_usage_daily')
+    .select('message_count, write_action_count, credits_consumed')
+    .eq('organization_id', organizationId)
+    .eq('usage_date', today)
+    .maybeSingle();
+
+  const { data: monthRows } = await sb
+    .from('ai_dashboard_assistant_usage_daily')
+    .select('message_count, write_action_count, credits_consumed')
+    .eq('organization_id', organizationId)
+    .gte('usage_date', monthStartIso())
+    .lte('usage_date', today);
+
+  const monthTotals = (monthRows ?? []).reduce(
+    (acc, row) => ({
+      messageCount: acc.messageCount + Number(row.message_count ?? 0),
+      writeActionCount: acc.writeActionCount + Number(row.write_action_count ?? 0),
+      creditsConsumed: acc.creditsConsumed + Number(row.credits_consumed ?? 0),
+    }),
+    { messageCount: 0, writeActionCount: 0, creditsConsumed: 0 }
+  );
+
+  return {
+    todayMessageCount: Number(todayRow?.message_count ?? 0),
+    monthMessageCount: monthTotals.messageCount,
+    todayWriteActionCount: Number(todayRow?.write_action_count ?? 0),
+    monthWriteActionCount: monthTotals.writeActionCount,
+    todayCreditsConsumed: Number(todayRow?.credits_consumed ?? 0),
+    monthCreditsConsumed: monthTotals.creditsConsumed,
+  };
 }
 
 /** True only when both kill-switch layers are on and this property (if any) isn't opted out. */

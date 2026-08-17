@@ -12,7 +12,7 @@ import {
   shouldTryNextProvider,
 } from './aiGeminiKeys.ts';
 import { geminiGenerateContentUrl, getModelConfig } from './aiModelRouter.ts';
-import { assertOrgAndPropertyAiQuota, recordAiUsage } from './aiUsageService.ts';
+import { assertOrgAndPropertyAiQuota, recordAiUsage, type AiActorType } from './aiUsageService.ts';
 import {
   buildCacheInputs,
   computePromptFingerprint,
@@ -53,6 +53,8 @@ export type ImportColumnMappingInput = {
   headers: string[];
   /** Up to 5 sample cell values per header (column-major). */
   samplesByHeader: Record<string, string[]>;
+  actorUserId?: string | null;
+  actorType?: AiActorType;
 };
 
 const IMPORT_FEATURE = 'import_column_map' as const;
@@ -268,7 +270,12 @@ function parseMappingsPayload(text: string, headers: string[]): ImportColumnMapp
 async function tryGeminiMapping(
   prompt: string,
   headers: string[],
-  usage: { organizationId: string; propertyId: string },
+  usage: {
+    organizationId: string;
+    propertyId: string;
+    actorUserId?: string | null;
+    actorType?: AiActorType;
+  },
   cacheKey: string
 ): Promise<ImportColumnMappingEntry[] | null> {
   const keys = getGeminiApiKeys();
@@ -337,6 +344,8 @@ async function tryGeminiMapping(
           model: GEMINI_MODEL,
           inputTokens: tokenUsage.inputTokens,
           outputTokens: tokenUsage.outputTokens,
+          actorUserId: usage.actorUserId ?? null,
+          actorType: usage.actorType ?? 'staff',
         });
         await setCachedAiResponse(IMPORT_FEATURE, cacheKey, {
           provider: 'gemini',
@@ -360,7 +369,12 @@ async function tryGeminiMapping(
 async function tryGroqMapping(
   prompt: string,
   headers: string[],
-  usage: { organizationId: string; propertyId: string },
+  usage: {
+    organizationId: string;
+    propertyId: string;
+    actorUserId?: string | null;
+    actorType?: AiActorType;
+  },
   cacheKey: string
 ): Promise<ImportColumnMappingEntry[] | null> {
   const groqKey = getGroqApiKey();
@@ -409,6 +423,8 @@ async function tryGroqMapping(
         model: GROQ_MODEL,
         inputTokens: groqInputTokens,
         outputTokens: groqOutputTokens,
+        actorUserId: usage.actorUserId ?? null,
+        actorType: usage.actorType ?? 'staff',
       });
       await setCachedAiResponse(IMPORT_FEATURE, cacheKey, {
         provider: 'groq',
@@ -462,7 +478,12 @@ export async function suggestImportColumnMappings(
       };
     }
   }
-  const usage = { organizationId: input.organizationId, propertyId: input.propertyId };
+  const usage = {
+    organizationId: input.organizationId,
+    propertyId: input.propertyId,
+    actorUserId: input.actorUserId,
+    actorType: input.actorType,
+  };
   const geminiMappings = await tryGeminiMapping(prompt, headers, usage, cacheKey);
   if (geminiMappings) {
     return {

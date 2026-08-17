@@ -12,7 +12,7 @@ import {
   shouldTryNextProvider,
 } from './aiGeminiKeys.ts';
 import { geminiGenerateContentUrl, getModelConfig } from './aiModelRouter.ts';
-import { assertOrgAndPropertyAiQuota, recordAiUsage } from './aiUsageService.ts';
+import { assertOrgAndPropertyAiQuota, recordAiUsage, type AiActorType } from './aiUsageService.ts';
 import {
   buildCacheInputs,
   computePromptFingerprint,
@@ -322,6 +322,8 @@ export type GenerateMarketingTemplateInput = {
     backgroundMood?: string;
     category?: string;
   };
+  actorUserId?: string | null;
+  actorType?: AiActorType;
 };
 
 const CALENDAR_ARCHETYPES: CalendarLayoutArchetype[] = [
@@ -815,7 +817,12 @@ async function generateJsonText(
   systemPrompt: string,
   userPrompt: string,
   responseSchema: unknown,
-  usage: { organizationId: string; propertyId: string },
+  usage: {
+    organizationId: string;
+    propertyId: string;
+    actorUserId?: string | null;
+    actorType?: AiActorType;
+  },
   cacheKey: string,
   requiredKeys: readonly string[]
 ): Promise<string> {
@@ -871,6 +878,8 @@ async function generateJsonText(
           model: GEMINI_MODEL,
           inputTokens: tokenUsage.inputTokens,
           outputTokens: tokenUsage.outputTokens,
+          actorUserId: usage.actorUserId ?? null,
+          actorType: usage.actorType ?? 'staff',
         });
         await setCachedAiResponse(FEATURE, cacheKey, {
           provider: 'gemini',
@@ -927,6 +936,8 @@ async function generateJsonText(
             model: GROQ_MODEL,
             inputTokens: groqInputTokens,
             outputTokens: groqOutputTokens,
+            actorUserId: usage.actorUserId ?? null,
+            actorType: usage.actorType ?? 'staff',
           });
           await setCachedAiResponse(FEATURE, cacheKey, {
             provider: 'groq',
@@ -995,6 +1006,8 @@ export async function generateMarketingTemplateTokens(
       {
         organizationId: input.organizationId,
         propertyId: input.propertyId,
+        actorUserId: input.actorUserId,
+        actorType: input.actorType,
       },
       cacheKey,
       CALENDAR_RESPONSE_SCHEMA.required
@@ -1017,6 +1030,8 @@ export async function generateMarketingTemplateTokens(
       {
         organizationId: input.organizationId,
         propertyId: input.propertyId,
+        actorUserId: input.actorUserId,
+        actorType: input.actorType,
       },
       cacheKey,
       VIDEO_RESPONSE_SCHEMA.required
@@ -1038,6 +1053,8 @@ export async function generateMarketingTemplateTokens(
     {
       organizationId: input.organizationId,
       propertyId: input.propertyId,
+      actorUserId: input.actorUserId,
+      actorType: input.actorType,
     },
     designCacheKey,
     DESIGN_RESPONSE_SCHEMA.required

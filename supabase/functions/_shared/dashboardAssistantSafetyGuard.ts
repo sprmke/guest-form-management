@@ -21,6 +21,7 @@ import {
 export type SafetyCheckResult = {
   ok: boolean;
   violation: string | null;
+  creditsConsumed: number;
 };
 
 const SAFETY_SCHEMA = {
@@ -42,12 +43,15 @@ Check the assistant's response and flag it if it:
 Return { ok: true, violation: null } if safe; otherwise { ok: false, violation: "brief reason" }.`;
 
 export async function guardDashboardAssistantResponse(
-  options: Pick<GeminiToolCallOptions, 'organizationId' | 'propertyId'>,
+  options: Pick<
+    GeminiToolCallOptions,
+    'organizationId' | 'propertyId' | 'actorUserId' | 'actorType'
+  >,
   assistantResponse: string,
   contextSummary: string
 ): Promise<SafetyCheckResult> {
   const prompt = `Context summary: """${contextSummary}"""\nAssistant response: """${assistantResponse}"""\nReview and return only the JSON object matching the schema.`;
-  const result = await callGeminiStructured<SafetyCheckResult>(
+  const result = await callGeminiStructured<Omit<SafetyCheckResult, 'creditsConsumed'>>(
     {
       feature: 'dashboard_assistant',
       organizationId: options.organizationId,
@@ -57,11 +61,16 @@ export async function guardDashboardAssistantResponse(
       temperature: 0,
       maxOutputTokens: 128,
       cacheInputs: { assistantResponse, contextSummary },
+      actorUserId: options.actorUserId,
+      actorType: options.actorType,
     },
     SAFETY_SCHEMA
   );
 
-  return result.data ?? { ok: true, violation: null };
+  return {
+    ...(result.data ?? { ok: true, violation: null }),
+    creditsConsumed: result.creditsConsumed,
+  };
 }
 
 const DISALLOWED_PATTERNS = [

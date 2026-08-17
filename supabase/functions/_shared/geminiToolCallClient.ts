@@ -12,7 +12,7 @@ import {
   providerError,
   shouldTryNextProvider,
 } from './aiGeminiKeys.ts';
-import { assertOrgAndPropertyAiQuota, recordAiUsage } from './aiUsageService.ts';
+import { assertOrgAndPropertyAiQuota, recordAiUsage, type AiActorType } from './aiUsageService.ts';
 import {
   computePromptFingerprint,
   getCachedAiResponse,
@@ -28,11 +28,14 @@ export type GeminiToolDeclaration = {
 export type GeminiToolCallResult = {
   toolCalls: Array<{ name: string; arguments: Record<string, unknown> }>;
   text: string | null;
+  /** Credits this call consumed — 0 on a cache hit. Callers looping rounds should sum this. */
+  creditsConsumed: number;
 };
 
 export type GeminiStructuredResult<T> = {
   data: T | null;
   text: string | null;
+  creditsConsumed: number;
 };
 
 /** One turn of multi-round tool-calling conversation history (see `history` below). */
@@ -63,6 +66,9 @@ export type GeminiToolCallOptions = {
    * since history differs every round and a cache hit would return a stale tool response.
    */
   history?: GeminiContent[];
+  /** Who triggered this call, for usage attribution (see aiUsageService.ts#RecordAiUsageInput). */
+  actorUserId?: string | null;
+  actorType?: AiActorType;
 };
 
 function buildGeminiRequestBody(
@@ -159,7 +165,7 @@ export async function callGeminiToolCall(
       } catch {
         /* cached response is plain text */
       }
-      await recordAiUsage({
+      const { creditsConsumed } = await recordAiUsage({
         feature: options.feature,
         organizationId: options.organizationId,
         propertyId: options.propertyId ?? null,
@@ -169,8 +175,10 @@ export async function callGeminiToolCall(
         outputTokens: cached.outputTokens,
         estimatedCostUsd: cached.estimatedCostUsd,
         cacheHit: true,
+        actorUserId: options.actorUserId ?? null,
+        actorType: options.actorType,
       });
-      return { toolCalls, text };
+      return { toolCalls, text, creditsConsumed };
     }
   }
 
@@ -209,7 +217,7 @@ export async function callGeminiToolCall(
       const toolCalls = parseToolCalls(resJson);
       const text = extractGeminiText(resJson);
 
-      await recordAiUsage({
+      const { creditsConsumed } = await recordAiUsage({
         feature: options.feature,
         organizationId: options.organizationId,
         propertyId: options.propertyId ?? null,
@@ -218,6 +226,8 @@ export async function callGeminiToolCall(
         inputTokens,
         outputTokens,
         estimatedCostUsd: undefined,
+        actorUserId: options.actorUserId ?? null,
+        actorType: options.actorType,
       });
 
       if (!options.cacheDisabled && fingerprint) {
@@ -232,7 +242,7 @@ export async function callGeminiToolCall(
         });
       }
 
-      return { toolCalls, text };
+      return { toolCalls, text, creditsConsumed };
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
       if (i < keys.length - 1) {
@@ -263,7 +273,11 @@ export async function callGeminiStructured<T>(
 
   const call = result.toolCalls[0];
   if (!call?.arguments) {
-    return { data: null, text: result.text };
+    return { data: null, text: result.text, creditsConsumed: result.creditsConsumed };
   }
-  return { data: call.arguments as T, text: result.text };
+  return {
+    data: call.arguments as T,
+    text: result.text,
+    creditsConsumed: result.creditsConsumed,
+  };
 }

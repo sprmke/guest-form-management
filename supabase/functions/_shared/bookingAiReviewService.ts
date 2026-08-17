@@ -27,6 +27,7 @@ import {
   assertPropertyAiQuotaOptional,
   type AiQuotaExceededError,
   type AiPlatformDisabledError,
+  type AiActorType,
   recordAiUsageOptional,
 } from './aiUsageService.ts';
 import { DatabaseService } from './databaseService.ts';
@@ -91,6 +92,8 @@ export type BookingAiReviewRow = {
 export type AiUsageContext = {
   organizationId: string;
   propertyId?: string | null;
+  actorUserId?: string | null;
+  actorType?: AiActorType;
 };
 
 export const AI_SUMMARY_STYLE_GUIDE = `Style guide (strict):
@@ -459,6 +462,8 @@ async function recordVisionUsage(
     model: provider === 'gemini' ? config.model : GROQ_MODEL,
     inputTokens: tokenUsage?.inputTokens,
     outputTokens: tokenUsage?.outputTokens,
+    actorUserId: usageContext.actorUserId ?? null,
+    actorType: usageContext.actorType ?? 'staff',
   });
 }
 
@@ -1694,7 +1699,12 @@ export async function executeBookingAiReview(
   triggeredByUserId: string,
   orgId: string
 ): Promise<BookingAiReviewRow> {
-  const usageContext: AiUsageContext = { organizationId: orgId, propertyId };
+  const usageContext: AiUsageContext = {
+    organizationId: orgId,
+    propertyId,
+    actorUserId: triggeredByUserId,
+    actorType: 'staff',
+  };
   const booking = await DatabaseService.getBookingById(bookingId);
   if (!booking) throw new Error(`Booking not found: ${bookingId}`);
 

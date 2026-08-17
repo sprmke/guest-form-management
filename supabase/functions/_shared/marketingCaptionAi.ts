@@ -9,7 +9,7 @@ import {
   getGroqApiKey,
 } from './aiGeminiKeys.ts';
 import { geminiGenerateContentUrl, getModelConfig } from './aiModelRouter.ts';
-import { assertOrgAndPropertyAiQuota, recordAiUsage } from './aiUsageService.ts';
+import { assertOrgAndPropertyAiQuota, recordAiUsage, type AiActorType } from './aiUsageService.ts';
 import {
   buildCacheInputs,
   computePromptFingerprint,
@@ -33,6 +33,8 @@ export type MarketingCaptionInput = {
   contentHint?: string;
   nightlyRate?: string;
   availabilityText?: string;
+  actorUserId?: string | null;
+  actorType?: AiActorType;
 };
 
 export async function generateMarketingCaption(input: MarketingCaptionInput): Promise<string> {
@@ -93,6 +95,8 @@ export async function generateMarketingCaption(input: MarketingCaptionInput): Pr
           model: GEMINI_MODEL,
           inputTokens: usage.inputTokens,
           outputTokens: usage.outputTokens,
+          actorUserId: input.actorUserId ?? null,
+          actorType: input.actorType ?? 'staff',
         });
         await setCachedAiResponse(FEATURE, cacheKey, {
           provider: 'gemini',
@@ -143,6 +147,8 @@ export async function generateMarketingCaption(input: MarketingCaptionInput): Pr
         model: GROQ_MODEL,
         inputTokens: groqInputTokens,
         outputTokens: groqOutputTokens,
+        actorUserId: input.actorUserId ?? null,
+        actorType: input.actorType ?? 'staff',
       });
       await setCachedAiResponse(FEATURE, cacheKey, {
         provider: 'groq',
