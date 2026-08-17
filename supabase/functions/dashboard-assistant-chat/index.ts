@@ -26,6 +26,11 @@ import {
 } from '../_shared/dashboardAssistantRiskClassifier.ts';
 import { isAiPlatformDisabledError, isAiQuotaError } from '../_shared/aiUsageService.ts';
 import {
+  humanizeStatusCodesInText,
+  hydrateAssistantBlocksFromTools,
+  sanitizeAssistantChatBlocks,
+} from '../_shared/dashboardAssistantBlocks.ts';
+import {
   assertBlocksGrounded,
   guardDashboardAssistantResponse,
   quickSafetyScan,
@@ -94,7 +99,16 @@ const BLOCKS_RESPONSE_SCHEMA = {
             },
           },
           columns: { type: 'array', items: { type: 'string' } },
-          rows: { type: 'array', items: { type: 'object', properties: {} } },
+          rows: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                cells: { type: 'array', items: { type: 'string' } },
+              },
+              required: ['cells'],
+            },
+          },
           links: {
             type: 'array',
             items: {
@@ -111,7 +125,14 @@ const BLOCKS_RESPONSE_SCHEMA = {
   required: ['blocks'],
 };
 
-const SYSTEM_PROMPT_PREFIX = `You are the AI dashboard assistant for Kame Homes hosts. Answer only from the Known facts and tool results below — never invent booking data, amounts, or guest names. Never claim an action succeeded unless a tool call actually returned success. When you need live data, call a tool instead of guessing. Financially-sensitive, destructive, or override actions require host confirmation — you do not need to warn about this, the platform handles it. Respond with a short set of typed blocks (text/booking_card/stat_list/data_table/link_list) — never HTML or markdown tables.`;
+const SYSTEM_PROMPT_PREFIX = `You are the AI dashboard assistant for Kame Homes hosts. Answer only from the Known facts and tool results below — never invent booking data, amounts, or guest names. Never claim an action succeeded unless a tool call actually returned success. When you need live data, call a tool instead of guessing. Financially-sensitive, destructive, or override actions require host confirmation — you do not need to warn about this, the platform handles it. Respond with a short set of typed blocks (text/booking_card/stat_list/data_table/link_list) — never HTML or markdown tables.
+
+Host-facing rules:
+- Always use human status labels from tool results (statusLabel), never raw codes like READY_FOR_CHECKOUT.
+- Never emit an empty stat_list, data_table, or link_list. If a list is empty, say so in a text block.
+- For data_table, every row must include cells[] in the same order as columns. Example: columns ["Guest","Check-in","Check-out"], rows [{cells:["Jane","2026-08-19","2026-08-20"]}].
+- Pending tasks and SD refund amounts come from get_booking (pendingTasks, sdRefundAmount) — copy those, do not invent an empty list.
+- For booked or available dates, call get_available_dates and use bookedStays / availableRanges.`;
 
 async function resolveEffectivePermissions(
   req: Request,
@@ -290,6 +311,7 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
     let proposedAction: { toolName: string; result: ToolResult } | null = null;
     let executedActions: Array<{ toolName: string; result: ToolResult }> = [];
     let finalText = '';
+    let turnCreditsConsumed = 0;
 
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
       const roundResult = await callGeminiToolCall({
@@ -303,7 +325,10 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
         history,
         cacheDisabled: true,
         maxOutputTokens: 1024,
+        actorUserId: user.id,
+        actorType: 'staff',
       });
+      turnCreditsConsumed += roundResult.creditsConsumed;
 
       if (roundResult.toolCalls.length === 0) {
         finalText = roundResult.text ?? '';
@@ -409,24 +434,42 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
               : undefined,
           cacheDisabled: true,
           maxOutputTokens: 1024,
+          actorUserId: user.id,
+          actorType: 'staff',
         },
         BLOCKS_RESPONSE_SCHEMA
       );
+      turnCreditsConsumed += structured.creditsConsumed;
 
-      const candidateBlocks = structured.data?.blocks?.length
-        ? structured.data.blocks
-        : [
-            {
-              type: 'text' as const,
-              text: finalText || structured.text || "I couldn't generate a response.",
-            },
-          ];
+      const candidateBlocks = hydrateAssistantBlocksFromTools(
+        sanitizeAssistantChatBlocks(
+          structured.data?.blocks?.length
+            ? structured.data.blocks
+            : [
+                {
+                  type: 'text' as const,
+                  text: finalText || structured.text || "I couldn't generate a response.",
+                },
+              ]
+        ),
+        toolResultsForGrounding
+      );
 
       const groundingText = `${groundingPrompt}\n${JSON.stringify(toolResultsForGrounding)}${attachmentLine}${pinnedBookingLine}`;
       const grounded = assertBlocksGrounded(candidateBlocks, groundingText);
-      const safeBlocks = grounded.ok
-        ? candidateBlocks
-        : candidateBlocks.filter((_, i) => !grounded.rejectedIndexes.includes(i));
+      const safeBlocks = sanitizeAssistantChatBlocks(
+        grounded.ok
+          ? candidateBlocks
+          : candidateBlocks.filter((_, i) => !grounded.rejectedIndexes.includes(i))
+      );
+      if (safeBlocks.length === 0) {
+        safeBlocks.push({
+          type: 'text',
+          text: humanizeStatusCodesInText(
+            finalText || "I couldn't format that answer. Please ask again."
+          ),
+        });
+      }
 
       for (const block of executedActions) {
         const payload = (block.result.data ?? {}) as Record<string, unknown>;
@@ -455,10 +498,16 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
         });
       } else {
         const safetyCheck = await guardDashboardAssistantResponse(
-          { organizationId: orgCtx.org.id, propertyId: effectivePropertyId },
+          {
+            organizationId: orgCtx.org.id,
+            propertyId: effectivePropertyId,
+            actorUserId: user.id,
+            actorType: 'staff',
+          },
           combinedText,
           groundingPrompt
         );
+        turnCreditsConsumed += safetyCheck.creditsConsumed;
         if (!safetyCheck.ok) {
           blocks.push({
             type: 'text',
@@ -502,7 +551,10 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
       .update({ last_message_at: new Date().toISOString() })
       .eq('id', conversationId);
 
-    await incrementDashboardAssistantUsage(orgCtx.org.id, { message: true });
+    await incrementDashboardAssistantUsage(orgCtx.org.id, {
+      message: true,
+      creditsConsumed: turnCreditsConsumed,
+    });
 
     return jsonSuccess(req, { conversationId, blocks });
   } catch (err) {

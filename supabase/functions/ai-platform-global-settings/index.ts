@@ -29,6 +29,10 @@ serveSuperAdmin('ai-platform-global-settings', async (req, user) => {
       defaultDailyCallLimit: data.defaultDailyCallLimit,
       defaultMonthlyCallLimit: data.defaultMonthlyCallLimit,
       defaultDailyCostUsdLimit: data.defaultDailyCostUsdLimit,
+      creditUnitUsd: data.creditUnitUsd,
+      voiceReceptionistCostPerMinuteUsd: data.voiceReceptionistCostPerMinuteUsd,
+      defaultDailyCreditLimit: data.defaultDailyCreditLimit,
+      defaultMonthlyCreditLimit: data.defaultMonthlyCreditLimit,
       updatedAt: data.updatedAt,
     });
   }
@@ -59,6 +63,31 @@ serveSuperAdmin('ai-platform-global-settings', async (req, user) => {
     ) {
       return jsonError(req, 'defaultDailyCostUsdLimit must be a positive number', 400);
     }
+    if (
+      body.creditUnitUsd !== undefined &&
+      (typeof body.creditUnitUsd !== 'number' || body.creditUnitUsd <= 0)
+    ) {
+      return jsonError(req, 'creditUnitUsd must be a positive number', 400);
+    }
+    if (
+      body.voiceReceptionistCostPerMinuteUsd !== undefined &&
+      (typeof body.voiceReceptionistCostPerMinuteUsd !== 'number' ||
+        body.voiceReceptionistCostPerMinuteUsd <= 0)
+    ) {
+      return jsonError(req, 'voiceReceptionistCostPerMinuteUsd must be a positive number', 400);
+    }
+    if (
+      body.defaultDailyCreditLimit !== undefined &&
+      (typeof body.defaultDailyCreditLimit !== 'number' || body.defaultDailyCreditLimit <= 0)
+    ) {
+      return jsonError(req, 'defaultDailyCreditLimit must be a positive number', 400);
+    }
+    if (
+      body.defaultMonthlyCreditLimit !== undefined &&
+      (typeof body.defaultMonthlyCreditLimit !== 'number' || body.defaultMonthlyCreditLimit <= 0)
+    ) {
+      return jsonError(req, 'defaultMonthlyCreditLimit must be a positive number', 400);
+    }
 
     const data = await setAiPlatformGlobalSettings({
       enabled: typeof body.enabled === 'boolean' ? body.enabled : undefined,
@@ -74,6 +103,17 @@ serveSuperAdmin('ai-platform-global-settings', async (req, user) => {
         typeof body.defaultDailyCostUsdLimit === 'number'
           ? body.defaultDailyCostUsdLimit
           : undefined,
+      creditUnitUsd: typeof body.creditUnitUsd === 'number' ? body.creditUnitUsd : undefined,
+      voiceReceptionistCostPerMinuteUsd:
+        typeof body.voiceReceptionistCostPerMinuteUsd === 'number'
+          ? body.voiceReceptionistCostPerMinuteUsd
+          : undefined,
+      defaultDailyCreditLimit:
+        typeof body.defaultDailyCreditLimit === 'number' ? body.defaultDailyCreditLimit : undefined,
+      defaultMonthlyCreditLimit:
+        typeof body.defaultMonthlyCreditLimit === 'number'
+          ? body.defaultMonthlyCreditLimit
+          : undefined,
       updatedBy: user.id,
     });
     return jsonSuccess(req, {
@@ -83,6 +123,10 @@ serveSuperAdmin('ai-platform-global-settings', async (req, user) => {
       defaultDailyCallLimit: data.defaultDailyCallLimit,
       defaultMonthlyCallLimit: data.defaultMonthlyCallLimit,
       defaultDailyCostUsdLimit: data.defaultDailyCostUsdLimit,
+      creditUnitUsd: data.creditUnitUsd,
+      voiceReceptionistCostPerMinuteUsd: data.voiceReceptionistCostPerMinuteUsd,
+      defaultDailyCreditLimit: data.defaultDailyCreditLimit,
+      defaultMonthlyCreditLimit: data.defaultMonthlyCreditLimit,
       updatedAt: data.updatedAt,
     });
   }

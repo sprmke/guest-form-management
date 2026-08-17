@@ -7,6 +7,7 @@
 import {
   getDashboardAssistantGlobalSettings,
   getDashboardAssistantOrgSettings,
+  getDashboardAssistantUsageSummary,
   upsertDashboardAssistantOrgSettings,
 } from '../_shared/dashboardAssistantSettings.ts';
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
@@ -29,11 +30,17 @@ serveAuthenticated('dashboard-assistant-settings', async (req, user) => {
     // No permission gate on read — any org/property member needs this to know whether the
     // assistant launcher should render, not just settings-page-capable admins.
     const ctx = await resolveOrgAccessContext(req);
-    const [settings, global] = await Promise.all([
+    const includeUsage = new URL(req.url).searchParams.get('includeUsage') === 'true';
+    const [settings, global, usage] = await Promise.all([
       getDashboardAssistantOrgSettings(ctx.org.id),
       getDashboardAssistantGlobalSettings(),
+      includeUsage ? getDashboardAssistantUsageSummary(ctx.org.id) : Promise.resolve(null),
     ]);
-    return jsonSuccess(req, { ...settings, platformEnabled: global.enabled });
+    return jsonSuccess(req, {
+      ...settings,
+      platformEnabled: global.enabled,
+      usage,
+    });
   }
 
   const ctx = await resolveOrgAccessContext(req, 'org:settings:edit');

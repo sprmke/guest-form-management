@@ -2,6 +2,7 @@
  * ai-platform-usage — Org GET for AI usage summary (calls + estimated USD).
  */
 
+import { getOrgCreditWalletBalance } from '../_shared/aiCreditLedger.ts';
 import {
   getOrgAiUsageBreakdown,
   getOrgAiPropertyUsageBreakdown,
@@ -17,14 +18,16 @@ serveAuthenticated('ai-platform-usage', async (req) => {
   }
 
   const ctx = await resolveOrgAccessContext(req, 'org:dashboard:view');
-  const [summary, featureBreakdown, propertyBreakdown] = await Promise.all([
+  const [summary, featureBreakdown, propertyBreakdown, walletBalanceCredits] = await Promise.all([
     getOrgAiUsageSummary(ctx.org.id),
     getOrgAiUsageBreakdown(ctx.org.id),
     getOrgAiPropertyUsageBreakdown(ctx.org.id),
+    getOrgCreditWalletBalance(ctx.org.id),
   ]);
 
   return jsonSuccess(req, {
     ...summary,
+    walletBalanceCredits,
     featureBreakdown: featureBreakdown,
     propertyBreakdown: propertyBreakdown,
   });
