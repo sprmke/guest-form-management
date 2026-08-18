@@ -11,7 +11,7 @@ import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgCon
 import { usePropertyRejectedExternalReviewsAttentionItem } from '@/features/dashboard/org/hooks/usePropertyRejectedExternalReviewsAttentionItem';
 import { DashboardFinanceCalendarSection } from '@/features/dashboard/property/components/DashboardFinanceCalendarSection';
 import { DashboardStatCards } from '@/features/dashboard/property/components/DashboardStatCards';
-import { PropertyGuestPagesMenu } from '@/features/dashboard/property/components/PropertyGuestPagesMenu';
+import { ViewPropertyButton } from '@/features/dashboard/property/components/ViewPropertyButton';
 import { useDashboardStats } from '@/features/dashboard/property/hooks/useDashboardStats';
 import {
   defaultDashboardPeriod,
@@ -36,7 +36,7 @@ import { detectPresetFromRange, fromIsoDate } from '@/lib/date/navigation';
 export function DashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const isBelowMd = useIsBelowMd();
-  const { propertySlug, property, orgSlug } = useOrgContext();
+  const { propertySlug, orgSlug } = useOrgContext();
   const { data, isLoading, error, refetch } = useDashboardStats();
 
   const period = useMemo(() => resolveDashboardPeriod(searchParams), [searchParams]);
@@ -91,7 +91,7 @@ export function DashboardPage() {
         onClear={handleClearDate}
         fullWidth={isBelowMd}
       />
-      <PropertyGuestPagesMenu propertySlug={propertySlug} propertyId={property.id} />
+      <ViewPropertyButton propertySlug={propertySlug} />
     </div>
   );
 
@@ -101,20 +101,14 @@ export function DashboardPage() {
     </FloatingToolbar>
   );
 
-  const heroGuestPages = (
-    <PropertyGuestPagesMenu
-      propertySlug={propertySlug}
-      propertyId={property.id}
-      variant="heroIcon"
-    />
-  );
+  const heroViewProperty = <ViewPropertyButton propertySlug={propertySlug} variant="heroIcon" />;
 
   return (
     <AdminMobilePage
       title="Dashboard"
       subtitle="Overview of your property's performance and activity."
       titleId="dashboard-heading"
-      heroTrailing={heroGuestPages}
+      heroTrailing={heroViewProperty}
       overlap={overlapControls}
       desktopActions={dashboardActions}
       desktopActionsClassName="w-full sm:w-auto"
