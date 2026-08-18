@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import {
   AlertTriangle,
@@ -19,7 +19,10 @@ import {
 import { toast } from 'sonner';
 
 import { AdminSection } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
-import { findUnitTypeById } from '@/features/dashboard/bookings/lib/unitTypes';
+import {
+  applyUnitTypeDefaultsToProfile,
+  findUnitTypeById,
+} from '@/features/dashboard/bookings/lib/unitTypes';
 import { PropertyCancellationPolicySection } from '@/features/dashboard/org/components/property-settings/PropertyCancellationPolicySection';
 import { PropertyGuestFormSettingsSection } from '@/features/dashboard/org/components/property-settings/PropertyGuestFormSettingsSection';
 import { PropertyLocationPicker } from '@/features/dashboard/org/components/property-settings/PropertyLocationPicker';
@@ -167,11 +170,33 @@ export function PropertyProfileMainSections({
     markFieldInteracted('property-unit-type');
     const selected = findUnitTypeById(unitTypes, unitTypeId);
     if (!selected) return;
+    const defaults = applyUnitTypeDefaultsToProfile(selected);
     onChange('unitTypeId', selected.id);
-    onChange('maxAdults', selected.maxAdults);
-    onChange('maxChildren', selected.maxChildren);
-    onChange('maxGuests', propertyGuestCapacityTotal(selected.maxAdults, selected.maxChildren));
+    onChange('bedrooms', defaults.bedrooms);
+    onChange('bathrooms', defaults.bathrooms);
+    onChange('maxAdults', defaults.maxAdults);
+    onChange('maxChildren', defaults.maxChildren);
+    onChange('maxGuests', propertyGuestCapacityTotal(defaults.maxAdults, defaults.maxChildren));
   };
+
+  useEffect(() => {
+    if (!draft.unitTypeId || unitTypes.length === 0) return;
+    const selected = findUnitTypeById(unitTypes, draft.unitTypeId);
+    if (!selected) return;
+    const defaults = applyUnitTypeDefaultsToProfile(selected);
+    if (
+      draft.bedrooms !== defaults.bedrooms ||
+      draft.bathrooms !== defaults.bathrooms ||
+      draft.maxAdults !== defaults.maxAdults ||
+      draft.maxChildren !== defaults.maxChildren
+    ) {
+      onChange('bedrooms', defaults.bedrooms);
+      onChange('bathrooms', defaults.bathrooms);
+      onChange('maxAdults', defaults.maxAdults);
+      onChange('maxChildren', defaults.maxChildren);
+      onChange('maxGuests', propertyGuestCapacityTotal(defaults.maxAdults, defaults.maxChildren));
+    }
+  }, [draft.unitTypeId, unitTypes, onChange]);
 
   const residenceDefaults = getResidencePropertyDefaults(effectiveResidence);
 
@@ -471,6 +496,34 @@ export function PropertyProfileMainSections({
       >
         <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
           <SettingsField
+            id="property-unit-type"
+            label="Unit type"
+            required
+            error={fieldError('property-unit-type')}
+          >
+            <Select
+              value={draft.unitTypeId || undefined}
+              onValueChange={handleUnitTypeChange}
+              disabled={disabled || unitTypes.length === 0}
+            >
+              <SelectTrigger
+                id="property-unit-type"
+                aria-invalid={Boolean(fieldError('property-unit-type'))}
+                className={cn(fieldError('property-unit-type') && 'border-destructive')}
+              >
+                <SelectValue placeholder="Select unit type" />
+              </SelectTrigger>
+              <SelectContent>
+                {unitTypes.map((entry) => (
+                  <SelectItem key={entry.id} value={entry.id}>
+                    {entry.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </SettingsField>
+
+          <SettingsField
             id="property-bedrooms"
             label="Bedrooms"
             required
@@ -484,19 +537,16 @@ export function PropertyProfileMainSections({
               <Input
                 id="property-bedrooms"
                 type="number"
-                min={residenceDefaults.bedrooms.min}
-                max={residenceDefaults.bedrooms.max}
                 value={draft.bedrooms}
-                onChange={(event) =>
-                  setField(
-                    'bedrooms',
-                    clampToRange(Number(event.target.value), residenceDefaults.bedrooms),
-                    'property-bedrooms'
-                  )
-                }
+                readOnly
                 disabled={disabled}
+                tabIndex={-1}
+                aria-readonly="true"
                 aria-invalid={Boolean(fieldError('property-bedrooms'))}
-                className={cn('pl-9', fieldError('property-bedrooms') && 'border-destructive')}
+                className={cn(
+                  'bg-muted/40 pl-9 tabular-nums',
+                  fieldError('property-bedrooms') && 'border-destructive'
+                )}
               />
             </div>
           </SettingsField>
@@ -515,20 +565,17 @@ export function PropertyProfileMainSections({
               <Input
                 id="property-bathrooms"
                 type="number"
-                min={residenceDefaults.bathrooms.min}
-                max={residenceDefaults.bathrooms.max}
                 step={0.5}
                 value={draft.bathrooms}
-                onChange={(event) =>
-                  setField(
-                    'bathrooms',
-                    clampToRange(Number(event.target.value), residenceDefaults.bathrooms),
-                    'property-bathrooms'
-                  )
-                }
+                readOnly
                 disabled={disabled}
+                tabIndex={-1}
+                aria-readonly="true"
                 aria-invalid={Boolean(fieldError('property-bathrooms'))}
-                className={cn('pl-9', fieldError('property-bathrooms') && 'border-destructive')}
+                className={cn(
+                  'bg-muted/40 pl-9 tabular-nums',
+                  fieldError('property-bathrooms') && 'border-destructive'
+                )}
               />
             </div>
           </SettingsField>
@@ -556,34 +603,6 @@ export function PropertyProfileMainSections({
               aria-invalid={Boolean(fieldError('property-floors'))}
               className={cn(fieldError('property-floors') && 'border-destructive')}
             />
-          </SettingsField>
-
-          <SettingsField
-            id="property-unit-type"
-            label="Unit type"
-            required
-            error={fieldError('property-unit-type')}
-          >
-            <Select
-              value={draft.unitTypeId || undefined}
-              onValueChange={handleUnitTypeChange}
-              disabled={disabled || unitTypes.length === 0}
-            >
-              <SelectTrigger
-                id="property-unit-type"
-                aria-invalid={Boolean(fieldError('property-unit-type'))}
-                className={cn(fieldError('property-unit-type') && 'border-destructive')}
-              >
-                <SelectValue placeholder="Select unit type" />
-              </SelectTrigger>
-              <SelectContent>
-                {unitTypes.map((entry) => (
-                  <SelectItem key={entry.id} value={entry.id}>
-                    {entry.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </SettingsField>
 
           <SettingsField

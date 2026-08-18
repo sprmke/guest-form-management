@@ -27,6 +27,9 @@ import {
   useOrganizations,
 } from '@/features/dashboard/org/hooks/useOrganizations';
 import { callEdgeFunction, getSessionJwt } from '@/features/dashboard/org/lib/edgeClient';
+import { handleAiMutationError, isAiQuotaError } from '@/features/dashboard/org/lib/aiQuotaToast';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import {
   ORG_SOCIAL_PROOF_PLATFORMS,
   propertyAccessScreenshotHelp,
@@ -598,6 +601,11 @@ function RecommendedTierStepPanel({
 export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) {
   const queryClient = useQueryClient();
   const org = useCurrentOrganization();
+  const { canUse: canSubmitVerifiedBadge, isLoading: verifiedEntitlementsLoading } =
+    useFeatureGate('verifiedBadgeEligible');
+  const { canUse: canSubmitRecommendedBadge, isLoading: recommendedEntitlementsLoading } =
+    useFeatureGate('recommendedBadgeEligible');
+  const { open: openUpgradeModal } = useUpgradeModal();
   const detail = readOrgVerificationDetail(org?.settings);
   const hostModes = resolveHostModes(org);
   const tiers = buildVerificationTiers(detail);
@@ -736,6 +744,10 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
     setHostTouched(true);
     setUploadError(null);
     if (!org || !canSubmitHost) return;
+    if (!canSubmitVerifiedBadge) {
+      if (!verifiedEntitlementsLoading) openUpgradeModal('verifiedBadgeEligible');
+      return;
+    }
     setSubmitting('base');
     try {
       if (validId.file) {
@@ -758,6 +770,10 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
       toast.success('Verification resubmitted');
       onOpenChange(false);
     } catch (err) {
+      if (isAiQuotaError(err)) {
+        handleAiMutationError(err as Error);
+        return;
+      }
       toast.error(err instanceof Error ? err.message : 'Submission failed');
     } finally {
       setSubmitting(null);
@@ -767,6 +783,10 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
   const handleSubmitVerified = async () => {
     setVerifiedTouched(true);
     if (!org || !canSubmitVerified) return;
+    if (!canSubmitRecommendedBadge) {
+      if (!recommendedEntitlementsLoading) openUpgradeModal('recommendedBadgeEligible');
+      return;
+    }
     setSubmitting('enhanced');
     try {
       if (selfie.file) {
@@ -810,6 +830,10 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
       toast.success('Recommended tier submitted');
       handleOpenChange(false);
     } catch (err) {
+      if (isAiQuotaError(err)) {
+        handleAiMutationError(err as Error);
+        return;
+      }
       toast.error(err instanceof Error ? err.message : 'Submission failed');
     } finally {
       setSubmitting(null);

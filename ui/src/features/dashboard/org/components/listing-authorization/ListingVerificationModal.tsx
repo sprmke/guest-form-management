@@ -64,6 +64,9 @@ import {
   ResponsiveModalTitle,
 } from '@/components/ui/responsive-modal';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
+import { handleAiMutationError, isAiQuotaError } from '@/features/dashboard/org/lib/aiQuotaToast';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -133,6 +136,9 @@ export function ListingVerificationModal({
 }: Props) {
   const sectionKind = listingKind === 'parking' ? 'parking' : 'property';
   const today = todayManilaYmd();
+  const { canUse: canSubmitRecommendedBadge, isLoading: recommendedEntitlementsLoading } =
+    useFeatureGate('recommendedBadgeEligible', listingKind === 'property' ? listingId : undefined);
+  const { open: openUpgradeModal } = useUpgradeModal();
 
   const assetsQuery = useListingAuthorizationAssets(listingKind, listingId, open && isOwner);
   const remoteAuthorization =
@@ -266,6 +272,10 @@ export function ListingVerificationModal({
       toast.success(renewMode ? 'Listing renewal submitted' : 'Listing verification submitted');
       onOpenChange(false);
     } catch (error) {
+      if (isAiQuotaError(error)) {
+        handleAiMutationError(error as Error);
+        return;
+      }
       toast.error(friendlyToastError(error, 'Submit failed'));
     }
   };
@@ -273,11 +283,19 @@ export function ListingVerificationModal({
   const handleSubmitRecommended = async () => {
     setRecommendedTouched(true);
     if (!canSubmitRecommended) return;
+    if (!canSubmitRecommendedBadge) {
+      if (!recommendedEntitlementsLoading) openUpgradeModal('recommendedBadgeEligible');
+      return;
+    }
     try {
       await submitRecommended.mutateAsync();
       toast.success('Listing Recommended badge submitted');
       onOpenChange(false);
     } catch (error) {
+      if (isAiQuotaError(error)) {
+        handleAiMutationError(error as Error);
+        return;
+      }
       toast.error(friendlyToastError(error, 'Submit failed'));
     }
   };

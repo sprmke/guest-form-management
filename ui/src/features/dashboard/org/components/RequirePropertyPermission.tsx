@@ -59,7 +59,8 @@ const PROPERTY_SECTION_ORDER: readonly PropertySection[] = [
   'inbox',
   'notifications',
   'templates',
-  'custom-pages',
+  'public-pages',
+  'plans',
   'team',
   'settings',
 ];

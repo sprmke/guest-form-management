@@ -79,6 +79,7 @@ function VoiceReceptionistUsagePanel() {
 
 type Props = {
   draft: VoiceReceptionistFormValues | null;
+  propertyName?: string;
   availableVoices: readonly string[];
   disabled?: boolean;
   isLoading?: boolean;
@@ -92,6 +93,7 @@ type Props = {
 
 export function PropertyVoiceReceptionistSection({
   draft,
+  propertyName,
   availableVoices,
   disabled = false,
   isLoading = false,
@@ -114,12 +116,18 @@ export function PropertyVoiceReceptionistSection({
     if (!draft?.voiceId) return;
     stopPreviewRef.current?.();
     stopPreviewRef.current = null;
-    previewVoice.mutate(draft.voiceId, {
-      onSuccess: (preview) => {
-        stopPreviewRef.current = playVoicePreviewAudio(preview);
+    previewVoice.mutate(
+      {
+        voiceId: draft.voiceId,
+        propertyName,
       },
-      onError: (err: unknown) => toast.error(friendlyToastError(err, 'Could not preview voice')),
-    });
+      {
+        onSuccess: (preview) => {
+          stopPreviewRef.current = playVoicePreviewAudio(preview);
+        },
+        onError: (err: unknown) => toast.error(friendlyToastError(err, 'Could not preview voice')),
+      }
+    );
   };
 
   return (

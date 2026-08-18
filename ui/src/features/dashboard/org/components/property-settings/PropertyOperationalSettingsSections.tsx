@@ -42,6 +42,7 @@ type Props = {
   sectionMessages?: Partial<Record<PropertySettingsSectionId, string>>;
   voiceReceptionist: {
     draft: VoiceReceptionistFormValues | null;
+    propertyName?: string;
     availableVoices: readonly string[];
     isLoading: boolean;
     isError: boolean;
@@ -167,6 +168,7 @@ export function PropertyOperationalSettingsSections({
 
       <PropertyVoiceReceptionistSection
         draft={voiceReceptionist.draft}
+        propertyName={voiceReceptionist.propertyName}
         availableVoices={voiceReceptionist.availableVoices}
         disabled={disabled}
         isLoading={voiceReceptionist.isLoading}

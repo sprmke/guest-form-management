@@ -535,6 +535,76 @@ function firstSectionIssue(
   return null;
 }
 
+function basicBrandColorDirty(
+  operationalDraft: AppSettingsFormValues | null,
+  operationalBaseline: AppSettingsFormValues | null,
+  inheritedBrandColor: string
+): boolean {
+  return Boolean(
+    operationalDraft &&
+    operationalBaseline &&
+    !propertyBrandColorsEquivalent(
+      operationalDraft.brandColor,
+      operationalBaseline.brandColor,
+      inheritedBrandColor
+    )
+  );
+}
+
+function fieldIdsHaveValidationErrors(
+  fieldIds: string[],
+  completion: PropertySettingsCompletionResult
+): boolean {
+  return fieldIds.some((fieldId) => Boolean(completion.fieldErrors[fieldId]));
+}
+
+function evaluateBasicSectionSave(input: {
+  profileDraft: PropertyProfileDraft;
+  profileBaseline: PropertyProfileDraft;
+  operationalDraft: AppSettingsFormValues | null;
+  operationalBaseline: AppSettingsFormValues | null;
+  completion: PropertySettingsCompletionResult;
+  inheritedBrandColor: string;
+}): {
+  profileSavable: boolean;
+  brandColorSavable: boolean;
+  profileBlocked: boolean;
+  brandColorBlocked: boolean;
+} {
+  const profileDirtyIds = dirtyFieldIdsInSection(
+    'basic',
+    input.profileDraft,
+    input.profileBaseline,
+    input.operationalDraft,
+    input.operationalBaseline,
+    input.inheritedBrandColor
+  ).filter((fieldId) => fieldId !== 'property-brand-color');
+
+  const brandColorDirty = basicBrandColorDirty(
+    input.operationalDraft,
+    input.operationalBaseline,
+    input.inheritedBrandColor
+  );
+  const basicSectionMessage = input.completion.sectionMessages.basic;
+
+  const profileSavable =
+    profileDirtyIds.length > 0 &&
+    !basicSectionMessage &&
+    !fieldIdsHaveValidationErrors(profileDirtyIds, input.completion);
+
+  const brandColorSavable =
+    brandColorDirty &&
+    !basicSectionMessage &&
+    !input.completion.fieldErrors['property-brand-color'];
+
+  return {
+    profileSavable,
+    brandColorSavable,
+    profileBlocked: profileDirtyIds.length > 0 && !profileSavable,
+    brandColorBlocked: brandColorDirty && !brandColorSavable,
+  };
+}
+
 export function planPropertySettingsSave(input: {
   profileDraft: PropertyProfileDraft;
   profileBaseline: PropertyProfileDraft;
@@ -571,8 +641,11 @@ export function planPropertySettingsSave(input: {
 
   const savableSections: PropertySettingsSectionId[] = [];
   const blockedSections: PropertySettingsSectionId[] = [];
+  const basicSave = evaluateBasicSectionSave(input);
+  const basicDirty = dirtySections.includes('basic');
 
   for (const sectionId of dirtySections) {
+    if (sectionId === 'basic') continue;
     if (
       sectionHasValidationIssue(
         sectionId,
@@ -590,12 +663,26 @@ export function planPropertySettingsSave(input: {
     }
   }
 
-  const profileSections = savableSections.filter((sectionId) =>
-    PROFILE_SECTIONS.includes(sectionId)
-  );
-  const operationalSections = savableSections.filter((sectionId) =>
+  if (basicDirty || basicSave.profileSavable || basicSave.brandColorSavable) {
+    if (basicSave.profileSavable || basicSave.brandColorSavable) {
+      savableSections.push('basic');
+    }
+    if (basicSave.profileBlocked || basicSave.brandColorBlocked) {
+      blockedSections.push('basic');
+    }
+  }
+
+  let profileSections = savableSections.filter((sectionId) => PROFILE_SECTIONS.includes(sectionId));
+  let operationalSections = savableSections.filter((sectionId) =>
     OPERATIONAL_SECTIONS.includes(sectionId)
   );
+
+  if (profileSections.includes('basic') && !basicSave.profileSavable) {
+    profileSections = profileSections.filter((sectionId) => sectionId !== 'basic');
+  }
+  if (operationalSections.includes('basic') && !basicSave.brandColorSavable) {
+    operationalSections = operationalSections.filter((sectionId) => sectionId !== 'basic');
+  }
 
   const firstBlockedSectionId = blockedSections[0] ?? null;
   const firstBlockedMessage = firstBlockedSectionId
@@ -609,7 +696,7 @@ export function planPropertySettingsSave(input: {
     operationalSections,
     firstBlockedSectionId,
     firstBlockedMessage,
-    hasSavableWork: savableSections.length > 0,
+    hasSavableWork: profileSections.length > 0 || operationalSections.length > 0,
   };
 }
 

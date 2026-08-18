@@ -17,7 +17,6 @@ import { countPropertyMedia } from '@/features/dashboard/org/lib/propertyMedia';
 import {
   getResidencePropertyDefaults,
   validateNumericField,
-  validatePropertyDetailsForResidence,
 } from '@/features/dashboard/org/lib/propertyResidenceDefaults';
 import { isCondoPropertyType } from '@/features/dashboard/org/lib/propertyResidences';
 import type { PropertyProfileDraft } from '@/features/dashboard/org/lib/propertySettingsForm';
@@ -277,51 +276,20 @@ export function computePropertySettingsCompletion(
   );
   const detailFieldChecks: {
     value: number;
-    range: (typeof detailDefaults)['bedrooms'];
+    range: (typeof detailDefaults)['floors'];
     id: string;
     label: string;
   }[] = [
-    {
-      value: profile.bedrooms,
-      range: detailDefaults.bedrooms,
-      id: 'property-bedrooms',
-      label: 'Bedrooms',
-    },
-    {
-      value: profile.bathrooms,
-      range: detailDefaults.bathrooms,
-      id: 'property-bathrooms',
-      label: 'Bathrooms',
-    },
     {
       value: profile.floors,
       range: detailDefaults.floors,
       id: 'property-floors',
       label: 'Floor',
     },
-    {
-      value: profile.maxAdults,
-      range: detailDefaults.maxAdults,
-      id: 'property-max-adults',
-      label: 'Max adults',
-    },
-    {
-      value: profile.maxChildren,
-      range: detailDefaults.maxChildren,
-      id: 'property-max-children',
-      label: 'Max children',
-    },
   ];
   for (const field of detailFieldChecks) {
     const err = validateNumericField(field.value, field.range, field.label);
     if (err) addFieldError(field.id, err, 'details');
-  }
-  // Fallback if residence validator returns a message we did not map
-  if (!detailFieldChecks.some((field) => fieldErrors[field.id])) {
-    const detailsErr = validatePropertyDetailsForResidence(profile);
-    if (detailsErr) {
-      addFieldError('property-bedrooms', detailsErr, 'details');
-    }
   }
 
   if (!profile.checkInTime.trim()) {

@@ -23,7 +23,7 @@ export function UnitTypesListEditor({ list, disabled = false, onChange }: Props)
       {list.map((entry) => (
         <div
           key={entry.id}
-          className="border-border/80 bg-background/60 grid gap-3 rounded-xl border p-4 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_auto]"
+          className="border-border/80 bg-background/60 grid gap-3 rounded-xl border p-4 sm:grid-cols-[minmax(0,1.2fr)_repeat(4,minmax(0,0.7fr))_auto]"
         >
           <div className="space-y-1.5">
             <Label htmlFor={`unit-type-label-${entry.id}`}>Type</Label>
@@ -33,6 +33,41 @@ export function UnitTypesListEditor({ list, disabled = false, onChange }: Props)
               disabled={disabled}
               onChange={(event) =>
                 onChange(updateUnitType(list, entry.id, { label: event.target.value }))
+              }
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`unit-type-bedrooms-${entry.id}`}>Bedrooms</Label>
+            <Input
+              id={`unit-type-bedrooms-${entry.id}`}
+              type="number"
+              min={0}
+              value={entry.bedrooms}
+              disabled={disabled}
+              onChange={(event) =>
+                onChange(
+                  updateUnitType(list, entry.id, {
+                    bedrooms: Math.max(0, Number(event.target.value) || 0),
+                  })
+                )
+              }
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`unit-type-bathrooms-${entry.id}`}>Bathrooms</Label>
+            <Input
+              id={`unit-type-bathrooms-${entry.id}`}
+              type="number"
+              min={0}
+              step={0.5}
+              value={entry.bathrooms}
+              disabled={disabled}
+              onChange={(event) =>
+                onChange(
+                  updateUnitType(list, entry.id, {
+                    bathrooms: Math.max(0, Number(event.target.value) || 0),
+                  })
+                )
               }
             />
           </div>
