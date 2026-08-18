@@ -124,6 +124,9 @@ Part of the [`docs/PROJECT.md`](../PROJECT.md) architecture split.
 - **`META_OAUTH_ALLOWED_RETURN_ORIGINS`** _(optional, Guest Inbox)_ — Comma-separated SPA origins for Meta OAuth return (defaults include local Vite). Local/staging E2E checklist: **[[inbox-e2e-runbook|Guest Inbox — E2E runbook (local + staging)]]**.
 - **`META_OAUTH_EXCLUDE_PUBLISHING_SCOPES`** _(optional)_ — Set to `1` to omit `pages_manage_posts`, `instagram_content_publish`, and `instagram_basic` from OAuth (inbox-only connect). Default: **all scopes included**. Setup guide: **[[meta-app-review|Meta app setup — Guest Inbox + Marketing Content Studio]]**.
 - **`META_OAUTH_EXTRA_SCOPES`** _(optional)_ — Comma-separated additional OAuth scopes appended to the default set.
+- **`PAYMONGO_SECRET_KEY`** _(property subscription billing)_ — PayMongo secret API key (`sk_test_…` / `sk_live_…`). Used by **`create-subscription-checkout`** to create Payment Links. Setup: **`docs/archive/operations/paymongo-billing-setup.md`**.
+- **`PAYMONGO_WEBHOOK_SECRET`** _(property subscription billing)_ — Per-endpoint webhook signing secret for HMAC verification in **`paymongo-webhook`**.
+- **`PLATFORM_BILLING_CRON_SECRET`** _(optional)_ — When set, **`platform-billing-cron`** requires header **`X-Platform-Billing-Cron-Secret`**. Hosted schedule: migration **`20261024140000_platform_billing_cron.sql`** (`sync_platform_billing_cron_job()`, daily 06:00 UTC).
 - Optional: `ENVIRONMENT` / `DENO_ENV` for `isDevelopment()` in shared utils
 
 **UI (`ui/.env` / Vercel):** `VITE_SUPABASE_URL`, `VITE_API_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_NODE_ENV`, `VITE_SUPER_ADMIN_EMAILS` (super-admin UX only), `VITE_GOOGLE_MAPS_API_KEY` (property location picker). Local only: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` for GoTrue sign-in.
