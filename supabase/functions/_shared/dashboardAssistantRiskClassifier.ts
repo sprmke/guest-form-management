@@ -78,6 +78,7 @@ export const READ_TOOL_NAMES = new Set([
   'search_knowledge_base',
   'explain_booking_status',
   'get_booking',
+  'get_booking_documents',
   'list_bookings',
   'get_available_transitions',
   'get_available_dates',

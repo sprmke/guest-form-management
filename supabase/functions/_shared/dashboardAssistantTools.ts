@@ -15,6 +15,11 @@
  */
 
 import { pendingTasksForBooking, sdRefundAmountForBooking } from './dashboardAssistantBlocks.ts';
+import {
+  collectAssistantBookingDocuments,
+  filterDocumentsByKinds,
+  parseDocumentKindArgs,
+} from './dashboardAssistantBookingDocuments.ts';
 import { manilaTodayIso } from './bookingsListSort.ts';
 import { DatabaseService } from './databaseService.ts';
 import { computeDashboardStats } from './dashboardService.ts';
@@ -273,6 +278,41 @@ async function toolGetBooking(
       sdRefundAmount: sdRefundAmountForBooking(bookingRecord),
       sdRefundFormSubmitted: Boolean(booking.sd_refund_form_submitted_at),
       pendingTasks: pendingTasksForBooking(bookingRecord),
+      documents: collectAssistantBookingDocuments(bookingRecord),
+    },
+  };
+}
+
+async function toolGetBookingDocuments(
+  ctx: ToolExecutionContext,
+  args: Record<string, unknown>
+): Promise<ToolResult> {
+  const bookingId = str(args, 'bookingId') ?? ctx.pageContext.bookingId ?? undefined;
+  if (!bookingId) return { ok: false, error: 'bookingId is required' };
+  const propertyId = await resolveBookingProperty(ctx, bookingId, 'bookings:view');
+
+  const sb = createServiceClient();
+  const { data: booking } = await sb
+    .from('guest_submissions')
+    .select('*')
+    .eq('id', bookingId)
+    .maybeSingle();
+  if (!booking) return { ok: false, error: 'Booking not found' };
+
+  const kinds = parseDocumentKindArgs(args.kinds);
+  const all = collectAssistantBookingDocuments(booking as Record<string, unknown>);
+  const documents = filterDocumentsByKinds(all, kinds);
+  const missing =
+    kinds?.filter((kind) => !documents.some((doc) => doc.group === kind)).map((kind) => kind) ?? [];
+
+  return {
+    ok: true,
+    auditPropertyId: propertyId,
+    auditBookingId: bookingId,
+    data: {
+      bookingId,
+      documents,
+      missing,
     },
   };
 }
@@ -3520,6 +3560,8 @@ export async function executeTool(
         return toolExplainBookingStatus(args);
       case 'get_booking':
         return await toolGetBooking(ctx, args);
+      case 'get_booking_documents':
+        return await toolGetBookingDocuments(ctx, args);
       case 'list_bookings':
         return await toolListBookings(ctx, args);
       case 'get_available_transitions':
@@ -3675,11 +3717,29 @@ export const TOOL_DECLARATIONS = [
   {
     name: 'get_booking',
     description:
-      'Fetch a single booking by id, including human statusLabel, pendingTasks, securityDeposit, and sdRefundAmount.',
+      'Fetch a single booking by id, including human statusLabel, pendingTasks, securityDeposit, sdRefundAmount, and documents (label + storage url for GAF, receipts, IDs, pet forms). When the host asks to see a file, also call get_booking_documents.',
     parameters: {
       type: 'object',
       properties: { bookingId: { type: 'string' } },
       required: ['bookingId'],
+    },
+  },
+  {
+    name: 'get_booking_documents',
+    description:
+      'Return booking files the host already has on the Files tab (approved GAF, pet form, receipts, IDs, parking docs) with storage URLs. Use this when the host asks to show, provide, or open a document. Filter with kinds: gaf, pet, receipt, id, parking, booking.',
+    parameters: {
+      type: 'object',
+      properties: {
+        bookingId: { type: 'string' },
+        kinds: {
+          type: 'array',
+          items: {
+            type: 'string',
+            enum: ['gaf', 'pet', 'receipt', 'id', 'parking', 'booking'],
+          },
+        },
+      },
     },
   },
   {

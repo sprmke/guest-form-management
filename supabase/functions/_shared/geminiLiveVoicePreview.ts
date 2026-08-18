@@ -4,6 +4,7 @@
  */
 
 import { GEMINI_LIVE_VOICES, type GeminiLiveVoice } from './geminiLiveEphemeral.ts';
+import { PROPERTY_GUEST_NAME_FALLBACK } from './propertyGuestName.ts';
 
 const TTS_MODELS = [
   'gemini-2.5-flash-preview-tts',
@@ -11,9 +12,11 @@ const TTS_MODELS = [
   'gemini-2.5-pro-preview-tts',
 ] as const;
 
-/** Fixed sample line so hosts can compare voices fairly. */
-export const VOICE_PREVIEW_LINE =
-  "Hi, I'm the Kame Homes receptionist. How can I help with your stay today?";
+/** Sample line for admin voice picker — uses Basic Information property name when provided. */
+export function voicePreviewLine(propertyName?: string | null): string {
+  const name = propertyName?.trim() || PROPERTY_GUEST_NAME_FALLBACK;
+  return `Hi, I'm the ${name} receptionist. How can I help with your stay today?`;
+}
 
 export const GEMINI_LIVE_VOICE_LABELS: Record<GeminiLiveVoice, string> = {
   Puck: 'Puck — Upbeat',
@@ -52,11 +55,16 @@ function parseSampleRate(mimeType: string): number {
   return 24_000;
 }
 
-export async function previewGeminiLiveVoice(voiceIdRaw: string): Promise<VoicePreviewResult> {
+export async function previewGeminiLiveVoice(
+  voiceIdRaw: string,
+  propertyName?: string | null
+): Promise<VoicePreviewResult> {
   const voiceId = voiceIdRaw.trim() as GeminiLiveVoice;
   if (!GEMINI_LIVE_VOICES.includes(voiceId)) {
     throw new Error(`voiceId must be one of: ${GEMINI_LIVE_VOICES.join(', ')}`);
   }
+
+  const previewLine = voicePreviewLine(propertyName);
 
   const keys = geminiKeys();
   if (!keys.length) {
@@ -76,7 +84,7 @@ export async function previewGeminiLiveVoice(voiceIdRaw: string): Promise<VoiceP
             headers: { 'Content-Type': 'application/json' },
             signal: controller.signal,
             body: JSON.stringify({
-              contents: [{ parts: [{ text: `Say warmly: ${VOICE_PREVIEW_LINE}` }] }],
+              contents: [{ parts: [{ text: `Say warmly: ${previewLine}` }] }],
               generationConfig: {
                 responseModalities: ['AUDIO'],
                 speechConfig: {
@@ -109,7 +117,7 @@ export async function previewGeminiLiveVoice(voiceIdRaw: string): Promise<VoiceP
         const mimeType = inline?.mimeType?.trim() || 'audio/L16;rate=24000';
         return {
           voiceId,
-          text: VOICE_PREVIEW_LINE,
+          text: previewLine,
           mimeType,
           sampleRateHz: parseSampleRate(mimeType),
           audioBase64,

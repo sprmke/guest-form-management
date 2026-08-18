@@ -192,12 +192,16 @@ async function ensureVoiceReceptionistSettingsRow(
   organizationId: string
 ): Promise<void> {
   const sb = db();
-  await sb
+  const { error } = await sb
     .from('ai_platform_property_settings')
     .upsert(
       { property_id: propertyId, organization_id: organizationId, feature_configs: {} },
-      { onConflict: 'property_id, organization_id', ignoreDuplicates: true }
+      { onConflict: 'property_id', ignoreDuplicates: true }
     );
+  if (error) {
+    console.error('[voiceReceptionistService] ensure property settings row:', error.message);
+    throw new Error('Failed to load voice receptionist settings');
+  }
 }
 
 export async function getVoiceReceptionistSettings(

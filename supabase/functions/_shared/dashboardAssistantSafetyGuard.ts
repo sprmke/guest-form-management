@@ -117,6 +117,11 @@ export type ChatBlock =
     }
   | { type: 'link_list'; title: string; links: Array<{ label: string; href: string }> }
   | {
+      type: 'file_list';
+      title: string;
+      files: Array<{ label: string; url: string; kind?: 'image' | 'pdf' | 'file' }>;
+    }
+  | {
       type: 'action_confirmation';
       actionId: string;
       toolName: string;
@@ -134,6 +139,7 @@ const KNOWN_BLOCK_TYPES = new Set<ChatBlock['type']>([
   'stat_list',
   'data_table',
   'link_list',
+  'file_list',
   'action_confirmation',
 ]);
 
@@ -171,6 +177,24 @@ export function assertBlocksGrounded(
     if (!KNOWN_BLOCK_TYPES.has(block.type)) {
       rejectedIndexes.push(index);
       reason = reason ?? `Unknown block type at index ${index}`;
+      return;
+    }
+
+    if (block.type === 'file_list') {
+      const files = block.files ?? [];
+      if (files.length === 0) {
+        rejectedIndexes.push(index);
+        reason = reason ?? `Empty file_list at index ${index}`;
+        return;
+      }
+      for (const file of files) {
+        const url = typeof file.url === 'string' ? file.url.trim() : '';
+        if (!url || !groundingText.includes(url)) {
+          rejectedIndexes.push(index);
+          reason = reason ?? `Ungrounded file url in block at index ${index}`;
+          break;
+        }
+      }
       return;
     }
 

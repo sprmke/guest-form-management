@@ -305,6 +305,7 @@ export async function upsertAiPlatformOrgSettings(input: {
   dailyCostUsdLimit?: number;
   dailyCreditLimit?: number;
   monthlyCreditLimit?: number;
+  planTier?: string;
   updatedBy: string;
 }): Promise<AiPlatformOrgSettings> {
   const sb = db();
@@ -320,6 +321,8 @@ export async function upsertAiPlatformOrgSettings(input: {
   if (typeof input.dailyCreditLimit === 'number') row.daily_credit_limit = input.dailyCreditLimit;
   if (typeof input.monthlyCreditLimit === 'number')
     row.monthly_credit_limit = input.monthlyCreditLimit;
+  if (typeof input.planTier === 'string' && input.planTier.trim())
+    row.plan_tier = input.planTier.trim();
 
   const { error } = await sb.from('ai_platform_org_settings').upsert(row, {
     onConflict: 'organization_id',

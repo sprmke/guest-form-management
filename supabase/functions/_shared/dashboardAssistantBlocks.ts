@@ -5,6 +5,11 @@
  */
 
 import { computeBookingFinancials } from './bookingFinance.ts';
+import {
+  documentsFromToolResults,
+  documentsRequestedByMessage,
+  selectDocumentsForMessage,
+} from './dashboardAssistantBookingDocuments.ts';
 import { isBookingStatus, STATUS_HUMAN_LABEL } from './statusMachine.ts';
 import type { ChatBlock } from './dashboardAssistantSafetyGuard.ts';
 
@@ -174,6 +179,14 @@ function sanitizeLinkList(block: Extract<ChatBlock, { type: 'link_list' }>): Cha
   return { ...block, links };
 }
 
+function sanitizeFileList(block: Extract<ChatBlock, { type: 'file_list' }>): ChatBlock | null {
+  const files = (block.files ?? []).filter(
+    (file) => asDisplay(file.label) !== '' && asDisplay(file.url) !== ''
+  );
+  if (files.length === 0) return null;
+  return { ...block, title: asDisplay(block.title) || files[0].label, files };
+}
+
 function sanitizeBookingCard(
   block: Extract<ChatBlock, { type: 'booking_card' }>
 ): ChatBlock | null {
@@ -206,6 +219,11 @@ export function sanitizeAssistantChatBlocks(blocks: ChatBlock[]): ChatBlock[] {
       if (next) out.push(next);
       continue;
     }
+    if (block.type === 'file_list') {
+      const next = sanitizeFileList(block);
+      if (next) out.push(next);
+      continue;
+    }
     if (block.type === 'booking_card') {
       const next = sanitizeBookingCard(block);
       if (next) out.push(next);
@@ -227,20 +245,26 @@ function blocksMention(blocks: ChatBlock[], snippet: string): boolean {
   return JSON.stringify(blocks).includes(snippet);
 }
 
-/** Fill in pending tasks / booked stays when the model omitted them from rendered blocks. */
+/** Fill in pending tasks / booked stays / requested files when the model omitted them. */
 export function hydrateAssistantBlocksFromTools(
   blocks: ChatBlock[],
-  toolResults: unknown[]
+  toolResults: unknown[],
+  userMessage = ''
 ): ChatBlock[] {
   const records = toolResultRecords(toolResults);
   let next = [...blocks];
 
+  const askedForFiles = documentsRequestedByMessage(userMessage).asked;
   const pendingTasks = records.flatMap((record) =>
     Array.isArray(record.pendingTasks)
       ? record.pendingTasks.map((task) => asDisplay(task)).filter(Boolean)
       : []
   );
-  if (pendingTasks.length > 0 && !pendingTasks.every((task) => blocksMention(next, task))) {
+  if (
+    !askedForFiles &&
+    pendingTasks.length > 0 &&
+    !pendingTasks.every((task) => blocksMention(next, task))
+  ) {
     next.push({
       type: 'text',
       text: pendingTasks.map((task) => `• ${task}`).join('\n'),
@@ -282,6 +306,40 @@ export function hydrateAssistantBlocksFromTools(
     const emptyLine = 'No booked stays in that date range.';
     if (!blocksMention(next, emptyLine)) {
       next.push({ type: 'text', text: emptyLine });
+    }
+  }
+
+  const knownDocs = documentsFromToolResults(toolResults);
+  const knownUrls = new Set(knownDocs.map((doc) => doc.url));
+  next = next.map((block) => {
+    if (block.type !== 'file_list') return block;
+    const files = (block.files ?? []).filter((file) => knownUrls.has(asDisplay(file.url)));
+    return { ...block, files };
+  });
+
+  if (askedForFiles) {
+    const { files, missingLabels } = selectDocumentsForMessage(knownDocs, userMessage);
+    const alreadyShown = new Set(
+      next.flatMap((block) =>
+        block.type === 'file_list' ? (block.files ?? []).map((file) => asDisplay(file.url)) : []
+      )
+    );
+    const toAdd = files.filter((file) => !alreadyShown.has(file.url));
+    if (toAdd.length > 0) {
+      next.push({
+        type: 'file_list',
+        title: toAdd.length === 1 ? toAdd[0].label : 'Files',
+        files: toAdd.map((file) => ({ label: file.label, url: file.url, kind: file.kind })),
+      });
+    }
+    for (const label of missingLabels) {
+      const line =
+        label === 'No files on this booking'
+          ? 'No files on file for this booking.'
+          : `${label} is not on file for this booking.`;
+      if (!blocksMention(next, line)) {
+        next.push({ type: 'text', text: line });
+      }
     }
   }
 

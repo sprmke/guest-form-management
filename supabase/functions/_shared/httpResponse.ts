@@ -19,6 +19,24 @@ export function jsonError(req: Request, error: string, status = 400): Response {
   return jsonResponse(req, { success: false, error }, status);
 }
 
+/** Plan-tier or AI quota upgrade prompt — matches client `parseEdgeJsonOrQuota` / `upgradeHook` envelope. */
+export function jsonUpgradeHook(
+  req: Request,
+  error: string,
+  options?: { feature?: string; status?: number }
+): Response {
+  return jsonResponse(
+    req,
+    {
+      success: false,
+      error,
+      upgradeHook: true,
+      ...(options?.feature ? { feature: options.feature } : {}),
+    },
+    options?.status ?? 429
+  );
+}
+
 export function handleOptions(req: Request): Response | null {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders(req) });

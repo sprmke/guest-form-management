@@ -3,6 +3,8 @@
  */
 
 import { getPageAccessToken, sendMetaMessage } from './metaInboxGraph.ts';
+import { isFeatureEnabled } from './planFeatures.ts';
+import { orgHasPropertyWithFeature, resolvePropertyEntitlements } from './planEntitlements.ts';
 import { isWithinMessagingWindowFromInbound, suggestInboxReply } from './socialInboxAiService.ts';
 import {
   getConversationByExternalThread,
@@ -35,6 +37,15 @@ export async function maybeAutoReplyToInboundDm(
   const conv = await getConversationByExternalThread(orgId, platform, threadId);
   if (!conv || conv.conversation_type !== 'dm') return;
   if (!isWithinMessagingWindowFromInbound(conv.last_inbound_at)) return;
+
+  const propertyId = (conv.property_id as string | null) ?? null;
+  if (propertyId) {
+    const entitlements = await resolvePropertyEntitlements(propertyId);
+    if (!isFeatureEnabled(entitlements, 'aiChatAutoReply')) return;
+  } else {
+    const allowed = await orgHasPropertyWithFeature(orgId, 'aiChatAutoReply');
+    if (!allowed) return;
+  }
 
   const { messages } = await listMessages(orgId, conv.id, { limit: 20 });
   const latest = messages[messages.length - 1];

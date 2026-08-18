@@ -5,10 +5,15 @@ import {
   parseDraftScenario,
   parseDraftText,
 } from './httpResponse.ts';
+import {
+  catchPlanFeatureError,
+  requireTelegramNotificationsEnabled,
+  resolveTelegramEntitlementPropertyId,
+} from './planEntitlements.ts';
+import type { TelegramAssetScope } from './telegramAssetScope.ts';
 import { ensurePropertySettings } from './propertySettingsSeed.ts';
 import { ensureTelegramParkingSettings } from './parkingTelegramSettingsSeed.ts';
 import { ensureTelegramFinanceSettings } from './telegramFinance.ts';
-import type { TelegramAssetScope } from './telegramAssetScope.ts';
 import { telegramDbScope } from './telegramAssetScope.ts';
 import {
   buildTelegramCredentialsPatch,
@@ -22,6 +27,22 @@ export function telegramSettingsPermission(
   req: Request
 ): 'notifications:view' | 'notifications:edit' {
   return req.method === 'GET' ? 'notifications:view' : 'notifications:edit';
+}
+
+/** Gate PATCH when enabling Telegram notifications (plan tier). */
+export async function gateTelegramEnabledPatch(
+  req: Request,
+  asset: TelegramAssetScope,
+  body: Record<string, unknown>
+): Promise<Response | null> {
+  if (body.enabled !== true) return null;
+  try {
+    const propertyId = await resolveTelegramEntitlementPropertyId(asset);
+    await requireTelegramNotificationsEnabled(propertyId);
+  } catch (err) {
+    return catchPlanFeatureError(req, err);
+  }
+  return null;
 }
 
 export async function loadTelegramSettingsGetPayload<T>(
