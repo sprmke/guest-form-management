@@ -19,6 +19,7 @@ import { validateOptionalEmail } from '../_shared/appSettings.ts';
 import { parseDocumentRequirements } from '../_shared/documentRequirements.ts';
 import { verifySuperAdminJwt } from '../_shared/superAdminAuth.ts';
 import { validatePropertyMediaArray } from '../_shared/propertyMedia.ts';
+import { parseUnitTypes, validateUnitTypes } from '../_shared/unitTypes.ts';
 
 const DEVELOPMENT_TYPES = new Set([
   'CONDOMINIUM',
@@ -197,6 +198,19 @@ serveAuthenticated('update-development', async (req) => {
       if (err) return jsonError(req, err);
     }
     settingsPatch[key] = value;
+    settingsChanged = true;
+  }
+
+  if (body.unitTypes !== undefined) {
+    const parsed = parseUnitTypes(body.unitTypes);
+    if (!parsed) {
+      return jsonError(req, 'Each unit type needs an id, label, and max adults');
+    }
+    const unitTypeError = validateUnitTypes(parsed);
+    if (unitTypeError) {
+      return jsonError(req, unitTypeError);
+    }
+    settingsPatch.unitTypes = parsed;
     settingsChanged = true;
   }
 

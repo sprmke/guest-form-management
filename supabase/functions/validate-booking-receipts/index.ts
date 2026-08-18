@@ -18,6 +18,7 @@ import {
   dbPatchFromReceiptBackfillItems,
 } from '../_shared/receiptValidationService.ts';
 import { jsonSuccess, readJsonBody, requireHttpMethod } from '../_shared/httpResponse.ts';
+import { catchPlanFeatureError, requirePropertyFeature } from '../_shared/planEntitlements.ts';
 import {
   resolveScopedPropertyAccess,
   verifyBookingBelongsToProperty,
@@ -28,6 +29,15 @@ serveAuthenticated('validate-booking-receipts', async (req) => {
   requireHttpMethod(req, 'POST');
   const { user, property, org } = await resolveScopedPropertyAccess(req, 'bookings:edit');
   const propertyId = property.id;
+
+  try {
+    await requirePropertyFeature(propertyId, 'aiValidations');
+  } catch (err) {
+    const planErr = catchPlanFeatureError(req, err);
+    if (planErr) return planErr;
+    throw err;
+  }
+
   const body = await readJsonBody(req);
   const bookingId = String(body.bookingId ?? '').trim();
   if (!bookingId) throw new Error('bookingId is required');

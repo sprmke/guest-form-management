@@ -9,6 +9,7 @@ import {
   loadTelegramSettingsGetPayload,
   mergeTelegramCredentialsPatch,
   parseAction,
+  gateTelegramEnabledPatch,
   telegramPatchNoFields,
   telegramPatchSuccessResponse,
   telegramUnknownAction,
@@ -52,6 +53,8 @@ serveAuthenticated('telegram-parking-settings', async (req) => {
 
   if (req.method === 'PATCH') {
     const body = await readJsonBody(req);
+    const gateResponse = await gateTelegramEnabledPatch(req, asset, body);
+    if (gateResponse) return gateResponse;
     const patch = parkingTemplatePatchFromBody(body);
 
     let finalPatch: Record<string, unknown>;

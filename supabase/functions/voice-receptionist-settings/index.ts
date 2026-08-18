@@ -4,6 +4,7 @@
  */
 
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
+import { catchPlanFeatureError, requirePropertyFeature } from '../_shared/planEntitlements.ts';
 import { resolveScopedPropertyAccess } from '../_shared/propertyScope.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 import {
@@ -25,6 +26,15 @@ serveAuthenticated('voice-receptionist-settings', async (req) => {
     const body = await readJsonBody(req);
     const { patch, error } = validateVoiceReceptionistPatch(body);
     if (error) return jsonError(req, error, 400);
+    if (patch.enabled === true) {
+      try {
+        await requirePropertyFeature(property.id, 'aiReceptionist');
+      } catch (err) {
+        const planErr = catchPlanFeatureError(req, err);
+        if (planErr) return planErr;
+        throw err;
+      }
+    }
     const data = await updateVoiceReceptionistSettings(property.id, patch);
     return jsonSuccess(req, data);
   }

@@ -5,7 +5,8 @@
  * Auth: any signed-in guest (Supabase JWT, not admin allow list).
  */
 
-import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
+import { jsonError, jsonSuccess, jsonUpgradeHook, readJsonBody } from '../_shared/httpResponse.ts';
+import { PlanFeatureRequiredError, requirePropertyFeature } from '../_shared/planEntitlements.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import { buildAiGroundingFacts } from '../_shared/inboxAiGuestContext.ts';
@@ -14,6 +15,7 @@ import { buildWebThreadId } from '../_shared/webGuestChatIds.ts';
 import { ensureWebChannelConnection } from '../_shared/webGuestChatService.ts';
 import { upsertConversation } from '../_shared/socialInboxService.ts';
 import { mintGeminiLiveEphemeralToken } from '../_shared/geminiLiveEphemeral.ts';
+import { resolvePropertyGuestName } from '../_shared/propertyGuestName.ts';
 import {
   createVoiceReceptionistSession,
   enforceVoiceReceptionistCaps,
@@ -60,7 +62,7 @@ serveAuthenticated('voice-receptionist-start', async (req, user) => {
     const sb = createServiceClient();
     const { data: propertyRow, error: propertyError } = await sb
       .from('properties')
-      .select('id, organization_id, name')
+      .select('id, organization_id, name, tower, unit_number, tower_and_unit')
       .eq('slug', propertySlug)
       .eq('status', 'ACTIVE')
       .maybeSingle();
@@ -73,6 +75,15 @@ serveAuthenticated('voice-receptionist-start', async (req, user) => {
     const settings = await getVoiceReceptionistSettings(propertyId);
     if (!settings.enabled) {
       return jsonError(req, 'Voice receptionist is not enabled for this property.', 503);
+    }
+
+    try {
+      await requirePropertyFeature(propertyId, 'aiReceptionist');
+    } catch (err) {
+      if (err instanceof PlanFeatureRequiredError) {
+        return jsonUpgradeHook(req, err.message, { feature: err.feature });
+      }
+      throw err;
     }
 
     await enforceVoiceReceptionistCaps(propertyId, user.id, settings);
@@ -109,8 +120,9 @@ serveAuthenticated('voice-receptionist-start', async (req, user) => {
     const personaOverride = settings.personaPrompt?.trim()
       ? `\nHost persona: ${settings.personaPrompt.trim()}`
       : '';
+    const guestPropertyName = resolvePropertyGuestName(propertyRow);
     const systemInstruction =
-      `${VOICE_SYSTEM_CORE} Property: ${String(propertyRow.name ?? 'this property')}.` +
+      `${VOICE_SYSTEM_CORE} Property: ${guestPropertyName}.` +
       `${personaOverride}\n\nKnown facts:\n${factsTextForVoice(grounding.factsText)}`;
 
     // Mint before inserting the session row so a Gemini failure does not burn a daily-cap slot.
