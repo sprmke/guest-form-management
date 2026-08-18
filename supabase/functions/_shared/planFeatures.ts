@@ -1,0 +1,134 @@
+/**
+ * Typed catalog for pricing_plans.features JSONB.
+ * Mirror on UI: ui/src/features/dashboard/plans/lib/planFeatures.ts (when added).
+ */
+
+export type SearchVisibilityTier = 'none' | 'top30' | 'top15' | 'top20' | 'top10';
+
+export type PlanTeamManagement = {
+  enabled: boolean;
+  maxMembers: number | null;
+};
+
+export type PlanFeatures = {
+  automatedBookingFlow: boolean;
+  verifiedBadgeEligible: boolean;
+  recommendedBadgeEligible: boolean;
+  telegramNotifications: boolean;
+  teamManagement: PlanTeamManagement;
+  searchVisibilityTier: SearchVisibilityTier;
+  marketingPublishLimitPerGroup: number | null;
+  aiValidations: boolean;
+  aiMonthlyCreditAllowance: number;
+  marketingStudio: boolean;
+  customPages: boolean;
+  aiDashboardAssistant: boolean;
+  aiReceptionist: boolean;
+  aiMarketingGeneration: boolean;
+  aiChatAutoReply: boolean;
+  fullyManagedByPlatform: boolean;
+};
+
+export const DEFAULT_PLAN_FEATURES: PlanFeatures = {
+  automatedBookingFlow: false,
+  verifiedBadgeEligible: false,
+  recommendedBadgeEligible: false,
+  telegramNotifications: false,
+  teamManagement: { enabled: false, maxMembers: null },
+  searchVisibilityTier: 'none',
+  marketingPublishLimitPerGroup: 0,
+  aiValidations: false,
+  aiMonthlyCreditAllowance: 0,
+  marketingStudio: false,
+  customPages: false,
+  aiDashboardAssistant: false,
+  aiReceptionist: false,
+  aiMarketingGeneration: false,
+  aiChatAutoReply: false,
+  fullyManagedByPlatform: false,
+};
+
+function asBool(value: unknown, fallback: boolean): boolean {
+  return typeof value === 'boolean' ? value : fallback;
+}
+
+function asNumberOrNull(value: unknown, fallback: number | null): number | null {
+  if (value === null) return null;
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  return fallback;
+}
+
+function asSearchTier(value: unknown, fallback: SearchVisibilityTier): SearchVisibilityTier {
+  if (value === 'none' || value === 'top30' || value === 'top15') return value;
+  if (value === 'top20') return 'top30';
+  if (value === 'top10') return 'top15';
+  return fallback;
+}
+
+export function parsePlanFeatures(raw: unknown): PlanFeatures {
+  const base = DEFAULT_PLAN_FEATURES;
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { ...base };
+
+  const obj = raw as Record<string, unknown>;
+  const teamRaw =
+    obj.teamManagement &&
+    typeof obj.teamManagement === 'object' &&
+    !Array.isArray(obj.teamManagement)
+      ? (obj.teamManagement as Record<string, unknown>)
+      : {};
+
+  return {
+    automatedBookingFlow: asBool(obj.automatedBookingFlow, base.automatedBookingFlow),
+    verifiedBadgeEligible: asBool(obj.verifiedBadgeEligible, base.verifiedBadgeEligible),
+    recommendedBadgeEligible: asBool(obj.recommendedBadgeEligible, base.recommendedBadgeEligible),
+    telegramNotifications: asBool(obj.telegramNotifications, base.telegramNotifications),
+    teamManagement: {
+      enabled: asBool(teamRaw.enabled, base.teamManagement.enabled),
+      maxMembers: asNumberOrNull(teamRaw.maxMembers, base.teamManagement.maxMembers),
+    },
+    searchVisibilityTier: asSearchTier(obj.searchVisibilityTier, base.searchVisibilityTier),
+    marketingPublishLimitPerGroup: asNumberOrNull(
+      obj.marketingPublishLimitPerGroup,
+      base.marketingPublishLimitPerGroup
+    ),
+    aiValidations: asBool(obj.aiValidations, base.aiValidations),
+    aiMonthlyCreditAllowance:
+      typeof obj.aiMonthlyCreditAllowance === 'number' &&
+      Number.isFinite(obj.aiMonthlyCreditAllowance)
+        ? obj.aiMonthlyCreditAllowance
+        : base.aiMonthlyCreditAllowance,
+    marketingStudio: asBool(obj.marketingStudio, base.marketingStudio),
+    customPages: asBool(obj.customPages, base.customPages),
+    aiDashboardAssistant: asBool(obj.aiDashboardAssistant, base.aiDashboardAssistant),
+    aiReceptionist: asBool(obj.aiReceptionist, base.aiReceptionist),
+    aiMarketingGeneration: asBool(obj.aiMarketingGeneration, base.aiMarketingGeneration),
+    aiChatAutoReply: asBool(obj.aiChatAutoReply, base.aiChatAutoReply),
+    fullyManagedByPlatform: asBool(obj.fullyManagedByPlatform, base.fullyManagedByPlatform),
+  };
+}
+
+export function mergePlanFeatures(
+  planFeatures: PlanFeatures,
+  overrides: Record<string, unknown> | null | undefined
+): PlanFeatures {
+  if (!overrides || typeof overrides !== 'object' || Array.isArray(overrides)) {
+    return planFeatures;
+  }
+  return parsePlanFeatures({ ...planFeatures, ...overrides });
+}
+
+export type PlanFeatureKey = keyof PlanFeatures;
+
+export function isFeatureEnabled(features: PlanFeatures, key: PlanFeatureKey): boolean {
+  const value = features[key];
+  if (typeof value === 'boolean') return value;
+  if (key === 'teamManagement') return features.teamManagement.enabled;
+  if (key === 'searchVisibilityTier') return features.searchVisibilityTier !== 'none';
+  if (key === 'marketingPublishLimitPerGroup') {
+    return (
+      features.marketingPublishLimitPerGroup === null || features.marketingPublishLimitPerGroup > 0
+    );
+  }
+  if (key === 'aiMonthlyCreditAllowance') return features.aiMonthlyCreditAllowance > 0;
+  return false;
+}

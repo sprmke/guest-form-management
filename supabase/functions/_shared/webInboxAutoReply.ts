@@ -3,6 +3,8 @@
  */
 
 import { suggestInboxReply } from './socialInboxAiService.ts';
+import { isFeatureEnabled } from './planFeatures.ts';
+import { orgHasPropertyWithFeature, resolvePropertyEntitlements } from './planEntitlements.ts';
 import {
   insertMessageIfNew,
   listMessages,
@@ -55,6 +57,15 @@ export async function maybeAutoReplyToWebInbound(
     .eq('platform', 'web')
     .maybeSingle();
   if (!conv || conv.conversation_type !== 'dm') return;
+
+  const propertyId = (conv.property_id as string | null) ?? null;
+  if (propertyId) {
+    const entitlements = await resolvePropertyEntitlements(propertyId);
+    if (!isFeatureEnabled(entitlements, 'aiChatAutoReply')) return;
+  } else {
+    const allowed = await orgHasPropertyWithFeature(orgId, 'aiChatAutoReply');
+    if (!allowed) return;
+  }
 
   const { data: inboundRow } = await sb
     .from('social_messages')
