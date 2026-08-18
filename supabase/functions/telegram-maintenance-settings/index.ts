@@ -18,6 +18,7 @@ import {
   loadTelegramSettingsGetPayload,
   mergeTelegramCredentialsPatch,
   parseAction,
+  gateTelegramEnabledPatch,
   telegramPatchNoFields,
   telegramPatchSuccessResponse,
   telegramUnknownAction,
@@ -55,6 +56,8 @@ serveAuthenticated('telegram-maintenance-settings', async (req) => {
 
   if (req.method === 'PATCH') {
     const body = await readJsonBody(req);
+    const gateResponse = await gateTelegramEnabledPatch(req, asset, body);
+    if (gateResponse) return gateResponse;
     const patch: Record<string, unknown> = {};
 
     if (typeof body.enabled === 'boolean') patch.enabled = body.enabled;

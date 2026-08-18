@@ -17,6 +17,11 @@ import {
   readJsonBody,
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
+import {
+  catchPlanFeatureError,
+  requirePropertyFeature,
+  resolveListingEntitlementPropertyId,
+} from '../_shared/planEntitlements.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('submit-listing-recommended', async (req) => {
@@ -29,6 +34,16 @@ serveAuthenticated('submit-listing-recommended', async (req) => {
   if (!listingId) return jsonError(req, 'listingId is required');
 
   const context = await verifyListingOwner(req, listingKind, listingId);
+
+  try {
+    const propertyId = await resolveListingEntitlementPropertyId(listingKind, listingId);
+    await requirePropertyFeature(propertyId, 'recommendedBadgeEligible');
+  } catch (err) {
+    const planErr = catchPlanFeatureError(req, err);
+    if (planErr) return planErr;
+    throw err;
+  }
+
   const current = context.authorization;
 
   if (current.baseStatus !== 'approved') {

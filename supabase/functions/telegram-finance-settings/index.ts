@@ -19,6 +19,7 @@ import {
   mergeTelegramCredentialsPatch,
   parseAction,
   parseManilaTimeSlotField,
+  gateTelegramEnabledPatch,
   telegramPatchNoFields,
   telegramPatchSuccessResponse,
   telegramUnknownAction,
@@ -56,6 +57,8 @@ serveAuthenticated('telegram-finance-settings', async (req) => {
 
   if (req.method === 'PATCH') {
     const body = await readJsonBody(req);
+    const gateResponse = await gateTelegramEnabledPatch(req, asset, body);
+    if (gateResponse) return gateResponse;
     const patch: Record<string, unknown> = {};
     let slotParsed: { hour: number; minute: number } | undefined;
 

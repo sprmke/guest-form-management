@@ -14,7 +14,11 @@ import {
 } from '../_shared/marketingPublishAction.ts';
 import { publishToFacebookPagePhoto, publishToInstagramMedia } from '../_shared/metaPublishing.ts';
 import { createServiceClient } from '../_shared/orgAuth.ts';
-import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
+import { jsonError, jsonSuccess, jsonUpgradeHook, readJsonBody } from '../_shared/httpResponse.ts';
+import {
+  PlanFeatureRequiredError,
+  requireMarketingPublishAllowed,
+} from '../_shared/planEntitlements.ts';
 import {
   resolveAdminPropertyId,
   resolveOrganizationIdForProperty,
@@ -137,6 +141,15 @@ serveAdmin('publish-to-meta', async (req, admin) => {
 
   if (publishType === 'facebook_post' && mediaType === 'video') {
     return jsonError(req, 'Facebook video publishing is not supported in v1', 400);
+  }
+
+  try {
+    await requireMarketingPublishAllowed(propertyId);
+  } catch (err) {
+    if (err instanceof PlanFeatureRequiredError) {
+      return jsonUpgradeHook(req, err.message, { feature: err.feature });
+    }
+    throw err;
   }
 
   let mediaUrl: string;

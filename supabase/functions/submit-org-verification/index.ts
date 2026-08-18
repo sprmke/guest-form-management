@@ -20,6 +20,7 @@ import {
   readJsonBody,
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
+import { catchPlanFeatureError, requireOrgPropertyFeature } from '../_shared/planEntitlements.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('submit-org-verification', async (req) => {
@@ -58,6 +59,14 @@ serveAuthenticated('submit-org-verification', async (req) => {
       return jsonError(req, `Required: ${missing.join(', ')}`);
     }
 
+    try {
+      await requireOrgPropertyFeature(orgId, 'verifiedBadgeEligible');
+    } catch (err) {
+      const planErr = catchPlanFeatureError(req, err);
+      if (planErr) return planErr;
+      throw err;
+    }
+
     verification = {
       ...verification,
       baseStatus: 'pending',
@@ -67,6 +76,14 @@ serveAuthenticated('submit-org-verification', async (req) => {
       baseChangesRequestedDocs: [],
     };
   } else {
+    try {
+      await requireOrgPropertyFeature(orgId, 'recommendedBadgeEligible');
+    } catch (err) {
+      const planErr = catchPlanFeatureError(req, err);
+      if (planErr) return planErr;
+      throw err;
+    }
+
     if (verification.enhancedStatus === 'approved') {
       return jsonError(req, 'Enhanced verification is already approved');
     }

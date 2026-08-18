@@ -10,6 +10,7 @@ import {
   readJsonBody,
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
+import { catchPlanFeatureError, requireTeamInviteAllowed } from '../_shared/planEntitlements.ts';
 import { TEAM_API_PERMISSIONS } from '../_shared/propertyTeamPermissions.ts';
 import {
   cancelPropertyInvitation,
@@ -61,9 +62,12 @@ serveAuthenticated('property-team-invitations', async (req) => {
 
     const ctx = await requireTeamPropertyAccess(req, propertyId, TEAM_API_PERMISSIONS.inviteMember);
     try {
+      await requireTeamInviteAllowed(ctx.property.id);
       const invitation = await createPropertyInvitation(ctx, body);
       return jsonSuccess(req, { invitation });
     } catch (e) {
+      const planErr = catchPlanFeatureError(req, e);
+      if (planErr) return planErr;
       const msg = e instanceof Error ? e.message : 'Invite failed';
       const status = msg.includes('already') ? 409 : 400;
       return jsonError(req, msg, status);

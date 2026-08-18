@@ -6,6 +6,12 @@ import { ensureSocialInboxSettings, socialInboxDb } from '../_shared/socialInbox
 import { checkInboxAiProviders } from '../_shared/socialInboxAiService.ts';
 import { resolveInboxAccess } from '../_shared/inboxAccess.ts';
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
+import {
+  catchPlanFeatureError,
+  patchEnablesInboxAutoSend,
+  requireOrgPropertyFeature,
+  requirePropertyFeature,
+} from '../_shared/planEntitlements.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('social-inbox-settings', async (req) => {
@@ -32,6 +38,31 @@ serveAuthenticated('social-inbox-settings', async (req) => {
   }
 
   if (req.method === 'PATCH') {
+    const { data: current } = await sb
+      .from('social_inbox_settings')
+      .select('auto_reply_enabled, auto_reply_mode')
+      .eq('organization_id', ctx.orgId)
+      .maybeSingle();
+
+    if (
+      patchEnablesInboxAutoSend(body ?? {}, {
+        auto_reply_enabled: current?.auto_reply_enabled,
+        auto_reply_mode: current?.auto_reply_mode,
+      })
+    ) {
+      try {
+        if (ctx.propertyId) {
+          await requirePropertyFeature(ctx.propertyId, 'aiChatAutoReply');
+        } else {
+          await requireOrgPropertyFeature(ctx.orgId, 'aiChatAutoReply');
+        }
+      } catch (err) {
+        const planErr = catchPlanFeatureError(req, err);
+        if (planErr) return planErr;
+        throw err;
+      }
+    }
+
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (body?.autoReplyEnabled !== undefined) {
       patch.auto_reply_enabled = Boolean(body.autoReplyEnabled);
