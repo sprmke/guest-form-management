@@ -1,10 +1,15 @@
 import type { ReactNode } from 'react';
 
-import { Route } from 'react-router-dom';
+import { Navigate, Route } from 'react-router-dom';
 
 import { CustomPagesPage } from '@/features/dashboard/custom-pages/pages/CustomPagesPage';
 import type { PropertyRouteFn } from '@/features/dashboard/org/routes/guards';
 
 export function customPagesPropertyRoute(propertyRoute: PropertyRouteFn): ReactNode {
-  return <Route path="custom-pages" element={propertyRoute('custom-pages', <CustomPagesPage />)} />;
+  return (
+    <>
+      <Route path="public-pages" element={propertyRoute('public-pages', <CustomPagesPage />)} />
+      <Route path="custom-pages" element={<Navigate to="../public-pages" replace />} />
+    </>
+  );
 }
