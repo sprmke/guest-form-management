@@ -11,6 +11,9 @@ import {
   DEFAULT_GUEST_PAYMENT_INFO,
 } from '@/features/guest/form/hooks/useGuestPaymentInfo';
 import { pickGuestBrandHeaderProps } from '@/features/guest/form/lib/guestFormBranding';
+import { GUEST_PAY_PARKING_PREVIEW_BOOKING_ID } from '@/features/guest/lib/guestPublicPaths';
+import { isGuestEmbedPreview } from '@/features/guest/lib/guestEmbedPreview';
+import { PayParkingEmbedPreview } from '@/features/guest/pay-parking/components/PayParkingEmbedPreview';
 import { PayParkingOwnerEmailDialog } from '@/features/guest/pay-parking/components/PayParkingOwnerEmailDialog';
 import {
   PayParkingIntro,
@@ -41,6 +44,8 @@ export function PayParkingPage() {
   const { bookingId: routeBookingId } = useParams<{ bookingId: string }>();
   const [searchParams] = useSearchParams();
   const bookingId = (routeBookingId ?? searchParams.get('bookingId') ?? '').trim();
+  const embedPreview = isGuestEmbedPreview(searchParams);
+  const isPreviewBooking = bookingId === GUEST_PAY_PARKING_PREVIEW_BOOKING_ID && embedPreview;
   const { data: guestBrand = DEFAULT_GUEST_PAYMENT_INFO } = useGuestPaymentInfo();
   const brandHeader = pickGuestBrandHeaderProps(guestBrand);
 
@@ -64,7 +69,7 @@ export function PayParkingPage() {
   const query = useQuery({
     queryKey: ['pay-parking', bookingId],
     queryFn: () => fetchPayParking(bookingId),
-    enabled: bookingId.length > 0,
+    enabled: bookingId.length > 0 && !isPreviewBooking,
     retry: false,
   });
 
@@ -140,6 +145,10 @@ export function PayParkingPage() {
 
   const showError = (field: keyof typeof touched) =>
     touched[field] && Boolean(validation.errors[field]);
+
+  if (isPreviewBooking) {
+    return <PayParkingEmbedPreview />;
+  }
 
   if (!bookingId) {
     return (

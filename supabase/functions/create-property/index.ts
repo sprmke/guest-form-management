@@ -29,10 +29,11 @@ import {
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
 import { seedPropertySettings } from '../_shared/propertySettingsSeed.ts';
+import { ensurePropertyDefaultPlan } from '../_shared/planEntitlements.ts';
 import { ensureOrgHostMode } from '../_shared/parkingSlotUnit.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
-serveAuthenticated('create-property', async (req) => {
+serveAuthenticated('create-property', async (req, user) => {
   requireHttpMethod(req, 'POST');
   const body = await readJsonBody(req);
 
@@ -127,6 +128,7 @@ serveAuthenticated('create-property', async (req) => {
   try {
     await seedPropertySettings(data.id as string, { residenceName });
     await ensureOrgHostMode(supabase, orgId, 'property');
+    await ensurePropertyDefaultPlan(data.id as string, user.id);
   } catch (e) {
     console.error('[create-property] settings seed:', e);
     return jsonError(req, 'Property created but settings seed failed', 500);

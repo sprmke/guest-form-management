@@ -26,7 +26,13 @@ import {
   withStaleAiReviewSections,
 } from '../_shared/bookingAiReviewService.ts';
 import { DatabaseService } from '../_shared/databaseService.ts';
-import { jsonSuccess, readJsonBody, requireHttpMethod } from '../_shared/httpResponse.ts';
+import {
+  jsonSuccess,
+  jsonUpgradeHook,
+  readJsonBody,
+  requireHttpMethod,
+} from '../_shared/httpResponse.ts';
+import { catchPlanFeatureError, requirePropertyFeature } from '../_shared/planEntitlements.ts';
 import {
   resolveScopedPropertyAccess,
   verifyBookingBelongsToProperty,
@@ -37,6 +43,14 @@ serveAuthenticated('booking-ai-review', async (req, user) => {
   requireHttpMethod(req, 'POST');
   const { property, org } = await resolveScopedPropertyAccess(req, 'bookings:edit');
   const propertyId = property.id;
+
+  try {
+    await requirePropertyFeature(propertyId, 'aiValidations');
+  } catch (err) {
+    const planErr = catchPlanFeatureError(req, err);
+    if (planErr) return planErr;
+    throw err;
+  }
 
   const body = await readJsonBody(req);
   const bookingId = String(body.bookingId ?? '').trim();

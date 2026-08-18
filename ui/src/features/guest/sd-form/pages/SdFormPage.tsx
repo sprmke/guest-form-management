@@ -16,6 +16,8 @@ import {
   formatGuestStayThanks,
   pickGuestBrandHeaderProps,
 } from '@/features/guest/form/lib/guestFormBranding';
+import { isGuestEmbedPreview } from '@/features/guest/lib/guestEmbedPreview';
+import { SdFormEmbedPreview } from '@/features/guest/sd-form/components/SdFormEmbedPreview';
 import { SdFormReviewSection } from '@/features/guest/sd-form/components/SdFormReviewSection';
 import { VoucherReveal } from '@/features/guest/sd-form/components/VoucherReveal';
 import {
@@ -66,6 +68,7 @@ const SD_FORM_BRAND_TITLE = 'SD Refund Form';
 export function SdFormPage() {
   const [searchParams] = useSearchParams();
   const bookingId = (searchParams.get('bookingId') ?? '').trim();
+  const embedPreview = isGuestEmbedPreview(searchParams);
   const { data: guestBrand = DEFAULT_GUEST_PAYMENT_INFO } = useGuestPaymentInfo();
   const brandHeader = pickGuestBrandHeaderProps(guestBrand);
 
@@ -171,6 +174,10 @@ export function SdFormPage() {
       toast.error(friendlyToastError(err, 'Could not submit'));
     },
   });
+
+  if (embedPreview && !bookingId) {
+    return <SdFormEmbedPreview />;
+  }
 
   if (!bookingId) {
     return (
