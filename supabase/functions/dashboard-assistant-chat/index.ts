@@ -56,9 +56,15 @@ import {
   jsonError,
   jsonResponse,
   jsonSuccess,
+  jsonUpgradeHook,
   readJsonBody,
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
+import {
+  PlanFeatureRequiredError,
+  requireOrgPropertyFeature,
+  requirePropertyFeature,
+} from '../_shared/planEntitlements.ts';
 import { createServiceClient, verifyOrgAccess, verifyPropertyAccess } from '../_shared/orgAuth.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
@@ -79,7 +85,7 @@ const BLOCKS_RESPONSE_SCHEMA = {
         properties: {
           type: {
             type: 'string',
-            enum: ['text', 'booking_card', 'stat_list', 'data_table', 'link_list'],
+            enum: ['text', 'booking_card', 'stat_list', 'data_table', 'link_list', 'file_list'],
           },
           text: { type: 'string' },
           bookingId: { type: 'string' },
@@ -117,6 +123,18 @@ const BLOCKS_RESPONSE_SCHEMA = {
               required: ['label', 'href'],
             },
           },
+          files: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                label: { type: 'string' },
+                url: { type: 'string' },
+                kind: { type: 'string', enum: ['image', 'pdf', 'file'] },
+              },
+              required: ['label', 'url'],
+            },
+          },
         },
         required: ['type'],
       },
@@ -125,14 +143,15 @@ const BLOCKS_RESPONSE_SCHEMA = {
   required: ['blocks'],
 };
 
-const SYSTEM_PROMPT_PREFIX = `You are the AI dashboard assistant for Kame Homes hosts. Answer only from the Known facts and tool results below — never invent booking data, amounts, or guest names. Never claim an action succeeded unless a tool call actually returned success. When you need live data, call a tool instead of guessing. Financially-sensitive, destructive, or override actions require host confirmation — you do not need to warn about this, the platform handles it. Respond with a short set of typed blocks (text/booking_card/stat_list/data_table/link_list) — never HTML or markdown tables.
+const SYSTEM_PROMPT_PREFIX = `You are the AI dashboard assistant for Kame Homes hosts. Answer only from the Known facts and tool results below — never invent booking data, amounts, or guest names. Never claim an action succeeded unless a tool call actually returned success. When you need live data, call a tool instead of guessing. Financially-sensitive, destructive, or override actions require host confirmation — you do not need to warn about this, the platform handles it. Respond with a short set of typed blocks (text/booking_card/stat_list/data_table/link_list/file_list) — never HTML or markdown tables.
 
 Host-facing rules:
 - Always use human status labels from tool results (statusLabel), never raw codes like READY_FOR_CHECKOUT.
-- Never emit an empty stat_list, data_table, or link_list. If a list is empty, say so in a text block.
+- Never emit an empty stat_list, data_table, link_list, or file_list. If a list is empty, say so in a text block.
 - For data_table, every row must include cells[] in the same order as columns. Example: columns ["Guest","Check-in","Check-out"], rows [{cells:["Jane","2026-08-19","2026-08-20"]}].
 - Pending tasks and SD refund amounts come from get_booking (pendingTasks, sdRefundAmount) — copy those, do not invent an empty list.
-- For booked or available dates, call get_available_dates and use bookedStays / availableRanges.`;
+- For booked or available dates, call get_available_dates and use bookedStays / availableRanges.
+- When the host asks to see, provide, open, or show a booking file (approved GAF, pet form, receipt, ID, parking endorsement), call get_booking_documents (kinds: gaf/pet/receipt/id/parking) and emit a file_list using the exact url values from the tool. Never invent URLs. If documents is empty, say the file is not on this booking. Do not answer a file request with only a booking_card.`;
 
 async function resolveEffectivePermissions(
   req: Request,
@@ -189,6 +208,26 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
     ]);
     if (!isDashboardAssistantAccessible(globalSettings, orgSettings, pageContext.propertyId)) {
       return jsonError(req, 'AI dashboard assistant is not enabled for this organization', 503);
+    }
+
+    if (effectivePropertyId) {
+      try {
+        await requirePropertyFeature(effectivePropertyId, 'aiDashboardAssistant');
+      } catch (err) {
+        if (err instanceof PlanFeatureRequiredError) {
+          return jsonUpgradeHook(req, err.message, { feature: err.feature });
+        }
+        throw err;
+      }
+    } else {
+      try {
+        await requireOrgPropertyFeature(orgCtx.org.id, 'aiDashboardAssistant');
+      } catch (err) {
+        if (err instanceof PlanFeatureRequiredError) {
+          return jsonUpgradeHook(req, err.message, { feature: err.feature });
+        }
+        throw err;
+      }
     }
 
     const quota = await checkDashboardAssistantQuota(orgCtx.org.id, orgSettings);
@@ -452,7 +491,8 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
                 },
               ]
         ),
-        toolResultsForGrounding
+        toolResultsForGrounding,
+        message
       );
 
       const groundingText = `${groundingPrompt}\n${JSON.stringify(toolResultsForGrounding)}${attachmentLine}${pinnedBookingLine}`;
@@ -558,6 +598,9 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
 
     return jsonSuccess(req, { conversationId, blocks });
   } catch (err) {
+    if (err instanceof PlanFeatureRequiredError) {
+      return jsonUpgradeHook(req, err.message, { feature: err.feature });
+    }
     if (isAiQuotaError(err)) {
       return jsonResponse(
         req,
