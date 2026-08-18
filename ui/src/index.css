@@ -2089,3 +2089,21 @@ input.ui-native-datetime[type='datetime-local']::-webkit-calendar-picker-indicat
 .listing-map-canvas {
   min-height: var(--listing-map-min-height);
 }
+
+/** Dashboard Public Pages iframe thumbnails (`?embed=1`). */
+html.guest-embed-preview,
+html.guest-embed-preview body {
+  overflow: hidden !important;
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+html.guest-embed-preview * {
+  scrollbar-width: none;
+}
+
+html.guest-embed-preview *::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}

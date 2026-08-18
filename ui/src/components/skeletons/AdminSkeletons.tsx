@@ -295,6 +295,66 @@ export function FinanceOverviewSkeleton() {
   );
 }
 
+export function PropertyPlansSkeleton() {
+  return (
+    <div
+      className="space-y-5 sm:space-y-6 lg:space-y-8"
+      aria-busy="true"
+      aria-label="Loading plans"
+    >
+      <div className="border-border/50 bg-card rounded-2xl border p-5">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
+          <div className="flex items-start gap-4">
+            <Skeleton className="size-12 rounded-2xl" />
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-8 w-48" />
+            </div>
+          </div>
+          <div className="grid shrink-0 grid-cols-3 gap-4 lg:gap-6">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="space-y-2">
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-4 w-16" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex gap-2">
+        <Skeleton className="h-9 w-24 rounded-lg" />
+        <Skeleton className="h-9 w-24 rounded-lg" />
+        <Skeleton className="h-9 w-28 rounded-lg" />
+      </div>
+
+      <div className="space-y-3 sm:space-y-4">
+        <Skeleton className="h-5 w-36" />
+        <div className="flex justify-center">
+          <div className="border-border/50 bg-card w-full max-w-sm rounded-2xl border p-5">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="mt-2 h-3 w-40" />
+            <Skeleton className="mt-4 h-9 w-28" />
+            <div className="border-separator mt-5 space-y-3 border-t pt-4">
+              {Array.from({ length: 6 }).map((__, row) => (
+                <Skeleton key={row} className="h-4 w-full" />
+              ))}
+            </div>
+            <Skeleton className="mt-5 h-11 w-full rounded-lg" />
+          </div>
+        </div>
+        <div className="flex justify-center gap-1.5">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="size-2 rounded-full" />
+          ))}
+        </div>
+      </div>
+
+      <Skeleton className="h-11 w-full rounded-lg" />
+    </div>
+  );
+}
+
 export function FinanceStaysCardGridSkeleton() {
   return (
     <div

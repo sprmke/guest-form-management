@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { adminPropertyRoutes } from '@/features/dashboard/bookings/routes/propertyRoutes';
 import { customPagesPropertyRoute } from '@/features/dashboard/custom-pages/routes';
 import { financePropertyRoute } from '@/features/dashboard/finance/routes';
+import { plansPropertyRoute } from '@/features/dashboard/plans/routes';
 import {
   helpSupportParkingRoute,
   helpSupportPropertyRoute,
@@ -42,6 +43,7 @@ export const dashboardRoutes: ReactNode[] = [
         {adminPropertyRoutes(propertyRoute)}
         {customPagesPropertyRoute(propertyRoute)}
         {financePropertyRoute(propertyRoute)}
+        {plansPropertyRoute(propertyRoute)}
         {pricingPropertyRoute(propertyRoute)}
         {maintenancePropertyRoute(propertyRoute)}
         {marketingPropertyRoute(propertyRoute)}

@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { GuestAuthProvider } from '@/features/guest/auth/context/GuestAuthContext';
+import { GuestEmbedPreviewEffect } from '@/features/guest/components/GuestEmbedPreviewEffect';
 import { SavedPropertiesSync } from '@/features/guest/marketing/properties/components/SavedPropertiesSync';
 import { ModeSwitchTransitionProvider } from '@/features/guest/marketing/shared/context/ModeSwitchTransitionContext';
 
@@ -24,6 +25,7 @@ function App() {
       <GuestAuthProvider>
         {/* Global so the curtain survives AdminLayout ↔ MarketingLayoutShell remounts. */}
         <ModeSwitchTransitionProvider>
+          <GuestEmbedPreviewEffect />
           <SavedPropertiesSync />
           <AppRoutes />
         </ModeSwitchTransitionProvider>

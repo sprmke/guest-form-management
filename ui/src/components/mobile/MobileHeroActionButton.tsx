@@ -24,12 +24,12 @@ import { cn } from '@/lib/utils';
 export const mobileHeroActionClassName = cn(
   'mobile-hero-action native-press touch-manipulation',
   'flex size-11 shrink-0 items-center justify-center rounded-full',
-  'bg-primary-foreground text-primary',
-  'shadow-[0_2px_10px_-2px_hsl(var(--shadow-color)/0.22),0_6px_18px_-6px_hsl(var(--shadow-color)/0.18)]',
-  'ring-1 ring-black/5 dark:ring-white/10',
-  'transition-[transform,box-shadow,background-color] duration-150',
-  'hover:bg-primary-foreground/95 hover:shadow-[0_4px_14px_-2px_hsl(var(--shadow-color)/0.26),0_8px_22px_-6px_hsl(var(--shadow-color)/0.2)]',
-  'focus-visible:ring-primary-foreground focus-visible:ring-offset-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+  /* Frosted on-primary — matches tenant avatar ring + scope icons (light + dark). */
+  'bg-primary-foreground/15 text-primary-foreground',
+  'ring-primary-foreground/25 ring-1',
+  'transition-[transform,background-color] duration-150',
+  'hover:bg-primary-foreground/22',
+  'focus-visible:ring-primary-foreground/40 focus-visible:ring-offset-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
   'disabled:pointer-events-none disabled:opacity-45',
   '[&_svg]:size-[1.15rem] [&_svg]:shrink-0'
 );
