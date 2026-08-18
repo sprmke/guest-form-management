@@ -55,6 +55,16 @@ export function superAdminSupportHasActiveFilters(filters: SuperAdminSupportFilt
   return filters.search.trim() !== '' || filters.category !== 'all' || filters.status !== 'all';
 }
 
+export function superAdminSupportSummaryFromList(tickets: AdminSupportTicket[]) {
+  const open = tickets.filter((ticket) => ticket.status === 'open').length;
+  const inProgress = tickets.filter((ticket) => ticket.status === 'in_progress').length;
+  const resolved = tickets.filter(
+    (ticket) => ticket.status === 'resolved' || ticket.status === 'closed'
+  ).length;
+
+  return { total: tickets.length, open, inProgress, resolved };
+}
+
 export function formatSupportTicketDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-PH', {
     timeZone: 'Asia/Manila',

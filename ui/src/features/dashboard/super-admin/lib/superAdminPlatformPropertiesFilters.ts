@@ -55,3 +55,16 @@ export function superAdminPlatformPropertiesHasActiveFilters(
 ): boolean {
   return orgPropertiesHasActiveFilters(filters) || filters.development !== 'all';
 }
+
+export function superAdminPlatformPropertiesSummaryFromList(properties: PlatformProperty[]) {
+  const active = properties.filter((property) => property.status === 'ACTIVE').length;
+  const linkedDevelopments = properties.filter((property) => property.developmentSlug).length;
+  const organizations = new Set(properties.map((property) => property.organizationId)).size;
+
+  return {
+    total: properties.length,
+    active,
+    linkedDevelopments,
+    organizations,
+  };
+}

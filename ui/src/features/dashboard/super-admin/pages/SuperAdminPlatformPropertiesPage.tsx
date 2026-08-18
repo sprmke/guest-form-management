@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react';
 
-import { Loader2 } from 'lucide-react';
-
 import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
+import { SuperAdminPageLoading } from '@/features/dashboard/super-admin/components/shared/SuperAdminPageLoading';
 import {
   OrgPropertiesEmptyState,
   OrgPropertyCard,
 } from '@/features/dashboard/org/components/org-properties/OrgPropertyCard';
+import { SuperAdminPlatformPropertiesSummaryCards } from '@/features/dashboard/super-admin/components/super-admin-platform-properties/SuperAdminPlatformPropertiesSummaryCards';
 import { SuperAdminPlatformPropertiesTable } from '@/features/dashboard/super-admin/components/super-admin-platform-properties/SuperAdminPlatformPropertiesTable';
 import {
   SuperAdminPlatformPropertiesResultsMeta,
@@ -62,14 +62,14 @@ export function SuperAdminPlatformPropertiesPage() {
   return (
     <div className="space-y-3 sm:space-y-4">
       {isLoading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-        </div>
+        <SuperAdminPageLoading metricCount={4} />
       ) : error ? (
         <p className="text-destructive text-sm">Could not load properties.</p>
       ) : (
         <>
           <AdminPageHeader title="Properties" subtitle="All properties across the platform." />
+
+          <SuperAdminPlatformPropertiesSummaryCards properties={platformProperties} />
 
           <SuperAdminPlatformPropertiesToolbar
             filters={filters}

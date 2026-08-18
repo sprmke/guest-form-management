@@ -1,5 +1,8 @@
 export const superAdminPaths = {
   root: '/admin',
+  pricingPlans: '/admin/pricing/plans',
+  pricingPaymentSettings: '/admin/pricing/payment-settings',
+  propertySubscriptions: '/admin/pricing/subscriptions',
   developments: '/admin/developments',
   developmentDetail: (slug: string) => `/admin/developments/${slug}`,
   approvals: '/admin/approvals',

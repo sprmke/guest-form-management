@@ -1,10 +1,13 @@
 import { useMemo, useState } from 'react';
 
-import { ArrowDown, ArrowUp, HelpCircle, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, HelpCircle, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
+import { SuperAdminEmptyState } from '@/features/dashboard/super-admin/components/shared/SuperAdminEmptyState';
+import { SuperAdminPageLoading } from '@/features/dashboard/super-admin/components/shared/SuperAdminPageLoading';
 import { SuperAdminFaqEditorDialog } from '@/features/dashboard/super-admin/components/super-admin-support/SuperAdminFaqEditorDialog';
+import { SuperAdminHelpFaqsSummaryCards } from '@/features/dashboard/super-admin/components/super-admin-support/SuperAdminHelpFaqsSummaryCards';
 import {
   useDeleteHelpCenterFaq,
   useHelpCenterFaqsAdmin,
@@ -179,37 +182,38 @@ export function SuperAdminHelpFaqsPage() {
       />
 
       {isLoading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-        </div>
+        <SuperAdminPageLoading metricCount={4} />
       ) : error ? (
         <p className="text-destructive text-sm">Could not load FAQs.</p>
-      ) : groupedByCategory.length === 0 ? (
-        <div className="surface-card flex flex-col items-center justify-center gap-3 px-4 py-14 text-center">
-          <HelpCircle className="text-muted-foreground size-10" aria-hidden />
-          <p className="text-foreground text-sm font-medium">No FAQs yet</p>
-        </div>
       ) : (
-        groupedByCategory.map(([category, items]) => (
-          <div key={category} className="space-y-2">
-            <p className="text-muted-foreground text-xs font-bold uppercase tracking-wider">
-              {category}
-            </p>
-            <div className="space-y-2">
-              {items.map((faq, index) => (
-                <FaqRow
-                  key={faq.id}
-                  faq={faq}
-                  isFirst={index === 0}
-                  isLast={index === items.length - 1}
-                  onEdit={() => setEditingFaq(faq)}
-                  onDeleteRequest={() => setDeleteTarget(faq)}
-                  onMove={(direction) => void handleMove(category, index, direction)}
-                />
-              ))}
-            </div>
-          </div>
-        ))
+        <>
+          <SuperAdminHelpFaqsSummaryCards faqs={faqs} />
+
+          {groupedByCategory.length === 0 ? (
+            <SuperAdminEmptyState icon={HelpCircle} title="No FAQs yet" />
+          ) : (
+            groupedByCategory.map(([category, items]) => (
+              <div key={category} className="space-y-2">
+                <p className="text-muted-foreground text-xs font-bold uppercase tracking-wider">
+                  {category}
+                </p>
+                <div className="space-y-2">
+                  {items.map((faq, index) => (
+                    <FaqRow
+                      key={faq.id}
+                      faq={faq}
+                      isFirst={index === 0}
+                      isLast={index === items.length - 1}
+                      onEdit={() => setEditingFaq(faq)}
+                      onDeleteRequest={() => setDeleteTarget(faq)}
+                      onMove={(direction) => void handleMove(category, index, direction)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
+        </>
       )}
 
       <SuperAdminFaqEditorDialog

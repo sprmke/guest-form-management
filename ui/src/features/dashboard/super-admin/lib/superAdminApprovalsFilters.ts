@@ -155,3 +155,22 @@ export function approvalQueueItemKey(item: ApprovalQueueItem): string {
   }
   return `org:${item.organizationId}`;
 }
+
+function isApprovalPending(item: ApprovalQueueItem): boolean {
+  if (item.type === 'external_review') return item.moderationStatus === 'pending';
+  if (item.type === 'listing_verification') {
+    return item.baseStatus === 'pending' || item.recommendedStatus === 'pending';
+  }
+  return item.baseStatus === 'pending' || item.enhancedStatus === 'pending';
+}
+
+export function superAdminApprovalsSummaryFromList(approvals: ApprovalQueueItem[]) {
+  const pending = approvals.filter(isApprovalPending).length;
+  const orgVerifications = approvals.filter((item) => item.type === 'org_verification').length;
+  const listingVerifications = approvals.filter(
+    (item) => item.type === 'listing_verification'
+  ).length;
+  const reviews = approvals.filter((item) => item.type === 'external_review').length;
+
+  return { total: approvals.length, pending, orgVerifications, listingVerifications, reviews };
+}

@@ -1,11 +1,15 @@
 import { useMemo, useState } from 'react';
 
-import { ClipboardCheck, Filter, Loader2, Search } from 'lucide-react';
+import { ClipboardCheck, Filter, Search } from 'lucide-react';
 
 import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
+import { SuperAdminEmptyState } from '@/features/dashboard/super-admin/components/shared/SuperAdminEmptyState';
 import { SuperAdminListViewToggle } from '@/features/dashboard/super-admin/components/shared/SuperAdminListViewToggle';
+import { SuperAdminPageLoading } from '@/features/dashboard/super-admin/components/shared/SuperAdminPageLoading';
+import { SuperAdminResultsMeta } from '@/features/dashboard/super-admin/components/shared/SuperAdminResultsMeta';
 import { SuperAdminApprovalReviewDialog } from '@/features/dashboard/super-admin/components/super-admin-approvals/SuperAdminApprovalReviewDialog';
 import { SuperAdminApprovalsCardGrid } from '@/features/dashboard/super-admin/components/super-admin-approvals/SuperAdminApprovalsCardGrid';
+import { SuperAdminApprovalsSummaryCards } from '@/features/dashboard/super-admin/components/super-admin-approvals/SuperAdminApprovalsSummaryCards';
 import { SuperAdminApprovalsTable } from '@/features/dashboard/super-admin/components/super-admin-approvals/SuperAdminApprovalsTable';
 import { SuperAdminExternalReviewDialog } from '@/features/dashboard/super-admin/components/super-admin-approvals/SuperAdminExternalReviewDialog';
 import { SuperAdminListingVerificationDialog } from '@/features/dashboard/super-admin/components/super-admin-approvals/SuperAdminListingVerificationDialog';
@@ -40,12 +44,10 @@ import { useIsBelowLg } from '@/hooks/useMediaQuery';
 
 function ApprovalsEmptyState({ filtered }: { filtered: boolean }) {
   return (
-    <div className="surface-card flex flex-col items-center justify-center gap-3 px-4 py-14 text-center">
-      <ClipboardCheck className="text-muted-foreground size-10" aria-hidden />
-      <p className="text-foreground text-sm font-medium">
-        {filtered ? 'No approvals match your filters' : 'No approvals yet'}
-      </p>
-    </div>
+    <SuperAdminEmptyState
+      icon={ClipboardCheck}
+      title={filtered ? 'No approvals match your filters' : 'No approvals yet'}
+    />
   );
 }
 
@@ -91,14 +93,14 @@ export function SuperAdminApprovalsPage() {
   return (
     <div className="space-y-3 sm:space-y-4">
       {isLoading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-        </div>
+        <SuperAdminPageLoading metricCount={4} />
       ) : error ? (
         <p className="text-destructive text-sm">Could not load approvals.</p>
       ) : (
         <>
           <AdminPageHeader title="Approvals" subtitle="Review host verification requests." />
+
+          <SuperAdminApprovalsSummaryCards approvals={approvals} />
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 flex-1 flex-wrap gap-2">
@@ -179,6 +181,11 @@ export function SuperAdminApprovalsPage() {
           ) : (
             <ApprovalsEmptyState filtered={hasActiveFilters} />
           )}
+
+          <SuperAdminResultsMeta
+            visibleCount={filteredApprovals.length}
+            totalCount={approvals.length}
+          />
         </>
       )}
 

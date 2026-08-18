@@ -2,10 +2,10 @@ import { useMemo, useState } from 'react';
 
 import { useNavigate } from 'react-router-dom';
 
-import { Loader2, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 
-import { AdminMetricCardSkeleton } from '@/features/dashboard/bookings/components/AdminMetricCard';
 import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
+import { SuperAdminPageLoading } from '@/features/dashboard/super-admin/components/shared/SuperAdminPageLoading';
 import { AddDevelopmentDialog } from '@/features/dashboard/super-admin/components/super-admin-developments/AddDevelopmentDialog';
 import {
   SuperAdminDevelopmentCard,
@@ -54,17 +54,7 @@ export function SuperAdminDevelopmentsPage() {
   return (
     <div className="space-y-3 sm:space-y-4">
       {isLoading ? (
-        <div className="space-y-3 sm:space-y-4">
-          <div className="bg-muted/60 h-14 animate-pulse rounded-xl" />
-          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <AdminMetricCardSkeleton key={index} />
-            ))}
-          </div>
-          <div className="flex justify-center py-12">
-            <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-          </div>
-        </div>
+        <SuperAdminPageLoading metricCount={4} />
       ) : error ? (
         <p className="text-destructive text-sm">Could not load developments.</p>
       ) : (
