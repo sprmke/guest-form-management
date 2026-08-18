@@ -2,7 +2,7 @@
 title: 'Documentation index'
 status: active
 tags: [docs]
-updated: 2026-08-02
+updated: 2026-08-18
 ---
 
 # Documentation index
@@ -13,12 +13,12 @@ Navigation for **guest-form-management**.
 
 ## Workflow (active feature work)
 
-| Doc                                                | Purpose                                                    |
-| -------------------------------------------------- | ---------------------------------------------------------- |
-| [`workflow/README.md`](./workflow/README.md)       | Lifecycle: intake → planned → in-progress → done · wont-do |
-| [`workflow/planned/`](./workflow/planned/)         | Plans not yet shipped                                      |
-| [`workflow/in-progress/`](./workflow/in-progress/) | Active implementation                                      |
-| [`workflow/done/`](./workflow/done/)               | Verified shipped plans                                     |
+| Doc                                                | Purpose                                                                                                                                                                                                      |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [`workflow/README.md`](./workflow/README.md)       | Lifecycle: intake → planned → in-progress → done · wont-do                                                                                                                                                   |
+| [`workflow/planned/`](./workflow/planned/)         | Plans not yet shipped                                                                                                                                                                                        |
+| [`workflow/in-progress/`](./workflow/in-progress/) | Active implementation — includes **feature gating** ([`feature-gating-subscription-upgrade.md`](./workflow/in-progress/feature-gating-subscription-upgrade.md)), host pricing tiers, PayMongo (planned next) |
+| [`workflow/done/`](./workflow/done/)               | Verified shipped plans                                                                                                                                                                                       |
 
 ## Product backlog (GitHub Issues)
 
@@ -50,7 +50,7 @@ See epics #101–#119 in historical [`archive/todos/BACKLOG_DRAFT.md`](./archive
 | [`guides/routes/README.md`](./guides/routes/README.md)                                                       | Route → file index                                          |
 | [`guides/testing/contract-expiry-lifecycle-manual.md`](./guides/testing/contract-expiry-lifecycle-manual.md) | Sublessee / Auth Rep contract-expiry manual E2E             |
 | [`guides/testing/smart-search-intents-manual.md`](./guides/testing/smart-search-intents-manual.md)           | Nearby / concept / literal search manual E2E                |
-| [`guides/testing/custom-pages-module-manual.md`](./guides/testing/custom-pages-module-manual.md)             | Custom Pages module + stay-guide redesign manual E2E        |
+| [`guides/testing/custom-pages-module-manual.md`](./guides/testing/custom-pages-module-manual.md)             | Public Pages module + stay-guide redesign manual E2E        |
 | [`guides/testing/ai-dashboard-assistant-manual.md`](./guides/testing/ai-dashboard-assistant-manual.md)       | AI dashboard assistant manual E2E — read/actions/guardrails |
 
 ## Archive
