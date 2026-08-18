@@ -2,15 +2,15 @@
 title: 'Custom Pages module — manual test flows'
 status: active
 tags: [guides, testing, custom-pages, stay-guide]
-updated: 2026-08-15
+updated: 2026-08-18
 ---
 
 # Custom Pages module — step-by-step manual testing
 
-Manual E2E for the **Custom Pages** dashboard module and the **v1 `stay-guide-warm-arrival`** template redesign.
+Manual E2E for the **Public Pages** dashboard module and the **v1 `stay-guide-warm-arrival`** template redesign.
 
 **Implementation plan:** [`docs/workflow/done/custom-pages-module.md`](../../workflow/done/custom-pages-module.md)
-**Route guides:** [`custom-pages.md`](../routes/org/property/custom-pages.md), [`stay-guide.md`](../routes/stay-guide.md)
+**Route guides:** [`public-pages.md`](../routes/org/property/public-pages.md), [`stay-guide.md`](../routes/stay-guide.md)
 
 ---
 
@@ -19,8 +19,8 @@ Manual E2E for the **Custom Pages** dashboard module and the **v1 `stay-guide-wa
 | #   | Capability                    | Pass criteria                                                                                                                         |
 | --- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | `custom_pages` lazy-create    | First read for a property creates one `stay_guide` row (`template_key = 'stay-guide-warm-arrival'`); repeat reads do not duplicate it |
-| 2   | Custom Pages dashboard module | Nav entry between Templates and Settings; Stay Guide card renders; **Preview** opens the redesigned guest page                        |
-| 3   | Permission gating             | A property member without `templates:view` cannot load `/custom-pages` (redirects, no crash)                                          |
+| 2   | Public Pages dashboard module | Nav entry between Templates and Settings; five public-page cards render; each card opens the matching guest URL in a new tab          |
+| 3   | Permission gating             | A property member without `templates:view` cannot load `/public-pages` (redirects, no crash)                                          |
 | 4   | Hero + stay pass              | Full-bleed hero photo, `Fraunces` title, boarding-pass card with correct guest/dates, no text/card overlap at any width               |
 | 5   | Chapters + grouping           | "Getting In" / "Make Yourself at Home" (house rules + parking when applicable) / "Before You Go" render with real template content    |
 | 6   | Quick-nav                     | Sticky pill bar jump-scrolls to each chapter; active pill updates on scroll (scrollspy)                                               |
@@ -64,14 +64,14 @@ Confirm the table exists:
 
 | Role                                         | Need                                                                                                                                            |
 | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Admin (owner or org/property member)**     | Signed-in host session with `templates:view` on the test property — needed for the Custom Pages dashboard page and the guest-page preview route |
+| **Admin (owner or org/property member)**     | Signed-in host session with `templates:view` on the test property — needed for the Public Pages dashboard page and the guest-page preview route |
 | **Property member without `templates:view`** | For the permission-gating check (#3) — a custom role/invite with that permission unchecked                                                      |
 
 ### 1.3 UI surfaces
 
 | Surface                       | URL pattern                                                         |
 | ----------------------------- | ------------------------------------------------------------------- |
-| Custom Pages (dashboard)      | `/org/:orgSlug/property/:propertySlug/custom-pages`                 |
+| Public Pages (dashboard)      | `/org/:orgSlug/property/:propertySlug/public-pages`                 |
 | Property Templates (content)  | `/org/:orgSlug/property/:propertySlug/templates`                    |
 | Guest stay guide (preview)    | `/properties/:propertySlug/stay-guide?preview=1&property_id=<uuid>` |
 | Guest stay guide (real token) | `/properties/:propertySlug/stay-guide?token=<opaque>`               |
@@ -110,12 +110,13 @@ Expect `count = 1` regardless of how many times you called the endpoint.
 
 ## 3. Dashboard module
 
-1. Sign in as an admin, navigate to `/org/:orgSlug/property/:propertySlug/custom-pages`.
-2. **Pass:** page title is `"<Property> - Custom Pages"`; sidebar shows a **Custom Pages** entry (book-outline icon) between **Templates** and **Settings**, highlighted as active.
-3. **Pass:** one card, **Stay Guide** — icon, one line of copy ("Guests get their personalized link automatically at check-in."), a **Preview** button (external-link icon).
-4. Click **Preview** → opens `/properties/:slug/stay-guide?preview=1&property_id=...` in a new tab.
-5. **Permission check:** as a property member whose custom role has `templates:view` unchecked, navigate directly to `/custom-pages`. **Pass:** redirected to the first section that member _can_ view (or an access-denied screen) — no crash, no blank page.
-6. Resize to 375px. **Pass:** teal hero band + title, card stacks full-width, bottom tab bar shows **More** (Custom Pages is reachable from there since it isn't one of the pinned mobile tabs).
+1. Sign in as an admin, navigate to `/org/:orgSlug/property/:propertySlug/public-pages`.
+2. **Pass:** page title is `"<Property> - Public Pages"`; sidebar shows a **Public Pages** entry (globe icon) between **Templates** and **Settings**, highlighted as active.
+3. **Pass:** five cards — **Property**, **Calendar**, **Form**, **Messages**, **Stay Guide** — each with a visual preview. Tapping a card opens that guest URL in a new tab.
+4. Click **Stay Guide** → opens `/properties/:slug/stay-guide?preview=1&property_id=...` in a new tab.
+5. **Permission check:** as a property member whose custom role has `templates:view` unchecked, navigate directly to `/public-pages`. **Pass:** redirected to the first section that member _can_ view (or an access-denied screen) — no crash, no blank page.
+6. Resize to 375px. **Pass:** teal hero band + title, cards stack full-width, bottom tab bar shows **More** (Public Pages is reachable from there since it isn't one of the pinned mobile tabs).
+7. Open `/custom-pages` on the same property. **Pass:** redirects to `/public-pages`.
 
 ---
 

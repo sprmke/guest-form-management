@@ -82,6 +82,8 @@ This flow has **never been run through an actual browser** as of 2026-08-15 — 
 4. Calendar → search or pick a stay grouped by check-in month (guest, dates, status). On a booking detail, **This page** is listed first. Expect a chip with guest name and dates. Send with the chip still pinned and empty text + a file — the turn should go through.
 5. Ask the assistant to check the receipt against the pinned booking. Expect it to use that booking (and `run_receipt_validation` when you ask to validate).
 6. Reload the conversation from History — user bubble should still list file names (not the raw bytes).
+7. Send a question — expect a left-aligned **card bubble** with sparkles and bouncing dots (not a bare “Thinking…” line). Opening History must not show that bubble.
+8. Type several lines in the composer (Shift+Enter) — text stays **left-aligned and full-width** above attach / pin / send, grows up to **10 lines**, then scrolls. Enter still sends.
 
 ---
 
@@ -94,6 +96,7 @@ This flow has **never been run through an actual browser** as of 2026-08-15 — 
 5. Ask: **"What can I do next with booking `<id>`?"** — expect the same set of transitions the booking's own Workflow panel shows.
 6. Pin a **Ready for Check-out** booking and ask **"What's pending, and how much is the SD refund?"** — expect a human status (**Ready for Check-out**, never `READY_FOR_CHECKOUT`), a real pending-task sentence (not an empty pill), and the peso refund amount.
 7. Ask **"What are the booked dates for this month?"** on a property that has stays — expect a table with guest names and check-in/out dates, not a header-only empty table. If the month is empty, expect a short "no booked stays" line instead of blank rows.
+8. Pin a booking that has an **Approved GAF** on the Files tab and ask **"Provide the approved GAF for this booking"** — expect a file card (PDF preview), not only a booking summary. If that booking has no approved GAF, expect a short "not on file" line (the GAF request PDF may still show if it exists).
 
 ---
 

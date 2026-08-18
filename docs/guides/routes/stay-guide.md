@@ -15,7 +15,7 @@ Route: `/properties/:propertySlug/stay-guide?token=<opaque>`
 
 ## Purpose
 
-Mobile-first **"digital pamphlet"** page for booked guests: a warm-neutral, chaptered brochure with house rules, check-in/out instructions, and parking reminders from **Property Templates** (standard keys), interleaved with property photos. Linked from the **ready-for-checkin** email (`{{stay_guide_cta_section}}`). This is the **v1 template** of the **[[custom-pages|Custom Pages]]** module — see that doc for the `custom_pages` table and `template_key` plumbing.
+Mobile-first **"digital pamphlet"** page for booked guests: a warm-neutral, chaptered brochure with house rules, check-in/out instructions, and parking reminders from **Property Templates** (standard keys), interleaved with property photos. Linked from the **ready-for-checkin** email (`{{stay_guide_cta_section}}`). This is the **v1 template** of the **[[public-pages|Public Pages]]** module — see that doc for the `custom_pages` table and `template_key` plumbing.
 
 ---
 
@@ -117,7 +117,7 @@ Warm-neutral "digital pamphlet" redesign — page-scoped palette (Paper/Ink/Sand
 | Preview edge     | `supabase/functions/preview-guest-stay-guide/index.ts`                                                                                                                                              |
 | Issue link API   | `supabase/functions/issue-guest-stay-guide-token/index.ts`                                                                                                                                          |
 | Token + payload  | `supabase/functions/_shared/guestStayGuide.ts` (`loadGuestStayGuidePreview`, mock booking; includes `templateKey` via `_shared/customPages.ts`)                                                     |
-| Admin UI         | `WorkflowPanel.tsx` (Stay guide row); **`TemplatesPage.tsx`** and **[[custom-pages\|Custom Pages]]** (Preview stay guide)                                                                           |
+| Admin UI         | `WorkflowPanel.tsx` (Stay guide row); **`TemplatesPage.tsx`** and **[[public-pages\|Public Pages]]** (open stay guide preview)                                                                      |
 | Orchestrator     | `workflowOrchestrator.ts` — token on `READY_FOR_CHECKIN`                                                                                                                                            |
 | Email CTA        | `propertyTemplateEmailSections.ts#buildStayGuideCtaHtml`, `emailService.ts#sendReadyForCheckin`                                                                                                     |
 | Migration        | `supabase/migrations/20260916120000_guest_stay_guide_token.sql`, `supabase/migrations/20261018130000_custom_pages.sql`                                                                              |

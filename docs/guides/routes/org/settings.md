@@ -53,9 +53,9 @@ Organization settings control your brand identity and public presence: logo, nam
 - Q: Why does my logo look cropped in settings?
   A: The logo preview is a square, same as guest forms and your public host page. Upload a square image so nothing important sits at the edges.
 - Q: What can I ask the AI assistant?
-  A: Open the sparkles button on any dashboard page. A new chat has a Questions / Actions switcher with five starters on each side. Ask about a pinned booking’s next steps, security deposit refund, or this month’s booked dates — answers should name the guest and dates, not show empty tables or raw status codes. Actions can move a booking forward, re-check receipts, or cancel a booking, though risky changes still ask you to confirm first.
+  A: Open the sparkles button on any dashboard page. A new chat has a Questions / Actions switcher with five starters on each side. Ask about a pinned booking’s next steps, security deposit refund, or this month’s booked dates — answers should name the guest and dates, not show empty tables or raw status codes. Ask to see an approved GAF, receipt, or ID and the chat should show the file (same files as the booking’s Files tab). Actions can move a booking forward, re-check receipts, or cancel a booking, though risky changes still ask you to confirm first.
 - Q: Can I attach a receipt or GAF in the assistant?
-  A: Yes. Use the paperclip next to the message box for a photo or PDF (up to three files, 4 MB each). Use the calendar button to pin a stay so the assistant knows which booking you mean.
+  A: Yes. Use the paperclip next to the message box for a photo or PDF (up to three files, 4 MB each). Use the calendar button to pin a stay so the assistant knows which booking you mean. The message box grows as you type (up to about ten lines).
 - Q: Can I delete an old assistant chat?
   A: Yes. Open History (clock), then the trash on that conversation. That chat is gone for good.
 
@@ -124,7 +124,7 @@ Save path: section-local **Save assistant settings** → `PATCH dashboard-assist
 
 When **Assistant enabled** is on, the section also shows read-only usage for this month: messages, write actions, and **credits consumed** (from `ai_dashboard_assistant_usage_daily.credits_consumed`, reconciled with platform AI metering). Opt-in via `GET dashboard-assistant-settings?includeUsage=true`.
 
-**Chat panel** (not this page): floating sparkles button → slide-over (`sm:max-w-xl`). Empty chat centers a **Questions / Actions** mode switch (5 randomized prompt cards from `assistantSuggestions.ts`, 20+20 pool). Tap sends the prompt. Composer is one row: paperclip (JPEG/PNG/WebP/PDF, max 3 × 4 MB) + booking pin (month-grouped picker) + input + send. History (clock) lists your chats grouped by day, with search, wrapping titles, and delete (confirm).
+**Chat panel** (not this page): floating sparkles button → slide-over (`sm:max-w-xl`). Empty chat centers a **Questions / Actions** mode switch (5 randomized prompt cards from `assistantSuggestions.ts`, 20+20 pool). Tap sends the prompt. While the assistant is working, a left-aligned message bubble with sparkles and bouncing dots appears in the thread (not a floating “Thinking…” line). Composer text is full-width and left-aligned; it grows up to 10 lines, then scrolls. Attach, booking pin, and send sit on a row under the text. Paperclip (JPEG/PNG/WebP/PDF, max 3 × 4 MB) + booking pin (month-grouped picker) + send. Asking for a booking file (approved GAF, receipt, ID) shows a preview card from the Files tab, not only a status summary. History (clock) lists your chats grouped by day, with search, wrapping titles, and delete (confirm).
 
 ### Danger zone — delete organization
 
