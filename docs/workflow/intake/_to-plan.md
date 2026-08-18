@@ -2,7 +2,7 @@
 title: 'Claude To Plan'
 status: archived
 tags: [planning]
-updated: 2026-08-18
+updated: 2026-08-19
 ---
 
 **Status legend:** ❌ cancelled / won't do · ✅ done · 📋 planned (plan doc written) · 🚧 in progress · 🔵 pending / open
@@ -116,7 +116,7 @@ Same with marketing design templates goal.
 
 ===
 
-✅ Marketing 4: Use AI to generate marketing calendar, design and video templates
+🚧 Marketing 4: Use AI to generate marketing calendar, design and video templates
 
 Now that we made some improvements on marketing calendar, canvas and video editors, I want to really extend by having AI feature that will generate design and video templates from scratch that looks very beautiful, elegant, instagrammable and has wow factor to hosts.
 
@@ -132,9 +132,9 @@ The end goal is that with the help of AI, we should be able to generate calendar
 
 ✅ Refine footer & create public pages
 
-Plan only — not implemented. Footer links point at `/about`, `/contact`, `/support`, `/cookies` but routes/pages do not exist yet.
+Footer trimmed; About/Contact/Support/Cookies routes live; Terms/Privacy/Cookie Policy grounded in product copy.
 
-→ **Plan:** [`../planned/refine-footer-public-pages.md`](../planned/refine-footer-public-pages.md)
+→ **Done:** [`../done/refine-footer-public-pages.md`](../done/refine-footer-public-pages.md)
 
 ===
 
@@ -188,7 +188,7 @@ We need to plan the architecture, flow, process for both module to build a produ
 
 Also, this should be tied app with our pricing and subscription module so that we can limit the free usages of this feature to a certain amount and charge for additional usage.
 
-→ **Plan:** [`../planned/ai-dashboard-assistant.md`](../planned/ai-dashboard-assistant.md)
+→ **Done:** [`../done/ai-dashboard-assistant.md`](../done/ai-dashboard-assistant.md) · v2 full coverage: [`../done/ai-dashboard-assistant-v2-full-coverage.md`](../done/ai-dashboard-assistant-v2-full-coverage.md)
 
 ===
 
@@ -238,7 +238,7 @@ Maybe analyze all the activities, events and actions that we have on Notificatio
 
 Analyze how popular apps how handle this and make sure we implement the way possible and make sure it will not result to any kind of performance or heavy process issues.
 
-→ **Plan:** [`../planned/in-app-notifications.md`](../planned/in-app-notifications.md)
+→ **Done:** [`../done/in-app-notifications.md`](../done/in-app-notifications.md)
 
 ===
 
@@ -321,7 +321,7 @@ Phase 4: Manual & Physical on site tasks:
 - Picture different type of parking (tower, bay). Edit and add parking slot number dynamically
 - Measure dimension and height clearance
 
-→ **Plan (Phase 0 & Phase 1):** [`../planned/parking-e2e-phase1-overview.md`](../planned/parking-e2e-phase1-overview.md) (+ companions: registration-dimensions, status-workflow, host-broadcast-notifications, guest-request-realtime-status, bookings-page-updates). Phase 2a/2b/3/4 stubs: [`../planned/parking-e2e-later-phases.md`](../planned/parking-e2e-later-phases.md).
+→ **In progress (Phase 0 & Phase 1):** [`../in-progress/parking-e2e-phase1-overview.md`](../in-progress/parking-e2e-phase1-overview.md) (+ companions in `in-progress/`: [`registration-dimensions`](../in-progress/parking-e2e-phase0-registration-dimensions.md), [`status-workflow`](../in-progress/parking-e2e-phase1-status-workflow.md), [`host-broadcast-notifications`](../in-progress/parking-e2e-phase1-host-broadcast-notifications.md), [`guest-request-realtime-status`](../in-progress/parking-e2e-phase1-guest-request-realtime-status.md), [`bookings-page-updates`](../in-progress/parking-e2e-phase1-bookings-page-updates.md)). Phase 2a/2b/3/4 stubs: [`../planned/parking-e2e-later-phases.md`](../planned/parking-e2e-later-phases.md).
 
 ===
 
@@ -381,7 +381,7 @@ Design: [`ci-cd-dev-prod-design.md`](../in-progress/ci-cd-environments/ci-cd-dev
 
 Now that we have the AI assistant in the dashboard, build a Help & Support page for hosts at both org and property level: Documentation (from docs/guides Host-facing knowledge, filtered to never expose sensitive/internal info), AI Chat (opens the existing dashboard assistant sidebar), Ticket/App Support (dynamic per-category fields — bug/inquiry/suggestion/business — replied to from a new super-admin page), and FAQs (20-50 items generated from the docs). Every docs/guides change should stay synced to whatever powers this automatically.
 
-→ **Plan:** [`../planned/help-support-center.md`](../planned/help-support-center.md)
+→ **In progress:** [`../in-progress/help-support-center.md`](../in-progress/help-support-center.md)
 
 ===
 
@@ -405,11 +405,17 @@ I want this to look very interactive, animated, looks professional and looks goo
 
 ===
 
-🔵 Free trial, subscription and payments to use app
+🚧 Free trial, subscription and payments to use app
+
+Related (not started here): [`../done/paymongo-subscription-billing.md`](../done/paymongo-subscription-billing.md) · done: [`host-plans-pricing-page`](../done/host-plans-pricing-page.md), in progress: [`feature-gating-subscription-upgrade`](../in-progress/feature-gating-subscription-upgrade.md).
 
 ===
 
-🔵 Review, refine and improve e2e of booking flow/page
+🚧 Review, refine and improve e2e of booking flow/page
+
+Overlaps booking detail/workflow refinement — tracked under booking multi-tenancy backlog.
+
+→ **In progress:** [`../in-progress/booking-workflow-multi-tenancy.md`](../in-progress/booking-workflow-multi-tenancy.md)
 
 ===
 
@@ -490,7 +496,7 @@ After we refine the roles & permissions that we have on both org and property le
 
 ===
 
-🔵 Able to send documents through chat
+📋 Able to send documents through chat
 
 In our Inbox > Chat section. it's also helpful for our hosts if they can send the available links, files, documents, etc that we have per property & booking.
 Best examples of this are:
@@ -500,13 +506,15 @@ Links: Stay Guide, Property, Calendar, Messages
 
 Let's put a new icon for these beside the Quick reply & suggest sectionWhy
 
+→ **Planned:** [`../planned/inbox-share-links-and-files.md`](../planned/inbox-share-links-and-files.md)
+
 ===
 
 🔵 Scheduled marketing posts/story
 
 ===
 
-🔵 Plans & Pricing
+🚧 Plans & Pricing
 
 Now, I think we are ready to implement the plans & pricing for our application.
 Now, we have different separate plans for this which will be work on next phases.
@@ -518,7 +526,7 @@ For the pricing tiers, check for this plan:
 docs/workflow/in-progress/ai-usage-metering-credits-foundation.md
 
 For payment integration with Pay mongo, check for this plan:
-docs/workflow/planned/paymongo-subscription-billing.md
+docs/workflow/done/paymongo-subscription-billing.md
 
 For the AI credits usage, check for this plan:
 docs/workflow/in-progress/ai-usage-metering-credits-foundation.md
@@ -526,9 +534,11 @@ docs/workflow/in-progress/ai-usage-metering-credits-foundation.md
 Again, the goal of this plan is scoped only to build the Pricing page.
 Do not work on these referenced plan. We will work on it one by one.
 
+→ **Done:** [`../done/host-plans-pricing-page.md`](../done/host-plans-pricing-page.md) (host Plans page + PayMongo checkout) · tiers foundation: [`../in-progress/host-plans-and-pricing-tiers.md`](../in-progress/host-plans-and-pricing-tiers.md) · PayMongo: [`../done/paymongo-subscription-billing.md`](../done/paymongo-subscription-billing.md) (shipped) · AI credits: [`../in-progress/ai-usage-metering-credits-foundation.md`](../in-progress/ai-usage-metering-credits-foundation.md)
+
 ===
 
-📋 Host plans and pricing tiers for property listings
+🚧 Host plans and pricing tiers for property listings
 Based on all the features that we have, we should analyze all thea features & functionalities that we have and create different pricing tiers.
 Also, we need these pricing to be easy to understand for hosts and not looks very complicated.
 The idea that I have in mind is we will have 4 tiers of pricing for our hosts.
@@ -586,9 +596,11 @@ Again, these are just the initial pricing. This should not be final and we need 
 
 There's also another pricing model that user can choose of which is commission based on the successful/completed booking. But we can plan this further but make sure that our plan is also considered this and can easily support this pricing model.
 
+→ **In progress:** [`../in-progress/host-plans-and-pricing-tiers.md`](../in-progress/host-plans-and-pricing-tiers.md) (foundation shipped 2026-08-18)
+
 ===
 
-📋 Integrate paymongo for payment subscription to our app
+✅ Integrate paymongo for payment subscription to our app
 
 Now, want I you to plan is how we can integrate Paymongo as payment platform when hosts subscribe to our application.
 For now, let's also support Paymongo as payment to subscribe to our app and not offer hosts to support Paymongo to accept payment using it. That is needs to be plan and finalized since this Paymongo fees is little expensive as well.
@@ -599,9 +611,11 @@ For the actual amount, this maybe vary and to follow up, but I want you that our
 Also, please give me detailed step how to properly set Paymongo, how to setup sandbox or test account and real account.
 Please create a detailed plan for this and put it on our planned directory
 
+→ **Done:** [`../done/paymongo-subscription-billing.md`](../done/paymongo-subscription-billing.md) (checkout, webhook, cron, suspension gate — env setup required for live)
+
 ===
 
-🔵 Allow features based on subscription plan & show payment subscription modal
+🚧 Allow features based on subscription plan & show payment subscription modal
 
 Now that we build the pricing page, integrate payment subscription flow, etc.
 The next part that we need to do is to check all each pages and features that we have on our app, and implement the validation of access based on subscription plan. Then, we should also display our subscription or payment modal if a feature they are trying to access is not within their plan.
@@ -613,6 +627,8 @@ Best example of this is that on marketing module, I would like user to access an
 The goal of this plan is to analyze the paid features that we have, check when's and what's the best time or moment we will display these subscription modal.
 
 Again, please generate a detailed plan and separate docs for this so that we have mapping the flow and when we are triggering the payment gate modal.
+
+→ **In progress:** [`../in-progress/feature-gating-subscription-upgrade.md`](../in-progress/feature-gating-subscription-upgrade.md)
 
 ===
 
@@ -630,3 +646,30 @@ One reason we need to finalize this is that on next phase, we will offer user to
 Make a research and analyze what's the best practices to manage AI tokens properly. What's the standard process or solid companies handles AI tokens for free usages and for pay more to get more tokens.
 
 → **In progress:** [`../in-progress/ai-usage-metering-credits-foundation.md`](../in-progress/ai-usage-metering-credits-foundation.md) — Phase 1 (attribution + credit shadow-ledger) shipped; Phases 2–4 open
+
+===
+
+📋 Provide easy way for host to select context for each module we have for Ai dashboard assistant
+
+This is similar to the booking action button where whe nwe click it, it give us the list of list of bookings which can be added a context to our chat.
+Now, the goal is to apply the same goal for all the modules that we have on our dashboard. Starting from bookings, then:
+
+- Booking workflow: Able to understand each status context, all possible actions, next transition tasks, items and remaining/pending tasks
+- Able to add finance transactions, maintenance reminders
+- Calendar pricing per date, base rates, etc
+- Available team members, add new team member
+- Marketing: List down available templates, add new template for 3 categories (calendar, design, video)
+- Chat: Able to select chat conversation from our chat, facebook, instagram
+- Notifications: List of all notifications, and able to configure each telegram notification modules
+- Templates: List down available templates, edit & improve it and add custom pages
+- Public pages: List down and get access to public pages
+- Settings: Able to get current setting for each category, able to edit and configure each field and settings that we have
+- Help & Support: Access available guide docs, faqs, access and create new ticket
+
+Basically, the goal is provide all available context and possible actions that host can do for each pages and modules that we have so that user can manage their listing everything without living the chat app.
+We should all have access and provide the best suitable response format like tables, images, link, flow, diagram, etc. The goal is to always provide the best and helpful suggestions and next actions for every response.
+We should also be smart and able to provide a seamless connection for multi flow or multi steps actions or flow. Example of this is our booking flow when transitioning status from start to complete.
+
+With these so much info, we need to generate the best UI/UX for this within the chat, if a dropdown will not fit or best UI to display and provide long information or multi flow, we can also display the options or actions or flow or diagram in the center and on top/overlay on the conversation content. Make a research and analyze how popular apps handle such scenario and generate the best UI/UX for this please.
+
+→ **Planned:** [`../planned/ai-assistant-universal-context-pickers.md`](../planned/ai-assistant-universal-context-pickers.md)

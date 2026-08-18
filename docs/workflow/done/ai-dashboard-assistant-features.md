@@ -18,7 +18,7 @@ A chat assistant embedded in the admin dashboard. Hosts and property managers ca
 ### 1. Ask questions about live data (read-only, always allowed)
 
 - **Search the knowledge base** — "how does PENDING_DOCUMENTS work?", "what does Ready for Check-in mean?" — answered from the 219 Q&A entries synced from the 67 operator route guides, not the model's memory.
-- **Look up a single booking** — status, guest name, dates, property, balance due.
+- **Look up a single booking** — status, guest name, dates, property, balance due, and files already on the booking (approved GAF, receipts, IDs) as in-chat previews.
 - **List bookings** — filtered by property, status, or date range.
 - **See what a booking can do next** — the exact set of status transitions available right now, same source of truth the workflow panel uses.
 - **Dashboard stats** — check-ins/check-outs/occupancy for a property or the whole org.

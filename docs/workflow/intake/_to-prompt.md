@@ -2,7 +2,7 @@
 title: 'Tasks To Prompt'
 status: archived
 tags: [planning]
-updated: 2026-08-17
+updated: 2026-08-19
 ---
 
 **Status legend:** ❌ cancelled / won't do · ✅ done · 📋 planned (plan doc written) · 🚧 in progress · 🔵 pending / open
@@ -174,11 +174,15 @@ So we will have dropdowns for actions beside the input chat
 
 ===
 
-🚧 Update brand color picker to provide pastel and good looking for different colors and still have an option to choose custom color from color picker
+✅ Update brand color picker to provide pastel and good looking for different colors and still have an option to choose custom color from color picker
+
+→ **Done:** pastel preset swatches + rainbow custom picker in `ui/src/features/dashboard/org/components/settings/BrandColorField.tsx`
 
 ===
 
-🚧 Display animated popup party when hosts open calendar and we have 20+ bookings this month
+✅ Display animated popup party when hosts open calendar and we have 20+ bookings this month
+
+→ **Done:** `CalendarBookingCelebration` on Bookings calendar + property Calendar (`BUSY_MONTH_CELEBRATION_THRESHOLD = 20`); see [`../done/property-calendar-page.md`](../done/property-calendar-page.md)
 
 ===
 
@@ -192,7 +196,7 @@ The goal in the end is for us to deploy and see fully working application with o
 
 Also, another important setup I'd like to have is to point or use supabase deployed dev in our local so that we don't need to run docker from our local to test and work locally. Meaning, when we have any supabase related changes locally, and test our app, I still want to see our changes and fully working on it with our local frontend. Meaning, when we are working locally, we can still work on it without running docker and without deploying our backend/supabase related changes to dev. Then, once good, we can deploy our changes to dev. I'm not sure how is this possible but this is how we do it on other projects and I'd like to implement in our app
 
-→ **Runbook shipped; operator bootstrap pending:** [`../in-progress/ci-cd-environments/dev-staging-environment.md`](../in-progress/ci-cd-environments/dev-staging-environment.md)
+→ **Runbook shipped; operator bootstrap pending:** [`../in-progress/ci-cd-environments/dev-staging-environment.md`](../in-progress/ci-cd-environments/dev-staging-environment.md) · index [`../in-progress/ci-cd-environments/README.md`](../in-progress/ci-cd-environments/README.md)
 
 ===
 
