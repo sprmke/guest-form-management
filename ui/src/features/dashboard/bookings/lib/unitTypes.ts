@@ -3,6 +3,8 @@
 export type DevelopmentUnitType = {
   id: string;
   label: string;
+  bedrooms: number;
+  bathrooms: number;
   maxAdults: number;
   maxChildren: number;
 };
@@ -10,17 +12,30 @@ export type DevelopmentUnitType = {
 export const AZURE_NORTH_RESIDENCE_NAME = 'Azure North Residences';
 
 export const DEFAULT_AZURE_NORTH_UNIT_TYPES: DevelopmentUnitType[] = [
-  { id: 'studio', label: 'Studio', maxAdults: 4, maxChildren: 1 },
-  { id: '1br', label: '1 bedroom', maxAdults: 6, maxChildren: 2 },
-  { id: '2br', label: '2 bedroom', maxAdults: 8, maxChildren: 3 },
+  { id: 'studio', label: 'Studio', bedrooms: 1, bathrooms: 1, maxAdults: 4, maxChildren: 1 },
+  { id: '1br', label: '1 bedroom', bedrooms: 1, bathrooms: 1, maxAdults: 6, maxChildren: 2 },
+  { id: '2br', label: '2 bedroom', bedrooms: 2, bathrooms: 1, maxAdults: 8, maxChildren: 3 },
 ];
 
 export const GENERIC_UNIT_TYPES: DevelopmentUnitType[] = [
-  { id: 'standard', label: 'Standard', maxAdults: 4, maxChildren: 2 },
+  {
+    id: 'standard',
+    label: 'Standard',
+    bedrooms: 1,
+    bathrooms: 1,
+    maxAdults: 4,
+    maxChildren: 2,
+  },
 ];
 
 function trimOrEmpty(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function readNonNegativeNumber(value: unknown, fallback: number): number {
+  const n = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(n) || n < 0) return fallback;
+  return n;
 }
 
 function readPositiveInt(value: unknown, fallback: number): number {
@@ -53,11 +68,13 @@ export function parseUnitTypes(raw: unknown): DevelopmentUnitType[] | null {
     if (seenIds.has(id)) return null;
     seenIds.add(id);
 
+    const bedrooms = readNonNegativeNumber(record.bedrooms, 1);
+    const bathrooms = readNonNegativeNumber(record.bathrooms, 1);
     const maxAdults = readPositiveInt(record.maxAdults, 0);
     const maxChildren = readPositiveInt(record.maxChildren, 0);
     if (maxAdults < 1) return null;
 
-    parsed.push({ id, label, maxAdults, maxChildren });
+    parsed.push({ id, label, bedrooms, bathrooms, maxAdults, maxChildren });
   }
 
   return parsed.length > 0 ? parsed : null;
@@ -94,6 +111,8 @@ export function validateUnitTypes(unitTypes: DevelopmentUnitType[]): string | nu
   for (const entry of unitTypes) {
     if (!entry.id.trim()) return 'Each unit type needs an id';
     if (!entry.label.trim()) return 'Each unit type needs a label';
+    if (entry.bedrooms < 0) return `${entry.label}: bedrooms cannot be negative`;
+    if (entry.bathrooms < 0) return `${entry.label}: bathrooms cannot be negative`;
     if (entry.maxAdults < 1) return `${entry.label}: max adults must be at least 1`;
     if (entry.maxChildren < 0) return `${entry.label}: max children cannot be negative`;
   }
@@ -124,6 +143,8 @@ export function addUnitType(list: DevelopmentUnitType[], label: string): Develop
     {
       id,
       label: label.trim(),
+      bedrooms: 1,
+      bathrooms: 1,
       maxAdults: 4,
       maxChildren: 1,
     },
@@ -133,11 +154,24 @@ export function addUnitType(list: DevelopmentUnitType[], label: string): Develop
 export function updateUnitType(
   list: DevelopmentUnitType[],
   id: string,
-  patch: Partial<Pick<DevelopmentUnitType, 'label' | 'maxAdults' | 'maxChildren'>>
+  patch: Partial<
+    Pick<DevelopmentUnitType, 'label' | 'bedrooms' | 'bathrooms' | 'maxAdults' | 'maxChildren'>
+  >
 ): DevelopmentUnitType[] {
   return list.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry));
 }
 
 export function removeUnitType(list: DevelopmentUnitType[], id: string): DevelopmentUnitType[] {
   return list.filter((entry) => entry.id !== id);
+}
+
+export function applyUnitTypeDefaultsToProfile(
+  unitType: DevelopmentUnitType
+): Pick<DevelopmentUnitType, 'bedrooms' | 'bathrooms' | 'maxAdults' | 'maxChildren'> {
+  return {
+    bedrooms: unitType.bedrooms,
+    bathrooms: unitType.bathrooms,
+    maxAdults: unitType.maxAdults,
+    maxChildren: unitType.maxChildren,
+  };
 }
