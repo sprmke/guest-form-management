@@ -12,9 +12,11 @@ export function geminiLiveVoiceLabel(voiceId: string): string {
   return GEMINI_LIVE_VOICE_LABELS[voiceId] ?? voiceId;
 }
 
-/** Fixed sample line — must stay in sync with edge `VOICE_PREVIEW_LINE`. */
-export const VOICE_PREVIEW_LINE =
-  "Hi, I'm the Kame Homes receptionist. How can I help with your stay today?";
+/** Must stay in sync with edge `voicePreviewLine()`. */
+export function voicePreviewLine(propertyName?: string | null): string {
+  const name = propertyName?.trim() || 'this property';
+  return `Hi, I'm the ${name} receptionist. How can I help with your stay today?`;
+}
 
 export type VoicePreviewAudio = {
   mimeType: string;
