@@ -2,7 +2,7 @@
 title: 'Marketing — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-17
+updated: 2026-08-18
 ---
 
 # Marketing — operator guide
@@ -76,6 +76,8 @@ Shared categories: **Promos** (₱500 off, ₱300 off, 10% off, free breakfast, 
 | Video    | **Download MP4** | **Publish** (Instagram; Facebook video not supported yet) |
 
 **Publish** renders the asset, then opens the publish dialog: pick channel (Facebook / Instagram), account, post vs story, optional AI caption, confirm.
+
+**Plan gating (Free tier):** Create, edit, and autosave stay unrestricted. **Live previews** show a non-removable **Preview** watermark overlay on Calendar, Design, and Video builders. **Publish** is blocked client-side (upgrade modal) and server-side (`publish-to-meta` → **`requireMarketingPublishAllowed`**). Paid tiers with **`marketingStudio: true`** publish normally. AI template/caption generation uses the existing AI credit quota; its **Upgrade** toast action opens the same **`SubscriptionUpgradeModal`** (→ **Plans** page).
 
 **Prerequisite:** Meta Page + Instagram must be connected under the property **Guest Inbox** (`/org/:orgSlug/property/:propertySlug/inbox` → Manage → Channels). If none are connected, the dialog links to Inbox.
 

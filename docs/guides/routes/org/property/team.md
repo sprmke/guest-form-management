@@ -49,6 +49,8 @@ Team is where you invite people to help run this property and control what they 
 - Q: Can organization owners see my property team list?
   A: Yes. Organization owners and admins show up in the member list automatically with full access, even though they aren't stored as separate property members.
 
+**Plan gating:** Viewing the team is always free. **Send Invitation** is gated by `teamManagement.enabled` and `teamManagement.maxMembers` (active members + pending invites). Free tier opens **`SubscriptionUpgradeModal`** instead of calling `property-team-invitations`; server enforces the same count via **`requireTeamInviteAllowed`**. Client uses **`useFeatureGate` → `canUse`** (fail-closed while entitlements load).
+
 ---
 
 ## RBAC contract (finalized)

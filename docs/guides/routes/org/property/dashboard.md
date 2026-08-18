@@ -2,7 +2,7 @@
 title: 'Property Dashboard — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-17
+updated: 2026-08-18
 ---
 
 # Property Dashboard — operator guide
@@ -21,14 +21,14 @@ Route: `/org/:orgSlug/property/:propertySlug`
 | Loading skeleton      | —        | —          | Documented | Mirrors KPI + 2×3 board (compact mini calendar cells)    |
 | Needs attention card  | —        | —          | Documented | Board cell; swaps to Recent bookings when clear          |
 | Maintenance reminders | —        | —          | Documented | Board cell; pending/done + next reminders                |
-| Guest pages           | —        | —          | Documented | Public guest URLs (sheet on mobile; menu on desktop)     |
+| View Property         | —        | —          | Documented | Opens the public listing in a new tab                    |
 | Mobile shell          | —        | —          | Documented | Sticky collapsing brand hero + overlap (`max-lg`)        |
 
 ---
 
 ## Overview
 
-Single-property home page: date-range filter, **Guest pages** menu, KPI stat cards, then a **six-card board** (equal half-width columns on `lg+`) — all scoped to one property and the selected period.
+Single-property home page: date-range filter, **View Property** (public listing in a new tab), KPI stat cards, then a **six-card board** (equal half-width columns on `lg+`) — all scoped to one property and the selected period.
 
 Layout order:
 
@@ -40,11 +40,11 @@ Layout order:
 
 ### Mobile layout (`max-lg`)
 
-- **Brand hero** — teal band with tenant/property switcher (light-on-primary) and page title. Subtitle is `lg+` only. On scroll the hero **sticks**; title compresses/fades and the arc flattens while switcher + guest-pages action stay visible (`useMobileHeroCollapseProgress`). In-app alerts are **not** in the hero — use the **Notifications** bottom tab (or the floating bell on `lg+`).
+- **Brand hero** — teal band with tenant/property switcher (light-on-primary) and page title. Subtitle is `lg+` only. On scroll the hero **sticks**; title compresses/fades and the arc flattens while switcher + **View Property** stay visible (`useMobileHeroCollapseProgress`). In-app alerts are **not** in the hero — use the **Notifications** bottom tab (or the floating bell on `lg+`).
 - **Bottom tabs** — Dashboard, Bookings, Finance, Assistant (when enabled), Notifications, More.
-- **Overlap toolbar** — first floating white card pulled up over the hero lower edge: date range + **Guest pages**.
+- **Overlap toolbar** — first floating white card pulled up over the hero lower edge: date range. **View Property** is the hero trailing action (icon-only).
 - **Canvas** — denser KPI cards first (no icon tiles / “vs last period” text), then the six board cards stack full-width in the same reading order. Chart/calendar headers use a compact icon + centered title (`AdminSurfaceCardHeader`; descriptions `lg+` only). Section/card gaps stay comfortable (`gap-2.5`–`3.5`, `p-3`+), not cramped.
-- **Desktop (`lg+`)** — standard `AdminPageHeader` with inline date filter and Guest pages actions; board is `lg:grid-cols-2`.
+- **Desktop (`lg+`)** — standard `AdminPageHeader` with inline date filter and **View Property**; board is `lg:grid-cols-2`.
 
 ---
 
@@ -63,19 +63,11 @@ URL params: **`?from=YYYY-MM-DD&to=YYYY-MM-DD`** — written back on any range c
 
 ---
 
-## Guest pages
+## View Property
 
-Header / hero action — opens property-scoped public guest URLs in a new tab. On **`max-lg`**, the list is a bottom sheet (`MobileChoiceSheet`); on **`lg+`**, a compact dropdown menu.
+Header / hero action — opens the public listing (`/properties/:propertySlug`) in a new tab. On **`max-lg`**, an icon-only control beside the tenant switcher; on **`lg+`**, a labelled **View Property** button.
 
-| Item       | Path                                                                                                         |
-| ---------- | ------------------------------------------------------------------------------------------------------------ |
-| Property   | `/properties/:propertySlug`                                                                                  |
-| Calendar   | `…/calendar`                                                                                                 |
-| Form       | `…/form`                                                                                                     |
-| Messages   | `…/messages?checkInDate=<today>&checkOutDate=<tomorrow>` (Manila; preview dates so the full chat page loads) |
-| Stay Guide | `…/stay-guide?preview=1&property_id=` (admin preview)                                                        |
-
-Mobile hero: icon-only trigger beside the tenant switcher. Desktop: labelled **Guest pages** with chevron.
+Calendar, form, messages, and stay guide live on **[[public-pages|Public Pages]]**, not in this header.
 
 **Date range:** presets (“View by”) and custom calendar also use a bottom sheet on `max-lg`; desktop keeps anchored popovers.
 
@@ -160,7 +152,7 @@ This is the home page for a single property. It starts with period performance, 
 - Q: What does the "Total Bookings" number mean?
   A: It shows how many nights you had booked out of the days in the selected period (for example, 18 out of 30 nights), not a simple count of bookings.
 - Q: Can guests see this page?
-  A: No, this is only visible to you and your team. Use **Guest pages** to open what guests see on your public site.
+  A: No, this is only visible to you and your team. Use **View Property** for the listing, or **Public Pages** for the calendar, form, messages, and stay guide.
 - Q: Does changing the date range affect my actual bookings?
   A: No, changing the date range here only changes which period the numbers, maintenance list, and calendar reflect. It doesn't modify anything.
 - Q: What does the calendar Price toggle show?
@@ -188,7 +180,7 @@ This is the home page for a single property. It starts with period performance, 
 | Concern               | Path                                                                                  |
 | --------------------- | ------------------------------------------------------------------------------------- |
 | Page                  | `ui/src/features/dashboard/property/pages/DashboardPage.tsx`                          |
-| Guest pages menu      | `ui/src/features/dashboard/property/components/PropertyGuestPagesMenu.tsx`            |
+| View Property button  | `ui/src/features/dashboard/property/components/ViewPropertyButton.tsx`                |
 | Guest page paths      | `ui/src/features/dashboard/property/lib/propertyGuestPublicPages.ts`                  |
 | Needs attention card  | `ui/src/features/dashboard/property/components/DashboardAttentionCard.tsx`            |
 | Maintenance card      | `ui/src/features/dashboard/property/components/DashboardMaintenanceRemindersCard.tsx` |

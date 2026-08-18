@@ -58,7 +58,7 @@ Property Settings is where you complete your listing and handle day-to-day setup
 - Q: What does brand color change?
   A: It tints this property’s dashboard and guest-facing pages such as forms and emails. Buttons, the selected settings section, and similar accents use the exact color you pick. Gradient buttons are a slight sheen of that same color. Hover or tap the **?** next to Brand color for the same explanation.
 - Q: Where is listing verification?
-  A: Open **Verification** from the property sidebar (not org **Get Verified**). That flow covers ownership proof, contract dates, and the Recommended badge for this listing.
+  A: Open **Verification** from the property sidebar (not org **Get Verified**). That flow covers ownership proof, contract dates, and the Recommended badge for this listing. Submitting listing **Recommended** tier requires a paid plan with **`recommendedBadgeEligible`**; the upgrade modal links to **Plans**.
 - Q: My contract is ending — what should I do?
   A: A renewal reminder may appear when you log in. Tap **Submit renewal contract** or use **Verification** in the sidebar to upload an updated contract before the grace period ends.
 
@@ -175,14 +175,19 @@ Stored in `properties.settings` (+ `properties.max_guests` derived from adults +
 
 | Field         | Key            | Default                | Guest-facing use                                      |
 | ------------- | -------------- | ---------------------- | ----------------------------------------------------- |
-| Unit type     | `unitTypeId`   | `studio` (Azure North) | Sets max adults/children from development unit types  |
+| Unit type     | `unitTypeId`   | `studio` (Azure North) | Sets bedrooms, bathrooms, max adults/children         |
+| Bedrooms      | `bedrooms`     | from unit type         | Read-only; from development unit type config          |
+| Bathrooms     | `bathrooms`    | from unit type         | Read-only; from development unit type config          |
+| Floor         | `floors`       | residence limits       | Listing detail                                        |
 | Check-in      | `checkInTime`  | `14:00`                | Guest form default + early-arrival warning threshold  |
 | Check-out     | `checkOutTime` | `12:00`                | Guest form default + late-departure warning threshold |
 | Max adults    | `maxAdults`    | from unit type         | Read-only; guest form occupancy limit                 |
 | Max children  | `maxChildren`  | from unit type         | Read-only; guest form occupancy limit                 |
 | Self check-in | `selfCheckIn`  | `false`                | Public listing + stay guide                           |
 
-**Unit type** options come from the property's development/residence via **`GET get-residence-unit-types`**. Changing unit type updates `maxAdults`, `maxChildren`, and `max_guests` (computed sum) on save. The **Total guests** field was removed from the UI — capacity is always adults + children from the selected type.
+**Layout:** row 1 — Unit type, Bedrooms, Bathrooms; row 2 — Floor, Max adults, Max children.
+
+**Unit type** options come from the property's development/residence via **`GET get-residence-unit-types`**. Changing unit type updates `bedrooms`, `bathrooms`, `maxAdults`, `maxChildren`, and `max_guests` (computed sum) on save. Super admin configures per-type bedrooms/bathrooms/max guests under **Development → Unit types**.
 
 Check-in/out times are saved as 24-hour **`HH:mm`** strings. They appear on the public property page, house-rule presets, and — after save — pre-fill the guest booking form Stay step via **`get-guest-payment-info`** → `useGuestPaymentInfo()`.
 
@@ -462,7 +467,9 @@ Opt-in AI voice assistant guests can talk to (check-in, wifi, parking, and other
 
 Save path: page **Save Changes** → `PATCH voice-receptionist-settings?property_id=` when this section is dirty (`settings:edit`). Hook: `useVoiceReceptionistSettings.ts`. UI: `PropertyVoiceReceptionistSection.tsx` (controlled from `PropertySettingsCard.tsx`).
 
-**Test voice** — outline button beside the voice picker. `POST voice-receptionist-voice-preview?property_id=` (`settings:edit`) runs a short Gemini TTS sample with a fixed headline (_"Hi, I'm the Kame Homes receptionist…"_) using the selected prebuilt voice, then plays PCM audio in the browser. Uses Gemini API tokens (not a free local sample). Hook: `usePreviewVoiceReceptionistVoice`.
+**Test voice** — outline button beside the voice picker. `POST voice-receptionist-voice-preview?property_id=` (`settings:edit`) runs a short Gemini TTS sample using the **Basic Information property name** (not tower + unit; e.g. _"Hi, I'm the Solea Ocean View receptionist…"_) and the selected prebuilt voice, then plays PCM audio in the browser. The client sends the current **Property Name** draft so unsaved edits are reflected. Uses Gemini API tokens (not a free local sample). Hook: `usePreviewVoiceReceptionistVoice`.
+
+**Plan gating:** Browsing settings and **Test voice** stay free. Turning **Enable voice receptionist** on or saving with `enabled: true` requires plan feature **`aiReceptionist`** — client opens **`SubscriptionUpgradeModal`**; server checks on **`voice-receptionist-settings`** PATCH and **`voice-receptionist-start`**.
 
 **Usage panel** — read-only "Usage — last 30 days" stat grid (sessions today, last 30 days, avg.
 length, estimated cost) below the form fields. `GET voice-receptionist-usage?property_id=`

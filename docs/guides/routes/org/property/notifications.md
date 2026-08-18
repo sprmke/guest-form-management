@@ -2,7 +2,7 @@
 title: 'Notifications — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-17
+updated: 2026-08-18
 ---
 
 # Notifications — operator guide
@@ -57,13 +57,18 @@ Save **one** BotFather token at the top. It pre-fills each module’s bot token 
 **Telegram notifications** group heading includes **Get Help** (BotFather + chat ID setup). **Shared bot token** card: **Save and test** validates via Telegram `getMe`, then saves; when saved, the card shows **Saved** instead of the button. When you enable a module, the bot token field pre-fills from this value (still editable per module).
 
 1. **Enable notifications** — master toggle (**off by default**; opt-in per module). When off, only this toggle is shown.
+
+**Plan gating:** Editing templates, credentials, and previews stay free. Turning **Enable notifications** on requires plan feature **`telegramNotifications`** per module — client pre-flight on the toggle; all `telegram-*-settings` PATCH handlers call **`gateTelegramEnabledPatch`** (429 + `upgradeHook`).
+
 2. **Telegram connection** — bot token row, chat ID row (inline **?** help on each label), and **Connect** beside chat ID. While setup is incomplete, Chat ID shows **Scan for chats** in the field; after scan, a **group dropdown** replaces the empty state. After **Connected**, chat ID shows the group name with **Reveal** for the raw id. Editing bot token or chat ID resets to **Connect**. Failed verify shows **Connection failed** beside the section title and an outline-destructive **Connect** to retry. Saved credentials show **@bot username** and **group name** by default.
+
 3. **Manage cards** — after connect, shown inside a bordered group (Chat: **New message**; Marketing/Staff: **Notification controls**; Operations: **Workflow alerts**; Finance/Maintenance: **Reminder message**), same card pattern as **Telegram connection**:
-   - **Chat:** New message template for every inbound guest message (placeholders include `{{chat_source}}`, `{{chat_content}}`, attachment helpers, and `{{conversation_link}}` → `/org/:orgSlug/property/:propertySlug/inbox?conversationId=…&platform=web|facebook|instagram`)
-   - **Marketing:** Schedule alerts (daily times + calendar rules) · Message templates
-   - **Staff:** Schedule alerts · Message templates
-   - **Operations:** Message templates (6 scenarios)
-   - **Finance / Maintenance:** Reminder message (single template; module enable toggle only — no per-template switch)
+
+- **Chat:** New message template for every inbound guest message (placeholders include `{{chat_source}}`, `{{chat_content}}`, attachment helpers, and `{{conversation_link}}` → `/org/:orgSlug/property/:propertySlug/inbox?conversationId=…&platform=web|facebook|instagram`)
+- **Marketing:** Schedule alerts (daily times + calendar rules) · Message templates
+- **Staff:** Schedule alerts · Message templates
+- **Operations:** Message templates (6 scenarios)
+- **Finance / Maintenance:** Reminder message (single template; module enable toggle only — no per-template switch)
 
 ### Saving behavior
 

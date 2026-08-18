@@ -39,6 +39,8 @@ This is where you read and reply to guest messages for this property: website ch
 - Q: Why can't I reply to some Facebook or Instagram messages?
   A: Meta only allows replies within 24 hours of the guest's last message. After that window closes, you'll need the guest to message you again before you can respond from here.
 
+**Plan gating:** Manual replies and **Manage AI response** stay free. Enabling **Send automatically** requires **`aiChatAutoReply`** (Automation tab pre-flight + **`social-inbox-settings`** PATCH). Runtime auto-reply skips when the property plan lacks the feature; org-level contexts without a property id use **`requireOrgPropertyFeature`** / **`orgHasPropertyWithFeature`** on the server.
+
 ## Permissions
 
 | Permission     | UI                                                                    |

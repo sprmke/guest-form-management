@@ -125,6 +125,8 @@ Two-tier model (see **Get Verified** sidebar modal):
 
 **Listing verification** (separate scope, per property/parking): Tier 1 ownership/authorization proof + rights; Tier 2 additional proof + Azure PMO → listing Recommended badge. Property/parking sidebars show a **Verification** CTA (not the org **Get Verified** modal). See [`verification-scope-split`](../../workflow/in-progress/verification-scope-split.md).
 
+**Plan gating:** Org **Get Verified** (Tier 1 / `base` submit) requires **`verifiedBadgeEligible`**; **Get Recommended** (Tier 2 / `enhanced` submit) requires **`recommendedBadgeEligible`** — client opens **`SubscriptionUpgradeModal`**; server enforces on **`submit-org-verification`**. Listing **Recommended** submit requires **`recommendedBadgeEligible`** on **`submit-listing-recommended`**. Viewing flows and uploading drafts stay free; only final submit is gated.
+
 Tier names are display-only. Server tiers stay **`base`** (Tier 1) and **`enhanced`** (Tier 2), and the public flag stays **`verifiedBadge`**.
 
 ### Listing contract renewal

@@ -2,7 +2,7 @@
 title: 'Route-based operator guides'
 status: active
 tags: [guides, routes]
-updated: 2026-08-02
+updated: 2026-08-18
 ---
 
 # Route-based operator guides
@@ -38,12 +38,14 @@ Per-page documentation mirrors the app routes. Each guide tracks **behavior**, *
 | `/org/:orgSlug/property/:propertySlug/maintenance`                                                                | [org/property/maintenance.md](./org/property/maintenance.md)         | Documented                                                             |
 | `/org/:orgSlug/property/:propertySlug/notifications`                                                              | [org/property/notifications.md](./org/property/notifications.md)     | Documented                                                             |
 | `/org/:orgSlug/property/:propertySlug/templates`                                                                  | [org/property/templates.md](./org/property/templates.md)             | Documented — UI + DB + workflow email sends                            |
-| `/org/:orgSlug/property/:propertySlug/custom-pages`                                                               | [org/property/custom-pages.md](./org/property/custom-pages.md)       | Documented — Stay Guide template (v1)                                  |
+| `/org/:orgSlug/property/:propertySlug/public-pages`                                                               | [org/property/public-pages.md](./org/property/public-pages.md)       | Documented — guest public page gallery                                 |
+| `/org/:orgSlug/property/:propertySlug/custom-pages`                                                               | [org/property/custom-pages.md](./org/property/custom-pages.md)       | Redirect → `/public-pages`                                             |
 | `/org/:orgSlug/property/:propertySlug/team`                                                                       | [org/property/team.md](./org/property/team.md)                       | Documented — property team v1                                          |
 | `/org/:orgSlug/property/:propertySlug/marketing`                                                                  | [org/property/marketing.md](./org/property/marketing.md)             | Documented — Content Studio + Telegram (see guide)                     |
 | `/org/:orgSlug/property/:propertySlug/staff`                                                                      | [org/property/staff.md](./org/property/staff.md)                     | Redirect → notifications                                               |
 | `/org/:orgSlug/property/:propertySlug/operations`                                                                 | [org/property/operations.md](./org/property/operations.md)           | Redirect → notifications                                               |
 | `/org/:orgSlug/property/:propertySlug/settings`                                                                   | [org/property/settings.md](./org/property/settings.md)               | Documented                                                             |
+| `/org/:orgSlug/property/:propertySlug/plans`                                                                      | [org/property/plans.md](./org/property/plans.md)                     | Documented — subscription tiers                                        |
 | `/org/:orgSlug/property/:propertySlug/help-support` (+ `/docs`, `/tickets`, `/tickets/new`, `/tickets/:ticketId`) | [org/property/help-support.md](./org/property/help-support.md)       | Documented                                                             |
 | `/org/:orgSlug/parking/:parkingSlug`                                                                              | [org/parking/dashboard.md](./org/parking/dashboard.md)               | Documented — scaffold KPIs                                             |
 | `/org/:orgSlug/parking/:parkingSlug/bookings`                                                                     | [org/parking/bookings.md](./org/parking/bookings.md)                 | Documented — scaffold                                                  |
@@ -71,6 +73,9 @@ Platform-level control panel, distinct from org/property admin and the legacy `A
 | `/admin/hosts/:hostId/orgs/properties` | [admin/host-detail/properties.md](./admin/host-detail/properties.md) | Documented                                  |
 | `/admin/orgs/:orgSlug/properties`      | [admin/org-properties.md](./admin/org-properties.md)                 | Documented — minimal scaffold               |
 | `/admin/settings`                      | [admin/settings.md](./admin/settings.md)                             | Documented — AI Management                  |
+| `/admin/pricing/plans`                 | [admin/pricing-plans.md](./admin/pricing-plans.md)                   | Documented — tier catalog CRUD              |
+| `/admin/pricing/subscriptions`         | [admin/property-subscriptions.md](./admin/property-subscriptions.md) | Documented — property plan assignments      |
+| `/admin/pricing/payment-settings`      | [admin/payment-settings.md](./admin/payment-settings.md)             | Documented — PayMongo dunning config        |
 | `/admin/support`                       | [admin/support.md](./admin/support.md)                               | Documented — ticket triage (table/card)     |
 | `/admin/support/faqs`                  | [admin/support.md](./admin/support.md)                               | Documented — FAQ editor (first-class nav)   |
 
