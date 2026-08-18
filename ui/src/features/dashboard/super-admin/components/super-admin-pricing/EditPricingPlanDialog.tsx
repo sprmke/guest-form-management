@@ -1,0 +1,275 @@
+import { useEffect, useState } from 'react';
+
+import {
+  DEFAULT_PLAN_FEATURES,
+  PLAN_FEATURE_LABELS,
+  type PlanFeatures,
+} from '@/features/dashboard/plans/lib/planFeatures';
+import { discountedPlanPricePhp } from '@/features/dashboard/plans/lib/planPricing';
+import type { PricingPlan } from '@/features/dashboard/super-admin/types/pricingPlan';
+
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
+
+type EditPricingPlanDialogProps = {
+  open: boolean;
+  plan: PricingPlan | null;
+  onOpenChange: (open: boolean) => void;
+  onSave: (patch: {
+    name: string;
+    tagline: string | null;
+    sortOrder: number;
+    pricePhp: number | null;
+    discountPercent: number;
+    commissionRatePercent: number | null;
+    features: PlanFeatures;
+    isActive: boolean;
+  }) => Promise<void>;
+  isSaving: boolean;
+};
+
+const BOOLEAN_FEATURE_KEYS = [
+  'automatedBookingFlow',
+  'verifiedBadgeEligible',
+  'recommendedBadgeEligible',
+  'telegramNotifications',
+  'aiValidations',
+  'marketingStudio',
+  'customPages',
+  'aiDashboardAssistant',
+  'aiReceptionist',
+  'aiMarketingGeneration',
+  'aiChatAutoReply',
+  'fullyManagedByPlatform',
+] as const satisfies ReadonlyArray<keyof PlanFeatures>;
+
+export function EditPricingPlanDialog({
+  open,
+  plan,
+  onOpenChange,
+  onSave,
+  isSaving,
+}: EditPricingPlanDialogProps) {
+  const [name, setName] = useState('');
+  const [tagline, setTagline] = useState('');
+  const [sortOrder, setSortOrder] = useState(0);
+  const [pricePhp, setPricePhp] = useState('0');
+  const [discountPercent, setDiscountPercent] = useState('0');
+  const [commissionRate, setCommissionRate] = useState('');
+  const [isActive, setIsActive] = useState(true);
+  const [features, setFeatures] = useState<PlanFeatures>({ ...DEFAULT_PLAN_FEATURES });
+
+  useEffect(() => {
+    if (!plan) return;
+    setName(plan.name);
+    setTagline(plan.tagline ?? '');
+    setSortOrder(plan.sortOrder);
+    setPricePhp(String(plan.pricePhp ?? 0));
+    setDiscountPercent(String(plan.discountPercent ?? 0));
+    setCommissionRate(plan.commissionRatePercent == null ? '' : String(plan.commissionRatePercent));
+    setIsActive(plan.isActive);
+    setFeatures({ ...plan.features });
+  }, [plan]);
+
+  if (!plan) return null;
+
+  const listPrice = Number(pricePhp) || 0;
+  const discount = Number(discountPercent) || 0;
+  const hostPrice =
+    plan.pricingModel === 'subscription' ? discountedPlanPricePhp(listPrice, discount) : null;
+
+  return (
+    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
+      <ResponsiveModalContent className="sm:max-w-lg" sheetLayout="split">
+        <ResponsiveModalHeader>
+          <ResponsiveModalTitle>Edit {plan.code}</ResponsiveModalTitle>
+        </ResponsiveModalHeader>
+
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-1">
+          <div className="space-y-2">
+            <Label htmlFor="plan-name">Name</Label>
+            <Input id="plan-name" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="plan-tagline">Tagline</Label>
+            <Input id="plan-tagline" value={tagline} onChange={(e) => setTagline(e.target.value)} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="plan-sort">Sort order</Label>
+              <Input
+                id="plan-sort"
+                type="number"
+                value={sortOrder}
+                onChange={(e) => setSortOrder(Number(e.target.value) || 0)}
+              />
+            </div>
+            {plan.pricingModel === 'subscription' ? (
+              <div className="space-y-2">
+                <Label htmlFor="plan-price">List price (PHP)</Label>
+                <Input
+                  id="plan-price"
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={pricePhp}
+                  onChange={(e) => setPricePhp(e.target.value)}
+                />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="plan-commission">Commission %</Label>
+                <Input
+                  id="plan-commission"
+                  type="number"
+                  value={commissionRate}
+                  onChange={(e) => setCommissionRate(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+
+          {plan.pricingModel === 'subscription' ? (
+            <div className="space-y-2">
+              <Label htmlFor="plan-discount">Discount %</Label>
+              <Input
+                id="plan-discount"
+                type="number"
+                min={0}
+                max={100}
+                step={1}
+                value={discountPercent}
+                onChange={(e) => setDiscountPercent(e.target.value)}
+              />
+            </div>
+          ) : null}
+
+          {hostPrice != null ? (
+            <p className="text-muted-foreground text-sm tabular-nums">
+              Hosts pay ₱{hostPrice.toLocaleString('en-PH')}/month
+              {discount > 0 && hostPrice < listPrice
+                ? ` (₱${listPrice.toLocaleString('en-PH')} list, ${Math.floor(discount)}% off)`
+                : null}
+            </p>
+          ) : null}
+
+          <div className="space-y-2">
+            <Label htmlFor="plan-ai-credits">AI monthly credits</Label>
+            <Input
+              id="plan-ai-credits"
+              type="number"
+              value={features.aiMonthlyCreditAllowance}
+              onChange={(e) =>
+                setFeatures((prev) => ({
+                  ...prev,
+                  aiMonthlyCreditAllowance: Number(e.target.value) || 0,
+                }))
+              }
+            />
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="plan-team-enabled"
+                checked={features.teamManagement.enabled}
+                onCheckedChange={(checked) =>
+                  setFeatures((prev) => ({
+                    ...prev,
+                    teamManagement: {
+                      ...prev.teamManagement,
+                      enabled: checked === true,
+                    },
+                  }))
+                }
+              />
+              <Label htmlFor="plan-team-enabled">{PLAN_FEATURE_LABELS.teamManagement}</Label>
+            </div>
+            {features.teamManagement.enabled ? (
+              <Input
+                aria-label="Max team members"
+                type="number"
+                placeholder="Max members (empty = unlimited)"
+                value={features.teamManagement.maxMembers ?? ''}
+                onChange={(e) =>
+                  setFeatures((prev) => ({
+                    ...prev,
+                    teamManagement: {
+                      ...prev.teamManagement,
+                      maxMembers: e.target.value === '' ? null : Number(e.target.value) || 0,
+                    },
+                  }))
+                }
+              />
+            ) : null}
+          </div>
+
+          <div className="grid gap-2">
+            {BOOLEAN_FEATURE_KEYS.map((key) => (
+              <div key={key} className="flex items-center gap-2">
+                <Checkbox
+                  id={`plan-feature-${key}`}
+                  checked={Boolean(features[key])}
+                  onCheckedChange={(checked) =>
+                    setFeatures((prev) => ({ ...prev, [key]: checked === true }))
+                  }
+                />
+                <Label htmlFor={`plan-feature-${key}`}>{PLAN_FEATURE_LABELS[key]}</Label>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="plan-active"
+              checked={isActive}
+              onCheckedChange={(checked) => setIsActive(checked === true)}
+            />
+            <Label htmlFor="plan-active">Active</Label>
+          </div>
+        </div>
+
+        <ResponsiveModalFooter className="gap-2 sm:gap-0">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            disabled={isSaving || !name.trim()}
+            onClick={() =>
+              onSave({
+                name: name.trim(),
+                tagline: tagline.trim() || null,
+                sortOrder,
+                pricePhp: plan.pricingModel === 'subscription' ? Number(pricePhp) || 0 : null,
+                discountPercent:
+                  plan.pricingModel === 'subscription'
+                    ? Math.min(100, Math.max(0, Number(discountPercent) || 0))
+                    : 0,
+                commissionRatePercent:
+                  plan.pricingModel === 'commission'
+                    ? Number(commissionRate) || 0
+                    : plan.commissionRatePercent,
+                features,
+                isActive,
+              })
+            }
+          >
+            Save
+          </Button>
+        </ResponsiveModalFooter>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
+  );
+}

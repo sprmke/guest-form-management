@@ -1,9 +1,12 @@
 import { useMemo, useState } from 'react';
 
-import { LifeBuoy, Loader2 } from 'lucide-react';
+import { LifeBuoy } from 'lucide-react';
 
 import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
+import { SuperAdminEmptyState } from '@/features/dashboard/super-admin/components/shared/SuperAdminEmptyState';
+import { SuperAdminPageLoading } from '@/features/dashboard/super-admin/components/shared/SuperAdminPageLoading';
 import { SuperAdminSupportCardGrid } from '@/features/dashboard/super-admin/components/super-admin-support/SuperAdminSupportCardGrid';
+import { SuperAdminSupportSummaryCards } from '@/features/dashboard/super-admin/components/super-admin-support/SuperAdminSupportSummaryCards';
 import { SuperAdminSupportTable } from '@/features/dashboard/super-admin/components/super-admin-support/SuperAdminSupportTable';
 import {
   SuperAdminSupportResultsMeta,
@@ -24,12 +27,10 @@ import { useIsBelowLg } from '@/hooks/useMediaQuery';
 
 function SupportTicketsEmptyState({ filtered }: { filtered: boolean }) {
   return (
-    <div className="surface-card flex flex-col items-center justify-center gap-3 px-4 py-14 text-center">
-      <LifeBuoy className="text-muted-foreground size-10" aria-hidden />
-      <p className="text-foreground text-sm font-medium">
-        {filtered ? 'No tickets match your filters' : 'No tickets yet'}
-      </p>
-    </div>
+    <SuperAdminEmptyState
+      icon={LifeBuoy}
+      title={filtered ? 'No tickets match your filters' : 'No tickets yet'}
+    />
   );
 }
 
@@ -59,9 +60,7 @@ export function SuperAdminSupportPage() {
   return (
     <div className="space-y-3 sm:space-y-4">
       {isLoading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-        </div>
+        <SuperAdminPageLoading metricCount={4} />
       ) : error ? (
         <p className="text-destructive text-sm">Could not load support tickets.</p>
       ) : (
@@ -70,6 +69,8 @@ export function SuperAdminSupportPage() {
             title="Support tickets"
             subtitle="Host bug reports, suggestions, and inquiries."
           />
+
+          <SuperAdminSupportSummaryCards tickets={tickets ?? []} />
 
           <SuperAdminSupportToolbar
             filters={filters}

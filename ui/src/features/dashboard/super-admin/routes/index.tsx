@@ -13,6 +13,9 @@ import { SuperAdminHostPropertiesPage } from '@/features/dashboard/super-admin/p
 import { SuperAdminHostsPage } from '@/features/dashboard/super-admin/pages/SuperAdminHostsPage';
 import { SuperAdminOverviewPage } from '@/features/dashboard/super-admin/pages/SuperAdminOverviewPage';
 import { SuperAdminPlatformPropertiesPage } from '@/features/dashboard/super-admin/pages/SuperAdminPlatformPropertiesPage';
+import { SuperAdminPaymentSettingsPage } from '@/features/dashboard/super-admin/pages/SuperAdminPaymentSettingsPage';
+import { SuperAdminPricingPlansPage } from '@/features/dashboard/super-admin/pages/SuperAdminPricingPlansPage';
+import { SuperAdminPropertySubscriptionsPage } from '@/features/dashboard/super-admin/pages/SuperAdminPropertySubscriptionsPage';
 import { SuperAdminPropertiesPage } from '@/features/dashboard/super-admin/pages/SuperAdminPropertiesPage';
 import { SuperAdminSettingsPage } from '@/features/dashboard/super-admin/pages/SuperAdminSettingsPage';
 import { SuperAdminSupportPage } from '@/features/dashboard/super-admin/pages/SuperAdminSupportPage';
@@ -27,6 +30,9 @@ export const superAdminRoutes: ReactNode = (
     <Route path="support/faqs" element={<SuperAdminHelpFaqsPage />} />
     <Route path="hosts" element={<SuperAdminHostsPage />} />
     <Route path="settings" element={<SuperAdminSettingsPage />} />
+    <Route path="pricing/plans" element={<SuperAdminPricingPlansPage />} />
+    <Route path="pricing/payment-settings" element={<SuperAdminPaymentSettingsPage />} />
+    <Route path="pricing/subscriptions" element={<SuperAdminPropertySubscriptionsPage />} />
     <Route path="properties" element={<SuperAdminPlatformPropertiesPage />} />
     <Route path="hosts/:hostId" element={<SuperAdminHostShell />}>
       <Route index element={<Navigate to="orgs" replace />} />
