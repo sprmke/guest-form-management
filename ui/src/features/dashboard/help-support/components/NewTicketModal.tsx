@@ -6,6 +6,7 @@ import {
   TicketComposeForm,
   type TicketComposeStatus,
 } from '@/features/dashboard/help-support/components/TicketComposeForm';
+import type { SupportTicketCategory } from '@/features/dashboard/help-support/lib/supportTicketSchema';
 
 import {
   AlertDialog,
@@ -40,9 +41,17 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmitted: (ticketId: string) => void;
+  defaultSubject?: string;
+  defaultCategory?: SupportTicketCategory;
 };
 
-export function NewTicketModal({ open, onOpenChange, onSubmitted }: Props) {
+export function NewTicketModal({
+  open,
+  onOpenChange,
+  onSubmitted,
+  defaultSubject,
+  defaultCategory,
+}: Props) {
   const [status, setStatus] = useState<TicketComposeStatus>(IDLE_STATUS);
   const [discardOpen, setDiscardOpen] = useState(false);
 
@@ -117,6 +126,8 @@ export function NewTicketModal({ open, onOpenChange, onSubmitted }: Props) {
                 hideSubmit
                 onStatusChange={setStatus}
                 onSubmitted={onSubmitted}
+                defaultSubject={defaultSubject}
+                defaultCategory={defaultCategory}
               />
             ) : null}
           </div>

@@ -28,8 +28,11 @@ export function helpSupportTicketsPath(basePath: string): string {
   return `${basePath}/tickets`;
 }
 
-export function helpSupportNewTicketPath(basePath: string): string {
-  return `${basePath}/tickets/new`;
+export function helpSupportNewTicketPath(basePath: string, options?: { subject?: string }): string {
+  const path = `${basePath}/tickets/new`;
+  const subject = options?.subject?.trim();
+  if (!subject) return path;
+  return `${path}?subject=${encodeURIComponent(subject)}`;
 }
 
 export function helpSupportTicketDetailPath(basePath: string, ticketId: string): string {

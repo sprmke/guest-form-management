@@ -10,6 +10,9 @@ import type {
   InboxAutomationSettings,
   SocialPlatform,
 } from '@/features/dashboard/inbox/types/inbox';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { handleAiMutationError, isAiQuotaError } from '@/features/dashboard/org/lib/aiQuotaToast';
 
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -27,6 +30,9 @@ const PLATFORMS: SocialPlatform[] = ['facebook', 'instagram', 'web'];
 
 export function InboxAutomationTab({ settings, isLoading, saving, onSave }: Props) {
   const [aiResponseOpen, setAiResponseOpen] = useState(false);
+  const { canUse: canAutoReply, isLoading: entitlementsLoading } =
+    useFeatureGate('aiChatAutoReply');
+  const { open: openUpgradeModal } = useUpgradeModal();
 
   if (isLoading || !settings) {
     return (
@@ -41,6 +47,10 @@ export function InboxAutomationTab({ settings, isLoading, saving, onSave }: Prop
     try {
       await onSave(patch);
     } catch (e) {
+      if (isAiQuotaError(e)) {
+        handleAiMutationError(e as Error);
+        return;
+      }
       toast.error((e as Error).message);
     }
   };
@@ -48,6 +58,10 @@ export function InboxAutomationTab({ settings, isLoading, saving, onSave }: Prop
   const autoSendEnabled = settings.autoReplyEnabled && settings.autoReplyMode === 'send';
 
   const setAutoSendEnabled = (checked: boolean) => {
+    if (checked && !canAutoReply) {
+      if (!entitlementsLoading) openUpgradeModal('aiChatAutoReply');
+      return;
+    }
     void update(
       checked
         ? { autoReplyEnabled: true, autoReplyMode: 'send' }

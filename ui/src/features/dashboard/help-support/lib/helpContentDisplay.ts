@@ -16,6 +16,7 @@ const ROUTE_TAIL_LABELS: Record<string, string> = {
   maintenance: 'Maintenance',
   marketing: 'Marketing',
   notifications: 'Notifications',
+  'public-pages': 'Public Pages',
   dashboard: 'Dashboard',
   form: 'booking form',
   stays: 'Stays',
@@ -26,7 +27,8 @@ const TITLE_ALIASES: Record<string, string> = {
   hub: 'Home',
   parkings: 'Parking listings',
   'booking detail': 'Booking details',
-  'custom pages': 'Custom pages',
+  'custom pages': 'Public pages',
+  'public pages': 'Public pages',
   'guest web chat': 'Guest messages',
 };
 

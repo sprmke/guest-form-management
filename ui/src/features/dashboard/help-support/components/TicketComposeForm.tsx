@@ -54,6 +54,8 @@ type Props = {
   formId?: string;
   hideSubmit?: boolean;
   onStatusChange?: (status: TicketComposeStatus) => void;
+  defaultSubject?: string;
+  defaultCategory?: SupportTicketCategory;
 };
 
 export function TicketComposeForm({
@@ -61,6 +63,8 @@ export function TicketComposeForm({
   formId,
   hideSubmit = false,
   onStatusChange,
+  defaultSubject,
+  defaultCategory,
 }: Props) {
   const submitTicket = useSubmitSupportTicket();
   const [attachments, setAttachments] = useState<SupportTicketAttachmentDraft[]>([]);
@@ -77,13 +81,19 @@ export function TicketComposeForm({
     resolver: zodResolver(supportTicketDraftSchema),
     mode: 'onTouched',
     defaultValues: {
-      category: 'bug_report',
-      subject: '',
+      category: defaultCategory ?? 'bug_report',
+      subject: defaultSubject?.trim() ?? '',
       description: '',
       severity: 'medium',
       contactPreference: '',
     },
   });
+
+  useEffect(() => {
+    if (!defaultSubject?.trim()) return;
+    setValue('subject', defaultSubject.trim());
+    if (defaultCategory) setValue('category', defaultCategory);
+  }, [defaultCategory, defaultSubject, setValue]);
 
   const category = watch('category');
   const subject = watch('subject');

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import { Plus, Ticket } from 'lucide-react';
 
@@ -15,7 +15,9 @@ import {
   helpSupportTicketsPath,
   useHelpSupportBasePath,
 } from '@/features/dashboard/help-support/lib/helpSupportPaths';
+import type { SupportTicketCategory } from '@/features/dashboard/help-support/lib/supportTicketSchema';
 import { SUPPORT_TICKET_CATEGORY_LABELS } from '@/features/dashboard/help-support/lib/supportTicketSchema';
+import { MANAGED_PLAN_INQUIRY_SUBJECT } from '@/features/dashboard/plans/lib/planPresentation';
 
 import { bottomTabBarOffsetClassName } from '@/components/mobile/BottomTabBar';
 import { Button } from '@/components/ui/button';
@@ -33,11 +35,23 @@ function formatTicketDate(iso: string): string {
 
 export function TicketsWorkspacePage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const basePath = useHelpSupportBasePath();
   const isMobile = useIsBelowLg();
   const splat = useParams()['*'] ?? '';
   const isNew = splat === 'new';
   const ticketId = !isNew && splat ? splat : null;
+  const draftSubjectParam = searchParams.get('subject')?.trim() ?? '';
+  const newTicketDefaults =
+    isNew && draftSubjectParam
+      ? {
+          subject: draftSubjectParam,
+          category:
+            draftSubjectParam === MANAGED_PLAN_INQUIRY_SUBJECT
+              ? ('business_inquiry' as SupportTicketCategory)
+              : undefined,
+        }
+      : null;
   const [backgroundTicketId, setBackgroundTicketId] = useState<string | null>(null);
 
   const { data, isPending, isError, refetch } = useSupportTickets();
@@ -69,6 +83,9 @@ export function TicketsWorkspacePage() {
 
   const closeCompose = () => {
     if (!basePath) return;
+    if (searchParams.has('subject')) {
+      setSearchParams({}, { replace: true });
+    }
     if (backgroundTicketId) {
       navigate(helpSupportTicketDetailPath(basePath, backgroundTicketId), { replace: true });
       return;
@@ -208,6 +225,8 @@ export function TicketsWorkspacePage() {
 
       <NewTicketModal
         open={isNew}
+        defaultSubject={newTicketDefaults?.subject}
+        defaultCategory={newTicketDefaults?.category}
         onOpenChange={(open) => {
           if (open) openCompose();
           else if (isNew) closeCompose();

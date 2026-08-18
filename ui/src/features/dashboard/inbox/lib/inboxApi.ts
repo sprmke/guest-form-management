@@ -520,6 +520,7 @@ export async function patchInboxAutomationSettings(
     body: JSON.stringify({ ...patch, ...inboxScopeBody(scope) }),
   });
   const json = (await res.json()) as EdgeJson;
+  throwIfAiQuota(json, res);
   return parseAutomationSettings(unwrapEdgePayload(json));
 }
 
