@@ -25,6 +25,7 @@ export function useAiAssistantChat(pageContext: PageContext) {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatThreadMessage[]>([]);
   const [pending, setPending] = useState(false);
+  const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [upgradeHook, setUpgradeHook] = useState(false);
 
@@ -55,6 +56,8 @@ export function useAiAssistantChat(pageContext: PageContext) {
     setMessages([]);
     setError(null);
     setUpgradeHook(false);
+    setSending(false);
+    setPending(false);
   }, []);
 
   const sendMessage = useCallback(
@@ -64,6 +67,7 @@ export function useAiAssistantChat(pageContext: PageContext) {
       const attachments = payload.attachments ?? [];
       if (!orgSlug || (!text && attachments.length === 0)) return;
       setPending(true);
+      setSending(true);
       setError(null);
       setUpgradeHook(false);
 
@@ -97,6 +101,7 @@ export function useAiAssistantChat(pageContext: PageContext) {
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Something went wrong');
       } finally {
+        setSending(false);
         setPending(false);
       }
     },
@@ -130,6 +135,7 @@ export function useAiAssistantChat(pageContext: PageContext) {
     conversationId,
     messages,
     pending,
+    sending,
     error,
     upgradeHook,
     sendMessage,

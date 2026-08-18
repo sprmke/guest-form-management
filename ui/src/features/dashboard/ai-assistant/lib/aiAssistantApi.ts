@@ -22,6 +22,11 @@ export type ChatBlock =
     }
   | { type: 'link_list'; title: string; links: Array<{ label: string; href: string }> }
   | {
+      type: 'file_list';
+      title: string;
+      files: Array<{ label: string; url: string; kind?: 'image' | 'pdf' | 'file' }>;
+    }
+  | {
       type: 'action_confirmation';
       actionId: string;
       toolName: string;

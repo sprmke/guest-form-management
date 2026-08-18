@@ -1,6 +1,7 @@
 import { ActionConfirmationBlock } from '@/features/dashboard/ai-assistant/components/blocks/ActionConfirmationBlock';
 import { BookingCardBlock } from '@/features/dashboard/ai-assistant/components/blocks/BookingCardBlock';
 import { DataTableBlock } from '@/features/dashboard/ai-assistant/components/blocks/DataTableBlock';
+import { FileListBlock } from '@/features/dashboard/ai-assistant/components/blocks/FileListBlock';
 import { LinkListBlock } from '@/features/dashboard/ai-assistant/components/blocks/LinkListBlock';
 import { StatListBlock } from '@/features/dashboard/ai-assistant/components/blocks/StatListBlock';
 import { TextBlock } from '@/features/dashboard/ai-assistant/components/blocks/TextBlock';
@@ -30,6 +31,8 @@ export function ChatBlockRenderer({ blocks, onResolveAction }: Props) {
             return <DataTableBlock key={i} {...block} />;
           case 'link_list':
             return <LinkListBlock key={i} {...block} />;
+          case 'file_list':
+            return <FileListBlock key={i} {...block} />;
           case 'action_confirmation':
             return <ActionConfirmationBlock key={i} {...block} onResolve={onResolveAction} />;
           default:

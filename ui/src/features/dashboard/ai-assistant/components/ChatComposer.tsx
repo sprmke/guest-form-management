@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useId, useLayoutEffect, useRef, useState } from 'react';
 
 import { FileText, ImagePlus, Paperclip, Send, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -21,6 +21,20 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 
+const COMPOSER_MAX_ROWS = 10;
+const COMPOSER_MIN_HEIGHT_PX = 40;
+
+function syncComposerHeight(textarea: HTMLTextAreaElement | null) {
+  if (!textarea) return;
+  textarea.style.height = 'auto';
+  const computedMax = Number.parseFloat(window.getComputedStyle(textarea).maxHeight);
+  const fallbackMax = COMPOSER_MAX_ROWS * 20 + 16;
+  const cap = Number.isFinite(computedMax) && computedMax > 0 ? computedMax : fallbackMax;
+  const next = Math.min(Math.max(textarea.scrollHeight, COMPOSER_MIN_HEIGHT_PX), cap);
+  textarea.style.height = `${next}px`;
+  textarea.style.overflowY = textarea.scrollHeight > next + 1 ? 'auto' : 'hidden';
+}
+
 type Props = {
   onSend: (input: ChatSendInput) => void;
   disabled?: boolean;
@@ -36,6 +50,14 @@ export function ChatComposer({ onSend, disabled, pageBookingId, overlayContainer
   const reactId = useId();
   const imageInputId = `${reactId}-image`;
   const fileInputId = `${reactId}-file`;
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useLayoutEffect(() => {
+    const sync = () => syncComposerHeight(textareaRef.current);
+    sync();
+    window.addEventListener('resize', sync);
+    return () => window.removeEventListener('resize', sync);
+  }, [value]);
 
   const addFiles = async (fileList: FileList | null) => {
     if (!fileList?.length) return;
@@ -69,7 +91,7 @@ export function ChatComposer({ onSend, disabled, pageBookingId, overlayContainer
   };
 
   return (
-    <div className="border-border/60 border-t p-3">
+    <div className="border-border/60 shrink-0 border-t p-3">
       {(pinnedBooking || attachments.length > 0) && (
         <div className="mb-2 flex flex-wrap gap-1.5">
           {pinnedBooking ? (
@@ -109,7 +131,7 @@ export function ChatComposer({ onSend, disabled, pageBookingId, overlayContainer
         </div>
       )}
 
-      <div className="border-border bg-background focus-within:ring-ring flex items-end gap-0.5 rounded-xl border p-1 focus-within:ring-2">
+      <div className="border-border bg-background focus-within:ring-ring flex flex-col rounded-xl border p-1.5 focus-within:ring-2">
         <input
           id={imageInputId}
           type="file"
@@ -135,62 +157,12 @@ export function ChatComposer({ onSend, disabled, pageBookingId, overlayContainer
           }}
         />
 
-        <Popover open={attachOpen} onOpenChange={setAttachOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              disabled={disabled}
-              aria-label="Attach"
-              aria-expanded={attachOpen}
-              className="min-h-[44px] min-w-[44px] shrink-0"
-            >
-              <Paperclip className="h-4 w-4" aria-hidden />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent
-            align="start"
-            side="top"
-            container={overlayContainer}
-            className="w-44 p-1"
-            onCloseAutoFocus={(event) => event.preventDefault()}
-          >
-            <label
-              htmlFor={imageInputId}
-              className={cn(
-                'native-press hover:bg-muted/60 flex min-h-[44px] cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm',
-                disabled && 'pointer-events-none opacity-50'
-              )}
-            >
-              <ImagePlus className="size-4 shrink-0" aria-hidden />
-              Photo
-            </label>
-            <label
-              htmlFor={fileInputId}
-              className={cn(
-                'native-press hover:bg-muted/60 flex min-h-[44px] cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm',
-                disabled && 'pointer-events-none opacity-50'
-              )}
-            >
-              <FileText className="size-4 shrink-0" aria-hidden />
-              File
-            </label>
-          </PopoverContent>
-        </Popover>
-
-        <ChatComposerBookingPicker
-          value={pinnedBooking}
-          onChange={setPinnedBooking}
-          pageBookingId={pageBookingId}
-          disabled={disabled}
-          overlayContainer={overlayContainer}
-        />
-
         <textarea
+          ref={textareaRef}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
+            if (e.nativeEvent.isComposing || e.keyCode === 229) return;
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
               submit();
@@ -200,18 +172,73 @@ export function ChatComposer({ onSend, disabled, pageBookingId, overlayContainer
           aria-label="Message"
           rows={1}
           disabled={disabled}
-          className="text-foreground placeholder:text-muted-foreground max-h-32 min-h-[44px] min-w-0 flex-1 resize-none bg-transparent px-2 py-2.5 text-sm focus-visible:outline-none disabled:opacity-50"
+          className="text-foreground placeholder:text-muted-foreground min-h-10 w-full resize-none overflow-hidden bg-transparent px-2.5 pb-1 pt-1.5 text-left text-sm leading-5 [overflow-wrap:anywhere] focus-visible:outline-none disabled:opacity-50"
+          style={{ maxHeight: `min(calc(${COMPOSER_MAX_ROWS}lh + 1rem), 40dvh)` }}
         />
 
-        <Button
-          size="icon"
-          onClick={submit}
-          disabled={disabled || (!value.trim() && attachments.length === 0)}
-          aria-label="Send message"
-          className="min-h-[44px] min-w-[44px] shrink-0"
-        >
-          <Send className="h-4 w-4" aria-hidden />
-        </Button>
+        <div className="flex items-center gap-0.5">
+          <Popover open={attachOpen} onOpenChange={setAttachOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                disabled={disabled}
+                aria-label="Attach"
+                aria-expanded={attachOpen}
+                className="min-h-[44px] min-w-[44px] shrink-0"
+              >
+                <Paperclip className="h-4 w-4" aria-hidden />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="start"
+              side="top"
+              container={overlayContainer}
+              className="w-44 p-1"
+              onCloseAutoFocus={(event) => event.preventDefault()}
+            >
+              <label
+                htmlFor={imageInputId}
+                className={cn(
+                  'native-press hover:bg-muted/60 flex min-h-[44px] cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm',
+                  disabled && 'pointer-events-none opacity-50'
+                )}
+              >
+                <ImagePlus className="size-4 shrink-0" aria-hidden />
+                Photo
+              </label>
+              <label
+                htmlFor={fileInputId}
+                className={cn(
+                  'native-press hover:bg-muted/60 flex min-h-[44px] cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm',
+                  disabled && 'pointer-events-none opacity-50'
+                )}
+              >
+                <FileText className="size-4 shrink-0" aria-hidden />
+                File
+              </label>
+            </PopoverContent>
+          </Popover>
+
+          <ChatComposerBookingPicker
+            value={pinnedBooking}
+            onChange={setPinnedBooking}
+            pageBookingId={pageBookingId}
+            disabled={disabled}
+            overlayContainer={overlayContainer}
+          />
+
+          <Button
+            size="icon"
+            onClick={submit}
+            disabled={disabled || (!value.trim() && attachments.length === 0)}
+            aria-label="Send message"
+            className="ml-auto min-h-[44px] min-w-[44px] shrink-0"
+          >
+            <Send className="h-4 w-4" aria-hidden />
+          </Button>
+        </div>
       </div>
     </div>
   );

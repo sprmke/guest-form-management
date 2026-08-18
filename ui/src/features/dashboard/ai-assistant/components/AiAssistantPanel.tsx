@@ -71,6 +71,7 @@ export function AiAssistantPanel({ open, onOpenChange }: Props) {
     conversationId,
     messages,
     pending,
+    sending,
     error,
     upgradeHook,
     sendMessage,
@@ -162,6 +163,7 @@ export function AiAssistantPanel({ open, onOpenChange }: Props) {
             <ChatThread
               messages={messages}
               pending={pending}
+              sending={sending}
               onResolveAction={resolveAction}
               questions={questions}
               actions={actions}

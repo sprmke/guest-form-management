@@ -1,13 +1,24 @@
 ---
 title: 'Host pricing tiers — foundation (catalog + entitlements)'
-status: active
-tags: [workflow, planned, billing, pricing]
-updated: 2026-08-17
-stage: planned
+status: in-progress
+tags: [workflow, in-progress, billing, pricing]
+updated: 2026-08-19
+stage: in-progress
 kind: plan
 ---
 
 # Host pricing tiers — foundation (catalog + entitlements)
+
+## Shipped (2026-08-18)
+
+- Migration **`20261023120000_pricing_plans_foundation.sql`** — `pricing_plans`, `property_subscriptions`, `property_subscription_events`, `booking_commission_charges`; seed 5 subscription tiers + 1 commission plan; backfill existing properties to Free.
+- **`_shared/planFeatures.ts`**, **`_shared/planEntitlements.ts`** — `resolvePropertyEntitlements`, `assignPropertyToPlan`, `requirePropertyFeature`, commission recording.
+- Edge functions **`pricing-plans`**, **`property-subscriptions-admin`**.
+- Auto-assign Free on **`create-property`** / **`create-organization`** via **`ensurePropertyDefaultPlan`**.
+- Commission hook in **`workflowOrchestrator`** on **`→ COMPLETED`**.
+- Super-admin UI **`/admin/pricing/plans`**, **`/admin/pricing/subscriptions`**.
+
+**Next plans (not this doc):** host Plans page → [`host-plans-pricing-page.md`](../done/host-plans-pricing-page.md) (**shipped**); feature gating → [`feature-gating-subscription-upgrade.md`](./feature-gating-subscription-upgrade.md) (**shipped**); PayMongo → [`paymongo-subscription-billing.md`](../done/paymongo-subscription-billing.md).
 
 ## Context
 
@@ -18,7 +29,7 @@ This is one of five related, deliberately separated intake items (`docs/workflow
 1. **"Plans & Pricing"** — the pricing page UI + subscribe/pay end-to-end flow (separate plan, not this one).
 2. **"Host plans and pricing tiers for property listings"** — **this plan.** Defines what the tiers _are_ and how they're stored/configured/queried.
 3. **"Integrate paymongo..."** — `docs/workflow/planned/paymongo-subscription-billing.md`, already drafted, 0% built. Handles actual payment collection.
-4. **"Allow features based on subscription plan & show payment modal"** — the feature-gating/paywall UX (watermarks, upgrade modals). Depends on this plan's entitlement resolver but is out of scope here.
+4. **"Allow features based on subscription plan & show payment modal"** — `docs/workflow/planned/feature-gating-subscription-upgrade.md`, drafted, 0% built. The feature-gating/paywall UX (watermarks, upgrade modals). Depends on this plan's entitlement resolver but is out of scope here.
 5. **"Accurately track AI usages..."** — `docs/workflow/in-progress/ai-usage-metering-credits-foundation.md`, Phases 1–3 shipped. Already has the AI credit ledger/quota backbone this plan plugs into, not rebuilds.
 
 **Scope of this plan**: the tier/plan **data model**, a super-admin CRUD UI to configure tiers and their features/pricing, a **per-property plan assignment** (every listing defaults to the Free tier), an **entitlement resolver** other code can query ("does property X have feature Y"), integration with the existing AI credit-limit columns, and a commission-pricing-compatible schema with the calculation hook wired at the existing `COMPLETED` booking transition. It does **not** build: the pricing page, PayMongo checkout, paywall modals/watermarks, or the 3 newly-identified enforcement gaps (team seat caps, marketing publish counters, search-ranking boost) — those are catalogued as declared entitlements only, wired up later by intake items #1/#3/#4.

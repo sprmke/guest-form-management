@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react';
 
-import { FileText, ImagePlus, Loader2 } from 'lucide-react';
+import { FileText, ImagePlus } from 'lucide-react';
 
 import { AssistantSuggestionGroups } from '@/features/dashboard/ai-assistant/components/AssistantSuggestionGroups';
+import { AssistantThinkingIndicator } from '@/features/dashboard/ai-assistant/components/AssistantThinkingIndicator';
 import { ChatBlockRenderer } from '@/features/dashboard/ai-assistant/components/ChatBlockRenderer';
 import type { ChatThreadMessage } from '@/features/dashboard/ai-assistant/hooks/useAiAssistantChat';
 import type { ConfirmActionResponse } from '@/features/dashboard/ai-assistant/lib/aiAssistantApi';
@@ -12,15 +13,21 @@ import { isAssistantImageMime } from '@/features/dashboard/ai-assistant/lib/chat
 type Props = {
   messages: ChatThreadMessage[];
   pending: boolean;
+  sending?: boolean;
   onResolveAction: (actionId: string, confirm: boolean) => Promise<ConfirmActionResponse | null>;
   questions: AssistantSuggestion[];
   actions: AssistantSuggestion[];
   onPickSuggestion: (prompt: string) => void;
 };
 
+function prefersReducedMotion(): boolean {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
 export function ChatThread({
   messages,
   pending,
+  sending = false,
   onResolveAction,
   questions,
   actions,
@@ -29,10 +36,13 @@ export function ChatThread({
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [messages.length, pending]);
+    bottomRef.current?.scrollIntoView({
+      behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+      block: 'end',
+    });
+  }, [messages.length, sending]);
 
-  if (messages.length === 0) {
+  if (messages.length === 0 && !sending) {
     return (
       <AssistantSuggestionGroups
         questions={questions}
@@ -44,7 +54,11 @@ export function ChatThread({
   }
 
   return (
-    <div className="flex-1 space-y-4 overflow-y-auto p-3" aria-live="polite">
+    <div
+      className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3"
+      aria-live="polite"
+      aria-busy={sending}
+    >
       {messages.map((msg) => (
         <div
           key={msg.id}
@@ -53,8 +67,8 @@ export function ChatThread({
           <div
             className={
               msg.role === 'user'
-                ? 'bg-primary text-primary-foreground max-w-[85%] rounded-xl px-3 py-2'
-                : 'max-w-[92%]'
+                ? 'bg-primary text-primary-foreground max-w-[85%] rounded-2xl rounded-br-md px-3 py-2'
+                : 'min-w-0 max-w-[92%]'
             }
           >
             {msg.role === 'user' ? (
@@ -79,7 +93,7 @@ export function ChatThread({
                     ))}
                   </ul>
                 ) : null}
-                {msg.text ? <p className="text-sm">{msg.text}</p> : null}
+                {msg.text ? <p className="break-words text-sm">{msg.text}</p> : null}
               </div>
             ) : (
               <ChatBlockRenderer blocks={msg.blocks} onResolveAction={onResolveAction} />
@@ -87,12 +101,7 @@ export function ChatThread({
           </div>
         </div>
       ))}
-      {pending && (
-        <div className="text-muted-foreground flex items-center gap-2 text-xs">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-          Thinking…
-        </div>
-      )}
+      {sending ? <AssistantThinkingIndicator /> : null}
       <div ref={bottomRef} />
     </div>
   );
