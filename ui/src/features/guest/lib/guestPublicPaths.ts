@@ -147,6 +147,9 @@ export type GuestPayParkingPathOptions = {
   admin?: boolean;
 };
 
+/** Placeholder booking id for dashboard Public Pages iframe preview (`/parking/preview`). */
+export const GUEST_PAY_PARKING_PREVIEW_BOOKING_ID = 'preview';
+
 export function guestPayParkingPath(
   propertySlug: string,
   bookingId: string,
@@ -155,6 +158,15 @@ export function guestPayParkingPath(
   const base = `${propertyBase(propertySlug)}/parking/${encodeURIComponent(bookingId)}`;
   if (options.admin) return `${base}?admin=true`;
   return base;
+}
+
+export function guestPayParkingPreviewPath(propertySlug: string): string {
+  return guestPayParkingPath(propertySlug, GUEST_PAY_PARKING_PREVIEW_BOOKING_ID);
+}
+
+/** Prefix for per-booking pay-parking URLs (`…/parking/<bookingId>`). */
+export function guestPayParkingPathPrefix(propertySlug: string): string {
+  return `${propertyBase(propertySlug)}/parking/`;
 }
 
 export function guestStayGuidePath(propertySlug: string, token: string): string {

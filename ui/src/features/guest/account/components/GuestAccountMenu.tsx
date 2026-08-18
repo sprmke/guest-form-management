@@ -65,7 +65,7 @@ export function GuestAccountMenu() {
       <DropdownMenuContent align="end" className="z-[60] w-52">
         {hasHostAccess ? (
           <>
-            <DropdownMenuLabel>Host</DropdownMenuLabel>
+            <DropdownMenuLabel className="!text-[10px]">Host</DropdownMenuLabel>
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
                 <Link to={dashboardHref}>
@@ -75,7 +75,7 @@ export function GuestAccountMenu() {
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuLabel>Explore</DropdownMenuLabel>
+            <DropdownMenuLabel className="!text-[10px]">Explore</DropdownMenuLabel>
           </>
         ) : null}
         <DropdownMenuGroup>

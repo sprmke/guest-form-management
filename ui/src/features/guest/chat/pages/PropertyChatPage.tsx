@@ -5,6 +5,7 @@ import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
 
 import { useGuestAuth } from '@/features/guest/auth/context/GuestAuthContext';
+import { PropertyChatEmbedPreview } from '@/features/guest/chat/components/PropertyChatEmbedPreview';
 import {
   GuestChatHeaderBar,
   GuestChatSearchPanelRow,
@@ -16,6 +17,7 @@ import {
   guestPropertyPath,
   guestPropertyPickDatesPath,
 } from '@/features/guest/lib/guestPublicPaths';
+import { isGuestEmbedPreview } from '@/features/guest/lib/guestEmbedPreview';
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
 import { GuestStayContextBar } from '@/features/guest/property/components/GuestStayContextBar';
 
@@ -43,19 +45,26 @@ export function PropertyChatPage() {
 
   const dates = useMemo(() => parseInquiryDates(searchParams), [searchParams]);
   const propertyPath = guestPropertyPath(propertySlug);
+  const embedPreview = isGuestEmbedPreview(searchParams);
 
   useEffect(() => {
-    if (status !== 'anonymous' || !dates) return;
+    if (embedPreview || status !== 'anonymous' || !dates) return;
     requireGuestAuth(() => undefined, {
       resume: {
         type: 'navigate',
         to: `${propertyPath}/messages?${searchParams.toString()}`,
       },
     });
-  }, [status, dates, requireGuestAuth, propertyPath, searchParams]);
+  }, [embedPreview, status, dates, requireGuestAuth, propertyPath, searchParams]);
 
   if (!dates) {
     return <Navigate to={guestPropertyPickDatesPath(propertySlug, 'contactHost')} replace />;
+  }
+
+  if (embedPreview) {
+    return (
+      <PropertyChatEmbedPreview checkInDate={dates.checkInDate} checkOutDate={dates.checkOutDate} />
+    );
   }
 
   if (status === 'loading' || status === 'anonymous') {
