@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
+import { handleAiMutationError, isAiQuotaError } from '@/features/dashboard/org/lib/aiQuotaToast';
 import { teamGet, teamMutate } from '@/features/dashboard/team/lib/teamApi';
 import type {
   CustomPropertyRole,
@@ -88,6 +89,10 @@ export function usePropertyTeamMutations() {
       toast.success('Invitation sent');
     },
     onError: (error: Error) => {
+      if (isAiQuotaError(error)) {
+        handleAiMutationError(error);
+        return;
+      }
       toast.error(friendlyToastError(error, 'Failed to send invitation'));
     },
   });

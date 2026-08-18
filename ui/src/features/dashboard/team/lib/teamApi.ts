@@ -1,5 +1,6 @@
 import { scopedFunctionsUrl } from '@/features/dashboard/org/lib/adminApiScope';
 import { scopedParkingFunctionsBaseUrl } from '@/features/dashboard/org/lib/adminParkingScope';
+import { parseEdgeJsonOrQuota } from '@/features/dashboard/org/lib/aiQuotaToast';
 
 import { supabase } from '@/lib/supabase/client';
 
@@ -47,7 +48,13 @@ export async function teamMutate<T>(
     headers,
     body: JSON.stringify(payload),
   });
-  const json = (await res.json().catch(() => ({}))) as ApiJson<T>;
+  const json = (await res.json().catch(() => ({}))) as ApiJson<T> & {
+    upgradeHook?: boolean;
+    feature?: string;
+  };
+  if (json.upgradeHook || res.status === 429) {
+    return parseEdgeJsonOrQuota<T>(res);
+  }
   if (!res.ok || !json.success) {
     throw new Error(json.error ?? 'Request failed');
   }

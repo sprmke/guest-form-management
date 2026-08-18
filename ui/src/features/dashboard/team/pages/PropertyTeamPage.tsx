@@ -27,6 +27,12 @@ import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPer
 import { countMembersWithRole } from '@/features/dashboard/team/lib/propertyTeamRoles';
 import { isTeamMemberActive } from '@/features/dashboard/team/lib/teamMemberAccess';
 import { canEditPropertyMemberContact } from '@/features/dashboard/team/lib/teamMemberContact';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import {
+  canInviteTeamMember,
+  countPropertyTeamSlotsUsed,
+} from '@/features/dashboard/plans/lib/planFeatures';
 import type {
   CustomPropertyRole,
   CustomRoleFormMode,
@@ -79,6 +85,11 @@ export function PropertyTeamPage() {
   const members = data?.members ?? [];
   const invitations = data?.invitations ?? [];
   const customRoles = data?.customRoles ?? [];
+  const { entitlements, isLoading: entitlementsLoading } = useFeatureGate('teamManagement');
+  const { open: openUpgradeModal } = useUpgradeModal();
+  const teamSlotsUsed = countPropertyTeamSlotsUsed(members, invitations);
+  const planAllowsInvite = canInviteTeamMember(entitlements, teamSlotsUsed);
+  const canInviteByPlan = !entitlementsLoading && Boolean(entitlements) && planAllowsInvite;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState('all');
@@ -120,6 +131,11 @@ export function PropertyTeamPage() {
   const handleInvite = async () => {
     const email = inviteEmail.trim();
     if (!email) return;
+
+    if (!canInviteByPlan) {
+      if (!entitlementsLoading) openUpgradeModal('teamManagement');
+      return;
+    }
 
     try {
       await inviteMember.mutateAsync({
