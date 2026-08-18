@@ -136,6 +136,9 @@ verify_jwt = false
 [functions.get-public-property]
 verify_jwt = false
 
+[functions.get-residence-unit-types]
+verify_jwt = false
+
 [functions.get-public-host]
 verify_jwt = false
 
@@ -767,6 +770,30 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.ai-platform-credit-wallet]
+verify_jwt = false
+
+[functions.pricing-plans]
+verify_jwt = false
+
+[functions.property-subscriptions-admin]
+verify_jwt = false
+
+[functions.property-plan]
+verify_jwt = false
+
+[functions.property-entitlements]
+verify_jwt = false
+
+[functions.create-subscription-checkout]
+verify_jwt = false
+
+[functions.paymongo-webhook]
+verify_jwt = false
+
+[functions.platform-payment-settings]
+verify_jwt = false
+
+[functions.platform-billing-cron]
 verify_jwt = false
 
 [functions.dashboard-assistant-settings]
