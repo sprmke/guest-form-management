@@ -130,6 +130,7 @@ import {
 } from '@/features/dashboard/marketing/lib/videoCampaignTemplates';
 import { registerVideoThumbnailPlaybackPause } from '@/features/dashboard/marketing/lib/videoThumbnailCapture';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
+import { PlanGateWatermarkOverlay } from '@/features/dashboard/plans/components/PlanGateWatermarkOverlay';
 import { useOrgSettings } from '@/features/dashboard/org/hooks/useOrgSettings';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 
@@ -1156,24 +1157,26 @@ export function VideoEditor({ onPublish }: Props) {
                   </TooltipProvider>
                 }
               />
-              <VideoPreviewWorkspace
-                ref={previewWorkspaceRef}
-                playerRef={playerRef}
-                project={project}
-                format={format}
-                durationInFrames={durationInFrames}
-                inputProps={inputProps}
-                selectedSceneIndex={selectedSceneIndex}
-                previewMode={previewMode}
-                onPreviewModeChange={setPreviewMode}
-                onPlayingChange={setPreviewPlaying}
-                onProjectChange={setProject}
-                compositionKey={compositionKey}
-                selectedElementId={selectedElementId}
-                onHighlightElement={setSelectedElementId}
-                onCanvasSelectElement={handleCanvasSelectElement}
-                relativeZoom={relativeZoom}
-              />
+              <PlanGateWatermarkOverlay className="min-h-0 flex-1">
+                <VideoPreviewWorkspace
+                  ref={previewWorkspaceRef}
+                  playerRef={playerRef}
+                  project={project}
+                  format={format}
+                  durationInFrames={durationInFrames}
+                  inputProps={inputProps}
+                  selectedSceneIndex={selectedSceneIndex}
+                  previewMode={previewMode}
+                  onPreviewModeChange={setPreviewMode}
+                  onPlayingChange={setPreviewPlaying}
+                  onProjectChange={setProject}
+                  compositionKey={compositionKey}
+                  selectedElementId={selectedElementId}
+                  onHighlightElement={setSelectedElementId}
+                  onCanvasSelectElement={handleCanvasSelectElement}
+                  relativeZoom={relativeZoom}
+                />
+              </PlanGateWatermarkOverlay>
             </div>
             <VideoTimeline
               project={project}

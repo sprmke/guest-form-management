@@ -89,6 +89,7 @@ import { cn } from '@/lib/utils';
 import { CalendarFormatPicker } from './CalendarFormatPicker';
 import { CalendarPreview } from './CalendarPreview';
 import { CalendarPreviewScaledFrame } from './CalendarPreviewScaledFrame';
+import { PlanGateWatermarkOverlay } from '@/features/dashboard/plans/components/PlanGateWatermarkOverlay';
 import { CalendarTemplateSidebar } from './CalendarTemplateSidebar';
 import {
   ContainerPanel,
@@ -1226,24 +1227,26 @@ export function CalendarBuilder({
               {/* Preview Area */}
               <div ref={previewContainerRef} className="flex-1 overflow-auto p-4 sm:p-6">
                 <div className="flex min-h-full items-center justify-center">
-                  <CalendarPreviewScaledFrame
-                    ref={previewRef}
-                    styles={styles}
-                    displayScale={previewLayout.displayScale}
-                    nativeWidth={previewLayout.nativeWidth}
-                    nativeHeight={previewLayout.nativeHeight}
-                  >
-                    {(calendarSize) => (
-                      <CalendarPreview
-                        styles={styles}
-                        propertyName={propertyName}
-                        bookings={previewBookingsForDisplay}
-                        blockedDays={previewBlockedDaysForDisplay}
-                        displayMonth={previewMonth}
-                        layoutMaxWidth={calendarSize}
-                      />
-                    )}
-                  </CalendarPreviewScaledFrame>
+                  <PlanGateWatermarkOverlay>
+                    <CalendarPreviewScaledFrame
+                      ref={previewRef}
+                      styles={styles}
+                      displayScale={previewLayout.displayScale}
+                      nativeWidth={previewLayout.nativeWidth}
+                      nativeHeight={previewLayout.nativeHeight}
+                    >
+                      {(calendarSize) => (
+                        <CalendarPreview
+                          styles={styles}
+                          propertyName={propertyName}
+                          bookings={previewBookingsForDisplay}
+                          blockedDays={previewBlockedDaysForDisplay}
+                          displayMonth={previewMonth}
+                          layoutMaxWidth={calendarSize}
+                        />
+                      )}
+                    </CalendarPreviewScaledFrame>
+                  </PlanGateWatermarkOverlay>
                 </div>
               </div>
             </div>
@@ -1365,23 +1368,25 @@ export function CalendarBuilder({
                   'flex flex-1 items-center justify-center overflow-auto p-6 sm:p-8'
                 )}
               >
-                <CalendarPreviewScaledFrame
-                  styles={styles}
-                  displayScale={fullscreenLayout.displayScale}
-                  nativeWidth={fullscreenLayout.nativeWidth}
-                  nativeHeight={fullscreenLayout.nativeHeight}
-                >
-                  {(calendarSize) => (
-                    <CalendarPreview
-                      styles={styles}
-                      propertyName={propertyName}
-                      bookings={previewBookingsForDisplay}
-                      blockedDays={previewBlockedDaysForDisplay}
-                      displayMonth={previewMonth}
-                      layoutMaxWidth={calendarSize}
-                    />
-                  )}
-                </CalendarPreviewScaledFrame>
+                <PlanGateWatermarkOverlay>
+                  <CalendarPreviewScaledFrame
+                    styles={styles}
+                    displayScale={fullscreenLayout.displayScale}
+                    nativeWidth={fullscreenLayout.nativeWidth}
+                    nativeHeight={fullscreenLayout.nativeHeight}
+                  >
+                    {(calendarSize) => (
+                      <CalendarPreview
+                        styles={styles}
+                        propertyName={propertyName}
+                        bookings={previewBookingsForDisplay}
+                        blockedDays={previewBlockedDaysForDisplay}
+                        displayMonth={previewMonth}
+                        layoutMaxWidth={calendarSize}
+                      />
+                    )}
+                  </CalendarPreviewScaledFrame>
+                </PlanGateWatermarkOverlay>
               </div>
             </div>
           )}

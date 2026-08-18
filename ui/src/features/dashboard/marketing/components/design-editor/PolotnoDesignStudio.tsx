@@ -78,6 +78,7 @@ import {
 } from '@/features/dashboard/marketing/lib/renderMarketingDesignThumbnail';
 import type { DesignTemplateFormat } from '@/features/dashboard/marketing/lib/templateRegistry';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
+import { PlanGateWatermarkOverlay } from '@/features/dashboard/plans/components/PlanGateWatermarkOverlay';
 import { useOrgBrandColor } from '@/features/dashboard/org/hooks/useOrgBrandColor';
 import { useOrgSettings } from '@/features/dashboard/org/hooks/useOrgSettings';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
@@ -756,22 +757,24 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
         )}
       >
         <div className="relative min-h-0 flex-1">
-          {storeReady && store ? (
-            <KamePolotnoEditor
-              store={store}
-              propertyImageUrls={propertyImageUrls}
-              brandColor={brandColor}
-              logoUrl={orgLogoUrl}
-              style={{ width: '100%', height: '100%' }}
-              onResetDesign={handleResetDesign}
-              resetDisabled={loadingTemplate || (!selectedId && !savedTemplateId)}
-            />
-          ) : (
-            <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
-              <Loader2 className="mr-2 size-5 animate-spin" aria-hidden />
-              Starting editor…
-            </div>
-          )}
+          <PlanGateWatermarkOverlay className="h-full">
+            {storeReady && store ? (
+              <KamePolotnoEditor
+                store={store}
+                propertyImageUrls={propertyImageUrls}
+                brandColor={brandColor}
+                logoUrl={orgLogoUrl}
+                style={{ width: '100%', height: '100%' }}
+                onResetDesign={handleResetDesign}
+                resetDisabled={loadingTemplate || (!selectedId && !savedTemplateId)}
+              />
+            ) : (
+              <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
+                <Loader2 className="mr-2 size-5 animate-spin" aria-hidden />
+                Starting editor…
+              </div>
+            )}
+          </PlanGateWatermarkOverlay>
         </div>
       </div>
 

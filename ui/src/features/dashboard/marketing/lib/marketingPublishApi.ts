@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { usePropertyIdParam, scopedFunctionsUrl } from '@/features/dashboard/org/lib/adminApiScope';
 import {
   handleAiMutationError,
+  isAiQuotaError,
   parseEdgeJsonOrQuota,
 } from '@/features/dashboard/org/lib/aiQuotaToast';
 import { getSessionJwt } from '@/features/dashboard/org/lib/edgeClient';
@@ -107,7 +108,13 @@ export function usePublishToMeta() {
       toast.success('Published');
       void queryClient.invalidateQueries({ queryKey: ['marketing-publications', propertyId] });
     },
-    onError: (error: Error) => toast.error(error.message || 'Publish failed'),
+    onError: (error: Error) => {
+      if (isAiQuotaError(error)) {
+        handleAiMutationError(error);
+        return;
+      }
+      toast.error(error.message || 'Publish failed');
+    },
   });
 }
 

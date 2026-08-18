@@ -17,6 +17,9 @@ import {
   publishToMetaRequest,
   useGenerateMarketingCaption,
 } from '@/features/dashboard/marketing/lib/marketingPublishApi';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { isAiQuotaError } from '@/features/dashboard/org/lib/aiQuotaToast';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import {
   useOrgIdParam,
@@ -94,6 +97,9 @@ export function PublishDialog({ open, onOpenChange, media }: Props) {
   const generateCaption = useGenerateMarketingCaption();
   const { data: publicProperty } = usePublicPropertyDetail(property.slug);
   const { data: bookedDates } = useMarketingBookedDates();
+  const { canUse: canPublishMarketing, isLoading: entitlementsLoading } =
+    useFeatureGate('marketingStudio');
+  const { open: openUpgradeModal } = useUpgradeModal();
 
   const connectionsQuery = useQuery({
     queryKey: ['meta-publish-connections', routeOrgSlug ?? orgSlug, orgId, propertyId],
@@ -141,6 +147,11 @@ export function PublishDialog({ open, onOpenChange, media }: Props) {
   const handlePublish = async () => {
     if (!media || connectionIds.length === 0) return;
 
+    if (!canPublishMarketing) {
+      if (!entitlementsLoading) openUpgradeModal('marketingStudio');
+      return;
+    }
+
     let mediaUrl = media.dataUrl ?? '';
     if (!mediaUrl && media.blob) {
       mediaUrl = await blobToDataUrl(media.blob);
@@ -180,6 +191,10 @@ export function PublishDialog({ open, onOpenChange, media }: Props) {
       void queryClient.invalidateQueries({ queryKey: ['marketing-publications', propertyId] });
       onOpenChange(false);
     } catch (error) {
+      if (isAiQuotaError(error)) {
+        openUpgradeModal(error.feature ?? 'marketingStudio');
+        return;
+      }
       toast.error((error as Error).message || 'Publish failed');
     } finally {
       setPublishing(false);
