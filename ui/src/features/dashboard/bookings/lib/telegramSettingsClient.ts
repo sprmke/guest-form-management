@@ -1,6 +1,7 @@
 import { scopedFunctionsUrl } from '@/features/dashboard/org/lib/adminApiScope';
 import type { AdminAssetScope } from '@/features/dashboard/org/lib/adminAssetScope';
 import { scopedAssetFunctionsUrl } from '@/features/dashboard/org/lib/adminAssetScope';
+import { throwIfAiQuota } from '@/features/dashboard/org/lib/aiQuotaToast';
 
 import { supabase } from '@/lib/supabase/client';
 
@@ -53,7 +54,10 @@ export async function patchTelegramSettings<TData>(
   });
   const json = (await res.json()) as EdgeSuccess<TData> & {
     cronSync?: { ok?: boolean; error?: string };
+    upgradeHook?: boolean;
+    feature?: string;
   };
+  throwIfAiQuota(json, res);
   if (!json.success || !json.data) {
     throw new Error(json.error ?? fallbackError);
   }

@@ -66,6 +66,7 @@ export function DocPreview({
   receiptAiVariant = 'receipt',
   /** Square thumbnail for dense guest-roster rows (no caption chrome). */
   compact = false,
+  className,
 }: {
   label: string;
   url: string;
@@ -74,6 +75,7 @@ export function DocPreview({
   receiptAiLoading?: boolean;
   receiptAiVariant?: DocumentAiVerdictVariant;
   compact?: boolean;
+  className?: string;
 }) {
   const normalized = normalizeStoragePublicUrl(url) ?? url;
   const parsed = parseStorageUrl(normalized);
@@ -120,7 +122,7 @@ export function DocPreview({
   }, [url]);
 
   const hrefForOpen = displayUrl ?? normalized;
-  const widthClass = docPreviewOuterWidth(compact);
+  const widthClass = className ?? docPreviewOuterWidth(compact);
 
   if (compact) {
     const hasVerdict =

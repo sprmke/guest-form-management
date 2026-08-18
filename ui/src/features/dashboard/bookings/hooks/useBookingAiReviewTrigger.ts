@@ -8,6 +8,11 @@ import {
 } from '@/features/dashboard/bookings/lib/bookingAiReviewProgress';
 import type { BookingAiReview } from '@/features/dashboard/bookings/lib/types';
 import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
+import {
+  handleAiMutationError,
+  isAiQuotaError,
+  parseEdgeJsonOrQuota,
+} from '@/features/dashboard/org/lib/aiQuotaToast';
 
 import { supabase } from '@/lib/supabase/client';
 
@@ -31,11 +36,7 @@ async function triggerBookingAiReview(
     },
     body: JSON.stringify({ bookingId, force: true, refresh: true }),
   });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok || !json.success) {
-    throw new Error(json.error ?? `HTTP ${res.status}`);
-  }
-  return json.data as BookingAiReview;
+  return parseEdgeJsonOrQuota<BookingAiReview>(res);
 }
 
 export function useBookingAiReviewTrigger(
@@ -61,7 +62,10 @@ export function useBookingAiReviewTrigger(
       void qc.invalidateQueries({ queryKey, refetchType: 'active' });
       return { previous };
     },
-    onError: (_err, _vars, context) => {
+    onError: (err, _vars, context) => {
+      if (isAiQuotaError(err)) {
+        handleAiMutationError(err);
+      }
       if (context?.previous !== undefined) {
         qc.setQueryData(queryKey, context.previous);
       }

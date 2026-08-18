@@ -15,6 +15,9 @@ import type { TelegramEnvVerifyDto } from '@/features/dashboard/bookings/lib/tel
 import { assetScopeKey, useAdminAssetScope } from '@/features/dashboard/org/lib/adminAssetScope';
 
 import { friendlyToastError, showTelegramVerifyToast } from '@/lib/feedback/toastMessages';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { handleAiMutationError, isAiQuotaError } from '@/features/dashboard/org/lib/aiQuotaToast';
 
 type TelegramSettingsDtoBase = {
   enabled: boolean;
@@ -56,6 +59,9 @@ export function useTelegramNotificationModuleBase<TDto extends TelegramSettingsD
   const scopeKey = assetScopeKey(scope);
   const update = useUpdate();
   const testSend = useTestSend();
+  const { canUse: canEnableTelegram, isLoading: telegramEntitlementsLoading } =
+    useFeatureGate('telegramNotifications');
+  const { open: openUpgradeModal } = useUpgradeModal();
   const [draft, setDraft] = React.useState<TDto | null>(null);
   const { botToken, setBotToken, chatId, setChatId } = useTelegramCredentialFields(
     data?.credentials,
@@ -125,6 +131,10 @@ export function useTelegramNotificationModuleBase<TDto extends TelegramSettingsD
 
   const onEnabledChange = React.useCallback(
     (enabled: boolean) => {
+      if (enabled && !canEnableTelegram) {
+        if (!telegramEntitlementsLoading) openUpgradeModal('telegramNotifications');
+        return;
+      }
       if (enabled && !botToken.trim() && globalBot.token) {
         setBotToken(globalBot.token);
       }
@@ -132,11 +142,25 @@ export function useTelegramNotificationModuleBase<TDto extends TelegramSettingsD
       update.mutate(
         { enabled },
         {
-          onError: (e: unknown) => toast.error(friendlyToastError(e, 'Could not save settings')),
+          onError: (e: unknown) => {
+            if (isAiQuotaError(e)) {
+              handleAiMutationError(e as Error);
+              return;
+            }
+            toast.error(friendlyToastError(e, 'Could not save settings'));
+          },
         }
       );
     },
-    [botToken, globalBot.token, setBotToken, update]
+    [
+      botToken,
+      canEnableTelegram,
+      globalBot.token,
+      openUpgradeModal,
+      setBotToken,
+      telegramEntitlementsLoading,
+      update,
+    ]
   );
 
   return {

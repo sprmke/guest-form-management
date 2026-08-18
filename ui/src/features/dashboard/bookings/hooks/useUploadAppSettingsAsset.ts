@@ -76,21 +76,36 @@ export function useUploadAppSettingsAsset() {
       return json.data;
     },
     onSuccess: (data, variables) => {
-      if (
-        propertyId &&
-        (data.column === 'gaf_unit_owner_signature_url' ||
-          variables.assetType === 'gaf_unit_owner_signature')
-      ) {
+      if (propertyId) {
         qc.setQueryData(['app-settings', propertyId], (current: AppSettingsDto | undefined) => {
           if (!current) return current;
-          return {
-            ...current,
-            gafUnitOwnerSignatureUrl: data.url,
-            fieldSources: {
-              ...current.fieldSources,
-              gafUnitOwnerSignatureUrl: 'db',
-            },
-          };
+
+          if (variables.assetType === 'gcash_qr') {
+            return {
+              ...current,
+              gcashQrImageUrl: data.url,
+              fieldSources: {
+                ...current.fieldSources,
+                gcashQrImageUrl: 'db',
+              },
+            };
+          }
+
+          if (
+            data.column === 'gaf_unit_owner_signature_url' ||
+            variables.assetType === 'gaf_unit_owner_signature'
+          ) {
+            return {
+              ...current,
+              gafUnitOwnerSignatureUrl: data.url,
+              fieldSources: {
+                ...current.fieldSources,
+                gafUnitOwnerSignatureUrl: 'db',
+              },
+            };
+          }
+
+          return current;
         });
       }
       void qc.invalidateQueries({ queryKey: ['app-settings', propertyId] });

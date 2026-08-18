@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
+import { parseEdgeJsonOrQuota } from '@/features/dashboard/org/lib/aiQuotaToast';
 
-import { adminEdgeFetchJson } from '@/lib/api/adminEdgeFetch';
+import { adminEdgeFetch, adminEdgeFetchJson } from '@/lib/api/adminEdgeFetch';
 
 export type VoiceReceptionistSettingsDto = {
   propertyId: string;
@@ -128,17 +129,19 @@ export function useUpdateVoiceReceptionistSettings() {
   const qc = useQueryClient();
   const propertyId = usePropertyIdParam();
   return useMutation({
-    mutationFn: (patch: VoiceReceptionistSettingsPatch) =>
-      adminEdgeFetchJson<{ data: VoiceReceptionistSettingsDto }>(
+    mutationFn: async (patch: VoiceReceptionistSettingsPatch) => {
+      const res = await adminEdgeFetch(
         VOICE_RECEPTIONIST_SETTINGS_PATH,
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(patch),
         },
-        propertyId,
-        'Failed to save voice receptionist settings'
-      ).then((json) => json.data),
+        propertyId
+      );
+      const json = await parseEdgeJsonOrQuota<VoiceReceptionistSettingsDto>(res);
+      return json;
+    },
     onSuccess: (data) => {
       qc.setQueryData(['voice-receptionist-settings', propertyId], data);
     },
@@ -153,18 +156,26 @@ export type VoiceReceptionistVoicePreviewDto = {
   audioBase64: string;
 };
 
+export type VoiceReceptionistVoicePreviewInput = {
+  voiceId: string;
+  propertyName?: string;
+};
+
 const VOICE_RECEPTIONIST_VOICE_PREVIEW_PATH = '/voice-receptionist-voice-preview';
 
 export function usePreviewVoiceReceptionistVoice() {
   const propertyId = usePropertyIdParam();
   return useMutation({
-    mutationFn: (voiceId: string) =>
+    mutationFn: (input: VoiceReceptionistVoicePreviewInput) =>
       adminEdgeFetchJson<{ data: VoiceReceptionistVoicePreviewDto }>(
         VOICE_RECEPTIONIST_VOICE_PREVIEW_PATH,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ voiceId }),
+          body: JSON.stringify({
+            voiceId: input.voiceId,
+            propertyName: input.propertyName?.trim() || undefined,
+          }),
         },
         propertyId,
         'Could not preview voice'

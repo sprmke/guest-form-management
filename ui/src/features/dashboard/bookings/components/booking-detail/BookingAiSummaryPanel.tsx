@@ -29,6 +29,8 @@ import type {
   BookingAiReviewSectionStatus,
   BookingRow,
 } from '@/features/dashboard/bookings/lib/types';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 
 import { cn } from '@/lib/utils';
 
@@ -143,6 +145,17 @@ type Props = {
 export function BookingAiSummaryPanel({ booking, open, onOpenChange, onPreview }: Props) {
   const { data: review } = useBookingAiReview(booking.id);
   const trigger = useBookingAiReviewTrigger(booking.id, () => undefined);
+  const { canUse: canRunAiValidation, isLoading: entitlementsLoading } =
+    useFeatureGate('aiValidations');
+  const { open: openUpgradeModal } = useUpgradeModal();
+
+  const runAiReview = () => {
+    if (!canRunAiValidation) {
+      if (!entitlementsLoading) openUpgradeModal('aiValidations');
+      return;
+    }
+    trigger.mutate();
+  };
 
   const isStuck = isStuckProcessingReview(review);
   const isRunning = isBookingAiReviewRunning(review, trigger.isPending);
@@ -232,7 +245,7 @@ export function BookingAiSummaryPanel({ booking, open, onOpenChange, onPreview }
           ) : (
             <button
               type="button"
-              onClick={() => trigger.mutate()}
+              onClick={runAiReview}
               disabled={!canTriggerRun}
               aria-busy={isRunning || undefined}
               className={cn(

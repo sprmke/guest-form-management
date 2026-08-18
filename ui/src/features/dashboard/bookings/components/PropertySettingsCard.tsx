@@ -40,6 +40,8 @@ import {
   voiceReceptionistToFormValues,
   type VoiceReceptionistFormValues,
 } from '@/features/dashboard/bookings/hooks/useVoiceReceptionistSettings';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import {
   applyBuildingFormsTeamDefaults,
   pickBuildingFormsTeamContact,
@@ -153,6 +155,9 @@ export function PropertySettingsCard() {
     error: voiceSettingsLoadError,
   } = useVoiceReceptionistSettings();
   const updateVoiceSettings = useUpdateVoiceReceptionistSettings();
+  const { canUse: canEnableReceptionist, isLoading: receptionistEntitlementsLoading } =
+    useFeatureGate('aiReceptionist');
+  const { open: openUpgradeModal } = useUpgradeModal();
   const orgBrandColor = useOrgBrandColor();
   const inheritedBrandColor = appSettings?.inheritedBrandColor ?? orgBrandColor;
   const { data: orgSettings } = useOrgSettings();
@@ -450,6 +455,10 @@ export function PropertySettingsCard() {
     key: K,
     value: VoiceReceptionistFormValues[K]
   ) => {
+    if (key === 'enabled' && value === true && !canEnableReceptionist) {
+      if (!receptionistEntitlementsLoading) openUpgradeModal('aiReceptionist');
+      return;
+    }
     setVoiceDraft((current) => (current ? { ...current, [key]: value } : current));
   };
 
@@ -553,6 +562,10 @@ export function PropertySettingsCard() {
       }
 
       if (voiceDirty && voiceDraft) {
+        if (voiceDraft.enabled && !canEnableReceptionist) {
+          if (!receptionistEntitlementsLoading) openUpgradeModal('aiReceptionist');
+          return;
+        }
         const saved = await updateVoiceSettings.mutateAsync(
           buildVoiceReceptionistPatch(voiceDraft)
         );
@@ -763,6 +776,7 @@ export function PropertySettingsCard() {
             sectionMessages={settingsCompletion.sectionMessages}
             voiceReceptionist={{
               draft: voiceDraft,
+              propertyName: profileDraft.name.trim(),
               availableVoices: voiceSettings?.availableVoices ?? [],
               isLoading: voiceSettingsLoading,
               isError: voiceSettingsError,

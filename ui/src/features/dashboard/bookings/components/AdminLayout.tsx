@@ -57,6 +57,7 @@ import { NotificationBell } from '@/features/dashboard/notifications/components/
 import { NotificationsProvider } from '@/features/dashboard/notifications/components/NotificationsProvider';
 import { useNotificationsList } from '@/features/dashboard/notifications/hooks/useNotifications';
 import { ListingContractRenewalProvider } from '@/features/dashboard/org/components/listing-authorization/ListingContractRenewalProvider';
+import { UpgradeModalProvider } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { ListingVerificationSidebarCta } from '@/features/dashboard/org/components/listing-authorization/ListingVerificationSidebarCta';
 import { OrgSettingsIssuesSync } from '@/features/dashboard/org/components/OrgSettingsIssuesSync';
 import { SectionNavIssueDot } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
@@ -221,9 +222,11 @@ export function AdminLayout({ children, fillMain: fillMainProp = false }: Props)
     <AdminLayoutFillMainContext.Provider value={setFill}>
       <AdminLayoutFillMainActiveContext.Provider value={fillMain}>
         <AdminBrandTheme>
-          <ListingContractRenewalProvider>
-            <AdminLayoutShell fillMain={fillMain}>{children}</AdminLayoutShell>
-          </ListingContractRenewalProvider>
+          <UpgradeModalProvider>
+            <ListingContractRenewalProvider>
+              <AdminLayoutShell fillMain={fillMain}>{children}</AdminLayoutShell>
+            </ListingContractRenewalProvider>
+          </UpgradeModalProvider>
         </AdminBrandTheme>
       </AdminLayoutFillMainActiveContext.Provider>
     </AdminLayoutFillMainContext.Provider>
