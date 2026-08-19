@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+
 import { InboxPage } from '@/features/dashboard/inbox/pages/InboxPage';
 import { useParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
 import { parkingInboxPath } from '@/features/dashboard/org/lib/tenantPaths';
@@ -7,6 +9,7 @@ import { hasParkingPermission } from '@/features/dashboard/team/lib/parkingPermi
 export function ParkingInboxPage() {
   const { org, orgSlug, parking, parkingSlug } = useParkingContext();
   const { data: access } = useParkingPermissions();
+  const scope = useMemo(() => ({ parkingId: parking.id }), [parking.id]);
 
   return (
     <InboxPage
@@ -15,7 +18,7 @@ export function ParkingInboxPage() {
       canReply={hasParkingPermission(access?.permissions, 'inbox:reply')}
       canManage={hasParkingPermission(access?.permissions, 'inbox:manage')}
       showSettingsManageTabs={false}
-      scope={{ parkingId: parking.id }}
+      scope={scope}
       orgSlug={orgSlug}
       orgId={org.id}
     />

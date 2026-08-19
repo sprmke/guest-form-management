@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   useInfiniteQuery,
@@ -251,24 +251,17 @@ export function useInboxMutations(
   });
 
   const disconnectMeta = useMutation({
-    mutationFn: ({ deleteMessages = false }: { deleteMessages?: boolean } = {}) =>
-      mockMode
-        ? mockDisconnectMeta()
-        : disconnectMetaInbox(orgSlug, orgId, 'meta', scope, deleteMessages),
-    onMutate: async ({ deleteMessages = false }) => {
-      if (deleteMessages) {
-        if (orgId) {
-          metaSyncAbortByOrg.get(orgId)?.abort();
-          metaSyncAbortByOrg.delete(orgId);
-        }
-        clearInboxThreadCaches(qc);
+    mutationFn: () =>
+      mockMode ? mockDisconnectMeta() : disconnectMetaInbox(orgSlug, orgId, 'meta', scope),
+    onMutate: async () => {
+      if (orgId) {
+        metaSyncAbortByOrg.get(orgId)?.abort();
+        metaSyncAbortByOrg.delete(orgId);
       }
-      return { deleteMessages };
+      clearInboxThreadCaches(qc);
     },
-    onSuccess: (_data, _vars, ctx) => {
-      if (ctx?.deleteMessages) {
-        clearInboxThreadCaches(qc);
-      }
+    onSuccess: () => {
+      clearInboxThreadCaches(qc);
       void qc.invalidateQueries({ queryKey: [INBOX_CONNECTIONS_KEY] });
       void qc.invalidateQueries({ queryKey: [INBOX_THREADS_KEY] });
       void qc.invalidateQueries({ queryKey: [INBOX_MESSAGES_KEY] });
@@ -549,7 +542,12 @@ export function useInboxMessages(
   scope?: InboxApiScope | null
 ) {
   const qc = useQueryClient();
-  const msgKey = conversationId ? inboxMessagesQueryKey(conversationId, scope) : null;
+  const scopePropertyId = scope?.propertyId ?? null;
+  const scopeParkingId = scope?.parkingId ?? null;
+  const msgKey = useMemo(
+    () => (conversationId ? inboxMessagesQueryKey(conversationId, scope) : null),
+    [conversationId, scopePropertyId, scopeParkingId]
+  );
   const query = useInfiniteQuery({
     queryKey: msgKey ?? [INBOX_MESSAGES_KEY, null, ...inboxScopeKey(scope), mockMode],
     queryFn: ({ pageParam }) =>
@@ -588,7 +586,13 @@ export function useInboxMessages(
     !mockMode && !!conversationId
   );
 
-  useInboxConversationReadRealtime(orgId, conversationId, qc, notifyPeerDelivered);
+  const onInboundMessage = useCallback(() => {
+    void notifyPeerDelivered();
+    refreshMessages();
+    scheduleThreadsInvalidate(qc);
+  }, [notifyPeerDelivered, refreshMessages, qc]);
+
+  useInboxConversationReadRealtime(orgId, conversationId, msgKey, qc, onInboundMessage);
 
   useEffect(() => {
     if (!conversationId) return;
@@ -602,9 +606,8 @@ export function useInboxMessages(
     void markInboxConversationRead(orgSlug, orgId, conversationId, scope).then(async () => {
       await notifyPeerRead();
       scheduleThreadsInvalidate(qc);
-      refreshMessages();
     });
-  }, [conversationId, orgId, orgSlug, scope, qc, notifyPeerRead, refreshMessages]);
+  }, [conversationId, orgId, orgSlug, scopePropertyId, scopeParkingId, notifyPeerRead, qc]);
 
   return query;
 }
@@ -612,6 +615,7 @@ export function useInboxMessages(
 function useInboxConversationReadRealtime(
   orgId: string | null,
   conversationId: string | null,
+  msgKey: readonly unknown[] | null,
   qc: QueryClient,
   onGuestMessageReceived?: () => void | Promise<void>
 ) {
@@ -660,13 +664,8 @@ function useInboxConversationReadRealtime(
             const row = payload.new as { guest_last_read_at?: string | null };
             const prev = payload.old as { guest_last_read_at?: string | null };
             const readAt = row.guest_last_read_at?.trim();
-            if (!readAt || readAt === prev.guest_last_read_at) return;
-            markDirectionMessagesReadInCache(
-              qc,
-              [INBOX_MESSAGES_KEY, conversationId, mockMode],
-              'outbound',
-              readAt
-            );
+            if (!readAt || readAt === prev.guest_last_read_at || !msgKey) return;
+            markDirectionMessagesReadInCache(qc, msgKey, 'outbound', readAt);
           }
         )
         .subscribe();
@@ -676,7 +675,7 @@ function useInboxConversationReadRealtime(
       cancelled = true;
       if (channel) void supabase.removeChannel(channel);
     };
-  }, [conversationId, orgId, qc]);
+  }, [conversationId, msgKey, orgId, qc]);
 }
 
 export function useInboxRealtime(orgId: string | null) {

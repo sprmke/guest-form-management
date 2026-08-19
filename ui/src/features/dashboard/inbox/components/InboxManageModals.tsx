@@ -39,7 +39,7 @@ type Props = {
   disconnecting: boolean;
   resubscribing?: boolean;
   onConnectMeta: () => void;
-  onDisconnectMeta: (deleteMessages: boolean) => void;
+  onDisconnectMeta: () => void;
   onResubscribeMeta: () => void;
   templates: InboxTemplate[];
   templatesLoading: boolean;

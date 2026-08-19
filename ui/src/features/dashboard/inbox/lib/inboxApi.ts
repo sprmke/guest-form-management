@@ -139,7 +139,7 @@ export async function disconnectMetaInbox(
   orgId: string | null,
   platform = 'meta',
   scope?: InboxApiScope | null,
-  deleteMessages = false
+  deleteMessages = true
 ): Promise<void> {
   const jwt = await getJwt();
   const res = await fetch(withInboxScope(orgUrl('/meta-inbox-disconnect', orgSlug, orgId), scope), {

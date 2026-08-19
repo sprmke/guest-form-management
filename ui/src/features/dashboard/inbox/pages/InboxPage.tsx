@@ -394,29 +394,18 @@ export function InboxPage({
           disconnecting={disconnectMeta.isPending}
           resubscribing={resubscribeMeta.isPending}
           onConnectMeta={handleConnectMeta}
-          onDisconnectMeta={(deleteMessages) =>
-            disconnectMeta.mutate(
-              { deleteMessages },
-              {
-                onSuccess: () => {
-                  if (deleteMessages) {
-                    setSelectedId(null);
-                    setMobileShowConversation(false);
-                    const next = new URLSearchParams(searchParams);
-                    next.delete('conversationId');
-                    setSearchParams(next, { replace: true });
-                  }
-                  toast.success(
-                    mockActive
-                      ? 'Preview: disconnected'
-                      : deleteMessages
-                        ? 'Meta disconnected and history deleted'
-                        : 'Meta disconnected'
-                  );
-                },
-                onError: (e) => toast.error(e.message),
-              }
-            )
+          onDisconnectMeta={() =>
+            disconnectMeta.mutate(undefined, {
+              onSuccess: () => {
+                setSelectedId(null);
+                setMobileShowConversation(false);
+                const next = new URLSearchParams(searchParams);
+                next.delete('conversationId');
+                setSearchParams(next, { replace: true });
+                toast.success(mockActive ? 'Preview: disconnected' : 'Meta disconnected');
+              },
+              onError: (e) => toast.error(e.message),
+            })
           }
           onResubscribeMeta={() =>
             resubscribeMeta.mutate(undefined, {

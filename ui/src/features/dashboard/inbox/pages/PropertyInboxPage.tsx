@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+
 import { InboxPage } from '@/features/dashboard/inbox/pages/InboxPage';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { propertyInboxPath } from '@/features/dashboard/org/lib/tenantPaths';
@@ -11,6 +13,7 @@ export function PropertyInboxPage() {
   const orgSlug = orgContext?.orgSlug ?? null;
   const orgId = orgContext?.org.id ?? null;
   const propertyId = orgContext?.property.id ?? null;
+  const scope = useMemo(() => (propertyId ? { propertyId } : null), [propertyId]);
 
   return (
     <InboxPage
@@ -23,7 +26,7 @@ export function PropertyInboxPage() {
       canReply={hasPropertyPermission(access?.permissions, 'inbox:reply')}
       canManage={hasPropertyPermission(access?.permissions, 'inbox:manage')}
       showSettingsManageTabs
-      scope={propertyId ? { propertyId } : null}
+      scope={scope}
       orgSlug={orgSlug}
       orgId={orgId}
     />

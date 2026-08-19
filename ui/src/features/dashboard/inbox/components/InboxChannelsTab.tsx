@@ -20,7 +20,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 
 const COMING_SOON_ORDER: SocialPlatform[] = ['tiktok', 'airbnb'];
@@ -45,7 +44,7 @@ type Props = {
   disconnecting: boolean;
   resubscribing?: boolean;
   onConnectMeta: () => void;
-  onDisconnectMeta: (deleteMessages: boolean) => void;
+  onDisconnectMeta: () => void;
   onResubscribeMeta: () => void;
 };
 
@@ -146,7 +145,6 @@ export function InboxChannelsTab({
   onResubscribeMeta,
 }: Props) {
   const [disconnectOpen, setDisconnectOpen] = useState(false);
-  const [deleteMessages, setDeleteMessages] = useState(false);
 
   const fbConn = metaConnection(connections, 'facebook');
   const igConn = metaConnection(connections, 'instagram');
@@ -169,9 +167,8 @@ export function InboxChannelsTab({
   };
 
   const confirmDisconnect = () => {
-    onDisconnectMeta(deleteMessages);
+    onDisconnectMeta();
     setDisconnectOpen(false);
-    setDeleteMessages(false);
   };
 
   const showConnect = canManage && metaState === 'disconnected';
@@ -329,43 +326,15 @@ export function InboxChannelsTab({
         })}
       </ul>
 
-      <Dialog
-        open={disconnectOpen}
-        onOpenChange={(open) => {
-          setDisconnectOpen(open);
-          if (!open) setDeleteMessages(false);
-        }}
-      >
+      <Dialog open={disconnectOpen} onOpenChange={setDisconnectOpen}>
         <DialogContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
           <DialogHeader>
             <DialogTitle>Disconnect Meta?</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
-            <p className="text-muted-foreground text-sm">
-              Stops syncing this Meta Page and keeps existing conversations visible here.
-            </p>
-            <label className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2.5">
-              <Checkbox
-                checked={deleteMessages}
-                onCheckedChange={(checked) => setDeleteMessages(checked === true)}
-                className="mt-0.5"
-                aria-label="Also permanently delete synced conversations and messages"
-              />
-              <span className="min-w-0 text-sm">
-                <span className="text-foreground block font-medium">
-                  Also permanently delete synced conversations and messages
-                </span>
-                <span className="text-muted-foreground mt-0.5 block text-xs">
-                  Leave this off to disconnect safely and keep message history read-only.
-                </span>
-              </span>
-            </label>
-            {deleteMessages ? (
-              <p className="text-destructive text-sm font-medium">
-                This permanently removes synced Meta history from this inbox.
-              </p>
-            ) : null}
-          </div>
+          <p className="text-muted-foreground text-sm">
+            Synced Facebook and Instagram conversations will be removed from this inbox. Reconnect
+            Meta to receive new messages.
+          </p>
           <DialogFooter className="gap-1">
             <Button
               type="button"
@@ -378,16 +347,12 @@ export function InboxChannelsTab({
             </Button>
             <Button
               type="button"
-              variant={deleteMessages ? 'destructive' : 'soft-destructive'}
+              variant="destructive"
               className="min-h-[44px] sm:min-h-9"
               disabled={disconnecting}
               onClick={confirmDisconnect}
             >
-              {disconnecting
-                ? 'Disconnecting…'
-                : deleteMessages
-                  ? 'Disconnect and delete'
-                  : 'Disconnect'}
+              {disconnecting ? 'Disconnecting…' : 'Disconnect'}
             </Button>
           </DialogFooter>
         </DialogContent>
