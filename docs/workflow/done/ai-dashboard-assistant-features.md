@@ -2,7 +2,7 @@
 title: 'AI Dashboard Assistant — Feature List'
 status: v1 shipped
 tags: [workflow, done, ai, reference]
-updated: 2026-08-16
+updated: 2026-08-19
 ---
 
 # AI Dashboard Assistant — what shipped
@@ -21,6 +21,7 @@ A chat assistant embedded in the admin dashboard. Hosts and property managers ca
 - **Look up a single booking** — status, guest name, dates, property, balance due, and files already on the booking (approved GAF, receipts, IDs) as in-chat previews.
 - **List bookings** — filtered by property, status, or date range.
 - **See what a booking can do next** — the exact set of status transitions available right now, same source of truth the workflow panel uses.
+- **Guide a booking through remaining steps** — a stepper that matches the booking pipeline (done / current / upcoming). Confirming the current step still uses the same Confirm card as any other status move — it does not batch the whole journey.
 - **Dashboard stats** — check-ins/check-outs/occupancy for a property or the whole org.
 - **Finance summary** — income, expenses, net for a property (only visible to users with finance access).
 - **Finance bookings list** — bookings with finance figures for a property.
@@ -58,11 +59,25 @@ If the assistant tries to act on a booking or property the host isn't currently 
 ### 4. Where you see it
 
 - A floating assistant button on every admin dashboard page (org, property, and parking admin views) — hidden on super-admin pages and hidden entirely if the assistant isn't turned on.
-- A slide-over chat panel: ask a question, get an answer rendered as readable cards (booking cards, stat lists, tables, link lists) — never raw text dumps or hallucinated HTML.
-- **Starter prompts:** new chat centers a **Questions / Actions** mode switch (filled teal pill, not page tabs) and **5 randomized** prompt cards. Tapping one sends it as a message. The pool only covers tools that exist today (bookings, finance, maintenance, status moves, receipt re-check, cancel) — not parking, inbox, or marketing.
-- **Composer attachments + booking pin:** paperclip menu (Photo / File) and a calendar picker beside the message box. The picker groups property stays by check-in month, with search (guest / date / status) and rows showing guest, dates, and status. Pinning a stay sets `pageContext` for that turn.
+- A slide-over chat panel: ask a question, get an answer rendered as readable cards (booking cards, stat lists, tables, links, file previews, photos, a booking-journey stepper, suggested follow-up chips) — never raw text dumps or hallucinated HTML.
+- **Starter prompts:** new chat centers a **Questions / Actions** mode switch (filled teal pill, not page tabs) and **5 randomized** prompt cards. Tapping one sends it as a message. The pool covers bookings, finance, maintenance, parking, inbox, marketing, team, pricing, Help & Support, and Telegram — mapped to tools that exist (or knowledge-base how-tos).
+- **Composer attachments + context pin:** paperclip menu (Photo / File) and a **module quick-picker** beside the message box. The picker follows the page you are on (calendar on Bookings, building on Properties, wrench on Maintenance, and so on). **Search all modules…** at the bottom of that list (or **Cmd/Ctrl+K**) opens a grouped search across modules. Pinning adds a chip (`attachedContext`); it does not replace the page you are on. You can pin more than one item (up to 8), including mixed types if you switch pages or search across modules.
+- **Context pickers by module** (icon on that page's composer):
+  - Bookings / dashboard — stays, grouped by check-in month
+  - Properties / plans / settings — properties
+  - Team — org, property, or parking members
+  - Finance — income/expense rows
+  - Maintenance — reminders
+  - Parking bookings — parking stays
+  - Inbox — conversations, filterable by Web / Facebook / Instagram
+  - Marketing — templates
+  - Calendar / parking pricing — a date on the month grid
+  - Notifications — Staff / Finance / Maintenance / Marketing / Admin
+  - Public pages / templates — Stay guide (and any other custom pages)
+  - Help & Support — tickets
 - **History:** clock icon lists your chats grouped by day, with search. Titles wrap (UUIDs stripped for the preview). Trash deletes that conversation after confirm — only yours, and it cannot be undone.
 - Every proposed action renders as a card with **Confirm** / **Cancel** buttons; once resolved it flips to "done automatically" / "cancelled" / "expired" so the history stays readable.
+- **Canvas:** a long table (more than 8 rows) or a booking-journey stepper shows a compact card in the thread with **Open**. On a laptop the sheet widens and the canvas sits beside chat; on a phone the canvas replaces chat until **Back**. Suggested chips **fill** the message box — they do not send.
 - **Booking detail pages** show a read-only "Actions taken by AI assistant" trail — every automatic or confirmed action taken on that specific booking, with when and what.
 
 ### 5. Who controls it
@@ -74,7 +89,7 @@ If the assistant tries to act on a booking or property the host isn't currently 
 
 ## What it can't do (by design, not by accident)
 
-- No parking bookings/broadcasts yet — v1 only covers property stays.
+- No parking **broadcast** fan-out from chat (claim/decline of a single parking stay is available).
 - Attached files are sent to the model on the turn they are uploaded, not replayed on later messages in the same thread.
 - No direct editing of arbitrary booking fields (guest info, pricing line items outside a status-change payload) — those backend endpoints don't exist yet, so there's nothing for the assistant to wrap.
 - No cross-organization actions, ever.
