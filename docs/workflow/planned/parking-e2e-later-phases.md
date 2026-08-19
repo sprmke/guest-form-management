@@ -10,7 +10,7 @@ updated: 2026-08-07
 
 **Not implementation plans.** Placeholders so Phase 0/1 does not lose intake intent from `docs/workflow/intake/_to-plan.md`. Run `/superpowers-brainstorm` + `/superpowers-plan` per phase when Phase 1 ships.
 
-Depends on: [Phase 0/1 overview](./parking-e2e-phase1-overview.md) complete.
+Depends on: [Phase 0/1 overview](../done/parking-e2e-phase1-overview.md) complete.
 
 ---
 
