@@ -2,7 +2,7 @@
 title: 'Tasks To Prompt'
 status: archived
 tags: [planning]
-updated: 2026-08-19
+updated: 2026-08-20
 ---
 
 **Status legend:** ❌ cancelled / won't do · ✅ done · 📋 planned (plan doc written) · 🚧 in progress · 🔵 pending / open
@@ -261,3 +261,11 @@ EMAIL_TO / EMAIL_REPLY_TO
 🔵 Improve marketing generate modal > suggestions thumbnail is confusing
 
 Update marketing generate design suggestion thumbnail to be more closed to calendar template, design and video clips
+
+===
+
+🔵 In booking detail page, analyze if same primary guest name is recurring guest
+
+===
+
+🔵 Add ability to share calendar?
