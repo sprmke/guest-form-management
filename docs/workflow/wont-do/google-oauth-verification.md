@@ -1,8 +1,8 @@
 ---
 title: 'Google OAuth verification'
-stage: planned
-status: planned
-updated: 2026-08-01
+stage: wont-do
+status: cancelled
+updated: 2026-08-19
 ---
 
 # PMO approval email intake — avoid Gmail CASA (inbound webhook)

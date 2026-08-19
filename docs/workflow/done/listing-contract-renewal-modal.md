@@ -1,8 +1,8 @@
 ---
-stage: in-progress
+stage: done
 title: 'Listing contract renewal modal'
 status: in progress — implementation landed; manual QA open
-updated: 2026-08-17
+updated: 2026-08-19
 tags: [verification, listing-authorization, contract-lifecycle, ux]
 related:
   - docs/workflow/intake/listing-contract-renewal-modal-design.md

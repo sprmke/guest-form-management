@@ -6,7 +6,10 @@ import { AssistantSuggestionGroups } from '@/features/dashboard/ai-assistant/com
 import { AssistantThinkingIndicator } from '@/features/dashboard/ai-assistant/components/AssistantThinkingIndicator';
 import { ChatBlockRenderer } from '@/features/dashboard/ai-assistant/components/ChatBlockRenderer';
 import type { ChatThreadMessage } from '@/features/dashboard/ai-assistant/hooks/useAiAssistantChat';
-import type { ConfirmActionResponse } from '@/features/dashboard/ai-assistant/lib/aiAssistantApi';
+import type {
+  ChatBlock,
+  ConfirmActionResponse,
+} from '@/features/dashboard/ai-assistant/lib/aiAssistantApi';
 import type { AssistantSuggestion } from '@/features/dashboard/ai-assistant/lib/assistantSuggestions';
 import { isAssistantImageMime } from '@/features/dashboard/ai-assistant/lib/chatAttachments';
 
@@ -15,6 +18,8 @@ type Props = {
   pending: boolean;
   sending?: boolean;
   onResolveAction: (actionId: string, confirm: boolean) => Promise<ConfirmActionResponse | null>;
+  onFillComposer?: (prompt: string) => void;
+  onOpenCanvas?: (block: ChatBlock) => void;
   questions: AssistantSuggestion[];
   actions: AssistantSuggestion[];
   onPickSuggestion: (prompt: string) => void;
@@ -29,6 +34,8 @@ export function ChatThread({
   pending,
   sending = false,
   onResolveAction,
+  onFillComposer,
+  onOpenCanvas,
   questions,
   actions,
   onPickSuggestion,
@@ -73,8 +80,10 @@ export function ChatThread({
           >
             {msg.role === 'user' ? (
               <div className="space-y-1.5">
-                {msg.bookingLabel ? (
-                  <p className="text-primary-foreground/80 text-xs">{msg.bookingLabel}</p>
+                {msg.attachedContext && msg.attachedContext.length > 0 ? (
+                  <p className="text-primary-foreground/80 text-xs">
+                    {msg.attachedContext.map((item) => item.label).join(' · ')}
+                  </p>
                 ) : null}
                 {msg.attachments && msg.attachments.length > 0 ? (
                   <ul className="flex flex-wrap gap-1">
@@ -96,7 +105,12 @@ export function ChatThread({
                 {msg.text ? <p className="break-words text-sm">{msg.text}</p> : null}
               </div>
             ) : (
-              <ChatBlockRenderer blocks={msg.blocks} onResolveAction={onResolveAction} />
+              <ChatBlockRenderer
+                blocks={msg.blocks}
+                onResolveAction={onResolveAction}
+                onFillComposer={onFillComposer}
+                onOpenCanvas={onOpenCanvas}
+              />
             )}
           </div>
         </div>

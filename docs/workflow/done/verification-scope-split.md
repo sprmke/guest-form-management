@@ -1,8 +1,8 @@
 ---
-stage: in-progress
+stage: done
 title: 'Verification scope split — Host vs Listing'
 status: in progress — phases 1–2 landed (migration file blocked by hook)
-updated: 2026-08-12
+updated: 2026-08-19
 tags: [verification, onboarding, multi-tenancy, listing-authorization, super-admin]
 supersedes:
   - docs/workflow/wont-do/listing-authorization.md

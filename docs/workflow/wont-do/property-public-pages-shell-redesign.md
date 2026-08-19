@@ -1,8 +1,8 @@
 ---
 title: 'Property public pages — shell & layout redesign'
-stage: planned
-status: planned
-updated: 2026-08-05
+stage: wont-do
+status: cancelled
+updated: 2026-08-19
 ---
 
 # Property Public Pages — Shell & Layout Redesign

@@ -3,7 +3,7 @@ title: 'Feature gating & subscription upgrade prompts'
 status: active
 tags: [workflow, in-progress, billing, pricing, paywall]
 updated: 2026-08-19
-stage: in-progress
+stage: done
 kind: plan
 ---
 

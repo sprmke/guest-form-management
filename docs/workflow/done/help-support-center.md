@@ -1,8 +1,8 @@
 ---
-stage: in-progress
+stage: done
 title: 'Help & Support (org + property + parking)'
 status: all 6 phases shipped — pending local db:migrate + manual E2E verification (Docker inaccessible this session)
-updated: 2026-08-18
+updated: 2026-08-19
 tags: [help-support, documentation, ai-assistant, support-tickets, faqs, super-admin]
 related:
   - docs/workflow/done/ai-dashboard-assistant-features.md

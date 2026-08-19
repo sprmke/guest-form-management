@@ -1,9 +1,9 @@
 ---
 title: 'AI dashboard assistant — universal per-module context pickers & rich response blocks'
-status: active
-tags: [workflow, planned, ai-assistant, dashboard]
-updated: 2026-08-18
-stage: planned
+status: shipped
+tags: [workflow, done, ai-assistant, dashboard]
+updated: 2026-08-19
+stage: done
 kind: plan
 ---
 
@@ -113,56 +113,56 @@ New Tier-0 tool `plan_booking_journey(bookingId)` in `dashboardAssistantTools.ts
 
 ### Phase 1 — Foundation: generalized attachment contracts
 
-- [ ] `AttachedContextItem` type (frontend `lib/attachedContext.ts`) + backend mirror/validation in `dashboard-assistant-chat/index.ts`
-- [ ] `ChatSendInput`/`ChatComposer` state migrated from single `pinnedBooking` to `attachedContext[]`; multi-chip row
-- [ ] System prompt builder generalized from `pinnedBookingLine` to a per-item loop
-- [ ] `resolveTargetProperty`/`resolveBookingProperty` extended to check `attachedContext` before `pageContext`
-- [ ] Extract `ChatComposerContextPicker.tsx` (generic) from `ChatComposerBookingPicker.tsx`; booking picker becomes its first adapter — verify no UX regression
+- [x] `AttachedContextItem` type (frontend `lib/attachedContext.ts`) + backend mirror/validation in `dashboard-assistant-chat/index.ts`
+- [x] `ChatSendInput`/`ChatComposer` state migrated from single `pinnedBooking` to `attachedContext[]`; multi-chip row
+- [x] System prompt builder generalized from `pinnedBookingLine` to a per-item loop
+- [x] `resolveTargetProperty`/`resolveBookingProperty` extended to check `attachedContext` before `pageContext`
+- [x] Extract `ChatComposerContextPicker.tsx` (generic) from `ChatComposerBookingPicker.tsx`; booking picker becomes its first adapter — verify no UX regression
 - **Docs (same change)**: `docs/architecture/ai-dashboard-assistant.md` §"context model" updated to describe `attachedContext[]` replacing the single booking pin
 
 ### Phase 2 — Per-module quick pickers (registry + adapters, sequenced by value)
 
-- [ ] `contextPickerRegistry.ts` skeleton (module id → picker config)
-- [ ] 2a. Property picker (`useProperties`)
-- [ ] 2b. Team member picker — org/property/parking (`useOrgTeam`/`usePropertyTeam`/`useParkingTeam`)
-- [ ] 2c. Finance line item picker (`useFinanceLineItems`)
-- [ ] 2d. Maintenance item picker (`useMaintenanceItems`)
-- [ ] 2e. Parking booking picker — extract a `useParkingBookings` hook from `ParkingBookingsPage.tsx` first, then adapt
-- [ ] 2f. Inbox conversation picker, filterable by platform web/Facebook/Instagram (`useInbox`)
-- [ ] 2g. Marketing template picker (`useMarketingTemplates`)
-- [ ] 2h. Pricing date/range picker — bespoke small calendar-cell selector (different shape than list pickers; not a registry list adapter)
-- [ ] 2i. Notification/Telegram module picker — small fixed list (staff/finance/maintenance/marketing/admin), not a searchable data list
-- [ ] 2j. Custom/public page picker — small fixed list (`useCustomPages`, currently one page type)
-- [ ] 2k. Help & Support ticket picker (`useSupportTickets`)
+- [x] `contextPickerRegistry.ts` skeleton (module id → picker config)
+- [x] 2a. Property picker (`useProperties`)
+- [x] 2b. Team member picker — org/property/parking (`useOrgTeam`/`usePropertyTeam`/`useParkingTeam`)
+- [x] 2c. Finance line item picker (`useFinanceLineItems`)
+- [x] 2d. Maintenance item picker (`useMaintenanceItems`)
+- [x] 2e. Parking booking picker — extract a `useParkingBookings` hook from `ParkingBookingsPage.tsx` first, then adapt
+- [x] 2f. Inbox conversation picker, filterable by platform web/Facebook/Instagram (`useInbox`)
+- [x] 2g. Marketing template picker (`useMarketingTemplates`)
+- [x] 2h. Pricing date/range picker — bespoke small calendar-cell selector (different shape than list pickers; not a registry list adapter)
+- [x] 2i. Notification/Telegram module picker — small fixed list (staff/finance/maintenance/marketing/admin), not a searchable data list
+- [x] 2j. Custom/public page picker — small fixed list (`useCustomPages`, currently one page type)
+- [x] 2k. Help & Support ticket picker (`useSupportTickets`)
 - **Docs (same change)**: `docs/workflow/done/ai-dashboard-assistant-features.md` gets a "context pickers by module" bullet list as each sub-phase ships; `docs/guides/testing/ai-dashboard-assistant-manual.md` gets one manual-QA row per picker
 
 ### Phase 3 — Command palette overlay
 
-- [ ] `bunx shadcn add command` (adds `cmdk`)
-- [ ] `ChatContextCommandPalette.tsx` — grouped cross-module search over the same registry/hooks from Phase 2
-- [ ] "Search all modules…" escalation row wired into every Phase-2 quick-picker's footer
+- [x] `bunx shadcn add command` (adds `cmdk`) — hand-wrote `ui/src/components/ui/command.tsx` (`cmdk`); no `components.json` in this repo
+- [x] `ChatContextCommandPalette.tsx` — grouped cross-module search over the same registry/hooks from Phase 2
+- [x] "Search all modules…" escalation row wired into every Phase-2 quick-picker's footer
 - **Docs (same change)**: architecture doc §UI updated with the two-tier picker model
 
 ### Phase 4 — New block types + canvas overlay
 
-- [ ] `image`, `stepper`, `quick_actions` added to the triple-synced `ChatBlock` contract (frontend, backend safety guard, `BLOCKS_RESPONSE_SCHEMA`, renderer switch)
-- [ ] `assertBlocksGrounded` extended per new type
-- [ ] `ChatCanvasOverlay.tsx` — split view (desktop) / full-screen replace (mobile, 375/768px breakpoints per `mobile-responsive` skill) — invoke that skill for this component
-- [ ] Inline compact-card + "Open in canvas" affordance for canvas-worthy blocks (`data_table` >8 rows, any `stepper`)
+- [x] `image`, `stepper`, `quick_actions` added to the triple-synced `ChatBlock` contract (frontend, backend safety guard, `BLOCKS_RESPONSE_SCHEMA`, renderer switch)
+- [x] `assertBlocksGrounded` extended per new type
+- [x] `ChatCanvasOverlay.tsx` — split view (desktop) / full-screen replace (mobile, 375/768px breakpoints per `mobile-responsive` skill) — invoke that skill for this component
+- [x] Inline compact-card + "Open in canvas" affordance for canvas-worthy blocks (`data_table` >8 rows, any `stepper`)
 - **Docs (same change)**: architecture doc §3 block catalog table gets the 3 new rows; testing manual gets canvas-open/close flows
 
 ### Phase 5 — Booking journey orchestration
 
-- [ ] `plan_booking_journey` Tier-0 tool in `dashboardAssistantTools.ts`, reusing `statusMachine.ts#bookingPipeline`/`nextStep`
-- [ ] `dashboardAssistantBlocks.ts` hydration: tool result → `stepper` block, each step's current stage embeds the existing `action_confirmation` for that transition
-- [ ] Confirm no change to `toolProposeTransitionBooking`/`workflowOrchestrator.ts`/tier classification — this phase is additive-only
+- [x] `plan_booking_journey` Tier-0 tool in `dashboardAssistantTools.ts`, reusing `statusMachine.ts#bookingPipeline`/`nextStep`
+- [x] `dashboardAssistantBlocks.ts` hydration: tool result → `stepper` block, each step's current stage embeds the existing `action_confirmation` for that transition
+- [x] Confirm no change to `toolProposeTransitionBooking`/`workflowOrchestrator.ts`/tier classification — this phase is additive-only
 - **Docs (same change)**: architecture doc tool catalog gets `plan_booking_journey`; done-log gets the "guide me through a booking's remaining steps" host-facing capability
 
 ### Phase 6 — Starter suggestions & full docs sync
 
-- [ ] `assistantSuggestions.ts` — expand `ASSISTANT_QUESTIONS`/`ASSISTANT_ACTIONS` to cover parking, inbox, marketing, team, pricing, notifications, help & support (today: bookings/finance/maintenance only)
-- [ ] Full pass over `docs/architecture/ai-dashboard-assistant.md`, `docs/workflow/done/ai-dashboard-assistant-features.md`, `docs/guides/testing/ai-dashboard-assistant-manual.md` for consistency (these three already drifted from each other per this session's research — reconcile as part of landing this feature, not separately)
-- [ ] `route-guides` skill pass if any per-page composer/panel behavior changed enough to warrant a route-guide update
+- [x] `assistantSuggestions.ts` — expand `ASSISTANT_QUESTIONS`/`ASSISTANT_ACTIONS` to cover parking, inbox, marketing, team, pricing, notifications, help & support (today: bookings/finance/maintenance only)
+- [x] Full pass over `docs/architecture/ai-dashboard-assistant.md`, `docs/workflow/done/ai-dashboard-assistant-features.md`, `docs/guides/testing/ai-dashboard-assistant-manual.md` for consistency (these three already drifted from each other per this session's research — reconcile as part of landing this feature, not separately)
+- [x] `route-guides` skill pass if any per-page composer/panel behavior changed enough to warrant a route-guide update
 
 ## Non-goals
 

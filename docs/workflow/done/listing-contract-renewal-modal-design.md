@@ -1,5 +1,5 @@
 ---
-stage: intake
+stage: done
 title: 'Listing contract renewal modal — design'
 status: approved
 updated: 2026-08-19
