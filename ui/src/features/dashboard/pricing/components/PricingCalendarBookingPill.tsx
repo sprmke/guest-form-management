@@ -23,6 +23,7 @@ export function PricingCalendarBookingPill({
   guestName,
   validIdUrl,
 }: Props) {
+  const isCancelled = status === 'CANCELLED' || status === 'canceled';
   const roundedClass =
     spanPosition === 'start'
       ? 'rounded-l-full rounded-r-sm'
@@ -35,8 +36,11 @@ export function PricingCalendarBookingPill({
   return (
     <div
       className={cn(
-        'bg-primary text-primary-foreground flex h-7 w-full min-w-0 items-center shadow-sm',
-        'ring-primary/25 ring-1',
+        'flex h-7 w-full min-w-0 items-center shadow-sm',
+        'ring-1',
+        isCancelled
+          ? 'bg-muted text-muted-foreground ring-border'
+          : 'bg-primary text-primary-foreground ring-primary/25',
         roundedClass
       )}
       title={title ?? `${label} · ${statusLabel(status)}`}
@@ -47,7 +51,11 @@ export function PricingCalendarBookingPill({
             name={guestName || label}
             validIdUrl={validIdUrl}
             size="xs"
-            className="ring-primary-foreground/35 shadow-sm ring-1"
+            className={
+              isCancelled
+                ? 'ring-border shadow-sm ring-1'
+                : 'ring-primary-foreground/35 shadow-sm ring-1'
+            }
           />
           <span className="truncate text-[11px] font-semibold leading-none tracking-tight">
             {label}

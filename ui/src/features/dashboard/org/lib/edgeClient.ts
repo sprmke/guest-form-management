@@ -1,6 +1,12 @@
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
 export async function getSessionJwt(): Promise<string> {
+  const { readE2EAdminAccessToken } = await import('@/lib/e2e/adminSession');
+  const mockedJwt = readE2EAdminAccessToken();
+  if (mockedJwt) {
+    return mockedJwt;
+  }
+
   const { supabase } = await import('@/lib/supabase/client');
 
   const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();

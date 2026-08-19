@@ -53,7 +53,7 @@ export function PlanTierCard({
         <div
           className={cn(
             'flex flex-col gap-2',
-            'xl:flex-row xl:flex-wrap xl:items-center xl:gap-x-2 xl:gap-y-1.5'
+            'min-[1800px]:flex-row min-[1800px]:flex-nowrap min-[1800px]:items-center min-[1800px]:gap-x-2'
           )}
         >
           <h3
@@ -67,7 +67,7 @@ export function PlanTierCard({
             className={cn(
               'flex min-h-6 flex-nowrap items-center gap-1.5',
               'overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
-              'xl:min-h-0 xl:overflow-visible'
+              'min-[1800px]:min-h-0 min-[1800px]:overflow-visible'
             )}
           >
             {isCurrent ? (

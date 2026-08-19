@@ -20,7 +20,7 @@ export type ParkingTeamData = {
   customRoles: CustomPropertyRole[];
 };
 
-async function loadParkingTeam(parkingId: string): Promise<ParkingTeamData> {
+export async function loadParkingTeam(parkingId: string): Promise<ParkingTeamData> {
   const [membersPayload, invitationsPayload, customRolesPayload] = await Promise.all([
     teamGetParking<{ members: TeamMember[] }>('/parking-team-members', parkingId),
     teamGetParking<{ invitations: TeamInvitation[] }>('/parking-team-invitations', parkingId),

@@ -15,7 +15,6 @@ import { BookingFilters } from '@/features/dashboard/bookings/components/Booking
 import { BookingsSummaryCards } from '@/features/dashboard/bookings/components/BookingsSummaryCards';
 import { BookingTable } from '@/features/dashboard/bookings/components/BookingTable';
 import type { BookingView } from '@/features/dashboard/bookings/components/BookingViewToggle';
-import { useBookings } from '@/features/dashboard/bookings/hooks/useBookings';
 import {
   useDateNavigation,
   useSyncDateRangeWithQuery,
@@ -35,6 +34,7 @@ import {
 } from '@/features/dashboard/bookings/lib/types';
 import { useParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
 import { CreateParkingBookingModal } from '@/features/dashboard/parking/components/CreateParkingBookingModal';
+import { useParkingBookings } from '@/features/dashboard/parking/hooks/useParkingBookings';
 
 import { FloatingPanel, FloatingToolbar } from '@/components/mobile/FloatingPanel';
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
@@ -158,8 +158,8 @@ export function ParkingBookingsPage() {
     [query.from, query.to, query.sort]
   );
 
-  const { data, isLoading, isFetching, error } = useBookings(listQuery, { scope: 'parking' });
-  const { data: summaryData } = useBookings(summaryQuery, { scope: 'parking' });
+  const { data, isLoading, isFetching, error } = useParkingBookings(listQuery);
+  const { data: summaryData } = useParkingBookings(summaryQuery);
 
   const resolveBookingHref = useCallback(
     (row: Parameters<typeof resolveBookingListHref>[0]) =>

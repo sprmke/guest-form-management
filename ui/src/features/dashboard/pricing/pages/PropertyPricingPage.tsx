@@ -34,7 +34,6 @@ import {
 } from '@/features/dashboard/pricing/lib/pricingCalendarUtils';
 import {
   propertyPricingDefaultsFromDto,
-  resolveBookingAverageNightly,
   resolveBookingNightlyForDate,
   resolveBookingRateTotal,
   resolveNightlyRateForDate,
@@ -67,7 +66,6 @@ import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePrope
 import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
 
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
-import { formatMoneyCompact } from '@/utils/format/currency';
 
 /** A viewed month at/above this many bookings triggers the busy-month celebration. */
 const BUSY_MONTH_CELEBRATION_THRESHOLD = 20;
@@ -227,14 +225,6 @@ export function PropertyPricingPage() {
       pricingDefaults,
       nightlyRateOptions,
     ]
-  );
-
-  const getBookingPillPriceLabel = useCallback(
-    (booking: PropertyPricingCalendarBooking) => {
-      const perNight = resolveBookingAverageNightly(booking, pricingDefaults, nightlyRateOptions);
-      return perNight == null ? '—' : formatMoneyCompact(perNight);
-    },
-    [pricingDefaults, nightlyRateOptions]
   );
 
   const getBookingDisplayTotal = useCallback(
@@ -551,7 +541,7 @@ export function PropertyPricingPage() {
             onSelectionEnd={handleSelectionEnd}
             onBookingClick={openBookingModal}
             getPriceForDate={getPriceForDate}
-            getBookingPillPriceLabel={getBookingPillPriceLabel}
+            getBookingStayTotal={getBookingDisplayTotal}
           />
 
           <div className="lg:sticky lg:top-5">

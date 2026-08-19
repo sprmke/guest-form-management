@@ -20,6 +20,7 @@ import {
   buildOccupancyByDay,
   buildOccupancySegmentsForWeeks,
   calendarOccupancySpanPosition,
+  parseOccupancyDate,
 } from '@/features/dashboard/bookings/components/calendar/calendarDateUtils';
 import { bookingListDisplayName } from '@/features/dashboard/bookings/lib/bookingListDisplay';
 import { statusLabel } from '@/features/dashboard/bookings/lib/bookingStatus';
@@ -34,6 +35,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { formatMoneyCompact } from '@/utils/format/currency';
+import { formatStayDateRange } from '@/utils/format/dates';
 
 export type PricingDayState = {
   price: number;
@@ -54,7 +56,7 @@ type Props = {
   onSelectionEnd: () => void;
   onBookingClick: (booking: PropertyPricingCalendarBooking) => void;
   getPriceForDate: (date: Date) => PricingDayState;
-  getBookingPillPriceLabel?: (booking: PropertyPricingCalendarBooking) => string;
+  getBookingStayTotal?: (booking: PropertyPricingCalendarBooking) => number | null;
 };
 
 function bookingPillLabel(booking: PropertyPricingCalendarBooking): string {
@@ -65,13 +67,25 @@ function bookingPillLabel(booking: PropertyPricingCalendarBooking): string {
   );
 }
 
-function defaultBookingPillPriceLabel(booking: PropertyPricingCalendarBooking): string {
-  if (booking.booking_rate == null) return '—';
-  const nights = booking.number_of_nights;
-  if (nights != null && nights > 0) {
-    return formatMoneyCompact(booking.booking_rate / nights);
-  }
-  return formatMoneyCompact(booking.booking_rate);
+function defaultBookingStayTotal(booking: PropertyPricingCalendarBooking): number | null {
+  if (booking.booking_rate == null) return null;
+  return Number.isFinite(booking.booking_rate) ? booking.booking_rate : null;
+}
+
+function isCancelledCalendarBooking(status: string): boolean {
+  return status === 'CANCELLED' || status === 'canceled';
+}
+
+function comparePricingCalendarLanes(
+  a: PropertyPricingCalendarBooking,
+  b: PropertyPricingCalendarBooking
+): number {
+  const byCancelled =
+    Number(isCancelledCalendarBooking(a.status)) - Number(isCancelledCalendarBooking(b.status));
+  if (byCancelled !== 0) return byCancelled;
+  const aIn = parseOccupancyDate(a.check_in_date)?.getTime() ?? 0;
+  const bIn = parseOccupancyDate(b.check_in_date)?.getTime() ?? 0;
+  return aIn - bIn || a.id.localeCompare(b.id);
 }
 
 export function PricingCalendarGrid({
@@ -85,7 +99,7 @@ export function PricingCalendarGrid({
   onSelectionEnd,
   onBookingClick,
   getPriceForDate,
-  getBookingPillPriceLabel = defaultBookingPillPriceLabel,
+  getBookingStayTotal = defaultBookingStayTotal,
 }: Props) {
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -103,7 +117,8 @@ export function PricingCalendarGrid({
         bookings,
         weeks,
         (row) => row.check_in_date,
-        (row) => row.check_out_date
+        (row) => row.check_out_date,
+        comparePricingCalendarLanes
       ),
     [bookings, weeks]
   );
@@ -179,7 +194,9 @@ export function PricingCalendarGrid({
                         key={day.toISOString()}
                         day={day}
                         selectedDates={selectedDates}
-                        booking={bookingsByDay.get(dateKey(day))?.[0] ?? null}
+                        dayBookings={[...(bookingsByDay.get(dateKey(day)) ?? [])].sort(
+                          comparePricingCalendarLanes
+                        )}
                         getPriceForDate={getPriceForDate}
                         onDateClick={onDateClick}
                         onDateMouseDown={onDateMouseDown}
@@ -205,33 +222,48 @@ export function PricingCalendarGrid({
                   renderSegment={(segment) => {
                     const booking = segment.item;
                     const guestName = bookingListDisplayName(booking);
-                    const priceLabel = getBookingPillPriceLabel(booking);
+                    const stayRange =
+                      formatStayDateRange(booking.check_in_date, booking.check_out_date) ?? '';
+                    const stayTotal = getBookingStayTotal(booking);
+                    const segmentIsPast = week.days
+                      .slice(segment.startCol, segment.endCol + 1)
+                      .every((day) => !day || isBefore(day, startOfToday()));
 
                     return (
-                      <button
-                        type="button"
-                        className={cn(
-                          'group pointer-events-auto h-full w-full min-w-0 cursor-pointer text-left',
-                          'focus-visible:ring-primary/50 rounded-[inherit] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1',
-                          'motion-safe:transition-transform motion-safe:duration-150',
-                          'motion-safe:hover:scale-[1.02] motion-safe:active:scale-[0.99]'
-                        )}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onBookingClick(booking);
-                        }}
-                        aria-label={`Open booking for ${guestName}`}
-                      >
-                        <PricingCalendarBookingPill
-                          status={booking.status}
-                          label={bookingPillLabel(booking)}
-                          guestName={guestName}
-                          validIdUrl={booking.valid_id_url}
-                          showLabel={segment.showLabel}
-                          spanPosition={calendarOccupancySpanPosition(segment)}
-                          title={`${guestName} · ${priceLabel}/night · ${statusLabel(booking.status)}`}
-                        />
-                      </button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className={cn(
+                              'group pointer-events-auto h-full w-full min-w-0 cursor-pointer text-left',
+                              'focus-visible:ring-primary/50 rounded-[inherit] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1',
+                              'motion-safe:transition-opacity motion-safe:duration-150',
+                              segmentIsPast && 'opacity-55'
+                            )}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              onBookingClick(booking);
+                            }}
+                            aria-label={
+                              stayRange
+                                ? `Open booking for ${guestName}, ${stayRange}`
+                                : `Open booking for ${guestName}`
+                            }
+                          >
+                            <PricingCalendarBookingPill
+                              status={booking.status}
+                              label={bookingPillLabel(booking)}
+                              guestName={guestName}
+                              validIdUrl={booking.valid_id_url}
+                              showLabel={segment.showLabel}
+                              spanPosition={calendarOccupancySpanPosition(segment)}
+                            />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="px-3 py-2.5">
+                          <PricingCalendarStayTooltip booking={booking} total={stayTotal} />
+                        </TooltipContent>
+                      </Tooltip>
                     );
                   }}
                 />
@@ -266,7 +298,7 @@ export function PricingCalendarGrid({
 function PricingDayCell({
   day,
   selectedDates,
-  booking,
+  dayBookings,
   getPriceForDate,
   onDateClick,
   onDateMouseDown,
@@ -275,7 +307,7 @@ function PricingDayCell({
 }: {
   day: Date;
   selectedDates: Date[];
-  booking: PropertyPricingCalendarBooking | null;
+  dayBookings: PropertyPricingCalendarBooking[];
   getPriceForDate: (date: Date) => PricingDayState;
   onDateClick: (date: Date) => void;
   onDateMouseDown: (date: Date) => void;
@@ -287,102 +319,200 @@ function PricingDayCell({
   const isPast = isBefore(day, startOfToday());
   const hasHoliday = rule != null;
   const isLocked = isPast || isBooked;
+  const showPrice = !isBooked;
   const showMarkers = !isBooked && !isBlocked;
-  const guestName = booking ? bookingListDisplayName(booking) : null;
+  const singleStay = isBooked && dayBookings.length === 1 ? dayBookings[0] : null;
+  const overlappingStays = isBooked && dayBookings.length > 1;
+  const hiddenBookings = isBooked && dayBookings.length > 3 ? dayBookings.slice(3) : [];
+  const stayRange = singleStay
+    ? formatStayDateRange(singleStay.check_in_date, singleStay.check_out_date)
+    : null;
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          className={cn(
-            'border-border bg-card relative flex aspect-square min-h-[4.5rem] min-w-0 flex-col rounded-lg border p-1.5 text-left transition-colors sm:p-2',
-            isPast && !isBooked && 'cursor-not-allowed opacity-45',
-            !isLocked && isBlocked && 'bg-muted border-muted-foreground/20',
-            (isBooked || (!isLocked && !isBlocked)) &&
-              'hover:border-primary/50 cursor-pointer hover:shadow-sm',
-            isSelected &&
-              !isLocked &&
-              'border-primary bg-primary/10 ring-primary/30 opacity-100 ring-2',
-            isToday(day) && !isSelected && !isPast && 'ring-primary/60 ring-1'
-          )}
-          onMouseDown={() => {
-            if (!isBooked) onDateMouseDown(day);
-          }}
-          onMouseEnter={() => {
-            if (!isBooked) onDateMouseEnter(day);
-          }}
-          onClick={() => {
-            if (isBooked && booking) {
-              onBookingClick(booking);
-              return;
-            }
-            if (!isBooked) onDateClick(day);
-          }}
-          disabled={isPast && !isBooked}
-          aria-pressed={isSelected}
-          aria-label={
-            isBooked && guestName
-              ? `Open booking for ${guestName}, ${format(day, 'MMMM d')}`
-              : `${format(day, 'MMMM d')}, ${formatMoneyCompact(price)} per night${isBlocked ? ', blocked' : ''}${hasHoliday ? ', holiday' : ''}${isCustom ? ', custom rate' : ''}`
-          }
-        >
-          <span
-            className={cn(
-              'text-sm font-semibold leading-none',
-              isBlocked && 'text-muted-foreground',
-              !isBlocked && isToday(day) && 'text-primary',
-              !isBlocked && !isToday(day) && 'text-foreground'
-            )}
-          >
-            {format(day, 'd')}
-          </span>
+    <button
+      type="button"
+      className={cn(
+        'border-border bg-card relative flex aspect-square min-h-[4.5rem] min-w-0 flex-col rounded-lg border p-1.5 text-left transition-colors sm:p-2',
+        isPast && !isBooked && 'cursor-not-allowed opacity-45',
+        isPast && isBooked && 'bg-muted/40',
+        !isLocked && isBlocked && 'bg-muted border-muted-foreground/20',
+        (isBooked || (!isLocked && !isBlocked)) &&
+          'hover:border-primary/50 cursor-pointer hover:shadow-sm',
+        isSelected &&
+          !isLocked &&
+          'border-primary bg-primary/10 ring-primary/30 opacity-100 ring-2',
+        isToday(day) && !isSelected && !isPast && 'ring-primary/60 ring-1'
+      )}
+      onMouseDown={() => {
+        if (!isBooked) onDateMouseDown(day);
+      }}
+      onMouseEnter={() => {
+        if (!isBooked) onDateMouseEnter(day);
+      }}
+      onClick={() => {
+        if (singleStay) {
+          onBookingClick(singleStay);
+          return;
+        }
+        if (overlappingStays) return;
+        if (!isBooked) onDateClick(day);
+      }}
+      disabled={isPast && !isBooked}
+      aria-pressed={isSelected}
+      aria-label={
+        overlappingStays
+          ? `${format(day, 'MMMM d')}, ${dayBookings.length} stays`
+          : singleStay
+            ? `Open booking for ${bookingListDisplayName(singleStay)}${stayRange ? `, ${stayRange}` : ''}`
+            : showPrice
+              ? `${format(day, 'MMMM d')}, ${formatMoneyCompact(price)} per night${isBlocked ? ', blocked' : ''}${hasHoliday ? ', holiday' : ''}${isCustom ? ', custom rate' : ''}`
+              : `${format(day, 'MMMM d')}${isPast ? ', past' : ''}${isBlocked ? ', blocked' : ''}`
+      }
+    >
+      <span
+        className={cn(
+          'text-sm font-semibold leading-none',
+          (isBlocked || isPast) && 'text-muted-foreground',
+          !isBlocked && !isPast && isToday(day) && 'text-primary',
+          !isBlocked && !isPast && !isToday(day) && 'text-foreground'
+        )}
+      >
+        {format(day, 'd')}
+      </span>
 
-          <div className="bg-muted/70 dark:bg-muted/50 mt-auto flex w-full items-center justify-center rounded-md px-0.5 py-1">
-            <span
-              className={cn(
-                'w-full truncate text-center text-[11px] font-semibold tabular-nums leading-none sm:text-xs',
-                (isPast || isBlocked) && 'text-muted-foreground',
-                !isPast && !isBlocked && 'text-foreground'
-              )}
-            >
-              {formatMoneyCompact(price)}
-            </span>
-          </div>
-
-          {isCustom && showMarkers ? (
-            <PenLine
-              className="absolute right-1 top-1 size-3 text-amber-600 dark:text-amber-400"
-              aria-hidden
+      {showPrice ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="bg-muted/70 dark:bg-muted/50 mt-auto flex w-full items-center justify-center rounded-md px-0.5 py-1">
+              <span
+                className={cn(
+                  'w-full truncate text-center text-[11px] font-semibold tabular-nums leading-none sm:text-xs',
+                  (isPast || isBlocked) && 'text-muted-foreground',
+                  !isPast && !isBlocked && 'text-foreground'
+                )}
+              >
+                {formatMoneyCompact(price)}
+              </span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="px-3 py-2.5">
+            <PricingDayTooltip
+              day={day}
+              price={price}
+              showPrice={showPrice}
+              isBlocked={isBlocked}
+              isPast={isPast}
+              rule={hasHoliday ? rule : undefined}
+              isCustom={isCustom}
             />
-          ) : null}
-          {hasHoliday && showMarkers ? (
-            <Sparkles className="text-primary absolute right-1 top-1 size-3" aria-hidden />
-          ) : null}
-          {isBlocked && !isBooked ? (
-            <Ban className="text-muted-foreground absolute right-1 top-1 size-3" aria-hidden />
-          ) : null}
-        </button>
-      </TooltipTrigger>
-      <TooltipContent side="top" className="px-3 py-2.5">
-        <PricingDayTooltip
-          day={day}
-          price={price}
-          isBooked={isBooked}
-          isBlocked={isBlocked}
-          isPast={isPast}
-          rule={hasHoliday ? rule : undefined}
-          isCustom={isCustom}
+          </TooltipContent>
+        </Tooltip>
+      ) : null}
+
+      {hiddenBookings.length > 0 ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span
+              className="bg-card/95 text-muted-foreground ring-border absolute right-1 top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums leading-none ring-1"
+              onClick={(event) => event.stopPropagation()}
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              +{hiddenBookings.length}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top" align="end" className="px-3 py-2.5">
+            <PricingCalendarOverflowTooltip bookings={hiddenBookings} />
+          </TooltipContent>
+        </Tooltip>
+      ) : null}
+
+      {isCustom && showMarkers ? (
+        <PenLine
+          className="absolute right-1 top-1 size-3 text-amber-600 dark:text-amber-400"
+          aria-hidden
         />
-      </TooltipContent>
-    </Tooltip>
+      ) : null}
+      {hasHoliday && showMarkers ? (
+        <Sparkles className="text-primary absolute right-1 top-1 size-3" aria-hidden />
+      ) : null}
+      {isBlocked && !isBooked ? (
+        <Ban className="text-muted-foreground absolute right-1 top-1 size-3" aria-hidden />
+      ) : null}
+    </button>
+  );
+}
+
+function PricingCalendarStayTooltip({
+  booking,
+  total,
+}: {
+  booking: PropertyPricingCalendarBooking;
+  total: number | null;
+}) {
+  const range = formatStayDateRange(booking.check_in_date, booking.check_out_date);
+
+  return (
+    <div className="min-w-[9.5rem] space-y-1.5">
+      <p className="text-foreground text-sm font-semibold leading-none">
+        {bookingListDisplayName(booking)}
+      </p>
+      {range ? (
+        <p className="text-muted-foreground text-xs font-medium leading-none">{range}</p>
+      ) : null}
+      {total != null ? (
+        <p className="text-foreground text-base font-semibold tabular-nums leading-none">
+          {formatMoneyCompact(total)}
+        </p>
+      ) : null}
+      <div className="border-border/60 border-t pt-2">
+        <span className="bg-muted/80 text-muted-foreground inline-flex rounded-md px-1.5 py-0.5 text-[11px] font-medium leading-none">
+          {statusLabel(booking.status)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function PricingCalendarOverflowTooltip({
+  bookings,
+}: {
+  bookings: PropertyPricingCalendarBooking[];
+}) {
+  return (
+    <div className="min-w-[11rem] space-y-2">
+      <p className="text-foreground text-xs font-semibold leading-none">
+        {bookings.length} more booking{bookings.length === 1 ? '' : 's'}
+      </p>
+      <div className="space-y-1.5">
+        {bookings.map((booking) => {
+          const range = formatStayDateRange(booking.check_in_date, booking.check_out_date);
+
+          return (
+            <div
+              key={booking.id}
+              className="border-border/50 border-b pb-1.5 last:border-0 last:pb-0"
+            >
+              <p className="text-foreground text-xs font-medium leading-none">
+                {bookingListDisplayName(booking)}
+              </p>
+              {range ? (
+                <p className="text-muted-foreground mt-1 text-[11px] leading-none">{range}</p>
+              ) : null}
+              <p className="text-muted-foreground mt-1 text-[11px] leading-none">
+                {statusLabel(booking.status)}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
 function PricingDayTooltip({
   day,
   price,
-  isBooked,
+  showPrice,
   isBlocked,
   isPast,
   rule,
@@ -390,15 +520,14 @@ function PricingDayTooltip({
 }: {
   day: Date;
   price: number;
-  isBooked: boolean;
+  showPrice: boolean;
   isBlocked: boolean;
   isPast: boolean;
   rule?: PricingHolidayRule;
   isCustom: boolean;
 }) {
   const tags: string[] = [];
-  if (isBooked) tags.push('Booked');
-  else if (isBlocked) tags.push('Blocked');
+  if (isBlocked) tags.push('Blocked');
   else if (isPast) tags.push('Past');
   if (rule) tags.push(rule.name);
   if (isCustom) tags.push('Custom rate');
@@ -408,10 +537,12 @@ function PricingDayTooltip({
       <p className="text-muted-foreground text-xs font-medium leading-none">
         {format(day, 'EEEE, MMM d')}
       </p>
-      <p className="text-foreground text-base font-semibold tabular-nums leading-none">
-        {formatMoneyCompact(price)}
-        <span className="text-muted-foreground ml-1 text-xs font-normal">/ night</span>
-      </p>
+      {showPrice ? (
+        <p className="text-foreground text-base font-semibold tabular-nums leading-none">
+          {formatMoneyCompact(price)}
+          <span className="text-muted-foreground ml-1 text-xs font-normal">/ night</span>
+        </p>
+      ) : null}
       {tags.length > 0 ? (
         <div className="border-border/60 flex flex-wrap gap-1 border-t pt-2">
           {tags.map((tag) => (

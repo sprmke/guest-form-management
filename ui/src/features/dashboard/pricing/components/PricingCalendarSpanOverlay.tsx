@@ -15,7 +15,7 @@ type Props<T> = {
   gapClassName?: string;
 };
 
-/** Spanning booking pills overlaid and vertically centered on a week row grid. */
+/** Spanning booking pills anchored to the cell bottom (same band as nightly price chips). */
 export function PricingCalendarSpanOverlay<T>({
   segments,
   getSegmentKey,
@@ -27,14 +27,12 @@ export function PricingCalendarSpanOverlay<T>({
 
   const laneCount = Math.max(...segments.map((segment) => segment.lane)) + 1;
   const visibleLanes = Math.min(laneCount, maxLanes);
-  const overflow = laneCount > maxLanes ? laneCount - maxLanes : 0;
 
-  const lanes = Array.from({ length: visibleLanes }, (_, lane) =>
-    segments.filter((segment) => segment.lane === lane)
-  );
+  const laneOrder = Array.from({ length: visibleLanes }, (_, index) => visibleLanes - 1 - index);
+  const lanes = laneOrder.map((lane) => segments.filter((segment) => segment.lane === lane));
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-10 flex flex-col justify-center">
+    <div className="pointer-events-none absolute inset-x-0 bottom-1.5 top-6 z-10 flex flex-col justify-end sm:bottom-2 sm:top-7">
       <div className="flex w-full flex-col" style={{ gap: LANE_GAP_PX }}>
         {lanes.map((laneSegments, laneIndex) => (
           <div
@@ -53,14 +51,6 @@ export function PricingCalendarSpanOverlay<T>({
                 {renderSegment(segment)}
               </div>
             ))}
-            {overflow > 0 && laneIndex === visibleLanes - 1 ? (
-              <div
-                className="text-muted-foreground pointer-events-none flex items-center justify-end pr-0.5 text-[9px] font-bold tabular-nums"
-                style={{ gridColumn: '7 / 8' }}
-              >
-                +{overflow}
-              </div>
-            ) : null}
           </div>
         ))}
       </div>
