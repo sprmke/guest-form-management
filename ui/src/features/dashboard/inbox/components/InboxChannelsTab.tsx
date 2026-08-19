@@ -20,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 
 const COMING_SOON_ORDER: SocialPlatform[] = ['tiktok', 'airbnb'];
@@ -42,8 +43,10 @@ type Props = {
   canManage: boolean;
   connecting: boolean;
   disconnecting: boolean;
+  resubscribing?: boolean;
   onConnectMeta: () => void;
-  onDisconnectMeta: () => void;
+  onDisconnectMeta: (deleteMessages: boolean) => void;
+  onResubscribeMeta: () => void;
 };
 
 function metaConnection(
@@ -137,15 +140,24 @@ export function InboxChannelsTab({
   canManage,
   connecting,
   disconnecting,
+  resubscribing = false,
   onConnectMeta,
   onDisconnectMeta,
+  onResubscribeMeta,
 }: Props) {
   const [disconnectOpen, setDisconnectOpen] = useState(false);
+  const [deleteMessages, setDeleteMessages] = useState(false);
 
   const fbConn = metaConnection(connections, 'facebook');
   const igConn = metaConnection(connections, 'instagram');
   const metaState = resolveMetaUiState(fbConn, igConn);
   const metaConnected = metaState !== 'disconnected';
+  const needsWebhookRepair = Boolean(
+    (fbConn?.status === 'connected' &&
+      (fbConn.webhookNeedsAttention || fbConn.webhookSubscribed === false)) ||
+    (igConn?.status === 'connected' &&
+      (igConn.webhookNeedsAttention || igConn.webhookSubscribed === false))
+  );
 
   const handleConnect = () => {
     if (statusLoading) return;
@@ -157,12 +169,14 @@ export function InboxChannelsTab({
   };
 
   const confirmDisconnect = () => {
-    onDisconnectMeta();
+    onDisconnectMeta(deleteMessages);
     setDisconnectOpen(false);
+    setDeleteMessages(false);
   };
 
   const showConnect = canManage && metaState === 'disconnected';
   const showReconnect = canManage && (metaState === 'error' || metaState === 'partial');
+  const showFixConnection = canManage && metaConnected && needsWebhookRepair && !showReconnect;
   const showDisconnect = canManage && metaConnected;
 
   return (
@@ -225,6 +239,25 @@ export function InboxChannelsTab({
                       <>
                         <RefreshCw className="size-4" aria-hidden />
                         Reconnect
+                      </>
+                    )}
+                  </Button>
+                )}
+                {showFixConnection && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-9 min-h-[44px] gap-1.5 px-3 sm:min-h-9"
+                    disabled={resubscribing}
+                    onClick={onResubscribeMeta}
+                  >
+                    {resubscribing ? (
+                      <Loader2 className="size-4 animate-spin" aria-hidden />
+                    ) : (
+                      <>
+                        <RefreshCw className="size-4" aria-hidden />
+                        Fix connection
                       </>
                     )}
                   </Button>
@@ -296,14 +329,43 @@ export function InboxChannelsTab({
         })}
       </ul>
 
-      <Dialog open={disconnectOpen} onOpenChange={setDisconnectOpen}>
+      <Dialog
+        open={disconnectOpen}
+        onOpenChange={(open) => {
+          setDisconnectOpen(open);
+          if (!open) setDeleteMessages(false);
+        }}
+      >
         <DialogContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
           <DialogHeader>
             <DialogTitle>Disconnect Meta?</DialogTitle>
           </DialogHeader>
-          <p className="text-muted-foreground text-sm">
-            Clears Facebook and Instagram conversations from this inbox.
-          </p>
+          <div className="space-y-3">
+            <p className="text-muted-foreground text-sm">
+              Stops syncing this Meta Page and keeps existing conversations visible here.
+            </p>
+            <label className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2.5">
+              <Checkbox
+                checked={deleteMessages}
+                onCheckedChange={(checked) => setDeleteMessages(checked === true)}
+                className="mt-0.5"
+                aria-label="Also permanently delete synced conversations and messages"
+              />
+              <span className="min-w-0 text-sm">
+                <span className="text-foreground block font-medium">
+                  Also permanently delete synced conversations and messages
+                </span>
+                <span className="text-muted-foreground mt-0.5 block text-xs">
+                  Leave this off to disconnect safely and keep message history read-only.
+                </span>
+              </span>
+            </label>
+            {deleteMessages ? (
+              <p className="text-destructive text-sm font-medium">
+                This permanently removes synced Meta history from this inbox.
+              </p>
+            ) : null}
+          </div>
           <DialogFooter className="gap-1">
             <Button
               type="button"
@@ -316,12 +378,16 @@ export function InboxChannelsTab({
             </Button>
             <Button
               type="button"
-              variant="destructive"
+              variant={deleteMessages ? 'destructive' : 'soft-destructive'}
               className="min-h-[44px] sm:min-h-9"
               disabled={disconnecting}
               onClick={confirmDisconnect}
             >
-              {disconnecting ? 'Disconnecting…' : 'Disconnect'}
+              {disconnecting
+                ? 'Disconnecting…'
+                : deleteMessages
+                  ? 'Disconnect and delete'
+                  : 'Disconnect'}
             </Button>
           </DialogFooter>
         </DialogContent>

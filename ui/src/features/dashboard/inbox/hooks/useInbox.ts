@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   useInfiniteQuery,
@@ -20,6 +20,7 @@ import {
   fetchMetaOAuthPages,
   markInboxConversationRead,
   patchInboxAutomationSettings,
+  resubscribeMetaInbox,
   saveInboxTemplate,
   deleteInboxTemplate,
   editInboxMessage,
@@ -88,6 +89,14 @@ type InboxThreadsPage = {
   syncedFromMeta?: boolean;
   syncedInChunk?: number;
 };
+
+function buildMetaSyncPageParam(
+  pages: InboxThreadsPage[] | undefined
+): Extract<InboxThreadsPageParam, { mode: 'sync'; cursor: string | null }> {
+  const all = (pages ?? []).flatMap((page) => page.conversations);
+  const tail = all[all.length - 1];
+  return { mode: 'sync', cursor: tail?.last_message_at ?? null };
+}
 
 const REALTIME_INVALIDATE_MS = 400;
 
@@ -242,17 +251,36 @@ export function useInboxMutations(
   });
 
   const disconnectMeta = useMutation({
-    mutationFn: () =>
-      mockMode ? mockDisconnectMeta() : disconnectMetaInbox(orgSlug, orgId, 'meta', scope),
-    onMutate: async () => {
-      if (orgId) {
-        metaSyncAbortByOrg.get(orgId)?.abort();
-        metaSyncAbortByOrg.delete(orgId);
+    mutationFn: ({ deleteMessages = false }: { deleteMessages?: boolean } = {}) =>
+      mockMode
+        ? mockDisconnectMeta()
+        : disconnectMetaInbox(orgSlug, orgId, 'meta', scope, deleteMessages),
+    onMutate: async ({ deleteMessages = false }) => {
+      if (deleteMessages) {
+        if (orgId) {
+          metaSyncAbortByOrg.get(orgId)?.abort();
+          metaSyncAbortByOrg.delete(orgId);
+        }
+        clearInboxThreadCaches(qc);
       }
-      clearInboxThreadCaches(qc);
+      return { deleteMessages };
     },
+    onSuccess: (_data, _vars, ctx) => {
+      if (ctx?.deleteMessages) {
+        clearInboxThreadCaches(qc);
+      }
+      void qc.invalidateQueries({ queryKey: [INBOX_CONNECTIONS_KEY] });
+      void qc.invalidateQueries({ queryKey: [INBOX_THREADS_KEY] });
+      void qc.invalidateQueries({ queryKey: [INBOX_MESSAGES_KEY] });
+    },
+  });
+
+  const resubscribeMeta = useMutation({
+    mutationFn: () =>
+      mockMode
+        ? Promise.resolve({ verified: true, resubscribed: true })
+        : resubscribeMetaInbox(orgSlug, orgId, scope),
     onSuccess: () => {
-      clearInboxThreadCaches(qc);
       void qc.invalidateQueries({ queryKey: [INBOX_CONNECTIONS_KEY] });
     },
   });
@@ -263,12 +291,14 @@ export function useInboxMutations(
       text: string;
       privateReply?: boolean;
       replyToMessageId?: string;
+      useHumanAgentTag?: boolean;
     }) =>
       mockMode
         ? mockSendReply(opts.conversationId, opts.text, opts.privateReply).then(() => undefined)
         : sendInboxReply(orgSlug, orgId, opts.conversationId, opts.text, {
             privateReply: opts.privateReply,
             replyToMessageId: opts.replyToMessageId,
+            useHumanAgentTag: opts.useHumanAgentTag,
             scope,
           }),
     onMutate: async (vars) => {
@@ -344,7 +374,15 @@ export function useInboxMutations(
     },
   });
 
-  return { connectMeta, disconnectMeta, sendReply, editMessage, unsendMessage, aiSuggest };
+  return {
+    connectMeta,
+    disconnectMeta,
+    resubscribeMeta,
+    sendReply,
+    editMessage,
+    unsendMessage,
+    aiSuggest,
+  };
 }
 
 export function useMetaOAuthPagePicker(
@@ -393,9 +431,9 @@ export function useInboxThreads(
   scope?: InboxApiScope | null
 ) {
   const qc = useQueryClient();
-
-  return useInfiniteQuery({
-    queryKey: [INBOX_THREADS_KEY, orgSlug, orgId, ...inboxScopeKey(scope), filters, mockMode],
+  const queryKey = [INBOX_THREADS_KEY, orgSlug, orgId, ...inboxScopeKey(scope), filters, mockMode];
+  const query = useInfiniteQuery({
+    queryKey,
     queryFn: async ({ pageParam }): Promise<InboxThreadsPage> => {
       if (mockMode) {
         return mockFetchThreads(filters);
@@ -430,38 +468,78 @@ export function useInboxThreads(
       };
     },
     initialPageParam: null as InboxThreadsPageParam,
-    getNextPageParam: (last, allPages): InboxThreadsPageParam | undefined => {
+    getNextPageParam: (last): InboxThreadsPageParam | undefined => {
       if (last.nextCursor) return last.nextCursor;
-
-      if (inboxFiltersBlockMetaScrollSync(filters)) return undefined;
-
       if (!last.metaHasMore) return undefined;
-
       if (inboxPageExhaustedInDb(last.conversations.length) && !last.syncedFromMeta) {
         return undefined;
       }
-
-      const prevCount = allPages.slice(0, -1).flatMap((p) => p.conversations).length;
-      const totalCount = allPages.flatMap((p) => p.conversations).length;
-      const added = totalCount - prevCount;
-
-      if (
-        last.syncedFromMeta &&
-        added === 0 &&
-        !last.nextCursor &&
-        (last.syncedInChunk ?? 0) === 0
-      ) {
-        return undefined;
-      }
-
-      const all = allPages.flatMap((p) => p.conversations);
-      const tail = all[all.length - 1];
-      return { mode: 'sync', cursor: tail?.last_message_at ?? null };
+      return undefined;
     },
     enabled: mockMode || !!(orgSlug || orgId),
     refetchInterval: false,
     retry: 1,
   });
+
+  const [loadingOlderFromMeta, setLoadingOlderFromMeta] = useState(false);
+
+  const canLoadOlderFromMeta =
+    !mockMode &&
+    !inboxFiltersBlockMetaScrollSync(filters) &&
+    !!query.data?.pages.length &&
+    !query.hasNextPage &&
+    !loadingOlderFromMeta &&
+    !!query.data.pages[query.data.pages.length - 1]?.metaHasMore;
+
+  const loadOlderFromMeta = useCallback(async () => {
+    if (!canLoadOlderFromMeta || loadingOlderFromMeta) return;
+    setLoadingOlderFromMeta(true);
+    try {
+      const syncPage = buildMetaSyncPageParam(query.data?.pages);
+      const backfill = await runMetaInboxBackfillChunk(orgSlug, orgId, { light: true }, scope);
+      void qc.invalidateQueries({ queryKey: [INBOX_CONNECTIONS_KEY] });
+      const list = await fetchInboxThreads(
+        orgSlug,
+        orgId,
+        { ...filters, cursor: syncPage.cursor },
+        scope
+      );
+      qc.setQueryData<InfiniteData<InboxThreadsPage>>(queryKey, (current) => {
+        if (!current) return current;
+        return {
+          pages: [
+            ...current.pages,
+            {
+              ...list,
+              metaHasMore: backfill.metaHasMore,
+              syncedFromMeta: true,
+              syncedInChunk: backfill.syncedInChunk,
+            },
+          ],
+          pageParams: [...current.pageParams, syncPage],
+        };
+      });
+    } finally {
+      setLoadingOlderFromMeta(false);
+    }
+  }, [
+    canLoadOlderFromMeta,
+    filters,
+    loadingOlderFromMeta,
+    orgId,
+    orgSlug,
+    qc,
+    query.data?.pages,
+    queryKey,
+    scope,
+  ]);
+
+  return {
+    ...query,
+    canLoadOlderFromMeta,
+    loadOlderFromMeta,
+    loadingOlderFromMeta,
+  };
 }
 
 export function useInboxMessages(

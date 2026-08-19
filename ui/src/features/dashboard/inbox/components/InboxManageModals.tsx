@@ -37,8 +37,10 @@ type Props = {
   connectionsError?: boolean;
   connecting: boolean;
   disconnecting: boolean;
+  resubscribing?: boolean;
   onConnectMeta: () => void;
-  onDisconnectMeta: () => void;
+  onDisconnectMeta: (deleteMessages: boolean) => void;
+  onResubscribeMeta: () => void;
   templates: InboxTemplate[];
   templatesLoading: boolean;
   templatesSaving: boolean;
@@ -135,8 +137,10 @@ export function InboxManageModals({
   connectionsError = false,
   connecting,
   disconnecting,
+  resubscribing = false,
   onConnectMeta,
   onDisconnectMeta,
+  onResubscribeMeta,
   templates,
   templatesLoading,
   templatesSaving,
@@ -168,8 +172,10 @@ export function InboxManageModals({
             canManage={canManage}
             connecting={connecting}
             disconnecting={disconnecting}
+            resubscribing={resubscribing}
             onConnectMeta={onConnectMeta}
             onDisconnectMeta={onDisconnectMeta}
+            onResubscribeMeta={onResubscribeMeta}
           />
         </ResponsiveModalContent>
       </ResponsiveModal>

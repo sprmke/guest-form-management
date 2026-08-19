@@ -14,6 +14,7 @@ import type {
 } from '@/features/dashboard/inbox/types/inbox';
 
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 
 type Props = {
@@ -29,15 +30,25 @@ type Props = {
   onTypeFilter: (v: ThreadTypeFilter) => void;
   onSearch: (v: string) => void;
   emptyVariant?:
-    'not-connected' | 'syncing' | 'sync-error' | 'empty' | 'search-not-loaded' | 'search-empty';
+    | 'not-connected'
+    | 'syncing'
+    | 'sync-error'
+    | 'load-error'
+    | 'empty'
+    | 'search-not-loaded'
+    | 'search-empty';
   syncError?: string | null;
+  loadError?: string | null;
   syncInProgress?: boolean;
   syncLoadedCount?: number;
   canConnect?: boolean;
   onConnect?: () => void;
+  onRetryLoad?: () => void;
   hasMore?: boolean;
   loadingMore?: boolean;
   onLoadMore?: () => void;
+  canLoadOlderFromMeta?: boolean;
+  onLoadOlderFromMeta?: () => void;
 };
 
 export function InboxThreadList({
@@ -54,13 +65,17 @@ export function InboxThreadList({
   onSearch,
   emptyVariant = 'empty',
   syncError = null,
+  loadError = null,
   syncInProgress = false,
   syncLoadedCount = 0,
   canConnect = false,
   onConnect,
+  onRetryLoad,
   hasMore = false,
   loadingMore = false,
   onLoadMore,
+  canLoadOlderFromMeta = false,
+  onLoadOlderFromMeta,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -123,9 +138,14 @@ export function InboxThreadList({
           <InboxThreadListEmpty
             variant={emptyVariant}
             syncError={syncError}
+            loadError={loadError}
             syncLoadedCount={syncLoadedCount}
             canConnect={canConnect}
             onConnect={onConnect}
+            onRetryLoad={onRetryLoad}
+            canLoadOlderFromMeta={canLoadOlderFromMeta}
+            onLoadOlderFromMeta={onLoadOlderFromMeta}
+            loadingOlderFromMeta={loadingMore}
           />
         ) : (
           <div className="py-1">
@@ -143,7 +163,7 @@ export function InboxThreadList({
                 onSelect={() => onSelect(c.id)}
               />
             ))}
-            {(hasMore || loadingMore) && (
+            {(hasMore || (loadingMore && !canLoadOlderFromMeta)) && (
               <div
                 ref={sentinelRef}
                 className="flex min-h-[48px] items-center justify-center px-3 py-3"
@@ -156,6 +176,24 @@ export function InboxThreadList({
                 )}
               </div>
             )}
+            {canLoadOlderFromMeta ? (
+              <div className="flex justify-center px-3 py-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-9 min-h-[44px] px-3"
+                  disabled={loadingMore}
+                  onClick={onLoadOlderFromMeta}
+                >
+                  {loadingMore ? (
+                    <Loader2 className="size-4 animate-spin" aria-hidden />
+                  ) : (
+                    'Load older from Meta'
+                  )}
+                </Button>
+              </div>
+            ) : null}
           </div>
         )}
       </div>

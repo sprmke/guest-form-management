@@ -17,6 +17,9 @@ export type InboxConnection = {
   connectedAt: string | null;
   lastSyncAt: string | null;
   webhookSubscribed?: boolean;
+  webhookLastVerifiedAt?: string | null;
+  webhookVerifyAttempts?: number;
+  webhookNeedsAttention?: boolean;
   errorMessage: string | null;
   /** Mock preview only — not a live API connection */
   isPreview?: boolean;
@@ -40,6 +43,7 @@ export type InboxConversation = {
   messaging_window_expires_at: string | null;
   linked_post_id: string | null;
   linked_post_url: string | null;
+  connection_status?: string | null;
   property_id?: string | null;
   guest_user_id?: string | null;
   inquiry_check_in?: string | null;
@@ -56,6 +60,7 @@ export type InboxMessage = {
   attachments: unknown[];
   sent_at: string;
   delivery_status: string | null;
+  message_tag?: 'human_agent' | null;
   is_ai_generated: boolean;
   read_at?: string | null;
   edited_at?: string | null;

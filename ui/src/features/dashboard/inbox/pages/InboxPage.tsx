@@ -116,9 +116,15 @@ export function InboxPage({
   const {
     data: threadsData,
     isLoading: threadsLoading,
+    isError: threadsError,
+    error: threadsErrorValue,
+    refetch: refetchThreads,
     fetchNextPage: fetchMoreThreads,
     hasNextPage: hasMoreThreads,
     isFetchingNextPage: loadingMoreThreads,
+    canLoadOlderFromMeta,
+    loadOlderFromMeta,
+    loadingOlderFromMeta,
   } = useInboxThreads(
     orgSlug,
     orgId,
@@ -133,12 +139,21 @@ export function InboxPage({
   const {
     data: messagesData,
     isLoading: messagesLoading,
+    error: messagesErrorValue,
+    refetch: refetchMessages,
     fetchNextPage: fetchOlderMessages,
     hasNextPage: hasOlderMessages,
     isFetchingNextPage: loadingOlderMessages,
   } = useInboxMessages(orgSlug, orgId, selectedId, scope);
-  const { connectMeta, disconnectMeta, sendReply, editMessage, unsendMessage, aiSuggest } =
-    useInboxMutations(orgSlug, orgId, scope);
+  const {
+    connectMeta,
+    disconnectMeta,
+    resubscribeMeta,
+    sendReply,
+    editMessage,
+    unsendMessage,
+    aiSuggest,
+  } = useInboxMutations(orgSlug, orgId, scope);
   const templatesQuery = useInboxTemplates(orgSlug, orgId, scope, showSettingsManageTabs);
   const automationQuery = useInboxAutomationSettings(orgSlug, orgId, scope, showSettingsManageTabs);
   const pagePicker = useMetaOAuthPagePicker(orgSlug, orgId, pagePickerState, scope);
@@ -174,6 +189,7 @@ export function InboxPage({
     connectionsData?.metaHasMore ?? threadsData?.pages.at(-1)?.metaHasMore ?? false;
   const threadEmptyVariant = useMemo(() => {
     if (mockActive) return 'empty' as const;
+    if (threadsError && conversations.length === 0) return 'load-error' as const;
     if (platformFilter === 'web') return 'empty' as const;
     if (!metaConnected) return 'not-connected' as const;
     if (metaSyncInProgress && conversations.length === 0) return 'syncing' as const;
@@ -185,6 +201,7 @@ export function InboxPage({
   }, [
     mockActive,
     platformFilter,
+    threadsError,
     metaConnected,
     metaSyncInProgress,
     conversations.length,
@@ -297,12 +314,20 @@ export function InboxPage({
                 onTypeFilter={setTypeFilter}
                 onSearch={setSearchInput}
                 emptyVariant={threadEmptyVariant}
+                loadError={threadsErrorValue instanceof Error ? threadsErrorValue.message : null}
                 syncInProgress={metaSyncInProgress}
                 canConnect={canManage}
                 onConnect={handleConnectMeta}
+                onRetryLoad={() => void refetchThreads()}
                 hasMore={!!hasMoreThreads}
-                loadingMore={loadingMoreThreads}
+                loadingMore={loadingMoreThreads || loadingOlderFromMeta}
                 onLoadMore={() => void fetchMoreThreads()}
+                canLoadOlderFromMeta={canLoadOlderFromMeta}
+                onLoadOlderFromMeta={() =>
+                  void loadOlderFromMeta().catch((e) =>
+                    toast.error(e instanceof Error ? e.message : 'Could not load older messages')
+                  )
+                }
               />
             </div>
             <div
@@ -322,6 +347,8 @@ export function InboxPage({
                 hasOlderMessages={!!hasOlderMessages}
                 loadingOlder={loadingOlderMessages}
                 onLoadOlder={() => void fetchOlderMessages()}
+                loadError={messagesErrorValue instanceof Error ? messagesErrorValue.message : null}
+                onRetryLoad={() => void refetchMessages()}
                 onSend={async (text, opts) => {
                   if (!selectedId) return;
                   await sendReply.mutateAsync({
@@ -329,6 +356,7 @@ export function InboxPage({
                     text,
                     privateReply: opts?.privateReply,
                     replyToMessageId: opts?.replyToMessageId,
+                    useHumanAgentTag: opts?.useHumanAgentTag,
                   });
                 }}
                 onEdit={async (messageId, text) => {
@@ -364,16 +392,36 @@ export function InboxPage({
           connectionsError={connectionsError}
           connecting={connectMeta.isPending}
           disconnecting={disconnectMeta.isPending}
+          resubscribing={resubscribeMeta.isPending}
           onConnectMeta={handleConnectMeta}
-          onDisconnectMeta={() =>
-            disconnectMeta.mutate(undefined, {
-              onSuccess: () => {
-                setSelectedId(null);
-                setMobileShowConversation(false);
-                const next = new URLSearchParams(searchParams);
-                next.delete('conversationId');
-                setSearchParams(next, { replace: true });
-                toast.success(mockActive ? 'Preview: disconnected' : 'Meta disconnected');
+          onDisconnectMeta={(deleteMessages) =>
+            disconnectMeta.mutate(
+              { deleteMessages },
+              {
+                onSuccess: () => {
+                  if (deleteMessages) {
+                    setSelectedId(null);
+                    setMobileShowConversation(false);
+                    const next = new URLSearchParams(searchParams);
+                    next.delete('conversationId');
+                    setSearchParams(next, { replace: true });
+                  }
+                  toast.success(
+                    mockActive
+                      ? 'Preview: disconnected'
+                      : deleteMessages
+                        ? 'Meta disconnected and history deleted'
+                        : 'Meta disconnected'
+                  );
+                },
+                onError: (e) => toast.error(e.message),
+              }
+            )
+          }
+          onResubscribeMeta={() =>
+            resubscribeMeta.mutate(undefined, {
+              onSuccess: (result) => {
+                toast.success(result.resubscribed ? 'Connection fixed' : 'Connection verified');
               },
               onError: (e) => toast.error(e.message),
             })

@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   Loader2,
   Pencil,
+  RefreshCw,
   Reply,
   SendHorizontal,
   Sparkles,
@@ -21,6 +22,7 @@ import {
 import { PlatformLogo } from '@/features/dashboard/inbox/components/PlatformLogo';
 import {
   isMessagingWindowOpen,
+  isWithinCommentPrivateReplyWindow,
   messagingWindowLabel,
   platformLabel,
 } from '@/features/dashboard/inbox/lib/inboxFormat';
@@ -48,6 +50,7 @@ import { ChatMessageBubble } from '@/components/chat/ChatMessageBubble';
 import { ChatMessageList } from '@/components/chat/ChatMessageList';
 import { ChatThreadSearchPanel, ChatThreadSearchTrigger } from '@/components/chat/ChatThreadSearch';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -85,7 +88,7 @@ type Props = {
   onBack?: () => void;
   onSend: (
     text: string,
-    opts?: { privateReply?: boolean; replyToMessageId?: string }
+    opts?: { privateReply?: boolean; replyToMessageId?: string; useHumanAgentTag?: boolean }
   ) => Promise<void>;
   onEdit?: (messageId: string, text: string) => Promise<void>;
   onUnsend?: (messageId: string) => Promise<void>;
@@ -97,6 +100,8 @@ type Props = {
   hasOlderMessages?: boolean;
   loadingOlder?: boolean;
   onLoadOlder?: () => void;
+  loadError?: string | null;
+  onRetryLoad?: () => void;
 };
 
 export function InboxConversationView({
@@ -118,11 +123,14 @@ export function InboxConversationView({
   hasOlderMessages = false,
   loadingOlder = false,
   onLoadOlder,
+  loadError = null,
+  onRetryLoad,
 }: Props) {
   const [draft, setDraft] = useState('');
   const [composerMode, setComposerMode] = useState<ComposerMode>({ kind: 'compose' });
   const [draftFromAi, setDraftFromAi] = useState(false);
   const [draftAiFlagged, setDraftAiFlagged] = useState(false);
+  const [useHumanAgentTag, setUseHumanAgentTag] = useState(false);
   const [previewAttachment, setPreviewAttachment] = useState<InboxAttachmentPreview | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
@@ -159,6 +167,7 @@ export function InboxConversationView({
     setComposerMode({ kind: 'compose' });
     setDraftFromAi(false);
     setDraftAiFlagged(false);
+    setUseHumanAgentTag(false);
     shouldSmoothScrollRef.current = false;
   }, [conversation?.id, threadSearch.close]);
 
@@ -253,15 +262,33 @@ export function InboxConversationView({
   const windowLabel = isWeb
     ? null
     : messagingWindowLabel(conversation.messaging_window_expires_at, conversation.last_inbound_at);
+  const channelDisconnected = !isWeb && conversation.connection_status === 'disconnected';
+  const humanAgentWindowOpen =
+    !isWeb &&
+    conversation.conversation_type === 'dm' &&
+    (() => {
+      if (!conversation.last_inbound_at) return false;
+      const sentAt = new Date(conversation.last_inbound_at);
+      if (Number.isNaN(sentAt.getTime())) return false;
+      const expiresAt = new Date(sentAt);
+      expiresAt.setDate(expiresAt.getDate() + 7);
+      return expiresAt.getTime() > Date.now();
+    })();
   const windowOpen =
     isWeb ||
     conversation.conversation_type === 'comment' ||
     isMessagingWindowOpen(conversation.messaging_window_expires_at, conversation.last_inbound_at);
+  const canUseHumanAgentTag =
+    composerMode.kind !== 'edit' && humanAgentWindowOpen && !windowOpen && !channelDisconnected;
   const isBusy = sending || editing || unsending;
   const canSend =
     draft.trim().length > 0 &&
     !isBusy &&
-    (windowOpen || conversation.conversation_type === 'comment');
+    !channelDisconnected &&
+    (composerMode.kind === 'edit' ||
+      windowOpen ||
+      conversation.conversation_type === 'comment' ||
+      useHumanAgentTag);
 
   const startReply = (message: InboxMessage) => {
     const preview = message.body_text?.trim() || '(attachment)';
@@ -269,6 +296,7 @@ export function InboxConversationView({
     setDraft('');
     setDraftFromAi(false);
     setDraftAiFlagged(false);
+    setUseHumanAgentTag(false);
     pendingComposerFocusRef.current = 'reply';
   };
 
@@ -279,6 +307,7 @@ export function InboxConversationView({
     setDraft(preview);
     setDraftFromAi(false);
     setDraftAiFlagged(false);
+    setUseHumanAgentTag(false);
     pendingComposerFocusRef.current = 'edit';
   };
 
@@ -293,6 +322,7 @@ export function InboxConversationView({
         await onSend(text, {
           privateReply,
           replyToMessageId: composerMode.kind === 'reply' ? composerMode.messageId : undefined,
+          useHumanAgentTag,
         });
       }
       clearComposerMode();
@@ -440,6 +470,19 @@ export function InboxConversationView({
           </div>
         ) : (
           <div className="space-y-4">
+            {loadError ? (
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-red-500/30 bg-red-500/5 px-3 py-2.5">
+                <p className="text-sm text-red-700 dark:text-red-300">
+                  {loadError ?? 'Could not load messages.'}
+                </p>
+                {onRetryLoad ? (
+                  <Button type="button" variant="outline" size="sm" onClick={onRetryLoad}>
+                    <RefreshCw className="mr-1.5 size-4" aria-hidden />
+                    Retry
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
             <div ref={topSentinelRef} className="h-px w-full shrink-0" aria-hidden />
             {hasOlderMessages && onLoadOlder && (
               <div className="flex justify-center">
@@ -482,7 +525,7 @@ export function InboxConversationView({
                     !isUnsent && outbound && canHostEditMessage(msg, messages) && !!onEdit;
                   const showUnsend =
                     !isUnsent && outbound && canHostUnsendMessage(msg, messages) && !!onUnsend;
-                  const showMessageMenu = canReply;
+                  const showMessageMenu = canReply && !channelDisconnected;
                   const deliveryStatus =
                     !isUnsent && outbound ? resolveOutboundDeliveryStatus(msg) : null;
 
@@ -603,6 +646,29 @@ export function InboxConversationView({
               Guest is typing…
             </p>
           ) : null}
+          {channelDisconnected ? (
+            <p className="text-muted-foreground mb-2 px-1 text-xs" aria-live="polite">
+              This channel is disconnected — reconnect Meta to reply.
+            </p>
+          ) : null}
+          {canUseHumanAgentTag ? (
+            <label className="mb-2 flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2.5">
+              <Checkbox
+                checked={useHumanAgentTag}
+                onCheckedChange={(checked) => setUseHumanAgentTag(checked === true)}
+                className="mt-0.5"
+                aria-label="Send as a support follow-up"
+              />
+              <span className="min-w-0 text-xs">
+                <span className="text-foreground block font-medium">
+                  Reply window closed — send as a support follow-up
+                </span>
+                <span className="text-muted-foreground mt-0.5 block">
+                  Non-promotional only. This uses Meta&apos;s 7-day `HUMAN_AGENT` tag.
+                </span>
+              </span>
+            </label>
+          ) : null}
           <div
             className={cn(
               'border-border/80 bg-background overflow-hidden rounded-xl border shadow-sm transition-shadow',
@@ -638,12 +704,20 @@ export function InboxConversationView({
                 if (isWeb) signalTyping();
               }}
               placeholder={
-                windowOpen || conversation.conversation_type === 'comment'
-                  ? 'Write a reply…'
-                  : 'Reply window closed'
+                channelDisconnected
+                  ? 'Reconnect Meta to reply'
+                  : windowOpen || conversation.conversation_type === 'comment' || useHumanAgentTag
+                    ? 'Write a reply…'
+                    : 'Reply window closed'
               }
               className="min-h-[72px] resize-none border-0 bg-transparent px-3.5 py-3 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
-              disabled={!windowOpen && conversation.conversation_type === 'dm'}
+              disabled={
+                channelDisconnected ||
+                (composerMode.kind !== 'edit' &&
+                  !windowOpen &&
+                  !useHumanAgentTag &&
+                  conversation.conversation_type === 'dm')
+              }
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -664,6 +738,7 @@ export function InboxConversationView({
                               variant="ghost"
                               size="icon"
                               className="text-muted-foreground hover:text-foreground size-10"
+                              disabled={channelDisconnected}
                               aria-label="Insert quick reply"
                             >
                               <Zap className="size-4" />
@@ -697,7 +772,7 @@ export function InboxConversationView({
                         variant="ghost"
                         size="icon"
                         className="size-10 text-violet-600 hover:bg-violet-500/10 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300"
-                        disabled={suggesting}
+                        disabled={suggesting || channelDisconnected}
                         aria-label="Suggest reply"
                         onClick={() => void handleSuggest()}
                       >
@@ -715,7 +790,8 @@ export function InboxConversationView({
 
               <div className="flex items-center gap-2">
                 {conversation.conversation_type === 'comment' &&
-                  conversation.platform === 'instagram' && (
+                  conversation.platform === 'instagram' &&
+                  isWithinCommentPrivateReplyWindow(conversation.last_inbound_at) && (
                     <Button
                       type="button"
                       variant="ghost"

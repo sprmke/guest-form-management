@@ -138,7 +138,8 @@ export async function disconnectMetaInbox(
   orgSlug: string | null,
   orgId: string | null,
   platform = 'meta',
-  scope?: InboxApiScope | null
+  scope?: InboxApiScope | null,
+  deleteMessages = false
 ): Promise<void> {
   const jwt = await getJwt();
   const res = await fetch(withInboxScope(orgUrl('/meta-inbox-disconnect', orgSlug, orgId), scope), {
@@ -147,10 +148,35 @@ export async function disconnectMetaInbox(
       Authorization: `Bearer ${jwt}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ platform, ...inboxScopeBody(scope) }),
+    body: JSON.stringify({ platform, deleteMessages, ...inboxScopeBody(scope) }),
   });
   const json = (await res.json()) as EdgeJson;
   unwrapEdgePayload(json);
+}
+
+export async function resubscribeMetaInbox(
+  orgSlug: string | null,
+  orgId: string | null,
+  scope?: InboxApiScope | null
+): Promise<{ verified: boolean; resubscribed: boolean }> {
+  const jwt = await getJwt();
+  const res = await fetch(
+    withInboxScope(orgUrl('/meta-inbox-resubscribe', orgSlug, orgId), scope),
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(inboxScopeBody(scope)),
+    }
+  );
+  const json = (await res.json()) as EdgeJson;
+  const payload = unwrapEdgePayload(json);
+  return {
+    verified: payload.verified === true,
+    resubscribed: payload.resubscribed === true,
+  };
 }
 
 export async function fetchMetaOAuthPages(
@@ -319,7 +345,12 @@ export async function sendInboxReply(
   orgId: string | null,
   conversationId: string,
   text: string,
-  opts?: { privateReply?: boolean; replyToMessageId?: string; scope?: InboxApiScope | null }
+  opts?: {
+    privateReply?: boolean;
+    replyToMessageId?: string;
+    useHumanAgentTag?: boolean;
+    scope?: InboxApiScope | null;
+  }
 ): Promise<void> {
   const jwt = await getJwt();
   const scope = opts?.scope;
@@ -334,6 +365,7 @@ export async function sendInboxReply(
       text,
       privateReply: opts?.privateReply ?? false,
       replyToMessageId: opts?.replyToMessageId,
+      useHumanAgentTag: opts?.useHumanAgentTag === true,
       ...inboxScopeBody(scope),
     }),
   });
