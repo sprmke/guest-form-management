@@ -115,10 +115,9 @@ When a stage is active, the list query sends the matching `status[]` values to `
 ## Kanban
 
 - Columns follow workflow order: Pending Review → GAF / Parking / Pet → Ready for Check-in → Ready for Check-out → Pending SD Refund → Completed. There is **no** separate **Pending Documents** column — bookings with `status = PENDING_DOCUMENTS` appear in the first incomplete nested step (GAF, then parking, then pet; all complete → Ready for Check-in). **Cancelled** bookings are omitted from the board.
-- **Click** a card or **drop** on a valid column → opens **workflow modal** with stage-specific forms and actions only (no progress stepper — kanban column is the pipeline). Uses `WorkflowPanel` `variant="modal"`, which swaps its body for the Pending Review confirmation card while the booking sits on that status. Forms use `WorkflowFormShell` `variant="modal"` (no nested sub-form card). Dropping on **GAF / Parking / Pet** from **Pending Review** is valid when **Proceed to Pending Documents** would place the booking on that sub-step (there is no separate Docs column).
-- Invalid drops show “Cannot drop here”; valid drops open the modal so the admin completes transitions with the same forms and confirm flow as `/bookings/:bookingId` (automation triggers stay on the detail page).
-- **Open booking** outline button in the modal header opens the full detail page in a new tab.
-- Drag-drop does **not** auto-transition without going through the workflow panel.
+- **Click** a card → opens the workflow sheet with stage-specific forms and actions (no progress stepper). **Drop** on a valid column → skips the intermediate guest-summary / Proceed shell and opens the **transition confirm** directly when no sub-form is required; otherwise opens only the required sub-form sheet (pricing, guest balance, etc.) and then the confirm once the form is complete. Uses `WorkflowPanel` `variant="modal"`, which swaps its body for the Pending Review confirmation card while the booking sits on that status. Forms use `WorkflowFormShell` `variant="modal"` (no nested sub-form card). Dropping on **GAF / Parking / Pet** from **Pending Review** is valid when **Proceed to Pending Documents** would place the booking on that sub-step (there is no separate Docs column).
+- Invalid drops show “Cannot drop here”; valid drops use the same confirm flow as `/bookings/:bookingId` (automation triggers stay on the detail page).
+- Drag-drop does **not** auto-transition without confirm — the host still confirms in `WorkflowConfirmModal` (or completes a required sub-form first).
 
 ---
 

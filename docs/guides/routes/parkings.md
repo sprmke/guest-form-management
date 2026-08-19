@@ -2,7 +2,7 @@
 title: 'Parkings (guest marketing) — operator guide'
 status: active
 tags: [guides, routes, parking]
-updated: 2026-08-17
+updated: 2026-08-19
 ---
 
 # Parkings (guest marketing) — operator guide
@@ -12,6 +12,8 @@ Routes:
 - `/parkings` — list (location-grouped carousels)
 - `/parkings/in/:location` — flat grid for one place (city slug, e.g. `san-fernando-city`, `tagaytay`)
 - `/parkings/:parkingSlug` — slot detail (live API)
+- `/parkings/:parkingSlug/form` — guest parking request submit
+- `/parkings/requests/:bookingId` — guest parking request status
 
 > **Status:** Documented — list + filters live via `list-public-parkings` (URL facets/sort, chips, mobile sheet sort). Location browse uses `locationSlug`.
 
@@ -23,7 +25,8 @@ Routes:
 | Location browse | —        | —          | Documented | `/parkings/in/:location`                                                |
 | Detail page     | —        | —          | Documented | `get-public-parking` + pricing; shared **`BookingCard`** (parking mode) |
 | Reserve slot    | —        | —          | Documented | **`useParkingReserve`** → `/parkings/:slug/form` with dates             |
-| Parking form    | —        | —          | Documented | Mock `ParkingFormPage` (`dev-parking-form`)                             |
+| Parking form    | Done     | Done       | Documented | Real submit via `submit-parking-booking-request`; zero-candidate 422    |
+| Request status  | —        | —          | Documented | Polling status page (`get-parking-booking-status`, 4s interval)         |
 
 ---
 
@@ -48,7 +51,9 @@ Guests browse standalone parking slots by city or building, open a slot detail p
 - Q: Where does my parking slot show up besides the public Parkings browse pages?
   A: On your development's parking list, your public host page, and cross-links from related property listings when configured.
 - Q: What happens when a guest taps Reserve on a parking slot?
-  A: They open a parking registration form for that slot (dates carried over from the picker when present). It's a marketing questionnaire today, not the same as the stay booking form or the paid-parking vehicle form a guest fills out after booking a stay.
+  A: They open a parking request form for that slot with dates carried over from the picker when present. Submitting it creates a real parking request, not a mock lead form, and eligible parking hosts in the same organization are notified right away.
+- Q: How does the guest know if a host accepted the request?
+  A: After submit, the guest is sent to a request-status page that shows whether the request is still waiting, already accepted, cancelled, or ended with no host available. If a host accepts, the guest also sees the slot label and any access note the host added.
 
 ---
 
@@ -94,13 +99,44 @@ Route is registered at the marketing shell level (no dynamic slug conflict).
 
 ## Parking form (`/parkings/:parkingSlug/form`)
 
-**`ParkingFormPage`** — marketing mock form (not the operational stay booking form). Loads live parking detail via **`get-public-parking`**, then renders **`FormPageWrapper`** with the fixed mock form id **`dev-parking-form`**. Back link returns to the parking detail page. Submit is mock-only (Phase 1 UI).
+**`ParkingFormPage`** — guest parking-request form. Loads live parking detail via **`get-public-parking`**, then renders **`FormPageWrapper`** with parking-specific submit wiring.
+
+Save flow:
+
+1. Guest arrives from **Reserve** (dates preserved when present) and must already pass the guest-auth gate used by **`useParkingReserve`**
+2. Form submits through **`useSubmitParkingBookingRequest`** → **`submit-parking-booking-request`**
+3. Server validates org + optional pinned slot, checks candidate availability, and returns **422 `no_parking_available`** with no insert when no eligible parking can take the request
+4. Success returns a real `bookingId`, creates a parking booking in **`PENDING_HOST_ACCEPTANCE`**, fans out Telegram + email notifications to eligible hosts, then redirects the guest to **`/parkings/requests/:bookingId`**
+
+Validation / behavior highlights:
+
+- `vehicleType` is required (`car` or `motorcycle`)
+- `checkOutDate` must be after `checkInDate`
+- Guest-facing error mapping turns internal edge errors into short copy such as **No parking slots are available for these dates**
 
 Distinct from:
 
 - Operational stay booking: `/properties/:slug/form` — see [form.md](./form.md)
 - Paid parking vehicle details for an existing stay: `/properties/:slug/parking/:bookingId` — see [bookings/parking.md](./bookings/parking.md)
 - Development-scoped questionnaires: `/developments/:slug/forms/:formId` — see [developments.md](./developments.md)
+
+---
+
+## Request status (`/parkings/requests/:bookingId`)
+
+**`ParkingRequestStatusPage`** — public guest status page for a submitted parking request.
+
+- Initial load + refresh path: **`get-parking-booking-status?bookingId=`**
+- Returned fields: status, stay dates, expiry time, organization label, slot label after claim, and optional host endorsement note
+- Polls every 4 seconds until a terminal or claimed status is reached
+- `PENDING_HOST_ACCEPTANCE` shows a countdown to expiry
+- `PENDING_REVIEW` / `READY_FOR_CHECKIN` / `COMPLETED` show the claimed slot label when available
+- `NO_HOST_AVAILABLE` and `CANCELLED` are short terminal states with a **Browse Parking** CTA
+
+Security / access notes:
+
+- The page reads by booking UUID only; there is no list endpoint
+- Missing and non-parking rows both return the same not-found behavior, so guests cannot enumerate other bookings
 
 ---
 
@@ -117,7 +153,12 @@ Distinct from:
 | Public host    | `ui/src/features/guest/marketing/properties/hooks/usePublicHost.ts` + `HostPublicPage` (`parkings` from `get-public-host`) |
 | Public hook    | `ui/src/features/guest/marketing/parkings/hooks/usePublicParkingDetail.ts`                                                 |
 | Parking form   | `ui/src/features/guest/marketing/pages/ParkingFormPage.tsx`                                                                |
-| Edge           | `supabase/functions/get-public-parking/index.ts`                                                                           |
+| Request status | `ui/src/features/guest/marketing/parkings/pages/ParkingRequestStatusPage.tsx`                                              |
+| Submit hook    | `ui/src/features/guest/marketing/parkings/hooks/useSubmitParkingBookingRequest.ts`                                         |
+| Status hook    | `ui/src/features/guest/marketing/parkings/hooks/useParkingBookingStatus.ts`                                                |
+| Public detail  | `supabase/functions/get-public-parking/index.ts`                                                                           |
+| Submit edge    | `supabase/functions/submit-parking-booking-request/index.ts`                                                               |
+| Status edge    | `supabase/functions/get-parking-booking-status/index.ts`                                                                   |
 | Location page  | `ui/src/features/guest/marketing/pages/ParkingsLocationPage.tsx`                                                           |
 | Grouping       | `ui/src/features/guest/marketing/parkings/lib/groupParkingsByLocation.ts`                                                  |
 | Place groups   | `ui/src/features/guest/marketing/shared/hooks/usePublicPlaceGroups.ts` + `list-public-place-groups`                        |
@@ -129,6 +170,7 @@ Distinct from:
 | Nav link       | `ui/src/features/guest/marketing/shared/components/MarketingNav.tsx`                                                       |
 | Scroll search  | `ui/src/features/guest/marketing/shared/lib/listingScrollSearchPaths.ts`                                                   |
 | Search default | `ui/src/features/guest/marketing/shared/lib/listingSearchDefaultLocation.ts`                                               |
+| Parking spec   | `.cursor/rules/parking-workflow.mdc`                                                                                       |
 | Per-dev list   | `/developments/:slug/parking` — see [developments.md](./developments.md)                                                   |
 
 ---

@@ -31,6 +31,7 @@ docs/guides/
 | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | [`testing/contract-expiry-lifecycle-manual.md`](./testing/contract-expiry-lifecycle-manual.md) | Contract expiry — notices, grace, consideration, SA grant/deny, lock, parking leg, 375px     |
 | [`testing/ai-dashboard-assistant-manual.md`](./testing/ai-dashboard-assistant-manual.md)       | AI dashboard assistant — read/Tier-1/Tier-2 actions, guardrails, quota, kill switches, 375px |
+| [`testing/parking-playwright.md`](./testing/parking-playwright.md)                             | Parking Playwright setup — feature-scoped mocks, auth seam, guest/host side-by-side flow     |
 
 ## When to update
 

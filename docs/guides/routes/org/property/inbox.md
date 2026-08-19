@@ -38,6 +38,12 @@ This is where you read and reply to guest messages for this property: website ch
   A: On this property Inbox under **Manage** → Quick replies / Automation. Those settings apply across your organization.
 - Q: Why can't I reply to some Facebook or Instagram messages?
   A: Meta only allows replies within 24 hours of the guest's last message. After that window closes, you'll need the guest to message you again before you can respond from here.
+- Q: What is the support follow-up toggle?
+  A: If a guest messaged within the last 7 days but the normal 24-hour reply window has already closed, the composer can show a support follow-up toggle. Turn it on only for non-promotional follow-ups; it sends with Meta's `HUMAN_AGENT` tag.
+- Q: Why do I see a Fix connection warning instead of new messages?
+  A: The Page is still connected, but Meta may have dropped this app's webhook subscription. Use **Fix connection** first to re-subscribe the Page without deleting any conversations. Reconnect is for token or account-link issues.
+- Q: What does Disconnect do now?
+  A: Disconnect stops live syncing by default but keeps existing Meta conversations visible read-only. If you explicitly check the delete option in the dialog, it will permanently remove the synced Meta history for this inbox.
 
 **Plan gating:** Manual replies and **Manage AI response** stay free. Enabling **Send automatically** requires **`aiChatAutoReply`** (Automation tab pre-flight + **`social-inbox-settings`** PATCH). Runtime auto-reply skips when the property plan lacks the feature; org-level contexts without a property id use **`requireOrgPropertyFeature`** / **`orgHasPropertyWithFeature`** on the server.
 
@@ -54,8 +60,14 @@ This is where you read and reply to guest messages for this property: website ch
 - **Manage actions:** Desktop (`lg+`) shows separate header buttons — **Channels**, **Quick replies**, **Automation** — each opening its modal. Mobile (`max-lg`) groups them in the hero **Inbox actions** menu (bottom sheet).
 - **View property** on web threads → admin property dashboard (`propertyDashboardPath`), not the public listing.
 - **First Meta connect** from a property (when no org-default Page exists) writes the **org-default** connection so Marketing Studio and other properties can inherit it.
+- **Webhook health:** connected Meta rows record `webhook_last_verified_at` and retry attempts. After repeated failed checks, Channels shows **Fix connection**, which re-verifies and re-subscribes the current Page in place without disconnecting or wiping history.
+- **Proactive Meta warnings:** Channels can also surface missing comment scopes, invalid tokens, or soon-expiring tokens before a host hits a send failure. **Reconnect** refreshes the full OAuth grant; **Fix connection** remains the lighter webhook-only repair.
 - Later Connect from a property that already has an org-default writes a **property override** (`property_id` set); does **not** wipe the org default.
-- Disconnect override only removes the property override + its Meta threads; UI falls back to org Meta. Disconnect while using org Meta clears the org-default connection.
+- **Disconnect default:** property override or org-default Meta is soft-disconnected by default: webhook/token are cleared, synced conversations remain in the thread list, and the conversation view becomes read-only until Meta is connected again.
+- **Permanent delete:** the Disconnect dialog includes an unchecked delete option that reproduces the old full wipe (remove Meta connection rows plus synced conversations/messages).
+- **Reply windows:** Meta DMs are fully open for 24 hours after the guest's last inbound message. After that, but before 7 days have passed, the composer can still send only when the operator explicitly enables the non-promotional **support follow-up** toggle (`HUMAN_AGENT`). Past 7 days, Meta DMs stay fully read-only until the guest messages again. Instagram **private comment replies** are similarly limited to 7 days from the comment; the Private reply button hides automatically once that window closes. Public (visible) comment replies have no time limit.
+- **Older history loading:** thread list scrolling paginates only the conversations already stored in Kame. Once the local list is exhausted, older Meta history requires an explicit **Load older from Meta** action instead of silently running a live backfill from scroll position.
+- **Error states:** a failed thread fetch now renders a retryable load error instead of falling back to the generic empty state. A failed message fetch keeps the current conversation visible and shows an inline **Retry** banner inside the thread pane.
 - Query/body: `property_id` on inbox edge functions; auth via `verifyPropertyAccess` + `inbox:*`.
 - **Message body rendering:** plain `body_text` is parsed client-side into rich blocks via shared `ChatRichBody` / `ChatMessageBubble`.
 
@@ -64,9 +76,10 @@ This is where you read and reply to guest messages for this property: website ch
 | Function                  | Notes                                                          |
 | ------------------------- | -------------------------------------------------------------- |
 | `meta-inbox-*`            | OAuth / status / disconnect / backfill — require `property_id` |
+| `meta-inbox-resubscribe`  | Re-verify + repair Page webhook in place (`inbox:manage`)      |
 | `social-inbox-threads`    | Scoped list                                                    |
 | `social-inbox-messages`   | Messages / mark read / edit / unsend                           |
-| `social-inbox-send`       | Replies                                                        |
+| `social-inbox-send`       | Replies; optional `useHumanAgentTag` for 24h–7d Meta DMs       |
 | `social-inbox-templates`  | Quick reply CRUD (`inbox:manage` + `property_id`)              |
 | `social-inbox-settings`   | Automation GET/PATCH (`inbox:manage` + `property_id`)          |
 | `social-inbox-ai-suggest` | AI draft (`inbox:reply` + `property_id`)                       |
