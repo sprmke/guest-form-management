@@ -1,3 +1,7 @@
+import type {
+  ActionConfirmationBlock,
+  ChatBlock,
+} from '@/features/dashboard/ai-assistant/lib/aiAssistantApi';
 import { statusLabel } from '@/features/dashboard/bookings/lib/bookingStatus';
 
 const STATUS_CODE_RE = /\b([A-Z][A-Z0-9]+(?:_[A-Z0-9]+)+)\b/g;
@@ -61,4 +65,47 @@ export function dataTableCell(
   const index = columns.indexOf(column);
   const cells = dataTableRowCells(row, columns);
   return index >= 0 ? cells[index] : asDisplay(row[column]);
+}
+
+export function isCanvasWorthyBlock(block: ChatBlock): boolean {
+  if (block.type === 'stepper') return (block.steps?.length ?? 0) > 0;
+  if (block.type === 'data_table') return (block.rows?.length ?? 0) > 8;
+  return false;
+}
+
+export function canvasBlockTitle(block: ChatBlock): string {
+  if (block.type === 'stepper' || block.type === 'data_table') return block.title || '';
+  return '';
+}
+
+export function canvasBlockSummary(block: ChatBlock): string {
+  if (block.type === 'stepper') {
+    const current = (block.steps ?? []).find((step) => step.status === 'current');
+    return current?.label ?? `${block.steps?.length ?? 0} steps`;
+  }
+  if (block.type === 'data_table') return `${block.rows?.length ?? 0} rows`;
+  return '';
+}
+
+export function patchActionConfirmationStatus(
+  blocks: ChatBlock[],
+  actionId: string,
+  status: ActionConfirmationBlock['status']
+): ChatBlock[] {
+  return blocks.map((block) => {
+    if (block.type === 'action_confirmation' && block.actionId === actionId) {
+      return { ...block, status };
+    }
+    if (block.type === 'stepper') {
+      return {
+        ...block,
+        steps: (block.steps ?? []).map((step) =>
+          step.actionBlock?.actionId === actionId
+            ? { ...step, actionBlock: { ...step.actionBlock, status } }
+            : step
+        ),
+      };
+    }
+    return block;
+  });
 }

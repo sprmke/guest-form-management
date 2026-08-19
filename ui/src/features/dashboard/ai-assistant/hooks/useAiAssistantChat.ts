@@ -8,7 +8,9 @@ import {
   type ChatBlock,
   type PageContext,
 } from '@/features/dashboard/ai-assistant/lib/aiAssistantApi';
+import type { AttachedContextItem } from '@/features/dashboard/ai-assistant/lib/attachedContext';
 import type { ChatSendInput } from '@/features/dashboard/ai-assistant/lib/chatAttachments';
+import { patchActionConfirmationStatus } from '@/features/dashboard/ai-assistant/lib/chatBlockDisplay';
 import { useOrgSlugParam } from '@/features/dashboard/org/lib/adminApiScope';
 
 export type ChatThreadMessage = {
@@ -17,7 +19,7 @@ export type ChatThreadMessage = {
   text: string | null;
   blocks: ChatBlock[];
   attachments?: ChatAttachmentMeta[];
-  bookingLabel?: string | null;
+  attachedContext?: AttachedContextItem[];
 };
 
 export function useAiAssistantChat(pageContext: PageContext) {
@@ -71,13 +73,14 @@ export function useAiAssistantChat(pageContext: PageContext) {
       setError(null);
       setUpgradeHook(false);
 
+      const attachedContext = payload.attachedContext ?? [];
       const userMessage: ChatThreadMessage = {
         id: `local-${Date.now()}`,
         role: 'user',
         text: text || null,
         blocks: text ? [{ type: 'text', text }] : [],
         attachments: attachments.map(({ name, mimeType }) => ({ name, mimeType })),
-        bookingLabel: payload.bookingLabel ?? null,
+        attachedContext: attachedContext.length > 0 ? attachedContext : undefined,
       };
       setMessages((prev) => [...prev, userMessage]);
 
@@ -85,10 +88,8 @@ export function useAiAssistantChat(pageContext: PageContext) {
         const res = await sendChatMessage({
           orgSlug,
           conversationId,
-          pageContext: {
-            propertyId: payload.propertyId ?? pageContext.propertyId,
-            bookingId: payload.bookingId ?? pageContext.bookingId,
-          },
+          pageContext,
+          attachedContext: attachedContext.length > 0 ? attachedContext : undefined,
           message: text,
           attachments: attachments.length > 0 ? attachments : undefined,
         });
@@ -115,11 +116,10 @@ export function useAiAssistantChat(pageContext: PageContext) {
       setMessages((prev) =>
         prev.map((msg) => ({
           ...msg,
-          blocks: msg.blocks.map((block) =>
-            block.type === 'action_confirmation' && block.actionId === actionId
-              ? { ...block, status: result.status === 'pending' ? block.status : result.status }
-              : block
-          ),
+          blocks:
+            result.status === 'pending'
+              ? msg.blocks
+              : patchActionConfirmationStatus(msg.blocks, actionId, result.status),
         }))
       );
       return result;

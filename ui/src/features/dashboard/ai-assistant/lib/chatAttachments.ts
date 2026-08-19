@@ -1,3 +1,5 @@
+import type { AttachedContextItem } from '@/features/dashboard/ai-assistant/lib/attachedContext';
+
 export const ASSISTANT_ATTACHMENT_MAX_BYTES = 4 * 1024 * 1024;
 export const ASSISTANT_ATTACHMENT_MAX_COUNT = 3;
 
@@ -21,9 +23,7 @@ export type ChatAttachmentMeta = {
 
 export type ChatSendInput = {
   text: string;
-  bookingId?: string | null;
-  propertyId?: string | null;
-  bookingLabel?: string | null;
+  attachedContext?: AttachedContextItem[];
   attachments?: ChatAttachmentPayload[];
 };
 

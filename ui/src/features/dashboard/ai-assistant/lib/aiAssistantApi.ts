@@ -1,5 +1,24 @@
+import type { AttachedContextItem } from '@/features/dashboard/ai-assistant/lib/attachedContext';
 import { scopedOrgFunctionsUrl } from '@/features/dashboard/org/lib/adminApiScope';
 import { getSessionJwt } from '@/features/dashboard/org/lib/edgeClient';
+
+export type ActionConfirmationBlock = {
+  type: 'action_confirmation';
+  actionId: string;
+  toolName: string;
+  riskTier: 'tier1_auto' | 'tier2_confirmed';
+  summary: string;
+  details: Array<{ label: string; value: string }>;
+  status: 'proposed' | 'confirmed' | 'executed' | 'denied' | 'expired';
+  isExternalSend?: boolean;
+};
+
+export type StepperStep = {
+  label: string;
+  status: 'done' | 'current' | 'upcoming';
+  description?: string;
+  actionBlock?: ActionConfirmationBlock;
+};
 
 export type ChatBlock =
   | { type: 'text'; text: string }
@@ -26,16 +45,10 @@ export type ChatBlock =
       title: string;
       files: Array<{ label: string; url: string; kind?: 'image' | 'pdf' | 'file' }>;
     }
-  | {
-      type: 'action_confirmation';
-      actionId: string;
-      toolName: string;
-      riskTier: 'tier1_auto' | 'tier2_confirmed';
-      summary: string;
-      details: Array<{ label: string; value: string }>;
-      status: 'proposed' | 'confirmed' | 'executed' | 'denied' | 'expired';
-      isExternalSend?: boolean;
-    };
+  | { type: 'image'; title: string; url: string; alt: string }
+  | { type: 'stepper'; title: string; steps: StepperStep[] }
+  | { type: 'quick_actions'; actions: Array<{ label: string; prompt: string }> }
+  | ActionConfirmationBlock;
 
 export type ChatAttachmentMeta = {
   name: string;
@@ -122,6 +135,7 @@ export function sendChatMessage(input: {
   orgSlug: string;
   conversationId?: string | null;
   pageContext: PageContext;
+  attachedContext?: AttachedContextItem[];
   message: string;
   attachments?: Array<{ name: string; mimeType: string; dataBase64: string }>;
 }): Promise<ChatTurnResponse> {

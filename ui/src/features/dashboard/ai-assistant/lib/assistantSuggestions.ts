@@ -28,11 +28,18 @@ export const ASSISTANT_QUESTIONS: AssistantSuggestion[] = [
   { id: 'q-18', kind: 'question', prompt: 'What statuses can this booking move to?' },
   { id: 'q-19', kind: 'question', prompt: 'How does the booking workflow work?' },
   { id: 'q-20', kind: 'question', prompt: 'Which bookings are ready for check-out?' },
+  { id: 'q-21', kind: 'question', prompt: "Guide me through this booking's remaining steps" },
+  { id: 'q-22', kind: 'question', prompt: 'Which parking stays are waiting to be claimed?' },
+  { id: 'q-23', kind: 'question', prompt: 'What inbox threads need a reply?' },
+  { id: 'q-24', kind: 'question', prompt: 'What marketing templates do I have?' },
+  { id: 'q-25', kind: 'question', prompt: "Who's on this property team?" },
+  { id: 'q-26', kind: 'question', prompt: "What's the nightly rate this weekend?" },
+  { id: 'q-27', kind: 'question', prompt: 'How do Help & Support tickets work?' },
+  { id: 'q-28', kind: 'question', prompt: 'How do Telegram staff alerts work?' },
 ];
 
 /**
- * Write prompts mapped to `run_receipt_validation`, `propose_transition_booking`,
- * and `propose_cancel_booking`. Risky ones still require Confirm in chat.
+ * Write prompts mapped to existing write tools. Risky ones still require Confirm in chat.
  */
 export const ASSISTANT_ACTIONS: AssistantSuggestion[] = [
   { id: 'a-01', kind: 'action', prompt: 'Move this booking to the next status' },
@@ -55,6 +62,11 @@ export const ASSISTANT_ACTIONS: AssistantSuggestion[] = [
   { id: 'a-18', kind: 'action', prompt: "Re-check this booking's payment receipts" },
   { id: 'a-19', kind: 'action', prompt: 'Skip to Ready for Check-in' },
   { id: 'a-20', kind: 'action', prompt: 'Cancel and stop this booking' },
+  { id: 'a-21', kind: 'action', prompt: 'Claim this parking booking' },
+  { id: 'a-22', kind: 'action', prompt: 'Decline this parking booking' },
+  { id: 'a-23', kind: 'action', prompt: 'Draft a reply to this inbox thread' },
+  { id: 'a-24', kind: 'action', prompt: 'Publish this template to Meta' },
+  { id: 'a-25', kind: 'action', prompt: 'Set a date rate override for this weekend' },
 ];
 
 export const SUGGESTION_VISIBLE_COUNT = 5;
