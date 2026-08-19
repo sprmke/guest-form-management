@@ -44,11 +44,22 @@ export function isHostAuthPath(pathname: string): boolean {
 }
 
 /** Target path when switching app mode (auth-aware; guest auth routes are not mounted in GFM). */
-export function resolveModeSwitchPath(mode: AppMode, pathname: string): string {
+export function resolveModeSwitchPath(
+  mode: AppMode,
+  pathname: string,
+  orgDashboardHref?: string | null
+): string {
   if (mode === 'admin') {
     return ADMIN_MODE_ROOT;
   }
   if (mode === 'host') {
+    // When switching from the admin/super-admin context, go to the org dashboard instead of
+    // the marketing host landing page.
+    const fromAdminContext =
+      pathname === ADMIN_MODE_ROOT || pathname.startsWith(`${ADMIN_MODE_ROOT}/`);
+    if (fromAdminContext && orgDashboardHref) {
+      return orgDashboardHref;
+    }
     return '/for-hosts';
   }
   if (isHostAuthPath(pathname)) {

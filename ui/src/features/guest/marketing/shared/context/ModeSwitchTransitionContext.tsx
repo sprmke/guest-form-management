@@ -8,6 +8,7 @@ import {
   resolveModeSwitchPath,
   type AppMode,
 } from '@/features/guest/auth/config/mode-switch';
+import { getLastOrgSlug, orgDashboardPath } from '@/features/dashboard/org/lib/tenantPaths';
 
 import { useTheme } from '@/components/theme/ThemeProvider';
 import {
@@ -138,7 +139,9 @@ export function ModeSwitchTransitionProvider({ children }: { children: ReactNode
       await new Promise((resolve) => setTimeout(resolve, WIPE_MS));
       setOverlayPhase('closed');
 
-      navigate(resolveModeSwitchPath(target, pathname));
+      const orgSlug = getLastOrgSlug();
+      const orgDashboardHref = orgSlug ? orgDashboardPath(orgSlug) : '/dashboard';
+      navigate(resolveModeSwitchPath(target, pathname, orgDashboardHref));
 
       // Host auth screens redirect on their own right after navigation — skip the dwell/reopen beat.
       await new Promise((resolve) => setTimeout(resolve, wasAuthPath ? 0 : HOLD_MS));
