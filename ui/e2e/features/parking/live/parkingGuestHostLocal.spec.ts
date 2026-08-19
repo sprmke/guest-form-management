@@ -61,9 +61,9 @@ test.describe('parking live local flow', () => {
       await captureParkingScreen(hostPage, 'host-booking-accepted', { role: 'host' });
 
       await page.reload();
-      await expect(page.getByText('Accepted')).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Request accepted' })).toBeVisible();
       await expect(page.getByText(seed.endorsementNote)).toBeVisible();
-      await expect(page.getByText(/Slot:/)).toBeVisible();
+      await expect(page.getByText('Assigned slot')).toBeVisible();
       await captureParkingScreen(page, 'guest-accepted-final', { role: 'guest' });
     } finally {
       await cleanupLiveParkingBookings(request, seed.guestEmail);

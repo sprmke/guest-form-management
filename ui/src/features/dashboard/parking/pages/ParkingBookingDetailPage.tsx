@@ -2,6 +2,8 @@ import { useState } from 'react';
 
 import { Link, useParams } from 'react-router-dom';
 
+import { Car, Mail, Phone, Timer } from 'lucide-react';
+
 import { ParkingBroadcastCountdown } from '@/features/dashboard/bookings/components/ParkingBroadcastCountdown';
 import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
 import { useBooking } from '@/features/dashboard/bookings/hooks/useBooking';
@@ -13,13 +15,14 @@ import {
   useTransitionParkingBooking,
 } from '@/features/dashboard/parking/hooks/useParkingBookingMutations';
 import { useParkingBroadcastStatus } from '@/features/dashboard/parking/hooks/useParkingBroadcastStatus';
+import { ParkingStaySummary } from '@/components/parking/ParkingStaySummary';
 
 import { FloatingPanel } from '@/components/mobile/FloatingPanel';
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { parkingDashboardPageTitle, usePageTitle } from '@/lib/pageTitle';
-import { formatBookingDate } from '@/utils/format/bookingDisplay';
+import { cn } from '@/lib/utils';
 
 const NEXT_STATUS: Record<string, { label: string; to: string } | undefined> = {
   PENDING_REVIEW: { label: 'Mark active', to: 'READY_FOR_CHECKIN' },
@@ -27,6 +30,26 @@ const NEXT_STATUS: Record<string, { label: string; to: string } | undefined> = {
 };
 
 const ENDORSEMENT_NOTE_MAX = 500;
+
+function DetailField({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string;
+  value: string;
+  icon: typeof Mail;
+}) {
+  return (
+    <div className="border-border/60 bg-muted/20 flex gap-3 rounded-xl border p-3.5">
+      <Icon className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+      <div className="min-w-0">
+        <dt className="text-muted-foreground text-xs font-medium">{label}</dt>
+        <dd className="text-foreground mt-0.5 break-words text-sm font-medium">{value}</dd>
+      </div>
+    </div>
+  );
+}
 
 export function ParkingBookingDetailPage() {
   const { bookingId } = useParams<{ bookingId: string }>();
@@ -90,6 +113,8 @@ export function ParkingBookingDetailPage() {
 
   const myBroadcastPending = isPendingAcceptance && broadcastStatus?.response === 'pending';
   const busy = claim.isPending || decline.isPending;
+  const vehicleLabel =
+    [booking.car_brand_model, booking.car_color].filter(Boolean).join(' · ') || '—';
 
   const desktopActions = (
     <div className="flex flex-wrap gap-2">
@@ -153,17 +178,52 @@ export function ParkingBookingDetailPage() {
         <div className="flex flex-wrap gap-2 lg:hidden">{desktopActions}</div>
       )}
 
-      <FloatingPanel padding="lg" className="space-y-4">
+      <FloatingPanel padding="lg" className="space-y-5">
+        {myBroadcastPending && booking.parking_broadcast_expires_at && (
+          <div
+            className={cn(
+              'flex flex-col gap-3 rounded-xl border px-4 py-4 sm:flex-row sm:items-center sm:justify-between',
+              'border-amber-200/80 bg-amber-50/80 dark:border-amber-900/50 dark:bg-amber-950/30'
+            )}
+          >
+            <div className="flex items-start gap-3">
+              <Timer
+                className="mt-0.5 h-5 w-5 shrink-0 text-amber-700 dark:text-amber-300"
+                aria-hidden
+              />
+              <div>
+                <p className="text-foreground text-sm font-semibold">
+                  Respond before time runs out
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  First host to accept claims this request
+                </p>
+              </div>
+            </div>
+            <ParkingBroadcastCountdown
+              expiresAt={booking.parking_broadcast_expires_at}
+              prominent
+              className="text-amber-900 dark:text-amber-100"
+            />
+          </div>
+        )}
+
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={booking.status} />
-          {isPendingAcceptance && booking.parking_broadcast_expires_at && (
+          {isPendingAcceptance && booking.parking_broadcast_expires_at && !myBroadcastPending && (
             <ParkingBroadcastCountdown expiresAt={booking.parking_broadcast_expires_at} />
           )}
         </div>
 
+        <ParkingStaySummary
+          checkIn={booking.check_in_date}
+          checkOut={booking.check_out_date}
+          organizationName={org.name}
+        />
+
         {myBroadcastPending && (
-          <div className="space-y-1.5">
-            <label htmlFor="endorsement-note" className="text-muted-foreground text-sm">
+          <div className="space-y-2">
+            <label htmlFor="endorsement-note" className="text-foreground text-sm font-medium">
               Access instructions (optional)
             </label>
             <Textarea
@@ -193,33 +253,11 @@ export function ParkingBookingDetailPage() {
           </p>
         )}
 
-        <dl className="grid gap-3 text-sm sm:grid-cols-2">
-          <div>
-            <dt className="text-muted-foreground">Email</dt>
-            <dd>{booking.guest_email}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Phone</dt>
-            <dd>{booking.guest_phone_number}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Check-in</dt>
-            <dd>{formatBookingDate(booking.check_in_date)}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Check-out</dt>
-            <dd>{formatBookingDate(booking.check_out_date)}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Plate</dt>
-            <dd>{booking.car_plate_number ?? '—'}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Vehicle</dt>
-            <dd>
-              {[booking.car_brand_model, booking.car_color].filter(Boolean).join(' · ') || '—'}
-            </dd>
-          </div>
+        <dl className="grid gap-3 sm:grid-cols-2">
+          <DetailField label="Email" value={booking.guest_email ?? '—'} icon={Mail} />
+          <DetailField label="Phone" value={booking.guest_phone_number ?? '—'} icon={Phone} />
+          <DetailField label="Plate" value={booking.car_plate_number ?? '—'} icon={Car} />
+          <DetailField label="Vehicle" value={vehicleLabel} icon={Car} />
         </dl>
       </FloatingPanel>
     </AdminMobilePage>

@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react';
 
+import {
+  formatParkingBroadcastCountdown,
+  parkingBroadcastCountdownA11yLabel,
+} from '@/utils/format/parkingStayDisplay';
+
 import { cn } from '@/lib/utils';
 
 const WARN_THRESHOLD_MS = 2 * 60_000;
@@ -15,16 +20,11 @@ function useRemainingMs(expiresAt: string): number {
   return new Date(expiresAt).getTime() - now;
 }
 
-function formatCountdown(remainingMs: number): string {
-  const clamped = Math.max(0, remainingMs);
-  const minutes = Math.floor(clamped / 60_000);
-  const seconds = Math.floor((clamped % 60_000) / 1000);
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-}
-
 type Props = {
   expiresAt: string;
   className?: string;
+  /** Larger typography for detail-page urgency strip */
+  prominent?: boolean;
 };
 
 /**
@@ -32,24 +32,23 @@ type Props = {
  * Ticks every second visually; the rounded-minute sr-only text only changes at minute
  * boundaries, so aria-live="polite" naturally announces once a minute, not every second.
  */
-export function ParkingBroadcastCountdown({ expiresAt, className }: Props) {
+export function ParkingBroadcastCountdown({ expiresAt, className, prominent = false }: Props) {
   const remainingMs = useRemainingMs(expiresAt);
   if (remainingMs <= 0) return null;
 
   const warn = remainingMs < WARN_THRESHOLD_MS;
-  const roundedMinutes = Math.ceil(remainingMs / 60_000);
-  const minutesLabel =
-    roundedMinutes <= 1 ? 'Less than a minute remaining' : `${roundedMinutes} minutes remaining`;
+  const minutesLabel = parkingBroadcastCountdownA11yLabel(remainingMs);
 
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 text-xs font-medium tabular-nums',
+        'inline-flex items-center gap-1 font-medium tabular-nums',
+        prominent ? 'text-base' : 'text-xs',
         warn ? 'text-destructive' : 'text-muted-foreground',
         className
       )}
     >
-      Expires in {formatCountdown(remainingMs)}
+      Expires in {formatParkingBroadcastCountdown(remainingMs)}
       <span className="sr-only" aria-live="polite">
         {minutesLabel}
       </span>

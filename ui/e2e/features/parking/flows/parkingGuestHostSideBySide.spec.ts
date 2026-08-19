@@ -79,10 +79,10 @@ test('guest and host can run the mocked parking flow side by side', async ({
     await demoPause(hostPage, guestPage);
 
     await guestPage.reload();
-    await expect(guestPage.getByText('Accepted')).toBeVisible();
+    await expect(guestPage.getByRole('heading', { name: 'Request accepted' })).toBeVisible();
     await captureParkingScreen(guestPage, 'guest-accepted', { role: 'guest' });
     await demoPause(guestPage, hostPage);
-    await expect(guestPage.getByText('Slot: Tower 1 · B2 · 12A')).toBeVisible();
+    await expect(guestPage.getByText('Tower 1 · B2 · 12A')).toBeVisible();
     await expect(
       guestPage.getByText('Use the Tower 1 ramp and show this request at the guard.')
     ).toBeVisible();

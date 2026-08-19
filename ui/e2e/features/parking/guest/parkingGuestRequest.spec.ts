@@ -16,7 +16,7 @@ test.describe('parking guest flow', () => {
     await submitGuestParkingRequest(page);
 
     await expect(page.getByText('Waiting for a host')).toBeVisible();
-    await expect(page.getByText('2026-08-25 to 2026-08-27')).toBeVisible();
+    await expect(page.getByText('Aug 25 - 27, 2026')).toBeVisible();
     await expect(page.getByText('Kame Homes PH')).toBeVisible();
     await expect(page.getByRole('link', { name: 'Browse Parking' })).toBeVisible();
     await captureParkingScreen(page, 'guest-waiting-final', { role: 'guest' });

@@ -42,6 +42,7 @@ export type ParkingFlowState = {
 };
 
 export function createParkingFlowState(): ParkingFlowState {
+  const expiresAt = new Date(Date.now() + 45 * 60_000).toISOString();
   return {
     bookingId: BOOKING_ID,
     status: 'draft',
@@ -49,7 +50,7 @@ export function createParkingFlowState(): ParkingFlowState {
     parkingId: null,
     parkingLabel: null,
     endorsementNote: null,
-    expiresAt: '2026-08-25T08:30:00.000Z',
+    expiresAt,
   };
 }
 
