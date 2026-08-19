@@ -2,12 +2,18 @@
  * dashboard-assistant-chat — main AI dashboard assistant turn endpoint.
  * Docs: docs/workflow/planned/ai-dashboard-assistant.md §1 (turn flow), §2 (tools), §5 (guardrails).
  *
- * Body: { conversationId?, orgSlug, pageContext: { propertyId?, bookingId? }, message, attachments?: [{ name, mimeType, dataBase64 }] }
+ * Body: { conversationId?, orgSlug, pageContext: { propertyId?, bookingId? }, attachedContext?: AttachedContextItem[], message, attachments?: [{ name, mimeType, dataBase64 }] }
  *
  * Tier-2 actions are never executed here — a proposal short-circuits the tool loop and returns
  * an `action_confirmation` block with status "proposed"; dashboard-assistant-confirm executes it.
  */
 
+import {
+  attachedContextPromptLines,
+  parseAttachedContextInput,
+  verifyAttachedContextAccess,
+  withAssistantScope,
+} from '../_shared/dashboardAssistantAttachedContext.ts';
 import {
   buildHostSafeGroundingFacts,
   hostSafeGroundingFactsToPrompt,
@@ -28,6 +34,7 @@ import { isAiPlatformDisabledError, isAiQuotaError } from '../_shared/aiUsageSer
 import {
   humanizeStatusCodesInText,
   hydrateAssistantBlocksFromTools,
+  nestBookingJourneyStepper,
   sanitizeAssistantChatBlocks,
 } from '../_shared/dashboardAssistantBlocks.ts';
 import {
@@ -85,7 +92,16 @@ const BLOCKS_RESPONSE_SCHEMA = {
         properties: {
           type: {
             type: 'string',
-            enum: ['text', 'booking_card', 'stat_list', 'data_table', 'link_list', 'file_list'],
+            enum: [
+              'text',
+              'booking_card',
+              'stat_list',
+              'data_table',
+              'link_list',
+              'file_list',
+              'image',
+              'quick_actions',
+            ],
           },
           text: { type: 'string' },
           bookingId: { type: 'string' },
@@ -135,6 +151,16 @@ const BLOCKS_RESPONSE_SCHEMA = {
               required: ['label', 'url'],
             },
           },
+          url: { type: 'string' },
+          alt: { type: 'string' },
+          actions: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: { label: { type: 'string' }, prompt: { type: 'string' } },
+              required: ['label', 'prompt'],
+            },
+          },
         },
         required: ['type'],
       },
@@ -143,7 +169,7 @@ const BLOCKS_RESPONSE_SCHEMA = {
   required: ['blocks'],
 };
 
-const SYSTEM_PROMPT_PREFIX = `You are the AI dashboard assistant for Kame Homes hosts. Answer only from the Known facts and tool results below — never invent booking data, amounts, or guest names. Never claim an action succeeded unless a tool call actually returned success. When you need live data, call a tool instead of guessing. Financially-sensitive, destructive, or override actions require host confirmation — you do not need to warn about this, the platform handles it. Respond with a short set of typed blocks (text/booking_card/stat_list/data_table/link_list/file_list) — never HTML or markdown tables.
+const SYSTEM_PROMPT_PREFIX = `You are the AI dashboard assistant for Kame Homes hosts. Answer only from the Known facts and tool results below — never invent booking data, amounts, or guest names. Never claim an action succeeded unless a tool call actually returned success. When you need live data, call a tool instead of guessing. Financially-sensitive, destructive, or override actions require host confirmation — you do not need to warn about this, the platform handles it. Respond with a short set of typed blocks (text/booking_card/stat_list/data_table/link_list/file_list/image/quick_actions) — never HTML or markdown tables.
 
 Host-facing rules:
 - Always use human status labels from tool results (statusLabel), never raw codes like READY_FOR_CHECKOUT.
@@ -151,7 +177,10 @@ Host-facing rules:
 - For data_table, every row must include cells[] in the same order as columns. Example: columns ["Guest","Check-in","Check-out"], rows [{cells:["Jane","2026-08-19","2026-08-20"]}].
 - Pending tasks and SD refund amounts come from get_booking (pendingTasks, sdRefundAmount) — copy those, do not invent an empty list.
 - For booked or available dates, call get_available_dates and use bookedStays / availableRanges.
-- When the host asks to see, provide, open, or show a booking file (approved GAF, pet form, receipt, ID, parking endorsement), call get_booking_documents (kinds: gaf/pet/receipt/id/parking) and emit a file_list using the exact url values from the tool. Never invent URLs. If documents is empty, say the file is not on this booking. Do not answer a file request with only a booking_card.`;
+- When the host asks to see, provide, open, or show a booking file (approved GAF, pet form, receipt, ID, parking endorsement), call get_booking_documents (kinds: gaf/pet/receipt/id/parking) and emit a file_list using the exact url values from the tool. Never invent URLs. If documents is empty, say the file is not on this booking. Do not answer a file request with only a booking_card.
+- For photos or design previews, emit an image block using the exact url from a tool result (never invent URLs).
+- quick_actions are short follow-up chips: label + prompt only, no URLs. Tapping fills the host's message box; do not treat them as executed actions.
+- When the host asks to guide them through a booking's remaining steps, call plan_booking_journey. Do not invent a stepper — the platform renders it from that tool.`;
 
 async function resolveEffectivePermissions(
   req: Request,
@@ -189,6 +218,12 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
       propertyId: body.pageContext?.propertyId ? String(body.pageContext.propertyId) : null,
       bookingId: body.pageContext?.bookingId ? String(body.pageContext.bookingId) : null,
     };
+    let attachedContext: Awaited<ReturnType<typeof verifyAttachedContextAccess>> = [];
+    try {
+      attachedContext = parseAttachedContextInput(body.attachedContext);
+    } catch (err) {
+      return jsonError(req, err instanceof Error ? err.message : 'Invalid attachedContext', 400);
+    }
 
     if (!orgSlug) return jsonError(req, 'orgSlug is required', 400);
     if (!message && incomingAttachments.length === 0) {
@@ -196,6 +231,15 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
     }
 
     const orgCtx = await verifyOrgAccess(req, { orgSlug });
+    try {
+      attachedContext = await verifyAttachedContextAccess(req, attachedContext);
+    } catch (err) {
+      return jsonError(
+        req,
+        err instanceof Error ? err.message : 'Cannot access attached context',
+        403
+      );
+    }
     const { permissions, propertyId: effectivePropertyId } = await resolveEffectivePermissions(
       req,
       orgCtx.accessKind,
@@ -323,14 +367,12 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
       permissions
     );
     const groundingPrompt = hostSafeGroundingFactsToPrompt(facts);
-    const pinnedBookingLine = pageContext.bookingId
-      ? `\nThe host pinned booking ${pageContext.bookingId} as the reference for this turn. Prefer this booking for get_booking / transitions unless they name a different one.`
-      : '';
+    const attachedContextLine = attachedContextPromptLines(attachedContext);
     const attachmentLine =
       storedAttachments.length > 0
         ? `\nThe host attached ${storedAttachments.length} file(s): ${storedAttachments.map((a) => `${a.name} (${a.mimeType})`).join(', ')}. Use the file content. For payment receipts, call run_receipt_validation when they ask to check the receipt against a booking.`
         : '';
-    const systemPrompt = `${SYSTEM_PROMPT_PREFIX}\n\nKnown facts:\n${groundingPrompt}\n\npageContext: ${JSON.stringify(pageContext)}${pinnedBookingLine}${attachmentLine}`;
+    const systemPrompt = `${SYSTEM_PROMPT_PREFIX}\n\nKnown facts:\n${groundingPrompt}\n\npageContext: ${JSON.stringify(pageContext)}${attachedContextLine}${attachmentLine}`;
 
     const toolCtx: ToolExecutionContext = {
       req,
@@ -338,6 +380,7 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
       userId: user.id,
       userEmail: user.email ?? '',
       pageContext,
+      attachedContext,
       isBulk: false,
     };
 
@@ -426,7 +469,10 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
           message_id: userMessageRow.id,
           user_id: user.id,
           tool_name: proposedAction.toolName,
-          input_payload: proposedAction.result.data ?? {},
+          input_payload: withAssistantScope(
+            (proposedAction.result.data ?? {}) as Record<string, unknown>,
+            { pageContext, attachedContext }
+          ),
           risk_tier: 'tier2_confirmed',
         })
         .select('id')
@@ -446,7 +492,7 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
         riskTier: 'tier2_confirmed',
         summary: String(payload.summary ?? `Confirm ${proposedAction.toolName}`),
         details: Object.entries(payload)
-          .filter(([k]) => k !== 'summary')
+          .filter(([k]) => k !== 'summary' && k !== '__assistantScope')
           .map(([label, value]) => ({ label, value: String(value) })),
         status: 'proposed',
         isExternalSend: isExternalSendTool(proposedAction.toolName),
@@ -495,7 +541,7 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
         message
       );
 
-      const groundingText = `${groundingPrompt}\n${JSON.stringify(toolResultsForGrounding)}${attachmentLine}${pinnedBookingLine}`;
+      const groundingText = `${groundingPrompt}\n${JSON.stringify(toolResultsForGrounding)}${attachmentLine}${attachedContextLine}`;
       const grounded = assertBlocksGrounded(candidateBlocks, groundingText);
       const safeBlocks = sanitizeAssistantChatBlocks(
         grounded.ok
@@ -578,11 +624,13 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
       await incrementDashboardAssistantUsage(orgCtx.org.id, { writeAction: true });
     }
 
+    const responseBlocks = nestBookingJourneyStepper(blocks, toolResultsForGrounding);
+
     await sb.from('ai_dashboard_assistant_messages').insert({
       conversation_id: conversationId,
       role: 'assistant',
       content_text: finalText || null,
-      blocks,
+      blocks: responseBlocks,
       tool_calls: toolResultsForGrounding.length > 0 ? toolResultsForGrounding : [],
     });
 
@@ -596,7 +644,7 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
       creditsConsumed: turnCreditsConsumed,
     });
 
-    return jsonSuccess(req, { conversationId, blocks });
+    return jsonSuccess(req, { conversationId, blocks: responseBlocks });
   } catch (err) {
     if (err instanceof PlanFeatureRequiredError) {
       return jsonUpgradeHook(req, err.message, { feature: err.feature });

@@ -8,6 +8,7 @@
  */
 
 import { incrementDashboardAssistantUsage } from '../_shared/dashboardAssistantSettings.ts';
+import { stripAssistantScopeFromPayload } from '../_shared/dashboardAssistantAttachedContext.ts';
 import {
   executeConfirmedAction,
   type ToolExecutionContext,
@@ -93,16 +94,18 @@ serveAuthenticated('dashboard-assistant-confirm', async (req, user) => {
       return jsonSuccess(req, { status: 'denied' });
     }
 
-    const inputPayload = (pending.input_payload ?? {}) as Record<string, unknown>;
+    const rawPayload = (pending.input_payload ?? {}) as Record<string, unknown>;
+    const { payload: inputPayload, scope } = stripAssistantScopeFromPayload(rawPayload);
     const toolCtx: ToolExecutionContext = {
       req,
       organizationId: conversation.organization_id as string,
       userId: user.id,
       userEmail: user.email ?? '',
-      pageContext: {
+      pageContext: scope?.pageContext ?? {
         propertyId: (conversation.property_id as string | null) ?? null,
         bookingId: (inputPayload.bookingId as string | undefined) ?? null,
       },
+      attachedContext: scope?.attachedContext ?? [],
       isBulk: false,
     };
 

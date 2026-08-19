@@ -19,6 +19,7 @@ serveAuthenticated('meta-inbox-disconnect', async (req) => {
   const body = (await readJsonBody(req)) as Record<string, unknown>;
   const ctx = await resolveInboxAccess(req, 'manage', body);
   const platform = typeof body.platform === 'string' ? body.platform : 'meta';
+  const deleteMessages = body.deleteMessages === true;
 
   if (platform !== 'meta' && platform !== 'facebook' && platform !== 'instagram') {
     return jsonError(req, 'Invalid platform', 400);
@@ -37,16 +38,20 @@ serveAuthenticated('meta-inbox-disconnect', async (req) => {
     if (hasConnectedOverride) {
       ({ conversationsCleared, connectionsRemoved } = await clearPropertyMetaInbox(
         ctx.orgId,
-        ctx.propertyId
+        ctx.propertyId,
+        { deleteConversations: deleteMessages }
       ));
     } else {
       // Managing inherited org-default Meta from property (no org Inbox UI).
-      ({ conversationsCleared, connectionsRemoved } = await clearOrgMetaInbox(ctx.orgId));
+      ({ conversationsCleared, connectionsRemoved } = await clearOrgMetaInbox(ctx.orgId, {
+        deleteConversations: deleteMessages,
+      }));
     }
   } else if (ctx.kind === 'parking' && ctx.parkingId) {
     ({ conversationsCleared, connectionsRemoved } = await clearParkingMetaInbox(
       ctx.orgId,
-      ctx.parkingId
+      ctx.parkingId,
+      { deleteConversations: deleteMessages }
     ));
   }
 
