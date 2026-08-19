@@ -11,6 +11,7 @@ import {
 import { resolveInboxAccess } from '../_shared/inboxAccess.ts';
 import { resolveMetaConnectionIdsForScope } from '../_shared/metaInboxScope.ts';
 import {
+  attachConversationConnectionStatus,
   enrichConversationMessageAttachments,
   getConversationById,
   listMessages,
@@ -69,7 +70,8 @@ serveAuthenticated('social-inbox-messages', async (req) => {
     const before = url.searchParams.get('before') ?? undefined;
     const { messages, hasMore } = await listMessages(ctx.orgId, conversationId, { before });
     const enriched = await enrichConversationMessageAttachments(conv, messages);
-    return jsonSuccess(req, { conversation: conv, messages: enriched, hasMore });
+    const [conversation] = await attachConversationConnectionStatus([conv]);
+    return jsonSuccess(req, { conversation: conversation ?? conv, messages: enriched, hasMore });
   }
 
   if (req.method === 'POST') {

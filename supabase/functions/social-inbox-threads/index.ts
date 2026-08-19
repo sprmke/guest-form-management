@@ -6,6 +6,7 @@
 import { resolveInboxAccess } from '../_shared/inboxAccess.ts';
 import { resolveMetaConnectionIdsForScope } from '../_shared/metaInboxScope.ts';
 import {
+  attachConversationConnectionStatus,
   listConversations,
   resolveMetaHasMore,
   searchInboxConversations,
@@ -62,7 +63,9 @@ serveAuthenticated('social-inbox-threads', async (req) => {
     ? await searchInboxConversations(ctx.orgId, scopedFilter)
     : await listConversations(ctx.orgId, scopedFilter);
 
-  const conversations = await enrichWebConversationsWithPropertyNames(listResult.conversations);
+  const conversations = await attachConversationConnectionStatus(
+    await enrichWebConversationsWithPropertyNames(listResult.conversations)
+  );
   const metaHasMore = await resolveMetaHasMore(ctx.orgId);
 
   return jsonSuccess(req, {

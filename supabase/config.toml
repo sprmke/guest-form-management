@@ -624,10 +624,16 @@ verify_jwt = false
 [functions.meta-inbox-status]
 verify_jwt = false
 
+[functions.meta-inbox-resubscribe]
+verify_jwt = false
+
 [functions.meta-inbox-backfill]
 verify_jwt = false
 
 [functions.meta-inbox-webhook]
+verify_jwt = false
+
+[functions.meta-inbox-webhook-healthcheck]
 verify_jwt = false
 
 [functions.social-inbox-threads]

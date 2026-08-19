@@ -2,7 +2,11 @@
  * Send a reply to a conversation (DM or public comment).
  */
 
-import { isWithinMessagingWindowFromInbound } from '../_shared/socialInboxAiService.ts';
+import {
+  isWithinCommentPrivateReplyWindow,
+  isWithinHumanAgentWindowFromInbound,
+  isWithinMessagingWindowFromInbound,
+} from '../_shared/socialInboxAiService.ts';
 import { friendlyMetaSendError } from '../_shared/metaInboxSendErrors.ts';
 import {
   getPageAccessToken,
@@ -11,6 +15,7 @@ import {
 } from '../_shared/metaInboxGraph.ts';
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import {
+  conversationAllowedInScope,
   getConversationById,
   insertMessageIfNew,
   updateConversationAfterMessage,
@@ -29,19 +34,6 @@ import type { SocialConversationRow } from '../_shared/socialInboxTypes.ts';
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
-function conversationAllowedInScope(
-  conv: SocialConversationRow,
-  ctx: { propertyId: string | null; parkingId: string | null; metaIds: Set<string> }
-): boolean {
-  if (!ctx.propertyId && !ctx.parkingId) return true;
-  if (conv.platform === 'web') {
-    if (ctx.propertyId) return conv.property_id === ctx.propertyId;
-    if (ctx.parkingId) return conv.parking_id === ctx.parkingId;
-    return false;
-  }
-  return ctx.metaIds.has(conv.connection_id);
-}
-
 serveAuthenticated('social-inbox-send', async (req, user) => {
   if (req.method !== 'POST') {
     return jsonError(req, 'Method not allowed', 405);
@@ -52,6 +44,7 @@ serveAuthenticated('social-inbox-send', async (req, user) => {
   const conversationId = String(body.conversationId ?? '').trim();
   const text = String(body.text ?? '').trim();
   const privateReply = body.privateReply === true;
+  const useHumanAgentTag = body.useHumanAgentTag === true;
   const replyToMessageId = String(body.replyToMessageId ?? body.reply_to_message_id ?? '').trim();
   const attachments = parseGuestWebChatAttachments(body.attachments);
 
@@ -128,7 +121,10 @@ serveAuthenticated('social-inbox-send', async (req, user) => {
     .select('*')
     .eq('id', conv.connection_id)
     .maybeSingle();
-  if (!conn?.encrypted_access_token || !conn.meta_page_id) {
+  if (conn?.status !== 'connected') {
+    return jsonError(req, 'This channel is disconnected — reconnect Meta to reply', 400);
+  }
+  if (!conn.encrypted_access_token || !conn.meta_page_id) {
     return jsonError(req, 'Channel not connected', 400);
   }
 
@@ -137,7 +133,9 @@ serveAuthenticated('social-inbox-send', async (req, user) => {
 
   try {
     if (conv.conversation_type === 'dm') {
-      if (!isWithinMessagingWindowFromInbound(conv.last_inbound_at)) {
+      const withinStandardWindow = isWithinMessagingWindowFromInbound(conv.last_inbound_at);
+      const withinHumanAgentWindow = isWithinHumanAgentWindowFromInbound(conv.last_inbound_at);
+      if (!withinStandardWindow && !(useHumanAgentTag && withinHumanAgentWindow)) {
         return jsonError(req, 'Reply window closed — guest must message again', 400);
       }
 
@@ -159,6 +157,7 @@ serveAuthenticated('social-inbox-send', async (req, user) => {
         text,
         platform: conv.platform,
         replyToMid,
+        tag: !withinStandardWindow && useHumanAgentTag ? 'HUMAN_AGENT' : undefined,
       });
       await insertMessageIfNew({
         organization_id: ctx.org.id,
@@ -169,6 +168,7 @@ serveAuthenticated('social-inbox-send', async (req, user) => {
         attachments: [],
         sent_at: now,
         delivery_status: 'sent',
+        message_tag: !withinStandardWindow && useHumanAgentTag ? 'human_agent' : null,
         sent_by_user_id: user.id,
         is_ai_generated: false,
         ...replyFields,
@@ -176,6 +176,13 @@ serveAuthenticated('social-inbox-send', async (req, user) => {
     } else {
       const commentId = conv.external_thread_id.replace(/^comment:/, '');
       if (privateReply && conv.platform === 'instagram') {
+        if (!isWithinCommentPrivateReplyWindow(conv.last_inbound_at)) {
+          return jsonError(
+            req,
+            'Instagram private replies are only available within 7 days of the comment',
+            400
+          );
+        }
         const result = await sendMetaMessage({
           pageId: connection.meta_page_id,
           pageAccessToken: token,
