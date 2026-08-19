@@ -146,16 +146,96 @@ function assignOccupancyLanes<T>(
   });
 }
 
+function assignOccupancyLanesPerDay<T>(
+  week: CalendarWeekRow,
+  rows: T[],
+  getCheckIn: (row: T) => string | null | undefined,
+  getCheckOut: (row: T) => string | null | undefined,
+  compareItems: (a: T, b: T) => number
+): OccupancySegment<T>[] {
+  const rangeByItem = new Map<T, { start: Date; end: Date }>();
+  const itemsByCol: T[][] = Array.from({ length: 7 }, () => []);
+
+  for (const row of rows) {
+    const range = occupiedNightRange(row, getCheckIn, getCheckOut);
+    if (!range) continue;
+    rangeByItem.set(row, range);
+    for (let col = 0; col < 7; col++) {
+      const day = week.days[col];
+      if (!day || day < range.start || day > range.end) continue;
+      itemsByCol[col].push(row);
+    }
+  }
+
+  const laneByItemCol = new Map<T, number[]>();
+  for (let col = 0; col < 7; col++) {
+    const items = [...itemsByCol[col]].sort(compareItems);
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (!item) continue;
+      let lanes = laneByItemCol.get(item);
+      if (!lanes) {
+        lanes = Array.from({ length: 7 }, () => -1);
+        laneByItemCol.set(item, lanes);
+      }
+      // Lane 0 is the bottom-most visible row for that day; larger lanes stack upward.
+      lanes[col] = i;
+    }
+  }
+
+  const segments: OccupancySegment<T>[] = [];
+  for (const [item, lanes] of laneByItemCol) {
+    const range = rangeByItem.get(item);
+    if (!range) continue;
+    let col = 0;
+    while (col < 7) {
+      const lane = lanes[col] ?? -1;
+      if (lane < 0) {
+        col += 1;
+        continue;
+      }
+      let endCol = col;
+      while (endCol + 1 < 7 && lanes[endCol + 1] === lane) endCol += 1;
+      const startDay = week.days[col];
+      const endDay = week.days[endCol];
+      if (startDay && endDay) {
+        segments.push({
+          item,
+          weekIndex: week.weekIndex,
+          startCol: col,
+          endCol,
+          lane,
+          showLabel: true,
+          spanStart: isSameDay(startDay, range.start),
+          spanEnd: isSameDay(endDay, range.end),
+        });
+      }
+      col = endCol + 1;
+    }
+  }
+
+  return segments;
+}
+
 /** Multi-night stays become one bar segment per calendar week row (not one pill per cell). */
 export function buildOccupancySegmentsForWeeks<T>(
   rows: T[],
   weeks: CalendarWeekRow[],
   getCheckIn: (row: T) => string | null | undefined,
-  getCheckOut: (row: T) => string | null | undefined
+  getCheckOut: (row: T) => string | null | undefined,
+  compareItems?: (a: T, b: T) => number
 ): Map<number, OccupancySegment<T>[]> {
   const segmentsByWeek = new Map<number, OccupancySegment<T>[]>();
 
   for (const week of weeks) {
+    if (compareItems) {
+      segmentsByWeek.set(
+        week.weekIndex,
+        assignOccupancyLanesPerDay(week, rows, getCheckIn, getCheckOut, compareItems)
+      );
+      continue;
+    }
+
     const raw: Omit<OccupancySegment<T>, 'lane'>[] = [];
 
     for (const row of rows) {

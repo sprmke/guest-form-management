@@ -31,6 +31,7 @@ import {
   usePropertyIdParam,
 } from '@/features/dashboard/org/lib/adminApiScope';
 
+import { readE2EAdminAccessToken } from '@/lib/e2e/adminSession';
 import { supabase } from '@/lib/supabase/client';
 
 export const BOOKINGS_QUERY_KEY = ['bookings'] as const;
@@ -56,8 +57,8 @@ async function fetchBookingsFromEdgeFunction(
   query: BookingsQuery,
   fetchScope: FetchScope
 ): Promise<BookingsResult> {
-  const { data: sessionData } = await supabase.auth.getSession();
-  const jwt = sessionData.session?.access_token;
+  const jwt =
+    readE2EAdminAccessToken() ?? (await supabase.auth.getSession()).data.session?.access_token;
   if (!jwt) throw new Error('No admin session');
 
   const params = new URLSearchParams();

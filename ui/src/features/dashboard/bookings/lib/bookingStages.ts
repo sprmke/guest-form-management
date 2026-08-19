@@ -18,7 +18,11 @@ import {
   XCircle,
 } from 'lucide-react';
 
-import { type BookingStatus, statusTone } from '@/features/dashboard/bookings/lib/bookingStatus';
+import {
+  statusLabel,
+  type BookingStatus,
+  statusTone,
+} from '@/features/dashboard/bookings/lib/bookingStatus';
 import {
   DEFAULT_DOCUMENT_REQUIREMENTS,
   type DocumentRequirement,
@@ -29,6 +33,7 @@ import {
   canTransition,
   isSubStatusCompleted,
   isSubStatusRequired,
+  transitionDirection,
   type PendingDocumentSubStatus,
 } from '@/features/dashboard/bookings/lib/workflow';
 
@@ -394,6 +399,69 @@ export function canKanbanDropTo(
   }
 
   return false;
+}
+
+export type KanbanDropTransition = {
+  toStatus: BookingStatus;
+  direction: 'forward' | 'back';
+  label: string;
+};
+
+/**
+ * Maps a valid kanban column drop to a single `transition-booking` target when
+ * possible. Returns `null` when the drop is valid but needs nested doc work
+ * (mark-complete) instead of a pipeline status change.
+ */
+export function resolveKanbanDropTransition(
+  booking: BookingRow,
+  targetColumn: BookingStatus,
+  requirements: DocumentRequirement[] = DEFAULT_DOCUMENT_REQUIREMENTS
+): KanbanDropTransition | null {
+  if (!canKanbanDropTo(booking, targetColumn, requirements)) return null;
+
+  const from = String(booking.status) as BookingStatus;
+  const ctx = { manual: true as const };
+
+  let toStatus: BookingStatus | null = null;
+
+  if (applicableTransitions(from, ctx, booking).includes(targetColumn)) {
+    toStatus = targetColumn;
+  } else if (canTransition(from, targetColumn, ctx)) {
+    toStatus = targetColumn;
+  } else if (from === 'PENDING_REVIEW' && isKanbanDocSubColumn(targetColumn)) {
+    if (!canTransition(from, 'PENDING_DOCUMENTS', ctx)) return null;
+    const landing = kanbanColumnForBooking(
+      { ...booking, status: 'PENDING_DOCUMENTS' },
+      requirements
+    );
+    if (landing !== targetColumn) return null;
+    toStatus = 'PENDING_DOCUMENTS';
+  } else if (isInKanbanDocPipeline(from) && isKanbanDocSubColumn(targetColumn)) {
+    return null;
+  }
+
+  if (!toStatus) return null;
+
+  const direction =
+    transitionDirection(from, toStatus, booking, requirements) === 'backward' ? 'back' : 'forward';
+  const label =
+    direction === 'back'
+      ? `Return to ${statusLabel(toStatus)}`
+      : `Proceed to ${statusLabel(toStatus)}`;
+
+  return { toStatus, direction, label };
+}
+
+/** Focus nested doc sub-step when a kanban drop cannot map to one status change. */
+export function kanbanDropIntentNestedKey(
+  booking: BookingRow,
+  targetColumn: BookingStatus,
+  requirements: DocumentRequirement[] = DEFAULT_DOCUMENT_REQUIREMENTS
+): PendingDocumentSubStatus | null {
+  if (!canKanbanDropTo(booking, targetColumn, requirements)) return null;
+  if (resolveKanbanDropTransition(booking, targetColumn, requirements)) return null;
+  if (!isKanbanDocSubColumn(targetColumn)) return null;
+  return targetColumn;
 }
 
 /** Legend rows — mirrors PMA layout with guest-form statuses. */

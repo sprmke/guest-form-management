@@ -5,8 +5,8 @@ import {
   clearOrgRenewalAutoShownForUser,
 } from '@/features/dashboard/org/lib/listingContractRenewalSession';
 
+import { clearE2EAdminSession, readE2EAdminSession } from '@/lib/e2e/adminSession';
 import { supabase } from '@/lib/supabase/client';
-
 
 import type { Session } from '@supabase/supabase-js';
 
@@ -24,13 +24,27 @@ let hydratedSession: Session | null | undefined;
 
 /** Any Google-authenticated user (org owner model — no client allow-list). */
 export function useAdminSession(): AdminSessionState {
-  const [session, setSession] = useState<Session | null>(() =>
-    hydratedSession !== undefined ? hydratedSession : null
+  const e2eSession = readE2EAdminSession();
+  const [session, setSession] = useState<Session | null>(() => {
+    if (hydratedSession !== undefined) return hydratedSession;
+    return e2eSession;
+  });
+  const [isLoading, setIsLoading] = useState(
+    () => hydratedSession === undefined && e2eSession === null
   );
-  const [isLoading, setIsLoading] = useState(() => hydratedSession === undefined);
 
   useEffect(() => {
     let cancelled = false;
+    const mockedSession = readE2EAdminSession();
+
+    if (mockedSession) {
+      hydratedSession = mockedSession;
+      setSession(mockedSession);
+      setIsLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
 
     if (hydratedSession !== undefined) {
       setSession(hydratedSession);
@@ -87,6 +101,11 @@ export function useAdminSession(): AdminSessionState {
         clearOrgRenewalAutoShownForUser(userId);
       }
       clearLegacyOrgRenewalSessionStorage();
+      if (readE2EAdminSession()) {
+        hydratedSession = null;
+        clearE2EAdminSession();
+        return;
+      }
       await supabase.auth.signOut();
     },
   };

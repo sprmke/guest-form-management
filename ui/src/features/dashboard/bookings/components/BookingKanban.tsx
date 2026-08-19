@@ -283,10 +283,12 @@ export function BookingKanban({
   const [modalOpen, setModalOpen] = useState(false);
   const [activeBookingId, setActiveBookingId] = useState<string | null>(null);
   const [previewRow, setPreviewRow] = useState<BookingRow | null>(null);
+  const [kanbanTargetStatus, setKanbanTargetStatus] = useState<BookingStatus | null>(null);
 
-  const openWorkflow = useCallback((row: BookingRow) => {
+  const openWorkflow = useCallback((row: BookingRow, targetStatus?: BookingStatus) => {
     setActiveBookingId(row.id);
     setPreviewRow(row);
+    setKanbanTargetStatus(targetStatus ?? null);
     setModalOpen(true);
   }, []);
 
@@ -332,7 +334,7 @@ export function BookingKanban({
         return;
       }
       suppressClickRef.current = true;
-      openWorkflow(draggedRow);
+      openWorkflow(draggedRow, targetStatus);
       setDraggedRow(null);
       setDropTargetStatus(null);
     },
@@ -390,11 +392,13 @@ export function BookingKanban({
       <BookingKanbanWorkflowModal
         bookingId={activeBookingId}
         open={modalOpen}
+        targetStatus={kanbanTargetStatus}
         onOpenChange={(open) => {
           setModalOpen(open);
           if (!open) {
             setActiveBookingId(null);
             setPreviewRow(null);
+            setKanbanTargetStatus(null);
           }
         }}
         previewRow={previewRow}

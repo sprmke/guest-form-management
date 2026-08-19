@@ -30,7 +30,7 @@
  * Plan: docs/planning/NEW_FLOW_PLAN.md §3.1, admin-dashboard.mdc §WorkflowPanel
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -67,6 +67,11 @@ import {
 import { useUpdateBooking } from '@/features/dashboard/bookings/hooks/useUpdateBooking';
 import { useWorkflowActions } from '@/features/dashboard/bookings/hooks/useWorkflowActions';
 import { useWorkflowSubFormDrafts } from '@/features/dashboard/bookings/hooks/useWorkflowSubFormDrafts';
+import {
+  kanbanDropIntentNestedKey,
+  resolveKanbanDropTransition,
+  type KanbanDropTransition,
+} from '@/features/dashboard/bookings/lib/bookingStages';
 import { resolveBookingPropertySlug } from '@/features/dashboard/bookings/lib/bookingListNavigation';
 import { shouldWarnPastBookingStayForProceed } from '@/features/dashboard/bookings/lib/bookingPastPipelineManila';
 import {
@@ -121,6 +126,12 @@ type Props = {
   booking: BookingRow;
   /** `modal` — kanban workflow dialog: no progress stepper, sticky action footer. */
   variant?: 'rail' | 'modal';
+  /** Kanban column drop target — auto-opens confirm or required sub-form. */
+  kanbanTargetStatus?: BookingStatus | null;
+  /** Called when a kanban-driven flow finishes or is dismissed. */
+  onKanbanFlowClose?: () => void;
+  /** Kanban drop uses a headless confirm when true (no sheet behind the confirm dialog). */
+  onKanbanShellHidden?: (hidden: boolean) => void;
   /** Opens the shared booking asset preview modal (required for file View actions). */
   onPreview: BookingAssetPreviewHandler;
   /** AI Summary panel open state — controlled by the parent so the sidebar rail can open it. */
@@ -131,6 +142,9 @@ type Props = {
 export function WorkflowPanel({
   booking,
   variant = 'rail',
+  kanbanTargetStatus = null,
+  onKanbanFlowClose,
+  onKanbanShellHidden,
   onPreview,
   aiSummaryOpen = false,
   onOpenAiSummary,
@@ -157,14 +171,37 @@ export function WorkflowPanel({
   const [automationHelpOpen, setAutomationHelpOpen] = useState(false);
   const [progressMapOpen, setProgressMapOpen] = useState(false);
 
-  const [viewedStep, setViewedStep] = useState<ViewedWorkflowStep>(() =>
-    initialViewedWorkflowStep(status, booking, documentRequirements)
-  );
+  const kanbanDropTransition: KanbanDropTransition | null =
+    isModal && kanbanTargetStatus
+      ? resolveKanbanDropTransition(booking, kanbanTargetStatus, documentRequirements)
+      : null;
+  const kanbanIntentNestedKey =
+    isModal && kanbanTargetStatus
+      ? kanbanDropIntentNestedKey(booking, kanbanTargetStatus, documentRequirements)
+      : null;
+
+  const [viewedStep, setViewedStep] = useState<ViewedWorkflowStep>(() => {
+    if (kanbanIntentNestedKey) {
+      return { kind: 'pending-doc-sub', sub: kanbanIntentNestedKey };
+    }
+    return initialViewedWorkflowStep(status, booking, documentRequirements);
+  });
 
   useEffect(() => {
+    if (kanbanIntentNestedKey) {
+      setViewedStep({ kind: 'pending-doc-sub', sub: kanbanIntentNestedKey });
+      return;
+    }
     setViewedStep(initialViewedWorkflowStep(status, booking, documentRequirements));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [booking.id, status, booking.need_parking, booking.has_pets, documentRequirements]);
+  }, [
+    booking.id,
+    status,
+    booking.need_parking,
+    booking.has_pets,
+    documentRequirements,
+    kanbanIntentNestedKey,
+  ]);
 
   const viewedDraftKey =
     viewedStep.kind === 'pipeline' ? viewedStep.status : `doc:${viewedStep.sub}`;
@@ -228,6 +265,7 @@ export function WorkflowPanel({
   >({});
   const [cancelConfirm, setCancelConfirm] = useState(false);
   const [docApprovalModalSub, setDocApprovalModalSub] = useState<PendingDocNestedKey | null>(null);
+  const kanbanAutoConfirmKeyRef = useRef<string | null>(null);
 
   const transitionMut = useTransitionBooking();
   const cancelMut = useCancelBooking();
@@ -389,7 +427,9 @@ export function WorkflowPanel({
     }
   }
 
-  // ─── Handlers ────────────────────────────────────────────────────────────
+  const dismissKanbanFlow = useCallback(() => {
+    onKanbanFlowClose?.();
+  }, [onKanbanFlowClose]);
 
   function openForwardProceedConfirm(toStatus: BookingStatus, label: string) {
     const pastStayWarning = shouldWarnPastBookingStayForProceed(status, booking);
@@ -421,6 +461,74 @@ export function WorkflowPanel({
     setConfirm({ toStatus, label: `Return to ${statusLabel(toStatus)}`, direction: 'back' });
   }
 
+  const openKanbanDropConfirm = useCallback(
+    (drop: KanbanDropTransition) => {
+      if (drop.direction === 'back') {
+        openBackConfirm(drop.toStatus);
+      } else {
+        openForwardProceedConfirm(drop.toStatus, drop.label);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [status, booking, documentRequirements, appSettings?.automationToggles]
+  );
+
+  const kanbanFormBlocksTransition =
+    !!kanbanDropTransition && subFormDrafts.isTransitionDisabled(kanbanDropTransition.toStatus);
+
+  const kanbanConfirmOnly =
+    isModal &&
+    !!kanbanTargetStatus &&
+    !!kanbanDropTransition &&
+    !needsReviewAck &&
+    !kanbanFormBlocksTransition;
+
+  useEffect(() => {
+    if (!kanbanConfirmOnly || !kanbanDropTransition) return;
+    const key = `${booking.id}:${kanbanTargetStatus}:${kanbanDropTransition.toStatus}`;
+    if (kanbanAutoConfirmKeyRef.current === key) return;
+    kanbanAutoConfirmKeyRef.current = key;
+    openKanbanDropConfirm(kanbanDropTransition);
+  }, [
+    kanbanConfirmOnly,
+    kanbanDropTransition,
+    booking.id,
+    kanbanTargetStatus,
+    openKanbanDropConfirm,
+  ]);
+
+  useEffect(() => {
+    if (!isModal || !kanbanTargetStatus || !kanbanDropTransition || needsReviewAck) return;
+    if (!kanbanFormBlocksTransition) return;
+    if (confirm) return;
+    const key = `${booking.id}:${kanbanTargetStatus}:${kanbanDropTransition.toStatus}:form`;
+    if (kanbanAutoConfirmKeyRef.current === key) return;
+    if (subFormDrafts.isTransitionDisabled(kanbanDropTransition.toStatus)) return;
+    kanbanAutoConfirmKeyRef.current = key;
+    openKanbanDropConfirm(kanbanDropTransition);
+  }, [
+    isModal,
+    kanbanTargetStatus,
+    kanbanDropTransition,
+    needsReviewAck,
+    kanbanFormBlocksTransition,
+    confirm,
+    booking.id,
+    subFormDrafts,
+    openKanbanDropConfirm,
+  ]);
+
+  useEffect(() => {
+    if (!kanbanTargetStatus) {
+      kanbanAutoConfirmKeyRef.current = null;
+    }
+  }, [kanbanTargetStatus]);
+
+  useEffect(() => {
+    if (!isModal || !kanbanTargetStatus || !onKanbanShellHidden) return;
+    onKanbanShellHidden(kanbanConfirmOnly);
+  }, [isModal, kanbanTargetStatus, kanbanConfirmOnly, onKanbanShellHidden]);
+
   async function handleTransition(
     toStatus: BookingStatus,
     devControls?: ReturnType<typeof buildWorkflowEmailDevControls>
@@ -436,6 +544,7 @@ export function WorkflowPanel({
         manual: true,
       });
       toast.success(`Moved to ${statusLabel(toStatus)}`);
+      if (kanbanTargetStatus) dismissKanbanFlow();
     } catch (err: unknown) {
       toast.error(friendlyToastError(err, 'Could not update booking status'));
     }
@@ -538,7 +647,7 @@ export function WorkflowPanel({
           onConfirm={confirmReview}
           onOpenAiSummary={onOpenAiSummary ? () => onOpenAiSummary(true) : undefined}
         />
-      ) : isModal ? (
+      ) : isModal && !kanbanConfirmOnly ? (
         <WorkflowSubFormHost
           isModal
           booking={booking}
@@ -620,7 +729,7 @@ export function WorkflowPanel({
       )}
 
       {/* ── Automation triggers (detail rail only) ─────────────────────────── */}
-      {!needsReviewAck ? (
+      {!needsReviewAck && !kanbanConfirmOnly ? (
         <>
           <WorkflowAutomationTriggers
             isModal={isModal}
@@ -636,40 +745,42 @@ export function WorkflowPanel({
           />
 
           {/* ── Transition actions ──────────────────────────────────────── */}
-          <WorkflowActionsBar
-            isModal={isModal}
-            status={status}
-            isTerminal={workflowActions.isTerminal}
-            isLiveView={workflowActions.isLiveView}
-            transitionPending={transitionMut.isPending}
-            inPendingDocuments={workflowActions.inPendingDocuments}
-            viewingPendingDocSub={workflowActions.viewingPendingDocSub}
-            prev={workflowActions.prev}
-            next={workflowActions.next}
-            onOpenBackConfirm={openBackConfirm}
-            selectedPendingDocCanMarkComplete={workflowActions.selectedPendingDocCanMarkComplete}
-            selectedPendingDocUsesApprovalModal={
-              workflowActions.selectedPendingDocUsesApprovalModal
-            }
-            selectedPendingDocRequired={workflowActions.selectedPendingDocRequired}
-            selectedPendingDocCompleted={workflowActions.selectedPendingDocCompleted}
-            activePendingDocSubStatus={workflowActions.activePendingDocSubStatus}
-            activePendingDocLabel={workflowActions.activePendingDocLabel}
-            onMarkPendingDocSubStatusComplete={handleMarkPendingDocSubStatusComplete}
-            onOpenDocApprovalModal={setDocApprovalModalSub}
-            showProceedToReadyForCheckin={workflowActions.showProceedToReadyForCheckin}
-            pendingDocumentsComplete={workflowActions.pendingDocumentsComplete}
-            pendingDocumentsBlockedHint={workflowActions.pendingDocumentsBlockedHint}
-            onOpenForwardProceedConfirm={openForwardProceedConfirm}
-            showLateParkingActions={workflowActions.showLateParkingActions}
-            livePipelineActions={workflowActions.livePipelineActions}
-            isTransitionDisabled={subFormDrafts.isTransitionDisabled}
-            cancelPending={cancelMut.isPending}
-            onOpenCancelConfirm={() => setCancelConfirm(true)}
-            showProgressSave={showProgressSave}
-            progressSavePending={updateMut.isPending}
-            onProgressSave={() => void handleProgressSave()}
-          />
+          {!(kanbanTargetStatus && kanbanDropTransition && !kanbanIntentNestedKey) ? (
+            <WorkflowActionsBar
+              isModal={isModal}
+              status={status}
+              isTerminal={workflowActions.isTerminal}
+              isLiveView={workflowActions.isLiveView}
+              transitionPending={transitionMut.isPending}
+              inPendingDocuments={workflowActions.inPendingDocuments}
+              viewingPendingDocSub={workflowActions.viewingPendingDocSub}
+              prev={workflowActions.prev}
+              next={workflowActions.next}
+              onOpenBackConfirm={openBackConfirm}
+              selectedPendingDocCanMarkComplete={workflowActions.selectedPendingDocCanMarkComplete}
+              selectedPendingDocUsesApprovalModal={
+                workflowActions.selectedPendingDocUsesApprovalModal
+              }
+              selectedPendingDocRequired={workflowActions.selectedPendingDocRequired}
+              selectedPendingDocCompleted={workflowActions.selectedPendingDocCompleted}
+              activePendingDocSubStatus={workflowActions.activePendingDocSubStatus}
+              activePendingDocLabel={workflowActions.activePendingDocLabel}
+              onMarkPendingDocSubStatusComplete={handleMarkPendingDocSubStatusComplete}
+              onOpenDocApprovalModal={setDocApprovalModalSub}
+              showProceedToReadyForCheckin={workflowActions.showProceedToReadyForCheckin}
+              pendingDocumentsComplete={workflowActions.pendingDocumentsComplete}
+              pendingDocumentsBlockedHint={workflowActions.pendingDocumentsBlockedHint}
+              onOpenForwardProceedConfirm={openForwardProceedConfirm}
+              showLateParkingActions={workflowActions.showLateParkingActions}
+              livePipelineActions={workflowActions.livePipelineActions}
+              isTransitionDisabled={subFormDrafts.isTransitionDisabled}
+              cancelPending={cancelMut.isPending}
+              onOpenCancelConfirm={() => setCancelConfirm(true)}
+              showProgressSave={showProgressSave}
+              progressSavePending={updateMut.isPending}
+              onProgressSave={() => void handleProgressSave()}
+            />
+          ) : null}
         </>
       ) : null}
 
@@ -752,6 +863,7 @@ export function WorkflowPanel({
                 onCancel={() => {
                   setConfirm(null);
                   setEmailChoices({});
+                  if (kanbanTargetStatus) dismissKanbanFlow();
                 }}
                 isLoading={transitionMut.isPending}
               />

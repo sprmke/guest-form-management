@@ -1,42 +1,46 @@
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 
-import { ExternalLink, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 import { BookingDetailAssetPreviewModal } from '@/features/dashboard/bookings/components/booking-detail/BookingDetailAssetPreviewModal';
-import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
 import { WorkflowPanel } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowPanel';
 import { useBooking } from '@/features/dashboard/bookings/hooks/useBooking';
 import { useBookingAssetPreview } from '@/features/dashboard/bookings/hooks/useBookingAssetPreview';
-import { resolveBookingListHref } from '@/features/dashboard/bookings/lib/bookingListNavigation';
+import type { BookingStatus } from '@/features/dashboard/bookings/lib/bookingStatus';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
-import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
-import { useOrgSlugParam } from '@/features/dashboard/org/lib/adminApiScope';
 
-import { Button } from '@/components/ui/button';
-import {
-  ResponsiveModal,
-  ResponsiveModalContent,
-  ResponsiveModalHeader,
-  ResponsiveModalTitle,
-} from '@/components/ui/responsive-modal';
+import { ResponsiveModal, ResponsiveModalContent } from '@/components/ui/responsive-modal';
 import { cn } from '@/lib/utils';
-import { formatBookingDateShort } from '@/utils/format/bookingDisplay';
 
 type Props = {
   bookingId: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Kanban column drop target — skips the workflow shell and opens confirm or required form. */
+  targetStatus?: BookingStatus | null;
   /** Optional list row for instant header while detail loads. */
   previewRow?: BookingRow | null;
 };
 
-function modalGuestName(row: BookingRow): string {
-  return row.primary_guest_name || row.guest_facebook_name || row.guest_email || 'Guest';
+function KanbanWorkflowLoadingOverlay() {
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-3 backdrop-blur-[2px] sm:p-4">
+      <div className="text-muted-foreground flex flex-col items-center gap-2">
+        <Loader2 className="size-5 animate-spin" aria-hidden />
+        <span className="text-sm">Loading…</span>
+      </div>
+    </div>
+  );
 }
 
-export function BookingKanbanWorkflowModal({ bookingId, open, onOpenChange, previewRow }: Props) {
-  const orgContext = useOptionalOrgContext();
-  const orgSlug = useOrgSlugParam();
+export function BookingKanbanWorkflowModal({
+  bookingId,
+  open,
+  onOpenChange,
+  targetStatus = null,
+  previewRow,
+}: Props) {
+  const [dropShellHidden, setDropShellHidden] = useState(false);
   const {
     data: booking,
     isLoading,
@@ -44,14 +48,86 @@ export function BookingKanbanWorkflowModal({ bookingId, open, onOpenChange, prev
   } = useBooking(open ? (bookingId ?? undefined) : undefined);
   const { previewAsset, previewLoading, handlePreview, closePreview } = useBookingAssetPreview();
   const displayRow = booking ?? previewRow ?? null;
-  const detailHref =
-    bookingId && displayRow
-      ? resolveBookingListHref(displayRow, {
-          orgSlug,
-          propertySlug: orgContext?.propertySlug,
-          scope: orgContext ? 'property' : 'org',
-        })
-      : null;
+  const isDropTransition = !!targetStatus;
+
+  useEffect(() => {
+    if (!open) setDropShellHidden(false);
+  }, [open]);
+
+  const handleClose = () => onOpenChange(false);
+
+  const workflowPanel =
+    booking && displayRow ? (
+      <WorkflowPanel
+        booking={booking}
+        variant="modal"
+        kanbanTargetStatus={targetStatus}
+        onKanbanFlowClose={handleClose}
+        onKanbanShellHidden={isDropTransition ? setDropShellHidden : undefined}
+        onPreview={handlePreview}
+      />
+    ) : null;
+
+  const assetPreview = (
+    <BookingDetailAssetPreviewModal
+      asset={previewAsset}
+      booking={booking ?? null}
+      isReceiptAiBackfilling={false}
+      loading={previewLoading}
+      onClose={closePreview}
+    />
+  );
+
+  if (!open) return null;
+
+  if (isDropTransition && dropShellHidden) {
+    return (
+      <>
+        {isLoading && !displayRow ? <KanbanWorkflowLoadingOverlay /> : null}
+        {error && !booking ? (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-3 backdrop-blur-[2px] sm:p-4">
+            <p className="text-destructive bg-card rounded-xl border px-4 py-3 text-sm shadow-lg">
+              Could not load booking.
+            </p>
+          </div>
+        ) : null}
+        {workflowPanel}
+        {assetPreview}
+      </>
+    );
+  }
+
+  if (isDropTransition) {
+    return (
+      <>
+        <ResponsiveModal open={open} onOpenChange={onOpenChange}>
+          <ResponsiveModalContent
+            sheetLayout="split"
+            className={cn(
+              'flex max-h-[min(92dvh,36rem)] w-full max-w-[min(calc(100vw-1.5rem),32rem)] flex-col gap-0 overflow-hidden p-0',
+              'sm:max-w-lg'
+            )}
+          >
+            {isLoading && !displayRow ? (
+              <div className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-2 py-12">
+                <Loader2 className="size-5 animate-spin" aria-hidden />
+                <span className="text-sm">Loading…</span>
+              </div>
+            ) : null}
+
+            {error && !booking ? (
+              <div className="text-destructive flex flex-1 items-center justify-center px-4 py-8 text-center text-sm">
+                Could not load booking.
+              </div>
+            ) : null}
+
+            {workflowPanel}
+          </ResponsiveModalContent>
+        </ResponsiveModal>
+        {assetPreview}
+      </>
+    );
+  }
 
   return (
     <ResponsiveModal open={open} onOpenChange={onOpenChange}>
@@ -62,60 +138,22 @@ export function BookingKanbanWorkflowModal({ bookingId, open, onOpenChange, prev
           'sm:max-w-lg'
         )}
       >
-        <ResponsiveModalHeader className="border-border shrink-0 space-y-0 border-b px-4 pb-4 pt-1 text-left sm:px-5 sm:pb-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <ResponsiveModalTitle className="truncate text-base font-semibold leading-tight sm:text-lg">
-                {displayRow ? modalGuestName(displayRow) : 'Booking'}
-              </ResponsiveModalTitle>
-              {displayRow ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-muted-foreground truncate text-xs">
-                    {formatBookingDateShort(displayRow.check_in_date)}
-                    {' → '}
-                    {formatBookingDateShort(displayRow.check_out_date)}
-                  </p>
-                  <StatusBadge status={displayRow.status} />
-                </div>
-              ) : null}
-            </div>
-            {detailHref ? (
-              <Button variant="outline" size="sm" className="h-9 shrink-0 gap-1.5 px-2.5" asChild>
-                <Link to={detailHref} target="_blank" rel="noopener noreferrer">
-                  Open booking
-                  <ExternalLink className="size-3.5 shrink-0" aria-hidden />
-                </Link>
-              </Button>
-            ) : null}
+        {isLoading && !displayRow ? (
+          <div className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-2 py-12">
+            <Loader2 className="size-5 animate-spin" aria-hidden />
+            <span className="text-sm">Loading…</span>
           </div>
-        </ResponsiveModalHeader>
+        ) : null}
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          {isLoading && !displayRow ? (
-            <div className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-2 py-12">
-              <Loader2 className="size-5 animate-spin" aria-hidden />
-              <span className="text-sm">Loading…</span>
-            </div>
-          ) : null}
+        {error && !booking ? (
+          <div className="text-destructive flex flex-1 items-center justify-center px-4 py-8 text-center text-sm">
+            Could not load booking.
+          </div>
+        ) : null}
 
-          {error && !booking ? (
-            <div className="text-destructive flex flex-1 items-center justify-center px-4 py-8 text-center text-sm">
-              Could not load booking.
-            </div>
-          ) : null}
-
-          {booking ? (
-            <WorkflowPanel booking={booking} variant="modal" onPreview={handlePreview} />
-          ) : null}
-        </div>
+        {workflowPanel}
       </ResponsiveModalContent>
-      <BookingDetailAssetPreviewModal
-        asset={previewAsset}
-        booking={booking ?? null}
-        isReceiptAiBackfilling={false}
-        loading={previewLoading}
-        onClose={closePreview}
-      />
+      {assetPreview}
     </ResponsiveModal>
   );
 }
