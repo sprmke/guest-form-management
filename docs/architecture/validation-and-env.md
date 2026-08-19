@@ -2,7 +2,7 @@
 title: 'Form validation and environment variables'
 status: active
 tags: [architecture]
-updated: 2026-08-09
+updated: 2026-08-19
 ---
 
 # Form validation and environment variables
@@ -114,6 +114,7 @@ Part of the [`docs/PROJECT.md`](../PROJECT.md) architecture split.
 - **`TELEGRAM_ADMIN_BOT_TOKEN`** _(optional)_ — Bot token for the admin operations Telegram group. Falls back to `TELEGRAM_BOT_TOKEN` if unset.
 - **`TELEGRAM_ADMIN_CHAT_ID`** — Numeric Telegram chat id for the admin ops group (often negative for supergroups). Required for operations alerts.
 - **`TELEGRAM_ADMIN_CRON_SECRET`** _(optional)_ — When set, `telegram-admin-cron` requires header `X-Telegram-Cron-Secret` with the same value.
+- **`PARKING_BROADCAST_EXPIRE_CRON_SECRET`** _(optional)_ — When set, **`expire-parking-broadcasts`** requires header **`X-Parking-Broadcast-Expire-Cron-Secret`**. Hosted schedule is created by migration **`20261018120000_parking_broadcast_expire_cron.sql`** via `sync_parking_broadcast_expire_cron_job()`; see `docs/archive/operations/scheduled-jobs-and-testing.md`.
 - **`GEMINI_API_KEYS`** _(optional, local/dev)_ — Comma-separated Google AI Studio API keys for rate-limit rotation across **different** Google Cloud projects. **Production:** use one paid **`GEMINI_API_KEY`** instead — see **`docs/archive/operations/ai-platform-billing.md`**. Platform usage is metered per org (`ai_platform_usage_*` tables; `ai-platform-settings` / `ai-platform-usage` edge functions).
 - **`GEMINI_API_KEY`** _(optional)_ — Single Gemini key. **Required for production** (paid billing project). When `GEMINI_API_KEYS` is unset, all AI services use this key via `_shared/aiGeminiKeys.ts` + `_shared/aiModelRouter.ts`.
 - **`GROQ_API_KEY`** _(optional)_ — Groq API key (Llama 4 Scout). **Fallback only** when Gemini fails — not primary capacity for real users. Sign up at `https://console.groq.com`.
@@ -121,6 +122,7 @@ Part of the [`docs/PROJECT.md`](../PROJECT.md) architecture split.
 - **`META_APP_ID`**, **`META_APP_SECRET`** _(Guest Inbox)_ — Meta developer app credentials for Facebook Page + Instagram messaging OAuth and webhook signature verification.
 - **`META_INBOX_TOKEN_ENCRYPTION_KEY`** _(Guest Inbox)_ — 32-byte AES key (64 hex or base64); encrypts Page access tokens in **`social_channel_connections`**.
 - **`META_WEBHOOK_VERIFY_TOKEN`** _(Guest Inbox)_ — Shared secret for Meta webhook GET verification (`meta-inbox-webhook`).
+- **`META_INBOX_WEBHOOK_HEALTHCHECK_CRON_SECRET`** _(optional, Guest Inbox)_ — When set, `meta-inbox-webhook-healthcheck` requires header **`X-Meta-Inbox-Webhook-Healthcheck-Cron-Secret`**. Hosted schedule: migration `20261101120000_meta_inbox_webhook_health.sql` (`sync_meta_inbox_webhook_healthcheck_cron_job()`, every 10 minutes).
 - **`META_OAUTH_ALLOWED_RETURN_ORIGINS`** _(optional, Guest Inbox)_ — Comma-separated SPA origins for Meta OAuth return (defaults include local Vite). Local/staging E2E checklist: **[[inbox-e2e-runbook|Guest Inbox — E2E runbook (local + staging)]]**.
 - **`META_OAUTH_EXCLUDE_PUBLISHING_SCOPES`** _(optional)_ — Set to `1` to omit `pages_manage_posts`, `instagram_content_publish`, and `instagram_basic` from OAuth (inbox-only connect). Default: **all scopes included**. Setup guide: **[[meta-app-review|Meta app setup — Guest Inbox + Marketing Content Studio]]**.
 - **`META_OAUTH_EXTRA_SCOPES`** _(optional)_ — Comma-separated additional OAuth scopes appended to the default set.
