@@ -11,7 +11,7 @@ import {
 import { inboxNotificationMetadata } from './notificationEnrichment.ts';
 import {
   buildDmThreadId,
-  getConnectionByMetaPageId,
+  getConnectionForMetaWebhook,
   getConversationByExternalThread,
   insertMessageIfNew,
   migrateLegacyDmThreadId,
@@ -42,7 +42,7 @@ export async function handleMetaMessagingWebhook(
   if (!eventId) return;
   if (!(await recordWebhookEvent(eventId))) return;
 
-  const connection = await getConnectionByMetaPageId(pageId);
+  const connection = await getConnectionForMetaWebhook(pageId, platform);
   if (!connection?.encrypted_access_token) return;
 
   const orgId = connection.organization_id;
@@ -172,7 +172,7 @@ export async function handleMetaFeedWebhook(pageId: string, change: MetaFeedChan
   const dedupeId = `comment:${commentId}`;
   if (!(await recordWebhookEvent(dedupeId))) return;
 
-  const connection = await getConnectionByMetaPageId(pageId);
+  const connection = await getConnectionForMetaWebhook(pageId, 'facebook');
   if (!connection) return;
 
   const orgId = connection.organization_id;
@@ -242,17 +242,10 @@ export async function handleMetaIgCommentWebhook(
   const dedupeId = `ig-comment:${commentId}`;
   if (!(await recordWebhookEvent(dedupeId))) return;
 
-  const sb = (await import('./socialInboxService.ts')).socialInboxDb();
-  const { data: igConn } = await sb
-    .from('social_channel_connections')
-    .select('*')
-    .eq('meta_ig_user_id', igUserId)
-    .eq('platform', 'instagram')
-    .eq('status', 'connected')
-    .maybeSingle();
+  const igConn = await getConnectionForMetaWebhook(igUserId, 'instagram');
   if (!igConn) return;
 
-  const orgId = igConn.organization_id as string;
+  const orgId = igConn.organization_id;
   const sentAt = new Date().toISOString();
   const text = value?.text?.trim() ?? '';
   const threadId = `comment:${commentId}`;
@@ -260,7 +253,7 @@ export async function handleMetaIgCommentWebhook(
 
   const conv = await upsertConversation({
     organization_id: orgId,
-    connection_id: igConn.id as string,
+    connection_id: igConn.id,
     platform: 'instagram',
     external_thread_id: threadId,
     conversation_type: 'comment',
@@ -302,7 +295,7 @@ export async function handleMetaReadReceipt(
   senderId: string,
   platform: SocialPlatform
 ): Promise<void> {
-  const connection = await getConnectionByMetaPageId(pageId);
+  const connection = await getConnectionForMetaWebhook(pageId, platform);
   if (!connection) return;
   const threadId = buildDmThreadId(platform, senderId);
   const sb = (await import('./socialInboxService.ts')).socialInboxDb();

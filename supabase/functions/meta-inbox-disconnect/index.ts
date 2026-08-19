@@ -19,7 +19,7 @@ serveAuthenticated('meta-inbox-disconnect', async (req) => {
   const body = (await readJsonBody(req)) as Record<string, unknown>;
   const ctx = await resolveInboxAccess(req, 'manage', body);
   const platform = typeof body.platform === 'string' ? body.platform : 'meta';
-  const deleteMessages = body.deleteMessages === true;
+  const deleteMessages = true;
 
   if (platform !== 'meta' && platform !== 'facebook' && platform !== 'instagram') {
     return jsonError(req, 'Invalid platform', 400);

@@ -50,14 +50,39 @@ export async function deleteConversationsForConnections(connectionIds: string[])
 export async function getConnectionByMetaPageId(
   metaPageId: string
 ): Promise<SocialChannelConnectionRow | null> {
+  return getConnectionForMetaWebhook(metaPageId, 'facebook');
+}
+
+/** Resolve a connected Meta channel row from webhook `entry.id` (Page id or IG business account id). */
+export async function getConnectionForMetaWebhook(
+  entryId: string,
+  platform: 'facebook' | 'instagram'
+): Promise<SocialChannelConnectionRow | null> {
   const sb = socialInboxDb();
-  const { data } = await sb
+  if (platform === 'instagram') {
+    const { data, error } = await sb
+      .from('social_channel_connections')
+      .select('*')
+      .eq('platform', 'instagram')
+      .eq('status', 'connected')
+      .or(`meta_ig_user_id.eq.${entryId},external_account_id.eq.${entryId}`)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return (data as SocialChannelConnectionRow | null) ?? null;
+  }
+
+  const { data, error } = await sb
     .from('social_channel_connections')
     .select('*')
-    .eq('meta_page_id', metaPageId)
+    .eq('meta_page_id', entryId)
     .eq('platform', 'facebook')
     .eq('status', 'connected')
+    .order('updated_at', { ascending: false })
+    .limit(1)
     .maybeSingle();
+  if (error) throw new Error(error.message);
   return (data as SocialChannelConnectionRow | null) ?? null;
 }
 

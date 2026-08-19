@@ -14,7 +14,7 @@ import {
 } from '../_shared/metaInboxWebhookHandler.ts';
 import { verifyMetaWebhookSignatureAsync } from '../_shared/metaInboxGraph.ts';
 import { jsonError } from '../_shared/httpResponse.ts';
-import { buildDmThreadId, getConnectionByMetaPageId } from '../_shared/socialInboxService.ts';
+import { buildDmThreadId, getConnectionForMetaWebhook } from '../_shared/socialInboxService.ts';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -81,7 +81,7 @@ serve(async (req) => {
         await handleMetaMessagingWebhook(pageOrIgId, messaging as never, platform);
         const guestId = (messaging.sender as { id?: string })?.id;
         if (guestId && !(messaging.message as { is_echo?: boolean }).is_echo) {
-          const conn = await getConnectionByMetaPageId(pageOrIgId);
+          const conn = await getConnectionForMetaWebhook(pageOrIgId, platform);
           const inboundMid = (messaging.message as { mid?: string }).mid;
           if (conn && inboundMid) {
             try {
