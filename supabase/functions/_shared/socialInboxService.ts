@@ -191,6 +191,34 @@ export async function getConversationById(
   return (data as SocialConversationRow | null) ?? null;
 }
 
+export async function attachConversationConnectionStatus(
+  conversations: SocialConversationRow[]
+): Promise<SocialConversationRow[]> {
+  if (!conversations.length) return conversations;
+
+  const connectionIds = [...new Set(conversations.map((row) => row.connection_id).filter(Boolean))];
+  if (!connectionIds.length) return conversations;
+
+  const sb = socialInboxDb();
+  const { data, error } = await sb
+    .from('social_channel_connections')
+    .select('id,status')
+    .in('id', connectionIds);
+  if (error) throw new Error(error.message);
+
+  const statusById = new Map<string, string>();
+  for (const row of data ?? []) {
+    statusById.set(String(row.id), String(row.status));
+  }
+
+  return conversations.map((conversation) => ({
+    ...conversation,
+    connection_status:
+      (statusById.get(conversation.connection_id) as SocialConversationRow['connection_status']) ??
+      null,
+  }));
+}
+
 /** Canonical DM thread key — must match webhook + backfill. */
 export function buildDmThreadId(platform: SocialPlatform, participantId: string): string {
   return `${platform}:${participantId}`;

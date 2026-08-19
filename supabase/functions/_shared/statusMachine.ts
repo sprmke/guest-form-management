@@ -461,3 +461,82 @@ export const STATUS_HUMAN_LABEL: Record<BookingStatus, string> = {
   CANCELLED: 'Cancelled',
   IMPORTED: 'Imported',
 };
+
+/** Canonical order of all non-terminal pipeline statuses (excluding CANCELLED). Mirrors UI `workflow.ts`. */
+export const PIPELINE_ORDER: readonly BookingStatus[] = [
+  'PENDING_REVIEW',
+  'PENDING_DOCUMENTS',
+  'READY_FOR_CHECKIN',
+  'READY_FOR_CHECKOUT',
+  'PENDING_SD_REFUND',
+  'COMPLETED',
+] as const;
+
+export type BookingPipelineFlags = {
+  need_parking?: boolean | null;
+  has_pets?: boolean | null;
+  security_deposit?: number | string | null;
+};
+
+export function bookingPipeline(
+  booking: BookingPipelineFlags,
+  currentStatus?: BookingStatus,
+  documentRequirements: DocumentRequirement[] = DEFAULT_DOCUMENT_REQUIREMENTS
+): BookingStatus[] {
+  const sdIsZero = booking.security_deposit != null && Number(booking.security_deposit) === 0;
+  const skipPendingDocuments = documentRequirements.length === 0;
+  const filtered = PIPELINE_ORDER.filter((s) => {
+    if (s === 'PENDING_DOCUMENTS') return !skipPendingDocuments;
+    if (s === 'PENDING_PARKING_REQUEST') return !!booking.need_parking;
+    if (s === 'PENDING_PET_REQUEST') return !!booking.has_pets;
+    if (s === 'PENDING_SD_REFUND') return !sdIsZero;
+    return true;
+  });
+
+  if (
+    currentStatus &&
+    currentStatus !== 'CANCELLED' &&
+    currentStatus !== 'IMPORTED' &&
+    !filtered.includes(currentStatus)
+  ) {
+    const targetIdx = PIPELINE_ORDER.indexOf(currentStatus);
+    let insertAt = filtered.length;
+    for (let i = 0; i < filtered.length; i++) {
+      if (PIPELINE_ORDER.indexOf(filtered[i]) > targetIdx) {
+        insertAt = i;
+        break;
+      }
+    }
+    filtered.splice(insertAt, 0, currentStatus);
+  }
+
+  return filtered;
+}
+
+export function nextStep(
+  booking: BookingPipelineFlags,
+  currentStatus: BookingStatus,
+  documentRequirements: DocumentRequirement[] = DEFAULT_DOCUMENT_REQUIREMENTS
+): BookingStatus | null {
+  const pipeline = bookingPipeline(booking, currentStatus, documentRequirements);
+  const idx = pipeline.indexOf(currentStatus);
+  if (idx < 0 || idx >= pipeline.length - 1) return null;
+  return pipeline[idx + 1];
+}
+
+export type SubFormKind = 'pricing' | 'parking' | 'guest_balance' | 'sd_refund' | null;
+
+export function requiredSubForm(from: string, to: BookingStatus): SubFormKind {
+  if (from === 'PENDING_REVIEW' && (to === 'PENDING_DOCUMENTS' || to === 'READY_FOR_CHECKIN')) {
+    return 'pricing';
+  }
+  if (
+    from === 'PENDING_PARKING_REQUEST' &&
+    (to === 'PENDING_PET_REQUEST' || to === 'READY_FOR_CHECKIN')
+  ) {
+    return 'parking';
+  }
+  if (from === 'READY_FOR_CHECKIN' && to === 'READY_FOR_CHECKOUT') return 'guest_balance';
+  if (from === 'PENDING_SD_REFUND' && to === 'COMPLETED') return 'sd_refund';
+  return null;
+}

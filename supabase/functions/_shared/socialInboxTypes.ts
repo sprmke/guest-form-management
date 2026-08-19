@@ -24,6 +24,8 @@ export type SocialChannelConnectionRow = {
   meta_ig_user_id: string | null;
   status: ConnectionStatus;
   webhook_subscribed_at: string | null;
+  webhook_last_verified_at?: string | null;
+  webhook_verify_attempts?: number;
   last_sync_at: string | null;
   error_message: string | null;
   property_id?: string | null;
@@ -55,6 +57,7 @@ export type SocialConversationRow = {
   property_id?: string | null;
   parking_id?: string | null;
   guest_user_id?: string | null;
+  connection_status?: ConnectionStatus | null;
   inquiry_check_in?: string | null;
   inquiry_check_out?: string | null;
   guest_last_read_at?: string | null;
@@ -72,6 +75,7 @@ export type SocialMessageRow = {
   attachments: unknown[];
   sent_at: string;
   delivery_status: string | null;
+  message_tag?: 'human_agent' | null;
   sent_by_user_id: string | null;
   is_ai_generated: boolean;
   read_at?: string | null;
