@@ -16,14 +16,17 @@ import {
 import { useFavicon } from '@/lib/favicon';
 import { APP_TITLE, usePageTitle } from '@/lib/pageTitle';
 
-function isPublicFormRoute(pathname: string) {
-  return pathname.includes('/forms/');
+function isFocusedGuestFlowRoute(pathname: string) {
+  if (pathname.includes('/forms/')) return true;
+  if (/^\/parkings\/requests\/[^/]+\/?$/.test(pathname)) return true;
+  if (/^\/parkings\/[^/]+\/form\/?$/.test(pathname)) return true;
+  return false;
 }
 
 export function MarketingLayoutShell() {
   const { pathname, hash } = useLocation();
   const navigate = useNavigate();
-  const isFormPage = isPublicFormRoute(pathname);
+  const isFormPage = isFocusedGuestFlowRoute(pathname);
   const scrollSearchConfig = getListingScrollSearchConfig(pathname);
   const defaultLocation = getListingSearchDefaultLocation(pathname);
   const fields = getListingSearchFields(pathname);

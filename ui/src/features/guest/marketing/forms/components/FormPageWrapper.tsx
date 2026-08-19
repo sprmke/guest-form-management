@@ -6,6 +6,7 @@ import { Shield, ClipboardList } from 'lucide-react';
 
 import type { GuestForm } from '@/features/guest/marketing/forms/lib/guest-forms/types';
 import { PropertyPageHeader } from '@/features/guest/marketing/properties/components/PropertyPageHeader';
+import { ParkingStaySummary } from '@/components/parking/ParkingStaySummary';
 
 import { FormPageToolbar } from './FormPageToolbar';
 import { FormSuccess } from './FormSuccess';
@@ -30,6 +31,10 @@ interface FormPageWrapperProps {
   backLabel?: string;
   /** 'property' | 'development' — affects header label copy */
   sourceType?: 'property' | 'development';
+  /** When set, shows a stay summary above the form (parking reserve flow). */
+  staySummary?: { checkIn: string; checkOut: string };
+  /** Overrides default page label on the property header card */
+  pageLabel?: string;
   /** When set, replaces the mock sleep()+fake-id submit with a real edge call. */
   onSubmit?: (data: Record<string, unknown>) => Promise<{ submissionId: string }>;
   /** When set, the success screen links to this URL for tracking the submission. */
@@ -54,7 +59,11 @@ export function FormPageWrapper({
   sourceType = 'property',
   onSubmit,
   buildStatusUrl,
+  staySummary,
+  pageLabel: pageLabelOverride,
 }: FormPageWrapperProps) {
+  const resolvedPageLabel =
+    pageLabelOverride ?? (sourceType === 'development' ? 'Development Form' : 'Guest Form');
   const resolvedBackLabel =
     backLabel ?? (sourceType === 'development' ? 'View development' : 'View property');
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -95,10 +104,18 @@ export function FormPageWrapper({
             bedrooms={bedrooms}
             checkInTime="2:00 PM"
             checkOutTime="11:00 AM"
-            pageLabel={sourceType === 'development' ? 'Development Form' : 'Guest Form'}
+            pageLabel={resolvedPageLabel}
             backUrl={backUrl}
             backLabel={resolvedBackLabel}
           />
+
+          {staySummary && (
+            <ParkingStaySummary
+              checkIn={staySummary.checkIn}
+              checkOut={staySummary.checkOut}
+              organizationName={hostName}
+            />
+          )}
 
           {/* ── Form card ── */}
           {isSubmitted ? (
@@ -111,17 +128,16 @@ export function FormPageWrapper({
               statusUrl={submissionId && buildStatusUrl ? buildStatusUrl(submissionId) : undefined}
             />
           ) : (
-            <div className="border-border bg-card overflow-hidden rounded-2xl border shadow-[0_4px_40px_-12px_rgba(0,0,0,0.10)]">
+            <div className="border-border bg-card overflow-hidden rounded-2xl border shadow-[0_8px_40px_-16px_rgba(0,0,0,0.12)]">
               {/* Form header */}
-              <div className="border-border flex items-center gap-3 border-b px-6 py-5 sm:px-8">
-                <div className="bg-primary/10 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
-                  <ClipboardList className="text-primary h-4 w-4" />
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-widest">
-                    Guest Form
-                  </p>
-                  <h2 className="text-foreground text-lg font-bold sm:text-xl">{form.name}</h2>
+              <div className="border-border/70 border-b px-6 py-5 sm:px-8">
+                <div className="flex items-center gap-3">
+                  <div className="bg-primary/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
+                    <ClipboardList className="text-primary h-5 w-5" />
+                  </div>
+                  <h2 className="text-foreground text-lg font-bold tracking-tight sm:text-xl">
+                    {form.name}
+                  </h2>
                 </div>
               </div>
 

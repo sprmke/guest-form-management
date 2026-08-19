@@ -1,68 +1,22 @@
-import { useEffect, useState } from 'react';
-
 import { Link, Navigate, useParams } from 'react-router-dom';
 
-import { CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { ArrowLeft, XCircle } from 'lucide-react';
 
-import { ParkingPublicBrandShell } from '@/features/guest/marketing/parkings/components/ParkingPublicBrandShell';
-import {
-  useParkingBookingStatus,
-  type ParkingBookingStatusValue,
-} from '@/features/guest/marketing/parkings/hooks/useParkingBookingStatus';
+import { FormPageToolbar } from '@/features/guest/marketing/forms/components/FormPageToolbar';
+import { ParkingRequestStatusView } from '@/features/guest/marketing/parkings/components/ParkingRequestStatusView';
+import { useParkingBookingStatus } from '@/features/guest/marketing/parkings/hooks/useParkingBookingStatus';
+import { useParkingRequestCountdown } from '@/features/guest/marketing/parkings/hooks/useParkingRequestCountdown';
 
 import { GuestFormPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-
-const STATUS_META: Record<
-  ParkingBookingStatusValue,
-  { label: string; tone: 'waiting' | 'accepted' | 'ended'; icon: typeof Clock }
-> = {
-  PENDING_HOST_ACCEPTANCE: { label: 'Waiting for a host', tone: 'waiting', icon: Clock },
-  PENDING_REVIEW: { label: 'Accepted', tone: 'accepted', icon: CheckCircle2 },
-  READY_FOR_CHECKIN: { label: 'Ready for check-in', tone: 'accepted', icon: CheckCircle2 },
-  COMPLETED: { label: 'Completed', tone: 'accepted', icon: CheckCircle2 },
-  CANCELLED: { label: 'Cancelled', tone: 'ended', icon: XCircle },
-  NO_HOST_AVAILABLE: { label: 'No host available', tone: 'ended', icon: XCircle },
-};
-
-const TONE_STYLES: Record<'waiting' | 'accepted' | 'ended', string> = {
-  waiting: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',
-  accepted: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300',
-  ended: 'bg-muted text-muted-foreground',
-};
-
-function useCountdown(expiresAt: string | null): {
-  display: string | null;
-  minutesLabel: string | null;
-} {
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    if (!expiresAt) return;
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, [expiresAt]);
-
-  if (!expiresAt) return { display: null, minutesLabel: null };
-  const remainingMs = new Date(expiresAt).getTime() - now;
-  if (remainingMs <= 0) return { display: null, minutesLabel: null };
-
-  const minutes = Math.floor(remainingMs / 60_000);
-  const seconds = Math.floor((remainingMs % 60_000) / 1000);
-  const display = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  // Rounded-minute text only changes at minute boundaries, so an aria-live region
-  // showing it naturally announces once a minute instead of every second tick.
-  const roundedMinutes = Math.ceil(remainingMs / 60_000);
-  const minutesLabel =
-    roundedMinutes <= 1 ? 'Less than a minute remaining' : `${roundedMinutes} minutes remaining`;
-  return { display, minutesLabel };
-}
+import { usePageTitle } from '@/lib/pageTitle';
 
 export function ParkingRequestStatusPage() {
   const { bookingId = '' } = useParams<{ bookingId: string }>();
   const { data, isLoading, isError, refetch, isRefetching } = useParkingBookingStatus(bookingId);
-  const countdown = useCountdown(data?.expiresAt ?? null);
+  const countdown = useParkingRequestCountdown(data?.expiresAt ?? null);
+
+  usePageTitle('Kame Homes - Parking Request');
 
   if (!bookingId) {
     return <Navigate to="/parkings" replace />;
@@ -74,87 +28,52 @@ export function ParkingRequestStatusPage() {
 
   if (isError || !data) {
     return (
-      <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center gap-3 px-4 text-center">
-        <XCircle className="text-muted-foreground h-8 w-8" aria-hidden />
-        <p className="text-foreground font-medium">Request not found</p>
-        <p className="text-muted-foreground text-sm">This may be a temporary connection issue.</p>
-        <div className="flex gap-2">
-          <Button type="button" variant="outline" onClick={() => refetch()} disabled={isRefetching}>
-            Try again
-          </Button>
-          <Button asChild variant="outline">
-            <Link to="/parkings">Browse Parking</Link>
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  const meta = STATUS_META[data.status];
-
-  return (
-    <ParkingPublicBrandShell>
-      <div className="bg-background min-h-screen pb-24 pt-16">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div
-            className="border-border bg-card mx-auto w-full max-w-md space-y-5 rounded-2xl border p-6 shadow-[0_4px_40px_-12px_rgba(0,0,0,0.10)] sm:p-8"
-            aria-live="polite"
-          >
-            <div
-              className={cn(
-                'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium',
-                TONE_STYLES[meta.tone]
-              )}
+      <div className="bg-background min-h-screen pb-16 pt-16">
+        <FormPageToolbar />
+        <div className="container mx-auto flex min-h-[50vh] max-w-md flex-col items-center justify-center gap-4 px-4 text-center">
+          <div className="bg-muted flex h-14 w-14 items-center justify-center rounded-2xl">
+            <XCircle className="text-muted-foreground h-7 w-7" aria-hidden />
+          </div>
+          <div className="space-y-1">
+            <p className="text-foreground text-lg font-semibold">Request not found</p>
+            <p className="text-muted-foreground text-sm">
+              This may be a temporary connection issue.
+            </p>
+          </div>
+          <div className="flex w-full max-w-xs flex-col gap-2 sm:flex-row">
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-[44px] flex-1"
+              onClick={() => refetch()}
+              disabled={isRefetching}
             >
-              <meta.icon className="h-4 w-4" aria-hidden />
-              {meta.label}
-            </div>
-
-            <div className="space-y-1">
-              <p className="text-muted-foreground text-sm">
-                {data.checkInDate} to {data.checkOutDate}
-              </p>
-              {data.organizationName && (
-                <p className="text-foreground text-sm font-medium">{data.organizationName}</p>
-              )}
-            </div>
-
-            {data.status === 'PENDING_HOST_ACCEPTANCE' && countdown.display && (
-              <p className="text-muted-foreground text-sm tabular-nums">
-                Expires in {countdown.display}
-                <span className="sr-only">{countdown.minutesLabel}</span>
-              </p>
-            )}
-
-            {data.parkingLabel &&
-              ['PENDING_REVIEW', 'READY_FOR_CHECKIN', 'COMPLETED'].includes(data.status) && (
-                <p className="text-foreground text-sm">Slot: {data.parkingLabel}</p>
-              )}
-
-            {data.endorsementNote && (
-              <div className="border-border bg-muted/40 rounded-xl border p-4">
-                <p className="text-foreground text-sm">{data.endorsementNote}</p>
-              </div>
-            )}
-
-            {data.status === 'NO_HOST_AVAILABLE' && (
-              <p className="text-muted-foreground text-sm">
-                No host was available for these dates. Try another listing or contact us for help.
-              </p>
-            )}
-
-            {data.status === 'CANCELLED' && (
-              <p className="text-muted-foreground text-sm">
-                This request was cancelled. Browse other listings or contact us for help.
-              </p>
-            )}
-
-            <Button asChild variant="outline" className="w-full">
+              Try again
+            </Button>
+            <Button asChild variant="default" className="min-h-[44px] flex-1">
               <Link to="/parkings">Browse Parking</Link>
             </Button>
           </div>
         </div>
       </div>
-    </ParkingPublicBrandShell>
+    );
+  }
+
+  return (
+    <div className="bg-background min-h-screen pb-20 pt-16">
+      <FormPageToolbar />
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto w-full max-w-lg space-y-4">
+          <Link
+            to="/parkings"
+            className="text-muted-foreground hover:text-foreground inline-flex min-h-[44px] items-center gap-1.5 text-sm font-medium transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden />
+            Back to parking
+          </Link>
+          <ParkingRequestStatusView data={data} countdown={countdown} isRefetching={isRefetching} />
+        </div>
+      </div>
+    </div>
   );
 }

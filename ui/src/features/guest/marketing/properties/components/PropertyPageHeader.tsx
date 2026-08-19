@@ -76,9 +76,13 @@ export function PropertyPageHeader({
           <div className="min-w-0 flex-1">
             {/* Page label + link hint */}
             <div className="mb-0.5 flex items-center justify-between gap-2">
-              <span className="text-muted-foreground text-[10px] font-semibold uppercase tracking-widest">
-                {pageLabel}
-              </span>
+              {pageLabel ? (
+                <span className="text-muted-foreground text-[10px] font-semibold uppercase tracking-widest">
+                  {pageLabel}
+                </span>
+              ) : (
+                <span />
+              )}
               <span className="text-muted-foreground/50 group-hover:text-primary/70 flex items-center gap-1 text-[11px] transition-colors">
                 {resolvedBackLabel}
                 <ArrowUpRight className="h-3 w-3" />

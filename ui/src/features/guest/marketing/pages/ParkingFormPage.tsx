@@ -47,6 +47,8 @@ export function ParkingFormPage() {
 
   const location = formatParkingLocation(data.tower, data.level, data.slotLabel);
   const propertyLocation = [data.residenceName, location].filter(Boolean).join(' · ');
+  const checkInDate = searchParams.get('checkInDate') ?? '';
+  const checkOutDate = searchParams.get('checkOutDate') ?? '';
 
   const handleSubmit = async (fieldData: Record<string, unknown>) => {
     const checkInDate =
@@ -87,6 +89,10 @@ export function ParkingFormPage() {
       backUrl={`/parkings/${encodeURIComponent(parkingSlug)}`}
       backLabel="Back to parking"
       sourceType="development"
+      pageLabel=""
+      staySummary={
+        checkInDate && checkOutDate ? { checkIn: checkInDate, checkOut: checkOutDate } : undefined
+      }
       onSubmit={handleSubmit}
       buildStatusUrl={guestParkingRequestStatusPath}
     />
