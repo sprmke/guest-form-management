@@ -1,5 +1,5 @@
 ---
-stage: in-progress
+stage: done
 title: 'Parking E2E — Phase 0: Registration & Dimensions'
 status: implemented
 tags: [planning, planned-modules, parking, multi-tenancy]

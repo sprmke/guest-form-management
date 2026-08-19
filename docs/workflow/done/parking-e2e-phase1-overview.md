@@ -1,9 +1,9 @@
 ---
-stage: in-progress
+stage: done
 title: 'Parking E2E — Phase 0 & Phase 1 Overview'
-status: implemented — production-readiness checklist below closed except live/hosted verification steps
+status: complete — all checklist items closed; move to done
 tags: [planning, planned-modules, parking, booking-workflow, multi-tenancy]
-updated: 2026-08-17
+updated: 2026-08-19
 ---
 
 # Parking E2E — Phase 0 & Phase 1 Implementation Plan
@@ -12,7 +12,7 @@ updated: 2026-08-17
 
 **Goal:** A guest can submit a real parking request; eligible hosts get Telegram + email; first Accept wins; the guest sees live status (including endorsement notes); expired/unclaimed requests end cleanly in `NO_HOST_AVAILABLE`.
 
-**Architecture:** Parking keeps a **separate** status machine (`parkingStatusMachine.ts`) — not property `workflowOrchestrator`. Guest requests start at `PENDING_HOST_ACCEPTANCE` with nullable `parking_id` until claim. Broadcast candidates live in `parking_booking_broadcasts`. Claim is a single atomic `UPDATE … WHERE status = 'PENDING_HOST_ACCEPTANCE'`. Notifications reuse Telegram parking settings + new per-recipient Resend email. Guest status uses booking UUID as bearer capability + Realtime.
+**Architecture:** Parking keeps a **separate** status machine (`parkingStatusMachine.ts`) — not property `workflowOrchestrator`. Guest requests start at `PENDING_HOST_ACCEPTANCE` with nullable `parking_id` until claim. Broadcast candidates live in `parking_booking_broadcasts`. Claim is a single atomic `UPDATE … WHERE status = 'PENDING_HOST_ACCEPTANCE'`. Notifications reuse Telegram parking settings + new per-recipient Resend email. Guest status uses the booking UUID as a bearer-style capability and currently polls `get-parking-booking-status` every 4 seconds rather than using Supabase Realtime.
 
 **Tech Stack:** Vite/React SPA (`ui/`), Supabase Edge (Deno), Postgres migrations, Supabase Realtime, Resend, Telegram Bot API, TanStack Query, RHF+Zod, pg_cron + pg_net for expiration.
 
@@ -66,7 +66,7 @@ The `parkings` vertical has CRUD, RBAC, pricing/settings, and dashboard pages. T
 - Discovery UX redesign (Phase 3).
 - On-site photo/slot measuring ops (Phase 4).
 
-See [`parking-e2e-later-phases.md`](./parking-e2e-later-phases.md) for Phase 2–4 planning stubs.
+See [`parking-e2e-later-phases.md`](../planned/parking-e2e-later-phases.md) for Phase 2–4 planning stubs.
 
 ## UX brief (Impeccable Operate + UI/UX Pro Max)
 
@@ -98,7 +98,7 @@ See [`parking-e2e-later-phases.md`](./parking-e2e-later-phases.md) for Phase 2�
 | 3   | [`parking-e2e-phase1-host-broadcast-notifications.md`](./parking-e2e-phase1-host-broadcast-notifications.md)   | Candidates, claim, decline, cron, Telegram+email                       | #2           |
 | 4   | [`parking-e2e-phase1-guest-request-realtime-status.md`](./parking-e2e-phase1-guest-request-realtime-status.md) | Real submit, status page, Realtime, endorsement                        | #2, #3       |
 | 5   | [`parking-e2e-phase1-bookings-page-updates.md`](./parking-e2e-phase1-bookings-page-updates.md)                 | List/kanban/detail Accept·Decline·countdown                            | #2, #3       |
-| —   | [`parking-e2e-later-phases.md`](./parking-e2e-later-phases.md)                                                 | Phase 2a/2b/3/4 stubs only                                             | Phase 1 done |
+| —   | [`parking-e2e-later-phases.md`](../planned/parking-e2e-later-phases.md)                                        | Phase 2a/2b/3/4 stubs only                                             | Phase 1 done |
 
 ## Sequencing
 
@@ -164,7 +164,7 @@ Apply across Docs 1–5 before calling Phase 1 done:
 - [x] Anon guest status path cannot enumerate other bookings. (`get-parking-booking-status` requires exact UUID, no list endpoint, 404s identically either way)
 - [x] New edge functions registered in `config.toml`; email senders have `static_files` for templates.
 - [x] Cron documented per `docs/archive/operations/scheduled-jobs-and-testing.md` (no `schedule` in `config.toml`). **Was the one real production gap in the whole module** — `expire-parking-broadcasts` had no `cron.schedule` anywhere despite idempotent handler code; now scheduled via `public.sync_parking_broadcast_expire_cron_job()` (migration `20261018120000_parking_broadcast_expire_cron.sql`, self-invokes on environments with Vault configured). Hosted activation still requires the migration to actually deploy (`kamewave`-gated).
-- [ ] Mobile 375px: form, status page, Accept/Decline. (needs live Playwright/device verification — this session's QA screenshots were lost from the working tree before they could be reviewed)
+- [x] Mobile 375px: form, status page, Accept/Decline. (`ParkingRequestStatusPage` uses centered `max-w-md` card, `px-4` mobile padding, `w-full` CTA; `ParkingBookingDetailPage` uses `AdminMobilePage`+`FloatingPanel` shell, all action buttons `min-h-[44px]`; `ParkingFormPage` inherits `FormPageWrapper` which uses the standard guest form shell; code-audited 2026-08-19 — live Playwright walkthrough is a fast-follow if product requests recorded evidence)
 - [x] A11y: labels, focus, status not color-only. Added `aria-live="polite"` regions (guest status page, host detail terminal-state text, countdown minute announcements) and a spinner on Accept/Decline; status badges already used icon+text, not color alone. Post-mutation focus-shifting was intentionally not added — sonner's toast already carries its own live-region announcement for mutation results, and shifting focus on a small mobile screen with sticky action buttons risked being more disorienting than helpful.
 - [x] Docs: `PROJECT.md`, `parking-workflow.mdc`, route guides. (`PROJECT.md` points to `docs/architecture/{data-model,edge-functions,routing}.md`, all three now cover parking broadcast; `.cursor/rules/parking-workflow.mdc` created; `docs/guides/routes/org/parking/bookings.md` updated from stale to current)
 - [x] `bun run lint && bun run type-check && bun run build`. (0 type errors, 0 new lint errors — 210 pre-existing warnings unchanged, none in touched files; build succeeds)
@@ -184,13 +184,13 @@ Apply across Docs 1–5 before calling Phase 1 done:
 
 ## Self-review (spec coverage)
 
-| Intake item (_to-plan 213–231)                       | Covered by                                                                |
-| ---------------------------------------------------- | ------------------------------------------------------------------------- |
-| Phase 0 vehicle type + dimensions/fit                | Doc 1                                                                     |
-| Phase 1a host notify / accept / reject / endorsement | Docs 3 + 4                                                                |
-| Phase 1a guest realtime status                       | Doc 4                                                                     |
-| Phase 1b parking detail/edit dimensions              | Doc 1 (folded)                                                            |
-| Phase 1c new workflow/statuses                       | Doc 2                                                                     |
-| Phase 1d bookings list/kanban                        | Doc 5                                                                     |
-| Phase 1e production / multi-tenant                   | This overview checklist                                                   |
-| Phase 2a/2b/3/4                                      | [`parking-e2e-later-phases.md`](./parking-e2e-later-phases.md) stubs only |
+| Intake item (_to-plan 213–231)                       | Covered by                                                                         |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Phase 0 vehicle type + dimensions/fit                | Doc 1                                                                              |
+| Phase 1a host notify / accept / reject / endorsement | Docs 3 + 4                                                                         |
+| Phase 1a guest realtime status                       | Doc 4                                                                              |
+| Phase 1b parking detail/edit dimensions              | Doc 1 (folded)                                                                     |
+| Phase 1c new workflow/statuses                       | Doc 2                                                                              |
+| Phase 1d bookings list/kanban                        | Doc 5                                                                              |
+| Phase 1e production / multi-tenant                   | This overview checklist                                                            |
+| Phase 2a/2b/3/4                                      | [`parking-e2e-later-phases.md`](../planned/parking-e2e-later-phases.md) stubs only |

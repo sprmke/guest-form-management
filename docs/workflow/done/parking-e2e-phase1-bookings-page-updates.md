@@ -1,5 +1,5 @@
 ---
-stage: in-progress
+stage: done
 title: 'Parking E2E — Phase 1d: Bookings Dashboard Updates'
 status: implemented
 tags: [planning, planned-modules, parking, booking-workflow]

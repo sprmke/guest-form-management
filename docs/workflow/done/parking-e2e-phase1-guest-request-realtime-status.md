@@ -1,5 +1,5 @@
 ---
-stage: in-progress
+stage: done
 title: 'Parking E2E — Phase 1a (Guest Side): Request Submission & Realtime Status'
 status: implemented (polling, not Realtime — see note below)
 tags: [planning, planned-modules, parking, realtime]
