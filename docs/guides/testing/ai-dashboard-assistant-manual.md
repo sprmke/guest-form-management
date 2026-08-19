@@ -2,7 +2,7 @@
 title: 'AI dashboard assistant — manual test flows'
 status: active
 tags: [guides, testing, ai]
-updated: 2026-08-18
+updated: 2026-08-19
 ---
 
 # AI dashboard assistant — step-by-step manual testing
@@ -70,20 +70,38 @@ This flow has **never been run through an actual browser** as of 2026-08-15 — 
 ### 2.1 Starter prompts (#16)
 
 1. Open the assistant on a **new** conversation. Expect the starter cluster **centered** in the panel: a teal **Questions / Actions** mode switch (not a page tab bar) and **5** tappable prompt cards, ≥ 44×44px.
-2. Switch to **Actions** — list swaps to 5 action starters. Tap one — it should send as a chat message (not only fill the composer).
+2. Switch to **Actions** — list swaps to 5 action starters. Tap one — it should send as a chat message (not only fill the composer). Starters can mention parking claim/decline, inbox reply, Meta publish, or a weekend rate override as well as booking moves.
 3. Open **History** (clock icon). Expect past conversations only (no Questions/Actions switcher). Titles wrap inside the panel (no overflow). Long IDs are shortened. Rows group by day; search filters the list. Trash → confirm → the row is gone. Deleting the open chat starts a new one.
 4. Tap **New conversation** (plus). Expect a **different** set of 5 questions and 5 actions (random, so a rare duplicate set is OK).
 
-### 2.2 Attachments + booking pin (#17)
+### 2.2 Attachments + context pin (#17)
 
-1. Open a new chat. Expect a paperclip and a calendar icon beside the composer (each ≥ 44×44px), not a second chat mode.
+1. Open a new chat. Expect a paperclip and a **module pin** icon beside the composer (each ≥ 44×44px), not a second chat mode. The pin icon matches the page: calendar on Bookings, building on Properties, users on Team, and so on.
 2. Paperclip → **Photo** — pick a JPEG/PNG/WebP. Expect a chip above the textarea. Same for **File** with a PDF.
 3. Try a 5th file or a non-allowed type — expect a short error toast, no send.
-4. Calendar → search or pick a stay grouped by check-in month (guest, dates, status). On a booking detail, **This page** is listed first. Expect a chip with guest name and dates. Send with the chip still pinned and empty text + a file — the turn should go through.
-5. Ask the assistant to check the receipt against the pinned booking. Expect it to use that booking (and `run_receipt_validation` when you ask to validate).
+4. On Bookings, calendar → search or pick a stay grouped by check-in month (guest, dates, status). On a booking detail, **This page** is listed first. Expect a chip with guest name and dates. You can pin more than one stay. Send with the chip still pinned and empty text + a file — the turn should go through.
+5. Ask the assistant to check the receipt against the pinned booking. Expect it to use that booking (and `run_receipt_validation` when you ask to validate). Pins travel as `attachedContext` and do not overwrite the current page.
 6. Reload the conversation from History — user bubble should still list file names (not the raw bytes).
 7. Send a question — expect a left-aligned **card bubble** with sparkles and bouncing dots (not a bare “Thinking…” line). Opening History must not show that bubble.
 8. Type several lines in the composer (Shift+Enter) — text stays **left-aligned and full-width** above attach / pin / send, grows up to **10 lines**, then scrolls. Enter still sends.
+
+Per-module pin (open the assistant from that page; icon ≥ 44×44px; chip appears; send a short question that should name the pinned item):
+
+| Page                           | Expect                                                                |
+| ------------------------------ | --------------------------------------------------------------------- |
+| Properties / property settings | Building icon → property list; **This page** on a property admin page |
+| Team                           | Users icon → members (name + email)                                   |
+| Finance                        | Ticket icon → transactions grouped by month                           |
+| Maintenance                    | Wrench icon → reminders                                               |
+| Parking bookings               | Parking icon → parking stays by check-in month                        |
+| Inbox                          | Chat icon → threads; Web / Facebook / Instagram filters               |
+| Marketing                      | Template icon → templates grouped by type                             |
+| Calendar / parking pricing     | Calendar icon → month grid; tapping a day pins that date              |
+| Notifications                  | Bell icon → Staff / Finance / Maintenance / Marketing / Admin         |
+| Public pages                   | Page icon → Stay guide                                                |
+| Help & Support tickets         | Life-ring icon → tickets; **This page** on a ticket thread            |
+
+9. Open the bookmark pin → module list first, then drill into a module. Item rows show a leading visual (guest initials, platform badge, finance amount, marketing thumb when saved, video play badge + first-scene still when available, etc.) plus a **Load more** control when the list exceeds 12 rows. **Pricing** opens a lite month grid (rates, booked, blocked) from `property-pricing` — tap a date to pin. Use the top search bar or **Cmd/Ctrl+K** for cross-module search.
 
 ---
 
@@ -97,6 +115,7 @@ This flow has **never been run through an actual browser** as of 2026-08-15 — 
 6. Pin a **Ready for Check-out** booking and ask **"What's pending, and how much is the SD refund?"** — expect a human status (**Ready for Check-out**, never `READY_FOR_CHECKOUT`), a real pending-task sentence (not an empty pill), and the peso refund amount.
 7. Ask **"What are the booked dates for this month?"** on a property that has stays — expect a table with guest names and check-in/out dates, not a header-only empty table. If the month is empty, expect a short "no booked stays" line instead of blank rows.
 8. Pin a booking that has an **Approved GAF** on the Files tab and ask **"Provide the approved GAF for this booking"** — expect a file card (PDF preview), not only a booking summary. If that booking has no approved GAF, expect a short "not on file" line (the GAF request PDF may still show if it exists).
+9. Pin a booking that is mid-pipeline and ask **"Guide me through this booking's remaining steps"** — expect a compact journey card with **Open**. Opening it shows a stepper whose current stage matches the booking Workflow panel. Confirming the embedded action still round-trips `dashboard-assistant-confirm` (status on the booking changes; the stepper card updates). It must **not** move more than one stage in one confirm.
 
 ---
 
@@ -177,8 +196,9 @@ If the assistant instead proposes and waits for confirmation, check whether the 
 
 1. Resize to 375×667 (iPhone SE) or use device emulation.
 2. Confirm **Assistant** is a bottom tab (not a floating button overlapping the dock) and is at least 44×44px. Tap it — the same slide-over opens.
-3. Open the panel — it should be wider than a typical `md` sheet on desktop (`sm:max-w-xl`), composer stays one row (attach, pin, input, send) and reachable above the keyboard, Confirm/Cancel buttons are each ≥44px tall.
+3. Open the panel — it should be wider than a typical `md` sheet on desktop (`sm:max-w-xl` when chat-only), composer stays one row (attach, pin, input, send) and reachable above the keyboard, Confirm/Cancel buttons are each ≥44px tall.
 4. Scroll a long conversation — thread scrolls independently of the page.
+5. **Canvas:** ask for a booking journey (or a table with more than 8 rows). At **375** and **768**, **Open** replaces the chat; **Back** returns to the thread with composer text still there. At **1024+**, the sheet widens, canvas is on the left, chat (~24rem) stays on the right. Suggested chips fill the composer and do not send.
 
 ---
 
@@ -201,6 +221,11 @@ ANON=<local anon key from `bun run status:supabase`>
 curl -s -X POST "http://127.0.0.1:54321/functions/v1/dashboard-assistant-chat" \
   -H "apikey: $ANON" -H "Authorization: Bearer $JWT" -H "Content-Type: application/json" \
   -d '{"orgSlug":"<slug>","pageContext":{},"message":"How many bookings are pending review right now?"}'
+
+# Tier-0 booking journey (expect a stepper in blocks, no status change)
+curl -s -X POST "http://127.0.0.1:54321/functions/v1/dashboard-assistant-chat" \
+  -H "apikey: $ANON" -H "Authorization: Bearer $JWT" -H "Content-Type: application/json" \
+  -d '{"orgSlug":"<slug>","pageContext":{"bookingId":"<id>"},"message":"Guide me through this booking remaining steps"}'
 
 # Tier-2 propose (cancel) — note the actionId in the response
 curl -s -X POST "http://127.0.0.1:54321/functions/v1/dashboard-assistant-chat" \
