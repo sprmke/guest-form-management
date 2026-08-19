@@ -10,6 +10,7 @@ import {
   getMetaAppCredentials,
   metaInboxOAuthRedirectUri,
 } from './metaInboxConfig.ts';
+import { reconcileMetaConnectionWebhook } from './metaInboxWebhookHealth.ts';
 import type { SocialChannelConnectionRow, SocialPlatform } from './socialInboxTypes.ts';
 import { upsertChannelConnection } from './socialInboxService.ts';
 
@@ -249,35 +250,7 @@ export async function persistMetaPageConnection(
     });
   }
 
-  const sb = (await import('./socialInboxService.ts')).socialInboxDb();
-  try {
-    await subscribeMetaPageWebhooks(page.id, page.access_token);
-    const now = new Date().toISOString();
-    await sb
-      .from('social_channel_connections')
-      .update({ webhook_subscribed_at: now, error_message: null, updated_at: now })
-      .eq('id', facebook.id);
-    if (instagram) {
-      await sb
-        .from('social_channel_connections')
-        .update({ webhook_subscribed_at: now, error_message: null, updated_at: now })
-        .eq('id', instagram.id);
-    }
-  } catch (e) {
-    const msg = (e as Error).message ?? 'Webhook subscribe failed';
-    console.error('[metaInboxGraph] webhook subscribe:', e);
-    const errText = `Webhook subscribe failed: ${msg}`;
-    await sb
-      .from('social_channel_connections')
-      .update({ error_message: errText, updated_at: new Date().toISOString() })
-      .eq('id', facebook.id);
-    if (instagram) {
-      await sb
-        .from('social_channel_connections')
-        .update({ error_message: errText, updated_at: new Date().toISOString() })
-        .eq('id', instagram.id);
-    }
-  }
+  await reconcileMetaConnectionWebhook(facebook);
 
   return { facebook, instagram };
 }
@@ -290,6 +263,7 @@ export async function sendMetaMessage(opts: {
   platform: SocialPlatform;
   replyToMid?: string;
   commentId?: string;
+  tag?: 'HUMAN_AGENT';
 }): Promise<{ message_id: string }> {
   const url = new URL(`${META_GRAPH_BASE}/${opts.pageId}/messages`);
   url.searchParams.set('access_token', opts.pageAccessToken);
@@ -304,21 +278,16 @@ export async function sendMetaMessage(opts: {
   const body: Record<string, unknown> = {
     recipient,
     message: { text: opts.text },
-    messaging_type: 'RESPONSE',
+    messaging_type: opts.tag ? 'MESSAGE_TAG' : 'RESPONSE',
   };
+  if (opts.tag) {
+    body.tag = opts.tag;
+  }
   if (opts.replyToMid) {
     body.reply_to = { mid: opts.replyToMid };
   }
 
-  const res = await fetch(url.toString(), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  const json = await res.json();
-  if (!res.ok) {
-    throw new Error(json.error?.message ?? 'Failed to send Meta message');
-  }
+  const json = await postMetaJsonWithRetry(url, body, 'Failed to send Meta message');
   return { message_id: json.message_id as string };
 }
 
@@ -332,15 +301,11 @@ export async function replyMetaPublicComment(opts: {
     opts.platform === 'instagram' ? `${opts.commentId}/replies` : `${opts.commentId}/comments`;
   const url = new URL(`${META_GRAPH_BASE}/${path}`);
   url.searchParams.set('access_token', opts.pageAccessToken);
-  const res = await fetch(url.toString(), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message: opts.text }),
-  });
-  const json = await res.json();
-  if (!res.ok) {
-    throw new Error(json.error?.message ?? 'Failed to reply to comment');
-  }
+  const json = await postMetaJsonWithRetry(
+    url,
+    { message: opts.text },
+    'Failed to reply to comment'
+  );
   return { id: (json.id ?? json.message_id) as string };
 }
 
@@ -380,6 +345,71 @@ export type MetaConversationItem = {
     }>;
   };
 };
+
+function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i]! ^ b[i]!;
+  return diff === 0;
+}
+
+function hexToBytes(hex: string): Uint8Array {
+  const normalized = hex.trim().toLowerCase();
+  if (!normalized || normalized.length % 2 !== 0) return new Uint8Array();
+  const bytes = new Uint8Array(normalized.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    const pair = normalized.slice(i * 2, i * 2 + 2);
+    const value = Number.parseInt(pair, 16);
+    if (Number.isNaN(value)) return new Uint8Array();
+    bytes[i] = value;
+  }
+  return bytes;
+}
+
+function shouldRetryMetaPostStatus(status: number): boolean {
+  return status === 429 || status >= 500;
+}
+
+async function postMetaJsonWithRetry(
+  url: URL,
+  body: Record<string, unknown>,
+  errorFallback: string
+): Promise<Record<string, unknown>> {
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    let res: Response;
+    try {
+      res = await fetch(url.toString(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(errorFallback);
+      if (attempt < 2) {
+        await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+      }
+      continue;
+    }
+
+    const json = (await res.json()) as Record<string, unknown>;
+    if (res.ok) return json;
+
+    const message =
+      (json.error as { message?: string } | undefined)?.message ??
+      `${errorFallback} (${res.status})`;
+    if (!shouldRetryMetaPostStatus(res.status)) {
+      throw new Error(message);
+    }
+    lastError = new Error(message);
+
+    if (attempt < 2) {
+      await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+    }
+  }
+
+  throw lastError ?? new Error(errorFallback);
+}
 
 const META_MESSAGE_FIELDS =
   'id,message,created_time,from,attachments{type,mime_type,name,image_data,video_data,file_url,payload}';
@@ -458,11 +488,9 @@ export async function verifyMetaWebhookSignatureAsync(
     ['sign']
   );
   const sig = await crypto.subtle.sign('HMAC', key, enc.encode(rawBody));
-  const hex = Array.from(new Uint8Array(sig))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-  const expected = signatureHeader.slice('sha256='.length);
-  return hex === expected;
+  const got = new Uint8Array(sig);
+  const expected = hexToBytes(signatureHeader.slice('sha256='.length));
+  return timingSafeEqual(got, expected);
 }
 
 export function buildMetaOAuthUrl(state: string): string {

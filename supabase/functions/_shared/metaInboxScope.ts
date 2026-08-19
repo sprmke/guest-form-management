@@ -134,6 +134,11 @@ export async function resolveMetaConnectionIdsForScope(
   orgId: string,
   scope: InboxScopeFilter = {}
 ): Promise<string[]> {
+  const includeVisibleStatuses = (rows: SocialChannelConnectionRow[]) =>
+    rows
+      .filter((row) => row.status === 'connected' || row.status === 'disconnected')
+      .map((row) => row.id);
+
   if (!scope.propertyId && !scope.parkingId) {
     // Org inbox: all Meta connections (org default + every override) so nothing is orphaned.
     const sb = socialInboxDb();
@@ -142,13 +147,24 @@ export async function resolveMetaConnectionIdsForScope(
       .select('id')
       .eq('organization_id', orgId)
       .in('platform', ['facebook', 'instagram'])
-      .eq('status', 'connected');
+      .in('status', ['connected', 'disconnected']);
     if (error) throw new Error(error.message);
     return (data ?? []).map((r) => r.id as string);
   }
 
-  const effective = await resolveEffectiveMetaConnection(orgId, scope);
-  return effective.connections.map((c) => c.id);
+  if (scope.propertyId) {
+    const override = await listPropertyOverrideMetaConnections(orgId, scope.propertyId);
+    const overrideIds = includeVisibleStatuses(override);
+    if (overrideIds.length > 0) return overrideIds;
+  }
+
+  if (scope.parkingId) {
+    const override = await listParkingOverrideMetaConnections(orgId, scope.parkingId);
+    const overrideIds = includeVisibleStatuses(override);
+    if (overrideIds.length > 0) return overrideIds;
+  }
+
+  return includeVisibleStatuses(await listOrgDefaultMetaConnections(orgId));
 }
 
 export function connectionScopeSource(c: SocialChannelConnectionRow): MetaInboxScopeSource {

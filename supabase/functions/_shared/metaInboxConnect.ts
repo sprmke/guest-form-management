@@ -75,14 +75,14 @@ export async function connectMetaInboxPage(
     if (!orgDefault || orgDefault.status !== 'connected') {
       writePropertyId = null;
       writeParkingId = null;
-      await prepareOrgMetaInboxConnect(orgId);
+      await prepareOrgMetaInboxConnect(orgId, { nextPageId: page.id });
     } else {
-      await preparePropertyMetaInboxConnect(orgId, propertyId);
+      await preparePropertyMetaInboxConnect(orgId, propertyId, { nextPageId: page.id });
     }
   } else if (parkingId) {
-    await prepareParkingMetaInboxConnect(orgId, parkingId);
+    await prepareParkingMetaInboxConnect(orgId, parkingId, { nextPageId: page.id });
   } else {
-    await prepareOrgMetaInboxConnect(orgId);
+    await prepareOrgMetaInboxConnect(orgId, { nextPageId: page.id });
   }
 
   const { facebook } = await persistMetaPageConnection(orgId, page, {

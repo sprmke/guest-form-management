@@ -10,7 +10,9 @@ export const META_GRAPH_BASE = `https://graph.facebook.com/${META_GRAPH_VERSION}
 export const META_INBOX_OAUTH_SCOPES = [
   'pages_messaging',
   'pages_manage_metadata',
+  'pages_manage_engagement',
   'pages_read_engagement',
+  'pages_read_user_content',
   'pages_show_list',
   'instagram_manage_messages',
   'instagram_manage_comments',
