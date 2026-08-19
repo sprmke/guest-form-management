@@ -363,8 +363,7 @@ export async function loadCalendarBookings(
       'id, status, check_in_date, check_out_date, primary_guest_name, guest_facebook_name, guest_email, guest_phone_number, booking_rate, number_of_nights, need_parking, has_pets, guest_requests_surprise_decor, valid_id_url'
     )
     .eq('property_id', propertyId)
-    .neq('status', 'CANCELLED')
-    // IMPORTED bookings are historical records — must not block live availability.
+    // IMPORTED bookings are historical records — must not appear on the live calendar.
     .neq('status', 'IMPORTED');
 
   if (error) {
@@ -373,7 +372,7 @@ export async function loadCalendarBookings(
 
   const rows: PropertyPricingCalendarBooking[] = [];
   for (const row of data ?? []) {
-    if (row.status === 'CANCELLED' || row.status === 'IMPORTED') continue;
+    if (row.status === 'IMPORTED') continue;
     const checkIn = parseOccupancyDate(row.check_in_date);
     const checkOut = parseOccupancyDate(row.check_out_date);
     if (!checkIn || !checkOut || !bookingOverlapsMonth(checkIn, checkOut, rangeStart, rangeEnd)) {

@@ -359,6 +359,29 @@ export async function suggestInboxReply(input: AiSuggestInput): Promise<AiSugges
   return { suggestion: draft, flagged: false };
 }
 
+/**
+ * Instagram allows private replies to comments within 7 days of the comment.
+ * After 7 days the `/{comment-id}/private_replies` endpoint rejects with OAuthException.
+ * Public comment replies have no time limit.
+ */
+export function isWithinCommentPrivateReplyWindow(lastInboundAt: string | null): boolean {
+  if (!lastInboundAt) return false;
+  const sentAt = new Date(lastInboundAt);
+  if (Number.isNaN(sentAt.getTime())) return false;
+  const expiresAt = new Date(sentAt);
+  expiresAt.setDate(expiresAt.getDate() + 7);
+  return expiresAt.getTime() > Date.now();
+}
+
+export function isWithinHumanAgentWindowFromInbound(lastInboundAt: string | null): boolean {
+  if (!lastInboundAt) return false;
+  const sentAt = new Date(lastInboundAt);
+  if (Number.isNaN(sentAt.getTime())) return false;
+  const expiresAt = new Date(sentAt);
+  expiresAt.setDate(expiresAt.getDate() + 7);
+  return expiresAt.getTime() > Date.now();
+}
+
 export function isWithinMessagingWindow(expiresAt: string | null): boolean {
   if (!expiresAt) return false;
   return new Date(expiresAt).getTime() > Date.now();
