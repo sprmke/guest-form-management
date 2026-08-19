@@ -8,6 +8,7 @@
  *      class that must not exist — see the exhaustive-walk requirement in the plan's phase 6.
  */
 
+import type { AttachedContextItem } from './dashboardAssistantAttachedContext.ts';
 import { callGeminiStructured, type GeminiToolCallOptions } from './geminiToolCallClient.ts';
 import { canTransition, isBookingStatus, type BookingStatus } from './statusMachine.ts';
 
@@ -81,6 +82,7 @@ export const READ_TOOL_NAMES = new Set([
   'get_booking_documents',
   'list_bookings',
   'get_available_transitions',
+  'plan_booking_journey',
   'get_available_dates',
   'get_dashboard_stats',
   'get_finance_summary',
@@ -202,6 +204,8 @@ export type ActionRiskInput = {
   targetPropertyId?: string | null;
   /** The route the chat panel was opened from/is currently viewing — see plan §1. */
   pageContext?: { bookingId?: string | null; propertyId?: string | null } | null;
+  /** Explicit composer pins — in-scope for this turn, so acting on them is not cross-scope. */
+  attachedContext?: AttachedContextItem[] | null;
   /** True when the model requested more than one write tool call in this turn. */
   isBulk?: boolean;
 };
@@ -215,13 +219,34 @@ function hasFinancialPayloadValue(payload: Record<string, unknown> | null | unde
   return false;
 }
 
+function inScopeBookingIds(input: ActionRiskInput): Set<string> {
+  const ids = new Set<string>();
+  const pageBookingId = input.pageContext?.bookingId;
+  if (pageBookingId) ids.add(pageBookingId);
+  for (const item of input.attachedContext ?? []) {
+    if (item.type === 'booking' || item.type === 'parking_booking') ids.add(item.id);
+  }
+  return ids;
+}
+
+function inScopePropertyIds(input: ActionRiskInput): Set<string> {
+  const ids = new Set<string>();
+  const pagePropertyId = input.pageContext?.propertyId;
+  if (pagePropertyId) ids.add(pagePropertyId);
+  for (const item of input.attachedContext ?? []) {
+    if (item.type === 'property') ids.add(item.id);
+    if (item.propertyId) ids.add(item.propertyId);
+  }
+  return ids;
+}
+
 function isCrossScope(input: ActionRiskInput): boolean {
-  const ctx = input.pageContext;
-  if (!ctx) return false;
-  if (ctx.bookingId && input.targetBookingId && ctx.bookingId !== input.targetBookingId) {
+  const bookings = inScopeBookingIds(input);
+  const properties = inScopePropertyIds(input);
+  if (bookings.size > 0 && input.targetBookingId && !bookings.has(input.targetBookingId)) {
     return true;
   }
-  if (ctx.propertyId && input.targetPropertyId && ctx.propertyId !== input.targetPropertyId) {
+  if (properties.size > 0 && input.targetPropertyId && !properties.has(input.targetPropertyId)) {
     return true;
   }
   return false;

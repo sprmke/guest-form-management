@@ -120,7 +120,10 @@ import {
 } from './marketingPublishAction.ts';
 import {
   availableTransitions,
+  bookingPipeline,
   isBookingStatus,
+  nextStep,
+  requiredSubForm,
   STATUS_HUMAN_LABEL,
   type BookingStatus,
 } from './statusMachine.ts';
@@ -133,6 +136,11 @@ import {
   type ActionRiskTier,
 } from './dashboardAssistantRiskClassifier.ts';
 import { assertActionSafeToExecute } from './dashboardAssistantSafetyGuard.ts';
+import {
+  firstAttachedId,
+  firstAttachedPropertyId,
+  type AttachedContextItem,
+} from './dashboardAssistantAttachedContext.ts';
 
 export type ToolExecutionContext = {
   req: Request;
@@ -140,6 +148,7 @@ export type ToolExecutionContext = {
   userId: string;
   userEmail: string;
   pageContext: { propertyId?: string | null; bookingId?: string | null };
+  attachedContext: AttachedContextItem[];
   /** True when the model requested more than one write tool call this turn — forces Tier 2. */
   isBulk: boolean;
 };
@@ -177,13 +186,39 @@ function num(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-/** Resolves + RBAC-verifies the property a tool call targets — explicit arg, else pageContext. */
+function defaultPropertyId(
+  ctx: ToolExecutionContext,
+  args: Record<string, unknown>
+): string | undefined {
+  return (
+    str(args, 'propertyId') ??
+    firstAttachedId(ctx.attachedContext, 'property') ??
+    firstAttachedPropertyId(ctx.attachedContext) ??
+    ctx.pageContext.propertyId ??
+    undefined
+  );
+}
+
+function defaultBookingId(
+  ctx: ToolExecutionContext,
+  args: Record<string, unknown>
+): string | undefined {
+  return (
+    str(args, 'bookingId') ??
+    firstAttachedId(ctx.attachedContext, 'booking') ??
+    firstAttachedId(ctx.attachedContext, 'parking_booking') ??
+    ctx.pageContext.bookingId ??
+    undefined
+  );
+}
+
+/** Resolves + RBAC-verifies the property a tool call targets — explicit arg, else attached, else pageContext. */
 async function resolveTargetProperty(
   ctx: ToolExecutionContext,
   args: Record<string, unknown>,
   requiredPermission: Parameters<typeof verifyPropertyAccess>[2]
 ): Promise<{ propertyId: string; orgId: string }> {
-  const propertyId = str(args, 'propertyId') ?? ctx.pageContext.propertyId ?? undefined;
+  const propertyId = defaultPropertyId(ctx, args);
   if (!propertyId) {
     throw new Error('propertyId is required (no property in scope)');
   }
@@ -197,13 +232,15 @@ async function resolveBookingProperty(
   bookingId: string,
   requiredPermission: Parameters<typeof verifyPropertyAccess>[2]
 ): Promise<string> {
+  const resolvedId = bookingId || defaultBookingId(ctx, {}) || '';
+  if (!resolvedId) throw new Error('Booking not found');
   const sb = createServiceClient();
   const { data: row, error } = await sb
     .from('guest_submissions')
     .select('property_id')
-    .eq('id', bookingId)
+    .eq('id', resolvedId)
     .maybeSingle();
-  if (error || !row) throw new Error(`Booking not found: ${bookingId}`);
+  if (error || !row) throw new Error(`Booking not found: ${resolvedId}`);
   const propertyId = row.property_id as string;
   await verifyPropertyAccess(ctx.req, propertyId, requiredPermission);
   return propertyId;
@@ -287,7 +324,7 @@ async function toolGetBookingDocuments(
   ctx: ToolExecutionContext,
   args: Record<string, unknown>
 ): Promise<ToolResult> {
-  const bookingId = str(args, 'bookingId') ?? ctx.pageContext.bookingId ?? undefined;
+  const bookingId = defaultBookingId(ctx, args);
   if (!bookingId) return { ok: false, error: 'bookingId is required' };
   const propertyId = await resolveBookingProperty(ctx, bookingId, 'bookings:view');
 
@@ -321,7 +358,7 @@ async function toolListBookings(
   ctx: ToolExecutionContext,
   args: Record<string, unknown>
 ): Promise<ToolResult> {
-  const explicitPropertyId = str(args, 'propertyId') ?? ctx.pageContext.propertyId ?? undefined;
+  const explicitPropertyId = defaultPropertyId(ctx, args);
   const status = Array.isArray(args.status)
     ? (args.status as string[]).filter(isBookingStatus)
     : undefined;
@@ -408,6 +445,71 @@ async function toolGetAvailableTransitions(
       currentStatus: status,
       currentStatusLabel: STATUS_HUMAN_LABEL[status],
       options: options.map((s) => ({ status: s, label: STATUS_HUMAN_LABEL[s] })),
+    },
+  };
+}
+
+const SUB_FORM_LABEL: Record<Exclude<ReturnType<typeof requiredSubForm>, null>, string> = {
+  pricing: 'Pricing',
+  parking: 'Parking',
+  guest_balance: 'Guest balance',
+  sd_refund: 'SD refund',
+};
+
+async function toolPlanBookingJourney(
+  ctx: ToolExecutionContext,
+  args: Record<string, unknown>
+): Promise<ToolResult> {
+  const bookingId = str(args, 'bookingId') ?? defaultBookingId(ctx, args);
+  if (!bookingId) return { ok: false, error: 'bookingId is required' };
+  await resolveBookingProperty(ctx, bookingId, 'bookings:view');
+
+  const booking = await DatabaseService.getBookingById(bookingId);
+  if (!booking) return { ok: false, error: 'Booking not found' };
+  const status = booking.status as string;
+  if (!isBookingStatus(status)) return { ok: false, error: `Unrecognized status: ${status}` };
+
+  const flags = {
+    need_parking: Boolean(booking.need_parking),
+    has_pets: Boolean(booking.has_pets),
+    security_deposit: booking.security_deposit as number | string | null,
+  };
+  const pipeline = bookingPipeline(flags, status);
+  const currentIdx = pipeline.indexOf(status);
+  const pending = pendingTasksForBooking(booking as Record<string, unknown>);
+  const steps = pipeline.map((stepStatus, index) => {
+    const next = pipeline[index + 1];
+    const subForm = next ? requiredSubForm(stepStatus, next) : null;
+    let stepState: 'done' | 'current' | 'upcoming' = 'upcoming';
+    if (currentIdx >= 0 && index < currentIdx) stepState = 'done';
+    else if (index === currentIdx) stepState = 'current';
+    const description =
+      index === currentIdx
+        ? pending.join(' ') || undefined
+        : stepState === 'upcoming' && subForm
+          ? SUB_FORM_LABEL[subForm]
+          : undefined;
+    return {
+      status: stepStatus,
+      label: STATUS_HUMAN_LABEL[stepStatus],
+      stepStatus: stepState,
+      requiredSubForm: subForm,
+      nextStatus: next ?? null,
+      nextStatusLabel: next ? STATUS_HUMAN_LABEL[next] : null,
+      description,
+    };
+  });
+
+  return {
+    ok: true,
+    data: {
+      kind: 'booking_journey',
+      bookingId,
+      guestName: String(booking.primary_guest_name || booking.guest_facebook_name || 'Guest'),
+      currentStatus: status,
+      currentStatusLabel: STATUS_HUMAN_LABEL[status],
+      nextStatus: nextStep(flags, status),
+      steps,
     },
   };
 }
@@ -557,7 +659,7 @@ async function toolGetDashboardStats(
   ctx: ToolExecutionContext,
   args: Record<string, unknown>
 ): Promise<ToolResult> {
-  const explicitPropertyId = str(args, 'propertyId') ?? ctx.pageContext.propertyId ?? undefined;
+  const explicitPropertyId = defaultPropertyId(ctx, args);
   let propertyId: string | undefined;
   let orgId: string | undefined;
   if (explicitPropertyId) {
@@ -780,7 +882,7 @@ async function toolListPropertyTeamMembers(
   ctx: ToolExecutionContext,
   args: Record<string, unknown>
 ): Promise<ToolResult> {
-  const propertyId = str(args, 'propertyId') ?? ctx.pageContext.propertyId ?? undefined;
+  const propertyId = defaultPropertyId(ctx, args);
   if (!propertyId) return { ok: false, error: 'propertyId is required (no property in scope)' };
   const teamCtx = await requireTeamPropertyAccess(
     ctx.req,
@@ -805,7 +907,7 @@ async function toolListPropertyPendingInvitations(
   ctx: ToolExecutionContext,
   args: Record<string, unknown>
 ): Promise<ToolResult> {
-  const propertyId = str(args, 'propertyId') ?? ctx.pageContext.propertyId ?? undefined;
+  const propertyId = defaultPropertyId(ctx, args);
   if (!propertyId) return { ok: false, error: 'propertyId is required (no property in scope)' };
   const teamCtx = await requireTeamPropertyAccess(
     ctx.req,
@@ -1330,6 +1432,7 @@ async function toolProposeAddFinanceLineItem(
     toolName: 'propose_add_finance_line_item',
     targetPropertyId: propertyId,
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
   });
 
@@ -1368,6 +1471,7 @@ async function toolProposeCreateMaintenanceItem(
     toolName: 'propose_create_maintenance_item',
     targetPropertyId: propertyId,
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
   });
 
@@ -1400,6 +1504,7 @@ async function toolRunReceiptValidation(
     targetBookingId: bookingId,
     targetPropertyId: propertyId,
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
   });
   if (tier === 'tier2_confirmed') {
@@ -1418,6 +1523,7 @@ async function toolRunReceiptValidation(
     targetBookingId: bookingId,
     targetPropertyId: propertyId,
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
     expectedTier: tier,
   });
@@ -1474,6 +1580,7 @@ async function toolProposeTransitionBooking(
     targetBookingId: bookingId,
     targetPropertyId: propertyId,
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
   });
 
@@ -1500,6 +1607,7 @@ async function toolProposeTransitionBooking(
     targetBookingId: bookingId,
     targetPropertyId: propertyId,
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
     expectedTier: tier,
   });
@@ -1529,6 +1637,7 @@ async function toolProposeCancelBooking(
     targetBookingId: bookingId,
     targetPropertyId: propertyId,
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
   });
 
@@ -1574,6 +1683,7 @@ async function toolProposeUpdateOrgProfile(
   const tier = classifyActionRisk({
     toolName: 'propose_update_org_profile',
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
   });
 
@@ -1585,6 +1695,7 @@ async function toolProposeUpdateOrgProfile(
   await assertActionSafeToExecute({
     toolName: 'propose_update_org_profile',
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
     expectedTier: tier,
   });
@@ -1616,6 +1727,7 @@ async function toolProposeInviteTeamMember(
   const tier = classifyActionRisk({
     toolName: 'propose_invite_team_member',
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
   });
 
@@ -1649,6 +1761,7 @@ async function toolProposeUpdateTeamMemberRole(
   const tier = classifyActionRisk({
     toolName: 'propose_update_team_member_role',
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
   });
 
@@ -1681,6 +1794,7 @@ async function toolProposeRevokeInvitation(
   const tier = classifyActionRisk({
     toolName: 'propose_revoke_invitation',
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
   });
 
@@ -1696,6 +1810,7 @@ async function toolProposeRevokeInvitation(
   await assertActionSafeToExecute({
     toolName: 'propose_revoke_invitation',
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
     expectedTier: tier,
   });
@@ -1720,6 +1835,7 @@ async function toolProposeRemoveTeamMember(
   const tier = classifyActionRisk({
     toolName: 'propose_remove_team_member',
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
   });
 
@@ -1760,7 +1876,7 @@ async function toolProposeUpdatePropertyProfile(
 
   // update-property is owner-only server-side (verifyPropertyOwner) — mirror that constraint
   // exactly, same reasoning as propose_update_org_profile.
-  const propertyId = str(args, 'propertyId') ?? ctx.pageContext.propertyId ?? undefined;
+  const propertyId = defaultPropertyId(ctx, args);
   if (!propertyId) return { ok: false, error: 'propertyId is required (no property in scope)' };
   await verifyPropertyOwner(ctx.req, propertyId);
 
@@ -1768,6 +1884,7 @@ async function toolProposeUpdatePropertyProfile(
     toolName: 'propose_update_property_profile',
     targetPropertyId: propertyId,
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
   });
 
@@ -1786,6 +1903,7 @@ async function toolProposeUpdatePropertyProfile(
     toolName: 'propose_update_property_profile',
     targetPropertyId: propertyId,
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
     expectedTier: tier,
   });
@@ -1844,7 +1962,7 @@ async function toolProposeUpdatePropertySettings(
   const built = buildPropertySettingsPatchFromArgs(args);
   if ('error' in built) return { ok: false, error: built.error };
 
-  const propertyId = str(args, 'propertyId') ?? ctx.pageContext.propertyId ?? undefined;
+  const propertyId = defaultPropertyId(ctx, args);
   if (!propertyId) return { ok: false, error: 'propertyId is required (no property in scope)' };
 
   // update-property (and therefore its settings blob) is owner-only server-side — mirror that
@@ -1855,6 +1973,7 @@ async function toolProposeUpdatePropertySettings(
     toolName: 'propose_update_property_settings',
     targetPropertyId: propertyId,
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
   });
 
@@ -1877,7 +1996,7 @@ async function toolProposeRevokePropertyInvitation(
 ): Promise<ToolResult> {
   const invitationId = str(args, 'invitationId');
   if (!invitationId) return { ok: false, error: 'invitationId is required' };
-  const propertyId = str(args, 'propertyId') ?? ctx.pageContext.propertyId ?? undefined;
+  const propertyId = defaultPropertyId(ctx, args);
   if (!propertyId) return { ok: false, error: 'propertyId is required (no property in scope)' };
 
   const teamCtx = await requireTeamPropertyAccess(
@@ -1890,6 +2009,7 @@ async function toolProposeRevokePropertyInvitation(
     toolName: 'propose_revoke_property_invitation',
     targetPropertyId: propertyId,
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
   });
 
@@ -1911,6 +2031,7 @@ async function toolProposeRevokePropertyInvitation(
     toolName: 'propose_revoke_property_invitation',
     targetPropertyId: propertyId,
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
     expectedTier: tier,
   });
@@ -1931,7 +2052,7 @@ async function toolProposeInvitePropertyTeamMember(
   const email = str(args, 'email');
   const roleId = str(args, 'roleId');
   if (!email || !roleId) return { ok: false, error: 'email and roleId are required' };
-  const propertyId = str(args, 'propertyId') ?? ctx.pageContext.propertyId ?? undefined;
+  const propertyId = defaultPropertyId(ctx, args);
   if (!propertyId) return { ok: false, error: 'propertyId is required (no property in scope)' };
 
   const teamCtx = await requireTeamPropertyAccess(
@@ -1944,6 +2065,7 @@ async function toolProposeInvitePropertyTeamMember(
     toolName: 'propose_invite_property_team_member',
     targetPropertyId: propertyId,
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
   });
 
@@ -1968,7 +2090,7 @@ async function toolProposeUpdatePropertyTeamMemberRole(
   const memberId = str(args, 'memberId');
   const roleId = str(args, 'roleId');
   if (!memberId || !roleId) return { ok: false, error: 'memberId and roleId are required' };
-  const propertyId = str(args, 'propertyId') ?? ctx.pageContext.propertyId ?? undefined;
+  const propertyId = defaultPropertyId(ctx, args);
   if (!propertyId) return { ok: false, error: 'propertyId is required (no property in scope)' };
 
   const teamCtx = await requireTeamPropertyAccess(
@@ -1981,6 +2103,7 @@ async function toolProposeUpdatePropertyTeamMemberRole(
     toolName: 'propose_update_property_team_member_role',
     targetPropertyId: propertyId,
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
   });
 
@@ -2004,7 +2127,7 @@ async function toolProposeRemovePropertyTeamMember(
 ): Promise<ToolResult> {
   const memberId = str(args, 'memberId');
   if (!memberId) return { ok: false, error: 'memberId is required' };
-  const propertyId = str(args, 'propertyId') ?? ctx.pageContext.propertyId ?? undefined;
+  const propertyId = defaultPropertyId(ctx, args);
   if (!propertyId) return { ok: false, error: 'propertyId is required (no property in scope)' };
 
   const teamCtx = await requireTeamPropertyAccess(
@@ -2017,6 +2140,7 @@ async function toolProposeRemovePropertyTeamMember(
     toolName: 'propose_remove_property_team_member',
     targetPropertyId: propertyId,
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
   });
 
@@ -2051,6 +2175,7 @@ async function toolProposeClaimParkingBooking(
   const tier = classifyActionRisk({
     toolName: 'propose_claim_parking_booking',
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
   });
 
@@ -2081,6 +2206,7 @@ async function toolProposeDeclineParkingBooking(
   const tier = classifyActionRisk({
     toolName: 'propose_decline_parking_booking',
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
   });
 
@@ -2126,6 +2252,7 @@ async function toolProposeTransitionParkingBooking(
   const tier = classifyActionRisk({
     toolName: 'propose_transition_parking_booking',
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
   });
 
@@ -2177,6 +2304,7 @@ async function toolProposeUpdatePropertyBaseRate(
     toolName: 'propose_update_property_base_rate',
     targetPropertyId: propertyId,
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
   });
 
@@ -2208,6 +2336,7 @@ async function toolProposeSetPropertyDateRateOverride(
     toolName: 'propose_set_property_date_rate_override',
     targetPropertyId: propertyId,
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
   });
 
@@ -2248,6 +2377,7 @@ async function toolProposeAddPropertyHolidayRule(
     toolName: 'propose_add_property_holiday_rule',
     targetPropertyId: propertyId,
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
   });
 
@@ -2288,6 +2418,7 @@ async function toolProposeBlockPropertyDates(
     toolName: 'propose_block_property_dates',
     targetPropertyId: propertyId,
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
   });
 
@@ -2337,6 +2468,7 @@ async function toolProposeUnblockPropertyDates(
     toolName: 'propose_unblock_property_dates',
     targetPropertyId: propertyId,
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
   });
 
@@ -2371,6 +2503,7 @@ async function toolProposeUpdateParkingBaseRate(
   const tier = classifyActionRisk({
     toolName: 'propose_update_parking_base_rate',
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
   });
 
@@ -2405,6 +2538,7 @@ async function toolProposeSetParkingDateRateOverride(
   const tier = classifyActionRisk({
     toolName: 'propose_set_parking_date_rate_override',
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
   });
 
@@ -2434,6 +2568,7 @@ async function toolProposeMarkInboxThreadRead(
   const tier = classifyActionRisk({
     toolName: 'propose_mark_inbox_thread_read',
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
   });
 
@@ -2449,6 +2584,7 @@ async function toolProposeMarkInboxThreadRead(
   await assertActionSafeToExecute({
     toolName: 'propose_mark_inbox_thread_read',
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
     expectedTier: tier,
   });
@@ -2535,6 +2671,7 @@ async function toolProposeSendInboxReply(
   const tier = classifyActionRisk({
     toolName: 'propose_send_inbox_reply',
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
   });
 
@@ -2587,6 +2724,7 @@ async function toolProposePublishToMeta(
     toolName: 'propose_publish_to_meta',
     targetPropertyId: access.propertyId,
     pageContext: ctx.pageContext,
+    attachedContext: ctx.attachedContext,
     isBulk: ctx.isBulk,
   });
 
@@ -2622,6 +2760,7 @@ export async function executeConfirmedAction(
       targetBookingId: bookingId,
       targetPropertyId: propertyId,
       pageContext: ctx.pageContext,
+      attachedContext: ctx.attachedContext,
       isBulk: false,
       expectedTier: 'tier2_confirmed',
     });
@@ -2654,6 +2793,7 @@ export async function executeConfirmedAction(
       targetBookingId: bookingId,
       targetPropertyId: propertyId,
       pageContext: ctx.pageContext,
+      attachedContext: ctx.attachedContext,
       isBulk: false,
       expectedTier: 'tier2_confirmed',
     });
@@ -2678,6 +2818,7 @@ export async function executeConfirmedAction(
       targetBookingId: bookingId,
       targetPropertyId: propertyId,
       pageContext: ctx.pageContext,
+      attachedContext: ctx.attachedContext,
       isBulk: false,
       expectedTier: 'tier2_confirmed',
     });
@@ -2732,6 +2873,7 @@ export async function executeConfirmedAction(
       toolName: 'propose_add_finance_line_item',
       targetPropertyId: propertyId,
       pageContext: ctx.pageContext,
+      attachedContext: ctx.attachedContext,
       isBulk: false,
       expectedTier: 'tier2_confirmed',
     });
@@ -2762,6 +2904,7 @@ export async function executeConfirmedAction(
       toolName: 'propose_create_maintenance_item',
       targetPropertyId: propertyId,
       pageContext: ctx.pageContext,
+      attachedContext: ctx.attachedContext,
       isBulk: false,
       expectedTier: 'tier2_confirmed',
     });
@@ -2784,6 +2927,7 @@ export async function executeConfirmedAction(
     await assertActionSafeToExecute({
       toolName: 'propose_update_org_profile',
       pageContext: ctx.pageContext,
+      attachedContext: ctx.attachedContext,
       isBulk: false,
       expectedTier: 'tier2_confirmed',
     });
@@ -2817,6 +2961,7 @@ export async function executeConfirmedAction(
     await assertActionSafeToExecute({
       toolName: 'propose_invite_team_member',
       pageContext: ctx.pageContext,
+      attachedContext: ctx.attachedContext,
       isBulk: false,
       expectedTier: 'tier2_confirmed',
     });
@@ -2843,6 +2988,7 @@ export async function executeConfirmedAction(
     await assertActionSafeToExecute({
       toolName: 'propose_update_team_member_role',
       pageContext: ctx.pageContext,
+      attachedContext: ctx.attachedContext,
       isBulk: false,
       expectedTier: 'tier2_confirmed',
     });
@@ -2868,6 +3014,7 @@ export async function executeConfirmedAction(
     await assertActionSafeToExecute({
       toolName: 'propose_revoke_invitation',
       pageContext: ctx.pageContext,
+      attachedContext: ctx.attachedContext,
       isBulk: false,
       expectedTier: 'tier2_confirmed',
     });
@@ -2889,6 +3036,7 @@ export async function executeConfirmedAction(
     await assertActionSafeToExecute({
       toolName: 'propose_remove_team_member',
       pageContext: ctx.pageContext,
+      attachedContext: ctx.attachedContext,
       isBulk: false,
       expectedTier: 'tier2_confirmed',
     });
@@ -2910,6 +3058,7 @@ export async function executeConfirmedAction(
       toolName: 'propose_update_property_profile',
       targetPropertyId: propertyId,
       pageContext: ctx.pageContext,
+      attachedContext: ctx.attachedContext,
       isBulk: false,
       expectedTier: 'tier2_confirmed',
     });
@@ -2945,6 +3094,7 @@ export async function executeConfirmedAction(
       toolName: 'propose_update_property_settings',
       targetPropertyId: propertyId,
       pageContext: ctx.pageContext,
+      attachedContext: ctx.attachedContext,
       isBulk: false,
       expectedTier: 'tier2_confirmed',
     });
@@ -2986,6 +3136,7 @@ export async function executeConfirmedAction(
       toolName: 'propose_revoke_property_invitation',
       targetPropertyId: propertyId,
       pageContext: ctx.pageContext,
+      attachedContext: ctx.attachedContext,
       isBulk: false,
       expectedTier: 'tier2_confirmed',
     });
@@ -3015,6 +3166,7 @@ export async function executeConfirmedAction(
       toolName: 'propose_invite_property_team_member',
       targetPropertyId: propertyId,
       pageContext: ctx.pageContext,
+      attachedContext: ctx.attachedContext,
       isBulk: false,
       expectedTier: 'tier2_confirmed',
     });
@@ -3050,6 +3202,7 @@ export async function executeConfirmedAction(
       toolName: 'propose_update_property_team_member_role',
       targetPropertyId: propertyId,
       pageContext: ctx.pageContext,
+      attachedContext: ctx.attachedContext,
       isBulk: false,
       expectedTier: 'tier2_confirmed',
     });
@@ -3082,6 +3235,7 @@ export async function executeConfirmedAction(
       toolName: 'propose_remove_property_team_member',
       targetPropertyId: propertyId,
       pageContext: ctx.pageContext,
+      attachedContext: ctx.attachedContext,
       isBulk: false,
       expectedTier: 'tier2_confirmed',
     });
@@ -3114,6 +3268,7 @@ export async function executeConfirmedAction(
     await assertActionSafeToExecute({
       toolName: 'propose_claim_parking_booking',
       pageContext: ctx.pageContext,
+      attachedContext: ctx.attachedContext,
       isBulk: false,
       expectedTier: 'tier2_confirmed',
     });
@@ -3142,6 +3297,7 @@ export async function executeConfirmedAction(
     await assertActionSafeToExecute({
       toolName: 'propose_decline_parking_booking',
       pageContext: ctx.pageContext,
+      attachedContext: ctx.attachedContext,
       isBulk: false,
       expectedTier: 'tier2_confirmed',
     });
@@ -3171,6 +3327,7 @@ export async function executeConfirmedAction(
     await assertActionSafeToExecute({
       toolName: 'propose_transition_parking_booking',
       pageContext: ctx.pageContext,
+      attachedContext: ctx.attachedContext,
       isBulk: false,
       expectedTier: 'tier2_confirmed',
     });
@@ -3202,6 +3359,7 @@ export async function executeConfirmedAction(
       toolName: 'propose_update_property_base_rate',
       targetPropertyId: propertyId,
       pageContext: ctx.pageContext,
+      attachedContext: ctx.attachedContext,
       isBulk: false,
       expectedTier: 'tier2_confirmed',
     });
@@ -3246,6 +3404,7 @@ export async function executeConfirmedAction(
       toolName: 'propose_set_property_date_rate_override',
       targetPropertyId: propertyId,
       pageContext: ctx.pageContext,
+      attachedContext: ctx.attachedContext,
       isBulk: false,
       expectedTier: 'tier2_confirmed',
     });
@@ -3288,6 +3447,7 @@ export async function executeConfirmedAction(
       toolName: 'propose_add_property_holiday_rule',
       targetPropertyId: propertyId,
       pageContext: ctx.pageContext,
+      attachedContext: ctx.attachedContext,
       isBulk: false,
       expectedTier: 'tier2_confirmed',
     });
@@ -3329,6 +3489,7 @@ export async function executeConfirmedAction(
       toolName: 'propose_block_property_dates',
       targetPropertyId: propertyId,
       pageContext: ctx.pageContext,
+      attachedContext: ctx.attachedContext,
       isBulk: false,
       expectedTier: 'tier2_confirmed',
     });
@@ -3355,6 +3516,7 @@ export async function executeConfirmedAction(
       toolName: 'propose_unblock_property_dates',
       targetPropertyId: propertyId,
       pageContext: ctx.pageContext,
+      attachedContext: ctx.attachedContext,
       isBulk: false,
       expectedTier: 'tier2_confirmed',
     });
@@ -3383,6 +3545,7 @@ export async function executeConfirmedAction(
     await assertActionSafeToExecute({
       toolName: 'propose_update_parking_base_rate',
       pageContext: ctx.pageContext,
+      attachedContext: ctx.attachedContext,
       isBulk: false,
       expectedTier: 'tier2_confirmed',
     });
@@ -3418,6 +3581,7 @@ export async function executeConfirmedAction(
     await assertActionSafeToExecute({
       toolName: 'propose_set_parking_date_rate_override',
       pageContext: ctx.pageContext,
+      attachedContext: ctx.attachedContext,
       isBulk: false,
       expectedTier: 'tier2_confirmed',
     });
@@ -3448,6 +3612,7 @@ export async function executeConfirmedAction(
     await assertActionSafeToExecute({
       toolName: 'propose_mark_inbox_thread_read',
       pageContext: ctx.pageContext,
+      attachedContext: ctx.attachedContext,
       isBulk: false,
       expectedTier: 'tier2_confirmed',
     });
@@ -3469,6 +3634,7 @@ export async function executeConfirmedAction(
     await assertActionSafeToExecute({
       toolName: 'propose_send_inbox_reply',
       pageContext: ctx.pageContext,
+      attachedContext: ctx.attachedContext,
       isBulk: false,
       expectedTier: 'tier2_confirmed',
     });
@@ -3512,6 +3678,7 @@ export async function executeConfirmedAction(
       toolName: 'propose_publish_to_meta',
       targetPropertyId: access.propertyId,
       pageContext: ctx.pageContext,
+      attachedContext: ctx.attachedContext,
       isBulk: false,
       expectedTier: 'tier2_confirmed',
     });
@@ -3566,6 +3733,8 @@ export async function executeTool(
         return await toolListBookings(ctx, args);
       case 'get_available_transitions':
         return await toolGetAvailableTransitions(ctx, args);
+      case 'plan_booking_journey':
+        return await toolPlanBookingJourney(ctx, args);
       case 'get_available_dates':
         return await toolGetAvailableDates(ctx, args);
       case 'get_dashboard_stats':
@@ -3759,6 +3928,16 @@ export const TOOL_DECLARATIONS = [
   {
     name: 'get_available_transitions',
     description: 'List the statuses a booking can currently move to.',
+    parameters: {
+      type: 'object',
+      properties: { bookingId: { type: 'string' } },
+      required: ['bookingId'],
+    },
+  },
+  {
+    name: 'plan_booking_journey',
+    description:
+      'Read-only remaining booking pipeline (done/current/upcoming stages and required sub-forms). Use when the host asks to guide them through this booking’s remaining steps. Does not execute any transition.',
     parameters: {
       type: 'object',
       properties: { bookingId: { type: 'string' } },

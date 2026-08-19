@@ -11,7 +11,7 @@ import {
   selectDocumentsForMessage,
 } from './dashboardAssistantBookingDocuments.ts';
 import { isBookingStatus, STATUS_HUMAN_LABEL } from './statusMachine.ts';
-import type { ChatBlock } from './dashboardAssistantSafetyGuard.ts';
+import type { ChatBlock, ActionConfirmationBlock } from './dashboardAssistantSafetyGuard.ts';
 
 const STATUS_CODE_RE = /\b([A-Z][A-Z0-9]+(?:_[A-Z0-9]+)+)\b/g;
 
@@ -187,6 +187,50 @@ function sanitizeFileList(block: Extract<ChatBlock, { type: 'file_list' }>): Cha
   return { ...block, title: asDisplay(block.title) || files[0].label, files };
 }
 
+function sanitizeImage(block: Extract<ChatBlock, { type: 'image' }>): ChatBlock | null {
+  const url = asDisplay(block.url);
+  if (!url) return null;
+  return {
+    type: 'image',
+    title: asDisplay(block.title),
+    url,
+    alt: asDisplay(block.alt) || asDisplay(block.title) || 'Image',
+  };
+}
+
+const URL_IN_TEXT_RE = /https?:\/\/|www\./i;
+
+function sanitizeQuickActions(
+  block: Extract<ChatBlock, { type: 'quick_actions' }>
+): ChatBlock | null {
+  const actions = (block.actions ?? []).filter((action) => {
+    const label = asDisplay(action.label);
+    const prompt = asDisplay(action.prompt);
+    if (!label || !prompt) return false;
+    if (URL_IN_TEXT_RE.test(label) || URL_IN_TEXT_RE.test(prompt)) return false;
+    return true;
+  });
+  if (actions.length === 0) return null;
+  return { type: 'quick_actions', actions };
+}
+
+function sanitizeStepper(block: Extract<ChatBlock, { type: 'stepper' }>): ChatBlock | null {
+  const steps = (block.steps ?? [])
+    .map((step) => {
+      const label = asDisplay(step.label);
+      if (!label) return null;
+      const status =
+        step.status === 'done' || step.status === 'current' || step.status === 'upcoming'
+          ? step.status
+          : 'upcoming';
+      const description = asDisplay(step.description) || undefined;
+      return { ...step, label, status, description };
+    })
+    .filter((step): step is NonNullable<typeof step> => step != null);
+  if (steps.length === 0) return null;
+  return { type: 'stepper', title: asDisplay(block.title) || 'Booking journey', steps };
+}
+
 function sanitizeBookingCard(
   block: Extract<ChatBlock, { type: 'booking_card' }>
 ): ChatBlock | null {
@@ -221,6 +265,21 @@ export function sanitizeAssistantChatBlocks(blocks: ChatBlock[]): ChatBlock[] {
     }
     if (block.type === 'file_list') {
       const next = sanitizeFileList(block);
+      if (next) out.push(next);
+      continue;
+    }
+    if (block.type === 'image') {
+      const next = sanitizeImage(block);
+      if (next) out.push(next);
+      continue;
+    }
+    if (block.type === 'quick_actions') {
+      const next = sanitizeQuickActions(block);
+      if (next) out.push(next);
+      continue;
+    }
+    if (block.type === 'stepper') {
+      const next = sanitizeStepper(block);
       if (next) out.push(next);
       continue;
     }
@@ -343,5 +402,75 @@ export function hydrateAssistantBlocksFromTools(
     }
   }
 
+  next = hydrateStepperFromJourney(next, records);
   return sanitizeAssistantChatBlocks(next);
+}
+
+/**
+ * Final pass after all server-built `action_confirmation` blocks exist (Tier-1 auto or Tier-2
+ * proposed). Builds the booking-journey stepper from `plan_booking_journey` and nests the first
+ * `propose_transition_booking` confirmation on the current step instead of leaving it standalone.
+ */
+export function nestBookingJourneyStepper(
+  blocks: ChatBlock[],
+  toolResults: unknown[]
+): ChatBlock[] {
+  const records = toolResultRecords(toolResults);
+  return sanitizeAssistantChatBlocks(hydrateStepperFromJourney(blocks, records));
+}
+
+function hydrateStepperFromJourney(
+  blocks: ChatBlock[],
+  records: Record<string, unknown>[]
+): ChatBlock[] {
+  const journey = records.find(
+    (record) => record.kind === 'booking_journey' && Array.isArray(record.steps)
+  );
+  if (!journey) return blocks;
+
+  const rawSteps = journey.steps as Array<Record<string, unknown>>;
+  const guestName = asDisplay(journey.guestName);
+  const titleParts = ['Booking journey'];
+  if (guestName) titleParts.push(guestName);
+
+  let actionBlock: ActionConfirmationBlock | undefined;
+  const withoutAction = blocks.filter((block) => {
+    if (block.type !== 'action_confirmation') return true;
+    if (block.toolName === 'propose_transition_booking' && !actionBlock) {
+      actionBlock = block;
+      return false;
+    }
+    return true;
+  });
+
+  const steps = rawSteps
+    .map((step) => {
+      const label = asDisplay(step.label);
+      if (!label) return null;
+      const status =
+        step.stepStatus === 'done' ||
+        step.stepStatus === 'current' ||
+        step.stepStatus === 'upcoming'
+          ? step.stepStatus
+          : 'upcoming';
+      const description = asDisplay(step.description) || undefined;
+      return {
+        label,
+        status,
+        description,
+        actionBlock: status === 'current' ? actionBlock : undefined,
+      };
+    })
+    .filter((step): step is NonNullable<typeof step> => step != null);
+
+  if (steps.length === 0) return blocks;
+
+  return [
+    ...withoutAction.filter((block) => block.type !== 'stepper'),
+    {
+      type: 'stepper',
+      title: titleParts.join(' · '),
+      steps,
+    },
+  ];
 }

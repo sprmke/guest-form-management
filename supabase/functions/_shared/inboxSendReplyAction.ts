@@ -8,7 +8,10 @@
  * should attempt to fill from free text.
  */
 
-import { isWithinMessagingWindowFromInbound } from './socialInboxAiService.ts';
+import {
+  isWithinHumanAgentWindowFromInbound,
+  isWithinMessagingWindowFromInbound,
+} from './socialInboxAiService.ts';
 import { friendlyMetaSendError } from './metaInboxSendErrors.ts';
 import { getPageAccessToken, replyMetaPublicComment, sendMetaMessage } from './metaInboxGraph.ts';
 import { createServiceClient } from './orgAuth.ts';
@@ -56,7 +59,8 @@ export async function sendInboxTextReply(
   ctx: InboxAccessContext,
   conv: SocialConversationRow,
   userId: string,
-  text: string
+  text: string,
+  opts: { useHumanAgentTag?: boolean } = {}
 ): Promise<{ sent: true }> {
   const trimmed = text.trim();
   if (!trimmed) throw new InboxSendReplyError('text is required');
@@ -99,6 +103,9 @@ export async function sendInboxTextReply(
     .select('*')
     .eq('id', conv.connection_id)
     .maybeSingle();
+  if (conn?.status !== 'connected') {
+    throw new InboxSendReplyError('This channel is disconnected — reconnect Meta to reply');
+  }
   if (!conn?.encrypted_access_token || !conn.meta_page_id) {
     throw new InboxSendReplyError('Channel not connected');
   }
@@ -107,7 +114,9 @@ export async function sendInboxTextReply(
 
   try {
     if (conv.conversation_type === 'dm') {
-      if (!isWithinMessagingWindowFromInbound(conv.last_inbound_at)) {
+      const withinStandardWindow = isWithinMessagingWindowFromInbound(conv.last_inbound_at);
+      const withinHumanAgentWindow = isWithinHumanAgentWindowFromInbound(conv.last_inbound_at);
+      if (!withinStandardWindow && !(opts.useHumanAgentTag === true && withinHumanAgentWindow)) {
         throw new InboxSendReplyError('Reply window closed — guest must message again');
       }
       const result = await sendMetaMessage({
@@ -116,6 +125,7 @@ export async function sendInboxTextReply(
         recipientId: conv.external_participant_id ?? '',
         text: trimmed,
         platform: conv.platform,
+        tag: !withinStandardWindow && opts.useHumanAgentTag === true ? 'HUMAN_AGENT' : undefined,
       });
       await insertMessageIfNew({
         organization_id: ctx.org.id,
@@ -126,6 +136,7 @@ export async function sendInboxTextReply(
         attachments: [],
         sent_at: now,
         delivery_status: 'sent',
+        message_tag: !withinStandardWindow && opts.useHumanAgentTag === true ? 'human_agent' : null,
         sent_by_user_id: userId,
         is_ai_generated: false,
       });

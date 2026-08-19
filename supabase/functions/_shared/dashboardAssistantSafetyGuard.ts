@@ -96,6 +96,25 @@ export function quickSafetyScan(text: string): { ok: boolean; violation: string 
  * union (docs/workflow/planned/ai-dashboard-assistant.md §3); kept here too since the backend
  * validates blocks before they ever reach the client.
  */
+export type ActionConfirmationBlock = {
+  type: 'action_confirmation';
+  actionId: string;
+  toolName: string;
+  riskTier: ActionRiskTier;
+  summary: string;
+  details: Array<{ label: string; value: string }>;
+  status: 'proposed' | 'confirmed' | 'executed' | 'denied' | 'expired';
+  /** True for EXTERNAL_SEND_TOOL_NAMES tools — the confirm UI must show distinct "this sends/publishes for real, right now" copy, not the generic Tier-2 confirmation text. */
+  isExternalSend?: boolean;
+};
+
+export type StepperStep = {
+  label: string;
+  status: 'done' | 'current' | 'upcoming';
+  description?: string;
+  actionBlock?: ActionConfirmationBlock;
+};
+
 export type ChatBlock =
   | { type: 'text'; text: string }
   | {
@@ -121,17 +140,10 @@ export type ChatBlock =
       title: string;
       files: Array<{ label: string; url: string; kind?: 'image' | 'pdf' | 'file' }>;
     }
-  | {
-      type: 'action_confirmation';
-      actionId: string;
-      toolName: string;
-      riskTier: ActionRiskTier;
-      summary: string;
-      details: Array<{ label: string; value: string }>;
-      status: 'proposed' | 'confirmed' | 'executed' | 'denied' | 'expired';
-      /** True for EXTERNAL_SEND_TOOL_NAMES tools — the confirm UI must show distinct "this sends/publishes for real, right now" copy, not the generic Tier-2 confirmation text. */
-      isExternalSend?: boolean;
-    };
+  | { type: 'image'; title: string; url: string; alt: string }
+  | { type: 'stepper'; title: string; steps: StepperStep[] }
+  | { type: 'quick_actions'; actions: Array<{ label: string; prompt: string }> }
+  | ActionConfirmationBlock;
 
 const KNOWN_BLOCK_TYPES = new Set<ChatBlock['type']>([
   'text',
@@ -140,6 +152,9 @@ const KNOWN_BLOCK_TYPES = new Set<ChatBlock['type']>([
   'data_table',
   'link_list',
   'file_list',
+  'image',
+  'stepper',
+  'quick_actions',
   'action_confirmation',
 ]);
 
@@ -198,6 +213,19 @@ export function assertBlocksGrounded(
       return;
     }
 
+    if (block.type === 'image') {
+      const url = typeof block.url === 'string' ? block.url.trim() : '';
+      if (!url || !groundingText.includes(url)) {
+        rejectedIndexes.push(index);
+        reason = reason ?? `Ungrounded image url in block at index ${index}`;
+      }
+      return;
+    }
+
+    if (block.type === 'stepper' || block.type === 'quick_actions') {
+      return;
+    }
+
     const numbers: number[] = [];
     extractNumericLiterals(block, numbers);
     for (const num of numbers) {
@@ -253,6 +281,7 @@ export async function assertActionSafeToExecute(input: ActionSafetyCheckInput): 
     targetBookingId: input.targetBookingId,
     targetPropertyId: input.targetPropertyId,
     pageContext: input.pageContext,
+    attachedContext: input.attachedContext,
     isBulk: input.isBulk,
   });
 
