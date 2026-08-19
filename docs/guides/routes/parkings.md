@@ -112,6 +112,7 @@ Validation / behavior highlights:
 
 - `vehicleType` is required (`car` or `motorcycle`)
 - `checkOutDate` must be after `checkInDate`
+- Reserve dates from the query string (`?checkInDate=&checkOutDate=`) appear in a **`ParkingStaySummary`** card above the form when present
 - Guest-facing error mapping turns internal edge errors into short copy such as **No parking slots are available for these dates**
 
 Distinct from:
@@ -126,10 +127,12 @@ Distinct from:
 
 **`ParkingRequestStatusPage`** — public guest status page for a submitted parking request.
 
+- Focused flow: marketing nav/footer hidden (same as property forms); **`FormPageToolbar`** + back link to **`/parkings`**
 - Initial load + refresh path: **`get-parking-booking-status?bookingId=`**
 - Returned fields: status, stay dates, expiry time, organization label, slot label after claim, and optional host endorsement note
 - Polls every 4 seconds until a terminal or claimed status is reached
-- `PENDING_HOST_ACCEPTANCE` shows a countdown to expiry
+- Stay dates render as readable ranges (e.g. **Aug 25 - 27, 2026**) with night count via shared **`ParkingStaySummary`**
+- `PENDING_HOST_ACCEPTANCE` shows a 3-step progress indicator, response-window countdown (`MM:SS` under 1h), and polling spinner while refetching
 - `PENDING_REVIEW` / `READY_FOR_CHECKIN` / `COMPLETED` show the claimed slot label when available
 - `NO_HOST_AVAILABLE` and `CANCELLED` are short terminal states with a **Browse Parking** CTA
 

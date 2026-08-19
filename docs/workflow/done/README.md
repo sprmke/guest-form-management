@@ -2,7 +2,7 @@
 title: 'Completed work'
 status: active
 tags: [workflow, done]
-updated: 2026-08-19
+updated: 2026-08-20
 stage: done
 kind: reference
 ---
@@ -59,5 +59,6 @@ kind: reference
 | [`verification-scope-split.md`](./verification-scope-split.md)                                       | Host vs listing verification scopes — listing authorization model, super-admin queue, onboarding routing (2026-08-12)                                                                                                                                                 |
 | [`listing-contract-renewal-modal.md`](./listing-contract-renewal-modal.md)                           | Listing contract renewal reminder modal (T−15→lock); strip/lock UI removed (2026-08-11)                                                                                                                                                                               |
 | [`parking-e2e-phase1-overview.md`](./parking-e2e-phase1-overview.md)                                 | Parking E2E Phase 0 & 1 — vehicle types, status machine, broadcast/claim/notify, guest submit + status page, host dashboard Accept/Decline + countdown. All production checklist items closed. Companion docs: phase0, phase1c, phase1a-host, phase1a-guest, phase1d. |
+| [`guest-inbox-meta-hardening.md`](./guest-inbox-meta-hardening.md)                                   | Meta (FB/IG) inbox production hardening — webhook health-check/auto-resubscribe, non-destructive disconnect, HUMAN_AGENT 7-day tag, comment OAuth scope fix, explicit Meta backfill control, security + error UX (8 phases, 2026-08-20)                               |
 
 Back to [workflow index](../README.md).
