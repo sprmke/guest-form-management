@@ -54,6 +54,7 @@
     "@tiptap/starter-kit": "^3.27.1",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
+    "cmdk": "^1.1.1",
     "date-fns": "^2.30.0",
     "dayjs": "^1.11.13",
     "fabric": "^7.4.0",

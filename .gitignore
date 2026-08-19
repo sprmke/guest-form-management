@@ -82,6 +82,13 @@ docs/.obsidian/graph.json
 # Tests / local agent tooling (keep .fallowrc.json tracked)
 .playwright-mcp/
 .playwright-cli/
+.playwright/
+playwright-report/
+test-results/
+# Local Playwright screen captures — ignored so they cannot be committed; git leaves
+# ignored files on disk when switching branches (only tracked files are updated).
+ui/screen-tmp/*
+!ui/screen-tmp/.gitkeep
 .worktrees/
 .superpowers/
 .impeccable/
