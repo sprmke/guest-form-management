@@ -21,14 +21,13 @@ import { jsonError, jsonSuccess } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 function parseFilter(url: URL): InboxThreadFilter {
-  const type = url.searchParams.get('type');
   const status = url.searchParams.get('status');
   const platform = url.searchParams.get('platform');
   const search = url.searchParams.get('search') ?? undefined;
   const cursor = url.searchParams.get('cursor') ?? undefined;
   const limitRaw = url.searchParams.get('limit');
   return {
-    type: (type === 'dm' || type === 'comment' ? type : 'all') as ConversationType | 'all',
+    type: 'dm' as ConversationType,
     status: (status === 'unread' || status === 'pending' || status === 'replied'
       ? status
       : 'all') as InboxThreadFilter['status'],

@@ -1,18 +1,13 @@
 /**
- * Send a reply to a conversation (DM or public comment).
+ * Send a reply to a conversation.
  */
 
 import {
-  isWithinCommentPrivateReplyWindow,
   isWithinHumanAgentWindowFromInbound,
   isWithinMessagingWindowFromInbound,
 } from '../_shared/socialInboxAiService.ts';
 import { friendlyMetaSendError } from '../_shared/metaInboxSendErrors.ts';
-import {
-  getPageAccessToken,
-  replyMetaPublicComment,
-  sendMetaMessage,
-} from '../_shared/metaInboxGraph.ts';
+import { getPageAccessToken, sendMetaMessage } from '../_shared/metaInboxGraph.ts';
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import {
   conversationAllowedInScope,
@@ -43,7 +38,6 @@ serveAuthenticated('social-inbox-send', async (req, user) => {
   const ctx = await resolveInboxAccess(req, 'reply', body as Record<string, unknown>);
   const conversationId = String(body.conversationId ?? '').trim();
   const text = String(body.text ?? '').trim();
-  const privateReply = body.privateReply === true;
   const useHumanAgentTag = body.useHumanAgentTag === true;
   const replyToMessageId = String(body.replyToMessageId ?? body.reply_to_message_id ?? '').trim();
   const attachments = parseGuestWebChatAttachments(body.attachments);
@@ -174,55 +168,7 @@ serveAuthenticated('social-inbox-send', async (req, user) => {
         ...replyFields,
       });
     } else {
-      const commentId = conv.external_thread_id.replace(/^comment:/, '');
-      if (privateReply && conv.platform === 'instagram') {
-        if (!isWithinCommentPrivateReplyWindow(conv.last_inbound_at)) {
-          return jsonError(
-            req,
-            'Instagram private replies are only available within 7 days of the comment',
-            400
-          );
-        }
-        const result = await sendMetaMessage({
-          pageId: connection.meta_page_id,
-          pageAccessToken: token,
-          recipientId: '',
-          text,
-          platform: conv.platform,
-          commentId,
-        });
-        await insertMessageIfNew({
-          organization_id: ctx.org.id,
-          conversation_id: conv.id,
-          direction: 'outbound',
-          external_message_id: result.message_id,
-          body_text: text,
-          attachments: [],
-          sent_at: now,
-          delivery_status: 'sent',
-          sent_by_user_id: user.id,
-          is_ai_generated: false,
-        });
-      } else {
-        const result = await replyMetaPublicComment({
-          commentId,
-          pageAccessToken: token,
-          text,
-          platform: conv.platform,
-        });
-        await insertMessageIfNew({
-          organization_id: ctx.org.id,
-          conversation_id: conv.id,
-          direction: 'outbound',
-          external_message_id: result.id,
-          body_text: text,
-          attachments: [],
-          sent_at: now,
-          delivery_status: 'sent',
-          sent_by_user_id: user.id,
-          is_ai_generated: false,
-        });
-      }
+      return jsonError(req, 'This conversation type is no longer supported', 400);
     }
   } catch (e) {
     return jsonError(req, friendlyMetaSendError((e as Error).message), 502);

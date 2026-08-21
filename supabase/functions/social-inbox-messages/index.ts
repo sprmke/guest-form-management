@@ -13,6 +13,7 @@ import { resolveMetaConnectionIdsForScope } from '../_shared/metaInboxScope.ts';
 import {
   attachConversationConnectionStatus,
   enrichConversationMessageAttachments,
+  fillMissingMetaParticipantIdentity,
   getConversationById,
   listMessages,
   markConversationRead,
@@ -68,10 +69,15 @@ serveAuthenticated('social-inbox-messages', async (req) => {
 
   if (req.method === 'GET') {
     const before = url.searchParams.get('before') ?? undefined;
+    const namedConv = await fillMissingMetaParticipantIdentity(conv);
     const { messages, hasMore } = await listMessages(ctx.orgId, conversationId, { before });
-    const enriched = await enrichConversationMessageAttachments(conv, messages);
-    const [conversation] = await attachConversationConnectionStatus([conv]);
-    return jsonSuccess(req, { conversation: conversation ?? conv, messages: enriched, hasMore });
+    const enriched = await enrichConversationMessageAttachments(namedConv, messages);
+    const [conversation] = await attachConversationConnectionStatus([namedConv]);
+    return jsonSuccess(req, {
+      conversation: conversation ?? namedConv,
+      messages: enriched,
+      hasMore,
+    });
   }
 
   if (req.method === 'POST') {
