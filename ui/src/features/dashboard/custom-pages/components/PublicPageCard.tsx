@@ -1,17 +1,24 @@
-import { Copy, ExternalLink } from 'lucide-react';
+import { Copy, ExternalLink, Pencil } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { PublicPageLivePreview } from '@/features/dashboard/custom-pages/components/PublicPageLivePreview';
+import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
+import { propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
+import type { PropertyGuestPublicPage } from '@/features/dashboard/property/lib/propertyGuestPublicPages';
 import { absoluteGuestPath } from '@/features/guest/lib/guestPublicPaths';
 import { withGuestEmbedPreviewUrl } from '@/features/guest/lib/guestEmbedPreview';
-import { PublicPageLivePreview } from '@/features/dashboard/custom-pages/components/PublicPageLivePreview';
-import type { PropertyGuestPublicPage } from '@/features/dashboard/property/lib/propertyGuestPublicPages';
 
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 type Props = {
   page: PropertyGuestPublicPage;
   propertyName: string;
   coverUrl: string | null;
+  variant?: 'editable' | 'static';
+  /** Relative time line for editable cards; omit or null to hide. */
+  lastEditedLabel?: string | null;
 };
 
 async function copyPublicPageLink(href: string, label: string) {
@@ -23,15 +30,32 @@ async function copyPublicPageLink(href: string, label: string) {
   }
 }
 
-export function PublicPageCard({ page, propertyName, coverUrl }: Props) {
+export function PublicPageCard({
+  page,
+  propertyName,
+  coverUrl,
+  variant: variantProp,
+  lastEditedLabel = null,
+}: Props) {
+  const { orgSlug, propertySlug } = useOrgContext();
   const Icon = page.icon;
   const href = absoluteGuestPath(page.path);
   const copyHref = absoluteGuestPath(page.copyPath ?? page.path);
   const openHref = page.openUsesEmbed ? withGuestEmbedPreviewUrl(href) : href;
   const previewSrc = withGuestEmbedPreviewUrl(href);
+  const variant = variantProp ?? (page.editable ? 'editable' : 'static');
+  const editHref =
+    variant === 'editable'
+      ? `${propertySectionPath(orgSlug, propertySlug, 'public-pages')}/${page.id}/edit`
+      : null;
 
   return (
-    <article className="surface-card-interactive native-press group relative flex min-h-[44px] flex-col overflow-hidden">
+    <article
+      className={cn(
+        'surface-card-interactive native-press group relative flex min-h-[44px] flex-col overflow-hidden',
+        variant === 'editable' && 'ring-border/60 sm:shadow-sm'
+      )}
+    >
       <a
         href={openHref}
         target="_blank"
@@ -48,45 +72,106 @@ export function PublicPageCard({ page, propertyName, coverUrl }: Props) {
         />
       </a>
 
-      <div className="flex flex-col gap-2.5 px-3.5 py-3 sm:py-3.5">
+      <div
+        className={cn(
+          'flex flex-col gap-2.5 px-3.5 py-3 sm:py-3.5',
+          variant === 'editable' && 'sm:gap-3 sm:px-4 sm:py-4'
+        )}
+      >
         <div className="flex items-start gap-2.5">
-          <span className="bg-primary/10 text-primary mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg">
+          <span
+            className={cn(
+              'bg-primary/10 text-primary mt-0.5 flex shrink-0 items-center justify-center rounded-lg',
+              variant === 'editable' ? 'size-9' : 'size-8'
+            )}
+          >
             <Icon className="size-4" aria-hidden />
           </span>
           <div className="min-w-0 flex-1">
-            <span className="text-foreground block truncate text-sm font-semibold">
+            <span
+              className={cn(
+                'text-foreground block truncate font-semibold',
+                variant === 'editable' ? 'text-base' : 'text-sm'
+              )}
+            >
               {page.label}
             </span>
             <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs leading-relaxed">
               {page.description}
             </p>
+            {variant === 'editable' && lastEditedLabel ? (
+              <p className="text-muted-foreground mt-1.5 text-xs">{lastEditedLabel}</p>
+            ) : null}
           </div>
         </div>
 
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-9 min-h-[44px] flex-1 gap-1.5"
-            onClick={() => void copyPublicPageLink(copyHref, page.label)}
-          >
-            <Copy className="size-3.5" aria-hidden />
-            Copy link
-          </Button>
-          <Button
-            type="button"
-            variant="default"
-            size="sm"
-            className="h-9 min-h-[44px] flex-1 gap-1.5"
-            asChild
-          >
-            <a href={openHref} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="size-3.5" aria-hidden />
-              Open page
-            </a>
-          </Button>
-        </div>
+        {editHref ? (
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              className="h-9 min-h-[44px] flex-1 gap-1.5"
+              asChild
+            >
+              <Link to={editHref}>
+                <Pencil className="size-3.5" aria-hidden />
+                Edit
+              </Link>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="size-11 shrink-0"
+              aria-label={`Copy ${page.label} link`}
+              onClick={() => void copyPublicPageLink(copyHref, page.label)}
+            >
+              <Copy className="size-3.5" aria-hidden />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="size-11 shrink-0"
+              asChild
+            >
+              <a
+                href={openHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Open ${page.label}`}
+              >
+                <ExternalLink className="size-3.5" aria-hidden />
+              </a>
+            </Button>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 min-h-[44px] flex-1 gap-1.5"
+              onClick={() => void copyPublicPageLink(copyHref, page.label)}
+            >
+              <Copy className="size-3.5" aria-hidden />
+              Copy link
+            </Button>
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              className="h-9 min-h-[44px] flex-1 gap-1.5"
+              asChild
+            >
+              <a href={openHref} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="size-3.5" aria-hidden />
+                Open page
+              </a>
+            </Button>
+          </div>
+        )}
       </div>
     </article>
   );

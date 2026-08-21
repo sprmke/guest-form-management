@@ -57,7 +57,10 @@ import { NotificationBell } from '@/features/dashboard/notifications/components/
 import { NotificationsProvider } from '@/features/dashboard/notifications/components/NotificationsProvider';
 import { useNotificationsList } from '@/features/dashboard/notifications/hooks/useNotifications';
 import { ListingContractRenewalProvider } from '@/features/dashboard/org/components/listing-authorization/ListingContractRenewalProvider';
-import { UpgradeModalProvider } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import {
+  UpgradeModalProvider,
+  useUpgradeModal,
+} from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { ListingVerificationSidebarCta } from '@/features/dashboard/org/components/listing-authorization/ListingVerificationSidebarCta';
 import { OrgSettingsIssuesSync } from '@/features/dashboard/org/components/OrgSettingsIssuesSync';
 import { SectionNavIssueDot } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
@@ -357,7 +360,8 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed);
   const propertyId = usePropertyIdParam();
-  const { accessible: assistantAccessible } = useAiAssistantAccess(propertyId);
+  const { accessible: assistantAccessible, planGate } = useAiAssistantAccess(propertyId);
+  const { open: openUpgradeModal } = useUpgradeModal();
   const { data: notificationsPreview } = useNotificationsList('preview');
   const unreadNotificationCount = notificationsPreview?.pages[0]?.unreadCount ?? 0;
 
@@ -372,8 +376,22 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
     lastHandledAssistantOpenRequestIdRef.current = assistantOpenRequestId;
     setMoreSheetOpen(false);
     setNotificationsOpen(false);
-    setAssistantOpen(true);
-  }, [assistantOpenRequestId]);
+
+    if (assistantAccessible) {
+      setAssistantOpen(true);
+      return;
+    }
+
+    if (!planGate.isLoading && !planGate.allowed) {
+      openUpgradeModal('aiDashboardAssistant');
+    }
+  }, [
+    assistantOpenRequestId,
+    assistantAccessible,
+    planGate.isLoading,
+    planGate.allowed,
+    openUpgradeModal,
+  ]);
 
   const pageTitle = useMemo(
     () =>

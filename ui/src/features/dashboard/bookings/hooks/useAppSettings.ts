@@ -23,7 +23,7 @@ import {
 import type { AppSettingsPatchBody } from '@/features/dashboard/org/lib/propertySettingsSave';
 
 import { supabase } from '@/lib/supabase/client';
-import { propertyBrandColorFormValue, propertyBrandColorsEquivalent } from '@/lib/theme/brandColor';
+import { propertyBrandColorFormValue } from '@/lib/theme/brandColor';
 
 export type AppSettingsFieldSource = 'db' | 'default';
 
@@ -278,7 +278,7 @@ export function useUpdateAppSettings() {
 export function operationalFormIsDirty(
   draft: AppSettingsFormValues,
   baseline: AppSettingsFormValues,
-  inheritedBrandColor: string
+  _inheritedBrandColor: string
 ): boolean {
   return (
     draft.emailReplyTo.trim() !== baseline.emailReplyTo.trim() ||
@@ -291,7 +291,6 @@ export function operationalFormIsDirty(
     draft.gafTowerAndUnitNumber.trim() !== baseline.gafTowerAndUnitNumber.trim() ||
     draft.gafGuestsOnsiteContactPerson.trim() !== baseline.gafGuestsOnsiteContactPerson.trim() ||
     draft.gafOwnerContactNumber.trim() !== baseline.gafOwnerContactNumber.trim() ||
-    !propertyBrandColorsEquivalent(draft.brandColor, baseline.brandColor, inheritedBrandColor) ||
     draft.facebookPageUrl.trim() !== baseline.facebookPageUrl.trim() ||
     draft.airbnbUrl.trim() !== baseline.airbnbUrl.trim() ||
     draft.instagramUrl.trim() !== baseline.instagramUrl.trim() ||
