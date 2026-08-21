@@ -10,12 +10,9 @@ export const META_GRAPH_BASE = `https://graph.facebook.com/${META_GRAPH_VERSION}
 export const META_INBOX_OAUTH_SCOPES = [
   'pages_messaging',
   'pages_manage_metadata',
-  'pages_manage_engagement',
   'pages_read_engagement',
-  'pages_read_user_content',
   'pages_show_list',
   'instagram_manage_messages',
-  'instagram_manage_comments',
   'business_management',
 ] as const;
 
@@ -50,14 +47,13 @@ export function getMetaOAuthScopes(): string {
   return [...scopes].join(',');
 }
 
-/** Page-level subscribed_apps fields (Graph API rejects `comments` / `live_comments` here). */
+/** Page-level subscribed_apps fields for Messenger/Instagram DM delivery. */
 export const META_WEBHOOK_SUBSCRIBED_FIELDS = [
   'messages',
   'messaging_postbacks',
   'message_deliveries',
   'message_reads',
   'message_echoes',
-  'feed',
 ].join(',');
 
 export function getMetaAppCredentials(): { appId: string; appSecret: string } {

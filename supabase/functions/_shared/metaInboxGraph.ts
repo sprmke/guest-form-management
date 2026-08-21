@@ -135,28 +135,74 @@ export async function getPageAccessToken(connection: SocialChannelConnectionRow)
   return decryptMetaInboxToken(enc);
 }
 
-/** Resolve Messenger / Instagram DM sender display name from PSID. */
+/** Display label from Graph user fields — IG often has `username` and no `name`. */
+export function formatMetaParticipantDisplayName(opts: {
+  name?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  username?: string | null;
+}): string | null {
+  const fullName = opts.name?.trim() || '';
+  const first = opts.firstName?.trim() || '';
+  const last = opts.lastName?.trim() || '';
+  const composed = fullName || [first, last].filter(Boolean).join(' ').trim();
+  if (composed) return composed;
+  const username = opts.username?.trim().replace(/^@/, '') || '';
+  return username ? `@${username}` : null;
+}
+
+const IG_PROFILE_FIELDS = 'name,username,profile_pic';
+const MESSENGER_PROFILE_FIELDS = 'first_name,last_name,name,profile_pic';
+
+function profileFromGraphUser(json: Record<string, unknown>): {
+  name: string | null;
+  profilePic: string | null;
+} {
+  const name = formatMetaParticipantDisplayName({
+    name: typeof json.name === 'string' ? json.name : null,
+    firstName: typeof json.first_name === 'string' ? json.first_name : null,
+    lastName: typeof json.last_name === 'string' ? json.last_name : null,
+    username: typeof json.username === 'string' ? json.username : null,
+  });
+  const profilePic = typeof json.profile_pic === 'string' ? json.profile_pic : null;
+  return { name, profilePic };
+}
+
+function isMissingMessengerNameFields(message: string | undefined): boolean {
+  if (!message) return false;
+  return /nonexisting field \((first_name|last_name)\)/i.test(message);
+}
+
+/**
+ * Resolve Messenger / Instagram DM sender display name from PSID / IGSID.
+ * Instagram User Profile rejects Messenger-only fields like `first_name`.
+ */
 export async function fetchMetaMessengerParticipantProfile(
   psid: string,
-  pageAccessToken: string
+  pageAccessToken: string,
+  platform: SocialPlatform = 'facebook'
 ): Promise<{ name: string | null; profilePic: string | null }> {
+  const fieldSets =
+    platform === 'instagram' ? [IG_PROFILE_FIELDS] : [MESSENGER_PROFILE_FIELDS, IG_PROFILE_FIELDS];
+
   try {
-    const url = new URL(`${META_GRAPH_BASE}/${psid}`);
-    url.searchParams.set('fields', 'first_name,last_name,name,profile_pic');
-    url.searchParams.set('access_token', pageAccessToken);
-    const res = await fetch(url.toString());
-    const json = await parseMetaGraphJson(res);
-    if (!res.ok) {
+    for (let i = 0; i < fieldSets.length; i++) {
+      const fields = fieldSets[i]!;
+      const url = new URL(`${META_GRAPH_BASE}/${psid}`);
+      url.searchParams.set('fields', fields);
+      url.searchParams.set('access_token', pageAccessToken);
+      const res = await fetch(url.toString());
+      const json = await parseMetaGraphJson(res);
+      if (res.ok) return profileFromGraphUser(json);
+
       const msg = (json.error as { message?: string } | undefined)?.message;
+      const canRetryIgFields = i < fieldSets.length - 1 && isMissingMessengerNameFields(msg);
+      if (canRetryIgFields) continue;
+
       console.warn('[fetchMetaMessengerParticipantProfile]', msg ?? res.status);
       return { name: null, profilePic: null };
     }
-    const fullName = typeof json.name === 'string' ? json.name.trim() : '';
-    const first = typeof json.first_name === 'string' ? json.first_name.trim() : '';
-    const last = typeof json.last_name === 'string' ? json.last_name.trim() : '';
-    const name = fullName || [first, last].filter(Boolean).join(' ').trim() || null;
-    const profilePic = typeof json.profile_pic === 'string' ? json.profile_pic : null;
-    return { name, profilePic };
+    return { name: null, profilePic: null };
   } catch (e) {
     console.warn('[fetchMetaMessengerParticipantProfile]', (e as Error).message);
     return { name: null, profilePic: null };
@@ -262,21 +308,13 @@ export async function sendMetaMessage(opts: {
   text: string;
   platform: SocialPlatform;
   replyToMid?: string;
-  commentId?: string;
   tag?: 'HUMAN_AGENT';
 }): Promise<{ message_id: string }> {
   const url = new URL(`${META_GRAPH_BASE}/${opts.pageId}/messages`);
   url.searchParams.set('access_token', opts.pageAccessToken);
 
-  let recipient: Record<string, string>;
-  if (opts.commentId) {
-    recipient = { comment_id: opts.commentId };
-  } else {
-    recipient = { id: opts.recipientId };
-  }
-
   const body: Record<string, unknown> = {
-    recipient,
+    recipient: { id: opts.recipientId },
     message: { text: opts.text },
     messaging_type: opts.tag ? 'MESSAGE_TAG' : 'RESPONSE',
   };
@@ -289,24 +327,6 @@ export async function sendMetaMessage(opts: {
 
   const json = await postMetaJsonWithRetry(url, body, 'Failed to send Meta message');
   return { message_id: json.message_id as string };
-}
-
-export async function replyMetaPublicComment(opts: {
-  commentId: string;
-  pageAccessToken: string;
-  text: string;
-  platform: SocialPlatform;
-}): Promise<{ id: string }> {
-  const path =
-    opts.platform === 'instagram' ? `${opts.commentId}/replies` : `${opts.commentId}/comments`;
-  const url = new URL(`${META_GRAPH_BASE}/${path}`);
-  url.searchParams.set('access_token', opts.pageAccessToken);
-  const json = await postMetaJsonWithRetry(
-    url,
-    { message: opts.text },
-    'Failed to reply to comment'
-  );
-  return { id: (json.id ?? json.message_id) as string };
 }
 
 /** Fetch attachment metadata for a single message (media-only rows from backfill). */
@@ -334,13 +354,15 @@ export async function fetchMetaMessageAttachments(
 export type MetaConversationItem = {
   id: string;
   updated_time?: string;
-  participants?: { data?: Array<{ id: string; name?: string; email?: string }> };
+  participants?: {
+    data?: Array<{ id: string; name?: string; username?: string; email?: string }>;
+  };
   messages?: {
     data?: Array<{
       id: string;
       message?: string;
       created_time?: string;
-      from?: { id: string; name?: string };
+      from?: { id: string; name?: string; username?: string };
       attachments?: { data?: unknown[] };
     }>;
   };
@@ -423,7 +445,7 @@ export function buildMetaConversationsUrl(
   const url = new URL(`${META_GRAPH_BASE}/${pageId}/conversations`);
   url.searchParams.set('platform', platform);
   const msgLimit = opts?.light ? 3 : 10;
-  const fields = `id,updated_time,participants,messages.limit(${msgLimit}){${META_MESSAGE_FIELDS}}`;
+  const fields = `id,updated_time,participants{id,name,username},messages.limit(${msgLimit}){${META_MESSAGE_FIELDS}}`;
   url.searchParams.set('fields', fields);
   url.searchParams.set('limit', opts?.light ? '25' : '50');
   url.searchParams.set('access_token', pageAccessToken);

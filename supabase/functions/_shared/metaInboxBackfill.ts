@@ -5,6 +5,7 @@
 
 import {
   fetchMetaConversationsPage,
+  formatMetaParticipantDisplayName,
   getPageAccessToken,
   type MetaConversationItem,
 } from './metaInboxGraph.ts';
@@ -65,13 +66,30 @@ export function latestInboundMessageAt(
   return latest;
 }
 
+function selfAccountIds(connection: SocialChannelConnectionRow, pageId: string): Set<string> {
+  return new Set(
+    [
+      pageId,
+      connection.meta_page_id,
+      connection.meta_ig_user_id,
+      connection.external_account_id,
+    ].filter((id): id is string => Boolean(id?.trim()))
+  );
+}
+
 function participantFromConversation(
   conv: MetaConversationItem,
-  pageId: string
+  selfIds: Set<string>
 ): { id: string; name: string | null } {
   const parts = conv.participants?.data ?? [];
-  const guest = parts.find((p) => p.id !== pageId);
-  return { id: guest?.id ?? parts[0]?.id ?? 'unknown', name: guest?.name ?? null };
+  const guest = parts.find((p) => !selfIds.has(p.id)) ?? parts[0];
+  return {
+    id: guest?.id ?? 'unknown',
+    name: formatMetaParticipantDisplayName({
+      name: guest?.name,
+      username: guest?.username,
+    }),
+  };
 }
 
 export async function syncMetaConversationToDb(opts: {
@@ -87,7 +105,7 @@ export async function syncMetaConversationToDb(opts: {
   const { orgId, connection, platform, conv, pageId } = opts;
   const conversationType = opts.conversationType ?? 'dm';
   const metadataOnly = opts.metadataOnly === true;
-  const participant = participantFromConversation(conv, pageId);
+  const participant = participantFromConversation(conv, selfAccountIds(connection, pageId));
   const messages = conv.messages?.data ?? [];
   const latest = messages.reduce<(typeof messages)[number] | undefined>((acc, msg) => {
     if (!msg.created_time) return acc ?? msg;
