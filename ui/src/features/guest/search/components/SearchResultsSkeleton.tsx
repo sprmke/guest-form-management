@@ -1,58 +1,52 @@
-import {
-  listingMapCanvasClass,
-  listingMapMinHeightClass,
-} from '@/features/guest/marketing/shared/lib/listingMapLayout';
 import type { SearchViewMode } from '@/features/guest/search/components/SearchResultsToolbar';
+import type { SearchListingsType } from '@/features/guest/search/types/search';
 
-import { cn } from '@/lib/utils';
+import {
+  ListingCardListSkeleton,
+  ListingGridSkeleton,
+  ListingMapSkeleton,
+  ListingRowSkeleton,
+} from '@/components/skeletons/ListingGridSkeleton';
 
 type Props = {
   viewMode?: SearchViewMode;
+  /** Active results category — picks the right card shape (image aspect ratio, row vs. card list). */
+  category?: SearchListingsType;
 };
 
-export function SearchResultsSkeleton({ viewMode = 'grid' }: Props) {
+/** Real per-category grid card aspect ratios: PropertyCard/ParkingSlotCard 4:3, DevelopmentCard 16:9. */
+const GRID_ASPECT_BY_CATEGORY: Record<SearchListingsType, string> = {
+  all: 'aspect-[4/3]',
+  properties: 'aspect-[4/3]',
+  developments: 'aspect-[16/9]',
+  parkings: 'aspect-[4/3]',
+};
+
+export function SearchResultsSkeleton({ viewMode = 'grid', category = 'all' }: Props) {
   if (viewMode === 'list') {
-    return (
-      <div className="mx-auto max-w-3xl space-y-4" aria-hidden>
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="flex gap-4">
-            <div className="bg-muted h-24 w-28 shrink-0 animate-pulse rounded-xl sm:h-28 sm:w-36" />
-            <div className="min-w-0 flex-1 space-y-3 py-1">
-              <div className="bg-muted h-3 w-2/3 animate-pulse rounded" />
-              <div className="bg-muted h-3 w-1/2 animate-pulse rounded" />
-              <div className="bg-muted h-3 w-1/3 animate-pulse rounded" />
-            </div>
-          </div>
-        ))}
-      </div>
-    );
+    // Developments/parkings list mode renders a single column of the same vertical
+    // card used in grid mode; only properties render the wide PropertyListItem row.
+    if (category === 'developments' || category === 'parkings') {
+      return (
+        <ListingCardListSkeleton
+          count={6}
+          maxWidthClassName="max-w-3xl"
+          imageAspectClassName={category === 'developments' ? 'aspect-[16/9]' : 'aspect-[4/3]'}
+        />
+      );
+    }
+    return <ListingRowSkeleton count={6} maxWidthClassName="max-w-3xl" />;
   }
 
   if (viewMode === 'map') {
-    return (
-      <div
-        className={cn(
-          'bg-muted animate-pulse rounded-xl',
-          listingMapCanvasClass,
-          listingMapMinHeightClass
-        )}
-        aria-hidden
-      />
-    );
+    return <ListingMapSkeleton />;
   }
 
   return (
-    <div
-      className={cn('grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4')}
-      aria-hidden
-    >
-      {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="space-y-3">
-          <div className="bg-muted aspect-square animate-pulse rounded-xl" />
-          <div className="bg-muted h-3 w-3/4 animate-pulse rounded" />
-          <div className="bg-muted h-3 w-1/2 animate-pulse rounded" />
-        </div>
-      ))}
-    </div>
+    <ListingGridSkeleton
+      count={8}
+      columnsClassName="grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+      imageAspectClassName={GRID_ASPECT_BY_CATEGORY[category]}
+    />
   );
 }

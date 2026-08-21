@@ -14,6 +14,7 @@ import { usePropertyReserve } from '@/features/guest/marketing/properties/hooks/
 import { GuestStayDateRangeDisplay } from '@/features/guest/property/components/GuestStayDateRangeDisplay';
 
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
@@ -299,17 +300,17 @@ export function PublicPropertyCalendar({
       </div>
 
       <div
-        className={cn(
-          'grid grid-cols-7',
-          compact ? 'gap-0.5' : embedded ? 'gap-1.5' : 'gap-1',
-          isLoading && 'pointer-events-none opacity-60'
-        )}
+        className={cn('grid grid-cols-7', compact ? 'gap-0.5' : embedded ? 'gap-1.5' : 'gap-1')}
         onMouseLeave={() => setHoverDate(null)}
         aria-busy={isLoading}
       >
         {cells.map((cell, index) => {
           if (!cell.day) {
             return <div key={`empty-${index}`} className={emptyCellClass} />;
+          }
+
+          if (isLoading) {
+            return <Skeleton key={`loading-${cell.day}`} className={dayCellClass} />;
           }
 
           const state = getDayState(cell.day);

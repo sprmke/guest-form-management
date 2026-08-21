@@ -27,7 +27,7 @@ import {
 } from '@/features/guest/sd-form/lib/voucher';
 
 import { GuestFormBrandHeader } from '@/components/branding/GuestFormBrandHeader';
-import { SdFormPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
+import { GuestReviewPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
 
 type Phase = 'review' | 'voucher' | 'done';
@@ -84,7 +84,7 @@ export function GuestReviewPage() {
   }
 
   if (query.isLoading) {
-    return <SdFormPageSkeleton title={GUEST_REVIEW_BRAND_TITLE} />;
+    return <GuestReviewPageSkeleton title={GUEST_REVIEW_BRAND_TITLE} />;
   }
 
   if (query.isError || !query.data) {

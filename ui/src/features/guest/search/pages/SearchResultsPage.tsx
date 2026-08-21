@@ -730,7 +730,9 @@ export function SearchResultsPage() {
               />
             ) : null}
 
-            {showSkeleton && !isMapView ? <SearchResultsSkeleton viewMode={viewMode} /> : null}
+            {showSkeleton && !isMapView ? (
+              <SearchResultsSkeleton viewMode={viewMode} category={effectiveType} />
+            ) : null}
 
             {showEmpty && !isMapView ? (
               <SearchEmptyState

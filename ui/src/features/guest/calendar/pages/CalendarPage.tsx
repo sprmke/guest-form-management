@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 
 import { useGuestAuth } from '@/features/guest/auth/context/GuestAuthContext';
+import { useGuestBookedDates } from '@/features/guest/form/hooks/useGuestBookedDates';
 import {
   DEFAULT_GUEST_PAYMENT_INFO,
   useGuestPaymentInfo,
@@ -23,6 +24,7 @@ import { GuestStayContextBar } from '@/features/guest/property/components/GuestS
 import { PublicPropertyCalendar } from '@/features/guest/property/components/PublicPropertyCalendar';
 
 import { GuestFormBrandHeader } from '@/components/branding/GuestFormBrandHeader';
+import { CalendarPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
 import { Button } from '@/components/ui/button';
 import { dateToString } from '@/utils/format/dates';
 
@@ -36,6 +38,7 @@ export function CalendarPage() {
   const brandHeader = pickGuestBrandHeaderProps(guestBrand);
   const [checkIn, setCheckIn] = useState<Date | null>(null);
   const [checkOut, setCheckOut] = useState<Date | null>(null);
+  const { isLoading: calendarLoading } = useGuestBookedDates(propertySlug);
 
   useEffect(() => {
     if (!propertySlug || !hasStrippedGuestQueryKeys(searchParams)) return;
@@ -78,6 +81,14 @@ export function CalendarPage() {
 
   if (!propertySlug) {
     return null;
+  }
+
+  if (calendarLoading) {
+    return (
+      <div className="guest-inner-enter">
+        <CalendarPageSkeleton />
+      </div>
+    );
   }
 
   return (

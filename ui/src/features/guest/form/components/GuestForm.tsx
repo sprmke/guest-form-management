@@ -1190,7 +1190,7 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
         )}
       >
         {isLoading ? (
-          <GuestFormPageSkeleton />
+          <GuestFormPageSkeleton embed={Boolean(embed?.compactChrome)} />
         ) : invalidBookingId ? (
           <div className="flex flex-col items-center justify-center space-y-4 py-20">
             <div className="text-center">
