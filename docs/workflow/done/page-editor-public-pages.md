@@ -1,9 +1,9 @@
 ---
 title: 'Page Editor — Host-Configurable Public Pages'
-status: planned
-tags: [workflow, planned, public-pages, page-editor, stay-guide, plans]
-updated: 2026-08-19
-stage: planned
+status: done
+tags: [workflow, done, public-pages, page-editor, stay-guide, plans]
+updated: 2026-08-20
+stage: done
 kind: plan
 ---
 
@@ -22,9 +22,23 @@ Research found the groundwork is already unusually well-prepared for this: a tok
 1. **Phase 1 scope**: Stay Guide + Property Landing page get the editor first. Calendar/Form/SD-form/Pay-parking/Guest-review get their own editor phases later (mapped below, not built now).
 2. **Rendering model**: keep the existing coded React components; the editor writes structured JSON config to the DB that drives their props (visibility, order, color/style, text) — not a generic block/CMS system with arbitrary new block types.
 3. **`property-public-pages-shell-redesign.md`** (an unrelated, unstarted layout/shell-merge plan that also touched `PropertyDetailPage.tsx`) has been **moved to [`../wont-do/property-public-pages-shell-redesign.md`](../wont-do/property-public-pages-shell-redesign.md)** — this plan proceeds alone, no coordination needed. (Done — see Phase 0.)
-4. **Plan gating**: the entire Public Pages section (gallery + editor) requires the **Starter** plan tier (`pricing_plans.code = 'starter'`) or higher. Today `customPages` is seeded `false` for Free and Starter and `true` from Growth up — this plan flips Starter to `true` and, for the first time, actually enforces the flag (currently defined but unused anywhere in the app).
+4. **Plan gating**: the entire Public Pages section (gallery + editor) requires the **Starter** plan tier (`pricing_plans.code = 'starter'`) or higher. **`customPages` is already `true` for Starter** (and Growth+) as of `20261029120000_plan_tier_feature_catalog.sql`; Free stays `false`. This plan **enforces** the flag for the first time (it was defined but unused). No separate starter-flip migration needed.
 
 ---
+
+## Progress
+
+| Phase                      | Status   | Notes                                                                                                                  |
+| -------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 0 Housekeeping             | ✅       | Shell redesign moved to wont-do                                                                                        |
+| 1 Data & edge foundation   | ✅       | Table + shared helper + `public-page-configs` + guest DTO `sectionConfig` + plan copy; starter DB flip already present |
+| 2 Guest pages honor config | ✅       | Stay Guide + Property Landing filter/reorder/accent from `sectionConfig`                                               |
+| 3 Page Editor + Stay Guide | ✅       | Shell, preview override, Stay Guide controls, autosave, gallery Edit CTA, `customPages` route gate                     |
+| 4 Landing editor + media   | ✅       | Listing editor, media + brand color migrated out of Settings, `#media` banner, listing Edit CTA                        |
+| 5 Landing content migrate  | ✅       | Amenities, house rules, cancellation, socials, description in listing editor; Settings slimmed                         |
+| 6 Gallery redesign         | ✅       | Two sections; `editable` registry; last-edited meta; larger Edit cards                                                 |
+| 7 Docs & wrap-up           | ✅       | PROJECT.md Page Editor; stay-guide + properties + settings guides; plan → done                                         |
+| 8 Backlog                  | deferred | Multi-template stay guide; editors for other guest pages — outline only                                                |
 
 ## 0. Preliminary housekeeping — done
 
@@ -278,68 +292,69 @@ Done — see §0.
 
 ### Phase 1 — Data & edge function foundation (no UI)
 
-- `supabase/migrations/<ts>_public_page_configs.sql` — create table per §1.
-- `supabase/migrations/<ts>_pricing_plan_starter_custom_pages.sql` — flip `starter` tier's `customPages` to `true` per §4.
-- `supabase/functions/_shared/publicPageConfigs.ts`.
-- `supabase/functions/public-page-configs/index.ts` (GET/PATCH, plan-gated).
-- Extend `_shared/guestStayGuide.ts` and `_shared/publicPropertyService.ts` to include `sectionConfig` (read-only default-if-missing) in their DTOs.
-- Add matching TS DTO types on the frontend (`ui/src/features/guest/stay-guide/lib/api.ts` and property-detail's equivalent).
-- **Plan cards & compare table copy** (§4.1): relabel `boolRow('customPages', ...)` in `planPresentation.ts:224`, the pre-existing `'Public property listing'` string in `PLAN_TIER_CARD_GAINS.starter` (`planPresentation.ts:134`), and `featureGateCopy.ts:51`'s `customPages.title` — all three to the same corrected label (e.g. "Public pages access & editor").
+- ✅ `supabase/migrations/20261102120000_public_page_configs.sql` — create table per §1.
+- ⏭️ `pricing_plan_starter_custom_pages` migration — **not needed**; Starter already has `customPages: true` in `20261029120000_plan_tier_feature_catalog.sql`.
+- ✅ `supabase/functions/_shared/publicPageConfigs.ts`.
+- ✅ `supabase/functions/public-page-configs/index.ts` (GET/PATCH, plan-gated).
+- ✅ `custom-pages-settings` plan-gated with `requirePropertyFeature(..., 'customPages')`.
+- ✅ Extend `_shared/guestStayGuide.ts` and `_shared/publicPropertyService.ts` to include `sectionConfig` (read-only default-if-missing) in their DTOs.
+- ✅ Matching TS DTO types on the frontend (`stay-guide/lib/api.ts`, `publicProperty.ts`).
+- ✅ **Plan cards & compare table copy** (§4.1): relabeled to **"Public pages access & editor"** in `planPresentation.ts`, `featureGateCopy.ts`, and `planFeatures.ts` `FEATURE_LABELS`.
 
 **Verify**: edge-function type-check; manual local invoke — GET creates a default row, PATCH updates it, GET reflects the change; confirm `get-guest-stay-guide`/`get-public-property` responses include `sectionConfig` with sane defaults for an untouched property. Frontend: open `/org/:orgSlug/property/:propertySlug/plans` and confirm the Starter card's gain bullet, the full compare table's "Public pages access & editor" row (checked from Starter up), and the upgrade-modal title (trigger it from a Free-tier property) all show the corrected label consistently.
 
 ### Phase 2 — Guest pages honor config (still no editor UI)
 
-- `StayGuidePage.tsx` — filter/reorder chapters, conditional section rendering, `accentColor` threading per §3.4.
-- `StayGuideChapter.tsx` — accept optional `accentColor` prop.
-- `PropertyDetailPage.tsx` — filter/reorder its section list per §3.4.
+- ✅ `StayGuidePage.tsx` — filter/reorder chapters, conditional section rendering, `accentColor` threading per §3.4.
+- ✅ `StayGuideChapter.tsx` — accept optional `accentColor` prop.
+- ✅ `PropertyDetailPage.tsx` — filter/reorder its section list per §3.4.
 
 **Verify**: manually set `public_page_configs.config` via SQL for a test property (hide a chapter, reorder landing sections, set an accent color); confirm both guest pages (token / preview URLs) reflect it; confirm default/empty config still renders identically to pre-Phase-2 behavior.
 
 ### Phase 3 — Page Editor shell + Stay Guide editor (first editable page)
 
-- Route registration (`public-pages/:pageId/edit`) + `RequirePropertyFeature`-style gate wrapper.
-- `page-editor/pages/PageEditorPage.tsx`, `PageEditorShell.tsx`, `PageEditorHeader.tsx`, `PageEditorPreviewPane.tsx`.
-- `page-editor/lib/previewOverrideContext.tsx` + hook edits in `useGuestStayGuide.ts` per §3.3.
-- `page-editor/stores/stayGuideEditorStore.ts`.
-- `page-editor/hooks/usePublicPageConfig.ts`, `usePageEditorAutoSave.ts`.
-- `StayGuideEditorPanel.tsx` + `SectionVisibilityToggle.tsx`, `SectionOrderList.tsx`, `AccentColorControl.tsx`.
-- Interim gallery change: add "Edit" as the primary action for the `stay-guide` card only (full gallery redesign is Phase 6) — acceptable transitional state.
+- ✅ Route registration (`public-pages/:pageId/edit`) + `RequirePropertyFeature` gate.
+- ✅ `page-editor/pages/PageEditorPage.tsx`, `PageEditorShell.tsx`, `PageEditorHeader.tsx`, `PageEditorPreviewPane.tsx`.
+- ✅ `guest/lib/previewOverrideContext.tsx` + hook edits in `useGuestStayGuide.ts` per §3.3.
+- ✅ `page-editor/stores/stayGuideEditorStore.ts`.
+- ✅ `page-editor/hooks/usePublicPageConfig.ts`, `usePageEditorAutoSave.ts`.
+- ✅ `StayGuideEditorPanel.tsx` + `SectionVisibilityToggle.tsx`, `SectionOrderList.tsx`, `AccentColorControl.tsx`.
+- ✅ Interim gallery change: "Edit" primary action for the `stay-guide` card; gallery + editor behind `customPages` gate.
 
 **Verify**: type-check/lint/build; manual walkthrough — toggle a chapter, watch preview update instantly with no network delay, drag-reorder chapters, change accent color, confirm autosave indicator, reload and confirm persistence, open the real guest stay-guide link and confirm parity with the editor's last-saved state; confirm a Free/Starter-ineligible test account sees the upgrade gate, not the editor.
 
 ### Phase 4 — Property Landing editor + Settings migration, part 1 (media & brand color)
 
-- `PropertyLandingEditorPanel.tsx` with Gallery (relocated `PropertyMediaUpload.tsx`) and Brand Color (relocated `PropertySettingsBrandColorPreview.tsx`) controls, plus section visibility/reorder for gallery/location/reviews.
-- Extend `previewOverrideContext` usage into `usePublicPropertyDetail.ts`.
-- Settings removal round 1 (§5): media + brand color fields out of `propertySettingsForm.ts`/`propertySettingsSave.ts`/`propertySettingsCompletion.ts`/`PropertySettingsCard.tsx`/`PropertyProfileSettingsSections.tsx`.
-- Add the one-time "moved" banner gated on `#media` hash.
-- Extend gallery "Edit" CTA to the `listing` card too.
+- ✅ `PropertyLandingEditorPanel.tsx` with Gallery (relocated `PropertyMediaUpload.tsx`) and Brand Color (relocated `PropertySettingsBrandColorPreview.tsx`) controls, plus section visibility/reorder.
+- ✅ Extend `previewOverrideContext` usage into `usePublicPropertyDetail.ts`.
+- ✅ Settings removal round 1 (§5): media + brand color fields out of Settings UI / dirty / save / completion.
+- ✅ One-time "moved" banner gated on `#media` hash.
+- ✅ Gallery "Edit" CTA on the `listing` card.
 
 **Verify**: type-check/lint/build; confirm Settings no longer shows Photos or Brand Color; confirm the editor's media reorder persists to the same `properties.settings.media` column and the guest property page reflects it; grep for orphaned `PropertyProfileDraft` field references.
 
 ### Phase 5 — Property Landing editor + Settings migration, part 2 (content-heavy sections)
 
-- `PropertyLandingAmenitiesControl.tsx`, `PropertyLandingHouseRulesControl.tsx`, `PropertyLandingCancellationControl.tsx` (generalizing `CancellationPolicyDisplay`), `PropertyLandingSocialsControl.tsx` (relocating socials/external-reviews/superhost blocks), description RHF+Zod field.
-- Settings removal round 2: amenities/house-rules/cancellation/socials fields and nav entries removed from the same five files.
-- Update completion-score logic for the now-slimmer Settings.
+- ✅ `PropertyLandingAmenitiesControl.tsx`, `PropertyLandingHouseRulesControl.tsx`, cancellation + socials (embedded), description field.
+- ✅ Settings removal round 2: amenities/house-rules/cancellation/socials (+ description) out of Settings UI / dirty / completion.
+- ✅ Completion-score logic updated for the slimmer Settings surface.
 
 **Verify**: same pattern as Phase 4, extended to all remaining migrated fields; a resulting TS compile error on any orphaned `PropertyProfileDraft` field is the correctness check.
 
-### Phase 6 — Public Pages gallery redesign
+### Phase 6 — Public Pages gallery redesign ✅
 
-- `propertyGuestPublicPages.ts` — `editable` metadata.
-- `PublicPageCard.tsx` — `variant` prop + "Last edited" meta line.
-- `CustomPagesPage.tsx` — two-section layout ("Design your pages" / "Other guest pages").
-- Update `docs/guides/routes/org/property/public-pages.md` (route-guides skill).
+- ✅ `propertyGuestPublicPages.ts` — `editable` metadata.
+- ✅ `PublicPageCard.tsx` — `variant` prop + "Last edited" meta line.
+- ✅ `CustomPagesPage.tsx` — two-section layout ("Design your pages" / "Other guest pages").
+- ✅ Update `docs/guides/routes/org/property/public-pages.md` (route-guides skill).
 
 **Verify**: manual walkthrough light/dark + mobile breakpoints (`AdminMobilePage` context, 375px minimum); confirm editable-tier cards route correctly; confirm static-tier cards behave exactly as before; confirm the Starter-tier gate applies to the whole page.
 
-### Phase 7 — Docs & wrap-up
+### Phase 7 — Docs & wrap-up ✅
 
-- `docs/PROJECT.md` — new "Page Editor" section (tables, edge functions, UI, plan gate) following the existing entry format (Smart Importer / Host pricing tiers / etc.).
-- `docs/guides/routes/org/property/public-pages.md` and a new `docs/guides/routes/stay-guide.md` / property-landing route-guide update reflecting config-driven rendering.
-- `docs/guides/routes/org/property/settings.md` — remove documentation for migrated sections, note where they moved.
+- ✅ `docs/PROJECT.md` — "Page Editor" section (tables, edge functions, UI, plan gate).
+- ✅ `docs/guides/routes/org/property/public-pages.md`, `stay-guide.md`, `properties.md` (landing `sectionConfig`).
+- ✅ `docs/guides/routes/org/property/settings.md` — migrated sections stubbed; Basic Information no longer documents brand color / description.
 
 ### Phase 8 (backlog — outline only, not built now)
 
