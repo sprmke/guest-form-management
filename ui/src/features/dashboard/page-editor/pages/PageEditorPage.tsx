@@ -1,8 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { Navigate, useParams } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+
 import { toast } from 'sonner';
+
+import { PreviewOverrideProvider } from '@/features/guest/lib/previewOverrideContext';
+import { PropertyDetailPage } from '@/features/guest/marketing/pages/PropertyDetailPage';
+import { usePublicPropertyDetail } from '@/features/guest/marketing/properties/hooks/usePublicPropertyDetail';
+import type { PropertyLandingSectionConfig } from '@/features/guest/marketing/properties/types/publicProperty';
+import { useGuestStayGuidePreview } from '@/features/guest/stay-guide/hooks/useGuestStayGuide';
+import type { StayGuideSectionConfig } from '@/features/guest/stay-guide/lib/api';
+import { StayGuidePage } from '@/features/guest/stay-guide/pages/StayGuidePage';
 
 import {
   appSettingsToFormValues,
@@ -10,6 +18,13 @@ import {
   useUpdateAppSettings,
   type AppSettingsFormValues,
 } from '@/features/dashboard/bookings/hooks/useAppSettings';
+import {
+  usePropertyTemplateMutations,
+  usePropertyTemplates,
+  type PropertyTemplateDto,
+} from '@/features/dashboard/bookings/hooks/usePropertyTemplates';
+import { normalizeBlockLevelPlaceholdersInHtml } from '@/features/dashboard/bookings/lib/normalizeBlockLevelPlaceholders';
+import { applyPropertyTemplatePlaceholders } from '@/features/dashboard/bookings/lib/propertyTemplatePlaceholders';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useOrgBrandColor } from '@/features/dashboard/org/hooks/useOrgBrandColor';
 import {
@@ -18,6 +33,7 @@ import {
 } from '@/features/dashboard/org/hooks/useOrgSettings';
 import { useUpdateProperty } from '@/features/dashboard/org/hooks/useUpdateProperty';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
+import { validateOrgBrandColor } from '@/features/dashboard/org/lib/orgSettingsValidation';
 import {
   resolveCancellationPolicyDisplay,
   validateCancellationPolicySettings,
@@ -27,15 +43,14 @@ import {
   validateExternalReviewDraft,
 } from '@/features/dashboard/org/lib/propertyExternalReviews';
 import { resolveHouseRulesForDisplay } from '@/features/dashboard/org/lib/propertyHouseRulesConstants';
-import { validateOrgBrandColor } from '@/features/dashboard/org/lib/orgSettingsValidation';
-import {
-  propertyMediaFromProperty,
-  propertyProfileDraftFromProperty,
-} from '@/features/dashboard/org/lib/propertySettingsForm';
 import {
   resolveAmenityLabels,
   type PropertyMediaItem,
 } from '@/features/dashboard/org/lib/propertySettingsConstants';
+import {
+  propertyMediaFromProperty,
+  propertyProfileDraftFromProperty,
+} from '@/features/dashboard/org/lib/propertySettingsForm';
 import { normalizePropertySocialLinksForSave } from '@/features/dashboard/org/lib/propertySocialLinks';
 import { propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { PageEditorHeader } from '@/features/dashboard/page-editor/components/PageEditorHeader';
@@ -45,29 +60,52 @@ import {
   PropertyLandingEditorPanel,
   type LandingProfileContent,
 } from '@/features/dashboard/page-editor/components/property-landing/PropertyLandingEditorPanel';
-import { PropertySettingsBrandColorPreview } from '@/features/dashboard/page-editor/components/property-landing/PropertySettingsBrandColorPreview';
+import { PropertySettingsBrandColorPreview } from '@/features/dashboard/org/components/property-settings/PropertySettingsBrandColorPreview';
 import { StayGuideEditorPanel } from '@/features/dashboard/page-editor/components/stay-guide/StayGuideEditorPanel';
-import { usePageEditorAutoSave } from '@/features/dashboard/page-editor/hooks/usePageEditorAutoSave';
+import {
+  draftFromTemplate,
+  isStayGuideSectionDraftDirty,
+  type StayGuideSectionDraft,
+} from '@/features/dashboard/page-editor/components/stay-guide/StayGuideSectionContentCard';
+import {
+  firstPageEditorAutoSaveError,
+  mergePageEditorAutoSaveStatuses,
+  usePageEditorAutoSave,
+} from '@/features/dashboard/page-editor/hooks/usePageEditorAutoSave';
 import {
   usePublicPageConfig,
   useSavePublicPageConfig,
 } from '@/features/dashboard/page-editor/hooks/usePublicPageConfig';
+import { STAY_GUIDE_STANDARD_TEMPLATE_KEYS } from '@/features/dashboard/page-editor/lib/stayGuideChapterSections';
 import { usePropertyLandingEditorStore } from '@/features/dashboard/page-editor/stores/propertyLandingEditorStore';
 import { useStayGuideEditorStore } from '@/features/dashboard/page-editor/stores/stayGuideEditorStore';
 import { RequirePropertyFeature } from '@/features/dashboard/plans/components/RequirePropertyFeature';
-import { PreviewOverrideProvider } from '@/features/guest/lib/previewOverrideContext';
-import { PropertyDetailPage } from '@/features/guest/marketing/pages/PropertyDetailPage';
-import { usePublicPropertyDetail } from '@/features/guest/marketing/properties/hooks/usePublicPropertyDetail';
-import type { PropertyLandingSectionConfig } from '@/features/guest/marketing/properties/types/publicProperty';
-import { useGuestStayGuidePreview } from '@/features/guest/stay-guide/hooks/useGuestStayGuide';
-import type { StayGuideSectionConfig } from '@/features/guest/stay-guide/lib/api';
-import { StayGuidePage } from '@/features/guest/stay-guide/pages/StayGuidePage';
+import { extractLeadingSectionHeading } from '@/features/guest/stay-guide/lib/stayGuideContent';
 
+import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
+import { SectionContentSkeleton } from '@/components/skeletons/AdminSkeletons';
+import { friendlyToastError } from '@/lib/feedback/toastMessages';
 import { usePageTitle } from '@/lib/pageTitle';
 import { propertyBrandColorStoredValue } from '@/lib/theme/brandColor';
-import { friendlyToastError } from '@/lib/feedback/toastMessages';
 
 const EDITABLE_PAGE_IDS = new Set(['stay-guide', 'listing']);
+
+const PAGE_EDITOR_META = {
+  listing: { label: 'Property' },
+  'stay-guide': { label: 'Stay Guide' },
+} as const;
+
+function PageEditorChrome({ children }: { children: ReactNode }) {
+  return (
+    <AdminMobilePage
+      title="Public Pages"
+      subtitle="Every guest URL for this listing."
+      titleId="public-pages-heading"
+    >
+      {children}
+    </AdminMobilePage>
+  );
+}
 
 function mediaItemsToPreview(media: PropertyMediaItem[]) {
   const ordered = [...media].sort((a, b) => a.order - b.order);
@@ -135,6 +173,8 @@ function StayGuidePageEditor({
   const configQuery = usePublicPageConfig('stay_guide');
   const saveMutation = useSavePublicPageConfig('stay_guide');
   const previewQuery = useGuestStayGuidePreview(propertySlug, propertyId ?? '');
+  const templatesQuery = usePropertyTemplates();
+  const { saveTemplate } = usePropertyTemplateMutations();
 
   const config = useStayGuideEditorStore((s) => s.config);
   const hydrated = useStayGuideEditorStore((s) => s.hydrated);
@@ -146,6 +186,9 @@ function StayGuidePageEditor({
   const redo = useStayGuideEditorStore((s) => s.redo);
   const markClean = useStayGuideEditorStore((s) => s.markClean);
 
+  const [contentDrafts, setContentDrafts] = useState<Record<string, StayGuideSectionDraft>>({});
+  const [contentHydrated, setContentHydrated] = useState(false);
+
   useEffect(() => {
     return () => reset();
   }, [reset]);
@@ -155,9 +198,31 @@ function StayGuidePageEditor({
     hydrate(configQuery.data.config as StayGuideSectionConfig);
   }, [configQuery.data, hydrate, hydrated]);
 
+  const templatesByKey = useMemo(() => {
+    const map: Record<string, PropertyTemplateDto> = {};
+    for (const template of templatesQuery.data?.templates ?? []) {
+      if (template.category === 'standard') {
+        map[template.templateKey] = template;
+      }
+    }
+    return map;
+  }, [templatesQuery.data?.templates]);
+
+  useEffect(() => {
+    if (!templatesQuery.data || contentHydrated) return;
+    const next: Record<string, StayGuideSectionDraft> = {};
+    for (const key of STAY_GUIDE_STANDARD_TEMPLATE_KEYS) {
+      const template = templatesByKey[key];
+      if (template) next[key] = draftFromTemplate(template);
+    }
+    if (Object.keys(next).length === 0) return;
+    setContentDrafts(next);
+    setContentHydrated(true);
+  }, [templatesQuery.data, templatesByKey, contentHydrated]);
+
   const fingerprint = useMemo(() => (hydrated ? JSON.stringify(config) : null), [config, hydrated]);
 
-  const { status, errorMessage } = usePageEditorAutoSave({
+  const configSave = usePageEditorAutoSave({
     enabled: hydrated && Boolean(propertyId),
     suspended: configQuery.isLoading || !hydrated,
     contentFingerprint: fingerprint,
@@ -168,62 +233,146 @@ function StayGuidePageEditor({
     },
   });
 
+  const contentFingerprint = useMemo(() => {
+    if (!contentHydrated) return null;
+    return JSON.stringify(
+      STAY_GUIDE_STANDARD_TEMPLATE_KEYS.map((key) => {
+        const draft = contentDrafts[key];
+        return draft
+          ? { key, content: draft.content, sectionImageUrl: draft.sectionImageUrl }
+          : { key };
+      })
+    );
+  }, [contentDrafts, contentHydrated]);
+
+  const contentSave = usePageEditorAutoSave({
+    enabled: contentHydrated && Boolean(propertyId),
+    suspended: !contentHydrated || templatesQuery.isLoading,
+    contentFingerprint,
+    debounceMs: 1200,
+    save: async () => {
+      const dirtyKeys = STAY_GUIDE_STANDARD_TEMPLATE_KEYS.filter((key) => {
+        const draft = contentDrafts[key];
+        const template = templatesByKey[key];
+        return draft && template && isStayGuideSectionDraftDirty(draft, template);
+      });
+      for (const key of dirtyKeys) {
+        const draft = contentDrafts[key];
+        if (!draft) continue;
+        await saveTemplate.mutateAsync({
+          templateKey: key,
+          content: draft.content,
+          sectionImageUrl: draft.sectionImageUrl,
+          silent: true,
+        });
+      }
+    },
+  });
+
+  const status = mergePageEditorAutoSaveStatuses([configSave.status, contentSave.status]);
+  const errorMessage = firstPageEditorAutoSaveError([configSave, contentSave]);
+
   const mergedPreview = useMemo(() => {
     if (!previewQuery.data) return null;
+    const sections = previewQuery.data.sections.map((section) => {
+      const draft = contentDrafts[section.key];
+      if (!draft) return section;
+      const filled = applyPropertyTemplatePlaceholders(draft.content);
+      const { heading, bodyHtml } = extractLeadingSectionHeading(filled);
+      return {
+        ...section,
+        displayHeading: heading || section.label,
+        html: heading ? bodyHtml : filled,
+        imageUrl: draft.sectionImageUrl,
+        imageUpdatedAt: draft.imageBust
+          ? new Date(draft.imageBust).toISOString()
+          : section.imageUpdatedAt,
+      };
+    });
     return {
       kind: 'stay-guide' as const,
-      data: { ...previewQuery.data, sectionConfig: config },
+      data: { ...previewQuery.data, sectionConfig: config, sections },
     };
-  }, [previewQuery.data, config]);
+  }, [previewQuery.data, config, contentDrafts]);
 
   const backHref = propertySectionPath(orgSlug, propertySlug, 'public-pages');
-  const templatesHref = propertySectionPath(orgSlug, propertySlug, 'templates');
-  const brandColor = previewQuery.data?.property.brandColor ?? '#0d9488';
+  const pageMeta = PAGE_EDITOR_META['stay-guide'];
+
+  const handleDraftChange = (templateKey: string, draft: StayGuideSectionDraft) => {
+    setContentDrafts((current) => ({ ...current, [templateKey]: draft }));
+  };
+
+  const handleResetSection = (templateKey: string) => {
+    const template = templatesByKey[templateKey];
+    if (!template) return;
+    setContentDrafts((current) => ({
+      ...current,
+      [templateKey]: {
+        content: normalizeBlockLevelPlaceholdersInHtml(template.defaultContent),
+        sectionImageUrl: null,
+        imageBust: 0,
+      },
+    }));
+  };
 
   const isBootstrapping =
     (configQuery.isLoading && !configQuery.data) ||
     (previewQuery.isLoading && !previewQuery.data) ||
-    !hydrated;
+    (templatesQuery.isLoading && !templatesQuery.data) ||
+    !hydrated ||
+    !contentHydrated;
 
   if (isBootstrapping) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center" role="status">
-        <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-      </div>
+      <PageEditorChrome>
+        <SectionContentSkeleton rows={5} className="min-h-[50vh]" />
+      </PageEditorChrome>
     );
   }
 
-  if (configQuery.isError || previewQuery.isError || !mergedPreview) {
+  if (configQuery.isError || previewQuery.isError || templatesQuery.isError || !mergedPreview) {
     return (
-      <div className="text-muted-foreground flex min-h-[40vh] items-center justify-center px-4 text-center text-sm">
-        Could not load the Stay Guide editor.
-      </div>
+      <PageEditorChrome>
+        <div className="text-muted-foreground flex min-h-[40vh] items-center justify-center px-4 text-center text-sm">
+          Could not load the Stay Guide editor.
+        </div>
+      </PageEditorChrome>
     );
   }
 
   return (
-    <PageEditorShell
-      header={
-        <PageEditorHeader
-          title="Edit Stay Guide"
-          backHref={backHref}
-          autoSaveStatus={status}
-          autoSaveError={errorMessage}
-          canUndo={historyIndex > 0}
-          canRedo={historyIndex < historyLength - 1}
-          onUndo={undo}
-          onRedo={redo}
-        />
-      }
-      controls={<StayGuideEditorPanel brandColor={brandColor} templatesHref={templatesHref} />}
-      preview={
-        <PageEditorPreviewPane>
-          <PreviewOverrideProvider value={mergedPreview}>
-            <StayGuidePage />
-          </PreviewOverrideProvider>
-        </PageEditorPreviewPane>
-      }
-    />
+    <PageEditorChrome>
+      <PageEditorShell
+        header={
+          <PageEditorHeader
+            pageLabel={pageMeta.label}
+            backHref={backHref}
+            autoSaveStatus={status}
+            autoSaveError={errorMessage}
+            canUndo={historyIndex > 0}
+            canRedo={historyIndex < historyLength - 1}
+            onUndo={undo}
+            onRedo={redo}
+          />
+        }
+        controls={
+          <StayGuideEditorPanel
+            templatesByKey={templatesByKey}
+            drafts={contentDrafts}
+            onDraftChange={handleDraftChange}
+            onResetSection={handleResetSection}
+            contentBusy={saveTemplate.isPending}
+          />
+        }
+        preview={
+          <PageEditorPreviewPane>
+            <PreviewOverrideProvider value={mergedPreview}>
+              <StayGuidePage />
+            </PreviewOverrideProvider>
+          </PageEditorPreviewPane>
+        }
+      />
+    </PageEditorChrome>
   );
 }
 
@@ -323,7 +472,7 @@ function PropertyLandingPageEditor({
 
   const fingerprint = useMemo(() => (hydrated ? JSON.stringify(config) : null), [config, hydrated]);
 
-  const { status, errorMessage } = usePageEditorAutoSave({
+  const configSave = usePageEditorAutoSave({
     enabled: hydrated && Boolean(propertyId),
     suspended: configQuery.isLoading || !hydrated,
     contentFingerprint: fingerprint,
@@ -340,7 +489,7 @@ function PropertyLandingPageEditor({
   );
   const brandColorError = brandHydrated ? validateOrgBrandColor(brandColor) : null;
 
-  usePageEditorAutoSave({
+  const brandSave = usePageEditorAutoSave({
     enabled: brandHydrated && Boolean(propertyId) && !brandColorError,
     suspended: !appSettings || !brandHydrated,
     contentFingerprint: brandFingerprint,
@@ -362,7 +511,7 @@ function PropertyLandingPageEditor({
     [content, contentHydrated]
   );
 
-  usePageEditorAutoSave({
+  const contentSave = usePageEditorAutoSave({
     enabled: contentHydrated && Boolean(propertyId) && !cancellationError,
     suspended: !contentHydrated,
     contentFingerprint,
@@ -397,7 +546,7 @@ function PropertyLandingPageEditor({
     });
   }, [socialDraft]);
 
-  usePageEditorAutoSave({
+  const socialSave = usePageEditorAutoSave({
     enabled: Boolean(socialDraft && propertyId),
     suspended: !socialDraft || !appSettings,
     contentFingerprint: socialFingerprint,
@@ -433,6 +582,19 @@ function PropertyLandingPageEditor({
       setSocialBaseline(values);
     },
   });
+
+  const status = mergePageEditorAutoSaveStatuses([
+    configSave.status,
+    brandSave.status,
+    contentSave.status,
+    socialSave.status,
+  ]);
+  const errorMessage = firstPageEditorAutoSaveError([
+    configSave,
+    brandSave,
+    contentSave,
+    socialSave,
+  ]);
 
   const handleMediaPersisted = (next: PropertyMediaItem[]) => {
     setMedia(next);
@@ -574,6 +736,7 @@ function PropertyLandingPageEditor({
   ]);
 
   const backHref = propertySectionPath(orgSlug, propertySlug, 'public-pages');
+  const pageMeta = PAGE_EDITOR_META.listing;
 
   const isBootstrapping =
     (configQuery.isLoading && !configQuery.data) ||
@@ -586,22 +749,24 @@ function PropertyLandingPageEditor({
 
   if (isBootstrapping) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center" role="status">
-        <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-      </div>
+      <PageEditorChrome>
+        <SectionContentSkeleton rows={5} className="min-h-[50vh]" />
+      </PageEditorChrome>
     );
   }
 
   if (configQuery.isError || previewQuery.isError || !mergedPreview) {
     return (
-      <div className="text-muted-foreground flex min-h-[40vh] items-center justify-center px-4 text-center text-sm">
-        Could not load the listing editor.
-      </div>
+      <PageEditorChrome>
+        <div className="text-muted-foreground flex min-h-[40vh] items-center justify-center px-4 text-center text-sm">
+          Could not load the listing editor.
+        </div>
+      </PageEditorChrome>
     );
   }
 
   return (
-    <>
+    <PageEditorChrome>
       <PropertySettingsBrandColorPreview
         brandColor={brandColor}
         resolvedBrandColor={resolvedBrand}
@@ -609,7 +774,7 @@ function PropertyLandingPageEditor({
       <PageEditorShell
         header={
           <PageEditorHeader
-            title="Edit Listing"
+            pageLabel={pageMeta.label}
             backHref={backHref}
             autoSaveStatus={status}
             autoSaveError={errorMessage}
@@ -651,6 +816,6 @@ function PropertyLandingPageEditor({
           </PageEditorPreviewPane>
         }
       />
-    </>
+    </PageEditorChrome>
   );
 }

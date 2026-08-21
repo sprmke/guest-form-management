@@ -1,8 +1,11 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 
 import { MarketingEditorSidebar } from '@/features/dashboard/marketing/components/shared/MarketingEditorSidebar';
+import { useMarketingSidebarLayout } from '@/features/dashboard/marketing/hooks/useMarketingSidebarLayout';
 
 import { cn } from '@/lib/utils';
+
+const PAGE_EDITOR_SIDEBAR_WIDTH = 480;
 
 type Props = {
   header: ReactNode;
@@ -12,11 +15,29 @@ type Props = {
 };
 
 export function PageEditorShell({ header, controls, preview, className }: Props) {
+  const { setCollapsed } = useMarketingSidebarLayout('page-editor');
+
+  // Always open the controls sidebar when entering the editor (mobile preview fits beside it).
+  useEffect(() => {
+    setCollapsed(false);
+  }, [setCollapsed]);
+
   return (
-    <div className={cn('bg-background flex h-[calc(100dvh-0px)] min-h-0 flex-col', className)}>
+    <div
+      className={cn(
+        'border-border bg-card flex h-[calc(100vh-120px)] min-h-[520px] flex-col overflow-hidden rounded-xl border',
+        className
+      )}
+    >
       {header}
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <MarketingEditorSidebar layoutKey="page-editor">{controls}</MarketingEditorSidebar>
+        <MarketingEditorSidebar
+          layoutKey="page-editor"
+          fixedWidth={PAGE_EDITOR_SIDEBAR_WIDTH}
+          resizable={false}
+        >
+          {controls}
+        </MarketingEditorSidebar>
         <div className="bg-muted/20 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {preview}
         </div>
