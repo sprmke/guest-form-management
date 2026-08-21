@@ -19,12 +19,14 @@ import type { FinanceLedgerEntry } from '@/features/dashboard/finance/lib/financ
 import { recurrenceIntervalLabel } from '@/features/dashboard/finance/lib/recurrence';
 import type { FinanceBookingLedgerRow } from '@/features/dashboard/finance/lib/types';
 
+import { FinanceStaysTableSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { toneIconWrapClasses } from '@/lib/statusToneColors';
 import { cn } from '@/lib/utils';
 import { formatMoney } from '@/utils/format/currency';
 
 type Props = {
   rows: FinanceLedgerEntry[];
+  isLoading?: boolean;
   onEditTransaction: (entry: FinanceLedgerEntry) => void;
   onDeleteTransaction: (entry: FinanceLedgerEntry) => void;
   onOpenSeries?: (entry: FinanceLedgerEntry) => void;
@@ -32,11 +34,14 @@ type Props = {
 
 export function FinanceLedgerTable({
   rows,
+  isLoading = false,
   onEditTransaction,
   onDeleteTransaction,
   onOpenSeries,
 }: Props) {
   const [drawerStay, setDrawerStay] = useState<FinanceBookingLedgerRow | null>(null);
+
+  if (isLoading) return <FinanceStaysTableSkeleton />;
 
   if (rows.length === 0) {
     return (

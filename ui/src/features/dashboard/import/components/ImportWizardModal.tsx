@@ -67,6 +67,7 @@ import {
   ResponsiveModalContent,
   ResponsiveModalDescription,
 } from '@/components/ui/responsive-modal';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -138,6 +139,37 @@ function UploadStep({ parseResult, onParsed, onReplace, isBusy }: UploadStepProp
 
 // ── Match step ────────────────────────────────────────────────────────────────
 
+function ImportColumnMappingSkeleton() {
+  return (
+    <div className="space-y-3" aria-busy="true" aria-label="Matching columns">
+      <div className="divide-border/70 border-border/70 grid grid-cols-2 divide-x overflow-hidden rounded-xl border">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={i} className="bg-muted/25 space-y-1.5 px-3 py-2.5">
+            <Skeleton className="h-3 w-14" />
+            <Skeleton className="h-5 w-8" />
+          </div>
+        ))}
+      </div>
+      <div className="space-y-2">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div
+            key={i}
+            className="border-border/70 grid grid-cols-1 items-center gap-x-3 gap-y-2 rounded-xl border px-3 py-2.5 sm:grid-cols-[minmax(0,1fr)_1rem_minmax(0,15rem)]"
+            style={{ opacity: 1 - i * 0.08 }}
+          >
+            <div className="min-w-0 space-y-1.5">
+              <Skeleton className="h-3.5 w-24 max-w-full" />
+              <Skeleton className="h-3 w-32 max-w-full" />
+            </div>
+            <div className="hidden sm:block" />
+            <Skeleton className="h-11 w-full rounded-lg" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 type AutoMapStepProps = {
   aiResult: AiMapColumnsResult | null;
   parseResult: ImportParseResult;
@@ -201,12 +233,7 @@ function AutoMapStep({
   }
 
   if (isLoading) {
-    return (
-      <div className="text-muted-foreground flex flex-col items-center gap-3 py-14">
-        <Loader2 className="text-primary size-7 animate-spin" aria-hidden />
-        <p className="text-sm">Matching your columns…</p>
-      </div>
-    );
+    return <ImportColumnMappingSkeleton />;
   }
 
   if (error) {

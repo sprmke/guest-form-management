@@ -42,6 +42,7 @@ import {
 } from '@/features/dashboard/finance/lib/recurrence';
 import type { FinanceLineItem, FinanceQuery } from '@/features/dashboard/finance/lib/types';
 
+import { RecurringSeriesTableSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { IsoDateInput } from '@/components/ui/iso-date-input';
 import {
   ResponsiveModal,
@@ -242,10 +243,7 @@ export function RecurringSeriesModal({ anchor, open, onClose, query }: Props) {
               </div>
             ) : null}
             {isLoading ? (
-              <div className="text-muted-foreground flex flex-1 items-center justify-center py-10 text-sm">
-                <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
-                Loading series…
-              </div>
+              <RecurringSeriesTableSkeleton />
             ) : items.length === 0 ? (
               <p className="text-muted-foreground flex flex-1 items-center justify-center py-8 text-center text-sm">
                 No occurrences found in this series.

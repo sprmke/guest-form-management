@@ -339,6 +339,7 @@ export function FinancePage() {
       {showTableView ? (
         <FinanceLedgerTable
           rows={pagedEntries.rows}
+          isLoading={isLedgerLoading}
           onEditTransaction={handleEditEntry}
           onDeleteTransaction={handleDeleteEntry}
           onOpenSeries={handleOpenSeries}

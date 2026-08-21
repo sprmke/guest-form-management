@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { AlertTriangle, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 
 import {
@@ -24,6 +24,7 @@ import type {
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import {
   Table,
@@ -415,6 +416,65 @@ function PreviewPagination({
   );
 }
 
+function ImportPreviewTableSkeleton() {
+  return (
+    <div className="space-y-3" aria-busy="true" aria-label="Checking rows">
+      <div className="divide-border/70 border-border/70 grid grid-cols-2 divide-x overflow-hidden rounded-xl border max-sm:divide-y sm:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="bg-muted/25 space-y-1.5 px-3 py-2.5">
+            <Skeleton className="h-3 w-14" />
+            <Skeleton className="h-5 w-8" />
+          </div>
+        ))}
+      </div>
+
+      <ul className="space-y-2 sm:hidden">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <li
+            key={i}
+            className="border-border/70 space-y-2 rounded-xl border px-3 py-2.5"
+            style={{ opacity: 1 - i * 0.08 }}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <Skeleton className="h-3.5 w-32 max-w-full" />
+                <Skeleton className="h-3 w-24 max-w-full" />
+              </div>
+              <Skeleton className="h-5 w-16 shrink-0 rounded-full" />
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <div className="border-border/70 hidden overflow-hidden rounded-xl border sm:block">
+        <div className="border-border/70 bg-muted/20 flex items-center gap-3 border-b px-2 py-2">
+          {[24, 96, 64, 64, 72, 160, 44].map((w, i) => (
+            <Skeleton key={i} className="h-2.5 shrink-0 rounded-full" style={{ width: w }} />
+          ))}
+        </div>
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div
+            key={i}
+            className={cn(
+              'flex items-center gap-3 px-2 py-2.5',
+              i > 0 && 'border-border/70 border-t'
+            )}
+            style={{ opacity: 1 - i * 0.08 }}
+          >
+            <Skeleton className="h-3 w-6 shrink-0" />
+            <Skeleton className="h-3 w-24 shrink-0" />
+            <Skeleton className="h-3 w-16 shrink-0" />
+            <Skeleton className="h-3 w-16 shrink-0" />
+            <Skeleton className="h-5 w-16 shrink-0 rounded-full" />
+            <Skeleton className="h-3 max-w-[20rem] flex-1" />
+            <Skeleton className="ml-auto size-8 shrink-0 rounded-md" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /** Frozen for as long as the fix sheet stays open: row status changes must not swap the queue. */
 type FixSession = {
   rowId: string;
@@ -577,12 +637,7 @@ export function ImportPreviewTable({ batchId, isLoading, error, onRetry }: Props
   }, [batchId, filteredRows.length, statusFilter]);
 
   if (isLoading) {
-    return (
-      <div className="text-muted-foreground flex flex-col items-center gap-3 py-14">
-        <Loader2 className="text-primary size-7 animate-spin" aria-hidden />
-        <p className="text-sm">Checking every row…</p>
-      </div>
-    );
+    return <ImportPreviewTableSkeleton />;
   }
 
   if (error) {
