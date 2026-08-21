@@ -82,6 +82,7 @@ import {
 } from '@/features/dashboard/org/lib/tenantPaths';
 
 import { AvailabilityCheckInput } from '@/components/AvailabilityCheckInput';
+import { RouteGuardSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -578,9 +579,7 @@ export function OnboardingPage() {
   if (orgsLoading) {
     return (
       <RequireAdmin>
-        <div className="flex min-h-[40vh] items-center justify-center" role="status">
-          <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-        </div>
+        <RouteGuardSkeleton fullScreen />
       </RequireAdmin>
     );
   }

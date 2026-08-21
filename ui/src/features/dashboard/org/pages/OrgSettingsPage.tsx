@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useNavigate, useParams } from 'react-router-dom';
 
-import { AlertTriangle, Info, Loader2, Save, Share2, Sparkles } from 'lucide-react';
+import { AlertTriangle, Info, Save, Share2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 import {
@@ -48,6 +48,7 @@ import { planOrgSettingsSave } from '@/features/dashboard/org/lib/orgSettingsSav
 
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
+import { AppSettingsNavLayoutSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 import { resolveNameAvailabilityState } from '@/lib/availabilityCheckState';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
@@ -340,9 +341,7 @@ export function OrgSettingsPage() {
           <OrgSettingsBrandColorPreview brandColor={profileDraft.brandColor} />
         ) : null}
         {isLoading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-          </div>
+          <AppSettingsNavLayoutSkeleton />
         ) : !org || !profileDraft || !operatorDraft || !operatorData ? (
           <p className="text-muted-foreground text-sm">Organization not found.</p>
         ) : (

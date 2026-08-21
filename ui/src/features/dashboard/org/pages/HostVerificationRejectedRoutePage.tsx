@@ -1,7 +1,5 @@
 import { Navigate } from 'react-router-dom';
 
-import { Loader2 } from 'lucide-react';
-
 import { RequireAdmin } from '@/features/dashboard/bookings/components/RequireAdmin';
 import { useOrganizations } from '@/features/dashboard/org/hooks/useOrganizations';
 import { resolveOrgLandingPath } from '@/features/dashboard/org/lib/orgLanding';
@@ -10,6 +8,8 @@ import {
   readOrgVerificationDetail,
 } from '@/features/dashboard/org/lib/orgVerificationTiers';
 import { HostVerificationRejectedPage } from '@/features/dashboard/org/pages/HostVerificationRejectedPage';
+
+import { RouteGuardSkeleton } from '@/components/skeletons/AdminSkeletons';
 
 /**
  * Hub for hard-rejected hosts after login (`/verification-rejected`).
@@ -22,9 +22,7 @@ export function HostVerificationRejectedRoutePage() {
   if (isLoading) {
     return (
       <RequireAdmin>
-        <div className="flex min-h-[40vh] items-center justify-center" role="status">
-          <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-        </div>
+        <RouteGuardSkeleton fullScreen />
       </RequireAdmin>
     );
   }

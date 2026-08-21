@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 
 import { useNavigate, useParams } from 'react-router-dom';
 
-import { Loader2, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 
 import { AdminMetricCardSkeleton } from '@/features/dashboard/bookings/components/AdminMetricCard';
 import { RequireAdmin } from '@/features/dashboard/bookings/components/RequireAdmin';
@@ -35,6 +35,7 @@ import { hasOrgPermission } from '@/features/dashboard/team/lib/orgPermissions';
 import { FloatingToolbar } from '@/components/mobile/FloatingPanel';
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
+import { ListingCardGridSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 
 export function OrgParkingsPage() {
@@ -90,9 +91,7 @@ export function OrgParkingsPage() {
                 <AdminMetricCardSkeleton key={index} />
               ))}
             </div>
-            <div className="flex justify-center py-12">
-              <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-            </div>
+            <ListingCardGridSkeleton count={8} label="Loading parkings" />
           </div>
         ) : !org ? (
           <p className="text-muted-foreground text-sm">Organization not found.</p>
