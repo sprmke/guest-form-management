@@ -49,7 +49,7 @@ export function ChatComposerInboxPicker({
   const { data, isLoading } = useInboxThreads(
     orgSlug,
     orgId,
-    { type: 'all', status: 'all', platform, search: '' },
+    { status: 'all', platform, search: '' },
     { propertyId, parkingId }
   );
   const conversations = useMemo(

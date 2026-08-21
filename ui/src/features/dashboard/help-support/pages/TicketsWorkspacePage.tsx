@@ -57,6 +57,8 @@ export function TicketsWorkspacePage() {
   const { data, isPending, isError, refetch } = useSupportTickets();
   const tickets = data?.tickets ?? [];
   const firstTicketId = tickets[0]?.id;
+  const listReady = !isPending && !isError;
+  const isEmpty = listReady && tickets.length === 0;
   const visibleTicketId = ticketId ?? (!isMobile && isNew ? backgroundTicketId : null);
   const paneOpen = Boolean(visibleTicketId);
 
@@ -107,6 +109,13 @@ export function TicketsWorkspacePage() {
     </Button>
   );
 
+  const newTicketCta = basePath ? (
+    <Button type="button" className="min-h-11 gap-1.5" onClick={openCompose}>
+      <Plus className="size-4" aria-hidden />
+      New ticket
+    </Button>
+  ) : null;
+
   return (
     <div
       className={cn(
@@ -117,8 +126,13 @@ export function TicketsWorkspacePage() {
       <div className="border-border/80 bg-card flex min-h-0 flex-1 overflow-hidden rounded-xl border shadow-sm">
         <div
           className={cn(
-            'border-border/80 flex h-full min-h-0 w-full shrink-0 flex-col lg:w-[min(100%,400px)]',
-            paneOpen ? 'hidden lg:flex lg:border-r' : 'flex'
+            'border-border/80 flex h-full min-h-0 shrink-0 flex-col',
+            isEmpty
+              ? 'w-full'
+              : cn(
+                  'w-full lg:w-[min(100%,400px)]',
+                  paneOpen ? 'hidden lg:flex lg:border-r' : 'flex'
+                )
           )}
         >
           <div className="flex shrink-0 items-center justify-between gap-3 border-b px-3 py-2.5">
@@ -131,7 +145,14 @@ export function TicketsWorkspacePage() {
             {basePath ? newTicketButton : null}
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <div
+            className={cn(
+              'min-h-0 flex-1 overscroll-contain',
+              isEmpty || isError
+                ? 'flex flex-col items-center justify-center overflow-hidden p-4'
+                : 'overflow-y-auto'
+            )}
+          >
             {isPending ? (
               <div className="space-y-1 p-3">
                 <Skeleton className="h-16 w-full" />
@@ -139,25 +160,22 @@ export function TicketsWorkspacePage() {
                 <Skeleton className="h-16 w-full" />
               </div>
             ) : isError ? (
-              <div className="p-4">
-                <HelpEmptyState
-                  icon={Ticket}
-                  title="Couldn't load tickets"
-                  compact
-                  action={
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="min-h-11"
-                      onClick={() => void refetch()}
-                    >
-                      Try again
-                    </Button>
-                  }
-                />
-              </div>
-            ) : tickets.length === 0 ? (
-              <HelpEmptyState icon={Ticket} title="No tickets yet" compact />
+              <HelpEmptyState
+                icon={Ticket}
+                title="Couldn't load tickets"
+                action={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="min-h-11"
+                    onClick={() => void refetch()}
+                  >
+                    Try again
+                  </Button>
+                }
+              />
+            ) : isEmpty ? (
+              <HelpEmptyState icon={Ticket} title="No tickets yet" action={newTicketCta} />
             ) : (
               <ul aria-labelledby="my-tickets-heading">
                 {tickets.map((ticket) => {
@@ -208,16 +226,14 @@ export function TicketsWorkspacePage() {
         <div
           className={cn(
             'flex h-full min-h-0 min-w-0 flex-1 flex-col',
-            paneOpen ? 'flex' : 'hidden lg:flex'
+            isEmpty ? 'hidden' : paneOpen ? 'flex' : 'hidden lg:flex'
           )}
         >
           {visibleTicketId ? (
             <TicketThreadPanel ticketId={visibleTicketId} onBack={goToTickets} />
           ) : (
-            <div className="flex h-full items-center justify-center">
-              {tickets.length === 0 || isPending || isError ? null : (
-                <HelpEmptyState icon={Ticket} title="Pick a ticket" compact />
-              )}
+            <div className="flex h-full items-center justify-center p-6">
+              <HelpEmptyState icon={Ticket} title="Pick a ticket" compact />
             </div>
           )}
         </div>

@@ -14,7 +14,7 @@ import {
 
 import { AdminSection } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
 import { PropertyLocationPicker } from '@/features/dashboard/org/components/property-settings/PropertyLocationPicker';
-import { PropertyMediaUpload } from '@/features/dashboard/org/components/property-settings/PropertyMediaUpload';
+import { PropertyMediaUpload } from '@/features/dashboard/page-editor/components/property-landing/PropertyMediaUpload';
 import { SettingsField } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import type { PropertyLocationFields } from '@/features/dashboard/org/lib/propertyLocation';
 import type { PropertyMediaItem } from '@/features/dashboard/org/lib/propertySettingsConstants';

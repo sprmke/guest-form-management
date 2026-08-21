@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 
-export type MarketingSidebarLayoutKey = 'calendar' | 'design' | 'video';
+export type MarketingSidebarLayoutKey = 'calendar' | 'design' | 'video' | 'page-editor';
 
 /** Shared default width (px) for Calendar, Design, and Video sidebars. */
 export const MARKETING_SIDEBAR_DEFAULT_WIDTH = 288;

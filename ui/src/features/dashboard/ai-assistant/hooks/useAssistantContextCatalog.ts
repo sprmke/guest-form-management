@@ -118,7 +118,7 @@ export function useAssistantContextCatalog(): {
   const inbox = useInboxThreads(
     orgSlug,
     orgId,
-    { type: 'all', status: 'all', platform: 'all', search: '' },
+    { status: 'all', platform: 'all', search: '' },
     { propertyId, parkingId }
   );
   const marketing = useMarketingTemplates();

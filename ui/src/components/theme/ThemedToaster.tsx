@@ -15,6 +15,7 @@ export function ThemedToaster() {
       visibleToasts={5}
       gap={8}
       offset={16}
+      style={{ ['--width' as string]: 'min(420px, calc(100vw - 32px))' }}
       icons={{
         success: null,
         error: null,
@@ -24,7 +25,8 @@ export function ThemedToaster() {
       toastOptions={{
         duration: 7000,
         style: {
-          maxWidth: 'min(500px, calc(100vw - 32px))',
+          width: 'min(420px, calc(100vw - 32px))',
+          maxWidth: 'min(420px, calc(100vw - 32px))',
           padding: '14px 42px 14px 18px',
           fontSize: '15px',
           borderRadius: '12px',
