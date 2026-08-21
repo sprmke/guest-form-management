@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Navigate, useParams, useSearchParams } from 'react-router-dom';
 
@@ -27,9 +27,12 @@ import { mockProperties } from '@/features/guest/marketing/properties/data/mockP
 import { usePropertyContactHost } from '@/features/guest/marketing/properties/hooks/usePropertyContactHost';
 import { usePropertyReserve } from '@/features/guest/marketing/properties/hooks/usePropertyReserve';
 import { usePublicPropertyDetail } from '@/features/guest/marketing/properties/hooks/usePublicPropertyDetail';
+import { resolvePropertyLandingSections } from '@/features/guest/marketing/properties/lib/propertyLandingSections';
+import type { PropertyLandingSectionId } from '@/features/guest/marketing/properties/types/publicProperty';
 import { GuestPublicBrandShell } from '@/features/guest/marketing/shared/components/GuestPublicBrandShell';
 import type { ListingHostInfo } from '@/features/guest/marketing/shared/components/ListingHostCard';
 import { useMarketingBrandColor } from '@/features/guest/marketing/shared/context/ModeSwitchTransitionContext';
+import { usePreviewOverride } from '@/features/guest/lib/previewOverrideContext';
 
 import { Button } from '@/components/ui/button';
 import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
@@ -38,6 +41,9 @@ import { parseGuestInquiryDateRange, formatDateToYYYYMMDD } from '@/utils/format
 export function PropertyDetailPage() {
   const { propertySlug = '' } = useParams<{ propertySlug: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
+  const previewOverride = usePreviewOverride();
+  const isEditorPreview = previewOverride?.kind === 'property-landing';
+  const propertySlugForActions = propertySlug || (isEditorPreview ? previewOverride.data.slug : '');
   const { data: propertyData, isLoading, isError } = usePublicPropertyDetail(propertySlug);
   usePageTitle(publicPageTitle(propertyData?.name ? `${propertyData.name}` : 'Property'));
   const { setBrandColor } = useMarketingBrandColor();
@@ -95,19 +101,19 @@ export function PropertyDetailPage() {
     requireGuestAuth(open, {
       resume: {
         type: 'contact_host_sheet',
-        propertySlug,
+        propertySlug: propertySlugForActions,
         checkInDate: resumeCheckIn,
         checkOutDate: resumeCheckOut,
       },
     });
-  }, [checkIn, checkOut, openContactSheet, propertySlug, requireGuestAuth, status]);
+  }, [checkIn, checkOut, openContactSheet, propertySlugForActions, requireGuestAuth, status]);
 
   const openDatesForReserve = useCallback(() => {
     setCalendarOpen(true);
   }, []);
 
   const { reserve } = usePropertyReserve({
-    propertySlug,
+    propertySlug: propertySlugForActions,
     checkIn,
     checkOut,
     adults: bookingGuests.adults,
@@ -117,7 +123,7 @@ export function PropertyDetailPage() {
   });
 
   const { contactHost } = usePropertyContactHost({
-    propertySlug,
+    propertySlug: propertySlugForActions,
     onContactHost: handleContactHost,
   });
 
@@ -192,7 +198,7 @@ export function PropertyDetailPage() {
     return () => setBrandColor(null);
   }, [propertyData?.brandColor, setBrandColor]);
 
-  if (!propertySlug) {
+  if (!propertySlug && !isEditorPreview) {
     return <Navigate to="/properties" replace />;
   }
 
@@ -212,6 +218,13 @@ export function PropertyDetailPage() {
   }
 
   if (isError || !propertyData) {
+    if (isEditorPreview) {
+      return (
+        <div className="text-muted-foreground flex min-h-[40vh] items-center justify-center px-4 text-center text-sm">
+          Could not load listing preview.
+        </div>
+      );
+    }
     return <Navigate to="/properties" replace />;
   }
 
@@ -253,92 +266,128 @@ export function PropertyDetailPage() {
     verifiedBadge: propertyData.verifiedBadge,
   };
 
+  const visibleSections = resolvePropertyLandingSections(propertyData.sectionConfig);
+  const showGallery = visibleSections.includes('gallery');
+  const bodySections = visibleSections.filter((id) => {
+    if (id === 'gallery') return false;
+    if (id === 'reviews' && !showReviews) return false;
+    return true;
+  });
+
+  const renderBodySection = (sectionId: PropertyLandingSectionId, index: number) => {
+    const divider = index > 0 ? <hr className="border-border" /> : null;
+
+    switch (sectionId) {
+      case 'overview':
+        return (
+          <Fragment key={sectionId}>
+            {divider}
+            <PropertyOverview
+              name={propertyData.name}
+              type={propertyData.type}
+              description={propertyData.description}
+              location={{
+                address: propertyData.address,
+                city: propertyData.location.split(', ')[0] ?? '',
+                state: propertyData.state,
+                country: propertyData.country,
+              }}
+              stats={{
+                bedrooms: propertyData.bedrooms,
+                bathrooms: propertyData.bathrooms,
+                maxGuests: propertyData.guests,
+                floors: propertyData.floors,
+              }}
+              residenceName={propertyData.residenceName}
+              developmentSlug={propertyData.developmentSlug}
+              tower={propertyData.tower}
+              unitNumber={propertyData.unitNumber}
+              towerAndUnit={propertyData.towerAndUnit}
+              checkInTime={propertyData.checkInTime}
+              checkOutTime={propertyData.checkOutTime}
+              rating={propertyData.rating}
+              reviews={propertyData.reviews}
+              isSuperhost={propertyData.isSuperhost}
+              verifiedBadge={propertyData.verifiedBadge}
+              recommendedBadge={propertyData.recommendedBadge}
+              host={propertyData.host}
+              selfCheckIn={propertyData.selfCheckIn}
+              showMarketingFeatures={propertyData.source === 'mock'}
+              cancellationPolicy={propertyData.cancellationPolicy}
+              onContactHost={contactHost}
+            />
+          </Fragment>
+        );
+      case 'amenities':
+        return (
+          <Fragment key={sectionId}>
+            {divider}
+            <PropertyAmenities amenities={propertyData.amenities} />
+          </Fragment>
+        );
+      case 'location':
+        return (
+          <Fragment key={sectionId}>
+            {divider}
+            <PropertyLocation
+              address={propertyData.address}
+              city={propertyData.location.split(', ')[0] ?? ''}
+              state={propertyData.state}
+              country={propertyData.country}
+              zipCode={propertyData.zipCode}
+              latitude={propertyData.latitude}
+              longitude={propertyData.longitude}
+              placeId={propertyData.placeId}
+              showNearbyPlaces={propertyData.source === 'mock'}
+            />
+          </Fragment>
+        );
+      case 'rules':
+        return (
+          <Fragment key={sectionId}>
+            {divider}
+            <PropertyRules
+              houseRules={propertyData.houseRules}
+              maxGuests={propertyData.guests}
+              cancellationPolicy={propertyData.cancellationPolicy}
+              showSafetySection={propertyData.source === 'mock'}
+            />
+          </Fragment>
+        );
+      case 'reviews':
+        if (!showReviews) return null;
+        return (
+          <Fragment key={sectionId}>
+            {divider}
+            <PropertyReviews
+              rating={propertyData.rating ?? 5}
+              totalReviews={propertyData.reviews ?? listingReviews.length}
+              reviews={propertyData.source === 'api' ? listingReviews : undefined}
+            />
+          </Fragment>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <GuestPublicBrandShell brandColor={propertyData.brandColor}>
       <div className="bg-background min-h-screen pb-20 pt-24">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <PropertyGallery
-            images={propertyData.images}
-            propertyName={propertyData.name}
-            propertySlug={propertySlug}
-          />
-        </div>
+        {showGallery ? (
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <PropertyGallery
+              images={propertyData.images}
+              propertyName={propertyData.name}
+              propertySlug={propertySlugForActions}
+            />
+          </div>
+        ) : null}
 
         <div className="container mx-auto px-4 py-8 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 lg:gap-12">
             <div className="space-y-10 lg:col-span-2">
-              <PropertyOverview
-                name={propertyData.name}
-                type={propertyData.type}
-                description={propertyData.description}
-                location={{
-                  address: propertyData.address,
-                  city: propertyData.location.split(', ')[0] ?? '',
-                  state: propertyData.state,
-                  country: propertyData.country,
-                }}
-                stats={{
-                  bedrooms: propertyData.bedrooms,
-                  bathrooms: propertyData.bathrooms,
-                  maxGuests: propertyData.guests,
-                  floors: propertyData.floors,
-                }}
-                residenceName={propertyData.residenceName}
-                developmentSlug={propertyData.developmentSlug}
-                tower={propertyData.tower}
-                unitNumber={propertyData.unitNumber}
-                towerAndUnit={propertyData.towerAndUnit}
-                checkInTime={propertyData.checkInTime}
-                checkOutTime={propertyData.checkOutTime}
-                rating={propertyData.rating}
-                reviews={propertyData.reviews}
-                isSuperhost={propertyData.isSuperhost}
-                verifiedBadge={propertyData.verifiedBadge}
-                recommendedBadge={propertyData.recommendedBadge}
-                host={propertyData.host}
-                selfCheckIn={propertyData.selfCheckIn}
-                showMarketingFeatures={propertyData.source === 'mock'}
-                cancellationPolicy={propertyData.cancellationPolicy}
-                onContactHost={contactHost}
-              />
-
-              <hr className="border-border" />
-
-              <PropertyAmenities amenities={propertyData.amenities} />
-
-              <hr className="border-border" />
-
-              <PropertyLocation
-                address={propertyData.address}
-                city={propertyData.location.split(', ')[0] ?? ''}
-                state={propertyData.state}
-                country={propertyData.country}
-                zipCode={propertyData.zipCode}
-                latitude={propertyData.latitude}
-                longitude={propertyData.longitude}
-                placeId={propertyData.placeId}
-                showNearbyPlaces={propertyData.source === 'mock'}
-              />
-
-              <hr className="border-border" />
-
-              <PropertyRules
-                houseRules={propertyData.houseRules}
-                maxGuests={propertyData.guests}
-                cancellationPolicy={propertyData.cancellationPolicy}
-                showSafetySection={propertyData.source === 'mock'}
-              />
-
-              {showReviews ? (
-                <>
-                  <hr className="border-border" />
-                  <PropertyReviews
-                    rating={propertyData.rating ?? 5}
-                    totalReviews={propertyData.reviews ?? listingReviews.length}
-                    reviews={propertyData.source === 'api' ? listingReviews : undefined}
-                  />
-                </>
-              ) : null}
+              {bodySections.map((sectionId, index) => renderBodySection(sectionId, index))}
             </div>
 
             <div className="hidden lg:block">
@@ -357,7 +406,7 @@ export function PropertyDetailPage() {
                 adults={bookingGuests.adults}
                 childCount={bookingGuests.children}
                 onGuestsChange={setBookingGuests}
-                propertySlug={propertySlug}
+                propertySlug={propertySlugForActions}
                 propertyName={propertyData.name}
                 checkIn={checkIn}
                 checkOut={checkOut}
@@ -371,7 +420,10 @@ export function PropertyDetailPage() {
 
           <div className="mt-16">
             <hr className="border-border mb-10" />
-            <SimilarProperties properties={mockProperties} currentPropertyId={propertySlug} />
+            <SimilarProperties
+              properties={mockProperties}
+              currentPropertyId={propertySlugForActions}
+            />
           </div>
         </div>
 
@@ -403,7 +455,7 @@ export function PropertyDetailPage() {
         <BookingCalendarModal
           open={calendarOpen}
           onOpenChange={setCalendarOpen}
-          propertySlug={propertySlug}
+          propertySlug={propertySlugForActions}
           propertyName={propertyData.name}
           checkIn={checkIn}
           checkOut={checkOut}
@@ -413,7 +465,7 @@ export function PropertyDetailPage() {
         <GuestBookingFormModal
           open={formModalOpen}
           onOpenChange={setFormModalOpen}
-          propertySlug={propertySlug}
+          propertySlug={propertySlugForActions}
           propertyName={propertyData.name}
           checkIn={checkIn}
           checkOut={checkOut}
@@ -424,7 +476,7 @@ export function PropertyDetailPage() {
         <ContactHostSheet
           open={contactSheetOpen}
           onOpenChange={setContactSheetOpen}
-          propertySlug={propertySlug}
+          propertySlug={propertySlugForActions}
           propertyName={propertyData.name}
           checkIn={checkIn}
           checkOut={checkOut}

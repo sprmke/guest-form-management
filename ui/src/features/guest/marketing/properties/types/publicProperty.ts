@@ -78,6 +78,20 @@ export type PublicPropertyDetailDto = {
   /** This listing's Recommended badge (listing Tier 2). */
   recommendedBadge?: boolean;
   updatedAt: string;
+  /** Present once public-page-configs ships; optional for older responses. */
+  sectionConfig?: PropertyLandingSectionConfig;
+};
+
+export type PropertyLandingSectionId =
+  'gallery' | 'overview' | 'amenities' | 'location' | 'rules' | 'reviews';
+
+export type PropertyLandingSectionConfig = {
+  version: 1;
+  sections: Array<{
+    id: PropertyLandingSectionId;
+    visible: boolean;
+    order: number;
+  }>;
 };
 
 export type PublicGuestReview = {
@@ -160,4 +174,5 @@ export type ResolvedPropertyDetail = {
     parkingRate: number | null;
     petFee: number | null;
   };
+  sectionConfig?: PropertyLandingSectionConfig;
 };

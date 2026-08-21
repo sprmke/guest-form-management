@@ -92,6 +92,7 @@ export function mapApiPropertyToResolved(dto: PublicPropertyDetailDto): Resolved
       parkingRate: dto.pricing.parkingRateGuest,
       petFee: dto.pricing.petFee,
     },
+    sectionConfig: dto.sectionConfig,
   };
 }
 

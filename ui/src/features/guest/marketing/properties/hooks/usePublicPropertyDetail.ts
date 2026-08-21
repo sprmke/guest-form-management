@@ -1,5 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
+import { usePreviewOverride } from '@/features/guest/lib/previewOverrideContext';
 import { mockProperties } from '@/features/guest/marketing/properties/data/mockProperties';
 import { getPropertyDetail } from '@/features/guest/marketing/properties/data/mockPropertyDetail';
 import {
@@ -56,16 +57,61 @@ async function fetchPublicProperty(slug: string): Promise<ResolvedPropertyDetail
   return mapApiPropertyToResolved(json.data);
 }
 
+function propertyLandingOverrideResult(
+  data: ResolvedPropertyDetail
+): UseQueryResult<ResolvedPropertyDetail | null, Error> {
+  return {
+    data,
+    error: null,
+    isError: false,
+    isLoading: false,
+    isPending: false,
+    isLoadingError: false,
+    isRefetchError: false,
+    isSuccess: true,
+    isFetched: true,
+    isFetchedAfterMount: true,
+    isFetching: false,
+    isRefetching: false,
+    isStale: false,
+    isPlaceholderData: false,
+    isPaused: false,
+    status: 'success',
+    fetchStatus: 'idle',
+    dataUpdatedAt: Date.now(),
+    errorUpdatedAt: 0,
+    failureCount: 0,
+    failureReason: null,
+    errorUpdateCount: 0,
+    refetch: async () =>
+      ({
+        data,
+        error: null,
+        isError: false,
+        isLoading: false,
+        isSuccess: true,
+        status: 'success',
+      }) as UseQueryResult<ResolvedPropertyDetail | null, Error>,
+  } as UseQueryResult<ResolvedPropertyDetail | null, Error>;
+}
+
 export function usePublicPropertyDetail(propertySlug: string) {
+  const override = usePreviewOverride();
+  const hasOverride = override?.kind === 'property-landing';
   const mockPlaceholder = resolveMockProperty(propertySlug);
 
-  return useQuery({
+  const query = useQuery({
     queryKey: [...PUBLIC_PROPERTY_QUERY_KEY, propertySlug],
     queryFn: () => fetchPublicProperty(propertySlug),
-    enabled: Boolean(propertySlug),
+    enabled: !hasOverride && Boolean(propertySlug),
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     retry: 1,
     placeholderData: mockPlaceholder ?? undefined,
   });
+
+  if (hasOverride) {
+    return propertyLandingOverrideResult(override.data);
+  }
+  return query;
 }
