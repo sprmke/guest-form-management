@@ -62,7 +62,6 @@ import type {
   SaveInboxTemplatePayload,
   ThreadPlatformFilter,
   ThreadStatusFilter,
-  ThreadTypeFilter,
 } from '@/features/dashboard/inbox/types/inbox';
 
 import {
@@ -157,6 +156,30 @@ function inboxScopeKey(scope?: InboxApiScope | null): [string | null, string | n
 
 function inboxMessagesQueryKey(conversationId: string, scope?: InboxApiScope | null) {
   return [INBOX_MESSAGES_KEY, conversationId, ...inboxScopeKey(scope), mockMode] as const;
+}
+
+function patchConversationIdentityInThreadsCache(qc: QueryClient, conversation: InboxConversation) {
+  const name = conversation.participant_name?.trim();
+  const avatar = conversation.participant_avatar_url?.trim();
+  if (!name && !avatar) return;
+
+  qc.setQueriesData<InfiniteData<InboxThreadsPage>>({ queryKey: [INBOX_THREADS_KEY] }, (old) => {
+    if (!old?.pages) return old;
+    return {
+      ...old,
+      pages: old.pages.map((page) => ({
+        ...page,
+        conversations: page.conversations.map((c) => {
+          if (c.id !== conversation.id) return c;
+          return {
+            ...c,
+            participant_name: name || c.participant_name,
+            participant_avatar_url: avatar || c.participant_avatar_url,
+          };
+        }),
+      })),
+    };
+  });
 }
 
 export function useInboxMockActive(): boolean {
@@ -282,14 +305,12 @@ export function useInboxMutations(
     mutationFn: (opts: {
       conversationId: string;
       text: string;
-      privateReply?: boolean;
       replyToMessageId?: string;
       useHumanAgentTag?: boolean;
     }) =>
       mockMode
-        ? mockSendReply(opts.conversationId, opts.text, opts.privateReply).then(() => undefined)
+        ? mockSendReply(opts.conversationId, opts.text).then(() => undefined)
         : sendInboxReply(orgSlug, orgId, opts.conversationId, opts.text, {
-            privateReply: opts.privateReply,
             replyToMessageId: opts.replyToMessageId,
             useHumanAgentTag: opts.useHumanAgentTag,
             scope,
@@ -416,7 +437,6 @@ export function useInboxThreads(
   orgSlug: string | null,
   orgId: string | null,
   filters: {
-    type: ThreadTypeFilter;
     status: ThreadStatusFilter;
     platform: ThreadPlatformFilter;
     search: string;
@@ -593,6 +613,12 @@ export function useInboxMessages(
   }, [notifyPeerDelivered, refreshMessages, qc]);
 
   useInboxConversationReadRealtime(orgId, conversationId, msgKey, qc, onInboundMessage);
+
+  const filledConversation = query.data?.pages[0]?.conversation;
+  useEffect(() => {
+    if (!filledConversation) return;
+    patchConversationIdentityInThreadsCache(qc, filledConversation);
+  }, [filledConversation, qc]);
 
   useEffect(() => {
     if (!conversationId) return;

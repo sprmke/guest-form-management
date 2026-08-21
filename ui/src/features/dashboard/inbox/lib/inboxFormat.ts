@@ -61,19 +61,6 @@ export function isMessagingWindowOpen(
   return new Date(effective).getTime() > Date.now();
 }
 
-/**
- * Instagram only allows private replies within 7 days of the original comment.
- * Public comment replies have no time limit.
- */
-export function isWithinCommentPrivateReplyWindow(lastInboundAt: string | null): boolean {
-  if (!lastInboundAt) return false;
-  const sentAt = new Date(lastInboundAt);
-  if (Number.isNaN(sentAt.getTime())) return false;
-  const expiresAt = new Date(sentAt);
-  expiresAt.setDate(expiresAt.getDate() + 7);
-  return expiresAt.getTime() > Date.now();
-}
-
 export const PLATFORM_COLORS: Record<SocialPlatform, string> = {
   facebook: 'bg-blue-600',
   instagram: 'bg-gradient-to-br from-purple-600 to-pink-500',

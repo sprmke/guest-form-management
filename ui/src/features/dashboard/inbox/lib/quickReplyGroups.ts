@@ -1,14 +1,17 @@
 import type { InboxTemplate, SocialPlatform } from '@/features/dashboard/inbox/types/inbox';
 
+/** Live inbox channels — Chat first, then Meta. */
+export const INBOX_CHANNEL_ORDER = ['web', 'facebook', 'instagram'] as const;
+
 /** Tabs in the quick replies management modal */
-export type QuickReplyGroupTab = 'all' | 'facebook' | 'instagram' | 'web';
+export type QuickReplyGroupTab = 'all' | (typeof INBOX_CHANNEL_ORDER)[number];
 
 /** Assignable group when creating or editing a reply */
-export type QuickReplyGroup = 'all' | 'facebook' | 'instagram' | 'web';
+export type QuickReplyGroup = 'all' | (typeof INBOX_CHANNEL_ORDER)[number];
 
-export const QUICK_REPLY_GROUP_TABS: QuickReplyGroupTab[] = ['all', 'facebook', 'instagram', 'web'];
+export const QUICK_REPLY_GROUP_TABS: QuickReplyGroupTab[] = ['all', ...INBOX_CHANNEL_ORDER];
 
-export const QUICK_REPLY_ASSIGN_GROUPS: QuickReplyGroup[] = ['all', 'facebook', 'instagram', 'web'];
+export const QUICK_REPLY_ASSIGN_GROUPS: QuickReplyGroup[] = ['all', ...INBOX_CHANNEL_ORDER];
 
 export function quickReplyGroupLabel(group: QuickReplyGroup | QuickReplyGroupTab): string {
   if (group === 'all') return 'All';

@@ -1,5 +1,4 @@
 import type {
-  ComingSoonPlatform,
   InboxAutomationSettings,
   InboxConnection,
   InboxConversation,
@@ -9,7 +8,6 @@ import type {
   SaveInboxTemplatePayload,
   ThreadPlatformFilter,
   ThreadStatusFilter,
-  ThreadTypeFilter,
 } from '@/features/dashboard/inbox/types/inbox';
 import {
   scopedOrgFunctionsUrl,
@@ -79,7 +77,6 @@ export async function fetchInboxConnections(
   scope?: InboxApiScope | null
 ): Promise<{
   connections: InboxConnection[];
-  comingSoon: ComingSoonPlatform[];
   metaConfigured: boolean;
   metaSyncInProgress: boolean;
   metaSyncError: string | null;
@@ -95,7 +92,6 @@ export async function fetchInboxConnections(
   const payload = unwrapEdgePayload(json);
   return {
     connections: (payload.connections as InboxConnection[] | undefined) ?? [],
-    comingSoon: (payload.comingSoon as ComingSoonPlatform[] | undefined) ?? [],
     metaConfigured: !!payload.metaConfigured,
     metaSyncInProgress: !!payload.metaSyncInProgress,
     metaSyncError: typeof payload.metaSyncError === 'string' ? payload.metaSyncError : null,
@@ -269,7 +265,6 @@ export async function fetchInboxThreads(
   orgSlug: string | null,
   orgId: string | null,
   filters: {
-    type: ThreadTypeFilter;
     status: ThreadStatusFilter;
     platform: ThreadPlatformFilter;
     search?: string;
@@ -283,7 +278,6 @@ export async function fetchInboxThreads(
 }> {
   const jwt = await getJwt();
   const params = new URLSearchParams();
-  if (filters.type !== 'all') params.set('type', filters.type);
   if (filters.status !== 'all') params.set('status', filters.status);
   if (filters.platform !== 'all') params.set('platform', filters.platform);
   if (filters.search?.trim()) params.set('search', filters.search.trim());
@@ -346,7 +340,6 @@ export async function sendInboxReply(
   conversationId: string,
   text: string,
   opts?: {
-    privateReply?: boolean;
     replyToMessageId?: string;
     useHumanAgentTag?: boolean;
     scope?: InboxApiScope | null;
@@ -363,7 +356,6 @@ export async function sendInboxReply(
     body: JSON.stringify({
       conversationId,
       text,
-      privateReply: opts?.privateReply ?? false,
       replyToMessageId: opts?.replyToMessageId,
       useHumanAgentTag: opts?.useHumanAgentTag === true,
       ...inboxScopeBody(scope),

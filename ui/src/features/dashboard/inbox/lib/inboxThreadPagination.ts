@@ -2,11 +2,9 @@ import { INBOX_THREAD_PAGE_SIZE } from '@/features/dashboard/inbox/lib/inboxApi'
 import type {
   ThreadPlatformFilter,
   ThreadStatusFilter,
-  ThreadTypeFilter,
 } from '@/features/dashboard/inbox/types/inbox';
 
 export type InboxThreadListFilters = {
-  type: ThreadTypeFilter;
   status: ThreadStatusFilter;
   platform: ThreadPlatformFilter;
   search: string;
@@ -16,7 +14,6 @@ export type InboxThreadListFilters = {
 export function inboxFiltersBlockMetaScrollSync(filters: InboxThreadListFilters): boolean {
   if (filters.search.trim()) return true;
   if (filters.status !== 'all') return true;
-  if (filters.type !== 'all') return true;
   if (filters.platform !== 'all') return true;
   return false;
 }
