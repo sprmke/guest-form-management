@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useSyncExternalStore } from 'react';
 
 export type MarketingSidebarLayoutKey = 'calendar' | 'design' | 'video' | 'page-editor';
 
@@ -17,6 +17,18 @@ const MAX_WIDTH = 480;
 type StoredLayout = {
   width: number;
   collapsed: boolean;
+};
+
+type LayoutStore = {
+  layout: StoredLayout;
+  listeners: Set<() => void>;
+};
+
+const stores = new Map<MarketingSidebarLayoutKey, LayoutStore>();
+
+const SERVER_SNAPSHOT: StoredLayout = {
+  width: MARKETING_SIDEBAR_DEFAULT_WIDTH,
+  collapsed: false,
 };
 
 function storageKey(layoutKey: MarketingSidebarLayoutKey) {
@@ -55,17 +67,54 @@ function saveLayout(layoutKey: MarketingSidebarLayoutKey, layout: StoredLayout) 
   window.localStorage.setItem(storageKey(layoutKey), JSON.stringify(layout));
 }
 
+function getStore(layoutKey: MarketingSidebarLayoutKey): LayoutStore {
+  let store = stores.get(layoutKey);
+  if (!store) {
+    store = {
+      layout: loadLayout(layoutKey),
+      listeners: new Set(),
+    };
+    stores.set(layoutKey, store);
+  }
+  return store;
+}
+
+function subscribe(layoutKey: MarketingSidebarLayoutKey, onStoreChange: () => void) {
+  const store = getStore(layoutKey);
+  store.listeners.add(onStoreChange);
+  return () => {
+    store.listeners.delete(onStoreChange);
+  };
+}
+
+function getSnapshot(layoutKey: MarketingSidebarLayoutKey) {
+  return getStore(layoutKey).layout;
+}
+
+function updateLayout(
+  layoutKey: MarketingSidebarLayoutKey,
+  updater: (prev: StoredLayout) => StoredLayout,
+  persist = true
+) {
+  const store = getStore(layoutKey);
+  const next = updater(store.layout);
+  store.layout = next;
+  if (persist) saveLayout(layoutKey, next);
+  store.listeners.forEach((listener) => listener());
+}
+
+/** Shared across all hook consumers for the same `layoutKey` (e.g. preview → collapse sidebar). */
 export function useMarketingSidebarLayout(layoutKey: MarketingSidebarLayoutKey) {
-  const [layout, setLayout] = useState<StoredLayout>(() => loadLayout(layoutKey));
+  const layout = useSyncExternalStore(
+    (onStoreChange) => subscribe(layoutKey, onStoreChange),
+    () => getSnapshot(layoutKey),
+    () => SERVER_SNAPSHOT
+  );
 
   const setWidth = useCallback(
     (width: number, persist = true) => {
       const nextWidth = persist ? clampExpandedWidth(width) : clampResizePreview(width);
-      setLayout((prev) => {
-        const next = { ...prev, width: nextWidth };
-        if (persist) saveLayout(layoutKey, next);
-        return next;
-      });
+      updateLayout(layoutKey, (prev) => ({ ...prev, width: nextWidth }), persist);
     },
     [layoutKey]
   );
@@ -73,49 +122,33 @@ export function useMarketingSidebarLayout(layoutKey: MarketingSidebarLayoutKey) 
   const finishResize = useCallback(
     (width: number, expandedWidthBeforeDrag: number) => {
       if (width < MARKETING_SIDEBAR_COLLAPSE_THRESHOLD) {
-        setLayout(() => {
-          const next = {
-            collapsed: true,
-            width: clampExpandedWidth(expandedWidthBeforeDrag),
-          };
-          saveLayout(layoutKey, next);
-          return next;
-        });
+        updateLayout(layoutKey, () => ({
+          collapsed: true,
+          width: clampExpandedWidth(expandedWidthBeforeDrag),
+        }));
         return;
       }
 
-      setLayout(() => {
-        const next = {
-          collapsed: false,
-          width: clampExpandedWidth(width),
-        };
-        saveLayout(layoutKey, next);
-        return next;
-      });
+      updateLayout(layoutKey, () => ({
+        collapsed: false,
+        width: clampExpandedWidth(width),
+      }));
     },
     [layoutKey]
   );
 
   const setCollapsed = useCallback(
     (collapsed: boolean) => {
-      setLayout((prev) => {
-        const next = { ...prev, collapsed };
-        saveLayout(layoutKey, next);
-        return next;
-      });
+      updateLayout(layoutKey, (prev) => ({ ...prev, collapsed }));
     },
     [layoutKey]
   );
 
   const expandSidebar = useCallback(() => {
-    setLayout(() => {
-      const next = {
-        collapsed: false,
-        width: MARKETING_SIDEBAR_DEFAULT_WIDTH,
-      };
-      saveLayout(layoutKey, next);
-      return next;
-    });
+    updateLayout(layoutKey, () => ({
+      collapsed: false,
+      width: MARKETING_SIDEBAR_DEFAULT_WIDTH,
+    }));
   }, [layoutKey]);
 
   return {

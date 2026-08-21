@@ -1108,98 +1108,105 @@ export function MarketingAiGeneratePanel({
                         aria-hidden
                       />
                     </CollapsibleTrigger>
-                    <CollapsibleContent className="border-border/60 space-y-5 border-t px-3.5 pb-4 pt-3.5">
-                      <div className="space-y-2">
-                        <p className="text-muted-foreground text-xs font-medium">
-                          Show on calendar
-                        </p>
-                        <div
-                          className="divide-border/70 border-border/70 divide-y rounded-xl border"
-                          role="group"
-                          aria-label="Show on calendar"
-                        >
-                          {CALENDAR_AI_ELEMENT_OPTIONS.map((option) => {
-                            const checked = calendarPreferences.elements[option.key];
-                            const switchId = `calendar-ai-element-${option.key}`;
-                            return (
-                              <div
-                                key={option.key}
-                                className="flex min-h-[52px] items-center justify-between gap-3 px-3 py-2.5"
-                              >
-                                <label htmlFor={switchId} className="min-w-0 flex-1 cursor-pointer">
-                                  <span className="text-foreground block text-sm font-medium leading-tight">
-                                    {option.label}
-                                  </span>
-                                  <span className="text-muted-foreground block text-[11px] leading-tight">
-                                    {option.hint}
-                                  </span>
-                                </label>
-                                <Switch
-                                  id={switchId}
-                                  checked={checked}
-                                  disabled={generating}
-                                  onCheckedChange={(value) => setCalendarElement(option.key, value)}
-                                  aria-label={option.label}
-                                />
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <p className="text-muted-foreground text-xs font-medium">
-                          Use when generating
-                        </p>
-                        <div
-                          className="divide-border/70 border-border/70 divide-y rounded-xl border"
-                          role="group"
-                          aria-label="Use when generating"
-                        >
-                          {contextRows.map((option) => {
-                            const checked = option.available && includeContext[option.key];
-                            const switchId = `calendar-ai-context-${option.key}`;
-                            const unavailableHint = contextUnavailableHint(option.key);
-                            return (
-                              <div
-                                key={option.key}
-                                className={cn(
-                                  'flex min-h-[52px] items-center justify-between gap-3 px-3 py-2.5',
-                                  !option.available && 'opacity-55'
-                                )}
-                              >
-                                <label
-                                  htmlFor={switchId}
-                                  className={cn(
-                                    'min-w-0 flex-1',
-                                    option.available ? 'cursor-pointer' : 'cursor-not-allowed'
-                                  )}
-                                  title={option.available ? undefined : unavailableHint}
+                    <CollapsibleContent>
+                      <div className="border-border/60 space-y-5 border-t px-3.5 pb-4 pt-3.5">
+                        <div className="space-y-2">
+                          <p className="text-muted-foreground text-xs font-medium">
+                            Show on calendar
+                          </p>
+                          <div
+                            className="divide-border/70 border-border/70 divide-y rounded-xl border"
+                            role="group"
+                            aria-label="Show on calendar"
+                          >
+                            {CALENDAR_AI_ELEMENT_OPTIONS.map((option) => {
+                              const checked = calendarPreferences.elements[option.key];
+                              const switchId = `calendar-ai-element-${option.key}`;
+                              return (
+                                <div
+                                  key={option.key}
+                                  className="flex min-h-[52px] items-center justify-between gap-3 px-3 py-2.5"
                                 >
-                                  <span className="text-foreground block text-sm font-medium leading-tight">
-                                    {option.label}
-                                  </span>
-                                  {!option.available ? (
-                                    <span className="text-muted-foreground block text-[11px] leading-tight">
-                                      {unavailableHint}
+                                  <label
+                                    htmlFor={switchId}
+                                    className="min-w-0 flex-1 cursor-pointer"
+                                  >
+                                    <span className="text-foreground block text-sm font-medium leading-tight">
+                                      {option.label}
                                     </span>
-                                  ) : null}
-                                </label>
-                                <Switch
-                                  id={switchId}
-                                  checked={checked}
-                                  disabled={generating || !option.available}
-                                  onCheckedChange={(value) =>
-                                    setIncludeContext((prev) => ({
-                                      ...prev,
-                                      [option.key]: value,
-                                    }))
-                                  }
-                                  aria-label={option.label}
-                                />
-                              </div>
-                            );
-                          })}
+                                    <span className="text-muted-foreground block text-[11px] leading-tight">
+                                      {option.hint}
+                                    </span>
+                                  </label>
+                                  <Switch
+                                    id={switchId}
+                                    checked={checked}
+                                    disabled={generating}
+                                    onCheckedChange={(value) =>
+                                      setCalendarElement(option.key, value)
+                                    }
+                                    aria-label={option.label}
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <p className="text-muted-foreground text-xs font-medium">
+                            Use when generating
+                          </p>
+                          <div
+                            className="divide-border/70 border-border/70 divide-y rounded-xl border"
+                            role="group"
+                            aria-label="Use when generating"
+                          >
+                            {contextRows.map((option) => {
+                              const checked = option.available && includeContext[option.key];
+                              const switchId = `calendar-ai-context-${option.key}`;
+                              const unavailableHint = contextUnavailableHint(option.key);
+                              return (
+                                <div
+                                  key={option.key}
+                                  className={cn(
+                                    'flex min-h-[52px] items-center justify-between gap-3 px-3 py-2.5',
+                                    !option.available && 'opacity-55'
+                                  )}
+                                >
+                                  <label
+                                    htmlFor={switchId}
+                                    className={cn(
+                                      'min-w-0 flex-1',
+                                      option.available ? 'cursor-pointer' : 'cursor-not-allowed'
+                                    )}
+                                    title={option.available ? undefined : unavailableHint}
+                                  >
+                                    <span className="text-foreground block text-sm font-medium leading-tight">
+                                      {option.label}
+                                    </span>
+                                    {!option.available ? (
+                                      <span className="text-muted-foreground block text-[11px] leading-tight">
+                                        {unavailableHint}
+                                      </span>
+                                    ) : null}
+                                  </label>
+                                  <Switch
+                                    id={switchId}
+                                    checked={checked}
+                                    disabled={generating || !option.available}
+                                    onCheckedChange={(value) =>
+                                      setIncludeContext((prev) => ({
+                                        ...prev,
+                                        [option.key]: value,
+                                      }))
+                                    }
+                                    aria-label={option.label}
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
                       </div>
                     </CollapsibleContent>

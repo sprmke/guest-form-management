@@ -17,17 +17,18 @@ import {
   publishToMetaRequest,
   useGenerateMarketingCaption,
 } from '@/features/dashboard/marketing/lib/marketingPublishApi';
-import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
-import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
-import { isAiQuotaError } from '@/features/dashboard/org/lib/aiQuotaToast';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import {
   useOrgIdParam,
   useOrgSlugParam,
   usePropertyIdParam,
 } from '@/features/dashboard/org/lib/adminApiScope';
+import { isAiQuotaError } from '@/features/dashboard/org/lib/aiQuotaToast';
 import { propertyInboxPath } from '@/features/dashboard/org/lib/tenantPaths';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 
+import { ListRowsSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -209,9 +210,7 @@ export function PublishDialog({ open, onOpenChange, media }: Props) {
         </ResponsiveModalHeader>
 
         {connectionsQuery.isLoading ? (
-          <div className="flex min-h-[120px] items-center justify-center" role="status">
-            <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-          </div>
+          <ListRowsSkeleton rows={3} label="Loading connections" className="min-h-[120px]" />
         ) : channels.length === 0 ? (
           <p className="text-muted-foreground text-sm">
             Connect Facebook or Instagram in{' '}

@@ -19,19 +19,33 @@ type Props = {
   children: ReactNode;
   footer?: ReactNode;
   className?: string;
+  /** When set, expanded sidebar uses this width instead of the persisted layout width. */
+  fixedWidth?: number;
+  /** Drag-to-resize handle. Ignored when `fixedWidth` is set. Default true. */
+  resizable?: boolean;
 };
 
-export function MarketingEditorSidebar({ layoutKey, header, children, footer, className }: Props) {
+export function MarketingEditorSidebar({
+  layoutKey,
+  header,
+  children,
+  footer,
+  className,
+  fixedWidth,
+  resizable = true,
+}: Props) {
   const isBelowLg = useIsBelowLg();
   const { width, collapsed, setWidth, setCollapsed, finishResize } =
     useMarketingSidebarLayout(layoutKey);
   const widthRef = useRef(width);
   const [isResizing, setIsResizing] = useState(false);
+  const canResize = resizable && fixedWidth == null;
 
   widthRef.current = width;
 
   const isDesktopCollapsed = collapsed && !isBelowLg;
-  const desktopWidth = isDesktopCollapsed ? MARKETING_SIDEBAR_COLLAPSED_WIDTH : width;
+  const expandedWidth = fixedWidth ?? width;
+  const desktopWidth = isDesktopCollapsed ? MARKETING_SIDEBAR_COLLAPSED_WIDTH : expandedWidth;
 
   const handleToggle = useCallback(() => {
     setCollapsed(!collapsed);
@@ -39,7 +53,7 @@ export function MarketingEditorSidebar({ layoutKey, header, children, footer, cl
 
   const handleResizeStart = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
-      if (isBelowLg || collapsed) return;
+      if (isBelowLg || collapsed || !canResize) return;
 
       event.preventDefault();
       setIsResizing(true);
@@ -65,13 +79,14 @@ export function MarketingEditorSidebar({ layoutKey, header, children, footer, cl
       window.addEventListener('pointermove', handleMove);
       window.addEventListener('pointerup', handleUp);
     },
-    [collapsed, finishResize, isBelowLg, setWidth]
+    [canResize, collapsed, finishResize, isBelowLg, setWidth]
   );
 
   return (
     <div
       className={cn(
-        'border-border bg-card relative flex min-h-0 min-w-0 shrink-0 flex-col border-b lg:h-full lg:max-h-none lg:max-w-[480px] lg:border-b-0 lg:border-r',
+        'border-border bg-card relative flex min-h-0 min-w-0 shrink-0 flex-col border-b lg:h-full lg:max-h-none lg:border-b-0 lg:border-r',
+        fixedWidth == null && 'lg:max-w-[480px]',
         isBelowLg
           ? 'w-full max-w-full flex-1 basis-0'
           : 'hidden lg:flex lg:flex-none lg:basis-auto',
@@ -98,7 +113,7 @@ export function MarketingEditorSidebar({ layoutKey, header, children, footer, cl
         </Button>
       ) : null}
 
-      {!isBelowLg && !isDesktopCollapsed ? (
+      {!isBelowLg && !isDesktopCollapsed && canResize ? (
         <div
           role="separator"
           aria-orientation="vertical"

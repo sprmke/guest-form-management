@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
 
 import { formatDistanceToNow } from 'date-fns';
-import { Loader2 } from 'lucide-react';
 
 import { useMarketingPublications } from '@/features/dashboard/marketing/lib/marketingPublishApi';
 
+import { ListRowsSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -24,11 +24,7 @@ export function PublishHistory() {
   );
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-[120px] items-center justify-center" role="status">
-        <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-      </div>
-    );
+    return <ListRowsSkeleton rows={3} label="Loading recent publishes" className="min-h-[120px]" />;
   }
 
   if (!data?.length) {

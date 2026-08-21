@@ -1,13 +1,13 @@
 import { useMemo, useRef } from 'react';
 
-import { Loader2 } from 'lucide-react';
-
 import { CalendarBuilder } from '@/features/dashboard/marketing/components/calendar-builder/components/CalendarBuilder';
 import { useCalendarExport } from '@/features/dashboard/marketing/components/calendar-builder/hooks/useCalendarExport';
 import { useCalendarBuilderStore } from '@/features/dashboard/marketing/components/calendar-builder/stores/calendarBuilderStore';
 import { useMarketingBookedDates } from '@/features/dashboard/marketing/hooks/useMarketingBookedDates';
 import { bookedDatesToPreviewBookings } from '@/features/dashboard/marketing/lib/marketingBookedDates';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
+
+import { BookingsCalendarSkeleton } from '@/components/skeletons/AdminSkeletons';
 
 type Props = {
   onPublish?: (blob: Blob) => void;
@@ -43,11 +43,8 @@ export function MarketingCalendarSection({ onPublish }: Props) {
   return (
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
       {isLoading && (
-        <div
-          className="bg-background/60 absolute inset-0 z-10 flex items-center justify-center rounded-xl"
-          role="status"
-        >
-          <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
+        <div className="bg-background/60 absolute inset-0 z-10 overflow-hidden rounded-xl">
+          <BookingsCalendarSkeleton gridOnly compact />
         </div>
       )}
       <CalendarBuilder
