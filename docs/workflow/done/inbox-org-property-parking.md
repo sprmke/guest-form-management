@@ -39,7 +39,7 @@ Ship Guest Inbox at **property** and **parking** scopes (nav + pages), while kee
 - Per-property quick replies / automation settings
 - Marketing publish against override Pages
 - Building the full parking guest web-chat guest UI (schema only)
-- TikTok / Airbnb channels
+- TikTok / Airbnb inbox channels (API partnership / approval barriers — cancelled)
 
 ## Current state (verified)
 

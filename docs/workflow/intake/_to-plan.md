@@ -2,7 +2,7 @@
 title: 'Claude To Plan'
 status: archived
 tags: [planning]
-updated: 2026-08-20
+updated: 2026-08-21
 ---
 
 **Status legend:** ❌ cancelled / won't do · ✅ done · 📋 planned (plan doc written) · 🚧 in progress · 🔵 pending / open
@@ -271,7 +271,7 @@ Example:
 
 ===
 
-🚧 Avail parking e2e flow
+✅ Avail parking e2e flow
 
 Phase 1: Plan how host received parking booking
 The first phase than we need to finalize for parking e2e is how host should receive and handle parking bookings. Should we follow how property bookings? Create new workflow and different status for parking? Also, how we should notify parking host that they received parking and need immediate review? Same telegram flow?
@@ -427,12 +427,12 @@ Overlaps booking detail/workflow refinement — tracked under booking multi-tena
 
 ===
 
-🔵 Review implementation on the following modules
+🚧 Review implementation on the following modules
 
 Review the implementation on the following modules and make sure we simplify, recode, improve and make sure it's production ready and does not contain trash code or changes, poor implemented features caused by AI vibe coding. Be a 10x senior software engineering and review the following modules and make sure it met our standards and they are all production ready and will not cause any performance issue or security and lastly, make sure everything is still working properly
 
-- Marketing
-- Inbox (Meta chats)
+- Marketing — partial: [`../in-progress/marketing-module-refinement.md`](../in-progress/marketing-module-refinement.md) (perf/AI-gen fixes shipped; Meta publish gaps open)
+- Inbox (Meta chats) — **done:** [`../done/guest-inbox-meta-hardening.md`](../done/guest-inbox-meta-hardening.md)
 - Real-time web chat app (host & guest side)
 
 ===
@@ -504,7 +504,7 @@ Best examples of this are:
 Files: Approved GAF, Approved Pet, Parking Endorsement,
 Links: Stay Guide, Property, Calendar, Messages
 
-Let's put a new icon for these beside the Quick reply & suggest sectionWhy
+Let's put a new icon for these beside the Quick reply & suggest section.
 
 → **Planned:** [`../planned/inbox-share-links-and-files.md`](../planned/inbox-share-links-and-files.md)
 
@@ -645,7 +645,7 @@ One reason we need to finalize this is that on next phase, we will offer user to
 
 Make a research and analyze what's the best practices to manage AI tokens properly. What's the standard process or solid companies handles AI tokens for free usages and for pay more to get more tokens.
 
-→ **In progress:** [`../in-progress/ai-usage-metering-credits-foundation.md`](../in-progress/ai-usage-metering-credits-foundation.md) — Phase 1 (attribution + credit shadow-ledger) shipped; Phases 2–4 open
+→ **In progress:** [`../in-progress/ai-usage-metering-credits-foundation.md`](../in-progress/ai-usage-metering-credits-foundation.md) — Phases 1–3 shipped; Phase 4 (paid credit top-up via PayMongo) deferred
 
 ===
 
@@ -676,7 +676,7 @@ With these so much info, we need to generate the best UI/UX for this within the 
 
 ===
 
-📋 Make public pages editable via a host-facing Page Editor (left controls / right realtime preview)
+✅ Make public pages editable via a host-facing Page Editor (left controls / right realtime preview)
 
 I think the next module that we need is to make our public pages editable.
 Meaning, instead of open page, we will have edit button page.
@@ -693,11 +693,11 @@ We to ensure that this management and editing of page content would not be too t
 
 If we can also update our existing public pages list as well, that would be great. I don't think listing grid items like this is the best UI for this? PLease analyze and improve as well
 
-→ **Planned:** [`../planned/page-editor-public-pages.md`](../planned/page-editor-public-pages.md)
+→ **Done:** [`../done/page-editor-public-pages.md`](../done/page-editor-public-pages.md) — Stay Guide + Property Landing Page Editor, gallery redesign, Settings migration (Phases 0–7); Phase 8 backlog deferred (2026-08-20)
 
 ===
 
-🚧 Harden guest inbox meta facebook and instagram module
+✅ Harden guest inbox meta facebook and instagram module
 
 One big module that we need to review the implementation carefully is the Inbox Meta facebook and instagram implementation. I want you to do deep checking and review and make sure that our module there is complete and production ready. Make sure we don't have poor implementation, restructure or recode that module if needed so that we have good implementation, production ready and scalable solutions.
 
@@ -710,6 +710,16 @@ Also, I want you to refine and improve how we save and store conversations and h
 Also, we should have solid implementation and flow for disconnection and clearing of messages and provide best UI/UX when we connect to a page and fetch messages.
 
 Also, I want you to visit if we can support the comments on facebook post on Facebook & Instagram, if not, then let's remove that!
+
+→ **Done:** [`../done/guest-inbox-meta-hardening.md`](../done/guest-inbox-meta-hardening.md) — webhook health-check/resubscribe, non-destructive disconnect, HUMAN_AGENT 7-day tag, comment scope removed, backfill + error UX hardening (2026-08-20)
+
+===
+
+📋 Org portfolio pricing bundles (Pro ≤3 / Business ≤5 / Business Plus ≤10)
+
+Pivot from strict per-property billing to org-scoped portfolio caps for Pro/Business tiers while keeping Free/Starter/Managed/Commission per-property.
+
+→ **Planned:** [`../planned/pricing-portfolio-bundling.md`](../planned/pricing-portfolio-bundling.md)
 
 ===
 

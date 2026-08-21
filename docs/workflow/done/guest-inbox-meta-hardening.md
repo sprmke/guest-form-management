@@ -11,13 +11,13 @@ kind: plan
 
 ## Context
 
-The Guest Inbox's Meta (Facebook + Instagram) integration is the module that lets hosts receive and reply to guest DMs and post comments from inside the app. A full audit was requested because the module has grown organically (OAuth, webhooks, AI auto-reply, comment support, backfill sync) without a recent end-to-end review, and one specific symptom — **hosts must disconnect and reconnect Meta to see new messages** — was flagged as a real production papercut.
+The Guest Inbox's Meta (Facebook + Instagram) integration is the module that lets hosts receive and reply to guest DMs from inside the app. A full audit was requested because the module has grown organically (OAuth, webhooks, AI auto-reply, backfill sync) without a recent end-to-end review, and one specific symptom — **hosts must disconnect and reconnect Meta to see new messages** — was flagged as a real production papercut.
 
 This session's deep-dive (direct reads of every `meta-inbox-*`/`social-inbox-*` edge function, the frontend `ui/src/features/dashboard/inbox/` module, the DB schema, and Meta's current official developer docs) found:
 
 - **Realtime is not the problem.** Supabase Realtime is correctly wired end-to-end (`useInboxRealtime` in `ui/src/features/dashboard/inbox/hooks/useInbox.ts`, DB publication + `REPLICA IDENTITY FULL`, RLS select policies for the direct client subscription). The actual root cause is upstream: Meta's webhook subscription (`{pageId}/subscribed_apps`) is only ever established once, at connect time, in `persistMetaPageConnection` (`supabase/functions/_shared/metaInboxGraph.ts:197-283`). If that subscription silently drops (or fails, or Meta revalidates and rejects it), the failure is swallowed into an `error_message` column with **no retry, no health-check, and no recovery path** other than a full Disconnect → Reconnect — which itself hard-deletes every synced conversation and message (`ON DELETE CASCADE` from `social_conversations` → `social_messages`) and re-runs a full Graph API backfill. So "disconnect and reconnect" is the _only_ lever hosts have, and it's a destructive one.
 - **The 24h messaging window is correctly implemented** (`isWithinMessagingWindowFromInbound`, enforced at send time, with existing UI countdown/disabled-composer treatment in `InboxConversationView.tsx`) — this part is already solid. What's missing is Meta's official `HUMAN_AGENT` message tag, which is still current (confirmed via Meta's official docs this session, not deprecated) and legitimately extends replies to 7 days for non-promotional follow-ups — a real capability gap, not just a UX gap.
-- **Facebook/Instagram comment replies are fully implemented already** (inbound webhook handlers, outbound public reply, IG private-reply) and Meta's docs confirm these endpoints remain supported — so this should be **kept**, not removed. But a real bug was found: the OAuth scope list (`_shared/metaInboxConfig.ts:10-18`) requests `pages_read_engagement` (read-only) but not `pages_manage_engagement` (write), which is required for `POST {commentId}/comments` — Facebook public comment replies are very likely failing in production today for this reason. Instagram's scope is correct.
+- **Historical note:** this plan was written while comment support still existed in the inbox. The current product direction is now **messages only**, so any older references here to Facebook/Instagram comment ingestion or reply flows should be treated as obsolete.
 - Secondary findings worth folding in while the module is open: no retry/backoff on transient Meta API failures, no token-expiry/revocation monitoring despite a DB column reserved for it, a non-constant-time webhook signature comparison, an infinite-scroll pattern that can trigger live Graph API calls purely from scroll position, and thread/message fetch errors rendering as an indistinguishable empty state.
 
 **Decisions confirmed with the user before finalizing this plan:**
@@ -90,20 +90,11 @@ Everything below is scoped as 8 independently-shippable phases, ordered by risk/
 
 ---
 
-## Phase 4 — Comment-reply permission fix + IG 7-day private-reply window
+## Phase 4 — Legacy comment support note (obsolete)
 
 **Backend:**
 
-- `_shared/metaInboxConfig.ts` `META_INBOX_OAUTH_SCOPES` — add `pages_manage_engagement` + `pages_read_user_content` (Instagram's `instagram_manage_comments` is already correct).
-- **Operational note (not a migration):** existing connected orgs' stored tokens predate this scope — they must reconnect (re-consent) before Facebook comment replies work. Document explicitly.
-- Extend Phase 1's `reconcileMetaConnectionWebhook` to also check `/me/permissions` and surface a clear `error_message` ("Missing pages_manage_engagement — reconnect Meta to reply to comments.") via the existing warning UI when the scope is missing.
-- Add `isWithinCommentReplyWindow` (7-day, from the comment conversation's `last_inbound_at`); enforce in `social-inbox-send/index.ts`'s IG private-reply branch. Public comment replies stay unrestricted (no Meta time limit there).
-
-**Frontend:** hide/disable the Instagram "Send as private reply" toggle once its 7-day window has closed.
-
-**Docs:** `docs/archive/operations/meta-app-review.md` — add the new scopes to both the scope table and use-case mapping, with an explicit "existing orgs must reconnect" callout.
-
-**Done when:** a freshly reconnected Facebook Page successfully posts public comment replies; IG private replies past 7 days are blocked both client- and server-side; `meta-app-review.md` matches `metaInboxConfig.ts` exactly.
+Comment support has since been removed from the inbox. Keep this phase only as historical context for why old docs may mention comment-specific scopes, webhooks, or reply windows.
 
 ---
 

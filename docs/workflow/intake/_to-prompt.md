@@ -2,7 +2,7 @@
 title: 'Tasks To Prompt'
 status: archived
 tags: [planning]
-updated: 2026-08-20
+updated: 2026-08-21
 ---
 
 **Status legend:** ❌ cancelled / won't do · ✅ done · 📋 planned (plan doc written) · 🚧 in progress · 🔵 pending / open
@@ -258,9 +258,11 @@ EMAIL_TO / EMAIL_REPLY_TO
 
 ===
 
-🔵 Improve marketing generate modal > suggestions thumbnail is confusing
+🚧 Improve marketing generate modal > suggestions thumbnail is confusing
 
 Update marketing generate design suggestion thumbnail to be more closed to calendar template, design and video clips
+
+→ **Related:** [`../in-progress/marketing-module-refinement.md`](../in-progress/marketing-module-refinement.md) (perf/AI-gen shipped; publish UX gaps remain)
 
 ===
 
