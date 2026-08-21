@@ -17,7 +17,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 
@@ -115,22 +114,39 @@ export function GuestProfileForm() {
 
   if (isLoading) {
     return (
-      <div className="border-border bg-card overflow-hidden rounded-2xl border shadow-sm">
-        <div className="flex flex-col gap-6 p-6 sm:flex-row sm:p-8">
-          <div className="bg-muted size-28 shrink-0 animate-pulse rounded-full" />
-          <div className="flex-1 space-y-4">
-            <div className="bg-muted h-6 w-48 animate-pulse rounded-md" />
-            <div className="bg-muted h-4 w-64 animate-pulse rounded-md" />
-          </div>
-        </div>
-        <Separator />
-        <div className="space-y-5 p-6 sm:p-8">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="space-y-2">
-              <div className="bg-muted h-4 w-24 animate-pulse rounded-md" />
-              <div className="bg-muted h-10 animate-pulse rounded-md" />
+      <div className="border-border bg-card w-full overflow-hidden rounded-2xl border shadow-sm">
+        <div className="grid grid-cols-1 gap-8 p-6 sm:p-8 lg:grid-cols-[minmax(240px,320px)_minmax(0,1fr)] lg:items-start lg:gap-10 lg:p-10">
+          <div className="flex flex-col items-center gap-4 sm:items-start">
+            <div className="bg-muted size-28 shrink-0 animate-pulse rounded-full sm:size-32" />
+            <div className="w-full space-y-2 text-center sm:text-left">
+              <div className="bg-muted mx-auto h-6 w-40 animate-pulse rounded-md sm:mx-0" />
+              <div className="bg-muted mx-auto h-4 w-32 animate-pulse rounded-md sm:mx-0" />
             </div>
-          ))}
+          </div>
+
+          <div className="space-y-6 lg:space-y-8">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
+              <div className="space-y-2 lg:col-span-2">
+                <div className="bg-muted h-4 w-24 animate-pulse rounded-md" />
+                <div className="bg-muted h-11 animate-pulse rounded-md" />
+              </div>
+              <div className="space-y-2 lg:col-span-2">
+                <div className="bg-muted h-4 w-16 animate-pulse rounded-md" />
+                <div className="bg-muted h-[120px] animate-pulse rounded-md" />
+              </div>
+              <div className="space-y-2">
+                <div className="bg-muted h-4 w-16 animate-pulse rounded-md" />
+                <div className="bg-muted h-11 animate-pulse rounded-md" />
+              </div>
+              <div className="space-y-2">
+                <div className="bg-muted h-4 w-20 animate-pulse rounded-md" />
+                <div className="bg-muted h-11 animate-pulse rounded-md" />
+              </div>
+            </div>
+            <div className="border-border flex justify-end border-t pt-6 lg:pt-8">
+              <div className="bg-muted h-11 w-32 animate-pulse rounded-md" />
+            </div>
+          </div>
         </div>
       </div>
     );

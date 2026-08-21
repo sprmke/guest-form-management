@@ -16,7 +16,21 @@ export function GuestAccountSettingsPage() {
   };
 
   if (isLoading) {
-    return <div className="bg-muted h-40 animate-pulse rounded-2xl" />;
+    return (
+      <div className="border-border bg-card w-full overflow-hidden rounded-2xl border shadow-sm">
+        <div className="space-y-2 p-6 sm:p-8 lg:p-10">
+          <div className="bg-muted h-3 w-16 animate-pulse rounded-full" />
+          <div className="bg-muted h-4 w-48 animate-pulse rounded-md" />
+        </div>
+
+        <Separator />
+
+        <div className="flex flex-col gap-3 p-6 sm:flex-row sm:p-8 lg:p-10">
+          <div className="bg-muted h-11 animate-pulse rounded-md sm:flex-1" />
+          <div className="bg-muted h-11 animate-pulse rounded-md sm:flex-1" />
+        </div>
+      </div>
+    );
   }
 
   return (

@@ -9,10 +9,11 @@ import { MarketingImage as Image } from '@/features/guest/marketing/shared/compo
 
 export function WishlistPropertyCardSkeleton() {
   return (
-    <div className="w-full min-w-0 space-y-2" aria-hidden>
+    <div className="w-full min-w-0 space-y-1.5" aria-hidden>
       <div className="bg-muted aspect-square w-full animate-pulse rounded-lg" />
       <div className="bg-muted h-3 w-[85%] animate-pulse rounded" />
       <div className="bg-muted h-3 w-[55%] animate-pulse rounded" />
+      <div className="bg-muted h-3 w-[40%] animate-pulse rounded" />
     </div>
   );
 }
