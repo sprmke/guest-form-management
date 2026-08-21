@@ -8,6 +8,10 @@ const Collapsible = CollapsiblePrimitive.Root;
 
 const CollapsibleTrigger = CollapsiblePrimitive.CollapsibleTrigger;
 
+/**
+ * Height animation runs on this element. Do not put padding / vertical gap here —
+ * wrap children in an inner `div` with `p-*` / `space-y-*` or collapse looks jumpy.
+ */
 const CollapsibleContent = React.forwardRef<
   React.ElementRef<typeof CollapsiblePrimitive.CollapsibleContent>,
   React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.CollapsibleContent>
