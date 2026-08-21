@@ -536,6 +536,9 @@ verify_jwt = false
 [functions.custom-pages-settings]
 verify_jwt = false
 
+[functions.public-page-configs]
+verify_jwt = false
+
 [functions.property-pricing]
 verify_jwt = false
 

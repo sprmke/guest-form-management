@@ -4571,7 +4571,7 @@ export const TOOL_DECLARATIONS = [
   {
     name: 'propose_send_inbox_reply',
     description:
-      'Send a real text reply to a guest in a Guest Inbox conversation (web chat, Messenger, Instagram DM, or public comment). This sends immediately once confirmed — always requires explicit host confirmation, no exceptions.',
+      'Send a real text reply to a guest in a Guest Inbox conversation (web chat, Messenger, or Instagram DM). This sends immediately once confirmed — always requires explicit host confirmation, no exceptions.',
     parameters: {
       type: 'object',
       properties: {

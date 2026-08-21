@@ -132,7 +132,9 @@ serveAuthenticated('notifications-list', async (req, user) => {
   if (inboxConversationIds.length > 0) {
     const { data: conversations, error: convError } = await sb
       .from('social_conversations')
-      .select('id, participant_name, conversation_type, inquiry_check_in, inquiry_check_out')
+      .select(
+        'id, participant_name, conversation_type, platform, inquiry_check_in, inquiry_check_out'
+      )
       .in('id', inboxConversationIds);
     if (convError) return jsonError(req, convError.message, 500);
     for (const conv of conversations ?? []) {

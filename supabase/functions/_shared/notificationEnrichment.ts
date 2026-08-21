@@ -7,10 +7,12 @@ import {
   LEGACY_INBOX_NOTIFICATION_TITLE,
   type NotificationType,
 } from './notificationService.ts';
+import type { SocialPlatform } from './socialInboxTypes.ts';
 
 export type InboxConversationContext = {
   participant_name?: string | null;
   conversation_type?: 'dm' | 'comment';
+  platform?: SocialPlatform | null;
   inquiry_check_in?: string | null;
   inquiry_check_out?: string | null;
 };
@@ -26,6 +28,7 @@ export function inboxNotificationMetadata(conv: InboxConversationContext): Recor
   return {
     participant_name: conv.participant_name ?? null,
     guest_name: guestName,
+    platform: conv.platform ?? null,
     inquiry_check_in: conv.inquiry_check_in ?? null,
     inquiry_check_out: conv.inquiry_check_out ?? null,
   };
@@ -75,6 +78,7 @@ export function mergeInboxMetadata(
     ...metadata,
     participant_name: readMetaString(metadata, 'participant_name') || patch.participant_name,
     guest_name: readMetaString(metadata, 'guest_name') || patch.guest_name,
+    platform: (conv.platform ?? readMetaString(metadata, 'platform')) || null,
     inquiry_check_in: readMetaString(metadata, 'inquiry_check_in') || patch.inquiry_check_in,
     inquiry_check_out: readMetaString(metadata, 'inquiry_check_out') || patch.inquiry_check_out,
   };
