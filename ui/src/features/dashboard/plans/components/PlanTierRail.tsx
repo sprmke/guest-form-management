@@ -25,13 +25,11 @@ type CarouselLayout = {
 };
 
 function resolveCarouselLayout(): CarouselLayout {
-  if (window.matchMedia('(min-width: 1280px)').matches) {
-    return { visibleCount: 4, gapPx: 20 };
-  }
-  if (window.matchMedia('(min-width: 768px)').matches) {
+  // Desktop lg+: 3 · tablet md+: 2 · mobile: 1 — avoids clipping a partial fourth card.
+  if (window.matchMedia('(min-width: 1024px)').matches) {
     return { visibleCount: 3, gapPx: 20 };
   }
-  if (window.matchMedia('(min-width: 640px)').matches) {
+  if (window.matchMedia('(min-width: 768px)').matches) {
     return { visibleCount: 2, gapPx: 16 };
   }
   return { visibleCount: 1, gapPx: 16 };
@@ -43,20 +41,17 @@ function useCarouselLayout(): CarouselLayout {
   );
 
   useEffect(() => {
-    const mqSm = window.matchMedia('(min-width: 640px)');
     const mqMd = window.matchMedia('(min-width: 768px)');
-    const mqXl = window.matchMedia('(min-width: 1280px)');
+    const mqLg = window.matchMedia('(min-width: 1024px)');
 
     const sync = () => setLayout(resolveCarouselLayout());
 
     sync();
-    mqSm.addEventListener('change', sync);
     mqMd.addEventListener('change', sync);
-    mqXl.addEventListener('change', sync);
+    mqLg.addEventListener('change', sync);
     return () => {
-      mqSm.removeEventListener('change', sync);
       mqMd.removeEventListener('change', sync);
-      mqXl.removeEventListener('change', sync);
+      mqLg.removeEventListener('change', sync);
     };
   }, []);
 
@@ -92,8 +87,19 @@ function useSlideStep(trackRef: React.RefObject<HTMLDivElement | null>, enabled:
   return step;
 }
 
+/** Last start index that still fills the viewport (no trailing empty slot). */
+function maxFilledStart(tierCount: number, visibleCount: number): number {
+  return Math.max(0, tierCount - visibleCount);
+}
+
+/** Advance by almost a full page so the last view stays filled (desktop 3→step 2). */
+function pageStep(visibleCount: number): number {
+  return Math.max(1, visibleCount - 1);
+}
+
+/** Keep `focusIndex` in view without leaving an empty trailing slot. */
 function clampStartIndex(focusIndex: number, visibleCount: number, tierCount: number): number {
-  const maxStart = Math.max(0, tierCount - visibleCount);
+  const maxStart = maxFilledStart(tierCount, visibleCount);
   if (tierCount <= visibleCount) return 0;
   return Math.min(Math.max(0, focusIndex - visibleCount + 1), maxStart);
 }
@@ -130,7 +136,8 @@ function PlanCarouselArrow({ direction, disabled, onClick }: CarouselArrowProps)
 }
 
 /**
- * Plan tier rail — 1 / 2 / 3 / 4 visible cards by breakpoint; arrows slide one card with motion.
+ * Plan tier rail — 1 / 2 / 3 visible cards by breakpoint; arrows advance by pageStep
+ * (desktop: 2) so the last view stays filled — no empty trailing slot.
  */
 export function PlanTierRail({
   tiers,
@@ -139,7 +146,8 @@ export function PlanTierRail({
   onSelectPlan,
 }: PlanTierRailProps) {
   const { visibleCount, gapPx } = useCarouselLayout();
-  const maxStartIndex = Math.max(0, tiers.length - visibleCount);
+  const maxStartIndex = maxFilledStart(tiers.length, visibleCount);
+  const step = pageStep(visibleCount);
   const trackRef = useRef<HTMLDivElement>(null);
 
   const focusIndex = Math.max(
@@ -179,8 +187,8 @@ export function PlanTierRail({
     if (maxStartIndex <= 0) return;
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
     event.preventDefault();
-    if (event.key === 'ArrowLeft') goToStart(startIndex - 1);
-    else goToStart(startIndex + 1);
+    if (event.key === 'ArrowLeft') goToStart(startIndex - step);
+    else goToStart(startIndex + step);
   };
 
   if (tiers.length === 0) return null;
@@ -201,12 +209,12 @@ export function PlanTierRail({
             <PlanCarouselArrow
               direction="previous"
               disabled={startIndex === 0}
-              onClick={() => goToStart(startIndex - 1)}
+              onClick={() => goToStart(startIndex - step)}
             />
             <PlanCarouselArrow
               direction="next"
               disabled={startIndex >= maxStartIndex}
-              onClick={() => goToStart(startIndex + 1)}
+              onClick={() => goToStart(startIndex + step)}
             />
           </div>
         ) : null}

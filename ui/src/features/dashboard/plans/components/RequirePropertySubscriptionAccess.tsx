@@ -2,14 +2,13 @@ import type { ReactNode } from 'react';
 
 import { Navigate, useLocation } from 'react-router-dom';
 
-import { Loader2 } from 'lucide-react';
-
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { usePropertyPlan } from '@/features/dashboard/plans/hooks/usePropertyPlan';
 import type { PropertySection } from '@/features/dashboard/team/lib/propertyPermissions';
 
 import { FloatingPanel } from '@/components/mobile/FloatingPanel';
+import { RouteGuardSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 
 const ALLOWED_WHEN_SUSPENDED: PropertySection[] = ['plans', 'help-support'];
@@ -25,11 +24,7 @@ export function RequirePropertySubscriptionAccess({ section, children }: Props) 
   const { data, isLoading } = usePropertyPlan();
 
   if (isLoading && !data) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center" role="status">
-        <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-      </div>
-    );
+    return <RouteGuardSkeleton />;
   }
 
   const status = data?.subscription?.status;

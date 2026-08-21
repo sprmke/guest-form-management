@@ -45,8 +45,10 @@ export function PlanFaqSection({ className }: PlanFaqSectionProps) {
                 aria-hidden
               />
             </CollapsibleTrigger>
-            <CollapsibleContent className="text-muted-foreground px-4 pb-1 pt-2 text-sm leading-relaxed [overflow-wrap:anywhere]">
-              {faq.answer}
+            <CollapsibleContent>
+              <div className="text-muted-foreground px-4 pb-1 pt-2 text-sm leading-relaxed [overflow-wrap:anywhere]">
+                {faq.answer}
+              </div>
             </CollapsibleContent>
           </Collapsible>
         ))}

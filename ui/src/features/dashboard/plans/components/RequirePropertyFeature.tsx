@@ -1,6 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
 
-import { Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
@@ -11,6 +10,7 @@ import { featureGateCopy } from '@/features/dashboard/plans/lib/featureGateCopy'
 import type { PlanFeatureKey } from '@/features/dashboard/plans/lib/planFeatures';
 
 import { FloatingPanel } from '@/components/mobile/FloatingPanel';
+import { RouteGuardSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 
 type Props = {
@@ -32,11 +32,7 @@ export function RequirePropertyFeature({ feature, children }: Props) {
   }, [allowed, feature, isLoading, open]);
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center" role="status">
-        <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-      </div>
-    );
+    return <RouteGuardSkeleton />;
   }
 
   if (!allowed) {

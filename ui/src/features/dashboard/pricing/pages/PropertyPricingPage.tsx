@@ -8,7 +8,6 @@ import {
   startOfToday,
   getDaysInMonth,
 } from 'date-fns';
-import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import {
@@ -66,6 +65,7 @@ import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePrope
 import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
 
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
+import { BookingsCalendarSkeleton } from '@/components/skeletons/AdminSkeletons';
 
 /** A viewed month at/above this many bookings triggers the busy-month celebration. */
 const BUSY_MONTH_CELEBRATION_THRESHOLD = 20;
@@ -500,11 +500,7 @@ export function PropertyPricingPage() {
   }, [baseNightlyForDate, selectedDates, weekdayRate]);
 
   if (isLoading && !hydratedRef.current) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
-      </div>
-    );
+    return <BookingsCalendarSkeleton />;
   }
 
   if (isError) {
