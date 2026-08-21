@@ -2,7 +2,7 @@
 title: 'Tasks To Prompt'
 status: archived
 tags: [planning]
-updated: 2026-08-21
+updated: 2026-08-22
 ---
 
 **Status legend:** ❌ cancelled / won't do · ✅ done · 📋 planned (plan doc written) · 🚧 in progress · 🔵 pending / open
@@ -271,3 +271,15 @@ Update marketing generate design suggestion thumbnail to be more closed to calen
 ===
 
 🔵 Add ability to share calendar?
+
+===
+
+🔵 Update all dropdown from using default UI to standard dropdown UI
+
+===
+
+🔵 Update dashboard AI assistant to support edit public page
+
+===
+
+🔵 Support normal auth and add auth pages like login, register, forgot password, profile page, etc. Plan to use easy sign on for modern auth approach?
