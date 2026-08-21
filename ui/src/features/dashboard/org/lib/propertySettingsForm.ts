@@ -159,6 +159,10 @@ function readMedia(settings: Record<string, unknown>): PropertyMediaItem[] {
   return normalizePropertyMediaDraft(parsed) as PropertyMediaItem[];
 }
 
+export function propertyMediaFromProperty(property: Property): PropertyMediaItem[] {
+  return readMedia((property.settings ?? {}) as Record<string, unknown>);
+}
+
 function normalizePropertyType(type: string): string {
   const normalized = type.trim().toLowerCase();
   if (!normalized || normalized === 'condo') return 'condo';

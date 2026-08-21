@@ -44,6 +44,7 @@ export function PropertySocialsSection({
   onSaveReview,
   savingReviewId,
   externalReviewsBaseline,
+  embedded = false,
 }: {
   data: Pick<AppSettingsDto, 'superhostProofImageUrl' | 'superhostStatus' | 'updatedAt'>;
   draft: AppSettingsFormValues;
@@ -59,6 +60,7 @@ export function PropertySocialsSection({
   sectionMessages: Partial<Record<PropertySettingsSectionId, string>>;
   onSaveReview?: (reviewId: string) => void;
   savingReviewId?: string | null;
+  embedded?: boolean;
 }) {
   const externalReviewsError = resolveFieldError('property-external-reviews');
   const superhostError = resolveFieldError('property-superhost-verification-url');
@@ -88,7 +90,84 @@ export function PropertySocialsSection({
     setSocialLinkModes((current) => ({ ...current, [key]: mode }));
   };
 
-  return (
+  const socialsBody = (
+    <div className="space-y-4">
+      <div className="border-border/60 divide-border/50 divide-y overflow-hidden rounded-xl border">
+        {SOCIAL_LINK_KEYS.map((key) => (
+          <SocialLinkInheritField
+            key={key}
+            id={SOCIAL_LINK_FIELD_IDS[key]}
+            label={SOCIAL_LINK_LABELS[key]}
+            storedValue={draft[key]}
+            orgValue={orgSocialLinks[key]}
+            inheritsOrg={socialLinkModes[key] === 'inherit'}
+            disabled={disabled}
+            error={resolveFieldError(SOCIAL_LINK_FIELD_IDS[key])}
+            onStoredChange={(value) => {
+              onChange(key, value);
+              const platform = Object.entries(PLATFORM_TO_SOCIAL_LINK).find(
+                ([, linkKey]) => linkKey === key
+              )?.[0] as SocialPlatform | undefined;
+              if (
+                platform &&
+                !value.trim() &&
+                draft.mainSocialPlatform === platform &&
+                !orgSocialLinks[key].trim()
+              ) {
+                onChange('mainSocialPlatform', '');
+              }
+            }}
+            onInheritsOrgChange={(inherits) => {
+              setSocialLinkMode(key, inherits ? 'inherit' : 'custom');
+            }}
+            onInteract={() => markFieldInteracted(SOCIAL_LINK_FIELD_IDS[key])}
+          />
+        ))}
+      </div>
+
+      <MainSocialPlatformPicker
+        id="property-main-social-platform"
+        value={effectiveMain}
+        urls={urls}
+        disabled={disabled}
+        error={mainError}
+        onChange={(platform) => onChange('mainSocialPlatform', platform)}
+        onInteract={() => markFieldInteracted('property-main-social-platform')}
+      />
+
+      <PropertyExternalReviewsBlock
+        reviews={draft.externalReviews}
+        baselineReviews={externalReviewsBaseline}
+        disabled={disabled}
+        error={externalReviewsError}
+        onReviewsChange={(reviews) => onChange('externalReviews', reviews)}
+        onInteract={() => markFieldInteracted('property-external-reviews')}
+        onSaveReview={onSaveReview}
+        savingReviewId={savingReviewId}
+      />
+
+      <PropertySuperhostVerificationBlock
+        verificationUrl={draft.superhostVerificationUrl}
+        proofImageUrl={data.superhostProofImageUrl}
+        status={data.superhostStatus as SuperhostStatus}
+        disabled={disabled}
+        error={superhostError}
+        onVerificationUrlChange={(url) => onChange('superhostVerificationUrl', url)}
+        onInteract={() => markFieldInteracted('property-superhost-verification-url')}
+      />
+    </div>
+  );
+
+  return embedded ? (
+    <div className="space-y-4 px-4 py-3">
+      {propertySettingsSectionBanner('branding', sectionMessages) ? (
+        <PropertySettingsSectionAlert
+          message={propertySettingsSectionBanner('branding', sectionMessages)!}
+        />
+      ) : null}
+      {socialsBody}
+    </div>
+  ) : (
     <AdminSection
       id="branding"
       title="Socials"
@@ -101,71 +180,7 @@ export function PropertySocialsSection({
         />
       ) : null}
 
-      <div className="space-y-4">
-        <div className="border-border/60 divide-border/50 divide-y overflow-hidden rounded-xl border">
-          {SOCIAL_LINK_KEYS.map((key) => (
-            <SocialLinkInheritField
-              key={key}
-              id={SOCIAL_LINK_FIELD_IDS[key]}
-              label={SOCIAL_LINK_LABELS[key]}
-              storedValue={draft[key]}
-              orgValue={orgSocialLinks[key]}
-              inheritsOrg={socialLinkModes[key] === 'inherit'}
-              disabled={disabled}
-              error={resolveFieldError(SOCIAL_LINK_FIELD_IDS[key])}
-              onStoredChange={(value) => {
-                onChange(key, value);
-                const platform = Object.entries(PLATFORM_TO_SOCIAL_LINK).find(
-                  ([, linkKey]) => linkKey === key
-                )?.[0] as SocialPlatform | undefined;
-                if (
-                  platform &&
-                  !value.trim() &&
-                  draft.mainSocialPlatform === platform &&
-                  !orgSocialLinks[key].trim()
-                ) {
-                  onChange('mainSocialPlatform', '');
-                }
-              }}
-              onInheritsOrgChange={(inherits) => {
-                setSocialLinkMode(key, inherits ? 'inherit' : 'custom');
-              }}
-              onInteract={() => markFieldInteracted(SOCIAL_LINK_FIELD_IDS[key])}
-            />
-          ))}
-        </div>
-
-        <MainSocialPlatformPicker
-          id="property-main-social-platform"
-          value={effectiveMain}
-          urls={urls}
-          disabled={disabled}
-          error={mainError}
-          onChange={(platform) => onChange('mainSocialPlatform', platform)}
-          onInteract={() => markFieldInteracted('property-main-social-platform')}
-        />
-
-        <PropertyExternalReviewsBlock
-          reviews={draft.externalReviews}
-          baselineReviews={externalReviewsBaseline}
-          disabled={disabled}
-          error={externalReviewsError}
-          onReviewsChange={(reviews) => onChange('externalReviews', reviews)}
-          onInteract={() => markFieldInteracted('property-external-reviews')}
-          onSaveReview={onSaveReview}
-          savingReviewId={savingReviewId}
-        />
-
-        <PropertySuperhostVerificationBlock
-          verificationUrl={draft.superhostVerificationUrl}
-          proofImageUrl={data.superhostProofImageUrl}
-          status={data.superhostStatus as SuperhostStatus}
-          disabled={disabled}
-          error={superhostError}
-          onVerificationUrlChange={(url) => onChange('superhostVerificationUrl', url)}
-          onInteract={() => markFieldInteracted('property-superhost-verification-url')}
-        />
-      </div>
+      {socialsBody}
     </AdminSection>
   );
 }

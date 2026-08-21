@@ -36,6 +36,8 @@ type Props = {
   resolveFieldError: (fieldId: string) => string | null;
   markFieldInteracted: (fieldId: string) => void;
   onChange: (policy: CancellationPolicySettings) => void;
+  /** When true, render controls only (no AdminSection card) for Page Editor. */
+  embedded?: boolean;
 };
 
 function graceLabel(hours: number): string {
@@ -85,6 +87,7 @@ export function PropertyCancellationPolicySection({
   resolveFieldError,
   markFieldInteracted,
   onChange,
+  embedded = false,
 }: Props) {
   const normalized = normalizeCancellationPolicySettings(policy);
 
@@ -117,13 +120,8 @@ export function PropertyCancellationPolicySection({
   const customTitleError = resolveFieldError('cancellation-custom-title');
   const customDescriptionError = resolveFieldError('cancellation-custom-description');
 
-  return (
-    <AdminSection
-      id="cancellation"
-      title="Cancellation policy"
-      icon={Shield}
-      description="Refund rules when a guest cancels."
-    >
+  const body = (
+    <>
       <RadioGroup
         value={normalized.type}
         onValueChange={(value) => setType(value as CancellationPolicyType)}
@@ -276,6 +274,21 @@ export function PropertyCancellationPolicySection({
         <Label className="text-sm font-medium">Guest preview</Label>
         <CancellationPolicyPreview policy={normalized} />
       </div>
+    </>
+  );
+
+  if (embedded) {
+    return <div className="space-y-4 px-4 py-3">{body}</div>;
+  }
+
+  return (
+    <AdminSection
+      id="cancellation"
+      title="Cancellation policy"
+      icon={Shield}
+      description="Refund rules when a guest cancels."
+    >
+      {body}
     </AdminSection>
   );
 }

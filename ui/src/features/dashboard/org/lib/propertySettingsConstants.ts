@@ -183,3 +183,27 @@ export const INITIAL_ENABLED_AMENITIES = [
   'smoke_alarm',
   'security',
 ];
+
+/** Resolve enabled amenity ids (+ custom names) to guest-facing labels. */
+export function resolveAmenityLabels(
+  enabledIds: string[],
+  customAmenities: Array<{ id: string; name: string }>
+): string[] {
+  const presetById = new Map(
+    AMENITY_CATEGORIES.flatMap((category) =>
+      category.amenities.map((amenity) => [amenity.id, amenity.name] as const)
+    )
+  );
+  const customById = new Map(customAmenities.map((entry) => [entry.id, entry.name.trim()]));
+  const labels: string[] = [];
+  const seen = new Set<string>();
+
+  for (const id of enabledIds) {
+    const label = customById.get(id) ?? presetById.get(id);
+    if (!label || seen.has(label)) continue;
+    seen.add(label);
+    labels.push(label);
+  }
+
+  return labels;
+}
