@@ -19,22 +19,17 @@ If OAuth shows **Invalid Scopes: pages_manage_posts, instagram_content_publish**
 
 On **Org → Inbox → Channels → Connect with Meta**, edge code requests these scopes (`metaInboxConfig.ts` → `getMetaOAuthScopes()`):
 
-| Scope                       | Used for                                                                      |
-| --------------------------- | ----------------------------------------------------------------------------- |
-| `pages_show_list`           | List Facebook Pages the user manages (Page picker)                            |
-| `pages_read_engagement`     | Read Page engagement; dependency for several permissions                      |
-| `pages_read_user_content`   | **Guest Inbox** — read posts + comments made by users on the Page             |
-| `pages_manage_metadata`     | Subscribe Page webhooks, read Page settings                                   |
-| `pages_manage_engagement`   | **Guest Inbox** — reply to Facebook comments (`POST /{comment-id}/comments`)  |
-| `pages_messaging`           | **Guest Inbox** — Messenger DMs to the Page                                   |
-| `pages_manage_posts`        | **Marketing** — publish photo posts to Facebook Page                          |
-| `instagram_basic`           | Instagram account ID / profile metadata                                       |
-| `instagram_manage_messages` | **Guest Inbox** — Instagram DMs                                               |
-| `instagram_manage_comments` | **Guest Inbox** — read/reply to IG comments; IG private replies within 7 days |
-| `instagram_content_publish` | **Marketing** — publish IG feed posts, stories, reels                         |
-| `business_management`       | Business Manager assets; required when Pages live in BM                       |
-
-> **Existing orgs must reconnect.** `pages_manage_engagement` and `pages_read_user_content` were added to the scope list after initial launch. Any org that connected Meta before this change will not have these scopes in their stored token. They will see a warning in Inbox → Channels and must click **Reconnect** (full OAuth flow) to re-consent and enable Facebook comment replies.
+| Scope                       | Used for                                                 |
+| --------------------------- | -------------------------------------------------------- |
+| `pages_show_list`           | List Facebook Pages the user manages (Page picker)       |
+| `pages_read_engagement`     | Read Page engagement; dependency for several permissions |
+| `pages_manage_metadata`     | Subscribe Page webhooks, read Page settings              |
+| `pages_messaging`           | **Guest Inbox** — Messenger DMs to the Page              |
+| `pages_manage_posts`        | **Marketing** — publish photo posts to Facebook Page     |
+| `instagram_basic`           | Instagram account ID / profile metadata                  |
+| `instagram_manage_messages` | **Guest Inbox** — Instagram DMs                          |
+| `instagram_content_publish` | **Marketing** — publish IG feed posts, stories, reels    |
+| `business_management`       | Business Manager assets; required when Pages live in BM  |
 
 **Escape hatch:** set `META_OAUTH_EXCLUDE_PUBLISHING_SCOPES=1` in edge env to request inbox scopes only (temporary workaround while configuring publishing use cases).
 
@@ -60,12 +55,9 @@ Meta’s dashboard groups permissions under **Use cases**. Add the use cases bel
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------- |
 | `pages_show_list`           | **Manage Pages** or **Engage with customers on Messenger from Instagram & Facebook**                                                             | `pages_show_list`                         |
 | `pages_read_engagement`     | Same as above (Page / messaging use cases)                                                                                                       | `pages_read_engagement`                   |
-| `pages_read_user_content`   | **Manage Pages** use case                                                                                                                        | `pages_read_user_content`                 |
 | `pages_manage_metadata`     | **Manage Pages** and/or messaging use case                                                                                                       | `pages_manage_metadata`                   |
-| `pages_manage_engagement`   | **Manage everything on your Page** (same use case as `pages_manage_posts`)                                                                       | `pages_manage_engagement`                 |
 | `pages_messaging`           | **Engage with customers on Messenger from Instagram & Facebook**                                                                                 | `pages_messaging`                         |
 | `instagram_manage_messages` | **Engage with customers on Messenger from Instagram & Facebook**                                                                                 | `instagram_manage_messages`               |
-| `instagram_manage_comments` | Same messaging use case, or **Manage messaging & content on Instagram**                                                                          | `instagram_manage_comments`               |
 | `business_management`       | Often auto-included with Page/messaging use cases; if missing, add **Manage business assets** or enable under **Business management** permission | `business_management`                     |
 | `pages_manage_posts`        | **Manage everything on your Page** (or **Manage Pages** → content publishing section)                                                            | `pages_manage_posts`                      |
 | `instagram_basic`           | **Manage messaging & content on Instagram** or **Instagram API with Facebook Login**                                                             | `instagram_basic`                         |
@@ -165,25 +157,22 @@ For **each** use case → **Customize** (or **Permissions and features**):
 
 - [ ] `pages_show_list`
 - [ ] `pages_read_engagement`
-- [ ] `pages_read_user_content`
 - [ ] `pages_manage_metadata`
 - [ ] `pages_messaging`
 - [ ] `instagram_manage_messages`
-- [ ] `instagram_manage_comments`
 - [ ] `business_management` (if shown)
 
 **Manage everything on your Page / Manage Pages**
 
 - [ ] `pages_show_list` (if not already)
 - [ ] `pages_read_engagement` (if not already)
-- [ ] `pages_manage_engagement`
 - [ ] `pages_manage_posts`
 
 **Manage messaging & content on Instagram**
 
 - [ ] `instagram_basic`
 - [ ] `instagram_content_publish`
-- [ ] `instagram_manage_messages` / `instagram_manage_comments` (if not already on messaging use case)
+- [ ] `instagram_manage_messages` (if not already on messaging use case)
 
 Set each permission to **Ready for testing** when the dashboard offers that toggle (required before OAuth accepts the scope for developers).
 
@@ -209,10 +198,10 @@ Match `PUBLIC_API_URL` / `SUPABASE_PUBLIC_URL` in edge env — see [inbox-e2e-ru
 2. **Page** object → **Subscribe**
    - **Callback URL:** `{PUBLIC_API_URL}/functions/v1/meta-inbox-webhook`
    - **Verify token:** same as `META_WEBHOOK_VERIFY_TOKEN` in edge env
-   - **Fields:** `messages`, `message_echoes`, `messaging_postbacks`, `message_deliveries`, `message_reads`, `feed`
-3. **Instagram** object → **Subscribe** (for IG DMs / comments)
+   - **Fields:** `messages`, `message_echoes`, `messaging_postbacks`, `message_deliveries`, `message_reads`
+3. **Instagram** object → **Subscribe** (for IG DMs)
    - Same callback URL and verify token
-   - **Fields:** `messages`, `comments` (and any others your app needs)
+   - **Fields:** `messages`
 
 After connect, Kame also calls `subscribed_apps` on the Page — webhook subscription in the dashboard must exist first.
 
@@ -272,8 +261,8 @@ Submit when inbox + marketing flows work for app role users in Development mode.
 
 **Guest Inbox**
 
-- `pages_messaging`, `pages_manage_metadata`, `pages_manage_engagement`, `pages_read_engagement`, `pages_read_user_content`, `pages_show_list`
-- `instagram_manage_messages`, `instagram_manage_comments`
+- `pages_messaging`, `pages_manage_metadata`, `pages_read_engagement`, `pages_show_list`
+- `instagram_manage_messages`
 - `business_management`
 
 **Marketing Content Studio**

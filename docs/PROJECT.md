@@ -136,4 +136,19 @@ Property-scoped operational routes (`/properties/:propertySlug/calendar`, `/form
 
 ---
 
+## Page Editor (host-configurable public pages)
+
+Hosts edit **Stay Guide** and **Property landing** layout/content from **Public Pages → Edit** (left controls / live preview). Section visibility, order, and light style live in **`public_page_configs`**; listing content (photos, description, amenities, house rules, cancellation, socials, brand color) still stores in existing `properties.settings` / `app_settings` columns — the editor is the sole UI surface for those fields. Plan (shipped Phases 0–7; Phase 8 backlog): [`workflow/done/page-editor-public-pages.md`](workflow/done/page-editor-public-pages.md).
+
+| Concern            | Detail                                                                                                                                                                                                                                                                                                                                                  |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Tables**         | **`public_page_configs`** — `property_id`, `page_type` (`stay_guide` \| `property_landing`), `config` JSONB, unique `(property_id, page_type)`. Lazy-create on host GET. Separate from **`custom_pages.template_key`** (visual template pick) and **`property_template_contents`** (Stay Guide body HTML).                                              |
+| **Shared edge**    | `_shared/publicPageConfigs.ts` — defaults, normalizers, getOrCreate / upsert. Guest reads: `_shared/guestStayGuide.ts`, `_shared/publicPropertyService.ts` (read-only `sectionConfig`, no write on guest load).                                                                                                                                         |
+| **Edge functions** | **`public-page-configs`** GET/PATCH (JWT + `templates:view`/`templates:edit` + **`requirePropertyFeature(..., 'customPages')`**). Guest DTOs: **`get-guest-stay-guide`** / **`preview-guest-stay-guide`**, **`get-public-property`** include `sectionConfig`. Content still via **`update-property`**, **`app-settings`**, **`upload-property-media`**. |
+| **Plan gate**      | Starter+ **`customPages`** — gallery + editor UI (`RequirePropertyFeature`) and edge; Free sees upgrade. Label: **Public pages access & editor**.                                                                                                                                                                                                       |
+| **UI**             | Gallery `/org/.../property/.../public-pages` (Design your pages / Other guest pages). Editor `/public-pages/:pageId/edit` (`stay-guide` \| `listing`) — `ui/src/features/dashboard/page-editor/` (shell, stores, autosave, preview override). Guest pages honor `sectionConfig` (`StayGuidePage`, `PropertyDetailPage`).                                |
+| **Route guides**   | [`public-pages.md`](guides/routes/org/property/public-pages.md), [`stay-guide.md`](guides/routes/stay-guide.md), [`properties.md`](guides/routes/properties.md) (landing detail), [`settings.md`](guides/routes/org/property/settings.md) (migrated fields).                                                                                            |
+
+---
+
 _Last updated from repository analysis (internal documentation)._

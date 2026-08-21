@@ -31,7 +31,7 @@ UI-only work can use mock mode (`VITE_INBOX_MOCK_DATA=true` or `?mock=true`). E2
    - Staging/prod: `https://<project-ref>.supabase.co/functions/v1/meta-inbox-oauth-callback`
 3. Request permissions (see **[[meta-app-review|Meta app setup — Guest Inbox + Marketing Content Studio]]**):
    - `pages_messaging`, `pages_manage_metadata`, `pages_read_engagement`, `pages_show_list`
-   - `instagram_manage_messages`, `instagram_manage_comments`, `business_management`
+   - `instagram_manage_messages`, `business_management`
 4. Development mode: add test users and a Facebook Page you admin; link Instagram Business to the Page.
 
 **Local HTTPS (required for Meta OAuth):** Meta rejects `http://127.0.0.1` OAuth redirects. Run ngrok on port **54321**, set in **`supabase/.env.local`**:
@@ -62,7 +62,7 @@ Meta must POST to your **`meta-inbox-webhook`** function.
    https://<your-ngrok-host>/functions/v1/meta-inbox-webhook
    ```
 3. Verify token: same as **`META_WEBHOOK_VERIFY_TOKEN`**.
-4. Subscribe fields: `messages`, `message_echoes`, `messaging_postbacks`, `message_deliveries`, `message_reads`, `feed` on **Page** webhooks. Add **`comments`** on the **Instagram** webhook object for IG comment events.
+4. Subscribe fields: `messages`, `message_echoes`, `messaging_postbacks`, `message_deliveries`, `message_reads` on **Page** and **Instagram** webhooks.
 
 ### Staging / production
 
@@ -89,11 +89,6 @@ No tunnel needed; ensure secrets are set in Supabase Dashboard → Edge Function
 | 9    | Mark read                                                          | Opening thread clears unread badge                                                             |
 | 10   | **Disconnect** (Channels)                                          | Tokens removed; threads stop updating                                                          |
 
-### Comment threads (Phase 2)
-
-- Trigger a comment on a Page or IG post linked to the connected account.
-- Thread type **comment** appears; public reply and (IG) private reply work per **`social-inbox-send`**.
-
 ## Troubleshooting
 
 | Symptom                                                     | Check                                                                                                                                                                                   |
@@ -116,7 +111,7 @@ No tunnel needed; ensure secrets are set in Supabase Dashboard → Edge Function
 
 ## Known limits (v1)
 
-- TikTok / Airbnb: UI **Coming soon** only — no fake API.
+- TikTok / Airbnb inbox channels: **not planned** — no public messaging API partnership; Channels UI is Meta-only.
 - Property-level channel overrides: not implemented (org-scoped only).
 
 ## Related
