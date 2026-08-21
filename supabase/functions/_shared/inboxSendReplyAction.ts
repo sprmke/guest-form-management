@@ -1,7 +1,7 @@
 /**
  * Shared "send a plain-text reply" action for the AI dashboard assistant's
  * `propose_send_inbox_reply` tool — a deliberately narrower slice of `social-inbox-send`'s
- * capability (text + conversationId only, no attachments/privateReply/replyToMessageId) since
+ * capability (text + conversationId only, no attachments/replyToMessageId) since
  * this is the assistant's first externally-visible, real-guest-facing send action. The full
  * `social-inbox-send` edge function keeps its own richer inline implementation — not refactored
  * to share this module, since its feature set is intentionally broader than what a chat tool
@@ -13,7 +13,7 @@ import {
   isWithinMessagingWindowFromInbound,
 } from './socialInboxAiService.ts';
 import { friendlyMetaSendError } from './metaInboxSendErrors.ts';
-import { getPageAccessToken, replyMetaPublicComment, sendMetaMessage } from './metaInboxGraph.ts';
+import { getPageAccessToken, sendMetaMessage } from './metaInboxGraph.ts';
 import { createServiceClient } from './orgAuth.ts';
 import {
   conversationAllowedInScope,
@@ -54,7 +54,7 @@ export async function loadInboxConversationInScope(
   return conv;
 }
 
-/** Sends a plain-text reply — web insert+notify, or Meta DM/public-comment via the Graph API. */
+/** Sends a plain-text reply — web insert+notify, or Meta DM via the Graph API. */
 export async function sendInboxTextReply(
   ctx: InboxAccessContext,
   conv: SocialConversationRow,
@@ -141,25 +141,7 @@ export async function sendInboxTextReply(
         is_ai_generated: false,
       });
     } else {
-      const commentId = conv.external_thread_id.replace(/^comment:/, '');
-      const result = await replyMetaPublicComment({
-        commentId,
-        pageAccessToken: token,
-        text: trimmed,
-        platform: conv.platform,
-      });
-      await insertMessageIfNew({
-        organization_id: ctx.org.id,
-        conversation_id: conv.id,
-        direction: 'outbound',
-        external_message_id: result.id,
-        body_text: trimmed,
-        attachments: [],
-        sent_at: now,
-        delivery_status: 'sent',
-        sent_by_user_id: userId,
-        is_ai_generated: false,
-      });
+      throw new InboxSendReplyError('This conversation type is no longer supported');
     }
   } catch (err) {
     if (err instanceof InboxSendReplyError) throw err;

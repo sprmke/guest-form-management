@@ -8,19 +8,6 @@ import { metaBackfillHasMore } from '../_shared/socialInboxService.ts';
 import { jsonError, jsonSuccess } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
-const COMING_SOON_PLATFORMS = [
-  {
-    platform: 'tiktok' as const,
-    available: false,
-    reason: 'Requires TikTok Business Messaging API approval.',
-  },
-  {
-    platform: 'airbnb' as const,
-    available: false,
-    reason: 'Requires Airbnb Homes API partnership.',
-  },
-];
-
 serveAuthenticated('meta-inbox-status', async (req) => {
   if (req.method !== 'GET') {
     return jsonError(req, 'Method not allowed', 405);
@@ -54,7 +41,6 @@ serveAuthenticated('meta-inbox-status', async (req) => {
 
   return jsonSuccess(req, {
     connections: serialized,
-    comingSoon: COMING_SOON_PLATFORMS,
     metaConfigured: Boolean(Deno.env.get('META_APP_ID')?.trim()),
     metaSyncInProgress,
     metaSyncError: null,

@@ -70,7 +70,19 @@ export async function getConnectionForMetaWebhook(
       .limit(1)
       .maybeSingle();
     if (error) throw new Error(error.message);
-    return (data as SocialChannelConnectionRow | null) ?? null;
+    if (data) return data as SocialChannelConnectionRow;
+
+    const { data: byPage, error: pageError } = await sb
+      .from('social_channel_connections')
+      .select('*')
+      .eq('platform', 'instagram')
+      .eq('status', 'connected')
+      .eq('meta_page_id', entryId)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (pageError) throw new Error(pageError.message);
+    return (byPage as SocialChannelConnectionRow | null) ?? null;
   }
 
   const { data, error } = await sb
@@ -165,12 +177,10 @@ export async function listConversations(
     .from('social_conversations')
     .select('*')
     .eq('organization_id', orgId)
+    .eq('conversation_type', 'dm')
     .order('last_message_at', { ascending: false })
     .limit(limit + 1);
 
-  if (filter.type && filter.type !== 'all') {
-    q = q.eq('conversation_type', filter.type);
-  }
   if (filter.platform && filter.platform !== 'all') {
     q = q.eq('platform', filter.platform);
   }
@@ -443,6 +453,47 @@ export async function enrichConversationMessageAttachments(
   return messages.map((m) => updates.get(m.id) ?? m);
 }
 
+/** Fill Instagram/Facebook DM display name when webhook stored the thread as Guest. */
+export async function fillMissingMetaParticipantIdentity(
+  conv: SocialConversationRow
+): Promise<SocialConversationRow> {
+  if (conv.participant_name?.trim()) return conv;
+  if (conv.conversation_type !== 'dm') return conv;
+  if (conv.platform !== 'facebook' && conv.platform !== 'instagram') return conv;
+  const guestId = conv.external_participant_id?.trim();
+  if (!guestId) return conv;
+
+  const { fetchMetaMessengerParticipantProfile, getPageAccessToken } =
+    await import('./metaInboxGraph.ts');
+  const sb = socialInboxDb();
+  const { data: connRow } = await sb
+    .from('social_channel_connections')
+    .select('*')
+    .eq('id', conv.connection_id)
+    .maybeSingle();
+  if (!connRow?.encrypted_access_token) return conv;
+
+  let token: string;
+  try {
+    token = await getPageAccessToken(connRow as SocialChannelConnectionRow);
+  } catch {
+    return conv;
+  }
+
+  const profile = await fetchMetaMessengerParticipantProfile(guestId, token, conv.platform);
+  if (!profile.name && !profile.profilePic) return conv;
+
+  const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (profile.name) patch.participant_name = profile.name;
+  if (profile.profilePic) patch.participant_avatar_url = profile.profilePic;
+  const { error } = await sb.from('social_conversations').update(patch).eq('id', conv.id);
+  if (error) {
+    console.warn('[fillMissingMetaParticipantIdentity]', error.message);
+    return conv;
+  }
+  return { ...conv, ...patch } as SocialConversationRow;
+}
+
 export async function insertMessageIfNew(
   fields: Omit<SocialMessageRow, 'id' | 'created_at'>
 ): Promise<SocialMessageRow | null> {
@@ -689,6 +740,7 @@ export async function searchInboxConversations(
     .from('social_conversations')
     .select('*')
     .eq('organization_id', orgId)
+    .eq('conversation_type', 'dm')
     .or(`participant_name.ilike.${term},subject_preview.ilike.${term}`)
     .order('last_message_at', { ascending: false })
     .limit(limit + 1);
@@ -709,6 +761,7 @@ export async function searchInboxConversations(
       .from('social_conversations')
       .select('*')
       .eq('organization_id', orgId)
+      .eq('conversation_type', 'dm')
       .in('id', messageIds);
     if (msgConvError) throw new Error(msgConvError.message);
     messageMatches = (msgConvRows ?? []) as SocialConversationRow[];
@@ -723,9 +776,6 @@ export async function searchInboxConversations(
     (a, b) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
   );
 
-  if (filter.type && filter.type !== 'all') {
-    rows = rows.filter((r) => r.conversation_type === filter.type);
-  }
   if (filter.platform && filter.platform !== 'all') {
     rows = rows.filter((r) => r.platform === filter.platform);
   }
