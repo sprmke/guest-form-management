@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
@@ -32,8 +32,10 @@ import {
 } from '@/features/dashboard/team/lib/acceptInviteApi';
 
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
+import { RouteGuardSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
 import { supabase } from '@/lib/supabase/client';
 
@@ -244,12 +246,7 @@ export function AcceptInvitePage() {
   }
 
   if (previewLoading) {
-    return (
-      <div className="bg-background flex min-h-screen items-center justify-center">
-        <Loader2 className="text-muted-foreground size-8 animate-spin" aria-hidden />
-        <span className="sr-only">Loading invitation…</span>
-      </div>
-    );
+    return <RouteGuardSkeleton fullScreen />;
   }
 
   if (previewError || !preview) {
@@ -269,8 +266,14 @@ export function AcceptInvitePage() {
     return (
       <div className="bg-background flex min-h-screen flex-col items-center justify-center px-4">
         <AcceptInviteBrandHeader preview={preview} />
-        <Loader2 className="text-muted-foreground size-8 animate-spin" aria-hidden />
-        <span className="sr-only">Accepting invitation…</span>
+        <div
+          className="w-full max-w-xs space-y-2"
+          aria-busy="true"
+          aria-label="Accepting invitation"
+        >
+          <Skeleton className="h-11 w-full rounded-xl" />
+          <Skeleton className="mx-auto h-3 w-2/3" />
+        </div>
       </div>
     );
   }

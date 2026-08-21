@@ -3,6 +3,12 @@ import { useCallback, useMemo, useState } from 'react';
 import { Mail, Shield, UserPlus, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
+import {
+  canInviteTeamMember,
+  countPropertyTeamSlotsUsed,
+} from '@/features/dashboard/plans/lib/planFeatures';
 import { CustomRoleFormDialog } from '@/features/dashboard/team/components/CustomRoleFormDialog';
 import { EditMemberContactDialog } from '@/features/dashboard/team/components/EditMemberContactDialog';
 import {
@@ -27,12 +33,6 @@ import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPer
 import { countMembersWithRole } from '@/features/dashboard/team/lib/propertyTeamRoles';
 import { isTeamMemberActive } from '@/features/dashboard/team/lib/teamMemberAccess';
 import { canEditPropertyMemberContact } from '@/features/dashboard/team/lib/teamMemberContact';
-import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
-import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
-import {
-  canInviteTeamMember,
-  countPropertyTeamSlotsUsed,
-} from '@/features/dashboard/plans/lib/planFeatures';
 import type {
   CustomPropertyRole,
   CustomRoleFormMode,
@@ -44,26 +44,12 @@ import type { EditMemberContactSaveInput } from '@/features/dashboard/team/types
 
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
+import { TeamPageSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
 import { SlidingTabs, SlidingTabsList, SlidingTabsTrigger } from '@/components/ui/sliding-tabs';
 import { TooltipProvider } from '@/components/ui/tooltip';
-
-function PropertyTeamPageSkeleton() {
-  return (
-    <div className="space-y-3 sm:space-y-4">
-      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-[4.5rem] w-full rounded-xl sm:h-24" />
-        ))}
-      </div>
-      <Skeleton className="h-10 w-full max-w-md rounded-lg" />
-      <Skeleton className="h-64 w-full rounded-xl" />
-    </div>
-  );
-}
 
 export function PropertyTeamPage() {
   const { data, isLoading, error } = usePropertyTeam();
@@ -344,7 +330,7 @@ export function PropertyTeamPage() {
         desktopActions={inviteAction}
         desktopActionsClassName="w-full sm:w-auto"
       >
-        {isLoading ? <PropertyTeamPageSkeleton /> : null}
+        {isLoading ? <TeamPageSkeleton /> : null}
 
         {error ? (
           <Card>
