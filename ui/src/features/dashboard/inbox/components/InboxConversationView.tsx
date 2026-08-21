@@ -72,6 +72,32 @@ import { useChatTyping } from '@/lib/chat/useChatTyping';
 import { cn } from '@/lib/utils';
 import { formatStayDateRange } from '@/utils/format/dates';
 
+const MESSAGE_SKELETON_ROWS = [
+  { outbound: false, widthClass: 'w-2/3' },
+  { outbound: false, widthClass: 'w-2/5' },
+  { outbound: true, widthClass: 'w-1/2' },
+  { outbound: false, widthClass: 'w-3/4' },
+  { outbound: true, widthClass: 'w-1/3' },
+];
+
+function InboxMessageBubbleSkeleton({
+  outbound,
+  widthClass,
+}: {
+  outbound: boolean;
+  widthClass: string;
+}) {
+  return (
+    <div
+      className={cn('flex w-full flex-col gap-1', outbound ? 'items-end' : 'items-start')}
+      aria-hidden
+    >
+      <Skeleton className={cn('h-11 max-w-[min(100%,28rem)] rounded-2xl', widthClass)} />
+      <Skeleton className="h-2.5 w-10 rounded-full" />
+    </div>
+  );
+}
+
 type ComposerMode =
   | { kind: 'compose' }
   | { kind: 'reply'; messageId: string; preview: string }
@@ -449,9 +475,13 @@ export function InboxConversationView({
 
       <div ref={scrollContainerRef} className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-5">
         {isLoading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-14 w-2/3 rounded-2xl" />
+          <div className="space-y-3" aria-busy="true" aria-label="Loading messages">
+            {MESSAGE_SKELETON_ROWS.map((row, i) => (
+              <InboxMessageBubbleSkeleton
+                key={i}
+                outbound={row.outbound}
+                widthClass={row.widthClass}
+              />
             ))}
           </div>
         ) : (

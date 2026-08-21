@@ -13,6 +13,7 @@ import {
   ResponsiveModalHeader,
   ResponsiveModalTitle,
 } from '@/components/ui/responsive-modal';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -54,8 +55,20 @@ export function MetaPagePickerDialog({
         </ResponsiveModalHeader>
 
         {loading ? (
-          <div className="flex items-center justify-center py-10">
-            <Loader2 className="text-muted-foreground size-6 animate-spin" aria-hidden />
+          <div className="space-y-2 py-2" aria-busy="true" aria-label="Loading pages">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div
+                key={i}
+                className="border-border/70 flex min-h-[44px] items-center gap-3 rounded-xl border p-3"
+                style={{ opacity: 1 - i * 0.08 }}
+              >
+                <Skeleton className="size-10 shrink-0 rounded-lg" />
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <Skeleton className="h-3.5 w-1/2 max-w-full" />
+                </div>
+                <Skeleton className="size-5 shrink-0 rounded-full" />
+              </div>
+            ))}
           </div>
         ) : error ? (
           <p className="text-destructive py-4 text-sm">{error}</p>

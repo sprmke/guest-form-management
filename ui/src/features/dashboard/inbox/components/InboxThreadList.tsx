@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 
-import { Loader2, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 
 import { InboxFilterBar } from '@/features/dashboard/inbox/components/InboxFilterBar';
 import { InboxThreadListEmpty } from '@/features/dashboard/inbox/components/InboxThreadListEmpty';
@@ -11,9 +11,28 @@ import type {
   ThreadStatusFilter,
 } from '@/features/dashboard/inbox/types/inbox';
 
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+
+function InboxThreadRowSkeleton({ opacity = 1 }: { opacity?: number }) {
+  return (
+    <div className="flex min-h-[44px] w-full gap-3 px-3 py-3" style={{ opacity }} aria-hidden>
+      <Skeleton className="mt-0.5 size-9 shrink-0 rounded-lg" />
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <div className="flex items-start justify-between gap-2">
+          <Skeleton className="h-3.5 w-1/3 max-w-[9rem]" />
+          <Skeleton className="h-2.5 w-8 shrink-0" />
+        </div>
+        <div className="mt-0.5 space-y-1">
+          <Skeleton className="h-3 w-full" />
+          <Skeleton className="h-3 w-2/3 max-w-[70%]" />
+        </div>
+        <Skeleton className="mt-1.5 h-4 w-16 rounded-md" />
+      </div>
+    </div>
+  );
+}
 
 type Props = {
   conversations: InboxConversation[];
@@ -114,9 +133,9 @@ export function InboxThreadList({
       </div>
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         {isLoading ? (
-          <div className="space-y-1 p-2">
+          <div className="py-1" aria-busy="true" aria-label="Loading conversations">
             {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-[72px] w-full rounded-lg" />
+              <InboxThreadRowSkeleton key={i} opacity={1 - i * 0.08} />
             ))}
           </div>
         ) : conversations.length === 0 ? (
@@ -143,15 +162,14 @@ export function InboxThreadList({
               />
             ))}
             {(hasMore || (loadingMore && !canLoadOlderFromMeta)) && (
-              <div
-                ref={sentinelRef}
-                className="flex min-h-[48px] items-center justify-center px-3 py-3"
-                role="status"
-                aria-live="polite"
-                aria-busy={loadingMore}
-              >
-                {loadingMore && (
-                  <Loader2 className="text-muted-foreground size-4 animate-spin" aria-hidden />
+              <div ref={sentinelRef} role="status" aria-live="polite" aria-busy={loadingMore}>
+                {loadingMore ? (
+                  <div>
+                    <InboxThreadRowSkeleton />
+                    <InboxThreadRowSkeleton opacity={0.6} />
+                  </div>
+                ) : (
+                  <div className="min-h-[48px]" aria-hidden />
                 )}
               </div>
             )}
@@ -162,14 +180,10 @@ export function InboxThreadList({
                   variant="outline"
                   size="sm"
                   className="h-9 min-h-[44px] px-3"
-                  disabled={loadingMore}
+                  loading={loadingMore}
                   onClick={onLoadOlderFromMeta}
                 >
-                  {loadingMore ? (
-                    <Loader2 className="size-4 animate-spin" aria-hidden />
-                  ) : (
-                    'Load older from Meta'
-                  )}
+                  Load older from Meta
                 </Button>
               </div>
             ) : null}

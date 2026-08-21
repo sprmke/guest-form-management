@@ -16,7 +16,29 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+
+function InboxChannelsTabSkeleton() {
+  return (
+    <ul
+      className="divide-border border-border divide-y overflow-hidden rounded-lg border"
+      aria-busy="true"
+      aria-label="Loading channels"
+    >
+      <li className="px-3 py-3 sm:px-4 sm:py-3.5">
+        <div className="flex items-start gap-3">
+          <Skeleton className="size-9 shrink-0 rounded-lg" />
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <Skeleton className="h-3.5 w-16" />
+            <Skeleton className="h-3 w-48 max-w-full" />
+          </div>
+          <Skeleton className="h-9 w-28 shrink-0 rounded-md" />
+        </div>
+      </li>
+    </ul>
+  );
+}
 
 function webhookWarning(conn: InboxConnection | undefined): string | null {
   if (!conn || conn.status !== 'connected' || conn.isPreview) return null;
@@ -167,6 +189,10 @@ export function InboxChannelsTab({
   const showReconnect = canManage && (metaState === 'error' || metaState === 'partial');
   const showFixConnection = canManage && metaConnected && needsWebhookRepair && !showReconnect;
   const showDisconnect = canManage && metaConnected;
+
+  if (statusLoading) {
+    return <InboxChannelsTabSkeleton />;
+  }
 
   return (
     <>
