@@ -1,5 +1,5 @@
 /**
- * Meta webhook receiver — GET verify, POST messaging + comments.
+ * Meta webhook receiver — GET verify, POST messaging + read receipts.
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -7,8 +7,6 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { maybeAutoReplyToInboundDm } from '../_shared/metaInboxAutoReply.ts';
 import { metaWebhookVerifyToken } from '../_shared/metaInboxConfig.ts';
 import {
-  handleMetaFeedWebhook,
-  handleMetaIgCommentWebhook,
   handleMetaMessagingWebhook,
   handleMetaReadReceipt,
 } from '../_shared/metaInboxWebhookHandler.ts';
@@ -99,13 +97,7 @@ serve(async (req) => {
       }
     }
 
-    for (const change of (entry.changes ?? []) as Record<string, unknown>[]) {
-      if (payload.object === 'instagram') {
-        await handleMetaIgCommentWebhook(pageOrIgId, change as never);
-      } else {
-        await handleMetaFeedWebhook(pageOrIgId, change as never);
-      }
-    }
+    void entry.changes;
   }
 
   return new Response(JSON.stringify({ success: true }), {

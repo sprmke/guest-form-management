@@ -110,28 +110,6 @@ export async function verifyMetaPageWebhookSubscription(
   };
 }
 
-/**
- * Check whether the stored user token still has `pages_manage_engagement`.
- * Returns `null` on API error (non-fatal — caller decides how to surface it).
- */
-export async function checkMetaPageManageEngagementPermission(
-  pageAccessToken: string
-): Promise<{ granted: boolean } | null> {
-  try {
-    const url = new URL(`${META_GRAPH_BASE}/me/permissions`);
-    url.searchParams.set('access_token', pageAccessToken);
-    const res = await fetch(url.toString());
-    const json = await parseMetaGraphJson(res);
-    if (!res.ok) return null;
-    type PermRow = { permission: string; status: string };
-    const rows = Array.isArray(json.data) ? (json.data as PermRow[]) : [];
-    const found = rows.find((r) => r.permission === 'pages_manage_engagement');
-    return { granted: found?.status === 'granted' };
-  } catch {
-    return null;
-  }
-}
-
 type MetaTokenDebugResult = {
   valid: boolean;
   expiresAt: string | null;
@@ -188,9 +166,7 @@ export async function reconcileMetaConnectionWebhook(
   const pageAccessToken = await getPageAccessToken(connection);
 
   try {
-    // Run webhook check and permission check concurrently — independent calls.
-    const [permissionCheck, tokenDebug, initialVerification] = await Promise.all([
-      checkMetaPageManageEngagementPermission(pageAccessToken),
+    const [tokenDebug, initialVerification] = await Promise.all([
       debugMetaConnectionToken(pageAccessToken),
       verifyMetaPageWebhookSubscription(connection.meta_page_id, pageAccessToken),
     ]);
@@ -207,12 +183,6 @@ export async function reconcileMetaConnectionWebhook(
       resubscribed = true;
     }
 
-    // Build error_message: permission warning takes precedence over a clean webhook state
-    // so it stays visible until the org reconnects with the new scopes.
-    const missingEngagement =
-      permissionCheck !== null && !permissionCheck.granted
-        ? 'Missing pages_manage_engagement — reconnect Meta to reply to Facebook comments.'
-        : null;
     const tokenInvalid =
       tokenDebug !== null && !tokenDebug.valid
         ? 'Meta access token is no longer valid — reconnect Meta.'
@@ -228,10 +198,9 @@ export async function reconcileMetaConnectionWebhook(
           ? ` Missing fields: ${verification.missingFields.join(', ')}.`
           : '';
       const attempts = previousAttempts + 1;
-      const errorParts = [
-        `Webhook subscription still missing after retry.${missingLabel}`,
-        missingEngagement,
-      ].filter(Boolean);
+      const errorParts = [`Webhook subscription still missing after retry.${missingLabel}`].filter(
+        Boolean
+      );
       await updateWebhookState(connection, {
         webhook_subscribed_at: connection.webhook_subscribed_at ?? null,
         webhook_last_verified_at: now,
@@ -251,9 +220,7 @@ export async function reconcileMetaConnectionWebhook(
       webhook_last_verified_at: now,
       webhook_verify_attempts: 0,
       token_expires_at: tokenDebug?.expiresAt ?? connection.token_expires_at ?? null,
-      // Keep the permission warning visible even when the webhook itself is healthy.
-      error_message:
-        [missingEngagement, tokenInvalid, tokenExpiringSoon].filter(Boolean).join(' ') || null,
+      error_message: [tokenInvalid, tokenExpiringSoon].filter(Boolean).join(' ') || null,
     });
     return {
       verified: true,

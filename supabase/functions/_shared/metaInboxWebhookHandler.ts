@@ -3,7 +3,11 @@
  */
 
 import { metaMessagingWindowExpiry, normalizeMetaWebhookTimestamp } from './metaTimestamp.ts';
-import { fetchMetaMessengerParticipantProfile, getPageAccessToken } from './metaInboxGraph.ts';
+import {
+  fetchMetaMessengerParticipantProfile,
+  formatMetaParticipantDisplayName,
+  getPageAccessToken,
+} from './metaInboxGraph.ts';
 import {
   createOrCoalesceNotification,
   inboxNotificationParticipantLabel,
@@ -19,10 +23,10 @@ import {
   updateConversationAfterMessage,
   upsertConversation,
 } from './socialInboxService.ts';
-import type { SocialPlatform } from './socialInboxTypes.ts';
+import type { SocialConversationRow, SocialPlatform } from './socialInboxTypes.ts';
 
 type MetaMessagingEvent = {
-  sender?: { id: string };
+  sender?: { id: string; username?: string; name?: string };
   recipient?: { id: string };
   timestamp?: number;
   message?: {
@@ -66,10 +70,22 @@ export async function handleMetaMessagingWebhook(
     participant_name?: string;
     participant_avatar_url?: string;
   } = {};
-  if (!existing?.participant_name?.trim() && guestId && guestId !== 'unknown') {
+  const webhookName = formatMetaParticipantDisplayName({
+    name: event.sender?.name,
+    username: event.sender?.username,
+  });
+  if (!existing?.participant_name?.trim() && webhookName && !isFromPage) {
+    identityPatch.participant_name = webhookName;
+  }
+  if (
+    !existing?.participant_name?.trim() &&
+    !identityPatch.participant_name &&
+    guestId &&
+    guestId !== 'unknown'
+  ) {
     try {
       const token = await getPageAccessToken(connection);
-      const profile = await fetchMetaMessengerParticipantProfile(guestId, token);
+      const profile = await fetchMetaMessengerParticipantProfile(guestId, token, platform);
       if (profile.name) identityPatch.participant_name = profile.name;
       if (profile.profilePic) identityPatch.participant_avatar_url = profile.profilePic;
     } catch (e) {
@@ -147,147 +163,6 @@ export async function handleMetaMessagingWebhook(
       console.warn('[handleMetaMessagingWebhook] notification create:', e);
     }
   }
-}
-
-type MetaFeedChange = {
-  field?: string;
-  value?: {
-    item?: string;
-    comment_id?: string;
-    post_id?: string;
-    parent_id?: string;
-    message?: string;
-    from?: { id: string; name?: string };
-    created_time?: number;
-    verb?: string;
-  };
-};
-
-export async function handleMetaFeedWebhook(pageId: string, change: MetaFeedChange): Promise<void> {
-  const value = change.value;
-  if (!value || value.item !== 'comment' || value.verb === 'remove') return;
-  const commentId = value.comment_id;
-  if (!commentId) return;
-
-  const dedupeId = `comment:${commentId}`;
-  if (!(await recordWebhookEvent(dedupeId))) return;
-
-  const connection = await getConnectionForMetaWebhook(pageId, 'facebook');
-  if (!connection) return;
-
-  const orgId = connection.organization_id;
-  const sentAt = value.created_time
-    ? new Date(value.created_time * 1000).toISOString()
-    : new Date().toISOString();
-  const text = value.message?.trim() ?? '';
-  const threadId = `comment:${commentId}`;
-
-  const conv = await upsertConversation({
-    organization_id: orgId,
-    connection_id: connection.id,
-    platform: 'facebook',
-    external_thread_id: threadId,
-    conversation_type: 'comment',
-    external_participant_id: value.from?.id ?? null,
-    participant_name: value.from?.name ?? null,
-    subject_preview: text.slice(0, 500) || '(comment)',
-    last_message_at: sentAt,
-    last_inbound_at: sentAt,
-    unread_count: 0,
-    reply_status: 'pending',
-    linked_post_id: value.post_id ?? null,
-    linked_post_url: value.post_id ? `https://facebook.com/${value.post_id}` : null,
-  });
-
-  await insertMessageIfNew({
-    organization_id: orgId,
-    conversation_id: conv.id,
-    direction: 'inbound',
-    external_message_id: dedupeId,
-    body_text: text || null,
-    attachments: [],
-    sent_at: sentAt,
-    delivery_status: null,
-    sent_by_user_id: null,
-    is_ai_generated: false,
-  });
-
-  await updateConversationAfterMessage(conv.id, {
-    subject_preview: text.slice(0, 500) || '(comment)',
-    last_message_at: sentAt,
-    last_inbound_at: sentAt,
-    unread_delta: 1,
-    reply_status: 'pending',
-  });
-}
-
-type MetaIgCommentChange = {
-  field?: string;
-  value?: {
-    id?: string;
-    text?: string;
-    media?: { id?: string; media_product_type?: string };
-    from?: { id: string; username?: string };
-  };
-};
-
-export async function handleMetaIgCommentWebhook(
-  igUserId: string,
-  change: MetaIgCommentChange
-): Promise<void> {
-  const value = change.value;
-  const commentId = value?.id;
-  if (!commentId) return;
-
-  const dedupeId = `ig-comment:${commentId}`;
-  if (!(await recordWebhookEvent(dedupeId))) return;
-
-  const igConn = await getConnectionForMetaWebhook(igUserId, 'instagram');
-  if (!igConn) return;
-
-  const orgId = igConn.organization_id;
-  const sentAt = new Date().toISOString();
-  const text = value?.text?.trim() ?? '';
-  const threadId = `comment:${commentId}`;
-  const mediaId = value?.media?.id;
-
-  const conv = await upsertConversation({
-    organization_id: orgId,
-    connection_id: igConn.id,
-    platform: 'instagram',
-    external_thread_id: threadId,
-    conversation_type: 'comment',
-    external_participant_id: value?.from?.id ?? null,
-    participant_name: value?.from?.username ? `@${value.from.username}` : null,
-    subject_preview: text.slice(0, 500) || '(comment)',
-    last_message_at: sentAt,
-    last_inbound_at: sentAt,
-    unread_count: 0,
-    reply_status: 'pending',
-    linked_post_id: mediaId ?? null,
-    linked_post_url: mediaId ? `https://instagram.com/p/${mediaId}` : null,
-  });
-
-  await insertMessageIfNew({
-    organization_id: orgId,
-    conversation_id: conv.id,
-    direction: 'inbound',
-    external_message_id: dedupeId,
-    body_text: text || null,
-    attachments: [],
-    sent_at: sentAt,
-    delivery_status: null,
-    sent_by_user_id: null,
-    is_ai_generated: false,
-  });
-
-  await updateConversationAfterMessage(conv.id, {
-    subject_preview: text.slice(0, 500) || '(comment)',
-    last_message_at: sentAt,
-    last_inbound_at: sentAt,
-    unread_delta: 1,
-    reply_status: 'pending',
-  });
 }
 
 export async function handleMetaReadReceipt(
