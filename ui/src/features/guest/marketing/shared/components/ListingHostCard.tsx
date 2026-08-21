@@ -38,7 +38,7 @@ export function ListingHostCard({ host, motionDelay = 0.2, className, onContactH
       transition={{ delay: motionDelay }}
       className={
         className ??
-        'border-border bg-card flex items-center gap-3 rounded-2xl border p-3 sm:gap-4 sm:p-4'
+        'border-border bg-card @md:gap-4 @md:p-4 flex min-w-0 items-center gap-3 rounded-2xl border p-3'
       }
     >
       <div className="from-primary to-primary/80 relative h-11 w-11 shrink-0 overflow-hidden rounded-full bg-gradient-to-br sm:h-12 sm:w-12">

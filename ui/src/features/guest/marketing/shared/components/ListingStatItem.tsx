@@ -8,13 +8,14 @@ type Props = {
 
 export function ListingStatItem({ icon: Icon, value, label }: Props) {
   return (
-    <div className="flex items-center gap-3">
-      <div className="bg-muted rounded-full p-2.5">
-        <Icon className="text-muted-foreground h-5 w-5" aria-hidden />
+    <div className="flex min-w-0 items-center gap-2.5">
+      <div className="bg-muted flex size-9 shrink-0 items-center justify-center rounded-full">
+        <Icon className="text-muted-foreground size-4" aria-hidden />
       </div>
-      <div className="flex items-center gap-2">
-        <p className="text-foreground text-lg font-semibold tabular-nums">{value}</p>
-        <p className="text-muted-foreground text-sm">{label}</p>
+      <div className="min-w-0">
+        <p className="text-foreground @sm:text-base @md:text-lg truncate text-sm font-semibold tabular-nums leading-tight">
+          {value} <span className="text-muted-foreground font-normal">{label}</span>
+        </p>
       </div>
     </div>
   );

@@ -58,7 +58,7 @@ export function ListingGallery({
     overlayContent?: React.ReactNode;
   }) => (
     <div
-      className={cn('group relative cursor-pointer overflow-hidden', className)}
+      className={cn('group relative min-w-0 cursor-pointer overflow-hidden', className)}
       onClick={() => openLightbox(index)}
     >
       <Image
@@ -73,40 +73,54 @@ export function ListingGallery({
     </div>
   );
 
+  const galleryShellClass =
+    'grid h-[280px] grid-cols-1 gap-2 overflow-hidden rounded-2xl @xl:h-[400px] @3xl:h-[500px]';
+
   const Layout1Image = () => (
-    <div className="grid h-[300px] gap-2 overflow-hidden rounded-2xl sm:h-[400px] md:h-[500px]">
-      <GalleryImage src={displayImages[0] ?? ''} index={0} />
+    <div className={galleryShellClass}>
+      <GalleryImage src={displayImages[0] ?? ''} index={0} sizes="100vw" />
     </div>
   );
 
   const Layout2Images = () => (
-    <div className="grid h-[300px] grid-cols-1 gap-2 overflow-hidden rounded-2xl sm:h-[400px] md:h-[500px] md:grid-cols-5">
-      <GalleryImage src={displayImages[0] ?? ''} index={0} className="md:col-span-3" />
+    <div className={cn(galleryShellClass, '@3xl:grid-cols-5')}>
+      <GalleryImage
+        src={displayImages[0] ?? ''}
+        index={0}
+        className="@3xl:col-span-3"
+        sizes="(min-width: 768px) 60vw, 100vw"
+      />
       <GalleryImage
         src={displayImages[1] ?? ''}
         index={1}
-        className="hidden md:col-span-2 md:block"
+        className="@3xl:col-span-2 @3xl:block hidden"
       />
     </div>
   );
 
   const Layout3Images = () => (
-    <div className="grid h-[300px] grid-cols-1 gap-2 overflow-hidden rounded-2xl sm:h-[400px] md:h-[500px] md:grid-cols-2 md:grid-rows-2">
-      <GalleryImage src={displayImages[0] ?? ''} index={0} className="md:row-span-2" />
-      <GalleryImage src={displayImages[1] ?? ''} index={1} className="hidden md:block" />
-      <GalleryImage src={displayImages[2] ?? ''} index={2} className="hidden md:block" />
+    <div className={cn(galleryShellClass, '@3xl:grid-cols-2 @3xl:grid-rows-2')}>
+      <GalleryImage
+        src={displayImages[0] ?? ''}
+        index={0}
+        className="@3xl:row-span-2"
+        sizes="(min-width: 768px) 50vw, 100vw"
+      />
+      <GalleryImage src={displayImages[1] ?? ''} index={1} className="@3xl:block hidden" />
+      <GalleryImage src={displayImages[2] ?? ''} index={2} className="@3xl:block hidden" />
     </div>
   );
 
   const Layout4Images = () => (
-    <div className="grid h-[300px] grid-cols-1 gap-2 overflow-hidden rounded-2xl sm:h-[400px] md:h-[500px] md:grid-cols-3 md:grid-rows-2">
+    <div className={cn(galleryShellClass, '@3xl:grid-cols-3 @3xl:grid-rows-2')}>
       <GalleryImage
         src={displayImages[0] ?? ''}
         index={0}
-        className="md:col-span-2 md:row-span-2"
+        className="@3xl:col-span-2 @3xl:row-span-2"
+        sizes="(min-width: 768px) 66vw, 100vw"
       />
-      <GalleryImage src={displayImages[1] ?? ''} index={1} className="hidden md:block" />
-      <div className="hidden gap-2 md:grid md:grid-cols-2">
+      <GalleryImage src={displayImages[1] ?? ''} index={1} className="@3xl:block hidden" />
+      <div className="@3xl:grid @3xl:grid-cols-2 hidden gap-2">
         <GalleryImage src={displayImages[2] ?? ''} index={2} />
         <GalleryImage src={displayImages[3] ?? ''} index={3} />
       </div>
@@ -114,19 +128,20 @@ export function ListingGallery({
   );
 
   const Layout5PlusImages = () => (
-    <div className="grid h-[300px] grid-cols-1 gap-2 overflow-hidden rounded-2xl sm:h-[400px] md:h-[500px] md:grid-cols-4 md:grid-rows-2">
+    <div className={cn(galleryShellClass, '@3xl:grid-cols-4 @3xl:grid-rows-2')}>
       <GalleryImage
         src={displayImages[0] ?? ''}
         index={0}
-        className="md:col-span-2 md:row-span-2"
+        className="@3xl:col-span-2 @3xl:row-span-2"
+        sizes="(min-width: 768px) 50vw, 100vw"
       />
-      <GalleryImage src={displayImages[1] ?? ''} index={1} className="hidden md:block" />
-      <GalleryImage src={displayImages[2] ?? ''} index={2} className="hidden md:block" />
-      <GalleryImage src={displayImages[3] ?? ''} index={3} className="hidden md:block" />
+      <GalleryImage src={displayImages[1] ?? ''} index={1} className="@3xl:block hidden" />
+      <GalleryImage src={displayImages[2] ?? ''} index={2} className="@3xl:block hidden" />
+      <GalleryImage src={displayImages[3] ?? ''} index={3} className="@3xl:block hidden" />
       <GalleryImage
         src={displayImages[4] ?? ''}
         index={4}
-        className="hidden md:block"
+        className="@3xl:block hidden"
         showOverlay={imageCount > 5}
         overlayContent={
           imageCount > 5 && (
@@ -165,12 +180,12 @@ export function ListingGallery({
 
   return (
     <>
-      <div className="relative">
-        <div className="absolute right-4 top-4 z-10 flex gap-2">
+      <div className="@container relative w-full min-w-0">
+        <div className="@xl:right-4 @xl:top-4 absolute right-3 top-3 z-10 flex gap-2">
           <Button
             variant="secondary"
             size="sm"
-            className="bg-background/90 hover:bg-background gap-2 rounded-full backdrop-blur-sm"
+            className="bg-background/90 hover:bg-background min-h-[44px] gap-2 rounded-full backdrop-blur-sm"
             onClick={() => {
               if (navigator.share) {
                 void navigator.share({
@@ -181,7 +196,7 @@ export function ListingGallery({
             }}
           >
             <Share2 className="h-4 w-4" />
-            <span className="hidden sm:inline">Share</span>
+            <span className="@sm:inline hidden">Share</span>
           </Button>
           {actionSlot}
         </div>
@@ -192,7 +207,7 @@ export function ListingGallery({
           <Button
             variant="secondary"
             size="sm"
-            className="bg-background/90 absolute bottom-4 right-4 gap-2 rounded-full backdrop-blur-sm md:hidden"
+            className="bg-background/90 @xl:bottom-4 @xl:right-4 @3xl:hidden absolute bottom-3 right-3 min-h-[44px] gap-2 rounded-full backdrop-blur-sm"
             onClick={() => openLightbox(0)}
           >
             <Grid3X3 className="h-4 w-4" />
@@ -212,7 +227,7 @@ export function ListingGallery({
             <button
               type="button"
               onClick={() => setLightboxOpen(false)}
-              className="absolute right-4 top-4 z-10 rounded-full bg-white/10 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+              className="absolute right-4 top-4 z-10 min-h-[44px] min-w-[44px] rounded-full bg-white/10 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/20"
               aria-label="Close gallery"
             >
               <X className="h-6 w-6" />
@@ -227,7 +242,7 @@ export function ListingGallery({
                 <button
                   type="button"
                   onClick={prevImage}
-                  className="absolute left-4 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+                  className="absolute left-4 top-1/2 z-10 flex min-h-[44px] min-w-[44px] -translate-y-1/2 items-center justify-center rounded-full bg-white/10 p-3 text-white backdrop-blur-sm transition-colors hover:bg-white/20"
                   aria-label="Previous photo"
                 >
                   <ChevronLeft className="h-6 w-6" />
@@ -235,7 +250,7 @@ export function ListingGallery({
                 <button
                   type="button"
                   onClick={nextImage}
-                  className="absolute right-4 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+                  className="absolute right-4 top-1/2 z-10 flex min-h-[44px] min-w-[44px] -translate-y-1/2 items-center justify-center rounded-full bg-white/10 p-3 text-white backdrop-blur-sm transition-colors hover:bg-white/20"
                   aria-label="Next photo"
                 >
                   <ChevronRight className="h-6 w-6" />
@@ -248,7 +263,7 @@ export function ListingGallery({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative h-[80vh] w-[90vw]"
+              className="relative h-[80vh] w-[90vw] max-w-full"
             >
               <Image
                 src={displayImages[currentIndex] ?? ''}
@@ -259,14 +274,14 @@ export function ListingGallery({
             </motion.div>
 
             {imageCount > 1 ? (
-              <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-2 rounded-lg bg-white/10 p-2 backdrop-blur-sm">
+              <div className="absolute bottom-4 left-1/2 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 gap-2 overflow-x-auto rounded-lg bg-white/10 p-2 backdrop-blur-sm">
                 {displayImages.slice(0, 8).map((image, index) => (
                   <button
                     key={index}
                     type="button"
                     onClick={() => setCurrentIndex(index)}
                     className={cn(
-                      'relative h-12 w-16 overflow-hidden rounded-md transition-all',
+                      'relative h-12 w-16 shrink-0 overflow-hidden rounded-md transition-all',
                       currentIndex === index ? 'ring-2 ring-white' : 'opacity-60 hover:opacity-100'
                     )}
                     aria-label={`View photo ${index + 1}`}
@@ -275,7 +290,7 @@ export function ListingGallery({
                   </button>
                 ))}
                 {displayImages.length > 8 ? (
-                  <div className="flex h-12 w-16 items-center justify-center rounded-md bg-white/20 text-sm text-white">
+                  <div className="flex h-12 w-16 shrink-0 items-center justify-center rounded-md bg-white/20 text-sm text-white">
                     +{displayImages.length - 8}
                   </div>
                 ) : null}

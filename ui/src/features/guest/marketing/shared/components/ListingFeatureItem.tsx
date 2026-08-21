@@ -8,11 +8,11 @@ type Props = {
 
 export function ListingFeatureItem({ icon: Icon, title, description }: Props) {
   return (
-    <div className="flex gap-4">
+    <div className="@md:gap-4 flex min-w-0 gap-3">
       <div className="shrink-0">
-        <Icon className="text-foreground h-6 w-6" aria-hidden />
+        <Icon className="text-foreground @md:h-6 @md:w-6 h-5 w-5" aria-hidden />
       </div>
-      <div>
+      <div className="min-w-0">
         <p className="text-foreground font-medium">{title}</p>
         <p className="text-muted-foreground text-sm">{description}</p>
       </div>
