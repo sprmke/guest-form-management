@@ -93,7 +93,7 @@ export function StayGuideChapter({
                     />
                   </div>
                 ) : null}
-                {chapter.sections.length > 1 ? (
+                {heading ? (
                   <h3
                     className={
                       accent

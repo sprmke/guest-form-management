@@ -22,10 +22,21 @@ export type StayGuideSectionConfig = {
   version: 1;
   hero: { visible: boolean };
   stayPassCard: { visible: boolean };
+  checkInDocuments: { visible: boolean };
   galleryCarousel: { visible: boolean };
   quickNavTabs: { visible: boolean };
   chapters: StayGuideChapterConfig[];
   helpSection: { visible: boolean };
+};
+
+export type StayGuideCheckInDocumentDto = {
+  id: string;
+  label: string;
+  kind: 'gaf' | 'pet' | 'parking' | 'other';
+  status: 'ready' | 'pending';
+  url: string | null;
+  /** Admin preview only — ready chrome without a real file. */
+  isPreviewSample?: boolean;
 };
 
 export type GuestStayGuideDto = {
@@ -72,6 +83,8 @@ export type GuestStayGuideDto = {
     organizationName: string;
   };
   sections: StayGuideSectionDto[];
+  /** Present on current API; older responses may omit. */
+  checkInDocuments?: StayGuideCheckInDocumentDto[];
   validUntil: string;
   todayManila: string;
   templateKey: string;

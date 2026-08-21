@@ -1,4 +1,11 @@
-import { KeyRound, LogOut, MessageCircle, ScrollText, type LucideIcon } from 'lucide-react';
+import {
+  FileCheck,
+  KeyRound,
+  LogOut,
+  MessageCircle,
+  ScrollText,
+  type LucideIcon,
+} from 'lucide-react';
 
 import type {
   StayGuideChapterConfig,
@@ -7,7 +14,7 @@ import type {
 } from '@/features/guest/stay-guide/lib/api';
 
 export type StayGuideChapterId =
-  'getting-in' | 'make-yourself-at-home' | 'before-you-go' | 'need-anything';
+  'getting-in' | 'make-yourself-at-home' | 'before-you-go' | 'check-in-documents' | 'need-anything';
 
 export type StayGuideChapterDef = {
   id: StayGuideChapterId;
@@ -90,6 +97,7 @@ export function defaultStayGuideSectionConfig(): StayGuideSectionConfig {
     version: 1,
     hero: { visible: true },
     stayPassCard: { visible: true },
+    checkInDocuments: { visible: true },
     galleryCarousel: { visible: true },
     quickNavTabs: { visible: true },
     chapters: DEFAULT_CHAPTER_ORDER.map((id, order) => ({
@@ -141,9 +149,16 @@ export const NEED_ANYTHING_CHAPTER: StayGuideChapterNavItem = {
   icon: MessageCircle,
 };
 
+export const CHECK_IN_DOCUMENTS_NAV: StayGuideChapterNavItem = {
+  id: 'check-in-documents',
+  heading: 'Check-in documents',
+  shortLabel: 'Documents',
+  icon: FileCheck,
+};
+
 export function buildQuickNavItems(
   chapters: StayGuideChapterDef[],
-  options?: { includeHelp?: boolean }
+  options?: { includeHelp?: boolean; includeCheckInDocuments?: boolean }
 ): StayGuideChapterNavItem[] {
   const includeHelp = options?.includeHelp !== false;
   const items = chapters.map(({ id, shortLabel, icon, heading }) => ({
@@ -152,6 +167,9 @@ export function buildQuickNavItems(
     icon,
     heading,
   }));
+  if (options?.includeCheckInDocuments) {
+    items.unshift(CHECK_IN_DOCUMENTS_NAV);
+  }
   if (includeHelp) items.push(NEED_ANYTHING_CHAPTER);
   return items;
 }
