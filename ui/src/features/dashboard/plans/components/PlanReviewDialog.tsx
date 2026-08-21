@@ -1,5 +1,6 @@
-import { ArrowRight, Check, Crown, Loader2, Minus } from 'lucide-react';
+import { ArrowRight, Check, Loader2, Minus } from 'lucide-react';
 
+import { PlanTierIconWell } from '@/features/dashboard/plans/components/PlanTierIconWell';
 import {
   planFeatureGains,
   planFeatureLosses,
@@ -35,14 +36,7 @@ function PlanStub({ plan, muted }: { plan: PropertyPlanDto; muted?: boolean }) {
   const title = planDisplayName(plan);
   return (
     <div className="flex min-w-0 items-center gap-3">
-      <span
-        className={cn(
-          'flex size-9 shrink-0 items-center justify-center rounded-xl',
-          muted ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary'
-        )}
-      >
-        <Crown className="size-4" strokeWidth={1.5} />
-      </span>
+      <PlanTierIconWell planCode={plan.code} size="sm" muted={muted} />
       <div className="min-w-0">
         <p
           className={cn(
@@ -163,12 +157,6 @@ export function PlanReviewDialog({
                 <ChangeList title="Removes" items={losses} tone="loss" />
               </div>
             )}
-
-            {!isFree ? (
-              <p className="border-border text-muted-foreground rounded-xl border border-dashed p-3 text-sm leading-relaxed">
-                You will complete payment on PayMongo (QRPH, Maya, or online banking).
-              </p>
-            ) : null}
           </div>
         </div>
 

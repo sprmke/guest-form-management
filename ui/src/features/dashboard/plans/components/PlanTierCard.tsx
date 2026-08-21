@@ -1,5 +1,6 @@
 import { ArrowDown, ArrowRight, Check } from 'lucide-react';
 
+import { PlanTierIconWell } from '@/features/dashboard/plans/components/PlanTierIconWell';
 import { PlanPriceLine } from '@/features/dashboard/plans/components/PlanPriceLine';
 import {
   planActionLabel,
@@ -56,12 +57,15 @@ export function PlanTierCard({
             'min-[1800px]:flex-row min-[1800px]:flex-nowrap min-[1800px]:items-center min-[1800px]:gap-x-2'
           )}
         >
-          <h3
-            id={headingId}
-            className="text-foreground shrink-0 text-lg font-semibold tracking-tight"
-          >
-            {title}
-          </h3>
+          <div className="flex min-w-0 items-center gap-2.5">
+            <PlanTierIconWell planCode={plan.code} size="sm" />
+            <h3
+              id={headingId}
+              className="text-foreground min-w-0 text-lg font-semibold tracking-tight"
+            >
+              {title}
+            </h3>
+          </div>
 
           <div
             className={cn(

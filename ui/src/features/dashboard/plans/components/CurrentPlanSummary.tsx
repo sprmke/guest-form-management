@@ -1,5 +1,6 @@
-import { ArrowRight, ArrowUpRight, Crown, Settings, Sparkles } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Settings, Sparkles } from 'lucide-react';
 
+import { PlanTierIconWell } from '@/features/dashboard/plans/components/PlanTierIconWell';
 import {
   planDisplayName,
   planDisplayNameFromSubscription,
@@ -127,12 +128,7 @@ export function CurrentPlanSummary({
     >
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 items-center gap-4">
-          <div
-            className="bg-primary text-primary-foreground flex size-12 shrink-0 items-center justify-center rounded-full p-3"
-            aria-hidden
-          >
-            <Crown className="size-6" strokeWidth={1.75} />
-          </div>
+          <PlanTierIconWell planCode={plan?.code ?? subscription?.planCode ?? 'free'} size="lg" />
 
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
