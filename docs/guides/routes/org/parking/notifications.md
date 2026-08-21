@@ -36,7 +36,7 @@ Hub for **in-app activity** (same org-wide feed as the bell) and **Telegram** al
 - **Activity** section lists in-app notifications for the org (booking + inbox events).
 - Desktop: the bell floats above the AI assistant button. Phone: tap **Notifications** in the bottom menu. Both open the same sheet; **View all** opens this page at **Activity** when more than five items exist.
 - **Activity** card scrolls inside a max height; additional pages load as you scroll (20 per request).
-- Rows show guest name and stay dates (inquiry or booked) when available; realtime toasts match the same layout.
+- Rows show guest name with an inline inbox **channel pill** (**Chat** / **Facebook** / **Instagram**) when applicable, and stay dates (inquiry or booked) when available; realtime toasts match the same layout (channel logo + inline pill for inbox).
 
 ### Telegram sections
 

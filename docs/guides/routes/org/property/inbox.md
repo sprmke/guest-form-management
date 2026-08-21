@@ -2,7 +2,7 @@
 title: 'Property Guest Inbox'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-17
+updated: 2026-08-20
 ---
 
 # Property Guest Inbox
@@ -40,10 +40,12 @@ This is where you read and reply to guest messages for this property: website ch
   A: Meta only allows replies within 24 hours of the guest's last message. After that window closes, you'll need the guest to message you again before you can respond from here.
 - Q: What is the support follow-up toggle?
   A: If a guest messaged within the last 7 days but the normal 24-hour reply window has already closed, the composer can show a support follow-up toggle. Turn it on only for non-promotional follow-ups; it sends with Meta's `HUMAN_AGENT` tag.
-- Q: Why do I see a Fix connection warning instead of new messages?
-  A: The Page is still connected, but Meta may have dropped this app's webhook subscription. Use **Fix connection** first to re-subscribe the Page without deleting any conversations. Reconnect is for token or account-link issues.
+- Q: Why does an Instagram chat say Guest?
+  A: We load the sender’s Instagram username from Meta. Open the thread once (or wait for their next message) if an older conversation still shows Guest.
 - Q: What does Disconnect do?
   A: Disconnect removes the Meta connection and deletes synced Facebook/Instagram conversations from this inbox. You can reconnect again to view and load conversations.
+- Q: What should I put in **Tone & rules** under Manage AI response?
+  A: Only extra tone or rules. Property details, rates, availability, booking info, and Quick replies are already used automatically — tap the **?** next to the label for that reminder.
 
 **Plan gating:** Manual replies and **Manage AI response** stay free. Enabling **Send automatically** requires **`aiChatAutoReply`** (Automation tab pre-flight + **`social-inbox-settings`** PATCH). Runtime auto-reply skips when the property plan lacks the feature; org-level contexts without a property id use **`requireOrgPropertyFeature`** / **`orgHasPropertyWithFeature`** on the server.
 
@@ -58,16 +60,21 @@ This is where you read and reply to guest messages for this property: website ch
 ## Behavior
 
 - **Manage actions:** Desktop (`lg+`) shows separate header buttons — **Channels**, **Quick replies**, **Automation** — each opening its modal. Mobile (`max-lg`) groups them in the hero **Inbox actions** menu (bottom sheet).
+- **Channel order:** Inbox tabs, quick-reply filters/groups, and automation platform toggles use **All** (when present), then **Chat**, **Facebook**, **Instagram**.
+- **Manage AI response:** textarea label is **Tone & rules**; a **?** tooltip explains that property facts and Quick replies are already injected. **Reset to default** restores the shipped starter copy.
 - **View property** on web threads → admin property dashboard (`propertyDashboardPath`), not the public listing.
 - **First Meta connect** from a property (when no org-default Page exists) writes the **org-default** connection so Marketing Studio and other properties can inherit it.
-- **Webhook health:** connected Meta rows record `webhook_last_verified_at` and retry attempts. After repeated failed checks, Channels shows **Fix connection**, which re-verifies and re-subscribes the current Page in place without disconnecting or wiping history.
-- **Proactive Meta warnings:** Channels can also surface missing comment scopes, invalid tokens, or soon-expiring tokens before a host hits a send failure. **Reconnect** refreshes the full OAuth grant; **Fix connection** remains the lighter webhook-only repair.
+- **Webhook health:** connected Meta rows record `webhook_last_verified_at` and retry attempts. After repeated failed checks, Channels shows **Fix connection**, which re-verifies and re-subscribes the messaging webhook fields in place — without disconnecting or wiping history.
+- **Proactive Meta warnings:** Channels can also surface invalid tokens or soon-expiring tokens before a host hits a send failure. **Reconnect** refreshes the full OAuth grant; **Fix connection** remains the lighter webhook-only repair.
 - Later Connect from a property that already has an org-default writes a **property override** (`property_id` set); does **not** wipe the org default.
-- **Disconnect:** removes the Meta connection and deletes synced Facebook/Instagram conversations from this inbox. Reconnect Meta to start fresh.
-- **Reply windows:** Meta DMs are fully open for 24 hours after the guest's last inbound message. After that, but before 7 days have passed, the composer can still send only when the operator explicitly enables the non-promotional **support follow-up** toggle (`HUMAN_AGENT`). Past 7 days, Meta DMs stay fully read-only until the guest messages again. Instagram **private comment replies** are similarly limited to 7 days from the comment; the Private reply button hides automatically once that window closes. Public (visible) comment replies have no time limit.
+- **Disconnect:** removes the Meta connection and deletes synced Facebook/Instagram conversations from this inbox.
+- **Meta connect / sync / disconnect progress:** while the first conversation backfill runs after connect, or while disconnect is processing, a **non-dismissible** modal covers the inbox with title, “may take a few minutes” copy, animated progress, and (during sync) a loaded-conversation count. Outside click, Escape, and close are blocked until the operation finishes. **Channels**, page picker, and other manage modals **close automatically** so only this progress modal is visible (OAuth return shows a toast, not Channels).
+- **Channels list:** Meta only (Facebook Messenger + Instagram DMs). TikTok / Airbnb messaging are not offered (API partnership / approval barriers).
+- **Reply windows:** Meta DMs are fully open for 24 hours after the guest's last inbound message. After that, but before 7 days have passed, the composer can still send only when the operator explicitly enables the non-promotional **support follow-up** toggle (`HUMAN_AGENT`). Past 7 days, Meta DMs stay fully read-only until the guest messages again.
 - **Older history loading:** thread list scrolling paginates only the conversations already stored in Kame. Once the local list is exhausted, older Meta history requires an explicit **Load older from Meta** action instead of silently running a live backfill from scroll position.
 - **Error states:** a failed thread fetch now renders a retryable load error instead of falling back to the generic empty state. A failed message fetch keeps the current conversation visible and shows an inline **Retry** banner inside the thread pane.
 - Query/body: `property_id` on inbox edge functions; auth via `verifyPropertyAccess` + `inbox:*`.
+- **Instagram sender names:** DM threads store the guest’s Instagram username (or name when Meta sends one). Opening a thread that still says **Guest** (legacy webhook rows) refetches the profile from Meta and updates the list.
 - **Message body rendering:** plain `body_text` is parsed client-side into rich blocks via shared `ChatRichBody` / `ChatMessageBubble`.
 
 ## API reference

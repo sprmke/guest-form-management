@@ -53,7 +53,7 @@ Persistent **Help & Support** title and subtitle. Four clickable summary cards s
 
 ### Behavior / edge cases
 
-Ask AI does not navigate. It calls `openAiAssistant()`, which opens the existing assistant slide-over already mounted in `AdminLayoutShell`. That signal is one-shot: switching org, property, or parking remounts the admin shell and must not reopen the panel from a leftover request. Guides and Tickets keep nested URLs (`/docs`, `/tickets`) for deep links, but they are the same Help & Support page: the title, subtitle, and four cards stay mounted. Switching modules only replaces the content below the cards — it does not replay the admin page-enter animation.
+Ask AI does not navigate. It calls `openAiAssistant()`, which opens the existing assistant slide-over already mounted in `AdminLayoutShell` when the property plan includes **`aiDashboardAssistant`** (Business and above) and org/platform kill-switches allow it. If the plan tier blocks the assistant, the same click opens the **subscription upgrade** modal instead of doing nothing. That signal is one-shot: switching org, property, or parking remounts the admin shell and must not reopen the panel from a leftover request. Guides and Tickets keep nested URLs (`/docs`, `/tickets`) for deep links, but they are the same Help & Support page: the title, subtitle, and four cards stay mounted. Switching modules only replaces the content below the cards — it does not replay the admin page-enter animation.
 
 ## Guides
 

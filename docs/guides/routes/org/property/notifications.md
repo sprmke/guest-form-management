@@ -39,9 +39,9 @@ Single hub for **in-app activity** (booking workflow + inbox events in the bell)
 - **Activity** section lists org-wide in-app notifications (same data as the bell).
 - Desktop: the bell floats above the AI assistant button and opens a **slide-over panel**. Phone: tap **Notifications** in the bottom menu for the same sheet. **View all** opens this page at **Activity** when more than five items exist.
 - Rows open the related booking or inbox thread; **Mark all as read** on the full list.
-- Inbox rows show the guest **participant name** as the title (latest message preview in the body), matching the Inbox thread list — **one row per conversation**, not per message.
+- Inbox rows show the guest **participant name** as the title with an inline **channel pill** (**Chat**, **Facebook**, or **Instagram**), matching the Inbox thread list — **one row per conversation**, not per message.
 - When available, a **stay date range** appears under the name (e.g. `Aug 14 - 15, 2026` for inquiry or booked dates).
-- The realtime **toast** uses the same guest name as the title, a **category glyph** matching the list row (chat bubble for inbox, calendar/check-in/check-out/wallet/document/paw for booking events), the latest message preview, and the stay range beneath it. Its **View** action uses the brand primary colour, and repeat messages in one conversation replace the open toast instead of stacking.
+- The realtime **toast** uses the same guest name as the title with an inline **channel pill** (**Chat**, **Facebook**, or **Instagram**) for inbox rows, a **channel glyph** for inbox or a **category glyph** for booking events, the message preview in the body, and the stay range beneath it. Its **View** action uses the brand primary colour, and repeat messages in one conversation replace the open toast instead of stacking.
 - List is capped in height inside the **Activity** card; scroll within the card loads the next page (20 per request) — not a full-page dump.
 
 ### Telegram notifications
