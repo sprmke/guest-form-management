@@ -9,6 +9,7 @@ import {
 
 import { renderPdfBytesToPageImages } from '@/features/dashboard/bookings/lib/renderPdfPageImages';
 
+import { MediaPreviewSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -317,14 +318,7 @@ export function AdminPdfZoomPreview({
             onZoomOut={() => undefined}
             onReset={() => undefined}
           />
-          {initialLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2
-                className="text-muted-foreground size-6 animate-spin"
-                aria-label="Loading preview"
-              />
-            </div>
-          ) : null}
+          {initialLoading ? <MediaPreviewSkeleton /> : null}
         </>
       )}
     </div>

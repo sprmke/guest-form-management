@@ -85,7 +85,10 @@ export function WorkflowStageDeckHeader({
   const viewedTone = statusToneStyle(viewedStage);
 
   return (
-    <section className="border-separator border-b px-3 py-3 sm:px-4" aria-label="Booking progress">
+    <section
+      className="border-separator shrink-0 border-b px-3 py-3 sm:px-4"
+      aria-label="Booking progress"
+    >
       <div className="flex items-center justify-between gap-2">
         <p className="text-overline">
           Step {viewedIndex + 1} of {stages.length}

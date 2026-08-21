@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-import { Loader2, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
 import {
@@ -12,6 +12,7 @@ import { receiptAiPreviewLoading } from '@/features/dashboard/bookings/hooks/use
 import { ADMIN_GUEST_VIEW_SLOTS } from '@/features/dashboard/bookings/lib/adminGuestSlots';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
+import { MediaPreviewSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { cn } from '@/lib/utils';
 
 /** Modal shell height — shared by image + PDF preview bodies. */
@@ -187,12 +188,7 @@ export function BookingDetailAssetPreviewModal({
           />
         ) : null}
         <div className="bg-muted flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto overscroll-contain p-1.5 sm:min-h-[12rem] sm:p-3">
-          {loading && (
-            <div className="text-muted-foreground flex flex-1 items-center justify-center gap-2">
-              <Loader2 className="size-5 animate-spin" />
-              <span className="text-sm">Loading preview...</span>
-            </div>
-          )}
+          {loading && <MediaPreviewSkeleton className="w-full flex-1" />}
 
           {!loading && asset?.type === 'image' && (
             <div className="bg-card flex h-full min-h-0 w-full items-center justify-center rounded-lg p-2">

@@ -17,6 +17,8 @@ import {
   resolveAssetUrlForBrowser,
 } from '@/features/dashboard/bookings/lib/storageUrls';
 
+import { DocThumbnailSkeleton } from '@/components/skeletons/AdminSkeletons';
+
 export function getDocType(url: string): 'image' | 'pdf' | 'file' {
   const path = url.split('?')[0].toLowerCase();
   if (/\.(jpg|jpeg|png|webp|gif|heic|heif)$/.test(path)) return 'image';
@@ -202,9 +204,7 @@ export function DocPreview({
       <div
         className={`border-border bg-card flex flex-col overflow-hidden rounded-xl border ${widthClass}`}
       >
-        <div className="bg-muted relative flex aspect-video items-center justify-center">
-          <Loader2 className="text-muted-foreground size-8 animate-spin" aria-hidden />
-        </div>
+        <DocThumbnailSkeleton className="rounded-none" />
         <div className="flex items-center justify-between gap-2 px-3 py-2">
           {docPreviewLabelRow(
             label,

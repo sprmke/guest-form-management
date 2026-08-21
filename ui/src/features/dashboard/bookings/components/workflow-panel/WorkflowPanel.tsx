@@ -613,12 +613,13 @@ export function WorkflowPanel({
         'flex flex-col',
         isModal
           ? 'min-h-0 flex-1 overflow-hidden'
-          : 'border-border bg-card gap-0 overflow-hidden rounded-xl border shadow-sm lg:max-h-[calc(100dvh-2.5rem)]'
+          : // Sticky rail: never taller than the viewport; keep a usable floor on short screens.
+            'border-border bg-card gap-0 overflow-hidden rounded-xl border shadow-sm lg:max-h-[calc(100dvh-2.5rem)] lg:min-h-[min(24rem,calc(100dvh-2.5rem))]'
       )}
     >
       {/* ── Stage deck navigator (detail rail only) ───────────────────────── */}
       {!isModal && !showStageDeck ? (
-        <div className="border-separator border-b px-4 py-5">
+        <div className="border-separator shrink-0 border-b px-4 py-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-overline">Status</p>
             <StatusBadge status={booking.status} />
@@ -641,12 +642,14 @@ export function WorkflowPanel({
 
       {/* ── Stage-specific sub-form ───────────────────────────────────────── */}
       {needsReviewAck ? (
-        <WorkflowPendingReviewAck
-          bookingId={booking.id}
-          isModal={isModal}
-          onConfirm={confirmReview}
-          onOpenAiSummary={onOpenAiSummary ? () => onOpenAiSummary(true) : undefined}
-        />
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <WorkflowPendingReviewAck
+            bookingId={booking.id}
+            isModal={isModal}
+            onConfirm={confirmReview}
+            onOpenAiSummary={onOpenAiSummary ? () => onOpenAiSummary(true) : undefined}
+          />
+        </div>
       ) : isModal && !kanbanConfirmOnly ? (
         <WorkflowSubFormHost
           isModal
@@ -730,7 +733,7 @@ export function WorkflowPanel({
 
       {/* ── Automation triggers (detail rail only) ─────────────────────────── */}
       {!needsReviewAck && !kanbanConfirmOnly ? (
-        <>
+        <div className="shrink-0">
           <WorkflowAutomationTriggers
             isModal={isModal}
             showSdCron={showSdCron}
@@ -781,7 +784,7 @@ export function WorkflowPanel({
               onProgressSave={() => void handleProgressSave()}
             />
           ) : null}
-        </>
+        </div>
       ) : null}
 
       {/* ── Full progress map (on demand) ────────────────────────────────── */}
