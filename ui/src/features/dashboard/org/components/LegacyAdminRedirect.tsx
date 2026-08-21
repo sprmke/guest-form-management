@@ -2,8 +2,6 @@ import { useEffect } from 'react';
 
 import { Navigate, useLocation } from 'react-router-dom';
 
-import { Loader2 } from 'lucide-react';
-
 import { useOrganizations, useProperties } from '@/features/dashboard/org/hooks/useOrganizations';
 import { isPropertyOnlyOrgAccess } from '@/features/dashboard/org/lib/orgAccessKind';
 import { mapLegacyAdminPath } from '@/features/dashboard/org/lib/postSignInRouting';
@@ -14,6 +12,8 @@ import {
   propertySectionPath,
   setLastTenantContext,
 } from '@/features/dashboard/org/lib/tenantPaths';
+
+import { RouteGuardSkeleton } from '@/components/skeletons/AdminSkeletons';
 
 type Props = {
   toSection?:
@@ -49,11 +49,7 @@ export function LegacyAdminRedirect({ toSection = 'dashboard' }: Props) {
   }, [org, propsQuery.data]);
 
   if (orgsQuery.isLoading || (org && propsQuery.isLoading)) {
-    return (
-      <div className="bg-card fixed inset-0 flex items-center justify-center">
-        <Loader2 className="text-sidebar-primary size-5 animate-spin" aria-hidden />
-      </div>
-    );
+    return <RouteGuardSkeleton fullScreen />;
   }
 
   if (!org) {

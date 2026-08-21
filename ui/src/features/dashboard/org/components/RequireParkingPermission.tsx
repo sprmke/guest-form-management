@@ -2,8 +2,6 @@ import type { ReactNode } from 'react';
 
 import { Navigate } from 'react-router-dom';
 
-import { Loader2 } from 'lucide-react';
-
 import { useParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
 import { TenantAccessDenied } from '@/features/dashboard/org/components/TenantAccessDenied';
 import { parkingSectionPath } from '@/features/dashboard/org/lib/tenantPaths';
@@ -13,6 +11,8 @@ import {
   PARKING_SECTION_VIEW_PERMISSION,
   type ParkingSection,
 } from '@/features/dashboard/team/lib/parkingPermissions';
+
+import { RouteGuardSkeleton } from '@/components/skeletons/AdminSkeletons';
 
 type Props = {
   section: ParkingSection;
@@ -25,11 +25,7 @@ export function RequireParkingPermission({ section, children }: Props) {
   const required = PARKING_SECTION_VIEW_PERMISSION[section];
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center" role="status">
-        <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-      </div>
-    );
+    return <RouteGuardSkeleton />;
   }
 
   if (isError || !data || !hasParkingPermission(data.permissions, required)) {

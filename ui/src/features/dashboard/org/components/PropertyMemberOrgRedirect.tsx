@@ -2,8 +2,6 @@ import { useEffect } from 'react';
 
 import { Navigate, useNavigate } from 'react-router-dom';
 
-import { Loader2 } from 'lucide-react';
-
 import { TenantAccessDenied } from '@/features/dashboard/org/components/TenantAccessDenied';
 import { useOrganizations, useProperties } from '@/features/dashboard/org/hooks/useOrganizations';
 import { resolveOrgLandingPath } from '@/features/dashboard/org/lib/orgLanding';
@@ -12,6 +10,8 @@ import {
   propertySectionPath,
   setLastTenantContext,
 } from '@/features/dashboard/org/lib/tenantPaths';
+
+import { RouteGuardSkeleton } from '@/components/skeletons/AdminSkeletons';
 
 type Props = {
   orgSlug: string;
@@ -37,11 +37,7 @@ export function PropertyMemberOrgRedirect({ orgSlug }: Props) {
   }, [data, isError, isLoading, navigate, orgSlug]);
 
   if (isLoading || orgsLoading) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center" role="status">
-        <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-      </div>
-    );
+    return <RouteGuardSkeleton />;
   }
 
   if (isError || !data?.properties.length) {
@@ -52,9 +48,5 @@ export function PropertyMemberOrgRedirect({ orgSlug }: Props) {
     return <TenantAccessDenied scope="org" orgSlug={orgSlug} />;
   }
 
-  return (
-    <div className="flex min-h-[40vh] items-center justify-center" role="status">
-      <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-    </div>
-  );
+  return <RouteGuardSkeleton />;
 }
