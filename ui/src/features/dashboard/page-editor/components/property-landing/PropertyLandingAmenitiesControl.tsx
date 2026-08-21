@@ -94,93 +94,95 @@ export function PropertyLandingAmenitiesControl({
                 aria-hidden
               />
             </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-3 p-4">
-              <div className="grid gap-2">
-                {category.amenities.map((amenity) => {
-                  const enabled = enabledAmenities.includes(amenity.id);
-                  return (
-                    <button
-                      key={amenity.id}
-                      type="button"
-                      disabled={disabled}
-                      onClick={() => toggleAmenity(amenity.id)}
-                      className={cn(
-                        'flex min-h-[44px] items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition-colors',
-                        enabled
-                          ? 'border-border bg-background shadow-sm'
-                          : 'border-border/60 hover:bg-muted/40'
-                      )}
-                    >
-                      <CheckboxDisplay checked={enabled} />
-                      <span className="min-w-0 flex-1">{amenity.name}</span>
-                    </button>
-                  );
-                })}
-
-                {categoryCustom.map((amenity) => {
-                  const enabled = enabledAmenities.includes(amenity.id);
-                  return (
-                    <div
-                      key={amenity.id}
-                      className={cn(
-                        'flex min-h-[44px] items-center gap-2 rounded-xl border px-3 py-2.5',
-                        enabled ? 'border-border bg-background shadow-sm' : 'border-border/60'
-                      )}
-                    >
+            <CollapsibleContent>
+              <div className="space-y-3 p-4">
+                <div className="grid gap-2">
+                  {category.amenities.map((amenity) => {
+                    const enabled = enabledAmenities.includes(amenity.id);
+                    return (
                       <button
+                        key={amenity.id}
                         type="button"
                         disabled={disabled}
                         onClick={() => toggleAmenity(amenity.id)}
-                        className="flex min-w-0 flex-1 items-center gap-3 text-left text-sm"
+                        className={cn(
+                          'flex min-h-[44px] items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition-colors',
+                          enabled
+                            ? 'border-border bg-background shadow-sm'
+                            : 'border-border/60 hover:bg-muted/40'
+                        )}
                       >
                         <CheckboxDisplay checked={enabled} />
-                        <span className="truncate">{amenity.name}</span>
+                        <span className="min-w-0 flex-1">{amenity.name}</span>
                       </button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="min-h-[44px] min-w-[44px] shrink-0"
-                        disabled={disabled}
-                        onClick={() => removeCustomAmenity(amenity.id)}
-                        aria-label={`Remove ${amenity.name}`}
-                      >
-                        <X className="size-4" aria-hidden />
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
 
-              <div className="flex flex-col gap-2">
-                <LimitedCountInput
-                  value={newInputs[category.id] ?? ''}
-                  onChange={(event) =>
-                    setNewInputs((current) => ({
-                      ...current,
-                      [category.id]: event.target.value,
-                    }))
-                  }
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      event.preventDefault();
-                      addCustomAmenity(category.id);
+                  {categoryCustom.map((amenity) => {
+                    const enabled = enabledAmenities.includes(amenity.id);
+                    return (
+                      <div
+                        key={amenity.id}
+                        className={cn(
+                          'flex min-h-[44px] items-center gap-2 rounded-xl border px-3 py-2.5',
+                          enabled ? 'border-border bg-background shadow-sm' : 'border-border/60'
+                        )}
+                      >
+                        <button
+                          type="button"
+                          disabled={disabled}
+                          onClick={() => toggleAmenity(amenity.id)}
+                          className="flex min-w-0 flex-1 items-center gap-3 text-left text-sm"
+                        >
+                          <CheckboxDisplay checked={enabled} />
+                          <span className="truncate">{amenity.name}</span>
+                        </button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="min-h-[44px] min-w-[44px] shrink-0"
+                          disabled={disabled}
+                          onClick={() => removeCustomAmenity(amenity.id)}
+                          aria-label={`Remove ${amenity.name}`}
+                        >
+                          <X className="size-4" aria-hidden />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <LimitedCountInput
+                    value={newInputs[category.id] ?? ''}
+                    onChange={(event) =>
+                      setNewInputs((current) => ({
+                        ...current,
+                        [category.id]: event.target.value,
+                      }))
                     }
-                  }}
-                  disabled={disabled}
-                  placeholder="Add custom amenity..."
-                  maxLength={CUSTOM_AMENITY_MAX_LENGTH}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={disabled || !newInputs[category.id]?.trim()}
-                  onClick={() => addCustomAmenity(category.id)}
-                  className="min-h-[44px]"
-                >
-                  <Plus className="mr-1 size-4" aria-hidden />
-                  Add
-                </Button>
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        addCustomAmenity(category.id);
+                      }
+                    }}
+                    disabled={disabled}
+                    placeholder="Add custom amenity..."
+                    maxLength={CUSTOM_AMENITY_MAX_LENGTH}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={disabled || !newInputs[category.id]?.trim()}
+                    onClick={() => addCustomAmenity(category.id)}
+                    className="min-h-[44px]"
+                  >
+                    <Plus className="mr-1 size-4" aria-hidden />
+                    Add
+                  </Button>
+                </div>
               </div>
             </CollapsibleContent>
           </Collapsible>

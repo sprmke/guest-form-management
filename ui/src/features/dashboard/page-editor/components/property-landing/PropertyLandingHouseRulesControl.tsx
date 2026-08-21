@@ -102,93 +102,95 @@ export function PropertyLandingHouseRulesControl({
                 aria-hidden
               />
             </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-3 p-4">
-              <div className="grid gap-2">
-                {category.rules.map((rule) => {
-                  const enabled = enabledHouseRules.includes(rule.id);
-                  return (
-                    <button
-                      key={rule.id}
-                      type="button"
-                      disabled={disabled}
-                      onClick={() => toggleHouseRule(rule.id)}
-                      className={cn(
-                        'flex min-h-[44px] items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition-colors',
-                        enabled
-                          ? 'border-border bg-background shadow-sm'
-                          : 'border-border/60 hover:bg-muted/40'
-                      )}
-                    >
-                      <CheckboxDisplay checked={enabled} />
-                      <span className="min-w-0 flex-1">{rule.name}</span>
-                    </button>
-                  );
-                })}
-
-                {categoryCustom.map((rule) => {
-                  const enabled = enabledHouseRules.includes(rule.id);
-                  return (
-                    <div
-                      key={rule.id}
-                      className={cn(
-                        'flex min-h-[44px] items-center gap-2 rounded-xl border px-3 py-2.5',
-                        enabled ? 'border-border bg-background shadow-sm' : 'border-border/60'
-                      )}
-                    >
+            <CollapsibleContent>
+              <div className="space-y-3 p-4">
+                <div className="grid gap-2">
+                  {category.rules.map((rule) => {
+                    const enabled = enabledHouseRules.includes(rule.id);
+                    return (
                       <button
+                        key={rule.id}
                         type="button"
                         disabled={disabled}
                         onClick={() => toggleHouseRule(rule.id)}
-                        className="flex min-w-0 flex-1 items-center gap-3 text-left text-sm"
+                        className={cn(
+                          'flex min-h-[44px] items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition-colors',
+                          enabled
+                            ? 'border-border bg-background shadow-sm'
+                            : 'border-border/60 hover:bg-muted/40'
+                        )}
                       >
                         <CheckboxDisplay checked={enabled} />
-                        <span className="truncate">{rule.name}</span>
+                        <span className="min-w-0 flex-1">{rule.name}</span>
                       </button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="min-h-[44px] min-w-[44px] shrink-0"
-                        disabled={disabled}
-                        onClick={() => removeCustomHouseRule(rule.id)}
-                        aria-label={`Remove ${rule.name}`}
-                      >
-                        <X className="size-4" aria-hidden />
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
 
-              <div className="flex flex-col gap-2">
-                <LimitedCountInput
-                  value={newInputs[category.id] ?? ''}
-                  onChange={(event) =>
-                    setNewInputs((current) => ({
-                      ...current,
-                      [category.id]: event.target.value,
-                    }))
-                  }
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      event.preventDefault();
-                      addCustomHouseRule(category.id);
+                  {categoryCustom.map((rule) => {
+                    const enabled = enabledHouseRules.includes(rule.id);
+                    return (
+                      <div
+                        key={rule.id}
+                        className={cn(
+                          'flex min-h-[44px] items-center gap-2 rounded-xl border px-3 py-2.5',
+                          enabled ? 'border-border bg-background shadow-sm' : 'border-border/60'
+                        )}
+                      >
+                        <button
+                          type="button"
+                          disabled={disabled}
+                          onClick={() => toggleHouseRule(rule.id)}
+                          className="flex min-w-0 flex-1 items-center gap-3 text-left text-sm"
+                        >
+                          <CheckboxDisplay checked={enabled} />
+                          <span className="truncate">{rule.name}</span>
+                        </button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="min-h-[44px] min-w-[44px] shrink-0"
+                          disabled={disabled}
+                          onClick={() => removeCustomHouseRule(rule.id)}
+                          aria-label={`Remove ${rule.name}`}
+                        >
+                          <X className="size-4" aria-hidden />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <LimitedCountInput
+                    value={newInputs[category.id] ?? ''}
+                    onChange={(event) =>
+                      setNewInputs((current) => ({
+                        ...current,
+                        [category.id]: event.target.value,
+                      }))
                     }
-                  }}
-                  disabled={disabled}
-                  placeholder="Add custom rule..."
-                  maxLength={HOUSE_RULE_CUSTOM_MAX_LENGTH}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={disabled || !newInputs[category.id]?.trim()}
-                  onClick={() => addCustomHouseRule(category.id)}
-                  className="min-h-[44px]"
-                >
-                  <Plus className="mr-1 size-4" aria-hidden />
-                  Add
-                </Button>
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        addCustomHouseRule(category.id);
+                      }
+                    }}
+                    disabled={disabled}
+                    placeholder="Add custom rule..."
+                    maxLength={HOUSE_RULE_CUSTOM_MAX_LENGTH}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={disabled || !newInputs[category.id]?.trim()}
+                    onClick={() => addCustomHouseRule(category.id)}
+                    className="min-h-[44px]"
+                  >
+                    <Plus className="mr-1 size-4" aria-hidden />
+                    Add
+                  </Button>
+                </div>
               </div>
             </CollapsibleContent>
           </Collapsible>

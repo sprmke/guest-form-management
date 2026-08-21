@@ -2,7 +2,7 @@ import { StyleSection } from '@/features/dashboard/marketing/components/calendar
 import { SectionOrderList } from '@/features/dashboard/page-editor/components/controls/SectionOrderList';
 import { PropertyLandingAmenitiesControl } from '@/features/dashboard/page-editor/components/property-landing/PropertyLandingAmenitiesControl';
 import { PropertyLandingHouseRulesControl } from '@/features/dashboard/page-editor/components/property-landing/PropertyLandingHouseRulesControl';
-import { PropertyMediaUpload } from '@/features/dashboard/page-editor/components/property-landing/PropertyMediaUpload';
+import { PropertyMediaUpload } from '@/features/dashboard/org/components/property-settings/PropertyMediaUpload';
 import { usePropertyLandingEditorStore } from '@/features/dashboard/page-editor/stores/propertyLandingEditorStore';
 import type {
   AppSettingsDto,
@@ -100,6 +100,20 @@ export function PropertyLandingEditorPanel({
 
   return (
     <div className="min-w-0">
+      <StyleSection title="Sections" defaultOpen>
+        <SectionOrderList
+          items={orderedSections.map((section) => ({
+            id: section.id,
+            label: SECTION_LABELS[section.id],
+            visible: section.visible,
+          }))}
+          onReorder={(ids) => reorderSections(ids as PropertyLandingSectionId[])}
+          onVisibilityChange={(id, visible) =>
+            setSectionVisible(id as PropertyLandingSectionId, visible)
+          }
+        />
+      </StyleSection>
+
       <StyleSection title="Gallery" defaultOpen>
         <div className="px-4 py-3">
           <PropertyMediaUpload
@@ -120,6 +134,7 @@ export function PropertyLandingEditorPanel({
             resolvedColor={inheritedBrandColor}
             resetValue={inheritedBrandColor}
             error={brandColorError}
+            hideLabel
             onChange={onBrandColorChange}
           />
         </div>
@@ -180,20 +195,6 @@ export function PropertyLandingEditorPanel({
           sectionMessages={{}}
           onSaveReview={onSaveReview}
           savingReviewId={savingReviewId}
-        />
-      </StyleSection>
-
-      <StyleSection title="Sections" defaultOpen>
-        <SectionOrderList
-          items={orderedSections.map((section) => ({
-            id: section.id,
-            label: SECTION_LABELS[section.id],
-            visible: section.visible,
-          }))}
-          onReorder={(ids) => reorderSections(ids as PropertyLandingSectionId[])}
-          onVisibilityChange={(id, visible) =>
-            setSectionVisible(id as PropertyLandingSectionId, visible)
-          }
         />
       </StyleSection>
     </div>
