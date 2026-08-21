@@ -8,7 +8,7 @@ description: Meta Messenger + Instagram inbox integration — OAuth, webhooks, s
 ## Products required
 
 - **Messenger Platform** (Facebook Page DMs)
-- **Instagram** → Messenger API for Instagram (DMs + comments)
+- **Instagram** → Messenger API for Instagram (DMs)
 
 ## Env vars
 
@@ -24,23 +24,20 @@ description: Meta Messenger + Instagram inbox integration — OAuth, webhooks, s
 
 `{SUPABASE_URL}/functions/v1/meta-inbox-webhook`
 
-Subscribe fields: `messages`, `message_echoes`, `messaging_postbacks`, `message_deliveries`, `message_reads`, `feed` (Page). Instagram **`comments`** on the Instagram webhook object in Meta dashboard.
+Subscribe fields: `messages`, `message_echoes`, `messaging_postbacks`, `message_deliveries`, `message_reads`.
 
 ## OAuth scopes
 
-`pages_messaging`, `pages_manage_metadata`, `pages_read_engagement`, `pages_show_list`, `instagram_manage_messages`, `instagram_manage_comments`, `business_management`
+`pages_messaging`, `pages_manage_metadata`, `pages_read_engagement`, `pages_show_list`, `instagram_manage_messages`, `business_management`
 
 ## Key Graph endpoints
 
-| Action           | Endpoint                                                     |
-| ---------------- | ------------------------------------------------------------ |
-| Page list        | `GET /me/accounts`                                           |
-| Subscribe        | `POST /{page-id}/subscribed_apps`                            |
-| Send DM          | `POST /{page-id}/messages`                                   |
-| Backfill         | `GET /{page-id}/conversations?platform=messenger\|instagram` |
-| Reply FB comment | `POST /{comment-id}/comments`                                |
-| Reply IG comment | `POST /{ig-comment-id}/replies`                              |
-| IG private reply | `POST /{page-id}/messages` with `recipient.comment_id`       |
+| Action    | Endpoint                                                     |
+| --------- | ------------------------------------------------------------ |
+| Page list | `GET /me/accounts`                                           |
+| Subscribe | `POST /{page-id}/subscribed_apps`                            |
+| Send DM   | `POST /{page-id}/messages`                                   |
+| Backfill  | `GET /{page-id}/conversations?platform=messenger\|instagram` |
 
 ## App Review checklist
 

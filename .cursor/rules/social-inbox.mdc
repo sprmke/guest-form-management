@@ -19,7 +19,7 @@ globs:
 
 # Social Guest Inbox — agent reference
 
-Guest Inbox at **property** and **parking** scopes (org-level Inbox UI removed). Phase 1 ships **Meta** (Facebook Messenger + Instagram DMs + comments) and **Web** (on-site guest chat from property pages). TikTok and Airbnb are **Coming soon** — never fake connectivity.
+Guest Inbox at **property** and **parking** scopes (org-level Inbox UI removed). Phase 1 ships **Meta** (Facebook Messenger + Instagram DMs) and **Web** (on-site guest chat from property pages). Facebook / Instagram post comments are **out of scope** for this inbox and should not be surfaced in UI, webhook handling, or docs. TikTok / Airbnb messaging APIs are **out of scope** (partnership / approval barriers) — do not show Coming soon placeholders or fake connectivity.
 
 ## Routes
 
@@ -54,7 +54,6 @@ Keep in sync: `propertyTeamPermissions.ts`, `parkingTeamPermissions.ts` and UI t
 ## Meta messaging rules
 
 - **24-hour window:** outbound DMs only when `messaging_window_expires_at` > now (set from last inbound). **Does not apply to `platform=web`.**
-- **Comments:** public reply via Graph API; IG private reply via `recipient.comment_id` (one DM per comment, 7 days).
 - **Webhook-first:** Conversations API backfill on connect only; do not poll in a loop.
 - **App Review:** production requires Advanced Access — see `docs/archive/operations/meta-app-review.md`.
 
@@ -66,7 +65,7 @@ Keep in sync: `propertyTeamPermissions.ts`, `parkingTeamPermissions.ts` and UI t
 - Platform toggles under auto-send: Facebook, Instagram, **Chat** (`platform_toggles.web`).
 - Web auto-send runs from `guest-web-chat-messages` POST via `webInboxAutoReply.ts` after guest inbound.
 - Flag outbound AI messages with `is_ai_generated = true`.
-- **Manage AI response** (Automation → Manage button → `InboxAiResponseDialog`) edits `ai_system_prompt` — free-text org instructions layered on top of the base prompt in `socialInboxAiService.ts`. This custom text is additive; it never replaces Known facts, quick-reply guidance, or the mandatory safety policy. Includes a **Reset to default** action that fills `DEFAULT_AI_RESPONSE_CONTEXT`.
+- **Manage AI response** (Automation → Manage button → `InboxAiResponseDialog`) edits `ai_system_prompt` — free-text org **Tone & rules** layered on top of the base prompt in `socialInboxAiService.ts`. This custom text is additive; it never replaces Known facts, quick-reply guidance, or the mandatory safety policy. Field help lives on a **?** tooltip (`FieldLabel`). Includes a **Reset to default** action that fills `DEFAULT_AI_RESPONSE_CONTEXT`.
 
 ## AI grounding & guard
 
@@ -123,5 +122,5 @@ All JWT routes: `verify_jwt = false` in config + `serveAuthenticated` + in-handl
 ## Don'ts
 
 - Don't leak cross-org data in webhooks (resolve connection by `meta_page_id`).
-- Don't scrape Airbnb/TikTok without official APIs.
+- Don't scrape Airbnb/TikTok or claim inbox connectivity without official messaging APIs.
 - Don't skip route guide + `docs/PROJECT.md` updates when changing behavior.
