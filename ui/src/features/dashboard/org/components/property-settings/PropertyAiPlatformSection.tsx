@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Loader2, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { AdminSection } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
@@ -12,6 +12,7 @@ import {
 import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
 import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
 
+import { SectionContentSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -113,9 +114,7 @@ export function PropertyAiPlatformSection() {
   if (settingsLoading || !draft) {
     return (
       <AdminSection id="ai" title="AI overrides" icon={Sparkles}>
-        <div className="flex justify-center py-8">
-          <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-        </div>
+        <SectionContentSkeleton rows={4} />
       </AdminSection>
     );
   }

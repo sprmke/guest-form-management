@@ -36,6 +36,11 @@ type Props = {
   /** Value applied when Reset is clicked — org uses default hex; property clears override. */
   resetValue?: string;
   onChange: (value: string) => void;
+  /**
+   * When true, omit the built-in "Brand color" label (parent chrome already titles the block).
+   * Property Settings / Org Settings keep the default label.
+   */
+  hideLabel?: boolean;
 };
 
 function BrandColorControls({
@@ -119,35 +124,46 @@ export function BrandColorField({
   layout = 'property',
   resetValue,
   onChange,
+  hideLabel = false,
 }: Props) {
   const effectiveResetValue =
     resetValue ?? (layout === 'property' ? resolvedColor : DEFAULT_ORG_BRAND_COLOR);
 
+  const controls = (
+    <BrandColorControls
+      id={id}
+      value={value}
+      resolvedColor={resolvedColor}
+      disabled={disabled}
+      resetValue={effectiveResetValue}
+      onChange={onChange}
+    />
+  );
+
+  if (hideLabel) {
+    return (
+      <div className="space-y-2">
+        {controls}
+        {error ? (
+          <p id={`${id}-error`} className="text-destructive text-sm" role="alert">
+            {error}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
   if (layout === 'org') {
     return (
       <OrgSettingsField id={id} label="Brand color" help={help} error={error}>
-        <BrandColorControls
-          id={id}
-          value={value}
-          resolvedColor={resolvedColor}
-          disabled={disabled}
-          resetValue={effectiveResetValue}
-          onChange={onChange}
-        />
+        {controls}
       </OrgSettingsField>
     );
   }
 
   return (
     <SettingsField id={id} label="Brand color" error={error} help={help}>
-      <BrandColorControls
-        id={id}
-        value={value}
-        resolvedColor={resolvedColor}
-        disabled={disabled}
-        resetValue={effectiveResetValue}
-        onChange={onChange}
-      />
+      {controls}
     </SettingsField>
   );
 }

@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Loader2, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 import {
@@ -12,6 +12,7 @@ import { useProperties } from '@/features/dashboard/org/hooks/useOrganizations';
 import { useOrgSlugParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermissions';
 
+import { SectionContentSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -123,9 +124,7 @@ export function OrgAiDashboardAssistantSection() {
   if (settingsLoading || !draft) {
     return (
       <AdminSection id="ai-assistant" title="AI dashboard assistant" icon={Sparkles}>
-        <div className="flex justify-center py-8">
-          <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-        </div>
+        <SectionContentSkeleton rows={4} />
       </AdminSection>
     );
   }

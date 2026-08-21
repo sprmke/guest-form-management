@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Loader2, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { AdminSection } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
@@ -11,6 +11,7 @@ import {
 } from '@/features/dashboard/org/hooks/useAiPlatformSettings';
 import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermissions';
 
+import { SectionContentSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
@@ -109,9 +110,7 @@ export function OrgAiPlatformSection() {
   if (settingsLoading || usageLoading || !draft) {
     return (
       <AdminSection id="ai" title="AI usage" icon={Sparkles}>
-        <div className="flex justify-center py-8">
-          <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-        </div>
+        <SectionContentSkeleton rows={4} />
       </AdminSection>
     );
   }
