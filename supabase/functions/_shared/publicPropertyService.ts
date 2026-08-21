@@ -30,6 +30,7 @@ import { loadGuestFacingContactInfo } from './guestContactInfo.ts';
 import { resolveAppSettings } from './appSettings.ts';
 import { isOrgVerifiedBadge, readOrgVerificationFromSettings } from './orgVerification.ts';
 import { isListingRecommendedBadge, resolveListingAuthorization } from './listingAuthorization.ts';
+import { getPublicPageConfigOrDefault, type PropertyLandingConfig } from './publicPageConfigs.ts';
 
 export type PublicPropertyMediaDto = {
   id: string;
@@ -101,6 +102,8 @@ export type PublicPropertyDetailDto = {
   /** This listing's Recommended badge (listing Tier 2) — independent of the host badge. */
   recommendedBadge: boolean;
   updatedAt: string;
+  /** Section visibility/order — defaults when no host config row exists. */
+  sectionConfig: PropertyLandingConfig;
 };
 
 const DEFAULT_ENABLED_HOUSE_RULES = [
@@ -383,6 +386,10 @@ export async function loadPublicPropertyById(
   const cancellationPolicy = resolveCancellationPolicyDisplay(
     readCancellationPolicyFromSettings(settings)
   );
+  const sectionConfig = (await getPublicPageConfigOrDefault(
+    propertyId,
+    'property_landing'
+  )) as PropertyLandingConfig;
 
   return {
     id: row.id,
@@ -443,5 +450,6 @@ export async function loadPublicPropertyById(
     verifiedBadge,
     recommendedBadge,
     updatedAt: row.updated_at,
+    sectionConfig,
   };
 }

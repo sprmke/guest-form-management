@@ -9,6 +9,7 @@ import { loadAuthUserProfile } from './authUserProfile.ts';
 import { manilaTodayYmd, normalizeBookingDateToYmd } from './calendarAvailabilityManila.ts';
 import { resolveStayGuideTemplateKey } from './customPages.ts';
 import { loadGuestFacingContactInfo } from './guestContactInfo.ts';
+import { getPublicPageConfigOrDefault, type StayGuideConfig } from './publicPageConfigs.ts';
 import { loadPropertyEmailBranding } from './propertyEmailBranding.ts';
 import {
   applyPropertyTemplatePlaceholders,
@@ -260,6 +261,8 @@ export type GuestStayGuideDto = {
   validUntil: string;
   todayManila: string;
   templateKey: string;
+  /** Section visibility/order/style — defaults when no host config row exists. */
+  sectionConfig: StayGuideConfig;
 };
 
 async function resolveSectionHtml(
@@ -534,6 +537,10 @@ async function buildGuestStayGuidePayload(
   });
 
   const templateKey = await resolveStayGuideTemplateKey(propertyId);
+  const sectionConfig = (await getPublicPageConfigOrDefault(
+    propertyId,
+    'stay_guide'
+  )) as StayGuideConfig;
 
   return {
     property: {
@@ -578,6 +585,7 @@ async function buildGuestStayGuidePayload(
     validUntil,
     todayManila: manilaTodayYmd(),
     templateKey,
+    sectionConfig,
   };
 }
 
