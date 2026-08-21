@@ -6,11 +6,7 @@ import { toast } from 'sonner';
 import { MetaLogo, PlatformLogo } from '@/features/dashboard/inbox/components/PlatformLogo';
 import { platformLabel } from '@/features/dashboard/inbox/lib/inboxFormat';
 import { isMetaSyncConnectionError } from '@/features/dashboard/inbox/lib/metaInboxSyncErrors';
-import type {
-  ComingSoonPlatform,
-  InboxConnection,
-  SocialPlatform,
-} from '@/features/dashboard/inbox/types/inbox';
+import type { InboxConnection } from '@/features/dashboard/inbox/types/inbox';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -21,8 +17,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-
-const COMING_SOON_ORDER: SocialPlatform[] = ['tiktok', 'airbnb'];
 
 function webhookWarning(conn: InboxConnection | undefined): string | null {
   if (!conn || conn.status !== 'connected' || conn.isPreview) return null;
@@ -35,7 +29,6 @@ function webhookWarning(conn: InboxConnection | undefined): string | null {
 
 type Props = {
   connections: InboxConnection[];
-  comingSoon: ComingSoonPlatform[];
   usingOrgMeta?: boolean;
   statusLoading?: boolean;
   statusError?: boolean;
@@ -132,7 +125,6 @@ function MetaPlatformRow({
 
 export function InboxChannelsTab({
   connections,
-  comingSoon,
   usingOrgMeta = false,
   statusLoading = false,
   statusError = false,
@@ -289,41 +281,6 @@ export function InboxChannelsTab({
             </div>
           )}
         </li>
-
-        {COMING_SOON_ORDER.map((platform) => {
-          const conn = connections.find((c) => c.platform === platform);
-          const soon = comingSoon.find((c) => c.platform === platform);
-          const subtitle =
-            conn?.displayName && conn.status === 'connected'
-              ? conn.displayName
-              : (soon?.reason ?? null);
-
-          return (
-            <li
-              key={platform}
-              className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-center sm:gap-4 sm:px-4 sm:py-3.5"
-            >
-              <div className="flex min-w-0 flex-1 items-center gap-3">
-                <PlatformLogo platform={platform} size="md" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium">{platformLabel(platform)}</p>
-                  {subtitle && (
-                    <p className="text-muted-foreground mt-0.5 truncate text-xs">{subtitle}</p>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center justify-end sm:shrink-0">
-                <span className="text-muted-foreground text-xs font-medium">
-                  {conn?.status === 'connected' && conn.isPreview
-                    ? 'Preview'
-                    : soon
-                      ? 'Soon'
-                      : 'Soon'}
-                </span>
-              </div>
-            </li>
-          );
-        })}
       </ul>
 
       <Dialog open={disconnectOpen} onOpenChange={setDisconnectOpen}>
@@ -332,8 +289,7 @@ export function InboxChannelsTab({
             <DialogTitle>Disconnect Meta?</DialogTitle>
           </DialogHeader>
           <p className="text-muted-foreground text-sm">
-            Synced Facebook and Instagram conversations will be removed from this inbox. Reconnect
-            Meta to receive new messages.
+            Synced Facebook and Instagram conversations will be removed from this inbox.
           </p>
           <DialogFooter className="gap-1">
             <Button

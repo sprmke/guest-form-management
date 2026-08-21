@@ -4,7 +4,6 @@ import { InboxAutomationTab } from '@/features/dashboard/inbox/components/InboxA
 import { InboxChannelsTab } from '@/features/dashboard/inbox/components/InboxChannelsTab';
 import { InboxQuickRepliesTab } from '@/features/dashboard/inbox/components/InboxQuickRepliesTab';
 import type {
-  ComingSoonPlatform,
   InboxAutomationSettings,
   InboxConnection,
   InboxTemplate,
@@ -32,7 +31,6 @@ type Props = {
   showSettingsManageTabs?: boolean;
   usingOrgMeta?: boolean;
   connections: InboxConnection[];
-  comingSoon: ComingSoonPlatform[];
   connectionsLoading?: boolean;
   connectionsError?: boolean;
   connecting: boolean;
@@ -132,7 +130,6 @@ export function InboxManageModals({
   showSettingsManageTabs = true,
   usingOrgMeta = false,
   connections,
-  comingSoon,
   connectionsLoading = false,
   connectionsError = false,
   connecting,
@@ -165,7 +162,6 @@ export function InboxManageModals({
           </ResponsiveModalHeader>
           <InboxChannelsTab
             connections={connections}
-            comingSoon={comingSoon}
             usingOrgMeta={usingOrgMeta}
             statusLoading={connectionsLoading}
             statusError={connectionsError}

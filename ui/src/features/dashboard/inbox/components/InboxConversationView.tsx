@@ -22,7 +22,6 @@ import {
 import { PlatformLogo } from '@/features/dashboard/inbox/components/PlatformLogo';
 import {
   isMessagingWindowOpen,
-  isWithinCommentPrivateReplyWindow,
   messagingWindowLabel,
   platformLabel,
 } from '@/features/dashboard/inbox/lib/inboxFormat';
@@ -88,7 +87,7 @@ type Props = {
   onBack?: () => void;
   onSend: (
     text: string,
-    opts?: { privateReply?: boolean; replyToMessageId?: string; useHumanAgentTag?: boolean }
+    opts?: { replyToMessageId?: string; useHumanAgentTag?: boolean }
   ) => Promise<void>;
   onEdit?: (messageId: string, text: string) => Promise<void>;
   onUnsend?: (messageId: string) => Promise<void>;
@@ -256,9 +255,7 @@ export function InboxConversationView({
     );
   }
 
-  const name =
-    conversation.participant_name?.trim() ||
-    (conversation.conversation_type === 'comment' ? 'Comment' : 'Guest');
+  const name = conversation.participant_name?.trim() || 'Guest';
   const windowLabel = isWeb
     ? null
     : messagingWindowLabel(conversation.messaging_window_expires_at, conversation.last_inbound_at);
@@ -276,7 +273,6 @@ export function InboxConversationView({
     })();
   const windowOpen =
     isWeb ||
-    conversation.conversation_type === 'comment' ||
     isMessagingWindowOpen(conversation.messaging_window_expires_at, conversation.last_inbound_at);
   const canUseHumanAgentTag =
     composerMode.kind !== 'edit' && humanAgentWindowOpen && !windowOpen && !channelDisconnected;
@@ -285,10 +281,7 @@ export function InboxConversationView({
     draft.trim().length > 0 &&
     !isBusy &&
     !channelDisconnected &&
-    (composerMode.kind === 'edit' ||
-      windowOpen ||
-      conversation.conversation_type === 'comment' ||
-      useHumanAgentTag);
+    (composerMode.kind === 'edit' || windowOpen || useHumanAgentTag);
 
   const startReply = (message: InboxMessage) => {
     const preview = message.body_text?.trim() || '(attachment)';
@@ -311,7 +304,7 @@ export function InboxConversationView({
     pendingComposerFocusRef.current = 'edit';
   };
 
-  const handleSend = async (privateReply = false) => {
+  const handleSend = async () => {
     const text = draft.trim();
     if (!text) return;
     try {
@@ -320,7 +313,6 @@ export function InboxConversationView({
         await onEdit(composerMode.messageId, text);
       } else {
         await onSend(text, {
-          privateReply,
           replyToMessageId: composerMode.kind === 'reply' ? composerMode.messageId : undefined,
           useHumanAgentTag,
         });
@@ -396,12 +388,6 @@ export function InboxConversationView({
                 </span>
               </>
             ) : null}
-            {conversation.conversation_type === 'comment' && (
-              <>
-                <span aria-hidden>·</span>
-                <span>Comment</span>
-              </>
-            )}
             {windowLabel && conversation.conversation_type === 'dm' && (
               <>
                 <span aria-hidden>·</span>
@@ -438,7 +424,7 @@ export function InboxConversationView({
             rel="noopener noreferrer"
             className="text-primary flex min-h-[44px] shrink-0 items-center self-center px-1 text-xs font-medium underline-offset-2 hover:underline"
           >
-            {conversation.conversation_type === 'comment' ? 'View post' : 'View conversation'}
+            View conversation
           </a>
         )}
         {messages.length > 0 ? (
@@ -706,7 +692,7 @@ export function InboxConversationView({
               placeholder={
                 channelDisconnected
                   ? 'Reconnect Meta to reply'
-                  : windowOpen || conversation.conversation_type === 'comment' || useHumanAgentTag
+                  : windowOpen || useHumanAgentTag
                     ? 'Write a reply…'
                     : 'Reply window closed'
               }
@@ -789,20 +775,6 @@ export function InboxConversationView({
               </TooltipProvider>
 
               <div className="flex items-center gap-2">
-                {conversation.conversation_type === 'comment' &&
-                  conversation.platform === 'instagram' &&
-                  isWithinCommentPrivateReplyWindow(conversation.last_inbound_at) && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="text-muted-foreground h-9 min-h-[36px] text-xs"
-                      disabled={!canSend}
-                      onClick={() => void handleSend(true)}
-                    >
-                      Private reply
-                    </Button>
-                  )}
                 <Button
                   type="button"
                   size="sm"

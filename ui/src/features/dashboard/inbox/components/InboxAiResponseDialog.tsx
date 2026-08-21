@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { FieldLabel } from '@/components/forms/FieldLabel';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import {
   ResponsiveModal,
   ResponsiveModalContent,
@@ -64,15 +64,13 @@ export function InboxAiResponseDialog({
         </ResponsiveModalHeader>
 
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain py-1 max-lg:px-4">
-          <p className="text-muted-foreground text-xs leading-relaxed">
-            Property details, rates, availability, booking info, and your Quick replies are already
-            used automatically — no need to repeat them here. Use this box for tone or extra
-            guidance the AI should follow when answering guests.
-          </p>
-
           <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-2">
-              <Label htmlFor="inbox-ai-context-body">Additional instructions</Label>
+              <FieldLabel
+                htmlFor="inbox-ai-context-body"
+                label="Tone & rules"
+                help="Property details, rates, availability, booking info, and your Quick replies are already used automatically — no need to repeat them here. Use this box for tone or extra guidance the AI should follow when answering guests."
+              />
               <Button
                 type="button"
                 variant="ghost"

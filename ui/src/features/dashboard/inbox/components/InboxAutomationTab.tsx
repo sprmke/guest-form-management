@@ -6,13 +6,11 @@ import { toast } from 'sonner';
 import { InboxAiResponseDialog } from '@/features/dashboard/inbox/components/InboxAiResponseDialog';
 import { PlatformLogo } from '@/features/dashboard/inbox/components/PlatformLogo';
 import { platformLabel } from '@/features/dashboard/inbox/lib/inboxFormat';
-import type {
-  InboxAutomationSettings,
-  SocialPlatform,
-} from '@/features/dashboard/inbox/types/inbox';
-import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
-import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { INBOX_CHANNEL_ORDER } from '@/features/dashboard/inbox/lib/quickReplyGroups';
+import type { InboxAutomationSettings } from '@/features/dashboard/inbox/types/inbox';
 import { handleAiMutationError, isAiQuotaError } from '@/features/dashboard/org/lib/aiQuotaToast';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -25,8 +23,6 @@ type Props = {
   saving: boolean;
   onSave: (patch: Partial<InboxAutomationSettings>) => Promise<void>;
 };
-
-const PLATFORMS: SocialPlatform[] = ['facebook', 'instagram', 'web'];
 
 export function InboxAutomationTab({ settings, isLoading, saving, onSave }: Props) {
   const [aiResponseOpen, setAiResponseOpen] = useState(false);
@@ -138,7 +134,7 @@ export function InboxAutomationTab({ settings, isLoading, saving, onSave }: Prop
               </p>
             </div>
             <ul className="divide-border/60 divide-y">
-              {PLATFORMS.map((platform) => {
+              {INBOX_CHANNEL_ORDER.map((platform) => {
                 const enabled = settings.platformToggles[platform] !== false;
                 return (
                   <li key={platform}>
