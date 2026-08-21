@@ -28,6 +28,8 @@ export type PropertyGuestPublicPage = {
   description: string;
   path: string;
   icon: LucideIcon;
+  /** Host can open the Page Editor for this guest URL. */
+  editable: boolean;
   /** Copy uses a different URL than open (e.g. booking-scoped pages). */
   copyPath?: string;
   /** Open in new tab uses `?embed=1` so hosts see a preview instead of a missing-booking error. */
@@ -46,6 +48,7 @@ export function buildPropertyGuestPublicPages(
       description: 'Photos, rates, amenities, and reserve actions on your listing.',
       path: guestPropertyPath(propertySlug),
       icon: Home,
+      editable: true,
     },
     {
       id: 'calendar',
@@ -53,6 +56,7 @@ export function buildPropertyGuestPublicPages(
       description: 'Guests pick check-in and check-out before the booking form.',
       path: guestCalendarPath(propertySlug),
       icon: Calendar,
+      editable: false,
     },
     {
       id: 'form',
@@ -60,6 +64,7 @@ export function buildPropertyGuestPublicPages(
       description: 'Multi-step booking request guests submit after choosing dates.',
       path: guestFormPath(propertySlug),
       icon: FileText,
+      editable: false,
     },
     {
       id: 'messages',
@@ -67,6 +72,7 @@ export function buildPropertyGuestPublicPages(
       description: 'Pre-stay chat between guests and your team.',
       path: guestMessagesPreviewPath(propertySlug),
       icon: MessageCircle,
+      editable: false,
     },
     {
       id: 'stay-guide',
@@ -74,6 +80,7 @@ export function buildPropertyGuestPublicPages(
       description: 'House rules and check-in info sent at ready-for-checkin.',
       path: guestStayGuidePreviewPath(propertySlug, propertyId),
       icon: BookOpen,
+      editable: true,
     },
     {
       id: 'sd-form',
@@ -81,6 +88,7 @@ export function buildPropertyGuestPublicPages(
       description: 'Review, voucher, and refund details after checkout.',
       path: guestSdFormShellPath(propertySlug),
       icon: Wallet,
+      editable: false,
       openUsesEmbed: true,
     },
     {
@@ -89,6 +97,7 @@ export function buildPropertyGuestPublicPages(
       description: 'Post-stay rating before the SD refund form.',
       path: guestReviewShellPath(propertySlug),
       icon: Star,
+      editable: false,
       openUsesEmbed: true,
     },
     {
@@ -98,6 +107,7 @@ export function buildPropertyGuestPublicPages(
       path: guestPayParkingPreviewPath(propertySlug),
       copyPath: guestPayParkingPathPrefix(propertySlug),
       icon: Car,
+      editable: false,
       openUsesEmbed: true,
     },
   ];

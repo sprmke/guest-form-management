@@ -112,7 +112,7 @@ export const PLAN_FEATURE_LABELS: Record<keyof PlanFeatures, string> = {
   aiValidations: 'AI receipt and ID validation',
   aiMonthlyCreditAllowance: 'AI credits',
   marketingStudio: 'Template Management',
-  customPages: 'Public property listing',
+  customPages: 'Public pages access & editor',
   aiDashboardAssistant: 'AI dashboard assistant',
   aiReceptionist: 'AI receptionist',
   aiMarketingGeneration: 'AI content generation',

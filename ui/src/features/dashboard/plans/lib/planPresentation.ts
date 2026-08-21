@@ -131,7 +131,7 @@ export const PLAN_TIER_CARD_GAINS: Record<string, string[]> = {
   ],
   starter: [
     'Pricing management',
-    'Public property listing',
+    'Public pages access & editor',
     'Automated document generation',
     'Verified badge eligible',
     'Up to 3 team members',
@@ -221,7 +221,7 @@ function planTierCardGains(planCode: string): PlanFeatureChange[] {
 /** Matrix row order — also the order bullets appear on a tier card when derived from features. */
 export const PLAN_FEATURE_ROWS: PlanFeatureRow[] = [
   boolRow('automatedBookingFlow', 'Automated document generation', 'operations'),
-  boolRow('customPages', 'Public property listing', 'operations'),
+  boolRow('customPages', 'Public pages access & editor', 'operations'),
   boolRow('marketingStudio', 'Template Management', 'operations'),
   boolRow('aiValidations', 'AI receipt and ID validation', 'operations'),
   boolRow('telegramNotifications', 'Telegram alerts', 'operations'),

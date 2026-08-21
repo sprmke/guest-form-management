@@ -1,0 +1,44 @@
+import {
+  Circle,
+  HeartHandshake,
+  Percent,
+  Sparkles,
+  TrendingUp,
+  Zap,
+  type LucideIcon,
+} from 'lucide-react';
+
+/** Distinct icon per catalog plan code — used on summary cards and review dialogs. */
+export const PLAN_TIER_ICONS: Record<string, LucideIcon> = {
+  free: Circle,
+  starter: Zap,
+  growth: TrendingUp,
+  pro: Sparkles,
+  managed: HeartHandshake,
+  commission: Percent,
+};
+
+export function planTierIcon(planCode: string): LucideIcon {
+  return PLAN_TIER_ICONS[planCode] ?? Circle;
+}
+
+export function planTierIconWellClass(planCode: string, muted = false): string {
+  if (muted) return 'bg-muted text-muted-foreground';
+
+  switch (planCode) {
+    case 'free':
+      return 'bg-muted text-muted-foreground';
+    case 'starter':
+      return 'bg-primary/10 text-primary';
+    case 'growth':
+      return 'bg-blue-500/10 text-blue-600 dark:text-blue-400';
+    case 'pro':
+      return 'bg-violet-500/10 text-violet-600 dark:text-violet-400';
+    case 'managed':
+      return 'bg-amber-500/10 text-amber-700 dark:text-amber-400';
+    case 'commission':
+      return 'bg-orange-500/10 text-orange-600 dark:text-orange-400';
+    default:
+      return 'bg-primary/10 text-primary';
+  }
+}

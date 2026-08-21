@@ -48,7 +48,7 @@ export const FEATURE_GATE_COPY: Record<PlanFeatureKey, FeatureGateCopy> = {
     ctaLabel: 'View plans',
   },
   customPages: {
-    title: 'Public property listing',
+    title: 'Public pages access & editor',
     description: 'Available on Starter and above.',
     ctaLabel: 'View plans',
   },
