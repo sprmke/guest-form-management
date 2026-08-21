@@ -15,10 +15,12 @@ import {
   useTransitionParkingBooking,
 } from '@/features/dashboard/parking/hooks/useParkingBookingMutations';
 import { useParkingBroadcastStatus } from '@/features/dashboard/parking/hooks/useParkingBroadcastStatus';
-import { ParkingStaySummary } from '@/components/parking/ParkingStaySummary';
+
 
 import { FloatingPanel } from '@/components/mobile/FloatingPanel';
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
+import { ParkingStaySummary } from '@/components/parking/ParkingStaySummary';
+import { ParkingBookingDetailPageSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { parkingDashboardPageTitle, usePageTitle } from '@/lib/pageTitle';
@@ -88,7 +90,7 @@ export function ParkingBookingDetailPage() {
   if (isLoading || (isPendingAcceptance && broadcastLoading)) {
     return (
       <AdminMobilePage title="Booking" subtitle={parking.name} titleId="parking-booking-heading">
-        <p className="text-muted-foreground text-sm">Loading…</p>
+        <ParkingBookingDetailPageSkeleton />
       </AdminMobilePage>
     );
   }

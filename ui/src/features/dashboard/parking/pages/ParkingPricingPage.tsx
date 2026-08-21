@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { format, eachDayOfInterval, isSameDay, isBefore, startOfToday } from 'date-fns';
-import { Loader2 } from 'lucide-react';
 
 import { ParkingPricingRatesFormCard } from '@/features/dashboard/parking/components/ParkingPricingRatesFormCard';
 import { ParkingPricingStatsRow } from '@/features/dashboard/parking/components/ParkingPricingStatsRow';
@@ -35,6 +34,7 @@ import { hasOrgPermission } from '@/features/dashboard/team/lib/orgPermissions';
 
 import { FloatingPanel } from '@/components/mobile/FloatingPanel';
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
+import { BookingsCalendarSkeleton } from '@/components/skeletons/AdminSkeletons';
 
 export function ParkingPricingPage() {
   const { data: orgAccess } = useOrgPermissions();
@@ -268,9 +268,7 @@ export function ParkingPricingPage() {
         subtitle="Manage pricing and availability."
         titleId="parking-pricing-heading"
       >
-        <div className="flex min-h-[40vh] items-center justify-center">
-          <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
-        </div>
+        <BookingsCalendarSkeleton />
       </AdminMobilePage>
     );
   }

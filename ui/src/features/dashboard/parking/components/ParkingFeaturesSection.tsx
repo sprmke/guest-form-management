@@ -114,7 +114,8 @@ export function ParkingFeaturesSection({
             aria-hidden
           />
         </CollapsibleTrigger>
-        <CollapsibleContent className="space-y-3 p-4">
+        <CollapsibleContent>
+          <div className="space-y-3 p-4">
           <div className="grid gap-2 sm:grid-cols-2">
             {category.amenities.map((amenity) => {
               const enabled = draft.enabledParkingAmenities.includes(amenity.id);
@@ -196,6 +197,7 @@ export function ParkingFeaturesSection({
               <Plus className="mr-1 size-4" aria-hidden />
               Add
             </Button>
+          </div>
           </div>
         </CollapsibleContent>
       </Collapsible>

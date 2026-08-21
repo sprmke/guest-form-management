@@ -5,7 +5,7 @@ import type { Page } from '@playwright/test';
 
 const SCREEN_TMP_ROOT = path.resolve(process.cwd(), 'ui/screen-tmp/parking-e2e');
 
-let captureEnabled = process.env.PLAYWRIGHT_CAPTURE_SCREENS === '1';
+const captureEnabled = process.env.PLAYWRIGHT_CAPTURE_SCREENS === '1';
 let currentSuite = 'default';
 let stepCounter = 0;
 

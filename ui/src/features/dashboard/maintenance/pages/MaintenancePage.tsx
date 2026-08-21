@@ -32,7 +32,7 @@ import { propertyNotificationsPath } from '@/features/dashboard/org/lib/tenantPa
 
 import { FloatingToolbar } from '@/components/mobile/FloatingPanel';
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
-import { FinanceOverviewSkeleton } from '@/components/skeletons/AdminSkeletons';
+import { MaintenanceOverviewSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { useAdminMobileCardViewGuard } from '@/hooks/useAdminMobileCardViewGuard';
 import { useIsBelowLg, useIsBelowMd } from '@/hooks/useMediaQuery';
 import { fromIsoDate } from '@/lib/date/navigation';
@@ -178,7 +178,7 @@ export function MaintenancePage() {
       desktopActionsClassName="w-full sm:w-auto"
     >
       {summaryQuery.isLoading && !summary ? (
-        <FinanceOverviewSkeleton />
+        <MaintenanceOverviewSkeleton />
       ) : summary ? (
         <MaintenanceSummaryCards
           total={summary.total}
