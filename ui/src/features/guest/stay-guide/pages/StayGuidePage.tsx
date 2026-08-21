@@ -14,9 +14,12 @@ import {
   useGuestStayGuide,
   useGuestStayGuidePreview,
 } from '@/features/guest/stay-guide/hooks/useGuestStayGuide';
+import { usePreviewOverride } from '@/features/guest/lib/previewOverrideContext';
 import {
+  applyStayGuideSectionConfig,
   buildQuickNavItems,
   buildStayGuideChapters,
+  defaultStayGuideSectionConfig,
 } from '@/features/guest/stay-guide/lib/stayGuideChapters';
 
 import { useTheme } from '@/components/theme/ThemeProvider';
@@ -31,10 +34,21 @@ export function StayGuidePage() {
   const isPreview = searchParams.get('preview') === '1';
   const previewPropertyId = (searchParams.get('property_id') ?? '').trim();
   const { resolvedTheme } = useTheme();
+  const previewOverride = usePreviewOverride();
+  const isEditorPreview = previewOverride?.kind === 'stay-guide';
 
   const tokenQuery = useGuestStayGuide(propertySlug, token);
   const previewQuery = useGuestStayGuidePreview(propertySlug, previewPropertyId);
-  const activeQuery = isPreview ? previewQuery : tokenQuery;
+  const activeQuery = isEditorPreview
+    ? {
+        data: previewOverride.data,
+        isLoading: false,
+        isError: false,
+        error: null as Error | null,
+      }
+    : isPreview
+      ? previewQuery
+      : tokenQuery;
   const { data, isLoading, isError, error } = activeQuery;
 
   const brandStyle = useMemo(
@@ -46,16 +60,27 @@ export function StayGuidePage() {
     return applyBrandCssVariables(document.documentElement, brandStyle as Record<string, string>);
   }, [brandStyle]);
 
-  const chapters = useMemo(() => buildStayGuideChapters(data?.sections ?? []), [data?.sections]);
-  const quickNavItems = useMemo(() => buildQuickNavItems(chapters), [chapters]);
+  const sectionConfig = data?.sectionConfig ?? defaultStayGuideSectionConfig();
+  const chapters = useMemo(
+    () =>
+      applyStayGuideSectionConfig(
+        buildStayGuideChapters(data?.sections ?? []),
+        data?.sectionConfig
+      ),
+    [data?.sections, data?.sectionConfig]
+  );
+  const quickNavItems = useMemo(
+    () => buildQuickNavItems(chapters, { includeHelp: sectionConfig.helpSection.visible }),
+    [chapters, sectionConfig.helpSection.visible]
+  );
 
-  if (!isPreview && !token) {
+  if (!isEditorPreview && !isPreview && !token) {
     return (
       <StayGuideUnavailable message="Missing access link. Open the guide from your check-in email." />
     );
   }
 
-  if (isPreview && !previewPropertyId) {
+  if (!isEditorPreview && isPreview && !previewPropertyId) {
     return (
       <StayGuideUnavailable message="Open stay guide preview from Templates in the dashboard." />
     );
@@ -81,10 +106,10 @@ export function StayGuidePage() {
 
   return (
     <div className="min-h-screen bg-[#FFFFFF] text-[#171717] dark:bg-[#0A0A0A] dark:text-[#FAFAFA]">
-      <StayGuideHero guide={data} />
-      <StayPassCard guide={data} />
+      {sectionConfig.hero.visible ? <StayGuideHero guide={data} /> : null}
+      {sectionConfig.stayPassCard.visible ? <StayPassCard guide={data} /> : null}
 
-      {galleryImages.length > 0 ? (
+      {sectionConfig.galleryCarousel.visible && galleryImages.length > 0 ? (
         <StayGuideGalleryCarousel
           images={galleryImages}
           propertyName={data.property.name}
@@ -92,7 +117,7 @@ export function StayGuidePage() {
         />
       ) : null}
 
-      <StayGuideTabs items={quickNavItems} />
+      {sectionConfig.quickNavTabs.visible ? <StayGuideTabs items={quickNavItems} /> : null}
 
       <div className="mx-auto max-w-[720px] space-y-10 px-4 py-8 sm:space-y-14 sm:px-6 sm:py-10 lg:px-8">
         {chapters.map((chapter) => (
@@ -101,20 +126,23 @@ export function StayGuidePage() {
             chapter={chapter}
             propertyLocation={data.property.location}
             towerAndUnit={data.property.towerAndUnit}
+            accentColor={chapter.accentColor}
           />
         ))}
       </div>
 
-      <StayGuideHelpSection
-        host={
-          data.host ?? {
-            name: data.property.name,
-            avatarUrl: data.property.logoUrl,
-            organizationName: data.property.name,
+      {sectionConfig.helpSection.visible ? (
+        <StayGuideHelpSection
+          host={
+            data.host ?? {
+              name: data.property.name,
+              avatarUrl: data.property.logoUrl,
+              organizationName: data.property.name,
+            }
           }
-        }
-        contact={data.contact}
-      />
+          contact={data.contact}
+        />
+      ) : null}
     </div>
   );
 }

@@ -1,6 +1,10 @@
 import { KeyRound, LogOut, MessageCircle, ScrollText, type LucideIcon } from 'lucide-react';
 
-import type { StayGuideSectionDto } from '@/features/guest/stay-guide/lib/api';
+import type {
+  StayGuideChapterConfig,
+  StayGuideSectionConfig,
+  StayGuideSectionDto,
+} from '@/features/guest/stay-guide/lib/api';
 
 export type StayGuideChapterId =
   'getting-in' | 'make-yourself-at-home' | 'before-you-go' | 'need-anything';
@@ -12,6 +16,8 @@ export type StayGuideChapterDef = {
   shortLabel: string;
   icon: LucideIcon;
   sections: StayGuideSectionDto[];
+  /** Host override; null/undefined = brand/primary. */
+  accentColor?: string | null;
 };
 
 /** "Need Anything?" is content-less — it anchors quick-nav to the host contact footer. */
@@ -73,6 +79,61 @@ export function buildStayGuideChapters(sections: StayGuideSectionDto[]): StayGui
   }));
 }
 
+const DEFAULT_CHAPTER_ORDER: StayGuideChapterConfig['id'][] = [
+  'getting-in',
+  'make-yourself-at-home',
+  'before-you-go',
+];
+
+export function defaultStayGuideSectionConfig(): StayGuideSectionConfig {
+  return {
+    version: 1,
+    hero: { visible: true },
+    stayPassCard: { visible: true },
+    galleryCarousel: { visible: true },
+    quickNavTabs: { visible: true },
+    chapters: DEFAULT_CHAPTER_ORDER.map((id, order) => ({
+      id,
+      visible: true,
+      order,
+      accentColor: null,
+    })),
+    helpSection: { visible: true },
+  };
+}
+
+/**
+ * Filter/reorder built chapters by host sectionConfig.
+ * Missing/default config preserves today's natural order and visibility.
+ */
+export function applyStayGuideSectionConfig(
+  chapters: StayGuideChapterDef[],
+  sectionConfig?: StayGuideSectionConfig | null
+): StayGuideChapterDef[] {
+  const config = sectionConfig ?? defaultStayGuideSectionConfig();
+  const byId = new Map(chapters.map((chapter) => [chapter.id, chapter]));
+  const chapterConfigs = [...config.chapters].sort(
+    (a, b) =>
+      a.order - b.order || DEFAULT_CHAPTER_ORDER.indexOf(a.id) - DEFAULT_CHAPTER_ORDER.indexOf(b.id)
+  );
+
+  const ordered: StayGuideChapterDef[] = [];
+  for (const entry of chapterConfigs) {
+    if (!entry.visible) continue;
+    const chapter = byId.get(entry.id);
+    if (!chapter) continue;
+    ordered.push({
+      ...chapter,
+      accentColor: entry.accentColor,
+    });
+  }
+
+  return ordered.map((chapter, index) => ({
+    ...chapter,
+    eyebrow: `Chapter 0${index + 1}`,
+  }));
+}
+
 export const NEED_ANYTHING_CHAPTER: StayGuideChapterNavItem = {
   id: 'need-anything',
   heading: 'Need Anything?',
@@ -80,9 +141,17 @@ export const NEED_ANYTHING_CHAPTER: StayGuideChapterNavItem = {
   icon: MessageCircle,
 };
 
-export function buildQuickNavItems(chapters: StayGuideChapterDef[]): StayGuideChapterNavItem[] {
-  return [
-    ...chapters.map(({ id, shortLabel, icon, heading }) => ({ id, shortLabel, icon, heading })),
-    NEED_ANYTHING_CHAPTER,
-  ];
+export function buildQuickNavItems(
+  chapters: StayGuideChapterDef[],
+  options?: { includeHelp?: boolean }
+): StayGuideChapterNavItem[] {
+  const includeHelp = options?.includeHelp !== false;
+  const items = chapters.map(({ id, shortLabel, icon, heading }) => ({
+    id,
+    shortLabel,
+    icon,
+    heading,
+  }));
+  if (includeHelp) items.push(NEED_ANYTHING_CHAPTER);
+  return items;
 }

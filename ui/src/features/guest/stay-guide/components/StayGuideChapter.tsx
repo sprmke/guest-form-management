@@ -12,16 +12,21 @@ interface StayGuideChapterProps {
   chapter: StayGuideChapterDef;
   propertyLocation: GuestStayGuideDto['property']['location'];
   towerAndUnit: string | null;
+  /** Optional host accent; falls back to theme primary. */
+  accentColor?: string | null;
 }
 
 export function StayGuideChapter({
   chapter,
   propertyLocation,
   towerAndUnit,
+  accentColor,
 }: StayGuideChapterProps) {
   const reduceMotion = useReducedMotion();
   const Icon = chapter.icon;
   const showCheckInMap = chapter.id === 'getting-in';
+  const accent = (accentColor ?? chapter.accentColor)?.trim() || null;
+  const accentStyle = accent ? ({ color: accent } as const) : undefined;
 
   return (
     <section id={chapter.id} className="scroll-mt-24 sm:scroll-mt-28">
@@ -33,11 +38,25 @@ export function StayGuideChapter({
         className="space-y-5"
       >
         <div className="flex items-center gap-2.5">
-          <span className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-full">
+          <span
+            className={
+              accent
+                ? 'flex size-9 shrink-0 items-center justify-center rounded-full'
+                : 'bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-full'
+            }
+            style={accent ? { backgroundColor: `${accent}1A`, color: accent } : undefined}
+          >
             <Icon className="size-4" aria-hidden />
           </span>
           <div>
-            <p className="text-primary text-[11px] font-bold uppercase tracking-[0.2em]">
+            <p
+              className={
+                accent
+                  ? 'text-[11px] font-bold uppercase tracking-[0.2em]'
+                  : 'text-primary text-[11px] font-bold uppercase tracking-[0.2em]'
+              }
+              style={accentStyle}
+            >
               {chapter.eyebrow}
             </p>
             <h2 className="font-fraunces text-2xl font-semibold tracking-tight text-[#171717] sm:text-3xl dark:text-[#FAFAFA]">
@@ -75,7 +94,14 @@ export function StayGuideChapter({
                   </div>
                 ) : null}
                 {chapter.sections.length > 1 ? (
-                  <h3 className="text-primary mb-2 text-base font-semibold tracking-tight sm:text-lg">
+                  <h3
+                    className={
+                      accent
+                        ? 'mb-2 text-base font-semibold tracking-tight sm:text-lg'
+                        : 'text-primary mb-2 text-base font-semibold tracking-tight sm:text-lg'
+                    }
+                    style={accentStyle}
+                  >
                     {heading}
                   </h3>
                 ) : null}

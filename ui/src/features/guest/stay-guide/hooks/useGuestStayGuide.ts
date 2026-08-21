@@ -1,26 +1,81 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
-import { fetchGuestStayGuide } from '@/features/guest/stay-guide/lib/api';
+import { usePreviewOverride } from '@/features/guest/lib/previewOverrideContext';
+import { fetchGuestStayGuide, type GuestStayGuideDto } from '@/features/guest/stay-guide/lib/api';
 import { fetchGuestStayGuidePreview } from '@/features/guest/stay-guide/lib/previewApi';
 
 export const GUEST_STAY_GUIDE_QUERY_KEY = ['guest-stay-guide'] as const;
 
+function stayGuideOverrideResult(
+  data: GuestStayGuideDto
+): UseQueryResult<GuestStayGuideDto, Error> {
+  return {
+    data,
+    error: null,
+    isError: false,
+    isLoading: false,
+    isPending: false,
+    isLoadingError: false,
+    isRefetchError: false,
+    isSuccess: true,
+    isFetched: true,
+    isFetchedAfterMount: true,
+    isFetching: false,
+    isRefetching: false,
+    isStale: false,
+    isPlaceholderData: false,
+    isPaused: false,
+    status: 'success',
+    fetchStatus: 'idle',
+    dataUpdatedAt: Date.now(),
+    errorUpdatedAt: 0,
+    failureCount: 0,
+    failureReason: null,
+    errorUpdateCount: 0,
+    refetch: async () =>
+      ({
+        data,
+        error: null,
+        isError: false,
+        isLoading: false,
+        isSuccess: true,
+        status: 'success',
+      }) as UseQueryResult<GuestStayGuideDto, Error>,
+  } as UseQueryResult<GuestStayGuideDto, Error>;
+}
+
 export function useGuestStayGuide(propertySlug: string, token: string) {
-  return useQuery({
+  const override = usePreviewOverride();
+  const hasOverride = override?.kind === 'stay-guide';
+
+  const query = useQuery({
     queryKey: [...GUEST_STAY_GUIDE_QUERY_KEY, propertySlug, token],
     queryFn: () => fetchGuestStayGuide(propertySlug, token),
-    enabled: Boolean(propertySlug.trim() && token.trim()),
+    enabled: !hasOverride && Boolean(propertySlug.trim() && token.trim()),
     staleTime: 1000 * 60 * 5,
     retry: false,
   });
+
+  if (hasOverride) {
+    return stayGuideOverrideResult(override.data);
+  }
+  return query;
 }
 
 export function useGuestStayGuidePreview(propertySlug: string, propertyId: string) {
-  return useQuery({
+  const override = usePreviewOverride();
+  const hasOverride = override?.kind === 'stay-guide';
+
+  const query = useQuery({
     queryKey: [...GUEST_STAY_GUIDE_QUERY_KEY, 'preview', propertySlug, propertyId],
     queryFn: () => fetchGuestStayGuidePreview(propertySlug, propertyId),
-    enabled: Boolean(propertySlug.trim() && propertyId.trim()),
+    enabled: !hasOverride && Boolean(propertySlug.trim() && propertyId.trim()),
     staleTime: 1000 * 60 * 2,
     retry: false,
   });
+
+  if (hasOverride) {
+    return stayGuideOverrideResult(override.data);
+  }
+  return query;
 }

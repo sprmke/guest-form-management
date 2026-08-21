@@ -11,6 +11,23 @@ export type StayGuideSectionDto = {
   imageUpdatedAt?: string | null;
 };
 
+export type StayGuideChapterConfig = {
+  id: 'getting-in' | 'make-yourself-at-home' | 'before-you-go';
+  visible: boolean;
+  order: number;
+  accentColor: string | null;
+};
+
+export type StayGuideSectionConfig = {
+  version: 1;
+  hero: { visible: boolean };
+  stayPassCard: { visible: boolean };
+  galleryCarousel: { visible: boolean };
+  quickNavTabs: { visible: boolean };
+  chapters: StayGuideChapterConfig[];
+  helpSection: { visible: boolean };
+};
+
 export type GuestStayGuideDto = {
   property: {
     slug: string;
@@ -58,6 +75,8 @@ export type GuestStayGuideDto = {
   validUntil: string;
   todayManila: string;
   templateKey: string;
+  /** Present once public-page-configs ships; optional for older responses. */
+  sectionConfig?: StayGuideSectionConfig;
 };
 
 type ApiSuccess<T> = { success: true; data: T };
