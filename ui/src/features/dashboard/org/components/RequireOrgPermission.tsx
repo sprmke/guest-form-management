@@ -2,8 +2,6 @@ import type { ReactNode } from 'react';
 
 import { Navigate, useLocation } from 'react-router-dom';
 
-import { Loader2 } from 'lucide-react';
-
 import { hostLoginPath } from '@/features/guest/auth/lib/hostAuthPaths';
 
 import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
@@ -19,6 +17,8 @@ import {
   type OrgPermissionId,
 } from '@/features/dashboard/team/lib/orgPermissions';
 
+import { RouteGuardSkeleton } from '@/components/skeletons/AdminSkeletons';
+
 type Props = {
   section: keyof typeof ORG_SECTION_VIEW_PERMISSION;
   children: ReactNode;
@@ -32,11 +32,7 @@ export function RequireOrgPermission({ section, children }: Props) {
   const required = ORG_SECTION_VIEW_PERMISSION[section];
 
   if (sessionStatus === 'loading' || (isPending && !data)) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center" role="status">
-        <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-      </div>
-    );
+    return <RouteGuardSkeleton />;
   }
 
   if (sessionStatus === 'signed-out') {

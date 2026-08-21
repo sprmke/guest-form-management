@@ -2,12 +2,12 @@ import { createContext, useContext, useEffect, useMemo } from 'react';
 
 import { Navigate, useParams } from 'react-router-dom';
 
-import { Loader2 } from 'lucide-react';
-
 import { TenantAccessDenied } from '@/features/dashboard/org/components/TenantAccessDenied';
 import { useOrganizations, useProperties } from '@/features/dashboard/org/hooks/useOrganizations';
 import { setLastTenantContext } from '@/features/dashboard/org/lib/tenantPaths';
 import type { Organization, Property } from '@/features/dashboard/org/types';
+
+import { RouteGuardSkeleton } from '@/components/skeletons/AdminSkeletons';
 
 export type OrgContextValue = {
   org: Organization;
@@ -58,14 +58,7 @@ export function RequireOrgContext({ children }: Props) {
   }, [value]);
 
   if (orgsQuery.isLoading || propsQuery.isLoading) {
-    return (
-      <div
-        className="bg-card fixed inset-0 flex flex-col items-center justify-center gap-3"
-        role="status"
-      >
-        <Loader2 className="text-sidebar-primary size-5 animate-spin" aria-hidden />
-      </div>
-    );
+    return <RouteGuardSkeleton fullScreen />;
   }
 
   if (!orgSlug || !propertySlug) {

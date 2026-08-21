@@ -1,13 +1,13 @@
 import { Navigate, useParams } from 'react-router-dom';
 
-import { Loader2 } from 'lucide-react';
-
 import { useOrganizations } from '@/features/dashboard/org/hooks/useOrganizations';
 import {
   isHostVerificationHardRejected,
   readOrgVerificationDetail,
 } from '@/features/dashboard/org/lib/orgVerificationTiers';
 import { HostVerificationRejectedPage } from '@/features/dashboard/org/pages/HostVerificationRejectedPage';
+
+import { RouteGuardSkeleton } from '@/components/skeletons/AdminSkeletons';
 
 type Props = {
   children: React.ReactNode;
@@ -19,11 +19,7 @@ export function RequireOrgNotHardRejected({ children }: Props) {
   const orgsQuery = useOrganizations();
 
   if (orgsQuery.isLoading) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center" role="status">
-        <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-      </div>
-    );
+    return <RouteGuardSkeleton />;
   }
 
   if (!orgSlug) {
