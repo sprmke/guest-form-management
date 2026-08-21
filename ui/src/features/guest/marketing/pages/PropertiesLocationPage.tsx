@@ -26,6 +26,11 @@ import {
 } from '@/features/guest/marketing/properties/lib/propertiesQuery';
 import { resolveListingImages } from '@/features/guest/marketing/shared/lib/mockListingImages';
 
+import {
+  ListingGridSkeleton,
+  ListingMapSkeleton,
+  ListingRowSkeleton,
+} from '@/components/skeletons/ListingGridSkeleton';
 import { Button } from '@/components/ui/button';
 
 function toPropertyCard(item: PublicPropertyListItem): Property {
@@ -178,7 +183,18 @@ export function PropertiesLocationPage() {
               </Button>
             </div>
           ) : isLoading ? (
-            <div className="text-muted-foreground px-4 py-16 text-sm sm:px-6">Loading…</div>
+            <div className="min-w-0 p-4 sm:p-6">
+              {viewMode === 'map' ? (
+                <ListingMapSkeleton />
+              ) : viewMode === 'list' ? (
+                <ListingRowSkeleton maxWidthClassName="max-w-4xl" />
+              ) : (
+                <ListingGridSkeleton
+                  columnsClassName="grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
+                  imageAspectClassName="aspect-[4/3]"
+                />
+              )}
+            </div>
           ) : (
             <AnimatePresence mode="wait">
               {viewMode === 'map' ? (

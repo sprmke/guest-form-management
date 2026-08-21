@@ -23,6 +23,7 @@ import {
 } from '@/features/guest/marketing/parkings/lib/parkingsQuery';
 import { normalizeCityPlace } from '@/features/guest/marketing/shared/lib/locationSlug';
 
+import { ListingGridSkeleton } from '@/components/skeletons/ListingGridSkeleton';
 import { Button } from '@/components/ui/button';
 
 export function ParkingsLocationPage() {
@@ -147,7 +148,12 @@ export function ParkingsLocationPage() {
               </Button>
             </div>
           ) : isLoading ? (
-            <div className="text-muted-foreground px-4 py-16 text-sm sm:px-6">Loading…</div>
+            <div className="min-w-0 p-4 sm:p-6">
+              <ListingGridSkeleton
+                columnsClassName="grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
+                imageAspectClassName="aspect-square"
+              />
+            </div>
           ) : (
             <AnimatePresence mode="wait">
               <motion.div

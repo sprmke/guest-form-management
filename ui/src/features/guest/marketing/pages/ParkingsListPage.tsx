@@ -28,6 +28,7 @@ import {
   removeParkingFilterChip,
 } from '@/features/guest/marketing/shared/lib/listingFilterChips';
 
+import { ListingLocationRowsSkeleton } from '@/components/skeletons/ListingGridSkeleton';
 import { Button } from '@/components/ui/button';
 import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
 
@@ -173,7 +174,9 @@ export function ParkingsListPage() {
               Could not load parking slots.
             </div>
           ) : isLoading && !data ? (
-            <div className="text-muted-foreground p-6 text-sm">Loading…</div>
+            <div className="min-w-0 p-4 sm:p-6">
+              <ListingLocationRowsSkeleton />
+            </div>
           ) : entries.length === 0 ? (
             <ListingFilteredEmpty
               noun="slots"
@@ -199,12 +202,8 @@ export function ParkingsListPage() {
                 className="min-w-0 p-4 sm:p-6"
               >
                 {groupedBrowse && placeGroups.isLoading ? (
-                  <div
-                    className="text-muted-foreground py-6 text-sm"
-                    role="status"
-                    aria-live="polite"
-                  >
-                    Loading…
+                  <div role="status" aria-live="polite">
+                    <ListingLocationRowsSkeleton sectionCount={2} />
                   </div>
                 ) : groupedBrowse && placeGroups.isError && parkingLocationGroups.length === 0 ? (
                   <div className="flex flex-col items-center gap-3 py-16" role="alert">
