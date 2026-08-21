@@ -15,8 +15,8 @@ function HostPublicPageSkeleton() {
   return (
     <div className="bg-background min-h-screen pb-16 pt-20 sm:pb-20">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start sm:gap-8">
-          <div className="bg-muted h-28 w-28 shrink-0 animate-pulse rounded-full sm:h-32 sm:w-32" />
+        <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start sm:gap-8 lg:gap-10">
+          <div className="bg-muted h-28 w-28 shrink-0 animate-pulse rounded-full sm:h-32 sm:w-32 lg:h-36 lg:w-36" />
           <div className="w-full max-w-md space-y-3 sm:max-w-none sm:pt-2">
             <div className="bg-muted mx-auto h-8 w-48 animate-pulse rounded-lg sm:mx-0" />
             <div className="bg-muted mx-auto h-5 w-40 animate-pulse rounded sm:mx-0" />
@@ -24,14 +24,19 @@ function HostPublicPageSkeleton() {
             <div className="bg-muted h-16 w-full animate-pulse rounded-lg" />
           </div>
         </div>
-        <div className="mt-12 grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-4 sm:mt-14">
-          {Array.from({ length: 3 }, (_, i) => (
-            <div key={i} className="space-y-2" aria-hidden>
-              <div className="bg-muted aspect-square animate-pulse rounded-xl" />
-              <div className="bg-muted h-3 w-3/4 animate-pulse rounded" />
-              <div className="bg-muted h-3 w-1/2 animate-pulse rounded" />
-            </div>
-          ))}
+        <div className="mt-10 sm:mt-12 lg:mt-14">
+          <div className="border-border mb-6 border-t pt-8 sm:mb-8 sm:pt-10">
+            <div className="bg-muted h-6 w-28 animate-pulse rounded-lg" />
+          </div>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-x-4 gap-y-8">
+            {Array.from({ length: 4 }, (_, i) => (
+              <div key={i} className="space-y-2" aria-hidden>
+                <div className="bg-muted aspect-square animate-pulse rounded-xl" />
+                <div className="bg-muted h-3 w-3/4 animate-pulse rounded" />
+                <div className="bg-muted h-3 w-1/2 animate-pulse rounded" />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

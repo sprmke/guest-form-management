@@ -37,6 +37,11 @@ import {
   type MapBbox,
 } from '@/features/guest/marketing/shared/lib/listingMapMarkers';
 
+import {
+  ListingCardListSkeleton,
+  ListingLocationRowsSkeleton,
+  ListingMapSkeleton,
+} from '@/components/skeletons/ListingGridSkeleton';
 import { Button } from '@/components/ui/button';
 import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
 
@@ -240,7 +245,18 @@ export function DevelopmentsListPage() {
               Could not load developments.
             </div>
           ) : isLoading && !data ? (
-            <div className="text-muted-foreground p-6 text-sm">Loading…</div>
+            <div className="min-w-0 p-4 sm:p-6">
+              {viewMode === 'map' ? (
+                <ListingMapSkeleton />
+              ) : viewMode === 'list' ? (
+                <ListingCardListSkeleton
+                  maxWidthClassName="max-w-3xl"
+                  imageAspectClassName="aspect-[16/9]"
+                />
+              ) : (
+                <ListingLocationRowsSkeleton />
+              )}
+            </div>
           ) : developments.length === 0 ? (
             <ListingFilteredEmpty
               noun="developments"
@@ -285,12 +301,8 @@ export function DevelopmentsListPage() {
                 >
                   {viewMode === 'grid' ? (
                     groupedBrowse && placeGroups.isLoading ? (
-                      <div
-                        className="text-muted-foreground py-6 text-sm"
-                        role="status"
-                        aria-live="polite"
-                      >
-                        Loading…
+                      <div role="status" aria-live="polite">
+                        <ListingLocationRowsSkeleton sectionCount={2} />
                       </div>
                     ) : groupedBrowse &&
                       placeGroups.isError &&

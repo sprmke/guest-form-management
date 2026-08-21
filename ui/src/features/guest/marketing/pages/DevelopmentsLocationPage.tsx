@@ -33,6 +33,10 @@ import {
 import { normalizeCityPlace } from '@/features/guest/marketing/shared/lib/locationSlug';
 import { resolveListingImages } from '@/features/guest/marketing/shared/lib/mockListingImages';
 
+import {
+  ListingLocationRowsSkeleton,
+  ListingRowSkeleton,
+} from '@/components/skeletons/ListingGridSkeleton';
 import { Button } from '@/components/ui/button';
 
 function toPropertyCard(item: PublicPropertyListItem): Property {
@@ -236,7 +240,13 @@ export function DevelopmentsLocationPage() {
               </Button>
             </div>
           ) : isLoading ? (
-            <div className="text-muted-foreground px-4 py-16 text-sm sm:px-6">Loading…</div>
+            <div className="min-w-0 p-4 sm:p-6">
+              {viewMode === 'list' ? (
+                <ListingRowSkeleton maxWidthClassName="max-w-4xl" />
+              ) : (
+                <ListingLocationRowsSkeleton />
+              )}
+            </div>
           ) : (
             <AnimatePresence mode="wait">
               <motion.div
