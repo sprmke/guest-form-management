@@ -4,6 +4,7 @@ import {
   syncLegacyPaymentFieldsFromMethods,
   type PropertyPaymentMethod,
 } from '@/features/dashboard/org/lib/paymentMethods';
+import { cancellationPolicySettingsEqual } from '@/features/dashboard/org/lib/propertyCancellationPolicy';
 import {
   automationTogglesEqual,
   type PropertyAutomationToggles,
@@ -23,6 +24,8 @@ import {
   type PropertyProfileDraft,
   type PropertyProfileUpdatePayload,
 } from '@/features/dashboard/org/lib/propertySettingsForm';
+
+import { propertyBrandColorsEquivalent } from '@/lib/theme/brandColor';
 
 const FIELD_SECTIONS: Record<string, PropertySettingsSectionId> = {
   'property-name': 'basic',
@@ -158,23 +161,42 @@ export function propertySettingsSectionDirty(
   profileBaseline: PropertyProfileDraft,
   operationalDraft: AppSettingsFormValues | null,
   operationalBaseline: AppSettingsFormValues | null,
-  _inheritedBrandColor: string
+  inheritedBrandColor: string
 ): boolean {
   switch (sectionId) {
     case 'basic':
       return (
         propertyProfileDbFieldsDirty(profileDraft, profileBaseline) ||
         contactFieldsDirty(profileDraft, profileBaseline) ||
-        descriptionDirty(profileDraft, profileBaseline)
+        descriptionDirty(profileDraft, profileBaseline) ||
+        Boolean(
+          operationalDraft &&
+          operationalBaseline &&
+          !propertyBrandColorsEquivalent(
+            operationalDraft.brandColor,
+            operationalBaseline.brandColor,
+            inheritedBrandColor
+          )
+        )
       );
     case 'media':
-      return false;
+      return JSON.stringify(profileDraft.media) !== JSON.stringify(profileBaseline.media);
     case 'details':
       return detailsFieldsDirty(profileDraft, profileBaseline);
     case 'amenities':
-      return false;
+      return (
+        JSON.stringify(profileDraft.enabledAmenities) !==
+          JSON.stringify(profileBaseline.enabledAmenities) ||
+        JSON.stringify(profileDraft.customAmenities) !==
+          JSON.stringify(profileBaseline.customAmenities)
+      );
     case 'house-rules':
-      return false;
+      return (
+        JSON.stringify(profileDraft.enabledHouseRules) !==
+          JSON.stringify(profileBaseline.enabledHouseRules) ||
+        JSON.stringify(profileDraft.customHouseRules) !==
+          JSON.stringify(profileBaseline.customHouseRules)
+      );
     case 'guest-form':
       return (
         profileDraft.allowPets !== profileBaseline.allowPets ||
@@ -182,14 +204,32 @@ export function propertySettingsSectionDirty(
         profileDraft.allowSurpriseDecor !== profileBaseline.allowSurpriseDecor
       );
     case 'cancellation':
-      return false;
+      return !cancellationPolicySettingsEqual(
+        profileDraft.cancellationPolicy,
+        profileBaseline.cancellationPolicy
+      );
     case 'location':
       return (
         profileDraft.address.trim() !== profileBaseline.address.trim() ||
         locationFieldsDirty(profileDraft, profileBaseline)
       );
     case 'branding':
-      return false;
+      return Boolean(
+        operationalDraft &&
+        operationalBaseline &&
+        (operationalDraft.facebookPageUrl.trim() !== operationalBaseline.facebookPageUrl.trim() ||
+          operationalDraft.airbnbUrl.trim() !== operationalBaseline.airbnbUrl.trim() ||
+          operationalDraft.instagramUrl.trim() !== operationalBaseline.instagramUrl.trim() ||
+          operationalDraft.tiktokUrl.trim() !== operationalBaseline.tiktokUrl.trim() ||
+          operationalDraft.mainSocialPlatform.trim() !==
+            operationalBaseline.mainSocialPlatform.trim() ||
+          !externalReviewsEqual(
+            operationalDraft.externalReviews,
+            operationalBaseline.externalReviews
+          ) ||
+          operationalDraft.superhostVerificationUrl.trim() !==
+            operationalBaseline.superhostVerificationUrl.trim())
+      );
     case 'payment':
       return Boolean(
         operationalDraft &&
@@ -235,7 +275,7 @@ function dirtyFieldIdsInSection(
   profileBaseline: PropertyProfileDraft,
   operationalDraft: AppSettingsFormValues | null,
   operationalBaseline: AppSettingsFormValues | null,
-  _inheritedBrandColor: string
+  inheritedBrandColor: string
 ): string[] {
   const ids: string[] = [];
 
@@ -259,6 +299,17 @@ function dirtyFieldIdsInSection(
       }
       if (profileDraft.contactEmail.trim() !== profileBaseline.contactEmail.trim()) {
         ids.push('property-contact-email');
+      }
+      if (
+        operationalDraft &&
+        operationalBaseline &&
+        !propertyBrandColorsEquivalent(
+          operationalDraft.brandColor,
+          operationalBaseline.brandColor,
+          inheritedBrandColor
+        )
+      ) {
+        ids.push('property-brand-color');
       }
       break;
     case 'branding':
@@ -484,6 +535,22 @@ function firstSectionIssue(
   return null;
 }
 
+function basicBrandColorDirty(
+  operationalDraft: AppSettingsFormValues | null,
+  operationalBaseline: AppSettingsFormValues | null,
+  inheritedBrandColor: string
+): boolean {
+  return Boolean(
+    operationalDraft &&
+    operationalBaseline &&
+    !propertyBrandColorsEquivalent(
+      operationalDraft.brandColor,
+      operationalBaseline.brandColor,
+      inheritedBrandColor
+    )
+  );
+}
+
 function fieldIdsHaveValidationErrors(
   fieldIds: string[],
   completion: PropertySettingsCompletionResult
@@ -513,6 +580,11 @@ function evaluateBasicSectionSave(input: {
     input.inheritedBrandColor
   ).filter((fieldId) => fieldId !== 'property-brand-color');
 
+  const brandColorDirty = basicBrandColorDirty(
+    input.operationalDraft,
+    input.operationalBaseline,
+    input.inheritedBrandColor
+  );
   const basicSectionMessage = input.completion.sectionMessages.basic;
 
   const profileSavable =
@@ -520,11 +592,16 @@ function evaluateBasicSectionSave(input: {
     !basicSectionMessage &&
     !fieldIdsHaveValidationErrors(profileDirtyIds, input.completion);
 
+  const brandColorSavable =
+    brandColorDirty &&
+    !basicSectionMessage &&
+    !input.completion.fieldErrors['property-brand-color'];
+
   return {
     profileSavable,
-    brandColorSavable: false,
+    brandColorSavable,
     profileBlocked: profileDirtyIds.length > 0 && !profileSavable,
-    brandColorBlocked: false,
+    brandColorBlocked: brandColorDirty && !brandColorSavable,
   };
 }
 
@@ -758,6 +835,9 @@ export function buildAppSettingsPatchForSections(
   const sectionSet = new Set(sections);
   const patch: AppSettingsPatchBody = {};
 
+  if (sectionSet.has('basic')) {
+    patch.brandColor = draft.brandColor;
+  }
   if (sectionSet.has('branding')) {
     patch.facebookPageUrl = draft.facebookPageUrl;
     patch.airbnbUrl = draft.airbnbUrl;
@@ -879,6 +959,9 @@ export function applySavedOperationalSections(
   const sectionSet = new Set(sections);
   let next = { ...current };
 
+  if (sectionSet.has('basic')) {
+    next = { ...next, brandColor: saved.brandColor };
+  }
   if (sectionSet.has('branding')) {
     next = {
       ...next,

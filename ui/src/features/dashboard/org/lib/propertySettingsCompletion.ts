@@ -2,27 +2,41 @@ import type {
   AppSettingsDto,
   AppSettingsFormValues,
 } from '@/features/dashboard/bookings/hooks/useAppSettings';
+import { validateOrgBrandColor } from '@/features/dashboard/org/lib/orgSettingsValidation';
 import { MAX_PROPERTY_PAYMENT_METHODS } from '@/features/dashboard/org/lib/paymentMethods';
 import {
   validatePaymentAccountName,
   validatePaymentAccountNumber,
   validatePaymentProvider,
 } from '@/features/dashboard/org/lib/paymentProviders';
+import { validateCancellationPolicySettings } from '@/features/dashboard/org/lib/propertyCancellationPolicy';
 import { DEFAULT_RESIDENCE_NAME } from '@/features/dashboard/org/lib/propertyDisplay';
 import { SD_REFUND_CRON_EMAIL_LEAD_MAX_HOURS } from '@/features/dashboard/org/lib/propertyEmailAutomation';
+import { validateExternalReviewsDraft } from '@/features/dashboard/org/lib/propertyExternalReviews';
+import { countPropertyMedia } from '@/features/dashboard/org/lib/propertyMedia';
 import {
   getResidencePropertyDefaults,
   validateNumericField,
 } from '@/features/dashboard/org/lib/propertyResidenceDefaults';
 import { isCondoPropertyType } from '@/features/dashboard/org/lib/propertyResidences';
 import type { PropertyProfileDraft } from '@/features/dashboard/org/lib/propertySettingsForm';
+import {
+  countFilledSocialUrls,
+  effectiveMainSocialPlatform,
+  effectiveSocialUrlMap,
+  propertySocialLinkInherits,
+} from '@/features/dashboard/org/lib/propertySocialLinks';
 import type { OrgSocialLinks } from '@/features/dashboard/org/lib/propertySocialLinks';
 import {
   isPropertyTowerForResidence,
   isValidUnitNumber,
 } from '@/features/dashboard/org/lib/propertyTowerUnit';
 
-import { validateAdminEmailList, validateOptionalAdminEmail } from '@/lib/validation/adminSettings';
+import {
+  validateAdminEmailList,
+  validateOptionalAdminEmail,
+  validateOptionalAdminUrl,
+} from '@/lib/validation/adminSettings';
 import {
   validateEmailAddress,
   validateFullPersonName,
@@ -116,6 +130,11 @@ export function computePropertySettingsCompletion(
   const sectionMessages: Partial<Record<PropertySettingsSectionId, string>> = {};
   const issueSectionIds: PropertySettingsSectionId[] = [];
 
+  const addSectionIssue = (sectionId: PropertySettingsSectionId, message: string) => {
+    if (!sectionMessages[sectionId]) sectionMessages[sectionId] = message;
+    if (!issueSectionIds.includes(sectionId)) issueSectionIds.push(sectionId);
+  };
+
   const addFieldError = (
     fieldId: string,
     message: string,
@@ -160,6 +179,97 @@ export function computePropertySettingsCompletion(
     }
   }
 
+  if (operational) {
+    const brandColorErr = validateOrgBrandColor(operational.brandColor);
+    if (brandColorErr) {
+      addFieldError('property-brand-color', brandColorErr, 'basic');
+    }
+  }
+
+  // ── Socials ──
+  if (operational) {
+    const orgSocials = input.orgSocialLinks ?? {
+      facebookPageUrl: '',
+      airbnbUrl: '',
+      instagramUrl: '',
+      tiktokUrl: '',
+      mainSocialPlatform: '',
+    };
+
+    if (!propertySocialLinkInherits(operational.facebookPageUrl)) {
+      const facebookErr = validateOptionalAdminUrl(
+        operational.facebookPageUrl,
+        'Facebook page URL'
+      );
+      if (facebookErr) addFieldError('property-facebook-page-url', facebookErr, 'branding');
+    }
+
+    if (!propertySocialLinkInherits(operational.airbnbUrl)) {
+      const airbnbErr = validateOptionalAdminUrl(operational.airbnbUrl, 'Airbnb URL');
+      if (airbnbErr) addFieldError('property-airbnb-url', airbnbErr, 'branding');
+    }
+
+    if (!propertySocialLinkInherits(operational.instagramUrl)) {
+      const instagramErr = validateOptionalAdminUrl(operational.instagramUrl, 'Instagram URL');
+      if (instagramErr) {
+        addFieldError('property-instagram-url', instagramErr, 'branding');
+      }
+    }
+
+    if (!propertySocialLinkInherits(operational.tiktokUrl)) {
+      const tiktokErr = validateOptionalAdminUrl(operational.tiktokUrl, 'TikTok URL');
+      if (tiktokErr) addFieldError('property-tiktok-url', tiktokErr, 'branding');
+    }
+
+    const urls = effectiveSocialUrlMap(operational, orgSocials);
+    const filled = countFilledSocialUrls(urls);
+    if (filled === 0) {
+      addFieldError('property-main-social-platform', 'Add at least one social link', 'branding');
+    } else {
+      const preferred = propertySocialLinkInherits(operational.mainSocialPlatform)
+        ? orgSocials.mainSocialPlatform
+        : operational.mainSocialPlatform;
+      if (!preferred.trim()) {
+        addFieldError('property-main-social-platform', 'Choose a guest review link', 'branding');
+      } else {
+        const main = effectiveMainSocialPlatform(
+          operational.mainSocialPlatform,
+          orgSocials.mainSocialPlatform,
+          urls
+        );
+        if (!main || main !== preferred.trim()) {
+          addFieldError(
+            'property-main-social-platform',
+            'Choose a platform that has a URL',
+            'branding'
+          );
+        }
+      }
+    }
+
+    const externalReviewsErr = validateExternalReviewsDraft(operational.externalReviews);
+    if (externalReviewsErr) {
+      addFieldError('property-external-reviews', externalReviewsErr, 'branding');
+    }
+
+    const superhostErr = validateOptionalAdminUrl(
+      operational.superhostVerificationUrl,
+      'Superhost verification URL'
+    );
+    if (superhostErr) {
+      addFieldError('property-superhost-verification-url', superhostErr, 'branding');
+    }
+  }
+
+  // ── Media ──
+  const photoCount = countPropertyMedia(profile.media).images;
+  if (photoCount < MIN_PROPERTY_PHOTOS) {
+    addSectionIssue(
+      'media',
+      `Add at least ${MIN_PROPERTY_PHOTOS} photos. Guests rely on photos when choosing a stay.`
+    );
+  }
+
   // ── Details ──
   const detailDefaults = getResidencePropertyDefaults(
     profile.residenceName.trim() || DEFAULT_RESIDENCE_NAME
@@ -190,6 +300,29 @@ export function computePropertySettingsCompletion(
   }
   if (!profile.unitTypeId.trim()) {
     addFieldError('property-unit-type', 'Select a unit type', 'details');
+  }
+
+  // ── Amenities ──
+  const amenityCount = profile.enabledAmenities.length;
+  if (amenityCount < MIN_PROPERTY_AMENITIES) {
+    addSectionIssue(
+      'amenities',
+      `Select at least ${MIN_PROPERTY_AMENITIES} amenities (${amenityCount} selected). This helps guests know what your property offers.`
+    );
+  }
+
+  // ── Cancellation ──
+  if (profile.cancellationPolicy.type === 'custom') {
+    const cancellationErr = validateCancellationPolicySettings(profile.cancellationPolicy);
+    if (cancellationErr) {
+      if (cancellationErr.includes('title')) {
+        addFieldError('cancellation-custom-title', cancellationErr, 'cancellation');
+      } else if (cancellationErr.includes('description')) {
+        addFieldError('cancellation-custom-description', cancellationErr, 'cancellation');
+      } else {
+        addFieldError('cancellation-custom-title', cancellationErr, 'cancellation');
+      }
+    }
   }
 
   // ── Location ──

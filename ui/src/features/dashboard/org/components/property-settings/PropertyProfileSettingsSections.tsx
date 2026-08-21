@@ -1,18 +1,47 @@
 import { useEffect, useState } from 'react';
 
-import { AlertTriangle, Baby, Bath, Bed, Home, Info, MapPin, Users } from 'lucide-react';
+import {
+  AlertTriangle,
+  Baby,
+  Bath,
+  Bed,
+  ChevronRight,
+  Home,
+  Image as ImageIcon,
+  Info,
+  ListChecks,
+  MapPin,
+  Plus,
+  Sparkles,
+  Users,
+  X,
+} from 'lucide-react';
+import { toast } from 'sonner';
 
 import { AdminSection } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
 import {
   applyUnitTypeDefaultsToProfile,
   findUnitTypeById,
 } from '@/features/dashboard/bookings/lib/unitTypes';
+import { PropertyCancellationPolicySection } from '@/features/dashboard/org/components/property-settings/PropertyCancellationPolicySection';
 import { PropertyGuestFormSettingsSection } from '@/features/dashboard/org/components/property-settings/PropertyGuestFormSettingsSection';
 import { PropertyLocationPicker } from '@/features/dashboard/org/components/property-settings/PropertyLocationPicker';
-import { SettingsField } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
+import { PropertyMediaUpload } from '@/features/dashboard/org/components/property-settings/PropertyMediaUpload';
+import {
+  PropertySettingsSectionAlert,
+  SettingsField,
+  LimitedCountInput,
+} from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
+import { BrandColorField } from '@/features/dashboard/org/components/settings/BrandColorField';
 import { TowerUnitConflictAlert } from '@/features/dashboard/org/components/TowerUnitConflictAlert';
 import { useResidenceUnitTypes } from '@/features/dashboard/org/hooks/useResidenceUnitTypes';
 import { DEFAULT_RESIDENCE_NAME } from '@/features/dashboard/org/lib/propertyDisplay';
+import {
+  HOUSE_RULE_CATEGORIES,
+  HOUSE_RULE_CUSTOM_MAX_LENGTH,
+  MUTUALLY_EXCLUSIVE_HOUSE_RULES,
+  type CustomHouseRule,
+} from '@/features/dashboard/org/lib/propertyHouseRulesConstants';
 import {
   clampToRange,
   getResidencePropertyDefaults,
@@ -23,7 +52,14 @@ import {
   isTowerInResidence,
 } from '@/features/dashboard/org/lib/propertyResidences';
 import { type PropertySettingsSectionId } from '@/features/dashboard/org/lib/propertySettingsCompletion';
-import { PROPERTY_TYPES } from '@/features/dashboard/org/lib/propertySettingsConstants';
+import {
+  AMENITY_CATEGORIES,
+  CUSTOM_AMENITY_MAX_LENGTH,
+  PROPERTY_TYPES,
+  type CustomAmenity,
+  type PropertyMediaItem,
+} from '@/features/dashboard/org/lib/propertySettingsConstants';
+import { propertySettingsSectionBanner } from '@/features/dashboard/org/lib/propertySettingsFieldError';
 import {
   propertyGuestCapacityTotal,
   type PropertyProfileDraft,
@@ -33,7 +69,8 @@ import type { PropertyTowerUnitConflict } from '@/features/dashboard/org/lib/pro
 
 import { AvailabilityCheckInput } from '@/components/AvailabilityCheckInput';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Checkbox, CheckboxDisplay } from '@/components/ui/checkbox';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import {
   ResponsiveModal,
@@ -50,6 +87,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import type { AvailabilityCheckState } from '@/lib/availabilityCheckState';
 import { cn } from '@/lib/utils';
 
@@ -67,9 +105,19 @@ type ProfileSectionsProps = {
   nameUnavailable?: boolean;
   nameConflictMessage?: string | null;
   nameAvailabilityState?: AvailabilityCheckState;
+  newCustomAmenityInputs: Record<string, string>;
+  onNewCustomAmenityInputChange: (categoryId: string, value: string) => void;
+  newCustomHouseRuleInputs: Record<string, string>;
+  onNewCustomHouseRuleInputChange: (categoryId: string, value: string) => void;
+  onMediaPersisted?: (media: PropertyMediaItem[]) => void;
+  onPersistMediaOrder?: (media: PropertyMediaItem[]) => Promise<void>;
+  mediaGalleryBusy?: boolean;
   resolveFieldError: (fieldId: string) => string | null;
   markFieldInteracted: (fieldId: string) => void;
   sectionMessages?: Partial<Record<PropertySettingsSectionId, string>>;
+  brandColor: string;
+  inheritedBrandColor: string;
+  onBrandColorChange: (value: string) => void;
 };
 
 export function PropertyProfileMainSections({
@@ -82,9 +130,19 @@ export function PropertyProfileMainSections({
   nameUnavailable = false,
   nameConflictMessage = null,
   nameAvailabilityState = 'idle',
+  newCustomAmenityInputs,
+  onNewCustomAmenityInputChange,
+  newCustomHouseRuleInputs,
+  onNewCustomHouseRuleInputChange,
+  onMediaPersisted,
+  onPersistMediaOrder,
+  mediaGalleryBusy = false,
   resolveFieldError,
   markFieldInteracted,
-  sectionMessages: _sectionMessages = {},
+  sectionMessages = {},
+  brandColor,
+  inheritedBrandColor,
+  onBrandColorChange,
 }: ProfileSectionsProps) {
   const fieldError = resolveFieldError;
 
@@ -142,13 +200,96 @@ export function PropertyProfileMainSections({
 
   const residenceDefaults = getResidencePropertyDefaults(effectiveResidence);
 
+  const toggleAmenity = (amenityId: string) => {
+    const next = draft.enabledAmenities.includes(amenityId)
+      ? draft.enabledAmenities.filter((id) => id !== amenityId)
+      : [...draft.enabledAmenities, amenityId];
+    onChange('enabledAmenities', next);
+  };
+
+  const addCustomAmenity = (categoryId: string) => {
+    const name = newCustomAmenityInputs[categoryId]?.trim();
+    if (!name) return;
+    if (name.length > CUSTOM_AMENITY_MAX_LENGTH) {
+      toast.error(`Custom amenities must be ${CUSTOM_AMENITY_MAX_LENGTH} characters or fewer`);
+      return;
+    }
+    const amenity: CustomAmenity = {
+      id: `custom_${categoryId}_${Date.now()}`,
+      name,
+      categoryId,
+    };
+    onChange('customAmenities', [...draft.customAmenities, amenity]);
+    onChange('enabledAmenities', [...draft.enabledAmenities, amenity.id]);
+    onNewCustomAmenityInputChange(categoryId, '');
+  };
+
+  const removeCustomAmenity = (amenityId: string) => {
+    onChange(
+      'customAmenities',
+      draft.customAmenities.filter((entry) => entry.id !== amenityId)
+    );
+    onChange(
+      'enabledAmenities',
+      draft.enabledAmenities.filter((id) => id !== amenityId)
+    );
+  };
+
+  const getCustomAmenitiesForCategory = (categoryId: string) =>
+    draft.customAmenities.filter((entry) => entry.categoryId === categoryId);
+
+  const toggleHouseRule = (ruleId: string) => {
+    const enabled = draft.enabledHouseRules.includes(ruleId);
+    let next = enabled
+      ? draft.enabledHouseRules.filter((id) => id !== ruleId)
+      : [...draft.enabledHouseRules, ruleId];
+
+    const exclusiveId = MUTUALLY_EXCLUSIVE_HOUSE_RULES[ruleId];
+    if (!enabled && exclusiveId) {
+      next = next.filter((id) => id !== exclusiveId);
+    }
+
+    onChange('enabledHouseRules', next);
+  };
+
+  const addCustomHouseRule = (categoryId: string) => {
+    const name = newCustomHouseRuleInputs[categoryId]?.trim();
+    if (!name) return;
+    if (name.length > HOUSE_RULE_CUSTOM_MAX_LENGTH) {
+      toast.error(`Custom rules must be ${HOUSE_RULE_CUSTOM_MAX_LENGTH} characters or fewer`);
+      return;
+    }
+    const rule: CustomHouseRule = {
+      id: `custom_${categoryId}_${Date.now()}`,
+      name,
+      categoryId,
+    };
+    onChange('customHouseRules', [...draft.customHouseRules, rule]);
+    onChange('enabledHouseRules', [...draft.enabledHouseRules, rule.id]);
+    onNewCustomHouseRuleInputChange(categoryId, '');
+  };
+
+  const removeCustomHouseRule = (ruleId: string) => {
+    onChange(
+      'customHouseRules',
+      draft.customHouseRules.filter((entry) => entry.id !== ruleId)
+    );
+    onChange(
+      'enabledHouseRules',
+      draft.enabledHouseRules.filter((id) => id !== ruleId)
+    );
+  };
+
+  const getCustomHouseRulesForCategory = (categoryId: string) =>
+    draft.customHouseRules.filter((entry) => entry.categoryId === categoryId);
+
   return (
     <>
       <AdminSection
         id="basic"
         title="Basic Information"
         icon={Info}
-        description="Name and contact details."
+        description="Name, contact details, and brand color."
       >
         <SettingsField
           id="property-name"
@@ -195,6 +336,20 @@ export function PropertyProfileMainSections({
             />
           </div>
         </SettingsField>
+
+        <BrandColorField
+          id="property-brand-color"
+          value={brandColor}
+          resolvedColor={inheritedBrandColor}
+          resetValue={inheritedBrandColor}
+          disabled={disabled}
+          error={fieldError('property-brand-color')}
+          help="Applies to this property’s dashboard pages & public-facing pages such as guest forms, email templates, and other related content."
+          onChange={(value) => {
+            markFieldInteracted('property-brand-color');
+            onBrandColorChange(value);
+          }}
+        />
 
         <FieldGrid>
           <SettingsField
@@ -296,6 +451,41 @@ export function PropertyProfileMainSections({
             conflict={towerConflict}
           />
         ) : null}
+
+        <SettingsField id="property-description" label="Description">
+          <Textarea
+            id="property-description"
+            value={draft.description}
+            onChange={(event) => onChange('description', event.target.value)}
+            disabled={disabled}
+            placeholder="Describe your property..."
+            rows={12}
+            maxLength={1000}
+          />
+          <p className="text-muted-foreground text-xs">
+            {draft.description.length}/1000 characters
+          </p>
+        </SettingsField>
+      </AdminSection>
+
+      <AdminSection
+        id="media"
+        title="Photos & Videos"
+        icon={ImageIcon}
+        description="Listing photos and videos."
+      >
+        {propertySettingsSectionBanner('media', sectionMessages) ? (
+          <PropertySettingsSectionAlert
+            message={propertySettingsSectionBanner('media', sectionMessages)!}
+          />
+        ) : null}
+        <PropertyMediaUpload
+          items={draft.media}
+          onChange={(media) => onChange('media', media)}
+          onPersisted={onMediaPersisted}
+          onPersistOrder={onPersistMediaOrder}
+          disabled={disabled || mediaGalleryBusy}
+        />
       </AdminSection>
 
       <AdminSection
@@ -524,7 +714,289 @@ export function PropertyProfileMainSections({
         </label>
       </AdminSection>
 
+      <AdminSection
+        id="amenities"
+        title="Amenities"
+        icon={Sparkles}
+        description="What's included with the stay."
+      >
+        {propertySettingsSectionBanner('amenities', sectionMessages) ? (
+          <PropertySettingsSectionAlert
+            message={propertySettingsSectionBanner('amenities', sectionMessages)!}
+          />
+        ) : null}
+        <div className="bg-muted/40 rounded-lg border px-4 py-3">
+          <p className="text-sm font-medium">
+            {draft.enabledAmenities.length} amenities selected
+            {draft.customAmenities.length > 0 ? ` · ${draft.customAmenities.length} custom` : ''}
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          {AMENITY_CATEGORIES.map((category) => {
+            const categoryCustom = getCustomAmenitiesForCategory(category.id);
+            const totalCount = category.amenities.length + categoryCustom.length;
+            const enabledCount =
+              category.amenities.filter((entry) => draft.enabledAmenities.includes(entry.id))
+                .length +
+              categoryCustom.filter((entry) => draft.enabledAmenities.includes(entry.id)).length;
+
+            return (
+              <Collapsible
+                key={category.id}
+                defaultOpen
+                className="border-border bg-card overflow-hidden rounded-xl border shadow-sm"
+              >
+                <CollapsibleTrigger className="hover:bg-muted/40 data-[state=open]:border-border/60 data-[state=open]:bg-muted/20 group flex min-h-[44px] w-full items-center justify-between border-b border-transparent px-4 py-3 text-left transition-colors">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <category.icon className="text-muted-foreground size-5 shrink-0" aria-hidden />
+                    <span className="truncate font-medium">{category.name}</span>
+                    <span className="text-muted-foreground shrink-0 text-xs">
+                      {enabledCount}/{totalCount}
+                    </span>
+                  </div>
+                  <ChevronRight
+                    className="text-muted-foreground size-4 shrink-0 transition-transform group-data-[state=open]:rotate-90"
+                    aria-hidden
+                  />
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="space-y-3 p-4">
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {category.amenities.map((amenity) => {
+                      const enabled = draft.enabledAmenities.includes(amenity.id);
+                      return (
+                        <button
+                          key={amenity.id}
+                          type="button"
+                          disabled={disabled}
+                          onClick={() => toggleAmenity(amenity.id)}
+                          className={cn(
+                            'flex min-h-[44px] items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition-colors',
+                            enabled
+                              ? 'border-border bg-background shadow-sm'
+                              : 'border-border/60 hover:bg-muted/40'
+                          )}
+                        >
+                          <CheckboxDisplay checked={enabled} />
+                          <span className="min-w-0 flex-1">{amenity.name}</span>
+                        </button>
+                      );
+                    })}
+
+                    {categoryCustom.map((amenity) => {
+                      const enabled = draft.enabledAmenities.includes(amenity.id);
+                      return (
+                        <div
+                          key={amenity.id}
+                          className={cn(
+                            'flex min-h-[44px] items-center gap-2 rounded-xl border px-3 py-2.5',
+                            enabled ? 'border-border bg-background shadow-sm' : 'border-border/60'
+                          )}
+                        >
+                          <button
+                            type="button"
+                            disabled={disabled}
+                            onClick={() => toggleAmenity(amenity.id)}
+                            className="flex min-w-0 flex-1 items-center gap-3 text-left text-sm"
+                          >
+                            <CheckboxDisplay checked={enabled} />
+                            <span className="truncate">{amenity.name}</span>
+                          </button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="min-h-[44px] min-w-[44px] shrink-0"
+                            disabled={disabled}
+                            onClick={() => removeCustomAmenity(amenity.id)}
+                            aria-label={`Remove ${amenity.name}`}
+                          >
+                            <X className="size-4" aria-hidden />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <LimitedCountInput
+                      value={newCustomAmenityInputs[category.id] ?? ''}
+                      onChange={(event) =>
+                        onNewCustomAmenityInputChange(category.id, event.target.value)
+                      }
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          addCustomAmenity(category.id);
+                        }
+                      }}
+                      disabled={disabled}
+                      placeholder="Add custom amenity..."
+                      maxLength={CUSTOM_AMENITY_MAX_LENGTH}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={disabled || !newCustomAmenityInputs[category.id]?.trim()}
+                      onClick={() => addCustomAmenity(category.id)}
+                      className="min-h-[44px] shrink-0"
+                    >
+                      <Plus className="mr-1 size-4" aria-hidden />
+                      Add
+                    </Button>
+                  </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            );
+          })}
+        </div>
+      </AdminSection>
+
+      <AdminSection
+        id="house-rules"
+        title="House Rules"
+        icon={ListChecks}
+        description="Rules guests see before they book."
+      >
+        <div className="bg-muted/40 rounded-lg border px-4 py-3">
+          <p className="text-sm font-medium">
+            {draft.enabledHouseRules.length} rules selected
+            {draft.customHouseRules.length > 0 ? ` · ${draft.customHouseRules.length} custom` : ''}
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          {HOUSE_RULE_CATEGORIES.map((category) => {
+            const categoryCustom = getCustomHouseRulesForCategory(category.id);
+            const totalCount = category.rules.length + categoryCustom.length;
+            const enabledCount =
+              category.rules.filter((entry) => draft.enabledHouseRules.includes(entry.id)).length +
+              categoryCustom.filter((entry) => draft.enabledHouseRules.includes(entry.id)).length;
+
+            return (
+              <Collapsible
+                key={category.id}
+                defaultOpen
+                className="border-border bg-card overflow-hidden rounded-xl border shadow-sm"
+              >
+                <CollapsibleTrigger className="hover:bg-muted/40 data-[state=open]:border-border/60 data-[state=open]:bg-muted/20 group flex min-h-[44px] w-full items-center justify-between border-b border-transparent px-4 py-3 text-left transition-colors">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <category.icon className="text-muted-foreground size-5 shrink-0" aria-hidden />
+                    <span className="truncate font-medium">{category.name}</span>
+                    <span className="text-muted-foreground shrink-0 text-xs">
+                      {enabledCount}/{totalCount}
+                    </span>
+                  </div>
+                  <ChevronRight
+                    className="text-muted-foreground size-4 shrink-0 transition-transform group-data-[state=open]:rotate-90"
+                    aria-hidden
+                  />
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="space-y-3 p-4">
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {category.rules.map((rule) => {
+                      const enabled = draft.enabledHouseRules.includes(rule.id);
+                      return (
+                        <button
+                          key={rule.id}
+                          type="button"
+                          disabled={disabled}
+                          onClick={() => toggleHouseRule(rule.id)}
+                          className={cn(
+                            'flex min-h-[44px] items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition-colors',
+                            enabled
+                              ? 'border-border bg-background shadow-sm'
+                              : 'border-border/60 hover:bg-muted/40'
+                          )}
+                        >
+                          <CheckboxDisplay checked={enabled} />
+                          <span className="min-w-0 flex-1">{rule.name}</span>
+                        </button>
+                      );
+                    })}
+
+                    {categoryCustom.map((rule) => {
+                      const enabled = draft.enabledHouseRules.includes(rule.id);
+                      return (
+                        <div
+                          key={rule.id}
+                          className={cn(
+                            'flex min-h-[44px] items-center gap-2 rounded-xl border px-3 py-2.5',
+                            enabled ? 'border-border bg-background shadow-sm' : 'border-border/60'
+                          )}
+                        >
+                          <button
+                            type="button"
+                            disabled={disabled}
+                            onClick={() => toggleHouseRule(rule.id)}
+                            className="flex min-w-0 flex-1 items-center gap-3 text-left text-sm"
+                          >
+                            <CheckboxDisplay checked={enabled} />
+                            <span className="truncate">{rule.name}</span>
+                          </button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="min-h-[44px] min-w-[44px] shrink-0"
+                            disabled={disabled}
+                            onClick={() => removeCustomHouseRule(rule.id)}
+                            aria-label={`Remove ${rule.name}`}
+                          >
+                            <X className="size-4" aria-hidden />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <LimitedCountInput
+                      value={newCustomHouseRuleInputs[category.id] ?? ''}
+                      onChange={(event) =>
+                        onNewCustomHouseRuleInputChange(category.id, event.target.value)
+                      }
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          addCustomHouseRule(category.id);
+                        }
+                      }}
+                      disabled={disabled}
+                      placeholder="Add custom rule..."
+                      maxLength={HOUSE_RULE_CUSTOM_MAX_LENGTH}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={disabled || !newCustomHouseRuleInputs[category.id]?.trim()}
+                      onClick={() => addCustomHouseRule(category.id)}
+                      className="min-h-[44px] shrink-0"
+                    >
+                      <Plus className="mr-1 size-4" aria-hidden />
+                      Add
+                    </Button>
+                  </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            );
+          })}
+        </div>
+      </AdminSection>
+
       <PropertyGuestFormSettingsSection draft={draft} disabled={disabled} onChange={onChange} />
+
+      <PropertyCancellationPolicySection
+        policy={draft.cancellationPolicy}
+        disabled={disabled}
+        resolveFieldError={fieldError}
+        markFieldInteracted={markFieldInteracted}
+        onChange={(policy) => onChange('cancellationPolicy', policy)}
+      />
 
       <AdminSection id="location" title="Location" icon={MapPin} description="Address and map pin.">
         <PropertyLocationPicker
