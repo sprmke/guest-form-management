@@ -5,12 +5,10 @@ import { Loader2, Search } from 'lucide-react';
 import { InboxFilterBar } from '@/features/dashboard/inbox/components/InboxFilterBar';
 import { InboxThreadListEmpty } from '@/features/dashboard/inbox/components/InboxThreadListEmpty';
 import { InboxThreadRow } from '@/features/dashboard/inbox/components/InboxThreadRow';
-import { MetaInboxSyncProgress } from '@/features/dashboard/inbox/components/MetaInboxSyncProgress';
 import type {
   InboxConversation,
   ThreadPlatformFilter,
   ThreadStatusFilter,
-  ThreadTypeFilter,
 } from '@/features/dashboard/inbox/types/inbox';
 
 import { Input } from '@/components/ui/input';
@@ -24,10 +22,8 @@ type Props = {
   onSelect: (id: string) => void;
   platformFilter: ThreadPlatformFilter;
   statusFilter: ThreadStatusFilter;
-  typeFilter: ThreadTypeFilter;
   search: string;
   onStatusFilter: (v: ThreadStatusFilter) => void;
-  onTypeFilter: (v: ThreadTypeFilter) => void;
   onSearch: (v: string) => void;
   emptyVariant?:
     | 'not-connected'
@@ -39,8 +35,6 @@ type Props = {
     | 'search-empty';
   syncError?: string | null;
   loadError?: string | null;
-  syncInProgress?: boolean;
-  syncLoadedCount?: number;
   canConnect?: boolean;
   onConnect?: () => void;
   onRetryLoad?: () => void;
@@ -58,16 +52,12 @@ export function InboxThreadList({
   onSelect,
   platformFilter,
   statusFilter,
-  typeFilter,
   search,
   onStatusFilter,
-  onTypeFilter,
   onSearch,
   emptyVariant = 'empty',
   syncError = null,
   loadError = null,
-  syncInProgress = false,
-  syncLoadedCount = 0,
   canConnect = false,
   onConnect,
   onRetryLoad,
@@ -120,12 +110,7 @@ export function InboxThreadList({
             aria-label="Search messages"
           />
         </div>
-        <InboxFilterBar
-          statusFilter={statusFilter}
-          typeFilter={typeFilter}
-          onStatusFilter={onStatusFilter}
-          onTypeFilter={onTypeFilter}
-        />
+        <InboxFilterBar statusFilter={statusFilter} onStatusFilter={onStatusFilter} />
       </div>
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         {isLoading ? (
@@ -139,7 +124,6 @@ export function InboxThreadList({
             variant={emptyVariant}
             syncError={syncError}
             loadError={loadError}
-            syncLoadedCount={syncLoadedCount}
             canConnect={canConnect}
             onConnect={onConnect}
             onRetryLoad={onRetryLoad}
@@ -149,11 +133,6 @@ export function InboxThreadList({
           />
         ) : (
           <div className="py-1">
-            {syncInProgress && conversations.length === 0 && (
-              <div className="border-border/60 border-b px-3 py-2">
-                <MetaInboxSyncProgress />
-              </div>
-            )}
             {conversations.map((c) => (
               <InboxThreadRow
                 key={c.id}

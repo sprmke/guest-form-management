@@ -14,9 +14,7 @@ type Props = {
 };
 
 export function InboxThreadRow({ conversation, selected, showPlatform, onSelect }: Props) {
-  const name =
-    conversation.participant_name?.trim() ||
-    (conversation.conversation_type === 'comment' ? 'Comment' : 'Guest');
+  const name = conversation.participant_name?.trim() || 'Guest';
   const unread = conversation.unread_count > 0;
   const pending = conversation.reply_status === 'pending';
 
@@ -77,11 +75,6 @@ export function InboxThreadRow({ conversation, selected, showPlatform, onSelect 
           {showPlatform && (
             <span className="bg-muted/80 text-muted-foreground rounded-md px-1.5 py-0.5 text-[10px] font-medium">
               {platformLabel(conversation.platform)}
-            </span>
-          )}
-          {conversation.conversation_type === 'comment' && (
-            <span className="bg-muted/80 text-muted-foreground rounded-md px-1.5 py-0.5 text-[10px] font-medium">
-              Comment
             </span>
           )}
           {pending && (

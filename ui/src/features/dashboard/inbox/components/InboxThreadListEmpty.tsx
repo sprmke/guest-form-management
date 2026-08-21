@@ -1,7 +1,5 @@
 import { Plug, RefreshCw } from 'lucide-react';
 
-import { MetaInboxSyncProgress } from '@/features/dashboard/inbox/components/MetaInboxSyncProgress';
-
 import { Button } from '@/components/ui/button';
 
 type Props = {
@@ -16,7 +14,6 @@ type Props = {
   canConnect: boolean;
   syncError?: string | null;
   loadError?: string | null;
-  syncLoadedCount?: number;
   onConnect?: () => void;
   onRetryLoad?: () => void;
   canLoadOlderFromMeta?: boolean;
@@ -29,7 +26,6 @@ export function InboxThreadListEmpty({
   canConnect,
   syncError,
   loadError,
-  syncLoadedCount: _syncLoadedCount = 0,
   onConnect,
   onRetryLoad,
   canLoadOlderFromMeta = false,
@@ -58,9 +54,9 @@ export function InboxThreadListEmpty({
 
   if (variant === 'syncing') {
     return (
-      <div className="flex flex-col items-center justify-center p-6">
-        <MetaInboxSyncProgress className="w-full max-w-[220px] text-center" />
-      </div>
+      <p className="sr-only" aria-live="polite">
+        Loading conversations from Meta
+      </p>
     );
   }
 
