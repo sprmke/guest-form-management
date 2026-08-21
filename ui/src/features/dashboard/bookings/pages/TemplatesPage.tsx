@@ -29,13 +29,68 @@ import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButt
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
+
+function TemplatesGroupHeadingSkeleton({
+  titleWidthClass,
+  showAction = false,
+}: {
+  titleWidthClass: string;
+  /** Standard templates group has a "Preview stay guide" action alongside the title. */
+  showAction?: boolean;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex items-center gap-2">
+        <Skeleton className={cn('h-5', titleWidthClass)} />
+        <Skeleton className="h-[22px] w-7 rounded-full" />
+      </div>
+      {showAction ? <Skeleton className="h-11 w-44 rounded-lg" /> : null}
+    </div>
+  );
+}
+
+function TemplateEditorCardSkeleton() {
+  return (
+    <div className="border-border overflow-hidden rounded-xl border">
+      <div className="bg-muted/30 border-b p-4">
+        <div className="flex min-w-0 items-start gap-3">
+          <Skeleton className="h-10 w-10 shrink-0 rounded-lg" />
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <Skeleton className="h-5 w-40 max-w-full" />
+            <Skeleton className="h-3.5 w-56 max-w-full" />
+          </div>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2 sm:px-4">
+        <Skeleton className="h-8 w-24 rounded-lg" />
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-9 w-32 rounded-lg" />
+          <Skeleton className="h-9 w-20 rounded-lg" />
+        </div>
+      </div>
+      <div className="p-3 sm:p-4">
+        <Skeleton className="h-[280px] w-full rounded-lg" />
+      </div>
+    </div>
+  );
+}
 
 function TemplatesPageSkeleton() {
   return (
-    <div className="space-y-4">
-      {Array.from({ length: 3 }).map((_, i) => (
-        <Skeleton key={i} className="h-48 w-full rounded-xl" />
-      ))}
+    <div className="space-y-3 sm:space-y-4" aria-busy="true" aria-label="Loading templates">
+      <div className="space-y-4">
+        <TemplatesGroupHeadingSkeleton titleWidthClass="w-40" showAction />
+        {Array.from({ length: 3 }).map((_, i) => (
+          <TemplateEditorCardSkeleton key={i} />
+        ))}
+      </div>
+      <div className="space-y-4">
+        <TemplatesGroupHeadingSkeleton titleWidthClass="w-32" />
+        {Array.from({ length: 2 }).map((_, i) => (
+          <TemplateEditorCardSkeleton key={i} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -178,6 +233,7 @@ export function TemplatesPage() {
                     template={template}
                     icon={section.icon}
                     saving={saveTemplate.isPending}
+                    showSectionImage={false}
                     onSave={(input) => handleSave(template.templateKey, input)}
                     onReset={() => void handleReset(template)}
                   />

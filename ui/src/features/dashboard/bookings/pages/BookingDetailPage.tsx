@@ -330,7 +330,7 @@ export function BookingDetailPage() {
             {/* ── Workflow / Progress (before fold on mobile when past review) ── */}
             <div
               className={cn(
-                'w-full md:w-[min(100%,20rem)] md:shrink-0 lg:sticky lg:top-5 lg:w-[min(100%,24rem)] lg:self-start xl:w-[27rem]',
+                'w-full md:w-[min(100%,20rem)] md:shrink-0 lg:sticky lg:top-5 lg:max-h-[calc(100dvh-2.5rem)] lg:w-[min(100%,24rem)] lg:self-start xl:w-[27rem]',
                 isMobileWorkflowFirst && (mobileDetailsBeforeWorkflow ? 'order-3' : 'order-2'),
                 isMobileWorkflowFirst && 'md:order-none'
               )}

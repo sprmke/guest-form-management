@@ -87,12 +87,18 @@ export function usePropertyTemplateMutations() {
       content: string;
       name?: string;
       sectionImageUrl?: string | null;
+      silent?: boolean;
     }) => {
       const headers = await authHeaders();
       const res = await fetch(scopedFunctionsUrl('/property-templates-settings', propertyId), {
         method: 'PATCH',
         headers,
-        body: JSON.stringify(input),
+        body: JSON.stringify({
+          templateKey: input.templateKey,
+          content: input.content,
+          name: input.name,
+          sectionImageUrl: input.sectionImageUrl,
+        }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -100,11 +106,18 @@ export function usePropertyTemplateMutations() {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       invalidate();
-      toast.success('Template saved');
+      if (!variables.silent) {
+        toast.success('Template saved');
+      }
     },
-    onError: (error: Error) => {
+    onError: (error: Error, variables) => {
+      // Silent autosave still surfaces via Page Editor Unsaved/Save failed; toast on failure only.
+      if (variables.silent) {
+        toast.error(friendlyToastError(error, 'Could not save stay guide content'));
+        return;
+      }
       toast.error(friendlyToastError(error, 'Failed to save template'));
     },
   });
