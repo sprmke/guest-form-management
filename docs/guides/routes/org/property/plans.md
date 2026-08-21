@@ -43,7 +43,7 @@ Property-scoped subscription tier comparison (5 flat monthly plans). Owners can 
 - Current plan is ring-highlighted with a **Current** badge; the next step uses the solid primary button and **Recommended** badge.
 - **Owner:** **Select** / **Upgrade** opens a review dialog — **Confirm plan** on Free calls **`property-plan`** POST; **Continue to payment** on paid tiers calls **`create-subscription-checkout`** and redirects to PayMongo.
 - **Non-owner:** view-only (no action buttons in tier or compare rows).
-- **Current plan summary:** PMA-style banner — primary gradient border, crown icon, **{Plan} plan** title with **Current** badge, **₱X/month · Next billing: …** line, and owner actions **Manage subscription** (Billing tab) plus **Upgrade to {tier}** / **Contact sales** for Managed. **Pay now** / **Resume payment** when billing needs attention.
+- **Current plan summary:** PMA-style banner — primary gradient border, **tier-specific icon** (Free = circle, Starter = zap, Pro = trending-up, Business = sparkles, Managed = heart-handshake, Commission = percent), **{Plan} plan** title with **Current** badge, **₱X/month · Next billing: …** line, and owner actions **Manage subscription** (Billing tab) plus **Upgrade to {tier}** / **Contact sales** for Managed. **Pay now** / **Resume payment** when billing needs attention.
 - **Recent payments:** up to 10 **`property_payment_transactions`** rows with status badges and payment method.
 - After successful payment, **`paymongo-webhook`** assigns the plan and sets **`current_period_start`** / **`current_period_end`** (+1 month).
 - **`past_due`:** banner on property routes; full access until grace expires.

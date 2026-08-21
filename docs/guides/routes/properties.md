@@ -2,7 +2,7 @@
 title: 'Properties (guest marketing) — operator guide'
 status: active
 tags: [guides, routes, properties]
-updated: 2026-08-17
+updated: 2026-08-20
 ---
 
 # Properties (guest marketing) — operator guide
@@ -61,6 +61,8 @@ This is where guests browse homes, open a listing, save favorites, contact the h
   A: Only active listings appear there; archived or draft units stay out of public view until you publish them again.
 - Q: Will cheaper listings bury mine in search?
   A: Guests cannot sort by lowest price. The default is **Recommended** (ratings / reviews). Budget guests use price-range filters instead, and those still keep Recommended order inside their budget.
+- Q: How do I change photos, amenities, or which sections show on my listing?
+  A: In the dashboard, open **Public Pages → Property → Edit**. That editor updates the live listing guests see.
 
 ---
 
@@ -126,6 +128,8 @@ Route is registered **before** `/properties/:propertySlug` so `in` is not treate
 
 Gap analysis (ratings, nearby POIs, etc.): **[[public-property-catalog|Public property catalog — reference]]**.
 
+**Section order / visibility** — response includes **`sectionConfig`** from **`public_page_configs`** (`page_type = property_landing`). `resolvePropertyLandingSections` drives which of gallery / overview / amenities / location / rules / reviews render and in what order. Missing config → all sections visible in today’s default order. Hosts edit this (plus photos, description, amenities, house rules, cancellation, socials, brand color) under **[[public-pages|Public Pages]] → Property → Edit**. Booking card is always shown (not togglable). Similar properties stay out of config scope.
+
 | Section     | Component                                                                             | Data                                                                                                                                                     |
 | ----------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Gallery     | `PropertyGallery`                                                                     | API media URLs or mock images                                                                                                                            |
@@ -170,29 +174,31 @@ Full field map + dashboard gaps: **[[public-property-catalog|Public property cat
 
 ## Implementation map
 
-| Concern       | Path                                                                          |
-| ------------- | ----------------------------------------------------------------------------- |
-| Pages         | `ui/src/features/guest/marketing/pages/PropertiesListPage.tsx`                |
-|               | `PropertiesLocationPage.tsx`                                                  |
-|               | `PropertyDetailPage.tsx`, `PropertyFormPage.tsx`                              |
-| Calendar      | `property/components/PublicPropertyCalendar.tsx` (shared with `CalendarPage`) |
-| Reserve modal | `properties/components/property-detail/GuestBookingFormModal.tsx`             |
-|               | `properties/hooks/usePropertyReserve.ts` (`onOpenForm`)                       |
-| Components    | `ui/src/features/guest/marketing/properties/components/**`                    |
-|               | `PropertiesByLocation.tsx`, `PropertiesLocationRow.tsx`                       |
-| Grouping      | `properties/lib/groupPropertiesByLocation.ts`                                 |
-| Place groups  | `shared/hooks/usePublicPlaceGroups.ts`; `list-public-place-groups/index.ts`   |
-| Shared slug   | `marketing/shared/lib/locationSlug.ts`                                        |
-| Forms UI      | `ui/src/features/guest/marketing/forms/components/**`                         |
-| Mock data     | `properties/data/mockProperties.ts`, `mockPropertyDetail.ts`                  |
-| Live detail   | `properties/hooks/usePublicPropertyDetail.ts`, `types/publicProperty.ts`      |
-| Booked dates  | `form/hooks/useGuestBookedDates.ts`, `form/lib/fetchGuestBookedDates.ts`      |
-|               | `calendar/lib/guestCalendarAvailability.ts`                                   |
-|               | `properties/lib/mapPublicPropertyDetail.ts`                                   |
-|               | `forms/data/mockForms.ts`                                                     |
-| Image helper  | `marketing/shared/components/MarketingImage.tsx` (Vite `img` wrapper)         |
-| Scroll search | `marketing/shared/context/ListingScrollSearchContext.tsx`, `MarketingNav.tsx` |
-| Routes        | `ui/src/features/guest/marketing/routes/index.tsx`                            |
+| Concern        | Path                                                                           |
+| -------------- | ------------------------------------------------------------------------------ |
+| Pages          | `ui/src/features/guest/marketing/pages/PropertiesListPage.tsx`                 |
+|                | `PropertiesLocationPage.tsx`                                                   |
+|                | `PropertyDetailPage.tsx`, `PropertyFormPage.tsx`                               |
+| Calendar       | `property/components/PublicPropertyCalendar.tsx` (shared with `CalendarPage`)  |
+| Reserve modal  | `properties/components/property-detail/GuestBookingFormModal.tsx`              |
+|                | `properties/hooks/usePropertyReserve.ts` (`onOpenForm`)                        |
+| Components     | `ui/src/features/guest/marketing/properties/components/**`                     |
+|                | `PropertiesByLocation.tsx`, `PropertiesLocationRow.tsx`                        |
+| Grouping       | `properties/lib/groupPropertiesByLocation.ts`                                  |
+| Place groups   | `shared/hooks/usePublicPlaceGroups.ts`; `list-public-place-groups/index.ts`    |
+| Shared slug    | `marketing/shared/lib/locationSlug.ts`                                         |
+| Forms UI       | `ui/src/features/guest/marketing/forms/components/**`                          |
+| Mock data      | `properties/data/mockProperties.ts`, `mockPropertyDetail.ts`                   |
+| Live detail    | `properties/hooks/usePublicPropertyDetail.ts`, `types/publicProperty.ts`       |
+| Section config | `properties/lib/propertyLandingSections.ts` (`resolvePropertyLandingSections`) |
+| Page Editor    | `ui/src/features/dashboard/page-editor/` (Property Landing panel)              |
+| Booked dates   | `form/hooks/useGuestBookedDates.ts`, `form/lib/fetchGuestBookedDates.ts`       |
+|                | `calendar/lib/guestCalendarAvailability.ts`                                    |
+|                | `properties/lib/mapPublicPropertyDetail.ts`                                    |
+|                | `forms/data/mockForms.ts`                                                      |
+| Image helper   | `marketing/shared/components/MarketingImage.tsx` (Vite `img` wrapper)          |
+| Scroll search  | `marketing/shared/context/ListingScrollSearchContext.tsx`, `MarketingNav.tsx`  |
+| Routes         | `ui/src/features/guest/marketing/routes/index.tsx`                             |
 
 ---
 
