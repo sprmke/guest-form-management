@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 
-import { FileText, Loader2 } from 'lucide-react';
+import { FileText } from 'lucide-react';
 
 import { renderPdfBytesToPageImages } from '@/features/dashboard/bookings/lib/renderPdfPageImages';
 
+import { DocThumbnailSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -93,10 +94,11 @@ export function VerificationDocThumbnail({ url, type, label, className }: Props)
     if (pdfLoading) {
       return (
         <div
-          className={cn('bg-muted flex h-full w-full items-center justify-center', className)}
+          className={cn('h-full w-full', className)}
+          aria-busy="true"
           aria-label={`Loading ${label} preview`}
         >
-          <Loader2 className="text-muted-foreground size-6 animate-spin" aria-hidden />
+          <DocThumbnailSkeleton className="h-full w-full rounded-none" />
         </div>
       );
     }

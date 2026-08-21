@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 
-import { ChevronRight, Home, Loader2 } from 'lucide-react';
+import { ChevronRight, Home } from 'lucide-react';
 
 import { VerificationStatusBadge } from '@/features/dashboard/org/components/verification/VerificationStatusBadge';
 import { useOrgListingVerifications } from '@/features/dashboard/org/hooks/useListingAuthorization';
@@ -11,6 +11,7 @@ import {
   propertyDashboardPath,
 } from '@/features/dashboard/org/lib/tenantPaths';
 
+import { ListRowsSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 
 type Props = {
@@ -58,10 +59,7 @@ export function OrgListingVerificationRollup({
       </div>
 
       {isLoading ? (
-        <div className="text-muted-foreground flex min-h-[44px] items-center gap-2 text-sm">
-          <Loader2 className="size-4 animate-spin" aria-hidden />
-          Loading listings…
-        </div>
+        <ListRowsSkeleton rows={3} label="Loading listings" />
       ) : listings.length === 0 ? (
         <p className="text-muted-foreground text-sm">No listings yet.</p>
       ) : (

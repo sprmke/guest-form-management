@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { AlertCircle, Check, Eye, FileText, Loader2, Minus } from 'lucide-react';
+import { AlertCircle, Check, Eye, FileText, Minus } from 'lucide-react';
 
 import {
   VerificationDocFullViewDialog,
@@ -19,6 +19,7 @@ import type { OrgVerificationStatus } from '@/features/dashboard/org/lib/orgVeri
 import type { VerificationChecklistItem } from '@/features/dashboard/org/lib/orgVerificationTiers';
 
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -171,13 +172,7 @@ export function ListingVerificationSubmittedDocs({
                     </span>
                   ) : null}
                   {isLoading ? (
-                    <span
-                      className="text-muted-foreground flex size-9 shrink-0 items-center justify-center"
-                      aria-busy="true"
-                      aria-label="Loading document"
-                    >
-                      <Loader2 className="size-4 animate-spin" aria-hidden />
-                    </span>
+                    <Skeleton className="h-9 w-[4.5rem] shrink-0 rounded-md" />
                   ) : canView ? (
                     <Button
                       type="button"
