@@ -5,7 +5,12 @@
 
 import { createServiceClient } from './orgAuth.ts';
 import { loadAuthUserProfile } from './authUserProfile.ts';
-import { computeFinanceSummary } from './financeService.ts';
+import {
+  computeFinanceSummary,
+  financeThisMonthRange,
+  formatFinancePhp,
+  toHostFacingFinanceKpis,
+} from './financeService.ts';
 import { computeMaintenanceSummary } from './maintenanceService.ts';
 import { manilaTodayIso } from './bookingsListSort.ts';
 
@@ -172,7 +177,19 @@ export type HostSafeGroundingFacts = {
   org: { id: string; name: string; slug: string } | null;
   properties: Array<{ id: string; name: string; slug: string; status: string; type: string }>;
   bookingsSummary: DashboardAssistantContext['bookingsSummary'];
-  finance: { income: number; expenses: number; grandNet: number } | null;
+  finance: {
+    scope: 'property' | 'org';
+    propertyCount: number;
+    period: { from: string; to: string };
+    totalIncome: number;
+    totalExpenses: number;
+    netProfit: number;
+    display: {
+      totalIncome: string;
+      totalExpenses: string;
+      netProfit: string;
+    };
+  } | null;
   maintenance: { total: number; completed: number; pending: number } | null;
   permissions: string[];
 };
@@ -237,23 +254,36 @@ export async function buildHostSafeGroundingFacts(
     propertyIds.length > 0 &&
     propertyIds.length <= FINANCE_SUMMARY_PROPERTY_CAP
   ) {
-    const today = manilaTodayIso();
-    const monthStart = `${today.slice(0, 7)}-01`;
-    const totals = { income: 0, expenses: 0, grandNet: 0 };
+    const month = financeThisMonthRange(manilaTodayIso());
+    const totals = { totalIncome: 0, totalExpenses: 0, netProfit: 0 };
     for (const id of propertyIds) {
+      // Same period/basis/filters as the Finance page default ("this month").
       const result = await computeFinanceSummary({
         propertyId: id,
-        from: monthStart,
-        to: today,
-        basis: 'checkout',
-        includeCancelled: false,
+        from: month.from,
+        to: month.to,
+        basis: 'check_in',
+        includeCancelled: true,
         completedOnly: false,
       });
-      totals.income += result.stays.hostNetCompleted + result.operating.income;
-      totals.expenses += result.operating.expenses;
-      totals.grandNet += result.grandNet;
+      const kpis = toHostFacingFinanceKpis(result);
+      totals.totalIncome += kpis.totalIncome;
+      totals.totalExpenses += kpis.totalExpenses;
+      totals.netProfit += kpis.netProfit;
     }
-    finance = totals;
+    finance = {
+      scope: propertyId ? 'property' : 'org',
+      propertyCount: propertyIds.length,
+      period: month,
+      totalIncome: totals.totalIncome,
+      totalExpenses: totals.totalExpenses,
+      netProfit: totals.netProfit,
+      display: {
+        totalIncome: formatFinancePhp(totals.totalIncome),
+        totalExpenses: formatFinancePhp(totals.totalExpenses),
+        netProfit: formatFinancePhp(totals.netProfit),
+      },
+    };
   }
 
   let maintenance: HostSafeGroundingFacts['maintenance'] = null;
@@ -306,7 +336,13 @@ export function hostSafeGroundingFactsToPrompt(facts: HostSafeGroundingFacts): s
     `Permissions: ${facts.permissions.join(', ') || 'none'}`,
   ];
   if (facts.finance) {
-    lines.push(`Finance (month-to-date): ${JSON.stringify(facts.finance)}`);
+    const scopeNote =
+      facts.finance.scope === 'property'
+        ? 'current property only'
+        : `sum across ${facts.finance.propertyCount} properties`;
+    lines.push(
+      `Finance this calendar month (${facts.finance.period.from} → ${facts.finance.period.to}, ${scopeNote}; same Net Profit as the Finance page): income ${facts.finance.display.totalIncome}, expenses ${facts.finance.display.totalExpenses}, net profit ${facts.finance.display.netProfit}. For a fresh breakdown call get_finance_summary — use netProfit/display, never invent a "Grand Net" figure.`
+    );
   } else {
     lines.push(
       'Finance: not available (no finance:view permission or too many properties for inline summary).'

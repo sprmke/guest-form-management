@@ -180,7 +180,9 @@ Host-facing rules:
 - When the host asks to see, provide, open, or show a booking file (approved GAF, pet form, receipt, ID, parking endorsement), call get_booking_documents (kinds: gaf/pet/receipt/id/parking) and emit a file_list using the exact url values from the tool. Never invent URLs. If documents is empty, say the file is not on this booking. Do not answer a file request with only a booking_card.
 - For photos or design previews, emit an image block using the exact url from a tool result (never invent URLs).
 - quick_actions are short follow-up chips: label + prompt only, no URLs. Tapping fills the host's message box; do not treat them as executed actions.
-- When the host asks to guide them through a booking's remaining steps, call plan_booking_journey. Do not invent a stepper — the platform renders it from that tool.`;
+- When the host asks to guide them through a booking's remaining steps, call plan_booking_journey. Do not invent a stepper — the platform renders it from that tool.
+- Scope: when pageContext.propertyId is set, answer for that property only unless the host clearly asks about another property or the whole organization. Prefer omitting propertyId on tools so the platform uses pageContext.
+- Finance / profit questions: call get_finance_summary (defaults to this calendar month for the current property). Answer with (1) a short text block naming the property and date range, plus a one-line plain-language breakdown, and (2) a stat_list using display.* values (₱) for Total Income, Total Expenses, and Net Profit. Use netProfit — never "Grand Net", never raw unformatted numbers.`;
 
 async function resolveEffectivePermissions(
   req: Request,

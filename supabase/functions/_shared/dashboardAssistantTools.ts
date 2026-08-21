@@ -26,7 +26,10 @@ import { computeDashboardStats } from './dashboardService.ts';
 import {
   computeFinanceSummary,
   createFinanceLineItem,
+  financeThisMonthRange,
+  formatFinancePhp,
   listFinanceBookings,
+  toHostFacingFinanceKpis,
   type FinanceLineItemKind,
 } from './financeService.ts';
 import {
@@ -687,15 +690,54 @@ async function toolGetFinanceSummary(
   args: Record<string, unknown>
 ): Promise<ToolResult> {
   const { propertyId } = await resolveTargetProperty(ctx, args, 'finance:view');
-  const data = await computeFinanceSummary({
+  const month = financeThisMonthRange(manilaTodayIso());
+  const from = str(args, 'from') ?? month.from;
+  const to = str(args, 'to') ?? month.to;
+  // Match Finance page defaults: check-in basis, include cancelled stays in the period filter set.
+  const summary = await computeFinanceSummary({
     propertyId,
-    from: str(args, 'from') ?? null,
-    to: str(args, 'to') ?? null,
-    basis: 'checkout',
-    includeCancelled: false,
+    from,
+    to,
+    basis: 'check_in',
+    includeCancelled: true,
     completedOnly: false,
   });
-  return { ok: true, data };
+  const kpis = toHostFacingFinanceKpis(summary);
+  const sb = createServiceClient();
+  const { data: property } = await sb
+    .from('properties')
+    .select('name')
+    .eq('id', propertyId)
+    .maybeSingle();
+  const propertyName = property?.name ? String(property.name) : propertyId;
+  return {
+    ok: true,
+    data: {
+      propertyId,
+      propertyName,
+      period: { from, to, basis: 'check_in' },
+      // Same labels/math as Finance page summary cards — use these for profit questions.
+      totalIncome: kpis.totalIncome,
+      totalExpenses: kpis.totalExpenses,
+      netProfit: kpis.netProfit,
+      pendingPayments: kpis.pendingPayments,
+      display: {
+        totalIncome: formatFinancePhp(kpis.totalIncome),
+        totalExpenses: formatFinancePhp(kpis.totalExpenses),
+        netProfit: formatFinancePhp(kpis.netProfit),
+        pendingPayments: formatFinancePhp(kpis.pendingPayments),
+      },
+      explanation:
+        'Net profit = total income − total expenses for this property and period (same as the Finance page). Income includes completed stay net, in-progress stay projections, and manual income. Expenses include manual expenses and stay-related costs.',
+      stays: {
+        count: summary.stays.count,
+        completedCount: summary.stays.completedCount,
+        hostNetCompleted: summary.stays.hostNetCompleted,
+        projectedNetPipeline: summary.stays.projectedNetPipeline,
+      },
+      operating: summary.operating,
+    },
+  };
 }
 
 async function toolListFinanceBookings(
@@ -703,12 +745,13 @@ async function toolListFinanceBookings(
   args: Record<string, unknown>
 ): Promise<ToolResult> {
   const { propertyId } = await resolveTargetProperty(ctx, args, 'finance:view');
+  const month = financeThisMonthRange(manilaTodayIso());
   const { rows, total } = await listFinanceBookings({
     propertyId,
-    from: str(args, 'from') ?? null,
-    to: str(args, 'to') ?? null,
-    basis: 'checkout',
-    includeCancelled: false,
+    from: str(args, 'from') ?? month.from,
+    to: str(args, 'to') ?? month.to,
+    basis: 'check_in',
+    includeCancelled: true,
     completedOnly: false,
     page: 1,
     limit: 10,
@@ -3972,13 +4015,20 @@ export const TOOL_DECLARATIONS = [
   },
   {
     name: 'get_finance_summary',
-    description: 'Get finance KPI summary (income, expenses, net) for a property.',
+    description:
+      'Get Finance-page KPIs (total income, total expenses, net profit, pending) for a property. Defaults to this calendar month and the current page property. Use display.* ₱ strings and netProfit for host answers — do not invent Grand Net.',
     parameters: {
       type: 'object',
       properties: {
         propertyId: { type: 'string' },
-        from: { type: 'string' },
-        to: { type: 'string' },
+        from: {
+          type: 'string',
+          description: 'YYYY-MM-DD inclusive start (default: first day of this Manila month)',
+        },
+        to: {
+          type: 'string',
+          description: 'YYYY-MM-DD inclusive end (default: last day of this Manila month)',
+        },
       },
     },
   },

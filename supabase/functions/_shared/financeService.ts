@@ -114,8 +114,64 @@ export type FinanceSummaryResult = {
   grandNet: number;
 };
 
+/** Same card math as the Finance page (`computeFinanceSummaryCardStats` in the UI). */
+export type HostFacingFinanceKpis = {
+  totalIncome: number;
+  totalExpenses: number;
+  netProfit: number;
+  pendingPayments: number;
+};
+
 function roundMoney(n: number): number {
   return Math.round(n * 100) / 100;
+}
+
+function positiveStayIncome(summary: FinanceSummaryResult): number {
+  const completed = Math.max(0, summary.stays.hostNetCompleted);
+  const pipeline = Math.max(0, summary.stays.projectedNetPipeline);
+  return completed + pipeline;
+}
+
+function stayExpenseTotal(summary: FinanceSummaryResult): number {
+  const loss = summary.stays.hostNetCompleted < 0 ? Math.abs(summary.stays.hostNetCompleted) : 0;
+  return summary.stays.sdExpenses + loss;
+}
+
+/**
+ * Host-facing KPIs matching the Finance page summary cards.
+ * Do not use `grandNet` for "profit this month" answers — that excludes in-progress stays.
+ */
+export function toHostFacingFinanceKpis(
+  summary: FinanceSummaryResult,
+  pendingManualAmount = 0
+): HostFacingFinanceKpis {
+  const totalIncome = roundMoney(summary.operating.income + positiveStayIncome(summary));
+  const totalExpenses = roundMoney(summary.operating.expenses + stayExpenseTotal(summary));
+  const netProfit = roundMoney(totalIncome - totalExpenses);
+  const pendingPayments = roundMoney(
+    summary.stays.outstandingGuestBalance + Math.max(0, pendingManualAmount)
+  );
+  return { totalIncome, totalExpenses, netProfit, pendingPayments };
+}
+
+export function formatFinancePhp(amount: number): string {
+  return `₱${amount.toLocaleString('en-PH', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+/** Calendar month containing `todayIso` (YYYY-MM-DD), Asia/Manila parts already in the string. */
+export function financeThisMonthRange(todayIso: string): { from: string; to: string } {
+  const [yRaw, mRaw] = todayIso.slice(0, 10).split('-');
+  const y = Number(yRaw);
+  const m = Number(mRaw);
+  const lastDay = new Date(y, m, 0).getDate();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return {
+    from: `${y}-${pad(m)}-01`,
+    to: `${y}-${pad(m)}-${pad(lastDay)}`,
+  };
 }
 
 function getSupabase() {
