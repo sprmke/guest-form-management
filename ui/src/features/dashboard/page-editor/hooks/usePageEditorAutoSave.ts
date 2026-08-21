@@ -12,6 +12,26 @@ type Options = {
 
 const SAVED_FLASH_MS = 2000;
 
+/** Priority: error > saving > pending (Unsaved) > saved > idle. */
+export function mergePageEditorAutoSaveStatuses(
+  statuses: MarketingAutoSaveStatus[]
+): MarketingAutoSaveStatus {
+  if (statuses.includes('error')) return 'error';
+  if (statuses.includes('saving')) return 'saving';
+  if (statuses.includes('pending')) return 'pending';
+  if (statuses.includes('saved')) return 'saved';
+  return 'idle';
+}
+
+export function firstPageEditorAutoSaveError(
+  entries: Array<{ status: MarketingAutoSaveStatus; errorMessage: string | null }>
+): string | null {
+  for (const entry of entries) {
+    if (entry.status === 'error' && entry.errorMessage) return entry.errorMessage;
+  }
+  return null;
+}
+
 /** Debounced fingerprint autosave — mirrors useMarketingAutoSave without template IDs. */
 export function usePageEditorAutoSave({
   enabled = true,

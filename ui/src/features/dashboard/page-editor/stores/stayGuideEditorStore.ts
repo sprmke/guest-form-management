@@ -25,7 +25,6 @@ type StayGuideEditorActions = {
     visible: boolean
   ) => void;
   setChapterVisible: (id: StayGuideChapterConfig['id'], visible: boolean) => void;
-  setChapterAccent: (id: StayGuideChapterConfig['id'], accentColor: string | null) => void;
   reorderChapters: (orderedIds: StayGuideChapterConfig['id'][]) => void;
   undo: () => void;
   redo: () => void;
@@ -86,15 +85,6 @@ export const useStayGuideEditorStore = create<StayGuideEditorState & StayGuideEd
         const chapter = state.config.chapters.find((entry) => entry.id === id);
         if (!chapter) return;
         chapter.visible = visible;
-        state.isDirty = true;
-        pushHistory(state);
-      }),
-
-    setChapterAccent: (id, accentColor) =>
-      set((state) => {
-        const chapter = state.config.chapters.find((entry) => entry.id === id);
-        if (!chapter) return;
-        chapter.accentColor = accentColor;
         state.isDirty = true;
         pushHistory(state);
       }),
