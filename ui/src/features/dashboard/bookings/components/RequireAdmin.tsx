@@ -2,12 +2,11 @@ import type { ReactNode } from 'react';
 
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 
-import { Loader2 } from 'lucide-react';
-
 import { hostLoginPath } from '@/features/guest/auth/lib/hostAuthPaths';
 
 import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
 
+import { RouteGuardSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 
 type Props = {
@@ -20,12 +19,8 @@ export function RequireAdmin({ children }: Props) {
 
   if (status === 'loading') {
     return (
-      <div
-        className="bg-card fixed inset-0 flex flex-col items-center justify-center gap-4"
-        role="status"
-        aria-label="Loading session"
-      >
-        <Loader2 className="text-sidebar-primary size-5 animate-spin" aria-hidden />
+      <div className="bg-card fixed inset-0">
+        <RouteGuardSkeleton fullScreen />
       </div>
     );
   }

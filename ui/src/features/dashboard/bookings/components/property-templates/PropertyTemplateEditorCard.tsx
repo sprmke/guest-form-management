@@ -57,6 +57,8 @@ type Props = {
   onReset?: () => void;
   onDelete?: () => void;
   saving?: boolean;
+  /** When false, hides the section image uploader (Stay Guide images live in Page Editor). */
+  showSectionImage?: boolean;
 };
 
 export function PropertyTemplateEditorCard({
@@ -66,6 +68,7 @@ export function PropertyTemplateEditorCard({
   onReset,
   onDelete,
   saving,
+  showSectionImage = true,
 }: Props) {
   const [content, setContent] = React.useState(template.content);
   const [sectionImageUrl, setSectionImageUrl] = React.useState(template.sectionImageUrl);
@@ -112,6 +115,7 @@ export function PropertyTemplateEditorCard({
   const isEmail = template.category === 'email';
   const isCustom = template.category === 'custom';
   const isStandard = template.category === 'standard';
+  const allowSectionImage = isStandard && showSectionImage;
   const uploadTemplateAsset = useUploadPropertyTemplateAsset();
 
   const placeholderLines = React.useMemo(
@@ -331,10 +335,13 @@ export function PropertyTemplateEditorCard({
                 onKeyDownCapture={handlePreviewKeyCapture}
                 className={cn(
                   'border-border bg-card overflow-hidden rounded-lg border shadow-sm',
-                  isStandard && sectionImageDisplayUrl && 'lg:grid lg:grid-cols-2 lg:items-stretch'
+                  isStandard &&
+                    allowSectionImage &&
+                    sectionImageDisplayUrl &&
+                    'lg:grid lg:grid-cols-2 lg:items-stretch'
                 )}
               >
-                {isStandard && sectionImageDisplayUrl ? (
+                {isStandard && allowSectionImage && sectionImageDisplayUrl ? (
                   <div className="relative aspect-[16/10] w-full shrink-0 lg:aspect-auto lg:h-full lg:min-h-[240px]">
                     <img
                       key={sectionImagePreviewBust || sectionImageUrl}
@@ -358,7 +365,7 @@ export function PropertyTemplateEditorCard({
             )
           ) : (
             <>
-              {isStandard ? (
+              {allowSectionImage ? (
                 <TemplateSectionImageField
                   templateKey={template.templateKey}
                   imageUrl={sectionImageUrl}

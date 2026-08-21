@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 import {
   AlertTriangle,
@@ -8,11 +8,15 @@ import {
   FormInput,
   Globe,
   Home,
+  Image as ImageIcon,
   Info,
+  ListChecks,
   Mail,
   MapPin,
   Mic,
   Save,
+  Share2,
+  Shield,
   Sparkles,
   Wallet,
 } from 'lucide-react';
@@ -52,6 +56,8 @@ import {
   PropertyDangerZoneSection,
   PropertyProfileMainSections,
 } from '@/features/dashboard/org/components/property-settings/PropertyProfileSettingsSections';
+import { PropertySettingsBrandColorPreview } from '@/features/dashboard/org/components/property-settings/PropertySettingsBrandColorPreview';
+import { PropertySocialsBrandingSection } from '@/features/dashboard/org/components/property-settings/PropertySocialsBrandingSection';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useCheckPropertyName } from '@/features/dashboard/org/hooks/useCheckPropertyName';
 import { useDeleteProperty } from '@/features/dashboard/org/hooks/useDeleteProperty';
@@ -66,6 +72,10 @@ import { useUpdateProperty } from '@/features/dashboard/org/hooks/useUpdatePrope
 import { publicPropertySlugUrlPrefix } from '@/features/dashboard/org/lib/guestPublicPaths';
 import { paymentMethodsDraftIsDirty } from '@/features/dashboard/org/lib/paymentMethods';
 import type { PropertyAutomationToggleKey } from '@/features/dashboard/org/lib/propertyEmailAutomation';
+import {
+  mergeExternalReviewsForSingleReviewSave,
+  validateExternalReviewDraft,
+} from '@/features/dashboard/org/lib/propertyExternalReviews';
 import { type PropertySettingsSectionId } from '@/features/dashboard/org/lib/propertySettingsCompletion';
 import { resolvePropertySettingsFieldError } from '@/features/dashboard/org/lib/propertySettingsFieldError';
 import {
@@ -98,9 +108,14 @@ import { propertyBrandColorStoredValue } from '@/lib/theme/brandColor';
 
 const SETTINGS_SECTIONS: AdminSectionNavItem[] = [
   { id: 'basic', label: 'Basic Information', icon: Info },
+  { id: 'media', label: 'Photos & Videos', icon: ImageIcon },
   { id: 'details', label: 'Property Details', icon: Home },
+  { id: 'amenities', label: 'Amenities', icon: Sparkles },
+  { id: 'house-rules', label: 'House Rules', icon: ListChecks },
   { id: 'guest-form', label: 'Guest Form', icon: FormInput },
+  { id: 'cancellation', label: 'Cancellation', icon: Shield },
   { id: 'location', label: 'Location', icon: MapPin },
+  { id: 'branding', label: 'Socials', icon: Share2 },
   { id: 'payment', label: 'Payment', icon: Wallet },
   { id: 'building-forms', label: 'Building Forms', icon: ClipboardList },
   { id: 'email-automations', label: 'Email Automations', icon: Mail },
@@ -170,9 +185,14 @@ export function PropertySettingsCard() {
   );
   const [voiceDraft, setVoiceDraft] = useState<VoiceReceptionistFormValues | null>(null);
   const [voiceBaseline, setVoiceBaseline] = useState<VoiceReceptionistFormValues | null>(null);
+  const [newCustomAmenityInputs, setNewCustomAmenityInputs] = useState<Record<string, string>>({});
+  const [newCustomHouseRuleInputs, setNewCustomHouseRuleInputs] = useState<Record<string, string>>(
+    {}
+  );
   const [showValidationErrors, setShowValidationErrors] = useState(false);
   const [interactedFields, setInteractedFields] = useState<Record<string, boolean>>({});
   const [paymentConfirmOpen, setPaymentConfirmOpen] = useState(false);
+  const [savingReviewId, setSavingReviewId] = useState<string | null>(null);
 
   const markFieldInteracted = useCallback((fieldId: string) => {
     setInteractedFields((current) => {
@@ -184,9 +204,15 @@ export function PropertySettingsCard() {
   const profileDirtyRef = useRef(false);
   const operationalDirtyRef = useRef(false);
   const voiceDirtyRef = useRef(false);
+  const skipProfileSyncRef = useRef(false);
+  const [mediaGalleryBusy, setMediaGalleryBusy] = useState(false);
 
   useEffect(() => {
     if (profileDirtyRef.current) return;
+    if (skipProfileSyncRef.current) {
+      skipProfileSyncRef.current = false;
+      return;
+    }
     const next = propertyProfileDraftFromProperty(property);
     setProfileDraft(next);
     setProfileBaseline(next);
@@ -289,6 +315,56 @@ export function PropertySettingsCard() {
       ? operationalSettingsDraftIsDirty(operationalDraft, operationalBaseline, inheritedBrandColor)
       : false;
   operationalDirtyRef.current = operationalDirty;
+
+  const handleSaveExternalReview = async (reviewId: string) => {
+    if (!operationalDraft || !operationalBaseline) return;
+
+    const draftReviews = operationalDraft.externalReviews;
+    const baselineReviews = operationalBaseline.externalReviews;
+    const reviewIndex = draftReviews.findIndex((review) => review.id === reviewId);
+    const draftReview = draftReviews[reviewIndex];
+    if (!draftReview) return;
+
+    const validationError = validateExternalReviewDraft(draftReview, `Review ${reviewIndex + 1}`);
+    if (validationError) {
+      setShowValidationErrors(true);
+      markFieldInteracted('property-external-reviews');
+      toast.error(validationError);
+      return;
+    }
+
+    const mergedReviews = mergeExternalReviewsForSingleReviewSave(
+      reviewId,
+      draftReviews,
+      baselineReviews
+    );
+    if (!mergedReviews) return;
+
+    setSavingReviewId(reviewId);
+    try {
+      const saved = await updateAppSettings.mutateAsync({ externalReviews: mergedReviews });
+      const values = appSettingsToFormValues(saved);
+      const savedReview = values.externalReviews.find((review) => review.id === reviewId);
+
+      setOperationalBaseline((current) =>
+        current ? { ...current, externalReviews: values.externalReviews } : current
+      );
+      setOperationalDraft((current) => {
+        if (!current || !savedReview) return current;
+        return {
+          ...current,
+          externalReviews: current.externalReviews.map((review) =>
+            review.id === reviewId ? savedReview : review
+          ),
+        };
+      });
+      toast.success('Review saved');
+    } catch (error) {
+      toast.error(friendlyToastError(error, 'Could not save review'));
+    } finally {
+      setSavingReviewId(null);
+    }
+  };
   const voiceDirty =
     voiceDraft && voiceBaseline ? voiceReceptionistFormIsDirty(voiceDraft, voiceBaseline) : false;
   voiceDirtyRef.current = voiceDirty;
@@ -299,13 +375,7 @@ export function PropertySettingsCard() {
     updateAppSettings.isPending ||
     updateVoiceSettings.isPending ||
     deleteProperty.isPending ||
-    updateProperty.isPending;
-
-  const showMovedMediaBanner =
-    typeof window !== 'undefined' &&
-    ['media', 'amenities', 'house-rules', 'cancellation', 'branding'].includes(
-      window.location.hash.replace(/^#/, '')
-    );
+    (updateProperty.isPending && !mediaGalleryBusy);
 
   const propertySlugPrefix = publicPropertySlugUrlPrefix();
 
@@ -340,6 +410,27 @@ export function PropertySettingsCard() {
     value: PropertyProfileDraft[K]
   ) => {
     setProfileDraft((current) => ({ ...current, [key]: value }));
+  };
+
+  const handleMediaPersisted = (media: PropertyProfileDraft['media']) => {
+    setProfileDraft((current) => ({ ...current, media }));
+    setProfileBaseline((current) => ({ ...current, media }));
+  };
+
+  const persistMediaOrder = async (media: PropertyProfileDraft['media']) => {
+    skipProfileSyncRef.current = true;
+    setMediaGalleryBusy(true);
+    try {
+      const result = await updateProperty.mutateAsync({
+        propertyId: property.id,
+        status: profileDraft.status,
+        settings: { media },
+      });
+      const savedProfile = propertyProfileDraftFromProperty(result.property);
+      handleMediaPersisted(savedProfile.media);
+    } finally {
+      setMediaGalleryBusy(false);
+    }
   };
 
   const setOperationalField = <K extends keyof AppSettingsFormValues>(
@@ -583,21 +674,11 @@ export function PropertySettingsCard() {
         onConfirm={handlePaymentConfirmSave}
         busy={busy}
       />
-      {showMovedMediaBanner ? (
-        <Card className="border-border mb-4">
-          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm">
-              Photos, amenities, house rules, cancellation, and socials moved to the Page Editor.
-            </p>
-            <Button type="button" variant="outline" size="sm" className="min-h-[44px]" asChild>
-              <Link
-                to={`${propertySectionPath(orgSlug, propertySlug, 'public-pages')}/listing/edit`}
-              >
-                Open listing editor
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+      {operationalDraft && appSettings ? (
+        <PropertySettingsBrandColorPreview
+          brandColor={operationalDraft.brandColor}
+          resolvedBrandColor={appSettings.resolvedBrandColor}
+        />
       ) : null}
       {appSettingsError ? (
         <p className="text-destructive text-sm">
@@ -643,9 +724,43 @@ export function PropertySettingsCard() {
             nameUnavailable={nameUnavailable}
             nameConflictMessage={nameConflictMessage}
             nameAvailabilityState={nameAvailabilityState}
+            newCustomAmenityInputs={newCustomAmenityInputs}
+            onNewCustomAmenityInputChange={(categoryId, value) =>
+              setNewCustomAmenityInputs((current) => ({
+                ...current,
+                [categoryId]: value,
+              }))
+            }
+            newCustomHouseRuleInputs={newCustomHouseRuleInputs}
+            onNewCustomHouseRuleInputChange={(categoryId, value) =>
+              setNewCustomHouseRuleInputs((current) => ({
+                ...current,
+                [categoryId]: value,
+              }))
+            }
+            onMediaPersisted={handleMediaPersisted}
+            onPersistMediaOrder={persistMediaOrder}
+            mediaGalleryBusy={mediaGalleryBusy}
             resolveFieldError={resolveFieldError}
             markFieldInteracted={markFieldInteracted}
             sectionMessages={settingsCompletion.sectionMessages}
+            brandColor={operationalDraft.brandColor}
+            inheritedBrandColor={inheritedBrandColor}
+            onBrandColorChange={(value) => setOperationalField('brandColor', value)}
+          />
+
+          <PropertySocialsBrandingSection
+            data={appSettings}
+            draft={operationalDraft}
+            externalReviewsBaseline={operationalBaseline?.externalReviews ?? []}
+            orgSocialLinks={orgSocialLinks}
+            disabled={busy}
+            resolveFieldError={resolveFieldError}
+            markFieldInteracted={markFieldInteracted}
+            onChange={setOperationalField}
+            sectionMessages={settingsCompletion.sectionMessages}
+            onSaveReview={(reviewId) => void handleSaveExternalReview(reviewId)}
+            savingReviewId={savingReviewId}
           />
 
           <PropertyOperationalSettingsSections

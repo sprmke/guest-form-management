@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
 
-import { Loader2 } from 'lucide-react';
-
 import { BookingDetailAssetPreviewModal } from '@/features/dashboard/bookings/components/booking-detail/BookingDetailAssetPreviewModal';
 import { WorkflowPanel } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowPanel';
 import { useBooking } from '@/features/dashboard/bookings/hooks/useBooking';
@@ -9,6 +7,7 @@ import { useBookingAssetPreview } from '@/features/dashboard/bookings/hooks/useB
 import type { BookingStatus } from '@/features/dashboard/bookings/lib/bookingStatus';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
+import { SectionContentSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { ResponsiveModal, ResponsiveModalContent } from '@/components/ui/responsive-modal';
 import { cn } from '@/lib/utils';
 
@@ -25,9 +24,8 @@ type Props = {
 function KanbanWorkflowLoadingOverlay() {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-3 backdrop-blur-[2px] sm:p-4">
-      <div className="text-muted-foreground flex flex-col items-center gap-2">
-        <Loader2 className="size-5 animate-spin" aria-hidden />
-        <span className="text-sm">Loading…</span>
+      <div className="bg-card w-full max-w-[min(calc(100vw-1.5rem),32rem)] rounded-xl p-4">
+        <SectionContentSkeleton rows={6} />
       </div>
     </div>
   );
@@ -109,9 +107,8 @@ export function BookingKanbanWorkflowModal({
             )}
           >
             {isLoading && !displayRow ? (
-              <div className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-2 py-12">
-                <Loader2 className="size-5 animate-spin" aria-hidden />
-                <span className="text-sm">Loading…</span>
+              <div className="flex-1 p-4">
+                <SectionContentSkeleton rows={6} />
               </div>
             ) : null}
 
@@ -139,9 +136,8 @@ export function BookingKanbanWorkflowModal({
         )}
       >
         {isLoading && !displayRow ? (
-          <div className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-2 py-12">
-            <Loader2 className="size-5 animate-spin" aria-hidden />
-            <span className="text-sm">Loading…</span>
+          <div className="flex-1 p-4">
+            <SectionContentSkeleton rows={6} />
           </div>
         ) : null}
 
