@@ -53,6 +53,7 @@ import type {
   OrgApprovalVerification,
 } from '@/features/dashboard/super-admin/types/approval';
 
+import { SectionContentSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -390,9 +391,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
 
           <div className={superAdminApprovalDialogBodyClass}>
             {isLoading || !detail || !verification ? (
-              <div className="flex justify-center py-10">
-                <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-              </div>
+              <SectionContentSkeleton rows={5} className="py-10" />
             ) : panel === 'changes' ? (
               <div className="space-y-5">
                 <fieldset className="space-y-2">

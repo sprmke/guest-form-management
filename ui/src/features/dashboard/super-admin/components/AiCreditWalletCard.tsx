@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Loader2, Wallet } from 'lucide-react';
+import { Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 
 import {
@@ -8,6 +8,7 @@ import {
   useAiCreditWallet,
 } from '@/features/dashboard/super-admin/hooks/useAiCreditWallet';
 
+import { SectionContentSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
@@ -82,11 +83,7 @@ export function AiCreditWalletCard() {
         </Button>
       </div>
 
-      {isLoading ? (
-        <div className="flex justify-center py-4">
-          <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-        </div>
-      ) : null}
+      {isLoading ? <SectionContentSkeleton rows={2} className="py-4" /> : null}
 
       {isError ? (
         <p className="text-destructive text-sm">{friendlyToastError(error, 'Org not found')}</p>

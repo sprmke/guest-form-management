@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 
 import { Navigate, useLocation } from 'react-router-dom';
 
-import { Loader2 } from 'lucide-react';
 import { ShieldX } from 'lucide-react';
 
 import { hostLoginPath } from '@/features/guest/auth/lib/hostAuthPaths';
@@ -10,6 +9,7 @@ import { hostLoginPath } from '@/features/guest/auth/lib/hostAuthPaths';
 import { RequireAdminSignOutButton } from '@/features/dashboard/bookings/components/RequireAdmin';
 import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
 
+import { RouteGuardSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { isSuperAdminEmail } from '@/lib/auth/superAdminAllowList';
 
 type Props = {
@@ -21,15 +21,7 @@ export function RequireSuperAdmin({ children }: Props) {
   const { status, email } = useAdminSession();
 
   if (status === 'loading') {
-    return (
-      <div
-        className="bg-card fixed inset-0 flex flex-col items-center justify-center gap-4"
-        role="status"
-        aria-label="Loading session"
-      >
-        <Loader2 className="text-sidebar-primary size-5 animate-spin" aria-hidden />
-      </div>
-    );
+    return <RouteGuardSkeleton fullScreen />;
   }
 
   if (status === 'signed-out') {

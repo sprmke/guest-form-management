@@ -1,18 +1,17 @@
-import { Loader2 } from 'lucide-react';
-
 import { AdminMetricCardSkeleton } from '@/features/dashboard/bookings/components/AdminMetricCard';
 
+import { ListRowsSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { cn } from '@/lib/utils';
 
 type Props = {
-  /** When set, shows header + metric skeleton row before the spinner. */
+  /** When set, shows header + metric skeleton row before the list rows. */
   metricCount?: number;
   className?: string;
 };
 
 export function SuperAdminPageLoading({ metricCount = 0, className }: Props) {
   return (
-    <div className={cn('space-y-3 sm:space-y-4', className)}>
+    <div className={cn('space-y-3 sm:space-y-4', className)} aria-busy="true" aria-label="Loading">
       {metricCount > 0 ? (
         <>
           <div className="bg-muted/60 h-14 animate-pulse rounded-xl" />
@@ -23,9 +22,7 @@ export function SuperAdminPageLoading({ metricCount = 0, className }: Props) {
           </div>
         </>
       ) : null}
-      <div className="flex justify-center py-12">
-        <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-      </div>
+      <ListRowsSkeleton rows={6} />
     </div>
   );
 }
