@@ -25,6 +25,10 @@ import { loadPublicPropertyById } from './publicPropertyService.ts';
 import { guestStayGuidePath } from './publicGuestPaths.ts';
 import { resolvePropertySlugById } from './propertyScope.ts';
 import { extractLeadingSectionHeading } from './stayGuideContent.ts';
+import {
+  loadStayGuideCheckInDocuments,
+  type StayGuideCheckInDocumentDto,
+} from './stayGuideCheckInDocuments.ts';
 import type { GuestSubmission } from './types.ts';
 
 export const STAY_GUIDE_STANDARD_SECTION_KEYS = [
@@ -258,6 +262,8 @@ export type GuestStayGuideDto = {
     organizationName: string;
   };
   sections: StayGuideSectionDto[];
+  /** Approved check-in papers for this booking (GAF, pet, parking, custom). */
+  checkInDocuments: StayGuideCheckInDocumentDto[];
   validUntil: string;
   todayManila: string;
   templateKey: string;
@@ -493,7 +499,11 @@ async function buildGuestStayGuidePayload(
   propertyId: string,
   booking: GuestSubmission,
   validUntil: string,
-  options?: { includeAllStandardSections?: boolean; expectedPropertySlug?: string | null }
+  options?: {
+    includeAllStandardSections?: boolean;
+    expectedPropertySlug?: string | null;
+    previewCheckInDocuments?: boolean;
+  }
 ): Promise<GuestStayGuideDto | null> {
   const property = await loadPublicPropertyById(propertyId);
   if (!property || property.status !== 'ACTIVE') return null;
@@ -542,6 +552,10 @@ async function buildGuestStayGuidePayload(
     'stay_guide'
   )) as StayGuideConfig;
 
+  const checkInDocuments = await loadStayGuideCheckInDocuments(propertyId, booking, {
+    previewSamples: Boolean(options?.previewCheckInDocuments),
+  });
+
   return {
     property: {
       slug: property.slug,
@@ -582,6 +596,7 @@ async function buildGuestStayGuidePayload(
     },
     host,
     sections,
+    checkInDocuments,
     validUntil,
     todayManila: manilaTodayYmd(),
     templateKey,
@@ -603,6 +618,7 @@ export async function loadGuestStayGuidePreview(
   return buildGuestStayGuidePayload(propertyId, booking, validUntil, {
     includeAllStandardSections: true,
     expectedPropertySlug,
+    previewCheckInDocuments: true,
   });
 }
 

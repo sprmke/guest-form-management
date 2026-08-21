@@ -21,6 +21,7 @@ export type StayGuideConfig = {
   version: 1;
   hero: { visible: boolean };
   stayPassCard: { visible: boolean };
+  checkInDocuments: { visible: boolean };
   galleryCarousel: { visible: boolean };
   quickNavTabs: { visible: boolean };
   chapters: StayGuideChapterConfig[];
@@ -77,6 +78,7 @@ export function defaultStayGuideConfig(): StayGuideConfig {
     version: 1,
     hero: { visible: true },
     stayPassCard: { visible: true },
+    checkInDocuments: { visible: true },
     galleryCarousel: { visible: true },
     quickNavTabs: { visible: true },
     chapters: STAY_GUIDE_CHAPTER_IDS.map((id, order) => ({
@@ -160,6 +162,9 @@ export function normalizeStayGuideConfig(raw: unknown): StayGuideConfig {
     version: 1,
     hero: { visible: readVisibleFlag(raw.hero, base.hero.visible) },
     stayPassCard: { visible: readVisibleFlag(raw.stayPassCard, base.stayPassCard.visible) },
+    checkInDocuments: {
+      visible: readVisibleFlag(raw.checkInDocuments, base.checkInDocuments.visible),
+    },
     galleryCarousel: {
       visible: readVisibleFlag(raw.galleryCarousel, base.galleryCarousel.visible),
     },
