@@ -1,12 +1,11 @@
 import { Link, Navigate, Outlet, useLocation, useParams } from 'react-router-dom';
 
-import { Loader2 } from 'lucide-react';
-
 import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import { useHost } from '@/features/dashboard/super-admin/hooks/useHosts';
 import { hostDisplayInitial } from '@/features/dashboard/super-admin/lib/superAdminHostsFilters';
 import { superAdminPaths } from '@/features/dashboard/super-admin/lib/superAdminPaths';
 
+import { RouteGuardSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { cn } from '@/lib/utils';
 
 const HOST_TABS = [
@@ -32,11 +31,7 @@ export function SuperAdminHostShell() {
   }
 
   if (isLoading) {
-    return (
-      <div className="flex justify-center py-16">
-        <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-      </div>
-    );
+    return <RouteGuardSkeleton />;
   }
 
   if (error || !host) {

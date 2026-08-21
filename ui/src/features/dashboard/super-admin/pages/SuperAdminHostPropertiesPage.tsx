@@ -2,8 +2,6 @@ import { useMemo, useState } from 'react';
 
 import { useParams } from 'react-router-dom';
 
-import { Loader2 } from 'lucide-react';
-
 import {
   OrgPropertiesResultsMeta,
   OrgPropertiesToolbar,
@@ -21,6 +19,8 @@ import {
 } from '@/features/dashboard/org/lib/orgPropertiesFilters';
 import { useHostProperties } from '@/features/dashboard/super-admin/hooks/useHosts';
 import { hostPropertyToProperty } from '@/features/dashboard/super-admin/lib/hostPropertyAdapter';
+
+import { ListingCardGridSkeleton } from '@/components/skeletons/AdminSkeletons';
 
 export function SuperAdminHostPropertiesPage() {
   const { hostId = '' } = useParams<{ hostId: string }>();
@@ -58,11 +58,7 @@ export function SuperAdminHostPropertiesPage() {
   const hasActiveFilters = orgPropertiesHasActiveFilters(filters);
 
   if (isLoading) {
-    return (
-      <div className="flex justify-center py-12">
-        <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-      </div>
-    );
+    return <ListingCardGridSkeleton count={8} label="Loading properties" />;
   }
 
   if (error) {

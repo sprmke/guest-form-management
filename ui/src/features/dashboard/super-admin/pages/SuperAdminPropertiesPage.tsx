@@ -2,6 +2,8 @@ import { useParams } from 'react-router-dom';
 
 import { useOrganizations, useProperties } from '@/features/dashboard/org/hooks/useOrganizations';
 
+import { Skeleton } from '@/components/ui/skeleton';
+
 export function SuperAdminPropertiesPage() {
   const { orgSlug } = useParams<{ orgSlug: string }>();
   const { data: orgData } = useOrganizations();
@@ -15,7 +17,17 @@ export function SuperAdminPropertiesPage() {
       </h1>
 
       {isLoading ? (
-        <p className="text-muted-foreground text-sm">Loading…</p>
+        <ul
+          className="divide-border border-border divide-y rounded-xl border"
+          aria-busy="true"
+          aria-label="Loading properties"
+        >
+          {Array.from({ length: 6 }).map((_, i) => (
+            <li key={i} className="px-4 py-3" style={{ opacity: 1 - i * 0.08 }}>
+              <Skeleton className="h-3.5 w-1/3 max-w-full" />
+            </li>
+          ))}
+        </ul>
       ) : error ? (
         <p className="text-destructive text-sm">Could not load properties.</p>
       ) : propertiesData?.properties.length ? (

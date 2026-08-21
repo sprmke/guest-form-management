@@ -1,23 +1,19 @@
 import { useParams } from 'react-router-dom';
 
-import { Loader2 } from 'lucide-react';
-
 import {
   SuperAdminHostOrgCard,
   SuperAdminHostOrgsEmptyState,
 } from '@/features/dashboard/super-admin/components/super-admin-hosts/SuperAdminHostOrgCard';
 import { useHostOrganizations } from '@/features/dashboard/super-admin/hooks/useHosts';
 
+import { HostOrgCardGridSkeleton } from '@/components/skeletons/AdminSkeletons';
+
 export function SuperAdminHostOrgsPage() {
   const { hostId = '' } = useParams<{ hostId: string }>();
   const { data: organizations = [], isLoading, error } = useHostOrganizations(hostId);
 
   if (isLoading) {
-    return (
-      <div className="flex justify-center py-12">
-        <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-      </div>
-    );
+    return <HostOrgCardGridSkeleton count={6} />;
   }
 
   if (error) {
