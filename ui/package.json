@@ -86,6 +86,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^9.24.0",
+    "@tailwindcss/container-queries": "^0.1.1",
     "@types/google.maps": "^3.65.2",
     "@types/node": "^20.9.4",
     "@types/react": "19.2.17",
