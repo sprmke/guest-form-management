@@ -10,6 +10,8 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
+import { platformLabel } from '@/features/dashboard/inbox/lib/inboxFormat';
+import type { SocialPlatform } from '@/features/dashboard/inbox/types/inbox';
 import type {
   NotificationRecord,
   NotificationRealtimeRow,
@@ -19,8 +21,15 @@ import type {
 import { supabase } from '@/lib/supabase/client';
 import { formatStayDateRange } from '@/utils/format/dates';
 
-
 export const LEGACY_INBOX_NOTIFICATION_TITLE = 'New guest message';
+
+const INBOX_PLATFORMS = new Set<SocialPlatform>([
+  'web',
+  'facebook',
+  'instagram',
+  'tiktok',
+  'airbnb',
+]);
 
 const NOTIFICATION_ICONS: Record<NotificationType, LucideIcon> = {
   inbox_new_message: MessageCircle,
@@ -40,6 +49,23 @@ export function notificationIconFor(type: NotificationType): LucideIcon {
 function readMetaString(metadata: Record<string, unknown> | undefined, key: string): string {
   const value = metadata?.[key];
   return typeof value === 'string' ? value.trim() : '';
+}
+
+/** Inbox channel from notification metadata (`web` → Chat, Meta, etc.). */
+export function notificationInboxPlatform(
+  metadata: Record<string, unknown> | undefined
+): SocialPlatform | null {
+  const value = readMetaString(metadata, 'platform');
+  if (!value || !INBOX_PLATFORMS.has(value as SocialPlatform)) return null;
+  return value as SocialPlatform;
+}
+
+/** Host-facing channel label for inbox toasts/list rows. */
+export function formatNotificationInboxPlatformLabel(
+  metadata: Record<string, unknown> | undefined
+): string | null {
+  const platform = notificationInboxPlatform(metadata);
+  return platform ? platformLabel(platform) : null;
 }
 
 /** Primary line — guest name (inbox + booking notifications). */
@@ -101,11 +127,12 @@ export async function enrichRealtimeNotificationRow(
     const needsDates =
       !readMetaString(metadata, 'inquiry_check_in') ||
       !readMetaString(metadata, 'inquiry_check_out');
+    const needsPlatform = !notificationInboxPlatform(metadata);
 
-    if (needsName || needsDates) {
+    if (needsName || needsDates || needsPlatform) {
       const { data } = await supabase
         .from('social_conversations')
-        .select('participant_name, inquiry_check_in, inquiry_check_out')
+        .select('participant_name, platform, inquiry_check_in, inquiry_check_out')
         .eq('id', row.conversation_id)
         .maybeSingle();
 
@@ -113,6 +140,7 @@ export async function enrichRealtimeNotificationRow(
         metadata.participant_name = data.participant_name;
         metadata.guest_name = data.participant_name.trim();
       }
+      if (data?.platform) metadata.platform = data.platform;
       if (data?.inquiry_check_in) metadata.inquiry_check_in = data.inquiry_check_in;
       if (data?.inquiry_check_out) metadata.inquiry_check_out = data.inquiry_check_out;
     }

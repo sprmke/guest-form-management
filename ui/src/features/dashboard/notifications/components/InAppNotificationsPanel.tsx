@@ -5,17 +5,22 @@ import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 
+import { PlatformLogo } from '@/features/dashboard/inbox/components/PlatformLogo';
+import { NotificationInboxTitle } from '@/features/dashboard/notifications/components/NotificationInboxTitle';
 import {
   useMarkNotificationRead,
   useNotificationsList,
   type NotificationsListMode,
 } from '@/features/dashboard/notifications/hooks/useNotifications';
+import { useEnrichedNotifications } from '@/features/dashboard/notifications/hooks/useEnrichedNotifications';
 import type { NotificationRecord } from '@/features/dashboard/notifications/lib/notificationsApi';
 import { collapseInboxNotifications } from '@/features/dashboard/notifications/lib/notificationsCollapse';
 import {
   formatNotificationDisplayTitle,
+  formatNotificationInboxPlatformLabel,
   formatNotificationStayLabel,
   notificationIconFor,
+  notificationInboxPlatform,
 } from '@/features/dashboard/notifications/lib/notificationsDisplay';
 import {
   resolveNotificationPath,
@@ -53,9 +58,9 @@ export function InAppNotificationsPanel({
     useNotificationsList(mode);
   const markRead = useMarkNotificationRead();
 
-  const notifications = collapseInboxNotifications(
-    data?.pages.flatMap((page) => page.notifications) ?? []
-  );
+  const rawNotifications = data?.pages.flatMap((page) => page.notifications) ?? [];
+  const enrichedNotifications = useEnrichedNotifications(rawNotifications);
+  const notifications = collapseInboxNotifications(enrichedNotifications);
   const hasMoreOnServer = Boolean(data?.pages[0]?.nextCursor);
 
   loadingMoreRef.current = isFetchingNextPage;
@@ -139,6 +144,8 @@ export function InAppNotificationsPanel({
           {notifications.map((notification) => {
             const Icon = notificationIconFor(notification.type);
             const stayLabel = formatNotificationStayLabel(notification.metadata);
+            const inboxPlatform = notificationInboxPlatform(notification.metadata);
+            const platformLabel = formatNotificationInboxPlatformLabel(notification.metadata);
             return (
               <li key={notification.id}>
                 <button
@@ -150,26 +157,45 @@ export function InAppNotificationsPanel({
                     variant === 'page' && 'py-3.5'
                   )}
                 >
-                  <span
-                    className={cn(
-                      'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
-                      notification.isRead
-                        ? 'bg-muted text-muted-foreground'
-                        : 'bg-primary/10 text-primary'
-                    )}
-                  >
-                    <Icon className="h-4 w-4" aria-hidden />
-                  </span>
+                  {notification.type === 'inbox_new_message' && inboxPlatform ? (
+                    <PlatformLogo
+                      platform={inboxPlatform}
+                      size="xs"
+                      className="mt-0.5 size-8 shrink-0 rounded-full"
+                    />
+                  ) : (
+                    <span
+                      className={cn(
+                        'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
+                        notification.isRead
+                          ? 'bg-muted text-muted-foreground'
+                          : 'bg-primary/10 text-primary'
+                      )}
+                    >
+                      <Icon className="h-4 w-4" aria-hidden />
+                    </span>
+                  )}
                   <span className="min-w-0 flex-1">
-                    <span className="flex items-start justify-between gap-2">
-                      <span
-                        className={cn(
-                          'truncate text-sm',
-                          notification.isRead ? 'font-medium' : 'font-semibold'
-                        )}
-                      >
-                        {formatNotificationDisplayTitle(notification)}
-                      </span>
+                    <span className="flex min-w-0 flex-1 items-start justify-between gap-2">
+                      {notification.type === 'inbox_new_message' && platformLabel ? (
+                        <NotificationInboxTitle
+                          name={formatNotificationDisplayTitle(notification)}
+                          platformLabel={platformLabel}
+                          nameClassName={cn(
+                            'text-sm',
+                            notification.isRead ? 'font-medium' : 'font-semibold'
+                          )}
+                        />
+                      ) : (
+                        <span
+                          className={cn(
+                            'truncate text-sm',
+                            notification.isRead ? 'font-medium' : 'font-semibold'
+                          )}
+                        >
+                          {formatNotificationDisplayTitle(notification)}
+                        </span>
+                      )}
                       {!notification.isRead ? (
                         <span
                           className="bg-primary mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
