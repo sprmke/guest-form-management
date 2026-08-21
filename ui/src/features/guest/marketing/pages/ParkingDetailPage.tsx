@@ -21,6 +21,7 @@ import type { ListingHostInfo } from '@/features/guest/marketing/shared/componen
 import { useMarketingBrandColor } from '@/features/guest/marketing/shared/context/ModeSwitchTransitionContext';
 
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
 
 function formatRate(amount: number): string {
@@ -75,12 +76,40 @@ export function ParkingDetailPage() {
 
   if (isLoading && !data) {
     return (
-      <div className="bg-background min-h-screen pb-20 pt-24">
-        <div className="container mx-auto px-4 py-8 sm:px-6 lg:px-8">
-          <div className="bg-muted/40 h-[280px] animate-pulse rounded-2xl sm:h-[420px]" />
-          <div className="mt-8 space-y-4">
-            <div className="bg-muted/40 h-10 w-2/3 animate-pulse rounded-lg" />
-            <div className="bg-muted/40 h-24 animate-pulse rounded-2xl" />
+      <div className="@container bg-background min-h-screen w-full min-w-0 pb-20 pt-24">
+        <div className="@xl:px-6 @5xl:px-8 container mx-auto px-4">
+          <Skeleton className="@xl:h-[400px] @3xl:h-[500px] h-[280px] w-full rounded-2xl" />
+        </div>
+
+        <div className="@xl:px-6 @5xl:px-8 container mx-auto px-4 py-8">
+          <div className="@5xl:grid-cols-3 @5xl:gap-12 grid grid-cols-1 gap-8">
+            <div className="@5xl:col-span-2 min-w-0 space-y-10">
+              <div className="space-y-4">
+                <Skeleton className="h-8 w-2/3 rounded-lg" />
+                <Skeleton className="h-4 w-1/3 rounded-full" />
+                <div className="flex flex-wrap gap-4">
+                  <Skeleton className="h-4 w-16 rounded-full" />
+                  <Skeleton className="h-4 w-16 rounded-full" />
+                  <Skeleton className="h-4 w-16 rounded-full" />
+                </div>
+              </div>
+
+              <hr className="border-border" />
+
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-full rounded-full" />
+                <Skeleton className="h-4 w-full rounded-full" />
+                <Skeleton className="h-4 w-2/3 rounded-full" />
+              </div>
+            </div>
+
+            <div className="@5xl:block hidden">
+              <div className="border-border space-y-5 rounded-2xl border p-6 shadow-sm">
+                <Skeleton className="h-7 w-32 rounded-lg" />
+                <Skeleton className="h-24 w-full rounded-xl" />
+                <Skeleton className="h-11 w-full rounded-xl" />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -112,14 +141,14 @@ export function ParkingDetailPage() {
 
   return (
     <ParkingPublicBrandShell brandColor={data.brandColor}>
-      <div className="bg-background min-h-screen pb-20 pt-24">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="@container bg-background min-h-screen w-full min-w-0 pb-20 pt-24">
+        <div className="@xl:px-6 @5xl:px-8 container mx-auto px-4">
           <ListingGallery images={galleryImages} listingName={data.name} />
         </div>
 
-        <div className="container mx-auto px-4 py-8 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 lg:gap-12">
-            <div className="space-y-10 lg:col-span-2">
+        <div className="@xl:px-6 @5xl:px-8 container mx-auto px-4 py-8">
+          <div className="@5xl:grid-cols-3 @5xl:gap-12 grid grid-cols-1 gap-8">
+            <div className="@5xl:col-span-2 min-w-0 space-y-10">
               <ParkingOverview
                 name={data.name}
                 parkingType={data.parkingType}
@@ -163,7 +192,7 @@ export function ParkingDetailPage() {
               ) : null}
             </div>
 
-            <div className="hidden lg:block">
+            <div className="@5xl:block hidden min-w-0">
               <BookingCard
                 listingKind="parking"
                 baseRate={pricing.weekdayNightlyRate}
@@ -195,18 +224,23 @@ export function ParkingDetailPage() {
         <motion.div
           initial={{ y: 100 }}
           animate={{ y: 0 }}
-          className="border-border bg-background/95 fixed inset-x-0 bottom-0 z-40 border-t p-4 backdrop-blur-lg lg:hidden"
+          className="border-border bg-background/95 @5xl:hidden fixed inset-x-0 bottom-0 z-40 border-t p-4 backdrop-blur-lg"
         >
           <div className="flex items-center justify-between gap-4">
-            <div>
-              <div className="flex items-baseline gap-1">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-baseline gap-1">
                 <span className="text-foreground text-lg font-bold">
                   {formatRate(pricing.weekdayNightlyRate)}
                 </span>
                 <span className="text-muted-foreground text-sm">/ night</span>
               </div>
             </div>
-            <Button size="lg" className="rounded-full px-8" type="button" onClick={reserve}>
+            <Button
+              size="lg"
+              className="min-h-[44px] shrink-0 rounded-full px-8"
+              type="button"
+              onClick={reserve}
+            >
               Reserve
             </Button>
           </div>

@@ -119,9 +119,9 @@ export function PropertyOverview({
     : null;
 
   return (
-    <div className="space-y-6">
+    <div className="@container min-w-0 space-y-6">
       {/* Header */}
-      <div>
+      <div className="min-w-0">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -144,7 +144,7 @@ export function PropertyOverview({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className="text-foreground mb-2 text-2xl font-bold sm:text-3xl lg:text-4xl"
+          className="text-foreground @xl:text-3xl @5xl:text-4xl mb-2 break-words text-2xl font-bold"
         >
           {name}
         </motion.h1>
@@ -153,7 +153,7 @@ export function PropertyOverview({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="space-y-2"
+          className="min-w-0 space-y-2"
         >
           {rating != null && reviews != null ? (
             <div className="text-muted-foreground flex flex-wrap items-center gap-1.5 text-sm">
@@ -177,12 +177,12 @@ export function PropertyOverview({
         </motion.div>
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats Grid — container-aware so narrow preview/content columns never crush cells */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15 }}
-        className="border-border bg-card grid grid-cols-2 gap-4 rounded-2xl border px-4 py-3 sm:grid-cols-4 sm:px-6"
+        className="border-border bg-card @md:gap-4 @md:px-4 @2xl:grid-cols-4 @2xl:px-6 grid grid-cols-2 gap-3 rounded-2xl border px-3 py-3"
       >
         {stats.maxGuests ? (
           <ListingStatItem icon={Users} value={stats.maxGuests} label="guests" />

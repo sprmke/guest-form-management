@@ -302,7 +302,7 @@ export function BookingCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.3 }}
-      className="sticky top-24"
+      className="sticky top-24 min-w-0"
     >
       <div className="border-border bg-card overflow-hidden rounded-2xl border shadow-xl">
         {/* ── Header: price + rating ──────────────────────────────────────── */}

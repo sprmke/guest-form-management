@@ -4,12 +4,13 @@ import { toast } from 'sonner';
 
 import { guestParkingRequestStatusPath } from '@/features/guest/lib/guestPublicPaths';
 import { FormPageWrapper } from '@/features/guest/marketing/forms/components';
+import { FormPageToolbar } from '@/features/guest/marketing/forms/components/FormPageToolbar';
 import { getFormById } from '@/features/guest/marketing/forms/data/mockForms';
 import { usePublicParkingDetail } from '@/features/guest/marketing/parkings/hooks/usePublicParkingDetail';
 import { useSubmitParkingBookingRequest } from '@/features/guest/marketing/parkings/hooks/useSubmitParkingBookingRequest';
 import { formatParkingLocation } from '@/features/guest/marketing/parkings/lib/formatParkingLocation';
 
-import { GuestFormPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
+import { FormPageWrapperSkeleton } from '@/components/skeletons/GuestPageSkeletons';
 
 const PARKING_REGISTRATION_FORM_ID = 'dev-parking-form';
 
@@ -38,7 +39,7 @@ export function ParkingFormPage() {
   }
 
   if (isLoading && !data) {
-    return <GuestFormPageSkeleton title="Parking registration" />;
+    return <FormPageWrapperSkeleton toolbar={<FormPageToolbar />} />;
   }
 
   if (isError || !data || !form) {

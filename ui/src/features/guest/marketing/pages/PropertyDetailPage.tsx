@@ -11,6 +11,8 @@ import {
   resolveListingGuestCapacity,
   type BookingGuestCounts,
 } from '@/features/guest/form/lib/guestCounts';
+import { usePreviewOverride } from '@/features/guest/lib/previewOverrideContext';
+import { usePreviewViewport } from '@/features/guest/lib/previewViewportContext';
 import {
   PropertyGallery,
   PropertyOverview,
@@ -32,9 +34,10 @@ import type { PropertyLandingSectionId } from '@/features/guest/marketing/proper
 import { GuestPublicBrandShell } from '@/features/guest/marketing/shared/components/GuestPublicBrandShell';
 import type { ListingHostInfo } from '@/features/guest/marketing/shared/components/ListingHostCard';
 import { useMarketingBrandColor } from '@/features/guest/marketing/shared/context/ModeSwitchTransitionContext';
-import { usePreviewOverride } from '@/features/guest/lib/previewOverrideContext';
 
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
 import { parseGuestInquiryDateRange, formatDateToYYYYMMDD } from '@/utils/format/dates';
 
@@ -42,7 +45,10 @@ export function PropertyDetailPage() {
   const { propertySlug = '' } = useParams<{ propertySlug: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const previewOverride = usePreviewOverride();
+  const previewViewport = usePreviewViewport();
   const isEditorPreview = previewOverride?.kind === 'property-landing';
+  const forceDesktopChrome = previewViewport === 'desktop';
+  const forceMobileChrome = previewViewport === 'mobile';
   const propertySlugForActions = propertySlug || (isEditorPreview ? previewOverride.data.slug : '');
   const { data: propertyData, isLoading, isError } = usePublicPropertyDetail(propertySlug);
   usePageTitle(publicPageTitle(propertyData?.name ? `${propertyData.name}` : 'Property'));
@@ -204,13 +210,49 @@ export function PropertyDetailPage() {
 
   if (isLoading && !propertyData) {
     return (
-      <div className="bg-background min-h-screen pb-20 pt-20">
-        <div className="container mx-auto px-4 py-8 sm:px-6 lg:px-8">
-          <div className="bg-muted/40 h-8 w-40 animate-pulse rounded-lg" />
-          <div className="bg-muted/40 mt-6 h-[280px] animate-pulse rounded-2xl sm:h-[420px]" />
-          <div className="mt-8 space-y-4">
-            <div className="bg-muted/40 h-10 w-2/3 animate-pulse rounded-lg" />
-            <div className="bg-muted/40 h-24 animate-pulse rounded-2xl" />
+      <div className="@container bg-background min-h-screen w-full min-w-0 pb-20 pt-24">
+        <div className="@xl:px-6 @5xl:px-8 container mx-auto px-4">
+          <Skeleton className="@xl:h-[400px] @3xl:h-[500px] h-[300px] w-full rounded-2xl" />
+        </div>
+
+        <div className="@xl:px-6 @5xl:px-8 container mx-auto px-4 py-8">
+          <div className="@5xl:grid-cols-3 @5xl:gap-12 grid grid-cols-1 gap-8">
+            <div className="@5xl:col-span-2 min-w-0 space-y-10">
+              <div className="space-y-4">
+                <Skeleton className="h-8 w-2/3 rounded-lg" />
+                <Skeleton className="h-4 w-1/3 rounded-full" />
+                <div className="flex flex-wrap gap-4">
+                  <Skeleton className="h-4 w-16 rounded-full" />
+                  <Skeleton className="h-4 w-16 rounded-full" />
+                  <Skeleton className="h-4 w-16 rounded-full" />
+                  <Skeleton className="h-4 w-16 rounded-full" />
+                </div>
+              </div>
+
+              <hr className="border-border" />
+
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-full rounded-full" />
+                <Skeleton className="h-4 w-full rounded-full" />
+                <Skeleton className="h-4 w-2/3 rounded-full" />
+              </div>
+
+              <hr className="border-border" />
+
+              <div className="@2xl:grid-cols-3 grid grid-cols-2 gap-4">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={i} className="h-4 w-24 rounded-full" />
+                ))}
+              </div>
+            </div>
+
+            <div className="@5xl:block hidden">
+              <div className="border-border space-y-5 rounded-2xl border p-6 shadow-sm">
+                <Skeleton className="h-7 w-32 rounded-lg" />
+                <Skeleton className="h-24 w-full rounded-xl" />
+                <Skeleton className="h-11 w-full rounded-xl" />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -373,9 +415,16 @@ export function PropertyDetailPage() {
 
   return (
     <GuestPublicBrandShell brandColor={propertyData.brandColor}>
-      <div className="bg-background min-h-screen pb-20 pt-24">
+      <div
+        className={cn(
+          '@container bg-background min-h-screen w-full min-w-0',
+          isEditorPreview ? 'pt-4' : 'pt-24',
+          forceMobileChrome || !isEditorPreview ? 'pb-20' : 'pb-4',
+          forceMobileChrome && 'pb-24'
+        )}
+      >
         {showGallery ? (
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="@xl:px-6 @5xl:px-8 container mx-auto px-4">
             <PropertyGallery
               images={propertyData.images}
               propertyName={propertyData.name}
@@ -384,13 +433,23 @@ export function PropertyDetailPage() {
           </div>
         ) : null}
 
-        <div className="container mx-auto px-4 py-8 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 lg:gap-12">
-            <div className="space-y-10 lg:col-span-2">
+        <div className="@xl:px-6 @5xl:px-8 container mx-auto px-4 py-8">
+          <div
+            className={cn(
+              'grid grid-cols-1 gap-8',
+              forceMobileChrome ? null : '@5xl:grid-cols-3 @5xl:gap-12'
+            )}
+          >
+            <div className={cn('min-w-0 space-y-10', !forceMobileChrome && '@5xl:col-span-2')}>
               {bodySections.map((sectionId, index) => renderBodySection(sectionId, index))}
             </div>
 
-            <div className="hidden lg:block">
+            <div
+              className={cn(
+                'min-w-0',
+                forceDesktopChrome ? 'block' : forceMobileChrome ? 'hidden' : '@5xl:block hidden'
+              )}
+            >
               <BookingCard
                 baseRate={propertyData.pricing.baseRate}
                 currency={propertyData.pricing.currency}
@@ -418,7 +477,7 @@ export function PropertyDetailPage() {
             </div>
           </div>
 
-          <div className="mt-16">
+          <div className="mt-16 min-w-0">
             <hr className="border-border mb-10" />
             <SimilarProperties
               properties={mockProperties}
@@ -427,30 +486,40 @@ export function PropertyDetailPage() {
           </div>
         </div>
 
-        <motion.div
-          initial={{ y: 100 }}
-          animate={{ y: 0 }}
-          className="border-border bg-background/95 fixed inset-x-0 bottom-0 z-40 border-t p-4 backdrop-blur-lg lg:hidden"
-        >
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <div className="flex items-baseline gap-1">
-                <span className="text-foreground text-lg font-bold">
-                  ₱{propertyData.pricing.baseRate.toLocaleString()}
-                </span>
-                <span className="text-muted-foreground text-sm">/ night</span>
+        {!forceDesktopChrome ? (
+          <motion.div
+            initial={{ y: 100 }}
+            animate={{ y: 0 }}
+            className={cn(
+              'border-border bg-background/95 z-40 border-t p-4 backdrop-blur-lg',
+              forceMobileChrome ? 'sticky bottom-0' : '@5xl:hidden fixed inset-x-0 bottom-0'
+            )}
+          >
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-baseline gap-1">
+                  <span className="text-foreground text-lg font-bold">
+                    ₱{propertyData.pricing.baseRate.toLocaleString()}
+                  </span>
+                  <span className="text-muted-foreground text-sm">/ night</span>
+                </div>
+                {showRatingInBooking ? (
+                  <p className="text-muted-foreground truncate text-sm">
+                    {propertyData.rating} ★ · {propertyData.reviews} reviews
+                  </p>
+                ) : null}
               </div>
-              {showRatingInBooking ? (
-                <p className="text-muted-foreground text-sm">
-                  {propertyData.rating} ★ · {propertyData.reviews} reviews
-                </p>
-              ) : null}
+              <Button
+                size="lg"
+                className="min-h-[44px] shrink-0 rounded-full px-8"
+                type="button"
+                onClick={reserve}
+              >
+                Reserve
+              </Button>
             </div>
-            <Button size="lg" className="rounded-full px-8" type="button" onClick={reserve}>
-              Reserve
-            </Button>
-          </div>
-        </motion.div>
+          </motion.div>
+        ) : null}
 
         <BookingCalendarModal
           open={calendarOpen}

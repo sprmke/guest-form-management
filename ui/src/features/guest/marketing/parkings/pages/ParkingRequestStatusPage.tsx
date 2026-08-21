@@ -7,7 +7,7 @@ import { ParkingRequestStatusView } from '@/features/guest/marketing/parkings/co
 import { useParkingBookingStatus } from '@/features/guest/marketing/parkings/hooks/useParkingBookingStatus';
 import { useParkingRequestCountdown } from '@/features/guest/marketing/parkings/hooks/useParkingRequestCountdown';
 
-import { GuestFormPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
+import { ParkingRequestStatusPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
 import { Button } from '@/components/ui/button';
 import { usePageTitle } from '@/lib/pageTitle';
 
@@ -23,7 +23,7 @@ export function ParkingRequestStatusPage() {
   }
 
   if (isLoading && !data) {
-    return <GuestFormPageSkeleton title="Parking request" />;
+    return <ParkingRequestStatusPageSkeleton toolbar={<FormPageToolbar />} />;
   }
 
   if (isError || !data) {
