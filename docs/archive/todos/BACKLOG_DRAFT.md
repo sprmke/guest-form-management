@@ -224,7 +224,7 @@ PAY PARKING -> PARKING OWNERS -> OUR GUESTS
 
 Multi-users/multi-tenant todos:
 
-- ✅ **Guest Inbox (org-level) — Phase 0–5 shipped.** Route `/org/:orgSlug/inbox`; Meta OAuth (Facebook Messenger DMs); quick replies; AI suggest + optional auto-send. TikTok/Airbnb UI coming soon. **Full roadmap:** [[guides/routes/org/inbox]] § Roadmap.
+- ✅ **Guest Inbox (org-level) — Phase 0–5 shipped.** Route `/org/:orgSlug/inbox`; Meta OAuth (Facebook Messenger DMs); quick replies; AI suggest + optional auto-send. TikTok/Airbnb inbox channels **cancelled** (API limits). **Full roadmap:** [[guides/routes/org/inbox]] § Roadmap.
 - [x] Guest Inbox — DM thread ID canonicalization + legacy migration on sync/webhook
 - [x] Guest Inbox — thread list + message history pagination (infinite scroll / load earlier)
 - [x] Guest Inbox — Meta backfill Graph pagination + `meta_backfill_*` state columns
@@ -249,7 +249,7 @@ Multi-users/multi-tenant todos:
 - [ ] Guest Inbox — **connect/disconnect audit** — no hangs, races, or partial cleanup (partial: OAuth state cleared on reconnect)
 - [ ] Guest Inbox — **outbound media** — send photos/videos (Meta limits)
 - [x] Guest Inbox — **media lightbox** — image/video preview modal in conversation
-- [ ] Guest Inbox — **FB + IG comments** — list, view, reply in thread UI (webhook handlers exist)
+- [x] Guest Inbox — remove FB + IG comment support from inbox implementation and docs; keep Meta scope messages-only
 - [x] Guest Inbox — **default 10 quick replies** — Airbnb/booking FAQ seed templates
 - [ ] Guest Inbox — **quick reply attachments** — images/videos per template
 - [x] Guest Inbox — **automation suggest-first** — AI fills composer; auto-send opt-in only
@@ -260,7 +260,7 @@ Multi-users/multi-tenant todos:
 - [ ] Guest Inbox — **scheduled broadcast** — weekly/scheduled Meta messages
 - [x] Guest Inbox — **desktop notifications** — browser notify when tab hidden (system sound where supported)
 - [ ] Guest Inbox — property-level channel overrides
-- [ ] Guest Inbox — Airbnb Homes API partnership
+- ~~Guest Inbox — Airbnb Homes API partnership~~ **Cancelled** — no public Homes messaging API partnership; Channels is Meta-only.
 
 **Marketing Content Studio — see [[marketing|Marketing — operator guide]]**
 
@@ -272,7 +272,7 @@ Multi-users/multi-tenant todos:
 - [x] Video editor — **drag text slots** on preview (fixed slots per scene layout; `%` positions in `textLayout`)
 - [x] Video editor — **background music** (preset tracks + URL + volume; Remotion `Audio`; export includes audio when set)
 - [ ] IG scheduled publish cron (rows stuck `pending` with future `scheduled_at`)
-- [ ] Guest Inbox — TikTok Business Messaging API
+- ~~Guest Inbox — TikTok Business Messaging API~~ **Cancelled** — requires TikTok Business Messaging API approval; not feasible for v1.
 
 ---
 
