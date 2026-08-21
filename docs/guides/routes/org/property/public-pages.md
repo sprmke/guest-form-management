@@ -2,7 +2,7 @@
 title: 'Public Pages'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-20
+updated: 2026-08-21
 ---
 
 # Public Pages
@@ -17,12 +17,13 @@ Legacy URL `/custom-pages` redirects here.
 
 ## Progress overview
 
-| Section           | E2E save | Validation | Docs       | Notes                                                       |
-| ----------------- | -------- | ---------- | ---------- | ----------------------------------------------------------- |
-| Design your pages | —        | —          | Documented | Property + Stay Guide; Edit + last-edited from page configs |
-| Other guest pages | —        | —          | Documented | Six operational URLs; Copy / Open only                      |
-| Stay Guide editor | —        | —          | Documented | Admin preview URL (`preview=1`); template via API           |
-| Permissions       | —        | —          | Documented | `templates:view` (same as Templates)                        |
+| Section            | E2E save | Validation | Docs       | Notes                                                               |
+| ------------------ | -------- | ---------- | ---------- | ------------------------------------------------------------------- |
+| Design your pages  | —        | —          | Documented | Property + Stay Guide; Edit + last-edited from page configs         |
+| Other guest pages  | —        | —          | Documented | Six operational URLs; Copy / Open only                              |
+| Stay Guide editor  | —        | —          | Documented | Layout + Content (WYSIWYG/images) in Page Editor; live preview      |
+| Page Editor chrome | —        | —          | Documented | Fixed 480px sidebar; desktop/mobile preview; autosave Unsaved/Saved |
+| Permissions        | —        | —          | Documented | `templates:view` (same as Templates)                                |
 
 ## Purpose
 
@@ -30,7 +31,7 @@ Directory of this property's **guest-facing public pages**, grouped into **Desig
 
 Requires the **Starter** plan or higher (`customPages` feature). Free-tier hosts see an upgrade prompt instead of the gallery.
 
-**Stay Guide** and **Property** (listing) cards use **Edit** → Page Editor (`/public-pages/:pageId/edit`). The listing editor covers gallery, brand color, description, amenities, house rules, cancellation, socials, and section visibility/order. Stay Guide body copy still edits under **Templates**.
+**Stay Guide** and **Property** (listing) cards use **Edit** → Page Editor (`/public-pages/:pageId/edit`). The listing editor covers gallery, brand color, description, amenities, house rules, cancellation, socials, and section visibility/order — the same content fields as **Property Settings** (single storage; Settings has no live preview). Stay Guide body copy and section images edit in the Stay Guide Page Editor (**Content**); Templates still has standard body copy without section images.
 
 ## Host-facing knowledge
 
@@ -43,13 +44,19 @@ Public Pages lists every guest URL for this property. At the top, **Design your 
 - Q: Why doesn't the SD refund or pay parking copy link work for guests?
   A: Those URLs need a **booking ID**. Guests receive the full link by email; hosts copy the link from a booking in the workflow panel.
 - Q: Can I change how the stay guide or listing looks?
-  A: Open **Public Pages** → **Design your pages** → Stay Guide or Property → **Edit**. Toggle sections, reorder, set accents (Stay Guide), or manage photos, brand color, and listing content. Body copy for the stay guide still edits under **Templates**.
+  A: Open **Public Pages → Design your pages → Stay Guide or Property → Edit**. Toggle sections, reorder chapters, edit Stay Guide text and section photos, or manage listing photos, brand color, and listing content. You can also edit listing fields in **Property Settings** (same saved data).
 - Q: What does “Last edited” / “Not customized yet” mean?
   A: It reflects layout changes you’ve saved in the Page Editor. If you haven’t changed the layout yet, you’ll see **Not customized yet**.
 - Q: How do I get a shareable link for the stay guide?
   A: There isn't one link you can reuse. Each guest gets their own personal link automatically once their booking reaches ready-for-check-in. The Stay Guide card here is a preview for you.
 - Q: Where do I edit the actual text (house rules, check-in steps)?
-  A: On **Templates**. Public Pages only opens the live guest pages.
+  A: **Public Pages → Stay Guide → Edit → Content**, or **Templates** for the same body copy. Section photos upload only in the Stay Guide Page Editor.
+- Q: Is there a Save button in the page editor?
+  A: No — changes save automatically. You’ll see **Unsaved**, then **Saved**, in the top-right of the editor.
+- Q: Can I preview how the page looks on a phone?
+  A: Yes. In the editor preview bar, switch between desktop and mobile.
+- Q: Where do I change Stay Guide text and section photos?
+  A: **Public Pages → Stay Guide → Edit → Content**. Expand a section to edit text or upload its image. Changes show in the live preview and save automatically.
 
 ## UI
 
@@ -59,6 +66,18 @@ Two sections:
 2. **Other guest pages** — Calendar, Form, Messages, SD Refund, Guest Review, Pay Parking. Compact cards with **Copy link** / **Open page**. Grid: 1 / 2 (`sm`) / 3 (`xl`).
 
 Each card lazy-loads a **scaled live iframe** at **1280px desktop width** (`?embed=1`). Booking-scoped pages render host embed previews when `embed=1` without a booking id. Page subtitle: "Every guest URL for this listing." Registry field `editable` on `propertyGuestPublicPages` drives grouping (no hardcoded IDs in the page).
+
+### Page Editor (`/public-pages/:pageId/edit`)
+
+Opened from **Design your pages → Edit**. Keeps the **Public Pages** page title and subtitle (`AdminMobilePage`), then a bordered editor shell (same height pattern as Marketing Studio).
+
+| Chrome             | Behavior                                                                                                                                                                                                                                                                                                                                             |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Editor header      | Back → gallery; title **Edit - Property** / **Edit - Stay Guide**; **Unsaved / Saving… / Saved** (upper right); undo/redo                                                                                                                                                                                                                            |
+| Sidebar            | Fixed **480px** on `lg+` (not resizable; collapse rail still available). Listing: **Sections** first (open by default). Preview label padded so it clears the collapse control.                                                                                                                                                                      |
+| Preview            | Live guest page tree. Opens on **mobile** (≤420px) with the left sidebar expanded. Toggle **desktop** (≤1280px) / **mobile** in the Preview bar. Choosing **desktop** collapses the sidebar so the preview can use full width; choosing **mobile** expands it again. Listing layout uses **container queries**, so both frames adapt to frame width. |
+| Save               | **Debounced autosave** (no Save button). Layout → `public-page-configs`; Stay Guide body + section images → `property-templates-settings`; listing content/brand/socials → property/`app_settings`. Status merges all pending surfaces.                                                                                                              |
+| Stay Guide Content | Merged **Sections** block: drag + visibility per chapter, nested WYSIWYG/image cards. Live preview updates as you type.                                                                                                                                                                                                                              |
 
 | Item         | Path                                                                                                             |
 | ------------ | ---------------------------------------------------------------------------------------------------------------- |

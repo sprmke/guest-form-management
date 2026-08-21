@@ -24,7 +24,7 @@ Route: `/org/:orgSlug/property/:propertySlug/bookings/:bookingId` (legacy flat: 
 
 ## Overview
 
-Two-column layout on tablet/desktop: **booking details** (left) and **Progress** (`WorkflowPanel`, right, `lg:sticky`). On mobile (`<md`), a compact summary strip (`BookingDetailMobileSummary`) stays above the fold and **Progress** renders before the full detail panel so admins see workflow state without scrolling past the guest form.
+Two-column layout on tablet/desktop: **booking details** (left) and **Progress** (`WorkflowPanel`, right, `lg:sticky`). On `lg+`, the Progress card is capped to `max-h-[calc(100dvh-2.5rem)]` (with `min-h-[min(24rem,…)]` so short viewports stay usable) and scrolls its stage body while header/actions stay put. On mobile (`<md`), a compact summary strip (`BookingDetailMobileSummary`) stays above the fold and **Progress** renders before the full detail panel so admins see workflow state without scrolling past the guest form.
 
 The page auto-refreshes the booking every **60 seconds** while the tab is visible (`document.visibilityState === 'visible'`) so inbound approval and `sd-refund-cron` transitions surface without a manual reload.
 

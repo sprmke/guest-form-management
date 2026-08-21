@@ -2,7 +2,7 @@
 title: 'Finance — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-17
+updated: 2026-08-21
 ---
 
 # Finance — operator guide
@@ -63,12 +63,12 @@ Finance gives hosts one place to see how much money is coming in and going out f
 
 ### Fields
 
-| Card             | Computation                                                            |
-| ---------------- | ---------------------------------------------------------------------- |
-| Total Income     | Completed stay income + completed manual income items                  |
-| Total Expenses   | Completed manual expense items (+ SD/parking payouts where applicable) |
-| Net Profit       | Income − Expenses for the period                                       |
-| Pending Payments | Outstanding guest balances / unpaid manual items                       |
+| Card             | Computation                                                                                      |
+| ---------------- | ------------------------------------------------------------------------------------------------ |
+| Total Income     | Completed stay net + in-progress stay projections + manual income items                          |
+| Total Expenses   | Manual expense items + stay-related costs (SD expenses / completed stay losses where applicable) |
+| Net Profit       | Income − Expenses for the period (same figure the AI assistant uses for profit questions)        |
+| Pending Payments | Outstanding guest balances / unpaid manual items                                                 |
 
 Charts (`FinanceTransactionsChart`) plot the same underlying data as cash-flow (by day/week) and income vs. expense category breakdown, reused from the property dashboard's chart components.
 
