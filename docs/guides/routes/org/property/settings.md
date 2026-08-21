@@ -2,7 +2,7 @@
 title: 'Property Settings — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-20
+updated: 2026-08-21
 ---
 
 # Property Settings — operator guide
@@ -26,7 +26,7 @@ Route: `/org/:orgSlug/property/:propertySlug/settings`
 | Voice Receptionist | Done     | Done       | Done | Opt-in AI voice assistant; own settings row; saves with page Save Changes |
 | Danger Zone        | Done     | Done       | Done | Archive + delete with confirmations                                       |
 
-> **Moved to Page Editor:** Photos & Videos, Brand color, Description, Amenities, House Rules, Cancellation, and Socials — edit under **Public Pages → Property → Edit** (`/public-pages/listing/edit`). Hashes `#media`, `#amenities`, `#house-rules`, `#cancellation`, and `#branding` on Settings show a short banner with a link.
+> **Also editable in Page Editor:** Photos & Videos, Brand color, Description, Amenities, House Rules, Cancellation, and Socials — same fields, same storage (`properties.settings` / `app_settings`). Edit in **Settings** or **Public Pages → Property → Edit** (live preview). Do not treat them as separate copies.
 
 ---
 
@@ -38,7 +38,7 @@ Living operator spec for property settings: what each section does, how data is 
 
 ## Host-facing knowledge
 
-Property Settings is where you complete operational setup: basic info, capacity, location, payment details, building forms, email automations, and integrations. Listing content (photos, description, amenities, house rules, cancellation, socials, brand color) lives under **Public Pages → Edit** on the Property card. You can save section by section, and incomplete required areas show a red dot until they're done.
+Property Settings is where you complete operational setup: basic info, capacity, location, payment details, building forms, email automations, and integrations. Listing content (photos, description, amenities, house rules, cancellation, socials, brand color) can be edited here **or** under **Public Pages → Edit** on the Property card — both screens save to the same place. You can save section by section, and incomplete required areas show a red dot until they're done.
 
 **Common host questions**
 
@@ -53,9 +53,9 @@ Property Settings is where you complete operational setup: basic info, capacity,
 - Q: Where is the PMO / documents-approver email set?
   A: On the development in Super Admin (**Developments → Email automations → PMO email**). Property Settings only holds your property/team ops email (alerts, Reply-To, CC on GAF/pet), not the PMO To address.
 - Q: Where do I edit amenities, house rules, or cancellation?
-  A: **Public Pages → Property → Edit**.
+  A: In **Property Settings**, or in **Public Pages → Property → Edit** if you want a live preview. Both save the same data.
 - Q: Where do I upload listing photos?
-  A: Same listing editor. Old Settings links with `#media`, `#amenities`, and similar hashes show a banner that takes you there.
+  A: **Property Settings → Photos & Videos**, or the listing Page Editor gallery. Photos are shared across the listing, property cards, and Marketing.
 - Q: Where is listing verification?
   A: Open **Verification** from the property sidebar (not org **Get Verified**). That flow covers ownership proof, contract dates, and the Recommended badge for this listing. Submitting listing **Recommended** tier requires a paid plan with **`recommendedBadgeEligible`**; the upgrade modal links to **Plans**.
 - Q: My contract is ending — what should I do?
@@ -142,11 +142,11 @@ Defaults apply when creating a new property with that residence (not when editin
 
 ## Photos & Videos
 
-**Moved to Page Editor** — **Public Pages → Property → Edit**. Storage unchanged (`properties.settings.media` via `upload-property-media` / `update-property`). Brand color is edited on the same screen (`app_settings.brand_color`). Settings `#media` / `#branding` show a one-time banner linking to the listing editor.
+Listing gallery photos/videos. Storage: `properties.settings.media` via `upload-property-media` / `update-property`. Same fields are editable in **Public Pages → Property → Edit** (live preview). Brand color is under **Basic Information** (`app_settings.brand_color`) and also in the listing editor.
 
 ## Description
 
-**Moved to Page Editor** — same listing editor. Storage unchanged (`properties.settings.description`, max 1000 chars).
+Stored in `properties.settings.description` (max 1000 chars). Also editable in the listing Page Editor.
 
 ---
 
@@ -178,13 +178,13 @@ Validated on save against residence limits (see Azure North table above).
 
 ## Amenities
 
-**Moved to Page Editor** — **Public Pages → Property → Edit**. Storage unchanged (`properties.settings.enabledAmenities` / `customAmenities`). Settings `#amenities` shows a banner linking to the listing editor.
+Preset + custom amenities in `properties.settings.enabledAmenities` / `customAmenities`. Also editable in the listing Page Editor.
 
 ---
 
 ## House Rules
 
-**Moved to Page Editor** — same listing editor. Storage unchanged (`enabledHouseRules` / `customHouseRules`). Preset catalog still mirrors `propertyHouseRulesConstants.ts`; check-in/out presets use property detail times on the public listing. Templates → **House Rules** remains email copy only. Settings `#house-rules` shows a banner.
+Preset + custom house rules (`enabledHouseRules` / `customHouseRules`). Also editable in the listing Page Editor. Preset catalog still mirrors `propertyHouseRulesConstants.ts`; check-in/out presets use property detail times on the public listing. Templates → **House Rules** remains email copy only.
 
 ---
 
@@ -214,7 +214,7 @@ Public exposure: resolved via **`get-guest-payment-info`** (same request as paym
 
 ## Cancellation policy
 
-**Moved to Page Editor** — same listing editor. Storage unchanged (`properties.settings.cancellationPolicy`). Settings `#cancellation` shows a banner.
+Stored in `properties.settings.cancellationPolicy`. Also editable in the listing Page Editor.
 
 ## Location
 
@@ -234,7 +234,7 @@ Public exposure: resolved via **`get-guest-payment-info`** (same request as paym
 
 ## Socials
 
-**Moved to Page Editor** — **Public Pages → Property → Edit**. Storage unchanged (`app_settings` social URLs, `external_reviews`, superhost fields).
+Social URLs, external reviews, and superhost fields in `app_settings`. Also editable in the listing Page Editor (same storage).
 
 ---
 

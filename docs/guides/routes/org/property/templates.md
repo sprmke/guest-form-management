@@ -2,7 +2,7 @@
 title: 'Property templates'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-17
+updated: 2026-08-21
 ---
 
 # Property templates
@@ -27,6 +27,8 @@ Templates is where you customize the text guests and your team receive: stay gui
 
 - Q: Which templates do guests actually see?
   A: The four standard templates (house rules, check-in instructions, check-out instructions, parking reminders) appear on the guest stay guide during their booking window. Email templates are used for automated messages throughout the booking process.
+- Q: Where do I upload Stay Guide section photos?
+  A: **Public Pages → Stay Guide → Edit → Content**. Templates still edits the text for those sections, but section images upload only in the Stay Guide page editor (with live preview).
 - Q: If I mess up an email template, can I undo it?
   A: Yes. Use **Reset to default** on any built-in template to restore the original wording, including dynamic sections like payment tables and signatures.
 - Q: Do custom templates get sent automatically?
@@ -36,13 +38,13 @@ Templates is where you customize the text guests and your team receive: stay gui
 
 ### Shipped
 
-| Layer              | Behavior                                                                                                                                                                      |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Admin UI**       | Load, edit, save, reset, custom create/delete, Edit/Preview, placeholders insert, image resize                                                                                |
-| **Persistence**    | `property_template_contents` per `property_id` + `template_key`; optional **`section_image_url`** (standard only); built-ins fall back to shipped defaults when no row exists |
-| **API**            | `GET/PATCH property-templates-settings`, `POST property-templates-preview`, `POST upload-property-template-asset` (section + inline images)                                   |
-| **Preview**        | Standard: client sample placeholders. Email: same send shell + `buildSampleDynamicSections()` as production                                                                   |
-| **Workflow sends** | `emailService.ts` → `renderPropertyTemplateSendEmail()` resolves DB/default body, substitutes plain + dynamic section placeholders, wraps in send shell                       |
+| Layer              | Behavior                                                                                                                                                                                                             |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Admin UI**       | Load, edit, save, reset, custom create/delete, Edit/Preview, placeholders insert, image resize                                                                                                                       |
+| **Persistence**    | `property_template_contents` per `property_id` + `template_key`; optional **`section_image_url`** (standard only — uploaded from Stay Guide Page Editor); built-ins fall back to shipped defaults when no row exists |
+| **API**            | `GET/PATCH property-templates-settings`, `POST property-templates-preview`, `POST upload-property-template-asset` (section + inline images)                                                                          |
+| **Preview**        | Standard: client sample placeholders. Email: same send shell + `buildSampleDynamicSections()` as production                                                                                                          |
+| **Workflow sends** | `emailService.ts` → `renderPropertyTemplateSendEmail()` resolves DB/default body, substitutes plain + dynamic section placeholders, wraps in send shell                                                              |
 
 ### Not wired
 

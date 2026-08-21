@@ -100,15 +100,19 @@ On **`READY_FOR_CHECKIN`** and later, **WorkflowPanel** shows **Stay guide** wit
 
 ## Page Editor
 
-**Public Pages → Stay Guide → Edit** — `ui/src/features/dashboard/page-editor/` (`StayGuideEditorPanel`, `stayGuideEditorStore`, live preview via `previewOverrideContext`). Autosave PATCHes **`public-page-configs`**. Requires **`customPages`** (Starter+).
+**Public Pages → Stay Guide → Edit** — `ui/src/features/dashboard/page-editor/` (`StayGuideEditorPanel`, `StayGuideSectionContentCard`, `stayGuideEditorStore`, live preview via `previewOverrideContext`). Layout autosave PATCHes **`public-page-configs`**. Chapter **content** + **section images** autosave via **`property-templates-settings`** (same rows as Templates). Requires **`customPages`** (Starter+).
+
+**Content chrome:** accordion cards under **Content**, grouped by chapter (Getting In / At home / Before You Go). Each card: section image uploader + WYSIWYG + placeholders + reset. Edits update the live preview immediately (client-side placeholder fill).
 
 ## Standard template section images
 
-On **Templates → Standard templates**, each card has an optional **Section image** uploader (above the WYSIWYG). Stored as **`section_image_url`** on **`property_template_contents`**; shown at the top of that tab’s card on the stay guide **only when set** (no property-gallery fallback). Storage uses a **fixed path** per template key, so replace upserts overwrite the same public URL — both the Templates preview and the stay guide append a cache-bust query (`?v=` from template `updated_at` / local upload bust) so browsers reload the new file. Inline images inserted in the editor are uploaded via **`upload-property-template-asset`** and rendered in the public body HTML.
+Section images are managed in the **Stay Guide Page Editor** (not Templates). Stored as **`section_image_url`** on **`property_template_contents`**; shown at the top of that section’s card on the stay guide **only when set** (no property-gallery fallback). Storage uses a **fixed path** per template key, so replace upserts overwrite the same public URL — preview appends a cache-bust query (`?v=`). Inline images inserted in the editor are uploaded via **`upload-property-template-asset`** and rendered in the public body HTML.
+
+**Templates → Standard templates** still edits body copy, but **does not** show the section image uploader (avoids a second upload surface).
 
 ## Content rendering
 
-- The **first h1–h3** in template body becomes the section card title (duplicate heading stripped from body).
+- The **first h1–h3** in template body becomes the section card title (`displayHeading`; duplicate heading stripped from body HTML). That title is **always** shown on the stay guide for every template section (including single-section chapters like Getting In). If the body has no leading heading, the template registry label is used.
 - **`ul` / `ol`** render as proper lists with bullets/numbers.
 
 ## UI (v1 template: `stay-guide-warm-arrival`)
@@ -119,7 +123,7 @@ Warm-neutral "digital pamphlet" redesign — page-scoped palette (Paper/Ink/Sand
 - **Stay pass card** (`StayPassCard.tsx`) — boarding-pass-styled summary (guest name, property, check-in/out date + time) that overlaps the hero's bottom edge; the signature "wow" element, surfacing practical booking facts immediately per competitive UX research
 - **Gallery film strip** (`StayGuideGalleryCarousel.tsx`) — editorial horizontal scroll-snap strip of gallery images, placed after the hero/pass (not a full-bleed carousel at the top)
 - **Quick-nav** (`StayGuideTabs.tsx`) — sticky pill bar under the gallery; jump-scrolls to chapter anchors, scrollspy-highlights the chapter in view (`IntersectionObserver`)
-- **Chapters** (`StayGuideChapter.tsx`, grouped by `lib/stayGuideChapters.ts`) — standard sections regrouped into "Getting In" (check-in), "Make Yourself at Home" (house rules + parking when applicable), "Before You Go" (check-out); each chapter: eyebrow + `Fraunces` heading + Sand-surfaced body, quiet scroll-reveal on enter; **Check-in** chapter appends the full-bleed map card below its content; optional per-chapter **`accentColor`** from `sectionConfig`
+- **Chapters** (`StayGuideChapter.tsx`, grouped by `lib/stayGuideChapters.ts`) — standard sections regrouped into "Getting In" (check-in), "Make Yourself at Home" (house rules + parking when applicable), "Before You Go" (check-out); each chapter: eyebrow + `Fraunces` heading + Sand-surfaced body, quiet scroll-reveal on enter; **Check-in** chapter appends the full-bleed map card below its content
 - **Need Anything?** — restyled `StayGuideHelpSection.tsx` (same host/contact data), now a chapter target (`id="need-anything"`) for quick-nav
 - Brand color from property/org via CSS variables (interactive accent only — buttons, active nav pill, links)
 
