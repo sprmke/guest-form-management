@@ -13,6 +13,10 @@ import {
 } from '@/features/dashboard/inbox/components/InboxManageModals';
 import { InboxPlatformTabs } from '@/features/dashboard/inbox/components/InboxPlatformTabs';
 import { InboxThreadList } from '@/features/dashboard/inbox/components/InboxThreadList';
+import {
+  MetaInboxOperationModal,
+  type MetaInboxOperation,
+} from '@/features/dashboard/inbox/components/MetaInboxOperationModal';
 import { MetaPagePickerDialog } from '@/features/dashboard/inbox/components/MetaPagePickerDialog';
 import {
   useInboxAutomationSettings,
@@ -32,7 +36,6 @@ import type {
   InboxConversation,
   ThreadPlatformFilter,
   ThreadStatusFilter,
-  ThreadTypeFilter,
 } from '@/features/dashboard/inbox/types/inbox';
 
 import { bottomTabBarOffsetClassName } from '@/components/mobile/BottomTabBar';
@@ -70,7 +73,6 @@ export function InboxPage({
   const [selectedId, setSelectedId] = useState<string | null>(() => conversationIdParam);
   const [mobileShowConversation, setMobileShowConversation] = useState(() => !!conversationIdParam);
   const [statusFilter, setStatusFilter] = useState<ThreadStatusFilter>('all');
-  const [typeFilter, setTypeFilter] = useState<ThreadTypeFilter>('all');
   const [platformFilter, setPlatformFilter] = useState<ThreadPlatformFilter>(() => {
     if (platformParam === 'web' || platformParam === 'facebook' || platformParam === 'instagram') {
       return platformParam;
@@ -129,7 +131,6 @@ export function InboxPage({
     orgSlug,
     orgId,
     {
-      type: typeFilter,
       status: statusFilter,
       platform: platformFilter,
       search,
@@ -218,10 +219,31 @@ export function InboxPage({
     });
   };
 
-  const selectedConversation = useMemo(
-    () => conversations.find((c) => c.id === selectedId) ?? messagesConversation ?? null,
-    [conversations, selectedId, messagesConversation]
-  );
+  const metaOperation = useMemo((): MetaInboxOperation | null => {
+    if (disconnectMeta.isPending) return 'disconnect';
+    if (metaSyncInProgress) return 'sync';
+    if (connectMeta.isPending && mockActive) return 'connect';
+    return null;
+  }, [connectMeta.isPending, disconnectMeta.isPending, metaSyncInProgress, mockActive]);
+
+  useEffect(() => {
+    if (metaOperation === null) return;
+    setManageModal(null);
+    setPagePickerState(null);
+  }, [metaOperation]);
+
+  const selectedConversation = useMemo(() => {
+    const fromList = conversations.find((c) => c.id === selectedId) ?? null;
+    if (fromList && messagesConversation?.id === fromList.id) {
+      return {
+        ...fromList,
+        participant_name: messagesConversation.participant_name || fromList.participant_name,
+        participant_avatar_url:
+          messagesConversation.participant_avatar_url || fromList.participant_avatar_url,
+      };
+    }
+    return fromList ?? messagesConversation ?? null;
+  }, [conversations, selectedId, messagesConversation]);
 
   useEffect(() => {
     const metaStatus = searchParams.get('meta_inbox');
@@ -229,7 +251,6 @@ export function InboxPage({
     const metaPicker = searchParams.get('meta_picker');
     if (metaStatus === 'connected') {
       toast.success('Meta channels connected', { id: 'meta-inbox-connected' });
-      setManageModal('channels');
     }
     if (metaStatus === 'select_page' && metaPicker) {
       setPagePickerState(metaPicker);
@@ -288,11 +309,7 @@ export function InboxPage({
         )}
 
         <div className="border-border/80 bg-card flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border shadow-sm">
-          <InboxPlatformTabs
-            value={platformFilter}
-            onChange={setPlatformFilter}
-            showComingSoonPlatforms={mockActive}
-          />
+          <InboxPlatformTabs value={platformFilter} onChange={setPlatformFilter} />
 
           <div className="flex min-h-0 flex-1">
             <div
@@ -308,14 +325,11 @@ export function InboxPage({
                 platformFilter={platformFilter}
                 onSelect={selectConversation}
                 statusFilter={statusFilter}
-                typeFilter={typeFilter}
                 search={searchInput}
                 onStatusFilter={setStatusFilter}
-                onTypeFilter={setTypeFilter}
                 onSearch={setSearchInput}
                 emptyVariant={threadEmptyVariant}
                 loadError={threadsErrorValue instanceof Error ? threadsErrorValue.message : null}
-                syncInProgress={metaSyncInProgress}
                 canConnect={canManage}
                 onConnect={handleConnectMeta}
                 onRetryLoad={() => void refetchThreads()}
@@ -354,7 +368,6 @@ export function InboxPage({
                   await sendReply.mutateAsync({
                     conversationId: selectedId,
                     text,
-                    privateReply: opts?.privateReply,
                     replyToMessageId: opts?.replyToMessageId,
                     useHumanAgentTag: opts?.useHumanAgentTag,
                   });
@@ -387,7 +400,6 @@ export function InboxPage({
           showSettingsManageTabs={showSettingsManageTabs}
           usingOrgMeta={connectionsData?.usingOrgMeta}
           connections={connectionsData?.connections ?? []}
-          comingSoon={connectionsData?.comingSoon ?? []}
           connectionsLoading={connectionsLoading}
           connectionsError={connectionsError}
           connecting={connectMeta.isPending}
@@ -446,7 +458,6 @@ export function InboxPage({
                   data.pageName ? `Connected ${data.pageName}` : 'Meta channels connected'
                 );
                 setPagePickerState(null);
-                setManageModal('channels');
               },
               onError: (e) => toast.error(e.message),
             });
@@ -454,6 +465,11 @@ export function InboxPage({
           onOpenChange={(open) => {
             if (!open) setPagePickerState(null);
           }}
+        />
+        <MetaInboxOperationModal
+          open={metaOperation !== null}
+          operation={metaOperation ?? 'sync'}
+          loadedCount={conversations.length}
         />
       </div>
     </AdminMobilePage>

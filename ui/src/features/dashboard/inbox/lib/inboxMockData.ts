@@ -1,5 +1,4 @@
 import type {
-  ComingSoonPlatform,
   InboxAutomationSettings,
   InboxConnection,
   InboxConversation,
@@ -7,7 +6,6 @@ import type {
   InboxTemplate,
   ThreadPlatformFilter,
   ThreadStatusFilter,
-  ThreadTypeFilter,
 } from '@/features/dashboard/inbox/types/inbox';
 
 const ORG = 'mock-org-id';
@@ -45,31 +43,7 @@ export const MOCK_CONNECTIONS: InboxConnection[] = [
     lastSyncAt: hoursAgo(1),
     errorMessage: null,
   },
-  {
-    id: 'conn-tiktok',
-    platform: 'tiktok',
-    displayName: '@kamehome.stays',
-    profileImageUrl: null,
-    status: 'connected',
-    connectedAt: hoursAgo(48),
-    lastSyncAt: null,
-    errorMessage: null,
-    isPreview: true,
-  },
-  {
-    id: 'conn-airbnb',
-    platform: 'airbnb',
-    displayName: 'Kame Home — Azure North',
-    profileImageUrl: null,
-    status: 'connected',
-    connectedAt: hoursAgo(168),
-    lastSyncAt: null,
-    errorMessage: null,
-    isPreview: true,
-  },
 ];
-
-export const MOCK_COMING_SOON: ComingSoonPlatform[] = [];
 
 export const MOCK_CONVERSATIONS: InboxConversation[] = [
   {
@@ -149,82 +123,6 @@ export const MOCK_CONVERSATIONS: InboxConversation[] = [
     linked_post_url: null,
   },
   {
-    id: 'mock-fb-comment',
-    organization_id: ORG,
-    connection_id: 'conn-fb',
-    platform: 'facebook',
-    conversation_type: 'comment',
-    external_thread_id: 'comment:fb-8821',
-    external_participant_id: 'fb-user-8821',
-    participant_name: 'Patricia Go',
-    participant_avatar_url: null,
-    subject_preview: 'How much is the nightly rate for 2 pax?',
-    last_message_at: minutesAgo(45),
-    last_inbound_at: minutesAgo(45),
-    unread_count: 1,
-    reply_status: 'pending',
-    messaging_window_expires_at: null,
-    linked_post_id: 'post-azure-promo',
-    linked_post_url: 'https://facebook.com/kamehome/posts/azure-promo',
-  },
-  {
-    id: 'mock-ig-comment',
-    organization_id: ORG,
-    connection_id: 'conn-ig',
-    platform: 'instagram',
-    conversation_type: 'comment',
-    external_thread_id: 'comment:ig-4410',
-    external_participant_id: 'ig-user-4410',
-    participant_name: '@mark.books',
-    participant_avatar_url: null,
-    subject_preview: 'Is parking included?',
-    last_message_at: minutesAgo(90),
-    last_inbound_at: minutesAgo(90),
-    unread_count: 1,
-    reply_status: 'pending',
-    messaging_window_expires_at: null,
-    linked_post_id: 'media-reel-tour',
-    linked_post_url: 'https://instagram.com/p/reel-tour',
-  },
-  {
-    id: 'mock-tiktok-dm',
-    organization_id: ORG,
-    connection_id: 'conn-tiktok',
-    platform: 'tiktok',
-    conversation_type: 'dm',
-    external_thread_id: 'tiktok:guest-sophie',
-    external_participant_id: 'guest-sophie',
-    participant_name: 'Sophie Tan',
-    participant_avatar_url: null,
-    subject_preview: 'Saw your unit tour — available this weekend?',
-    last_message_at: minutesAgo(25),
-    last_inbound_at: minutesAgo(25),
-    unread_count: 1,
-    reply_status: 'pending',
-    messaging_window_expires_at: hoursFromNow(40),
-    linked_post_id: null,
-    linked_post_url: null,
-  },
-  {
-    id: 'mock-airbnb-inquiry',
-    organization_id: ORG,
-    connection_id: 'conn-airbnb',
-    platform: 'airbnb',
-    conversation_type: 'dm',
-    external_thread_id: 'airbnb:thread-hm8k2',
-    external_participant_id: 'airbnb-guest-david',
-    participant_name: 'David (Airbnb)',
-    participant_avatar_url: null,
-    subject_preview: 'Inquiry: Apr 2–5 · 3 guests · asking about early check-in',
-    last_message_at: minutesAgo(8),
-    last_inbound_at: minutesAgo(8),
-    unread_count: 1,
-    reply_status: 'pending',
-    messaging_window_expires_at: null,
-    linked_post_id: null,
-    linked_post_url: null,
-  },
-  {
     id: 'mock-fb-dm-ai',
     organization_id: ORG,
     connection_id: 'conn-fb',
@@ -242,25 +140,6 @@ export const MOCK_CONVERSATIONS: InboxConversation[] = [
     messaging_window_expires_at: hoursFromNow(22),
     linked_post_id: null,
     linked_post_url: null,
-  },
-  {
-    id: 'mock-ig-comment-replied',
-    organization_id: ORG,
-    connection_id: 'conn-ig',
-    platform: 'instagram',
-    conversation_type: 'comment',
-    external_thread_id: 'comment:ig-9901',
-    external_participant_id: 'ig-user-9901',
-    participant_name: '@jen.stays',
-    participant_avatar_url: null,
-    subject_preview: 'Sent you a DM with the booking link!',
-    last_message_at: hoursAgo(3),
-    last_inbound_at: hoursAgo(5),
-    unread_count: 0,
-    reply_status: 'replied',
-    messaging_window_expires_at: null,
-    linked_post_id: 'media-pool-photo',
-    linked_post_url: 'https://instagram.com/p/pool-photo',
   },
 ];
 
@@ -353,55 +232,6 @@ export const MOCK_MESSAGES: Record<string, InboxMessage[]> = {
       is_ai_generated: false,
     },
   ],
-  'mock-fb-comment': [
-    {
-      id: 'm9',
-      conversation_id: 'mock-fb-comment',
-      direction: 'inbound',
-      body_text: 'How much is the nightly rate for 2 pax?',
-      attachments: [],
-      sent_at: minutesAgo(45),
-      delivery_status: null,
-      is_ai_generated: false,
-    },
-  ],
-  'mock-ig-comment': [
-    {
-      id: 'm10',
-      conversation_id: 'mock-ig-comment',
-      direction: 'inbound',
-      body_text: 'Is parking included?',
-      attachments: [],
-      sent_at: minutesAgo(90),
-      delivery_status: null,
-      is_ai_generated: false,
-    },
-  ],
-  'mock-tiktok-dm': [
-    {
-      id: 'm11',
-      conversation_id: 'mock-tiktok-dm',
-      direction: 'inbound',
-      body_text: 'Saw your unit tour — available this weekend?',
-      attachments: [],
-      sent_at: minutesAgo(25),
-      delivery_status: null,
-      is_ai_generated: false,
-    },
-  ],
-  'mock-airbnb-inquiry': [
-    {
-      id: 'm12',
-      conversation_id: 'mock-airbnb-inquiry',
-      direction: 'inbound',
-      body_text:
-        'Hi! I would like to book Azure North Apr 2–5 for 3 guests. Is early check-in possible around 12 PM?',
-      attachments: [],
-      sent_at: minutesAgo(8),
-      delivery_status: null,
-      is_ai_generated: false,
-    },
-  ],
   'mock-fb-dm-ai': [
     {
       id: 'm13',
@@ -423,28 +253,6 @@ export const MOCK_MESSAGES: Record<string, InboxMessage[]> = {
       sent_at: minutesAgo(30),
       delivery_status: 'sent',
       is_ai_generated: true,
-    },
-  ],
-  'mock-ig-comment-replied': [
-    {
-      id: 'm15',
-      conversation_id: 'mock-ig-comment-replied',
-      direction: 'inbound',
-      body_text: 'Love this place! How do I book?',
-      attachments: [],
-      sent_at: hoursAgo(5),
-      delivery_status: null,
-      is_ai_generated: false,
-    },
-    {
-      id: 'm16',
-      conversation_id: 'mock-ig-comment-replied',
-      direction: 'outbound',
-      body_text: 'Sent you a DM with the booking link!',
-      attachments: [],
-      sent_at: hoursAgo(3),
-      delivery_status: 'sent',
-      is_ai_generated: false,
     },
   ],
 };
@@ -471,22 +279,13 @@ export const MOCK_TEMPLATES: InboxTemplate[] = [
     is_active: true,
   },
   {
-    id: 'tpl-3',
-    title: 'Comment — book via DM',
-    body_text: 'Thanks for your comment! We sent you a message with booking details.',
-    platform: 'instagram',
-    conversation_type: 'all',
-    sort_order: 2,
-    is_active: true,
-  },
-  {
     id: 'tpl-4',
     title: 'Airbnb inquiry',
     body_text:
       'Hi! Thanks for your inquiry. Early check-in may be possible depending on the previous guest — we will confirm closer to your stay.',
     platform: null,
     conversation_type: 'all',
-    sort_order: 3,
+    sort_order: 2,
     is_active: true,
   },
 ];
@@ -500,8 +299,6 @@ export const MOCK_AUTOMATION: InboxAutomationSettings = {
     facebook: true,
     instagram: true,
     web: true,
-    tiktok: false,
-    airbnb: false,
   },
 };
 
@@ -510,26 +307,18 @@ export const MOCK_AI_SUGGESTIONS: Record<string, string> = {
     'Hi Maria! Azure North may be available Mar 15–17 for 4 guests — I will confirm and share rates shortly. Floor preference noted.',
   'mock-ig-dm-urgent':
     'Hi! Small dogs are welcome with a pet fee. Please share your dates and we will send pet policy details.',
-  'mock-fb-comment':
-    'Hi Patricia! Rates depend on dates and guest count — please message us your stay dates and we will reply with a quote.',
-  'mock-airbnb-inquiry':
-    'Hi David! Early check-in around 12 PM may be possible on Apr 2 — we will confirm 24 hours before arrival.',
   default: 'Thanks for your message! We will get back to you shortly with availability and rates.',
 };
 
 export function filterMockConversations(
   conversations: InboxConversation[],
   filters: {
-    type: ThreadTypeFilter;
     status: ThreadStatusFilter;
     platform: ThreadPlatformFilter;
     search?: string;
   }
 ): InboxConversation[] {
   let rows = [...conversations];
-  if (filters.type !== 'all') {
-    rows = rows.filter((c) => c.conversation_type === filters.type);
-  }
   if (filters.platform !== 'all') {
     rows = rows.filter((c) => c.platform === filters.platform);
   }

@@ -1,5 +1,5 @@
 export type SocialPlatform = 'facebook' | 'instagram' | 'tiktok' | 'airbnb' | 'web';
-export type ConversationType = 'dm' | 'comment';
+export type ConversationType = 'dm';
 export type ReplyStatus = 'pending' | 'replied' | 'none';
 
 import type { ChatActionMessage } from '@/lib/chat/chatMessageActions';
@@ -97,7 +97,6 @@ export type SaveInboxTemplatePayload = {
 export type InboxTab = 'messages' | 'channels' | 'quick-replies' | 'automation';
 
 export type ThreadStatusFilter = 'all' | 'unread' | 'pending' | 'replied';
-export type ThreadTypeFilter = 'all' | 'dm' | 'comment';
 export type ThreadPlatformFilter = 'all' | SocialPlatform;
 
 export type InboxAutomationSettings = {
@@ -114,10 +113,4 @@ export type MetaPagePickerOption = {
   name: string;
   profileImageUrl: string | null;
   hasInstagram: boolean;
-};
-
-export type ComingSoonPlatform = {
-  platform: SocialPlatform;
-  available: false;
-  reason: string;
 };

@@ -6,7 +6,6 @@ import {
   filterMockConversations,
   MOCK_AUTOMATION,
   MOCK_AI_SUGGESTIONS,
-  MOCK_COMING_SOON,
   MOCK_CONNECTIONS,
   MOCK_CONVERSATIONS,
   MOCK_MESSAGES,
@@ -19,7 +18,6 @@ import type {
   SaveInboxTemplatePayload,
   ThreadPlatformFilter,
   ThreadStatusFilter,
-  ThreadTypeFilter,
 } from '@/features/dashboard/inbox/types/inbox';
 
 let conversations = structuredClone(MOCK_CONVERSATIONS);
@@ -36,7 +34,6 @@ export async function mockFetchConnections() {
   await delay();
   return {
     connections,
-    comingSoon: MOCK_COMING_SOON,
     metaConfigured: true,
     metaSyncInProgress: false,
     metaSyncError: null,
@@ -45,7 +42,6 @@ export async function mockFetchConnections() {
 }
 
 export async function mockFetchThreads(filters: {
-  type: ThreadTypeFilter;
   status: ThreadStatusFilter;
   platform: ThreadPlatformFilter;
   search?: string;
@@ -78,7 +74,7 @@ export async function mockMarkRead(conversationId: string) {
   );
 }
 
-export async function mockSendReply(conversationId: string, text: string, _privateReply?: boolean) {
+export async function mockSendReply(conversationId: string, text: string) {
   await delay(200);
   const conv = conversations.find((c) => c.id === conversationId);
   if (!conv) throw new Error('Conversation not found');
