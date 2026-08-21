@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 
 import { Link } from 'react-router-dom';
 
-import { Bell, Loader2, X } from 'lucide-react';
+import { Bell, X } from 'lucide-react';
 
 import { InAppNotificationsPanel } from '@/features/dashboard/notifications/components/InAppNotificationsPanel';
 import {
@@ -17,6 +17,7 @@ import { useNotificationsOrgScope } from '@/features/dashboard/notifications/lib
 import { useProperties } from '@/features/dashboard/org/hooks/useOrganizations';
 import { useParkings } from '@/features/dashboard/org/hooks/useParkings';
 
+import { ListRowsSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { BottomSheetContent } from '@/components/ui/bottom-sheet';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
@@ -111,9 +112,8 @@ export function NotificationBell({
       </div>
 
       {isLoading ? (
-        <div className="flex flex-1 items-center justify-center py-10">
-          <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" aria-hidden />
-          <span className="sr-only">Loading notifications</span>
+        <div className="flex-1 px-4 py-3">
+          <ListRowsSkeleton rows={5} />
         </div>
       ) : isError ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 py-10 text-center">

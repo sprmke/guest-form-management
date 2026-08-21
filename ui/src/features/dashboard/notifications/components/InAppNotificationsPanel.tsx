@@ -3,16 +3,15 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { formatDistanceToNow } from 'date-fns';
-import { Loader2 } from 'lucide-react';
 
 import { PlatformLogo } from '@/features/dashboard/inbox/components/PlatformLogo';
 import { NotificationInboxTitle } from '@/features/dashboard/notifications/components/NotificationInboxTitle';
+import { useEnrichedNotifications } from '@/features/dashboard/notifications/hooks/useEnrichedNotifications';
 import {
   useMarkNotificationRead,
   useNotificationsList,
   type NotificationsListMode,
 } from '@/features/dashboard/notifications/hooks/useNotifications';
-import { useEnrichedNotifications } from '@/features/dashboard/notifications/hooks/useEnrichedNotifications';
 import type { NotificationRecord } from '@/features/dashboard/notifications/lib/notificationsApi';
 import { collapseInboxNotifications } from '@/features/dashboard/notifications/lib/notificationsCollapse';
 import {
@@ -27,6 +26,7 @@ import {
   type NotificationPathScope,
 } from '@/features/dashboard/notifications/lib/notificationsPaths';
 
+import { ListRowsSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -110,8 +110,8 @@ export function InAppNotificationsPanel({
 
   if (isLoading) {
     return (
-      <div className={cn('flex items-center justify-center py-10', className)}>
-        <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" aria-hidden />
+      <div className={cn('px-4 py-3', className)}>
+        <ListRowsSkeleton rows={6} />
       </div>
     );
   }
@@ -226,16 +226,14 @@ export function InAppNotificationsPanel({
         </ul>
 
         {variant === 'page' && (hasNextPage || isFetchingNextPage) ? (
-          <div
-            ref={sentinelRef}
-            className="flex min-h-[48px] items-center justify-center px-4 py-3"
-            role="status"
-            aria-live="polite"
-            aria-busy={isFetchingNextPage}
-          >
+          <div ref={sentinelRef} role="status" aria-live="polite" aria-busy={isFetchingNextPage}>
             {isFetchingNextPage ? (
-              <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" aria-hidden />
-            ) : null}
+              <div className="px-4 pb-2 pt-1">
+                <ListRowsSkeleton rows={2} />
+              </div>
+            ) : (
+              <div className="min-h-[48px]" aria-hidden />
+            )}
           </div>
         ) : null}
       </div>
