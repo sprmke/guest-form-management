@@ -1,4 +1,5 @@
 import {
+  addMinutesToTimeString,
   createDisabledDateMatcher,
   stringToDate,
   type BookedDateRange,
@@ -131,6 +132,70 @@ export function hasBlockedNightBetween(
   }
 
   return false;
+}
+
+/** Booking whose checkout lands on `date` (the turnover day) — bounds the earliest allowed check-in time. */
+export function findPrecedingTurnoverBooking(
+  bookedDates: BookedDateRange[],
+  date: Date,
+  excludeId?: string | null
+): BookedDateRange | null {
+  const target = toMidnight(date).getTime();
+  return (
+    bookedDates.find((booking) => {
+      if (excludeId && booking.id === excludeId) return false;
+      try {
+        return toMidnight(stringToDate(booking.checkOutDate)).getTime() === target;
+      } catch {
+        return false;
+      }
+    }) ?? null
+  );
+}
+
+/** Booking whose check-in lands on `date` (the turnover day) — bounds the latest allowed check-out time. */
+export function findFollowingTurnoverBooking(
+  bookedDates: BookedDateRange[],
+  date: Date,
+  excludeId?: string | null
+): BookedDateRange | null {
+  const target = toMidnight(date).getTime();
+  return (
+    bookedDates.find((booking) => {
+      if (excludeId && booking.id === excludeId) return false;
+      try {
+        return toMidnight(stringToDate(booking.checkInDate)).getTime() === target;
+      } catch {
+        return false;
+      }
+    }) ?? null
+  );
+}
+
+/** Earliest check-in time allowed on `date`, given the cleaning buffer after a same-day turnover checkout. */
+export function minAllowedCheckInTime(
+  bookedDates: BookedDateRange[],
+  date: Date,
+  bufferMinutes: number | null | undefined,
+  excludeId?: string | null
+): string | null {
+  if (!bufferMinutes) return null;
+  const preceding = findPrecedingTurnoverBooking(bookedDates, date, excludeId);
+  if (!preceding?.checkOutTime) return null;
+  return addMinutesToTimeString(preceding.checkOutTime, bufferMinutes);
+}
+
+/** Latest check-out time allowed on `date`, given the cleaning buffer before a same-day turnover check-in. */
+export function maxAllowedCheckOutTime(
+  bookedDates: BookedDateRange[],
+  date: Date,
+  bufferMinutes: number | null | undefined,
+  excludeId?: string | null
+): string | null {
+  if (!bufferMinutes) return null;
+  const following = findFollowingTurnoverBooking(bookedDates, date, excludeId);
+  if (!following?.checkInTime) return null;
+  return addMinutesToTimeString(following.checkInTime, -bufferMinutes);
 }
 
 // ponytail: dev-only guard — turnover checkout on next guest's check-in day must stay allowed
