@@ -78,12 +78,13 @@ import {
 } from '@/features/dashboard/marketing/lib/renderMarketingDesignThumbnail';
 import type { DesignTemplateFormat } from '@/features/dashboard/marketing/lib/templateRegistry';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
-import { PlanGateWatermarkOverlay } from '@/features/dashboard/plans/components/PlanGateWatermarkOverlay';
 import { useOrgBrandColor } from '@/features/dashboard/org/hooks/useOrgBrandColor';
 import { useOrgSettings } from '@/features/dashboard/org/hooks/useOrgSettings';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
+import { PlanGateWatermarkOverlay } from '@/features/dashboard/plans/components/PlanGateWatermarkOverlay';
 
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { formatMoneyCompact } from '@/utils/format/currency';
 
@@ -769,9 +770,19 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
                 resetDisabled={loadingTemplate || (!selectedId && !savedTemplateId)}
               />
             ) : (
-              <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
-                <Loader2 className="mr-2 size-5 animate-spin" aria-hidden />
-                Starting editor…
+              <div
+                className="flex h-full min-h-[16rem] flex-col gap-3 p-3 sm:p-4"
+                aria-busy="true"
+                aria-label="Starting editor"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <Skeleton className="h-8 w-28 rounded-md" />
+                  <div className="flex gap-2">
+                    <Skeleton className="size-8 rounded-md" />
+                    <Skeleton className="size-8 rounded-md" />
+                  </div>
+                </div>
+                <Skeleton className="min-h-0 w-full flex-1 rounded-xl" />
               </div>
             )}
           </PlanGateWatermarkOverlay>

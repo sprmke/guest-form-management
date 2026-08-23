@@ -80,6 +80,7 @@ import {
 } from '@/features/dashboard/marketing/lib/polotno/propertyMedia';
 import { useOrgBrandColor } from '@/features/dashboard/org/hooks/useOrgBrandColor';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
+import { PlanGateWatermarkOverlay } from '@/features/dashboard/plans/components/PlanGateWatermarkOverlay';
 
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -89,7 +90,6 @@ import { cn } from '@/lib/utils';
 import { CalendarFormatPicker } from './CalendarFormatPicker';
 import { CalendarPreview } from './CalendarPreview';
 import { CalendarPreviewScaledFrame } from './CalendarPreviewScaledFrame';
-import { PlanGateWatermarkOverlay } from '@/features/dashboard/plans/components/PlanGateWatermarkOverlay';
 import { CalendarTemplateSidebar } from './CalendarTemplateSidebar';
 import {
   ContainerPanel,

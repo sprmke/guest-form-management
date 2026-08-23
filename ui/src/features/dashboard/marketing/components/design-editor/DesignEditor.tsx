@@ -1,8 +1,8 @@
 import { Suspense, lazy } from 'react';
 
-import { Loader2 } from 'lucide-react';
-
 import type { DesignExportPayload } from '@/features/dashboard/marketing/components/design-editor/PolotnoDesignStudio';
+
+import { MarketingStudioSkeleton } from '@/components/skeletons/AdminSkeletons';
 
 const PolotnoDesignStudio = lazy(() =>
   import('@/features/dashboard/marketing/components/design-editor/PolotnoDesignStudio').then(
@@ -18,13 +18,7 @@ export type { DesignExportPayload };
 
 export function DesignEditor(props: Props) {
   return (
-    <Suspense
-      fallback={
-        <div className="text-muted-foreground flex min-h-0 flex-1 items-center justify-center">
-          <Loader2 className="size-8 animate-spin" aria-hidden />
-        </div>
-      }
-    >
+    <Suspense fallback={<MarketingStudioSkeleton />}>
       <PolotnoDesignStudio {...props} />
     </Suspense>
   );

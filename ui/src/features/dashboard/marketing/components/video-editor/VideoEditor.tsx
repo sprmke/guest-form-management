@@ -130,9 +130,9 @@ import {
 } from '@/features/dashboard/marketing/lib/videoCampaignTemplates';
 import { registerVideoThumbnailPlaybackPause } from '@/features/dashboard/marketing/lib/videoThumbnailCapture';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
-import { PlanGateWatermarkOverlay } from '@/features/dashboard/plans/components/PlanGateWatermarkOverlay';
 import { useOrgSettings } from '@/features/dashboard/org/hooks/useOrgSettings';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
+import { PlanGateWatermarkOverlay } from '@/features/dashboard/plans/components/PlanGateWatermarkOverlay';
 
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -1189,8 +1189,27 @@ export function VideoEditor({ onPublish }: Props) {
             />
           </>
         ) : (
-          <div className="flex flex-1 items-center justify-center">
-            <Loader2 className="text-muted-foreground size-8 animate-spin" aria-hidden />
+          <div className="flex min-h-0 flex-1 flex-col" aria-busy="true" aria-label="Loading video editor">
+            {/* Inline to avoid circular import; mirrors MarketingStudioSkeleton canvas */}
+            <div className="flex min-h-0 flex-1 flex-col gap-3 p-3 sm:p-4">
+              <div className="flex items-center justify-between gap-2">
+                <div className="bg-muted h-8 w-32 animate-pulse rounded-md" />
+                <div className="flex gap-2">
+                  <div className="bg-muted size-8 animate-pulse rounded-md" />
+                  <div className="bg-muted size-8 animate-pulse rounded-md" />
+                  <div className="bg-muted h-8 w-20 animate-pulse rounded-md" />
+                </div>
+              </div>
+              <div className="bg-muted min-h-0 w-full flex-1 animate-pulse rounded-xl" />
+              <div className="flex gap-2 overflow-hidden">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="bg-muted h-14 w-20 shrink-0 animate-pulse rounded-lg sm:h-16 sm:w-24"
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </div>

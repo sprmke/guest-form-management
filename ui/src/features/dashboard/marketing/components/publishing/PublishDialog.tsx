@@ -204,144 +204,152 @@ export function PublishDialog({ open, onOpenChange, media }: Props) {
 
   return (
     <ResponsiveModal open={open} onOpenChange={onOpenChange}>
-      <ResponsiveModalContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
-        <ResponsiveModalHeader>
+      <ResponsiveModalContent
+        sheetLayout="split"
+        className="flex max-h-[min(90dvh,36rem)] max-w-[min(calc(100vw-1.5rem),28rem)] flex-col gap-0 overflow-hidden p-0"
+      >
+        <ResponsiveModalHeader className="shrink-0 px-6 pt-6">
           <ResponsiveModalTitle>Publish</ResponsiveModalTitle>
         </ResponsiveModalHeader>
 
-        {connectionsQuery.isLoading ? (
-          <ListRowsSkeleton rows={3} label="Loading connections" className="min-h-[120px]" />
-        ) : channels.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
-            Connect Facebook or Instagram in{' '}
-            <Link
-              to={propertyInboxPath(orgSlug, property.slug)}
-              className="text-primary underline-offset-4 hover:underline"
-              onClick={() => onOpenChange(false)}
-            >
-              Inbox
-            </Link>
-            .
-          </p>
-        ) : (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Channel</Label>
-              <Select
-                value={platform}
-                onValueChange={(v) => setPlatform(v as 'facebook' | 'instagram')}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-4">
+          {connectionsQuery.isLoading ? (
+            <ListRowsSkeleton rows={3} label="Loading connections" className="min-h-[120px]" />
+          ) : channels.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              Connect Facebook or Instagram in{' '}
+              <Link
+                to={propertyInboxPath(orgSlug, property.slug)}
+                className="text-primary underline-offset-4 hover:underline"
+                onClick={() => onOpenChange(false)}
               >
-                <SelectTrigger className="h-10">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="facebook">Facebook Page</SelectItem>
-                  <SelectItem value="instagram">Instagram</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>{batchMode ? 'Accounts' : 'Account'}</Label>
-              {batchMode ? (
-                <ul className="space-y-2">
-                  {platformChannels.map((conn) => (
-                    <li key={conn.id} className="flex items-center gap-2">
-                      <Checkbox
-                        id={`conn-${conn.id}`}
-                        checked={connectionIds.includes(conn.id)}
-                        onCheckedChange={(checked) => toggleConnection(conn.id, checked === true)}
-                      />
-                      <Label htmlFor={`conn-${conn.id}`} className="font-normal">
-                        {conn.displayName ?? conn.platform}
-                      </Label>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <Select value={connectionIds[0] ?? ''} onValueChange={(v) => setConnectionIds([v])}>
+                Inbox
+              </Link>
+              .
+            </p>
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Channel</Label>
+                <Select
+                  value={platform}
+                  onValueChange={(v) => setPlatform(v as 'facebook' | 'instagram')}
+                >
                   <SelectTrigger className="h-10">
-                    <SelectValue placeholder="Select account" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {platformChannels.map((conn) => (
-                      <SelectItem key={conn.id} value={conn.id}>
-                        {conn.displayName ?? conn.platform}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="facebook">Facebook Page</SelectItem>
+                    <SelectItem value="instagram">Instagram</SelectItem>
                   </SelectContent>
                 </Select>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="batch-mode"
-                checked={batchMode}
-                onCheckedChange={(checked) => setBatchMode(checked === true)}
-              />
-              <Label htmlFor="batch-mode" className="font-normal">
-                Batch publish
-              </Label>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Format</Label>
-              <RadioGroup
-                value={postType}
-                onValueChange={(v) => setPostType(v as 'post' | 'story')}
-                className="flex gap-4"
-              >
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem value="post" id="publish-post" />
-                  <Label htmlFor="publish-post" className="font-normal">
-                    Post
-                  </Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem
-                    value="story"
-                    id="publish-story"
-                    disabled={media?.mediaType === 'video' && platform === 'facebook'}
-                  />
-                  <Label htmlFor="publish-story" className="font-normal">
-                    Story
-                  </Label>
-                </div>
-              </RadioGroup>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <Label htmlFor="publish-caption">Caption</Label>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="min-h-[44px] gap-1"
-                  disabled={generateCaption.isPending}
-                  onClick={() => void handleSuggestCaption()}
-                >
-                  {generateCaption.isPending ? (
-                    <Loader2 className="size-4 animate-spin" aria-hidden />
-                  ) : (
-                    <Sparkles className="size-4" aria-hidden />
-                  )}
-                  Suggest
-                </Button>
               </div>
-              <Textarea
-                id="publish-caption"
-                value={caption}
-                onChange={(e) => setCaption(e.target.value)}
-                rows={3}
-                className="min-h-[88px]"
-              />
-            </div>
-          </div>
-        )}
 
-        <ResponsiveModalFooter className="gap-2">
+              <div className="space-y-2">
+                <Label>{batchMode ? 'Accounts' : 'Account'}</Label>
+                {batchMode ? (
+                  <ul className="max-h-[240px] space-y-2 overflow-y-auto">
+                    {platformChannels.map((conn) => (
+                      <li key={conn.id} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`conn-${conn.id}`}
+                          checked={connectionIds.includes(conn.id)}
+                          onCheckedChange={(checked) => toggleConnection(conn.id, checked === true)}
+                        />
+                        <Label htmlFor={`conn-${conn.id}`} className="font-normal">
+                          {conn.displayName ?? conn.platform}
+                        </Label>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <Select
+                    value={connectionIds[0] ?? ''}
+                    onValueChange={(v) => setConnectionIds([v])}
+                  >
+                    <SelectTrigger className="h-10">
+                      <SelectValue placeholder="Select account" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {platformChannels.map((conn) => (
+                        <SelectItem key={conn.id} value={conn.id}>
+                          {conn.displayName ?? conn.platform}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="batch-mode"
+                  checked={batchMode}
+                  onCheckedChange={(checked) => setBatchMode(checked === true)}
+                />
+                <Label htmlFor="batch-mode" className="font-normal">
+                  Batch publish
+                </Label>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Format</Label>
+                <RadioGroup
+                  value={postType}
+                  onValueChange={(v) => setPostType(v as 'post' | 'story')}
+                  className="flex gap-4"
+                >
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="post" id="publish-post" />
+                    <Label htmlFor="publish-post" className="font-normal">
+                      Post
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem
+                      value="story"
+                      id="publish-story"
+                      disabled={media?.mediaType === 'video' && platform === 'facebook'}
+                    />
+                    <Label htmlFor="publish-story" className="font-normal">
+                      Story
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="publish-caption">Caption</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="min-h-[44px] gap-1"
+                    disabled={generateCaption.isPending}
+                    onClick={() => void handleSuggestCaption()}
+                  >
+                    {generateCaption.isPending ? (
+                      <Loader2 className="size-4 animate-spin" aria-hidden />
+                    ) : (
+                      <Sparkles className="size-4" aria-hidden />
+                    )}
+                    Suggest
+                  </Button>
+                </div>
+                <Textarea
+                  id="publish-caption"
+                  value={caption}
+                  onChange={(e) => setCaption(e.target.value)}
+                  rows={3}
+                  className="min-h-[88px]"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        <ResponsiveModalFooter className="shrink-0 gap-2 px-6 pb-6 pt-3">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
