@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 /**
  * Shared field format validation for contact info across admin + guest flows.
  * Keep payment-specific rules in paymentProviders.ts; guest Zod schema mirrors these.
@@ -71,4 +73,26 @@ export function formatPhilippineMobileDisplay(raw: string): string {
     return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}`;
   }
   return raw.trim();
+}
+
+const PHILIPPINE_MOBILE_LENGTH_MESSAGE = 'Phone number must be 11 digits (ex. 09876543210)';
+const PHILIPPINE_MOBILE_FORMAT_MESSAGE =
+  "Please enter a valid 11-digit phone number starting with '09' (ex. 09876543210)";
+
+/** Required 11-digit Philippine mobile (`09…`) — shared by guest + parking Zod schemas. */
+export function requiredPhilippineMobilePhoneZodSchema(
+  requiredMessage = 'Phone number is required'
+) {
+  return z
+    .string()
+    .trim()
+    .min(1, requiredMessage)
+    .transform((val) => normalizePhoneDigits(val))
+    .pipe(
+      z
+        .string()
+        .min(11, PHILIPPINE_MOBILE_LENGTH_MESSAGE)
+        .max(11, PHILIPPINE_MOBILE_LENGTH_MESSAGE)
+        .refine((val) => /^09\d{9}$/.test(val), PHILIPPINE_MOBILE_FORMAT_MESSAGE)
+    );
 }

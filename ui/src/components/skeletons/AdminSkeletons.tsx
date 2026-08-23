@@ -1115,3 +1115,47 @@ export function OrgDashboardSkeleton() {
     </div>
   );
 }
+
+/** Marketing design/video studio chrome — sidebar + canvas, responsive. */
+export function MarketingStudioSkeleton() {
+  return (
+    <div
+      className="flex min-h-0 min-w-0 flex-1 flex-col gap-0 lg:flex-row"
+      aria-busy="true"
+      aria-label="Loading editor"
+    >
+      <aside className="border-border/60 flex w-full shrink-0 flex-col gap-3 border-b p-3 sm:p-4 lg:w-72 lg:border-b-0 lg:border-r xl:w-80">
+        <div className="flex items-center gap-2">
+          <Skeleton className="size-8 shrink-0 rounded-lg" />
+          <Skeleton className="h-4 w-28" />
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="aspect-square w-full rounded-lg" />
+          ))}
+        </div>
+        <div className="space-y-2 pt-2">
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-9 w-full rounded-lg" />
+          <Skeleton className="h-9 w-full rounded-lg" />
+        </div>
+      </aside>
+      <div className="bg-muted/30 flex min-h-[min(60dvh,28rem)] min-w-0 flex-1 flex-col p-3 sm:p-4">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <Skeleton className="h-8 w-32 rounded-md" />
+          <div className="flex gap-2">
+            <Skeleton className="size-8 rounded-md" />
+            <Skeleton className="size-8 rounded-md" />
+            <Skeleton className="h-8 w-20 rounded-md" />
+          </div>
+        </div>
+        <Skeleton className="min-h-0 w-full flex-1 rounded-xl" />
+        <div className="mt-3 flex gap-2 overflow-hidden">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-14 w-20 shrink-0 rounded-lg sm:h-16 sm:w-24" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

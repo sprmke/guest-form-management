@@ -67,7 +67,7 @@ export type GuestFormSchemaOptions = {
   maxChildren: number;
   /** Other properties' bookings, for cleaning-buffer conflicts on same-day turnovers. */
   bookedDates?: BookedDateRange[];
-  /** Minutes required between a checkout and the next check-in on a same-day turnover; `null`/`0` = off. */
+  /** Required minutes between a checkout and the next check-in on a same-day turnover (min 1 hour). */
   cleaningBufferMinutes?: number | null;
   /** Excluded from buffer conflicts when editing this booking's own submission. */
   currentBookingId?: string | null;

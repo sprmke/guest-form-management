@@ -117,6 +117,27 @@ export interface BookedDateRange {
   id: string;
   checkInDate: string;
   checkOutDate: string;
+  /** 24h `HH:mm`, present for real bookings (absent for owner-managed blocked ranges). */
+  checkInTime?: string;
+  checkOutTime?: string;
+}
+
+/** Minutes from `prevTime` to `nextTime` (both 24h `HH:mm`); negative if `nextTime` is earlier. */
+export function minutesBetweenTimeStrings(prevTime: string, nextTime: string): number {
+  const [ah, am] = prevTime.split(':').map(Number);
+  const [bh, bm] = nextTime.split(':').map(Number);
+  if ([ah, am, bh, bm].some((n) => Number.isNaN(n))) return 0;
+  return bh * 60 + bm - (ah * 60 + am);
+}
+
+/** `HH:mm` shifted by `minutes` (may be negative), wrapping within a single day. */
+export function addMinutesToTimeString(time: string, minutes: number): string {
+  const [h, m] = time.split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return time;
+  const total = (((h * 60 + m + minutes) % 1440) + 1440) % 1440;
+  const hh = Math.floor(total / 60);
+  const mm = total % 60;
+  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
 }
 
 // Normalize any date string to YYYY-MM-DD format
