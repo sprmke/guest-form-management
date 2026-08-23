@@ -13,6 +13,11 @@ export type UseParkingReserveOptions = {
   checkIn: Date | null;
   checkOut: Date | null;
   onNeedDates?: () => void;
+  /**
+   * When set, opens the booking form in-place (e.g. listing modal) instead of
+   * navigating to `/parkings/:slug/form`. Requires guest auth before opening.
+   */
+  onOpenForm?: (dates: { checkIn: Date; checkOut: Date }) => void;
 };
 
 export function useParkingReserve({
@@ -20,6 +25,7 @@ export function useParkingReserve({
   checkIn,
   checkOut,
   onNeedDates,
+  onOpenForm,
 }: UseParkingReserveOptions) {
   const navigate = useNavigate();
   const { requireGuestAuth } = useGuestAuth();
@@ -33,6 +39,19 @@ export function useParkingReserve({
       return;
     }
 
+    if (onOpenForm) {
+      const open = () => onOpenForm({ checkIn, checkOut });
+      requireGuestAuth(open, {
+        resume: {
+          type: 'parking_booking_form_modal',
+          parkingSlug: slug,
+          checkInDate: dateToString(checkIn),
+          checkOutDate: dateToString(checkOut),
+        },
+      });
+      return;
+    }
+
     const next = new URLSearchParams();
     next.set('checkInDate', dateToString(checkIn));
     next.set('checkOutDate', dateToString(checkOut));
@@ -43,7 +62,7 @@ export function useParkingReserve({
     requireGuestAuth(() => navigate(target, { state: navState }), {
       resume: { type: 'navigate', to: target, navState },
     });
-  }, [parkingSlug, checkIn, checkOut, onNeedDates, navigate, requireGuestAuth]);
+  }, [parkingSlug, checkIn, checkOut, onNeedDates, onOpenForm, navigate, requireGuestAuth]);
 
   return { reserve, hasDates: Boolean(checkIn && checkOut) };
 }

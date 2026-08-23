@@ -8,6 +8,7 @@ import {
   resolveModeSwitchPath,
   type AppMode,
 } from '@/features/guest/auth/config/mode-switch';
+
 import { getLastOrgSlug, orgDashboardPath } from '@/features/dashboard/org/lib/tenantPaths';
 
 import { useTheme } from '@/components/theme/ThemeProvider';

@@ -3,6 +3,13 @@ import { SlidersHorizontal, LayoutGrid, List, Map, ArrowUpDown } from 'lucide-re
 import { PROPERTY_SORT_OPTIONS } from '@/features/guest/marketing/shared/lib/listingFilterChips';
 
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 
 export type ViewMode = 'grid' | 'list' | 'map';
@@ -58,18 +65,21 @@ export function PropertiesToolbar({
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <div className="relative flex items-center gap-2">
             <ArrowUpDown className="text-muted-foreground hidden h-4 w-4 sm:block" aria-hidden />
-            <select
-              value={sortBy}
-              onChange={(e) => onSortChange(e.target.value)}
-              aria-label="Sort properties"
-              className="border-border bg-background text-foreground focus:border-primary focus:ring-primary/20 min-h-[44px] max-w-[11rem] appearance-none rounded-lg border py-2 pl-2 pr-8 text-sm focus:outline-none focus:ring-2 sm:max-w-none"
-            >
-              {PROPERTY_SORT_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+            <Select value={sortBy} onValueChange={onSortChange}>
+              <SelectTrigger
+                aria-label="Sort properties"
+                className="h-11 min-h-[44px] w-auto max-w-[11rem] gap-2 px-3 py-2 text-sm sm:max-w-none"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent align="end" className="max-w-[calc(100vw-24px)]">
+                {PROPERTY_SORT_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="border-border bg-muted/50 flex rounded-lg border p-1">

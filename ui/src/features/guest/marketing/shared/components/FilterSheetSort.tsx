@@ -1,5 +1,13 @@
 import { ArrowUpDown } from 'lucide-react';
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
 type SortOption = { value: string; label: string };
 
 type Props = {
@@ -20,19 +28,22 @@ export function FilterSheetSort({ value, options, onChange }: Props) {
           Sort
         </label>
       </div>
-      <select
-        id="filter-sheet-sort"
-        value={safe}
-        onChange={(e) => onChange(e.target.value)}
-        aria-label="Sort results"
-        className="border-border bg-background text-foreground focus:border-primary focus:ring-primary/20 min-h-[44px] w-full appearance-none rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2"
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+      <Select value={safe} onValueChange={onChange}>
+        <SelectTrigger
+          id="filter-sheet-sort"
+          aria-label="Sort results"
+          className="min-h-[44px] w-full"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="max-w-[calc(100vw-24px)]">
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }

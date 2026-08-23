@@ -8,9 +8,11 @@ import { Menu, X } from 'lucide-react';
 
 import { GuestAccountMenu } from '@/features/guest/account/components/GuestAccountMenu';
 import {
-  getLoginHrefFromPath,
+  getAuthAudienceFromPath,
+  getGuestLoginCta,
   getHostMarketingNavCta,
 } from '@/features/guest/auth/config/auth-navigation';
+import { useGuestSession } from '@/features/guest/auth/hooks/useGuestSession';
 import { scrollToSection } from '@/features/guest/marketing/for-hosts/lib/scrollToSection';
 import { HostAccountMenu } from '@/features/guest/marketing/shared/components/HostAccountMenu';
 import {
@@ -43,12 +45,14 @@ function hostSectionTarget(pathname: string, id: string) {
 export function MarketingNav() {
   const { pathname } = useLocation();
   const prefersReducedMotion = usePrefersReducedMotion();
-  const hostLoginHref = getLoginHrefFromPath(pathname);
-  const isExploreMode = hostLoginHref === null;
+  const isExploreMode = getAuthAudienceFromPath(pathname) === 'guest';
   const isAccountRoute = pathname.startsWith('/account');
   const { status: adminSessionStatus } = useAdminSession();
   const isHostSignedIn = adminSessionStatus === 'admin';
   const hostSignInCta = getHostMarketingNavCta(false);
+  const { status: guestSessionStatus } = useGuestSession();
+  const isGuestSignedIn = guestSessionStatus === 'authenticated';
+  const guestSignInCta = getGuestLoginCta();
   const modeSwitch = useModeSwitchTransition();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -220,7 +224,13 @@ export function MarketingNav() {
   );
 
   const accountMenu = isExploreMode ? (
-    <GuestAccountMenu />
+    isGuestSignedIn ? (
+      <GuestAccountMenu />
+    ) : (
+      <Button variant="outline" className={hostSignInButtonClassName} asChild>
+        <Link to={guestSignInCta.href}>{guestSignInCta.label}</Link>
+      </Button>
+    )
   ) : isHostSignedIn ? (
     <HostAccountMenu />
   ) : (

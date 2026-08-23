@@ -3,7 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { Link } from 'react-router-dom';
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Loader2, MapPin, Minus, Plus, Star, X } from 'lucide-react';
+import { MapPin, Minus, Plus, Star, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
@@ -605,15 +605,17 @@ export function ListingMapView({
         : null}
 
       {!ready && (
-        <div className="bg-muted/80 absolute inset-0 z-10 flex items-center justify-center">
-          <div className="border-primary h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
-        </div>
+        <div
+          className="bg-muted absolute inset-0 z-10 animate-pulse"
+          aria-busy="true"
+          aria-label="Loading map"
+        />
       )}
 
       <div className="absolute left-3 top-3 z-20 flex flex-wrap items-center gap-2 sm:left-4 sm:top-4">
         <div className="border-border bg-background/95 flex items-center gap-2 rounded-full border px-3 py-2 text-sm shadow-md backdrop-blur-sm">
           {loading ? (
-            <Loader2 className="text-primary h-4 w-4 shrink-0 animate-spin" aria-hidden />
+            <span className="bg-primary/40 size-4 shrink-0 animate-pulse rounded-full" aria-hidden />
           ) : (
             <MapPin className="text-primary h-4 w-4 shrink-0" aria-hidden />
           )}

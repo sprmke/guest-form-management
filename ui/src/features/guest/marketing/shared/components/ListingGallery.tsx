@@ -1,8 +1,8 @@
 import { useState, type ReactNode } from 'react';
 
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronLeft, ChevronRight, Grid3X3, Share2 } from 'lucide-react';
+import { Grid3X3, Share2 } from 'lucide-react';
 
+import { GalleryLightbox } from '@/features/guest/marketing/shared/components/GalleryLightbox';
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
 import { LISTING_PLACEHOLDER_PROPERTY } from '@/features/guest/marketing/shared/lib/mockListingImages';
 
@@ -32,14 +32,6 @@ export function ListingGallery({
   const openLightbox = (index: number) => {
     setCurrentIndex(index);
     setLightboxOpen(true);
-  };
-
-  const nextImage = () => {
-    setCurrentIndex((prev) => (prev + 1) % displayImages.length);
-  };
-
-  const prevImage = () => {
-    setCurrentIndex((prev) => (prev === 0 ? displayImages.length - 1 : prev - 1));
   };
 
   const GalleryImage = ({
@@ -216,89 +208,14 @@ export function ListingGallery({
         ) : null}
       </div>
 
-      <AnimatePresence>
-        {lightboxOpen ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black"
-          >
-            <button
-              type="button"
-              onClick={() => setLightboxOpen(false)}
-              className="absolute right-4 top-4 z-10 min-h-[44px] min-w-[44px] rounded-full bg-white/10 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/20"
-              aria-label="Close gallery"
-            >
-              <X className="h-6 w-6" />
-            </button>
-
-            <div className="absolute left-1/2 top-4 -translate-x-1/2 rounded-full bg-white/10 px-4 py-2 text-sm text-white backdrop-blur-sm">
-              {currentIndex + 1} / {displayImages.length}
-            </div>
-
-            {imageCount > 1 ? (
-              <>
-                <button
-                  type="button"
-                  onClick={prevImage}
-                  className="absolute left-4 top-1/2 z-10 flex min-h-[44px] min-w-[44px] -translate-y-1/2 items-center justify-center rounded-full bg-white/10 p-3 text-white backdrop-blur-sm transition-colors hover:bg-white/20"
-                  aria-label="Previous photo"
-                >
-                  <ChevronLeft className="h-6 w-6" />
-                </button>
-                <button
-                  type="button"
-                  onClick={nextImage}
-                  className="absolute right-4 top-1/2 z-10 flex min-h-[44px] min-w-[44px] -translate-y-1/2 items-center justify-center rounded-full bg-white/10 p-3 text-white backdrop-blur-sm transition-colors hover:bg-white/20"
-                  aria-label="Next photo"
-                >
-                  <ChevronRight className="h-6 w-6" />
-                </button>
-              </>
-            ) : null}
-
-            <motion.div
-              key={currentIndex}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="relative h-[80vh] w-[90vw] max-w-full"
-            >
-              <Image
-                src={displayImages[currentIndex] ?? ''}
-                alt={`${listingName} - ${currentIndex + 1}`}
-                fill
-                className="object-contain"
-              />
-            </motion.div>
-
-            {imageCount > 1 ? (
-              <div className="absolute bottom-4 left-1/2 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 gap-2 overflow-x-auto rounded-lg bg-white/10 p-2 backdrop-blur-sm">
-                {displayImages.slice(0, 8).map((image, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={() => setCurrentIndex(index)}
-                    className={cn(
-                      'relative h-12 w-16 shrink-0 overflow-hidden rounded-md transition-all',
-                      currentIndex === index ? 'ring-2 ring-white' : 'opacity-60 hover:opacity-100'
-                    )}
-                    aria-label={`View photo ${index + 1}`}
-                  >
-                    <Image src={image} alt="" fill className="object-cover" />
-                  </button>
-                ))}
-                {displayImages.length > 8 ? (
-                  <div className="flex h-12 w-16 shrink-0 items-center justify-center rounded-md bg-white/20 text-sm text-white">
-                    +{displayImages.length - 8}
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      <GalleryLightbox
+        images={displayImages}
+        altPrefix={listingName}
+        open={lightboxOpen}
+        index={currentIndex}
+        onClose={() => setLightboxOpen(false)}
+        onIndexChange={setCurrentIndex}
+      />
     </>
   );
 }
