@@ -6,7 +6,8 @@ export type GuestAuthResume =
   | { type: 'navigate'; to: string; navState?: GuestNavState }
   | {
       type: 'contact_host_sheet';
-      propertySlug: string;
+      propertySlug?: string;
+      parkingSlug?: string;
       checkInDate?: string;
       checkOutDate?: string;
       draft?: string;
@@ -18,6 +19,12 @@ export type GuestAuthResume =
       checkOutDate?: string;
       adults?: number;
       children?: number;
+    }
+  | {
+      type: 'parking_booking_form_modal';
+      parkingSlug: string;
+      checkInDate?: string;
+      checkOutDate?: string;
     }
   | { type: 'form_submit' }
   | { type: 'save_property'; propertySlug: string };

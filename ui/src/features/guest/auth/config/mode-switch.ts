@@ -31,19 +31,13 @@ export function getAppModeFromPath(pathname: string): AppMode {
   return 'guest';
 }
 
-const HOST_AUTH_PATHS = [
-  '/for-hosts/login',
-  '/for-hosts/register',
-  '/for-hosts/forgot-password',
-  '/for-hosts/reset-password',
-  '/for-hosts/verify-email',
-] as const;
+const HOST_AUTH_PATHS = ['/for-hosts/login', '/for-hosts/register'] as const;
 
 export function isHostAuthPath(pathname: string): boolean {
   return HOST_AUTH_PATHS.some((path) => pathname === path);
 }
 
-/** Target path when switching app mode (auth-aware; guest auth routes are not mounted in GFM). */
+/** Target path when switching app mode. */
 export function resolveModeSwitchPath(
   mode: AppMode,
   pathname: string,

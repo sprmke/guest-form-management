@@ -21,6 +21,8 @@ import {
   type GuestAuthResume,
 } from '@/features/guest/auth/lib/guestAuthResume';
 import {
+  guestParkingContactHostOpenPath,
+  guestParkingReserveFormOpenPath,
   guestPropertyContactHostOpenPath,
   guestPropertyReserveFormOpenPath,
 } from '@/features/guest/lib/guestPublicPaths';
@@ -79,13 +81,23 @@ export function GuestAuthProvider({ children }: { children: ReactNode }) {
 
     if (resume?.type === 'contact_host_sheet') {
       if (resume.draft) saveContactHostDraft(resume.draft);
-      navigate(
-        guestPropertyContactHostOpenPath(
-          resume.propertySlug,
-          resume.checkInDate,
-          resume.checkOutDate
-        )
-      );
+      if (resume.parkingSlug?.trim()) {
+        navigate(
+          guestParkingContactHostOpenPath(
+            resume.parkingSlug,
+            resume.checkInDate,
+            resume.checkOutDate
+          )
+        );
+      } else if (resume.propertySlug?.trim()) {
+        navigate(
+          guestPropertyContactHostOpenPath(
+            resume.propertySlug,
+            resume.checkInDate,
+            resume.checkOutDate
+          )
+        );
+      }
       pendingActionRef.current = null;
       return;
     }
@@ -97,6 +109,17 @@ export function GuestAuthProvider({ children }: { children: ReactNode }) {
           checkOutDate: resume.checkOutDate,
           adults: resume.adults,
           children: resume.children,
+        })
+      );
+      pendingActionRef.current = null;
+      return;
+    }
+
+    if (resume?.type === 'parking_booking_form_modal') {
+      navigate(
+        guestParkingReserveFormOpenPath(resume.parkingSlug, {
+          checkInDate: resume.checkInDate,
+          checkOutDate: resume.checkOutDate,
         })
       );
       pendingActionRef.current = null;
@@ -170,11 +193,17 @@ export function GuestAuthProvider({ children }: { children: ReactNode }) {
         options?.resume?.type === 'navigate'
           ? options.resume.to
           : options?.resume?.type === 'contact_host_sheet'
-            ? guestPropertyContactHostOpenPath(
-                options.resume.propertySlug,
-                options.resume.checkInDate,
-                options.resume.checkOutDate
-              )
+            ? options.resume.parkingSlug?.trim()
+              ? guestParkingContactHostOpenPath(
+                  options.resume.parkingSlug,
+                  options.resume.checkInDate,
+                  options.resume.checkOutDate
+                )
+              : guestPropertyContactHostOpenPath(
+                  options.resume.propertySlug ?? '',
+                  options.resume.checkInDate,
+                  options.resume.checkOutDate
+                )
             : options?.resume?.type === 'booking_form_modal'
               ? guestPropertyReserveFormOpenPath(options.resume.propertySlug, {
                   checkInDate: options.resume.checkInDate,
@@ -182,7 +211,12 @@ export function GuestAuthProvider({ children }: { children: ReactNode }) {
                   adults: options.resume.adults,
                   children: options.resume.children,
                 })
-              : returnPath;
+              : options?.resume?.type === 'parking_booking_form_modal'
+                ? guestParkingReserveFormOpenPath(options.resume.parkingSlug, {
+                    checkInDate: options.resume.checkInDate,
+                    checkOutDate: options.resume.checkOutDate,
+                  })
+                : returnPath;
       setOauthRedirectPath(redirectPath);
 
       if (status === 'loading') {

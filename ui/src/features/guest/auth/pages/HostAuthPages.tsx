@@ -1,10 +1,4 @@
-import {
-  ForgotPasswordPageContent,
-  LoginPageContent,
-  RegisterPageContent,
-  ResetPasswordPageContent,
-  VerifyEmailPageContent,
-} from '@/features/guest/auth/components';
+import { AuthPageContent } from '@/features/guest/auth/components';
 import { HostAuthResolving } from '@/features/guest/auth/components/HostAuthResolving';
 import { AUTH_PAGE_CONFIG } from '@/features/guest/auth/config/auth-page-config';
 import { useHostGoogleAuth } from '@/features/guest/auth/hooks/useHostGoogleAuth';
@@ -14,43 +8,52 @@ import { appPageTitle, usePageTitle } from '@/lib/pageTitle';
 
 export function HostLoginPage() {
   usePageTitle(appPageTitle('Sign In'));
-  const hostGoogleAuth = useHostGoogleAuth({
+  const hostAuth = useHostGoogleAuth({
     callbackPathname: HOST_LOGIN_PATH,
     defaultRedirect: '/dashboard',
   });
 
-  if (hostGoogleAuth.status === 'admin' && hostGoogleAuth.isResolving) {
+  if (hostAuth.status === 'admin' && hostAuth.isResolving) {
     return <HostAuthResolving />;
   }
 
-  return <LoginPageContent config={AUTH_PAGE_CONFIG.host} hostGoogleAuth={hostGoogleAuth} />;
+  return (
+    <AuthPageContent
+      config={AUTH_PAGE_CONFIG.host}
+      mode="login"
+      actions={{
+        sendEmailOtp: hostAuth.sendEmailOtp,
+        verifyEmailOtp: hostAuth.verifyEmailOtp,
+        signInWithGoogle: hostAuth.signInWithGoogle,
+        googleLoading: hostAuth.isSigningIn,
+        bannerError: hostAuth.error,
+      }}
+    />
+  );
 }
 
 export function HostRegisterPage() {
   usePageTitle(appPageTitle('Register'));
-  const hostGoogleAuth = useHostGoogleAuth({
+  const hostAuth = useHostGoogleAuth({
     callbackPathname: HOST_REGISTER_PATH,
     defaultRedirect: '/onboarding',
   });
 
-  if (hostGoogleAuth.status === 'admin' && hostGoogleAuth.isResolving) {
+  if (hostAuth.status === 'admin' && hostAuth.isResolving) {
     return <HostAuthResolving />;
   }
 
-  return <RegisterPageContent config={AUTH_PAGE_CONFIG.host} hostGoogleAuth={hostGoogleAuth} />;
-}
-
-export function HostForgotPasswordPage() {
-  usePageTitle(appPageTitle('Forgot Password'));
-  return <ForgotPasswordPageContent config={AUTH_PAGE_CONFIG.host} />;
-}
-
-export function HostResetPasswordPage() {
-  usePageTitle(appPageTitle('Reset Password'));
-  return <ResetPasswordPageContent config={AUTH_PAGE_CONFIG.host} />;
-}
-
-export function HostVerifyEmailPage() {
-  usePageTitle(appPageTitle('Verify Email'));
-  return <VerifyEmailPageContent config={AUTH_PAGE_CONFIG.host} />;
+  return (
+    <AuthPageContent
+      config={AUTH_PAGE_CONFIG.host}
+      mode="register"
+      actions={{
+        sendEmailOtp: hostAuth.sendEmailOtp,
+        verifyEmailOtp: hostAuth.verifyEmailOtp,
+        signInWithGoogle: hostAuth.signInWithGoogle,
+        googleLoading: hostAuth.isSigningIn,
+        bannerError: hostAuth.error,
+      }}
+    />
+  );
 }

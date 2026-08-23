@@ -1,4 +1,5 @@
 import type { AuthAudience } from '@/features/guest/auth/config/auth-page-config';
+import { GUEST_LOGIN_PATH } from '@/features/guest/auth/lib/guestAuthPaths';
 import { HOST_LOGIN_PATH } from '@/features/guest/auth/lib/hostAuthPaths';
 
 import { getLastOrgSlug, orgDashboardPath } from '@/features/dashboard/org/lib/tenantPaths';
@@ -6,16 +7,6 @@ import { getLastOrgSlug, orgDashboardPath } from '@/features/dashboard/org/lib/t
 /** Derive host vs guest (Explore) mode from the current pathname. */
 export function getAuthAudienceFromPath(pathname: string): AuthAudience {
   return pathname.startsWith('/for-hosts') ? 'host' : 'guest';
-}
-
-/** Login page for hosts. Guests use the checkout auth modal — no dedicated login route. */
-export function getLoginHref(audience: AuthAudience): string | null {
-  return audience === 'host' ? HOST_LOGIN_PATH : null;
-}
-
-/** Login href for the current marketing route (host landing vs explore). */
-export function getLoginHrefFromPath(pathname: string): string | null {
-  return getLoginHref(getAuthAudienceFromPath(pathname));
 }
 
 /** Host dashboard href when signed in; Sign In when signed out. */
@@ -31,5 +22,13 @@ export function getHostMarketingNavCta(isSignedIn: boolean): { label: string; hr
   return {
     label: 'Sign In',
     href: HOST_LOGIN_PATH,
+  };
+}
+
+/** Guest sign-in CTA for the marketing nav (signed-in state is handled by `GuestAccountMenu`). */
+export function getGuestLoginCta(): { label: string; href: string } {
+  return {
+    label: 'Sign In',
+    href: GUEST_LOGIN_PATH,
   };
 }

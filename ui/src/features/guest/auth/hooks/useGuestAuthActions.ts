@@ -26,19 +26,16 @@ export function useGuestAuthActions() {
     return error;
   }, []);
 
-  const signInWithOAuth = useCallback(
-    async (provider: 'google' | 'facebook', returnPath: string) => {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: guestOAuthRedirectTo(returnPath),
-          skipBrowserRedirect: false,
-        },
-      });
-      return error;
-    },
-    []
-  );
+  const signInWithGoogle = useCallback(async (returnPath: string) => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: guestOAuthRedirectTo(returnPath),
+        skipBrowserRedirect: false,
+      },
+    });
+    return error;
+  }, []);
 
-  return { sendEmailOtp, verifyEmailOtp, signInWithOAuth };
+  return { sendEmailOtp, verifyEmailOtp, signInWithGoogle };
 }

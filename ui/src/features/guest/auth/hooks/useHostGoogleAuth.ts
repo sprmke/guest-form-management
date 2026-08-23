@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
+import { useGuestAuthActions } from '@/features/guest/auth/hooks/useGuestAuthActions';
 import { hostGoogleOAuthRedirectTo, safeRedirect } from '@/features/guest/auth/lib/hostAuthPaths';
 
 import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
@@ -68,12 +69,16 @@ export function useHostGoogleAuth({ callbackPathname, defaultRedirect = '/dashbo
     }
   }, [callbackPathname, redirect]);
 
+  const { sendEmailOtp, verifyEmailOtp } = useGuestAuthActions();
+
   return {
     status,
     error,
     isSigningIn,
     isResolving,
     signInWithGoogle,
+    sendEmailOtp,
+    verifyEmailOtp,
     setError,
   };
 }
