@@ -2,7 +2,7 @@ import * as React from 'react';
 
 import { useLocation, useSearchParams } from 'react-router-dom';
 
-import { Bell, Car, DollarSign } from 'lucide-react';
+import { Bell, Car, DollarSign, MessageCircle } from 'lucide-react';
 
 import {
   AdminSection,
@@ -14,6 +14,7 @@ import {
 import { TelegramGlobalBotTokenCard } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramGlobalBotTokenCard';
 import { TelegramHelpDialog } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramHelpDialog';
 import { TelegramNotificationsGlobalBotProvider } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramNotificationsGlobalBotContext';
+import { TelegramChatSettingsCard } from '@/features/dashboard/bookings/components/TelegramChatSettingsCard';
 import { TelegramFinanceSettingsCard } from '@/features/dashboard/bookings/components/TelegramFinanceSettingsCard';
 import { InAppNotificationsSection } from '@/features/dashboard/notifications/components/InAppNotificationsSection';
 import {
@@ -27,7 +28,7 @@ import { TelegramParkingSettingsCard } from '@/features/dashboard/parking/compon
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { parkingDashboardPageTitle, usePageTitle } from '@/lib/pageTitle';
 
-const PARKING_NOTIFICATION_MODULES = ['parking', 'finance'] as const;
+const PARKING_NOTIFICATION_MODULES = ['chat', 'parking', 'finance'] as const;
 
 type ParkingNotificationModule = (typeof PARKING_NOTIFICATION_MODULES)[number];
 
@@ -36,6 +37,7 @@ function isParkingNotificationModule(value: string | null): value is ParkingNoti
 }
 
 const MODULE_SECTIONS: AdminSectionNavItem[] = [
+  { id: 'chat', label: 'Chat', icon: MessageCircle },
   { id: 'parking', label: 'Parking', icon: Car },
   { id: 'finance', label: 'Finance', icon: DollarSign },
 ];
@@ -52,6 +54,7 @@ const NOTIFICATION_SECTION_GROUPS: AdminSectionNavGroup[] = [
 ];
 
 const MODULE_DESCRIPTIONS: Record<ParkingNotificationModule, string> = {
+  chat: 'Instant alert for every inbound guest message from web chat.',
   parking:
     'Reservation alerts for new requests, check-in reminders, and payment received on this slot.',
   finance: 'Due-date reminders for parking expense lines you track in Finance.',
@@ -120,6 +123,15 @@ export function ParkingNotificationsPage() {
             />
 
             <TelegramGlobalBotTokenCard />
+
+            <AdminSection
+              id="chat"
+              title="Chat"
+              icon={MessageCircle}
+              description={MODULE_DESCRIPTIONS.chat}
+            >
+              <TelegramChatSettingsCard embedded />
+            </AdminSection>
 
             <AdminSection
               id="parking"

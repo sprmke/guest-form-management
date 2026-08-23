@@ -8,10 +8,7 @@ import {
   useParkingPricing,
   useSaveParkingPricing,
 } from '@/features/dashboard/parking/hooks/useParkingPricing';
-import {
-  dateKey,
-  resolveParkingNightlyRateForDate,
-} from '@/features/dashboard/parking/lib/parkingPricingCompute';
+import { resolveParkingNightlyRateForDate } from '@/features/dashboard/parking/lib/parkingPricingCompute';
 import {
   DEFAULT_PARKING_WEEKDAY_NIGHTLY_RATE,
   DEFAULT_PARKING_WEEKEND_NIGHTLY_RATE,
@@ -28,6 +25,10 @@ import {
 import { PricingCalendarGrid } from '@/features/dashboard/pricing/components/PricingCalendarGrid';
 import { PricingDateModal } from '@/features/dashboard/pricing/components/PricingDateModal';
 import { PricingSaveDialog } from '@/features/dashboard/pricing/components/PricingSaveDialog';
+import {
+  contiguousDateRanges,
+  dateKey,
+} from '@/features/dashboard/pricing/lib/pricingCalendarUtils';
 import { mergeDateRateOverrides } from '@/features/dashboard/pricing/lib/pricingCalendarUtils';
 import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermissions';
 import { hasOrgPermission } from '@/features/dashboard/team/lib/orgPermissions';
@@ -53,6 +54,7 @@ export function ParkingPricingPage() {
   const [weekdayRate, setWeekdayRate] = useState(DEFAULT_PARKING_WEEKDAY_NIGHTLY_RATE);
   const [weekendRate, setWeekendRate] = useState(DEFAULT_PARKING_WEEKEND_NIGHTLY_RATE);
   const [bookedDateKeys, setBookedDateKeys] = useState<Set<string>>(() => new Set());
+  const [blockedDateKeys, setBlockedDateKeys] = useState<Set<string>>(() => new Set());
   const [customDatePrices, setCustomDatePrices] = useState<Map<string, number>>(() => new Map());
 
   const [dateModalOpen, setDateModalOpen] = useState(false);
@@ -70,6 +72,7 @@ export function ParkingPricingPage() {
     if (!pricingData) return;
 
     setBookedDateKeys(new Set(pricingData.bookedDateKeys));
+    setBlockedDateKeys(new Set(pricingData.blockedDateKeys ?? []));
 
     if (hasChanges || hydratedRef.current) return;
 
@@ -85,9 +88,10 @@ export function ParkingPricingPage() {
     (date: Date) => {
       const key = dateKey(date);
       const isBooked = bookedDateKeys.has(key);
+      const isBlocked = blockedDateKeys.has(key);
       const customPrice = customDatePrices.get(key);
       if (customPrice !== undefined) {
-        return { price: customPrice, isCustom: true as const, isBooked, isBlocked: false };
+        return { price: customPrice, isCustom: true as const, isBooked, isBlocked };
       }
 
       const price = resolveParkingNightlyRateForDate(date, {
@@ -95,10 +99,15 @@ export function ParkingPricingPage() {
         weekendNightlyRate: weekendRate,
       });
 
-      return { price, isCustom: false as const, isBooked, isBlocked: false };
+      return { price, isCustom: false as const, isBooked, isBlocked };
     },
-    [bookedDateKeys, customDatePrices, weekdayRate, weekendRate]
+    [bookedDateKeys, blockedDateKeys, customDatePrices, weekdayRate, weekendRate]
   );
+
+  const selectionMode = useMemo<'available' | 'blocked'>(() => {
+    const first = selectedDates[0];
+    return first && blockedDateKeys.has(dateKey(first)) ? 'blocked' : 'available';
+  }, [selectedDates, blockedDateKeys]);
 
   const openDateModal = useCallback(
     (dates: Date[]) => {
@@ -125,8 +134,15 @@ export function ParkingPricingPage() {
       return;
     }
 
+    const clickedIsBlocked = blockedDateKeys.has(dateKey(date));
+    const firstSelected = selectedDates[0];
+    const kindMismatch =
+      firstSelected != null && blockedDateKeys.has(dateKey(firstSelected)) !== clickedIsBlocked;
+
     let next: Date[];
-    if (selectedDates.some((d) => isSameDay(d, date))) {
+    if (kindMismatch) {
+      next = [date];
+    } else if (selectedDates.some((d) => isSameDay(d, date))) {
       next = selectedDates.filter((d) => !isSameDay(d, date));
     } else {
       next = [...selectedDates, date];
@@ -213,6 +229,35 @@ export function ParkingPricingPage() {
       next.delete(format(date, 'yyyy-MM-dd'));
     });
     persistDateOverrides(next, clearSelection);
+  };
+
+  const blockSelectedDates = async () => {
+    if (selectedDates.length === 0) return;
+    const today = startOfToday();
+    const eligible = selectedDates.filter(
+      (date) => !isBefore(date, today) && !bookedDateKeys.has(dateKey(date))
+    );
+    if (eligible.length === 0) return;
+
+    let lastData: NonNullable<typeof pricingData> | undefined;
+    for (const range of contiguousDateRanges(eligible)) {
+      lastData = await saveMutation.mutateAsync({ blockRange: range });
+    }
+    if (lastData) setBlockedDateKeys(new Set(lastData.blockedDateKeys));
+    clearSelection();
+  };
+
+  const unblockSelectedDates = () => {
+    if (selectedDates.length === 0) return;
+    saveMutation.mutate(
+      { unblockDateKeys: selectedDates.map((date) => dateKey(date)) },
+      {
+        onSuccess: (data) => {
+          setBlockedDateKeys(new Set(data.blockedDateKeys));
+          clearSelection();
+        },
+      }
+    );
   };
 
   const handleSaveConfirm = (options: ParkingPricingSaveOptions) => {
@@ -350,6 +395,9 @@ export function ParkingPricingPage() {
         onNewPriceChange={setNewPrice}
         onResetToDefault={resetSelectedToDefault}
         onApply={applyCustomPrice}
+        mode={selectionMode}
+        onBlock={() => void blockSelectedDates()}
+        onUnblock={unblockSelectedDates}
         saving={saveMutation.isPending}
       />
 
