@@ -10,6 +10,7 @@ import {
   type GuestChatAttachment,
   type GuestChatMessage,
 } from '@/features/guest/chat/lib/guestChatApi';
+import { BookingCalendarModal } from '@/features/guest/marketing/properties/components/property-detail/BookingCalendarModal';
 
 import {
   InboxMediaPreviewDialog,
@@ -57,6 +58,9 @@ type SendOpts = {
 type Props = {
   className?: string;
   conversationId?: string | null;
+  /** Enables the "Check availability" calendar link cards to open an in-place modal. */
+  propertySlug?: string | null;
+  propertyName?: string;
   messages: GuestChatMessage[];
   isLoading: boolean;
   onSend: (text: string, opts?: SendOpts) => Promise<void>;
@@ -84,6 +88,8 @@ const ACCEPTED_FILE_TYPES =
 export function GuestChatThread({
   className,
   conversationId = null,
+  propertySlug = null,
+  propertyName = '',
   messages,
   isLoading,
   onSend,
@@ -107,6 +113,9 @@ export function GuestChatThread({
   const [pendingAttachments, setPendingAttachments] = useState<GuestChatAttachment[]>([]);
   const [previewAttachment, setPreviewAttachment] = useState<InboxAttachmentPreview | null>(null);
   const [composerMode, setComposerMode] = useState<ComposerMode>({ kind: 'compose' });
+  const [calendarModalOpen, setCalendarModalOpen] = useState(false);
+  const [calendarCheckIn, setCalendarCheckIn] = useState<Date | null>(null);
+  const [calendarCheckOut, setCalendarCheckOut] = useState<Date | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -333,6 +342,21 @@ export function GuestChatThread({
         }}
       />
 
+      {propertySlug ? (
+        <BookingCalendarModal
+          open={calendarModalOpen}
+          onOpenChange={setCalendarModalOpen}
+          propertySlug={propertySlug}
+          propertyName={propertyName}
+          checkIn={calendarCheckIn}
+          checkOut={calendarCheckOut}
+          onDatesChange={(checkIn, checkOut) => {
+            setCalendarCheckIn(checkIn);
+            setCalendarCheckOut(checkOut);
+          }}
+        />
+      ) : null}
+
       {!headerSearch && threadSearch.open ? (
         <ChatThreadSearchPanel
           query={threadSearch.query}
@@ -463,6 +487,9 @@ export function GuestChatThread({
                           : undefined
                       }
                       actions={messageActions}
+                      onCalendarLinkClick={
+                        propertySlug ? () => setCalendarModalOpen(true) : undefined
+                      }
                     />
                   ) : null;
 

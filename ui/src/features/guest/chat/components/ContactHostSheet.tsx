@@ -42,7 +42,8 @@ import { formatDateToYYYYMMDD, formatStayDateRange } from '@/utils/format/dates'
 export type ContactHostSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  propertySlug: string;
+  propertySlug?: string;
+  parkingSlug?: string;
   propertyName: string;
   checkIn: Date | null;
   checkOut: Date | null;
@@ -61,6 +62,7 @@ export function ContactHostSheet({
   open,
   onOpenChange,
   propertySlug,
+  parkingSlug,
   propertyName,
   checkIn,
   checkOut,
@@ -68,6 +70,7 @@ export function ContactHostSheet({
   host,
   initialDraft = '',
 }: ContactHostSheetProps) {
+  const listingSlug = propertySlug?.trim() || parkingSlug?.trim() || '';
   const queryClient = useQueryClient();
   const { status } = useGuestAuth();
   const [composeDraft, setComposeDraft] = useState(initialDraft);
@@ -83,7 +86,8 @@ export function ContactHostSheet({
 
   const resumeQuery = useGuestChatResume({
     propertySlug,
-    enabled: open && status === 'authenticated',
+    parkingSlug,
+    enabled: open && status === 'authenticated' && !!listingSlug,
   });
 
   const resumedConversationId =
@@ -98,10 +102,16 @@ export function ContactHostSheet({
 
   const startQuery = useGuestChatStart({
     propertySlug,
+    parkingSlug,
     checkInDate,
     checkOutDate,
     enabled:
-      open && status === 'authenticated' && hasDates && !isReturningGuest && !localConversationId,
+      open &&
+      status === 'authenticated' &&
+      !!listingSlug &&
+      hasDates &&
+      !isReturningGuest &&
+      !localConversationId,
   });
 
   const conversationId =
@@ -150,6 +160,7 @@ export function ContactHostSheet({
           if (!hasDates) return;
           const started = await startGuestWebChat({
             propertySlug,
+            parkingSlug,
             checkInDate,
             checkOutDate,
           });
@@ -162,7 +173,7 @@ export function ContactHostSheet({
           queryKey: [GUEST_CHAT_MESSAGES_KEY, convId],
         });
         await queryClient.invalidateQueries({
-          queryKey: [GUEST_CHAT_RESUME_KEY, propertySlug],
+          queryKey: [GUEST_CHAT_RESUME_KEY, propertySlug ?? '', parkingSlug ?? ''],
         });
         setComposeDraft('');
       } catch (e) {
@@ -172,7 +183,7 @@ export function ContactHostSheet({
         setSendingFirst(false);
       }
     },
-    [conversationId, hasDates, propertySlug, checkInDate, checkOutDate, queryClient]
+    [conversationId, hasDates, propertySlug, parkingSlug, checkInDate, checkOutDate, queryClient]
   );
 
   useEffect(() => {
@@ -374,7 +385,7 @@ export function ContactHostSheet({
           ) : null}
 
           <div className="bg-muted/20 flex min-h-0 flex-1 flex-col">
-            {voiceSessionOpen ? (
+            {voiceSessionOpen && propertySlug ? (
               <VoiceSessionPanel
                 propertySlug={propertySlug}
                 onClose={() => setVoiceSessionOpen(false)}
@@ -386,6 +397,8 @@ export function ContactHostSheet({
             ) : showThread && conversationId ? (
               <GuestChatThread
                 conversationId={conversationId}
+                propertySlug={listingSlug}
+                propertyName={propertyName}
                 messages={messages}
                 isLoading={messagesLoading}
                 threadSearch={threadSearch}
@@ -421,7 +434,7 @@ export function ContactHostSheet({
                     disabled={sendingFirst || send.isPending}
                   />
                 </div>
-                <div className="border-border bg-background shrink-0 border-t px-5 py-4 pb-[max(env(safe-area-inset-bottom,0px),1rem)]">
+                <div className="border-border shrink-0 border-t px-5 py-4 pb-[max(env(safe-area-inset-bottom,0px),1rem)]">
                   <div className="flex items-end gap-2">
                     {canComposeWithoutDates ? (
                       <>
@@ -477,7 +490,7 @@ export function ContactHostSheet({
       <BookingCalendarModal
         open={datesModalOpen}
         onOpenChange={setDatesModalOpen}
-        propertySlug={propertySlug}
+        propertySlug={listingSlug}
         propertyName={propertyName}
         checkIn={checkIn}
         checkOut={checkOut}

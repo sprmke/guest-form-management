@@ -5,19 +5,19 @@ import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
 
 import { useGuestAuth } from '@/features/guest/auth/context/GuestAuthContext';
-import { PropertyChatEmbedPreview } from '@/features/guest/chat/components/PropertyChatEmbedPreview';
 import {
   GuestChatHeaderBar,
   GuestChatSearchPanelRow,
 } from '@/features/guest/chat/components/GuestChatHeaderBar';
 import { GuestChatThread } from '@/features/guest/chat/components/GuestChatThread';
+import { PropertyChatEmbedPreview } from '@/features/guest/chat/components/PropertyChatEmbedPreview';
 import { VoiceSessionPanel } from '@/features/guest/chat/components/voice/VoiceSessionPanel';
 import { useGuestChatMessages, useGuestChatStart } from '@/features/guest/chat/hooks/useGuestChat';
+import { isGuestEmbedPreview } from '@/features/guest/lib/guestEmbedPreview';
 import {
   guestPropertyPath,
   guestPropertyPickDatesPath,
 } from '@/features/guest/lib/guestPublicPaths';
-import { isGuestEmbedPreview } from '@/features/guest/lib/guestEmbedPreview';
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
 import { GuestStayContextBar } from '@/features/guest/property/components/GuestStayContextBar';
 
@@ -138,7 +138,7 @@ function PropertyChatContent({
   }
 
   const host = startQuery.data?.host;
-  const propertyName = startQuery.data?.property.name ?? 'Property';
+  const propertyName = startQuery.data?.property?.name ?? 'Property';
   const hostLabel = host?.ownerName?.trim() || 'Host';
   const hostAvatar = host?.ownerAvatarUrl ?? null;
 
@@ -241,6 +241,8 @@ function PropertyChatContent({
       ) : (
         <GuestChatThread
           conversationId={conversationId}
+          propertySlug={propertySlug}
+          propertyName={propertyName}
           messages={messages}
           isLoading={isLoading}
           threadSearch={threadSearch}

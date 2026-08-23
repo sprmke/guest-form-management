@@ -120,35 +120,49 @@ function normalizeSendInput(input: GuestChatSendInput | string): GuestChatSendIn
   return input;
 }
 
-export function useGuestChatResume(input: { propertySlug: string; enabled: boolean }) {
+export function useGuestChatResume(input: {
+  propertySlug?: string;
+  parkingSlug?: string;
+  enabled: boolean;
+}) {
+  const slug = input.propertySlug?.trim() || input.parkingSlug?.trim() || '';
   return useQuery({
-    queryKey: [GUEST_CHAT_RESUME_KEY, input.propertySlug],
-    queryFn: () => fetchGuestWebChatResume(input.propertySlug),
-    enabled: input.enabled && !!input.propertySlug.trim(),
+    queryKey: [GUEST_CHAT_RESUME_KEY, input.propertySlug ?? '', input.parkingSlug ?? ''],
+    queryFn: () =>
+      fetchGuestWebChatResume({
+        propertySlug: input.propertySlug,
+        parkingSlug: input.parkingSlug,
+      }),
+    enabled: input.enabled && !!slug,
     staleTime: 30_000,
     retry: 1,
   });
 }
 
 export function useGuestChatStart(input: {
-  propertySlug: string;
+  propertySlug?: string;
+  parkingSlug?: string;
   checkInDate: string;
   checkOutDate: string;
   enabled: boolean;
 }) {
+  const slug = input.propertySlug?.trim() || input.parkingSlug?.trim() || '';
   return useQuery({
-    queryKey: [GUEST_CHAT_START_KEY, input.propertySlug, input.checkInDate, input.checkOutDate],
+    queryKey: [
+      GUEST_CHAT_START_KEY,
+      input.propertySlug ?? '',
+      input.parkingSlug ?? '',
+      input.checkInDate,
+      input.checkOutDate,
+    ],
     queryFn: () =>
       startGuestWebChat({
         propertySlug: input.propertySlug,
+        parkingSlug: input.parkingSlug,
         checkInDate: input.checkInDate,
         checkOutDate: input.checkOutDate,
       }),
-    enabled:
-      input.enabled &&
-      !!input.propertySlug.trim() &&
-      !!input.checkInDate.trim() &&
-      !!input.checkOutDate.trim(),
+    enabled: input.enabled && !!slug && !!input.checkInDate.trim() && !!input.checkOutDate.trim(),
     staleTime: 60_000,
     retry: 1,
   });

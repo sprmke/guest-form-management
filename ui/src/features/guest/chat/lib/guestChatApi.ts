@@ -61,7 +61,12 @@ async function guestEdgeGet(path: string, search: URLSearchParams) {
 
 export type GuestChatStartResult = {
   conversationId: string;
-  property: {
+  property?: {
+    id: string;
+    slug: string;
+    name: string;
+  };
+  parking?: {
     id: string;
     slug: string;
     name: string;
@@ -83,7 +88,12 @@ export type GuestChatResumeResult = {
   inquiryCheckIn: string | null;
   inquiryCheckOut: string | null;
   replyStatus: ChatReplyStatus | null;
-  property: {
+  property?: {
+    id: string;
+    slug: string;
+    name: string;
+  } | null;
+  parking?: {
     id: string;
     slug: string;
     name: string;
@@ -148,7 +158,8 @@ export function canGuestUnsendMessage(
 }
 
 export async function startGuestWebChat(input: {
-  propertySlug: string;
+  propertySlug?: string;
+  parkingSlug?: string;
   checkInDate: string;
   checkOutDate: string;
 }): Promise<GuestChatStartResult> {
@@ -156,10 +167,16 @@ export async function startGuestWebChat(input: {
   return payload as unknown as GuestChatStartResult;
 }
 
-export async function fetchGuestWebChatResume(
-  propertySlug: string
-): Promise<GuestChatResumeResult> {
-  const params = new URLSearchParams({ property_slug: propertySlug });
+export async function fetchGuestWebChatResume(input: {
+  propertySlug?: string;
+  parkingSlug?: string;
+}): Promise<GuestChatResumeResult> {
+  const params = new URLSearchParams();
+  if (input.propertySlug?.trim()) {
+    params.set('property_slug', input.propertySlug.trim());
+  } else if (input.parkingSlug?.trim()) {
+    params.set('parking_slug', input.parkingSlug.trim());
+  }
   const payload = await guestEdgeGet('guest-web-chat-resume', params);
   return payload as unknown as GuestChatResumeResult;
 }
