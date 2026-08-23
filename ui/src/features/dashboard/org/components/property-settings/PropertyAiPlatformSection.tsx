@@ -113,14 +113,24 @@ export function PropertyAiPlatformSection() {
 
   if (settingsLoading || !draft) {
     return (
-      <AdminSection id="ai" title="AI overrides" icon={Sparkles}>
+      <AdminSection
+        id="ai"
+        title="AI overrides"
+        icon={Sparkles}
+        description="AI usage limits for this property."
+      >
         <SectionContentSkeleton rows={4} />
       </AdminSection>
     );
   }
 
   return (
-    <AdminSection id="ai" title="AI overrides" icon={Sparkles}>
+    <AdminSection
+      id="ai"
+      title="AI overrides"
+      icon={Sparkles}
+      description="AI usage limits for this property."
+    >
       {readOnly ? (
         <p className="text-muted-foreground text-sm">
           Contact the property manager to change AI overrides.

@@ -88,7 +88,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { TimePicker } from '@/components/ui/time-picker';
 import type { AvailabilityCheckState } from '@/lib/availabilityCheckState';
+import { CLEANING_BUFFER_OPTIONS } from '@/lib/cleaningBuffer';
 import { cn } from '@/lib/utils';
 
 function FieldGrid({ children }: { children: React.ReactNode }) {
@@ -667,14 +669,12 @@ export function PropertyProfileMainSections({
             required
             error={fieldError('property-check-in')}
           >
-            <Input
+            <TimePicker
               id="property-check-in"
-              type="time"
               value={draft.checkInTime}
-              onChange={(event) => setField('checkInTime', event.target.value, 'property-check-in')}
+              onChange={(value) => setField('checkInTime', value, 'property-check-in')}
               disabled={disabled}
               aria-invalid={Boolean(fieldError('property-check-in'))}
-              className={cn(fieldError('property-check-in') && 'border-destructive')}
             />
           </SettingsField>
 
@@ -684,19 +684,45 @@ export function PropertyProfileMainSections({
             required
             error={fieldError('property-check-out')}
           >
-            <Input
+            <TimePicker
               id="property-check-out"
-              type="time"
               value={draft.checkOutTime}
-              onChange={(event) =>
-                setField('checkOutTime', event.target.value, 'property-check-out')
-              }
+              onChange={(value) => setField('checkOutTime', value, 'property-check-out')}
               disabled={disabled}
               aria-invalid={Boolean(fieldError('property-check-out'))}
-              className={cn(fieldError('property-check-out') && 'border-destructive')}
             />
           </SettingsField>
         </FieldGrid>
+
+        <SettingsField
+          id="property-cleaning-buffer"
+          label="Cleaning Buffer"
+          error={fieldError('property-cleaning-buffer')}
+          hintBelow="Minimum time between a checkout and the next check-in on a same-day turnover."
+        >
+          <Select
+            value={String(draft.cleaningBufferMinutes ?? 0)}
+            onValueChange={(value) =>
+              setField('cleaningBufferMinutes', Number(value) || null, 'property-cleaning-buffer')
+            }
+            disabled={disabled}
+          >
+            <SelectTrigger
+              id="property-cleaning-buffer"
+              aria-invalid={Boolean(fieldError('property-cleaning-buffer'))}
+              className={cn(fieldError('property-cleaning-buffer') && 'border-destructive')}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CLEANING_BUFFER_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={String(option.value)}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SettingsField>
 
         <label className="flex min-h-[44px] cursor-pointer items-start gap-3">
           <Checkbox
@@ -762,90 +788,90 @@ export function PropertyProfileMainSections({
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="space-y-3 p-4">
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {category.amenities.map((amenity) => {
-                      const enabled = draft.enabledAmenities.includes(amenity.id);
-                      return (
-                        <button
-                          key={amenity.id}
-                          type="button"
-                          disabled={disabled}
-                          onClick={() => toggleAmenity(amenity.id)}
-                          className={cn(
-                            'flex min-h-[44px] items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition-colors',
-                            enabled
-                              ? 'border-border bg-background shadow-sm'
-                              : 'border-border/60 hover:bg-muted/40'
-                          )}
-                        >
-                          <CheckboxDisplay checked={enabled} />
-                          <span className="min-w-0 flex-1">{amenity.name}</span>
-                        </button>
-                      );
-                    })}
-
-                    {categoryCustom.map((amenity) => {
-                      const enabled = draft.enabledAmenities.includes(amenity.id);
-                      return (
-                        <div
-                          key={amenity.id}
-                          className={cn(
-                            'flex min-h-[44px] items-center gap-2 rounded-xl border px-3 py-2.5',
-                            enabled ? 'border-border bg-background shadow-sm' : 'border-border/60'
-                          )}
-                        >
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {category.amenities.map((amenity) => {
+                        const enabled = draft.enabledAmenities.includes(amenity.id);
+                        return (
                           <button
+                            key={amenity.id}
                             type="button"
                             disabled={disabled}
                             onClick={() => toggleAmenity(amenity.id)}
-                            className="flex min-w-0 flex-1 items-center gap-3 text-left text-sm"
+                            className={cn(
+                              'flex min-h-[44px] items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition-colors',
+                              enabled
+                                ? 'border-border bg-background shadow-sm'
+                                : 'border-border/60 hover:bg-muted/40'
+                            )}
                           >
                             <CheckboxDisplay checked={enabled} />
-                            <span className="truncate">{amenity.name}</span>
+                            <span className="min-w-0 flex-1">{amenity.name}</span>
                           </button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="min-h-[44px] min-w-[44px] shrink-0"
-                            disabled={disabled}
-                            onClick={() => removeCustomAmenity(amenity.id)}
-                            aria-label={`Remove ${amenity.name}`}
-                          >
-                            <X className="size-4" aria-hidden />
-                          </Button>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
 
-                  <div className="flex flex-col gap-2 sm:flex-row">
-                    <LimitedCountInput
-                      value={newCustomAmenityInputs[category.id] ?? ''}
-                      onChange={(event) =>
-                        onNewCustomAmenityInputChange(category.id, event.target.value)
-                      }
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter') {
-                          event.preventDefault();
-                          addCustomAmenity(category.id);
+                      {categoryCustom.map((amenity) => {
+                        const enabled = draft.enabledAmenities.includes(amenity.id);
+                        return (
+                          <div
+                            key={amenity.id}
+                            className={cn(
+                              'flex min-h-[44px] items-center gap-2 rounded-xl border px-3 py-2.5',
+                              enabled ? 'border-border bg-background shadow-sm' : 'border-border/60'
+                            )}
+                          >
+                            <button
+                              type="button"
+                              disabled={disabled}
+                              onClick={() => toggleAmenity(amenity.id)}
+                              className="flex min-w-0 flex-1 items-center gap-3 text-left text-sm"
+                            >
+                              <CheckboxDisplay checked={enabled} />
+                              <span className="truncate">{amenity.name}</span>
+                            </button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="min-h-[44px] min-w-[44px] shrink-0"
+                              disabled={disabled}
+                              onClick={() => removeCustomAmenity(amenity.id)}
+                              aria-label={`Remove ${amenity.name}`}
+                            >
+                              <X className="size-4" aria-hidden />
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <LimitedCountInput
+                        value={newCustomAmenityInputs[category.id] ?? ''}
+                        onChange={(event) =>
+                          onNewCustomAmenityInputChange(category.id, event.target.value)
                         }
-                      }}
-                      disabled={disabled}
-                      placeholder="Add custom amenity..."
-                      maxLength={CUSTOM_AMENITY_MAX_LENGTH}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={disabled || !newCustomAmenityInputs[category.id]?.trim()}
-                      onClick={() => addCustomAmenity(category.id)}
-                      className="min-h-[44px] shrink-0"
-                    >
-                      <Plus className="mr-1 size-4" aria-hidden />
-                      Add
-                    </Button>
-                  </div>
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault();
+                            addCustomAmenity(category.id);
+                          }
+                        }}
+                        disabled={disabled}
+                        placeholder="Add custom amenity..."
+                        maxLength={CUSTOM_AMENITY_MAX_LENGTH}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={disabled || !newCustomAmenityInputs[category.id]?.trim()}
+                        onClick={() => addCustomAmenity(category.id)}
+                        className="min-h-[44px] shrink-0"
+                      >
+                        <Plus className="mr-1 size-4" aria-hidden />
+                        Add
+                      </Button>
+                    </div>
                   </div>
                 </CollapsibleContent>
               </Collapsible>
@@ -896,90 +922,90 @@ export function PropertyProfileMainSections({
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="space-y-3 p-4">
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {category.rules.map((rule) => {
-                      const enabled = draft.enabledHouseRules.includes(rule.id);
-                      return (
-                        <button
-                          key={rule.id}
-                          type="button"
-                          disabled={disabled}
-                          onClick={() => toggleHouseRule(rule.id)}
-                          className={cn(
-                            'flex min-h-[44px] items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition-colors',
-                            enabled
-                              ? 'border-border bg-background shadow-sm'
-                              : 'border-border/60 hover:bg-muted/40'
-                          )}
-                        >
-                          <CheckboxDisplay checked={enabled} />
-                          <span className="min-w-0 flex-1">{rule.name}</span>
-                        </button>
-                      );
-                    })}
-
-                    {categoryCustom.map((rule) => {
-                      const enabled = draft.enabledHouseRules.includes(rule.id);
-                      return (
-                        <div
-                          key={rule.id}
-                          className={cn(
-                            'flex min-h-[44px] items-center gap-2 rounded-xl border px-3 py-2.5',
-                            enabled ? 'border-border bg-background shadow-sm' : 'border-border/60'
-                          )}
-                        >
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {category.rules.map((rule) => {
+                        const enabled = draft.enabledHouseRules.includes(rule.id);
+                        return (
                           <button
+                            key={rule.id}
                             type="button"
                             disabled={disabled}
                             onClick={() => toggleHouseRule(rule.id)}
-                            className="flex min-w-0 flex-1 items-center gap-3 text-left text-sm"
+                            className={cn(
+                              'flex min-h-[44px] items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition-colors',
+                              enabled
+                                ? 'border-border bg-background shadow-sm'
+                                : 'border-border/60 hover:bg-muted/40'
+                            )}
                           >
                             <CheckboxDisplay checked={enabled} />
-                            <span className="truncate">{rule.name}</span>
+                            <span className="min-w-0 flex-1">{rule.name}</span>
                           </button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="min-h-[44px] min-w-[44px] shrink-0"
-                            disabled={disabled}
-                            onClick={() => removeCustomHouseRule(rule.id)}
-                            aria-label={`Remove ${rule.name}`}
-                          >
-                            <X className="size-4" aria-hidden />
-                          </Button>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
 
-                  <div className="flex flex-col gap-2 sm:flex-row">
-                    <LimitedCountInput
-                      value={newCustomHouseRuleInputs[category.id] ?? ''}
-                      onChange={(event) =>
-                        onNewCustomHouseRuleInputChange(category.id, event.target.value)
-                      }
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter') {
-                          event.preventDefault();
-                          addCustomHouseRule(category.id);
+                      {categoryCustom.map((rule) => {
+                        const enabled = draft.enabledHouseRules.includes(rule.id);
+                        return (
+                          <div
+                            key={rule.id}
+                            className={cn(
+                              'flex min-h-[44px] items-center gap-2 rounded-xl border px-3 py-2.5',
+                              enabled ? 'border-border bg-background shadow-sm' : 'border-border/60'
+                            )}
+                          >
+                            <button
+                              type="button"
+                              disabled={disabled}
+                              onClick={() => toggleHouseRule(rule.id)}
+                              className="flex min-w-0 flex-1 items-center gap-3 text-left text-sm"
+                            >
+                              <CheckboxDisplay checked={enabled} />
+                              <span className="truncate">{rule.name}</span>
+                            </button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="min-h-[44px] min-w-[44px] shrink-0"
+                              disabled={disabled}
+                              onClick={() => removeCustomHouseRule(rule.id)}
+                              aria-label={`Remove ${rule.name}`}
+                            >
+                              <X className="size-4" aria-hidden />
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <LimitedCountInput
+                        value={newCustomHouseRuleInputs[category.id] ?? ''}
+                        onChange={(event) =>
+                          onNewCustomHouseRuleInputChange(category.id, event.target.value)
                         }
-                      }}
-                      disabled={disabled}
-                      placeholder="Add custom rule..."
-                      maxLength={HOUSE_RULE_CUSTOM_MAX_LENGTH}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={disabled || !newCustomHouseRuleInputs[category.id]?.trim()}
-                      onClick={() => addCustomHouseRule(category.id)}
-                      className="min-h-[44px] shrink-0"
-                    >
-                      <Plus className="mr-1 size-4" aria-hidden />
-                      Add
-                    </Button>
-                  </div>
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault();
+                            addCustomHouseRule(category.id);
+                          }
+                        }}
+                        disabled={disabled}
+                        placeholder="Add custom rule..."
+                        maxLength={HOUSE_RULE_CUSTOM_MAX_LENGTH}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={disabled || !newCustomHouseRuleInputs[category.id]?.trim()}
+                        onClick={() => addCustomHouseRule(category.id)}
+                        className="min-h-[44px] shrink-0"
+                      >
+                        <Plus className="mr-1 size-4" aria-hidden />
+                        Add
+                      </Button>
+                    </div>
                   </div>
                 </CollapsibleContent>
               </Collapsible>

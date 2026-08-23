@@ -2,6 +2,7 @@ import { AdminLayoutOutlet } from '@/features/dashboard/bookings/components/Admi
 import { RequireAdmin } from '@/features/dashboard/bookings/components/RequireAdmin';
 import { RequireOrgNotHardRejected } from '@/features/dashboard/org/components/RequireOrgNotHardRejected';
 import { RequireParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
+import { ParkingSettingsIssuesSync } from '@/features/dashboard/parking/components/ParkingSettingsIssuesSync';
 
 /** Auth + parking tenant context + persistent AdminLayout. */
 export function ParkingAdminShell() {
@@ -9,6 +10,7 @@ export function ParkingAdminShell() {
     <RequireAdmin>
       <RequireOrgNotHardRejected>
         <RequireParkingContext>
+          <ParkingSettingsIssuesSync />
           <AdminLayoutOutlet />
         </RequireParkingContext>
       </RequireOrgNotHardRejected>

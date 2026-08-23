@@ -17,7 +17,13 @@ import {
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/native-select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
@@ -163,18 +169,22 @@ export function PropertyVoiceReceptionistSection({
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
             <div className="min-w-0 flex-1">
               <SettingsField id="voice-receptionist-voice" label="Voice">
-                <NativeSelect
-                  id="voice-receptionist-voice"
+                <Select
                   disabled={disabled || previewBusy}
                   value={draft.voiceId}
-                  onChange={(event) => onChange('voiceId', event.target.value)}
+                  onValueChange={(value) => onChange('voiceId', value)}
                 >
-                  {availableVoices.map((voice) => (
-                    <option key={voice} value={voice}>
-                      {geminiLiveVoiceLabel(voice)}
-                    </option>
-                  ))}
-                </NativeSelect>
+                  <SelectTrigger id="voice-receptionist-voice">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableVoices.map((voice) => (
+                      <SelectItem key={voice} value={voice}>
+                        {geminiLiveVoiceLabel(voice)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </SettingsField>
             </div>
             <Button

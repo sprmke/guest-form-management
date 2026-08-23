@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 
 import { useNavigate, useParams } from 'react-router-dom';
 
-import { Building2, Car, Check, ChevronDown, Home, Loader2, Plus } from 'lucide-react';
+import { Building2, Car, Check, ChevronDown, Home, Plus } from 'lucide-react';
 
 import { AddEntityDialog } from '@/features/dashboard/org/components/AddEntityDialog';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
@@ -46,8 +46,41 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { cn } from '@/lib/utils';
+
+function TenantSwitcherListSkeleton({ variant }: { variant: 'menu' | 'sheet' }) {
+  return (
+    <div
+      className={cn(
+        'min-w-0 space-y-1 overflow-hidden px-1 py-1',
+        variant === 'sheet' ? 'max-h-[65vh]' : 'max-h-80'
+      )}
+      aria-busy="true"
+      aria-label="Loading organizations"
+    >
+      {Array.from({ length: 3 }).map((_, orgIndex) => (
+        <div key={orgIndex} className="space-y-0.5">
+          {orgIndex > 0 ? <div className="bg-border/60 mx-2 my-1.5 h-px" aria-hidden /> : null}
+          <div className="flex min-w-0 items-center gap-2 px-2 py-2">
+            <Skeleton className="size-4 shrink-0 rounded" />
+            <Skeleton className="h-3.5 max-w-[10rem] flex-1" />
+          </div>
+          {Array.from({ length: orgIndex === 0 ? 2 : 1 }).map((_, rowIndex) => (
+            <div key={rowIndex} className="flex min-w-0 items-center gap-2 py-2 pl-8 pr-2">
+              <Skeleton className="size-4 shrink-0 rounded" />
+              <Skeleton
+                className="h-3.5 flex-1"
+                style={{ maxWidth: rowIndex === 0 ? '9rem' : '7rem' }}
+              />
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 type AddEntityTarget = { id: string; slug: string };
 
@@ -123,11 +156,7 @@ function ContextSwitcherMenu({
   variant?: 'menu' | 'sheet';
 }) {
   if (isLoading) {
-    return (
-      <div className="flex min-h-[4rem] items-center justify-center py-4">
-        <Loader2 className="text-muted-foreground size-4 animate-spin" aria-hidden />
-      </div>
-    );
+    return <TenantSwitcherListSkeleton variant={variant} />;
   }
 
   return (

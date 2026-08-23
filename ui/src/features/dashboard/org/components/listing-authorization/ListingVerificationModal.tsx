@@ -12,6 +12,7 @@ import {
   useListingAuthorizationAssets,
   useListingAuthorizationMutations,
 } from '@/features/dashboard/org/hooks/useListingAuthorization';
+import { handleAiMutationError, isAiQuotaError } from '@/features/dashboard/org/lib/aiQuotaToast';
 import {
   isInGracePeriod,
   isInPreExpiryWindow,
@@ -54,6 +55,8 @@ import {
   verificationRightsProofHelp,
   type OrgVerificationRights,
 } from '@/features/dashboard/org/lib/orgVerification';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -64,9 +67,6 @@ import {
   ResponsiveModalTitle,
 } from '@/components/ui/responsive-modal';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
-import { handleAiMutationError, isAiQuotaError } from '@/features/dashboard/org/lib/aiQuotaToast';
-import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
-import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { cn } from '@/lib/utils';
 
 type Props = {

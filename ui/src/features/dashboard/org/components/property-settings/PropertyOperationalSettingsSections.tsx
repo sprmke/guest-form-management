@@ -151,7 +151,12 @@ export function PropertyOperationalSettingsSections({
         onAutomationToggleChange={onAutomationToggleChange}
       />
 
-      <AdminSection id="integrations" title="Integrations" icon={Globe}>
+      <AdminSection
+        id="integrations"
+        title="Integrations"
+        icon={Globe}
+        description="Telegram and connected service status."
+      >
         {propertySettingsSectionBanner('integrations', sectionMessages) ? (
           <PropertySettingsSectionAlert
             message={propertySettingsSectionBanner('integrations', sectionMessages)!}

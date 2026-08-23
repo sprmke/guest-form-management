@@ -691,7 +691,7 @@ export function PropertyMediaUpload({
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
           >
-            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 lg:gap-3">
+            <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
               <SortableContext items={images.map((item) => item.id)} strategy={rectSortingStrategy}>
                 {imageSlots.map((item, index) =>
                   item ? (

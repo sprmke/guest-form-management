@@ -32,6 +32,8 @@ import {
 } from '@/features/dashboard/org/lib/propertyTowerUnit';
 import type { Property } from '@/features/dashboard/org/types';
 
+import { normalizeCleaningBufferMinutes } from '@/lib/cleaningBuffer';
+
 export type PropertyProfileDraft = {
   name: string;
   type: string;
@@ -62,6 +64,8 @@ export type PropertyProfileDraft = {
   floors: number;
   checkInTime: string;
   checkOutTime: string;
+  /** Minutes required between a checkout and the next check-in on a same-day turnover; `null` = off. */
+  cleaningBufferMinutes: number | null;
   selfCheckIn: boolean;
   media: PropertyMediaItem[];
   enabledAmenities: string[];
@@ -236,6 +240,9 @@ export function propertyProfileDraftFromProperty(property: Property): PropertyPr
     floors: readSettingsNumber(settings, 'floors', 1),
     checkInTime: readSettingsString(settings, 'checkInTime') || '14:00',
     checkOutTime: readSettingsString(settings, 'checkOutTime') || '12:00',
+    cleaningBufferMinutes: normalizeCleaningBufferMinutes(
+      typeof settings.cleaningBufferMinutes === 'number' ? settings.cleaningBufferMinutes : null
+    ),
     selfCheckIn: readSettingsBoolean(settings, 'selfCheckIn', false),
     media: readMedia(settings),
     enabledAmenities: readSettingsStringArray(settings, 'enabledAmenities', []),
@@ -295,6 +302,7 @@ export function propertyProfileExtendedDirty(
     draft.floors !== baseline.floors ||
     draft.checkInTime !== baseline.checkInTime ||
     draft.checkOutTime !== baseline.checkOutTime ||
+    draft.cleaningBufferMinutes !== baseline.cleaningBufferMinutes ||
     draft.selfCheckIn !== baseline.selfCheckIn ||
     JSON.stringify(draft.media) !== JSON.stringify(baseline.media) ||
     JSON.stringify(draft.enabledAmenities) !== JSON.stringify(baseline.enabledAmenities) ||
@@ -353,6 +361,7 @@ export function propertyProfileSettingsPatch(draft: PropertyProfileDraft): Recor
     floors: draft.floors,
     checkInTime: draft.checkInTime,
     checkOutTime: draft.checkOutTime,
+    cleaningBufferMinutes: draft.cleaningBufferMinutes,
     selfCheckIn: draft.selfCheckIn,
     media: draft.media,
     enabledAmenities: draft.enabledAmenities,

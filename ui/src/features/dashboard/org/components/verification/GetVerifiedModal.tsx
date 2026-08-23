@@ -26,10 +26,8 @@ import {
   ORGANIZATIONS_QUERY_KEY,
   useOrganizations,
 } from '@/features/dashboard/org/hooks/useOrganizations';
-import { callEdgeFunction, getSessionJwt } from '@/features/dashboard/org/lib/edgeClient';
 import { handleAiMutationError, isAiQuotaError } from '@/features/dashboard/org/lib/aiQuotaToast';
-import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
-import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { callEdgeFunction, getSessionJwt } from '@/features/dashboard/org/lib/edgeClient';
 import {
   ORG_SOCIAL_PROOF_PLATFORMS,
   propertyAccessScreenshotHelp,
@@ -62,6 +60,8 @@ import {
   VERIFICATION_TIER2_DOC_HELP,
   VERIFICATION_TIER2_DOC_LABELS,
 } from '@/features/dashboard/org/lib/verificationCopy';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 import { resolveHostChangesRequestedDocs } from '@/features/dashboard/super-admin/lib/requestChangesMessage';
 
 import { Button } from '@/components/ui/button';
@@ -1001,7 +1001,7 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
           </div>
         </div>
 
-        <ResponsiveModalFooter className="border-border bg-background shrink-0 gap-2 border-t px-5 py-3.5 sm:flex-row sm:justify-end sm:px-6 sm:py-4">
+        <ResponsiveModalFooter className="border-border shrink-0 gap-2 border-t px-5 py-3.5 sm:flex-row sm:justify-end sm:px-6 sm:py-4">
           {!blockDismiss ? (
             <Button
               type="button"
