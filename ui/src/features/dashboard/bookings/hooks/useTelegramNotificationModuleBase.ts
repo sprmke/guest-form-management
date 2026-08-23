@@ -13,11 +13,12 @@ import { useTelegramCredentialFields } from '@/features/dashboard/bookings/hooks
 import { useTelegramModuleConnection } from '@/features/dashboard/bookings/hooks/useTelegramModuleConnection';
 import type { TelegramEnvVerifyDto } from '@/features/dashboard/bookings/lib/telegramEnvVerify';
 import { assetScopeKey, useAdminAssetScope } from '@/features/dashboard/org/lib/adminAssetScope';
+import { handleAiMutationError, isAiQuotaError } from '@/features/dashboard/org/lib/aiQuotaToast';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 
 import { friendlyToastError, showTelegramVerifyToast } from '@/lib/feedback/toastMessages';
-import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
-import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
-import { handleAiMutationError, isAiQuotaError } from '@/features/dashboard/org/lib/aiQuotaToast';
+
 
 type TelegramSettingsDtoBase = {
   enabled: boolean;

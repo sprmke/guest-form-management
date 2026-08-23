@@ -3,8 +3,8 @@ import type { ReactNode } from 'react';
 import { Navigate, Route } from 'react-router-dom';
 
 import { CustomPagesPage } from '@/features/dashboard/custom-pages/pages/CustomPagesPage';
-import { PageEditorPage } from '@/features/dashboard/page-editor/pages/PageEditorPage';
 import type { PropertyRouteFn } from '@/features/dashboard/org/routes/guards';
+import { PageEditorPage } from '@/features/dashboard/page-editor/pages/PageEditorPage';
 
 export function customPagesPropertyRoute(propertyRoute: PropertyRouteFn): ReactNode {
   return (

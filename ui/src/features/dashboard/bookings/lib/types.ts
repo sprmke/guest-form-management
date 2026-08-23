@@ -134,6 +134,8 @@ export type BookingRow = {
   sd_additional_profits?: number[] | null;
   sd_refund_amount?: number | string | null;
   sd_refund_receipt_url?: string | null;
+  sd_refund_receipt_ai_verdict?: string | null;
+  sd_refund_receipt_ai_summary?: string | null;
   guest_balance_paid_amount?: number | string | null;
   guest_balance_payment_receipt_url?: string | null;
   dp_receipt_ai_verdict?: string | null;
@@ -161,6 +163,7 @@ export type BookingRow = {
   stay_guide_token?: string | null;
   stay_guide_valid_from?: string | null;
   stay_guide_valid_until?: string | null;
+  document_share_token?: string | null;
   settled_at?: string | null;
 
   // Next-stay Facebook-review voucher (awarded on /sd-form). Visible to admin

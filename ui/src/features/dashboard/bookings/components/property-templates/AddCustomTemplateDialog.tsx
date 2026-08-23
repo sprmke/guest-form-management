@@ -46,11 +46,14 @@ export function AddCustomTemplateDialog({ onAdd, busy, trigger }: Props) {
           </Button>
         )}
       </ResponsiveModalTrigger>
-      <ResponsiveModalContent className="max-h-[min(90dvh,720px)] max-w-[min(calc(100vw-1.5rem),48rem)] overflow-y-auto">
-        <ResponsiveModalHeader>
+      <ResponsiveModalContent
+        sheetLayout="split"
+        className="flex max-h-[min(90dvh,720px)] max-w-[min(calc(100vw-1.5rem),48rem)] flex-col gap-0 overflow-hidden p-0"
+      >
+        <ResponsiveModalHeader className="shrink-0 px-6 pt-6">
           <ResponsiveModalTitle>Create custom template</ResponsiveModalTitle>
         </ResponsiveModalHeader>
-        <div className="space-y-4 py-2">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-6 py-4">
           <div className="space-y-2">
             <Label htmlFor="custom-template-name">Name</Label>
             <Input
@@ -62,7 +65,7 @@ export function AddCustomTemplateDialog({ onAdd, busy, trigger }: Props) {
           </div>
           <RichTextEditor content={content} onChange={setContent} minHeight="240px" />
         </div>
-        <ResponsiveModalFooter className="gap-1">
+        <ResponsiveModalFooter className="shrink-0 gap-1 px-6 pb-6 pt-3">
           <Button type="button" variant="outline" onClick={() => setOpen(false)}>
             Cancel
           </Button>

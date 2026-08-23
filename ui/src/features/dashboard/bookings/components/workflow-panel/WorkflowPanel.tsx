@@ -67,17 +67,17 @@ import {
 import { useUpdateBooking } from '@/features/dashboard/bookings/hooks/useUpdateBooking';
 import { useWorkflowActions } from '@/features/dashboard/bookings/hooks/useWorkflowActions';
 import { useWorkflowSubFormDrafts } from '@/features/dashboard/bookings/hooks/useWorkflowSubFormDrafts';
-import {
-  kanbanDropIntentNestedKey,
-  resolveKanbanDropTransition,
-  type KanbanDropTransition,
-} from '@/features/dashboard/bookings/lib/bookingStages';
 import { resolveBookingPropertySlug } from '@/features/dashboard/bookings/lib/bookingListNavigation';
 import { shouldWarnPastBookingStayForProceed } from '@/features/dashboard/bookings/lib/bookingPastPipelineManila';
 import {
   isEditableWorkflowProgressContent,
   progressSavePayloadForView,
 } from '@/features/dashboard/bookings/lib/bookingProgressEditPayload';
+import {
+  kanbanDropIntentNestedKey,
+  resolveKanbanDropTransition,
+  type KanbanDropTransition,
+} from '@/features/dashboard/bookings/lib/bookingStages';
 import { statusLabel, type BookingStatus } from '@/features/dashboard/bookings/lib/bookingStatus';
 import { DEFAULT_DOCUMENT_REQUIREMENTS } from '@/features/dashboard/bookings/lib/documentRequirements';
 import { pendingDocStepUsesApprovalModal } from '@/features/dashboard/bookings/lib/pendingDocApproval';

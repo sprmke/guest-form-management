@@ -1,13 +1,14 @@
 import { formatDistanceToNow } from 'date-fns';
 
-import type {
-  PublicPageConfigDto,
-  PublicPageType,
-} from '@/features/dashboard/page-editor/hooks/usePublicPageConfig';
 import { defaultPropertyLandingSectionConfig } from '@/features/guest/marketing/properties/lib/propertyLandingSections';
 import type { PropertyLandingSectionConfig } from '@/features/guest/marketing/properties/types/publicProperty';
 import type { StayGuideSectionConfig } from '@/features/guest/stay-guide/lib/api';
 import { defaultStayGuideSectionConfig } from '@/features/guest/stay-guide/lib/stayGuideChapters';
+
+import type {
+  PublicPageConfigDto,
+  PublicPageType,
+} from '@/features/dashboard/page-editor/hooks/usePublicPageConfig';
 
 /** Gallery page id → `public_page_configs.page_type`. */
 export function publicPageTypeForGalleryId(pageId: 'listing' | 'stay-guide'): PublicPageType {

@@ -310,3 +310,48 @@ export function useIssueGuestStayGuideToken(bookingId?: string) {
     },
   });
 }
+
+/** Create or reuse the durable share token for a booking's approved GAF/Pet PDFs. */
+export function useIssueBookingDocumentShareToken(bookingId?: string) {
+  const qc = useQueryClient();
+  const propertyId = usePropertyIdParam();
+
+  return useMutation({
+    mutationFn: async (): Promise<{
+      success: boolean;
+      data?: { documentShareToken: string };
+    }> => {
+      if (!bookingId) throw new Error('bookingId is required');
+      const jwt = await getAdminJwt();
+
+      const res = await fetch(
+        scopedFunctionsUrl('/issue-booking-document-share-token', propertyId),
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${jwt}`,
+          },
+          body: JSON.stringify({ bookingId }),
+        }
+      );
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error ?? `HTTP ${res.status}`);
+      }
+      return json;
+    },
+    onSuccess: async (result) => {
+      if (!bookingId || !result.data) return;
+      qc.setQueryData(
+        bookingDetailQueryKey(bookingId, propertyId),
+        (prev: BookingRow | null | undefined) => {
+          if (!prev) return prev;
+          return { ...prev, document_share_token: result.data!.documentShareToken };
+        }
+      );
+      await qc.invalidateQueries({ queryKey: BOOKING_QUERY_KEY(bookingId) });
+    },
+  });
+}
