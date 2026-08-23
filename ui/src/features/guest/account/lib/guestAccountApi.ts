@@ -81,6 +81,9 @@ export type GuestMessageThreadDto = {
   propertySlug: string | null;
   propertyName: string | null;
   propertyImageUrl: string | null;
+  parkingSlug: string | null;
+  parkingName: string | null;
+  parkingImageUrl: string | null;
   hostName: string | null;
   hostAvatarUrl: string | null;
   inquiryCheckIn: string | null;

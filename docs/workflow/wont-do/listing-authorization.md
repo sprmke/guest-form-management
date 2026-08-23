@@ -11,7 +11,7 @@ superseded_by: docs/workflow/planned/verification-scope-split.md
 
 Cancelled **2026-08-10**. No implementation was started — every phase was still unchecked, the doc was never added to the in-progress index, and its companion spec (`intake/listing-authorization-design.md`) no longer exists.
 
-**Superseded by:** [`../planned/verification-scope-split.md`](../planned/verification-scope-split.md)
+**Superseded by:** [`../done/verification-scope-split.md`](../done/verification-scope-split.md)
 
 ## Why
 

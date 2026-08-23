@@ -2,7 +2,7 @@
 title: 'Claude To Plan'
 status: archived
 tags: [planning]
-updated: 2026-08-21
+updated: 2026-08-24
 ---
 
 **Status legend:** ❌ cancelled / won't do · ✅ done · 📋 planned (plan doc written) · 🚧 in progress · 🔵 pending / open
@@ -45,7 +45,7 @@ Then, we should support for host to add new template for each tab/category.
 
 The stay guide page looks very plain and not appealing at all. This needs to be mobile friendly, looks professional, interactive and has wow factor so that when hosts send this link to their guests, they will be happy using it.
 
-→ **Plan:** [`../planned/custom-pages-module.md`](../planned/custom-pages-module.md) (Option B; Option A is stay-guide slice of same plan)
+→ **Done:** [`../done/custom-pages-module.md`](../done/custom-pages-module.md) (Option B; Option A is stay-guide slice of same plan)
 
 ===
 
@@ -58,7 +58,7 @@ Generate 3-5 templated stunning and professional looking landing pages/stay guid
 On the dashboard, we will have new menu and page for "Custom Pages" where they can selected templated pages that's configurable and shareable.
 Maybe we will offer a simplified website editor?
 
-→ **Plan:** [`../planned/custom-pages-module.md`](../planned/custom-pages-module.md)
+→ **Done:** [`../done/custom-pages-module.md`](../done/custom-pages-module.md)
 
 ===
 
@@ -200,16 +200,6 @@ The end goal is to make sure that we don't miss any important step or process fo
 
 Do /impeccable critique, audit, review, harden & polish of our current e2e booking process and list down things that we can improve and create superpowers executable plan for it.
 
-🚧 Refine booking detail page, edit and workflow
-
-- Improve UI/UX of entire booking detail page and edit form
-- Improve UI/UX and refine each elements, sections, modal, actions, process, status, logic and flow for booking e2e flow and make sure it's production ready
-  - ✅ Update implementation for automated gmail listener to use resend reply/hooks to prevent the need of Google CASA approval → **Done:** [`remove-google-calendar-sheets.md`](../done/remove-google-calendar-sheets.md)
-  - ✅ Entirely remove or limit access for google calendar and sheets sync → **Done:** [`remove-google-calendar-sheets.md`](../done/remove-google-calendar-sheets.md)
-  - Check and refine all automation triggers for each step/status
-  - Update AI validation logic, display, etc
-  - Refine and improve UI/UX for each step/status
-
 ===
 
 ✅ Optimize how AI integrated in our app
@@ -245,29 +235,6 @@ Analyze how popular apps how handle this and make sure we implement the way poss
 ✅ Smart import data with use of AI
 
 Shipped: [`../done/smart-ai-data-importer.md`](../done/smart-ai-data-importer.md) + [`../done/import-preview-fix-queue.md`](../done/import-preview-fix-queue.md)
-
-===
-
-📋 Analyze entire app pages & features and brainstorm how AI can help us for each feature
-
-Analyze the entire codebase, pages and features that we have, and see how AI can help hosts, guests, admin, and us developers on anything
-
-Example:
-
-- Use AI to analyze and suggest marketing strategies
-- Use AI to help managing finance, analyze big expenses, how to fix and suggest financial strats, etc
-
-→ **Plan / backlog:** [`../planned/ai-opportunities-roadmap.md`](../planned/ai-opportunities-roadmap.md)
-
-===
-
-🚧 Marketing 5: Refine & finalize Marketing module
-
-- Make sure each module is optimized. Right now, something looks broken and when we visit the page and each tab, the app becomes kinda laggy and have performance issues. The thumbnails are not loading properly, creating new item somewhat breaks other thumbnails, switching to other orientation feels like rendering broken thumbnails, playing video preview does not fully play the video, it requires 2-3x click to fully play it which is broken.
-- Make sure AI generations for 3 modules are production ready, renders beautiful designs, content are engaging and easy to read, designs and videos are instagrammable and ready to post, etc.
-- If app is connected to social platform like Facebook and Instagram, make sure we support quick and easy publishing for post & story.
-
-→ **In progress:** [`../in-progress/marketing-module-refinement.md`](../in-progress/marketing-module-refinement.md) — perf/thumbnail/playback bugs + AI-gen/publish correctness fixes shipped; Meta scheduling/confirmation gaps remain open
 
 ===
 
@@ -325,83 +292,11 @@ Phase 4: Manual & Physical on site tasks:
 
 ===
 
-🚧 Do an ground up redesign for mobile view
-
-I want to have a rebuilt or groundup redesign for mobile view to make our app look and feels like a native mobile app.
-Not just simply a website or page that's adjusted to be responsive to different resolution.
-We need to consider the best UI/UX for each page, section and components that we have in our app
-The end goal is when we resize to mobile view, it should look and feel like a native mobile app where we have main navigation on the bottom, mobile element animation and transitions, etc
-
-Apply to all pages including both public and dashboard pages
-
-→ **In progress:** [`../in-progress/mobile-native-redesign.md`](../in-progress/mobile-native-redesign.md)
-
-===
-
-🚧 Document, refine, finalize booking detail & workflow
-
-I want you to carefully review our booking detail page, booking edit and booking workflow and see how we can improve, refine, make other flow, logic and settings to be configurable from our property settings and make the whole flow to be multi users and multi property. What we have in prod, we are focused and only support Kame Home 2604. Now we are building our system to be used with different tenant, users, multi-properties, multi residence or property type and I want every little things to be configurable and refined for production used.
-
-I believe we already have docs for this, I just want you to review our latest implementation and make sure it's up to date, then create a one file doc that documents everything.
-
-After that, I want you to list down tasks, suggestion and improvements that we need to do to make our booking workflow to be used by different users and properties.
-
-The current booking status that we have is only applied for Azure North residence, again we should have config for this residence.
-
-Also, I want you to review each section, field, settings, flow, logic & process and if there's something we can improve or change, please suggest it.
-
-Also, for parking request step, skip this for now. The whole flow for this will be TBD later on.
-
-Also, another important thing I'd like to improve is to automate everything as much as possible. Right now, there's still some step or transition that require manual admin transition. Analyze and check how we can automate everything.
-
-The end goal is after this, our booking detail, edit and workflow is refined & finalize and production ready.
-
-→ **In progress:** [`../in-progress/booking-workflow-multi-tenancy.md`](../in-progress/booking-workflow-multi-tenancy.md) · v1 slice **done:** [`../done/booking-workflow-configurable-docs.md`](../done/booking-workflow-configurable-docs.md)
-
-===
-
-🚧 CI/CD + multi-tenant environments — [`multi-tenant-dev-prod-environments.md`](../in-progress/ci-cd-environments/multi-tenant-dev-prod-environments.md) · matrix [`ci-cd-environment-matrix.md`](../../archive/operations/ci-cd-environment-matrix.md)
-
-**Now:** `develop` → `dev.kamehomes.space` → **fwor…** (`cd-dev.yml` + Vercel Preview). Legacy unchanged (`main` → `kamehomes.space` → **zftt…**).
-
-**Pending at prod release (Phase B):**
-
-- Create **MULTI_TENANT_PROD** Supabase project
-- Implement **`scripts/migrate/legacy-to-mt-prod/`** — Postgres + Storage **`zftt…` → mt-prod**
-- Merge **`develop` → `main`**; **`kame-homes`** Production branch = **`main`** (not a `production` git branch)
-- Wire **`app.kamehomes.space`** + Vercel Production `VITE_*` → mt-prod
-- Google OAuth **prod** client + Auth on mt-prod
-- Enable GitHub **`production`** secrets + **`cd-prod.yml`**
-
-Design: [`ci-cd-dev-prod-design.md`](../in-progress/ci-cd-environments/ci-cd-dev-prod-design.md) · plan: [`ci-cd-dev-prod.md`](../in-progress/ci-cd-environments/ci-cd-dev-prod.md) · index [`ci-cd-environments/README.md`](../in-progress/ci-cd-environments/README.md)
-
-===
-
 ✅ Help & Support page (org + property level)
 
 Now that we have the AI assistant in the dashboard, build a Help & Support page for hosts at both org and property level: Documentation (from docs/guides Host-facing knowledge, filtered to never expose sensitive/internal info), AI Chat (opens the existing dashboard assistant sidebar), Ticket/App Support (dynamic per-category fields — bug/inquiry/suggestion/business — replied to from a new super-admin page), and FAQs (20-50 items generated from the docs). Every docs/guides change should stay synced to whatever powers this automatically.
 
 → **Done:** [`../done/help-support-center.md`](../done/help-support-center.md)
-
-===
-
-🔵 Improve onboarding flow UI/UX page
-
-I want to update the left section of the onboarding page and showcase all the features that we have for our system.
-Maybe an auto-play carousel of animated features that we have on our dashboard.
-I want this to look very interactive, animated, looks professional and looks good on any resolution.
-
-===
-
-🔵 Host/Guest booking payment e2e
-
-===
-
-🔵 Invoice generator? Or provide invoice every after successful booking
-
-===
-
-🔵 Guest chat to confirmed booking flow e2e
 
 ===
 
@@ -411,92 +306,7 @@ Related (shipped): [`../done/paymongo-subscription-billing.md`](../done/paymongo
 
 ===
 
-🚧 Review, refine and improve e2e of booking flow/page
-
-Overlaps booking detail/workflow refinement — tracked under booking multi-tenancy backlog.
-
-→ **In progress:** [`../in-progress/booking-workflow-multi-tenancy.md`](../in-progress/booking-workflow-multi-tenancy.md)
-
-===
-
-🔵 Redesign our main landing page
-
-===
-
-🔵 Implement Sentry & Posthog
-
-===
-
-🚧 Review implementation on the following modules
-
-Review the implementation on the following modules and make sure we simplify, recode, improve and make sure it's production ready and does not contain trash code or changes, poor implemented features caused by AI vibe coding. Be a 10x senior software engineering and review the following modules and make sure it met our standards and they are all production ready and will not cause any performance issue or security and lastly, make sure everything is still working properly
-
-- Marketing — partial: [`../in-progress/marketing-module-refinement.md`](../in-progress/marketing-module-refinement.md) (perf/AI-gen fixes shipped; Meta publish gaps open)
-- Inbox (Meta chats) — **done:** [`../done/guest-inbox-meta-hardening.md`](../done/guest-inbox-meta-hardening.md)
-- Real-time web chat app (host & guest side)
-
-===
-
-🔵 Offer ads within the app
-
-===
-
-🔵 Display announcements per development from super admin
-
-===
-
-🔵 Monitoring for suspicious or unusual activities from super admin
-
-===
-
-🔵 Guest Review after booking
-
-===
-
-🔵 Prod readiness checklist
-
-- Frontend
-- Backend & APIs
-- Database
-- Storage
-- Auth / Permissions
-- Hosting & Deployment
-- Cloud Computing
-- CI/CD & Version control
-- Security & RLS
-- Rate Limiting
-- Caching & CDN
-- Load Balancing & Scalability
-- Error Tracking & Logs
-- Analytics
-- SDLC Testing
-- Availability & Recovery
-
-===
-
-🔵 Review each dashboard pages, section & actions based on user role
-
-After we refine the roles & permissions that we have on both org and property level, we need to revisit and review each pages within the dashboard and make sure that each section, elements, action, process, flow, basically everything is well thought and only be accessible based on user role
-
-===
-
-🔵 Pool fee should be configurable via development settings and we need to adjust AI receptionist or AI tool that beside on reading property & booking info, we should also check which development it's under the current property and have access to development information just like the amenities, pool fee, schedule of pool, requirements, guides, etc
-
-===
-
-🔵 Create marketing video ads for our app with remotion that features our core & main features
-
-===
-
-🔵 Support google map directions from use current area to properties/places
-
-===
-
-🔵 Cancellation Process
-
-===
-
-📋 Able to send documents through chat
+✅ Able to send documents through chat
 
 In our Inbox > Chat section. it's also helpful for our hosts if they can send the available links, files, documents, etc that we have per property & booking.
 Best examples of this are:
@@ -506,11 +316,7 @@ Links: Stay Guide, Property, Calendar, Messages
 
 Let's put a new icon for these beside the Quick reply & suggest section.
 
-→ **Planned:** [`../planned/inbox-share-links-and-files.md`](../planned/inbox-share-links-and-files.md)
-
-===
-
-🔵 Scheduled marketing posts/story
+→ **Done:** [`../done/inbox-share-links-and-files.md`](../done/inbox-share-links-and-files.md) — Inbox composer Share icon; durable GAF/Pet share links; calendar link opens in-place availability modal (2026-08-22)
 
 ===
 
@@ -632,23 +438,6 @@ Again, please generate a detailed plan and separate docs for this so that we hav
 
 ===
 
-🚧 Accurately track AI usages for each AI actions and features, decide limit granularity, prep for paid AI credits
-
-Next module that I would like you to analyze, review carefully and create a plan on how we can accurately track AI usages for each AI actions and features that we have on the entire app.
-This should covers the booking validation, AI dashboard assistant, AI receptionist, and all other AI features that we have.
-The reason for this is that so that we can set proper and exact limit for each user, each property or org.
-Analyze each features that we have because sometimes every AI actions have different usages.
-
-After that, analyze how much do you think is the average AI token or usages. Also, analyze if we set the AI limits per user or per org or per property?
-
-One reason we need to finalize this is that on next phase, we will offer user to pay to get extra AI tokens/credits.
-
-Make a research and analyze what's the best practices to manage AI tokens properly. What's the standard process or solid companies handles AI tokens for free usages and for pay more to get more tokens.
-
-→ **In progress:** [`../in-progress/ai-usage-metering-credits-foundation.md`](../in-progress/ai-usage-metering-credits-foundation.md) — Phases 1–3 shipped; Phase 4 (paid credit top-up via PayMongo) deferred
-
-===
-
 ✅ Provide easy way for host to select context for each module we have for Ai dashboard assistant
 
 This is similar to the booking action button where whe nwe click it, it give us the list of list of bookings which can be added a context to our chat.
@@ -715,11 +504,234 @@ Also, I want you to visit if we can support the comments on facebook post on Fac
 
 ===
 
+📋 Analyze entire app pages & features and brainstorm how AI can help us for each feature
+
+Analyze the entire codebase, pages and features that we have, and see how AI can help hosts, guests, admin, and us developers on anything
+
+Example:
+
+- Use AI to analyze and suggest marketing strategies
+- Use AI to help managing finance, analyze big expenses, how to fix and suggest financial strats, etc
+
+→ **Plan / backlog:** [`../planned/ai-opportunities-roadmap.md`](../planned/ai-opportunities-roadmap.md)
+
+===
+
 📋 Org portfolio pricing bundles (Pro ≤3 / Business ≤5 / Business Plus ≤10)
 
 Pivot from strict per-property billing to org-scoped portfolio caps for Pro/Business tiers while keeping Free/Starter/Managed/Commission per-property.
 
 → **Planned:** [`../planned/pricing-portfolio-bundling.md`](../planned/pricing-portfolio-bundling.md)
+
+===
+
+🚧 Refine booking detail page, edit and workflow
+
+- Improve UI/UX of entire booking detail page and edit form
+- Improve UI/UX and refine each elements, sections, modal, actions, process, status, logic and flow for booking e2e flow and make sure it's production ready
+  - ✅ Update implementation for automated gmail listener to use resend reply/hooks to prevent the need of Google CASA approval → **Done:** [`remove-google-calendar-sheets.md`](../done/remove-google-calendar-sheets.md)
+  - ✅ Entirely remove or limit access for google calendar and sheets sync → **Done:** [`remove-google-calendar-sheets.md`](../done/remove-google-calendar-sheets.md)
+  - Check and refine all automation triggers for each step/status
+  - Update AI validation logic, display, etc
+  - Refine and improve UI/UX for each step/status
+
+→ **In progress:** [`../in-progress/booking-workflow-multi-tenancy.md`](../in-progress/booking-workflow-multi-tenancy.md)
+
+===
+
+🚧 Marketing 5: Refine & finalize Marketing module
+
+- Make sure each module is optimized. Right now, something looks broken and when we visit the page and each tab, the app becomes kinda laggy and have performance issues. The thumbnails are not loading properly, creating new item somewhat breaks other thumbnails, switching to other orientation feels like rendering broken thumbnails, playing video preview does not fully play the video, it requires 2-3x click to fully play it which is broken.
+- Make sure AI generations for 3 modules are production ready, renders beautiful designs, content are engaging and easy to read, designs and videos are instagrammable and ready to post, etc.
+- If app is connected to social platform like Facebook and Instagram, make sure we support quick and easy publishing for post & story.
+
+→ **In progress:** [`../in-progress/marketing-module-refinement.md`](../in-progress/marketing-module-refinement.md) — perf/thumbnail/playback bugs + AI-gen/publish correctness fixes shipped; Meta scheduling/confirmation gaps remain open
+
+===
+
+🚧 Do an ground up redesign for mobile view
+
+I want to have a rebuilt or groundup redesign for mobile view to make our app look and feels like a native mobile app.
+Not just simply a website or page that's adjusted to be responsive to different resolution.
+We need to consider the best UI/UX for each page, section and components that we have in our app
+The end goal is when we resize to mobile view, it should look and feel like a native mobile app where we have main navigation on the bottom, mobile element animation and transitions, etc
+
+Apply to all pages including both public and dashboard pages
+
+→ **In progress:** [`../in-progress/mobile-native-redesign.md`](../in-progress/mobile-native-redesign.md)
+
+===
+
+🚧 Document, refine, finalize booking detail & workflow
+
+I want you to carefully review our booking detail page, booking edit and booking workflow and see how we can improve, refine, make other flow, logic and settings to be configurable from our property settings and make the whole flow to be multi users and multi property. What we have in prod, we are focused and only support Kame Home 2604. Now we are building our system to be used with different tenant, users, multi-properties, multi residence or property type and I want every little things to be configurable and refined for production used.
+
+I believe we already have docs for this, I just want you to review our latest implementation and make sure it's up to date, then create a one file doc that documents everything.
+
+After that, I want you to list down tasks, suggestion and improvements that we need to do to make our booking workflow to be used by different users and properties.
+
+The current booking status that we have is only applied for Azure North residence, again we should have config for this residence.
+
+Also, I want you to review each section, field, settings, flow, logic & process and if there's something we can improve or change, please suggest it.
+
+Also, for parking request step, skip this for now. The whole flow for this will be TBD later on.
+
+Also, another important thing I'd like to improve is to automate everything as much as possible. Right now, there's still some step or transition that require manual admin transition. Analyze and check how we can automate everything.
+
+The end goal is after this, our booking detail, edit and workflow is refined & finalize and production ready.
+
+→ **In progress:** [`../in-progress/booking-workflow-multi-tenancy.md`](../in-progress/booking-workflow-multi-tenancy.md) · v1 slice **done:** [`../done/booking-workflow-configurable-docs.md`](../done/booking-workflow-configurable-docs.md)
+
+===
+
+🚧 CI/CD + multi-tenant environments — [`multi-tenant-dev-prod-environments.md`](../in-progress/ci-cd-environments/multi-tenant-dev-prod-environments.md) · matrix [`ci-cd-environment-matrix.md`](../../archive/operations/ci-cd-environment-matrix.md)
+
+**Now:** `develop` → `dev.kamehomes.space` → **fwor…** (`cd-dev.yml` + Vercel Preview). Legacy unchanged (`main` → `kamehomes.space` → **zftt…**).
+
+**Pending at prod release (Phase B):**
+
+- Create **MULTI_TENANT_PROD** Supabase project
+- Implement **`scripts/migrate/legacy-to-mt-prod/`** — Postgres + Storage **`zftt…` → mt-prod**
+- Merge **`develop` → `main`**; **`kame-homes`** Production branch = **`main`** (not a `production` git branch)
+- Wire **`app.kamehomes.space`** + Vercel Production `VITE_*` → mt-prod
+- Google OAuth **prod** client + Auth on mt-prod
+- Enable GitHub **`production`** secrets + **`cd-prod.yml`**
+
+Design: [`ci-cd-dev-prod-design.md`](../in-progress/ci-cd-environments/ci-cd-dev-prod-design.md) · plan: [`ci-cd-dev-prod.md`](../in-progress/ci-cd-environments/ci-cd-dev-prod.md) · index [`ci-cd-environments/README.md`](../in-progress/ci-cd-environments/README.md)
+
+===
+
+🚧 Review, refine and improve e2e of booking flow/page
+
+Overlaps booking detail/workflow refinement — tracked under booking multi-tenancy backlog.
+
+→ **In progress:** [`../in-progress/booking-workflow-multi-tenancy.md`](../in-progress/booking-workflow-multi-tenancy.md)
+
+===
+
+🚧 Review implementation on the following modules
+
+Review the implementation on the following modules and make sure we simplify, recode, improve and make sure it's production ready and does not contain trash code or changes, poor implemented features caused by AI vibe coding. Be a 10x senior software engineering and review the following modules and make sure it met our standards and they are all production ready and will not cause any performance issue or security and lastly, make sure everything is still working properly
+
+- Marketing — partial: [`../in-progress/marketing-module-refinement.md`](../in-progress/marketing-module-refinement.md) (perf/AI-gen fixes shipped; Meta publish gaps open)
+- Inbox (Meta chats) — **done:** [`../done/guest-inbox-meta-hardening.md`](../done/guest-inbox-meta-hardening.md)
+- Real-time web chat app (host & guest side)
+
+===
+
+🚧 Accurately track AI usages for each AI actions and features, decide limit granularity, prep for paid AI credits
+
+Next module that I would like you to analyze, review carefully and create a plan on how we can accurately track AI usages for each AI actions and features that we have on the entire app.
+This should covers the booking validation, AI dashboard assistant, AI receptionist, and all other AI features that we have.
+The reason for this is that so that we can set proper and exact limit for each user, each property or org.
+Analyze each features that we have because sometimes every AI actions have different usages.
+
+After that, analyze how much do you think is the average AI token or usages. Also, analyze if we set the AI limits per user or per org or per property?
+
+One reason we need to finalize this is that on next phase, we will offer user to pay to get extra AI tokens/credits.
+
+Make a research and analyze what's the best practices to manage AI tokens properly. What's the standard process or solid companies handles AI tokens for free usages and for pay more to get more tokens.
+
+→ **In progress:** [`../in-progress/ai-usage-metering-credits-foundation.md`](../in-progress/ai-usage-metering-credits-foundation.md) — Phases 1–3 shipped; Phase 4 (paid credit top-up via PayMongo) deferred
+
+===
+
+🚧 Host verification tiers (Phase 3 partial)
+
+Phases 1–2 shipped (Verified/Recommended modal polish, Tier 2 docs, admin queue priority). Browse search boost for Recommended hosts deferred until public listings API.
+
+→ **In progress:** [`../in-progress/host-verification-tiers.md`](../in-progress/host-verification-tiers.md) · scope split shipped: [`../done/verification-scope-split.md`](../done/verification-scope-split.md)
+
+===
+
+🔵 Improve onboarding flow UI/UX page
+
+I want to update the left section of the onboarding page and showcase all the features that we have for our system.
+Maybe an auto-play carousel of animated features that we have on our dashboard.
+I want this to look very interactive, animated, looks professional and looks good on any resolution.
+
+===
+
+🔵 Host/Guest booking payment e2e
+
+===
+
+🔵 Invoice generator? Or provide invoice every after successful booking
+
+===
+
+🔵 Guest chat to confirmed booking flow e2e
+
+===
+
+🔵 Redesign our main landing page
+
+===
+
+🔵 Implement Sentry & Posthog
+
+===
+
+🔵 Offer ads within the app
+
+===
+
+🔵 Display announcements per development from super admin
+
+===
+
+🔵 Monitoring for suspicious or unusual activities from super admin
+
+===
+
+🔵 Guest Review after booking
+
+===
+
+🔵 Prod readiness checklist
+
+- Frontend
+- Backend & APIs
+- Database
+- Storage
+- Auth / Permissions
+- Hosting & Deployment
+- Cloud Computing
+- CI/CD & Version control
+- Security & RLS
+- Rate Limiting
+- Caching & CDN
+- Load Balancing & Scalability
+- Error Tracking & Logs
+- Analytics
+- SDLC Testing
+- Availability & Recovery
+
+===
+
+🔵 Review each dashboard pages, section & actions based on user role
+
+After we refine the roles & permissions that we have on both org and property level, we need to revisit and review each pages within the dashboard and make sure that each section, elements, action, process, flow, basically everything is well thought and only be accessible based on user role
+
+===
+
+🔵 Pool fee should be configurable via development settings and we need to adjust AI receptionist or AI tool that beside on reading property & booking info, we should also check which development it's under the current property and have access to development information just like the amenities, pool fee, schedule of pool, requirements, guides, etc
+
+===
+
+🔵 Create marketing video ads for our app with remotion that features our core & main features
+
+===
+
+🔵 Support google map directions from use current area to properties/places
+
+===
+
+🔵 Cancellation Process
+
+===
+
+🔵 Scheduled marketing posts/story
 
 ===
 

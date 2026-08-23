@@ -14,8 +14,12 @@ type Props = {
 };
 
 export function GuestMessageThreadRow({ thread, selected, onSelect }: Props) {
-  const title = thread.propertyName?.trim() || 'Property';
-  const thumb = thread.propertyImageUrl?.trim() || thread.hostAvatarUrl?.trim() || null;
+  const title = thread.propertyName?.trim() || thread.parkingName?.trim() || 'Listing';
+  const thumb =
+    thread.propertyImageUrl?.trim() ||
+    thread.parkingImageUrl?.trim() ||
+    thread.hostAvatarUrl?.trim() ||
+    null;
 
   return (
     <button

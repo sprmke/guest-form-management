@@ -2,7 +2,7 @@
 title: 'Tasks To Prompt'
 status: archived
 tags: [planning]
-updated: 2026-08-22
+updated: 2026-08-24
 ---
 
 **Status legend:** ❌ cancelled / won't do · ✅ done · 📋 planned (plan doc written) · 🚧 in progress · 🔵 pending / open
@@ -186,6 +186,43 @@ So we will have dropdowns for actions beside the input chat
 
 ===
 
+✅ Add ability to share calendar?
+
+→ **Done:** [`../done/inbox-share-links-and-files.md`](../done/inbox-share-links-and-files.md) — Inbox composer Share icon sends calendar/property/booking links; calendar link opens an in-place availability modal for guest and host.
+
+===
+
+✅ Socials at org and property level
+
+We should refine how we can improve the socials management for org and property level to prevent any redundant fill up.
+Provide a best UI/UX so that on property/parking level, we have option to reuse the same value of org level per fields.
+Maybe, we will offer a global button that if click, we will make all social fields read only and populate it with org values.
+Or maybe it's better if we have individual toggle per field? Or support both? Provide the best UI/UX for our scenario.
+
+→ **Done:** per-field **Use org** inherit toggles on property settings (`SocialLinkInheritField`, `PropertySocialsBrandingSection`, `propertySocialLinks.ts`); parking settings reuse the same payment/social patterns where applicable.
+
+===
+
+✅ Generate more real world mock data
+
+Generate more real world and hundreds of mock data for different properties, developments, parking, and other type of place so that we can fully test and simulate real world test data and fully verify if our search, filters, lazy load, and any app performance optimization implementation are working properly.
+
+→ **Done (opt-in local seed):** `bun run seed:mock-listings` → `scripts/dev/generate-mock-listings-seed.mjs` (~320 properties / ~65 developments / ~225 parkings across 30 PH cities). Not wired into `db reset` — run manually when perf QA needs volume.
+
+===
+
+✅ Update all payment AI validation to make sure that we achieve the actual minimum amount, date is reasonable, etc
+
+→ **Done:** `supabase/functions/_shared/receiptValidationService.ts` — `expectedMinimumAmountForReceiptKind` + `evaluateReceiptSanityWarnings` / `applyReceiptSanityChecks` for downpayment, balance, parking, and SD refund receipts (amount floor + Manila date reasonableness warnings).
+
+===
+
+✅ Update all dropdown from using default UI to standard dropdown UI
+
+→ **Done:** removed legacy `native-select.tsx`; dashboard uses shadcn `Select` / combobox patterns (no raw `<select>` left in `ui/src`).
+
+===
+
 🚧 Branch deployment guide + dev/staging environment
 
 Meaning, I want to deploy our app in vercel with ou current branch with our new changes.
@@ -200,12 +237,23 @@ Also, another important setup I'd like to have is to point or use supabase deplo
 
 ===
 
-🔵 Socials at org and property level
+🚧 Improve marketing generate modal > suggestions thumbnail is confusing
 
-We should refine how we can improve the socials management for org and property level to prevent any redundant fill up.
-Provide a best UI/UX so that on property/parking level, we have option to reuse the same value of org level per fields.
-Maybe, we will offer a global button that if click, we will make all social fields read only and populate it with org values.
-Or maybe it's better if we have individual toggle per field? Or support both? Provide the best UI/UX for our scenario.
+Update marketing generate design suggestion thumbnail to be more closed to calendar template, design and video clips
+
+→ **Related:** [`../in-progress/marketing-module-refinement.md`](../in-progress/marketing-module-refinement.md) (perf/AI-gen shipped; publish UX gaps remain)
+
+===
+
+🚧 Refine add pay parking and add/edit parking from booking detail page
+
+→ **Partial:** `PayParkingModal` + header overflow action on booking detail (`BookingDetailPage`, `PayParkingModal.tsx`). **Still open:** polish edit-form parking tab UX and parking-on-booking flows beyond current modal.
+
+===
+
+🚧 Support normal auth and add auth pages like login, register, forgot password, profile page, etc. Plan to use easy sign on for modern auth approach?
+
+→ **Partial:** guest `/for-guests/login` + `/for-guests/register` (email OTP + Google), host `/for-hosts/login` + `/for-hosts/register` (Google), guest account hub `/account/*` (profile, stays, messages, wishlist, settings). **Still open:** forgot-password / magic-link recovery flow.
 
 ===
 
@@ -226,12 +274,6 @@ Maybe add org photos/banner from org settings?
 
 ===
 
-🔵 Generate more real world mock data
-
-Generate more real world and hundreds of mock data for different properties, developments, parking, and other type of place so that we can fully test and simulate real world test data and fully verify if our search, filters, lazy load, and any app performance optimization implementation are working properly.
-
-===
-
 🔵 Improve UI/UX of exported reports
 
 ===
@@ -246,23 +288,7 @@ EMAIL_TO / EMAIL_REPLY_TO
 
 ===
 
-🔵 Update all payment AI validation to make sure that we achieve the actual minimum amount, date is reasonable, etc
-
-===
-
 🔵 Make sure the SD refund payments is reflecting based on payment methods available from property settings
-
-===
-
-🔵 Refine add pay parking and add/edit parking from booking detail page
-
-===
-
-🚧 Improve marketing generate modal > suggestions thumbnail is confusing
-
-Update marketing generate design suggestion thumbnail to be more closed to calendar template, design and video clips
-
-→ **Related:** [`../in-progress/marketing-module-refinement.md`](../in-progress/marketing-module-refinement.md) (perf/AI-gen shipped; publish UX gaps remain)
 
 ===
 
@@ -270,16 +296,18 @@ Update marketing generate design suggestion thumbnail to be more closed to calen
 
 ===
 
-🔵 Add ability to share calendar?
-
-===
-
-🔵 Update all dropdown from using default UI to standard dropdown UI
-
-===
-
 🔵 Update dashboard AI assistant to support edit public page
 
+→ **Partial:** public-page **context attach** shipped in [`../done/ai-assistant-universal-context-pickers.md`](../done/ai-assistant-universal-context-pickers.md) (`ChatComposerPublicPagePicker`). **Still open:** assistant-driven edits to Stay Guide / property landing content (use Page Editor or new tools).
+
 ===
 
-🔵 Support normal auth and add auth pages like login, register, forgot password, profile page, etc. Plan to use easy sign on for modern auth approach?
+🔵 Generate not found page
+
+===
+
+🔵 Make sure auth modal and auth page section is similar or aligned same order for consistency
+
+===
+
+🔵 Improve parking details

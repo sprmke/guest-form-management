@@ -33,7 +33,7 @@ The admin dashboard (`/org/:orgSlug/...`, `/admin/*`) still reads as an "AI-gene
 - The dashboard stays Framer-Motion-free. Framer Motion is used in 62 guest files and zero dashboard files today (dashboard motion is CSS keyframes + `PageTransition.tsx`); this is a clean existing boundary to ratify, not compromise, per `DESIGN.md` §7's caution against spreading Framer Motion further.
 - This plan does **not** duplicate or re-specify scope owned elsewhere:
   - [`../in-progress/mobile-native-redesign.md`](../in-progress/mobile-native-redesign.md) owns `max-lg` native-feel behavior (bottom nav, sheets, gestures). This plan extends the same visual/motion language up to `lg+` desktop and must coordinate on shared files (`AdminLayout.tsx`, `index.css`) rather than re-litigate that effort's decisions.
-  - [`../planned/property-public-pages-shell-redesign.md`](../planned/property-public-pages-shell-redesign.md) is a separate, already-scoped public-page redesign — not touched here.
+  - [`../wont-do/property-public-pages-shell-redesign.md`](../wont-do/property-public-pages-shell-redesign.md) is a separate, cancelled public-page redesign — not touched here.
 
 **Design skills to use during execution** (verified to exist locally in this repo, not just named in a global list):
 

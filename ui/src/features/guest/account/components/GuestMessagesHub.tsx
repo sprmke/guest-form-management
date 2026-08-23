@@ -69,7 +69,10 @@ export function GuestMessagesHub({ threads }: Props) {
   };
 
   const thumb =
-    selectedThread?.propertyImageUrl?.trim() || selectedThread?.hostAvatarUrl?.trim() || null;
+    selectedThread?.propertyImageUrl?.trim() ||
+    selectedThread?.parkingImageUrl?.trim() ||
+    selectedThread?.hostAvatarUrl?.trim() ||
+    null;
 
   return (
     <div className={GUEST_MESSAGES_HUB_SHELL_CLASS}>
@@ -128,7 +131,7 @@ export function GuestMessagesHub({ threads }: Props) {
                         ) : null}
                       </div>
                     }
-                    title={selectedThread.propertyName ?? 'Property'}
+                    title={selectedThread.propertyName ?? selectedThread.parkingName ?? 'Listing'}
                     subtitle={
                       [
                         selectedThread.hostName,
@@ -152,6 +155,10 @@ export function GuestMessagesHub({ threads }: Props) {
 
               <GuestChatThread
                 conversationId={selectedId}
+                propertySlug={
+                  selectedThread.propertySlug ?? selectedThread.parkingSlug ?? undefined
+                }
+                propertyName={selectedThread.propertyName ?? ''}
                 messages={messages}
                 isLoading={messagesLoading && !!selectedId}
                 threadSearch={threadSearch}

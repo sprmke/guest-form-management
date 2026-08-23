@@ -2,7 +2,7 @@
 title: 'Completed work'
 status: active
 tags: [workflow, done]
-updated: 2026-08-20
+updated: 2026-08-23
 stage: done
 kind: reference
 ---
@@ -11,6 +11,7 @@ kind: reference
 
 | Plan                                                                                                 | Summary                                                                                                                                                                                                                                                               |
 | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`inbox-share-links-and-files.md`](./inbox-share-links-and-files.md)                                 | Inbox composer Share icon (property/booking links); calendar link opens in-place availability modal (guest + host); durable `document_share_token` share links for private GAF/Pet PDFs                                                                               |
 | [`page-editor-public-pages.md`](./page-editor-public-pages.md)                                       | Host Page Editor for Stay Guide + Property landing; gallery redesign; Settings fields migrated; Phases 0–7 shipped (Phase 8 backlog)                                                                                                                                  |
 | [`ai-dashboard-assistant.md`](./ai-dashboard-assistant.md)                                           | RBAC-scoped AI chat assistant in the admin dashboard — tiered confirmation (Tier 0/1/2), fixed tool catalog, typed chat blocks. See [`ai-platform-hardening-handoff.md`](./ai-platform-hardening-handoff.md) for the build log.                                       |
 | [`ai-assistant-universal-context-pickers.md`](./ai-assistant-universal-context-pickers.md)           | Per-module composer pins, Cmd/Ctrl+K palette, `image`/`stepper`/`quick_actions` blocks, canvas overlay, `plan_booking_journey`. Tool catalog: [`../../architecture/ai-dashboard-assistant.md`](../../architecture/ai-dashboard-assistant.md).                         |
