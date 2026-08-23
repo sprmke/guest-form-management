@@ -64,8 +64,8 @@ export type PropertyProfileDraft = {
   floors: number;
   checkInTime: string;
   checkOutTime: string;
-  /** Minutes required between a checkout and the next check-in on a same-day turnover; `null` = off. */
-  cleaningBufferMinutes: number | null;
+  /** Required minutes between a checkout and the next check-in on a same-day turnover (min 1 hour). */
+  cleaningBufferMinutes: number;
   selfCheckIn: boolean;
   media: PropertyMediaItem[];
   enabledAmenities: string[];

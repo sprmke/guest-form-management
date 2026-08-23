@@ -6,6 +6,8 @@ import {
 } from '@/features/guest/form/lib/guestFormPropertyDefaults';
 import { useGuestPropertySlug } from '@/features/guest/hooks/useGuestPropertySlug';
 
+import { DEFAULT_CLEANING_BUFFER_MINUTES } from '@/lib/cleaningBuffer';
+
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
 export type GuestPaymentMethod = {
@@ -34,8 +36,8 @@ export type GuestPaymentInfo = {
   allowSurpriseDecor: boolean;
   checkInTime: string;
   checkOutTime: string;
-  /** Minutes required between a checkout and the next check-in on a same-day turnover; `null` = off. */
-  cleaningBufferMinutes: number | null;
+  /** Required minutes between a checkout and the next check-in on a same-day turnover (min 1 hour). */
+  cleaningBufferMinutes: number;
   maxAdults: number;
   maxChildren: number;
   propertyName: string;
@@ -64,7 +66,7 @@ export const DEFAULT_GUEST_PAYMENT_INFO: GuestPaymentInfo = {
   allowSurpriseDecor: true,
   checkInTime: GUEST_FORM_DEFAULT_CHECK_IN_TIME,
   checkOutTime: GUEST_FORM_DEFAULT_CHECK_OUT_TIME,
-  cleaningBufferMinutes: null,
+  cleaningBufferMinutes: DEFAULT_CLEANING_BUFFER_MINUTES,
   maxAdults: 4,
   maxChildren: 1,
   propertyName: '',

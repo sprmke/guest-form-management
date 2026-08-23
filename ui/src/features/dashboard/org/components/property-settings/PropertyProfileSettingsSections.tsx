@@ -90,7 +90,6 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { TimePicker } from '@/components/ui/time-picker';
 import type { AvailabilityCheckState } from '@/lib/availabilityCheckState';
-import { CLEANING_BUFFER_OPTIONS } from '@/lib/cleaningBuffer';
 import { cn } from '@/lib/utils';
 
 function FieldGrid({ children }: { children: React.ReactNode }) {
@@ -694,36 +693,6 @@ export function PropertyProfileMainSections({
           </SettingsField>
         </FieldGrid>
 
-        <SettingsField
-          id="property-cleaning-buffer"
-          label="Cleaning Buffer"
-          error={fieldError('property-cleaning-buffer')}
-          hintBelow="Minimum time between a checkout and the next check-in on a same-day turnover."
-        >
-          <Select
-            value={String(draft.cleaningBufferMinutes ?? 0)}
-            onValueChange={(value) =>
-              setField('cleaningBufferMinutes', Number(value) || null, 'property-cleaning-buffer')
-            }
-            disabled={disabled}
-          >
-            <SelectTrigger
-              id="property-cleaning-buffer"
-              aria-invalid={Boolean(fieldError('property-cleaning-buffer'))}
-              className={cn(fieldError('property-cleaning-buffer') && 'border-destructive')}
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {CLEANING_BUFFER_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={String(option.value)}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </SettingsField>
-
         <label className="flex min-h-[44px] cursor-pointer items-start gap-3">
           <Checkbox
             checked={draft.selfCheckIn}
@@ -1014,7 +983,13 @@ export function PropertyProfileMainSections({
         </div>
       </AdminSection>
 
-      <PropertyGuestFormSettingsSection draft={draft} disabled={disabled} onChange={onChange} />
+      <PropertyGuestFormSettingsSection
+        draft={draft}
+        disabled={disabled}
+        onChange={onChange}
+        setField={setField}
+        resolveFieldError={fieldError}
+      />
 
       <PropertyCancellationPolicySection
         policy={draft.cancellationPolicy}

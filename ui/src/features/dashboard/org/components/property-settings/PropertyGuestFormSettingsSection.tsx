@@ -1,8 +1,17 @@
 import { ClipboardList } from 'lucide-react';
 
 import { AdminSection } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
+import { SettingsField } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import type { PropertyProfileDraft } from '@/features/dashboard/org/lib/propertySettingsForm';
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { CLEANING_BUFFER_OPTIONS } from '@/lib/cleaningBuffer';
 import { cn } from '@/lib/utils';
 
 function GuestFormToggleRow({
@@ -61,11 +70,21 @@ export function PropertyGuestFormSettingsSection({
   draft,
   disabled = false,
   onChange,
+  setField,
+  resolveFieldError,
 }: {
   draft: PropertyProfileDraft;
   disabled?: boolean;
   onChange: <K extends keyof PropertyProfileDraft>(key: K, value: PropertyProfileDraft[K]) => void;
+  setField: <K extends keyof PropertyProfileDraft>(
+    key: K,
+    value: PropertyProfileDraft[K],
+    fieldId: string
+  ) => void;
+  resolveFieldError: (fieldId: string) => string | null;
 }) {
+  const fieldError = resolveFieldError;
+
   return (
     <AdminSection
       id="guest-form"
@@ -99,6 +118,38 @@ export function PropertyGuestFormSettingsSection({
           onCheckedChange={(value) => onChange('allowSurpriseDecor', value)}
         />
       </div>
+
+      <SettingsField
+        id="guest-form-cleaning-buffer"
+        label="Cleaning Time"
+        required
+        error={fieldError('guest-form-cleaning-buffer')}
+        hintBelow="Time needed to clean between a checkout and the next check-in on the same day."
+        className="mt-4"
+      >
+        <Select
+          value={String(draft.cleaningBufferMinutes)}
+          onValueChange={(value) =>
+            setField('cleaningBufferMinutes', Number(value), 'guest-form-cleaning-buffer')
+          }
+          disabled={disabled}
+        >
+          <SelectTrigger
+            id="guest-form-cleaning-buffer"
+            aria-invalid={Boolean(fieldError('guest-form-cleaning-buffer'))}
+            className={cn(fieldError('guest-form-cleaning-buffer') && 'border-destructive')}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {CLEANING_BUFFER_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={String(option.value)}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </SettingsField>
     </AdminSection>
   );
 }

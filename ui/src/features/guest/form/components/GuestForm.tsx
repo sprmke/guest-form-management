@@ -89,7 +89,6 @@ import {
 } from '@/features/guest/lib/guestPublicPaths';
 import { GuestStayContextBar } from '@/features/guest/property/components/GuestStayContextBar';
 
-
 import { GuestFormBrandHeader } from '@/components/branding/GuestFormBrandHeader';
 import { GuestFormPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
 import { Button } from '@/components/ui/button';
@@ -184,7 +183,32 @@ export type GuestFormEmbedNav = {
   onSubmit: () => void;
 };
 
-/** Embed the same form on another surface (e.g. property Reserve modal). */
+/** Booking summary handed to the host surface on successful submission. */
+export type GuestFormBookingSummary = {
+  checkInDate: string;
+  checkOutDate: string;
+  checkInTime: string;
+  checkOutTime: string;
+  numberOfAdults: number;
+  numberOfChildren: number;
+  primaryGuestName: string;
+  guest2Name?: string;
+  guest3Name?: string;
+  guest4Name?: string;
+  guest5Name?: string;
+  hasPets: boolean;
+  petName?: string;
+  needParking: boolean;
+  guestEmail: string;
+  guestPhoneNumber: string;
+};
+
+export type GuestFormSubmitSuccess = {
+  bookingId: string;
+  bookingData: GuestFormBookingSummary;
+};
+
+/** Embed the same form on another surface (e.g. property Reserve modal, admin New booking modal). */
 export type GuestFormEmbed = {
   checkInDate?: string | null;
   checkOutDate?: string | null;
@@ -194,6 +218,10 @@ export type GuestFormEmbed = {
   compactChrome?: boolean;
   /** When set, step nav is omitted inline and reported here for a modal footer. */
   onNavChange?: (nav: GuestFormEmbedNav | null) => void;
+  /** Admin-created bookings: skip the guest sign-in gate (shares the admin's own Supabase session). */
+  skipAuthGate?: boolean;
+  /** When set, submission success is reported here instead of navigating to the public success page. */
+  onSubmitSuccess?: (result: GuestFormSubmitSuccess) => void;
 };
 
 export type GuestFormProps = {
@@ -736,6 +764,27 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
     }
   };
 
+  function buildBookingSummary(values: GuestFormData): GuestFormBookingSummary {
+    return {
+      checkInDate: values.checkInDate,
+      checkOutDate: values.checkOutDate,
+      checkInTime: values.checkInTime,
+      checkOutTime: values.checkOutTime,
+      numberOfAdults: values.numberOfAdults,
+      numberOfChildren: values.numberOfChildren,
+      primaryGuestName: values.primaryGuestName,
+      guest2Name: values.guest2Name,
+      guest3Name: values.guest3Name,
+      guest4Name: values.guest4Name,
+      guest5Name: values.guest5Name,
+      hasPets: values.hasPets,
+      petName: values.petName,
+      needParking: values.needParking,
+      guestEmail: values.guestEmail,
+      guestPhoneNumber: values.guestPhoneNumber,
+    };
+  }
+
   async function onSubmit(values: GuestFormData) {
     if (bookingId && !guestCanUpdate) {
       toast.error('This booking can no longer be updated online. Contact your host for changes.');
@@ -889,24 +938,12 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
         console.log('ℹ️ No changes detected, redirecting to success page');
 
         // Prepare booking data to pass to success page
-        const bookingData = {
-          checkInDate: values.checkInDate,
-          checkOutDate: values.checkOutDate,
-          checkInTime: values.checkInTime,
-          checkOutTime: values.checkOutTime,
-          numberOfAdults: values.numberOfAdults,
-          numberOfChildren: values.numberOfChildren,
-          primaryGuestName: values.primaryGuestName,
-          guest2Name: values.guest2Name,
-          guest3Name: values.guest3Name,
-          guest4Name: values.guest4Name,
-          guest5Name: values.guest5Name,
-          hasPets: values.hasPets,
-          petName: values.petName,
-          needParking: values.needParking,
-          guestEmail: values.guestEmail,
-          guestPhoneNumber: values.guestPhoneNumber,
-        };
+        const bookingData = buildBookingSummary(values);
+
+        if (embed?.onSubmitSuccess) {
+          embed.onSubmitSuccess({ bookingId: currentBookingId ?? '', bookingData });
+          return;
+        }
 
         // Redirect to success page with booking data
         navigate(
@@ -932,24 +969,12 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
       }
 
       // Prepare booking summary data to pass to success page
-      const bookingData = {
-        checkInDate: values.checkInDate,
-        checkOutDate: values.checkOutDate,
-        checkInTime: values.checkInTime,
-        checkOutTime: values.checkOutTime,
-        numberOfAdults: values.numberOfAdults,
-        numberOfChildren: values.numberOfChildren,
-        primaryGuestName: values.primaryGuestName,
-        guest2Name: values.guest2Name,
-        guest3Name: values.guest3Name,
-        guest4Name: values.guest4Name,
-        guest5Name: values.guest5Name,
-        hasPets: values.hasPets,
-        petName: values.petName,
-        needParking: values.needParking,
-        guestEmail: values.guestEmail,
-        guestPhoneNumber: values.guestPhoneNumber,
-      };
+      const bookingData = buildBookingSummary(values);
+
+      if (embed?.onSubmitSuccess) {
+        embed.onSubmitSuccess({ bookingId: currentBookingId ?? '', bookingData });
+        return;
+      }
 
       // Redirect to success page with bookingId and booking data
       navigate(
@@ -1141,6 +1166,11 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
 
   const handleSubmitGuestForm = () => {
     if (!submitReady || isSubmitting || !canProceed) return;
+    if (embed?.skipAuthGate) {
+      pendingSubmitAfterAuthRef.current = false;
+      void form.handleSubmit(onSubmit)();
+      return;
+    }
     requireGuestAuth(
       () => {
         pendingSubmitAfterAuthRef.current = false;
