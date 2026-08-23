@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -33,16 +33,14 @@ import {
   type BookingsSort,
 } from '@/features/dashboard/bookings/lib/types';
 import { useParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
-import { CreateParkingBookingModal } from '@/features/dashboard/parking/components/CreateParkingBookingModal';
 import { useParkingBookings } from '@/features/dashboard/parking/hooks/useParkingBookings';
 
 import { FloatingPanel, FloatingToolbar } from '@/components/mobile/FloatingPanel';
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
-import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
+import { MobileHeroActionLink } from '@/components/mobile/MobileHeroActionButton';
 import { useIsBelowLg, useIsBelowMd } from '@/hooks/useMediaQuery';
 import { fromIsoDate } from '@/lib/date/navigation';
 import { buildPageItems, normalizeAdminPageLimit } from '@/lib/table/pagination';
-import { cn } from '@/lib/utils';
 
 const BOARD_BOOKINGS_LIMIT = 100;
 const VIEWS: ReadonlyArray<BookingView> = ['table', 'card', 'calendar'];
@@ -117,7 +115,6 @@ function writeQueryToParams(q: BookingsQuery, cur: URLSearchParams): URLSearchPa
 
 export function ParkingBookingsPage() {
   const { parking, orgSlug } = useParkingContext();
-  const [createOpen, setCreateOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const isMobileLayout = useIsBelowLg();
   const isBelowMd = useIsBelowMd();
@@ -284,29 +281,10 @@ export function ParkingBookingsPage() {
         onClear={handleClearDate}
         fullWidth={isBelowMd}
       />
-      <button
-        type="button"
-        aria-label="New booking"
-        onClick={() => setCreateOpen(true)}
-        className={cn(
-          'inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 py-2 sm:px-3.5',
-          'gradient-primary text-primary-foreground shadow-soft text-[13px] font-semibold',
-          'hover:shadow-primary-glow transition-all duration-200 motion-safe:active:scale-[0.98]'
-        )}
-      >
-        <CalendarPlus className="size-4 shrink-0" aria-hidden />
+      <Link to={publicParkingFormHref} className="native-cta sm:w-auto sm:px-3.5">
+        <CalendarPlus className="size-4" aria-hidden />
         <span className="hidden sm:inline">New booking</span>
-      </button>
-      <Link
-        to={publicParkingFormHref}
-        target="_blank"
-        rel="noreferrer"
-        className={cn(
-          'inline-flex min-h-[44px] items-center rounded-xl border px-3 py-2 sm:px-3.5',
-          'border-border bg-card hover:bg-muted/60 text-[13px] font-semibold'
-        )}
-      >
-        Public form
+        <span className="sm:hidden">New</span>
       </Link>
     </div>
   );
@@ -350,9 +328,9 @@ export function ParkingBookingsPage() {
   );
 
   const heroNewBooking = (
-    <MobileHeroActionButton aria-label="New booking" onClick={() => setCreateOpen(true)}>
+    <MobileHeroActionLink to={publicParkingFormHref} aria-label="New booking">
       <CalendarPlus className="size-5" aria-hidden />
-    </MobileHeroActionButton>
+    </MobileHeroActionLink>
   );
 
   return (
@@ -412,12 +390,6 @@ export function ParkingBookingsPage() {
           />
         </FloatingPanel>
       )}
-
-      <CreateParkingBookingModal
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        fixedParkingId={parking.id}
-      />
 
       {showPagination && (
         <AdminListPagination

@@ -68,6 +68,8 @@ export function ParkingDashboardCalendarSection({ from, to, datePreset }: Props)
           cashFlowData={chartData.cashFlowData}
           incomeBreakdown={chartData.incomeBreakdown}
           expenseBreakdown={chartData.expenseBreakdown}
+          cashFlowCardClassName="lg:col-span-3 lg:col-start-1"
+          breakdownCardClassName="lg:col-span-2 lg:col-start-4"
         />
 
         <DashboardTransactionsDueCard

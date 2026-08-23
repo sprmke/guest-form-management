@@ -5,10 +5,13 @@ import type { ParkingPricingDefaults } from '@/features/dashboard/parking/lib/pa
 export type ParkingPricingDto = ParkingPricingDefaults & {
   dateOverrides: Record<string, number>;
   bookedDateKeys: string[];
+  blockedDateKeys: string[];
 };
 
 export type ParkingPricingPatch = Partial<ParkingPricingDefaults> & {
   dateOverrides?: Record<string, number>;
+  blockRange?: { startDate: string; endDate: string; note?: string };
+  unblockDateKeys?: string[];
 };
 
 export const PARKING_PRICING_QUERY_KEY = 'parking-pricing';

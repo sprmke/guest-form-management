@@ -16,6 +16,8 @@ type Props = {
   draft: ParkingDetailsDraft;
   onChange: (next: ParkingDetailsDraft) => void;
   disabled?: boolean;
+  resolveFieldError?: (fieldId: string) => string | null;
+  markFieldInteracted?: (fieldId: string) => void;
 };
 
 function FieldGrid({ children }: { children: React.ReactNode }) {
@@ -52,7 +54,13 @@ function fitPreviewLabel(draft: ParkingDetailsDraft): string {
   return parts.length > 0 ? parts.join(' · ') : 'No fitting vehicle sizes';
 }
 
-export function ParkingDetailsSection({ draft, onChange, disabled = false }: Props) {
+export function ParkingDetailsSection({
+  draft,
+  onChange,
+  disabled = false,
+  resolveFieldError = () => null,
+  markFieldInteracted = () => {},
+}: Props) {
   const setField = <K extends keyof ParkingDetailsDraft>(key: K, value: ParkingDetailsDraft[K]) => {
     onChange({ ...draft, [key]: value });
   };
@@ -67,7 +75,12 @@ export function ParkingDetailsSection({ draft, onChange, disabled = false }: Pro
   };
 
   return (
-    <AdminSection id="details" title="Parking Details" icon={Home}>
+    <AdminSection
+      id="details"
+      title="Parking Details"
+      icon={Home}
+      description="Vehicle types, dimensions, and check-in times."
+    >
       <SettingsField id="parking-accepted-vehicle-types" label="Accepted vehicle types">
         <div className="grid gap-2 sm:grid-cols-2">
           {VEHICLE_TYPE_OPTIONS.map((option) => {
@@ -159,25 +172,39 @@ export function ParkingDetailsSection({ draft, onChange, disabled = false }: Pro
       </div>
 
       <FieldGrid>
-        <SettingsField id="parking-check-in" label="Check-in Time" required>
+        <SettingsField
+          id="parking-check-in"
+          label="Check-in Time"
+          required
+          error={resolveFieldError('parking-check-in')}
+        >
           <Input
             id="parking-check-in"
             type="time"
             value={draft.checkInTime}
             onChange={(event) => setField('checkInTime', event.target.value)}
+            onBlur={() => markFieldInteracted('parking-check-in')}
             disabled={disabled}
-            className="h-10"
+            aria-invalid={Boolean(resolveFieldError('parking-check-in'))}
+            className={cn('h-10', resolveFieldError('parking-check-in') && 'border-destructive')}
           />
         </SettingsField>
 
-        <SettingsField id="parking-check-out" label="Check-out Time" required>
+        <SettingsField
+          id="parking-check-out"
+          label="Check-out Time"
+          required
+          error={resolveFieldError('parking-check-out')}
+        >
           <Input
             id="parking-check-out"
             type="time"
             value={draft.checkOutTime}
             onChange={(event) => setField('checkOutTime', event.target.value)}
+            onBlur={() => markFieldInteracted('parking-check-out')}
             disabled={disabled}
-            className="h-10"
+            aria-invalid={Boolean(resolveFieldError('parking-check-out'))}
+            className={cn('h-10', resolveFieldError('parking-check-out') && 'border-destructive')}
           />
         </SettingsField>
       </FieldGrid>

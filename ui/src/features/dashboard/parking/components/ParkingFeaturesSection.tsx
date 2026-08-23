@@ -2,7 +2,10 @@ import { ChevronRight, Plus, Sparkles, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { AdminSection } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
-import { LimitedCountInput } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
+import {
+  LimitedCountInput,
+  PropertySettingsSectionAlert,
+} from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import {
   CUSTOM_PARKING_AMENITY_MAX_LENGTH,
   PARKING_AMENITY_CATEGORY,
@@ -26,6 +29,7 @@ type Props = {
   disabled?: boolean;
   newCustomInput: string;
   onNewCustomInputChange: (value: string) => void;
+  banner?: string;
 };
 
 export function ParkingFeaturesSection({
@@ -34,6 +38,7 @@ export function ParkingFeaturesSection({
   disabled = false,
   newCustomInput,
   onNewCustomInputChange,
+  banner,
 }: Props) {
   const category = PARKING_AMENITY_CATEGORY;
   const categoryCustom = draft.customParkingAmenities.filter(
@@ -86,8 +91,10 @@ export function ParkingFeaturesSection({
       id="features"
       title="Amenities"
       icon={Sparkles}
-      description="Select amenities available at this parking slot."
+      description="What's included with this slot."
     >
+      {banner ? <PropertySettingsSectionAlert message={banner} /> : null}
+
       <div className="bg-muted/40 rounded-lg border px-4 py-3">
         <p className="text-sm font-medium">
           {draft.enabledParkingAmenities.length} amenities selected
@@ -116,88 +123,88 @@ export function ParkingFeaturesSection({
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="space-y-3 p-4">
-          <div className="grid gap-2 sm:grid-cols-2">
-            {category.amenities.map((amenity) => {
-              const enabled = draft.enabledParkingAmenities.includes(amenity.id);
-              return (
-                <button
-                  key={amenity.id}
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => toggleAmenity(amenity.id)}
-                  className={cn(
-                    'flex min-h-[44px] items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition-colors',
-                    enabled
-                      ? 'border-border bg-background shadow-sm'
-                      : 'border-border/60 hover:bg-muted/40'
-                  )}
-                >
-                  <CheckboxDisplay checked={enabled} />
-                  <span className="min-w-0 flex-1">{amenity.name}</span>
-                </button>
-              );
-            })}
-
-            {categoryCustom.map((amenity) => {
-              const enabled = draft.enabledParkingAmenities.includes(amenity.id);
-              return (
-                <div
-                  key={amenity.id}
-                  className={cn(
-                    'flex min-h-[44px] items-center gap-2 rounded-xl border px-3 py-2.5',
-                    enabled ? 'border-border bg-background shadow-sm' : 'border-border/60'
-                  )}
-                >
+            <div className="grid gap-2 sm:grid-cols-2">
+              {category.amenities.map((amenity) => {
+                const enabled = draft.enabledParkingAmenities.includes(amenity.id);
+                return (
                   <button
+                    key={amenity.id}
                     type="button"
                     disabled={disabled}
                     onClick={() => toggleAmenity(amenity.id)}
-                    className="flex min-w-0 flex-1 items-center gap-3 text-left text-sm"
+                    className={cn(
+                      'flex min-h-[44px] items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition-colors',
+                      enabled
+                        ? 'border-border bg-background shadow-sm'
+                        : 'border-border/60 hover:bg-muted/40'
+                    )}
                   >
                     <CheckboxDisplay checked={enabled} />
-                    <span className="truncate">{amenity.name}</span>
+                    <span className="min-w-0 flex-1">{amenity.name}</span>
                   </button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="min-h-[44px] min-w-[44px] shrink-0"
-                    disabled={disabled}
-                    onClick={() => removeCustomAmenity(amenity.id)}
-                    aria-label={`Remove ${amenity.name}`}
-                  >
-                    <X className="size-4" aria-hidden />
-                  </Button>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
 
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <LimitedCountInput
-              value={newCustomInput}
-              onChange={(event) => onNewCustomInputChange(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  addCustomAmenity();
-                }
-              }}
-              disabled={disabled}
-              placeholder="Add custom amenity..."
-              maxLength={CUSTOM_PARKING_AMENITY_MAX_LENGTH}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              disabled={disabled || !newCustomInput.trim()}
-              onClick={addCustomAmenity}
-              className="min-h-[44px] shrink-0"
-            >
-              <Plus className="mr-1 size-4" aria-hidden />
-              Add
-            </Button>
-          </div>
+              {categoryCustom.map((amenity) => {
+                const enabled = draft.enabledParkingAmenities.includes(amenity.id);
+                return (
+                  <div
+                    key={amenity.id}
+                    className={cn(
+                      'flex min-h-[44px] items-center gap-2 rounded-xl border px-3 py-2.5',
+                      enabled ? 'border-border bg-background shadow-sm' : 'border-border/60'
+                    )}
+                  >
+                    <button
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => toggleAmenity(amenity.id)}
+                      className="flex min-w-0 flex-1 items-center gap-3 text-left text-sm"
+                    >
+                      <CheckboxDisplay checked={enabled} />
+                      <span className="truncate">{amenity.name}</span>
+                    </button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="min-h-[44px] min-w-[44px] shrink-0"
+                      disabled={disabled}
+                      onClick={() => removeCustomAmenity(amenity.id)}
+                      aria-label={`Remove ${amenity.name}`}
+                    >
+                      <X className="size-4" aria-hidden />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <LimitedCountInput
+                value={newCustomInput}
+                onChange={(event) => onNewCustomInputChange(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    addCustomAmenity();
+                  }
+                }}
+                disabled={disabled}
+                placeholder="Add custom amenity..."
+                maxLength={CUSTOM_PARKING_AMENITY_MAX_LENGTH}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                disabled={disabled || !newCustomInput.trim()}
+                onClick={addCustomAmenity}
+                className="min-h-[44px] shrink-0"
+              >
+                <Plus className="mr-1 size-4" aria-hidden />
+                Add
+              </Button>
+            </div>
           </div>
         </CollapsibleContent>
       </Collapsible>

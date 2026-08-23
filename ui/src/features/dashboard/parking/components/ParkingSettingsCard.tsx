@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useNavigate } from 'react-router-dom';
 
@@ -8,6 +8,7 @@ import {
   Home,
   Image as ImageIcon,
   Info,
+  Mail,
   MapPin,
   Save,
   Sparkles,
@@ -25,53 +26,57 @@ import { PropertyIntegrationsPanel } from '@/features/dashboard/bookings/compone
 import type { AppSettingsDto } from '@/features/dashboard/bookings/hooks/useAppSettings';
 import { PropertyLocationPicker } from '@/features/dashboard/org/components/property-settings/PropertyLocationPicker';
 import { PropertyPaymentMethodsSection } from '@/features/dashboard/org/components/property-settings/PropertyPaymentMethodsSection';
-import { SettingsField } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
+import {
+  PropertySettingsSectionAlert,
+  SettingsField,
+} from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import { useParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
 import { BrandColorField } from '@/features/dashboard/org/components/settings/BrandColorField';
 import { useOrgBrandColor } from '@/features/dashboard/org/hooks/useOrgBrandColor';
-import { useParkingSlotConflict } from '@/features/dashboard/org/hooks/useParkingSlotConflict';
 import {
-  AZURE_NORTH_PARKING_TOWERS,
-  DEFAULT_PARKING_LEVEL,
   DEFAULT_PARKING_RESIDENCE_NAME,
-  getParkingLevelsForTower,
-  getParkingResidenceNames,
   PARKING_TYPES,
-  type ParkingType,
 } from '@/features/dashboard/org/lib/parkingResidences';
 import {
   formatParkingCode,
   formatParkingDisplayName,
-  isValidParkingSlotNumber,
-  sanitizeParkingSlotNumber,
 } from '@/features/dashboard/org/lib/parkingSlotDisplay';
 import {
   syncLegacyPaymentFieldsFromMethods,
   type PropertyPaymentMethod,
 } from '@/features/dashboard/org/lib/paymentMethods';
-import { applyResidenceLocationDefaultsToDraft } from '@/features/dashboard/org/lib/propertyLocation';
 import {
   orgParkingsPath,
   parkingNotificationsPath,
-  parkingSectionPath,
 } from '@/features/dashboard/org/lib/tenantPaths';
 import { ParkingDetailsSection } from '@/features/dashboard/parking/components/ParkingDetailsSection';
+import { ParkingEmailAutomationSection } from '@/features/dashboard/parking/components/ParkingEmailAutomationSection';
 import { ParkingFeaturesSection } from '@/features/dashboard/parking/components/ParkingFeaturesSection';
 import { ParkingMediaUpload } from '@/features/dashboard/parking/components/ParkingMediaUpload';
 import {
   useParkingSettings,
   useUpdateParkingSettings,
 } from '@/features/dashboard/parking/hooks/useParkingSettings';
+import { useParkingSettingsCompletionForDraft } from '@/features/dashboard/parking/hooks/useParkingSettingsCompletion';
 import {
   useDeleteParking,
   useUpdateParking,
 } from '@/features/dashboard/parking/hooks/useUpdateParking';
 import { useUploadParkingSettingsAsset } from '@/features/dashboard/parking/hooks/useUploadParkingSettingsAsset';
 import {
+  mergeParkingAutomationToggles,
+  type ParkingAutomationToggles,
+} from '@/features/dashboard/parking/lib/parkingEmailAutomation';
+import {
   parkingFeaturesDraftFromSettings,
   parkingFeaturesDraftIsDirty,
   parkingFeaturesSettingsPatch,
 } from '@/features/dashboard/parking/lib/parkingFeaturesConstants';
+import { type ParkingSettingsSectionId } from '@/features/dashboard/parking/lib/parkingSettingsCompletion';
+import {
+  parkingSettingsSectionBanner,
+  resolveParkingSettingsFieldError,
+} from '@/features/dashboard/parking/lib/parkingSettingsFieldError';
 import {
   parkingCoverImageFromSettings,
   parkingDetailsDraftFromSettings,
@@ -85,13 +90,12 @@ import {
   parkingProfileDraftFromParking,
   parkingProfileDraftIsDirty,
   parkingProfileSettingsPatch,
-  parkingSlugPreview,
   PARKING_DESCRIPTION_MAX,
   type ParkingOperationalDraft,
   type ParkingProfileDraft,
 } from '@/features/dashboard/parking/lib/parkingSettingsForm';
+import { setParkingSettingsIssueSections } from '@/features/dashboard/parking/lib/parkingSettingsIssuesStore';
 
-import { AvailabilityCheckInput } from '@/components/AvailabilityCheckInput';
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
 import { AppSettingsCardSkeleton } from '@/components/skeletons/AdminSkeletons';
@@ -106,15 +110,7 @@ import {
   ResponsiveModalHeader,
   ResponsiveModalTitle,
 } from '@/components/ui/responsive-modal';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { resolveAsyncAvailabilityState } from '@/lib/availabilityCheckState';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
 import { cn } from '@/lib/utils';
 
@@ -125,9 +121,12 @@ const SECTIONS: AdminSectionNavItem[] = [
   { id: 'features', label: 'Amenities', icon: Sparkles },
   { id: 'location', label: 'Location', icon: MapPin },
   { id: 'payment', label: 'Payment', icon: Wallet },
+  { id: 'email', label: 'Email', icon: Mail },
   { id: 'integrations', label: 'Integrations', icon: Globe },
   { id: 'danger', label: 'Danger Zone', icon: AlertTriangle },
 ];
+
+const readOnlyFieldClass = 'bg-muted/40';
 
 function parkingPaymentSettingsDto(
   settings: NonNullable<ReturnType<typeof useParkingSettings>['data']>
@@ -141,9 +140,13 @@ function parkingPaymentSettingsDto(
   } as AppSettingsDto;
 }
 
+function parkingTypeLabel(value: string): string {
+  return PARKING_TYPES.find((type) => type.value === value)?.label ?? value;
+}
+
 export function ParkingSettingsCard() {
   const navigate = useNavigate();
-  const { parking, orgSlug, parkingSlug } = useParkingContext();
+  const { parking, orgSlug } = useParkingContext();
   const inheritedBrandColor = useOrgBrandColor();
   const { setBrandColorPreview } = useAdminBrandColorPreview();
   const { data: settings, isLoading: settingsLoading } = useParkingSettings();
@@ -177,9 +180,25 @@ export function ParkingSettingsCard() {
   );
   const [detailsDraft, setDetailsDraft] = useState(detailsBaseline);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [restoreOpen, setRestoreOpen] = useState(false);
+  const [automationBaseline, setAutomationBaseline] = useState<ParkingAutomationToggles>(() =>
+    mergeParkingAutomationToggles(parking.settings?.automationToggles)
+  );
+  const [automationDraft, setAutomationDraft] = useState(automationBaseline);
+  const [showValidationErrors, setShowValidationErrors] = useState(false);
+  const [interactedFields, setInteractedFields] = useState<Record<string, boolean>>({});
+
+  const markFieldInteracted = useCallback((fieldId: string) => {
+    setInteractedFields((current) => {
+      if (current[fieldId]) return current;
+      return { ...current, [fieldId]: true };
+    });
+  }, []);
 
   const profileDirtyRef = useRef(false);
   const operationalDirtyRef = useRef(false);
+  const automationDirtyRef = useRef(false);
   const featuresDirtyRef = useRef(false);
   const locationDirtyRef = useRef(false);
   const detailsDirtyRef = useRef(false);
@@ -188,15 +207,6 @@ export function ParkingSettingsCard() {
     () => formatParkingDisplayName(profileDraft.tower, profileDraft.level, profileDraft.slotNumber),
     [profileDraft.tower, profileDraft.level, profileDraft.slotNumber]
   );
-  const baselineDisplayName = useMemo(
-    () =>
-      formatParkingDisplayName(
-        profileBaseline.tower,
-        profileBaseline.level,
-        profileBaseline.slotNumber
-      ),
-    [profileBaseline.tower, profileBaseline.level, profileBaseline.slotNumber]
-  );
   const parkingCode = useMemo(
     () => formatParkingCode(profileDraft.tower, profileDraft.level, profileDraft.slotNumber),
     [profileDraft.tower, profileDraft.level, profileDraft.slotNumber]
@@ -204,9 +214,6 @@ export function ParkingSettingsCard() {
 
   const parkingSlugPrefix =
     typeof window !== 'undefined' ? `${window.location.origin}/parkings/` : '/parkings/';
-
-  const slugPreview = parkingSlugPreview(displayName, parking.slug, baselineDisplayName);
-  const residenceOptions = getParkingResidenceNames();
 
   useEffect(() => {
     return () => setBrandColorPreview(null);
@@ -258,6 +265,11 @@ export function ParkingSettingsCard() {
     const values = parkingOperationalDraftFromSettings(settings);
     setOperationalDraft(values);
     setOperationalBaseline(values);
+    if (!automationDirtyRef.current) {
+      const nextAutomation = mergeParkingAutomationToggles(settings.automationToggles);
+      setAutomationDraft(nextAutomation);
+      setAutomationBaseline(nextAutomation);
+    }
   }, [settings]);
 
   const profileDirty = parkingProfileDraftIsDirty(
@@ -271,6 +283,8 @@ export function ParkingSettingsCard() {
       ? parkingOperationalDraftIsDirty(operationalDraft, operationalBaseline)
       : false;
   operationalDirtyRef.current = operationalDirty;
+  const automationDirty = JSON.stringify(automationDraft) !== JSON.stringify(automationBaseline);
+  automationDirtyRef.current = automationDirty;
   const featuresDirty = parkingFeaturesDraftIsDirty(featuresDraft, featuresBaseline);
   featuresDirtyRef.current = featuresDirty;
   const locationDirty = parkingLocationDraftIsDirty(locationDraft, locationBaseline);
@@ -278,40 +292,67 @@ export function ParkingSettingsCard() {
   const detailsDirty = parkingDetailsDraftIsDirty(detailsDraft, detailsBaseline);
   detailsDirtyRef.current = detailsDirty;
   const isDirty =
-    profileDirty || operationalDirty || featuresDirty || locationDirty || detailsDirty;
+    profileDirty ||
+    operationalDirty ||
+    automationDirty ||
+    featuresDirty ||
+    locationDirty ||
+    detailsDirty;
 
-  const slotIdentityChanged =
-    profileDraft.tower !== profileBaseline.tower ||
-    profileDraft.level !== profileBaseline.level ||
-    profileDraft.slotNumber !== profileBaseline.slotNumber ||
-    profileDraft.residenceName.trim() !== profileBaseline.residenceName.trim();
-  const slotReady =
-    slotIdentityChanged &&
-    Boolean(profileDraft.tower) &&
-    Boolean(profileDraft.level) &&
-    isValidParkingSlotNumber(profileDraft.slotNumber);
-  const residenceNameForConflict =
-    profileDraft.residenceName.trim() || DEFAULT_PARKING_RESIDENCE_NAME;
-  const {
-    conflict: slotConflict,
-    hasDuplicate: slotDuplicate,
-    isChecking: slotChecking,
-  } = useParkingSlotConflict(
-    profileDraft.tower,
-    profileDraft.level,
-    profileDraft.slotNumber,
-    residenceNameForConflict,
-    parking.id
-  );
-  const slotBlocked = slotReady && slotDuplicate;
-  const slotAvailabilityState = resolveAsyncAvailabilityState({
-    ready: slotReady,
-    isChecking: slotChecking,
-    hasConflict: slotDuplicate,
+  const isArchived = parking.status === 'INACTIVE';
+
+  const { completion: draftCompletion } = useParkingSettingsCompletionForDraft({
+    profile: profileDraft,
+    operational: operationalDraft,
+    details: detailsDraft,
+    features: featuresDraft,
+    location: locationDraft,
+    coverImage,
+    excludeParkingId: parking.id,
   });
-  const slotBlockMessage = slotBlocked
-    ? `Slot taken${slotConflict?.orgName ? ` — ${slotConflict.orgName}` : ''}`
-    : null;
+
+  const { completion: savedCompletion } = useParkingSettingsCompletionForDraft({
+    profile: profileBaseline,
+    operational: operationalBaseline,
+    details: detailsBaseline,
+    features: featuresBaseline,
+    location: locationBaseline,
+    coverImage,
+    excludeParkingId: parking.id,
+  });
+
+  const resolveFieldError = useCallback(
+    (fieldId: string) =>
+      resolveParkingSettingsFieldError(
+        fieldId,
+        draftCompletion.fieldErrors,
+        interactedFields,
+        showValidationErrors
+      ),
+    [draftCompletion.fieldErrors, interactedFields, showValidationErrors]
+  );
+
+  const navSections = useMemo(
+    (): AdminSectionNavItem[] =>
+      SECTIONS.map((section) => ({
+        ...section,
+        hasIssue: draftCompletion.issueSectionIds.includes(section.id as ParkingSettingsSectionId),
+      })),
+    [draftCompletion.issueSectionIds]
+  );
+
+  useEffect(() => {
+    setParkingSettingsIssueSections(draftCompletion.issueSectionIds);
+    return () => {
+      setParkingSettingsIssueSections(savedCompletion.issueSectionIds);
+    };
+  }, [draftCompletion.issueSectionIds, savedCompletion.issueSectionIds]);
+
+  const scrollToSettingsSection = (sectionId: ParkingSettingsSectionId) => {
+    document
+      .getElementById(`section-${sectionId}`)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   const busy =
     settingsLoading ||
@@ -319,7 +360,7 @@ export function ParkingSettingsCard() {
     updateSettings.isPending ||
     deleteParking.isPending ||
     uploadQr.isPending;
-  const saveDisabled = busy || slotBlocked || (slotReady && slotChecking);
+  const saveDisabled = busy;
 
   const setProfileField = <K extends keyof ParkingProfileDraft>(
     key: K,
@@ -345,53 +386,34 @@ export function ParkingSettingsCard() {
 
   const handleSave = async () => {
     if (!operationalDraft || !operationalBaseline) return;
-    if (slotBlocked || (slotReady && slotChecking)) return;
 
     if (!isDirty) {
       toast.message('No changes to save');
       return;
     }
 
+    if (!draftCompletion.isComplete) {
+      setShowValidationErrors(true);
+      toast.error(draftCompletion.firstErrorMessage ?? 'Please fix the highlighted fields');
+      if (draftCompletion.firstIssueSectionId) {
+        scrollToSettingsSection(draftCompletion.firstIssueSectionId);
+      }
+      return;
+    }
+
+    setShowValidationErrors(false);
+
     try {
       let savedSomething = false;
-      let nextParkingSlug = parkingSlug;
 
       if (profileDirty) {
         const settingsPatch = parkingProfileSettingsPatch(profileDraft, inheritedBrandColor);
-        const baselineSettingsPatch = parkingProfileSettingsPatch(
-          profileBaseline,
-          inheritedBrandColor
-        );
-        const settingsDirty =
-          settingsPatch.description !== baselineSettingsPatch.description ||
-          settingsPatch.brandColor !== baselineSettingsPatch.brandColor;
-        const slotFieldsDirty =
-          profileDraft.tower !== profileBaseline.tower ||
-          profileDraft.level !== profileBaseline.level ||
-          profileDraft.slotNumber !== profileBaseline.slotNumber ||
-          profileDraft.parkingType !== profileBaseline.parkingType ||
-          profileDraft.residenceName.trim() !== profileBaseline.residenceName.trim();
-
-        const payload: { parkingId: string } & Record<string, unknown> = {
+        await updateParking.mutateAsync({
           parkingId: parking.id,
-        };
-        if (slotFieldsDirty) {
-          payload.name = displayName;
-          payload.tower = profileDraft.tower;
-          payload.level = profileDraft.level;
-          payload.slotLabel = profileDraft.slotNumber.trim();
-          payload.parkingType = profileDraft.parkingType;
-          payload.residenceName =
-            profileDraft.residenceName.trim() || DEFAULT_PARKING_RESIDENCE_NAME;
-        }
-        if (settingsDirty) {
-          payload.settings = settingsPatch;
-        }
-
-        const result = await updateParking.mutateAsync(payload);
+          settings: settingsPatch,
+        });
         setProfileBaseline(profileDraft);
         savedSomething = true;
-        nextParkingSlug = result.parking.slug;
       }
 
       if (operationalDirty) {
@@ -402,6 +424,14 @@ export function ParkingSettingsCard() {
           gcashNumber: operationalDraft.gcashNumber.trim() || null,
         });
         setOperationalBaseline(operationalDraft);
+        savedSomething = true;
+      }
+
+      if (automationDirty) {
+        await updateSettings.mutateAsync({
+          automationToggles: automationDraft,
+        });
+        setAutomationBaseline(automationDraft);
         savedSomething = true;
       }
 
@@ -423,9 +453,6 @@ export function ParkingSettingsCard() {
 
       if (savedSomething) {
         toast.success('Settings saved');
-        if (nextParkingSlug !== parkingSlug) {
-          navigate(parkingSectionPath(orgSlug, nextParkingSlug, 'settings'), { replace: true });
-        }
       }
     } catch (error) {
       toast.error(friendlyToastError(error, 'Could not save settings'));
@@ -440,6 +467,30 @@ export function ParkingSettingsCard() {
     } catch (error) {
       toast.error(friendlyToastError(error, 'Delete failed'));
     }
+  };
+
+  const handleArchive = async () => {
+    try {
+      await updateParking.mutateAsync({ parkingId: parking.id, status: 'INACTIVE' });
+      toast.success('Parking archived');
+      setArchiveOpen(false);
+    } catch (error) {
+      toast.error(friendlyToastError(error, 'Archive failed'));
+    }
+  };
+
+  const handleRestore = async () => {
+    try {
+      await updateParking.mutateAsync({ parkingId: parking.id, status: 'ACTIVE' });
+      toast.success('Parking restored');
+      setRestoreOpen(false);
+    } catch (error) {
+      toast.error(friendlyToastError(error, 'Restore failed'));
+    }
+  };
+
+  const setAutomationToggle = (key: keyof ParkingAutomationToggles, enabled: boolean) => {
+    setAutomationDraft((current) => ({ ...current, [key]: enabled }));
   };
 
   if (settingsLoading || !settings || !operationalDraft) {
@@ -479,7 +530,7 @@ export function ParkingSettingsCard() {
     >
       <AdminSectionNavLayout
         className="min-h-0 flex-1"
-        sections={SECTIONS}
+        sections={navSections}
         footer={
           isDirty ? (
             <Card className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30">
@@ -508,7 +559,7 @@ export function ParkingSettingsCard() {
           id="basic"
           title="Basic Information"
           icon={Info}
-          description="Update this parking slot's fundamental details."
+          description="Brand color, description, and slot identity."
         >
           <SettingsField id="parking-code" label="Code">
             <Input
@@ -526,7 +577,7 @@ export function ParkingSettingsCard() {
               <span className="text-muted-foreground truncate text-sm">{parkingSlugPrefix}</span>
               <Input
                 id="parking-slug"
-                value={slugPreview}
+                value={parking.slug}
                 readOnly
                 disabled={busy}
                 placeholder="parking-slug"
@@ -552,112 +603,94 @@ export function ParkingSettingsCard() {
           />
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-x-5">
-            <SettingsField id="settings-parking-type" label="Parking type">
-              <Select
-                value={profileDraft.parkingType}
-                onValueChange={(value) => setProfileField('parkingType', value as ParkingType)}
+            <SettingsField
+              id="settings-parking-type"
+              label="Parking type"
+              required
+              error={resolveFieldError('settings-parking-type')}
+              hintBelow="Set at creation and can't be changed."
+            >
+              <Input
+                id="settings-parking-type"
+                value={parkingTypeLabel(profileDraft.parkingType)}
+                readOnly
                 disabled={busy}
-              >
-                <SelectTrigger id="settings-parking-type" className="h-10">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PARKING_TYPES.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                tabIndex={-1}
+                aria-readonly="true"
+                className={readOnlyFieldClass}
+              />
             </SettingsField>
 
-            <SettingsField id="settings-residence" label="Residence">
-              <Select
-                value={profileDraft.residenceName.trim() || residenceOptions[0]}
-                onValueChange={(value) => {
-                  setProfileField('residenceName', value);
-                  const locationDefaults = applyResidenceLocationDefaultsToDraft(
-                    value,
-                    locationDraft
-                  );
-                  if (Object.keys(locationDefaults).length > 0) {
-                    setLocationDraft((current) => ({ ...current, ...locationDefaults }));
-                  }
-                }}
+            <SettingsField
+              id="settings-residence"
+              label="Residence"
+              required
+              error={resolveFieldError('settings-residence')}
+              hintBelow="Set at creation and can't be changed."
+            >
+              <Input
+                id="settings-residence"
+                value={profileDraft.residenceName.trim() || DEFAULT_PARKING_RESIDENCE_NAME}
+                readOnly
                 disabled={busy}
-              >
-                <SelectTrigger id="settings-residence" className="h-10">
-                  <SelectValue placeholder="Select residence" />
-                </SelectTrigger>
-                <SelectContent>
-                  {residenceOptions.map((residence) => (
-                    <SelectItem key={residence} value={residence}>
-                      {residence}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                tabIndex={-1}
+                aria-readonly="true"
+                className={readOnlyFieldClass}
+              />
             </SettingsField>
 
-            <SettingsField id="settings-tower" label="Tower">
-              <Select
+            <SettingsField
+              id="settings-tower"
+              label="Tower"
+              required
+              error={resolveFieldError('settings-tower')}
+              hintBelow="Set at creation and can't be changed."
+            >
+              <Input
+                id="settings-tower"
                 value={profileDraft.tower}
-                onValueChange={(value) => {
-                  setProfileField('tower', value);
-                  const levels = getParkingLevelsForTower(value);
-                  if (profileDraft.level && !levels.includes(profileDraft.level)) {
-                    setProfileField('level', DEFAULT_PARKING_LEVEL);
-                  }
-                }}
+                readOnly
                 disabled={busy}
-              >
-                <SelectTrigger id="settings-tower" className="h-10">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {AZURE_NORTH_PARKING_TOWERS.map((tower) => (
-                    <SelectItem key={tower} value={tower}>
-                      {tower}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                tabIndex={-1}
+                aria-readonly="true"
+                className={readOnlyFieldClass}
+              />
             </SettingsField>
 
-            <SettingsField id="settings-level" label="Level">
-              <Select
+            <SettingsField
+              id="settings-level"
+              label="Level"
+              required
+              error={resolveFieldError('settings-level')}
+              hintBelow="Set at creation and can't be changed."
+            >
+              <Input
+                id="settings-level"
                 value={profileDraft.level}
-                onValueChange={(value) => setProfileField('level', value)}
+                readOnly
                 disabled={busy}
-              >
-                <SelectTrigger id="settings-level" className="h-10">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {getParkingLevelsForTower(profileDraft.tower).map((level) => (
-                    <SelectItem key={level} value={level}>
-                      {level}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                tabIndex={-1}
+                aria-readonly="true"
+                className={readOnlyFieldClass}
+              />
             </SettingsField>
           </div>
 
-          <SettingsField id="settings-slot" label="Slot number" error={slotBlockMessage}>
-            <AvailabilityCheckInput
+          <SettingsField
+            id="settings-slot"
+            label="Slot number"
+            required
+            error={resolveFieldError('settings-slot')}
+            hintBelow="Set at creation and can't be changed."
+          >
+            <Input
               id="settings-slot"
-              inputMode="numeric"
-              autoComplete="off"
               value={profileDraft.slotNumber}
-              onChange={(event) =>
-                setProfileField('slotNumber', sanitizeParkingSlotNumber(event.target.value))
-              }
-              maxLength={4}
+              readOnly
               disabled={busy}
-              aria-invalid={Boolean(slotBlockMessage)}
-              className={cn('h-10 tabular-nums', slotBlockMessage && 'border-destructive')}
-              checkState={slotAvailabilityState}
+              tabIndex={-1}
+              aria-readonly="true"
+              className={cn(readOnlyFieldClass, 'tabular-nums')}
             />
           </SettingsField>
 
@@ -681,8 +714,13 @@ export function ParkingSettingsCard() {
           id="media"
           title="Photos"
           icon={ImageIcon}
-          description="Upload one cover photo for this parking slot."
+          description="Cover photo for the public listing."
         >
+          {parkingSettingsSectionBanner('media', draftCompletion.sectionMessages) ? (
+            <PropertySettingsSectionAlert
+              message={parkingSettingsSectionBanner('media', draftCompletion.sectionMessages)!}
+            />
+          ) : null}
           <ParkingMediaUpload
             coverImage={coverImage}
             onCoverChange={setCoverImage}
@@ -690,7 +728,13 @@ export function ParkingSettingsCard() {
           />
         </AdminSection>
 
-        <ParkingDetailsSection draft={detailsDraft} onChange={setDetailsDraft} disabled={busy} />
+        <ParkingDetailsSection
+          draft={detailsDraft}
+          onChange={setDetailsDraft}
+          disabled={busy}
+          resolveFieldError={resolveFieldError}
+          markFieldInteracted={markFieldInteracted}
+        />
 
         <ParkingFeaturesSection
           draft={featuresDraft}
@@ -698,28 +742,37 @@ export function ParkingSettingsCard() {
           disabled={busy}
           newCustomInput={newCustomFeatureInput}
           onNewCustomInputChange={setNewCustomFeatureInput}
+          banner={parkingSettingsSectionBanner('features', draftCompletion.sectionMessages)}
         />
 
         <AdminSection
           id="location"
           title="Location"
           icon={MapPin}
-          description="Provide accurate location details to help guests find this parking slot."
+          description="Address and map pin."
         >
           <PropertyLocationPicker
             disabled={busy}
             value={locationDraft}
             onChange={(patch) => setLocationDraft((current) => ({ ...current, ...patch }))}
+            addressError={resolveFieldError('property-address')}
+            mapError={resolveFieldError('property-location-map')}
+            onFieldInteract={markFieldInteracted}
           />
         </AdminSection>
 
-        <AdminSection id="payment" title="Payment" icon={Wallet}>
+        <AdminSection
+          id="payment"
+          title="Payment"
+          icon={Wallet}
+          description="How guests pay for parking."
+        >
           <PropertyPaymentMethodsSection
             data={parkingPaymentSettingsDto(settings)}
             methods={operationalDraft.paymentMethods}
             disabled={busy}
-            resolveFieldError={() => null}
-            markFieldInteracted={() => {}}
+            resolveFieldError={resolveFieldError}
+            markFieldInteracted={markFieldInteracted}
             onChange={setPaymentMethods}
             onPrimaryQrFile={(file) => {
               void uploadQr
@@ -736,10 +789,23 @@ export function ParkingSettingsCard() {
         </AdminSection>
 
         <AdminSection
+          id="email"
+          title="Email"
+          icon={Mail}
+          description="Reservation and booking status emails."
+        >
+          <ParkingEmailAutomationSection
+            value={automationDraft}
+            disabled={busy}
+            onChange={setAutomationToggle}
+          />
+        </AdminSection>
+
+        <AdminSection
           id="integrations"
           title="Integrations"
           icon={Globe}
-          description="Connect this parking slot to external platforms and services."
+          description="Telegram and AI service status."
         >
           {settings.parkingIntegrations ? (
             <PropertyIntegrationsPanel
@@ -764,26 +830,123 @@ export function ParkingSettingsCard() {
           id="danger"
           title="Danger Zone"
           icon={AlertTriangle}
-          description="Irreversible actions that permanently affect this parking slot."
+          description="Archive or permanently delete this slot."
           className="border-destructive/50"
         >
-          <div className="border-destructive/50 flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-1">
-              <p className="text-destructive text-sm font-medium">Delete parking</p>
-              <p className="text-muted-foreground text-sm">
-                Permanently removes this parking slot and its settings. This cannot be undone.
-              </p>
+          <div className="space-y-4">
+            <div className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium">
+                  {isArchived ? 'Restore parking' : 'Archive parking'}
+                </p>
+                <p className="text-muted-foreground text-sm">
+                  {isArchived
+                    ? 'Sets status to Active — shows this slot on the public listing again.'
+                    : 'Sets status to Inactive — hides this slot from the public listing. Bookings and settings are kept.'}
+                </p>
+              </div>
+              {isArchived ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={busy || updateParking.isPending}
+                  className="min-h-[44px] shrink-0"
+                  onClick={() => setRestoreOpen(true)}
+                >
+                  {updateParking.isPending ? 'Restoring…' : 'Restore'}
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={busy || updateParking.isPending}
+                  className="min-h-[44px] shrink-0"
+                  onClick={() => setArchiveOpen(true)}
+                >
+                  {updateParking.isPending ? 'Archiving…' : 'Archive'}
+                </Button>
+              )}
             </div>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={busy || deleteParking.isPending}
-              className="min-h-[44px] shrink-0"
-              onClick={() => setDeleteOpen(true)}
-            >
-              {deleteParking.isPending ? 'Deleting…' : 'Delete parking'}
-            </Button>
+
+            <div className="border-destructive/50 flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1">
+                <p className="text-destructive text-sm font-medium">Delete parking</p>
+                <p className="text-muted-foreground text-sm">
+                  Permanently removes this parking slot and its settings. This cannot be undone.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={busy || deleteParking.isPending}
+                className="min-h-[44px] shrink-0"
+                onClick={() => setDeleteOpen(true)}
+              >
+                {deleteParking.isPending ? 'Deleting…' : 'Delete parking'}
+              </Button>
+            </div>
           </div>
+
+          <ResponsiveModal open={archiveOpen} onOpenChange={setArchiveOpen}>
+            <ResponsiveModalContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
+              <ResponsiveModalHeader>
+                <ResponsiveModalTitle>Archive {displayName || parking.name}?</ResponsiveModalTitle>
+                <ResponsiveModalDescription>
+                  This parking slot will be marked Inactive and hidden from the public listing. You
+                  can restore it anytime from this section.
+                </ResponsiveModalDescription>
+              </ResponsiveModalHeader>
+              <ResponsiveModalFooter className="flex-col gap-2 sm:flex-row">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-[44px] w-full sm:w-auto"
+                  disabled={updateParking.isPending}
+                  onClick={() => setArchiveOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  className="min-h-[44px] w-full sm:w-auto"
+                  disabled={updateParking.isPending}
+                  onClick={() => void handleArchive()}
+                >
+                  {updateParking.isPending ? 'Archiving…' : 'Archive parking'}
+                </Button>
+              </ResponsiveModalFooter>
+            </ResponsiveModalContent>
+          </ResponsiveModal>
+
+          <ResponsiveModal open={restoreOpen} onOpenChange={setRestoreOpen}>
+            <ResponsiveModalContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
+              <ResponsiveModalHeader>
+                <ResponsiveModalTitle>Restore {displayName || parking.name}?</ResponsiveModalTitle>
+                <ResponsiveModalDescription>
+                  This parking slot will be marked Active and appear on the public listing again.
+                </ResponsiveModalDescription>
+              </ResponsiveModalHeader>
+              <ResponsiveModalFooter className="flex-col gap-2 sm:flex-row">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-[44px] w-full sm:w-auto"
+                  disabled={updateParking.isPending}
+                  onClick={() => setRestoreOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  className="min-h-[44px] w-full sm:w-auto"
+                  disabled={updateParking.isPending}
+                  onClick={() => void handleRestore()}
+                >
+                  {updateParking.isPending ? 'Restoring…' : 'Restore parking'}
+                </Button>
+              </ResponsiveModalFooter>
+            </ResponsiveModalContent>
+          </ResponsiveModal>
 
           <ResponsiveModal open={deleteOpen} onOpenChange={setDeleteOpen}>
             <ResponsiveModalContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">

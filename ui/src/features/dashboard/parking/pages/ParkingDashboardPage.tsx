@@ -14,6 +14,7 @@ import { absoluteGuestParkingUrl } from '@/features/dashboard/org/lib/guestPubli
 import { parkingSectionPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { ParkingDashboardCalendarSection } from '@/features/dashboard/parking/components/ParkingDashboardCalendarSection';
 import { ParkingDashboardStatCards } from '@/features/dashboard/parking/components/ParkingDashboardStatCards';
+import { useParkingDashboardStats } from '@/features/dashboard/parking/hooks/useParkingDashboardStats';
 import { buildEmptyParkingDashboardStats } from '@/features/dashboard/parking/lib/parkingDashboardStats';
 import { DashboardAttentionStrip } from '@/features/dashboard/property/components/DashboardAttentionStrip';
 import {
@@ -69,9 +70,11 @@ export function ParkingDashboardPage() {
     dateNav.setDatePreset('year');
   }, [dateNav]);
 
+  const { data: statsData } = useParkingDashboardStats();
+
   const stats = useMemo(
-    () => buildEmptyParkingDashboardStats(period, dateNav.datePreset),
-    [period, dateNav.datePreset]
+    () => statsData ?? buildEmptyParkingDashboardStats(period, dateNav.datePreset),
+    [statsData, period, dateNav.datePreset]
   );
 
   const reservationsHref = `${parkingSectionPath(orgSlug, parkingSlug, 'bookings')}?from=${period.from}&to=${period.to}`;

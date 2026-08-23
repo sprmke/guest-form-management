@@ -5,37 +5,8 @@ import { BOOKINGS_QUERY_KEY } from '@/features/dashboard/bookings/hooks/useBooki
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import { callEdgeFunction } from '@/features/dashboard/org/lib/edgeClient';
 
-export type CreateParkingBookingInput = {
-  parkingId: string;
-  primaryGuestName: string;
-  guestEmail: string;
-  guestPhoneNumber: string;
-  checkInDate: string;
-  checkOutDate: string;
-  carPlateNumber: string;
-  carBrandModel?: string;
-  carColor?: string;
-};
-
 function parkingScopedPath(fn: string, parkingId: string) {
   return `${fn}?parking_id=${encodeURIComponent(parkingId)}`;
-}
-
-export function useCreateParkingBooking() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (input: CreateParkingBookingInput) =>
-      callEdgeFunction<BookingRow>(parkingScopedPath('create-parking-booking', input.parkingId), {
-        method: 'POST',
-        body: JSON.stringify(input),
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY });
-      toast.success('Parking booking created');
-    },
-    onError: (err: Error) => toast.error(err.message),
-  });
 }
 
 export function useClaimParkingBooking(parkingId: string | null) {

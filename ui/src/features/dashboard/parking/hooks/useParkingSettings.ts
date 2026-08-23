@@ -6,6 +6,7 @@ import type {
 } from '@/features/dashboard/bookings/hooks/useAppSettings';
 import { appendParkingId, useParkingIdParam } from '@/features/dashboard/org/lib/adminParkingScope';
 import { callEdgeFunction } from '@/features/dashboard/org/lib/edgeClient';
+import type { ParkingAutomationToggles } from '@/features/dashboard/parking/lib/parkingEmailAutomation';
 
 export const PARKING_SETTINGS_QUERY_KEY = ['parking-settings'] as const;
 
@@ -17,6 +18,7 @@ export type ParkingSettingsPayload = {
   gcashQrImageUrl: string | null;
   paymentMethods: unknown[];
   parkingNotificationTemplates: Record<string, string>;
+  automationToggles: ParkingAutomationToggles;
   updatedAt: string;
   parkingIntegrations?: PropertyIntegrationStatus;
   platformSecrets?: PlatformSecretsStatus;
