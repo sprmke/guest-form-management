@@ -45,8 +45,11 @@ export function FinanceLedgerTable({
 
   if (rows.length === 0) {
     return (
-      <div className="border-border/60 flex flex-col items-center justify-center rounded-xl border border-dashed py-16 text-center">
-        <p className="text-foreground text-sm font-semibold">No transactions found</p>
+      <div className="surface-card flex flex-col items-center justify-center gap-3 py-20 text-center">
+        <div className="bg-muted flex size-9 items-center justify-center rounded-full">
+          <span className="text-muted-foreground text-lg leading-none">∅</span>
+        </div>
+        <p className="text-section-title text-foreground font-bold">No transactions found</p>
       </div>
     );
   }

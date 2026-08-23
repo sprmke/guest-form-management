@@ -44,6 +44,10 @@ type Props = {
   className?: string;
   /** When true, children join a parent equal-column dashboard grid (`contents`). */
   embedded?: boolean;
+  /** Grid placement for the Cash flow card when embedded in a non-2-col parent grid. */
+  cashFlowCardClassName?: string;
+  /** Grid placement for the Breakdown card when embedded in a non-2-col parent grid. */
+  breakdownCardClassName?: string;
   /** Show chart skeletons instead of empty states while data is loading. */
   isLoading?: boolean;
   /** Period-scoped finance deep link (shows View on Cash flow when set). */
@@ -222,6 +226,8 @@ export function FinanceTransactionsChart({
   expenseBreakdown,
   className,
   embedded = false,
+  cashFlowCardClassName,
+  breakdownCardClassName,
   isLoading = false,
   financeHref,
 }: Props) {
@@ -249,7 +255,11 @@ export function FinanceTransactionsChart({
       )}
     >
       <FinanceChartCard
-        className={cn('flex h-full min-h-0 flex-col', !embedded && 'lg:col-span-3')}
+        className={cn(
+          'flex h-full min-h-0 flex-col',
+          !embedded && 'lg:col-span-3',
+          cashFlowCardClassName
+        )}
         icon={BarChart3}
         title="Cash flow"
         description="Stay net, transactions, and expenses over time"
@@ -342,7 +352,11 @@ export function FinanceTransactionsChart({
       </FinanceChartCard>
 
       <FinanceChartCard
-        className={cn('flex h-full min-h-0 flex-col', !embedded && 'lg:col-span-2')}
+        className={cn(
+          'flex h-full min-h-0 flex-col',
+          !embedded && 'lg:col-span-2',
+          breakdownCardClassName
+        )}
         icon={PieChartIcon}
         title="Breakdown"
         description="By category"

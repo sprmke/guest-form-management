@@ -132,7 +132,7 @@ export function NewTicketModal({
             ) : null}
           </div>
 
-          <ResponsiveModalFooter className="border-border bg-background shrink-0 border-t px-5 py-3.5 sm:flex-row sm:justify-end sm:px-6">
+          <ResponsiveModalFooter className="border-border shrink-0 border-t px-5 py-3.5 sm:flex-row sm:justify-end sm:px-6">
             <Button
               type="submit"
               form={FORM_ID}

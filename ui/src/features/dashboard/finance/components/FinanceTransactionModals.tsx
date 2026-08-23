@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 
+import { Loader2 } from 'lucide-react';
+
 import { useTelegramFinanceSettings } from '@/features/dashboard/bookings/hooks/useTelegramFinanceSettings';
 import {
   OperatingLineItemForm,
@@ -17,9 +19,12 @@ import type { FinanceLineItem, FinanceQuery } from '@/features/dashboard/finance
 import {
   ResponsiveModal,
   ResponsiveModalContent,
+  ResponsiveModalFooter,
   ResponsiveModalHeader,
   ResponsiveModalTitle,
 } from '@/components/ui/responsive-modal';
+
+const TRANSACTION_FORM_ID = 'finance-transaction-form';
 
 type Props = {
   query: FinanceQuery;
@@ -145,7 +150,8 @@ export function FinanceTransactionModals({
         }}
       >
         <ResponsiveModalContent
-          className="max-h-[min(90dvh,44rem)] max-w-[min(calc(100vw-1.5rem),34rem)] overflow-y-auto sm:max-w-[min(calc(100vw-2rem),36rem)] sm:p-5"
+          sheetLayout="split"
+          className="flex max-h-[min(90dvh,44rem)] max-w-[min(calc(100vw-1.5rem),34rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(calc(100vw-2rem),36rem)] sm:p-0"
           onPointerDownOutside={(e) => {
             const target = e.target as Element | null;
             if (target?.closest('[data-radix-popper-content-wrapper]')) {
@@ -158,23 +164,44 @@ export function FinanceTransactionModals({
             if (create.isPending || update.isPending) e.preventDefault();
           }}
         >
-          <ResponsiveModalHeader className="text-left">
+          <ResponsiveModalHeader className="border-border shrink-0 border-b px-4 pb-3.5 pt-[max(env(safe-area-inset-top,0px),1rem)] text-left sm:px-5 sm:pt-5">
             <ResponsiveModalTitle>
               {editingItem ? 'Edit transaction' : 'New transaction'}
             </ResponsiveModalTitle>
           </ResponsiveModalHeader>
-          <OperatingLineItemForm
-            key={
-              editingItem
-                ? `${editingItem.id}:${editingItem.telegram_reminder_interval}`
-                : `new-${createSession}`
-            }
-            initial={editingItem}
-            seriesRecurrenceUntil={editingSeriesUntil}
-            onSubmit={handleSubmit}
-            onCancel={closeModal}
-            isPending={create.isPending || update.isPending}
-          />
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5">
+            <OperatingLineItemForm
+              formId={TRANSACTION_FORM_ID}
+              key={
+                editingItem
+                  ? `${editingItem.id}:${editingItem.telegram_reminder_interval}`
+                  : `new-${createSession}`
+              }
+              initial={editingItem}
+              seriesRecurrenceUntil={editingSeriesUntil}
+              onSubmit={handleSubmit}
+            />
+          </div>
+          <ResponsiveModalFooter className="border-border shrink-0 flex-row gap-2 border-t px-4 py-3.5 sm:px-5">
+            <button
+              type="button"
+              className="border-border text-muted-foreground hover:bg-muted min-h-[44px] flex-1 rounded-xl border text-sm font-semibold transition-colors"
+              onClick={closeModal}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form={TRANSACTION_FORM_ID}
+              disabled={create.isPending || update.isPending}
+              className="gradient-primary text-primary-foreground shadow-soft flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl text-sm font-semibold disabled:opacity-50"
+            >
+              {create.isPending || update.isPending ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+              ) : null}
+              {editingItem ? 'Save' : 'Add transaction'}
+            </button>
+          </ResponsiveModalFooter>
         </ResponsiveModalContent>
       </ResponsiveModal>
 
