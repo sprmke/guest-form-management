@@ -17,6 +17,12 @@ import { toast } from 'sonner';
 import { BookingCompactAssetControl } from '@/features/dashboard/bookings/components/BookingCompactAssetControl';
 import { GuestSdRefundDetailsSection } from '@/features/dashboard/bookings/components/GuestSdRefundDetailsSection';
 import {
+  ReceiptAiVerdictBadge,
+  receiptAiUploadToastMessage,
+  showDocumentAiModelErrorToast,
+  type ReceiptAiVerdict,
+} from '@/features/dashboard/bookings/components/ReceiptAiVerdictBadge';
+import {
   WorkflowFormShell,
   workflowFormEditTitle,
   type WorkflowFormVariant,
@@ -156,6 +162,13 @@ export function SdRefundForm({
     () => sdInitial.profitItems
   );
   const [receiptUrl, setReceiptUrl] = useState<string>(() => sdInitial.receiptUrl);
+  /** Only the check from this visit's upload — falls back to the stored verdict otherwise. */
+  const [receiptAiVerdict, setReceiptAiVerdict] = useState<ReceiptAiVerdict>(null);
+  const [receiptAiSummary, setReceiptAiSummary] = useState('');
+  const displayedVerdict = receiptAiVerdict ?? booking.sd_refund_receipt_ai_verdict ?? null;
+  const displayedSummary = receiptAiVerdict
+    ? receiptAiSummary
+    : booking.sd_refund_receipt_ai_summary;
 
   const guestMethod = booking.sd_refund_method;
 
@@ -195,8 +208,24 @@ export function SdRefundForm({
         assetType: 'sd_refund_receipt',
         file,
       });
+      const validation = result.receiptValidation;
       setReceiptUrl(result.url);
-      toast.success('Refund receipt uploaded');
+      if (validation) {
+        setReceiptAiVerdict(validation.verdict);
+        setReceiptAiSummary(validation.summary);
+        if (validation.aiModelError) {
+          showDocumentAiModelErrorToast(validation.aiModelError);
+        } else {
+          const toastMsg = receiptAiUploadToastMessage(validation.verdict);
+          if (toastMsg?.type === 'error') {
+            toast.error(toastMsg.message, { description: toastMsg.description });
+          } else if (toastMsg?.type === 'warning') toast.warning(toastMsg.message);
+          else if (toastMsg?.type === 'success') toast.success(toastMsg.message);
+          else toast.success('Refund receipt uploaded');
+        }
+      } else {
+        toast.success('Refund receipt uploaded');
+      }
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to upload refund receipt');
       throw err;
@@ -205,6 +234,8 @@ export function SdRefundForm({
 
   async function handleRemoveReceipt() {
     setReceiptUrl('');
+    setReceiptAiVerdict(null);
+    setReceiptAiSummary('');
     if (readOnly) return;
     try {
       await clearAssetMut.mutateAsync({
@@ -312,6 +343,7 @@ export function SdRefundForm({
           onRemove={handleRemoveReceipt}
           onPreview={onPreview}
         />
+        <ReceiptAiVerdictBadge verdict={displayedVerdict} summary={displayedSummary} />
       </div>
     </WorkflowFormShell>
   );

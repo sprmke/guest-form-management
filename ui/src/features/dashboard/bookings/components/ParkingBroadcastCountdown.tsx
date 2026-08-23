@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 
+import { cn } from '@/lib/utils';
 import {
   formatParkingBroadcastCountdown,
   parkingBroadcastCountdownA11yLabel,
 } from '@/utils/format/parkingStayDisplay';
 
-import { cn } from '@/lib/utils';
 
 const WARN_THRESHOLD_MS = 2 * 60_000;
 

@@ -40,8 +40,6 @@ import {
   voiceReceptionistToFormValues,
   type VoiceReceptionistFormValues,
 } from '@/features/dashboard/bookings/hooks/useVoiceReceptionistSettings';
-import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
-import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import {
   applyBuildingFormsTeamDefaults,
   pickBuildingFormsTeamContact,
@@ -95,6 +93,8 @@ import {
 } from '@/features/dashboard/org/lib/propertySettingsSave';
 import { normalizePropertySocialLinksForSave } from '@/features/dashboard/org/lib/propertySocialLinks';
 import { orgPropertiesPath, propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 import { usePropertyTeam } from '@/features/dashboard/team/hooks/usePropertyTeam';
 
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';

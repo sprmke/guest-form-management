@@ -38,7 +38,6 @@ import { BookingGuestDocReplacer } from '@/features/dashboard/bookings/component
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
 import { Button } from '@/components/ui/button';
-import { NativeSelect } from '@/components/ui/native-select';
 import {
   Select,
   SelectContent,
@@ -345,13 +344,24 @@ export function GuestIdentityTab({
           </Field>
 
           <Field label="Platform" htmlFor="booking_source">
-            <NativeSelect id="booking_source" {...register('booking_source', { required: true })}>
-              {BOOKING_SOURCE_OPTIONS.map((source) => (
-                <option key={source} value={source}>
-                  {source}
-                </option>
-              ))}
-            </NativeSelect>
+            <input type="hidden" {...register('booking_source', { required: true })} />
+            <Select
+              value={formSnapshot?.booking_source || undefined}
+              onValueChange={(value) =>
+                setValue('booking_source', value, { shouldDirty: true, shouldValidate: true })
+              }
+            >
+              <SelectTrigger id="booking_source" className={cn(fieldControlClass, 'h-11')}>
+                <SelectValue placeholder="Select platform" />
+              </SelectTrigger>
+              <SelectContent>
+                {BOOKING_SOURCE_OPTIONS.map((source) => (
+                  <SelectItem key={source} value={source}>
+                    {source}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </Field>
         </div>
       </BookingDetailCard>

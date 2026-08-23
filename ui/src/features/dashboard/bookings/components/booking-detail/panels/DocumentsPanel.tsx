@@ -83,7 +83,14 @@ function collectBookingFileGroups(
       booking.balance_receipt_ai_verdict
     ),
   });
-  push('payments', 'SD refund receipt', booking.sd_refund_receipt_url);
+  push('payments', 'SD refund receipt', booking.sd_refund_receipt_url, {
+    receiptAiVerdict: booking.sd_refund_receipt_ai_verdict,
+    receiptAiLoading: receiptAiPreviewLoading(
+      isDocumentAiBackfilling,
+      booking.sd_refund_receipt_url,
+      booking.sd_refund_receipt_ai_verdict
+    ),
+  });
   push('payments', 'Parking payment receipt', booking.parking_payment_receipt_url, {
     receiptAiVerdict: booking.parking_receipt_ai_verdict,
     receiptAiLoading: receiptAiPreviewLoading(

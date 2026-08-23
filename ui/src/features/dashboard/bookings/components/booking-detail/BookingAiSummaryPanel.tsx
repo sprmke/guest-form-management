@@ -29,8 +29,8 @@ import type {
   BookingAiReviewSectionStatus,
   BookingRow,
 } from '@/features/dashboard/bookings/lib/types';
-import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 
 import { cn } from '@/lib/utils';
 

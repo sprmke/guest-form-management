@@ -32,6 +32,7 @@ type Props = {
   activeNavHref: string | null;
   pathname: string;
   propertySettingsHasIssues: boolean;
+  parkingSettingsHasIssues: boolean;
   orgSettingsHasIssues: boolean;
   displayName: string;
   initial: string;
@@ -48,6 +49,7 @@ export function AdminMoreSheet({
   activeNavHref,
   pathname,
   propertySettingsHasIssues,
+  parkingSettingsHasIssues,
   orgSettingsHasIssues,
   displayName,
   initial,
@@ -83,6 +85,7 @@ export function AdminMoreSheet({
               const showSettingsIssue =
                 label === 'Settings' &&
                 ((propertySettingsHasIssues && isPropertyAdminPath(pathname)) ||
+                  (parkingSettingsHasIssues && isParkingAdminPath(pathname)) ||
                   (orgSettingsHasIssues && isOrgAdminPath(pathname)));
 
               return (

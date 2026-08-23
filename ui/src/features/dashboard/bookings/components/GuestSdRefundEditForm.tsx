@@ -14,7 +14,13 @@ import {
 } from '@/features/dashboard/bookings/components/WorkflowFormShell';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
-import { NativeSelect } from '@/components/ui/native-select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
 import { cn } from '@/lib/utils';
 import { toCapitalCase } from '@/utils/text/formatters';
@@ -140,10 +146,10 @@ export function GuestSdRefundEditForm({
       advanceMode="manual"
     >
       <Field label="Refund method" required>
-        <NativeSelect
+        <Select
           value={values.method}
-          onChange={(e) => {
-            const method = e.target.value as GuestSdRefundEditValues['method'];
+          onValueChange={(v) => {
+            const method = v as GuestSdRefundEditValues['method'];
             patch({ method });
             if (method !== 'other_bank') {
               setTouched({
@@ -154,12 +160,17 @@ export function GuestSdRefundEditForm({
             }
           }}
         >
-          {METHOD_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </NativeSelect>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {METHOD_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </Field>
 
       {values.method === 'same_phone' ? (
@@ -172,20 +183,24 @@ export function GuestSdRefundEditForm({
         <>
           <Row2>
             <Field label="Bank / channel" required>
-              <NativeSelect
-                className={selectErrorClass('bank')}
+              <Select
                 value={values.bank}
-                onChange={(e) => {
+                onValueChange={(v) => {
                   setTouched((prev) => ({ ...prev, bank: true }));
-                  patch({ bank: e.target.value as SdBank });
+                  patch({ bank: v as SdBank });
                 }}
               >
-                {SD_BANKS.map((b) => (
-                  <option key={b} value={b}>
-                    {b}
-                  </option>
-                ))}
-              </NativeSelect>
+                <SelectTrigger className={selectErrorClass('bank')}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SD_BANKS.map((b) => (
+                    <SelectItem key={b} value={b}>
+                      {b}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {showError('bank') ? (
                 <p className="text-[11px] text-red-600">{validation.errors.bank}</p>
               ) : null}

@@ -121,6 +121,12 @@ export function PricingSummaryPanel({
             label="SD refund receipt"
             url={booking.sd_refund_receipt_url}
             onPreview={onPreview}
+            receiptAiVerdict={booking.sd_refund_receipt_ai_verdict}
+            receiptAiLoading={receiptAiPreviewLoading(
+              isReceiptAiBackfilling,
+              booking.sd_refund_receipt_url,
+              booking.sd_refund_receipt_ai_verdict
+            )}
           />
         </BookingDetailRowBlock>
       ) : null}

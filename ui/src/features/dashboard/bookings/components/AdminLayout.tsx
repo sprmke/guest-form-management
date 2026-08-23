@@ -57,10 +57,6 @@ import { NotificationBell } from '@/features/dashboard/notifications/components/
 import { NotificationsProvider } from '@/features/dashboard/notifications/components/NotificationsProvider';
 import { useNotificationsList } from '@/features/dashboard/notifications/hooks/useNotifications';
 import { ListingContractRenewalProvider } from '@/features/dashboard/org/components/listing-authorization/ListingContractRenewalProvider';
-import {
-  UpgradeModalProvider,
-  useUpgradeModal,
-} from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { ListingVerificationSidebarCta } from '@/features/dashboard/org/components/listing-authorization/ListingVerificationSidebarCta';
 import { OrgSettingsIssuesSync } from '@/features/dashboard/org/components/OrgSettingsIssuesSync';
 import { SectionNavIssueDot } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
@@ -89,6 +85,14 @@ import {
   subscribePropertySettingsIssues,
 } from '@/features/dashboard/org/lib/propertySettingsIssuesStore';
 import type { Organization, Parking, Property } from '@/features/dashboard/org/types';
+import {
+  hasParkingSettingsIssues,
+  subscribeParkingSettingsIssues,
+} from '@/features/dashboard/parking/lib/parkingSettingsIssuesStore';
+import {
+  UpgradeModalProvider,
+  useUpgradeModal,
+} from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { SuperAdminSidebarScope } from '@/features/dashboard/super-admin/components/SuperAdminSidebarScope';
 import { superAdminOrgSlugFromPath } from '@/features/dashboard/super-admin/lib/superAdminPaths';
 import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermissions';
@@ -344,6 +348,11 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
     hasPropertySettingsIssues,
     () => false
   );
+  const parkingSettingsHasIssues = useSyncExternalStore(
+    subscribeParkingSettingsIssues,
+    hasParkingSettingsIssues,
+    () => false
+  );
   const orgSettingsHasIssues = useSyncExternalStore(
     subscribeOrgSettingsIssues,
     hasOrgSettingsIssues,
@@ -501,6 +510,7 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
 
   const settingsIssueOnTabs =
     (propertySettingsHasIssues && isPropertyAdminPath(location.pathname)) ||
+    (parkingSettingsHasIssues && isParkingAdminPath(location.pathname)) ||
     (orgSettingsHasIssues && isOrgAdminPath(location.pathname));
 
   const tabItemsWithBadges = useMemo(() => {
@@ -550,6 +560,7 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
                   navHrefsKey={navHrefsKey}
                   pathname={location.pathname}
                   propertySettingsHasIssues={propertySettingsHasIssues}
+                  parkingSettingsHasIssues={parkingSettingsHasIssues}
                   orgSettingsHasIssues={orgSettingsHasIssues}
                   displayName={displayName}
                   initial={initial}
@@ -607,6 +618,7 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
             activeNavHref={activeNavHref}
             pathname={location.pathname}
             propertySettingsHasIssues={propertySettingsHasIssues}
+            parkingSettingsHasIssues={parkingSettingsHasIssues}
             orgSettingsHasIssues={orgSettingsHasIssues}
             displayName={displayName}
             initial={initial}
@@ -720,6 +732,7 @@ type AdminSidebarContentProps = {
   navHrefsKey: string;
   pathname: string;
   propertySettingsHasIssues: boolean;
+  parkingSettingsHasIssues: boolean;
   orgSettingsHasIssues: boolean;
   displayName: string;
   initial: string;
@@ -739,6 +752,7 @@ function AdminSidebarContent({
   navHrefsKey,
   pathname,
   propertySettingsHasIssues,
+  parkingSettingsHasIssues,
   orgSettingsHasIssues,
   displayName,
   initial,
@@ -788,6 +802,7 @@ function AdminSidebarContent({
                   const showSettingsIssue =
                     label === 'Settings' &&
                     ((propertySettingsHasIssues && isPropertyAdminPath(pathname)) ||
+                      (parkingSettingsHasIssues && isParkingAdminPath(pathname)) ||
                       (orgSettingsHasIssues && isOrgAdminPath(pathname)));
 
                   if (disabled || !href) {
