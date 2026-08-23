@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, ImageIcon, X, AlertCircle, ChevronDown } from 'lucide-react';
+import { Upload, ImageIcon, X, AlertCircle } from 'lucide-react';
 import { type UseFormRegister, type Control, type FieldErrors, Controller } from 'react-hook-form';
 
 import type { FormField } from '@/features/guest/marketing/forms/lib/guest-forms/types';
@@ -10,6 +10,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 
@@ -190,25 +197,18 @@ function renderInput(
           name={field.id}
           control={control}
           render={({ field: { onChange, value } }) => (
-            <div className="relative">
-              <select
-                id={field.id}
-                value={(value as string) ?? ''}
-                onChange={(e) => onChange(e.target.value)}
-                className={cn(
-                  baseInputClass,
-                  'h-10 w-full appearance-none rounded-xl border px-3 pr-10'
-                )}
-              >
-                <option value="">{field.placeholder || 'Select an option'}</option>
+            <Select value={(value as string) ?? ''} onValueChange={onChange}>
+              <SelectTrigger id={field.id} className={cn(baseInputClass, 'h-10 w-full')}>
+                <SelectValue placeholder={field.placeholder || 'Select an option'} />
+              </SelectTrigger>
+              <SelectContent className="max-w-[calc(100vw-24px)]">
                 {field.options?.map((option) => (
-                  <option key={option.id} value={option.value}>
+                  <SelectItem key={option.id} value={option.value}>
                     {option.label}
-                  </option>
+                  </SelectItem>
                 ))}
-              </select>
-              <ChevronDown className="text-muted-foreground pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-            </div>
+              </SelectContent>
+            </Select>
           )}
         />
       );

@@ -1,16 +1,23 @@
+import { useState } from 'react';
+
 import { Navigate, useParams, useSearchParams } from 'react-router-dom';
 
 import { toast } from 'sonner';
 
+import { formatGuestFooterLabel } from '@/features/guest/form/lib/guestFormBranding';
 import { guestParkingRequestStatusPath } from '@/features/guest/lib/guestPublicPaths';
-import { FormPageWrapper } from '@/features/guest/marketing/forms/components';
-import { FormPageToolbar } from '@/features/guest/marketing/forms/components/FormPageToolbar';
+import { FormSuccess } from '@/features/guest/marketing/forms/components/FormSuccess';
 import { getFormById } from '@/features/guest/marketing/forms/data/mockForms';
+import { ParkingRegistrationForm } from '@/features/guest/marketing/parkings/components/ParkingRegistrationForm';
 import { usePublicParkingDetail } from '@/features/guest/marketing/parkings/hooks/usePublicParkingDetail';
 import { useSubmitParkingBookingRequest } from '@/features/guest/marketing/parkings/hooks/useSubmitParkingBookingRequest';
 import { formatParkingLocation } from '@/features/guest/marketing/parkings/lib/formatParkingLocation';
+import type { ParkingRegistrationValues } from '@/features/guest/marketing/parkings/lib/parkingRegistrationSchema';
 
-import { FormPageWrapperSkeleton } from '@/components/skeletons/GuestPageSkeletons';
+import { GuestFormBrandHeader } from '@/components/branding/GuestFormBrandHeader';
+import { ParkingStaySummary } from '@/components/parking/ParkingStaySummary';
+import { GuestFormPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
+import { MainLayout } from '@/layouts/MainLayout';
 
 const PARKING_REGISTRATION_FORM_ID = 'dev-parking-form';
 
@@ -22,24 +29,27 @@ const GUEST_FACING_SUBMIT_ERRORS: Record<string, string> = {
   'checkOutDate must be after checkInDate': 'Check-out date must be after check-in date',
 };
 
-function readString(data: Record<string, unknown>, key: string): string {
-  const value = data[key];
-  return typeof value === 'string' ? value.trim() : '';
-}
-
 export function ParkingFormPage() {
   const { parkingSlug = '' } = useParams<{ parkingSlug: string }>();
   const [searchParams] = useSearchParams();
   const { data, isLoading, isError } = usePublicParkingDetail(parkingSlug);
   const form = getFormById(PARKING_REGISTRATION_FORM_ID);
   const submitRequest = useSubmitParkingBookingRequest();
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submissionId, setSubmissionId] = useState<string | undefined>();
 
   if (!parkingSlug) {
     return <Navigate to="/parkings" replace />;
   }
 
+  const homeHref = `/parkings/${encodeURIComponent(parkingSlug)}`;
+
   if (isLoading && !data) {
-    return <FormPageWrapperSkeleton toolbar={<FormPageToolbar />} />;
+    return (
+      <MainLayout homeHref={homeHref}>
+        <GuestFormPageSkeleton />
+      </MainLayout>
+    );
   }
 
   if (isError || !data || !form) {
@@ -51,51 +61,71 @@ export function ParkingFormPage() {
   const checkInDate = searchParams.get('checkInDate') ?? '';
   const checkOutDate = searchParams.get('checkOutDate') ?? '';
 
-  const handleSubmit = async (fieldData: Record<string, unknown>) => {
-    const checkInDate =
-      searchParams.get('checkInDate') || readString(fieldData, 'field-po-checkin');
-    const checkOutDate =
-      searchParams.get('checkOutDate') || readString(fieldData, 'field-po-checkout');
+  const handleSubmit = async (values: ParkingRegistrationValues) => {
     const vehicleType =
-      readString(fieldData, 'field-po-vehicle-type') === 'motorcycle'
-        ? ('motorcycle' as const)
-        : ('car' as const);
+      values.vehicleType === 'motorcycle' ? ('motorcycle' as const) : ('car' as const);
 
     try {
       const result = await submitRequest.mutateAsync({
         parkingId: data.id,
-        checkInDate,
-        checkOutDate,
+        checkInDate: checkInDate || values.checkInDate,
+        checkOutDate: checkOutDate || values.checkOutDate,
         vehicleType,
-        primaryGuestName: readString(fieldData, 'field-po-guest-name'),
-        guestEmail: readString(fieldData, 'field-po-email'),
-        guestPhone: readString(fieldData, 'field-po-phone'),
+        primaryGuestName: values.guestName,
+        guestEmail: values.email,
+        guestPhone: values.phone,
       });
-      return { submissionId: result.bookingId };
+      setSubmissionId(result.bookingId);
+      setIsSubmitted(true);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Could not submit parking request';
       toast.error(GUEST_FACING_SUBMIT_ERRORS[message] ?? 'Could not submit parking request');
-      throw error;
     }
   };
 
   return (
-    <FormPageWrapper
-      form={form}
-      propertyId={parkingSlug}
+    <MainLayout
+      animateOnNavigate
+      homeHref={homeHref}
+      brandColor={data.brandColor}
+      footerLabel={formatGuestFooterLabel(data.orgName, data.residenceName)}
+      propertyImageSrc={data.coverImage ?? data.images[0] ?? null}
       propertyName={data.name}
-      propertyLocation={propertyLocation || data.orgName}
-      propertyImage={data.coverImage ?? data.images[0] ?? ''}
-      hostName={data.orgName}
-      backUrl={`/parkings/${encodeURIComponent(parkingSlug)}`}
-      backLabel="Back to parking"
-      sourceType="development"
-      pageLabel=""
-      staySummary={
-        checkInDate && checkOutDate ? { checkIn: checkInDate, checkOut: checkOutDate } : undefined
-      }
-      onSubmit={handleSubmit}
-      buildStatusUrl={guestParkingRequestStatusPath}
-    />
+      contentMaxWidth="max-w-2xl"
+    >
+      <div className="relative space-y-6 p-4 sm:p-6 lg:p-8">
+        <GuestFormBrandHeader
+          title="Parking Registration"
+          logoSrc={data.coverImage ?? data.images[0] ?? ''}
+          logoAlt={data.name}
+          eyebrow={propertyLocation || data.orgName}
+        />
+
+        {checkInDate && checkOutDate && (
+          <ParkingStaySummary
+            checkIn={checkInDate}
+            checkOut={checkOutDate}
+            organizationName={data.orgName}
+          />
+        )}
+
+        {isSubmitted ? (
+          <FormSuccess
+            message={form.settings.successMessage}
+            formName={form.name}
+            submissionId={submissionId}
+            propertyId={parkingSlug}
+            propertyName={data.name}
+            statusUrl={submissionId ? guestParkingRequestStatusPath(submissionId) : undefined}
+          />
+        ) : (
+          <ParkingRegistrationForm
+            defaultValues={{ checkInDate, checkOutDate }}
+            towerLabel={data.tower}
+            onSubmit={handleSubmit}
+          />
+        )}
+      </div>
+    </MainLayout>
   );
 }

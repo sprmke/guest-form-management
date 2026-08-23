@@ -2,8 +2,9 @@ import { Link } from 'react-router-dom';
 
 import { CheckCircle2, Clock, Loader2, MapPin, RefreshCw, XCircle } from 'lucide-react';
 
-import { ParkingStaySummary } from '@/components/parking/ParkingStaySummary';
 import type { ParkingBookingStatusValue } from '@/features/guest/marketing/parkings/hooks/useParkingBookingStatus';
+
+import { ParkingStaySummary } from '@/components/parking/ParkingStaySummary';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 

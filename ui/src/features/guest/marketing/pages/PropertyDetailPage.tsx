@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { Navigate, useParams, useSearchParams } from 'react-router-dom';
 
@@ -37,8 +37,8 @@ import { useMarketingBrandColor } from '@/features/guest/marketing/shared/contex
 
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
 import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
+import { cn } from '@/lib/utils';
 import { parseGuestInquiryDateRange, formatDateToYYYYMMDD } from '@/utils/format/dates';
 
 export function PropertyDetailPage() {
@@ -318,95 +318,89 @@ export function PropertyDetailPage() {
 
   const renderBodySection = (sectionId: PropertyLandingSectionId, index: number) => {
     const divider = index > 0 ? <hr className="border-border" /> : null;
+    const wrap = (node: ReactNode) => (
+      <div
+        key={sectionId}
+        id={sectionId}
+        data-page-editor-anchor={sectionId}
+        className="scroll-mt-4"
+      >
+        {divider}
+        {node}
+      </div>
+    );
 
     switch (sectionId) {
       case 'overview':
-        return (
-          <Fragment key={sectionId}>
-            {divider}
-            <PropertyOverview
-              name={propertyData.name}
-              type={propertyData.type}
-              description={propertyData.description}
-              location={{
-                address: propertyData.address,
-                city: propertyData.location.split(', ')[0] ?? '',
-                state: propertyData.state,
-                country: propertyData.country,
-              }}
-              stats={{
-                bedrooms: propertyData.bedrooms,
-                bathrooms: propertyData.bathrooms,
-                maxGuests: propertyData.guests,
-                floors: propertyData.floors,
-              }}
-              residenceName={propertyData.residenceName}
-              developmentSlug={propertyData.developmentSlug}
-              tower={propertyData.tower}
-              unitNumber={propertyData.unitNumber}
-              towerAndUnit={propertyData.towerAndUnit}
-              checkInTime={propertyData.checkInTime}
-              checkOutTime={propertyData.checkOutTime}
-              rating={propertyData.rating}
-              reviews={propertyData.reviews}
-              isSuperhost={propertyData.isSuperhost}
-              verifiedBadge={propertyData.verifiedBadge}
-              recommendedBadge={propertyData.recommendedBadge}
-              host={propertyData.host}
-              selfCheckIn={propertyData.selfCheckIn}
-              showMarketingFeatures={propertyData.source === 'mock'}
-              cancellationPolicy={propertyData.cancellationPolicy}
-              onContactHost={contactHost}
-            />
-          </Fragment>
+        return wrap(
+          <PropertyOverview
+            name={propertyData.name}
+            type={propertyData.type}
+            description={propertyData.description}
+            location={{
+              address: propertyData.address,
+              city: propertyData.location.split(', ')[0] ?? '',
+              state: propertyData.state,
+              country: propertyData.country,
+            }}
+            stats={{
+              bedrooms: propertyData.bedrooms,
+              bathrooms: propertyData.bathrooms,
+              maxGuests: propertyData.guests,
+              floors: propertyData.floors,
+            }}
+            residenceName={propertyData.residenceName}
+            developmentSlug={propertyData.developmentSlug}
+            tower={propertyData.tower}
+            unitNumber={propertyData.unitNumber}
+            towerAndUnit={propertyData.towerAndUnit}
+            checkInTime={propertyData.checkInTime}
+            checkOutTime={propertyData.checkOutTime}
+            rating={propertyData.rating}
+            reviews={propertyData.reviews}
+            isSuperhost={propertyData.isSuperhost}
+            verifiedBadge={propertyData.verifiedBadge}
+            recommendedBadge={propertyData.recommendedBadge}
+            host={propertyData.host}
+            selfCheckIn={propertyData.selfCheckIn}
+            showMarketingFeatures={propertyData.source === 'mock'}
+            cancellationPolicy={propertyData.cancellationPolicy}
+            onContactHost={contactHost}
+          />
         );
       case 'amenities':
-        return (
-          <Fragment key={sectionId}>
-            {divider}
-            <PropertyAmenities amenities={propertyData.amenities} />
-          </Fragment>
-        );
+        return wrap(<PropertyAmenities amenities={propertyData.amenities} />);
       case 'location':
-        return (
-          <Fragment key={sectionId}>
-            {divider}
-            <PropertyLocation
-              address={propertyData.address}
-              city={propertyData.location.split(', ')[0] ?? ''}
-              state={propertyData.state}
-              country={propertyData.country}
-              zipCode={propertyData.zipCode}
-              latitude={propertyData.latitude}
-              longitude={propertyData.longitude}
-              placeId={propertyData.placeId}
-              showNearbyPlaces={propertyData.source === 'mock'}
-            />
-          </Fragment>
+        return wrap(
+          <PropertyLocation
+            address={propertyData.address}
+            city={propertyData.location.split(', ')[0] ?? ''}
+            state={propertyData.state}
+            country={propertyData.country}
+            zipCode={propertyData.zipCode}
+            latitude={propertyData.latitude}
+            longitude={propertyData.longitude}
+            placeId={propertyData.placeId}
+            showNearbyPlaces={propertyData.source === 'mock'}
+          />
         );
       case 'rules':
-        return (
-          <Fragment key={sectionId}>
-            {divider}
-            <PropertyRules
-              houseRules={propertyData.houseRules}
-              maxGuests={propertyData.guests}
-              cancellationPolicy={propertyData.cancellationPolicy}
-              showSafetySection={propertyData.source === 'mock'}
-            />
-          </Fragment>
+        return wrap(
+          <PropertyRules
+            houseRules={propertyData.houseRules}
+            maxGuests={propertyData.guests}
+            cancellationPolicy={propertyData.cancellationPolicy}
+            showSafetySection={propertyData.source === 'mock'}
+          />
         );
       case 'reviews':
         if (!showReviews) return null;
-        return (
-          <Fragment key={sectionId}>
-            {divider}
-            <PropertyReviews
-              rating={propertyData.rating ?? 5}
-              totalReviews={propertyData.reviews ?? listingReviews.length}
-              reviews={propertyData.source === 'api' ? listingReviews : undefined}
-            />
-          </Fragment>
+        return wrap(
+          <PropertyReviews
+            rating={propertyData.rating ?? 5}
+            totalReviews={propertyData.reviews ?? listingReviews.length}
+            reviews={propertyData.source === 'api' ? listingReviews : undefined}
+          />
         );
       default:
         return null;
@@ -424,7 +418,11 @@ export function PropertyDetailPage() {
         )}
       >
         {showGallery ? (
-          <div className="@xl:px-6 @5xl:px-8 container mx-auto px-4">
+          <div
+            id="gallery"
+            data-page-editor-anchor="gallery"
+            className="@xl:px-6 @5xl:px-8 container mx-auto px-4"
+          >
             <PropertyGallery
               images={propertyData.images}
               propertyName={propertyData.name}

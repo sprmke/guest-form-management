@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { Navigate, useParams } from 'react-router-dom';
+import { Navigate, useParams, useSearchParams } from 'react-router-dom';
 
 import { motion } from 'framer-motion';
 
+import { useGuestAuth } from '@/features/guest/auth/context/GuestAuthContext';
+import { ContactHostSheet } from '@/features/guest/chat/components/ContactHostSheet';
 import { resolvePublicDevelopment } from '@/features/guest/marketing/developments/lib/resolvePublicDevelopment';
+import { ParkingBookingFormModal } from '@/features/guest/marketing/parkings/components/ParkingBookingFormModal';
 import { ParkingOverview } from '@/features/guest/marketing/parkings/components/ParkingOverview';
 import { ParkingPublicBrandShell } from '@/features/guest/marketing/parkings/components/ParkingPublicBrandShell';
 import { useParkingReserve } from '@/features/guest/marketing/parkings/hooks/useParkingReserve';
@@ -23,6 +26,7 @@ import { useMarketingBrandColor } from '@/features/guest/marketing/shared/contex
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
+import { formatDateToYYYYMMDD } from '@/utils/format/dates';
 
 function formatRate(amount: number): string {
   return new Intl.NumberFormat('en-PH', {
@@ -39,26 +43,117 @@ function buildGalleryImages(coverImage: string | null, images: string[]): string
 
 export function ParkingDetailPage() {
   const { parkingSlug = '' } = useParams<{ parkingSlug: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data, isLoading, isError } = usePublicParkingDetail(parkingSlug);
   usePageTitle(publicPageTitle(data?.name ? `${data.name}` : 'Parking'));
   const { data: hostProfile } = usePublicHost(data?.orgSlug ?? '');
   const { setBrandColor } = useMarketingBrandColor();
+  const { status, requireGuestAuth } = useGuestAuth();
 
   const [checkIn, setCheckIn] = useState<Date | null>(null);
   const [checkOut, setCheckOut] = useState<Date | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [formModalOpen, setFormModalOpen] = useState(false);
+  const [contactSheetOpen, setContactSheetOpen] = useState(false);
 
   const { reserve } = useParkingReserve({
     parkingSlug,
     checkIn,
     checkOut,
     onNeedDates: () => setCalendarOpen(true),
+    onOpenForm: () => setFormModalOpen(true),
   });
+
+  useEffect(() => {
+    if (status === 'loading') return;
+    if (searchParams.get('reserveForm') !== 'open') return;
+
+    const next = new URLSearchParams(searchParams);
+    next.delete('reserveForm');
+    setSearchParams(next, { replace: true });
+
+    if (status === 'authenticated') {
+      setFormModalOpen(true);
+    }
+  }, [searchParams, setSearchParams, status]);
 
   const handleDatesChange = (ci: Date | null, co: Date | null) => {
     setCheckIn(ci);
     setCheckOut(co);
   };
+
+  const openContactSheet = useCallback(() => {
+    setContactSheetOpen(true);
+  }, []);
+
+  const handleContactHost = useCallback(() => {
+    const resumeCheckIn = checkIn ? formatDateToYYYYMMDD(checkIn) : undefined;
+    const resumeCheckOut = checkOut ? formatDateToYYYYMMDD(checkOut) : undefined;
+
+    const open = () => openContactSheet();
+
+    if (status === 'authenticated') {
+      open();
+      return;
+    }
+
+    requireGuestAuth(open, {
+      resume: {
+        type: 'contact_host_sheet',
+        parkingSlug,
+        checkInDate: resumeCheckIn,
+        checkOutDate: resumeCheckOut,
+      },
+    });
+  }, [checkIn, checkOut, openContactSheet, parkingSlug, requireGuestAuth, status]);
+
+  useEffect(() => {
+    const fromUrl = (() => {
+      const inRaw = searchParams.get('checkInDate');
+      const outRaw = searchParams.get('checkOutDate');
+      if (!inRaw || !outRaw) return null;
+      const checkInDate = new Date(`${inRaw.trim()}T00:00:00`);
+      const checkOutDate = new Date(`${outRaw.trim()}T00:00:00`);
+      if (Number.isNaN(checkInDate.getTime()) || Number.isNaN(checkOutDate.getTime())) return null;
+      return { checkIn: checkInDate, checkOut: checkOutDate };
+    })();
+    if (fromUrl) {
+      setCheckIn(fromUrl.checkIn);
+      setCheckOut(fromUrl.checkOut);
+    }
+
+    if (status === 'loading') return;
+
+    const next = new URLSearchParams(searchParams);
+    let shouldReplace = false;
+
+    if (searchParams.get('contactHost') === 'open') {
+      next.delete('contactHost');
+      shouldReplace = true;
+      if (status === 'authenticated') {
+        setContactSheetOpen(true);
+      }
+    }
+
+    if (shouldReplace) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams, status]);
+
+  useEffect(() => {
+    const pickDates = searchParams.get('pickDates');
+    if (pickDates !== 'contactHost' && pickDates !== 'reserve') return;
+
+    if (pickDates === 'contactHost') {
+      handleContactHost();
+    } else {
+      setCalendarOpen(true);
+    }
+
+    const next = new URLSearchParams(searchParams);
+    next.delete('pickDates');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams, handleContactHost]);
 
   const galleryImages = useMemo(
     () => (data ? buildGalleryImages(data.coverImage, data.images) : []),
@@ -165,6 +260,7 @@ export function ParkingDetailPage() {
                 checkInTime={data.checkInTime}
                 checkOutTime={data.checkOutTime}
                 recommendedBadge={data.recommendedBadge}
+                onContactHost={host ? handleContactHost : undefined}
               />
 
               {data.features.length > 0 ? (
@@ -206,6 +302,7 @@ export function ParkingDetailPage() {
                 onDatesChange={handleDatesChange}
                 calendarOpen={calendarOpen}
                 onCalendarOpenChange={setCalendarOpen}
+                onReserve={reserve}
               />
             </div>
           </div>
@@ -245,6 +342,28 @@ export function ParkingDetailPage() {
             </Button>
           </div>
         </motion.div>
+
+        <ParkingBookingFormModal
+          open={formModalOpen}
+          onOpenChange={setFormModalOpen}
+          parkingId={data.id}
+          towerLabel={data.tower}
+          checkIn={checkIn}
+          checkOut={checkOut}
+        />
+
+        {host ? (
+          <ContactHostSheet
+            open={contactSheetOpen}
+            onOpenChange={setContactSheetOpen}
+            parkingSlug={parkingSlug}
+            propertyName={data.name}
+            checkIn={checkIn}
+            checkOut={checkOut}
+            onDatesChange={handleDatesChange}
+            host={host}
+          />
+        ) : null}
       </div>
     </ParkingPublicBrandShell>
   );

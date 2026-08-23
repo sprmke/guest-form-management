@@ -3,6 +3,13 @@ import { SlidersHorizontal } from 'lucide-react';
 import { PARKING_SORT_OPTIONS } from '@/features/guest/marketing/shared/lib/listingFilterChips';
 
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 
 import type { ParkingSortKey } from '../lib/parkingSlotFilters';
@@ -52,18 +59,24 @@ export function ParkingToolbar({
 
         {showSort ? (
           <div className="flex items-center gap-2">
-            <select
+            <Select
               value={safeSort}
-              onChange={(e) => onSortChange(e.target.value as ParkingSortKey)}
-              aria-label="Sort parking slots"
-              className="border-border bg-background text-foreground focus:border-primary focus:ring-primary/20 min-h-[44px] appearance-none rounded-lg border py-2 pl-2 pr-8 text-sm focus:outline-none focus:ring-2"
+              onValueChange={(value) => onSortChange(value as ParkingSortKey)}
             >
-              {PARKING_SORT_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger
+                aria-label="Sort parking slots"
+                className="h-11 min-h-[44px] w-auto gap-2 px-3 py-2 text-sm"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent align="end" className="max-w-[calc(100vw-24px)]">
+                {PARKING_SORT_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         ) : null}
       </div>

@@ -41,6 +41,7 @@ type Props = {
   checkOutTime?: string;
   /** This listing's badge — shown next to the parking type. */
   recommendedBadge?: boolean;
+  onContactHost?: () => void;
 };
 
 export function ParkingOverview({
@@ -58,6 +59,7 @@ export function ParkingOverview({
   heightClearanceM = DEFAULT_PARKING_HEIGHT_CLEARANCE_M,
   checkInTime = '2:00 PM',
   checkOutTime = '12:00 PM',
+  onContactHost,
 }: Props) {
   const development = resolvePublicDevelopment(residenceName);
   const placementLabels = buildParkingPlacementLabels(tower, level);
@@ -114,7 +116,9 @@ export function ParkingOverview({
         <ListingStatItem icon={ArrowUpFromLine} value={heightLabel} label="height clearance" />
       </motion.div>
 
-      {host ? <ListingHostCard host={host} motionDelay={0.2} /> : null}
+      {host ? (
+        <ListingHostCard host={host} motionDelay={0.2} onContactHost={onContactHost} />
+      ) : null}
 
       <ListingCheckInOutTimes
         checkInTime={checkInTime}
