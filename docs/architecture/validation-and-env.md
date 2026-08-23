@@ -17,7 +17,7 @@ Part of the [`docs/PROJECT.md`](../PROJECT.md) architecture split.
 
 - **Phone**: Philippines `09` + 9 digits (11 total).
 - **Address**: `City, Province` pattern.
-- **Guests**: up to **4** guests on step 2 — each with **name**, **age**, and **valid ID** when age ≥ 18; `numberOfAdults` / `numberOfChildren` are derived (age ≤ 5 = child). Primary guest supports **Same as Facebook/Airbnb Name**.
+- **Guests**: up to **4** additional guests on step 1 — each with **name**, **age**, and **valid ID** when age ≥ 18; `numberOfAdults` / `numberOfChildren` are derived (age ≤ 5 = child). Primary guest name **pre-fills from the contact name** and stays editable.
 - **Parking / pets**: conditional required fields.
 - **Same-day stay**: check-out time must be after check-in time when dates equal.
 - **Files**: `paymentReceipt` required for Facebook bookings; `validId` / `guest2ValidId` / `guest3ValidId` / `guest4ValidId` / `guest5ValidId` required when the matching guest is 18+; pet files required when `hasPets`.

@@ -20,16 +20,16 @@ Related docs:
 
 ## 1. What it is
 
-A chat assistant embedded in the admin dashboard (floating launcher, bottom-right, hidden for super-admins) that answers operational questions and executes actions — strictly scoped to the signed-in user's real RBAC permissions, never more. Two-layer kill switch (platform-wide off by default, org opt-in, optional per-property disable). **Plan gating:** property must have **`aiDashboardAssistant`** on its subscription (`useAiAssistantAccess` + `dashboard-assistant-chat` check before quota). Gemini 2.5 Flash via `_shared/geminiToolCallClient.ts`, tool-calling loop capped at `MAX_TOOL_ROUNDS = 4` rounds per turn.
+A chat assistant embedded in the admin dashboard (floating launcher, bottom-right, hidden for super-admins) that answers operational questions and executes actions — strictly scoped to the signed-in user's real RBAC permissions, never more. Two-layer kill switch (platform-wide off by default, org opt-in, optional per-property disable). **Plan gating:** property routes require **`aiDashboardAssistant`** on the property subscription (`useAiAssistantAccess` + `dashboard-assistant-chat`). **Parking routes (interim):** when `pageContext.parkingId` is set and no `propertyId`, plan check is skipped until org-level entitlements ship — see [`pricing-portfolio-bundling.md`](../workflow/planned/pricing-portfolio-bundling.md). Gemini 2.5 Flash via `_shared/geminiToolCallClient.ts`, tool-calling loop capped at `MAX_TOOL_ROUNDS = 4` rounds per turn.
 
 ### Context model
 
 Two separate signals are sent on every chat turn:
 
-| Signal                                     | Meaning                                                                                                                        | Source                                                                                          |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
-| `pageContext: { propertyId?, bookingId? }` | Ambient route — the page the host is looking at. Load-bearing for kill-switch property disable and for cross-scope escalation. | Current React Router params (`propertySlug` / `bookingId`). Never overwritten by composer pins. |
-| `attachedContext: AttachedContextItem[]`   | Explicit pins the host added in the composer (booking, property, finance item, …). Max 8.                                      | Composer chips. Validated per-type (id format + RBAC) in `dashboard-assistant-chat`.            |
+| Signal                                                 | Meaning                                                                                                                        | Source                                                                                                          |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| `pageContext: { propertyId?, parkingId?, bookingId? }` | Ambient route — the page the host is looking at. Load-bearing for kill-switch property disable and for cross-scope escalation. | Current React Router params (`propertySlug` / `parkingSlug` / `bookingId`). Never overwritten by composer pins. |
+| `attachedContext: AttachedContextItem[]`               | Explicit pins the host added in the composer (booking, property, finance item, …). Max 8.                                      | Composer chips. Validated per-type (id format + RBAC) in `dashboard-assistant-chat`.                            |
 
 Tool argument resolution is **explicit args → attached context → ambient `pageContext`**. The system prompt lists every attached item grouped by type. Cross-scope escalation treats attached ids (and each item's `propertyId`) as in-scope, so pinning a booking on a different property page does not itself force Tier 2 when the model acts on that pin. Confirm-time re-check restores the same scope from `__assistantScope` stored on the pending action.
 

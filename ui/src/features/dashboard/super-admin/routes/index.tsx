@@ -12,11 +12,11 @@ import { SuperAdminHostOrgsPage } from '@/features/dashboard/super-admin/pages/S
 import { SuperAdminHostPropertiesPage } from '@/features/dashboard/super-admin/pages/SuperAdminHostPropertiesPage';
 import { SuperAdminHostsPage } from '@/features/dashboard/super-admin/pages/SuperAdminHostsPage';
 import { SuperAdminOverviewPage } from '@/features/dashboard/super-admin/pages/SuperAdminOverviewPage';
-import { SuperAdminPlatformPropertiesPage } from '@/features/dashboard/super-admin/pages/SuperAdminPlatformPropertiesPage';
 import { SuperAdminPaymentSettingsPage } from '@/features/dashboard/super-admin/pages/SuperAdminPaymentSettingsPage';
+import { SuperAdminPlatformPropertiesPage } from '@/features/dashboard/super-admin/pages/SuperAdminPlatformPropertiesPage';
 import { SuperAdminPricingPlansPage } from '@/features/dashboard/super-admin/pages/SuperAdminPricingPlansPage';
-import { SuperAdminPropertySubscriptionsPage } from '@/features/dashboard/super-admin/pages/SuperAdminPropertySubscriptionsPage';
 import { SuperAdminPropertiesPage } from '@/features/dashboard/super-admin/pages/SuperAdminPropertiesPage';
+import { SuperAdminPropertySubscriptionsPage } from '@/features/dashboard/super-admin/pages/SuperAdminPropertySubscriptionsPage';
 import { SuperAdminSettingsPage } from '@/features/dashboard/super-admin/pages/SuperAdminSettingsPage';
 import { SuperAdminSupportPage } from '@/features/dashboard/super-admin/pages/SuperAdminSupportPage';
 
