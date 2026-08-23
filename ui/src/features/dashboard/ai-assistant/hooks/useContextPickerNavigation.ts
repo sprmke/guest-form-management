@@ -1,11 +1,11 @@
 import { useCallback, useMemo, useState } from 'react';
 
-import type { AttachedContextType } from '@/features/dashboard/ai-assistant/lib/attachedContext';
-import { CONTEXT_CATALOG_GROUPS } from '@/features/dashboard/ai-assistant/lib/contextPickerRegistry';
 import type {
   AssistantCatalogEntry,
   AssistantCatalogGroup,
 } from '@/features/dashboard/ai-assistant/hooks/useAssistantContextCatalog';
+import type { AttachedContextType } from '@/features/dashboard/ai-assistant/lib/attachedContext';
+import { CONTEXT_CATALOG_GROUPS } from '@/features/dashboard/ai-assistant/lib/contextPickerRegistry';
 
 export type ContextPickerView =
   { level: 'modules' } | { level: 'items'; moduleType: AttachedContextType; moduleLabel: string };

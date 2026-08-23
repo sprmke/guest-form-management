@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { fetchAiDashboardAssistantSettings } from '@/features/dashboard/ai-assistant/lib/aiAssistantApi';
-import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 import { useOrgScopeKey } from '@/features/dashboard/org/lib/adminApiScope';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 
 const accessKey = (orgSlug: string | null, orgId: string | null) =>
   ['org', orgSlug ?? orgId, 'ai-dashboard-assistant-access'] as const;

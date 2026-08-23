@@ -4,14 +4,14 @@ import { useQuery } from '@tanstack/react-query';
 
 import type { AttachedContextItem } from '@/features/dashboard/ai-assistant/lib/attachedContext';
 import {
-  marketingTemplateThumbnail,
-  type ContextPickerVisual,
-} from '@/features/dashboard/ai-assistant/lib/contextPickerCatalogVisual';
-import {
   bookingGuestName,
   bookingSearchHaystack,
   bookingStayRange,
 } from '@/features/dashboard/ai-assistant/lib/bookingPickerItems';
+import {
+  marketingTemplateThumbnail,
+  type ContextPickerVisual,
+} from '@/features/dashboard/ai-assistant/lib/contextPickerCatalogVisual';
 import {
   ASSISTANT_NOTIFICATION_MODULE_IDS,
   ASSISTANT_NOTIFICATION_MODULE_LABELS,

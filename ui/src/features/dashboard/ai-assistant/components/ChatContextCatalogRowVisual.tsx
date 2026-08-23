@@ -1,3 +1,5 @@
+import type { ComponentType } from 'react';
+
 import {
   Bell,
   Building2,
@@ -15,7 +17,6 @@ import {
   Video,
   Wrench,
 } from 'lucide-react';
-import type { ComponentType } from 'react';
 
 import type { ContextPickerVisual } from '@/features/dashboard/ai-assistant/lib/contextPickerCatalogVisual';
 import { contextPickerInitials } from '@/features/dashboard/ai-assistant/lib/contextPickerCatalogVisual';

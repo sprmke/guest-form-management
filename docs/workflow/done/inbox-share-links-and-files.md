@@ -2,12 +2,14 @@
 title: 'Guest Inbox — share property/booking links & files from chat'
 status: active
 tags: [workflow, planned, inbox]
-updated: 2026-08-18
-stage: planned
+updated: 2026-08-22
+stage: done
 kind: plan
 ---
 
 # Guest Inbox — share property/booking links & files from chat
+
+> **Shipped 2026-08-22.** All three phases below built as specced, plus one addition beyond this plan's original design: the "Check availability" calendar tap card now opens `BookingCalendarModal` in place (both the guest web chat widget and the host's own bubble in the dashboard Inbox) instead of navigating to a new tab. See `ui/src/components/chat/ChatUrlLinkCard.tsx` (`onActivate`), `ChatRichBody.tsx` (`onCalendarLinkClick`), `ChatMessageBubble.tsx`, `GuestChatThread.tsx`, `InboxConversationView.tsx`.
 
 ## Context
 
@@ -93,25 +95,25 @@ Pure additive `if` branches in the existing function — no signature change, no
 
 ### Phase 1 — Durable document share links (backend)
 
-- [ ] Migration: `document_share_token` column + unique index on `guest_submissions`
-- [ ] `_shared/bookingDocumentShareToken.ts` — `ensureBookingDocumentShareToken`, `resolveBookingDocumentByToken`
-- [ ] `issue-booking-document-share-token` edge function
-- [ ] `get-guest-booking-document` edge function
-- [ ] `guestBookingDocumentPath` in `guestPublicPaths.ts`
-- [ ] `GuestBookingDocumentPage.tsx` + route registration (wherever guest property routes are declared — same place `stay-guide` is registered)
+- [x] Migration: `document_share_token` column + unique index on `guest_submissions`
+- [x] `_shared/bookingDocumentShareToken.ts` — `ensureBookingDocumentShareToken`, `resolveBookingDocumentByToken`
+- [x] `issue-booking-document-share-token` edge function
+- [x] `get-guest-booking-document` edge function
+- [x] `guestBookingDocumentPath` in `guestPublicPaths.ts`
+- [x] `GuestBookingDocumentPage.tsx` + route registration (wherever guest property routes are declared — same place `stay-guide` is registered)
 - **Docs (same change)**: `docs/architecture/data-model.md` gets a short paragraph for `document_share_token`, alongside the existing `document_requirement_completions` note
 
 ### Phase 2 — Admin hook + rich-link polish
 
-- [ ] `useIssueBookingDocumentShareToken` mutation (co-locate with `useIssueGuestStayGuideToken` in `useTransitionBooking.ts`)
-- [ ] `useBookingDocumentShareLink(booking, doc)` hook, mirroring `useBookingStayGuideLink.ts`
-- [ ] Extend `urlLinkCardMeta()` with the new path matchers (§3)
+- [x] `useIssueBookingDocumentShareToken` mutation (co-locate with `useIssueGuestStayGuideToken` in `useTransitionBooking.ts`)
+- [x] `useBookingDocumentShareLink(booking, doc)` hook, mirroring `useBookingStayGuideLink.ts`
+- [x] Extend `urlLinkCardMeta()` with the new path matchers (§3)
 
 ### Phase 3 — Composer UI
 
-- [ ] `InboxShareResourcesPicker.tsx` — Property section (static, from `conversation.property_slug`) + Booking section (inline booking search adapted from `ChatComposerBookingPicker`, then conditional item rows per §1)
-- [ ] Wire the new `Share2` icon button into `InboxConversationView.tsx`'s composer toolbar, alongside Quick Reply/Suggest
-- [ ] Insert-on-select behavior: append `\n{url}` to `draft`, close popover, spinner state for async (Stay Guide/GAF/Pet) rows
+- [x] `InboxShareResourcesPicker.tsx` — Property section (static, from `conversation.property_slug`) + Booking section (inline booking search adapted from `ChatComposerBookingPicker`, then conditional item rows per §1)
+- [x] Wire the new `Share2` icon button into `InboxConversationView.tsx`'s composer toolbar, alongside Quick Reply/Suggest
+- [x] Insert-on-select behavior: append `\n{url}` to `draft`, close popover, spinner state for async (Stay Guide/GAF/Pet) rows
 - **Docs (same change)**: `docs/guides/routes/org/property/inbox.md` — new **Behavior** bullet for the share icon; new **API reference** rows for `issue-booking-document-share-token` / `get-guest-booking-document`; a **Host-facing knowledge** Q&A entry ("How do I send my guest their approved GAF or a link to the calendar?"); `.agent/skills/social-inbox/SKILL.md` architecture-map table gets the two new edge functions + the new component (mirror into `.cursor/skills/` and `.claude/skills/` per the repo's AI-tooling sync)
 - **New guide**: `docs/guides/routes/guest-booking-document.md` (mirrors `docs/guides/routes/stay-guide.md`'s structure) for the new guest-facing route
 
