@@ -1,7 +1,7 @@
 import { createContext, useContext, type ReactNode } from 'react';
 
-import type { GuestStayGuideDto } from '@/features/guest/stay-guide/lib/api';
 import type { ResolvedPropertyDetail } from '@/features/guest/marketing/properties/types/publicProperty';
+import type { GuestStayGuideDto } from '@/features/guest/stay-guide/lib/api';
 
 export type StayGuidePreviewOverride = {
   kind: 'stay-guide';

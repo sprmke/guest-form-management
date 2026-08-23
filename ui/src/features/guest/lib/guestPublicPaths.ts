@@ -38,6 +38,33 @@ export function guestPropertyPickDatesPath(
 }
 
 /** Re-open Contact host sheet after OAuth (`contactHost=open`; dates optional). */
+export function guestParkingContactHostOpenPath(
+  parkingSlug: string,
+  checkInDate?: string,
+  checkOutDate?: string
+): string {
+  const params = new URLSearchParams();
+  params.set('contactHost', 'open');
+  const inDate = checkInDate?.trim() ?? '';
+  const outDate = checkOutDate?.trim() ?? '';
+  if (inDate && outDate) {
+    params.set('checkInDate', inDate);
+    params.set('checkOutDate', outDate);
+  }
+  return withQuery(guestParkingPath(parkingSlug), params);
+}
+
+/** Open the parking page date picker (`pickDates=contactHost` | `pickDates=reserve`). */
+export function guestParkingPickDatesPath(
+  parkingSlug: string,
+  intent: 'contactHost' | 'reserve' = 'contactHost'
+): string {
+  const params = new URLSearchParams();
+  params.set('pickDates', intent);
+  return withQuery(guestParkingPath(parkingSlug), params);
+}
+
+/** Re-open Contact host sheet after OAuth (`contactHost=open`; dates optional). */
 export function guestPropertyContactHostOpenPath(
   propertySlug: string,
   checkInDate?: string,
@@ -183,6 +210,15 @@ export function guestStayGuidePreviewPath(propertySlug: string, propertyId: stri
   return withQuery(`${propertyBase(propertySlug)}/stay-guide`, params);
 }
 
+export function guestBookingDocumentPath(
+  propertySlug: string,
+  token: string,
+  doc: 'gaf' | 'pet'
+): string {
+  const params = new URLSearchParams({ token: token.trim(), doc });
+  return withQuery(`${propertyBase(propertySlug)}/document`, params);
+}
+
 export function absoluteGuestCalendarUrl(propertySlug: string): string {
   return absoluteGuestPath(guestCalendarPath(propertySlug));
 }
@@ -201,6 +237,22 @@ export function guestParkingPath(parkingSlug: string): string {
   const slug = parkingSlug.trim();
   if (!slug) return '/parkings';
   return `/parkings/${encodeURIComponent(slug)}`;
+}
+
+/** Re-open Parking booking form modal after OAuth (`reserveForm=open`; dates optional). */
+export function guestParkingReserveFormOpenPath(
+  parkingSlug: string,
+  options?: { checkInDate?: string; checkOutDate?: string }
+): string {
+  const params = new URLSearchParams();
+  params.set('reserveForm', 'open');
+  const inDate = options?.checkInDate?.trim() ?? '';
+  const outDate = options?.checkOutDate?.trim() ?? '';
+  if (inDate && outDate) {
+    params.set('checkInDate', inDate);
+    params.set('checkOutDate', outDate);
+  }
+  return withQuery(guestParkingPath(parkingSlug), params);
 }
 
 export function guestParkingFormPath(

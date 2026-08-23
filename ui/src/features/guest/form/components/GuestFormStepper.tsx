@@ -79,7 +79,7 @@ function StepNode({
           upcoming && 'text-muted-foreground font-normal'
         )}
       >
-        {step.short}
+        {step.title}
       </p>
     </li>
   );
@@ -107,7 +107,7 @@ export function GuestFormStepper({
       <div className="space-y-2.5 sm:hidden">
         <div className="flex items-baseline justify-between gap-3">
           <p className="text-foreground text-sm font-semibold tracking-tight">
-            {current?.short ?? 'Step'}
+            {current?.title ?? 'Step'}
           </p>
           <p className="text-muted-foreground text-xs tabular-nums">
             {displayIndex} / {steps.length}

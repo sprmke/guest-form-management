@@ -17,6 +17,8 @@ type GuestFormStepNavigationProps = {
   onSubmit: () => void;
   /** When true, omit the top border (host already provides a modal footer separator). */
   bare?: boolean;
+  /** Label for the final-step submit button. */
+  submitLabel?: string;
 };
 
 export function GuestFormStepNavigation({
@@ -29,6 +31,7 @@ export function GuestFormStepNavigation({
   onNext,
   onSubmit,
   bare = false,
+  submitLabel = 'Submit guest form',
 }: GuestFormStepNavigationProps) {
   const isFirst = currentStep === 1;
   const isLast = currentStep === stepCount;
@@ -69,7 +72,7 @@ export function GuestFormStepNavigation({
               Submitting…
             </>
           ) : (
-            'Submit guest form'
+            submitLabel
           )}
         </Button>
       ) : (

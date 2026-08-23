@@ -34,6 +34,8 @@ export type GuestPaymentInfo = {
   allowSurpriseDecor: boolean;
   checkInTime: string;
   checkOutTime: string;
+  /** Minutes required between a checkout and the next check-in on a same-day turnover; `null` = off. */
+  cleaningBufferMinutes: number | null;
   maxAdults: number;
   maxChildren: number;
   propertyName: string;
@@ -62,6 +64,7 @@ export const DEFAULT_GUEST_PAYMENT_INFO: GuestPaymentInfo = {
   allowSurpriseDecor: true,
   checkInTime: GUEST_FORM_DEFAULT_CHECK_IN_TIME,
   checkOutTime: GUEST_FORM_DEFAULT_CHECK_OUT_TIME,
+  cleaningBufferMinutes: null,
   maxAdults: 4,
   maxChildren: 1,
   propertyName: '',

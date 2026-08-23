@@ -18,6 +18,10 @@ import { toast } from 'sonner';
 
 import { useGuestAuth } from '@/features/guest/auth/context/GuestAuthContext';
 import { guestEdgeAuthHeaders } from '@/features/guest/auth/lib/guestEdgeAuthHeaders';
+import {
+  maxAllowedCheckOutTime,
+  minAllowedCheckInTime,
+} from '@/features/guest/calendar/lib/guestCalendarAvailability';
 import { GuestFormGuestsSection } from '@/features/guest/form/components/GuestFormGuestsSection';
 import {
   GuestFormInfoCallout,
@@ -85,6 +89,7 @@ import {
 } from '@/features/guest/lib/guestPublicPaths';
 import { GuestStayContextBar } from '@/features/guest/property/components/GuestStayContextBar';
 
+
 import { GuestFormBrandHeader } from '@/components/branding/GuestFormBrandHeader';
 import { GuestFormPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
 import { Button } from '@/components/ui/button';
@@ -108,6 +113,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { TimePicker } from '@/components/ui/time-picker';
 import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
 import { cn } from '@/lib/utils';
 import { generateRandomData, setDummyFile } from '@/utils/dev/mockData';
@@ -207,8 +213,8 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
   const [petImagePreview, setPetImagePreview] = useState<string | null>(null);
   const [currentBookingId, setCurrentBookingId] = useState<string | null>(null);
   const [bookedDates, setBookedDates] = useState<BookedDateRange[]>([]);
-  const [sameAsFacebookName, setSameAsFacebookName] = useState(false);
   const [guestSectionSeedKey, setGuestSectionSeedKey] = useState(0);
+  const prevGuestFacebookNameRef = useRef('');
   const [currentStep, setCurrentStep] = useState<GuestFormStepId>(1);
   const [submitReady, setSubmitReady] = useState(false);
   const stepPanelRef = useRef<HTMLDivElement>(null);
@@ -242,6 +248,9 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
       maxAdults: guestPaymentInfo.maxAdults,
       maxChildren: guestPaymentInfo.maxChildren,
       residenceName: guestPaymentInfo.residenceName,
+      bookedDates,
+      cleaningBufferMinutes: guestPaymentInfo.cleaningBufferMinutes,
+      currentBookingId,
     }),
     [
       isAirbnb,
@@ -251,6 +260,9 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
       guestPaymentInfo.maxAdults,
       guestPaymentInfo.maxChildren,
       guestPaymentInfo.residenceName,
+      bookedDates,
+      guestPaymentInfo.cleaningBufferMinutes,
+      currentBookingId,
     ]
   );
 
@@ -554,6 +566,7 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
 
         // Reset form with the modified data
         form.reset(formData);
+        prevGuestFacebookNameRef.current = formData.guestFacebookName ?? '';
         setGuestSectionSeedKey((key) => key + 1);
       } else {
         setInvalidBookingId(true);
@@ -621,6 +634,7 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
         }
 
         form.reset(randomData);
+        prevGuestFacebookNameRef.current = randomData.guestFacebookName ?? '';
         setGuestSectionSeedKey((key) => key + 1);
 
         const nextValidIdPreviews: Record<string, string | null> = {};
@@ -911,6 +925,7 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
       // Only reset form in normal production mode (not dev controls)
       if (!showDevControls) {
         form.reset(defaultFormValues);
+        prevGuestFacebookNameRef.current = '';
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
@@ -992,6 +1007,12 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
           id: 'booking-error',
           duration: 7000,
         });
+      } else if (errorMessage.includes('CLEANING_BUFFER')) {
+        toast.error('Not enough cleaning time', {
+          id: 'booking-error',
+          description: errorMessage.replace(/^.*CLEANING_BUFFER:\s*/, ''),
+          duration: 7000,
+        });
       } else if (errorMessage.includes('GUEST_FORM_LOCKED')) {
         toast.error('Booking already reviewed', {
           id: 'guest-form-locked',
@@ -1058,13 +1079,19 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
     form,
   ]);
 
-  // Handle "Same as Facebook/Airbnb Name" checkbox
+  // Pre-fill primary guest name from the contact name until the guest edits it separately.
   useEffect(() => {
-    if (sameAsFacebookName) {
-      const facebookName = form.getValues('guestFacebookName');
-      form.setValue('primaryGuestName', sameAsFacebookName ? facebookName : '');
+    const facebookName = form.getValues('guestFacebookName') ?? '';
+    const primaryName = form.getValues('primaryGuestName') ?? '';
+    const prevFacebook = prevGuestFacebookNameRef.current;
+
+    if (!primaryName.trim() || primaryName === prevFacebook) {
+      form.setValue('primaryGuestName', facebookName, {
+        shouldValidate: Boolean(primaryName.trim()),
+      });
     }
-  }, [sameAsFacebookName, form.watch('guestFacebookName')]);
+    prevGuestFacebookNameRef.current = facebookName;
+  }, [watchedValues?.guestFacebookName, form]);
 
   const canProceed = useMemo(
     () =>
@@ -1282,8 +1309,13 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
                         embed?.compactChrome ? 'text-sm sm:text-base' : 'text-base sm:text-lg'
                       )}
                     >
-                      {activeStepConfig?.label}
+                      {activeStepConfig?.title}
                     </h2>
+                    {activeStepConfig?.hint ? (
+                      <p className="text-muted-foreground mt-0.5 text-sm">
+                        {activeStepConfig.hint}
+                      </p>
+                    ) : null}
                   </div>
                 </header>
 
@@ -1382,6 +1414,41 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
                         </FormItem>
                       )}
                     />
+
+                    <FormField
+                      control={form.control}
+                      name="nationality"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nationality</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder="Ex. Filipino"
+                              onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <GuestFormGuestsSection
+                      form={form}
+                      validIdPreviews={validIdPreviews}
+                      validIdImageErrors={validIdImageErrors}
+                      seedKey={guestSectionSeedKey}
+                      guestCapacity={guestCapacity}
+                      onValidIdPreviewChange={(field, preview) =>
+                        setValidIdPreviews((prev) => ({ ...prev, [field]: preview }))
+                      }
+                      onValidIdImageErrorChange={(field, hasError) =>
+                        setValidIdImageErrors((prev) => ({
+                          ...prev,
+                          [field]: hasError,
+                        }))
+                      }
+                    />
                   </div>
                 )}
 
@@ -1438,15 +1505,32 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
                       <FormField
                         control={form.control}
                         name="checkInTime"
-                        render={({ field }) => (
-                          <FormItem className="min-w-0">
-                            <FormLabel>Check-in Time</FormLabel>
-                            <FormControl>
-                              <Input type="time" placeholder="02:00 pm" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
+                        render={({ field }) => {
+                          const checkInDate = form.watch('checkInDate');
+                          const minCheckInTime = checkInDate
+                            ? minAllowedCheckInTime(
+                                bookedDates,
+                                stringToDate(checkInDate),
+                                guestPaymentInfo.cleaningBufferMinutes,
+                                currentBookingId
+                              )
+                            : null;
+                          return (
+                            <FormItem className="min-w-0">
+                              <FormLabel>Check-in Time</FormLabel>
+                              <FormControl>
+                                <TimePicker
+                                  value={field.value}
+                                  onChange={field.onChange}
+                                  disabledTime={
+                                    minCheckInTime ? (time) => time < minCheckInTime : undefined
+                                  }
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          );
+                        }}
                       />
                     </div>
 
@@ -1521,15 +1605,32 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
                       <FormField
                         control={form.control}
                         name="checkOutTime"
-                        render={({ field }) => (
-                          <FormItem className="min-w-0">
-                            <FormLabel>Check-out Time</FormLabel>
-                            <FormControl>
-                              <Input type="time" placeholder="11:00 am" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
+                        render={({ field }) => {
+                          const checkOutDate = form.watch('checkOutDate');
+                          const maxCheckOutTime = checkOutDate
+                            ? maxAllowedCheckOutTime(
+                                bookedDates,
+                                stringToDate(checkOutDate),
+                                guestPaymentInfo.cleaningBufferMinutes,
+                                currentBookingId
+                              )
+                            : null;
+                          return (
+                            <FormItem className="min-w-0">
+                              <FormLabel>Check-out Time</FormLabel>
+                              <FormControl>
+                                <TimePicker
+                                  value={field.value}
+                                  onChange={field.onChange}
+                                  disabledTime={
+                                    maxCheckOutTime ? (time) => time > maxCheckOutTime : undefined
+                                  }
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          );
+                        }}
                       />
                     </div>
 
@@ -1545,45 +1646,6 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
                           </p>
                         </div>
                       )}
-
-                    <FormField
-                      control={form.control}
-                      name="nationality"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Nationality</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              placeholder="Ex. Filipino"
-                              onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <GuestFormGuestsSection
-                      form={form}
-                      isAirbnb={isAirbnb}
-                      isFacebook={isFacebook}
-                      sameAsFacebookName={sameAsFacebookName}
-                      onSameAsFacebookNameChange={setSameAsFacebookName}
-                      validIdPreviews={validIdPreviews}
-                      validIdImageErrors={validIdImageErrors}
-                      seedKey={guestSectionSeedKey}
-                      guestCapacity={guestCapacity}
-                      onValidIdPreviewChange={(field, preview) =>
-                        setValidIdPreviews((prev) => ({ ...prev, [field]: preview }))
-                      }
-                      onValidIdImageErrorChange={(field, hasError) =>
-                        setValidIdImageErrors((prev) => ({
-                          ...prev,
-                          [field]: hasError,
-                        }))
-                      }
-                    />
 
                     <FormField
                       control={form.control}

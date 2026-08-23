@@ -6,7 +6,6 @@ import { GuestFormValidIdUpload } from '@/features/guest/form/components/GuestFo
 import { PropertyGuestLimitReminder } from '@/features/guest/form/components/PropertyGuestLimitReminder';
 import {
   computeOccupancyGuestCountsByAge,
-  computeGuestCounts,
   shouldShowGuestLimitMessage,
   FIFTH_PARTY_GUEST_MAX_AGE,
   formatGuestAgeInputValue,
@@ -79,10 +78,6 @@ const GUEST_SLOTS: GuestSlotConfig[] = [
 
 type GuestFormGuestsSectionProps = {
   form: UseFormReturn<GuestFormData>;
-  isAirbnb: boolean;
-  isFacebook: boolean;
-  sameAsFacebookName: boolean;
-  onSameAsFacebookNameChange: (checked: boolean) => void;
   validIdPreviews: Record<string, string | null>;
   validIdImageErrors: Record<string, boolean>;
   onValidIdPreviewChange: (field: string, preview: string | null) => void;
@@ -108,10 +103,6 @@ function clearGuestSlot(
 
 export function GuestFormGuestsSection({
   form,
-  isAirbnb,
-  isFacebook,
-  sameAsFacebookName,
-  onSameAsFacebookNameChange,
   validIdPreviews,
   validIdImageErrors,
   onValidIdPreviewChange,
@@ -179,20 +170,12 @@ export function GuestFormGuestsSection({
   const partySize = Math.max(getActivePartySize(partyGuests), visibleCount);
 
   const visiblePartyGuests = partyGuests.slice(0, visibleCount);
-  const visibleAgeCounts = computeGuestCounts(visiblePartyGuests);
 
   const occupancyAgeCounts = computeOccupancyGuestCountsByAge(
     visiblePartyGuests.map(({ name, age }) => ({
       age: name?.trim() || age != null ? age : undefined,
     }))
   );
-
-  const hasAnyAge =
-    watchedGuests[1] != null ||
-    watchedGuests[3] != null ||
-    watchedGuests[5] != null ||
-    watchedGuests[7] != null ||
-    watchedGuests[9] != null;
 
   const showGuestLimitInfo = shouldShowGuestLimitMessage(
     occupancyAgeCounts.adults,
@@ -212,16 +195,6 @@ export function GuestFormGuestsSection({
 
   return (
     <div className="space-y-4">
-      {hasAnyAge && (
-        <p className="text-muted-foreground text-sm font-medium">
-          {visibleAgeCounts.adults} {visibleAgeCounts.adults === 1 ? 'Adult' : 'Adults'}
-          {visibleAgeCounts.children > 0 &&
-            ` · ${visibleAgeCounts.children} ${
-              visibleAgeCounts.children === 1 ? 'Child' : 'Children'
-            }`}
-        </p>
-      )}
-
       <div className="space-y-3">
         {visibleSlots.map((slot) => {
           const isPrimary = slot.index === 1;
@@ -269,33 +242,6 @@ export function GuestFormGuestsSection({
                 )}
               </div>
 
-              {isPrimary && (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="sameAsFacebookName"
-                    checked={sameAsFacebookName}
-                    onChange={(event) => {
-                      const isChecked = event.target.checked;
-                      onSameAsFacebookNameChange(isChecked);
-                      if (isChecked) {
-                        const facebookName = form.getValues('guestFacebookName');
-                        if (facebookName) {
-                          form.setValue('primaryGuestName', facebookName);
-                        }
-                      }
-                    }}
-                    className="border-input text-primary focus:ring-primary/20 size-4 rounded focus:ring-2"
-                  />
-                  <label
-                    htmlFor="sameAsFacebookName"
-                    className="text-muted-foreground cursor-pointer text-sm"
-                  >
-                    Same as {isAirbnb ? 'Airbnb' : isFacebook ? 'Facebook' : 'Full'} Name
-                  </label>
-                </div>
-              )}
-
               <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_7rem]">
                 <FormField
                   control={form.control}
@@ -311,7 +257,6 @@ export function GuestFormGuestsSection({
                           placeholder={`Complete name of ${partyLabel}`}
                           {...field}
                           value={field.value?.toString() ?? ''}
-                          disabled={isPrimary && sameAsFacebookName}
                           onChange={(event) =>
                             handleNameInputChange(event, field.onChange, toCapitalCase)
                           }

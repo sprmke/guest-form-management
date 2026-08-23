@@ -13,8 +13,8 @@ export type GuestFormStepId = number;
 
 export type GuestFormStepConfig = {
   id: GuestFormStepId;
-  short: string;
-  label: string;
+  /** Stepper label and in-card section heading (kept identical). */
+  title: string;
   hint: string;
   icon: LucideIcon;
 };
@@ -26,36 +26,31 @@ export type GuestFormVisibilityFlags = GuestFormSchemaOptions & {
 const ALL_GUEST_FORM_STEPS: GuestFormStepConfig[] = [
   {
     id: 1,
-    short: 'Guest',
-    label: 'Primary Guest Info',
-    hint: 'How we can reach you',
+    title: 'Guest',
+    hint: 'Contact & guest details',
     icon: User,
   },
   {
     id: 2,
-    short: 'Stay',
-    label: 'Booking details',
-    hint: 'Dates, guest details & requests',
+    title: 'Stay',
+    hint: 'Dates & requests',
     icon: CalendarDays,
   },
   {
     id: 3,
-    short: 'Parking',
-    label: 'Parking',
+    title: 'Parking',
     hint: 'Optional paid parking',
     icon: Car,
   },
   {
     id: 4,
-    short: 'Pets',
-    label: 'Pet information',
+    title: 'Pets',
     hint: 'Only if you are bringing pets',
     icon: PawPrint,
   },
   {
     id: 5,
-    short: 'Payment',
-    label: 'Payment',
+    title: 'Payment',
     hint: 'Downpayment receipt',
     icon: FileText,
   },
@@ -98,18 +93,15 @@ export function getFieldsForGuestFormStep(
   values: GuestFormData
 ): (keyof GuestFormData)[] {
   switch (step) {
-    case 1:
-      return ['guestFacebookName', 'guestEmail', 'guestPhoneNumber', 'guestAddress'];
-    case 2: {
+    case 1: {
       const fields: (keyof GuestFormData)[] = [
-        'checkInDate',
-        'checkOutDate',
-        'checkInTime',
-        'checkOutTime',
+        'guestFacebookName',
+        'guestEmail',
+        'guestPhoneNumber',
+        'guestAddress',
         'nationality',
         'primaryGuestName',
         'primaryGuestAge',
-        'findUs',
       ];
 
       const guestPairs = [
@@ -158,6 +150,17 @@ export function getFieldsForGuestFormStep(
           fields.push(guest.validIdKey);
         }
       }
+
+      return fields;
+    }
+    case 2: {
+      const fields: (keyof GuestFormData)[] = [
+        'checkInDate',
+        'checkOutDate',
+        'checkInTime',
+        'checkOutTime',
+        'findUs',
+      ];
 
       if (values.findUs === 'Friend' || values.findUs === 'Others') {
         fields.push('findUsDetails');

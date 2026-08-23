@@ -1,6 +1,10 @@
 import * as z from 'zod';
 
 import {
+  maxAllowedCheckOutTime,
+  minAllowedCheckInTime,
+} from '@/features/guest/calendar/lib/guestCalendarAvailability';
+import {
   additionalGuestOrdinal,
   buildGuestLimitMessage,
   computeGuestCounts,
@@ -18,7 +22,14 @@ import {
   GUEST_FORM_DEFAULT_CHECK_OUT_TIME,
 } from '@/features/guest/form/lib/guestFormPropertyDefaults';
 
-import { getDefaultDates, formatDateToYYYYMMDD } from '@/utils/format/dates';
+import { requiredPhilippineMobilePhoneZodSchema } from '@/lib/validation/fieldValidation';
+import {
+  formatDateToYYYYMMDD,
+  formatTimeToAMPM,
+  getDefaultDates,
+  stringToDate,
+  type BookedDateRange,
+} from '@/utils/format/dates';
 import { validateName } from '@/utils/text/helpers';
 
 const { today, tomorrow } = getDefaultDates();
@@ -54,6 +65,12 @@ export type GuestFormSchemaOptions = {
   allowSurpriseDecor: boolean;
   maxAdults: number;
   maxChildren: number;
+  /** Other properties' bookings, for cleaning-buffer conflicts on same-day turnovers. */
+  bookedDates?: BookedDateRange[];
+  /** Minutes required between a checkout and the next check-in on a same-day turnover; `null`/`0` = off. */
+  cleaningBufferMinutes?: number | null;
+  /** Excluded from buffer conflicts when editing this booking's own submission. */
+  currentBookingId?: string | null;
 };
 
 function buildGuestFormSchema(options: GuestFormSchemaOptions) {
@@ -74,15 +91,7 @@ function buildGuestFormSchema(options: GuestFormSchemaOptions) {
         .refine((val) => validateName(val), 'Please enter the complete name of the primary guest'),
       primaryGuestAge: primaryGuestAgeSchema,
       guestEmail: z.string().email('Please enter a valid email address'),
-      guestPhoneNumber: z
-        .string()
-        .min(11, 'Phone number must be 11 digits (ex. 09876543210)')
-        .max(11, 'Phone number must be 11 digits (ex. 09876543210)')
-        .transform((val) => val.replace(/\s+/g, ''))
-        .refine(
-          (val) => /^09\d{9}$/.test(val),
-          "Please enter a valid 11-digit phone number starting with '09' (ex. 09876543210)"
-        ),
+      guestPhoneNumber: requiredPhilippineMobilePhoneZodSchema(),
       guestAddress: z
         .string()
         .min(1, 'Please enter your City and Province')
@@ -426,6 +435,39 @@ function buildGuestFormSchema(options: GuestFormSchemaOptions) {
             code: z.ZodIssueCode.custom,
             message: 'Pet image is required when bringing pets',
             path: ['petImage'],
+          });
+        }
+      }
+
+      const bookedDates = options.bookedDates ?? [];
+      if (options.cleaningBufferMinutes && data.checkInDate && data.checkInTime) {
+        const minCheckInTime = minAllowedCheckInTime(
+          bookedDates,
+          stringToDate(data.checkInDate),
+          options.cleaningBufferMinutes,
+          options.currentBookingId
+        );
+        if (minCheckInTime && data.checkInTime < minCheckInTime) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Check-in must be at or after ${formatTimeToAMPM(minCheckInTime, true)} to allow cleaning time after the previous guest's checkout`,
+            path: ['checkInTime'],
+          });
+        }
+      }
+
+      if (options.cleaningBufferMinutes && data.checkOutDate && data.checkOutTime) {
+        const maxCheckOutTime = maxAllowedCheckOutTime(
+          bookedDates,
+          stringToDate(data.checkOutDate),
+          options.cleaningBufferMinutes,
+          options.currentBookingId
+        );
+        if (maxCheckOutTime && data.checkOutTime > maxCheckOutTime) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Check-out must be at or before ${formatTimeToAMPM(maxCheckOutTime, false)} to allow cleaning time before the next guest's check-in`,
+            path: ['checkOutTime'],
           });
         }
       }
