@@ -1,7 +1,11 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 
-import { defaultPropertyLandingSectionConfig } from '@/features/guest/marketing/properties/lib/propertyLandingSections';
+import {
+  defaultPropertyLandingSectionConfig,
+  PROPERTY_LANDING_MANDATORY_SECTIONS,
+  PROPERTY_LANDING_SECTION_ORDER,
+} from '@/features/guest/marketing/properties/lib/propertyLandingSections';
 import type {
   PropertyLandingSectionConfig,
   PropertyLandingSectionId,
@@ -21,7 +25,6 @@ type PropertyLandingEditorActions = {
   hydrate: (config: PropertyLandingSectionConfig) => void;
   reset: () => void;
   setSectionVisible: (id: PropertyLandingSectionId, visible: boolean) => void;
-  reorderSections: (orderedIds: PropertyLandingSectionId[]) => void;
   undo: () => void;
   redo: () => void;
   canUndo: () => boolean;
@@ -31,6 +34,24 @@ type PropertyLandingEditorActions = {
 
 function cloneConfig(config: PropertyLandingSectionConfig): PropertyLandingSectionConfig {
   return JSON.parse(JSON.stringify(config)) as PropertyLandingSectionConfig;
+}
+
+/** Force product-fixed section order; mandatory sections always visible. */
+function normalizeLandingConfig(
+  config: PropertyLandingSectionConfig
+): PropertyLandingSectionConfig {
+  const byId = new Map(config.sections.map((section) => [section.id, section]));
+  return {
+    version: 1,
+    sections: PROPERTY_LANDING_SECTION_ORDER.map((id, order) => {
+      const existing = byId.get(id);
+      return {
+        id,
+        order,
+        visible: PROPERTY_LANDING_MANDATORY_SECTIONS.has(id) ? true : (existing?.visible ?? true),
+      };
+    }),
+  };
 }
 
 function pushHistory(state: PropertyLandingEditorState) {
@@ -53,7 +74,7 @@ export const usePropertyLandingEditorStore = create<
 
     hydrate: (config) =>
       set((state) => {
-        const next = cloneConfig(config);
+        const next = normalizeLandingConfig(config);
         state.config = next;
         state.history = [cloneConfig(next)];
         state.historyIndex = 0;
@@ -73,28 +94,10 @@ export const usePropertyLandingEditorStore = create<
 
     setSectionVisible: (id, visible) =>
       set((state) => {
+        if (PROPERTY_LANDING_MANDATORY_SECTIONS.has(id)) return;
         const section = state.config.sections.find((entry) => entry.id === id);
         if (!section) return;
         section.visible = visible;
-        state.isDirty = true;
-        pushHistory(state);
-      }),
-
-    reorderSections: (orderedIds) =>
-      set((state) => {
-        const byId = new Map(state.config.sections.map((section) => [section.id, section]));
-        const next: PropertyLandingSectionConfig['sections'] = [];
-        for (const id of orderedIds) {
-          const section = byId.get(id);
-          if (section) next.push(section);
-        }
-        for (const section of state.config.sections) {
-          if (!orderedIds.includes(section.id)) next.push(section);
-        }
-        next.forEach((section, order) => {
-          section.order = order;
-        });
-        state.config.sections = next;
         state.isDirty = true;
         pushHistory(state);
       }),
@@ -105,7 +108,7 @@ export const usePropertyLandingEditorStore = create<
         state.historyIndex -= 1;
         const previous = state.history[state.historyIndex];
         if (previous) {
-          state.config = cloneConfig(previous);
+          state.config = normalizeLandingConfig(previous);
           state.isDirty = true;
         }
       }),
@@ -116,7 +119,7 @@ export const usePropertyLandingEditorStore = create<
         state.historyIndex += 1;
         const next = state.history[state.historyIndex];
         if (next) {
-          state.config = cloneConfig(next);
+          state.config = normalizeLandingConfig(next);
           state.isDirty = true;
         }
       }),
