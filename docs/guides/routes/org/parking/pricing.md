@@ -17,8 +17,9 @@ Route: `/org/:orgSlug/parking/:parkingSlug/pricing`
 | --------------------- | -------- | ---------- | ---- | ------------------------------------------------- |
 | Base rates            | ✅       | ✅         | Done | `parking_settings.weekday_nightly_rate` / weekend |
 | Calendar custom dates | ✅       | ✅         | Done | `parking_pricing_date_overrides`                  |
+| Date blocks           | ✅       | ✅         | Done | `parking_blocked_dates`; broadcast + calendar UI  |
 | Fees                  | —        | —          | N/A  | Not applicable for parking                        |
-| Booked nights         | —        | —          | —    | Reserved for future parking reservation inventory |
+| Booked nights         | ✅       | —          | Done | `bookedDateKeys` from claimed parking bookings    |
 | Team access           | —        | —          | Done | `org:parkings:view` / `org:parkings:manage`       |
 
 ---
@@ -43,8 +44,8 @@ Parking **Pricing** sets how much guests pay per night for this slot. You define
   A: Friday through Sunday nights use the weekend nightly rate automatically. Monday–Thursday use the weekday rate unless you set a custom price on the calendar for those dates.
 - Q: Can I charge a special rate for holidays?
   A: Yes. Click or drag those dates on the calendar and set a custom nightly amount. Custom dates show with a pen icon in the legend.
-- Q: Will booked nights block the calendar?
-  A: Not yet. “Booked” blocking on the pricing calendar depends on parking reservation inventory, and that integration is still coming. You can still set rates for any future date today.
+- Q: Will booked or blocked nights block the calendar?
+  A: **Booked** nights (claimed reservations) and **Blocked** nights (owner-managed closures) show on the calendar and are excluded from broadcast candidate matching. Block future dates via the pricing modal **Block** action; unblock the same way.
 
 ---
 
@@ -57,10 +58,9 @@ Three KPI chips: weekday base rate, weekend premium %, count of custom calendar 
 ### Calendar
 
 - Month grid titled **Rates & availability** (_Manage pricing and availability_ on desktop); legend under the grid.
-- Legend: **Available**, **Custom** (pen icon), **Booked** (disabled when inventory exists), **Selected**.
-- Click or drag future available dates → **Set nightly rate** modal (**Reset** / **Apply**; close via X).
-  **Apply** skips storing an override when the amount matches the weekday/weekend base for that night.
-- Modal **Apply** / **Reset** persist overrides immediately (`parking_pricing_date_overrides`).
+- Legend: **Available**, **Custom** (pen icon), **Booked**, **Blocked**, **Selected**.
+- Click or drag future available dates → **Set nightly rate** modal (**Reset** / **Apply**; close via X). When every selected night is blocked, modal offers **Unblock** only.
+- **Block** / **Unblock** in the modal persist via **`parking-pricing`** PATCH (`blockRange` / `unblockDateKeys`).
 
 ### Base rates (right column)
 
@@ -83,10 +83,10 @@ Three KPI chips: weekday base rate, weekend premium %, count of custom calendar 
 
 ## API
 
-| Method | Edge function     | Query          | Body (PATCH)                                                |
-| ------ | ----------------- | -------------- | ----------------------------------------------------------- |
-| GET    | `parking-pricing` | `?parking_id=` | —                                                           |
-| PATCH  | `parking-pricing` | `?parking_id=` | `weekdayNightlyRate`, `weekendNightlyRate`, `dateOverrides` |
+| Method | Edge function     | Query          | Body (PATCH)                                                                                 |
+| ------ | ----------------- | -------------- | -------------------------------------------------------------------------------------------- |
+| GET    | `parking-pricing` | `?parking_id=` | —                                                                                            |
+| PATCH  | `parking-pricing` | `?parking_id=` | `weekdayNightlyRate`, `weekendNightlyRate`, `dateOverrides`, `blockRange`, `unblockDateKeys` |
 
 Auth: signed-in user + org parking permission. `verify_jwt = false`; handler uses `verifyAuthenticatedUser` + `resolveScopedParkingAccess`.
 
@@ -94,12 +94,12 @@ Auth: signed-in user + org parking permission. `verify_jwt = false`; handler use
 
 ## Implementation map
 
-| Layer                | Path                                                                   |
-| -------------------- | ---------------------------------------------------------------------- |
-| Page                 | `ui/src/features/dashboard/parking/pages/ParkingPricingPage.tsx`       |
-| Hooks                | `ui/src/features/dashboard/parking/hooks/useParkingPricing.ts`         |
-| API client           | `ui/src/features/dashboard/parking/lib/parkingPricingApi.ts`           |
-| Edge                 | `supabase/functions/parking-pricing/index.ts`                          |
-| Shared               | `supabase/functions/_shared/parkingPricing.ts`                         |
-| Migration            | `supabase/migrations/20260918140000_parking_pricing.sql`               |
-| Calendar UI (shared) | `ui/src/features/dashboard/pricing/components/PricingCalendarGrid.tsx` |
+| Layer                | Path                                                                                                            |
+| -------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Page                 | `ui/src/features/dashboard/parking/pages/ParkingPricingPage.tsx`                                                |
+| Hooks                | `ui/src/features/dashboard/parking/hooks/useParkingPricing.ts`                                                  |
+| API client           | `ui/src/features/dashboard/parking/lib/parkingPricingApi.ts`                                                    |
+| Edge                 | `supabase/functions/parking-pricing/index.ts`                                                                   |
+| Shared               | `supabase/functions/_shared/parkingPricing.ts`, `parkingBlockedDates.ts`                                        |
+| Migration            | `supabase/migrations/20260918140000_parking_pricing.sql`, `20261104120000_parking_blocked_dates_automation.sql` |
+| Calendar UI (shared) | `ui/src/features/dashboard/pricing/components/PricingCalendarGrid.tsx`                                          |

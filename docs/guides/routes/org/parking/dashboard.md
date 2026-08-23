@@ -13,18 +13,18 @@ Route: `/org/:orgSlug/parking/:parkingSlug`
 
 ## Overview
 
-Parking-scoped home. **UI mirrors** the property dashboard (`DashboardPage`): on **phone/tablet** the shared **brand hero** shell (`AdminMobilePage`) with date range in an overlapping toolbar and **View Parking** as a hero icon; desktop keeps the compact header + date filter + View Parking. KPI stat cards, finance chart + transactions-due card + mini calendar. Metrics show zeros until a parking-scoped `dashboard-stats` API ships.
+Parking-scoped home. **UI mirrors** the property dashboard (`DashboardPage`): on **phone/tablet** the shared **brand hero** shell (`AdminMobilePage`) with date range in an overlapping toolbar and **View Parking** as a hero icon; desktop keeps the compact header + date filter + View Parking. KPI stat cards, finance chart + transactions-due card + mini calendar. Metrics load live via **`dashboard-stats?parking_id=`** for this slot (bookings scoped to `guest_submissions.parking_id`).
 
 ---
 
 ## Host-facing knowledge
 
-This dashboard is the home screen for one parking slot. It's the same layout you know from property dashboards, just labeled for reservations instead of stays. You can filter by date range, open the public parking listing, and see where revenue and occupancy charts will appear. **Summary numbers may read zero** until reservation analytics are connected; finance and pricing data may still be edited on their own pages.
+This dashboard is the home screen for one parking slot. It's the same layout you know from property dashboards, just labeled for reservations instead of stays. You can filter by date range, open the public parking listing, and see revenue, occupancy, and reservation KPIs for this slot.
 
 **Common host questions**
 
-- Q: Why are all my KPI cards showing zero?
-  A: Reservation stats for parking dashboards are not fully connected yet. The layout is in place; numbers will populate when parking reservation data feeds this view.
+- Q: Why are some KPI cards zero?
+  A: Numbers reflect bookings linked to this parking slot in the selected date range. New slots or quiet periods may show zeros until reservations exist.
 - Q: How is this different from the property dashboard?
   A: It covers a single **parking slot** (tower bay, motorcycle space, etc.), not a rental unit. Labels say “reservations” instead of “bookings.”
 - Q: Where do I edit rates or slot details?
@@ -38,7 +38,7 @@ This dashboard is the home screen for one parking slot. It's the same layout you
 | ---------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | Header           | Dashboard title + date filter + View Property              | Title **Dashboard**; subtitle includes slot display name; **View Parking** opens public detail `/parkings/:parkingSlug` (new tab) |
 | KPI cards        | Total Revenue, Total Bookings, Occupancy, Avg Nightly Rate | **Total Reservations** label instead of Total Bookings                                                                            |
-| Chart + calendar | `DashboardFinanceCalendarSection`                          | `ParkingDashboardCalendarSection` — same layout, empty data                                                                       |
+| Chart + calendar | `DashboardFinanceCalendarSection`                          | `ParkingDashboardCalendarSection` — live booking calendar when data exists                                                        |
 
 ---
 
@@ -49,5 +49,5 @@ This dashboard is the home screen for one parking slot. It's the same layout you
 | Page           | `ui/src/features/dashboard/parking/pages/ParkingDashboardPage.tsx`                 |
 | Stat cards     | `ui/src/features/dashboard/parking/components/ParkingDashboardStatCards.tsx`       |
 | Calendar block | `ui/src/features/dashboard/parking/components/ParkingDashboardCalendarSection.tsx` |
-| Empty stats    | `ui/src/features/dashboard/parking/lib/parkingDashboardStats.ts`                   |
+| Empty stats    | `ui/src/features/dashboard/parking/hooks/useParkingDashboardStats.ts`              |
 | Shell          | `ui/src/features/dashboard/org/components/ParkingAdminShell.tsx`                   |

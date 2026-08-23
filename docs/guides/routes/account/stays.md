@@ -23,7 +23,7 @@ Route: `/account/stays` (legacy `/account/messages` and `/account/trips` redirec
 
 ## Overview
 
-Master-detail inbox hub for all of a guest's **web chat** threads with hosts across every property they've messaged — one hub, not per-property. Nav label is **Stays** (stay-related host conversations). This is a different surface from the property-scoped chat at `/properties/:propertySlug/messages` ([properties/chat.md](../properties/chat.md)): that page is a single-thread full-screen chat for one property; this page is the guest's cross-property inbox listing every thread they have.
+Master-detail inbox hub for all of a guest's **web chat** threads with hosts across every property **and parking slot** they've messaged — one hub, not per-listing. Nav label is **Stays** (stay-related host conversations). This is a different surface from the property-scoped chat at `/properties/:propertySlug/messages` ([properties/chat.md](../properties/chat.md)): that page is a single-thread full-screen chat for one property; this page is the guest's cross-property inbox listing every thread they have.
 
 The previous booking-list “Stays” page (`guest-trips` cards) was removed from the guest account UI; `guest-trips` remains as an edge function for possible future use.
 
@@ -41,6 +41,8 @@ Guests have one **Stays** inbox that lists every conversation they've had with a
   A: No, it's the exact same thread. The guest just sees all their conversations (across every property) in one list, while you see conversations for your property in your inbox.
 - Q: Can a guest have more than one thread with the same property?
   A: No, there's one thread per guest-and-property pair.
+- Q: Can a guest have more than one thread with the same parking slot?
+  A: No, there's one thread per guest-and-parking-slot pair (`web:parking:{parkingId}:{guestUserId}`).
 
 ---
 
@@ -50,7 +52,8 @@ Guests have one **Stays** inbox that lists every conversation they've had with a
 
 | Field                 | Storage                                                             | Notes                |
 | --------------------- | ------------------------------------------------------------------- | -------------------- |
-| Property name / image | Property listing fields                                             |                      |
+| Property name / image | Property listing fields when `property_id` set                      |                      |
+| Parking name / image  | Parking listing fields when `parking_id` set                        |                      |
 | Host name / avatar    | Host / org profile fields                                           |                      |
 | Inquiry dates         | `social_conversations.inquiry_check_in/out`                         | Shown when set       |
 | Last message preview  | `social_conversations.subject_preview` / last `social_messages` row |                      |

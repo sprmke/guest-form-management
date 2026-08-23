@@ -12,6 +12,7 @@ Route: `/org/:orgSlug/parking/:parkingSlug/notifications`
 Deep links:
 
 - `?section=activity` or `#section-activity` — in-app activity feed (bell **View all**)
+- `?module=chat` — Chat Telegram section
 - `?module=finance` — Finance Telegram section
 - `?module=parking` (legacy `?module=marketing` maps to Parking)
 
@@ -22,6 +23,7 @@ Deep links:
 | Section  | E2E save | Docs       | Notes                                       |
 | -------- | -------- | ---------- | ------------------------------------------- |
 | Activity | ✓        | Documented | In-app bell feed (org-wide, paginated)      |
+| Chat     | ✓        | Documented | Inbound guest web chat Telegram alerts      |
 | Parking  | ✓        | Documented | Ops alerts (reservation, check-in, payment) |
 | Finance  | ✓        | Documented | Due-date reminders for parking transactions |
 
@@ -30,6 +32,8 @@ Deep links:
 ## Overview
 
 Hub for **in-app activity** (same org-wide feed as the bell) and **Telegram** alerts for this parking slot.
+
+**Plan gating (interim):** Parking routes temporarily skip property-plan checks for **Telegram Chat enable** and the **AI dashboard assistant** until org-level subscription entitlements ship ([`pricing-portfolio-bundling.md`](../../../workflow/planned/pricing-portfolio-bundling.md)). Replace with org entitlement checks when that project lands.
 
 ### In-app activity
 
@@ -42,12 +46,13 @@ Hub for **in-app activity** (same org-wide feed as the bell) and **Telegram** al
 
 ### Shared bot token (recommended default)
 
-One BotFather token at the top pre-fills Parking and Finance module fields. Override per module anytime. One bot handles typical volume; use **separate Chat IDs** for parking ops vs finance reminders when you want different groups.
+One BotFather token at the top pre-fills Chat, Parking, and Finance module fields. Override per module anytime. One bot handles typical volume; use **separate Chat IDs** for chat alerts vs parking ops vs finance reminders when you want different groups.
 
 **Telegram notifications** group heading includes **Get Help**. **Shared bot token** card: **Save and test** validates via `getMe`, then saves; **Saved** replaces the button when complete.
 
-1. **Parking** — reservation request, check-in reminder, payment received (`telegram_parking_settings`)
-2. **Finance** — operating expense due-date reminders (`telegram_finance_settings`)
+1. **Chat** — inbound guest web chat alerts (`telegram_chat_settings` with `parking_id`)
+2. **Parking** — reservation request, check-in reminder, payment received (`telegram_parking_settings`)
+3. **Finance** — operating expense due-date reminders (`telegram_finance_settings`)
 
 **Find chat ID** is inline on the Chat ID field — **Scan for chats**, then a group dropdown. Hidden after **Connected** (group name + **Reveal** instead). Saved credentials show **@bot username** and **group name** by default; **Reveal** shows the raw token or chat ID.
 
@@ -57,18 +62,33 @@ Deep links: `?module=finance` scrolls to the Finance section.
 
 ## Host-facing knowledge
 
-Parking **Notifications** configures Telegram alerts for this slot. The **Parking** section covers reservation-style alerts (new request, check-in reminder, payment received) once those flows are fully live. The **Finance** section sends due-date reminders for expense lines you track on parking finance. Each section needs a Telegram bot token and chat ID, plus a test send to confirm delivery.
+Parking **Notifications** configures Telegram alerts for this slot. The **Chat** section sends a Telegram alert on every inbound guest web chat message. The **Parking** section covers reservation-style alerts (new request, check-in reminder, payment received) once those flows are fully live. The **Finance** section sends due-date reminders for expense lines you track on parking finance. Each section needs a Telegram bot token and chat ID, plus a test send to confirm delivery.
 
 **Common host questions**
 
 - Q: Where is the notification bell on my phone?
   A: Tap **Notifications** in the bottom menu. On a computer it floats above the AI assistant button.
-- Q: Do I need a separate Telegram bot for parking and finance alerts?
-  A: No, one shared token is enough for both. Use separate **Chat IDs** if you want parking ops alerts and finance reminders posted to different groups, or override the bot token per module if you ever need to split them further.
+- Q: Do I need a separate Telegram bot for chat, parking, and finance alerts?
+  A: No, one shared token is enough for all three. Use separate **Chat IDs** if you want chat alerts, parking ops alerts, and finance reminders posted to different groups, or override the bot token per module if you ever need to split them further.
 - Q: Why aren’t I getting parking reservation alerts yet?
   A: Reservation Telegram templates are wired for this slot, but some reservation events depend on the parking booking flow shipping. Finance due-date reminders work today when finance Telegram is enabled and transactions have due dates.
 - Q: How do I jump straight to finance reminders?
   A: Open notifications with the finance module selected in the URL, or scroll to the **Finance** card on this page.
+
+---
+
+## Chat section
+
+Reuses property `TelegramChatSettingsCard` — scoped automatically to the parking slot via `useAdminAssetScope()`.
+
+`GET/PATCH/POST telegram-chat-settings?parking_id=`
+
+- Enable toggle, bot token, chat ID, new-message template
+- POST: `verify_chat_telegram_env`, `send_draft_preview`, `render_draft_preview`
+
+DB: `telegram_chat_settings.parking_id` (one row per parking slot). Seeded on first GET.
+
+**Send path:** after each inbound parking web chat message (`webGuestChatService`), `notifyTelegramChatInbound` loads this parking's chat settings and sends when `enabled`. `{{property_name}}` resolves to the parking slot name; `{{conversation_link}}` opens this slot's inbox.
 
 ---
 
@@ -104,11 +124,15 @@ Cron: global `telegram-finance-cron` (hourly) processes unpaid `finance_line_ite
 | Page          | `ui/src/features/dashboard/parking/pages/ParkingNotificationsPage.tsx`                                            |
 | In-app list   | `ui/src/features/dashboard/notifications/components/InAppNotificationsPanel.tsx`                                  |
 | Bell          | `ui/src/features/dashboard/notifications/components/NotificationBell.tsx` (desktop FAB; mobile Notifications tab) |
+| Chat card     | `ui/src/features/dashboard/bookings/components/TelegramChatSettingsCard.tsx`                                      |
+| Chat hooks    | `ui/src/features/dashboard/bookings/hooks/useTelegramChatSettings.ts`                                             |
 | Parking card  | `ui/src/features/dashboard/parking/components/TelegramParkingSettingsCard.tsx`                                    |
 | Finance card  | `ui/src/features/dashboard/bookings/components/TelegramFinanceSettingsCard.tsx`                                   |
 | Finance hooks | `ui/src/features/dashboard/bookings/hooks/useTelegramFinanceSettings.ts`                                          |
+| Chat edge     | `supabase/functions/telegram-chat-settings/index.ts`                                                              |
 | Parking edge  | `supabase/functions/telegram-parking-settings/index.ts`                                                           |
 | Finance edge  | `supabase/functions/telegram-finance-settings/index.ts`                                                           |
+| Chat notify   | `supabase/functions/_shared/telegramChat.ts` → `notifyTelegramChatInbound`                                        |
 | Cron          | `supabase/functions/telegram-finance-cron/index.ts`                                                               |
 
 ---

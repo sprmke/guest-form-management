@@ -2,7 +2,7 @@
 title: 'Parking Guest Inbox'
 status: active
 tags: [guides, routes, org, parking]
-updated: 2026-08-17
+updated: 2026-08-23
 ---
 
 # Parking Guest Inbox
@@ -13,68 +13,63 @@ Route: `/org/:orgSlug/parking/:parkingSlug/inbox`
 
 ## Progress overview
 
-| Section  | E2E | Validation | Docs | Notes                                                           |
-| -------- | --- | ---------- | ---- | --------------------------------------------------------------- |
-| Messages | Yes | Yes        | Yes  | Meta = effective connection; Web empty until parking guest chat |
-| Channels | Yes | Yes        | Yes  | Inherit org Meta or connect parking override                    |
+| Section       | E2E | Validation | Docs | Notes                                                 |
+| ------------- | --- | ---------- | ---- | ----------------------------------------------------- |
+| Messages      | Yes | Yes        | Yes  | Web chat live; Meta not offered for parking           |
+| Quick replies | Yes | Yes        | Yes  | Parking-scoped, seeded with parking-specific defaults |
+| Automation    | Yes | Yes        | Yes  | Parking-scoped AI auto-reply settings                 |
 
 ## Overview
 
-Parking operators open Guest Inbox for this slot. **Meta** uses the effective Page (parking override or org default with **Using org Meta**). **Web** is scoped by `parking_id` — guest parking web chat is not shipped yet, so the Web tab stays empty until that surface exists.
+Parking operators open Guest Inbox for this slot. **Meta (Facebook/Instagram) is not supported for parking** — there is no Channels tab and no Connect Meta prompt. **Web** is scoped by `parking_id` — guest parking web chat threads appear here when guests use **Contact Host** on the public parking listing or resume from **Stays**.
 
-Quick replies and Automation are managed on a **property** Guest Inbox (org-scoped data), not on parking.
+Quick replies and Automation are managed directly on the **parking** Guest Inbox, scoped to this parking listing (not shared with property or other parkings in the org).
 
 ---
 
 ## Host-facing knowledge
 
-Parking **Guest Inbox** lets you answer Facebook (and Instagram when connected) messages for this slot. By default you inherit the organization’s connected Facebook Page; you can connect a different Page here if this parking listing should have its own Messenger inbox. **Website chat for parking guests is not available yet**, so the Web tab will stay empty for now. Saved quick replies and AI automation are managed from a **property** inbox under Manage.
+Parking **Guest Inbox** is for website chat with parking guests; Facebook and Instagram messaging is not available here. Guests can start a thread from **Contact Host** on your public parking page; messages show in this inbox and can trigger **Chat** Telegram alerts when configured. You can set up **Quick replies** and **Automation** from Manage — they apply to this parking listing only.
 
 **Common host questions**
 
-- Q: Will I see the same Facebook messages as other properties using the shared Page?
-  A: If you use the org’s Page (shown as “Using org Meta”), yes, it’s the same Page inbox. Connecting a different Page here gives this slot its own thread list.
-- Q: Why is the Web tab empty?
-  A: On-site chat for parking listings is not shipped yet. Messenger is the live channel today when Meta is connected.
-- Q: Where do I edit canned replies or turn on auto-reply?
-  A: Open any **property** Guest Inbox → **Manage** → Quick replies or Automation. Those settings apply org-wide.
-- Q: Why does Channels show Fix connection?
-  A: The saved Meta Page is still attached, but Meta may have dropped this app's messaging webhook subscription. Use **Fix connection** to re-subscribe the Page without removing the parking inbox history.
-- Q: What happens if I disconnect Meta here?
-  A: Disconnect removes the Meta connection and deletes synced Facebook/Instagram conversations from this inbox. You can reconnect again to view and load conversations.
-- Q: Why can I sometimes still reply after the normal Meta window closes?
-  A: For 24h-7d-old Meta DMs, the composer can show a support follow-up toggle. That uses Meta's `HUMAN_AGENT` tag and should only be used for non-promotional follow-ups.
+- Q: Can I connect Facebook or Instagram to this parking inbox?
+  A: No — Meta messaging is only available for property inboxes. Parking Guest Inbox is web-chat only.
+- Q: Why is the message list empty?
+  A: No guest has started a web chat for this slot yet. Share your public parking link and ensure **Contact Host** is visible on the listing.
+- Q: Where do I edit canned replies or turn on auto-reply for parking?
+  A: Open this parking's Guest Inbox → **Manage** → Quick replies or Automation. These settings are specific to this parking listing.
+- Q: Are the quick replies the same as my property's?
+  A: No — parking quick replies are a separate list pre-seeded with parking-relevant answers (rates, vehicle details, entry/exit, payment, etc.), independent of any property's quick replies.
 
 ---
 
 ## Permissions
 
-| Permission     | UI                                      |
-| -------------- | --------------------------------------- |
-| `inbox:view`   | Open inbox, read threads                |
-| `inbox:reply`  | Send replies, AI suggest                |
-| `inbox:manage` | Connect / disconnect Meta Page override |
+| Permission     | UI                                |
+| -------------- | --------------------------------- |
+| `inbox:view`   | Open inbox, read threads          |
+| `inbox:reply`  | Send replies, AI suggest          |
+| `inbox:manage` | Manage Quick replies / Automation |
 
 ## Behavior
 
-- Connect Meta writes override rows with `parking_id`; does not wipe org default.
-- Connected Meta rows are re-verified in the background; after repeated failures, Channels shows **Fix connection** to repair messaging webhook subscription health without disconnecting.
-- Channels can also warn when the saved Meta token is invalid or expiring soon. **Reconnect** refreshes the OAuth grant; **Fix connection** only repairs webhook subscription health.
-- Disconnect removes the Meta connection and deletes synced Facebook/Instagram conversations from this inbox. Reconnect Meta to start fresh.
-- **Meta connect / sync / disconnect progress:** same non-dismissible progress modal as property inbox (backfill after connect, disconnect cleanup). Blocked until the operation completes; manage modals close while it runs.
-- **Channels list:** Meta only (Facebook Messenger + Instagram DMs). TikTok / Airbnb messaging are not offered.
-- Meta DMs use a two-step reply window: normal replies for 24 hours after the guest's last message, then an explicit operator-only **support follow-up** path for 24h-7d-old DMs using `HUMAN_AGENT`. After 7 days, DMs stay read-only until the guest messages again.
-- Thread list scrolling now paginates only inbox history already stored in Kame. If Meta still has older history after the local list ends, hosts must click **Load older from Meta** to backfill more threads instead of triggering live sync by scrolling.
-- Failed thread loads now show a retryable load error instead of the generic empty state. Failed message loads show an inline **Retry** banner in the conversation pane so hosts can distinguish fetch issues from genuinely empty history.
+- No Channels tab, no Meta connect/disconnect. Platform filter is Chat (web) only — Facebook/Instagram and the aggregating **All** tab are hidden (no switcher when a single channel is available).
+- **Quick replies:** stored in `social_reply_templates` with `parking_id` set to this parking's id. First load auto-seeds `_shared/inboxDefaultQuickReplies.ts#INBOX_DEFAULT_PARKING_QUICK_REPLIES` (availability, rates, vehicle details, entry/exit, location, payment, extend booking, lost ticket/access code, cancellation, follow-up) if the list is empty.
+- **Automation:** stored in `social_inbox_settings` with `parking_id` set to this parking's id — a separate row from the org/property default (`parking_id IS NULL`). AI auto-reply runs on inbound parking web chat when enabled.
+- Failed thread loads show a retryable load error instead of the generic empty state.
 - Query/body: `parking_id`; auth via `verifyParkingTeamAccess` + `inbox:*`.
 
 ## Implementation map
 
-| Area  | Path                                                             |
-| ----- | ---------------------------------------------------------------- |
-| Page  | `ui/src/features/dashboard/inbox/pages/ParkingInboxPage.tsx`     |
-| Shell | `ui/src/features/dashboard/inbox/pages/InboxPage.tsx`            |
-| Scope | `supabase/functions/_shared/metaInboxScope.ts`, `inboxAccess.ts` |
+| Area                    | Path                                                                   |
+| ----------------------- | ---------------------------------------------------------------------- |
+| Page                    | `ui/src/features/dashboard/inbox/pages/ParkingInboxPage.tsx`           |
+| Shell                   | `ui/src/features/dashboard/inbox/pages/InboxPage.tsx`                  |
+| Manage menu/modals      | `ui/src/features/dashboard/inbox/components/InboxManageModals.tsx`     |
+| Scope                   | `supabase/functions/_shared/metaInboxScope.ts`, `inboxAccess.ts`       |
+| Default quick replies   | `supabase/functions/_shared/inboxDefaultQuickReplies.ts`               |
+| Templates/settings CRUD | `supabase/functions/social-inbox-templates/`, `social-inbox-settings/` |
 
 ## Related
 

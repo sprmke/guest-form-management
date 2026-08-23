@@ -2,7 +2,7 @@
 title: 'Route-based operator guides'
 status: active
 tags: [guides, routes]
-updated: 2026-08-19
+updated: 2026-08-22
 ---
 
 # Route-based operator guides
@@ -94,7 +94,7 @@ Platform-level control panel, distinct from org/property admin and the legacy `A
 | `/parkings` · `/parkings/in/:location` · `/parkings/:parkingSlug` · `…/form` · `/parkings/requests/:bookingId`              | [parkings.md](./parkings.md)                   | Documented — list/detail live API; form + request status live |
 | `/developments` · `/developments/in/:location` · `/developments/:slug` · `…/properties` · `…/parking/*` · `…/forms/:formId` | [developments.md](./developments.md)           | Documented — UI only                                          |
 | `/about` · `/contact` · `/support` · `/terms` · `/privacy` · `/cookies`                                                     | [legal.md](./legal.md)                         | Documented — static company + legal pages                     |
-| `/for-hosts/*` (login, register, …) · guest checkout modal                                                                  | [auth.md](./auth.md)                           | Documented                                                    |
+| `/for-hosts/login` · `/for-hosts/register` · `/for-guests/login` · `/for-guests/register` · guest checkout modal            | [auth.md](./auth.md)                           | Documented                                                    |
 | `/account`                                                                                                                  | [account/index.md](./account/index.md)         | Documented — redirect to `/account/profile`                   |
 | `/account/profile` · `/account/settings` (hidden, redirects)                                                                | [account/profile.md](./account/profile.md)     | Documented                                                    |
 | `/account/stays` (legacy `/account/messages` · `/account/trips` redirect here)                                              | [account/stays.md](./account/stays.md)         | Documented — stay messaging hub                               |
@@ -106,15 +106,16 @@ Platform-level control panel, distinct from org/property admin and the legacy `A
 
 All operational guest URLs live under **`/properties/:propertySlug/...`**. Path helpers: **`ui/src/features/guest/lib/guestPublicPaths.ts`** (re-exported from **`ui/src/features/dashboard/org/lib/guestPublicPaths.ts`** for admin copy-link).
 
-| Route                                                                          | Guide                                        | Status     |
-| ------------------------------------------------------------------------------ | -------------------------------------------- | ---------- |
-| `/properties/:propertySlug/calendar`                                           | [calendar.md](./calendar.md)                 | Documented |
-| `/properties/:propertySlug/messages`                                           | [properties/chat.md](./properties/chat.md)   | Documented |
-| `/properties/:propertySlug/form`                                               | [form.md](./form.md)                         | Documented |
-| `/properties/:propertySlug/success`                                            | [success.md](./success.md)                   | Documented |
-| `/properties/:propertySlug/sd-form` · `/properties/:propertySlug/guest-review` | [sd-form.md](./sd-form.md)                   | Documented |
-| `/properties/:propertySlug/stay-guide`                                         | [stay-guide.md](./stay-guide.md)             | Documented |
-| `/properties/:propertySlug/parking/:bookingId`                                 | [bookings/parking.md](./bookings/parking.md) | Documented |
+| Route                                                                          | Guide                                                    | Status                                        |
+| ------------------------------------------------------------------------------ | -------------------------------------------------------- | --------------------------------------------- |
+| `/properties/:propertySlug/calendar`                                           | [calendar.md](./calendar.md)                             | Documented                                    |
+| `/properties/:propertySlug/messages`                                           | [properties/chat.md](./properties/chat.md)               | Documented                                    |
+| `/properties/:propertySlug/form`                                               | [form.md](./form.md)                                     | Documented                                    |
+| `/properties/:propertySlug/success`                                            | [success.md](./success.md)                               | Documented                                    |
+| `/properties/:propertySlug/sd-form` · `/properties/:propertySlug/guest-review` | [sd-form.md](./sd-form.md)                               | Documented                                    |
+| `/properties/:propertySlug/stay-guide`                                         | [stay-guide.md](./stay-guide.md)                         | Documented                                    |
+| `/properties/:propertySlug/document`                                           | [guest-booking-document.md](./guest-booking-document.md) | Documented — token-gated GAF/Pet PDF redirect |
+| `/properties/:propertySlug/parking/:bookingId`                                 | [bookings/parking.md](./bookings/parking.md)             | Documented                                    |
 
 ### Legacy redirects (removed global routes)
 
@@ -150,6 +151,8 @@ docs/guides/routes/
   form.md
   success.md
   sd-form.md
+  stay-guide.md
+  guest-booking-document.md
   account/
     index.md
     profile.md
