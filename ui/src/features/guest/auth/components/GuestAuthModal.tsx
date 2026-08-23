@@ -5,9 +5,10 @@ import { ArrowLeft } from 'lucide-react';
 import { AuthDivider } from '@/features/guest/auth/components/AuthDivider';
 import { useGuestAuthActions } from '@/features/guest/auth/hooks/useGuestAuthActions';
 
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { FacebookIcon, GoogleIcon, SpinnerIcon } from '@/components/ui/icons';
+import { SpinnerIcon } from '@/components/ui/icons';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
@@ -21,14 +22,14 @@ interface GuestAuthModalProps {
 }
 
 export function GuestAuthModal({ open, onOpenChange, oauthRedirectPath }: GuestAuthModalProps) {
-  const { sendEmailOtp, verifyEmailOtp, signInWithOAuth } = useGuestAuthActions();
+  const { sendEmailOtp, verifyEmailOtp, signInWithGoogle } = useGuestAuthActions();
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [oauthProvider, setOauthProvider] = useState<'google' | 'facebook' | null>(null);
+  const [isSigningInWithGoogle, setIsSigningInWithGoogle] = useState(false);
 
   const resetForm = useCallback(() => {
     setStep('email');
@@ -37,7 +38,7 @@ export function GuestAuthModal({ open, onOpenChange, oauthRedirectPath }: GuestA
     setError(null);
     setIsSending(false);
     setIsVerifying(false);
-    setOauthProvider(null);
+    setIsSigningInWithGoogle(false);
   }, []);
 
   useEffect(() => {
@@ -77,17 +78,17 @@ export function GuestAuthModal({ open, onOpenChange, oauthRedirectPath }: GuestA
     }
   };
 
-  const handleOAuth = async (provider: 'google' | 'facebook') => {
+  const handleGoogleSignIn = async () => {
     setError(null);
-    setOauthProvider(provider);
-    const oauthError = await signInWithOAuth(provider, oauthRedirectPath);
+    setIsSigningInWithGoogle(true);
+    const oauthError = await signInWithGoogle(oauthRedirectPath);
     if (oauthError) {
       setError(oauthError.message);
-      setOauthProvider(null);
+      setIsSigningInWithGoogle(false);
     }
   };
 
-  const busy = isSending || isVerifying || oauthProvider !== null;
+  const busy = isSending || isVerifying || isSigningInWithGoogle;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -190,36 +191,11 @@ export function GuestAuthModal({ open, onOpenChange, oauthRedirectPath }: GuestA
           {step === 'email' ? (
             <>
               <AuthDivider text="or" />
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={busy}
-                  className="h-12 rounded-xl font-medium"
-                  onClick={() => void handleOAuth('google')}
-                >
-                  {oauthProvider === 'google' ? (
-                    <SpinnerIcon className="size-4" />
-                  ) : (
-                    <GoogleIcon className="size-5" />
-                  )}
-                  <span className="sr-only sm:not-sr-only sm:ml-2">Google</span>
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={busy}
-                  className="h-12 rounded-xl font-medium"
-                  onClick={() => void handleOAuth('facebook')}
-                >
-                  {oauthProvider === 'facebook' ? (
-                    <SpinnerIcon className="size-4" />
-                  ) : (
-                    <FacebookIcon className="size-5" />
-                  )}
-                  <span className="sr-only sm:not-sr-only sm:ml-2">Facebook</span>
-                </Button>
-              </div>
+              <GoogleSignInButton
+                onClick={() => void handleGoogleSignIn()}
+                disabled={busy}
+                loading={isSigningInWithGoogle}
+              />
             </>
           ) : (
             <button

@@ -1,10 +1,3 @@
 export { AuthLayout } from './AuthLayout';
-export { SocialAuthButtons } from './SocialAuthButtons';
+export { AuthPageContent } from './AuthPageContent';
 export { AuthDivider } from './AuthDivider';
-export { PasswordInput } from './PasswordInput';
-export { FormField } from './FormField';
-export { LoginPageContent } from './LoginPageContent';
-export { RegisterPageContent } from './RegisterPageContent';
-export { ForgotPasswordPageContent } from './ForgotPasswordPageContent';
-export { ResetPasswordPageContent } from './ResetPasswordPageContent';
-export { VerifyEmailPageContent } from './VerifyEmailPageContent';
