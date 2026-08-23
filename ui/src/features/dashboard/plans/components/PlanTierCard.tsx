@@ -1,7 +1,7 @@
 import { ArrowDown, ArrowRight, Check } from 'lucide-react';
 
-import { PlanTierIconWell } from '@/features/dashboard/plans/components/PlanTierIconWell';
 import { PlanPriceLine } from '@/features/dashboard/plans/components/PlanPriceLine';
+import { PlanTierIconWell } from '@/features/dashboard/plans/components/PlanTierIconWell';
 import {
   planActionLabel,
   planDisplayName,

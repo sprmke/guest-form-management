@@ -4,7 +4,6 @@ import type { ReactNode } from 'react';
 import { adminPropertyRoutes } from '@/features/dashboard/bookings/routes/propertyRoutes';
 import { customPagesPropertyRoute } from '@/features/dashboard/custom-pages/routes';
 import { financePropertyRoute } from '@/features/dashboard/finance/routes';
-import { plansPropertyRoute } from '@/features/dashboard/plans/routes';
 import {
   helpSupportParkingRoute,
   helpSupportPropertyRoute,
@@ -21,6 +20,7 @@ import {
 } from '@/features/dashboard/org/routes';
 import { orgRoute, parkingRoute, propertyRoute } from '@/features/dashboard/org/routes/guards';
 import { parkingAdminRoutes } from '@/features/dashboard/parking/routes';
+import { plansPropertyRoute } from '@/features/dashboard/plans/routes';
 import { pricingPropertyRoute } from '@/features/dashboard/pricing/routes';
 import { dashboardPropertyRoute } from '@/features/dashboard/property/routes';
 import { superAdminRoutes } from '@/features/dashboard/super-admin/routes';

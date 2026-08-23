@@ -1,5 +1,6 @@
 import { Receipt } from 'lucide-react';
 
+import { PropertyPlanTransactions } from '@/features/dashboard/plans/components/PropertyPlanTransactions';
 import {
   planDisplayName,
   planDisplayNameFromSubscription,
@@ -15,7 +16,6 @@ import type {
 
 import { FloatingPanel } from '@/components/mobile/FloatingPanel';
 import { Badge } from '@/components/ui/badge';
-import { PropertyPlanTransactions } from '@/features/dashboard/plans/components/PropertyPlanTransactions';
 import { formatManilaLongDate } from '@/utils/format/dates';
 
 type PlanBillingPanelProps = {

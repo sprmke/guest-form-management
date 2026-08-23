@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
 
-import type { PlanFeatureKey } from '@/features/dashboard/plans/lib/planFeatures';
-import { featureGateCopy } from '@/features/dashboard/plans/lib/featureGateCopy';
-import { propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
+import { propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
+import { featureGateCopy } from '@/features/dashboard/plans/lib/featureGateCopy';
+import type { PlanFeatureKey } from '@/features/dashboard/plans/lib/planFeatures';
 
 import { Button } from '@/components/ui/button';
 import {

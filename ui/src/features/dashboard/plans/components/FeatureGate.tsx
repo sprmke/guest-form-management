@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 import type { PlanFeatureKey } from '@/features/dashboard/plans/lib/planFeatures';
-import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 
 import { cn } from '@/lib/utils';
 

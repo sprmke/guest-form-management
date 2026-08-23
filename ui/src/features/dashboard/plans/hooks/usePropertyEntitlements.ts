@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { fetchPropertyEntitlements } from '@/features/dashboard/plans/lib/entitlementsApi';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
+import { fetchPropertyEntitlements } from '@/features/dashboard/plans/lib/entitlementsApi';
 
 const entitlementsKey = (propertyId: string | null) =>
   ['property', propertyId, 'entitlements'] as const;
