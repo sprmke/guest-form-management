@@ -28,6 +28,7 @@ type Props = {
   open: InboxManageModal;
   onOpenChange: (open: InboxManageModal) => void;
   canManage: boolean;
+  showChannelsTab?: boolean;
   showSettingsManageTabs?: boolean;
   usingOrgMeta?: boolean;
   connections: InboxConnection[];
@@ -51,17 +52,19 @@ type Props = {
 };
 
 function buildInboxManageItems(
+  showChannelsTab: boolean,
   showSettingsManageTabs: boolean,
   onOpen: (modal: InboxManageModal) => void
 ): MobileHeroActionMenuItem[] {
-  const items: MobileHeroActionMenuItem[] = [
-    {
+  const items: MobileHeroActionMenuItem[] = [];
+  if (showChannelsTab) {
+    items.push({
       key: 'channels',
       label: 'Channels',
       Icon: Plug,
       onSelect: () => onOpen('channels'),
-    },
-  ];
+    });
+  }
   if (showSettingsManageTabs) {
     items.push(
       {
@@ -93,18 +96,21 @@ function InboxManageActionButton({ item }: { item: MobileHeroActionMenuItem }) {
 
 export function InboxManageToolbar({
   canManage,
+  showChannelsTab = true,
   showSettingsManageTabs = true,
   onOpen,
   variant = 'default',
 }: {
   canManage: boolean;
+  showChannelsTab?: boolean;
   showSettingsManageTabs?: boolean;
   onOpen: (modal: InboxManageModal) => void;
   variant?: 'default' | 'hero';
 }) {
   if (!canManage) return null;
 
-  const items = buildInboxManageItems(showSettingsManageTabs, onOpen);
+  const items = buildInboxManageItems(showChannelsTab, showSettingsManageTabs, onOpen);
+  if (items.length === 0) return null;
 
   if (variant === 'hero') {
     return <MobileHeroActionMenu items={items} label="Inbox actions" />;
@@ -127,6 +133,7 @@ export function InboxManageModals({
   open,
   onOpenChange,
   canManage,
+  showChannelsTab = true,
   showSettingsManageTabs = true,
   usingOrgMeta = false,
   connections,
@@ -152,29 +159,36 @@ export function InboxManageModals({
 
   return (
     <>
-      <ResponsiveModal
-        open={open === 'channels'}
-        onOpenChange={(next) => onOpenChange(next ? 'channels' : null)}
-      >
-        <ResponsiveModalContent className="max-h-[min(90dvh,640px)] max-w-[min(calc(100vw-1.5rem),44rem)] overflow-y-auto sm:max-w-[min(92vw,44rem)]">
-          <ResponsiveModalHeader>
-            <ResponsiveModalTitle>Channels</ResponsiveModalTitle>
-          </ResponsiveModalHeader>
-          <InboxChannelsTab
-            connections={connections}
-            usingOrgMeta={usingOrgMeta}
-            statusLoading={connectionsLoading}
-            statusError={connectionsError}
-            canManage={canManage}
-            connecting={connecting}
-            disconnecting={disconnecting}
-            resubscribing={resubscribing}
-            onConnectMeta={onConnectMeta}
-            onDisconnectMeta={onDisconnectMeta}
-            onResubscribeMeta={onResubscribeMeta}
-          />
-        </ResponsiveModalContent>
-      </ResponsiveModal>
+      {showChannelsTab ? (
+        <ResponsiveModal
+          open={open === 'channels'}
+          onOpenChange={(next) => onOpenChange(next ? 'channels' : null)}
+        >
+          <ResponsiveModalContent
+            sheetLayout="split"
+            className="flex max-h-[min(90dvh,640px)] max-w-[min(calc(100vw-1.5rem),40rem)] flex-col overflow-hidden sm:max-w-[min(92vw,40rem)]"
+          >
+            <ResponsiveModalHeader className="shrink-0">
+              <ResponsiveModalTitle>Channels</ResponsiveModalTitle>
+            </ResponsiveModalHeader>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+              <InboxChannelsTab
+                connections={connections}
+                usingOrgMeta={usingOrgMeta}
+                statusLoading={connectionsLoading}
+                statusError={connectionsError}
+                canManage={canManage}
+                connecting={connecting}
+                disconnecting={disconnecting}
+                resubscribing={resubscribing}
+                onConnectMeta={onConnectMeta}
+                onDisconnectMeta={onDisconnectMeta}
+                onResubscribeMeta={onResubscribeMeta}
+              />
+            </div>
+          </ResponsiveModalContent>
+        </ResponsiveModal>
+      ) : null}
 
       {showSettingsManageTabs ? (
         <>
@@ -205,16 +219,21 @@ export function InboxManageModals({
             open={open === 'automation'}
             onOpenChange={(next) => onOpenChange(next ? 'automation' : null)}
           >
-            <ResponsiveModalContent className="max-h-[min(92dvh,720px)] max-w-[min(calc(100vw-1.5rem),44rem)] overflow-y-auto sm:max-w-[min(92vw,44rem)]">
-              <ResponsiveModalHeader>
+            <ResponsiveModalContent
+              sheetLayout="split"
+              className="flex max-h-[min(92dvh,720px)] max-w-[min(calc(100vw-1.5rem),44rem)] flex-col overflow-hidden sm:max-w-[min(92vw,44rem)]"
+            >
+              <ResponsiveModalHeader className="shrink-0">
                 <ResponsiveModalTitle>Automation</ResponsiveModalTitle>
               </ResponsiveModalHeader>
-              <InboxAutomationTab
-                settings={automationSettings}
-                isLoading={automationLoading}
-                saving={automationSaving}
-                onSave={onSaveAutomation}
-              />
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                <InboxAutomationTab
+                  settings={automationSettings}
+                  isLoading={automationLoading}
+                  saving={automationSaving}
+                  onSave={onSaveAutomation}
+                />
+              </div>
             </ResponsiveModalContent>
           </ResponsiveModal>
         </>

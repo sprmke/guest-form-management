@@ -15,10 +15,13 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { BookingCalendarModal } from '@/features/guest/marketing/properties/components/property-detail/BookingCalendarModal';
+
 import {
   InboxMediaPreviewDialog,
   InboxMessageMediaTile,
 } from '@/features/dashboard/inbox/components/InboxMediaPreviewDialog';
+import { InboxShareResourcesPicker } from '@/features/dashboard/inbox/components/InboxShareResourcesPicker';
 import { PlatformLogo } from '@/features/dashboard/inbox/components/PlatformLogo';
 import {
   isMessagingWindowOpen,
@@ -157,6 +160,9 @@ export function InboxConversationView({
   const [draftAiFlagged, setDraftAiFlagged] = useState(false);
   const [useHumanAgentTag, setUseHumanAgentTag] = useState(false);
   const [previewAttachment, setPreviewAttachment] = useState<InboxAttachmentPreview | null>(null);
+  const [calendarModalOpen, setCalendarModalOpen] = useState(false);
+  const [calendarCheckIn, setCalendarCheckIn] = useState<Date | null>(null);
+  const [calendarCheckOut, setCalendarCheckOut] = useState<Date | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
   const composerInputRef = useRef<HTMLTextAreaElement>(null);
@@ -379,6 +385,21 @@ export function InboxConversationView({
         }}
       />
 
+      {conversation.property_slug ? (
+        <BookingCalendarModal
+          open={calendarModalOpen}
+          onOpenChange={setCalendarModalOpen}
+          propertySlug={conversation.property_slug}
+          propertyName={conversation.property_name ?? ''}
+          checkIn={calendarCheckIn}
+          checkOut={calendarCheckOut}
+          onDatesChange={(checkIn, checkOut) => {
+            setCalendarCheckIn(checkIn);
+            setCalendarCheckOut(checkOut);
+          }}
+        />
+      ) : null}
+
       <div className="border-border/80 bg-card/30 flex shrink-0 items-center gap-3 border-b px-3 py-3 sm:px-4">
         {onBack && (
           <Button
@@ -595,6 +616,9 @@ export function InboxConversationView({
                         highlightQuery={highlightQuery}
                         activeHighlightRange={activeHighlightRange}
                         actions={messageActions}
+                        onCalendarLinkClick={
+                          conversation.property_slug ? () => setCalendarModalOpen(true) : undefined
+                        }
                       />
                     ) : null;
 
@@ -801,6 +825,15 @@ export function InboxConversationView({
                     </TooltipTrigger>
                     <TooltipContent side="top">Suggest</TooltipContent>
                   </Tooltip>
+                  {conversation.property_slug ? (
+                    <InboxShareResourcesPicker
+                      propertySlug={conversation.property_slug}
+                      disabled={channelDisconnected}
+                      onInsert={(url) =>
+                        setDraft((prev) => `${prev}${prev.trim() ? '\n' : ''}${url}`)
+                      }
+                    />
+                  ) : null}
                 </div>
               </TooltipProvider>
 

@@ -47,7 +47,7 @@ export type InboxPageProps = {
   returnPath: string;
   canReply: boolean;
   canManage: boolean;
-  /** Quick replies + Automation (property); parking is Channels-only */
+  /** Quick replies + Automation. Property and parking both show these; only Channels (Meta) is property-only. */
   showSettingsManageTabs: boolean;
   scope?: InboxApiScope | null;
   orgSlug: string | null;
@@ -55,6 +55,7 @@ export type InboxPageProps = {
 };
 
 export function InboxPage({
+  kind,
   returnPath,
   canReply,
   canManage,
@@ -63,6 +64,7 @@ export function InboxPage({
   orgSlug,
   orgId,
 }: InboxPageProps) {
+  const showChannelsTab = kind === 'property';
   useAdminLayoutFillMain(true);
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -77,7 +79,8 @@ export function InboxPage({
     if (platformParam === 'web' || platformParam === 'facebook' || platformParam === 'instagram') {
       return platformParam;
     }
-    return 'all';
+    // Parking has Chat only — skip the aggregating "All" filter.
+    return showChannelsTab ? 'all' : 'web';
   });
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
@@ -114,6 +117,7 @@ export function InboxPage({
     isError: connectionsError,
   } = useInboxConnections(orgSlug, orgId, scope);
   const metaSyncInProgress = connectionsData?.metaSyncInProgress ?? false;
+  const metaSyncError = connectionsData?.metaSyncError ?? null;
   useMetaInboxSync(orgSlug, orgId, metaSyncInProgress, scope);
   const {
     data: threadsData,
@@ -191,8 +195,9 @@ export function InboxPage({
   const threadEmptyVariant = useMemo(() => {
     if (mockActive) return 'empty' as const;
     if (threadsError && conversations.length === 0) return 'load-error' as const;
-    if (platformFilter === 'web') return 'empty' as const;
+    if (platformFilter === 'web' || !showChannelsTab) return 'empty' as const;
     if (!metaConnected) return 'not-connected' as const;
+    if (metaSyncError && conversations.length === 0) return 'sync-error' as const;
     if (metaSyncInProgress && conversations.length === 0) return 'syncing' as const;
     if (search) {
       if (metaHasMore) return 'search-not-loaded' as const;
@@ -203,7 +208,9 @@ export function InboxPage({
     mockActive,
     platformFilter,
     threadsError,
+    showChannelsTab,
     metaConnected,
+    metaSyncError,
     metaSyncInProgress,
     conversations.length,
     search,
@@ -276,6 +283,7 @@ export function InboxPage({
       heroTrailing={
         <InboxManageToolbar
           canManage={canManage}
+          showChannelsTab={showChannelsTab}
           showSettingsManageTabs={showSettingsManageTabs}
           onOpen={setManageModal}
           variant="hero"
@@ -284,6 +292,7 @@ export function InboxPage({
       desktopActions={
         <InboxManageToolbar
           canManage={canManage}
+          showChannelsTab={showChannelsTab}
           showSettingsManageTabs={showSettingsManageTabs}
           onOpen={setManageModal}
         />
@@ -308,8 +317,12 @@ export function InboxPage({
           </div>
         )}
 
-        <div className="border-border/80 bg-card flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border shadow-sm">
-          <InboxPlatformTabs value={platformFilter} onChange={setPlatformFilter} />
+        <div className="border-border/80 bg-card relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border shadow-sm">
+          <InboxPlatformTabs
+            value={platformFilter}
+            onChange={setPlatformFilter}
+            platforms={showChannelsTab ? undefined : ['web']}
+          />
 
           <div className="flex min-h-0 flex-1">
             <div
@@ -320,7 +333,7 @@ export function InboxPage({
             >
               <InboxThreadList
                 conversations={conversations}
-                isLoading={threadsLoading && conversations.length === 0 && !metaSyncInProgress}
+                isLoading={(threadsLoading || metaSyncInProgress) && conversations.length === 0}
                 selectedId={selectedId}
                 platformFilter={platformFilter}
                 onSelect={selectConversation}
@@ -329,6 +342,7 @@ export function InboxPage({
                 onStatusFilter={setStatusFilter}
                 onSearch={setSearchInput}
                 emptyVariant={threadEmptyVariant}
+                syncError={metaSyncError}
                 loadError={threadsErrorValue instanceof Error ? threadsErrorValue.message : null}
                 canConnect={canManage}
                 onConnect={handleConnectMeta}
@@ -391,12 +405,19 @@ export function InboxPage({
               />
             </div>
           </div>
+
+          <MetaInboxOperationModal
+            open={metaOperation !== null}
+            operation={metaOperation ?? 'sync'}
+            loadedCount={conversations.length}
+          />
         </div>
 
         <InboxManageModals
           open={manageModal}
           onOpenChange={setManageModal}
           canManage={canManage}
+          showChannelsTab={showChannelsTab}
           showSettingsManageTabs={showSettingsManageTabs}
           usingOrgMeta={connectionsData?.usingOrgMeta}
           connections={connectionsData?.connections ?? []}
@@ -465,11 +486,6 @@ export function InboxPage({
           onOpenChange={(open) => {
             if (!open) setPagePickerState(null);
           }}
-        />
-        <MetaInboxOperationModal
-          open={metaOperation !== null}
-          operation={metaOperation ?? 'sync'}
-          loadedCount={conversations.length}
         />
       </div>
     </AdminMobilePage>

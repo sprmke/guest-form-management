@@ -2,12 +2,6 @@ import { Unplug } from 'lucide-react';
 
 import { MetaLogo } from '@/features/dashboard/inbox/components/PlatformLogo';
 
-import {
-  ResponsiveModal,
-  ResponsiveModalContent,
-  ResponsiveModalDescription,
-  ResponsiveModalTitle,
-} from '@/components/ui/responsive-modal';
 import { cn } from '@/lib/utils';
 
 export type MetaInboxOperation = 'sync' | 'disconnect' | 'connect';
@@ -49,7 +43,15 @@ function OperationIcon({ operation }: { operation: MetaInboxOperation }) {
   );
 }
 
+/**
+ * Absolutely positioned within the Inbox card (not a portal-based Dialog) so the
+ * rest of the admin shell — sidebar, top bar — stays visible and navigable while
+ * a Meta sync/connect/disconnect runs. Render inside a `relative` ancestor sized
+ * to the Inbox card.
+ */
 export function MetaInboxOperationModal({ open, operation, loadedCount = 0 }: Props) {
+  if (!open) return null;
+
   const copy = COPY[operation];
   const showLoadedCount = operation === 'sync' && loadedCount > 0;
   const statusMessage = showLoadedCount
@@ -57,64 +59,44 @@ export function MetaInboxOperationModal({ open, operation, loadedCount = 0 }: Pr
     : copy.title;
 
   return (
-    <ResponsiveModal
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) return;
-      }}
+    <div
+      className="bg-background/60 absolute inset-0 z-50 flex items-center justify-center rounded-xl p-4 backdrop-blur-md"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      aria-labelledby="meta-inbox-operation-title"
+      aria-describedby="meta-inbox-operation-description"
     >
-      <ResponsiveModalContent
-        showCloseButton={false}
-        onPointerDownOutside={(event) => event.preventDefault()}
-        onInteractOutside={(event) => event.preventDefault()}
-        onEscapeKeyDown={(event) => event.preventDefault()}
-        aria-describedby="meta-inbox-operation-description"
-        className="z-[111] max-w-[min(calc(100vw-1.5rem),22rem)] gap-0 overflow-hidden p-0 sm:max-w-[22rem]"
-        overlayClassName="z-[110]"
-      >
-        <div className="flex flex-col items-center px-6 pb-7 pt-8 text-center sm:px-7 sm:pb-8 sm:pt-9">
-          <OperationIcon operation={operation} />
+      <div className="border-border/50 bg-card shadow-elevated-lg flex w-full max-w-[min(100%,22rem)] flex-col items-center rounded-xl border px-6 pb-7 pt-8 text-center sm:px-7 sm:pb-8 sm:pt-9">
+        <OperationIcon operation={operation} />
 
-          <ResponsiveModalTitle
-            id="meta-inbox-operation-title"
-            className="mt-5 text-base font-semibold leading-snug"
-          >
-            {copy.title}
-          </ResponsiveModalTitle>
+        <h2 id="meta-inbox-operation-title" className="mt-5 text-base font-semibold leading-snug">
+          {copy.title}
+        </h2>
 
-          <ResponsiveModalDescription
-            id="meta-inbox-operation-description"
-            className="text-muted-foreground mt-2 max-w-[17rem] text-sm leading-relaxed"
-          >
-            {copy.description}
-          </ResponsiveModalDescription>
+        <p
+          id="meta-inbox-operation-description"
+          className="text-muted-foreground mt-2 max-w-[17rem] text-sm leading-relaxed"
+        >
+          {copy.description}
+        </p>
 
-          <div
-            className="mt-7 w-full"
-            role="status"
-            aria-live="polite"
-            aria-busy="true"
-            aria-labelledby="meta-inbox-operation-title"
-          >
-            <p className="sr-only">{statusMessage}</p>
-            <div
-              className="bg-muted relative h-1.5 w-full overflow-hidden rounded-full"
-              aria-hidden
-            >
-              <div className="animate-meta-sync-slide bg-primary absolute inset-y-0 left-0 w-2/5 rounded-full" />
-            </div>
-            <p
-              className={cn(
-                'text-muted-foreground mt-2.5 min-h-[1.125rem] text-xs tabular-nums',
-                !showLoadedCount && 'invisible'
-              )}
-              aria-hidden={!showLoadedCount}
-            >
-              {showLoadedCount ? `${loadedCount} loaded` : '\u00a0'}
-            </p>
+        <div className="mt-7 w-full">
+          <p className="sr-only">{statusMessage}</p>
+          <div className="bg-muted relative h-1.5 w-full overflow-hidden rounded-full" aria-hidden>
+            <div className="animate-meta-sync-slide bg-primary absolute inset-y-0 left-0 w-2/5 rounded-full" />
           </div>
+          <p
+            className={cn(
+              'text-muted-foreground mt-2.5 min-h-[1.125rem] text-xs tabular-nums',
+              !showLoadedCount && 'invisible'
+            )}
+            aria-hidden={!showLoadedCount}
+          >
+            {showLoadedCount ? `${loadedCount} loaded` : ' '}
+          </p>
         </div>
-      </ResponsiveModalContent>
-    </ResponsiveModal>
+      </div>
+    </div>
   );
 }

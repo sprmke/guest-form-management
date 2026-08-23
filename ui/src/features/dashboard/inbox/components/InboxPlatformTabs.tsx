@@ -5,14 +5,18 @@ import type { ThreadPlatformFilter } from '@/features/dashboard/inbox/types/inbo
 
 import { SlidingTabs, SlidingTabsList, SlidingTabsTrigger } from '@/components/ui/sliding-tabs';
 
-const PLATFORMS: ThreadPlatformFilter[] = ['all', ...INBOX_CHANNEL_ORDER];
+const ALL_PLATFORMS: ThreadPlatformFilter[] = ['all', ...INBOX_CHANNEL_ORDER];
 
 type Props = {
   value: ThreadPlatformFilter;
   onChange: (value: ThreadPlatformFilter) => void;
+  platforms?: ThreadPlatformFilter[];
 };
 
-export function InboxPlatformTabs({ value, onChange }: Props) {
+export function InboxPlatformTabs({ value, onChange, platforms = ALL_PLATFORMS }: Props) {
+  // Single channel (e.g. parking Chat-only) — no platform switcher needed.
+  if (platforms.length <= 1) return null;
+
   return (
     <SlidingTabs
       value={value}
@@ -24,9 +28,9 @@ export function InboxPlatformTabs({ value, onChange }: Props) {
         className="w-full max-w-none justify-start gap-0 overflow-x-auto rounded-none bg-transparent px-2 py-1.5 sm:px-3"
         pillClassName="bg-muted rounded-md shadow-none"
         aria-label="Platform"
-        remeasureDeps={[PLATFORMS.length, value]}
+        remeasureDeps={[platforms.length, value]}
       >
-        {PLATFORMS.map((platform) => {
+        {platforms.map((platform) => {
           const label = platform === 'all' ? 'All' : platformLabel(platform);
           return (
             <SlidingTabsTrigger

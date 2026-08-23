@@ -1,7 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2 } from 'lucide-react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -26,8 +25,14 @@ import type { MaintenanceItem } from '@/features/dashboard/maintenance/lib/types
 
 import { Checkbox } from '@/components/ui/checkbox';
 import { IsoDateInput } from '@/components/ui/iso-date-input';
-import { NativeSelect } from '@/components/ui/native-select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 
 const schema = z
@@ -113,11 +118,10 @@ const CATEGORY_SUGGESTIONS = [
 ];
 
 type Props = {
+  formId: string;
   initial?: MaintenanceItem | null;
   seriesRecurrenceUntil?: string | null;
   onSubmit: (values: MaintenanceItemFormValues) => void;
-  onCancel: () => void;
-  isPending?: boolean;
 };
 
 function defaultValues(
@@ -151,13 +155,7 @@ function defaultValues(
   };
 }
 
-export function MaintenanceItemForm({
-  initial,
-  seriesRecurrenceUntil,
-  onSubmit,
-  onCancel,
-  isPending,
-}: Props) {
+export function MaintenanceItemForm({ formId, initial, seriesRecurrenceUntil, onSubmit }: Props) {
   const isRecurringEdit = Boolean(initial?.recurrence_series_id);
   const isEdit = Boolean(initial);
   const { data: maintenanceSettings } = useTelegramMaintenanceSettings();
@@ -222,7 +220,7 @@ export function MaintenanceItemForm({
   }, [recurrenceInterval, scheduledOn, isEdit, setValue]);
 
   return (
-    <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
+    <form id={formId} className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
       <Field label="Label" required error={errors.label?.message}>
         <input
           className="border-input bg-card text-foreground field-focus h-10 w-full rounded-lg border px-3 text-sm transition-colors"
@@ -264,13 +262,24 @@ export function MaintenanceItemForm({
       {!isEdit || isRecurringEdit ? (
         <>
           <Field label="Repeat" error={errors.recurrence_interval?.message}>
-            <NativeSelect {...register('recurrence_interval')}>
-              {repeatOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </NativeSelect>
+            <Controller
+              name="recurrence_interval"
+              control={control}
+              render={({ field: { value, onChange } }) => (
+                <Select value={value} onValueChange={onChange}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {repeatOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
           </Field>
 
           {recurrenceInterval !== 'none' ? (
@@ -441,24 +450,6 @@ export function MaintenanceItemForm({
           </div>
         ) : null}
       </fieldset>
-
-      <div className="flex gap-2 pt-1">
-        <button
-          type="button"
-          className="border-border text-muted-foreground hover:bg-muted min-h-[44px] flex-1 rounded-xl border text-sm font-semibold transition-colors"
-          onClick={onCancel}
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          disabled={isPending}
-          className="gradient-primary text-primary-foreground shadow-soft flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl text-sm font-semibold disabled:opacity-50"
-        >
-          {isPending && <Loader2 className="size-4 animate-spin" aria-hidden />}
-          {initial ? 'Save' : 'Add reminder'}
-        </button>
-      </div>
     </form>
   );
 }
