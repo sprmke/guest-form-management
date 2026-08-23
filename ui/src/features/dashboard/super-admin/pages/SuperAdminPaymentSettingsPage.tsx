@@ -6,11 +6,12 @@ import {
   usePlatformPaymentSettings,
   useUpdatePlatformPaymentSettings,
 } from '@/features/dashboard/super-admin/hooks/usePlatformPaymentSettings';
-import { usePageTitle } from '@/lib/pageTitle';
+
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { usePageTitle } from '@/lib/pageTitle';
 
 const RAIL_OPTIONS = ['qrph', 'paymaya', 'dob'] as const;
 

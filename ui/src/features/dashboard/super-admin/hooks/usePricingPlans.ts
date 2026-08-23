@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import type { PlanFeatures } from '@/features/dashboard/plans/lib/planFeatures';
 import { callEdgeFunction } from '@/features/dashboard/org/lib/edgeClient';
+import type { PlanFeatures } from '@/features/dashboard/plans/lib/planFeatures';
 import type {
   PricingPlan,
   PropertySubscriptionSummary,

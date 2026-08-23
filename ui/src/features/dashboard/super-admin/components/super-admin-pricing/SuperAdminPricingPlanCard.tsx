@@ -1,7 +1,7 @@
 import { Pencil } from 'lucide-react';
 
-import type { PricingPlan } from '@/features/dashboard/super-admin/types/pricingPlan';
 import { formatPricingPlanHostPrice } from '@/features/dashboard/super-admin/lib/pricingPlanDisplay';
+import type { PricingPlan } from '@/features/dashboard/super-admin/types/pricingPlan';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

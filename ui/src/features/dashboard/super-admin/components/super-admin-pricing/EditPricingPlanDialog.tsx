@@ -89,12 +89,15 @@ export function EditPricingPlanDialog({
 
   return (
     <ResponsiveModal open={open} onOpenChange={onOpenChange}>
-      <ResponsiveModalContent className="sm:max-w-lg" sheetLayout="split">
-        <ResponsiveModalHeader>
+      <ResponsiveModalContent
+        sheetLayout="split"
+        className="flex max-h-[min(90dvh,42rem)] max-w-[min(calc(100vw-1.5rem),32rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg sm:p-0"
+      >
+        <ResponsiveModalHeader className="shrink-0 px-6 pt-6">
           <ResponsiveModalTitle>Edit {plan.code}</ResponsiveModalTitle>
         </ResponsiveModalHeader>
 
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-1">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-6 py-4">
           <div className="space-y-2">
             <Label htmlFor="plan-name">Name</Label>
             <Input id="plan-name" value={name} onChange={(e) => setName(e.target.value)} />
@@ -240,7 +243,7 @@ export function EditPricingPlanDialog({
           </div>
         </div>
 
-        <ResponsiveModalFooter className="gap-2 sm:gap-0">
+        <ResponsiveModalFooter className="shrink-0 gap-2 px-6 pb-6 pt-3 sm:gap-0">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>

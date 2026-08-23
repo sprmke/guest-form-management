@@ -28,10 +28,11 @@ import {
   type SuperAdminPricingPlansViewMode,
 } from '@/features/dashboard/super-admin/lib/superAdminPricingFilters';
 import type { PricingPlan } from '@/features/dashboard/super-admin/types/pricingPlan';
-import { usePageTitle } from '@/lib/pageTitle';
+
 
 import { useAdminMobileGridViewGuard } from '@/hooks/useAdminMobileGridViewGuard';
 import { useIsBelowLg } from '@/hooks/useMediaQuery';
+import { usePageTitle } from '@/lib/pageTitle';
 
 export function SuperAdminPricingPlansPage() {
   usePageTitle('Kame Homes - Pricing plans');

@@ -15,7 +15,7 @@ export const superAdminApprovalDialogBodyClass =
   'min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6';
 
 export const superAdminApprovalDialogFooterClass =
-  'border-border bg-background shrink-0 flex-col gap-2 border-t px-5 py-3.5 sm:flex-row sm:flex-wrap sm:justify-end sm:px-6 sm:py-4';
+  'border-border shrink-0 flex-col gap-2 border-t px-5 py-3.5 sm:flex-row sm:flex-wrap sm:justify-end sm:px-6 sm:py-4';
 
 export const superAdminApprovalSectionTitleClass =
   'text-foreground text-xs font-semibold uppercase tracking-wide';
