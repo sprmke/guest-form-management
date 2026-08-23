@@ -1,12 +1,14 @@
-import { useState, type ReactNode } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 
 import { Monitor, Smartphone } from 'lucide-react';
 
-import { useMarketingSidebarLayout } from '@/features/dashboard/marketing/hooks/useMarketingSidebarLayout';
 import {
   PreviewViewportProvider,
   type PreviewViewport,
 } from '@/features/guest/lib/previewViewportContext';
+
+import { useMarketingSidebarLayout } from '@/features/dashboard/marketing/hooks/useMarketingSidebarLayout';
+import { usePageEditorPreviewScroll } from '@/features/dashboard/page-editor/lib/pageEditorPreviewScroll';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -18,6 +20,44 @@ type Props = {
   className?: string;
   defaultViewport?: PageEditorPreviewViewport;
 };
+
+function PreviewFrame({
+  viewport,
+  children,
+}: {
+  viewport: PageEditorPreviewViewport;
+  children: ReactNode;
+}) {
+  const api = usePageEditorPreviewScroll();
+
+  const setScrollRoot = useCallback(
+    (el: HTMLDivElement | null) => {
+      api?.registerScrollRoot(el);
+    },
+    [api]
+  );
+
+  if (viewport === 'mobile') {
+    return (
+      <div className="min-h-0 flex-1 overflow-hidden p-3 sm:p-4">
+        <div
+          ref={setScrollRoot}
+          className="border-border bg-background relative mx-auto h-[min(780px,calc(100dvh-12rem))] w-full max-w-[420px] transform-gpu overflow-y-auto overflow-x-hidden border shadow-sm transition-[max-width] duration-300 ease-out"
+        >
+          <PreviewViewportProvider value={viewport}>{children}</PreviewViewportProvider>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={setScrollRoot} className="min-h-0 flex-1 overflow-auto p-3 sm:p-4">
+      <div className="border-border bg-background mx-auto min-h-full w-full max-w-[1280px] overflow-x-hidden border shadow-sm transition-[max-width] duration-300 ease-out">
+        <PreviewViewportProvider value={viewport}>{children}</PreviewViewportProvider>
+      </div>
+    </div>
+  );
+}
 
 /** Scrollable guest-page preview with desktop / mobile viewport toggle. */
 export function PageEditorPreviewPane({ children, className, defaultViewport = 'mobile' }: Props) {
@@ -65,18 +105,7 @@ export function PageEditorPreviewPane({ children, className, defaultViewport = '
           </Button>
         </div>
       </div>
-      <div className="min-h-0 flex-1 overflow-auto p-3 sm:p-4">
-        <div
-          className={cn(
-            'border-border bg-background mx-auto overflow-x-hidden border shadow-sm transition-[max-width] duration-300 ease-out',
-            viewport === 'mobile'
-              ? 'relative h-[min(780px,calc(100dvh-12rem))] w-full max-w-[420px] transform-gpu overflow-y-auto'
-              : 'min-h-full w-full max-w-[1280px]'
-          )}
-        >
-          <PreviewViewportProvider value={viewport}>{children}</PreviewViewportProvider>
-        </div>
-      </div>
+      <PreviewFrame viewport={viewport}>{children}</PreviewFrame>
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { usePublicPropertyDetail } from '@/features/guest/marketing/properties/h
 import type { PropertyLandingSectionConfig } from '@/features/guest/marketing/properties/types/publicProperty';
 import { useGuestStayGuidePreview } from '@/features/guest/stay-guide/hooks/useGuestStayGuide';
 import type { StayGuideSectionConfig } from '@/features/guest/stay-guide/lib/api';
+import { extractLeadingSectionHeading } from '@/features/guest/stay-guide/lib/stayGuideContent';
 import { StayGuidePage } from '@/features/guest/stay-guide/pages/StayGuidePage';
 
 import {
@@ -25,6 +26,7 @@ import {
 } from '@/features/dashboard/bookings/hooks/usePropertyTemplates';
 import { normalizeBlockLevelPlaceholdersInHtml } from '@/features/dashboard/bookings/lib/normalizeBlockLevelPlaceholders';
 import { applyPropertyTemplatePlaceholders } from '@/features/dashboard/bookings/lib/propertyTemplatePlaceholders';
+import { PropertySettingsBrandColorPreview } from '@/features/dashboard/org/components/property-settings/PropertySettingsBrandColorPreview';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useOrgBrandColor } from '@/features/dashboard/org/hooks/useOrgBrandColor';
 import {
@@ -60,7 +62,6 @@ import {
   PropertyLandingEditorPanel,
   type LandingProfileContent,
 } from '@/features/dashboard/page-editor/components/property-landing/PropertyLandingEditorPanel';
-import { PropertySettingsBrandColorPreview } from '@/features/dashboard/org/components/property-settings/PropertySettingsBrandColorPreview';
 import { StayGuideEditorPanel } from '@/features/dashboard/page-editor/components/stay-guide/StayGuideEditorPanel';
 import {
   draftFromTemplate,
@@ -80,7 +81,6 @@ import { STAY_GUIDE_STANDARD_TEMPLATE_KEYS } from '@/features/dashboard/page-edi
 import { usePropertyLandingEditorStore } from '@/features/dashboard/page-editor/stores/propertyLandingEditorStore';
 import { useStayGuideEditorStore } from '@/features/dashboard/page-editor/stores/stayGuideEditorStore';
 import { RequirePropertyFeature } from '@/features/dashboard/plans/components/RequirePropertyFeature';
-import { extractLeadingSectionHeading } from '@/features/guest/stay-guide/lib/stayGuideContent';
 
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { SectionContentSkeleton } from '@/components/skeletons/AdminSkeletons';

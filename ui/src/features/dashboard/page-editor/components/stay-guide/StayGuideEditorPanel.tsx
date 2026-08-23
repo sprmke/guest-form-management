@@ -17,20 +17,22 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical } from 'lucide-react';
 
+import type { StayGuideChapterConfig } from '@/features/guest/stay-guide/lib/api';
+
+import type { PropertyTemplateDto } from '@/features/dashboard/bookings/hooks/usePropertyTemplates';
 import { StyleSection } from '@/features/dashboard/marketing/components/calendar-builder/components/panels/StyleSection';
 import { SectionVisibilityToggle } from '@/features/dashboard/page-editor/components/controls/SectionVisibilityToggle';
 import {
   StayGuideSectionContentCard,
   type StayGuideSectionDraft,
 } from '@/features/dashboard/page-editor/components/stay-guide/StayGuideSectionContentCard';
+import { PageEditorRevealTarget } from '@/features/dashboard/page-editor/lib/pageEditorPreviewScroll';
 import {
   CHAPTER_LABELS,
   STAY_GUIDE_CHAPTER_SECTIONS,
 } from '@/features/dashboard/page-editor/lib/stayGuideChapterSections';
 import { useStayGuideEditorStore } from '@/features/dashboard/page-editor/stores/stayGuideEditorStore';
-import type { StayGuideChapterConfig } from '@/features/guest/stay-guide/lib/api';
 
-import type { PropertyTemplateDto } from '@/features/dashboard/bookings/hooks/usePropertyTemplates';
 
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
@@ -61,38 +63,42 @@ function SortableSectionBlock({
   });
 
   return (
-    <div
-      ref={setNodeRef}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
-      }}
-      className={cn(
-        'border-border overflow-hidden rounded-xl border',
-        isDragging && 'bg-accent/40 z-10 shadow-sm'
-      )}
-    >
-      <div className="flex min-h-[44px] items-center gap-1.5 px-2 py-1.5 sm:px-3">
-        <button
-          type="button"
-          className="text-muted-foreground hover:text-foreground flex size-9 shrink-0 items-center justify-center rounded-md"
-          aria-label={`Reorder ${label}`}
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical className="size-4" aria-hidden />
-        </button>
-        <span className="text-foreground min-w-0 flex-1 truncate text-sm font-medium">{label}</span>
-        <Switch
-          checked={visible}
-          onCheckedChange={onVisibilityChange}
-          aria-label={`Show ${label}`}
-        />
+    <PageEditorRevealTarget anchor={chapterId}>
+      <div
+        ref={setNodeRef}
+        style={{
+          transform: CSS.Transform.toString(transform),
+          transition,
+        }}
+        className={cn(
+          'border-border overflow-hidden rounded-xl border',
+          isDragging && 'bg-accent/40 z-10 shadow-sm'
+        )}
+      >
+        <div className="flex min-h-[44px] items-center gap-1.5 px-2 py-1.5 sm:px-3">
+          <button
+            type="button"
+            className="text-muted-foreground hover:text-foreground flex size-9 shrink-0 items-center justify-center rounded-md"
+            aria-label={`Reorder ${label}`}
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="size-4" aria-hidden />
+          </button>
+          <span className="text-foreground min-w-0 flex-1 truncate text-sm font-medium">
+            {label}
+          </span>
+          <Switch
+            checked={visible}
+            onCheckedChange={onVisibilityChange}
+            aria-label={`Show ${label}`}
+          />
+        </div>
+        <div className={cn('border-border space-y-2 border-t px-3 py-3', !visible && 'opacity-60')}>
+          {children}
+        </div>
       </div>
-      <div className={cn('border-border space-y-2 border-t px-3 py-3', !visible && 'opacity-60')}>
-        {children}
-      </div>
-    </div>
+    </PageEditorRevealTarget>
   );
 }
 
@@ -128,42 +134,54 @@ export function StayGuideEditorPanel({
   return (
     <div className="min-w-0">
       <StyleSection title="Layout" defaultOpen>
-        <SectionVisibilityToggle
-          id="stay-guide-hero"
-          label="Hero"
-          checked={config.hero.visible}
-          onCheckedChange={(visible) => setSectionVisible('hero', visible)}
-        />
-        <SectionVisibilityToggle
-          id="stay-guide-pass"
-          label="Stay Pass card"
-          checked={config.stayPassCard.visible}
-          onCheckedChange={(visible) => setSectionVisible('stayPassCard', visible)}
-        />
-        <SectionVisibilityToggle
-          id="stay-guide-check-in-docs"
-          label="Check-in documents"
-          checked={config.checkInDocuments.visible}
-          onCheckedChange={(visible) => setSectionVisible('checkInDocuments', visible)}
-        />
-        <SectionVisibilityToggle
-          id="stay-guide-gallery"
-          label="Gallery"
-          checked={config.galleryCarousel.visible}
-          onCheckedChange={(visible) => setSectionVisible('galleryCarousel', visible)}
-        />
-        <SectionVisibilityToggle
-          id="stay-guide-tabs"
-          label="Quick-nav tabs"
-          checked={config.quickNavTabs.visible}
-          onCheckedChange={(visible) => setSectionVisible('quickNavTabs', visible)}
-        />
-        <SectionVisibilityToggle
-          id="stay-guide-help"
-          label="Need Anything"
-          checked={config.helpSection.visible}
-          onCheckedChange={(visible) => setSectionVisible('helpSection', visible)}
-        />
+        <PageEditorRevealTarget anchor="stay-guide-hero">
+          <SectionVisibilityToggle
+            id="stay-guide-hero"
+            label="Hero"
+            checked={config.hero.visible}
+            onCheckedChange={(visible) => setSectionVisible('hero', visible)}
+          />
+        </PageEditorRevealTarget>
+        <PageEditorRevealTarget anchor="stay-guide-pass">
+          <SectionVisibilityToggle
+            id="stay-guide-pass"
+            label="Stay Pass card"
+            checked={config.stayPassCard.visible}
+            onCheckedChange={(visible) => setSectionVisible('stayPassCard', visible)}
+          />
+        </PageEditorRevealTarget>
+        <PageEditorRevealTarget anchor="check-in-documents">
+          <SectionVisibilityToggle
+            id="stay-guide-check-in-docs"
+            label="Check-in documents"
+            checked={config.checkInDocuments.visible}
+            onCheckedChange={(visible) => setSectionVisible('checkInDocuments', visible)}
+          />
+        </PageEditorRevealTarget>
+        <PageEditorRevealTarget anchor="stay-guide-gallery">
+          <SectionVisibilityToggle
+            id="stay-guide-gallery"
+            label="Gallery"
+            checked={config.galleryCarousel.visible}
+            onCheckedChange={(visible) => setSectionVisible('galleryCarousel', visible)}
+          />
+        </PageEditorRevealTarget>
+        <PageEditorRevealTarget anchor="stay-guide-tabs">
+          <SectionVisibilityToggle
+            id="stay-guide-tabs"
+            label="Quick-nav tabs"
+            checked={config.quickNavTabs.visible}
+            onCheckedChange={(visible) => setSectionVisible('quickNavTabs', visible)}
+          />
+        </PageEditorRevealTarget>
+        <PageEditorRevealTarget anchor="need-anything">
+          <SectionVisibilityToggle
+            id="stay-guide-help"
+            label="Need Anything"
+            checked={config.helpSection.visible}
+            onCheckedChange={(visible) => setSectionVisible('helpSection', visible)}
+          />
+        </PageEditorRevealTarget>
       </StyleSection>
 
       <StyleSection title="Sections" defaultOpen keepChildrenMounted>
@@ -192,18 +210,23 @@ export function StayGuideEditorPanel({
                       const draft = drafts[section.templateKey];
                       if (!template || !draft) return null;
                       return (
-                        <StayGuideSectionContentCard
+                        <PageEditorRevealTarget
                           key={section.templateKey}
-                          template={template}
-                          draft={draft}
-                          open={openSectionKey === section.templateKey}
-                          onOpenChange={(nextOpen) =>
-                            setOpenSectionKey(nextOpen ? section.templateKey : null)
-                          }
-                          onDraftChange={(next) => onDraftChange(section.templateKey, next)}
-                          onResetToDefault={() => onResetSection(section.templateKey)}
-                          disabled={contentBusy}
-                        />
+                          anchor={section.templateKey}
+                        >
+                          <StayGuideSectionContentCard
+                            template={template}
+                            draft={draft}
+                            open={openSectionKey === section.templateKey}
+                            onOpenChange={(nextOpen) =>
+                              setOpenSectionKey(nextOpen ? section.templateKey : null)
+                            }
+                            onDraftChange={(next) => onDraftChange(section.templateKey, next)}
+                            onResetToDefault={() => onResetSection(section.templateKey)}
+                            disabled={contentBusy}
+                            previewAnchor={section.templateKey}
+                          />
+                        </PageEditorRevealTarget>
                       );
                     })}
                   </SortableSectionBlock>

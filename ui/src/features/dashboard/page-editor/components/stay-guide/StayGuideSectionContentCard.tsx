@@ -19,6 +19,7 @@ import {
 } from '@/features/dashboard/bookings/lib/propertyTemplatePlaceholders';
 import { buildValidPlaceholderKeySet } from '@/features/dashboard/bookings/lib/telegramPlaceholderGroups';
 import { propertyPlaceholderLinesForTemplate } from '@/features/dashboard/bookings/lib/templatePlaceholderCatalog';
+import { useRevealPreviewOnOpen } from '@/features/dashboard/page-editor/lib/pageEditorPreviewScroll';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -37,6 +38,8 @@ type Props = {
   onDraftChange: (next: StayGuideSectionDraft) => void;
   onResetToDefault: () => void;
   disabled?: boolean;
+  /** When this card opens, scroll the live preview to this anchor. */
+  previewAnchor?: string | null;
 };
 
 /** Compact accordion card: section image + WYSIWYG for Stay Guide Page Editor. */
@@ -48,10 +51,12 @@ export function StayGuideSectionContentCard({
   onDraftChange,
   onResetToDefault,
   disabled,
+  previewAnchor,
 }: Props) {
   const editorRef = useRef<RichTextEditorHandle>(null);
   const [placeholdersOpen, setPlaceholdersOpen] = useState(false);
   const uploadTemplateAsset = useUploadPropertyTemplateAsset();
+  useRevealPreviewOnOpen(open, previewAnchor ?? template.templateKey);
 
   const placeholderLines = useMemo(
     () => propertyPlaceholderLinesForTemplate(template.templateKey, 'standard'),

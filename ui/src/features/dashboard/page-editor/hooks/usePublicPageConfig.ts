@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import type { PropertyLandingSectionConfig } from '@/features/guest/marketing/properties/types/publicProperty';
+import type { StayGuideSectionConfig } from '@/features/guest/stay-guide/lib/api';
+
 import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { getSessionJwt } from '@/features/dashboard/org/lib/edgeClient';
-import type { StayGuideSectionConfig } from '@/features/guest/stay-guide/lib/api';
-import type { PropertyLandingSectionConfig } from '@/features/guest/marketing/properties/types/publicProperty';
 
 export type PublicPageType = 'stay_guide' | 'property_landing';
 
