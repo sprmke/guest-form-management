@@ -128,7 +128,7 @@ Route is registered **before** `/properties/:propertySlug` so `in` is not treate
 
 Gap analysis (ratings, nearby POIs, etc.): **[[public-property-catalog|Public property catalog — reference]]**.
 
-**Section order / visibility** — response includes **`sectionConfig`** from **`public_page_configs`** (`page_type = property_landing`). `resolvePropertyLandingSections` drives which of gallery / overview / amenities / location / rules / reviews render and in what order. Missing config → all sections visible in today’s default order. Hosts edit this (plus photos, description, amenities, house rules, cancellation, socials, brand color) under **[[public-pages|Public Pages]] → Property → Edit**. Booking card is always shown (not togglable). Similar properties stay out of config scope.
+**Section order / visibility** — response includes **`sectionConfig`** from **`public_page_configs`** (`page_type = property_landing`). Section order is **fixed** (gallery → overview → amenities → location → rules → reviews). **Gallery** and **Overview** are always shown. Hosts can only toggle amenities / location / rules / reviews under **[[public-pages|Public Pages]] → Property → Edit**. Booking card is always shown. Similar properties stay out of config scope.
 
 **Responsive layout** — listing chrome uses **CSS container queries** (`@container` / `@5xl:` ≈ 1024px content width), not only viewport `lg:` / `md:`. Below that width: single column, hero gallery, 2-col stats, fixed bottom **Reserve** bar. At `@5xl+`: `BookingCard` sidebar + collage gallery. Page Editor preview frames (mobile ≤420px or a narrow desktop pane) therefore match real phone/tablet layouts even when the host browser is wide.
 

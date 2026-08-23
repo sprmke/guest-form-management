@@ -60,6 +60,8 @@ Property Settings is where you complete operational setup: basic info, capacity,
   A: Open **Verification** from the property sidebar (not org **Get Verified**). That flow covers ownership proof, contract dates, and the Recommended badge for this listing. Submitting listing **Recommended** tier requires a paid plan with **`recommendedBadgeEligible`**; the upgrade modal links to **Plans**.
 - Q: My contract is ending — what should I do?
   A: A renewal reminder may appear when you log in. Tap **Submit renewal contract** or use **Verification** in the sidebar to upload an updated contract before the grace period ends.
+- Q: What does the Cleaning Buffer setting do?
+  A: It's the minimum time your cleaner needs between one guest checking out and the next guest checking in **on the same day**. Set it under **Property Details → Cleaning Buffer**. Once set, guests can't pick a check-in or check-out time on the booking form that leaves less than that gap — it's off by default.
 
 ---
 
@@ -154,25 +156,28 @@ Stored in `properties.settings.description` (max 1000 chars). Also editable in t
 
 Stored in `properties.settings` (+ `properties.max_guests` derived from adults + children).
 
-| Field         | Key            | Default                | Guest-facing use                                      |
-| ------------- | -------------- | ---------------------- | ----------------------------------------------------- |
-| Unit type     | `unitTypeId`   | `studio` (Azure North) | Sets bedrooms, bathrooms, max adults/children         |
-| Bedrooms      | `bedrooms`     | from unit type         | Read-only; from development unit type config          |
-| Bathrooms     | `bathrooms`    | from unit type         | Read-only; from development unit type config          |
-| Floor         | `floors`       | residence limits       | Listing detail                                        |
-| Check-in      | `checkInTime`  | `14:00`                | Guest form default + early-arrival warning threshold  |
-| Check-out     | `checkOutTime` | `12:00`                | Guest form default + late-departure warning threshold |
-| Max adults    | `maxAdults`    | from unit type         | Read-only; guest form occupancy limit                 |
-| Max children  | `maxChildren`  | from unit type         | Read-only; guest form occupancy limit                 |
-| Self check-in | `selfCheckIn`  | `false`                | Public listing + stay guide                           |
+| Field           | Key                     | Default                | Guest-facing use                                                       |
+| --------------- | ----------------------- | ---------------------- | ---------------------------------------------------------------------- |
+| Unit type       | `unitTypeId`            | `studio` (Azure North) | Sets bedrooms, bathrooms, max adults/children                          |
+| Bedrooms        | `bedrooms`              | from unit type         | Read-only; from development unit type config                           |
+| Bathrooms       | `bathrooms`             | from unit type         | Read-only; from development unit type config                           |
+| Floor           | `floors`                | residence limits       | Listing detail                                                         |
+| Check-in        | `checkInTime`           | `14:00`                | Guest form default + early-arrival warning threshold                   |
+| Check-out       | `checkOutTime`          | `12:00`                | Guest form default + late-departure warning threshold                  |
+| Cleaning Buffer | `cleaningBufferMinutes` | off (`null`)           | Minimum gap enforced between a checkout and the next check-in same day |
+| Max adults      | `maxAdults`             | from unit type         | Read-only; guest form occupancy limit                                  |
+| Max children    | `maxChildren`           | from unit type         | Read-only; guest form occupancy limit                                  |
+| Self check-in   | `selfCheckIn`           | `false`                | Public listing + stay guide                                            |
 
 **Layout:** row 1 — Unit type, Bedrooms, Bathrooms; row 2 — Floor, Max adults, Max children.
 
 **Unit type** options come from the property's development/residence via **`GET get-residence-unit-types`**. Changing unit type updates `bedrooms`, `bathrooms`, `maxAdults`, `maxChildren`, and `max_guests` (computed sum) on save. Super admin configures per-type bedrooms/bathrooms/max guests under **Development → Unit types**.
 
-Check-in/out times are saved as 24-hour **`HH:mm`** strings. They appear on the public property page, house-rule presets, and — after save — pre-fill the guest booking form Stay step via **`get-guest-payment-info`** → `useGuestPaymentInfo()`.
+Check-in/out times are picked via the shared **`TimePicker`** (`ui/src/components/ui/time-picker.tsx`, 30-min increments — same component used on the guest form), saved as 24-hour **`HH:mm`** strings. They appear on the public property page, house-rule presets, and — after save — pre-fill the guest booking form Stay step via **`get-guest-payment-info`** → `useGuestPaymentInfo()`.
 
-Validated on save against residence limits (see Azure North table above).
+**Cleaning Buffer** — a `Select` (Off, then 1h–6h in 30-minute steps) storing whole minutes (`60`–`360`, step `30`) or `null` for off. Only applies to a **same-day turnover**: one guest's `checkOutDate` equal to another guest's `checkInDate` on the same property. When set, the guest booking form disables check-in times earlier than `(previous checkout time + buffer)` and check-out times later than `(next check-in time − buffer)` in the `TimePicker`, and `submit-form` re-validates the same rule server-side (`_shared/cleaningBuffer.ts`, `_shared/guestFormSettings.ts`) before saving. Does not affect non-adjacent bookings or dates with no turnover.
+
+Validated on save against residence limits (see Azure North table above); Cleaning Buffer is validated in `_shared/propertySettingsValidation.ts` (must be `null` or a valid 30-minute step between 60 and 360).
 
 ---
 
@@ -418,6 +423,8 @@ booth UI; premium human concierge portrait). Admin settings fields above are unc
 | Email automation copy/defaults (UI)   | `ui/src/features/dashboard/org/lib/propertyEmailAutomationDefaults.ts` |
 | Residence defaults (edge)             | `supabase/functions/_shared/propertyResidenceDefaults.ts`              |
 | Email automation copy/defaults (edge) | `supabase/functions/_shared/propertyEmailAutomationDefaults.ts`        |
+| Cleaning buffer constants (UI)        | `ui/src/lib/cleaningBuffer.ts`                                         |
+| Cleaning buffer constants (edge)      | `supabase/functions/_shared/cleaningBuffer.ts`                         |
 
 Keep UI and edge copies in sync when changing rules.
 

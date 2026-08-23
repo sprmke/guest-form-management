@@ -2,7 +2,7 @@
 title: 'Property Guest Inbox'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-20
+updated: 2026-08-22
 ---
 
 # Property Guest Inbox
@@ -46,6 +46,8 @@ This is where you read and reply to guest messages for this property: website ch
   A: Disconnect removes the Meta connection and deletes synced Facebook/Instagram conversations from this inbox. You can reconnect again to view and load conversations.
 - Q: What should I put in **Tone & rules** under Manage AI response?
   A: Only extra tone or rules. Property details, rates, availability, booking info, and Quick replies are already used automatically — tap the **?** next to the label for that reminder.
+- Q: How do I send my guest their approved GAF, a calendar link, or a link to check their security deposit refund?
+  A: Tap the **Share** icon (next to Quick reply and Suggest) in the composer. Pick a property link (Property page, Calendar, Chat with host) or search for the guest's booking to insert Stay Guide, Approved GAF, Approved Pet Form, Parking Endorsement, Pay Parking, Security Deposit Refund, or Leave a Review links — whichever apply to that booking's current status and documents.
 
 **Plan gating:** Manual replies and **Manage AI response** stay free. Enabling **Send automatically** requires **`aiChatAutoReply`** (Automation tab pre-flight + **`social-inbox-settings`** PATCH). Runtime auto-reply skips when the property plan lacks the feature; org-level contexts without a property id use **`requireOrgPropertyFeature`** / **`orgHasPropertyWithFeature`** on the server.
 
@@ -76,28 +78,40 @@ This is where you read and reply to guest messages for this property: website ch
 - Query/body: `property_id` on inbox edge functions; auth via `verifyPropertyAccess` + `inbox:*`.
 - **Instagram sender names:** DM threads store the guest’s Instagram username (or name when Meta sends one). Opening a thread that still says **Guest** (legacy webhook rows) refetches the profile from Meta and updates the list.
 - **Message body rendering:** plain `body_text` is parsed client-side into rich blocks via shared `ChatRichBody` / `ChatMessageBubble`.
+- **Share resources:** the composer's **Share** icon (`InboxShareResourcesPicker`) inserts a plain URL into the draft — no new message/attachment type. A Property section (Property page, Calendar, Chat with host) is always available; a Booking section lets the host search this property's bookings, then shows only the links that apply to the picked booking's status/documents (Stay Guide, Approved GAF, Approved Pet Form, Parking Endorsement, Pay Parking, Security Deposit Refund, Leave a Review). Every inserted link renders as a tap card via the existing `urlLinkCardMeta()` path matchers — works identically on Web, Facebook, and Instagram sends.
+- **Calendar tap-to-modal:** a "Check availability" calendar link card, when tapped in either the host bubble here or the guest's own web chat widget, opens the property's availability calendar in an in-place modal (`BookingCalendarModal`) instead of navigating to a new tab.
+- **Approved GAF / Pet share links:** these two PDFs live in private Storage buckets, so their share links use a durable per-booking `document_share_token` (mirrors the Stay Guide token) — a fresh signed Storage URL is minted server-side on every visit, so the link keeps working long after any individual signed URL would expire. Auto-issued the first time a host opens the Share picker on a booking with an approved document. Parking Endorsement is a public bucket URL and needs no token.
 
 ## API reference
 
-| Function                  | Notes                                                          |
-| ------------------------- | -------------------------------------------------------------- |
-| `meta-inbox-*`            | OAuth / status / disconnect / backfill — require `property_id` |
-| `meta-inbox-resubscribe`  | Re-verify + repair Page webhook in place (`inbox:manage`)      |
-| `social-inbox-threads`    | Scoped list                                                    |
-| `social-inbox-messages`   | Messages / mark read / edit / unsend                           |
-| `social-inbox-send`       | Replies; optional `useHumanAgentTag` for 24h–7d Meta DMs       |
-| `social-inbox-templates`  | Quick reply CRUD (`inbox:manage` + `property_id`)              |
-| `social-inbox-settings`   | Automation GET/PATCH (`inbox:manage` + `property_id`)          |
-| `social-inbox-ai-suggest` | AI draft (`inbox:reply` + `property_id`)                       |
+| Function                             | Notes                                                                                   |
+| ------------------------------------ | --------------------------------------------------------------------------------------- |
+| `meta-inbox-*`                       | OAuth / status / disconnect / backfill — require `property_id`                          |
+| `meta-inbox-resubscribe`             | Re-verify + repair Page webhook in place (`inbox:manage`)                               |
+| `social-inbox-threads`               | Scoped list                                                                             |
+| `social-inbox-messages`              | Messages / mark read / edit / unsend                                                    |
+| `social-inbox-send`                  | Replies; optional `useHumanAgentTag` for 24h–7d Meta DMs                                |
+| `social-inbox-templates`             | Quick reply CRUD (`inbox:manage` + `property_id`)                                       |
+| `social-inbox-settings`              | Automation GET/PATCH (`inbox:manage` + `property_id`)                                   |
+| `social-inbox-ai-suggest`            | AI draft (`inbox:reply` + `property_id`)                                                |
+| `issue-booking-document-share-token` | Issue/reuse the GAF/Pet share token for a booking (`bookings:workflow` + `property_id`) |
+| `get-guest-booking-document`         | Public GET — resolves `?token=&doc=gaf\|pet` to a fresh signed URL                      |
 
 ## Implementation map
 
-| Area  | Path                                                             |
-| ----- | ---------------------------------------------------------------- |
-| Page  | `ui/src/features/dashboard/inbox/pages/PropertyInboxPage.tsx`    |
-| Shell | `ui/src/features/dashboard/inbox/pages/InboxPage.tsx`            |
-| Scope | `supabase/functions/_shared/metaInboxScope.ts`, `inboxAccess.ts` |
-| Auth  | `resolveInboxAccess` — property or parking only                  |
+| Area                         | Path                                                                                                                                  |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Page                         | `ui/src/features/dashboard/inbox/pages/PropertyInboxPage.tsx`                                                                         |
+| Shell                        | `ui/src/features/dashboard/inbox/pages/InboxPage.tsx`                                                                                 |
+| Scope                        | `supabase/functions/_shared/metaInboxScope.ts`, `inboxAccess.ts`                                                                      |
+| Auth                         | `resolveInboxAccess` — property or parking only                                                                                       |
+| Share picker                 | `ui/src/features/dashboard/inbox/components/InboxShareResourcesPicker.tsx`, `lib/inboxShareBookingItems.ts`                           |
+| Calendar tap-to-modal        | `ui/src/components/chat/ChatUrlLinkCard.tsx` (`onActivate`), `ChatRichBody.tsx` (`onCalendarLinkClick`), `ChatMessageBubble.tsx`      |
+| Rich link card titles        | `ui/src/lib/chat/parseChatRichBlocks.ts#urlLinkCardMeta`                                                                              |
+| GAF/Pet document share token | `supabase/functions/_shared/bookingDocumentShareToken.ts`, `issue-booking-document-share-token/`, `get-guest-booking-document/`       |
+| Admin document share hook    | `ui/src/features/dashboard/bookings/hooks/useBookingDocumentShareLink.ts`                                                             |
+| Guest resolver page          | `ui/src/features/guest/booking-documents/pages/GuestBookingDocumentPage.tsx` — see [[guest-booking-document\|Guest booking document]] |
+| Migration                    | `supabase/migrations/20261102130000_booking_document_share_token.sql`                                                                 |
 
 ## Related
 
