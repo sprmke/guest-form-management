@@ -5,22 +5,19 @@ import type { GuestFormStepConfig } from '@/features/guest/form/lib/guestFormSte
 export const SD_FORM_STEPS: GuestFormStepConfig[] = [
   {
     id: 1,
-    short: 'Review',
-    label: 'Leave a Review',
+    title: 'Review',
     hint: 'Share your experience',
     icon: Star,
   },
   {
     id: 2,
-    short: 'Surprise',
-    label: 'Claim surprise',
+    title: 'Surprise',
     hint: 'Spin for your next stay',
     icon: Gift,
   },
   {
     id: 3,
-    short: 'Refund',
-    label: 'Refund details',
+    title: 'Refund',
     hint: 'Receive your deposit',
     icon: Wallet,
   },

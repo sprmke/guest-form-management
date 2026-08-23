@@ -3,6 +3,13 @@ import { ArrowUpDown, LayoutGrid, List, Map, SlidersHorizontal } from 'lucide-re
 import type { SearchListingsType } from '@/features/guest/search/types/search';
 
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 
 export type SearchViewMode = 'grid' | 'list' | 'map';
@@ -118,18 +125,21 @@ export function SearchResultsToolbar({
           {showSort ? (
             <div className="relative flex items-center gap-2">
               <ArrowUpDown className="text-muted-foreground hidden h-4 w-4 sm:block" aria-hidden />
-              <select
-                value={safeSort}
-                onChange={(e) => onSortChange(e.target.value)}
-                aria-label="Sort results"
-                className="border-border bg-background text-foreground focus:border-primary focus:ring-primary/20 min-h-[44px] appearance-none rounded-lg border py-2 pl-2 pr-8 text-sm focus:outline-none focus:ring-2"
-              >
-                {sorts.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+              <Select value={safeSort} onValueChange={onSortChange}>
+                <SelectTrigger
+                  aria-label="Sort results"
+                  className="h-11 min-h-[44px] w-auto gap-2 px-3 py-2 text-sm"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent align="end" className="max-w-[calc(100vw-24px)]">
+                  {sorts.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           ) : null}
 

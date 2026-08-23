@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { Navigate, Route, useLocation, useParams, useSearchParams } from 'react-router-dom';
 
+import { GuestBookingDocumentPage } from '@/features/guest/booking-documents/pages/GuestBookingDocumentPage';
 import { CalendarPage } from '@/features/guest/calendar/pages/CalendarPage';
 import { PropertyChatPage } from '@/features/guest/chat/pages/PropertyChatPage';
 import { GuestForm } from '@/features/guest/form/components/GuestForm';
@@ -145,6 +146,11 @@ export const propertyGuestRoutes = [
     key="property-stay-guide"
     path="properties/:propertySlug/stay-guide"
     element={<StayGuidePage />}
+  />,
+  <Route
+    key="property-booking-document"
+    path="properties/:propertySlug/document"
+    element={<GuestBookingDocumentPage />}
   />,
   <Route key="property-guest" path="properties/:propertySlug" element={<GuestPublicLayout />}>
     <Route path="calendar" element={<CalendarPage />} />

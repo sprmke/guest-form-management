@@ -19,6 +19,8 @@ type GuestOperationalHeaderProps = {
   propertyImageSrc?: string | null;
   propertyName?: string | null;
   className?: string;
+  /** Overrides the default `/properties/:slug` link (e.g. for non-property flows like parking). */
+  homeHref?: string;
 };
 
 function GuestOperationalAccountControl({ className }: { className?: string }) {
@@ -58,11 +60,12 @@ export function GuestOperationalHeader({
   propertyImageSrc,
   propertyName,
   className,
+  homeHref,
 }: GuestOperationalHeaderProps) {
   const slug = propertySlug?.trim() ?? '';
   const imageUrl = propertyImageSrc?.trim();
   const name = propertyName?.trim() || 'Property';
-  const propertyHref = slug ? guestPropertyPath(slug) : '/properties';
+  const propertyHref = homeHref ?? (slug ? guestPropertyPath(slug) : '/properties');
 
   return (
     <header
