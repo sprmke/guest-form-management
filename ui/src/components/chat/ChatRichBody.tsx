@@ -11,6 +11,8 @@ type Props = {
   /** Skip tall map embeds — use compact map chips (voice captions / tight UI). */
   compactMaps?: boolean;
   className?: string;
+  /** When set, a tapped calendar link card opens the availability modal instead of navigating. */
+  onCalendarLinkClick?: (href: string) => void;
 };
 
 function RichSegments({ segments, outbound }: { segments: ChatRichSegment[]; outbound: boolean }) {
@@ -41,7 +43,13 @@ function RichSegments({ segments, outbound }: { segments: ChatRichSegment[]; out
   );
 }
 
-export function ChatRichBody({ text, outbound = false, compactMaps = false, className }: Props) {
+export function ChatRichBody({
+  text,
+  outbound = false,
+  compactMaps = false,
+  className,
+  onCalendarLinkClick,
+}: Props) {
   const blocks = useMemo(() => parseChatRichBlocks(text), [text]);
 
   return (
@@ -70,6 +78,11 @@ export function ChatRichBody({ text, outbound = false, compactMaps = false, clas
               subtitle={block.subtitle}
               variant={block.variant}
               outbound={outbound}
+              onActivate={
+                block.variant === 'calendar' && onCalendarLinkClick
+                  ? () => onCalendarLinkClick(block.href)
+                  : undefined
+              }
               className={
                 compactMaps
                   ? outbound

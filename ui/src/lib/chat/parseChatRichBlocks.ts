@@ -164,6 +164,30 @@ export function urlLinkCardMeta(href: string): {
     if (path.includes('/calendar')) {
       return { title: 'Check availability', subtitle: host, variant: 'calendar' };
     }
+    if (path.includes('/stay-guide')) {
+      return { title: 'Stay Guide', subtitle: host, variant: 'generic' };
+    }
+    if (path.includes('/document')) {
+      const doc = u.searchParams.get('doc');
+      const title =
+        doc === 'pet' ? 'Approved Pet Form' : doc === 'gaf' ? 'Approved GAF' : 'Document';
+      return { title, subtitle: host, variant: 'generic' };
+    }
+    if (path.includes('/messages')) {
+      return { title: 'Chat with host', subtitle: host, variant: 'generic' };
+    }
+    if (path.includes('/sd-form')) {
+      return { title: 'Security Deposit Refund', subtitle: host, variant: 'generic' };
+    }
+    if (path.includes('/guest-review')) {
+      return { title: 'Leave a Review', subtitle: host, variant: 'generic' };
+    }
+    if (path.includes('/parking/')) {
+      return { title: 'Pay Parking', subtitle: host, variant: 'generic' };
+    }
+    if (path.includes('/storage/v1/object/public/parking-endorsements/')) {
+      return { title: 'Parking Endorsement', subtitle: host, variant: 'generic' };
+    }
     if (/\/properties\/[^/]+\/?$/.test(path) || path.includes('/properties/')) {
       const slug = path.split('/properties/')[1]?.split('/')[0];
       const label = slug

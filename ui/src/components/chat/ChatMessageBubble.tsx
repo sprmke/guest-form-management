@@ -28,6 +28,8 @@ type Props = {
   children?: ReactNode;
   /** Rendered beside the bubble (vertically centered), not below the timestamp. */
   actions?: ReactNode;
+  /** When set, a tapped calendar link card opens the availability modal instead of navigating. */
+  onCalendarLinkClick?: (href: string) => void;
 };
 
 export function ChatMessageBubble({
@@ -45,6 +47,7 @@ export function ChatMessageBubble({
   className,
   children,
   actions,
+  onCalendarLinkClick,
 }: Props) {
   const timeLabel = formatChatBubbleTime(sentAt);
   const trimmed = bodyText?.trim() || '—';
@@ -54,7 +57,7 @@ export function ChatMessageBubble({
       ? 'bg-muted/45 text-muted-foreground border-border/50 border italic'
       : outbound
         ? 'bg-primary text-primary-foreground'
-        : 'border-border/60 bg-card text-foreground border',
+        : 'border-border/60 bg-background text-foreground border shadow-sm',
     deliveryStatus === 'failed' && outbound && !unsent && 'opacity-80'
   );
 
@@ -74,7 +77,9 @@ export function ChatMessageBubble({
         />
       );
     }
-    return <ChatRichBody text={trimmed} outbound={outbound} />;
+    return (
+      <ChatRichBody text={trimmed} outbound={outbound} onCalendarLinkClick={onCalendarLinkClick} />
+    );
   })();
 
   return (

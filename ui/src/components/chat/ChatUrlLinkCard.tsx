@@ -9,6 +9,8 @@ type Props = {
   variant?: 'calendar' | 'generic';
   outbound?: boolean;
   className?: string;
+  /** When set, renders as a button that calls this instead of navigating to `href`. */
+  onActivate?: () => void;
 };
 
 /**
@@ -21,23 +23,21 @@ export function ChatUrlLinkCard({
   variant = 'generic',
   outbound = false,
   className,
+  onActivate,
 }: Props) {
   const Icon = variant === 'calendar' ? CalendarDays : Link2;
 
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={cn(
-        'my-1.5 flex min-h-[44px] items-center gap-2.5 rounded-xl border px-3 py-2.5 no-underline transition-opacity hover:opacity-95',
-        'focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2',
-        outbound
-          ? 'border-primary-foreground/25 bg-primary-foreground/10 text-primary-foreground'
-          : 'border-border/70 bg-muted/50 text-foreground',
-        className
-      )}
-    >
+  const cardClass = cn(
+    'my-1.5 flex min-h-[44px] w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left no-underline transition-opacity hover:opacity-95',
+    'focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2',
+    outbound
+      ? 'border-primary-foreground/25 bg-primary-foreground/10 text-primary-foreground'
+      : 'border-border/70 bg-muted/50 text-foreground',
+    className
+  );
+
+  const content = (
+    <>
       <span
         className={cn(
           'flex size-9 shrink-0 items-center justify-center rounded-lg',
@@ -58,6 +58,20 @@ export function ChatUrlLinkCard({
         </span>
       </span>
       <ExternalLink className="size-4 shrink-0 opacity-70" aria-hidden />
+    </>
+  );
+
+  if (onActivate) {
+    return (
+      <button type="button" onClick={onActivate} className={cardClass}>
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" className={cardClass}>
+      {content}
     </a>
   );
 }

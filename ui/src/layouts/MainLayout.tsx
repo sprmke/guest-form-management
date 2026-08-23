@@ -25,6 +25,8 @@ interface MainLayoutProps {
   propertySlug?: string | null;
   propertyImageSrc?: string | null;
   propertyName?: string | null;
+  /** Overrides the header's default `/properties/:slug` link (e.g. for non-property flows like parking). */
+  homeHref?: string;
   /** Max width utility for the content card wrapper (default guest form width). */
   contentMaxWidth?: string;
 }
@@ -37,6 +39,7 @@ export function MainLayout({
   propertySlug,
   propertyImageSrc,
   propertyName,
+  homeHref,
   contentMaxWidth = 'max-w-3xl',
 }: MainLayoutProps) {
   const location = useLocation();
@@ -75,6 +78,7 @@ export function MainLayout({
           propertySlug={propertySlug}
           propertyImageSrc={propertyImageSrc}
           propertyName={propertyName}
+          homeHref={homeHref}
         />
       </div>
 
