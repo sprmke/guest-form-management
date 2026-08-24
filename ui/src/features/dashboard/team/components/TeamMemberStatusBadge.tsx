@@ -1,16 +1,18 @@
-import { Check, CircleOff } from 'lucide-react';
+import { Check, CircleOff, Sparkles } from 'lucide-react';
 
 import type { TeamMemberStatus } from '@/features/dashboard/team/types/propertyTeam';
 
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { semanticBadgeClasses } from '@/lib/statusToneColors';
 import { cn } from '@/lib/utils';
 
 type Props = {
   status: TeamMemberStatus;
+  planLimited?: boolean;
 };
 
-export function TeamMemberStatusBadge({ status }: Props) {
+export function TeamMemberStatusBadge({ status, planLimited = false }: Props) {
   if (status === 'active') {
     return (
       <Badge
@@ -20,6 +22,26 @@ export function TeamMemberStatusBadge({ status }: Props) {
         <Check className="mr-1 size-3" aria-hidden />
         Active
       </Badge>
+    );
+  }
+
+  if (status === 'inactive' && planLimited) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Badge
+            variant="outline"
+            className={cn('border-transparent', semanticBadgeClasses('warning'))}
+          >
+            <Sparkles className="mr-1 size-3" aria-hidden />
+            Plan limit
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent>
+          Disabled automatically — your current plan doesn&apos;t cover this seat. Upgrade or free
+          up a seat to restore access.
+        </TooltipContent>
+      </Tooltip>
     );
   }
 

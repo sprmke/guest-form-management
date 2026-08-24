@@ -18,7 +18,7 @@ export type PropertySection =
   | 'dashboard'
   | 'bookings'
   | 'finance'
-  | 'calendar'
+  | 'pricing'
   | 'maintenance'
   | 'marketing'
   | 'notifications'
@@ -42,13 +42,13 @@ export const PROPERTY_NAV_VIEW_PERMISSION: Record<string, TeamPermissionId> = {
   Dashboard: 'bookings:view',
   Bookings: 'bookings:view',
   Finance: 'finance:view',
-  Calendar: 'pricing:view',
+  Pricing: 'pricing:view',
   Maintenance: 'maintenance:view',
   Marketing: 'notifications:view',
   Notifications: 'notifications:view',
   Templates: 'templates:view',
   'Public Pages': 'templates:view',
-  Plans: 'settings:view',
+  'Plans & Billing': 'settings:view',
   Team: 'team:view',
   Settings: 'settings:view',
   Inbox: 'inbox:view',
@@ -59,7 +59,7 @@ export const PROPERTY_SECTION_VIEW_PERMISSION = {
   dashboard: 'bookings:view',
   bookings: 'bookings:view',
   finance: 'finance:view',
-  calendar: 'pricing:view',
+  pricing: 'pricing:view',
   maintenance: 'maintenance:view',
   marketing: 'notifications:view',
   notifications: 'notifications:view',

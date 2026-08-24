@@ -36,6 +36,7 @@ export const ORG_NAV_VIEW_PERMISSION: Record<string, OrgPermissionId> = {
   Parkings: 'org:parkings:view',
   Team: 'org:team:view',
   Settings: 'org:settings:view',
+  Plans: 'org:settings:view',
 };
 
 /** Minimum view permission per org route section. */
@@ -46,6 +47,7 @@ export const ORG_SECTION_VIEW_PERMISSION = {
   parkings: 'org:parkings:view',
   team: 'org:team:view',
   settings: 'org:settings:view',
+  plans: 'org:settings:view',
   'help-support': 'org:dashboard:view',
 } as const satisfies Record<string, OrgPermissionId>;
 
@@ -65,6 +67,8 @@ export function orgSectionPath(orgSlug: string, section: OrgSection): string {
       return `/org/${orgSlug}/team`;
     case 'settings':
       return `/org/${orgSlug}/settings`;
+    case 'plans':
+      return `/org/${orgSlug}/plans`;
     case 'help-support':
       return `/org/${orgSlug}/help-support`;
   }

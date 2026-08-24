@@ -6,6 +6,7 @@ import {
   Filter,
   MoreHorizontal,
   Search,
+  Sparkles,
   UserCheck,
   UserMinus,
   UserX,
@@ -15,6 +16,7 @@ import {
 import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useOptionalParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { OrgManagedMemberLink } from '@/features/dashboard/team/components/OrgManagedMemberLink';
 import { RoleBadge } from '@/features/dashboard/team/components/RoleBadge';
 import { RoleSelectOptions } from '@/features/dashboard/team/components/RoleSelectOptions';
@@ -122,6 +124,12 @@ export function TeamMembersTab({
     );
   }
   const { email: currentUserEmail } = useAdminSession();
+  const { open: openUpgradeModal } = useUpgradeModal();
+
+  const planLimitedCount = useMemo(
+    () => members.filter((member) => member.status === 'inactive' && member.planLimited).length,
+    [members]
+  );
 
   const filteredMembers = useMemo(() => {
     const filtered = members.filter((member) => {
@@ -136,6 +144,28 @@ export function TeamMembersTab({
 
   return (
     <div className="space-y-3 sm:space-y-4">
+      {planLimitedCount > 0 ? (
+        <div className="border-warning/30 bg-warning/10 flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3 sm:p-4">
+          <div className="flex items-start gap-2">
+            <Sparkles className="text-warning mt-0.5 size-4 shrink-0" aria-hidden />
+            <p className="text-sm">
+              {planLimitedCount === 1
+                ? '1 team member is disabled to fit your current plan.'
+                : `${planLimitedCount} team members are disabled to fit your current plan.`}{' '}
+              Upgrade to restore access — no data or permissions were lost.
+            </p>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            className="min-h-[44px] sm:min-h-9"
+            onClick={() => openUpgradeModal('teamManagement')}
+          >
+            Upgrade
+          </Button>
+        </div>
+      ) : null}
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative min-w-0 flex-1 sm:max-w-sm">
           <Search
@@ -235,7 +265,7 @@ export function TeamMembersTab({
                   title={!isActive ? 'Role applies when member is active' : undefined}
                 >
                   <RoleBadge scope={scope} roleId={member.role} customRoles={customRoles} />
-                  <TeamMemberStatusBadge status={member.status} />
+                  <TeamMemberStatusBadge status={member.status} planLimited={member.planLimited} />
                 </div>
 
                 <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:ml-auto sm:w-auto">

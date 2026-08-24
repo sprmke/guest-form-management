@@ -297,6 +297,7 @@ export function OrgTeamPage() {
                   role: selectedMember.role,
                   permissions: [],
                   status: selectedMember.status,
+                  planLimited: false,
                   assignedAt: selectedMember.assignedAt,
                   lastActive: selectedMember.lastActive,
                   assignedBy: selectedMember.assignedBy,

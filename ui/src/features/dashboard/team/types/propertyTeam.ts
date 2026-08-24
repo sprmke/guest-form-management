@@ -28,6 +28,9 @@ export interface TeamMember {
   /** Snapshot restored on activate after deactivation */
   savedPermissions?: string[];
   status: TeamMemberStatus;
+  /** True when inactive was set automatically by team-seat reconciliation (plan
+   * downgrade/suspension), not by an admin — always false for org-inherited rows. */
+  planLimited: boolean;
   assignedAt: string;
   lastActive: string | null;
   assignedBy: string;

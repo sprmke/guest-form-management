@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { Mail, Shield, UserPlus, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 import {
@@ -326,6 +327,7 @@ export function PropertyTeamPage() {
       <AdminMobilePage
         title="Team"
         subtitle="Manage your property's team members and permissions."
+        badge={<TierBadge feature="teamManagement" />}
         heroTrailing={heroInviteAction}
         desktopActions={inviteAction}
         desktopActionsClassName="w-full sm:w-auto"

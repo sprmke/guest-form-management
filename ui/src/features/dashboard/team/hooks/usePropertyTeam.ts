@@ -152,6 +152,10 @@ export function usePropertyTeamMutations() {
       invalidate();
     },
     onError: (error: Error) => {
+      if (isAiQuotaError(error)) {
+        handleAiMutationError(error);
+        return;
+      }
       toast.error(friendlyToastError(error, 'Failed to update member'));
     },
   });
