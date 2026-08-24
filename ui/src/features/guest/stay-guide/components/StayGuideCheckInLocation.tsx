@@ -79,11 +79,11 @@ export function StayGuideCheckInLocation({
   return (
     <article
       className={cn(
-        'overflow-hidden rounded-2xl border border-[#171717]/10 bg-white shadow-sm sm:rounded-3xl dark:border-[#FAFAFA]/10 dark:bg-[#0A0A0A]',
+        '@2xl:rounded-3xl overflow-hidden rounded-2xl border border-[#171717]/10 bg-white shadow-sm dark:border-[#FAFAFA]/10 dark:bg-[#0A0A0A]',
         className
       )}
     >
-      <div className="relative aspect-[5/3] w-full sm:aspect-[16/9]">
+      <div className="@2xl:aspect-[16/9] relative aspect-[5/3] w-full">
         <PropertyMapEmbed
           latitude={location.latitude}
           longitude={location.longitude}
@@ -96,24 +96,24 @@ export function StayGuideCheckInLocation({
         />
       </div>
 
-      <div className="border-t border-[#171717]/10 p-5 sm:p-6 lg:p-8 dark:border-[#FAFAFA]/10">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+      <div className="@2xl:p-6 @5xl:p-8 border-t border-[#171717]/10 p-5 dark:border-[#FAFAFA]/10">
+        <div className="@2xl:flex-row @2xl:items-center @2xl:justify-between @2xl:gap-6 flex flex-col gap-4">
           <div className="flex min-w-0 items-start gap-3.5">
             <span className="bg-primary/10 text-primary ring-primary/10 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ring-1">
               <MapPin className="h-5 w-5" aria-hidden />
             </span>
             <div className="min-w-0">
               {areaLabel ? (
-                <p className="text-primary text-base font-semibold tracking-tight sm:text-lg">
+                <p className="text-primary @2xl:text-lg text-base font-semibold tracking-tight">
                   {areaLabel}
                 </p>
               ) : null}
               {streetLine ? (
-                <p className="mt-1 text-sm leading-relaxed text-[#737373] sm:text-[15px] dark:text-[#A3A3A3]">
+                <p className="@2xl:text-[15px] mt-1 text-sm leading-relaxed text-[#737373] dark:text-[#A3A3A3]">
                   {streetLine}
                 </p>
               ) : fullAddress ? (
-                <p className="mt-1 text-sm leading-relaxed text-[#737373] sm:text-[15px] dark:text-[#A3A3A3]">
+                <p className="@2xl:text-[15px] mt-1 text-sm leading-relaxed text-[#737373] dark:text-[#A3A3A3]">
                   {fullAddress}
                 </p>
               ) : null}
@@ -123,7 +123,7 @@ export function StayGuideCheckInLocation({
           <Button
             type="button"
             onClick={() => openDirections(location, fullAddress)}
-            className="min-h-[44px] w-full shrink-0 gap-2 rounded-xl px-5 sm:w-auto"
+            className="@2xl:w-auto min-h-[44px] w-full shrink-0 gap-2 rounded-xl px-5"
           >
             <Navigation className="h-4 w-4" aria-hidden />
             Directions

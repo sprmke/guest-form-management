@@ -3,6 +3,14 @@ const STAY_GUIDE_RICH_TEXT_CLASS = 'stay-guide-rich-text';
 const richTextStyles = `
   .${STAY_GUIDE_RICH_TEXT_CLASS} {
     color: #404040;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+
+  .${STAY_GUIDE_RICH_TEXT_CLASS} table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
   }
 
   .dark .${STAY_GUIDE_RICH_TEXT_CLASS} {

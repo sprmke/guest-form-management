@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import { motion, useReducedMotion } from 'framer-motion';
 
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
@@ -11,12 +13,17 @@ interface StayGuideHeroProps {
 
 export function StayGuideHero({ guide }: StayGuideHeroProps) {
   const reduceMotion = useReducedMotion();
+  const [logoFailed, setLogoFailed] = useState(false);
   const unitLabel = guide.property.towerAndUnit?.trim() || guide.property.name;
   const propertyName = guide.property.name.trim();
   const heroImage = guide.property.heroImageUrl;
 
   return (
-    <header className="relative h-[62vh] max-h-[620px] min-h-[420px] w-full overflow-hidden sm:h-[68vh]">
+    <header
+      id="stay-guide-hero"
+      data-page-editor-anchor="stay-guide-hero"
+      className="@2xl:h-[68vh] relative h-[62vh] max-h-[620px] min-h-[420px] w-full overflow-hidden"
+    >
       {heroImage ? (
         <motion.div
           className="absolute inset-0"
@@ -39,23 +46,24 @@ export function StayGuideHero({ guide }: StayGuideHeroProps) {
         aria-hidden
       />
 
-      <div className="absolute inset-x-0 top-0 z-30 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6 lg:px-8">
+      <div className="@2xl:px-6 @5xl:px-8 absolute inset-x-0 top-0 z-30 px-4 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="mx-auto flex min-h-[56px] max-w-[720px] items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            {guide.property.logoUrl ? (
-              <span className="size-9 shrink-0 overflow-hidden rounded-md bg-white/15 shadow-sm sm:size-10">
+            {guide.property.logoUrl && !logoFailed ? (
+              <span className="@2xl:size-10 size-9 shrink-0 overflow-hidden rounded-md bg-white/15 shadow-sm">
                 <img
                   src={guide.property.logoUrl}
                   alt=""
                   className="size-full object-cover object-center"
+                  onError={() => setLogoFailed(true)}
                 />
               </span>
             ) : (
-              <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-md bg-white/20 text-sm font-bold text-white shadow-sm backdrop-blur-sm sm:size-10">
+              <span className="@2xl:size-10 inline-flex size-9 shrink-0 items-center justify-center rounded-md bg-white/20 text-sm font-bold text-white shadow-sm backdrop-blur-sm">
                 {propertyName.charAt(0).toUpperCase()}
               </span>
             )}
-            <span className="hidden truncate text-sm font-medium text-white/90 sm:block">
+            <span className="@2xl:block hidden truncate text-sm font-medium text-white/90">
               {propertyName}
             </span>
           </div>
@@ -63,17 +71,17 @@ export function StayGuideHero({ guide }: StayGuideHeroProps) {
         </div>
       </div>
 
-      <div className="absolute inset-x-0 bottom-0 z-20 px-4 pb-14 sm:px-6 sm:pb-20 lg:px-8">
+      <div className="@2xl:px-6 @5xl:px-8 @2xl:pb-20 absolute inset-x-0 bottom-0 z-20 px-4 pb-14">
         <motion.div
           className="mx-auto max-w-[720px] text-center"
           initial={reduceMotion ? false : { opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: reduceMotion ? 0 : 0.2, ease: 'easeOut' }}
         >
-          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/70 sm:text-xs">
+          <p className="@2xl:text-xs text-[11px] font-semibold uppercase tracking-[0.28em] text-white/70">
             Stay guide
           </p>
-          <h1 className="font-fraunces mt-2 text-4xl font-semibold tracking-tight text-white drop-shadow-md sm:text-5xl lg:text-[3.25rem] lg:leading-[1.05]">
+          <h1 className="font-fraunces @2xl:text-5xl @5xl:text-[3.25rem] @5xl:leading-[1.05] mt-2 text-4xl font-semibold tracking-tight text-white drop-shadow-md">
             {unitLabel}
           </h1>
         </motion.div>

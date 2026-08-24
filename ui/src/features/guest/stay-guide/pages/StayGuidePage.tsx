@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 
 import { useParams, useSearchParams } from 'react-router-dom';
 
+import { usePreviewOverride } from '@/features/guest/lib/previewOverrideContext';
 import { StayGuideChapter } from '@/features/guest/stay-guide/components/StayGuideChapter';
 import { StayGuideCheckInDocumentsSection } from '@/features/guest/stay-guide/components/StayGuideCheckInDocumentsSection';
 import { StayGuideGalleryCarousel } from '@/features/guest/stay-guide/components/StayGuideGalleryCarousel';
@@ -13,14 +14,13 @@ import {
   useGuestStayGuide,
   useGuestStayGuidePreview,
 } from '@/features/guest/stay-guide/hooks/useGuestStayGuide';
-import { usePreviewOverride } from '@/features/guest/lib/previewOverrideContext';
+import type { StayGuideSectionConfig } from '@/features/guest/stay-guide/lib/api';
 import {
   applyStayGuideSectionConfig,
   buildQuickNavItems,
   buildStayGuideChapters,
   defaultStayGuideSectionConfig,
 } from '@/features/guest/stay-guide/lib/stayGuideChapters';
-import type { StayGuideSectionConfig } from '@/features/guest/stay-guide/lib/api';
 
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -47,37 +47,37 @@ function resolveStayGuideSectionConfig(
 function StayGuidePageSkeleton() {
   return (
     <div
-      className="min-h-screen bg-[#FFFFFF] dark:bg-[#0A0A0A]"
+      className="@container min-h-screen bg-[#FFFFFF] dark:bg-[#0A0A0A]"
       aria-busy="true"
       aria-label="Loading stay guide"
     >
-      <div className="bg-muted relative h-[62vh] max-h-[620px] min-h-[420px] w-full animate-pulse sm:h-[68vh]">
-        <div className="absolute inset-x-0 top-0 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6 lg:px-8">
+      <div className="bg-muted @2xl:h-[68vh] relative h-[62vh] max-h-[620px] min-h-[420px] w-full animate-pulse">
+        <div className="@2xl:px-6 @5xl:px-8 absolute inset-x-0 top-0 px-4 pt-[max(0.75rem,env(safe-area-inset-top))]">
           <div className="mx-auto flex min-h-[56px] max-w-[720px] items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="bg-background/30 size-9 shrink-0 rounded-md sm:size-10" />
-              <div className="bg-background/30 hidden h-4 w-28 rounded sm:block" />
+              <div className="bg-background/30 @2xl:size-10 size-9 shrink-0 rounded-md" />
+              <div className="bg-background/30 @2xl:block hidden h-4 w-28 rounded" />
             </div>
             <div className="bg-background/30 h-9 w-9 shrink-0 rounded-full" />
           </div>
         </div>
-        <div className="absolute inset-x-0 bottom-0 px-4 pb-14 sm:px-6 sm:pb-20 lg:px-8">
+        <div className="@2xl:px-6 @2xl:pb-20 @5xl:px-8 absolute inset-x-0 bottom-0 px-4 pb-14">
           <div className="mx-auto max-w-[720px] space-y-3 text-center">
             <div className="bg-background/30 mx-auto h-2.5 w-24 rounded-full" />
-            <div className="bg-background/30 mx-auto h-9 w-56 rounded-lg sm:h-11 sm:w-72" />
+            <div className="bg-background/30 @2xl:h-11 @2xl:w-72 mx-auto h-9 w-56 rounded-lg" />
           </div>
         </div>
       </div>
 
-      <div className="relative z-30 mx-auto -mt-6 max-w-[720px] px-4 sm:-mt-16 sm:px-6 lg:px-8">
-        <div className="rounded-[1.75rem] border border-[#E5E5E5] bg-[#FFFFFF] p-5 shadow-[0_16px_40px_-12px_rgba(34,31,26,0.35)] sm:p-0 dark:border-[#262626] dark:bg-[#171717]">
-          <div className="flex flex-col sm:flex-row sm:items-stretch">
-            <div className="flex flex-1 flex-col gap-2 border-b border-dashed border-[#E5E5E5] pb-5 sm:border-b-0 sm:border-r sm:p-6 sm:pb-0 dark:border-[#262626]">
+      <div className="@2xl:-mt-16 @2xl:px-6 @5xl:px-8 relative z-30 mx-auto -mt-6 max-w-[720px] px-4">
+        <div className="@2xl:p-0 rounded-[1.75rem] border border-[#E5E5E5] bg-[#FFFFFF] p-5 shadow-[0_16px_40px_-12px_rgba(34,31,26,0.35)] dark:border-[#262626] dark:bg-[#171717]">
+          <div className="@2xl:flex-row @2xl:items-stretch flex flex-col">
+            <div className="@2xl:border-b-0 @2xl:border-r @2xl:p-6 @2xl:pb-0 flex flex-1 flex-col gap-2 border-b border-dashed border-[#E5E5E5] pb-5 dark:border-[#262626]">
               <Skeleton className="h-2.5 w-14" />
               <Skeleton className="h-7 w-32" />
               <Skeleton className="h-3 w-24" />
             </div>
-            <div className="flex flex-1 items-center gap-3 pt-5 sm:gap-4 sm:p-6 sm:pt-5">
+            <div className="@2xl:gap-4 @2xl:p-6 @2xl:pt-5 flex flex-1 items-center gap-3 pt-5">
               <div className="min-w-0 flex-1 space-y-2">
                 <Skeleton className="h-2.5 w-16" />
                 <Skeleton className="h-6 w-20" />
@@ -93,26 +93,26 @@ function StayGuidePageSkeleton() {
         </div>
       </div>
 
-      <div className="mx-auto mt-8 sm:mt-10">
-        <div className="mx-auto max-w-[720px] px-4 sm:px-6 lg:px-8">
+      <div className="@2xl:mt-10 mx-auto mt-8">
+        <div className="@2xl:px-6 @5xl:px-8 mx-auto max-w-[720px] px-4">
           <Skeleton className="mb-3 h-2.5 w-14" />
         </div>
-        <div className="flex gap-3 overflow-x-hidden px-4 pb-1 sm:px-6 lg:px-8">
+        <div className="@2xl:px-6 @5xl:px-8 flex gap-3 overflow-x-hidden px-4 pb-1">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-40 w-56 shrink-0 rounded-2xl sm:h-48 sm:w-72" />
+            <Skeleton key={i} className="@2xl:h-48 @2xl:w-72 h-40 w-56 shrink-0 rounded-2xl" />
           ))}
         </div>
       </div>
 
       <div className="border-b border-[#171717]/10 dark:border-[#FAFAFA]/10">
-        <div className="mx-auto flex max-w-[720px] gap-1.5 overflow-x-hidden px-4 py-2.5 sm:px-6 sm:py-3 lg:px-8">
+        <div className="@2xl:px-6 @2xl:py-3 @5xl:px-8 mx-auto flex max-w-[720px] gap-1.5 overflow-x-hidden px-4 py-2.5">
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-10 w-24 shrink-0 rounded-full" />
           ))}
         </div>
       </div>
 
-      <div className="mx-auto max-w-[720px] space-y-10 px-4 py-8 sm:space-y-14 sm:px-6 sm:py-10 lg:px-8">
+      <div className="@2xl:space-y-14 @2xl:px-6 @2xl:py-10 @5xl:px-8 mx-auto max-w-[720px] space-y-10 px-4 py-8">
         {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="space-y-5">
             <div className="flex items-center gap-2.5">
@@ -122,7 +122,7 @@ function StayGuidePageSkeleton() {
                 <Skeleton className="h-6 w-40" />
               </div>
             </div>
-            <div className="space-y-3 rounded-3xl border border-[#171717]/10 p-5 sm:p-8 dark:border-[#FAFAFA]/10">
+            <div className="@2xl:p-8 space-y-3 rounded-3xl border border-[#171717]/10 p-5 dark:border-[#FAFAFA]/10">
               <Skeleton className="h-3 w-full" />
               <Skeleton className="h-3 w-5/6" />
               <Skeleton className="h-3 w-2/3" />
@@ -131,7 +131,7 @@ function StayGuidePageSkeleton() {
         ))}
       </div>
 
-      <div className="px-4 py-10 sm:px-6 lg:px-8">
+      <div className="@2xl:px-6 @5xl:px-8 px-4 py-10">
         <div className="mx-auto max-w-[720px] space-y-5">
           <div className="flex items-center gap-2.5">
             <Skeleton className="size-9 shrink-0 rounded-full" />
@@ -140,10 +140,10 @@ function StayGuidePageSkeleton() {
               <Skeleton className="h-6 w-40" />
             </div>
           </div>
-          <div className="rounded-3xl border border-[#171717]/10 p-5 sm:p-8 dark:border-[#FAFAFA]/10">
-            <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-10">
-              <div className="flex items-center gap-4 sm:gap-5 lg:flex-col lg:items-center">
-                <Skeleton className="h-[4.5rem] w-[4.5rem] shrink-0 rounded-full sm:h-24 sm:w-24" />
+          <div className="@2xl:p-8 rounded-3xl border border-[#171717]/10 p-5 dark:border-[#FAFAFA]/10">
+            <div className="@5xl:flex-row @5xl:items-start @5xl:gap-10 flex flex-col gap-8">
+              <div className="@2xl:gap-5 @5xl:flex-col @5xl:items-center flex items-center gap-4">
+                <Skeleton className="@2xl:h-24 @2xl:w-24 h-[4.5rem] w-[4.5rem] shrink-0 rounded-full" />
                 <div className="space-y-1.5">
                   <Skeleton className="h-2.5 w-16" />
                   <Skeleton className="h-5 w-24" />
@@ -242,12 +242,12 @@ export function StayGuidePage() {
   const galleryImages = data.property.galleryImages.filter((url) => url.trim());
 
   return (
-    <div className="min-h-screen bg-[#FFFFFF] text-[#171717] dark:bg-[#0A0A0A] dark:text-[#FAFAFA]">
+    <div className="@container min-h-screen bg-[#FFFFFF] text-[#171717] dark:bg-[#0A0A0A] dark:text-[#FAFAFA]">
       {sectionConfig.hero.visible ? <StayGuideHero guide={data} /> : null}
       {sectionConfig.stayPassCard.visible ? <StayPassCard guide={data} /> : null}
 
       {showCheckInDocuments ? (
-        <div className="mx-auto mt-8 max-w-[720px] sm:mt-10">
+        <div className="@2xl:mt-10 mx-auto mt-8 max-w-[720px]">
           <StayGuideCheckInDocumentsSection documents={checkInDocuments} />
         </div>
       ) : null}
@@ -256,13 +256,13 @@ export function StayGuidePage() {
         <StayGuideGalleryCarousel
           images={galleryImages}
           propertyName={data.property.name}
-          className="mx-auto mt-8 sm:mt-10"
+          className="@2xl:mt-10 mx-auto mt-8"
         />
       ) : null}
 
       {sectionConfig.quickNavTabs.visible ? <StayGuideTabs items={quickNavItems} /> : null}
 
-      <div className="mx-auto max-w-[720px] space-y-10 px-4 py-8 sm:space-y-14 sm:px-6 sm:py-10 lg:px-8">
+      <div className="@2xl:space-y-14 @2xl:px-6 @5xl:px-8 @2xl:py-10 mx-auto max-w-[720px] space-y-10 px-4 py-8">
         {chapters.map((chapter) => (
           <StayGuideChapter
             key={chapter.id}

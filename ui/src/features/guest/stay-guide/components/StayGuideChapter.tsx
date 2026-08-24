@@ -29,7 +29,11 @@ export function StayGuideChapter({
   const accentStyle = accent ? ({ color: accent } as const) : undefined;
 
   return (
-    <section id={chapter.id} className="scroll-mt-24 sm:scroll-mt-28">
+    <section
+      id={chapter.id}
+      data-page-editor-anchor={chapter.id}
+      className="@2xl:scroll-mt-28 scroll-mt-24"
+    >
       <motion.div
         initial={reduceMotion ? false : { opacity: 0, y: 24 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -59,13 +63,13 @@ export function StayGuideChapter({
             >
               {chapter.eyebrow}
             </p>
-            <h2 className="font-fraunces text-2xl font-semibold tracking-tight text-[#171717] sm:text-3xl dark:text-[#FAFAFA]">
+            <h2 className="font-fraunces @2xl:text-3xl text-2xl font-semibold tracking-tight text-[#171717] dark:text-[#FAFAFA]">
               {chapter.heading}
             </h2>
           </div>
         </div>
 
-        <div className="space-y-5 rounded-3xl border border-[#171717]/10 bg-white p-5 sm:p-8 dark:border-[#FAFAFA]/10 dark:bg-[#0A0A0A]">
+        <div className="@2xl:p-8 space-y-5 rounded-3xl border border-[#171717]/10 bg-white p-5 dark:border-[#FAFAFA]/10 dark:bg-[#0A0A0A]">
           {chapter.sections.map((section, index) => {
             const hasImage = Boolean(section.imageUrl?.trim());
             const imageSrc = hasImage
@@ -76,6 +80,8 @@ export function StayGuideChapter({
             return (
               <div
                 key={section.key}
+                id={section.key}
+                data-page-editor-anchor={section.key}
                 className={
                   index > 0
                     ? 'border-t border-[#171717]/10 pt-5 dark:border-[#FAFAFA]/10'
@@ -97,8 +103,8 @@ export function StayGuideChapter({
                   <h3
                     className={
                       accent
-                        ? 'mb-2 text-base font-semibold tracking-tight sm:text-lg'
-                        : 'text-primary mb-2 text-base font-semibold tracking-tight sm:text-lg'
+                        ? '@2xl:text-lg mb-2 text-base font-semibold tracking-tight'
+                        : 'text-primary @2xl:text-lg mb-2 text-base font-semibold tracking-tight'
                     }
                     style={accentStyle}
                   >

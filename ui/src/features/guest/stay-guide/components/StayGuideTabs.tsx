@@ -44,10 +44,14 @@ export function StayGuideTabs({ items }: StayGuideQuickNavProps) {
   if (items.length === 0) return null;
 
   return (
-    <div className="sticky top-0 z-40 border-b border-[#171717]/10 bg-[#FFFFFF]/95 backdrop-blur-md dark:border-[#FAFAFA]/10 dark:bg-[#0A0A0A]/95">
+    <div
+      id="stay-guide-tabs"
+      data-page-editor-anchor="stay-guide-tabs"
+      className="sticky top-0 z-40 border-b border-[#171717]/10 bg-[#FFFFFF]/95 backdrop-blur-md dark:border-[#FAFAFA]/10 dark:bg-[#0A0A0A]/95"
+    >
       <nav
         aria-label="Stay guide chapters"
-        className="mx-auto flex max-w-[720px] gap-1.5 overflow-x-auto px-4 py-2.5 sm:px-6 sm:py-3 lg:px-8 [&::-webkit-scrollbar]:hidden"
+        className="@2xl:px-6 @2xl:py-3 @5xl:px-8 mx-auto flex max-w-[720px] gap-1.5 overflow-x-auto px-4 py-2.5 [&::-webkit-scrollbar]:hidden"
       >
         {items.map((item) => {
           const Icon = item.icon;
@@ -59,7 +63,7 @@ export function StayGuideTabs({ items }: StayGuideQuickNavProps) {
               onClick={() => scrollToAnchor(item.id)}
               aria-current={isActive ? 'true' : undefined}
               className={cn(
-                'flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition-colors sm:text-sm',
+                '@2xl:text-sm flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition-colors',
                 isActive
                   ? 'bg-primary text-primary-foreground'
                   : 'text-[#737373] hover:bg-[#171717]/5 dark:text-[#A3A3A3] dark:hover:bg-[#FAFAFA]/5'

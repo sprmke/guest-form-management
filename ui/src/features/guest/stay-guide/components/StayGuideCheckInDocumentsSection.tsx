@@ -17,7 +17,8 @@ export function StayGuideCheckInDocumentsSection({ documents }: Props) {
   return (
     <section
       id="check-in-documents"
-      className="scroll-mt-24 px-4 py-2 sm:scroll-mt-28 sm:px-6 lg:px-8"
+      data-page-editor-anchor="check-in-documents"
+      className="@2xl:scroll-mt-28 @2xl:px-6 @5xl:px-8 scroll-mt-24 px-4 py-2"
     >
       <div className="mx-auto max-w-[720px]">
         <div className="mb-4 flex items-center gap-2.5">
@@ -26,7 +27,7 @@ export function StayGuideCheckInDocumentsSection({ documents }: Props) {
           </span>
           <div className="min-w-0">
             <p className="text-primary text-[11px] font-bold uppercase tracking-[0.2em]">Arrival</p>
-            <h2 className="font-fraunces text-2xl font-semibold tracking-tight text-[#171717] sm:text-3xl dark:text-[#FAFAFA]">
+            <h2 className="font-fraunces @2xl:text-3xl text-2xl font-semibold tracking-tight text-[#171717] dark:text-[#FAFAFA]">
               Check-in documents
             </h2>
           </div>
@@ -34,7 +35,7 @@ export function StayGuideCheckInDocumentsSection({ documents }: Props) {
 
         <div
           className={cn(
-            'overflow-hidden rounded-3xl border p-4 sm:p-5',
+            '@2xl:p-5 overflow-hidden rounded-3xl border p-4',
             allReady
               ? 'border-emerald-500/25 bg-emerald-500/[0.04] dark:border-emerald-400/20 dark:bg-emerald-400/[0.06]'
               : 'border-[#171717]/10 bg-[#FAFAFA] dark:border-[#FAFAFA]/10 dark:bg-[#141414]'
@@ -60,7 +61,7 @@ function CheckInDocumentRow({ document: doc }: { document: StayGuideCheckInDocum
   return (
     <div
       className={cn(
-        'flex min-h-[56px] items-center gap-3 rounded-2xl border px-3.5 py-3 sm:px-4',
+        '@2xl:px-4 flex min-h-[56px] items-center gap-3 rounded-2xl border px-3.5 py-3',
         isReady
           ? 'border-emerald-500/20 bg-white dark:border-emerald-400/15 dark:bg-[#0A0A0A]'
           : 'border-[#171717]/12 dark:border-[#FAFAFA]/12 border-dashed bg-white/70 dark:bg-[#0A0A0A]/60'
