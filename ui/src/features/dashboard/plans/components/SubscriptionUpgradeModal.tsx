@@ -1,18 +1,13 @@
-import { Link } from 'react-router-dom';
+import { useMemo } from 'react';
 
-import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
-import { propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
-import { featureGateCopy } from '@/features/dashboard/plans/lib/featureGateCopy';
-import type { PlanFeatureKey } from '@/features/dashboard/plans/lib/planFeatures';
-
-import { Button } from '@/components/ui/button';
+import { PlanReviewDialog } from '@/features/dashboard/plans/components/PlanReviewDialog';
 import {
-  ResponsiveModal,
-  ResponsiveModalContent,
-  ResponsiveModalFooter,
-  ResponsiveModalHeader,
-  ResponsiveModalTitle,
-} from '@/components/ui/responsive-modal';
+  useAssignPropertyFreePlan,
+  useCreatePropertyPlanCheckout,
+  usePropertyPlan,
+} from '@/features/dashboard/plans/hooks/usePropertyPlan';
+import type { PlanFeatureKey } from '@/features/dashboard/plans/lib/planFeatures';
+import { resolveMinimumPlanForFeature } from '@/features/dashboard/plans/lib/planPresentation';
 
 type Props = {
   open: boolean;
@@ -20,37 +15,40 @@ type Props = {
   feature: PlanFeatureKey;
 };
 
+/**
+ * Feature-gate entry point into the upgrade flow — resolves the *specific* minimum plan that
+ * unlocks `feature` for this property, then reuses `PlanReviewDialog` (the same reviewed,
+ * recognized purchase experience as the Plans page) pre-selected to that plan, right where the
+ * host already is. No intermediate "here's a generic message, go to the Plans page" step.
+ */
 export function SubscriptionUpgradeModal({ open, onOpenChange, feature }: Props) {
-  const orgContext = useOptionalOrgContext();
-  const copy = featureGateCopy(feature);
+  const { data } = usePropertyPlan();
+  const assignFree = useAssignPropertyFreePlan();
+  const createCheckout = useCreatePropertyPlanCheckout();
 
-  const plansPath =
-    orgContext?.org.slug && orgContext.property.slug
-      ? propertySectionPath(orgContext.org.slug, orgContext.property.slug, 'plans')
-      : null;
+  const plans = useMemo(() => data?.plans ?? [], [data?.plans]);
+  const currentPlanId = data?.subscription?.planId;
+  const currentPlan = useMemo(
+    () => plans.find((plan) => plan.id === currentPlanId) ?? null,
+    [plans, currentPlanId]
+  );
+  const targetPlan = useMemo(() => resolveMinimumPlanForFeature(plans, feature), [plans, feature]);
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
-      <ResponsiveModalContent className="max-w-[min(calc(100vw-1.5rem),24rem)]">
-        <ResponsiveModalHeader>
-          <ResponsiveModalTitle>{copy.title}</ResponsiveModalTitle>
-        </ResponsiveModalHeader>
-        <p className="text-muted-foreground text-sm">{copy.description}</p>
-        <ResponsiveModalFooter className="gap-2 sm:justify-end">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Not now
-          </Button>
-          {plansPath ? (
-            <Button type="button" asChild onClick={() => onOpenChange(false)}>
-              <Link to={plansPath}>{copy.ctaLabel}</Link>
-            </Button>
-          ) : (
-            <Button type="button" disabled>
-              {copy.ctaLabel}
-            </Button>
-          )}
-        </ResponsiveModalFooter>
-      </ResponsiveModalContent>
-    </ResponsiveModal>
+    <PlanReviewDialog
+      open={open && Boolean(targetPlan)}
+      plan={targetPlan}
+      currentPlan={currentPlan}
+      subscription={data?.subscription ?? null}
+      onOpenChange={onOpenChange}
+      onConfirmFree={async (planId) => {
+        await assignFree.mutateAsync(planId);
+      }}
+      onCheckoutPaid={async (planId) => {
+        const { checkoutUrl } = await createCheckout.mutateAsync(planId);
+        window.location.assign(checkoutUrl);
+      }}
+      isSubmitting={assignFree.isPending || createCheckout.isPending}
+    />
   );
 }

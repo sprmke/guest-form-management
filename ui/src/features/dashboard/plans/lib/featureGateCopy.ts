@@ -18,8 +18,8 @@ export const FEATURE_GATE_COPY: Record<PlanFeatureKey, FeatureGateCopy> = {
     ctaLabel: 'View plans',
   },
   aiMarketingGeneration: {
-    title: 'AI generation',
-    description: 'Upgrade for more AI marketing credits.',
+    title: 'AI content generation',
+    description: 'Generating captions and design copy with AI is available on Business and above.',
     ctaLabel: 'View plans',
   },
   aiMonthlyCreditAllowance: {
@@ -33,28 +33,30 @@ export const FEATURE_GATE_COPY: Record<PlanFeatureKey, FeatureGateCopy> = {
     ctaLabel: 'View plans',
   },
   aiValidations: {
-    title: 'AI receipt validation',
-    description: 'Available on Business and above.',
+    title: 'AI receipt & ID validation',
+    description: 'Automatic AI review of receipts and IDs is available on Pro and above.',
     ctaLabel: 'View plans',
   },
   aiChatAutoReply: {
     title: 'AI auto-reply',
-    description: 'Available on a paid plan.',
+    description:
+      'Letting the AI send guest replies automatically is available on Business and above.',
     ctaLabel: 'View plans',
   },
   aiReceptionist: {
     title: 'AI Receptionist',
-    description: 'Available on a paid plan.',
+    description: 'Live AI call handling for guests is available on Business and above.',
     ctaLabel: 'View plans',
   },
   customPages: {
-    title: 'Public pages access & editor',
-    description: 'Available on Starter and above.',
+    title: 'Public pages',
+    description:
+      'Editing your listing and stay guide is free on every plan — this key no longer gates anything.',
     ctaLabel: 'View plans',
   },
   telegramNotifications: {
     title: 'Telegram notifications',
-    description: 'Available on a paid plan.',
+    description: 'Sending booking alerts to Telegram is available on Starter and above.',
     ctaLabel: 'View plans',
   },
   teamManagement: {
@@ -63,8 +65,9 @@ export const FEATURE_GATE_COPY: Record<PlanFeatureKey, FeatureGateCopy> = {
     ctaLabel: 'View plans',
   },
   automatedBookingFlow: {
-    title: 'Automated document generation',
-    description: 'Available on Starter and above.',
+    title: 'Automated booking emails',
+    description:
+      'Automatic GAF/pet request, booking acknowledgement, ready-for-check-in, and check-out & SD refund emails are available on Starter and above — on Free you send these manually.',
     ctaLabel: 'View plans',
   },
   verifiedBadgeEligible: {
@@ -74,7 +77,7 @@ export const FEATURE_GATE_COPY: Record<PlanFeatureKey, FeatureGateCopy> = {
   },
   recommendedBadgeEligible: {
     title: 'Recommended badge',
-    description: 'Available on Business and above.',
+    description: 'Available on Pro and above.',
     ctaLabel: 'View plans',
   },
   searchVisibilityTier: {
@@ -86,6 +89,41 @@ export const FEATURE_GATE_COPY: Record<PlanFeatureKey, FeatureGateCopy> = {
     title: 'Full-service property management',
     description:
       'Contact us for hands-on operations, marketing, chat, and reminders — with full booking and finance visibility.',
+    ctaLabel: 'View plans',
+  },
+  financeReporting: {
+    title: 'Finance reporting',
+    description: 'Available on Starter and above.',
+    ctaLabel: 'View plans',
+  },
+  maintenanceReporting: {
+    title: 'Maintenance reporting',
+    description: 'Available on Starter and above.',
+    ctaLabel: 'View plans',
+  },
+  metaChatChannel: {
+    title: 'Meta chat channel',
+    description: 'Available on Business and above.',
+    ctaLabel: 'View plans',
+  },
+  quickReplies: {
+    title: 'Quick replies',
+    description: 'Available on Starter and above.',
+    ctaLabel: 'View plans',
+  },
+  customTemplates: {
+    title: 'Custom templates',
+    description: 'Available on Starter and above.',
+    ctaLabel: 'View plans',
+  },
+  publicPagesAutosave: {
+    title: 'Autosave',
+    description: 'Available on Starter and above.',
+    ctaLabel: 'View plans',
+  },
+  bookingImport: {
+    title: 'AI booking import',
+    description: 'Importing bookings from CSV or Excel is available on Starter and above.',
     ctaLabel: 'View plans',
   },
 };

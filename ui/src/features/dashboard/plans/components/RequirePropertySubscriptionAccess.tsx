@@ -46,7 +46,7 @@ export function RequirePropertySubscriptionAccess({ section, children }: Props) 
           Pay your plan to restore dashboard access for this listing.
         </p>
         <Button asChild className="mt-4 min-h-[44px]">
-          <a href={propertySectionPath(orgSlug, propertySlug, 'plans')}>Go to Plans</a>
+          <a href={propertySectionPath(orgSlug, propertySlug, 'plans')}>Go to Plans & Billing</a>
         </Button>
       </FloatingPanel>
     );
@@ -56,7 +56,7 @@ export function RequirePropertySubscriptionAccess({ section, children }: Props) 
     <>
       {isPastDue && section !== 'plans' ? (
         <div className="border-destructive/30 bg-destructive/5 text-destructive mb-3 rounded-xl border px-3 py-2 text-sm">
-          Subscription past due — pay from Plans before access is restricted.
+          Subscription past due — pay from Plans & Billing before access is restricted.
         </div>
       ) : null}
       {children}

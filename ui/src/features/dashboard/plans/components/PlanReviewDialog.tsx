@@ -6,9 +6,15 @@ import {
   planFeatureLosses,
   planDisplayName,
   planPrice,
+  PESO_WHOLE,
   type PlanFeatureChange,
 } from '@/features/dashboard/plans/lib/planPresentation';
-import type { PropertyPlanDto } from '@/features/dashboard/plans/lib/propertyPlanApi';
+import { discountedPlanPricePhp } from '@/features/dashboard/plans/lib/planPricing';
+import { computeMidCycleProration } from '@/features/dashboard/plans/lib/planProration';
+import type {
+  PropertyPlanDto,
+  PropertySubscriptionDto,
+} from '@/features/dashboard/plans/lib/propertyPlanApi';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -25,11 +31,37 @@ type PlanReviewDialogProps = {
   open: boolean;
   plan: PropertyPlanDto | null;
   currentPlan: PropertyPlanDto | null;
+  /** Current property_subscriptions row — used only to preview mid-cycle proration. */
+  subscription?: PropertySubscriptionDto | null;
   onOpenChange: (open: boolean) => void;
   onConfirmFree: (planId: string) => Promise<void>;
   onCheckoutPaid: (planId: string) => Promise<void>;
   isSubmitting: boolean;
 };
+
+/** Preview only — the server (`propertySubscriptionCheckout.ts`) always recomputes and charges
+ * the authoritative amount; this exists so the host sees the credit before confirming. */
+function midCycleProrationPreview(
+  plan: PropertyPlanDto,
+  currentPlan: PropertyPlanDto | null,
+  subscription: PropertySubscriptionDto | null | undefined
+) {
+  if (!currentPlan || !subscription) return null;
+  if (plan.isDefault || currentPlan.isDefault) return null;
+  if (plan.id === currentPlan.id) return null;
+  if (subscription.status !== 'active' && subscription.status !== 'past_due') return null;
+  if (!subscription.currentPeriodStart || !subscription.currentPeriodEnd) return null;
+  const currentPricePhp = subscription.pricePhpSnapshot;
+  if (currentPricePhp == null || currentPricePhp <= 0) return null;
+
+  const targetPricePhp = discountedPlanPricePhp(plan.pricePhp, plan.discountPercent);
+  return computeMidCycleProration({
+    currentPricePhp,
+    currentPeriodStartIso: subscription.currentPeriodStart,
+    currentPeriodEndIso: subscription.currentPeriodEnd,
+    targetPricePhp,
+  });
+}
 
 function PlanStub({ plan, muted }: { plan: PropertyPlanDto; muted?: boolean }) {
   const price = planPrice(plan);
@@ -95,6 +127,7 @@ export function PlanReviewDialog({
   open,
   plan,
   currentPlan,
+  subscription,
   onOpenChange,
   onConfirmFree,
   onCheckoutPaid,
@@ -106,6 +139,7 @@ export function PlanReviewDialog({
   const gains = planFeatureGains(currentPlan?.features ?? null, plan.features);
   const losses = currentPlan ? planFeatureLosses(currentPlan.features, plan.features) : [];
   const isDownscale = losses.length > 0 && gains.length === 0;
+  const proration = midCycleProrationPreview(plan, currentPlan, subscription);
 
   const planTitle = planDisplayName(plan);
   const title = currentPlan
@@ -129,7 +163,9 @@ export function PlanReviewDialog({
           <ResponsiveModalDescription id="plan-review-description">
             {isFree
               ? 'This listing keeps running on the free tier.'
-              : 'Review what changes before you continue.'}
+              : proration
+                ? "You're switching mid-cycle — credited for the unused time on your current plan."
+                : 'Review what changes before you continue.'}
           </ResponsiveModalDescription>
         </ResponsiveModalHeader>
 
@@ -146,6 +182,30 @@ export function PlanReviewDialog({
                 <PlanStub plan={plan} />
               </div>
             )}
+
+            {proration ? (
+              <div className="border-border space-y-1.5 rounded-xl border p-3 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">
+                    {planTitle} plan ({proration.remainingDays}{' '}
+                    {proration.remainingDays === 1 ? 'day' : 'days'} left)
+                  </span>
+                  <span className="tabular-nums">
+                    {PESO_WHOLE.format(proration.targetPricePhp)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">Credit for unused time</span>
+                  <span className="tabular-nums">
+                    &minus;{PESO_WHOLE.format(proration.creditPhp)}
+                  </span>
+                </div>
+                <div className="border-border flex items-center justify-between gap-3 border-t pt-1.5 font-semibold">
+                  <span>Due today</span>
+                  <span className="tabular-nums">{PESO_WHOLE.format(proration.netDuePhp)}</span>
+                </div>
+              </div>
+            ) : null}
 
             {gains.length === 0 && losses.length === 0 ? (
               <p className="text-muted-foreground text-sm">

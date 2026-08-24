@@ -2,7 +2,11 @@ import { useParkingIdParam, usePropertyIdParam } from '@/features/dashboard/org/
 import { usePropertyEntitlements } from '@/features/dashboard/plans/hooks/usePropertyEntitlements';
 import { isFeatureEnabled, type PlanFeatureKey } from '@/features/dashboard/plans/lib/planFeatures';
 
-/** Until org-level plans ship — see docs/workflow/planned/pricing-portfolio-bundling.md */
+/** Safety-net fallback for parking when the org has no live portfolio bundle — org-level plans
+ * shipped in Phase 8 and narrow this for orgs that do have a bundle (see
+ * getActiveOrgSubscriptionForProperty / firstActivePropertyIdForOrg), but a parking-only org still
+ * has no property-scoped entitlement to check for these two features. See
+ * docs/architecture/plans-feature-matrix.md. */
 const PARKING_INTERIM_UNGATED_FEATURES = new Set<PlanFeatureKey>([
   'telegramNotifications',
   'aiDashboardAssistant',
