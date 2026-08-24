@@ -3,6 +3,7 @@
  * and ui/src/features/guest/form/hooks/useGuestPaymentInfo.ts.
  */
 
+import { DEFAULT_CLEANING_BUFFER_MINUTES, isValidCleaningBufferMinutes } from './cleaningBuffer.ts';
 import { createServiceClient } from './orgAuth.ts';
 import { normalizePropertyMediaItems } from './propertyMedia.ts';
 import {
@@ -16,6 +17,8 @@ export type GuestFormSettings = {
   allowSurpriseDecor: boolean;
   checkInTime: string;
   checkOutTime: string;
+  /** Required minutes between a checkout and the next check-in on a same-day turnover (min 1 hour). */
+  cleaningBufferMinutes: number;
   maxAdults: number;
   maxChildren: number;
   propertyName: string;
@@ -31,6 +34,7 @@ export const DEFAULT_GUEST_FORM_SETTINGS: GuestFormSettings = {
   allowSurpriseDecor: true,
   checkInTime: '14:00',
   checkOutTime: '12:00',
+  cleaningBufferMinutes: DEFAULT_CLEANING_BUFFER_MINUTES,
   maxAdults: 4,
   maxChildren: 0,
   propertyName: '',
@@ -127,6 +131,12 @@ export async function resolveGuestFormSettings(propertyId: string): Promise<Gues
     allowSurpriseDecor: readSettingsBoolean(settings, 'allowSurpriseDecor', true),
     checkInTime: readSettingsString(settings, 'checkInTime', residenceDefaults.checkInTime),
     checkOutTime: readSettingsString(settings, 'checkOutTime', residenceDefaults.checkOutTime),
+    cleaningBufferMinutes: (() => {
+      const value = settings.cleaningBufferMinutes;
+      return typeof value === 'number' && isValidCleaningBufferMinutes(value)
+        ? value
+        : DEFAULT_CLEANING_BUFFER_MINUTES;
+    })(),
     maxAdults: readSettingsNumber(settings, 'maxAdults', residenceDefaults.maxAdults.default),
     maxChildren: Math.max(
       readSettingsNumber(settings, 'maxChildren', residenceDefaults.maxChildren.default),

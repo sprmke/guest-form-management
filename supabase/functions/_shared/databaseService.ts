@@ -35,6 +35,10 @@ import {
   passesListCheckInDateRangeFilter,
   type BookingsListSort,
 } from './bookingsListSort.ts';
+import {
+  buildBookingsListStatusOrFilter,
+  passesBookingsListStatusFilter,
+} from './bookingsStatusFilter.ts';
 
 export class DatabaseService {
   private static supabase = createClient(
@@ -698,12 +702,9 @@ export class DatabaseService {
    */
   static async listBookings(params: {
     propertyId?: string;
-    propertyIds?: string[];
     parkingId?: string;
-    parkingIds?: string[];
-    /** Org-wide union: property stays OR parking reservations. */
-    orgPropertyIds?: string[];
-    orgParkingIds?: string[];
+    /** Org-wide scope: property stays and/or parking reservations for this org. */
+    orgId?: string;
     includePropertyMeta?: boolean;
     includeParkingMeta?: boolean;
     bookingKind?: 'property' | 'parking' | null;
@@ -721,16 +722,15 @@ export class DatabaseService {
       | 'created_at:desc';
     page?: number;
     limit?: number;
+    /** When true, IMPORTED status filter also matches imported_from_batch_id rows. */
+    expandImportedBatch?: boolean;
     /** When true, include COMPLETED rows (cancelled stays hidden unless status filter). */
     showCompletedBookings?: boolean;
   }) {
     const {
       propertyId,
-      propertyIds,
       parkingId,
-      parkingIds,
-      orgPropertyIds,
-      orgParkingIds,
+      orgId,
       includePropertyMeta = false,
       includeParkingMeta = false,
       bookingKind = null,
@@ -744,11 +744,16 @@ export class DatabaseService {
       page = 1,
       limit = 31,
       showCompletedBookings = false,
+      expandImportedBatch = false,
     } = params;
 
     const todayManila = manilaTodayIso();
 
-    let request = this.supabase.from('guest_submissions').select('*', { count: 'exact' });
+    // Org-wide scope is expressed as one query per relation (property / parking),
+    // each filtered by `organization_id` through an inner-joined embed — never by
+    // building an `id.in.(...)` list of every property/parking id, which blows past
+    // request URI length limits once an org has more than a couple hundred assets.
+    const baseRequests: any[] = [];
 
     if (parkingId) {
       // Broadcast pre-claim requests still have parking_id = null — surface this
@@ -759,45 +764,42 @@ export class DatabaseService {
         .eq('parking_id', parkingId)
         .eq('response', 'pending');
       const pendingBookingIds = (pendingBroadcasts ?? []).map((row) => String(row.booking_id));
-      request =
+      const request = this.supabase.from('guest_submissions').select('*');
+      baseRequests.push(
         pendingBookingIds.length > 0
           ? request.or(`parking_id.eq.${parkingId},id.in.(${pendingBookingIds.join(',')})`)
-          : request.eq('parking_id', parkingId);
+          : request.eq('parking_id', parkingId)
+      );
     } else if (propertyId) {
-      request = request.eq('property_id', propertyId);
-    } else if (propertyIds) {
-      if (propertyIds.length === 0) {
-        return { rows: [], total: 0 };
+      baseRequests.push(
+        this.supabase.from('guest_submissions').select('*').eq('property_id', propertyId)
+      );
+    } else if (orgId) {
+      const wantProperty = bookingKind !== 'parking';
+      const wantParking = bookingKind !== 'property';
+      if (wantProperty) {
+        baseRequests.push(
+          this.supabase
+            .from('guest_submissions')
+            .select('*, properties!inner(organization_id)')
+            .eq('properties.organization_id', orgId)
+        );
       }
-      request = request.in('property_id', propertyIds);
-    } else if (parkingIds) {
-      if (parkingIds.length === 0) {
-        return { rows: [], total: 0 };
+      if (wantParking) {
+        baseRequests.push(
+          this.supabase
+            .from('guest_submissions')
+            .select('*, parkings!inner(organization_id)')
+            .eq('parkings.organization_id', orgId)
+        );
       }
-      request = request.in('parking_id', parkingIds);
-    } else if (orgPropertyIds || orgParkingIds) {
-      const propIds = orgPropertyIds ?? [];
-      const parkIds = orgParkingIds ?? [];
-      if (propIds.length === 0 && parkIds.length === 0) {
-        return { rows: [], total: 0 };
-      }
-      const orParts: string[] = [];
-      if (propIds.length > 0) {
-        orParts.push(`property_id.in.(${propIds.join(',')})`);
-      }
-      if (parkIds.length > 0) {
-        orParts.push(`parking_id.in.(${parkIds.join(',')})`);
-      }
-      request = request.or(orParts.join(','));
     }
 
-    if (bookingKind === 'property') {
-      request = request.not('property_id', 'is', null);
-    } else if (bookingKind === 'parking') {
-      request = request.not('parking_id', 'is', null);
+    if (baseRequests.length === 0) {
+      return { rows: [], total: 0 };
     }
 
-    // --- Filters ---
+    // --- Filters (applied identically to every base request above) ---
     // Free-text search now spans the full guest record:
     //   • Primary guest fields  : facebook name, primary name, email, phone, address, nationality
     //   • Additional guests     : guest2…guest5_name
@@ -805,54 +807,70 @@ export class DatabaseService {
     //   • Parking               : car_plate_number, car_brand_model, car_color
     //   • Notes / source        : guest_special_requests, find_us_details
     // PostgREST `or()` joins each clause as a comma-separated `<col>.ilike.<needle>`.
-    if (q.trim()) {
-      const needle = `%${q.trim()}%`;
-      request = request.or(
-        [
+    const searchOr = q.trim()
+      ? [
           // Primary guest
-          `guest_facebook_name.ilike.${needle}`,
-          `primary_guest_name.ilike.${needle}`,
-          `guest_email.ilike.${needle}`,
-          `guest_phone_number.ilike.${needle}`,
-          `guest_address.ilike.${needle}`,
-          `nationality.ilike.${needle}`,
+          `guest_facebook_name.ilike.%${q.trim()}%`,
+          `primary_guest_name.ilike.%${q.trim()}%`,
+          `guest_email.ilike.%${q.trim()}%`,
+          `guest_phone_number.ilike.%${q.trim()}%`,
+          `guest_address.ilike.%${q.trim()}%`,
+          `nationality.ilike.%${q.trim()}%`,
           // Additional guests
-          `guest2_name.ilike.${needle}`,
-          `guest3_name.ilike.${needle}`,
-          `guest4_name.ilike.${needle}`,
-          `guest5_name.ilike.${needle}`,
+          `guest2_name.ilike.%${q.trim()}%`,
+          `guest3_name.ilike.%${q.trim()}%`,
+          `guest4_name.ilike.%${q.trim()}%`,
+          `guest5_name.ilike.%${q.trim()}%`,
           // Pet
-          `pet_name.ilike.${needle}`,
-          `pet_type.ilike.${needle}`,
-          `pet_breed.ilike.${needle}`,
+          `pet_name.ilike.%${q.trim()}%`,
+          `pet_type.ilike.%${q.trim()}%`,
+          `pet_breed.ilike.%${q.trim()}%`,
           // Parking
-          `car_plate_number.ilike.${needle}`,
-          `car_brand_model.ilike.${needle}`,
-          `car_color.ilike.${needle}`,
+          `car_plate_number.ilike.%${q.trim()}%`,
+          `car_brand_model.ilike.%${q.trim()}%`,
+          `car_color.ilike.%${q.trim()}%`,
           // Free-text notes
-          `guest_special_requests.ilike.${needle}`,
-          `find_us_details.ilike.${needle}`,
+          `guest_special_requests.ilike.%${q.trim()}%`,
+          `find_us_details.ilike.%${q.trim()}%`,
         ].join(',')
-      );
-    }
+      : null;
 
-    if (status.length > 0) {
-      request = request.in('status', status);
-    }
-
-    if (hasPets === true) request = request.eq('has_pets', true);
-    if (hasPets === false) request = request.eq('has_pets', false);
-
-    if (needParking === true) request = request.eq('need_parking', true);
-    if (needParking === false) request = request.eq('need_parking', false);
+    const requests = baseRequests.map((base) => {
+      let request = base;
+      if (bookingKind === 'property') {
+        request = request.not('property_id', 'is', null);
+      } else if (bookingKind === 'parking') {
+        request = request.not('parking_id', 'is', null);
+      }
+      if (searchOr) request = request.or(searchOr);
+      if (status.length > 0) {
+        const statusOr = buildBookingsListStatusOrFilter(status, expandImportedBatch);
+        request = statusOr ? request.or(statusOr) : request.in('status', status);
+      }
+      if (hasPets === true) request = request.eq('has_pets', true);
+      if (hasPets === false) request = request.eq('has_pets', false);
+      if (needParking === true) request = request.eq('need_parking', true);
+      if (needParking === false) request = request.eq('need_parking', false);
+      return request.order('created_at', { ascending: false });
+    });
 
     // Fetch all matching rows first (required for MM-DD-YYYY client-side sort)
     // Then paginate in memory. This is acceptable for admin (≤ a few thousand rows).
-    const { data: allData, error, count } = await request.order('created_at', { ascending: false });
+    const results = await Promise.all(requests);
+    for (const { error } of results) {
+      if (error) throw new Error(`listBookings query failed: ${error.message}`);
+    }
 
-    if (error) throw new Error(`listBookings query failed: ${error.message}`);
-
-    let rows = (allData ?? []) as any[];
+    let rows = results.flatMap((result) => (result.data ?? []) as any[]);
+    if (results.length > 1) {
+      const seenIds = new Set<string>();
+      rows = rows.filter((row) => {
+        const id = String(row.id);
+        if (seenIds.has(id)) return false;
+        seenIds.add(id);
+        return true;
+      });
+    }
 
     // Check-in date-range filter (all statuses)
     if (from || to) {
@@ -1420,13 +1438,12 @@ export class DatabaseService {
   }
 
   static async getTelegramChatSettings(
-    propertyId: string
+    propertyId?: string,
+    parkingId?: string
   ): Promise<Record<string, unknown> | null> {
-    const { data, error } = await this.supabase
-      .from('telegram_chat_settings')
-      .select('*')
-      .eq('property_id', propertyId)
-      .maybeSingle();
+    let query = this.supabase.from('telegram_chat_settings').select('*');
+    query = applyAssetScopeFilter(query, { propertyId, parkingId });
+    const { data, error } = await query.maybeSingle();
 
     if (error) {
       console.error('getTelegramChatSettings:', error);
@@ -1441,13 +1458,14 @@ export class DatabaseService {
 
   static async updateTelegramChatSettings(
     patch: Record<string, unknown>,
-    propertyId: string
+    propertyId?: string,
+    parkingId?: string
   ): Promise<Record<string, unknown>> {
     return updateAssetScopedSingleton(
       this.supabase,
       'telegram_chat_settings',
       patch,
-      { propertyId },
+      { propertyId, parkingId },
       'updateTelegramChatSettings',
       'Failed to update Telegram chat settings'
     );

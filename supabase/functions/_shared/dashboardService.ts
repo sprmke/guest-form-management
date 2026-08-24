@@ -133,6 +133,7 @@ export type DashboardParkingPerformance = {
 
 export type DashboardStatsParams = {
   propertyId?: string;
+  parkingId?: string;
   orgId?: string;
   /** Inclusive period range (YYYY-MM-DD, Asia/Manila calendar days). */
   from?: string | null;
@@ -509,9 +510,21 @@ export async function computeDashboardStats(
     }
   }
 
-  let bookingsQuery = supabase.from('guest_submissions').select('*');
-  if (params.propertyId) {
-    bookingsQuery = bookingsQuery.eq('property_id', params.propertyId);
+  let rows: Record<string, unknown>[];
+  if (params.parkingId) {
+    const { data, error } = await supabase
+      .from('guest_submissions')
+      .select('*')
+      .eq('parking_id', params.parkingId);
+    if (error) throw new Error(`dashboard parking bookings query failed: ${error.message}`);
+    rows = (data ?? []) as Record<string, unknown>[];
+  } else if (params.propertyId) {
+    const { data, error } = await supabase
+      .from('guest_submissions')
+      .select('*')
+      .eq('property_id', params.propertyId);
+    if (error) throw new Error(`dashboard bookings query failed: ${error.message}`);
+    rows = (data ?? []) as Record<string, unknown>[];
   } else if (propertyIds !== null || parkingIds !== null) {
     const propIds = propertyIds ?? [];
     const parkIds = parkingIds ?? [];
@@ -561,21 +574,48 @@ export async function computeDashboardStats(
         })),
       };
     }
-    const orParts: string[] = [];
+    // Scope by organization_id through an inner-joined embed — never by building an
+    // `id.in.(...)` list of every property/parking id, which blows past request URI
+    // length limits once an org has more than a couple hundred assets.
+    const scopedQueries: any[] = [];
     if (propIds.length > 0) {
-      orParts.push(`property_id.in.(${propIds.join(',')})`);
+      scopedQueries.push(
+        supabase
+          .from('guest_submissions')
+          .select('*, properties!inner(organization_id)')
+          .eq('properties.organization_id', params.orgId as string)
+      );
     }
     if (parkIds.length > 0) {
-      orParts.push(`parking_id.in.(${parkIds.join(',')})`);
+      scopedQueries.push(
+        supabase
+          .from('guest_submissions')
+          .select('*, parkings!inner(organization_id)')
+          .eq('parkings.organization_id', params.orgId as string)
+      );
     }
-    bookingsQuery = bookingsQuery.or(orParts.join(','));
+    const scopedResults = await Promise.all(scopedQueries);
+    for (const { error } of scopedResults) {
+      if (error) throw new Error(`dashboard bookings query failed: ${error.message}`);
+    }
+    let merged = scopedResults.flatMap(
+      (result) => (result.data ?? []) as Record<string, unknown>[]
+    );
+    if (scopedResults.length > 1) {
+      const seenIds = new Set<string>();
+      merged = merged.filter((row) => {
+        const id = String(row.id);
+        if (seenIds.has(id)) return false;
+        seenIds.add(id);
+        return true;
+      });
+    }
+    rows = merged;
+  } else {
+    const { data, error } = await supabase.from('guest_submissions').select('*');
+    if (error) throw new Error(`dashboard bookings query failed: ${error.message}`);
+    rows = (data ?? []) as Record<string, unknown>[];
   }
-  const { data, error } = await bookingsQuery;
-  if (error) {
-    throw new Error(`dashboard bookings query failed: ${error.message}`);
-  }
-
-  const rows = (data ?? []) as Record<string, unknown>[];
 
   const pipelineCounts = new Map<string, number>();
   for (const s of PIPELINE_STATUSES) pipelineCounts.set(s, 0);

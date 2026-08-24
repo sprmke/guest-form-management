@@ -31,7 +31,7 @@ import {
   recordAiUsageOptional,
 } from './aiUsageService.ts';
 import { DatabaseService } from './databaseService.ts';
-import { parseStorageUrl } from './receiptValidationService.ts';
+import { evaluateReceiptSanityWarnings, parseStorageUrl } from './receiptValidationService.ts';
 import {
   computeTotalGuestBalanceFromBooking,
   guestBalancePaymentReceiptRequired,
@@ -1312,7 +1312,8 @@ Analyze the image and return ONLY valid JSON:
   "verdict": "valid" | "likely_valid" | "unclear" | "invalid",
   "summary": "one short ops note",
   "extracted_amount": number | null,
-  "amount_confidence": "high" | "medium" | "low" | null
+  "amount_confidence": "high" | "medium" | "low" | null,
+  "extracted_date": "YYYY-MM-DD" | null
 }
 Rules:
 - "valid": clear digital transfer receipt/screenshot or clear photo of PHP cash bills.
@@ -1321,6 +1322,7 @@ Rules:
 - "invalid": clearly not payment proof.
 - extracted_amount is the numeric Philippine peso amount visible. Ignore fees and unrelated numbers.
 - amount_confidence: high when the amount is clearly visible, medium/low otherwise.
+- extracted_date is the transaction date shown on the screenshot, normalized to YYYY-MM-DD. Null for cash photos or when no date is visible.
 - summary max 100 characters; always start with "Downpayment receipt".
 - Never say bare "Image" / "Images" / "Receipt" without "Downpayment".
 - Example good: "Downpayment receipt shows ₱3,500 GCash transfer."
@@ -1401,6 +1403,8 @@ export async function runPricingSection(
   const verdict = normalizeVerdict(parsed?.verdict);
   const extractedAmount = coerceNumber(parsed?.extracted_amount);
   const amountConfidence = String(parsed?.amount_confidence || '').toLowerCase();
+  const extractedDateRaw = String(parsed?.extracted_date || '').trim();
+  const extractedDate = /^\d{4}-\d{2}-\d{2}$/.test(extractedDateRaw) ? extractedDateRaw : null;
   // Leaves room for the appended amount without cutting the model's sentence short.
   const summaryBase = trimToLastSentence(
     clampSummary(
@@ -1440,6 +1444,17 @@ export async function runPricingSection(
     } else if (amountConfidence === 'low') {
       flags.push(uploadedFileFlag('Downpayment receipt', 'the amount is hard to read.'));
     }
+  }
+
+  // Date reasonableness is checked against today (upload time), not the booking's
+  // check-in date — bookings can be made far in advance of the stay.
+  const dateWarnings = evaluateReceiptSanityWarnings({
+    extractedAmount: null,
+    extractedDate,
+    minimumAmount: null,
+  });
+  for (const warning of dateWarnings) {
+    flags.push(uploadedFileFlag('Downpayment receipt', warning.toLowerCase()));
   }
 
   const persistPatch: Record<string, string> = {

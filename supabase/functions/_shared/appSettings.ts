@@ -97,6 +97,7 @@ export type GuestPaymentInfoDto = {
   allowSurpriseDecor: boolean;
   checkInTime: string;
   checkOutTime: string;
+  cleaningBufferMinutes: number;
   maxAdults: number;
   maxChildren: number;
   propertyName: string;
@@ -577,6 +578,7 @@ export async function serializeGuestPaymentInfo(
     allowSurpriseDecor: guestForm.allowSurpriseDecor,
     checkInTime: guestForm.checkInTime,
     checkOutTime: guestForm.checkOutTime,
+    cleaningBufferMinutes: guestForm.cleaningBufferMinutes,
     maxAdults: guestForm.maxAdults,
     maxChildren: guestForm.maxChildren,
     propertyName: guestForm.propertyName,

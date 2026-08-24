@@ -64,7 +64,7 @@ import {
   declineParkingBooking,
   ParkingBroadcastActionError,
 } from './parkingBroadcastActions.ts';
-import { listParkingIdsForOrganization, verifyBookingBelongsToParking } from './parkingScope.ts';
+import { verifyBookingBelongsToParking } from './parkingScope.ts';
 import {
   availableTransitions as parkingAvailableTransitions,
   canTransition as canTransitionParking,
@@ -106,11 +106,7 @@ import {
   verifyPropertyAccess,
   verifyPropertyOwner,
 } from './orgAuth.ts';
-import {
-  listPropertyIdsForOrganization,
-  resolveAdminPropertyId,
-  resolveOrganizationIdForProperty,
-} from './propertyScope.ts';
+import { resolveAdminPropertyId, resolveOrganizationIdForProperty } from './propertyScope.ts';
 import { verifyAdminJwt } from './auth.ts';
 import { generateMarketingCaption } from './marketingCaptionAi.ts';
 import { generateMarketingTemplateTokens } from './marketingTemplateGenerationAi.ts';
@@ -366,21 +362,24 @@ async function toolListBookings(
     ? (args.status as string[]).filter(isBookingStatus)
     : undefined;
 
-  let propertyIds: string[] | undefined;
+  let propertyId: string | undefined;
+  let orgId: string | undefined;
   if (explicitPropertyId) {
     const access = await verifyPropertyAccess(ctx.req, explicitPropertyId, 'bookings:view');
-    propertyIds = [access.property.id];
+    propertyId = access.property.id;
   } else {
     const access = await verifyOrgAccess(
       ctx.req,
       { orgId: ctx.organizationId },
       'org:bookings:view'
     );
-    propertyIds = await listPropertyIdsForOrganization(access.org.id);
+    orgId = access.org.id;
   }
 
   const result = await DatabaseService.listBookings({
-    propertyIds,
+    propertyId,
+    orgId,
+    bookingKind: orgId ? 'property' : undefined,
     status,
     from: str(args, 'from') ?? null,
     to: str(args, 'to') ?? null,
@@ -1023,21 +1022,23 @@ async function toolListParkingBookings(
     ? (args.status as string[]).filter(isParkingStatus)
     : undefined;
 
-  let parkingIds: string[] | undefined;
+  let parkingId: string | undefined;
+  let orgId: string | undefined;
   if (explicitParkingId) {
     await verifyParkingTeamAccess(ctx.req, explicitParkingId, 'bookings:view');
-    parkingIds = [explicitParkingId];
+    parkingId = explicitParkingId;
   } else {
     const access = await verifyOrgAccess(
       ctx.req,
       { orgId: ctx.organizationId },
       'org:parkings:view'
     );
-    parkingIds = await listParkingIdsForOrganization(access.org.id);
+    orgId = access.org.id;
   }
 
   const result = await DatabaseService.listBookings({
-    parkingIds,
+    parkingId,
+    orgId,
     bookingKind: 'parking',
     status,
     from: str(args, 'from') ?? null,
@@ -1220,11 +1221,15 @@ async function toolGetInboxSettings(
   }
   const inboxCtx = await resolveInboxAccess(ctx.req, 'manage', scopeArgs);
   const sb = createServiceClient();
-  const { data } = await sb
+  const settingsQuery = sb
     .from('social_inbox_settings')
     .select('auto_reply_enabled, auto_reply_mode')
-    .eq('organization_id', inboxCtx.orgId)
-    .maybeSingle();
+    .eq('organization_id', inboxCtx.orgId);
+  const { data } = await (
+    inboxCtx.parkingId
+      ? settingsQuery.eq('parking_id', inboxCtx.parkingId)
+      : settingsQuery.is('parking_id', null)
+  ).maybeSingle();
   return {
     ok: true,
     data: {
@@ -1244,12 +1249,16 @@ async function toolListInboxQuickReplyTemplates(
   }
   const inboxCtx = await resolveInboxAccess(ctx.req, 'manage', scopeArgs);
   const sb = createServiceClient();
-  const { data, error } = await sb
+  const templatesQuery = sb
     .from('social_reply_templates')
     .select('id, title, body_text')
     .eq('organization_id', inboxCtx.orgId)
-    .eq('is_active', true)
-    .order('sort_order', { ascending: true });
+    .eq('is_active', true);
+  const { data, error } = await (
+    inboxCtx.parkingId
+      ? templatesQuery.eq('parking_id', inboxCtx.parkingId)
+      : templatesQuery.is('parking_id', null)
+  ).order('sort_order', { ascending: true });
   if (error) return { ok: false, error: error.message };
   return {
     ok: true,
@@ -2657,11 +2666,15 @@ async function toolDraftInboxReply(
 
   const { messages } = await listMessages(inboxCtx.orgId, conversationId, { limit: 20 });
   const sb = createServiceClient();
-  const { data: settings } = await sb
+  const settingsQuery = sb
     .from('social_inbox_settings')
     .select('ai_system_prompt')
-    .eq('organization_id', inboxCtx.orgId)
-    .maybeSingle();
+    .eq('organization_id', inboxCtx.orgId);
+  const { data: settings } = await (
+    inboxCtx.parkingId
+      ? settingsQuery.eq('parking_id', inboxCtx.parkingId)
+      : settingsQuery.is('parking_id', null)
+  ).maybeSingle();
 
   try {
     const result = await suggestInboxReply({

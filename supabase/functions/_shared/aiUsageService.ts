@@ -217,7 +217,9 @@ export async function setAiPlatformGlobalSettings(input: {
   const patch: Record<string, unknown> = { updated_by: input.updatedBy };
   if (typeof input.enabled === 'boolean') patch.enabled = input.enabled;
   if (typeof input.enforceQuotas === 'boolean') patch.enforce_quotas = input.enforceQuotas;
-  if (Array.isArray(input.allowedFeatures)) patch.allowed_features = input.allowedFeatures;
+  if (Array.isArray(input.allowedFeatures)) {
+    patch.allowed_features = input.allowedFeatures.filter((feature) => isValidAiFeature(feature));
+  }
   if (typeof input.defaultDailyCallLimit === 'number')
     patch.default_daily_call_limit = input.defaultDailyCallLimit;
   if (typeof input.defaultMonthlyCallLimit === 'number')
