@@ -1,5 +1,6 @@
 /**
- * pricing-plans — Super-admin CRUD for the host tier catalog (pricing_plans).
+ * pricing-plans — Super-admin CRUD for the host subscription tier catalog.
+ * Commission pricing is retired from the live product (row kept inactive in DB).
  */
 
 import { createServiceClient } from '../_shared/orgAuth.ts';
@@ -11,6 +12,7 @@ import {
   readJsonBody,
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
+import { postgrestOrIlikeValue } from '../_shared/publicSearch.ts';
 import { serveSuperAdmin } from '../_shared/serveEdge.ts';
 
 function serializePlan(row: Record<string, unknown>) {
@@ -52,34 +54,59 @@ serveSuperAdmin('pricing-plans', async (req) => {
         .from('pricing_plans')
         .select('*')
         .eq('id', planId)
+        .eq('pricing_model', 'subscription')
         .maybeSingle();
       if (error) return jsonError(req, error.message, 500);
       if (!data) return jsonError(req, 'Plan not found', 404);
       return jsonSuccess(req, { plan: serializePlan(data as Record<string, unknown>) });
     }
 
-    const { data, error } = await supabase
+    const search = url.searchParams.get('search')?.trim() || '';
+    const status = url.searchParams.get('status')?.trim() || '';
+    const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10));
+    const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit') ?? '31', 10)));
+    const fromIdx = (page - 1) * limit;
+    const toIdx = fromIdx + limit - 1;
+
+    let query = supabase
       .from('pricing_plans')
-      .select('*')
+      .select('*', { count: 'exact' })
+      .eq('pricing_model', 'subscription')
       .order('sort_order', { ascending: true });
+
+    if (search) {
+      const pattern = postgrestOrIlikeValue(search);
+      query = query.or(`name.ilike.${pattern},code.ilike.${pattern},tagline.ilike.${pattern}`);
+    }
+    if (status === 'active') query = query.eq('is_active', true);
+    else if (status === 'inactive') query = query.eq('is_active', false);
+
+    const { data, error, count } = await query.range(fromIdx, toIdx);
     if (error) return jsonError(req, error.message, 500);
-    return jsonSuccess(req, {
-      plans: (data ?? []).map((row) => serializePlan(row as Record<string, unknown>)),
-    });
+
+    const plans = (data ?? []).map((row) => serializePlan(row as Record<string, unknown>));
+
+    return jsonSuccess(req, { plans, total: count ?? 0, page, limit });
   }
 
   if (req.method === 'POST') {
     requireHttpMethod(req, 'POST');
     const body = await readJsonBody(req);
 
+    if (body.pricingModel === 'commission') {
+      return jsonError(req, 'Commission pricing is not available', 400);
+    }
+
     const code = typeof body.code === 'string' ? body.code.trim().toLowerCase() : '';
     const name = typeof body.name === 'string' ? body.name.trim() : '';
     if (!code || !name) return jsonError(req, 'code and name are required');
+    if (code === 'commission') {
+      return jsonError(req, 'Commission pricing is not available', 400);
+    }
 
     const features = parseFeaturesInput(body.features);
     if (!features) return jsonError(req, 'features object is required');
 
-    const pricingModel = body.pricingModel === 'commission' ? 'commission' : 'subscription';
     const isDefault = body.isDefault === true;
 
     if (isDefault) {
@@ -93,15 +120,14 @@ serveSuperAdmin('pricing-plans', async (req) => {
         name,
         tagline: typeof body.tagline === 'string' ? body.tagline.trim() || null : null,
         sort_order: typeof body.sortOrder === 'number' ? Math.round(body.sortOrder) : 0,
-        pricing_model: pricingModel,
+        pricing_model: 'subscription',
         price_php: typeof body.pricePhp === 'number' ? body.pricePhp : null,
         discount_percent:
           typeof body.discountPercent === 'number'
             ? normalizePlanDiscountPercent(body.discountPercent)
             : 0,
         billing_interval: 'month',
-        commission_rate_percent:
-          typeof body.commissionRatePercent === 'number' ? body.commissionRatePercent : null,
+        commission_rate_percent: null,
         features,
         is_active: body.isActive !== false,
         is_default: isDefault,
@@ -119,21 +145,28 @@ serveSuperAdmin('pricing-plans', async (req) => {
     const id = typeof body.planId === 'string' ? body.planId.trim() : planId;
     if (!id) return jsonError(req, 'planId is required');
 
+    const { data: existing, error: existingError } = await supabase
+      .from('pricing_plans')
+      .select('id, code, pricing_model')
+      .eq('id', id)
+      .maybeSingle();
+    if (existingError) return jsonError(req, existingError.message, 500);
+    if (!existing) return jsonError(req, 'Plan not found', 404);
+    if (existing.pricing_model === 'commission' || existing.code === 'commission') {
+      return jsonError(req, 'Commission pricing is not available', 400);
+    }
+    if (body.pricingModel === 'commission') {
+      return jsonError(req, 'Commission pricing is not available', 400);
+    }
+
     const patch: Record<string, unknown> = {};
     if (typeof body.name === 'string') patch.name = body.name.trim();
     if (typeof body.tagline === 'string') patch.tagline = body.tagline.trim() || null;
     if (typeof body.sortOrder === 'number') patch.sort_order = Math.round(body.sortOrder);
-    if (body.pricingModel === 'commission' || body.pricingModel === 'subscription') {
-      patch.pricing_model = body.pricingModel;
-    }
     if (body.pricePhp === null) patch.price_php = null;
     else if (typeof body.pricePhp === 'number') patch.price_php = body.pricePhp;
     if (typeof body.discountPercent === 'number') {
       patch.discount_percent = normalizePlanDiscountPercent(body.discountPercent);
-    }
-    if (body.commissionRatePercent === null) patch.commission_rate_percent = null;
-    else if (typeof body.commissionRatePercent === 'number') {
-      patch.commission_rate_percent = body.commissionRatePercent;
     }
     const features = parseFeaturesInput(body.features);
     if (features) patch.features = features;
@@ -153,6 +186,7 @@ serveSuperAdmin('pricing-plans', async (req) => {
       .from('pricing_plans')
       .update(patch)
       .eq('id', id)
+      .eq('pricing_model', 'subscription')
       .select('*')
       .maybeSingle();
 

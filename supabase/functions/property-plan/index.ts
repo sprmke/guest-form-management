@@ -5,6 +5,7 @@
 import { createServiceClient, verifyPropertyOwner } from '../_shared/orgAuth.ts';
 import {
   assignPropertyToPlan,
+  getActiveOrgSubscriptionForProperty,
   getActivePropertySubscription,
 } from '../_shared/planEntitlements.ts';
 import { parsePlanFeatures } from '../_shared/planFeatures.ts';
@@ -157,6 +158,10 @@ serveAuthenticated('property-plan', async (req, user) => {
       )
       .eq('pricing_model', 'subscription')
       .eq('is_active', true)
+      // Business Plus is org-bundle-only (≤10 properties) — it's never a standalone
+      // per-property purchase, unlike Pro/Business which are both bundle-eligible AND
+      // still directly selectable here. See org-plan for the bundle tier list.
+      .neq('code', 'business_plus')
       .order('sort_order', { ascending: true });
 
     if (plansError) return jsonError(req, plansError.message, 500);
@@ -182,6 +187,14 @@ serveAuthenticated('property-plan', async (req, user) => {
       .limit(1)
       .maybeSingle();
 
+    // Org portfolio bundle coverage — when set, the property Plans page shows a banner
+    // instead of the tier-card carousel (Free/Starter/Managed/Commission stay selectable
+    // either way; only Pro/Business/Business Plus move to the org-level Plans page).
+    const orgBundle = await getActiveOrgSubscriptionForProperty(propertyId);
+    const orgCoverage = orgBundle
+      ? { planName: orgBundle.planName, organizationId: orgBundle.organizationId }
+      : null;
+
     return jsonSuccess(req, {
       plans: (plans ?? []).map((row) => serializePlan(row as Record<string, unknown>)),
       subscription: serializeSubscription(subscription),
@@ -189,6 +202,7 @@ serveAuthenticated('property-plan', async (req, user) => {
         serializeTransaction(row as Record<string, unknown>)
       ),
       pendingCheckoutUrl: (pendingCheckout?.checkout_url as string | null) ?? null,
+      orgCoverage,
     });
   }
 

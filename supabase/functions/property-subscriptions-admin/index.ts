@@ -17,14 +17,55 @@ import {
   readJsonBody,
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
+import { postgrestOrIlikeValue } from '../_shared/publicSearch.ts';
 import { serveSuperAdmin } from '../_shared/serveEdge.ts';
+
+// Statuses that count as a property's current ("live") subscription — mirrors
+// the partial unique index (property_subscriptions_one_live_per_property_idx)
+// plus 'suspended', which can still be the most-recent active assignment.
+const LIVE_PROPERTY_SUBSCRIPTION_STATUSES = ['active', 'trialing', 'past_due', 'suspended'];
 
 serveSuperAdmin('property-subscriptions-admin', async (req, admin) => {
   const supabase = createServiceClient();
   const url = new URL(req.url);
   const propertyIdParam = url.searchParams.get('propertyId')?.trim() || null;
+  const summaryRequested = url.searchParams.get('summary') === 'true';
 
   if (req.method === 'GET') {
+    if (summaryRequested) {
+      const [totalRes, assignedRes, activeRes, orgsRes] = await Promise.all([
+        supabase.from('properties').select('id', { count: 'exact', head: true }),
+        supabase
+          .from('properties')
+          .select('id, property_subscriptions!inner(id)', { count: 'exact', head: true })
+          .in('property_subscriptions.status', LIVE_PROPERTY_SUBSCRIPTION_STATUSES),
+        supabase
+          .from('property_subscriptions')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'active'),
+        supabase
+          .from('organizations')
+          .select('id, properties!inner(id)', { count: 'exact', head: true }),
+      ]);
+
+      const queryError =
+        totalRes.error ?? assignedRes.error ?? activeRes.error ?? orgsRes.error ?? null;
+      if (queryError) return jsonError(req, queryError.message, 500);
+
+      const total = totalRes.count ?? 0;
+      const assigned = assignedRes.count ?? 0;
+
+      return jsonSuccess(req, {
+        summary: {
+          total,
+          assigned,
+          unassigned: total - assigned,
+          activeSubscriptions: activeRes.count ?? 0,
+          organizations: orgsRes.count ?? 0,
+        },
+      });
+    }
+
     if (propertyIdParam) {
       const subscription = await getActivePropertySubscription(propertyIdParam);
       const events = subscription
@@ -50,9 +91,40 @@ serveSuperAdmin('property-subscriptions-admin', async (req, admin) => {
       });
     }
 
-    const search = url.searchParams.get('search')?.trim().toLowerCase() || '';
+    const search = url.searchParams.get('search')?.trim() || '';
     const planCode = url.searchParams.get('planCode')?.trim() || '';
-    const limit = Math.min(Math.max(Number(url.searchParams.get('limit') ?? 100), 1), 500);
+    const hasPlanCodeFilter = Boolean(planCode) && planCode !== 'all';
+    const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10));
+    const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit') ?? '31', 10)));
+    const fromIdx = (page - 1) * limit;
+    const toIdx = fromIdx + limit - 1;
+
+    // planCode filters on the property's *live* subscription's plan code, which
+    // lives two joins deep (property_subscriptions -> pricing_plans). PostgREST
+    // only lets us filter an embedded resource with `!inner`, so the join shape
+    // — and therefore which subscriptions/plans are embedded per row — differs
+    // depending on whether a plan filter is active.
+    const subscriptionsSelect = hasPlanCodeFilter
+      ? `property_subscriptions!inner (
+          id,
+          plan_id,
+          pricing_model,
+          status,
+          price_php_snapshot,
+          commission_rate_percent_snapshot,
+          updated_at,
+          pricing_plans!inner ( code, name )
+        )`
+      : `property_subscriptions (
+          id,
+          plan_id,
+          pricing_model,
+          status,
+          price_php_snapshot,
+          commission_rate_percent_snapshot,
+          updated_at,
+          pricing_plans ( code, name )
+        )`;
 
     let query = supabase
       .from('properties')
@@ -64,70 +136,66 @@ serveSuperAdmin('property-subscriptions-admin', async (req, admin) => {
         status,
         organization_id,
         organizations!inner ( id, name, slug ),
-        property_subscriptions (
-          id,
-          plan_id,
-          pricing_model,
-          status,
-          price_php_snapshot,
-          commission_rate_percent_snapshot,
-          updated_at,
-          pricing_plans ( code, name )
-        )
-      `
+        ${subscriptionsSelect}
+      `,
+        { count: 'exact' }
       )
-      .order('name', { ascending: true })
-      .limit(limit);
+      .order('name', { ascending: true });
 
     if (search) {
-      query = query.or(`name.ilike.%${search}%,slug.ilike.%${search}%`);
+      const pattern = postgrestOrIlikeValue(search);
+      query = query.or(`name.ilike.${pattern},slug.ilike.${pattern}`);
     }
 
-    const { data, error } = await query;
+    if (hasPlanCodeFilter) {
+      query = query
+        .in('property_subscriptions.status', LIVE_PROPERTY_SUBSCRIPTION_STATUSES)
+        .eq('property_subscriptions.pricing_plans.code', planCode);
+    }
+
+    const { data, error, count } = await query.range(fromIdx, toIdx);
     if (error) return jsonError(req, error.message, 500);
 
-    const rows = (data ?? [])
-      .map((row) => {
-        const org = (row as Record<string, unknown>).organizations as Record<string, unknown>;
-        const subs = ((row as Record<string, unknown>).property_subscriptions ?? []) as Record<
-          string,
-          unknown
-        >[];
-        const live = subs.find((s) =>
-          ['active', 'trialing', 'past_due', 'suspended'].includes(String(s.status ?? ''))
-        );
-        const planJoin = live?.pricing_plans as Record<string, unknown> | undefined;
+    const rows = (data ?? []).map((row) => {
+      const org = (row as Record<string, unknown>).organizations as Record<string, unknown>;
+      const subs = ((row as Record<string, unknown>).property_subscriptions ?? []) as Record<
+        string,
+        unknown
+      >[];
+      const live = subs.find((s) =>
+        LIVE_PROPERTY_SUBSCRIPTION_STATUSES.includes(String(s.status ?? ''))
+      );
+      const planJoin = live?.pricing_plans as Record<string, unknown> | undefined;
 
-        return {
-          propertyId: row.id as string,
-          propertyName: row.name as string,
-          propertySlug: row.slug as string,
-          propertyStatus: row.status as string,
-          organizationId: org.id as string,
-          organizationName: org.name as string,
-          organizationSlug: org.slug as string,
-          subscription: live
-            ? {
-                id: live.id as string,
-                planId: live.plan_id as string,
-                planCode: (planJoin?.code as string | undefined) ?? null,
-                planName: (planJoin?.name as string | undefined) ?? null,
-                pricingModel: live.pricing_model as string,
-                status: live.status as string,
-                pricePhpSnapshot:
-                  live.price_php_snapshot == null ? null : Number(live.price_php_snapshot),
-                commissionRatePercentSnapshot:
-                  live.commission_rate_percent_snapshot == null
-                    ? null
-                    : Number(live.commission_rate_percent_snapshot),
-                updatedAt: live.updated_at as string,
-              }
-            : null,
-        };
-      })
-      .filter((row) => !planCode || row.subscription?.planCode === planCode);
+      return {
+        propertyId: row.id as string,
+        propertyName: row.name as string,
+        propertySlug: row.slug as string,
+        propertyStatus: row.status as string,
+        organizationId: org.id as string,
+        organizationName: org.name as string,
+        organizationSlug: org.slug as string,
+        subscription: live
+          ? {
+              id: live.id as string,
+              planId: live.plan_id as string,
+              planCode: (planJoin?.code as string | undefined) ?? null,
+              planName: (planJoin?.name as string | undefined) ?? null,
+              pricingModel: live.pricing_model as string,
+              status: live.status as string,
+              pricePhpSnapshot:
+                live.price_php_snapshot == null ? null : Number(live.price_php_snapshot),
+              commissionRatePercentSnapshot:
+                live.commission_rate_percent_snapshot == null
+                  ? null
+                  : Number(live.commission_rate_percent_snapshot),
+              updatedAt: live.updated_at as string,
+            }
+          : null,
+      };
+    });
 
-    return jsonSuccess(req, { properties: rows });
+    return jsonSuccess(req, { properties: rows, total: count ?? 0, page, limit });
   }
 
   if (req.method === 'POST') {

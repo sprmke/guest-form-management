@@ -14,12 +14,13 @@ import {
   saveParkingPricing,
   type ParkingPricingPatch,
 } from '../_shared/parkingPricing.ts';
+import { isValidCalendarDateKey } from '../_shared/parkingBlockedDates.ts';
 import { resolveScopedParkingAccess } from '../_shared/parkingScope.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('parking-pricing', async (req) => {
   const permission = req.method === 'GET' ? 'org:parkings:view' : 'org:parkings:manage';
-  const { parkingRow } = await resolveScopedParkingAccess(req, permission);
+  const { parkingRow, user } = await resolveScopedParkingAccess(req, permission);
   const parkingId = parkingRow.id;
   const url = new URL(req.url);
 
@@ -62,8 +63,45 @@ serveAuthenticated('parking-pricing', async (req) => {
       patch.dateOverrides = body.dateOverrides as Record<string, number>;
     }
 
+    if (body.blockRange !== undefined) {
+      const range = body.blockRange as Record<string, unknown> | null;
+      if (
+        !range ||
+        typeof range !== 'object' ||
+        typeof range.startDate !== 'string' ||
+        typeof range.endDate !== 'string'
+      ) {
+        return jsonError(req, 'blockRange requires startDate and endDate', 400);
+      }
+      if (!isValidCalendarDateKey(range.startDate) || !isValidCalendarDateKey(range.endDate)) {
+        return jsonError(
+          req,
+          'blockRange startDate and endDate must be valid YYYY-MM-DD dates',
+          400
+        );
+      }
+      patch.blockRange = {
+        startDate: range.startDate,
+        endDate: range.endDate,
+        note: typeof range.note === 'string' ? range.note : undefined,
+      };
+    }
+
+    if (body.unblockDateKeys !== undefined) {
+      if (
+        !Array.isArray(body.unblockDateKeys) ||
+        body.unblockDateKeys.some((k) => typeof k !== 'string')
+      ) {
+        return jsonError(req, 'unblockDateKeys must be an array of date strings', 400);
+      }
+      if (body.unblockDateKeys.some((k) => !isValidCalendarDateKey(k))) {
+        return jsonError(req, 'unblockDateKeys must contain only valid YYYY-MM-DD dates', 400);
+      }
+      patch.unblockDateKeys = body.unblockDateKeys as string[];
+    }
+
     try {
-      const data = await saveParkingPricing(parkingId, patch);
+      const data = await saveParkingPricing(parkingId, patch, { userId: user.id });
       return jsonSuccess(req, data);
     } catch (e) {
       return jsonError(req, (e as Error).message, 400);

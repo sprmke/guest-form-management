@@ -20,7 +20,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { corsHeaders } from '../_shared/cors.ts';
 import { resolveScopedPropertyAccess } from '../_shared/propertyScope.ts';
 import { sendParkingBroadcast } from '../_shared/emailService.ts';
-import { propertyAutomationEnabled } from '../_shared/propertyAutomationToggles.ts';
+import { rawPropertyAutomationEnabled } from '../_shared/propertyAutomationToggles.ts';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -99,7 +99,7 @@ serve(async (req) => {
     // ── 5. Send broadcast ──────────────────────────────────────────────────────
     const propertyId = bookingPropertyId;
     const broadcastAllowed = propertyId
-      ? await propertyAutomationEnabled(propertyId, 'emailParkingBroadcast')
+      ? await rawPropertyAutomationEnabled(propertyId, 'emailParkingBroadcast')
       : true;
     if (!broadcastAllowed) {
       return new Response(

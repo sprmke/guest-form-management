@@ -9,6 +9,10 @@ import {
 } from '../_shared/propertyIntegrationStatus.ts';
 import { ensureParkingSettings } from '../_shared/parkingSettingsSeed.ts';
 import {
+  mergeParkingAutomationToggles,
+  parseParkingAutomationTogglesPatch,
+} from '../_shared/parkingAutomationToggles.ts';
+import {
   jsonError,
   jsonSuccess,
   readJsonBody,
@@ -32,6 +36,7 @@ function serializeParkingSettingsRow(
     gcashQrImageUrl: row.gcash_qr_image_url ?? null,
     paymentMethods: row.payment_methods ?? [],
     parkingNotificationTemplates: row.parking_notification_templates ?? {},
+    automationToggles: mergeParkingAutomationToggles(row.automation_toggles),
     updatedAt: row.updated_at,
     parkingIntegrations: extras?.parkingIntegrations,
     platformSecrets: extras?.platformSecrets,
@@ -84,6 +89,20 @@ serveAuthenticated('parking-settings', async (req) => {
       typeof body.parkingNotificationTemplates === 'object'
     ) {
       patch.parking_notification_templates = body.parkingNotificationTemplates;
+    }
+
+    const automationPatch = parseParkingAutomationTogglesPatch(body.automationToggles);
+    if (automationPatch) {
+      const { data: existingRow } = await supabase
+        .from('parking_settings')
+        .select('automation_toggles')
+        .eq('parking_id', parkingId)
+        .maybeSingle();
+      const merged = {
+        ...mergeParkingAutomationToggles(existingRow?.automation_toggles),
+        ...automationPatch,
+      };
+      patch.automation_toggles = merged;
     }
 
     if (Object.keys(patch).length <= 1) {

@@ -10,6 +10,7 @@ import {
   readJsonBody,
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
+import { catchPlanFeatureError } from '../_shared/planEntitlements.ts';
 import { TEAM_API_PERMISSIONS } from '../_shared/propertyTeamPermissions.ts';
 import {
   listPropertyTeamMembers,
@@ -38,6 +39,8 @@ serveAuthenticated('property-team-members', async (req) => {
       const member = await updatePropertyTeamMember(ctx, body);
       return jsonSuccess(req, { member });
     } catch (e) {
+      const planErr = catchPlanFeatureError(req, e);
+      if (planErr) return planErr;
       const msg = e instanceof Error ? e.message : 'Update failed';
       return jsonError(req, msg, 400);
     }

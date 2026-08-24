@@ -16,6 +16,7 @@ import {
   validateTemplateContent,
 } from '../_shared/propertyTemplates.ts';
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
+import { catchPlanFeatureError, requirePropertyFeature } from '../_shared/planEntitlements.ts';
 import { resolveScopedPropertyAccess } from '../_shared/propertyScope.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
@@ -43,6 +44,14 @@ serveAuthenticated('property-templates-settings', async (req) => {
     }
 
     if (body.action === 'create') {
+      try {
+        await requirePropertyFeature(propertyId, 'customTemplates');
+      } catch (err) {
+        const planErr = catchPlanFeatureError(req, err);
+        if (planErr) return planErr;
+        throw err;
+      }
+
       const name = typeof body.name === 'string' ? body.name : '';
       const content = typeof body.content === 'string' ? body.content : '';
       const nameErr = validateCustomTemplateName(name);
@@ -85,6 +94,13 @@ serveAuthenticated('property-templates-settings', async (req) => {
     if (contentErr) return jsonError(req, contentErr, 400);
 
     if (isCustomTemplateKey(templateKey)) {
+      try {
+        await requirePropertyFeature(propertyId, 'customTemplates');
+      } catch (err) {
+        const planErr = catchPlanFeatureError(req, err);
+        if (planErr) return planErr;
+        throw err;
+      }
       const name = typeof body.name === 'string' ? body.name.trim() : '';
       if (name) {
         const nameErr = validateCustomTemplateName(name);

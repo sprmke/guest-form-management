@@ -1,7 +1,8 @@
 /**
  * public-page-configs — Admin GET/PATCH for public page section configs.
  * Auth: serveAuthenticated + resolveScopedPropertyAccess
- * Plan gate: customPages (Starter+)
+ * Plan gate: PATCH only, `publicPagesAutosave` (Starter+) — viewing/editing in the UI is
+ * free on every tier; only persisting a save requires the entitlement.
  */
 
 import { catchPlanFeatureError, requirePropertyFeature } from '../_shared/planEntitlements.ts';
@@ -18,12 +19,14 @@ serveAuthenticated('public-page-configs', async (req) => {
   const permission = req.method === 'GET' ? 'templates:view' : 'templates:edit';
   const { property } = await resolveScopedPropertyAccess(req, permission);
 
-  try {
-    await requirePropertyFeature(property.id, 'customPages');
-  } catch (err) {
-    const planErr = catchPlanFeatureError(req, err);
-    if (planErr) return planErr;
-    throw err;
+  if (req.method === 'PATCH') {
+    try {
+      await requirePropertyFeature(property.id, 'publicPagesAutosave');
+    } catch (err) {
+      const planErr = catchPlanFeatureError(req, err);
+      if (planErr) return planErr;
+      throw err;
+    }
   }
 
   if (req.method === 'GET') {
