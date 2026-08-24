@@ -1,11 +1,16 @@
 ---
 name: docs-first
-description: Read project docs before implementing features in guest-form-management. Use when adding or changing routes, edge functions, booking workflow, org/property UI, or env vars.
+description: >-
+  Read project docs before implementing, then update matching docs in the same
+  change. Use when adding or changing routes, pages, edge functions, booking
+  workflow, org/property UI, env vars, APIs, or any user-visible behavior in
+  guest-form-management. Pairs with documentation-maintenance (write) and
+  route-guides (per-page guides).
 ---
 
 # Docs-first (Guest Form Management)
 
-Do not implement from memory. Align with repo docs first.
+Do not implement from memory. Align with repo docs first — then **write docs back** in the same change.
 
 ## When to use
 
@@ -22,11 +27,23 @@ Do not implement from memory. Align with repo docs first.
 5. **Edge functions** — `.cursor/rules/supabase-edge-functions.mdc`
 6. **Session hygiene** — `.cursor/rules/ai-usage.mdc` (short sessions, no default subagent swarms)
 
+## After implementing (mandatory)
+
+Follow the **`documentation-maintenance`** skill before claiming done:
+
+- Page/section/UX → **`route-guides`** skill → `docs/guides/routes/*`
+- API / env / architecture → `docs/PROJECT.md`
+- Plans/tiers → `docs/architecture/plans-feature-matrix.md` + Plans route guides
+- Booking/auth invariants → matching `.cursor/rules/*.mdc`
+
+Claude Code cannot auto-load Cursor’s always-on `.mdc` rules — treat **`CLAUDE.md` § Docs are the source of truth** and the **`documentation-maintenance`** skill as the equivalent.
+
 ## Topic map
 
 | Topic                  | Primary doc / rule                                                               |
 | ---------------------- | -------------------------------------------------------------------------------- |
 | Routes & page behavior | `docs/guides/routes/*.md`                                                        |
+| Same-change doc writes | `.agent/skills/documentation-maintenance/SKILL.md`                               |
 | Booking workflow       | `.cursor/rules/booking-workflow.mdc`                                             |
 | Admin auth             | `.cursor/rules/admin-auth.mdc`                                                   |
 | Edge functions         | `.cursor/rules/supabase-edge-functions.mdc`                                      |
@@ -40,4 +57,4 @@ Do not implement from memory. Align with repo docs first.
 
 ## Rule
 
-If docs and code disagree, fix the doc in the same change (see `.cursor/rules/documentation-maintenance.mdc`).
+If docs and code disagree, fix the doc in the same change (see `.cursor/rules/documentation-maintenance.mdc` and the `documentation-maintenance` skill).
