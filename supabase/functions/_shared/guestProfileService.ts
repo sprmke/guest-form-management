@@ -257,6 +257,9 @@ export type GuestMessageThreadDto = {
   propertySlug: string | null;
   propertyName: string | null;
   propertyImageUrl: string | null;
+  parkingSlug: string | null;
+  parkingName: string | null;
+  parkingImageUrl: string | null;
   hostName: string | null;
   hostAvatarUrl: string | null;
   inquiryCheckIn: string | null;
@@ -286,6 +289,7 @@ async function linkGuestWebConversations(
 type ConversationRow = {
   id: string;
   property_id: string | null;
+  parking_id: string | null;
   inquiry_check_in: string | null;
   inquiry_check_out: string | null;
   subject_preview: string | null;
@@ -294,6 +298,21 @@ type ConversationRow = {
   guest_unread_count: number | null;
   reply_status: string | null;
 };
+
+type ParkingRow = {
+  id: string;
+  slug: string;
+  name: string;
+  settings: Record<string, unknown> | null;
+};
+
+function firstParkingImage(settings: Record<string, unknown>): string | null {
+  const cover = typeof settings.coverImage === 'string' ? settings.coverImage.trim() : '';
+  if (cover) return cover;
+  const images = Array.isArray(settings.images) ? settings.images : [];
+  const first = images.find((item) => typeof item === 'string' && item.trim());
+  return typeof first === 'string' ? first.trim() : null;
+}
 
 export async function listGuestMessageThreads(
   user: AuthenticatedUser
@@ -304,7 +323,7 @@ export async function listGuestMessageThreads(
   const { data: conversations, error } = await supabase
     .from('social_conversations')
     .select(
-      'id, property_id, inquiry_check_in, inquiry_check_out, subject_preview, last_message_at, organization_id, guest_unread_count, reply_status'
+      'id, property_id, parking_id, inquiry_check_in, inquiry_check_out, subject_preview, last_message_at, organization_id, guest_unread_count, reply_status'
     )
     .eq('platform', 'web')
     .or(`guest_user_id.eq.${user.id},external_participant_id.eq.${user.id}`)
@@ -321,6 +340,9 @@ export async function listGuestMessageThreads(
   const propertyIds = [
     ...new Set(rows.map((row) => row.property_id).filter((id): id is string => Boolean(id))),
   ];
+  const parkingIds = [
+    ...new Set(rows.map((row) => row.parking_id).filter((id): id is string => Boolean(id))),
+  ];
   const orgIds = [...new Set(rows.map((row) => row.organization_id))];
 
   const propertyMap = new Map<string, PropertyRow>();
@@ -331,6 +353,17 @@ export async function listGuestMessageThreads(
       .in('id', propertyIds);
     for (const property of (properties ?? []) as PropertyRow[]) {
       propertyMap.set(property.id, property);
+    }
+  }
+
+  const parkingMap = new Map<string, ParkingRow>();
+  if (parkingIds.length > 0) {
+    const { data: parkings } = await supabase
+      .from('parkings')
+      .select('id, slug, name, settings')
+      .in('id', parkingIds);
+    for (const parking of (parkings ?? []) as ParkingRow[]) {
+      parkingMap.set(parking.id, parking);
     }
   }
 
@@ -356,16 +389,21 @@ export async function listGuestMessageThreads(
 
   return rows.map((row) => {
     const property = row.property_id ? propertyMap.get(row.property_id) : undefined;
+    const parking = row.parking_id ? parkingMap.get(row.parking_id) : undefined;
     const org = orgMap.get(row.organization_id);
     const ownerProfile = org ? ownerProfiles.get(org.owner_id) : undefined;
     const hostName = ownerProfile?.name ?? org?.name ?? null;
-    const settings = property?.settings ?? {};
+    const propertySettings = property?.settings ?? {};
+    const parkingSettings = (parking?.settings ?? {}) as Record<string, unknown>;
 
     return {
       conversationId: row.id,
       propertySlug: property?.slug ?? null,
       propertyName: property?.name ?? null,
-      propertyImageUrl: firstPropertyImage(settings),
+      propertyImageUrl: firstPropertyImage(propertySettings),
+      parkingSlug: parking?.slug ?? null,
+      parkingName: parking?.name ?? null,
+      parkingImageUrl: parking ? firstParkingImage(parkingSettings) : null,
       hostName,
       hostAvatarUrl: ownerProfile?.avatarUrl ?? null,
       inquiryCheckIn: row.inquiry_check_in,

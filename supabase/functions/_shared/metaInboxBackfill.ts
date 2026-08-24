@@ -240,6 +240,18 @@ async function clearMetaSyncError(orgId: string): Promise<void> {
     .eq('status', 'connected');
 }
 
+/** Surface an unrecoverable per-chunk failure so the client can stop polling and prompt reconnect. */
+async function recordMetaSyncError(orgId: string, message: string): Promise<void> {
+  const sb = socialInboxDb();
+  const now = new Date().toISOString();
+  await sb
+    .from('social_channel_connections')
+    .update({ error_message: message.slice(0, 500), updated_at: now })
+    .eq('organization_id', orgId)
+    .eq('platform', 'facebook')
+    .eq('status', 'connected');
+}
+
 /** Sync one Graph conversations page per call — keeps edge workers fast. */
 export async function backfillOrgMetaInboxChunk(
   orgId: string,
@@ -371,6 +383,11 @@ export async function backfillOrgMetaInboxChunk(
       return syncAbortedResult();
     }
     console.error('[backfillOrgMetaInboxChunk]', e);
+    // Unrecoverable here (bad/expired token, disabled app, etc.) — persist so the client
+    // stops treating this as "in progress" and prompts reconnect instead of spinning forever.
+    if (!hadInitialSync) {
+      await recordMetaSyncError(orgId, msg || 'Could not sync conversations from Meta.');
+    }
     const fresh = await getFacebookConnectionForOrg(orgId);
     return {
       done: false,

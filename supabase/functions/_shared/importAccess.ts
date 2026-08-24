@@ -7,6 +7,7 @@
 
 import { verifyPropertyAccess, type PropertyAccessContext } from './orgAuth.ts';
 import type { OrgPermissionId } from './orgTeamPermissions.ts';
+import { catchPlanFeatureError, requirePropertyFeature } from './planEntitlements.ts';
 import type { TeamPermissionId } from './propertyTeamPermissions.ts';
 import { readPropertyIdFromUrl } from './propertyScope.ts';
 
@@ -40,4 +41,17 @@ export async function resolveImportAccess(req: Request): Promise<ImportAccessCon
     orgId: ctx.org.id,
     propertyId,
   };
+}
+
+/** Starter+ gate for match / preview / commit (upload + cancel stay open for preview). */
+export async function requireImportPlanFeature(
+  req: Request,
+  propertyId: string
+): Promise<Response | null> {
+  try {
+    await requirePropertyFeature(propertyId, 'bookingImport');
+    return null;
+  } catch (err) {
+    return catchPlanFeatureError(req, err);
+  }
 }

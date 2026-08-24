@@ -110,3 +110,108 @@ export async function listDistinctHostOwnerIds(supabase: SupabaseClient): Promis
 
   return [...new Set((data ?? []).map((row) => row.owner_id as string).filter(Boolean))].sort();
 }
+
+type SuperAdminSearchHostsRow = {
+  owner_id: string;
+  full_name: string;
+  email: string;
+  avatar_url: string | null;
+  organization_count: number;
+  property_count: number;
+  parking_count: number;
+  member_since: string | null;
+  total_count: number;
+};
+
+/**
+ * Server-side searched + paginated host page, via the `super_admin_search_hosts`
+ * RPC (joins organizations -> auth.users in SQL — PostgREST can't `.ilike()` on
+ * auth.users directly, and name/email only exist there, not on `organizations`).
+ */
+export async function searchHostsPage(
+  supabase: SupabaseClient,
+  params: { search: string; page: number; limit: number }
+): Promise<{ hosts: HostSummary[]; total: number }> {
+  const fromIdx = (params.page - 1) * params.limit;
+
+  const { data, error } = await supabase.rpc('super_admin_search_hosts', {
+    search_query: params.search || null,
+    page_limit: params.limit,
+    page_offset: fromIdx,
+  });
+
+  if (error) {
+    console.error('[searchHostsPage]', error.message);
+    throw new Error('Failed to list hosts');
+  }
+
+  const rows = (data ?? []) as SuperAdminSearchHostsRow[];
+  const total = rows[0]?.total_count ?? 0;
+
+  const hosts = rows.map((row) =>
+    serializeHostSummary(
+      row.owner_id,
+      { name: row.full_name, email: row.email, avatarUrl: row.avatar_url },
+      {
+        organizationCount: row.organization_count,
+        propertyCount: row.property_count,
+        parkingCount: row.parking_count,
+      },
+      row.member_since
+    )
+  );
+
+  return { hosts, total };
+}
+
+export type HostsPlatformSummary = {
+  total: number;
+  totalOrgs: number;
+  totalProperties: number;
+  totalParking: number;
+};
+
+/**
+ * Platform-wide summary cards — dimension-scoped `count(*)` queries instead of
+ * fetching every host/org/property row into memory. Every org has a NOT NULL
+ * owner_id and every property/parking belongs to an org, so `count(*)` on
+ * organizations/properties/parkings already equals the sum across all hosts.
+ * The only "fetch" here is the owner_id column (not full rows) to size the
+ * distinct-host count.
+ */
+export async function loadHostsPlatformSummary(
+  supabase: SupabaseClient
+): Promise<HostsPlatformSummary> {
+  const [ownerIdsResult, orgCountResult, propertyCountResult, parkingCountResult] =
+    await Promise.all([
+      supabase.from('organizations').select('owner_id'),
+      supabase.from('organizations').select('id', { count: 'exact', head: true }),
+      supabase.from('properties').select('id', { count: 'exact', head: true }),
+      supabase.from('parkings').select('id', { count: 'exact', head: true }),
+    ]);
+
+  if (ownerIdsResult.error) {
+    console.error('[loadHostsPlatformSummary] owners', ownerIdsResult.error.message);
+    throw new Error('Failed to load host summary');
+  }
+  if (orgCountResult.error || propertyCountResult.error || parkingCountResult.error) {
+    console.error(
+      '[loadHostsPlatformSummary] counts',
+      orgCountResult.error?.message ??
+        propertyCountResult.error?.message ??
+        parkingCountResult.error?.message
+    );
+    throw new Error('Failed to load host summary');
+  }
+
+  const distinctHostCount = new Set(
+    (ownerIdsResult.data ?? []).map((row) => row.owner_id as string).filter(Boolean)
+  ).size;
+
+  return {
+    total: distinctHostCount,
+    totalOrgs: orgCountResult.count ?? 0,
+    totalProperties: propertyCountResult.count ?? 0,
+    totalParking: parkingCountResult.count ?? 0,
+  };
+}

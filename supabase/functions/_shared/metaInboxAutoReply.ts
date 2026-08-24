@@ -28,6 +28,7 @@ export async function maybeAutoReplyToInboundDm(
     .from('social_inbox_settings')
     .select('*')
     .eq('organization_id', orgId)
+    .is('parking_id', null)
     .maybeSingle();
   if (!settings?.auto_reply_enabled || settings.auto_reply_mode !== 'send') return;
 
