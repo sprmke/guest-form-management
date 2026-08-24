@@ -2,7 +2,7 @@
 title: 'Super Admin Properties — operator guide'
 status: active
 tags: [guides, routes, admin, properties]
-updated: 2026-08-02
+updated: 2026-08-24
 ---
 
 # Super Admin Properties — operator guide
@@ -13,11 +13,12 @@ Route: `/admin/properties`
 
 ## Progress overview
 
-| Section            | E2E save | Validation | Docs | Notes                                          |
-| ------------------ | -------- | ---------- | ---- | ---------------------------------------------- |
-| Search & filters   | Done     | —          | Done | Search, status, type, development filters      |
-| Table / grid views | Done     | —          | Done | Toggle via `SuperAdminListViewToggle`          |
-| Development link   | Done     | —          | Done | Card/table link to matched development, if any |
+| Section            | E2E save | Validation | Docs | Notes                                                                  |
+| ------------------ | -------- | ---------- | ---- | ---------------------------------------------------------------------- |
+| Search & filters   | Done     | —          | Done | Search, status, type, development filters — server-side, URL-persisted |
+| Table / grid views | Done     | —          | Done | Toggle via `SuperAdminListViewToggle`                                  |
+| Development link   | Done     | —          | Done | Card/table link to matched development, if any                         |
+| Pagination         | Done     | —          | Done | URL-persisted page/limit, `AdminListPagination` + per-page select      |
 
 ---
 
@@ -56,21 +57,29 @@ This page is the platform team's master list of every property on the platform, 
 
 ## Filters
 
-| Control     | Behavior                                                                     |
-| ----------- | ---------------------------------------------------------------------------- |
-| Search      | Name, slug, tower, unit, residence, address (same matcher as org properties) |
-| Status      | `ACTIVE` / `INACTIVE`                                                        |
-| Type        | Case-insensitive match on `properties.type`                                  |
-| Development | Filter to properties matched to one specific development, or unmatched       |
-| View        | Table or grid                                                                |
+| Control     | Behavior                                                                                          |
+| ----------- | ------------------------------------------------------------------------------------------------- |
+| Search      | Name, slug, address, residence name, type, status (property columns), plus organization name/slug |
+| Status      | `ACTIVE` / `INACTIVE`                                                                             |
+| Type        | Exact match on `properties.type` (`CONDO` / `APARTMENT` / `HOUSE` / `VILLA` / `OTHER`)            |
+| Development | Filter to properties matched to any registered development ("linked"), or none ("unlinked")       |
+| View        | Table or grid                                                                                     |
+
+Filters are **server-side, real DB predicates** (not client-side over the loaded page) — `list-platform-properties` applies `q` via `.or()` `ilike` across `name`/`slug`/`address`/`residence_name`/`type`/`status`, plus an `organization_id.in.(...)` clause when `q` matches an organization's name or slug (organizations are looked up in a small separate query, not the paginated properties query). `status`/`type` use `.eq()`. `development=linked`/`unlinked` filters on `residence_name` against the full list of development names (also a small lookup query, not the paginated resource). Filter state lives in the URL (`?q=`, `?status=`, `?type=`, `?development=`) alongside `page`/`limit`, so it's shareable/bookmarkable and survives refresh. Changing any filter resets to page 1.
+
+---
+
+## Pagination
+
+Standard admin-list pagination (same pattern as the bookings list): `page`/`limit` persisted in the URL (`?page=`, `?limit=`), default page size 31 (`ADMIN_DEFAULT_PAGE_SIZE`). `GET list-platform-properties` accepts `page`/`limit`/`q`/`status`/`type`/`development`, applies the filters as real Postgres predicates against the `properties` table, orders by name, and paginates via `.range()` + `{ count: 'exact' }` — no full-table fetch. Response: `{ properties, total, page, limit }`. Pagination controls are hidden until there is more than one page; the per-page select (`AdminListPerPageSelect`) resets to page 1 on change.
 
 ---
 
 ## API reference
 
-| Action | Endpoint                                                                                    |
-| ------ | ------------------------------------------------------------------------------------------- |
-| List   | `GET list-platform-properties` — all `properties` rows + organization + matched development |
+| Action | Endpoint                                                                                                                                                                                                                   |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| List   | `GET list-platform-properties?page=&limit=&q=&status=&type=&development=` — server-side filtered + `.range()`-paginated `properties` rows + organization + matched development; response includes `total`, `page`, `limit` |
 
 ---
 

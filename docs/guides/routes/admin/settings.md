@@ -44,14 +44,14 @@ These controls are internal to the platform team. Hosts do not see or manage the
 
 ## Platform AI
 
-| Control                  | Effect                                                                                                                       |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| **Enabled**              | Master kill switch for all AI features across the platform                                                                   |
-| **Enforce quotas**       | When on, org-level and per-property AI usage quotas are enforced                                                             |
-| **Allowed features**     | Per-feature allowlist (`allowed_features`). Empty array = all allowed when enabled.                                          |
-| **Default quotas**       | Daily calls, monthly calls, and daily USD cost limits inherited by orgs without overrides                                    |
-| **Credit unit (USD)**    | Super-admin-only — USD value of one AI credit (`credit_unit_usd`; working default `0.001`)                                   |
-| **Voice cost/min (USD)** | Super-admin-only — per-minute Gemini Live estimate for voice receptionist billing (`voice_receptionist_cost_per_minute_usd`) |
+| Control                  | Effect                                                                                                                                                                                                                                                                                    |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Enabled**              | Master kill switch for all AI features across the platform                                                                                                                                                                                                                                |
+| **Enforce quotas**       | When on, org-level and per-property AI usage quotas are enforced                                                                                                                                                                                                                          |
+| **Allowed features**     | Per-feature allowlist (`allowed_features`). Empty array = all allowed when enabled. A non-empty list is exclusive — features not listed (e.g. `import_column_map`) degrade or fail closed. Toggle rows cover every `AiFeature` id (booking AI review maps to the three summary features). |
+| **Default quotas**       | Daily calls, monthly calls, and daily USD cost limits inherited by orgs without overrides                                                                                                                                                                                                 |
+| **Credit unit (USD)**    | Super-admin-only — USD value of one AI credit (`credit_unit_usd`; working default `0.001`)                                                                                                                                                                                                |
+| **Voice cost/min (USD)** | Super-admin-only — per-minute Gemini Live estimate for voice receptionist billing (`voice_receptionist_cost_per_minute_usd`)                                                                                                                                                              |
 
 Voice receptionist is controlled by the **Allowed features** list — add or remove `voice_receptionist` to gate the product. The old standalone voice kill switch endpoint was removed.
 

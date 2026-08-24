@@ -2,7 +2,7 @@
 title: 'Host Detail — Properties — operator guide'
 status: active
 tags: [guides, routes, admin, properties]
-updated: 2026-08-02
+updated: 2026-08-24
 ---
 
 # Host Detail — Properties — operator guide
@@ -13,11 +13,12 @@ Route: `/admin/hosts/:hostId/orgs/properties`
 
 ## Progress overview
 
-| Section              | E2E save | Validation | Docs | Notes                                          |
-| -------------------- | -------- | ---------- | ---- | ---------------------------------------------- |
-| Host header shell    | Done     | —          | Done | Shared with Organizations tab                  |
-| Properties grid/list | Done     | —          | Done | Reuses org properties card/row + booking stats |
-| Filters              | Done     | —          | Done | Search, status, type                           |
+| Section              | E2E save | Validation | Docs | Notes                                                                 |
+| -------------------- | -------- | ---------- | ---- | --------------------------------------------------------------------- |
+| Host header shell    | Done     | —          | Done | Shared with Organizations tab                                         |
+| Properties grid/list | Done     | —          | Done | Reuses org properties card/row + booking stats                        |
+| Filters              | Done     | —          | Done | Search, status, type — server-side (`q`/`status`/`type` query params) |
+| Pagination           | Done     | —          | Done | URL-persisted `page`/`limit`, standard admin-list pattern             |
 
 ---
 
@@ -56,22 +57,30 @@ Stats are computed server-side from that property's `guest_submissions` rows (`p
 
 ## Filters
 
-| Control | Behavior                                    |
-| ------- | ------------------------------------------- |
-| Search  | Name, slug, tower, unit, residence, address |
-| Status  | `ACTIVE` / `INACTIVE`                       |
-| Type    | Case-insensitive match on `properties.type` |
-| View    | Grid or list                                |
+| Control | Behavior                                                                                                                      |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Search  | Name, slug, tower/unit, tower, unit number, residence, address — server-side `.or()` `ILIKE` across those columns (`q` param) |
+| Status  | `ACTIVE` / `INACTIVE` — server-side `.eq('status', …)`                                                                        |
+| Type    | Exact match on `properties.type` (UI sends the uppercase enum value) — server-side `.eq('type', …)`                           |
+| View    | Grid or list                                                                                                                  |
 
-No **Add property** action on this page (host-scoped, read-only for the platform team).
+All three are URL-persisted via `useSearchParams` and reset `page` to 1 on change. No **Add property** action on this page (host-scoped, read-only for the platform team).
+
+---
+
+## Pagination
+
+Standard admin-list pagination (same pattern as `/bookings`): `page`/`limit` are URL-persisted query params, default page size is `ADMIN_DEFAULT_PAGE_SIZE` (31). The per-page selector (`AdminListPerPageSelect`) sits alongside the search/status/type toolbar, and `AdminListPagination` renders below the list (hidden when there's only one page). Changing the per-page limit, any filter, or the host switches back to page 1.
+
+`list-host-properties` filters and paginates at the database level: it resolves the host's org IDs, then runs `.in('organization_id', orgIds)` plus `.eq('status', …)` / `.eq('type', …)` / `.or()` `ILIKE` search and `.range(from, to)` with `{ count: 'exact' }` on `properties` — no full-table fetch. Booking/revenue/occupancy stats are still computed only for that page's properties (`propertyListStats.ts`), which was already correct and unchanged.
 
 ---
 
 ## API reference
 
-| Action | Endpoint                                                                                                         |
-| ------ | ---------------------------------------------------------------------------------------------------------------- |
-| List   | `GET list-host-properties?hostId=` — properties across all of this host's orgs + booking/revenue/occupancy stats |
+| Action | Endpoint                                                                                                                                                                    |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| List   | `GET list-host-properties?hostId=&q=&status=&type=&page=&limit=` — searched/filtered properties across all of this host's orgs + booking/revenue/occupancy stats, paginated |
 
 ---
 

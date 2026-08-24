@@ -2,7 +2,7 @@
 title: 'Super Admin Developments — operator guide'
 status: active
 tags: [guides, routes, admin, developments]
-updated: 2026-08-02
+updated: 2026-08-24
 ---
 
 # Super Admin Developments — operator guide
@@ -13,12 +13,13 @@ Route: `/admin/developments`
 
 ## Progress overview
 
-| Section            | E2E save | Validation | Docs | Notes                                                  |
-| ------------------ | -------- | ---------- | ---- | ------------------------------------------------------ |
-| Summary cards      | Done     | —          | Done | Total, active, linked properties, linked parking       |
-| Search & filters   | Done     | —          | Done | Name/developer/city/location text search, status, type |
-| Table / grid views | Done     | —          | Done | Toggle via `SuperAdminListViewToggle`                  |
-| Add development    | Done     | Done       | Done | Dialog → navigates to detail on create                 |
+| Section            | E2E save | Validation | Docs | Notes                                                                               |
+| ------------------ | -------- | ---------- | ---- | ----------------------------------------------------------------------------------- |
+| Summary cards      | Done     | —          | Done | Total, active, linked properties, linked parking                                    |
+| Search & filters   | Done     | —          | Done | Name/developer/city/location text search, status, type — server-side, URL-persisted |
+| Table / grid views | Done     | —          | Done | Toggle via `SuperAdminListViewToggle`                                               |
+| Add development    | Done     | Done       | Done | Dialog → navigates to detail on create                                              |
+| Pagination         | Done     | —          | Done | URL-persisted page/limit, `AdminListPagination` + per-page select                   |
 
 ---
 
@@ -65,6 +66,16 @@ A development represents a whole condo or subdivision project — like "The Sapp
 | Type    | `CONDOMINIUM` / `SUBDIVISION` / `MIXED_USE` / `TOWNHOUSE` / `COMMERCIAL` |
 | View    | Table or grid                                                            |
 
+Filters are **server-side, real DB predicates** (not client-side over the loaded page) — `list-developments` applies `q` via `.or()` `ilike` across name/developer_name/city/location (plus `type`/`status` matched by typing a status/type label, e.g. "active" or "condo"), and `status`/`type` via `.eq()`. Filter state lives in the URL (`?q=`, `?status=`, `?type=`) alongside `page`/`limit`, so it's shareable/bookmarkable and survives refresh. Changing any filter resets to page 1.
+
+---
+
+## Pagination
+
+Standard admin-list pagination (same pattern as the bookings list): `page`/`limit` persisted in the URL (`?page=`, `?limit=`), default page size 31 (`ADMIN_DEFAULT_PAGE_SIZE`). `GET list-developments` accepts `page`/`limit`/`q`/`status`/`type`, applies the filters as real Postgres predicates, orders by name, and paginates via `.range()` + `{ count: 'exact' }` — no full-table fetch. Response: `{ developments, total, page, limit }`. The list hides pagination controls until there is more than one page, and the per-page select (`AdminListPerPageSelect`) resets to page 1 on change.
+
+Summary cards (Total/Active/Linked properties/Linked parking) are computed from the **current page's rows only** — a display-chrome tradeoff carried over unchanged from before this pagination work, not a full-dataset aggregate.
+
 ---
 
 ## Add development
@@ -75,10 +86,10 @@ A development represents a whole condo or subdivision project — like "The Sapp
 
 ## API reference
 
-| Action | Endpoint                                                                                          |
-| ------ | ------------------------------------------------------------------------------------------------- |
-| List   | `GET list-developments` — all developments + property/parking counts by matching `residence_name` |
-| Create | `POST create-development` — `{ name, type? }`, super admin only                                   |
+| Action | Endpoint                                                                                                                                                                                                                                  |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| List   | `GET list-developments?page=&limit=&q=&status=&type=` — server-side filtered + `.range()`-paginated developments + property/parking counts by matching `residence_name` for the returned page; response includes `total`, `page`, `limit` |
+| Create | `POST create-development` — `{ name, type? }`, super admin only                                                                                                                                                                           |
 
 ---
 

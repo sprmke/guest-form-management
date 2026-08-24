@@ -2,7 +2,7 @@
 title: 'Host Detail — Organizations — operator guide'
 status: active
 tags: [guides, routes, admin]
-updated: 2026-08-02
+updated: 2026-08-24
 ---
 
 # Host Detail — Organizations — operator guide
@@ -13,10 +13,11 @@ Route: `/admin/hosts/:hostId/orgs`
 
 ## Progress overview
 
-| Section            | E2E save | Validation | Docs | Notes                             |
-| ------------------ | -------- | ---------- | ---- | --------------------------------- |
-| Host header shell  | Done     | —          | Done | Avatar/initial, name, email, tabs |
-| Organizations grid | Done     | —          | Done | Read-only cards + stats           |
+| Section            | E2E save | Validation | Docs | Notes                                                     |
+| ------------------ | -------- | ---------- | ---- | --------------------------------------------------------- |
+| Host header shell  | Done     | —          | Done | Avatar/initial, name, email, tabs                         |
+| Organizations grid | Done     | —          | Done | Read-only cards + stats                                   |
+| Pagination         | Done     | —          | Done | URL-persisted `page`/`limit`, standard admin-list pattern |
 
 ---
 
@@ -67,12 +68,20 @@ Renders once for both `/orgs` and `/orgs/properties` tabs: host avatar (or initi
 
 ---
 
+## Pagination
+
+Standard admin-list pagination (same pattern as `/bookings`): `page`/`limit` are URL-persisted query params, default page size is `ADMIN_DEFAULT_PAGE_SIZE` (31). The pager (`AdminListPagination`) and a per-page selector (`AdminListPerPageSelect`) render above/below the grid; the pager is hidden when there's only one page. Switching to a different host (route `hostId` change) resets back to page 1.
+
+`list-host-organizations` paginates at the database level — `.eq('owner_id', hostId).order('name').range(from, to)` with `{ count: 'exact' }` — instead of fetching every organization the host owns and slicing in memory. Per-org property/parking counts are still computed only for the paged rows. Returns `{ organizations, total, page, limit }`.
+
+---
+
 ## API reference
 
-| Action | Endpoint                                                                                                   |
-| ------ | ---------------------------------------------------------------------------------------------------------- |
-| Host   | `GET get-host?hostId=` — profile + aggregate stats (used by the shell header)                              |
-| Orgs   | `GET list-host-organizations?hostId=` — organizations owned by this host + per-org property/parking counts |
+| Action | Endpoint                                                                                                                           |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Host   | `GET get-host?hostId=` — profile + aggregate stats (used by the shell header)                                                      |
+| Orgs   | `GET list-host-organizations?hostId=&page=&limit=` — organizations owned by this host + per-org property/parking counts, paginated |
 
 ---
 
