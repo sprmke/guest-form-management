@@ -1,11 +1,9 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 
 import { endOfMonth, format, startOfMonth } from 'date-fns';
 import { CalendarPlus } from 'lucide-react';
-
-import { guestParkingFormPath } from '@/features/guest/lib/guestPublicPaths';
 
 import { AdminListPagination } from '@/features/dashboard/bookings/components/AdminListToolbar';
 import { BookingCalendarView } from '@/features/dashboard/bookings/components/BookingCalendarView';
@@ -33,11 +31,12 @@ import {
   type BookingsSort,
 } from '@/features/dashboard/bookings/lib/types';
 import { useParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
+import { AdminParkingNewBookingModal } from '@/features/dashboard/parking/components/AdminParkingNewBookingModal';
 import { useParkingBookings } from '@/features/dashboard/parking/hooks/useParkingBookings';
 
 import { FloatingPanel, FloatingToolbar } from '@/components/mobile/FloatingPanel';
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
-import { MobileHeroActionLink } from '@/components/mobile/MobileHeroActionButton';
+import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
 import { useIsBelowLg, useIsBelowMd } from '@/hooks/useMediaQuery';
 import { fromIsoDate } from '@/lib/date/navigation';
 import { buildPageItems, normalizeAdminPageLimit } from '@/lib/table/pagination';
@@ -116,6 +115,7 @@ function writeQueryToParams(q: BookingsQuery, cur: URLSearchParams): URLSearchPa
 export function ParkingBookingsPage() {
   const { parking, orgSlug } = useParkingContext();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [newBookingOpen, setNewBookingOpen] = useState(false);
   const isMobileLayout = useIsBelowLg();
   const isBelowMd = useIsBelowMd();
   const query = useMemo(() => parseQueryFromParams(searchParams), [searchParams]);
@@ -271,8 +271,6 @@ export function ParkingBookingsPage() {
     [patch]
   );
 
-  const publicParkingFormHref = guestParkingFormPath(parking.slug);
-
   const desktopActions = (
     <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
       <BookingDateRangeFilter
@@ -281,11 +279,15 @@ export function ParkingBookingsPage() {
         onClear={handleClearDate}
         fullWidth={isBelowMd}
       />
-      <Link to={publicParkingFormHref} className="native-cta sm:w-auto sm:px-3.5">
+      <button
+        type="button"
+        className="native-cta sm:w-auto sm:px-3.5"
+        onClick={() => setNewBookingOpen(true)}
+      >
         <CalendarPlus className="size-4" aria-hidden />
         <span className="hidden sm:inline">New booking</span>
         <span className="sm:hidden">New</span>
-      </Link>
+      </button>
     </div>
   );
 
@@ -328,79 +330,89 @@ export function ParkingBookingsPage() {
   );
 
   const heroNewBooking = (
-    <MobileHeroActionLink to={publicParkingFormHref} aria-label="New booking">
+    <MobileHeroActionButton aria-label="New booking" onClick={() => setNewBookingOpen(true)}>
       <CalendarPlus className="size-5" aria-hidden />
-    </MobileHeroActionLink>
+    </MobileHeroActionButton>
   );
 
   return (
-    <AdminMobilePage
-      title="Bookings"
-      subtitle="Reservations for this parking slot."
-      titleId="bookings-heading"
-      heroTrailing={heroNewBooking}
-      overlap={overlapControls}
-      stickyPrimary={dateFilter}
-      stickyMore={filterControls}
-      stickyMoreActiveCount={stickyMoreActiveCount}
-      stickyMoreAriaLabel="Refine bookings"
-      desktopActions={desktopActions}
-      desktopActionsClassName="w-full sm:w-auto"
-      dense
-    >
-      <BookingsSummaryCards
-        counts={stageCounts}
-        activeStage={stage}
-        onStageChange={setStage}
-        stageLabels={PARKING_STAGE_LABELS}
-        hideStatusFooter
-      />
-      <div className="hidden lg:block">{filterControls}</div>
+    <>
+      <AdminMobilePage
+        title="Bookings"
+        subtitle="Reservations for this parking slot."
+        titleId="bookings-heading"
+        heroTrailing={heroNewBooking}
+        overlap={overlapControls}
+        stickyPrimary={dateFilter}
+        stickyMore={filterControls}
+        stickyMoreActiveCount={stickyMoreActiveCount}
+        stickyMoreAriaLabel="Refine bookings"
+        desktopActions={desktopActions}
+        desktopActionsClassName="w-full sm:w-auto"
+        dense
+      >
+        <BookingsSummaryCards
+          counts={stageCounts}
+          activeStage={stage}
+          onStageChange={setStage}
+          stageLabels={PARKING_STAGE_LABELS}
+          hideStatusFooter
+        />
+        <div className="hidden lg:block">{filterControls}</div>
 
-      {showTableView && (
-        <BookingTable
-          rows={rows}
-          isLoading={isLoading}
-          error={errorMessage}
-          isRefreshing={isFetching}
-          sort={query.sort}
-          onStaySortChange={handleStaySortChange}
-          resolveBookingHref={resolveBookingHref}
-        />
-      )}
-      {view === 'card' && (
-        <BookingCardGrid
-          rows={rows}
-          isLoading={isLoading}
-          error={errorMessage}
-          isRefreshing={isFetching}
-          resolveBookingHref={resolveBookingHref}
-        />
-      )}
-      {view === 'calendar' && (
-        <FloatingPanel padding="md" className="overflow-hidden">
-          <BookingCalendarView
+        {showTableView && (
+          <BookingTable
             rows={rows}
             isLoading={isLoading}
             error={errorMessage}
             isRefreshing={isFetching}
-            initialMonth={dateNav.dateRange.from}
-            onMonthChange={handleCalendarMonthChange}
+            sort={query.sort}
+            onStaySortChange={handleStaySortChange}
             resolveBookingHref={resolveBookingHref}
           />
-        </FloatingPanel>
-      )}
+        )}
+        {view === 'card' && (
+          <BookingCardGrid
+            rows={rows}
+            isLoading={isLoading}
+            error={errorMessage}
+            isRefreshing={isFetching}
+            resolveBookingHref={resolveBookingHref}
+          />
+        )}
+        {view === 'calendar' && (
+          <FloatingPanel padding="md" className="overflow-hidden">
+            <BookingCalendarView
+              rows={rows}
+              isLoading={isLoading}
+              error={errorMessage}
+              isRefreshing={isFetching}
+              initialMonth={dateNav.dateRange.from}
+              onMonthChange={handleCalendarMonthChange}
+              resolveBookingHref={resolveBookingHref}
+            />
+          </FloatingPanel>
+        )}
 
-      {showPagination && (
-        <AdminListPagination
-          ariaLabel="Bookings pagination"
-          page={listQuery.page}
-          pageCount={pageCount}
-          pageItems={pageItems}
-          isLoading={isLoading}
-          onPageChange={(page) => patch({ page })}
-        />
-      )}
-    </AdminMobilePage>
+        {showPagination && (
+          <AdminListPagination
+            ariaLabel="Bookings pagination"
+            page={listQuery.page}
+            pageCount={pageCount}
+            pageItems={pageItems}
+            isLoading={isLoading}
+            onPageChange={(page) => patch({ page })}
+          />
+        )}
+      </AdminMobilePage>
+      <AdminParkingNewBookingModal
+        open={newBookingOpen}
+        onOpenChange={setNewBookingOpen}
+        orgSlug={orgSlug}
+        parkingSlug={parking.slug}
+        parkingId={parking.id}
+        towerLabel={parking.tower}
+      />
+    </>
   );
 }

@@ -24,9 +24,12 @@ import {
 } from '@/features/dashboard/notifications/lib/notificationsPaths';
 import { useOptionalParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
 import { TelegramParkingSettingsCard } from '@/features/dashboard/parking/components/TelegramParkingSettingsCard';
+import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
 
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { parkingDashboardPageTitle, usePageTitle } from '@/lib/pageTitle';
+
+const telegramNotificationsBadge = <TierBadge feature="telegramNotifications" />;
 
 const PARKING_NOTIFICATION_MODULES = ['chat', 'parking', 'finance'] as const;
 
@@ -129,6 +132,7 @@ export function ParkingNotificationsPage() {
               title="Chat"
               icon={MessageCircle}
               description={MODULE_DESCRIPTIONS.chat}
+              badge={telegramNotificationsBadge}
             >
               <TelegramChatSettingsCard embedded />
             </AdminSection>
@@ -138,6 +142,7 @@ export function ParkingNotificationsPage() {
               title="Parking"
               icon={Car}
               description={MODULE_DESCRIPTIONS.parking}
+              badge={telegramNotificationsBadge}
             >
               <TelegramParkingSettingsCard />
             </AdminSection>
@@ -147,6 +152,7 @@ export function ParkingNotificationsPage() {
               title="Finance"
               icon={DollarSign}
               description={MODULE_DESCRIPTIONS.finance}
+              badge={telegramNotificationsBadge}
             >
               <TelegramFinanceSettingsCard embedded />
             </AdminSection>
