@@ -31,6 +31,10 @@
       {
         "command": ".cursor/hooks/session-workflow-in-progress.sh",
         "timeout": 5
+      },
+      {
+        "command": ".cursor/hooks/session-docs-sync-reminder.sh",
+        "timeout": 5
       }
     ],
     "afterFileEdit": [
@@ -40,6 +44,10 @@
       },
       {
         "command": "bash .cursor/hooks/check-stack-terminology.sh",
+        "timeout": 5
+      },
+      {
+        "command": ".cursor/hooks/remind-docs-on-code-edit.sh",
         "timeout": 5
       }
     ],
