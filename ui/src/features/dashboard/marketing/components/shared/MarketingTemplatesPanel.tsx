@@ -39,6 +39,7 @@ import {
 } from '@/features/dashboard/marketing/lib/marketingSavedTemplates';
 import type { VideoFormat } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
+import { TierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
 
 import {
   AlertDialog,
@@ -500,16 +501,18 @@ export function MarketingTemplatesPanel({
     <>
       <div className="space-y-4">
         {onOpenAiGenerate ? (
-          <Button
-            type="button"
-            variant="outline"
-            className="min-h-[44px] w-full gap-2"
-            disabled={aiGenerateBusy}
-            onClick={onOpenAiGenerate}
-          >
-            <Sparkles className="size-4" aria-hidden />
-            {aiGenerateBusy ? 'Generating…' : 'Generate with AI'}
-          </Button>
+          <TierBadgeAnchor feature="aiMarketingGeneration" className="w-full">
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-[44px] w-full gap-2"
+              disabled={aiGenerateBusy}
+              onClick={onOpenAiGenerate}
+            >
+              <Sparkles className="size-4" aria-hidden />
+              {aiGenerateBusy ? 'Generating…' : 'Generate with AI'}
+            </Button>
+          </TierBadgeAnchor>
         ) : null}
         <MarketingFormatPicker options={formatOptions} value={format} onChange={onFormatChange} />
 

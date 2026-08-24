@@ -81,7 +81,8 @@ import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgCon
 import { useOrgBrandColor } from '@/features/dashboard/org/hooks/useOrgBrandColor';
 import { useOrgSettings } from '@/features/dashboard/org/hooks/useOrgSettings';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
-import { PlanGateWatermarkOverlay } from '@/features/dashboard/plans/components/PlanGateWatermarkOverlay';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -567,7 +568,15 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
     };
   }, [selectedId, format]);
 
+  const { canUse: canUseMarketingStudio, isLoading: marketingStudioLoading } =
+    useFeatureGate('marketingStudio');
+  const { open: openUpgradeModal } = useUpgradeModal();
+
   const handleDownload = useCallback(async () => {
+    if (!canUseMarketingStudio) {
+      if (!marketingStudioLoading) openUpgradeModal('marketingStudio');
+      return;
+    }
     const activeStore = storeRef.current;
     const template = selectedTemplate;
     if (!activeStore || !template) return;
@@ -589,9 +598,19 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
     } finally {
       setExporting(false);
     }
-  }, [property.slug, selectedTemplate]);
+  }, [
+    property.slug,
+    selectedTemplate,
+    canUseMarketingStudio,
+    marketingStudioLoading,
+    openUpgradeModal,
+  ]);
 
   const handlePublish = useCallback(async () => {
+    if (!canUseMarketingStudio) {
+      if (!marketingStudioLoading) openUpgradeModal('marketingStudio');
+      return;
+    }
     const activeStore = storeRef.current;
     const template = selectedTemplate;
     if (!onPublish || !activeStore || !template) return;
@@ -605,7 +624,14 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
     } finally {
       setExporting(false);
     }
-  }, [format, onPublish, selectedTemplate]);
+  }, [
+    format,
+    onPublish,
+    selectedTemplate,
+    canUseMarketingStudio,
+    marketingStudioLoading,
+    openUpgradeModal,
+  ]);
 
   const propertyImageUrls = useMemo(
     () => publicProperty?.images ?? (binding.propertyPhoto ? [binding.propertyPhoto] : []),
@@ -758,34 +784,32 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
         )}
       >
         <div className="relative min-h-0 flex-1">
-          <PlanGateWatermarkOverlay className="h-full">
-            {storeReady && store ? (
-              <KamePolotnoEditor
-                store={store}
-                propertyImageUrls={propertyImageUrls}
-                brandColor={brandColor}
-                logoUrl={orgLogoUrl}
-                style={{ width: '100%', height: '100%' }}
-                onResetDesign={handleResetDesign}
-                resetDisabled={loadingTemplate || (!selectedId && !savedTemplateId)}
-              />
-            ) : (
-              <div
-                className="flex h-full min-h-[16rem] flex-col gap-3 p-3 sm:p-4"
-                aria-busy="true"
-                aria-label="Starting editor"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <Skeleton className="h-8 w-28 rounded-md" />
-                  <div className="flex gap-2">
-                    <Skeleton className="size-8 rounded-md" />
-                    <Skeleton className="size-8 rounded-md" />
-                  </div>
+          {storeReady && store ? (
+            <KamePolotnoEditor
+              store={store}
+              propertyImageUrls={propertyImageUrls}
+              brandColor={brandColor}
+              logoUrl={orgLogoUrl}
+              style={{ width: '100%', height: '100%' }}
+              onResetDesign={handleResetDesign}
+              resetDisabled={loadingTemplate || (!selectedId && !savedTemplateId)}
+            />
+          ) : (
+            <div
+              className="flex h-full min-h-[16rem] flex-col gap-3 p-3 sm:p-4"
+              aria-busy="true"
+              aria-label="Starting editor"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <Skeleton className="h-8 w-28 rounded-md" />
+                <div className="flex gap-2">
+                  <Skeleton className="size-8 rounded-md" />
+                  <Skeleton className="size-8 rounded-md" />
                 </div>
-                <Skeleton className="min-h-0 w-full flex-1 rounded-xl" />
               </div>
-            )}
-          </PlanGateWatermarkOverlay>
+              <Skeleton className="min-h-0 w-full flex-1 rounded-xl" />
+            </div>
+          )}
         </div>
       </div>
 

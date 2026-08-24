@@ -56,6 +56,9 @@ import {
   type VideoAiGeneratePreferences,
   type VideoAiSuggestion,
 } from '@/features/dashboard/marketing/lib/videoAiGenerateOptions';
+import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -305,6 +308,10 @@ export function MarketingAiGeneratePanel({
     }));
   };
 
+  const { canUse: canUseAiGeneration, isLoading: aiGenerationLoading } =
+    useFeatureGate('aiMarketingGeneration');
+  const { open: openUpgradeModal } = useUpgradeModal();
+
   const canGenerate = prompt.trim().length > 0 && !generating;
 
   // Suggestions are Look vibes: fill the prompt, and for video also stamp mood
@@ -331,6 +338,10 @@ export function MarketingAiGeneratePanel({
   const handleGenerate = async () => {
     const trimmed = prompt.trim();
     if (!trimmed || generating) return;
+    if (!canUseAiGeneration) {
+      if (!aiGenerationLoading) openUpgradeModal('aiMarketingGeneration');
+      return;
+    }
     const includeContextValue = {
       propertyPhoto: includeContext.propertyPhoto,
       amenities: includeContext.amenities,
@@ -429,7 +440,10 @@ export function MarketingAiGeneratePanel({
         }}
       >
         <ResponsiveModalHeader className="border-border/60 shrink-0 gap-0 border-b px-5 py-4 text-left sm:px-6">
-          <ResponsiveModalTitle className="text-left">{title}</ResponsiveModalTitle>
+          <div className="flex flex-wrap items-center gap-2">
+            <ResponsiveModalTitle className="text-left">{title}</ResponsiveModalTitle>
+            <TierBadge feature="aiMarketingGeneration" />
+          </div>
           <ResponsiveModalDescription className="text-left">
             {outcomeHint}
           </ResponsiveModalDescription>

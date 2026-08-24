@@ -677,10 +677,16 @@ export function BackgroundControl({ label, value, onChange }: BackgroundControlP
 
       {/* Preview */}
       <div className="flex items-center justify-center py-2">
-        <div
-          className="border-border h-16 w-full rounded-md border"
-          style={getBackgroundStyle(value)}
-        />
+        {value.type === 'image' && !getImageUrl(value) ? (
+          <div className="border-border bg-muted/30 text-muted-foreground flex h-16 w-full items-center justify-center rounded-md border border-dashed text-xs">
+            No image selected
+          </div>
+        ) : (
+          <div
+            className="border-border h-16 w-full rounded-md border"
+            style={getBackgroundStyle(value)}
+          />
+        )}
       </div>
     </div>
   );
@@ -742,7 +748,7 @@ export function getBackgroundStyle(config: BackgroundConfig): React.CSSPropertie
 
   if (config.type === 'image') {
     const url = config.imageUrl || config.image?.url;
-    if (!url) return { backgroundColor: config.color };
+    if (!url) return {};
 
     const size = config.imageSize || config.image?.size || 'cover';
     const position = config.imagePosition || config.image?.position || 'center';

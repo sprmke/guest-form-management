@@ -1,3 +1,5 @@
+import { type SyntheticEvent } from 'react';
+
 import { Check, MoreHorizontal, Settings2 } from 'lucide-react';
 
 import type { MarketingSidebarMenuItem } from '@/features/dashboard/marketing/components/shared/MarketingSidebarSection';
@@ -8,6 +10,8 @@ import {
   templateThumbnailMaxHeight,
   type FormatOrientation,
 } from '@/features/dashboard/marketing/lib/marketingFormats';
+import { PlanGateWatermarkPattern } from '@/features/dashboard/plans/components/PlanGateWatermarkPattern';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -18,6 +22,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+
+function blockThumbnailMediaEvent(event: SyntheticEvent) {
+  event.preventDefault();
+}
 
 type Props = {
   name: string;
@@ -77,12 +85,14 @@ function TemplatePreviewFrame({
   thumbnailLoading,
   badge,
   frame,
+  watermarked,
 }: {
   selected?: boolean;
   thumbnailUrl?: string | null;
   thumbnailLoading?: boolean;
   badge?: string;
   frame: ReturnType<typeof resolveThumbnailFrame>;
+  watermarked?: boolean;
 }) {
   return (
     <div
@@ -95,17 +105,21 @@ function TemplatePreviewFrame({
       )}
       style={previewFrameStyle(frame)}
       aria-busy={thumbnailLoading || !thumbnailUrl}
+      onContextMenu={watermarked ? blockThumbnailMediaEvent : undefined}
     >
       {thumbnailUrl ? (
         <img
           src={thumbnailUrl}
           alt=""
-          className="size-full object-contain object-center"
+          className="pointer-events-none size-full select-none object-contain object-center"
           draggable={false}
+          onDragStart={blockThumbnailMediaEvent}
         />
       ) : (
         <Skeleton className="absolute inset-0 size-full rounded-none" aria-hidden />
       )}
+
+      {watermarked ? <PlanGateWatermarkPattern compact /> : null}
 
       {badge ? (
         <span className="absolute right-1 top-1 z-10 rounded-md bg-black/60 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
@@ -145,6 +159,12 @@ export function MarketingTemplateCard({
     thumbnailAspectRatio: aspectRatioProp,
     thumbnailOrientation,
   });
+
+  // Preview-open: browsable on every tier. Free gets a soft watermark (no blur) so hosts
+  // can still pick templates; drag / context-menu on the thumb image is blocked.
+  const { canUse: canUseMarketingStudio, isLoading: marketingStudioLoading } =
+    useFeatureGate('marketingStudio');
+  const watermarked = marketingStudioLoading || !canUseMarketingStudio;
 
   const visibilityRef = useVisibleThumbnailRequest({
     enabled: Boolean(onRequestThumbnail) && !thumbnailUrl,
@@ -235,17 +255,20 @@ export function MarketingTemplateCard({
             )}
             style={rowThumbStyle}
             aria-busy={thumbnailLoading || !thumbnailUrl}
+            onContextMenu={watermarked ? blockThumbnailMediaEvent : undefined}
           >
             {thumbnailUrl ? (
               <img
                 src={thumbnailUrl}
                 alt=""
-                className="size-full object-contain object-center"
+                className="pointer-events-none size-full select-none object-contain object-center"
                 draggable={false}
+                onDragStart={blockThumbnailMediaEvent}
               />
             ) : (
               <Skeleton className="absolute inset-0 size-full rounded-none" aria-hidden />
             )}
+            {watermarked ? <PlanGateWatermarkPattern compact /> : null}
           </div>
           <div className="min-w-0 flex-1">
             <p className={cn('truncate text-xs font-medium', selected && 'text-primary')}>{name}</p>
@@ -274,6 +297,7 @@ export function MarketingTemplateCard({
           selected={selected}
           thumbnailUrl={thumbnailUrl}
           thumbnailLoading={thumbnailLoading}
+          watermarked={watermarked}
           badge={badge}
           frame={frame}
         />

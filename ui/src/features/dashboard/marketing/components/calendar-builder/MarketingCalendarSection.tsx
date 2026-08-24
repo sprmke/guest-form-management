@@ -6,6 +6,8 @@ import { useCalendarBuilderStore } from '@/features/dashboard/marketing/componen
 import { useMarketingBookedDates } from '@/features/dashboard/marketing/hooks/useMarketingBookedDates';
 import { bookedDatesToPreviewBookings } from '@/features/dashboard/marketing/lib/marketingBookedDates';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 
 import { BookingsCalendarSkeleton } from '@/components/skeletons/AdminSkeletons';
 
@@ -18,6 +20,9 @@ export function MarketingCalendarSection({ onPublish }: Props) {
   const previewRef = useRef<HTMLDivElement>(null);
   const previewMonth = useCalendarBuilderStore((s) => s.previewMonth);
   const { data: bookedDates, isLoading } = useMarketingBookedDates();
+  const { canUse: canUseMarketingStudio, isLoading: marketingStudioLoading } =
+    useFeatureGate('marketingStudio');
+  const { open: openUpgradeModal } = useUpgradeModal();
 
   const bookings = useMemo(
     () => bookedDatesToPreviewBookings(bookedDates ?? [], previewMonth),
@@ -31,10 +36,18 @@ export function MarketingCalendarSection({ onPublish }: Props) {
   } = useCalendarExport(previewRef, property.name);
 
   const handleDownload = async () => {
+    if (!canUseMarketingStudio) {
+      if (!marketingStudioLoading) openUpgradeModal('marketingStudio');
+      return;
+    }
     await handleDownloadFromHook();
   };
 
   const handlePublish = async () => {
+    if (!canUseMarketingStudio) {
+      if (!marketingStudioLoading) openUpgradeModal('marketingStudio');
+      return;
+    }
     if (!onPublish) return;
     const blob = await handleExportBlob();
     if (blob) onPublish(blob);

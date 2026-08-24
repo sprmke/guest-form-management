@@ -16,6 +16,7 @@ import {
 import { KamePolotnoToolbarHistory } from '@/features/dashboard/marketing/components/design-editor/polotno/KamePolotnoToolbarHistory';
 import { KameSidePanelCollapse } from '@/features/dashboard/marketing/components/design-editor/polotno/KameSidePanelCollapse';
 import { createTextSection } from '@/features/dashboard/marketing/components/design-editor/polotno/KameTextPanel';
+import { PolotnoPagePlanWatermark } from '@/features/dashboard/marketing/components/design-editor/polotno/PolotnoPagePlanWatermark';
 import {
   createBackgroundSection,
   createUploadSection,
@@ -118,6 +119,7 @@ export function KamePolotnoEditor({
   return (
     <div ref={rootRef} className="kame-polotno-shell relative min-h-0 flex-1">
       <div ref={portalRef} className="kame-polotno-portal" aria-hidden />
+      <PolotnoPagePlanWatermark rootRef={rootRef} />
       <RaeditorContainer className="raeditor-app-container kame-polotno-editor" style={style}>
         <SidePanelWrap className="kame-side-panel-wrap" data-tour="side-panel">
           <SidePanel store={store as never} sections={sections as never} defaultSection="" />
