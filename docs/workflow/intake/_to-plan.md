@@ -2,7 +2,7 @@
 title: 'Claude To Plan'
 status: archived
 tags: [planning]
-updated: 2026-08-24
+updated: 2026-08-25
 ---
 
 **Status legend:** ❌ cancelled / won't do · ✅ done · 📋 planned (plan doc written) · 🚧 in progress · 🔵 pending / open
@@ -402,7 +402,7 @@ Again, these are just the initial pricing. This should not be final and we need 
 
 There's also another pricing model that user can choose of which is commission based on the successful/completed booking. But we can plan this further but make sure that our plan is also considered this and can easily support this pricing model.
 
-→ **Done:** [`../done/host-plans-and-pricing-tiers.md`](../done/host-plans-and-pricing-tiers.md) (foundation shipped 2026-08-18)
+→ **Partial foundation only (retired from live UI 2026-08-24):** schema + `COMPLETED` ledger hook in [`../done/host-plans-and-pricing-tiers.md`](../done/host-plans-and-pricing-tiers.md). **Not host-selectable** — catalog row inactive; super-admin/public/host Plans exclude it until a full commission product (self-serve + collection) is planned and shipped. See `docs/architecture/plans-feature-matrix.md` § Pending: commission pricing.
 
 ===
 
@@ -517,7 +517,7 @@ Example:
 
 ===
 
-📋 Org portfolio pricing bundles (Pro ≤3 / Business ≤5 / Business Plus ≤10)
+🚧 Org portfolio pricing bundles (Pro ≤3 / Business ≤5 / Business Plus ≤10)
 
 Pivot from strict per-property billing to org-scoped portfolio caps for Pro/Business tiers while keeping Free/Starter/Managed/Commission per-property.
 
@@ -731,6 +731,10 @@ After we refine the roles & permissions that we have on both org and property le
 
 ===
 
+🔵 Refine AI settings from property & super admin settings
+
+===
+
 🔵 Scheduled marketing posts/story
 
 ===
@@ -739,4 +743,93 @@ After we refine the roles & permissions that we have on both org and property le
 
 ===
 
+🔵 Manage how to give free AI credits to new users, give discount for special events/occasions
+
+===
+
+🔵 Refine and finalize team permissions
+
+===
+
+🔵 Think and plan how AI can help us manage pricing better
+
+===
+
 🔵 Redesign explore landing page
+
+===
+
+🔵 Community group chat
+
+===
+
+🔵 Support to buy more AI credits on Plans
+
+===
+
+🔵 Update super admin to manage property and parking listing, org management, able see plans, etc
+
+===
+
+✅ Also, here are the things we need to adjust and make sure we add from our tasks list:
+
+Bookings
+
+-
+
+Finance
+
+- Update our plan to include finance reporting should be on starter plan. But access to finance is free
+
+Maintenance
+
+- maintenance export/reporting should be on starter plan as well
+
+Team
+
+- Add team member if reached limit should display our upgrade plan modal
+
+Marketing
+
+- make sure download, publish button (if there's meta connected), display upgrade plan modal
+- make the preview overlay more evident and rendered multiple times to fill the whole canvas for calendar, canvas and video. Meaning, I want these overlay to have many text that covers entire canvas. Also, use "Kame Homes" instead of "Preview"?
+- clicking generate inside the generate modal should open display our upgrade plan modal.
+
+Notifications
+
+- Update our plan so that free only include in-app notification but telegram notification should be on starter plan
+- For free plan, editing or clicking save and test tg or enabling telegram cards/modules should display our upgrade plan modal
+
+Inbox
+
+- Update our plan to support Meta chat to business tier. Clicking connect to Meta will display our upgrade plan modal
+- Then for normal chat, I'm still wondering if I should free this or move it to starter plan? Please analyze and decide what's best tier is this feature
+- Free user can still open quick replies and automation so that they know what are the features we can offer
+
+Templates
+
+- Make each wisywig editor to have a blurry overlay but i still want each text to be readable for both edit and preview mode.
+- Free can still open placeholders and reset
+- Clicking add custom template should open our upgrade plan modal
+
+Public pages
+
+- For free users, let's still display the pages, user still can edit but let's remove the autosave feature and display manual save button if user edited something, and upon clicking save, it will open our upgrade plan modal
+
+Settings
+
+- Settings section that require paid plan should be hidden our secondary menu and card section. Analyze each section carefully and only display it if current plan achieve it
+
+Check other pages, public pages, sections, modules, flow, process and make sure we covered everything
+
+Make sure we update our plan cards and compare plans for all the new changes please.
+
+Also, it's helpful if we can add a badge that displays the different plan tier required to make it work. Either on menu, section, buttons, elements. Just make sure that we display this beautiful and look professional how big apps display this so that user knows if a specific feature require higher plan. Also, of course, do not display a badge if user already had that paid plan unless a higher plan is required to enable that feature.
+
+Also, our upgrade plan modal should be dynamic and display the tier needed for specific feature that they action. Also, please include on another phase in our plan that we should be smart and also handle what if user avail starter plan, then, want to upgrade to next plan. The pricing should be smart and less than the actual current price - already paid plan price. Maybe reuse our upgrade to existing modal that we have when we click upgrade plan? Or maybe, use same layout but change content that's more aligned to action user wants to do? Decide best UI/UX for this.
+
+Also, for security as well, we need to make sure that these limitations are not UI only. Meaning, technical user can still open dev tools, remove the overlay elements and see the actual real data. We need to make sure that implement a mechanism to make it secure if user do that and make sure backend implementations still respect our plan tiers. The goal is to have a security or mechanism to prevent user to hack or do tricky things to achieve result by not paying paid plan and modifying elements in the UI.
+
+Please also improve our upgrade plan modal text or content and UI so that user easily understand that they need to upgrade to access or do that action
+
+Make sure as well that we updated the necessary docs for all these changes please

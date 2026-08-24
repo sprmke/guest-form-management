@@ -2,10 +2,18 @@
 title: 'Tasks To Prompt'
 status: archived
 tags: [planning]
-updated: 2026-08-24
+updated: 2026-08-25
 ---
 
 **Status legend:** ❌ cancelled / won't do · ✅ done · 📋 planned (plan doc written) · 🚧 in progress · 🔵 pending / open
+
+===
+
+🔵 Commission-based pricing (pay % of completed bookings)
+
+Foundation schema exists but product was retired from live UI (2026-08-24) until fully shippable: host self-serve, Plans & Billing, public pricing, invoicing/PayMongo collection. Do not re-enable the catalog row without a plan.
+
+→ **Pending:** `docs/architecture/plans-feature-matrix.md` § Pending: commission pricing · partial foundation: [`../done/host-plans-and-pricing-tiers.md`](../done/host-plans-and-pricing-tiers.md)
 
 ===
 
@@ -274,7 +282,11 @@ Maybe add org photos/banner from org settings?
 
 ===
 
-🔵 Improve UI/UX of exported reports
+🚧 Improve UI/UX of exported reports
+
+Let's refine, improve and make the exported reports look more professional, neat, have proper spacing, does not look like AI generated report, clean and elegant, no broken text or UI, respect theme colors, etc.
+
+Make sure we apply it to all exported reports and sub reports for all modules that supports reporting
 
 ===
 
@@ -284,7 +296,7 @@ EMAIL_TO / EMAIL_REPLY_TO
 
 ===
 
-🔵 Update all app, screen and skeleton loaders
+✅ Update all app, screen and skeleton loaders
 
 ===
 
@@ -302,12 +314,16 @@ EMAIL_TO / EMAIL_REPLY_TO
 
 ===
 
-🔵 Generate not found page
+✅ Generate not found page
 
 ===
 
-🔵 Make sure auth modal and auth page section is similar or aligned same order for consistency
+✅ Make sure auth modal and auth page section is similar or aligned same order for consistency
 
 ===
 
 🔵 Improve parking details
+
+===
+
+🔵 Support org pincode for security

@@ -62,7 +62,7 @@ export function AuthPageContent({ config, mode, actions }: AuthPageContentProps)
   const handleContinueEmail = async () => {
     const trimmed = email.trim();
     if (!trimmed || !isValidEmail(trimmed)) {
-      setError('Enter a valid email');
+      setError('Enter a valid email address');
       return;
     }
     setError(null);
@@ -153,35 +153,25 @@ export function AuthPageContent({ config, mode, actions }: AuthPageContentProps)
         </div>
       ) : null}
 
-      {step === 'email' ? (
-        <>
-          <GoogleSignInButton
-            onClick={() => void actions.signInWithGoogle()}
-            disabled={busy}
-            loading={actions.googleLoading}
-          />
-
-          <AuthDivider text="or continue with email" />
-        </>
-      ) : null}
-
-      <div className="space-y-5">
+      <div className="space-y-4">
         {step === 'email' ? (
           <div className="space-y-2">
-            <Label htmlFor="auth-email">Email address</Label>
+            <Label htmlFor="auth-email" className="sr-only">
+              Email
+            </Label>
             <Input
               id="auth-email"
               type="email"
               inputMode="email"
               autoComplete="email"
-              placeholder="you@example.com"
+              placeholder="Email"
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);
                 if (error) setError(null);
               }}
               disabled={busy}
-              error={Boolean(error)}
+              className="h-12 rounded-xl text-base"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') void handleContinueEmail();
               }}
@@ -206,12 +196,12 @@ export function AuthPageContent({ config, mode, actions }: AuthPageContentProps)
 
         <Button
           type="button"
-          className="shadow-primary/20 h-11 w-full font-medium shadow-lg"
+          className="h-12 w-full rounded-xl text-base font-semibold"
           disabled={busy}
           onClick={() => void (step === 'email' ? handleContinueEmail() : handleVerifyCode())}
         >
           {isSending || isVerifying ? (
-            <SpinnerIcon className="mr-2" />
+            <SpinnerIcon className="size-5" />
           ) : step === 'email' ? (
             'Continue'
           ) : (
@@ -219,7 +209,16 @@ export function AuthPageContent({ config, mode, actions }: AuthPageContentProps)
           )}
         </Button>
 
-        {step === 'otp' ? (
+        {step === 'email' ? (
+          <>
+            <AuthDivider text="or" />
+            <GoogleSignInButton
+              onClick={() => void actions.signInWithGoogle()}
+              disabled={busy}
+              loading={actions.googleLoading}
+            />
+          </>
+        ) : (
           <button
             type="button"
             disabled={busy || resendCooldown > 0}
@@ -228,7 +227,7 @@ export function AuthPageContent({ config, mode, actions }: AuthPageContentProps)
           >
             {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : 'Resend code'}
           </button>
-        ) : null}
+        )}
       </div>
 
       {step === 'email' ? (

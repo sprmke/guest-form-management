@@ -9,6 +9,8 @@ kind: plan
 
 # Host pricing tiers — foundation (catalog + entitlements)
 
+> **2026-08-24:** Commission plan is **retired from live UI** (catalog row inactive; super-admin / host Plans / public pricing exclude it). Schema + `COMPLETED` ledger hook remain for a future full product — see `docs/architecture/plans-feature-matrix.md` § Pending: commission pricing.
+
 ## Shipped (2026-08-18)
 
 - Migration **`20261023120000_pricing_plans_foundation.sql`** — `pricing_plans`, `property_subscriptions`, `property_subscription_events`, `booking_commission_charges`; seed 5 subscription tiers + 1 commission plan; backfill existing properties to Free.
@@ -18,7 +20,7 @@ kind: plan
 - Commission hook in **`workflowOrchestrator`** on **`→ COMPLETED`**.
 - Super-admin UI **`/admin/pricing/plans`**, **`/admin/pricing/subscriptions`**.
 
-**Next plans (not this doc):** host Plans page → [`host-plans-pricing-page.md`](../done/host-plans-pricing-page.md) (**shipped**); feature gating → [`feature-gating-subscription-upgrade.md`](./feature-gating-subscription-upgrade.md) (**shipped**); PayMongo → [`paymongo-subscription-billing.md`](../done/paymongo-subscription-billing.md).
+**Next plans (not this doc):** host Plans page → [`host-plans-pricing-page.md`](../done/host-plans-pricing-page.md) (**shipped**); feature gating → [`feature-gating-subscription-upgrade.md`](./feature-gating-subscription-upgrade.md) (**shipped**); PayMongo → [`paymongo-subscription-billing.md`](../done/paymongo-subscription-billing.md); full app-wide gating audit + server-side hardening + tier badges + upgrade-modal proration → [`tier-feature-alignment-audit.md`](../in-progress/tier-feature-alignment-audit.md) (**in progress**); org portfolio bundling (Pro/Business/Business Plus) → [`pricing-portfolio-bundling.md`](../in-progress/pricing-portfolio-bundling.md) (**in progress**).
 
 ## Context
 

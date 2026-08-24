@@ -48,7 +48,7 @@ export function GuestAuthModal({ open, onOpenChange, oauthRedirectPath }: GuestA
   const handleContinueEmail = async () => {
     const trimmed = email.trim();
     if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setError('Enter a valid email');
+      setError('Enter a valid email address');
       return;
     }
     setError(null);
