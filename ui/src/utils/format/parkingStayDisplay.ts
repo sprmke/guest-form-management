@@ -1,4 +1,5 @@
 import { countParkingNights } from '@/features/guest/pay-parking/lib/payParkingHelpers';
+
 import { formatStayDateRange, toGuestSubmissionDate } from '@/utils/format/dates';
 
 /** ISO or booking date strings → readable range, e.g. `Aug 25 - 27, 2026`. */
