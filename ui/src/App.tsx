@@ -5,6 +5,8 @@ import { GuestEmbedPreviewEffect } from '@/features/guest/components/GuestEmbedP
 import { SavedPropertiesSync } from '@/features/guest/marketing/properties/components/SavedPropertiesSync';
 import { ModeSwitchTransitionProvider } from '@/features/guest/marketing/shared/context/ModeSwitchTransitionContext';
 
+import { TooltipProvider } from '@/components/ui/tooltip';
+
 import { AppRoutes } from '@/routes';
 
 // Conservative defaults: short stale time so admins see fresh data, but refetch on window focus
@@ -22,14 +24,16 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <GuestAuthProvider>
-        {/* Global so the curtain survives AdminLayout ↔ MarketingLayoutShell remounts. */}
-        <ModeSwitchTransitionProvider>
-          <GuestEmbedPreviewEffect />
-          <SavedPropertiesSync />
-          <AppRoutes />
-        </ModeSwitchTransitionProvider>
-      </GuestAuthProvider>
+      <TooltipProvider delayDuration={200}>
+        <GuestAuthProvider>
+          {/* Global so the curtain survives AdminLayout ↔ MarketingLayoutShell remounts. */}
+          <ModeSwitchTransitionProvider>
+            <GuestEmbedPreviewEffect />
+            <SavedPropertiesSync />
+            <AppRoutes />
+          </ModeSwitchTransitionProvider>
+        </GuestAuthProvider>
+      </TooltipProvider>
     </QueryClientProvider>
   );
 }

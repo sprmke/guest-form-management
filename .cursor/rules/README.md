@@ -87,14 +87,15 @@ Run **`bun run check:ai-tooling-sync`** after changing hooks, commands, agents, 
 
 ### Platform & data
 
-| Skill                  | Use for                                                               |
-| ---------------------- | --------------------------------------------------------------------- |
-| `docs-first`           | Read docs before implementing                                         |
-| `supabase-stack`       | Postgres, Storage, edge platform                                      |
-| `fix-migration-issues` | Local `db:migrate` when schema drifts — never default to reset/deploy |
-| `supabase-auth`        | OAuth, JWT, RBAC                                                      |
-| `tanstack-query`       | Admin hooks, cache, mutations                                         |
-| `multi-tenancy`        | Org/property scoping                                                  |
+| Skill                       | Use for                                                               |
+| --------------------------- | --------------------------------------------------------------------- |
+| `docs-first`                | Read docs before implementing; then write docs back (same change)     |
+| `documentation-maintenance` | Same-change docs writes — Claude Code equivalent of always-on rule    |
+| `supabase-stack`            | Postgres, Storage, edge platform                                      |
+| `fix-migration-issues`      | Local `db:migrate` when schema drifts — never default to reset/deploy |
+| `supabase-auth`             | OAuth, JWT, RBAC                                                      |
+| `tanstack-query`            | Admin hooks, cache, mutations                                         |
+| `multi-tenancy`             | Org/property scoping                                                  |
 
 ### Product domains
 

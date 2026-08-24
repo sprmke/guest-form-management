@@ -56,4 +56,4 @@ Stale if a skill mentions Next.js App Router, tRPC, Drizzle, Neon, or AWS S3 for
 
 ## Docs sync
 
-Behavior changes → update matching docs in the same change (`.cursor/rules/documentation-maintenance.mdc`). Per-route → `docs/guides/routes/`.
+Behavior changes → update matching docs in the same change (`.cursor/rules/documentation-maintenance.mdc` · skill `documentation-maintenance`). Per-route → `docs/guides/routes/` (`route-guides` skill). Claude Code: SessionStart + PostToolUse hooks reinforce this (`.mdc` files are not auto-loaded there).

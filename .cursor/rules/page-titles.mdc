@@ -25,7 +25,7 @@ Every page must set a `document.title` so the browser tab is meaningful. Use the
 
 ### Page name rules
 
-- Use the **short label** from the sidebar/nav or the H1 of the page (e.g., `Bookings`, `Calendar`, `Settings`, `Marketing`).
+- Use the **short label** from the sidebar/nav or the H1 of the page (e.g., `Bookings`, `Pricing`, `Settings`, `Marketing`).
 - For detail pages, append the entity name: `Booking #1234`, `Maria Santos`, `Solea Mactan`.
 - Never use raw route slugs in the title.
 - Never include internal codenames (e.g., `sd-form`, `gaf`) in the title; use guest-facing names (`Security Deposit`, `Guest Form`).
