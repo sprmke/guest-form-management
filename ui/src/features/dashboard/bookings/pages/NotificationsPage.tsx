@@ -27,9 +27,12 @@ import {
   notificationsHubActivityHash,
 } from '@/features/dashboard/notifications/lib/notificationsPaths';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
+import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
 
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { propertyDashboardPageTitle, usePageTitle } from '@/lib/pageTitle';
+
+const telegramNotificationsBadge = <TierBadge feature="telegramNotifications" />;
 
 const NOTIFICATION_MODULES = [
   'chat',
@@ -132,6 +135,7 @@ export function NotificationsPage() {
               title="Chat"
               icon={MessageCircle}
               description={MODULE_DESCRIPTIONS.chat}
+              badge={telegramNotificationsBadge}
             >
               <TelegramChatSettingsCard embedded />
             </AdminSection>
@@ -141,6 +145,7 @@ export function NotificationsPage() {
               title="Marketing"
               icon={Megaphone}
               description={MODULE_DESCRIPTIONS.marketing}
+              badge={telegramNotificationsBadge}
             >
               <TelegramMarketingSettingsCard embedded />
             </AdminSection>
@@ -150,6 +155,7 @@ export function NotificationsPage() {
               title="Staff"
               icon={HardHat}
               description={MODULE_DESCRIPTIONS.staff}
+              badge={telegramNotificationsBadge}
             >
               <TelegramStaffSettingsCard embedded />
             </AdminSection>
@@ -159,6 +165,7 @@ export function NotificationsPage() {
               title="Operations"
               icon={Bell}
               description={MODULE_DESCRIPTIONS.operations}
+              badge={telegramNotificationsBadge}
             >
               <TelegramAdminSettingsCard embedded />
             </AdminSection>
@@ -168,6 +175,7 @@ export function NotificationsPage() {
               title="Finance"
               icon={DollarSign}
               description={MODULE_DESCRIPTIONS.finance}
+              badge={telegramNotificationsBadge}
             >
               <TelegramFinanceSettingsCard embedded />
             </AdminSection>
@@ -177,6 +185,7 @@ export function NotificationsPage() {
               title="Maintenance"
               icon={Wrench}
               description={MODULE_DESCRIPTIONS.maintenance}
+              badge={telegramNotificationsBadge}
             >
               <TelegramMaintenanceSettingsCard embedded />
             </AdminSection>

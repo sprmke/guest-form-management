@@ -9,7 +9,6 @@ import { useOptionalOrgContext } from '@/features/dashboard/org/components/Requi
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { orgPropertyCardModel } from '@/features/dashboard/org/lib/orgPropertyCardModel';
 import { usePublicPageConfig } from '@/features/dashboard/page-editor/hooks/usePublicPageConfig';
-import { RequirePropertyFeature } from '@/features/dashboard/plans/components/RequirePropertyFeature';
 import { buildPropertyGuestPublicPages } from '@/features/dashboard/property/lib/propertyGuestPublicPages';
 
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
@@ -39,65 +38,63 @@ export function CustomPagesPage() {
   }
 
   return (
-    <RequirePropertyFeature feature="customPages">
-      <AdminMobilePage
-        title="Public Pages"
-        subtitle="Every guest URL for this listing."
-        titleId="public-pages-heading"
-      >
-        <div className="flex flex-col gap-8 sm:gap-10">
-          {editablePages.length > 0 ? (
-            <section aria-labelledby="public-pages-design-heading">
-              <h2
-                id="public-pages-design-heading"
-                className="text-foreground mb-3 text-sm font-semibold tracking-tight sm:mb-4"
-              >
-                Design your pages
-              </h2>
-              <ul className="grid list-none gap-3 p-0 sm:grid-cols-2 sm:gap-4">
-                {editablePages.map((page) => (
-                  <li key={page.id}>
-                    <PublicPageCard
-                      page={page}
-                      propertyName={propertyName}
-                      coverUrl={coverUrl}
-                      variant="editable"
-                      lastEditedLabel={
-                        page.id === 'listing' || page.id === 'stay-guide'
-                          ? lastEditedFor(page.id)
-                          : null
-                      }
-                    />
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
+    <AdminMobilePage
+      title="Public Pages"
+      subtitle="Every guest URL for this listing."
+      titleId="public-pages-heading"
+    >
+      <div className="flex flex-col gap-8 sm:gap-10">
+        {editablePages.length > 0 ? (
+          <section aria-labelledby="public-pages-design-heading">
+            <h2
+              id="public-pages-design-heading"
+              className="text-foreground mb-3 text-sm font-semibold tracking-tight sm:mb-4"
+            >
+              Design your pages
+            </h2>
+            <ul className="grid list-none gap-3 p-0 sm:grid-cols-2 sm:gap-4">
+              {editablePages.map((page) => (
+                <li key={page.id}>
+                  <PublicPageCard
+                    page={page}
+                    propertyName={propertyName}
+                    coverUrl={coverUrl}
+                    variant="editable"
+                    lastEditedLabel={
+                      page.id === 'listing' || page.id === 'stay-guide'
+                        ? lastEditedFor(page.id)
+                        : null
+                    }
+                  />
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
 
-          {staticPages.length > 0 ? (
-            <section aria-labelledby="public-pages-other-heading">
-              <h2
-                id="public-pages-other-heading"
-                className="text-foreground mb-3 text-sm font-semibold tracking-tight sm:mb-4"
-              >
-                Other guest pages
-              </h2>
-              <ul className="grid list-none gap-3 p-0 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
-                {staticPages.map((page) => (
-                  <li key={page.id}>
-                    <PublicPageCard
-                      page={page}
-                      propertyName={propertyName}
-                      coverUrl={coverUrl}
-                      variant="static"
-                    />
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
-        </div>
-      </AdminMobilePage>
-    </RequirePropertyFeature>
+        {staticPages.length > 0 ? (
+          <section aria-labelledby="public-pages-other-heading">
+            <h2
+              id="public-pages-other-heading"
+              className="text-foreground mb-3 text-sm font-semibold tracking-tight sm:mb-4"
+            >
+              Other guest pages
+            </h2>
+            <ul className="grid list-none gap-3 p-0 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
+              {staticPages.map((page) => (
+                <li key={page.id}>
+                  <PublicPageCard
+                    page={page}
+                    propertyName={propertyName}
+                    coverUrl={coverUrl}
+                    variant="static"
+                  />
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+      </div>
+    </AdminMobilePage>
   );
 }

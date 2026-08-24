@@ -1,8 +1,6 @@
 import * as React from 'react';
 
-import { ClipboardList, ExternalLink, Plus } from 'lucide-react';
-
-import { guestStayGuidePreviewPath } from '@/features/guest/lib/guestPublicPaths';
+import { ClipboardList, Plus } from 'lucide-react';
 
 import {
   AdminSectionGroupHeading,
@@ -21,31 +19,20 @@ import {
   iconForTemplateKey,
   STANDARD_TEMPLATE_SECTIONS,
 } from '@/features/dashboard/bookings/lib/propertyTemplateSections';
-import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
-import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
-function TemplatesGroupHeadingSkeleton({
-  titleWidthClass,
-  showAction = false,
-}: {
-  titleWidthClass: string;
-  /** Standard templates group has a "Preview stay guide" action alongside the title. */
-  showAction?: boolean;
-}) {
+function TemplatesGroupHeadingSkeleton({ titleWidthClass }: { titleWidthClass: string }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
       <div className="flex items-center gap-2">
         <Skeleton className={cn('h-5', titleWidthClass)} />
         <Skeleton className="h-[22px] w-7 rounded-full" />
       </div>
-      {showAction ? <Skeleton className="h-11 w-44 rounded-lg" /> : null}
     </div>
   );
 }
@@ -80,7 +67,7 @@ function TemplatesPageSkeleton() {
   return (
     <div className="space-y-3 sm:space-y-4" aria-busy="true" aria-label="Loading templates">
       <div className="space-y-4">
-        <TemplatesGroupHeadingSkeleton titleWidthClass="w-40" showAction />
+        <TemplatesGroupHeadingSkeleton titleWidthClass="w-40" />
         {Array.from({ length: 3 }).map((_, i) => (
           <TemplateEditorCardSkeleton key={i} />
         ))}
@@ -107,16 +94,6 @@ export function TemplatesPage() {
   const templates = data?.templates;
   const { saveTemplate, createCustomTemplate, deleteCustomTemplate } =
     usePropertyTemplateMutations();
-  const orgContext = useOptionalOrgContext();
-  const propertySlug = orgContext?.property.slug ?? '';
-  const propertyId = usePropertyIdParam();
-
-  const stayGuidePreviewHref = React.useMemo(() => {
-    if (!propertySlug.trim() || !propertyId) return null;
-    if (typeof window === 'undefined') return guestStayGuidePreviewPath(propertySlug, propertyId);
-    return `${window.location.origin}${guestStayGuidePreviewPath(propertySlug, propertyId)}`;
-  }, [propertyId, propertySlug]);
-
   const customTemplates = React.useMemo(
     () => (templates ?? []).filter((t) => t.category === 'custom'),
     [templates]
@@ -208,21 +185,6 @@ export function TemplatesPage() {
               <AdminSectionGroupHeading
                 title="Standard templates"
                 count={STANDARD_TEMPLATE_SECTIONS.length}
-                action={
-                  stayGuidePreviewHref ? (
-                    <Button variant="outline" size="sm" className="min-h-[44px]" asChild>
-                      <a
-                        href={stayGuidePreviewHref}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label="Preview stay guide in a new tab"
-                      >
-                        Preview stay guide
-                        <ExternalLink className="ml-1.5 size-3.5 shrink-0" aria-hidden />
-                      </a>
-                    </Button>
-                  ) : null
-                }
               />
               {STANDARD_TEMPLATE_SECTIONS.map((section) => {
                 const template = templateByKey(templates, section.templateKey);

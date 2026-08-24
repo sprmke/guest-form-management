@@ -201,6 +201,8 @@ export type BookingsQuery = {
   sort: BookingsSort;
   page: number; // 1-indexed
   limit: number;
+  /** When true and status includes IMPORTED, also match imported_from_batch_id rows. */
+  expandImportedBatch?: boolean;
 };
 
 export const DEFAULT_BOOKINGS_QUERY: BookingsQuery = {
@@ -215,6 +217,7 @@ export const DEFAULT_BOOKINGS_QUERY: BookingsQuery = {
   sort: 'status_priority:asc',
   page: 1,
   limit: 31,
+  expandImportedBatch: false,
 };
 
 export type BookingAiReviewSectionStatus =

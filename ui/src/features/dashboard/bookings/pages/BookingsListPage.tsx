@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 
 import { endOfMonth, format, startOfMonth } from 'date-fns';
 import { CalendarPlus, Upload } from 'lucide-react';
 
-import { guestFormPath } from '@/features/guest/lib/guestPublicPaths';
-
 import { AdminListPagination } from '@/features/dashboard/bookings/components/AdminListToolbar';
+import { AdminNewBookingModal } from '@/features/dashboard/bookings/components/AdminNewBookingModal';
 import { BookingCalendarView } from '@/features/dashboard/bookings/components/BookingCalendarView';
 import { BookingCardGrid } from '@/features/dashboard/bookings/components/BookingCardGrid';
 import { BookingDateRangeFilter } from '@/features/dashboard/bookings/components/BookingDateRangeFilter';
@@ -45,15 +44,13 @@ import {
 import { ImportWizardModal } from '@/features/dashboard/import/components/ImportWizardModal';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useOrgSlugParam } from '@/features/dashboard/org/lib/adminApiScope';
+import { TierBadge, TierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
 import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
 import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
 
 import { FloatingPanel, FloatingToolbar } from '@/components/mobile/FloatingPanel';
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
-import {
-  MobileHeroActionButton,
-  MobileHeroActionLink,
-} from '@/components/mobile/MobileHeroActionButton';
+import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
 import { Button } from '@/components/ui/button';
 import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { fromIsoDate } from '@/lib/date/navigation';
@@ -154,6 +151,7 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
   const hideKanban = scope === 'org';
   const [searchParams, setSearchParams] = useSearchParams();
   const [importOpen, setImportOpen] = useState(false);
+  const [newBookingOpen, setNewBookingOpen] = useState(false);
   const { data: propertyAccess } = usePropertyPermissions();
   const canImport =
     scope !== 'org' && hasPropertyPermission(propertyAccess?.permissions, 'import:manage');
@@ -177,6 +175,7 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
     const base: BookingsQuery = {
       ...query,
       status: effectiveStatus,
+      expandImportedBatch: query.status.includes('IMPORTED'),
     };
     if (view === 'calendar' || view === 'kanban') {
       return {
@@ -392,24 +391,27 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
           fullWidth={isMobileLayout}
         />
         {canImport ? (
-          <Button
-            type="button"
-            variant="outline"
-            className="native-cta-secondary sm:w-auto sm:px-3.5"
-            onClick={() => setImportOpen(true)}
-          >
-            <Upload className="size-4" aria-hidden />
-            Import
-          </Button>
+          <TierBadgeAnchor feature="bookingImport">
+            <Button
+              type="button"
+              variant="outline"
+              className="native-cta-secondary sm:w-auto sm:px-3.5"
+              onClick={() => setImportOpen(true)}
+            >
+              <Upload className="size-4" aria-hidden />
+              Import
+            </Button>
+          </TierBadgeAnchor>
         ) : null}
-        <Link
-          to={propertySlug ? guestFormPath(propertySlug) : '#'}
+        <button
+          type="button"
           className="native-cta sm:w-auto sm:px-3.5"
+          onClick={() => setNewBookingOpen(true)}
         >
           <CalendarPlus className="size-4" aria-hidden />
           <span className="sm:hidden">New</span>
           <span className="hidden sm:inline">New booking</span>
-        </Link>
+        </button>
       </div>
     );
 
@@ -421,16 +423,19 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
     scope === 'org' ? undefined : (
       <>
         {canImport ? (
-          <MobileHeroActionButton aria-label="Import bookings" onClick={() => setImportOpen(true)}>
-            <Upload className="size-5" aria-hidden />
-          </MobileHeroActionButton>
+          <span className="relative inline-flex">
+            <MobileHeroActionButton
+              aria-label="Import bookings"
+              onClick={() => setImportOpen(true)}
+            >
+              <Upload className="size-5" aria-hidden />
+            </MobileHeroActionButton>
+            <TierBadge feature="bookingImport" placement="corner" />
+          </span>
         ) : null}
-        <MobileHeroActionLink
-          to={propertySlug ? guestFormPath(propertySlug) : '#'}
-          aria-label="New booking"
-        >
+        <MobileHeroActionButton aria-label="New booking" onClick={() => setNewBookingOpen(true)}>
           <CalendarPlus className="size-5" aria-hidden />
-        </MobileHeroActionLink>
+        </MobileHeroActionButton>
       </>
     );
 
@@ -539,6 +544,14 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
       </AdminMobilePage>
 
       {canImport ? <ImportWizardModal open={importOpen} onOpenChange={setImportOpen} /> : null}
+      {scope !== 'org' ? (
+        <AdminNewBookingModal
+          open={newBookingOpen}
+          onOpenChange={setNewBookingOpen}
+          orgSlug={orgSlug}
+          propertySlug={propertySlug}
+        />
+      ) : null}
 
       <CalendarBookingCelebration trigger={celebration} onDone={() => setCelebration(null)} />
     </>
