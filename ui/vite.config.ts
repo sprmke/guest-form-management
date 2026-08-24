@@ -161,6 +161,9 @@ export default defineConfig({
       '@remotion/transitions/zoom-in-out',
       '@remotion/player',
       'remotion',
+      // Building Forms / verification PDF preview — keep prebundled so Vite does not serve a
+      // stale missing `.vite/deps/pdfjs-dist.js` from a prior dynamic import.
+      'pdfjs-dist',
     ],
     esbuildOptions: {
       plugins: [openPolotnoHighlighterEsbuildPlugin()],

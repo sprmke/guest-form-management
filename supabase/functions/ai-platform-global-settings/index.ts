@@ -8,6 +8,7 @@ import {
   setAiPlatformGlobalSettings,
   type AiFeature,
 } from '../_shared/aiUsageService.ts';
+import { isValidAiFeature } from '../_shared/aiModelRouter.ts';
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
 import { serveSuperAdmin } from '../_shared/serveEdge.ts';
 
@@ -16,7 +17,10 @@ function isPositiveInt(value: unknown): value is number {
 }
 
 function isValidFeatureList(value: unknown): value is AiFeature[] {
-  return Array.isArray(value) && value.every((item) => typeof item === 'string');
+  return (
+    Array.isArray(value) &&
+    value.every((item) => typeof item === 'string' && isValidAiFeature(item))
+  );
 }
 
 serveSuperAdmin('ai-platform-global-settings', async (req, user) => {

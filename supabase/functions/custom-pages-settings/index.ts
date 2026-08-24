@@ -1,12 +1,12 @@
 /**
  * custom-pages-settings — Admin GET for a property's Custom Pages rows.
  * Auth: verifyAdminJwt via resolveScopedPropertyAccess
- * Plan gate: customPages (Starter+)
+ * No plan gate: viewing/editing the built-in public pages is free on every tier —
+ * only autosave/save is gated (see public-page-configs, feature `publicPagesAutosave`).
  */
 
 import { getOrCreateCustomPage } from '../_shared/customPages.ts';
 import { jsonError, jsonSuccess } from '../_shared/httpResponse.ts';
-import { catchPlanFeatureError, requirePropertyFeature } from '../_shared/planEntitlements.ts';
 import { resolveScopedPropertyAccess } from '../_shared/propertyScope.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
@@ -16,14 +16,6 @@ serveAuthenticated('custom-pages-settings', async (req) => {
   }
 
   const { property } = await resolveScopedPropertyAccess(req, 'templates:view');
-
-  try {
-    await requirePropertyFeature(property.id, 'customPages');
-  } catch (err) {
-    const planErr = catchPlanFeatureError(req, err);
-    if (planErr) return planErr;
-    throw err;
-  }
 
   const stayGuide = await getOrCreateCustomPage(property.id, 'stay_guide');
 

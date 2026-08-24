@@ -218,6 +218,7 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
     const incomingAttachments = parseIncomingAttachments(body.attachments);
     const pageContext = {
       propertyId: body.pageContext?.propertyId ? String(body.pageContext.propertyId) : null,
+      parkingId: body.pageContext?.parkingId ? String(body.pageContext.parkingId) : null,
       bookingId: body.pageContext?.bookingId ? String(body.pageContext.bookingId) : null,
     };
     let attachedContext: Awaited<ReturnType<typeof verifyAttachedContextAccess>> = [];
@@ -256,7 +257,10 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
       return jsonError(req, 'AI dashboard assistant is not enabled for this organization', 503);
     }
 
-    if (effectivePropertyId) {
+    if (pageContext.parkingId && !pageContext.propertyId) {
+      // Parking routes: no property-scoped entitlement to check here (mirrors the client's
+      // PARKING_INTERIM_UNGATED_FEATURES carve-out — see useFeatureGate.ts) — stays ungated.
+    } else if (effectivePropertyId) {
       try {
         await requirePropertyFeature(effectivePropertyId, 'aiDashboardAssistant');
       } catch (err) {
