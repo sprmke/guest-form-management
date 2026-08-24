@@ -150,12 +150,6 @@ export const CONTEXT_PICKER_REGISTRY: Record<ContextPickerModuleId, ContextPicke
     singular: 'transaction',
     plural: 'transactions',
   },
-  calendar: {
-    picker: 'pricing_date',
-    entityTypes: ['pricing_date'],
-    singular: 'date',
-    plural: 'dates',
-  },
   pricing: {
     picker: 'pricing_date',
     entityTypes: ['pricing_date'],

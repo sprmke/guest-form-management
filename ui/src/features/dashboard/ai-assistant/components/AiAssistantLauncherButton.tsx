@@ -2,6 +2,7 @@ import { Sparkles } from 'lucide-react';
 
 import { AiAssistantPanel } from '@/features/dashboard/ai-assistant/components/AiAssistantPanel';
 import { useAiAssistantAccess } from '@/features/dashboard/ai-assistant/hooks/useAiAssistantAccess';
+import { isAiAssistantFabVisible } from '@/features/dashboard/ai-assistant/lib/assistantFabLayout';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 
 import { cn } from '@/lib/utils';
@@ -16,9 +17,12 @@ type Props = {
 /** Mounted once in AdminLayout — visible only when both kill-switch layers are on for this org. */
 export function AiAssistantLauncherButton({ open, onOpenChange, showFab = true }: Props) {
   const propertyId = usePropertyIdParam();
-  const { accessible } = useAiAssistantAccess(propertyId);
+  const { accessible, settings, planGate } = useAiAssistantAccess(propertyId);
 
-  if (!accessible) return null;
+  if (!isAiAssistantFabVisible(accessible, settings, planGate.allowed)) return null;
+
+  // Blocked only by plan tier: keep past conversation history viewable, block new messages.
+  const readOnly = !accessible;
 
   return (
     <>
@@ -41,7 +45,7 @@ export function AiAssistantLauncherButton({ open, onOpenChange, showFab = true }
           <Sparkles className="h-5 w-5" aria-hidden />
         </button>
       ) : null}
-      <AiAssistantPanel open={open} onOpenChange={onOpenChange} />
+      <AiAssistantPanel open={open} onOpenChange={onOpenChange} readOnly={readOnly} />
     </>
   );
 }

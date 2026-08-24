@@ -21,6 +21,8 @@ import {
 } from '@/features/dashboard/ai-assistant/lib/assistantSuggestions';
 import { patchActionConfirmationStatus } from '@/features/dashboard/ai-assistant/lib/chatBlockDisplay';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
+import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -29,6 +31,8 @@ import { cn } from '@/lib/utils';
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Plan gate blocks new messages — past conversation history stays viewable. */
+  readOnly?: boolean;
 };
 
 function isNestedOverlayTarget(target: EventTarget | null): boolean {
@@ -54,8 +58,9 @@ function isNestedOverlayEvent(event: {
   return [event.target, orig?.target ?? null, related].some((node) => isNestedOverlayTarget(node));
 }
 
-export function AiAssistantPanel({ open, onOpenChange }: Props) {
+export function AiAssistantPanel({ open, onOpenChange, readOnly = false }: Props) {
   const propertyId = usePropertyIdParam();
+  const { open: openUpgradeModal } = useUpgradeModal();
   const { bookingId } = useParams<{ bookingId?: string }>();
   const pageContext = useMemo(
     () => ({ propertyId, bookingId: bookingId ?? null }),
@@ -140,7 +145,10 @@ export function AiAssistantPanel({ open, onOpenChange }: Props) {
             canvasOpen && 'hidden lg:flex'
           )}
         >
-          <SheetTitle className="text-base">AI Assistant</SheetTitle>
+          <div className="flex min-w-0 items-center gap-2">
+            <SheetTitle className="text-base">AI Assistant</SheetTitle>
+            <TierBadge feature="aiDashboardAssistant" />
+          </div>
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"
@@ -157,6 +165,10 @@ export function AiAssistantPanel({ open, onOpenChange }: Props) {
               size="icon"
               className="min-h-[44px] min-w-[44px]"
               onClick={() => {
+                if (readOnly) {
+                  openUpgradeModal('aiDashboardAssistant');
+                  return;
+                }
                 startNewConversation();
                 setSuggestionNonce((n) => n + 1);
                 setComposerKey((n) => n + 1);
@@ -227,7 +239,13 @@ export function AiAssistantPanel({ open, onOpenChange }: Props) {
                   onOpenCanvas={setCanvasBlock}
                   questions={questions}
                   actions={actions}
-                  onPickSuggestion={(prompt) => void sendMessage(prompt)}
+                  onPickSuggestion={(prompt) => {
+                    if (readOnly) {
+                      openUpgradeModal('aiDashboardAssistant');
+                      return;
+                    }
+                    void sendMessage(prompt);
+                  }}
                 />
 
                 {error && <p className="text-destructive px-3 pb-1 text-xs">{error}</p>}
@@ -239,7 +257,13 @@ export function AiAssistantPanel({ open, onOpenChange }: Props) {
 
                 <ChatComposer
                   key={composerKey}
-                  onSend={(input) => void sendMessage(input)}
+                  onSend={(input) => {
+                    if (readOnly) {
+                      openUpgradeModal('aiDashboardAssistant');
+                      return;
+                    }
+                    void sendMessage(input);
+                  }}
                   pageBookingId={bookingId}
                   disabled={pending}
                   overlayContainer={overlayRoot}
