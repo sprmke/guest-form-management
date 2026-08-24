@@ -10,7 +10,7 @@
  * Plan: docs/planning/NEW_FLOW_PLAN.md §6.1 Q4.4, Q4.5
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -25,6 +25,10 @@ import {
   receiptAiVerdictBlocksAdmin,
   type ReceiptAiVerdict,
 } from '@/features/dashboard/bookings/components/ReceiptAiVerdictBadge';
+import {
+  focusFirstWorkflowFieldError,
+  useRegisterWorkflowProceedValidator,
+} from '@/features/dashboard/bookings/components/workflow-panel/WorkflowProceedValidationContext';
 import {
   WorkflowFormShell,
   workflowFormEditTitle,
@@ -163,6 +167,7 @@ export function ParkingRequestForm({
     formState: { errors, isValid },
     getValues,
     setValue,
+    trigger,
   } = useForm<ParkingRequestValues>({
     resolver: zodResolver(parkingRequestFormSchema),
     defaultValues: {
@@ -181,6 +186,32 @@ export function ParkingRequestForm({
 
   const watched = watch();
   const includedInDownpayment = watch('parking_fee_included_in_downpayment');
+  const [revealErrors, setRevealErrors] = useState(false);
+  const shownErrors = revealErrors ? errors : {};
+
+  const validateForProceed = useCallback(async () => {
+    if (readOnly) return true;
+    const ok = await trigger();
+    setRevealErrors(true);
+    if (!ok) {
+      focusFirstWorkflowFieldError();
+      return false;
+    }
+    const values = getValues();
+    if (
+      !editMode &&
+      !values.parking_fee_included_in_downpayment &&
+      values.parking_payment_receipt_url.trim() &&
+      receiptAiVerdictBlocksAdmin(blockingVerdict)
+    ) {
+      focusFirstWorkflowFieldError();
+      return false;
+    }
+    onChange(values);
+    return true;
+  }, [readOnly, trigger, getValues, editMode, blockingVerdict, onChange]);
+
+  useRegisterWorkflowProceedValidator('parking', validateForProceed, !readOnly);
 
   useEffect(() => {
     if (readOnly) return;
@@ -207,6 +238,7 @@ export function ParkingRequestForm({
     currentReceiptUrl,
     blockingVerdict,
     onChange,
+    getValues,
   ]);
 
   async function handleEndorsementFile(file: File) {
@@ -330,13 +362,14 @@ export function ParkingRequestForm({
         label="Parking Owner"
         required
         description="Parking owner facebook name"
-        error={errors.parking_owner?.message}
+        error={shownErrors.parking_owner?.message}
       >
         <input
           type="text"
           autoComplete="off"
           placeholder={FORM_PLACEHOLDERS.fullName}
-          className={inputClass(!!errors.parking_owner, readOnly)}
+          aria-invalid={!!shownErrors.parking_owner || undefined}
+          className={inputClass(!!shownErrors.parking_owner, readOnly)}
           readOnly={readOnly}
           {...register('parking_owner')}
         />
@@ -357,34 +390,49 @@ export function ParkingRequestForm({
         label="Owner Parking Rate"
         required
         description="Exact parking amount paid to parking owner"
-        error={errors.parking_rate_paid?.message}
+        error={shownErrors.parking_rate_paid?.message}
       >
         <input
           type="number"
           min={1}
           step={10}
           placeholder={FORM_PLACEHOLDERS.parkingRate}
-          className={inputClass(!!errors.parking_rate_paid, readOnly)}
+          aria-invalid={!!shownErrors.parking_rate_paid || undefined}
+          className={inputClass(!!shownErrors.parking_rate_paid, readOnly)}
           readOnly={readOnly}
           {...register('parking_rate_paid')}
         />
       </Field>
 
-      <Field label="Parking Endorsement" required error={errors.parking_endorsement_url?.message}>
+      <Field
+        label="Parking Endorsement"
+        required
+        error={shownErrors.parking_endorsement_url?.message}
+      >
         <input type="hidden" {...register('parking_endorsement_url')} />
-        <BookingCompactAssetControl
-          label="Parking Endorsement"
-          showLabel={false}
-          currentUrl={currentEndorsementUrl}
-          accept="image/*"
-          readOnly={readOnly}
-          uploading={endorsementUploading}
-          removing={clearAssetMut.isPending && !receiptUploading}
-          previewCacheBust={endorsementPreviewBust}
-          onSelectFile={handleEndorsementFile}
-          onRemove={handleRemoveEndorsement}
-          onPreview={onPreview}
-        />
+        <div
+          aria-invalid={!!shownErrors.parking_endorsement_url || undefined}
+          data-workflow-field-error={shownErrors.parking_endorsement_url ? 'true' : undefined}
+          className={
+            shownErrors.parking_endorsement_url
+              ? 'rounded-lg ring-1 ring-red-300 dark:ring-red-500/40'
+              : undefined
+          }
+        >
+          <BookingCompactAssetControl
+            label="Parking Endorsement"
+            showLabel={false}
+            currentUrl={currentEndorsementUrl}
+            accept="image/*"
+            readOnly={readOnly}
+            uploading={endorsementUploading}
+            removing={clearAssetMut.isPending && !receiptUploading}
+            previewCacheBust={endorsementPreviewBust}
+            onSelectFile={handleEndorsementFile}
+            onRemove={handleRemoveEndorsement}
+            onPreview={onPreview}
+          />
+        </div>
       </Field>
 
       {!readOnly ? (
@@ -459,27 +507,37 @@ export function ParkingRequestForm({
         <Field
           label="Parking Payment Receipt"
           required
-          error={errors.parking_payment_receipt_url?.message}
+          error={shownErrors.parking_payment_receipt_url?.message}
         >
           <input type="hidden" {...register('parking_payment_receipt_url')} />
-          <BookingCompactAssetControl
-            label="Parking Payment Receipt"
-            showLabel={false}
-            currentUrl={currentReceiptUrl}
-            accept="image/*"
-            readOnly={readOnly}
-            uploading={receiptUploading}
-            removing={clearAssetMut.isPending && !endorsementUploading}
-            previewCacheBust={receiptPreviewBust}
-            onSelectFile={handleReceiptFile}
-            onRemove={handleRemoveParkingReceipt}
-            onPreview={onPreview}
-            footer={
-              receiptAiVerdict ? (
-                <ReceiptAiVerdictBadge verdict={receiptAiVerdict} summary={receiptAiSummary} />
-              ) : null
+          <div
+            aria-invalid={!!shownErrors.parking_payment_receipt_url || undefined}
+            data-workflow-field-error={shownErrors.parking_payment_receipt_url ? 'true' : undefined}
+            className={
+              shownErrors.parking_payment_receipt_url
+                ? 'rounded-lg ring-1 ring-red-300 dark:ring-red-500/40'
+                : undefined
             }
-          />
+          >
+            <BookingCompactAssetControl
+              label="Parking Payment Receipt"
+              showLabel={false}
+              currentUrl={currentReceiptUrl}
+              accept="image/*"
+              readOnly={readOnly}
+              uploading={receiptUploading}
+              removing={clearAssetMut.isPending && !endorsementUploading}
+              previewCacheBust={receiptPreviewBust}
+              onSelectFile={handleReceiptFile}
+              onRemove={handleRemoveParkingReceipt}
+              onPreview={onPreview}
+              footer={
+                receiptAiVerdict ? (
+                  <ReceiptAiVerdictBadge verdict={receiptAiVerdict} summary={receiptAiSummary} />
+                ) : null
+              }
+            />
+          </div>
         </Field>
       ) : null}
 

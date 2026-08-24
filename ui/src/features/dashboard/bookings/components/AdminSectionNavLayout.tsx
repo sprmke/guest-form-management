@@ -17,6 +17,9 @@ export type AdminSectionNavItem = {
   icon: LucideIcon;
   /** Show attention dot when this section has incomplete required fields. */
   hasIssue?: boolean;
+  /** Trailing content for secondary nav rows (e.g. attention dot). Prefer `TierBadge` on
+   * section/card titles instead of this slot. */
+  badge?: React.ReactNode;
 };
 
 export type AdminSectionNavGroup = {
@@ -300,7 +303,7 @@ const SectionNavButton = React.forwardRef<
     >
       <Icon className="size-4 shrink-0" aria-hidden />
       <span className="truncate">{section.label}</span>
-      {section.hasIssue ? <SectionNavIssueDot className="ml-auto" /> : null}
+      {section.badge ?? (section.hasIssue ? <SectionNavIssueDot className="ml-auto" /> : null)}
     </button>
   );
 });
@@ -535,6 +538,8 @@ type AdminSectionProps = {
   title: string;
   icon?: LucideIcon;
   description?: string;
+  /** e.g. a `<TierBadge>` next to the section title when this card requires a higher plan. */
+  badge?: React.ReactNode;
   headerAction?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
@@ -545,6 +550,7 @@ export const AdminSection = React.memo(function AdminSection({
   title,
   icon: Icon,
   description,
+  badge,
   headerAction,
   children,
   className,
@@ -557,7 +563,8 @@ export const AdminSection = React.memo(function AdminSection({
         <div className={cn(headerAction && 'min-w-0 space-y-1.5')}>
           <CardTitle className="flex items-center gap-2 text-lg">
             {Icon ? <Icon className="size-5 shrink-0" aria-hidden /> : null}
-            {title}
+            <span className="min-w-0">{title}</span>
+            {badge}
           </CardTitle>
           {description ? <CardDescription>{description}</CardDescription> : null}
         </div>

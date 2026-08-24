@@ -25,6 +25,10 @@ import {
   subscribeAssistantOpenRequest,
 } from '@/features/dashboard/ai-assistant/lib/assistantOpenStore';
 import {
+  isAiAssistantFabVisible,
+  notificationFabStackedBottomClassName,
+} from '@/features/dashboard/ai-assistant/lib/assistantFabLayout';
+import {
   AdminBrandTheme,
   useAdminBrandThemeStyle,
 } from '@/features/dashboard/bookings/components/AdminBrandTheme';
@@ -89,10 +93,7 @@ import {
   hasParkingSettingsIssues,
   subscribeParkingSettingsIssues,
 } from '@/features/dashboard/parking/lib/parkingSettingsIssuesStore';
-import {
-  UpgradeModalProvider,
-  useUpgradeModal,
-} from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { UpgradeModalProvider } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { SuperAdminSidebarScope } from '@/features/dashboard/super-admin/components/SuperAdminSidebarScope';
 import { superAdminOrgSlugFromPath } from '@/features/dashboard/super-admin/lib/superAdminPaths';
 import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermissions';
@@ -369,10 +370,18 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed);
   const propertyId = usePropertyIdParam();
-  const { accessible: assistantAccessible, planGate } = useAiAssistantAccess(propertyId);
-  const { open: openUpgradeModal } = useUpgradeModal();
+  const {
+    accessible: assistantAccessible,
+    planGate,
+    settings: assistantSettings,
+  } = useAiAssistantAccess(propertyId);
   const { data: notificationsPreview } = useNotificationsList('preview');
   const unreadNotificationCount = notificationsPreview?.pages[0]?.unreadCount ?? 0;
+  const showAssistantFab = isAiAssistantFabVisible(
+    assistantAccessible,
+    assistantSettings,
+    planGate.allowed
+  );
 
   useEffect(() => {
     setMoreSheetOpen(false);
@@ -391,15 +400,22 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
       return;
     }
 
+    // Kill-switch layers (platform/org toggle) hide the assistant entirely — nothing to open.
+    const killSwitchOff = Boolean(
+      assistantSettings && (!assistantSettings.platformEnabled || !assistantSettings.enabled)
+    );
+    if (killSwitchOff) return;
+
+    // Blocked only by plan tier: open the panel read-only (past history) instead of a hard block.
     if (!planGate.isLoading && !planGate.allowed) {
-      openUpgradeModal('aiDashboardAssistant');
+      setAssistantOpen(true);
     }
   }, [
     assistantOpenRequestId,
     assistantAccessible,
+    assistantSettings,
     planGate.isLoading,
     planGate.allowed,
-    openUpgradeModal,
   ]);
 
   const pageTitle = useMemo(
@@ -476,7 +492,7 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
     () =>
       splitAdminBottomNav(navSections, {
         onMoreClick: openMoreSheet,
-        assistant: !superAdmin && assistantAccessible ? { onClick: toggleAssistant } : undefined,
+        assistant: !superAdmin && showAssistantFab ? { onClick: toggleAssistant } : undefined,
         notifications: !superAdmin
           ? {
               onClick: toggleNotifications,
@@ -488,7 +504,7 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
       navSections,
       openMoreSheet,
       superAdmin,
-      assistantAccessible,
+      showAssistantFab,
       toggleAssistant,
       toggleNotifications,
       unreadNotificationCount,
@@ -639,11 +655,7 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
                 }
                 setNotificationsOpen(open);
               }}
-              className={
-                assistantAccessible
-                  ? 'bottom-[calc(max(1.25rem,env(safe-area-inset-bottom))+4rem)]'
-                  : undefined
-              }
+              className={showAssistantFab ? notificationFabStackedBottomClassName : undefined}
             />
           ) : null}
           {!superAdmin ? (
@@ -952,11 +964,7 @@ function AdminProfileFooter({
 
   return (
     <div
-      ref={profileRef}
-      className={cn(
-        'border-sidebar-border relative shrink-0 space-y-2 border-t',
-        collapsed ? 'p-2' : 'p-3'
-      )}
+      className={cn('border-sidebar-border shrink-0 space-y-2 border-t', collapsed ? 'p-2' : 'p-3')}
     >
       {showThemeToggle && (
         <div className={cn(collapsed ? 'flex justify-center px-0' : 'px-1')}>
@@ -967,94 +975,96 @@ function AdminProfileFooter({
         </div>
       )}
 
-      {profileOpen && (
-        <div
-          className={cn(
-            'border-border/50 bg-card shadow-elevated-lg absolute z-50 overflow-hidden rounded-xl border',
-            collapsed
-              ? 'bottom-0 left-full ml-2 w-[min(18rem,calc(100vw-1.5rem))]'
-              : 'bottom-full left-3 right-3 mb-2'
-          )}
-          role="menu"
-        >
-          <div className="flex items-center gap-3 px-3.5 py-3">
-            <div className="gradient-primary text-primary-foreground ring-background flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold shadow-sm ring-2">
-              {initial}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-foreground truncate text-sm font-semibold capitalize leading-tight">
-                {displayName}
-              </p>
-              {email ? (
-                <p className="text-muted-foreground mt-0.5 truncate text-xs leading-tight">
-                  {email}
+      <div ref={profileRef} className="relative">
+        {profileOpen && (
+          <div
+            className={cn(
+              'border-border/50 bg-card shadow-elevated-lg absolute z-50 overflow-hidden rounded-xl border',
+              collapsed
+                ? 'bottom-0 left-full ml-2 w-[min(18rem,calc(100vw-1.5rem))]'
+                : 'bottom-full left-0 right-0 mb-2'
+            )}
+            role="menu"
+          >
+            <div className="flex items-center gap-3 px-3.5 py-3">
+              <div className="gradient-primary text-primary-foreground ring-background flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold shadow-sm ring-2">
+                {initial}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-foreground truncate text-sm font-semibold capitalize leading-tight">
+                  {displayName}
                 </p>
-              ) : null}
+                {email ? (
+                  <p className="text-muted-foreground mt-0.5 truncate text-xs leading-tight">
+                    {email}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="border-border/50 border-t px-3 py-3">
+              <ModeSwitcher className="w-full" />
+            </div>
+
+            <div className="border-border/50 border-t p-1.5">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => void handleSignOut()}
+                className="text-ui text-destructive hover:bg-destructive/10 flex min-h-[44px] w-full items-center gap-2.5 rounded-xl px-3 py-2 font-semibold transition-colors"
+              >
+                <LogOut className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                Sign out
+              </button>
             </div>
           </div>
-
-          <div className="border-border/50 border-t px-3 py-3">
-            <ModeSwitcher className="w-full" />
-          </div>
-
-          <div className="border-border/50 border-t p-1.5">
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => void handleSignOut()}
-              className="text-ui text-destructive hover:bg-destructive/10 flex min-h-[44px] w-full items-center gap-2.5 rounded-xl px-3 py-2 font-semibold transition-colors"
-            >
-              <LogOut className="h-3.5 w-3.5 shrink-0" aria-hidden />
-              Sign out
-            </button>
-          </div>
-        </div>
-      )}
-
-      <button
-        type="button"
-        onClick={() => setProfileOpen((o) => !o)}
-        aria-haspopup="menu"
-        aria-expanded={profileOpen}
-        aria-label={collapsed ? `Account menu, ${displayName}` : 'Account menu'}
-        className={cn(
-          'relative z-10 flex min-h-[44px] w-full items-center rounded-xl border transition-all duration-150',
-          collapsed ? 'justify-center border-transparent px-2 py-2' : 'gap-3 px-2.5 py-2',
-          profileOpen
-            ? 'border-border bg-muted/60 shadow-sm'
-            : 'hover:border-border/50 hover:bg-muted/40 border-transparent'
         )}
-      >
-        <div
+
+        <button
+          type="button"
+          onClick={() => setProfileOpen((o) => !o)}
+          aria-haspopup="menu"
+          aria-expanded={profileOpen}
+          aria-label={collapsed ? `Account menu, ${displayName}` : 'Account menu'}
           className={cn(
-            'gradient-primary text-primary-foreground ring-background flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-bold shadow-sm ring-2',
-            collapsed ? 'text-xs' : 'text-sm'
+            'relative z-10 flex min-h-[44px] w-full items-center rounded-xl border transition-all duration-150',
+            collapsed ? 'justify-center border-transparent px-2 py-2' : 'gap-3 px-2.5 py-2',
+            profileOpen
+              ? 'border-border bg-muted/60 shadow-sm'
+              : 'hover:border-border/50 hover:bg-muted/40 border-transparent'
           )}
         >
-          {initial}
-        </div>
-        {!collapsed && (
-          <>
-            <div className="min-w-0 flex-1 text-left">
-              <p className="text-foreground truncate text-sm font-semibold capitalize leading-tight">
-                {displayName}
-              </p>
-              {email ? (
-                <p className="text-muted-foreground mt-0.5 truncate text-xs leading-tight">
-                  {email}
+          <div
+            className={cn(
+              'gradient-primary text-primary-foreground ring-background flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-bold shadow-sm ring-2',
+              collapsed ? 'text-xs' : 'text-sm'
+            )}
+          >
+            {initial}
+          </div>
+          {!collapsed && (
+            <>
+              <div className="min-w-0 flex-1 text-left">
+                <p className="text-foreground truncate text-sm font-semibold capitalize leading-tight">
+                  {displayName}
                 </p>
-              ) : null}
-            </div>
-            <ChevronUp
-              className={cn(
-                'text-muted-foreground h-4 w-4 shrink-0 transition-transform duration-200',
-                profileOpen && 'rotate-180'
-              )}
-              aria-hidden
-            />
-          </>
-        )}
-      </button>
+                {email ? (
+                  <p className="text-muted-foreground mt-0.5 truncate text-xs leading-tight">
+                    {email}
+                  </p>
+                ) : null}
+              </div>
+              <ChevronUp
+                className={cn(
+                  'text-muted-foreground h-4 w-4 shrink-0 transition-transform duration-200',
+                  profileOpen && 'rotate-180'
+                )}
+                aria-hidden
+              />
+            </>
+          )}
+        </button>
+      </div>
     </div>
   );
 }

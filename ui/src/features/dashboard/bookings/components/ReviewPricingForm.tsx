@@ -11,12 +11,16 @@
  * Plan: docs/planning/NEW_FLOW_PLAN.md §6.1 Q2.1, Q2.3, Q2.4
  */
 
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, type DefaultValues } from 'react-hook-form';
 import { z } from 'zod';
 
+import {
+  focusFirstWorkflowFieldError,
+  useRegisterWorkflowProceedValidator,
+} from '@/features/dashboard/bookings/components/workflow-panel/WorkflowProceedValidationContext';
 import {
   WorkflowFormShell,
   workflowFormEditTitle,
@@ -125,6 +129,24 @@ export function ReviewPricingForm({
     mode: 'onChange',
   });
 
+  const [revealErrors, setRevealErrors] = useState(false);
+  const shownErrors = revealErrors ? errors : {};
+
+  const validateForProceed = useCallback(async () => {
+    if (readOnly) return true;
+    const ok = await trigger();
+    setRevealErrors(true);
+    if (!ok) {
+      focusFirstWorkflowFieldError();
+      return false;
+    }
+    // Emit values immediately — parent draft must be ready before confirm opens.
+    onChange(getValues() as ReviewPricingFormValues);
+    return true;
+  }, [readOnly, trigger, onChange, getValues]);
+
+  useRegisterWorkflowProceedValidator('pricing', validateForProceed, !readOnly);
+
   // `watch()` often yields strings from <input type="number"> — coerce before math
   // or `n + "700"` becomes string concat (e.g. 3499 + "700" → "3499700").
   const bookingRate = toNullableNumber(watch('booking_rate')) ?? 0;
@@ -158,6 +180,8 @@ export function ReviewPricingForm({
     petFee,
     additionalFee,
     isValid,
+    getValues,
+    onChange,
   ]);
 
   const cardTitle = variant === 'edit' ? workflowFormEditTitle('Review pricing') : 'Review pricing';
@@ -165,26 +189,23 @@ export function ReviewPricingForm({
   return (
     <WorkflowFormShell title={cardTitle} variant={variant} advanceMode="manual">
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Booking Rate" required error={errors.booking_rate?.message}>
+        <Field label="Booking Rate" required error={shownErrors.booking_rate?.message}>
           <input
             type="number"
             min={0}
             step={0.01}
             placeholder={FORM_PLACEHOLDERS.bookingRate}
-            className={inputClass(!!errors.booking_rate, false, readOnly)}
+            aria-invalid={!!shownErrors.booking_rate || undefined}
+            className={inputClass(!!shownErrors.booking_rate, false, readOnly)}
             readOnly={readOnly}
             {...register('booking_rate')}
-            onChange={async (e) => {
-              register('booking_rate').onChange(e);
-              await trigger();
-            }}
           />
         </Field>
 
         <Field
           label="Down Payment"
           required
-          error={errors.down_payment?.message}
+          error={shownErrors.down_payment?.message}
           helpText={isAirbnb ? 'Down payment is not required for Airbnb bookings' : undefined}
         >
           <input
@@ -192,20 +213,17 @@ export function ReviewPricingForm({
             min={0}
             step={0.01}
             placeholder={FORM_PLACEHOLDERS.downPayment}
-            className={inputClass(!!errors.down_payment, false, isAirbnb || readOnly)}
+            aria-invalid={!!shownErrors.down_payment || undefined}
+            className={inputClass(!!shownErrors.down_payment, false, isAirbnb || readOnly)}
             readOnly={isAirbnb || readOnly}
             {...register('down_payment')}
-            onChange={async (e) => {
-              register('down_payment').onChange(e);
-              await trigger();
-            }}
           />
         </Field>
 
         <Field
           label="Security Deposit"
           required
-          error={errors.security_deposit?.message}
+          error={shownErrors.security_deposit?.message}
           helpText={isAirbnb ? 'Security deposit is not required for Airbnb bookings' : undefined}
         >
           <input
@@ -213,13 +231,14 @@ export function ReviewPricingForm({
             min={0}
             step={0.01}
             placeholder={FORM_PLACEHOLDERS.securityDeposit}
-            className={inputClass(!!errors.security_deposit, false, isAirbnb || readOnly)}
+            aria-invalid={!!shownErrors.security_deposit || undefined}
+            className={inputClass(!!shownErrors.security_deposit, false, isAirbnb || readOnly)}
             readOnly={isAirbnb || readOnly}
             {...register('security_deposit')}
           />
         </Field>
 
-        <Field label="Pet Fee" error={errors.pet_fee?.message}>
+        <Field label="Pet Fee" error={shownErrors.pet_fee?.message}>
           <input
             type="number"
             min={0}
@@ -227,7 +246,8 @@ export function ReviewPricingForm({
             placeholder={hasPets ? String(propertyDefaults.petFee) : '0'}
             disabled={!hasPets || readOnly}
             readOnly={readOnly}
-            className={inputClass(!!errors.pet_fee, !hasPets || readOnly, readOnly)}
+            aria-invalid={!!shownErrors.pet_fee || undefined}
+            className={inputClass(!!shownErrors.pet_fee, !hasPets || readOnly, readOnly)}
             {...register('pet_fee')}
           />
         </Field>
@@ -236,14 +256,15 @@ export function ReviewPricingForm({
           <Field
             label="Parking Fee"
             helpText="Amount charged to the guest for parking"
-            error={errors.parking_rate_guest?.message}
+            error={shownErrors.parking_rate_guest?.message}
           >
             <input
               type="number"
               min={0}
               step={0.01}
               placeholder={FORM_PLACEHOLDERS.parkingRate}
-              className={inputClass(!!errors.parking_rate_guest, false, readOnly)}
+              aria-invalid={!!shownErrors.parking_rate_guest || undefined}
+              className={inputClass(!!shownErrors.parking_rate_guest, false, readOnly)}
               readOnly={readOnly}
               {...register('parking_rate_guest')}
             />
@@ -258,7 +279,7 @@ export function ReviewPricingForm({
               ? 'Includes the surprise decor setup fee.'
               : 'Early check-in, late check-out, surprise decor, etc.'
           }
-          error={errors.guest_additional_fee?.message}
+          error={shownErrors.guest_additional_fee?.message}
         >
           <input
             type="number"
@@ -266,13 +287,10 @@ export function ReviewPricingForm({
             step={0.01}
             placeholder={surpriseDecorRequested ? '₱800-₱2000' : '0'}
             aria-required={surpriseDecorRequested}
-            className={inputClass(!!errors.guest_additional_fee, false, readOnly)}
+            aria-invalid={!!shownErrors.guest_additional_fee || undefined}
+            className={inputClass(!!shownErrors.guest_additional_fee, false, readOnly)}
             readOnly={readOnly}
             {...register('guest_additional_fee')}
-            onChange={async (e) => {
-              register('guest_additional_fee').onChange(e);
-              await trigger('guest_additional_fee');
-            }}
           />
         </Field>
       </div>

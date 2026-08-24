@@ -157,6 +157,7 @@ export function PropertySettingsCard() {
   const updateVoiceSettings = useUpdateVoiceReceptionistSettings();
   const { canUse: canEnableReceptionist, isLoading: receptionistEntitlementsLoading } =
     useFeatureGate('aiReceptionist');
+  const { canUse: canUseAiOverrides } = useFeatureGate('aiMonthlyCreditAllowance');
   const { open: openUpgradeModal } = useUpgradeModal();
   const orgBrandColor = useOrgBrandColor();
   const inheritedBrandColor = appSettings?.inheritedBrandColor ?? orgBrandColor;
@@ -381,16 +382,17 @@ export function PropertySettingsCard() {
 
   const slugPreview = propertySlugPreview(profileDraft.name, property.slug, profileBaseline.name);
 
-  const navSections = useMemo(
-    (): AdminSectionNavItem[] =>
-      SETTINGS_SECTIONS.map((section) => ({
-        ...section,
-        hasIssue: settingsCompletion.issueSectionIds.includes(
-          section.id as PropertySettingsSectionId
-        ),
-      })),
-    [settingsCompletion.issueSectionIds]
-  );
+  const navSections = useMemo((): AdminSectionNavItem[] => {
+    const hidden = new Set<string>();
+    if (!canEnableReceptionist) hidden.add('voice-receptionist');
+    if (!canUseAiOverrides) hidden.add('ai');
+    return SETTINGS_SECTIONS.filter((section) => !hidden.has(section.id)).map((section) => ({
+      ...section,
+      hasIssue: settingsCompletion.issueSectionIds.includes(
+        section.id as PropertySettingsSectionId
+      ),
+    }));
+  }, [canEnableReceptionist, canUseAiOverrides, settingsCompletion.issueSectionIds]);
 
   useEffect(() => {
     setPropertySettingsIssueSections(settingsCompletion.issueSectionIds);
@@ -774,6 +776,7 @@ export function PropertySettingsCard() {
             resolveFieldError={resolveFieldError}
             markFieldInteracted={markFieldInteracted}
             sectionMessages={settingsCompletion.sectionMessages}
+            showVoiceReceptionist={canEnableReceptionist}
             voiceReceptionist={{
               draft: voiceDraft,
               propertyName: profileDraft.name.trim(),
@@ -785,7 +788,7 @@ export function PropertySettingsCard() {
             }}
           />
 
-          <PropertyAiPlatformSection />
+          {canUseAiOverrides ? <PropertyAiPlatformSection /> : null}
 
           <PropertyDangerZoneSection
             propertyName={profileDraft.name.trim() || property.name}

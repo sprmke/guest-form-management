@@ -159,6 +159,7 @@ export function PropertyTelegramCredentialsFields({
           value={botToken}
           disabled={disabled || verifyBot.isPending}
           helpTab="bot-token"
+          defaultVisible
           maskedLabel={botMaskedLabel}
           labelLoading={botLabelLoading}
           dirty={botTokenDirty}

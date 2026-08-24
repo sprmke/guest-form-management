@@ -5,6 +5,8 @@ import { cn } from '@/lib/utils';
 type AdminPageHeaderProps = {
   title: string;
   subtitle?: string;
+  /** Optional plan/status pill next to the title (e.g. `<TierBadge>`). */
+  badge?: ReactNode;
   actions?: ReactNode;
   /** Optional classes on the actions wrapper. */
   actionsClassName?: string;
@@ -24,6 +26,7 @@ type AdminPageHeaderProps = {
 export function AdminPageHeader({
   title,
   subtitle,
+  badge,
   actions,
   actionsClassName,
   className,
@@ -51,6 +54,7 @@ export function AdminPageHeader({
           <h1 id={id} className="text-admin-page-title">
             {title}
           </h1>
+          {badge}
         </div>
         {subtitle ? (
           <p className="text-admin-page-subtitle max-sm:line-clamp-2">{subtitle}</p>

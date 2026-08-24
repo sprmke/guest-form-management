@@ -6,7 +6,7 @@
  * Payment balance receipt is required only when total > ₱0.
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -19,6 +19,10 @@ import {
   receiptAiVerdictBlocksAdmin,
   type ReceiptAiVerdict,
 } from '@/features/dashboard/bookings/components/ReceiptAiVerdictBadge';
+import {
+  focusFirstWorkflowFieldError,
+  useRegisterWorkflowProceedValidator,
+} from '@/features/dashboard/bookings/components/workflow-panel/WorkflowProceedValidationContext';
 import {
   WorkflowFormShell,
   workflowFormEditTitle,
@@ -128,6 +132,7 @@ export function GuestBalanceSettlementForm({
   const [receiptAiVerdict, setReceiptAiVerdict] = useState<ReceiptAiVerdict>(null);
   const [receiptAiSummary, setReceiptAiSummary] = useState('');
   const blockingVerdict = receiptAiVerdict ?? booking.balance_receipt_ai_verdict ?? null;
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   useEffect(() => {
     if (!receiptUrl.trim()) {
@@ -266,8 +271,76 @@ export function GuestBalanceSettlementForm({
   const paidUi = parsePaidInput(paidInput) ?? NaN;
   const paidCentsUi = totalDue !== null && !Number.isNaN(paidUi) ? Math.round(paidUi * 100) : null;
   const balCentsUi = totalDue !== null ? Math.round(totalDue * 100) : null;
+
+  function resolvePaidError(): string | null {
+    if (totalDue === null) return 'Complete pricing first';
+    if (paidInput.trim() === '' && totalDue !== 0) return 'Enter balance amount paid';
+    if (Number.isNaN(paidUi) || paidUi < 0) return 'Enter a valid amount';
+    if (paidCentsUi !== null && balCentsUi !== null && paidCentsUi > balCentsUi) {
+      return 'Amount paid cannot exceed total guest balance';
+    }
+    if (paidCentsUi !== null && balCentsUi !== null && paidCentsUi !== balCentsUi) {
+      return 'Amount paid must equal total guest balance';
+    }
+    return null;
+  }
+
+  function resolveReceiptError(): string | null {
+    if (!receiptRequired) return null;
+    if (!receiptUrl.trim()) return 'Upload a payment balance receipt';
+    if (receiptAiVerdictBlocksAdmin(blockingVerdict)) {
+      return 'Replace the receipt — AI check blocked this file';
+    }
+    return null;
+  }
+
+  const paidError = submitAttempted ? resolvePaidError() : null;
+  const receiptError = submitAttempted && !resolvePaidError() ? resolveReceiptError() : null;
+
+  const validateForProceed = useCallback(() => {
+    if (readOnly) return true;
+    setSubmitAttempted(true);
+    const nextPaidError = (() => {
+      if (totalDue === null) return 'Complete pricing first';
+      const paid = parsePaidInput(paidInput);
+      if ((paid === null || Number.isNaN(paid)) && totalDue !== 0)
+        return 'Enter balance amount paid';
+      if (paid !== null && paid < 0) return 'Enter a valid amount';
+      const paidCents = paid === null ? (totalDue === 0 ? 0 : null) : Math.round(paid * 100);
+      const balCents = Math.round(totalDue * 100);
+      if (paidCents === null) return 'Enter balance amount paid';
+      if (paidCents > balCents) return 'Amount paid cannot exceed total guest balance';
+      if (paidCents !== balCents) return 'Amount paid must equal total guest balance';
+      return null;
+    })();
+    const nextReceiptError = (() => {
+      if (nextPaidError) return null;
+      if (!receiptRequired) return null;
+      if (!receiptUrl.trim()) return 'Upload a payment balance receipt';
+      if (receiptAiVerdictBlocksAdmin(blockingVerdict)) {
+        return 'Replace the receipt — AI check blocked this file';
+      }
+      return null;
+    })();
+    if (nextPaidError || nextReceiptError) {
+      queueMicrotask(() => focusFirstWorkflowFieldError());
+      return false;
+    }
+    const paidParsed = parsePaidInput(paidInput) ?? (totalDue === 0 ? 0 : 0);
+    onChange({
+      guest_balance_paid_amount: Math.round(paidParsed * 100) / 100,
+      guest_balance_payment_receipt_url: receiptRequired ? receiptUrl.trim() : '',
+    });
+    return true;
+  }, [readOnly, totalDue, paidInput, receiptRequired, receiptUrl, blockingVerdict, onChange]);
+
+  useRegisterWorkflowProceedValidator('guest_balance', validateForProceed, !readOnly);
+
   let paidFieldClass = 'border-border bg-card';
-  if (
+  if (paidError) {
+    paidFieldClass =
+      'border-red-300 bg-red-50 text-red-900 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300';
+  } else if (
     totalDue !== null &&
     paidInput !== '' &&
     !Number.isNaN(paidUi) &&
@@ -375,9 +448,11 @@ export function GuestBalanceSettlementForm({
           disabled={totalDue === null || readOnly}
           readOnly={readOnly}
           value={paidInput}
+          aria-invalid={!!paidError || undefined}
           onChange={(e) => setPaidInput(e.target.value)}
           className={cn('h-10 w-full rounded-md border px-3 text-sm', paidFieldClass)}
         />
+        {paidError ? <p className="text-[10px] text-red-600">{paidError}</p> : null}
       </div>
 
       <div className="space-y-1">
@@ -390,28 +465,35 @@ export function GuestBalanceSettlementForm({
             </>
           ) : null}
         </span>
-        <BookingCompactAssetControl
-          label="Payment balance receipt"
-          showLabel={false}
-          currentUrl={receiptUrl}
-          accept="image/*"
-          readOnly={readOnly}
-          disabled={totalDue === null}
-          uploading={uploadMut.isPending}
-          removing={clearAssetMut.isPending}
-          previewCacheBust={receiptPreviewBust}
-          thumbSrc={receiptImgSrc}
-          thumbPending={Boolean(receiptUrl.trim()) && !receiptImgSrc && !receiptImgFailed}
-          suppressNormalizedThumb={receiptImgFailed}
-          onSelectFile={handleReceiptFile}
-          onRemove={handleRemoveReceipt}
-          onPreview={onPreview}
-          footer={
-            receiptRequired && receiptAiVerdict ? (
-              <ReceiptAiVerdictBadge verdict={receiptAiVerdict} summary={receiptAiSummary} />
-            ) : null
-          }
-        />
+        <div
+          aria-invalid={!!receiptError || undefined}
+          data-workflow-field-error={receiptError ? 'true' : undefined}
+          className={cn(receiptError && 'rounded-lg ring-1 ring-red-300 dark:ring-red-500/40')}
+        >
+          <BookingCompactAssetControl
+            label="Payment balance receipt"
+            showLabel={false}
+            currentUrl={receiptUrl}
+            accept="image/*"
+            readOnly={readOnly}
+            disabled={totalDue === null}
+            uploading={uploadMut.isPending}
+            removing={clearAssetMut.isPending}
+            previewCacheBust={receiptPreviewBust}
+            thumbSrc={receiptImgSrc}
+            thumbPending={Boolean(receiptUrl.trim()) && !receiptImgSrc && !receiptImgFailed}
+            suppressNormalizedThumb={receiptImgFailed}
+            onSelectFile={handleReceiptFile}
+            onRemove={handleRemoveReceipt}
+            onPreview={onPreview}
+            footer={
+              receiptRequired && receiptAiVerdict ? (
+                <ReceiptAiVerdictBadge verdict={receiptAiVerdict} summary={receiptAiSummary} />
+              ) : null
+            }
+          />
+        </div>
+        {receiptError ? <p className="text-[10px] text-red-600">{receiptError}</p> : null}
       </div>
     </WorkflowFormShell>
   );
