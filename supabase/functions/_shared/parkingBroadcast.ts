@@ -8,6 +8,8 @@ import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4
 import { resolveAppSettings } from './appSettings.ts';
 import { createServiceClient, type ParkingRow } from './orgAuth.ts';
 import { parkingDatesOverlap } from './parkingDateOverlap.ts';
+import { hasParkingBlockedNightsInRange } from './parkingBlockedDates.ts';
+import { parkingAutomationEnabled } from './parkingAutomationToggles.ts';
 import {
   getOrgSlug,
   sendParkingReservationRequestEmail,
@@ -106,7 +108,17 @@ export async function findParkingBroadcastCandidates(input: {
     }
   }
 
-  return candidates.filter((c) => !conflictedParkingIds.has(c.id));
+  const withoutBookingConflicts = candidates.filter((c) => !conflictedParkingIds.has(c.id));
+  const available: ParkingBroadcastCandidate[] = [];
+  for (const candidate of withoutBookingConflicts) {
+    const blocked = await hasParkingBlockedNightsInRange(
+      candidate.id,
+      input.checkInDate,
+      input.checkOutDate
+    );
+    if (!blocked) available.push(candidate);
+  }
+  return available;
 }
 
 export type ParkingHostRecipient = { userId: string; email: string };
@@ -238,6 +250,12 @@ async function notifyParkingCandidate(
   if (recipients.length === 0) return;
 
   await sendParkingReservationRequestTelegram(candidate, booking);
+
+  const emailEnabled = await parkingAutomationEnabled(
+    candidate.id,
+    'emailParkingReservationRequest'
+  );
+  if (!emailEnabled) return;
 
   const emailInput: Omit<ParkingReservationRequestEmailInput, 'to'> = {
     parking: candidate,

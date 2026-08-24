@@ -14,6 +14,7 @@ import {
   sendParkingConfirmedEmail,
   sendParkingNoHostAvailableEmail,
 } from './parkingBroadcastEmail.ts';
+import { parkingAutomationEnabled } from './parkingAutomationToggles.ts';
 
 export class ParkingBroadcastActionError extends Error {
   status: number;
@@ -89,13 +90,16 @@ export async function claimParkingBooking(
     const checkInDate = String(claimed.parking_check_in_date ?? claimed.check_in_date ?? '');
     const checkOutDate = String(claimed.parking_check_out_date ?? claimed.check_out_date ?? '');
     try {
-      await sendParkingConfirmedEmail({
-        to: guestEmail,
-        parking: parkingRow,
-        checkInDate,
-        checkOutDate,
-        endorsementNote: trimmedNote || null,
-      });
+      const emailEnabled = await parkingAutomationEnabled(parkingId, 'emailParkingGuestConfirmed');
+      if (emailEnabled) {
+        await sendParkingConfirmedEmail({
+          to: guestEmail,
+          parking: parkingRow,
+          checkInDate,
+          checkOutDate,
+          endorsementNote: trimmedNote || null,
+        });
+      }
     } catch (err) {
       console.error(
         '[parkingBroadcastActions] claim confirmation email failed:',
@@ -168,12 +172,18 @@ export async function declineParkingBooking(
         terminated.parking_check_out_date ?? terminated.check_out_date ?? ''
       );
       try {
-        await sendParkingNoHostAvailableEmail({
-          to: guestEmail,
-          organizationId,
-          checkInDate,
-          checkOutDate,
-        });
+        const emailEnabled = await parkingAutomationEnabled(
+          parkingId,
+          'emailParkingNoHostAvailable'
+        );
+        if (emailEnabled) {
+          await sendParkingNoHostAvailableEmail({
+            to: guestEmail,
+            organizationId,
+            checkInDate,
+            checkOutDate,
+          });
+        }
       } catch (err) {
         console.error(
           '[parkingBroadcastActions] no-host-available email failed:',

@@ -25,6 +25,7 @@ import { readPropertyIdFromUrl } from './propertyScope.ts';
 import { sendPropertyTeamInviteEmail } from './propertyTeamInviteEmail.ts';
 import { assertAllowedTeamInviteEmail } from './teamInviteEmail.ts';
 import { parseTeamInviteContactFields } from './teamInviteContact.ts';
+import { reconcilePropertyTeamSeats, requireTeamInviteAllowed } from './planEntitlements.ts';
 
 export type SerializedTeamMember = {
   id: string;
@@ -37,6 +38,10 @@ export type SerializedTeamMember = {
   permissions: string[];
   savedPermissions?: string[];
   status: 'active' | 'inactive';
+  /** True when status='inactive' was set automatically by team-seat reconciliation (plan
+   * downgrade/suspension), not by an admin — lets the UI show a distinct "plan limit" reason and
+   * offer an upgrade instead of a plain "Activate" action. Always false for org-inherited rows. */
+  planLimited: boolean;
   assignedAt: string;
   lastActive: string | null;
   assignedBy: string;
@@ -304,6 +309,7 @@ function serializeMemberRow(
     permissions: normalizePermissionIds(row.permissions),
     ...(saved && saved.length > 0 ? { savedPermissions: saved } : {}),
     status: row.status as 'active' | 'inactive',
+    planLimited: row.plan_limited === true,
     assignedAt: isoDateOnly(row.assigned_at as string),
     lastActive: row.last_active_at ? isoDateOnly(row.last_active_at as string) : null,
     assignedBy: assignedByLabel,
@@ -382,6 +388,7 @@ export async function listPropertyTeamMembers(
     role: 'MANAGER',
     permissions: allTeamPermissions(),
     status: 'active',
+    planLimited: false,
     assignedAt: isoDateOnly(ctx.org.created_at),
     lastActive: null,
     assignedBy: 'System',
@@ -407,6 +414,7 @@ export async function listPropertyTeamMembers(
       role: 'MANAGER',
       permissions: allTeamPermissions(),
       status: 'active',
+      planLimited: false,
       assignedAt: isoDateOnly(row.assigned_at as string),
       lastActive: null,
       assignedBy: 'System',
@@ -741,7 +749,15 @@ export async function updatePropertyTeamMember(
     patch.status = 'inactive';
     patch.saved_permissions = normalizePermissionIds(existing.permissions);
     patch.permissions = [];
+    // A deliberate admin action always wins over a prior plan-driven deactivation record —
+    // re-activating this member later must be a manual choice, never an automatic restore.
+    patch.plan_limited = false;
   } else if (body.status === 'active') {
+    if (existing.status !== 'active') {
+      // Mirrors requireTeamInviteAllowed's cap check — reactivating is otherwise a second,
+      // ungated path to the same seat count an invite would have been blocked from reaching.
+      await requireTeamInviteAllowed(propertyId);
+    }
     patch.status = 'active';
     if (!isBuiltinPropertyRole(nextRoleId)) {
       patch.permissions = resolveAssignPermissions(nextRoleId, customRoles, undefined);
@@ -755,6 +771,7 @@ export async function updatePropertyTeamMember(
           : resolveAssignPermissions(nextRoleId, customRoles, body.permissions);
     }
     patch.saved_permissions = null;
+    patch.plan_limited = false;
   } else if (existing.status === 'active' && (body.permissions !== undefined || roleChanged)) {
     patch.permissions = resolveAssignPermissions(
       nextRoleId,
@@ -1077,6 +1094,7 @@ export async function acceptPropertyInvitation(
         permissions,
         saved_permissions: null,
         status: 'active',
+        plan_limited: false,
         invited_by: invite.sent_by as string,
         assigned_at: new Date().toISOString(),
         display_name: null,
@@ -1099,6 +1117,11 @@ export async function acceptPropertyInvitation(
       accepted_by: userId,
     })
     .eq('id', invite.id);
+
+  // Self-correcting rather than a hard error here: if the invite was created under an
+  // since-downgraded plan and accepting pushes past the current seat cap, the new member starts
+  // deactivated (plan_limited) instead of the acceptance failing outright for the invited guest.
+  await reconcilePropertyTeamSeats(propertyId);
 
   return {
     propertyId,

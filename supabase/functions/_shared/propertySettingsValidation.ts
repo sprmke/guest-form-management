@@ -2,6 +2,7 @@
  * Validates properties.settings JSON patches on update-property.
  */
 
+import { isValidCleaningBufferMinutes } from './cleaningBuffer.ts';
 import {
   validateEmailAddress,
   validateFullPersonName,
@@ -68,6 +69,13 @@ export function validatePropertySettingsPatch(
         return 'Custom amenities must be 50 characters or fewer';
       }
     }
+  }
+
+  if (
+    incoming.cleaningBufferMinutes !== undefined &&
+    !isValidCleaningBufferMinutes(incoming.cleaningBufferMinutes as number)
+  ) {
+    return 'Minimum cleaning time is required — between 1 and 6 hours, in 30-minute steps';
   }
 
   if (incoming.cancellationPolicy !== undefined) {

@@ -6,6 +6,7 @@
 
 import { createServiceClient } from './orgAuth.ts';
 import { sendParkingNoHostAvailableEmail } from './parkingBroadcastEmail.ts';
+import { parkingAutomationEnabled } from './parkingAutomationToggles.ts';
 
 export function verifyParkingBroadcastExpireCronSecret(req: Request): boolean {
   const expected = Deno.env.get('PARKING_BROADCAST_EXPIRE_CRON_SECRET')?.trim();
@@ -73,18 +74,32 @@ export async function runExpireParkingBroadcasts(): Promise<Record<string, unkno
     const organizationId = String(terminated.parking_request_organization_id ?? '');
     if (!guestEmail || !organizationId) continue;
 
+    const { data: broadcastRow } = await supabase
+      .from('parking_booking_broadcasts')
+      .select('parking_id')
+      .eq('booking_id', bookingId)
+      .limit(1)
+      .maybeSingle();
+
     const checkInDate = String(terminated.parking_check_in_date ?? terminated.check_in_date ?? '');
     const checkOutDate = String(
       terminated.parking_check_out_date ?? terminated.check_out_date ?? ''
     );
     try {
-      await sendParkingNoHostAvailableEmail({
-        to: guestEmail,
-        organizationId,
-        checkInDate,
-        checkOutDate,
-      });
-      emailedCount += 1;
+      const parkingIdForToggle = broadcastRow?.parking_id ? String(broadcastRow.parking_id) : null;
+      const emailEnabled = await parkingAutomationEnabled(
+        parkingIdForToggle,
+        'emailParkingNoHostAvailable'
+      );
+      if (emailEnabled) {
+        await sendParkingNoHostAvailableEmail({
+          to: guestEmail,
+          organizationId,
+          checkInDate,
+          checkOutDate,
+        });
+        emailedCount += 1;
+      }
     } catch (err) {
       console.error(
         '[expire-parking-broadcasts] guest notice email failed:',

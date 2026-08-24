@@ -6,14 +6,22 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
 import { createPaymongoPaymentLink, phpToCentavos } from './paymongoClient.ts';
 import { discountedPlanPricePhp } from './planPricing.ts';
+import { computeMidCycleProration, type ProrationQuote } from './subscriptionProration.ts';
 import { getPlatformPaymentSettings } from './subscriptionOrchestrator.ts';
 
-export type CheckoutPurpose = 'initial' | 'renewal' | 'retry';
+export type CheckoutPurpose = 'initial' | 'renewal' | 'retry' | 'plan_switch';
+
+/** PayMongo requires a positive minimum charge — floor for the rare case where a downgrade's
+ * unused-time credit would otherwise fully (or more than) cover the new plan's price. Not a
+ * zero-dollar-checkout bypass; that's a separate, out-of-scope feature (see plan doc Phase 7). */
+const MINIMUM_CHECKOUT_AMOUNT_PHP = 20;
 
 export type PropertyCheckoutResult = {
   checkoutUrl: string;
   transactionId: string;
   reused: boolean;
+  /** Present when this checkout is a mid-cycle switch off an existing paid plan. */
+  proration?: ProrationQuote;
 };
 
 function db() {
@@ -43,7 +51,7 @@ export async function createPropertySubscriptionCheckoutLink(input: {
 
   const { data: plan, error: planError } = await sb
     .from('pricing_plans')
-    .select('id, name, price_php, discount_percent, pricing_model, is_active, is_default')
+    .select('id, code, name, price_php, discount_percent, pricing_model, is_active, is_default')
     .eq('id', input.planId)
     .maybeSingle();
   if (planError) throw new Error(planError.message);
@@ -52,24 +60,53 @@ export async function createPropertySubscriptionCheckoutLink(input: {
     throw new Error('Only subscription plans can be purchased');
   }
   if (plan.is_default) throw new Error('Free plan does not require checkout');
+  if (plan.code === 'business_plus') {
+    throw new Error('Business Plus is only available through org portfolio bundling');
+  }
 
+  // Status list kept identical to fulfillPropertySubscriptionPayment's `existingSub` lookup
+  // (subscriptionOrchestrator.ts) — a suspended sub's period has always already lapsed, so
+  // including it here doesn't change what gets charged, but keeping the two lists in sync avoids
+  // this pricing check and the webhook-time period-start logic silently diverging later.
   const { data: liveSub } = await sb
     .from('property_subscriptions')
-    .select('plan_id, price_php_snapshot')
+    .select('plan_id, price_php_snapshot, current_period_start, current_period_end')
     .eq('property_id', input.propertyId)
-    .in('status', ['active', 'trialing', 'past_due'])
+    .in('status', ['active', 'trialing', 'past_due', 'suspended'])
     .maybeSingle();
 
   const renewingSamePlan =
     purpose === 'renewal' ||
     (liveSub?.plan_id != null && String(liveSub.plan_id) === String(input.planId));
 
-  const amountPhp =
-    renewingSamePlan &&
+  const targetPricePhp = discountedPlanPricePhp(plan.price_php, plan.discount_percent);
+
+  let proration: ProrationQuote | undefined;
+  let amountPhp: number;
+
+  if (renewingSamePlan) {
+    amountPhp =
+      liveSub?.price_php_snapshot != null && Number(liveSub.price_php_snapshot) > 0
+        ? Number(liveSub.price_php_snapshot)
+        : targetPricePhp;
+  } else if (
     liveSub?.price_php_snapshot != null &&
-    Number(liveSub.price_php_snapshot) > 0
-      ? Number(liveSub.price_php_snapshot)
-      : discountedPlanPricePhp(plan.price_php, plan.discount_percent);
+    Number(liveSub.price_php_snapshot) > 0 &&
+    liveSub.current_period_start &&
+    liveSub.current_period_end
+  ) {
+    // Mid-cycle switch off a different active/trialing/past_due paid plan — prorate.
+    proration = computeMidCycleProration({
+      currentPricePhp: Number(liveSub.price_php_snapshot),
+      currentPeriodStartIso: String(liveSub.current_period_start),
+      currentPeriodEndIso: String(liveSub.current_period_end),
+      targetPricePhp,
+    });
+    amountPhp = Math.max(MINIMUM_CHECKOUT_AMOUNT_PHP, proration.netDuePhp);
+  } else {
+    amountPhp = targetPricePhp;
+  }
+
   if (!Number.isFinite(amountPhp) || amountPhp <= 0) {
     throw new Error('Plan has no price configured');
   }
@@ -118,18 +155,22 @@ export async function createPropertySubscriptionCheckoutLink(input: {
 
   const transactionId = txnRow.id as string;
 
+  const descriptionSuffix =
+    purpose === 'renewal' ? ' renewal' : proration ? ' — mid-cycle switch' : '';
+
   try {
     await getPlatformPaymentSettings();
     const link = await createPaymongoPaymentLink({
       amountCentavos: phpToCentavos(amountPhp),
-      description: `${propertyName} — ${plan.name} plan${purpose === 'renewal' ? ' renewal' : ''}`,
+      description: `${propertyName} — ${plan.name} plan${descriptionSuffix}`,
       remarks: `property:${input.propertyId}`,
       metadata: {
         transaction_id: transactionId,
         property_id: input.propertyId,
         plan_id: input.planId,
         organization_id: organizationId,
-        purpose,
+        purpose: proration ? 'plan_switch' : purpose,
+        ...(proration ? { proration_credit_php: String(proration.creditPhp) } : {}),
         ...(input.initiatedBy ? { initiated_by: input.initiatedBy } : {}),
       },
     });
@@ -143,7 +184,7 @@ export async function createPropertySubscriptionCheckoutLink(input: {
       .eq('id', transactionId);
     if (updateError) throw new Error(updateError.message);
 
-    return { checkoutUrl: link.checkoutUrl, transactionId, reused: false };
+    return { checkoutUrl: link.checkoutUrl, transactionId, reused: false, proration };
   } catch (err) {
     await sb
       .from('property_payment_transactions')

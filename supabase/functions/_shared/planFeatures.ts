@@ -27,6 +27,13 @@ export type PlanFeatures = {
   aiMarketingGeneration: boolean;
   aiChatAutoReply: boolean;
   fullyManagedByPlatform: boolean;
+  financeReporting: boolean;
+  maintenanceReporting: boolean;
+  metaChatChannel: boolean;
+  quickReplies: boolean;
+  customTemplates: boolean;
+  publicPagesAutosave: boolean;
+  bookingImport: boolean;
 };
 
 export const DEFAULT_PLAN_FEATURES: PlanFeatures = {
@@ -46,6 +53,13 @@ export const DEFAULT_PLAN_FEATURES: PlanFeatures = {
   aiMarketingGeneration: false,
   aiChatAutoReply: false,
   fullyManagedByPlatform: false,
+  financeReporting: false,
+  maintenanceReporting: false,
+  metaChatChannel: false,
+  quickReplies: false,
+  customTemplates: false,
+  publicPagesAutosave: false,
+  bookingImport: false,
 };
 
 function asBool(value: unknown, fallback: boolean): boolean {
@@ -104,6 +118,13 @@ export function parsePlanFeatures(raw: unknown): PlanFeatures {
     aiMarketingGeneration: asBool(obj.aiMarketingGeneration, base.aiMarketingGeneration),
     aiChatAutoReply: asBool(obj.aiChatAutoReply, base.aiChatAutoReply),
     fullyManagedByPlatform: asBool(obj.fullyManagedByPlatform, base.fullyManagedByPlatform),
+    financeReporting: asBool(obj.financeReporting, base.financeReporting),
+    maintenanceReporting: asBool(obj.maintenanceReporting, base.maintenanceReporting),
+    metaChatChannel: asBool(obj.metaChatChannel, base.metaChatChannel),
+    quickReplies: asBool(obj.quickReplies, base.quickReplies),
+    customTemplates: asBool(obj.customTemplates, base.customTemplates),
+    publicPagesAutosave: asBool(obj.publicPagesAutosave, base.publicPagesAutosave),
+    bookingImport: asBool(obj.bookingImport, base.bookingImport),
   };
 }
 

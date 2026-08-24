@@ -1,9 +1,16 @@
 /**
  * Per-property automation master switches (`app_settings.automation_toggles`).
  * Email only — Telegram is controlled per property in telegram_*_settings.
+ *
+ * Plan gate: all keys except `emailNewBookingRequest` (the "a guest submitted a form" ops
+ * alert, which stays free like the rest of the core booking loop) additionally require the
+ * `automatedBookingFlow` plan feature — see PLAN_GATED_AUTOMATION_TOGGLE_KEYS. When a property
+ * isn't entitled, those keys are forced off regardless of the property's own saved setting.
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
+import { isFeatureEnabled } from './planFeatures.ts';
+import { resolvePropertyEntitlements } from './planEntitlements.ts';
 
 export const PROPERTY_AUTOMATION_TOGGLE_KEYS = [
   'emailNewBookingRequest',
@@ -14,6 +21,16 @@ export const PROPERTY_AUTOMATION_TOGGLE_KEYS = [
   'emailReadyForCheckin',
   'emailSdRefundCheckout',
 ] as const;
+
+/** Subset of PROPERTY_AUTOMATION_TOGGLE_KEYS gated by the `automatedBookingFlow` plan feature. */
+export const PLAN_GATED_AUTOMATION_TOGGLE_KEYS: readonly PropertyAutomationToggleKey[] = [
+  'emailGafRequest',
+  'emailBookingAcknowledgement',
+  'emailPetRequest',
+  'emailParkingBroadcast',
+  'emailReadyForCheckin',
+  'emailSdRefundCheckout',
+];
 
 export type PropertyAutomationToggleKey = (typeof PROPERTY_AUTOMATION_TOGGLE_KEYS)[number];
 
@@ -76,11 +93,39 @@ async function loadAutomationTogglesRaw(propertyId: string): Promise<unknown> {
   return data?.automation_toggles ?? null;
 }
 
+async function resolvePropertyAutomationState(propertyId: string): Promise<{
+  toggles: PropertyAutomationToggles;
+  /** Plan-gated keys that would be on per the property's own setting but are forced off by tier. */
+  planBlockedKeys: PropertyAutomationToggleKey[];
+}> {
+  const raw = await loadAutomationTogglesRaw(propertyId);
+  const rawMerged = mergePropertyAutomationToggles(raw);
+
+  const entitlements = await resolvePropertyEntitlements(propertyId);
+  if (isFeatureEnabled(entitlements, 'automatedBookingFlow')) {
+    return { toggles: rawMerged, planBlockedKeys: [] };
+  }
+
+  const planBlockedKeys = PLAN_GATED_AUTOMATION_TOGGLE_KEYS.filter((key) => rawMerged[key]);
+  const toggles = { ...rawMerged };
+  for (const key of PLAN_GATED_AUTOMATION_TOGGLE_KEYS) toggles[key] = false;
+  return { toggles, planBlockedKeys };
+}
+
 export async function resolvePropertyAutomationToggles(
   propertyId: string
 ): Promise<PropertyAutomationToggles> {
-  const raw = await loadAutomationTogglesRaw(propertyId);
-  return mergePropertyAutomationToggles(raw);
+  const { toggles } = await resolvePropertyAutomationState(propertyId);
+  return toggles;
+}
+
+/** Which plan-gated automation emails this property would send if not for its plan tier. */
+export async function planBlockedAutomationToggleKeys(
+  propertyId: string | null | undefined
+): Promise<PropertyAutomationToggleKey[]> {
+  if (!propertyId) return [];
+  const { planBlockedKeys } = await resolvePropertyAutomationState(propertyId);
+  return planBlockedKeys;
 }
 
 export async function propertyAutomationEnabled(
@@ -90,4 +135,19 @@ export async function propertyAutomationEnabled(
   if (!propertyId) return true;
   const toggles = await resolvePropertyAutomationToggles(propertyId);
   return toggles[key];
+}
+
+/**
+ * Same lookup, but WITHOUT the plan gate — only respects the property's own saved setting.
+ * Use this for explicit admin-triggered manual sends (e.g. `send-sd-refund-form-email`), which
+ * are the manual fallback for when `propertyAutomationEnabled` blocks the automatic path; those
+ * must stay usable regardless of plan tier, or there is no way left to send the email at all.
+ */
+export async function rawPropertyAutomationEnabled(
+  propertyId: string | null | undefined,
+  key: PropertyAutomationToggleKey
+): Promise<boolean> {
+  if (!propertyId) return true;
+  const raw = await loadAutomationTogglesRaw(propertyId);
+  return mergePropertyAutomationToggles(raw)[key];
 }
