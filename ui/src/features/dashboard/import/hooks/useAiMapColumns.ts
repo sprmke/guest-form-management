@@ -4,6 +4,10 @@
 
 import { useMutation } from '@tanstack/react-query';
 
+import {
+  importEdgeErrorMessage,
+  readImportEdgeJson,
+} from '@/features/dashboard/import/lib/importEdgeResponse';
 import type { AiMapColumnsResult } from '@/features/dashboard/import/types/importBatch';
 import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 
@@ -33,14 +37,10 @@ export function useAiMapColumns() {
         body: JSON.stringify({ batchId }),
       });
 
-      const json = (await res.json()) as {
-        success?: boolean;
-        error?: string;
-        data?: AiMapColumnsResult;
-      };
+      const json = await readImportEdgeJson<AiMapColumnsResult>(res);
 
       if (!res.ok || !json.success || !json.data) {
-        throw new Error(json.error ?? `HTTP ${res.status}`);
+        throw new Error(importEdgeErrorMessage(json, res.status, 'Could not match columns'));
       }
 
       return json.data;

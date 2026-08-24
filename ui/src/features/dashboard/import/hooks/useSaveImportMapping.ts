@@ -5,6 +5,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { clearImportPreviewCache } from '@/features/dashboard/import/hooks/useImportBatchRows';
+import {
+  importEdgeErrorMessage,
+  readImportEdgeJson,
+} from '@/features/dashboard/import/lib/importEdgeResponse';
 import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 
 import { supabase } from '@/lib/supabase/client';
@@ -48,14 +52,10 @@ export function useSaveImportMapping() {
         body: JSON.stringify({ batchId, columnMapping }),
       });
 
-      const json = (await res.json()) as {
-        success?: boolean;
-        error?: string;
-        data?: SaveMappingResult;
-      };
+      const json = await readImportEdgeJson<SaveMappingResult>(res);
 
       if (!res.ok || !json.success || !json.data) {
-        throw new Error(json.error ?? `HTTP ${res.status}`);
+        throw new Error(importEdgeErrorMessage(json, res.status, 'Could not save column mapping'));
       }
 
       return json.data;

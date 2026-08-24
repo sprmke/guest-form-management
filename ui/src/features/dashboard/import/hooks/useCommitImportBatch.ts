@@ -4,6 +4,10 @@
 
 import { useMutation } from '@tanstack/react-query';
 
+import {
+  importEdgeErrorMessage,
+  readImportEdgeJson,
+} from '@/features/dashboard/import/lib/importEdgeResponse';
 import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 
 import { supabase } from '@/lib/supabase/client';
@@ -43,14 +47,10 @@ export function useCommitImportBatch() {
         body: JSON.stringify({ batchId }),
       });
 
-      const json = (await res.json()) as {
-        success?: boolean;
-        error?: string;
-        data?: CommitImportBatchResult;
-      };
+      const json = await readImportEdgeJson<CommitImportBatchResult>(res);
 
       if (!res.ok || !json.success || !json.data) {
-        throw new Error(json.error ?? `HTTP ${res.status}`);
+        throw new Error(importEdgeErrorMessage(json, res.status, 'Could not import bookings'));
       }
 
       return json.data;

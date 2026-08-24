@@ -5,6 +5,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { importPreviewQueryKey } from '@/features/dashboard/import/hooks/useImportBatchRows';
+import {
+  importEdgeErrorMessage,
+  readImportEdgeJson,
+} from '@/features/dashboard/import/lib/importEdgeResponse';
 import type { ImportPreviewResult } from '@/features/dashboard/import/types/importBatch';
 import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 
@@ -35,14 +39,10 @@ export function useImportPreview() {
         body: JSON.stringify({ batchId }),
       });
 
-      const json = (await res.json()) as {
-        success?: boolean;
-        error?: string;
-        data?: ImportPreviewResult;
-      };
+      const json = await readImportEdgeJson<ImportPreviewResult>(res);
 
       if (!res.ok || !json.success || !json.data) {
-        throw new Error(json.error ?? `HTTP ${res.status}`);
+        throw new Error(importEdgeErrorMessage(json, res.status, 'Could not preview import'));
       }
 
       return json.data;

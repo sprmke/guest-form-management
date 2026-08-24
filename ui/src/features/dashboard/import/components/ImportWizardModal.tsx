@@ -50,6 +50,9 @@ import type {
 } from '@/features/dashboard/import/types/importBatch';
 import type { ImportParseResult } from '@/features/dashboard/import/types/importParse';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
+import { TierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 
 import {
   AlertDialog,
@@ -180,6 +183,7 @@ type AutoMapStepProps = {
   saveError: string | null;
   missingRequired: string[];
   onRunMapping: () => void;
+  onRetrySave: () => void;
 };
 
 function AutoMapStep({
@@ -192,6 +196,7 @@ function AutoMapStep({
   saveError,
   missingRequired,
   onRunMapping,
+  onRetrySave,
 }: AutoMapStepProps) {
   const [activeTab, setActiveTab] = React.useState<'review' | 'matched'>('review');
   const mappings = aiResult?.columnMapping.mappings ?? [];
@@ -283,7 +288,18 @@ function AutoMapStep({
 
       {activeTab === 'review' ? (
         <div className="space-y-2">
-          {saveError ? <ImportAlert tone="error">{saveError}</ImportAlert> : null}
+          {saveError ? (
+            <ImportAlert
+              tone="error"
+              action={
+                <Button type="button" variant="outline" size="sm" onClick={onRetrySave}>
+                  Try again
+                </Button>
+              }
+            >
+              {saveError}
+            </ImportAlert>
+          ) : null}
           {missingRequired.length > 0 ? (
             <ImportAlert tone="warning">
               Still need: {missingRequired.map(labelForImportTarget).join(', ')}
@@ -638,6 +654,9 @@ export function ImportWizardModal({ open, onOpenChange }: Props) {
 
   const queryClient = useQueryClient();
   const propertyId = usePropertyIdParam();
+  const { canUse: canImportBookings, isLoading: importEntitlementsLoading } =
+    useFeatureGate('bookingImport');
+  const { open: openUpgradeModal } = useUpgradeModal();
   const aiMapMutation = useAiMapColumns();
   const saveMappingMutation = useSaveImportMapping();
   const previewMutation = useImportPreview();
@@ -896,14 +915,22 @@ export function ImportWizardModal({ open, onOpenChange }: Props) {
   const primaryAction = (() => {
     if (step === 'upload') {
       return (
-        <Button
-          type="button"
-          className="w-full sm:w-auto"
-          disabled={isBusy || !parseResult}
-          onClick={() => setStep('automap')}
-        >
-          Continue
-        </Button>
+        <TierBadgeAnchor feature="bookingImport" className="w-full sm:w-auto">
+          <Button
+            type="button"
+            className="w-full sm:w-auto"
+            disabled={isBusy || !parseResult}
+            onClick={() => {
+              if (!canImportBookings) {
+                if (!importEntitlementsLoading) openUpgradeModal('bookingImport');
+                return;
+              }
+              setStep('automap');
+            }}
+          >
+            Continue
+          </Button>
+        </TierBadgeAnchor>
       );
     }
 
@@ -1058,6 +1085,7 @@ export function ImportWizardModal({ open, onOpenChange }: Props) {
                 }
                 missingRequired={showMissingRequired ? missingRequired : []}
                 onRunMapping={() => void handleRunAiMapping()}
+                onRetrySave={() => void handleContinueFromAutomap()}
               />
             )}
 

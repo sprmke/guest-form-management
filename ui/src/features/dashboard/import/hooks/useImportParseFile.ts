@@ -5,6 +5,10 @@
 import { useMutation } from '@tanstack/react-query';
 
 import type { ImportParseResult } from '@/features/dashboard/import/types/importParse';
+import {
+  importEdgeErrorMessage,
+  readImportEdgeJson,
+} from '@/features/dashboard/import/lib/importEdgeResponse';
 import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 
 import { supabase } from '@/lib/supabase/client';
@@ -34,13 +38,7 @@ function friendlyParseError(raw: string | undefined, status: number): string {
   ) {
     return message || 'We could not read that file. Check the format and try again.';
   }
-  if (status === 401 || status === 403) {
-    return 'You do not have permission to import for this property.';
-  }
-  if (status >= 500) {
-    return 'Something went wrong on our side. Please try again in a moment.';
-  }
-  return message || `Upload failed (error ${status}). Please try again.`;
+  return importEdgeErrorMessage({ error: raw }, status, 'Upload failed');
 }
 
 export function useImportParseFile() {
@@ -61,11 +59,9 @@ export function useImportParseFile() {
         body,
       });
 
-      const json = (await res.json()) as {
-        success?: boolean;
-        error?: string;
-        data?: Partial<ImportParseResult> & Omit<ImportParseResult, 'fileName'>;
-      };
+      const json = await readImportEdgeJson<
+        Partial<ImportParseResult> & Omit<ImportParseResult, 'fileName'>
+      >(res);
 
       if (!res.ok || !json.success || !json.data) {
         throw new Error(friendlyParseError(json.error, res.status));
