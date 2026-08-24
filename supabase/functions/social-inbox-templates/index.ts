@@ -1,11 +1,16 @@
 /**
- * Quick reply template CRUD for Guest Inbox (org-scoped data; property/parking manage ACL).
+ * Quick reply template CRUD for Guest Inbox (org-scoped for property; parking-scoped for parking; property/parking manage ACL).
  */
 
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import { seedDefaultInboxQuickRepliesIfEmpty } from '../_shared/inboxDefaultQuickReplies.ts';
 import { resolveInboxAccess } from '../_shared/inboxAccess.ts';
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
+import {
+  catchPlanFeatureError,
+  requireOrgPropertyFeature,
+  requirePropertyFeature,
+} from '../_shared/planEntitlements.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('social-inbox-templates', async (req) => {
@@ -16,14 +21,30 @@ serveAuthenticated('social-inbox-templates', async (req) => {
   const ctx = await resolveInboxAccess(req, 'manage', body);
   const sb = createServiceClient();
 
+  if (req.method === 'POST' || req.method === 'PATCH') {
+    try {
+      if (ctx.propertyId) {
+        await requirePropertyFeature(ctx.propertyId, 'quickReplies');
+      } else {
+        await requireOrgPropertyFeature(ctx.orgId, 'quickReplies');
+      }
+    } catch (err) {
+      const planErr = catchPlanFeatureError(req, err);
+      if (planErr) return planErr;
+      throw err;
+    }
+  }
+
   if (req.method === 'GET') {
-    await seedDefaultInboxQuickRepliesIfEmpty(ctx.orgId);
-    const { data, error } = await sb
+    await seedDefaultInboxQuickRepliesIfEmpty(ctx.orgId, ctx.parkingId);
+    const listQuery = sb
       .from('social_reply_templates')
       .select('*')
       .eq('organization_id', ctx.orgId)
-      .eq('is_active', true)
-      .order('sort_order', { ascending: true });
+      .eq('is_active', true);
+    const { data, error } = await (
+      ctx.parkingId ? listQuery.eq('parking_id', ctx.parkingId) : listQuery.is('parking_id', null)
+    ).order('sort_order', { ascending: true });
     if (error) return jsonError(req, error.message, 500);
     return jsonSuccess(req, { templates: data ?? [] });
   }
@@ -38,6 +59,7 @@ serveAuthenticated('social-inbox-templates', async (req) => {
       .from('social_reply_templates')
       .insert({
         organization_id: ctx.orgId,
+        parking_id: ctx.parkingId,
         title,
         body_text: bodyText,
         platform: body?.platform ?? null,

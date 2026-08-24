@@ -38,9 +38,6 @@ import {
 
 serveAuthenticated('telegram-chat-settings', async (req) => {
   const asset = await resolveTelegramAssetAccess(req);
-  if (asset.kind !== 'property') {
-    return jsonError(req, 'Chat Telegram settings are property-scoped only', 400);
-  }
   const scope = telegramDbScope(asset);
 
   if (req.method === 'GET') {
@@ -48,7 +45,7 @@ serveAuthenticated('telegram-chat-settings', async (req) => {
       const data = await loadTelegramSettingsGetPayload(
         asset,
         'chat',
-        () => DatabaseService.getTelegramChatSettings(scope.propertyId!),
+        () => DatabaseService.getTelegramChatSettings(scope.propertyId, scope.parkingId),
         (row) => serializeChatSettings(row as unknown as TelegramChatSettings)
       );
       return jsonSuccess(req, data);
@@ -58,7 +55,7 @@ serveAuthenticated('telegram-chat-settings', async (req) => {
   }
 
   if (req.method === 'PATCH') {
-    await ensureTelegramChatSettings(asset.id);
+    await ensureTelegramChatSettings(scope.propertyId, scope.parkingId);
     const body = await readJsonBody(req);
     const gateResponse = await gateTelegramEnabledPatch(req, asset, body);
     if (gateResponse) return gateResponse;
@@ -87,7 +84,11 @@ serveAuthenticated('telegram-chat-settings', async (req) => {
       return telegramPatchNoFields(req);
     }
 
-    const updated = await DatabaseService.updateTelegramChatSettings(finalPatch, scope.propertyId!);
+    const updated = await DatabaseService.updateTelegramChatSettings(
+      finalPatch,
+      scope.propertyId,
+      scope.parkingId
+    );
 
     return telegramPatchSuccessResponse(req, {
       ...serializeChatSettings(updated as unknown as TelegramChatSettings),
@@ -102,18 +103,16 @@ serveAuthenticated('telegram-chat-settings', async (req) => {
 
     if (action === 'verify_chat_telegram_env') {
       const overrides = parseTelegramVerifyOverrides(body);
-      return telegramVerifyResponse(req, await verifyChatTelegramEnv(scope.propertyId, overrides));
+      return telegramVerifyResponse(req, await verifyChatTelegramEnv(scope, overrides));
     }
 
     if (action === 'send_draft_preview') {
-      return handleTelegramSendDraftPreview(req, body, (text) =>
-        sendChatDraftPreview(text, scope.propertyId)
-      );
+      return handleTelegramSendDraftPreview(req, body, (text) => sendChatDraftPreview(text, scope));
     }
 
     if (action === 'render_draft_preview') {
       return handleTelegramRenderDraftPreview(req, body, (text) =>
-        renderChatDraftPreview(text, scope.propertyId)
+        renderChatDraftPreview(text, scope)
       );
     }
 

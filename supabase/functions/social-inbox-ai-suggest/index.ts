@@ -29,11 +29,15 @@ serveAuthenticated('social-inbox-ai-suggest', async (req, user) => {
 
   const { messages } = await listMessages(ctx.orgId, conversationId, { limit: 20 });
   const sb = createServiceClient();
-  const { data: settings } = await sb
+  const settingsQuery = sb
     .from('social_inbox_settings')
     .select('ai_system_prompt')
-    .eq('organization_id', ctx.orgId)
-    .maybeSingle();
+    .eq('organization_id', ctx.orgId);
+  const { data: settings } = await (
+    ctx.parkingId
+      ? settingsQuery.eq('parking_id', ctx.parkingId)
+      : settingsQuery.is('parking_id', null)
+  ).maybeSingle();
 
   try {
     const result = await suggestInboxReply({

@@ -8,7 +8,7 @@
 
 import { DatabaseService } from '../_shared/databaseService.ts';
 import { sendSdRefundFormRequest } from '../_shared/emailService.ts';
-import { propertyAutomationEnabled } from '../_shared/propertyAutomationToggles.ts';
+import { rawPropertyAutomationEnabled } from '../_shared/propertyAutomationToggles.ts';
 import {
   jsonError,
   jsonResponse,
@@ -45,7 +45,7 @@ serveAuthenticated('send-sd-refund-form-email', async (req) => {
     );
   }
 
-  const sdEmailAllowed = await propertyAutomationEnabled(propertyId, 'emailSdRefundCheckout');
+  const sdEmailAllowed = await rawPropertyAutomationEnabled(propertyId, 'emailSdRefundCheckout');
   if (!sdEmailAllowed) {
     return jsonError(
       req,

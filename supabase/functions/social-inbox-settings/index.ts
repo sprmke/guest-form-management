@@ -1,5 +1,5 @@
 /**
- * Inbox automation settings (AI auto-reply toggles) — org-scoped data; property/parking manage ACL.
+ * Inbox automation settings (AI auto-reply toggles) — org-scoped for property, parking-scoped for parking; property/parking manage ACL.
  */
 
 import { ensureSocialInboxSettings, socialInboxDb } from '../_shared/socialInboxService.ts';
@@ -17,15 +17,14 @@ import { serveAuthenticated } from '../_shared/serveEdge.ts';
 serveAuthenticated('social-inbox-settings', async (req) => {
   const body = req.method === 'GET' ? null : ((await readJsonBody(req)) as Record<string, unknown>);
   const ctx = await resolveInboxAccess(req, 'manage', body);
-  await ensureSocialInboxSettings(ctx.orgId);
+  await ensureSocialInboxSettings(ctx.orgId, ctx.parkingId);
   const sb = socialInboxDb();
 
   if (req.method === 'GET') {
-    const { data } = await sb
-      .from('social_inbox_settings')
-      .select('*')
-      .eq('organization_id', ctx.orgId)
-      .maybeSingle();
+    const getQuery = sb.from('social_inbox_settings').select('*').eq('organization_id', ctx.orgId);
+    const { data } = await (
+      ctx.parkingId ? getQuery.eq('parking_id', ctx.parkingId) : getQuery.is('parking_id', null)
+    ).maybeSingle();
     const aiStatus = await checkInboxAiProviders();
     return jsonSuccess(req, {
       autoReplyEnabled: data?.auto_reply_enabled ?? false,
@@ -38,11 +37,15 @@ serveAuthenticated('social-inbox-settings', async (req) => {
   }
 
   if (req.method === 'PATCH') {
-    const { data: current } = await sb
+    const currentQuery = sb
       .from('social_inbox_settings')
       .select('auto_reply_enabled, auto_reply_mode')
-      .eq('organization_id', ctx.orgId)
-      .maybeSingle();
+      .eq('organization_id', ctx.orgId);
+    const { data: current } = await (
+      ctx.parkingId
+        ? currentQuery.eq('parking_id', ctx.parkingId)
+        : currentQuery.is('parking_id', null)
+    ).maybeSingle();
 
     if (
       patchEnablesInboxAutoSend(body ?? {}, {
@@ -76,10 +79,15 @@ serveAuthenticated('social-inbox-settings', async (req) => {
     if (body?.platformToggles && typeof body.platformToggles === 'object') {
       patch.platform_toggles = body.platformToggles;
     }
-    const { data, error } = await sb
+    const updateQuery = sb
       .from('social_inbox_settings')
       .update(patch)
-      .eq('organization_id', ctx.orgId)
+      .eq('organization_id', ctx.orgId);
+    const { data, error } = await (
+      ctx.parkingId
+        ? updateQuery.eq('parking_id', ctx.parkingId)
+        : updateQuery.is('parking_id', null)
+    )
       .select('*')
       .single();
     if (error) return jsonError(req, error.message, 500);

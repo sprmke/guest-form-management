@@ -26,6 +26,7 @@ import {
 } from '../_shared/statusMachine.ts';
 import { formatPublicUrl } from '../_shared/utils.ts';
 import {
+  applyReceiptSanityChecks,
   dbPatchForDocumentAiValidation,
   documentAiKindForAssetType,
   type ReceiptValidationResult,
@@ -200,6 +201,11 @@ serveAuthenticated('upload-booking-asset', async (req, user) => {
         docAiKind === 'valid_id'
           ? await validateValidIdFile(file, aiUsage)
           : await validateReceiptFile(file, aiUsage);
+      receiptValidation = applyReceiptSanityChecks(
+        docAiKind,
+        booking as Record<string, unknown>,
+        receiptValidation
+      );
       if (shouldPersistReceiptValidation(receiptValidation)) {
         Object.assign(workflowUpdate, dbPatchForDocumentAiValidation(docAiKind, receiptValidation));
       }

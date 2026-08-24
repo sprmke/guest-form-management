@@ -40,6 +40,12 @@ servePublic('submit-parking-booking-request', async (req) => {
     typeof body.primaryGuestName === 'string' ? body.primaryGuestName.trim() : '';
   const guestEmail = typeof body.guestEmail === 'string' ? body.guestEmail.trim() : '';
   const guestPhone = typeof body.guestPhone === 'string' ? body.guestPhone.trim() : '';
+  const unitNumber = typeof body.unitNumber === 'string' ? body.unitNumber.trim() : '';
+  const carPlateNumber =
+    typeof body.carPlateNumber === 'string' ? body.carPlateNumber.trim().toUpperCase() : '';
+  const carBrandModel = typeof body.carBrandModel === 'string' ? body.carBrandModel.trim() : '';
+  const carColor = typeof body.carColor === 'string' ? body.carColor.trim() : '';
+  const notes = typeof body.notes === 'string' ? body.notes.trim() : '';
 
   if (!parkingId && !bodyOrgId) {
     return jsonError(req, 'parkingId or organizationId is required');
@@ -55,6 +61,18 @@ servePublic('submit-parking-booking-request', async (req) => {
   }
   if (!EMAIL_RE.test(guestEmail)) {
     return jsonError(req, 'A valid guestEmail is required');
+  }
+  if (!unitNumber) {
+    return jsonError(req, 'unitNumber is required');
+  }
+  if (!carPlateNumber) {
+    return jsonError(req, 'carPlateNumber is required');
+  }
+  if (!carBrandModel) {
+    return jsonError(req, 'carBrandModel is required');
+  }
+  if (!carColor) {
+    return jsonError(req, 'carColor is required');
   }
 
   const supabase = createServiceClient();
@@ -129,9 +147,13 @@ servePublic('submit-parking-booking-request', async (req) => {
       payment_receipt_url: 'parking-only',
       valid_id_url: null,
       unit_owner: 'N/A',
-      tower_and_unit_number: 'N/A',
+      tower_and_unit_number: unitNumber,
       owner_onsite_contact_person: 'N/A',
       owner_contact_number: 'N/A',
+      car_plate_number: carPlateNumber,
+      car_brand_model: carBrandModel,
+      car_color: carColor,
+      guest_special_requests: notes || null,
     })
     .select('id, status, parking_broadcast_expires_at')
     .single();

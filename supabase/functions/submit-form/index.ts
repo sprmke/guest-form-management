@@ -1,7 +1,9 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { minutesBetweenTimes } from '../_shared/cleaningBuffer.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { DatabaseService } from '../_shared/databaseService.ts';
 import { sendNewBookingRequestNotify } from '../_shared/emailService.ts';
+import { resolveGuestFormSettings } from '../_shared/guestFormSettings.ts';
 import { propertyAutomationEnabled } from '../_shared/propertyAutomationToggles.ts';
 import { notifyTelegramNewBookingRequest } from '../_shared/telegramMarketing.ts';
 import { notifyTelegramAdminNewBooking } from '../_shared/telegramAdmin.ts';
@@ -122,6 +124,40 @@ serve(async (req) => {
       }
 
       console.log('✅ No overlaps found, proceeding with submission...');
+
+      // Enforce the property's cleaning buffer on same-day turnovers — mirrors the
+      // guest form's client-side check (guestFormSchema.ts) as the source of truth.
+      const checkInTime = (formData.get('checkInTime') as string) || '';
+      const checkOutTime = (formData.get('checkOutTime') as string) || '';
+      const { cleaningBufferMinutes } = await resolveGuestFormSettings(propertyId ?? '');
+
+      if (cleaningBufferMinutes && checkInTime && checkOutTime) {
+        const adjacent = await DatabaseService.getAdjacentBookings(
+          checkInDate,
+          checkOutDate,
+          bookingId,
+          propertyId
+        );
+
+        for (const ab of adjacent) {
+          if (ab.check_out_date === checkInDate && ab.check_out_time) {
+            const gapMinutes = minutesBetweenTimes(ab.check_out_time, checkInTime);
+            if (gapMinutes < cleaningBufferMinutes) {
+              throw new Error(
+                `CLEANING_BUFFER: Check-in must be at least ${cleaningBufferMinutes} minutes after the previous guest's checkout. Please pick a later check-in time.`
+              );
+            }
+          }
+          if (ab.check_in_date === checkOutDate && ab.check_in_time) {
+            const gapMinutes = minutesBetweenTimes(checkOutTime, ab.check_in_time);
+            if (gapMinutes < cleaningBufferMinutes) {
+              throw new Error(
+                `CLEANING_BUFFER: Check-out must be at least ${cleaningBufferMinutes} minutes before the next guest's check-in. Please pick an earlier check-out time.`
+              );
+            }
+          }
+        }
+      }
     } else {
       console.log('⚠️ Skipping overlap check (saveToDatabase=false)');
     }

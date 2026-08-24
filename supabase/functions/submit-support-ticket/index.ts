@@ -42,7 +42,10 @@ serveAuthenticated('submit-support-ticket', async (req) => {
 
   const category = typeof body.category === 'string' ? body.category : '';
   if (!CATEGORIES.includes(category)) {
-    return jsonError(req, 'category must be one of bug_report, feature_suggestion, general_inquiry, business_inquiry');
+    return jsonError(
+      req,
+      'category must be one of bug_report, feature_suggestion, general_inquiry, business_inquiry'
+    );
   }
 
   const subject = typeof body.subject === 'string' ? body.subject.trim() : '';
@@ -51,7 +54,8 @@ serveAuthenticated('submit-support-ticket', async (req) => {
 
   const description = typeof body.description === 'string' ? body.description.trim() : '';
   if (!description) return jsonError(req, 'description is required');
-  if (description.length > 5000) return jsonError(req, 'description must be 5000 characters or fewer');
+  if (description.length > 5000)
+    return jsonError(req, 'description must be 5000 characters or fewer');
 
   const scope = await resolveSupportTicketScope(req, {
     orgSlug: typeof body.orgSlug === 'string' ? body.orgSlug : null,
@@ -63,7 +67,8 @@ serveAuthenticated('submit-support-ticket', async (req) => {
   const categoryFields: Record<string, unknown> = {};
   if (category === 'bug_report') {
     const severity = typeof body.severity === 'string' ? body.severity : 'medium';
-    if (!SEVERITIES.includes(severity)) return jsonError(req, 'severity must be low, medium, or high');
+    if (!SEVERITIES.includes(severity))
+      return jsonError(req, 'severity must be low, medium, or high');
     categoryFields.severity = severity;
     if (typeof body.pageUrl === 'string' && body.pageUrl.trim()) {
       categoryFields.page_url = body.pageUrl.trim().slice(0, 500);
@@ -76,9 +81,13 @@ serveAuthenticated('submit-support-ticket', async (req) => {
       categoryFields.expected_benefit = body.expectedBenefit.trim().slice(0, 1000);
     }
   } else if (category === 'business_inquiry') {
-    if (typeof body.contactPreference === 'string' && body.contactPreference.trim()) {
-      categoryFields.contact_preference = body.contactPreference.trim().slice(0, 200);
+    const contactPreference =
+      typeof body.contactPreference === 'string' ? body.contactPreference.trim() : '';
+    if (!contactPreference) return jsonError(req, 'contactPreference is required');
+    if (contactPreference.length > 200) {
+      return jsonError(req, 'contactPreference must be 200 characters or fewer');
     }
+    categoryFields.contact_preference = contactPreference;
   }
 
   const attachments = parseAttachments(body.attachments);
@@ -103,7 +112,11 @@ serveAuthenticated('submit-support-ticket', async (req) => {
     .single();
 
   if (ticketError || !ticket) {
-    return jsonError(req, `Failed to create ticket: ${ticketError?.message ?? 'unknown error'}`, 500);
+    return jsonError(
+      req,
+      `Failed to create ticket: ${ticketError?.message ?? 'unknown error'}`,
+      500
+    );
   }
 
   const { data: message, error: messageError } = await sb
@@ -120,7 +133,11 @@ serveAuthenticated('submit-support-ticket', async (req) => {
     .single();
 
   if (messageError || !message) {
-    return jsonError(req, `Failed to save ticket message: ${messageError?.message ?? 'unknown error'}`, 500);
+    return jsonError(
+      req,
+      `Failed to save ticket message: ${messageError?.message ?? 'unknown error'}`,
+      500
+    );
   }
 
   try {
