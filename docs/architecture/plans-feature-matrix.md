@@ -1,0 +1,262 @@
+---
+title: 'Plan/tier feature matrix — entitlements audit'
+status: active
+tags: [docs, architecture, billing, entitlements, security]
+updated: 2026-08-24
+---
+
+# Plan/tier feature matrix — entitlements audit
+
+Phase 1 deliverable of [`tier-feature-alignment-audit.md`](../workflow/in-progress/tier-feature-alignment-audit.md) (see that plan for policy, phased fix plan, and verification steps). This doc is the **canonical feature × tier matrix** plus the **gap inventory** it produced — reference this instead of re-deriving tier assignments or re-auditing gate call sites when working Phases 2-9 of that plan.
+
+Source of truth for tier assignments: `pricing_plans` seed migrations under `supabase/migrations/` (`20261023120000_pricing_plans_foundation.sql` through `20261031140000_pricing_plan_discounts.sql`). Source of truth for the typed feature catalog: `supabase/functions/_shared/planFeatures.ts`, mirrored exactly (confirmed identical, 2026-08-24) at `ui/src/features/dashboard/plans/lib/planFeatures.ts`.
+
+## Tier ladder
+
+Internal `code` and current display `name` were swapped once during migration history — **use `code` when reading code, `name` when talking to a host.**
+
+| `code`       | `name` (display) | List price (₱/mo)                   | Discount | Effective price | `sort_order` |
+| ------------ | ---------------- | ----------------------------------- | -------- | --------------- | ------------ |
+| `free`       | Free             | 0                                   | 0%       | 0               | 1            |
+| `starter`    | Starter          | 499                                 | 20%      | 399             | 2            |
+| `growth`     | **Pro**          | 999                                 | 20%      | 799             | 3            |
+| `pro`        | **Business**     | 1799                                | 20%      | 1439            | 4            |
+| `managed`    | Managed          | 4999                                | 20%      | 3999            | 5            |
+| `commission` | Commission       | n/a (8% of completed-booking value) | 0%       | n/a             | 6            |
+
+`commission` was seeded as a parallel pricing model but is **retired from the live product** (inactive catalog row; super-admin + host Plans + public pricing exclude it). Schema/`booking_commission_charges` remain for a future ship — see **Pending: commission pricing** below. Confirms the plan doc's "Business tier (`pro`)" references are correct as written.
+
+## Pending: commission pricing
+
+**Not shipped as a host-facing product.** Incomplete (ledger on `COMPLETED` only; no host self-serve, invoicing, or PayMongo collection).
+
+When revisited: reactivate/`pricing_model = commission` UX on super-admin + host Plans, public marketing, checkout/collection, and docs. Until then keep the row **inactive** and do not re-expose it in UI.
+
+## Public marketing page (`/for-hosts/pricing`)
+
+**Must stay aligned** with this matrix and the in-app Plans UI:
+
+| Layer                                              | Source                                                                                                              |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Prices / names / active flags                      | DB `pricing_plans` via **`list-public-pricing-plans`** (subscription only; excludes `commission` + `business_plus`) |
+| Card bullets, pitches, display names, compare rows | **`ui/.../plans/lib/planPresentation.ts`** (shared with property Plans)                                             |
+| Guide                                              | **`docs/guides/routes/for-hosts.md`**                                                                               |
+
+When you change seed migrations, super-admin plan edits, or `PLAN_TIER_CARD_GAINS` / feature rows, open **`/for-hosts/pricing`** and the property Plans page and confirm they still tell the same story. Agents: **`.cursor/rules/documentation-maintenance.mdc`** lists this as a required sync surface.
+
+## Feature × tier matrix (current, shipped)
+
+`✅` = entitled, `—` = not entitled. Values read directly from the final state of the seed migrations (`free` / `starter` / `growth` / `pro` / `managed` / `commission`). The **`commission` column is historical** — that plan is inactive and not sold (see Pending above).
+
+| `PlanFeatureKey`                | free       | starter    | growth (Pro) | pro (Business) | managed        | commission   |
+| ------------------------------- | ---------- | ---------- | ------------ | -------------- | -------------- | ------------ |
+| `automatedBookingFlow`          | —          | ✅         | ✅           | ✅             | ✅             | ✅           |
+| `verifiedBadgeEligible`         | —          | ✅         | ✅           | ✅             | ✅             | ✅           |
+| `recommendedBadgeEligible`      | —          | —          | ✅           | ✅             | ✅             | ✅           |
+| `telegramNotifications`         | —          | ✅         | ✅           | ✅             | ✅             | ✅           |
+| `teamManagement.enabled`        | ✅ (max 1) | ✅ (max 3) | ✅ (max 5)   | ✅ (max 10)    | ✅ (unlimited) | ✅ (max 10)  |
+| `searchVisibilityTier`          | none       | none       | top30        | top15          | top15          | top20→top30* |
+| `marketingPublishLimitPerGroup` | 0          | 0          | 30           | unlimited      | unlimited      | unlimited    |
+| `aiValidations`                 | —          | —          | ✅           | ✅             | ✅             | ✅           |
+| `aiMonthlyCreditAllowance`      | 0          | 0          | 1000         | 10000          | 30000          | 1000         |
+| `marketingStudio`               | —          | ✅         | ✅           | ✅             | ✅             | ✅           |
+| `customPages`                   | —          | ✅         | ✅           | ✅             | ✅             | ✅           |
+| `aiDashboardAssistant`          | —          | —          | —            | ✅             | ✅             | —            |
+| `aiReceptionist`                | —          | —          | —            | ✅             | ✅             | —            |
+| `aiMarketingGeneration`         | —          | —          | —            | ✅             | ✅             | —            |
+| `aiChatAutoReply`               | —          | —          | —            | ✅             | ✅             | —            |
+| `fullyManagedByPlatform`        | —          | —          | —            | —              | ✅             | —            |
+
+\* `commission`'s `searchVisibilityTier` was seeded `top20`, then a legacy-value migration remapped every `top20` row to `top30` — so it now reads `top30` in practice, same as `growth`.
+
+## New Phase 2 keys (shipped 2026-08-24 — `20261106130000_pricing_plan_new_feature_keys.sql`)
+
+Client/server gating for these keys shipped in Phase 3/4, and comparison-table/card copy in Phase 9. This section reflects what's actually in `pricing_plans.features` and the `PlanFeatures` type on both sides.
+
+| New key                | Decision           | free | starter | growth | pro | managed | commission |
+| ---------------------- | ------------------ | ---- | ------- | ------ | --- | ------- | ---------- |
+| `financeReporting`     | Starter+           | —    | ✅      | ✅     | ✅  | ✅      | ✅         |
+| `maintenanceReporting` | Starter+           | —    | ✅      | ✅     | ✅  | ✅      | ✅         |
+| `metaChatChannel`      | Business+ (`pro`+) | —    | —       | —      | ✅  | ✅      | —          |
+| `quickReplies`         | Starter+           | —    | ✅      | ✅     | ✅  | ✅      | ✅         |
+| `customTemplates`      | Starter+           | —    | ✅      | ✅     | ✅  | ✅      | ✅         |
+| `publicPagesAutosave`  | Starter+           | —    | ✅      | ✅     | ✅  | ✅      | ✅         |
+| `bookingImport`        | Starter+           | —    | ✅      | ✅     | ✅  | ✅      | ✅         |
+
+`commission`'s row for each is a Phase 2 open question (not explicitly decided by the host) — its existing features place it between `growth` and `pro`; recommend treating it like `growth` (Starter+ tier) for all six new keys unless the host says otherwise.
+
+---
+
+## Client-side gate inventory (every call site, as of 2026-08-24)
+
+Primitives: `useFeatureGate` (hook), `<FeatureGate>` (component — **dead code, zero render call sites found repo-wide**; all real gating goes through direct `useFeatureGate` calls or `<PlanGateWatermarkOverlay>`), `<RequirePropertyFeature>` (route-level hide), `<RequirePropertySubscriptionAccess>` (gates on subscription _status_, not a `PlanFeatureKey` — applied uniformly to every property route via `propertyRoute()` in `org/routes/guards.tsx`).
+
+| #   | Module                 | File:Line                                                                                                                                              | Key                                                 | UI mode                                                                                | Surface                                                            |
+| --- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| 1   | Bookings               | `bookings/components/booking-detail/BookingAiSummaryPanel.tsx:149`                                                                                     | `aiValidations`                                     | interactive-block (redirects click to upgrade modal)                                   | AI Summary "Run checks"/"Recheck"                                  |
+| 2   | Bookings/Settings      | `bookings/components/PropertySettingsCard.tsx`                                                                                                         | `aiReceptionist`, `aiMonthlyCreditAllowance`        | **hide** from secondary nav + card when not entitled                                   | Voice Receptionist / AI Overrides                                  |
+| 3   | Bookings/Notifications | `bookings/hooks/useTelegramNotificationModuleBase.ts:64`                                                                                               | `telegramNotifications`                             | interactive-block                                                                      | Telegram enable toggle (all 7 module cards, incl. parking)         |
+| 4   | Inbox                  | `inbox/components/InboxAutomationTab.tsx:30`                                                                                                           | `aiChatAutoReply`                                   | interactive-block; panel itself stays visible/browsable (preview-open already correct) | "Send automatically" AI auto-reply switch                          |
+| 5   | Marketing              | `marketing/components/publishing/PublishDialog.tsx:101-102,148-154`                                                                                    | `marketingStudio`                                   | interactive-block                                                                      | Publish action (dialog layer only — see gap below)                 |
+| 6   | Marketing              | `CalendarBuilder.tsx:1230,1371`, `PolotnoDesignStudio.tsx:761`, `VideoEditor.tsx:1160` (via `PlanGateWatermarkOverlay`, default key `marketingStudio`) | `marketingStudio`                                   | watermark overlay                                                                      | editor/preview canvases                                            |
+| 7   | AI Assistant           | `ai-assistant/hooks/useAiAssistantAccess.ts:13` → `AiAssistantLauncherButton.tsx:19-21`                                                                | `aiDashboardAssistant`                              | **hide entirely** (`return null`)                                                      | FAB launcher + panel (mobile nav tab redirects to upgrade instead) |
+| 8   | Team                   | `team/pages/PropertyTeamPage.tsx:74,117-124`                                                                                                           | `teamManagement`                                    | interactive-block                                                                      | "Invite member"                                                    |
+| 9   | Org/Verification       | `ListingVerificationModal.tsx:140,283-289`; `GetVerifiedModal.tsx:605,607,747,786`                                                                     | `recommendedBadgeEligible`, `verifiedBadgeEligible` | interactive-block                                                                      | Verification submit actions                                        |
+| 10  | Custom Pages           | `custom-pages/pages/CustomPagesPage.tsx:42-101`; `page-editor/pages/PageEditorPage.tsx:146-160` (`<RequirePropertyFeature>`)                           | `customPages`                                       | route-level hide                                                                       | Whole page                                                         |
+
+**Not gated anywhere in the UI today** (confirmed zero `useFeatureGate` reference): `aiMarketingGeneration` (schema/copy-only — only surfaces as a fallback label in a quota-error toast), `automatedBookingFlow`, `marketingPublishLimitPerGroup`, `searchVisibilityTier`, `fullyManagedByPlatform` — these are either intentionally server/backend-only signals or genuinely unenforced; flagged per-key in the gap list below.
+
+### `PARKING_INTERIM_UNGATED_FEATURES`
+
+`ui/src/features/dashboard/plans/hooks/useFeatureGate.ts:6-9` — unchanged from what the plan expected:
+
+```ts
+const PARKING_INTERIM_UNGATED_FEATURES = new Set<PlanFeatureKey>([
+  'telegramNotifications',
+  'aiDashboardAssistant',
+]);
+```
+
+Force-allowed for any parking regardless of actual plan, pending [`pricing-portfolio-bundling.md`](../workflow/planned/pricing-portfolio-bundling.md) (Phase 8). Has not grown — still exactly these two keys.
+
+### View-past-output vs. generate-new-output split (downgrade-safety precondition)
+
+| Feature                                                                  | Split exists?               | Detail                                                                                                                                                                                                                                                                                                           |
+| ------------------------------------------------------------------------ | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AI booking summary / receipt-ID validation (`BookingAiSummaryPanel.tsx`) | **Yes** — reference pattern | `showResults` renders prior results unconditionally; only the run/recheck trigger is gated. Tab visibility in `BookingDetailTabs.tsx` is itself data-driven (`hasBookingAiReviewRun`), not gated — also correct, if unconventional.                                                                              |
+| AI dashboard assistant history (`ai-assistant/**`)                       | **No**                      | `AiAssistantLauncherButton` unmounts the entire launcher + panel (and whatever history it holds) when `!accessible` — no read-only fallback. **Needs a fix in Phase 3 item 10.**                                                                                                                                 |
+| Saved marketing drafts (Polotno/Calendar/Video)                          | **Partial**                 | Saved-item list/thumbnails always visible; re-opening any item for viewing/editing re-enters the watermarked canvas — no gate-free "view final output" mode. Lower priority than AI assistant history since the thumbnail already gives a degraded preview, but still a downgrade-safety gap to flag in Phase 3. |
+
+---
+
+## Server-side enforcement inventory (as of 2026-08-24)
+
+Confirmed exports in `_shared/planEntitlements.ts`: `PlanFeatureRequiredError`, `resolvePropertyEntitlements`, `requirePropertyFeature`, `catchPlanFeatureError`, `requireTeamInviteAllowed`, `requireTelegramNotificationsEnabled`, `orgHasPropertyWithFeature`, `requireOrgPropertyFeature`, `requireMarketingPublishAllowed`. Reference pattern (copy this shape for every new check): `property-team-invitations`, `social-inbox-settings`, `custom-pages-settings`, `public-page-configs`, `booking-ai-review`, `validate-booking-receipts`, `voice-receptionist-settings`/`-start`, `submit-listing-recommended`, `submit-org-verification`, `dashboard-assistant-chat` — all correctly call `require*` + `catchPlanFeatureError`.
+
+### Confirmed real gaps — ✅ fixed 2026-08-24 (except where noted)
+
+| Function                      | Paid action                                  | Gated server-side?                                                                                                                                                                                                                                                                                                                       | Severity                                         |
+| ----------------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `marketing-templates`         | save/update/delete a design template         | **Fixed** — POST/PATCH now call `requirePropertyFeature(propertyId, 'customTemplates')`. DELETE and GET stay ungated (removing/viewing your own data isn't the paid action).                                                                                                                                                             | was **High**                                     |
+| `property-templates-settings` | create / save custom property templates      | **Fixed** — `action: create` and custom-key PATCH call `requirePropertyFeature(…, 'customTemplates')`. Built-in PATCH, GET, and delete-custom stay open.                                                                                                                                                                                 | was **High** (intake gap)                        |
+| `generate-marketing-caption`  | AI caption generation                        | **Fixed** — `requirePropertyFeature(propertyId, 'aiMarketingGeneration')` before the AI call.                                                                                                                                                                                                                                            | was **High**                                     |
+| `generate-marketing-template` | AI design-token generation                   | **Fixed** — same check.                                                                                                                                                                                                                                                                                                                  | was **High**                                     |
+| `finance-export`              | CSV export                                   | **Fixed** — `resolveListingEntitlementPropertyId(asset.kind, asset.id)` (parking → org's first active property, same pattern as Telegram) then `requirePropertyFeature(..., 'financeReporting')`.                                                                                                                                        | was **Low**                                      |
+| `meta-inbox-oauth-start`      | connect a Meta channel                       | **Fixed** — new `metaChatChannel` check (property-scoped `requirePropertyFeature`, org-scoped `requireOrgPropertyFeature` for parking), matching `social-inbox-settings`'s existing shape. `-callback`/`-complete` left ungated — protected transitively by requiring a valid `state` row that only an entitled `start` call can create. | new gate (never gated in either layer before)    |
+| `social-inbox-templates`      | save/update a quick reply                    | **Fixed** — POST/PATCH gated by `quickReplies` (same property/org-scoped pattern). GET and DELETE stay ungated.                                                                                                                                                                                                                          | new gate (never gated in either layer before)    |
+| `public-page-configs`         | save stay-guide/property-landing page config | **Fixed** — PATCH now requires `publicPagesAutosave` (replaces the old blanket `customPages` check, which also gated GET — see the `customPages` change below).                                                                                                                                                                          | new gate, tied to the Phase 3 autosave rework    |
+| `telegram-parking-settings`   | enable Telegram for a parking                | **Not fixed — confirmed intentional.** `telegramSettingsHttp.ts:40-41` returns `null` for `asset.kind === 'parking'` before calling `requireTelegramNotificationsEnabled`, mirroring the client's own `PARKING_INTERIM_UNGATED_FEATURES` carve-out. Left as-is; Phase 8 org bundling removes the whole carve-out.                        | **Medium**, deliberate                           |
+| `automatedBookingFlow`        | (whatever it's meant to gate — see Phase 5)  | **Not fixed — out of scope for Phase 4.** No callers anywhere, client or server.                                                                                                                                                                                                                                                         | **Info** — Phase 5 must decide its meaning first |
+
+**`customPages` gate removed** (client + server) after confirming with the host: Phase 2's "Public pages — editing stays Free" decision meant the whole page-editor route, contradicting the existing Starter+ `customPages` route gate that made Phase 3's autosave work unreachable for Free hosts. `custom-pages-settings` (GET-only) lost its check entirely; `public-page-configs` GET is now open, only its PATCH is gated (by `publicPagesAutosave`, not `customPages`). The `customPages` key stays in the schema (still surfaced by `property-entitlements`/super-admin editor/comparison table) but no longer gates anything — its label ("Public pages access & editor") is now stale, flagged for Phase 9.
+
+**Known residual gap — `publicPagesAutosave` is only fully closed for the section-config PATCH above.** Three other Phase 3 autosave instances (property brand color/description/amenities/house-rules/cancellation-policy via `update-property`; social links via `update-app-settings`; stay-guide template content via `property-templates`) persist through shared, multi-purpose endpoints also serving legitimately-free actions on every tier — blanket-gating them would incorrectly block Free-tier hosts from unrelated free settings those same endpoints handle. Closing this needs field-level discrimination inside those shared handlers, which is bigger/riskier than this phase's scope and wasn't in the original "confirmed real gaps" list. Lower severity than the items above (edit-your-own-free-eligible-settings-early, not a data leak or third-party cost) but real — left for a follow-up, not silently dropped.
+
+### Confirmed _not_ gaps (checked and ruled out — don't re-flag these in later phases)
+
+- **Meta inbox connect/OAuth** (`meta-inbox-oauth-*`) and **quick replies** (`social-inbox-templates`): were RBAC-only with no client gate either — not a bypass of something half-built, a feature never gated in either layer. Both now have client (Phase 3) + server (Phase 4) gates added together, per the table above.
+- **`maintenance` export**: no server export endpoint exists at all (PDF is built entirely client-side from already-fetched data) — nothing to harden until a `maintenanceReporting` gate is added to the client PDF trigger; there's no separate server action to bypass.
+- **Telegram enable** (property-scoped): already correctly gated end-to-end — `requireTelegramNotificationsEnabled` **does** have exactly one caller (`telegramSettingsHttp.ts:44`, `gateTelegramEnabledPatch`), used by all 6 property-scoped Telegram settings functions. The plan's premise that it's "uncalled" is **outdated/incorrect** — only the parking carve-out above is the real gap.
+- **Telegram Test Connection / credential Save**: intentionally ungated (only the enable toggle is a paid action) — no change needed.
+
+---
+
+## Module-by-module gap list (Phase 3 input) — ✅ shipped 2026-08-24
+
+Corrections to the plan's assumptions are called out explicitly — several "expected: ungated" surfaces turned out to already be gated, and vice versa. Status column added post-Phase-3.
+
+1. **Bookings — AI Summary tab**: already correct as a reference pattern (see split table above). **No fix needed**, contrary to the plan's framing of this as the confirmed example bug — the _tab_ was never gated by design (it's data-driven), only the plan's phrasing implied otherwise. Used as the template for the fixes below. **Status: no change needed.**
+2. **Finance — `FinanceExportMenu.tsx`**: was ungated. **Status: fixed** — `useFeatureGate('financeReporting')` now gates `handlePdfExport`.
+3. **Maintenance — `MaintenanceExportMenu.tsx`**: was ungated. **Status: fixed** — `useFeatureGate('maintenanceReporting')`.
+4. **Marketing**:
+   - Download PNG (`PolotnoDesignStudio.tsx` `handleDownload`): was ungated. **Status: fixed** — `marketingStudio` gate.
+   - In-studio Publish button (`PolotnoDesignStudio.tsx` `handlePublish`): ungated at this layer, but opens `PublishDialog` which _is_ correctly gated — cosmetic inconsistency, not a security item. **Status: deferred, not fixed** (explicitly out of scope per the plan's Phase 3 wording).
+   - `MarketingAiGeneratePanel.tsx` Generate button: was ungated (`aiMarketingGeneration` unused anywhere). **Status: fixed** — one shared panel gate covers Calendar/Design/Video.
+5. **Notifications — Telegram**: **correction** — enable toggle is _already_ gated by `telegramNotifications` via the shared `useTelegramNotificationModuleBase` hook, across all 6 property cards. Only Test Connection and credential auto-save are ungated, which is correct/intentional (not paid actions). **Status: no client-side change needed**; parking's carve-out remains a Phase 4/5 server question.
+6. **Inbox**:
+   - Meta Connect (`InboxChannelsTab.tsx`): was ungated (RBAC only). **Status: fixed** — new `metaChatChannel` gate on `handleConnect` (covers both Connect and Reconnect).
+   - Quick replies: was ungated. **Status: fixed** — new `quickReplies` gate on save (`InboxQuickReplyFormDialog.tsx`) and on inserting a reply into the compose draft (`InboxConversationView.tsx`); the quick-reply picker/list stays browsable (preview-open).
+   - Automation tab: already correctly preview-open (panel always visible, only the enable switch blocked) — matches the policy as-is. **Status: no change needed.**
+7. **Templates — `SaveMarketingTemplateButton.tsx` + property `/templates`**: marketing save gated. **Follow-up:** property `AddCustomTemplateDialog` / custom PATCH now share `customTemplates`; Free gets light WYSIWYG blur; Placeholders/Reset + built-in save stay open.
+8. **Public pages — `usePageEditorAutoSave`**: autosave was the _only_ save path. **Status: fixed** — hook got a `persist` option (fingerprint-diff/status tracking still runs, network call is skipped when `false`); `PageEditorHeader` got a `manualSave` prop that shows a Save button (opens the upgrade modal, never persists) instead of the autosave pill when not entitled and dirty. Wired into both `StayGuidePageEditor` (2 autosave instances) and `PropertyLandingPageEditor` (4 instances).
+9. **Settings — `PropertySettingsCard.tsx`**: only `voice-receptionist` is gated (via `aiReceptionist`) today; all other 15 sections are fully ungated and none map to a paid feature key. **Status: no change needed** (re-confirmed post-Phase-2 — none of the 6 new keys touch a settings section).
+10. **Guest portal & parking**: zero gating logic exists in either tree — expected, guests aren't plan subjects and parking reuses the same shared admin components covered above. **Status: no change needed.**
+11. **Bonus, beyond the plan's explicit list — AI dashboard assistant history**: Phase 1 flagged this has no view/generate split (whole launcher unmounted when ungated, losing history access) — same downgrade-safety bug class as item 8, so fixed alongside it. **Status: fixed** — `AiAssistantLauncherButton`/`AiAssistantPanel`/`AdminLayout`'s mobile assistant-tab effect now distinguish "kill-switch off" (still fully hidden) from "blocked only by plan" (panel opens read-only: history browsable, new-message composer replaced with an upgrade nudge).
+12. **Marketing drafts partial split** (saved-item list ungated, re-opening for edit still shows the watermark): **Status: deferred to Phase 6** (watermark/preview redesign owns this).
+
+## Open questions — resolved
+
+- **Tier naming**: confirmed correct as written in the plan — `code='pro'` displays as "Business", `code='growth'` displays as "Pro" (final state after the display-name-swap migration). No change needed to Phase 2's `metaChatChannel: pro+` framing.
+- **`automatedBookingFlow`**: confirmed it has zero callers anywhere (client or server) — genuinely never wired to anything. Phase 5 needs to decide its meaning from scratch, not "repurpose" an existing behavior.
+- **`aiMarketingGeneration`**: confirmed truly unused as an entitlement check (only appears as a fallback UI label in a quota-error toast, plus schema/copy/admin-editor plumbing). Safe to wire in Phase 3 as originally planned.
+- **Settings hide-from-nav primitive**: not yet needed in practice (only 1 of 16 sections is gated, and it already works fine as a disabled-toggle-style gate rather than nav removal) — defer building a new hide-from-nav primitive until/unless a Phase 2 decision actually requires hiding a whole settings section from the nav list.
+
+## New findings not anticipated by the plan
+
+- `<FeatureGate>` is dead code — zero render call sites. Don't extend it in Phase 6; build the new badge/hide-from-nav primitives as an evolution of `useFeatureGate` + `PlanGateWatermarkOverlay` + `RequirePropertyFeature`, the three primitives actually in use.
+- `telegram-parking-settings` has its own undocumented parking carve-out (separate from `PARKING_INTERIM_UNGATED_FEATURES`, which doesn't list `telegramNotifications`... wait, it does — but the carve-out mechanism is different: a hard-coded early-return in `telegramSettingsHttp.ts` rather than the client hook's allowlist). Worth reconciling into one documented mechanism when Phase 8's org-bundling ships, so there's a single source of truth for "parking is interim-ungated on X" instead of two.
+- AI dashboard assistant has no view/generate split (unlike booking AI summaries) — add to Phase 3's persisted-output sweep (item 10 in the plan).
+
+## Phase 5 — `automatedBookingFlow` (booking workflow automation) — ✅ shipped 2026-08-24
+
+Repurposed the existing (previously uncalled) `automatedBookingFlow` key — already `false` only on `free` in the seed data, no migration needed — to gate 6 of `_shared/propertyAutomationToggles.ts`'s 7 automation-toggle keys: `emailGafRequest`, `emailBookingAcknowledgement`, `emailPetRequest`, `emailParkingBroadcast`, `emailReadyForCheckin`, `emailSdRefundCheckout`. `emailNewBookingRequest` stays free (core "guest submitted a form" ops alert). PDF auto-generation is **not** gated — it's required infra (orchestrator throws if missing), not a paid convenience.
+
+**Two access patterns, don't conflate them:** `propertyAutomationEnabled()`/`resolvePropertyAutomationToggles()` (plan-gated) for anything the orchestrator or a cron fires automatically — including `sd-refund-cron`'s admin-scoped "run now," since it re-invokes the same automation. `rawPropertyAutomationEnabled()` (property setting only, no plan gate) for a genuinely separate manual action a host clicks specifically because the automated path is blocked — gating the escape hatch behind the same entitlement it exists to route around defeats it. Caught this exact bug mid-phase: `send-sd-refund-form-email` and `parking-broadcast-email` (both pre-existing, documented as manual resends) were calling the plan-gated function; fixed to use the raw one.
+
+**Signal, not silence:** `WorkflowOrchestrator.transition()` returns `sideEffects.automationSkippedByPlan: string[]`; `useTransitionBooking.ts` (admin) shows a toast with an Upgrade CTA whenever non-empty.
+
+**Residual gap:** one-click "send it now" only exists for 2 of 6 (SD-refund, and parking-broadcast's endpoint exists but has zero UI callers — built, never wired to a button, both pre-existing). GAF/pet/booking-acknowledgement/ready-for-check-in have no resend endpoint at all. Building 4 new endpoints + wiring a 5th safely, without a local Deno type-checker, on a live revenue system, was judged out of scope for this phase — the toast (non-silent, Upgrade CTA) ships now; per-type resend actions are a scoped-out follow-up.
+
+**Two Phase 5-item-1 candidates didn't correspond to anything real:** "calendar sync" — no external calendar-sync side effect exists anywhere (removed already, see `remove-google-calendar-sheets.md`). "Telegram notifications on transition" — Telegram runs on a separate hourly cron, not wired into the orchestrator; already covered by the existing `telegramNotifications` enable-gate.
+
+## Phase 7 — Upgrade modal + mid-cycle proration — ✅ shipped 2026-08-24
+
+**Reconciled with the host first:** the checkout flow already had an implicit proration mechanism — mid-cycle plan changes extended the period from the old leftover end date (bonus days at full price) rather than crediting a price discount. The plan's literal formula would have double-counted that leftover time layered on top. Confirmed with the host: replaced time-extension with the price-credit model — a switch now starts a fresh period from today, charging (new price − credit for unused old-plan time).
+
+`_shared/subscriptionProration.ts` (client preview mirror: `plans/lib/planProration.ts`) computes credit/net-due from the subscription's actual period bounds (calendar-month arithmetic, not a fixed 30 days). `propertySubscriptionCheckout.ts` charges the prorated amount for genuine plan switches (not same-plan renewals), floored at ₱20 — PayMongo's practical minimum, since a same-day downgrade can produce a credit exceeding the new plan's price and a true zero-dollar bypass would need its own finance-reporting reconciliation (out of scope here, documented not silently dropped). `subscriptionOrchestrator.ts` starts the new period fresh (not extended) specifically for plan switches.
+
+`SubscriptionUpgradeModal.tsx` no longer shows generic copy + a Plans-page link — it resolves the specific minimum plan for the blocked feature (`resolveMinimumPlanForFeature`, shared with `TierBadge`) and renders `PlanReviewDialog` directly, pre-selected, wired to the same mutations the Plans page uses. `PlanReviewDialog` gained an optional `subscription` prop and a proration summary block (days left → credit → due today) shown whenever a switch qualifies.
+
+**Copy audit found real bugs, not just vague filler:** `aiValidations`/`recommendedBadgeEligible` in `featureGateCopy.ts` named the wrong tier (said Business, actually Pro/`growth`). `automatedBookingFlow`'s copy still said "document generation" — stale since Phase 5 repurposed the key to gate automation _emails_ (PDF generation is never gated). Fixed both. Also confirmed `featureGateCopy.ts` today only feeds `RequirePropertyFeature.tsx`, which has **zero current callers** post-Phase-4 — same dead-primitive situation as `<FeatureGate>` (Phase 1). Left in place for a future gated route, flagged so it isn't mistaken for load-bearing.
+
+## Phase 8 — Org portfolio bundling — Phases 1-4 shipped 2026-08-24
+
+Full detail lives in [`pricing-portfolio-bundling.md`](../workflow/in-progress/pricing-portfolio-bundling.md)'s own Status section (source of truth, not duplicated here). Entitlement-resolution-relevant summary for this matrix: `resolvePropertyEntitlements(propertyId)` now checks `org_subscription_properties` first (`getActiveOrgSubscriptionForProperty`) — a property slotted into a live org bundle (Pro/`growth`, Business/`pro`, or new Business Plus/`business_plus`, ≤3/≤5/≤10 properties respectively) is entitled from the bundle's plan, falling back to its own `property_subscriptions` row unchanged when not bundled. `PARKING_INTERIM_UNGATED_FEATURES` (Phase 1) is **narrowed, not removed**: `firstActivePropertyIdForOrg` now prefers a bundled property when resolving parking's Telegram/badge entitlements, so parking correctly inherits a real org bundle when the org has one — but orgs without any bundle still fall through to the pre-existing "first active property" proxy, so the client-side carve-out stays in place as the safety net for that remaining case.
+
+## Phase 9 — Plan cards & compare-plans page — ✅ shipped 2026-08-24
+
+`PLAN_FEATURE_ROWS` (`planPresentation.ts`) gained 6 `boolRow` entries for the Phase 2 keys above — `publicPagesAutosave`/`financeReporting`/`maintenanceReporting`/`quickReplies`/`metaChatChannel` (`operations` group), `customTemplates` (`marketing` group) — so the comparison table (`PlanFeatureMatrix.tsx`) reflects them without further wiring. `automatedBookingFlow`'s row label was corrected to "Automated booking emails" (stale "document generation" wording predated Phase 5's repurposing of the key). The hand-curated `PLAN_TIER_CARD_GAINS.starter`/`.pro` marketing bullets were updated to match.
+
+**Comparison table vs. tier badges — confirmed structurally incapable of disagreeing**, not just currently matching: `PlanFeatureMatrix.tsx` reads `boolRow`'s `value(plan.features)`, and `TierBadge.tsx`'s `resolveMinimumPlanForFeature` reads `isFeatureEnabled(plan.features, ...)` — both consume the identical live `PlanFeatures` payload from `property-plan` GET, with no separately-maintained copy in between. The one surface that _is_ hand-curated and could drift is `PLAN_TIER_CARD_GAINS` (marketing bullets, not a comparison source) — updated in this phase, will need the same discipline for any future feature-key addition.
+
+**Business Plus excluded from the per-property Plans page.** It's `is_active: true` in the Phase 8 seed data but is org-bundle-only by design (≤10 properties, never sold standalone) — `property-plan/index.ts`'s GET plans query now has `.neq('code', 'business_plus')`, verified against a live query that it would otherwise have appeared. `PropertyPlansPage.tsx` also gained a cross-link banner (shown when the property isn't already org-bundle-covered) pointing multi-property-org owners at `/org/:orgSlug/plans`.
+
+## Phase 11 — Downgrade/expiration overage reconciliation for quantity-limited features — ✅ shipped 2026-08-24
+
+Phases 1-9 covered **boolean** feature gates: lose entitlement, block the action going forward, keep past data visible read-only. That policy has one blind spot boolean features don't hit: a **quantity**-limited feature where the host already has more live, ongoing access than a new, lower plan allows. The concrete case the host raised: a property with 5 active team members downgrades to a plan with `maxMembers: 2` — nothing in the codebase reduced the 5 active members to 2. They kept full login/edit access indefinitely, on any plan, including Free, until an admin manually deactivated them one by one.
+
+**Audit of every quantity-type `PlanFeatures` key** (the only ones capable of this class of bug — a boolean has no "existing count" to reconcile):
+
+| Key                                                  | Existing-usage risk?                                                                                                                                                                                                     | Verdict                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `teamManagement.maxMembers`                          | **Real, confirmed bug** — ongoing access grant, not a one-time output.                                                                                                                                                   | **Fixed this phase** — see below.                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `marketingPublishLimitPerGroup`                      | Looks similar (a count cap via `requireMarketingPublishAllowed`/`countMarketingPublications`) but only gates _creating a new_ publication — already-published posts are already live externally.                         | **Not a gap.** Same "grandfather existing, block new" shape Phases 1-9 already established for AI summaries/marketing drafts; unpublishing something already live on Meta on a downgrade would be actively harmful, not safe.                                                                                                                                                                                                                        |
+| `aiMonthlyCreditAllowance`                           | A spend cap, resynced to the new plan's allowance on every `assignPropertyToPlan` via `syncAiCreditsFromPlan`/`upsertAiPlatformOrgSettings`.                                                                             | **Not a gap.** It's a forward-looking monthly budget, not a stock of existing resources — there's nothing to "revoke" retroactively; the lower limit simply applies to future usage, same as any other renamed/resynced cap.                                                                                                                                                                                                                         |
+| `verifiedBadgeEligible` / `recommendedBadgeEligible` | Gates only the _submit a verification/recommendation request_ action (`submit-org-verification`, `submit-listing-recommended`). An already-granted badge lives on a separate status column, independent of current plan. | **Not a gap.** Consistent with "existing achievement stays," matches how a past AI summary stays visible after downgrade.                                                                                                                                                                                                                                                                                                                            |
+| `org_subscriptions.max_properties` (bundle cap)      | Same shape as team seats in principle — if an org's bundle tier shrinks, already-slotted properties could exceed the new cap.                                                                                            | **No live path to hit it yet.** Per `pricing-portfolio-bundling.md`'s Status section, mid-bundle plan changes (switching an org's bundle tier) has no UI or server entry point at all today — `assignPropertyToOrgSubscription`/`removePropertyFromOrgSubscription` only ever move properties in/out of one fixed-tier bundle, never resize the bundle itself. Nothing to reconcile until that feature is built; flagged here for whoever builds it. |
+
+**Fix — team-seat reconciliation.** New `reconcilePropertyTeamSeats(propertyId)` in `_shared/planEntitlements.ts`: resolves the current `teamManagement.maxMembers` (0 if `teamManagement.enabled` is false), subtracts the owner + active org-admin "virtual" seats (they always have implicit access, never a `property_members` row), and compares the remainder (the real-member "budget") against currently-active `property_members`. Over budget: the **newest-assigned** active members are switched to `inactive` with `plan_limited = true` (new column, migration `20261108140000_property_members_plan_limited.sql`) — permissions stashed in `saved_permissions` exactly like a manual deactivate, never deleted. Under budget with room to spare: the **longest-waiting** `plan_limited = true` inactive members are restored automatically, oldest first. A manual admin deactivate/reactivate always clears `plan_limited` — this function never touches or resurrects a deliberate admin decision, only seats it took away itself. Deliberately skips the existing `assertNotLastPropertyTeamManager` "keep one manager" invariant (manual-only rule) since the seat cap is a hard constraint and the org owner is the permanent fallback manager regardless.
+
+**Wired into every entitlement-changing write path** (audited by tracing every place `property_subscriptions`/`org_subscription_properties` status or plan can change): `assignPropertyToPlan` (covers manual admin assignment, checkout fulfillment for upgrades/downgrades, and reactivation after a suspended property pays again — the one function every property-level plan change already funnels through), `assignPropertyToOrgSubscription`/`removePropertyFromOrgSubscription`/`createOrgSubscription` (org bundle slot/unslot), `runPlatformBillingCycle`'s past_due → `suspended` transition (this **is** "paid plan expired" in this codebase — confirmed `getActivePropertySubscription`'s status filter excludes `suspended`, so entitlements already fell back to Free correctly for booleans; team seats just weren't reconciled alongside it), and `adminExtendPropertySubscription` (super-admin manual status override). Also self-corrects in `acceptPropertyInvitation` — accepting an invite that was sent before a downgrade and would now exceed the cap doesn't fail for the invited guest; the new member simply starts `plan_limited` instead.
+
+**Two related bugs found and fixed in the same code path, both pre-existing:**
+
+- `countPropertyTeamSlots` (the function behind `requireTeamInviteAllowed`, the _only_ invite-time cap enforcement) queried `property_team_invitations` — **a table that doesn't exist** (the real table is `property_invitations`). This function throws whenever the finite-limit branch is reached, i.e. on every plan except an unlimited one — invite creation was broken end-to-end on any capped plan. Fixed the table name.
+- The same function didn't count the owner or org-admin "virtual" seats, while the **client's** equivalent (`countPropertyTeamSlotsUsed` in `plans/lib/planFeatures.ts`) does (matches `listPropertyTeamMembers`'s virtual-member rows) — a client/server mismatch where the server was more permissive than what the UI already blocked. A request that reached the server directly could invite one member past what the UI showed as "at limit." Fixed by adding the same owner (+1) and active-org-admin count server-side.
+- **Adjacent gap, not a pre-existing bug but the same class:** `updatePropertyTeamMember`'s manual reactivate path (`PATCH { status: 'active' }`) had no seat-cap check at all — a second, ungated path to the exact count `requireTeamInviteAllowed` exists to guard. Fixed by running the same check before reactivating; `property-team-members/index.ts` now also calls `catchPlanFeatureError` on its PATCH handler (it previously only did generic 400s, which would have surfaced this as an ugly raw error instead of the standard upgrade-modal prompt).
+
+**UI:** `TeamMemberStatusBadge` gets a distinct **"Plan limit"** badge (tooltip explains why) instead of the plain "Disabled" one for `plan_limited` members. `TeamMembersTab` shows a dismissable-by-fixing-itself warning banner ("N team members are disabled to fit your current plan") with an Upgrade CTA whenever 1+ members are plan-limited. Full detail: [`docs/guides/routes/org/property/team.md`](../guides/routes/org/property/team.md).
+
+**Bonus fix, same file, unrelated to reconciliation:** `PLAN_FEATURE_LABELS.automatedBookingFlow` in the UI mirror (`plans/lib/planFeatures.ts`) still said "Automated document generation" — Phase 7/9 fixed this same stale label in `featureGateCopy.ts` and `planPresentation.ts`'s row label but missed this third copy. Corrected to "Automated booking emails" to match.
+
+Verified: migration applied and `plan_limited` column confirmed present against the local Postgres instance directly (PostgREST column-selection round-trip, not just a client-side type check); `type-check`/`lint`/`build` clean on every touched file; every write path re-traced by hand against the actual `property_subscriptions`/`org_subscriptions` status machine (no local Deno type-checker available, same constraint every other Deno-side phase in this plan has documented).

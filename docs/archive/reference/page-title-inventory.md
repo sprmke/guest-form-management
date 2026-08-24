@@ -110,13 +110,15 @@ Format: `${Property Name} - ${page}`.
 | `/org/:orgSlug/property/:propertySlug/bookings`            | Bookings              | Auto (sidebar) |
 | `/org/:orgSlug/property/:propertySlug/bookings/:bookingId` | Booking: ${guestName} | Set (override) |
 | `/org/:orgSlug/property/:propertySlug/finance`             | Finance               | Auto (sidebar) |
-| `/org/:orgSlug/property/:propertySlug/calendar`            | Calendar              | Auto (sidebar) |
+| `/org/:orgSlug/property/:propertySlug/pricing`             | Pricing               | Auto (sidebar) |
+| `/org/:orgSlug/property/:propertySlug/calendar`            | Pricing (redirect)    | Auto (sidebar) |
 | `/org/:orgSlug/property/:propertySlug/maintenance`         | Maintenance           | Auto (sidebar) |
 | `/org/:orgSlug/property/:propertySlug/team`                | Team                  | Auto (sidebar) |
 | `/org/:orgSlug/property/:propertySlug/marketing`           | Marketing             | Auto (sidebar) |
 | `/org/:orgSlug/property/:propertySlug/inbox`               | Inbox                 | Auto (sidebar) |
 | `/org/:orgSlug/property/:propertySlug/notifications`       | Notifications         | Auto (sidebar) |
 | `/org/:orgSlug/property/:propertySlug/templates`           | Templates             | Auto (sidebar) |
+| `/org/:orgSlug/property/:propertySlug/plans`               | Plans & Billing       | Set (page)     |
 | `/org/:orgSlug/property/:propertySlug/settings`            | Settings              | Auto (sidebar) |
 
 ## Dashboard parking-level pages

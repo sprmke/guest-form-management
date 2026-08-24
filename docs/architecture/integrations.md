@@ -43,7 +43,7 @@ Host → platform recurring plan payments via **Payment Links** (QRPH, Maya, onl
 - **Checkout:** **`create-subscription-checkout`** creates a link + **`property_payment_transactions`** row (`pending`); host pays on PayMongo-hosted checkout.
 - **Webhook:** **`paymongo-webhook`** verifies **`Paymongo-Signature`** (`paymongoWebhookVerify.ts`), dedupes **`processed_paymongo_events`**, delegates fulfillment to **`subscriptionOrchestrator.ts`** (`link.payment.paid` / `payment.paid`, `payment.failed` for ledger only).
 - **Renewal / dunning:** **`platform-billing-cron`** (daily, `sync_platform_billing_cron_job()`) creates renewal links **`renewal_link_lead_days`** before **`current_period_end`**, marks **`past_due`** at period end, **`suspended`** after **`grace_period_days`**, sends Resend billing emails. Free/default plans excluded.
-- **Access:** **`RequirePropertySubscriptionAccess`** — **`suspended`** listings can only open **Plans** + **Help & Support** in the dashboard; guest booking flows are not blocked.
+- **Access:** **`RequirePropertySubscriptionAccess`** — **`suspended`** listings can only open **Plans & Billing** + **Help & Support** in the dashboard; guest booking flows are not blocked.
 - **Secrets:** **`PAYMONGO_SECRET_KEY`**, **`PAYMONGO_WEBHOOK_SECRET`**, optional **`PLATFORM_BILLING_CRON_SECRET`**. Setup: **`docs/archive/operations/paymongo-billing-setup.md`**.
 
 ### 9.4 PDF

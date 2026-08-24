@@ -35,13 +35,13 @@ See also [`docs/architecture/validation-and-env.md`](../../architecture/validati
 
 ## Edge functions
 
-| Function                       | Role                                                                      |
-| ------------------------------ | ------------------------------------------------------------------------- |
-| `create-subscription-checkout` | Owner creates Payment Link + pending `property_payment_transactions` row  |
-| `paymongo-webhook`             | Signature verify, dedupe, fulfill subscription on `payment.paid`          |
-| `platform-payment-settings`    | Super-admin dunning config (singleton `platform_payment_settings`)        |
-| `platform-billing-cron`        | Daily renewal links + past-due/suspend sweep (see scheduled-jobs doc)     |
-| `property-plan`                | Host Plans page — subscription status, transactions, pending checkout URL |
+| Function                       | Role                                                                                |
+| ------------------------------ | ----------------------------------------------------------------------------------- |
+| `create-subscription-checkout` | Owner creates Payment Link + pending `property_payment_transactions` row            |
+| `paymongo-webhook`             | Signature verify, dedupe, fulfill subscription on `payment.paid`                    |
+| `platform-payment-settings`    | Super-admin dunning config (singleton `platform_payment_settings`)                  |
+| `platform-billing-cron`        | Daily renewal links + past-due/suspend sweep (see scheduled-jobs doc)               |
+| `property-plan`                | Host Plans & Billing page — subscription status, transactions, pending checkout URL |
 
 ## PayMongo rails note
 
