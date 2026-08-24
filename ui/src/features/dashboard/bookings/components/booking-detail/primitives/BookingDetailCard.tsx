@@ -8,6 +8,8 @@ import type { LucideIcon } from 'lucide-react';
 type BookingDetailCardProps = {
   title: string;
   icon?: LucideIcon;
+  /** Optional plan/status pill next to the title (e.g. `<TierBadge>`). */
+  badge?: ReactNode;
   action?: ReactNode;
   /** 'edit' applies the primary-tinted header used while editing a section. */
   tone?: 'default' | 'edit';
@@ -23,6 +25,7 @@ type BookingDetailCardProps = {
 export function BookingDetailCard({
   title,
   icon: Icon,
+  badge,
   action,
   tone = 'default',
   children,
@@ -42,7 +45,10 @@ export function BookingDetailCard({
             <Icon className="text-primary size-4" />
           </span>
         ) : null}
-        <h3 className="text-card-title min-w-0 flex-1 truncate !text-sm sm:!text-base">{title}</h3>
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <h3 className="text-card-title truncate !text-sm sm:!text-base">{title}</h3>
+          {badge}
+        </div>
         {action ? <div className="shrink-0">{action}</div> : null}
       </div>
       {/*

@@ -18,7 +18,7 @@ type TelegramSecretInputProps = {
   placeholder: string;
   disabled?: boolean;
   helpTab?: TelegramHelpTab;
-  /** Friendly label when hidden (e.g. @mybot, group title). */
+  /** Friendly label when hidden (e.g. group title). Ignored when defaultVisible (password hide). */
   maskedLabel?: string;
   /** Show skeleton while resolving maskedLabel. */
   labelLoading?: boolean;
@@ -30,6 +30,11 @@ type TelegramSecretInputProps = {
   };
   /** Unsaved edits — show raw value and a Save action instead of Reveal/Hide. */
   dirty?: boolean;
+  /**
+   * Bot tokens: start visible; Hide/Show is a password-style view toggle (field stays editable).
+   * Chat IDs: omit — Hide uses friendly label + Reveal for the raw id.
+   */
+  defaultVisible?: boolean;
   /** Async commit in progress (Save / validate). */
   commitPending?: boolean;
   onCommit?: () => void;
@@ -48,24 +53,29 @@ export function TelegramSecretInput({
   labelLoading = false,
   secondaryAction,
   dirty = false,
+  defaultVisible = false,
   commitPending = false,
   onCommit,
   onChange,
   className,
 }: TelegramSecretInputProps) {
-  const [visible, setVisible] = React.useState(false);
+  const [visible, setVisible] = React.useState(defaultVisible);
 
   React.useEffect(() => {
-    if (!dirty) setVisible(false);
-  }, [dirty]);
+    if (!dirty) setVisible(defaultVisible);
+  }, [dirty, defaultVisible]);
 
   const hasValue = value.trim().length > 0;
   const editing = dirty;
-  const hidden = hasValue && !visible && !editing;
-  const showSkeleton = commitPending || (hidden && !maskedLabel && labelLoading && !editing);
-  const showFriendlyLabel = hidden && Boolean(maskedLabel);
-  const displayValue = showFriendlyLabel ? maskedLabel! : hidden ? '' : value;
-  const toggleLabel = visible ? 'Hide' : maskedLabel ? 'Reveal' : 'Show';
+  const obscure = hasValue && !visible && !editing;
+  /** Password-style hide (bot tokens) — keep editing the real value. */
+  const passwordMode = obscure && defaultVisible;
+  /** Friendly label (chat IDs) — read-only until Reveal. */
+  const showFriendlyLabel = obscure && !defaultVisible && Boolean(maskedLabel);
+  const showSkeleton =
+    commitPending || (obscure && !defaultVisible && !maskedLabel && labelLoading);
+  const displayValue = showFriendlyLabel ? maskedLabel! : value;
+  const toggleLabel = visible ? 'Hide' : showFriendlyLabel || maskedLabel ? 'Reveal' : 'Show';
   const showActions = hasValue && !showSkeleton;
   const showSave = editing && Boolean(onCommit);
   const showSecondary = Boolean(secondaryAction && !showSave && visible);
@@ -94,7 +104,7 @@ export function TelegramSecretInput({
         ) : (
           <Input
             id={id}
-            type="text"
+            type={passwordMode ? 'password' : 'text'}
             autoComplete="off"
             value={displayValue}
             readOnly={showFriendlyLabel}

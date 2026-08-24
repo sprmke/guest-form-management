@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 
@@ -10,6 +12,7 @@ type Props = {
   disabled?: boolean;
   className?: string;
   compact?: boolean;
+  badge?: ReactNode;
 };
 
 export function TelegramToggleRow({
@@ -21,6 +24,7 @@ export function TelegramToggleRow({
   disabled,
   className,
   compact,
+  badge,
 }: Props) {
   return (
     <div
@@ -31,12 +35,15 @@ export function TelegramToggleRow({
       )}
     >
       <div className="min-w-0 flex-1">
-        <label
-          htmlFor={id}
-          className="text-foreground cursor-pointer text-sm font-medium leading-snug"
-        >
-          {label}
-        </label>
+        <div className="flex flex-wrap items-center gap-2">
+          <label
+            htmlFor={id}
+            className="text-foreground cursor-pointer text-sm font-medium leading-snug"
+          >
+            {label}
+          </label>
+          {badge}
+        </div>
         {hint ? (
           <p className="text-muted-foreground truncate text-xs leading-snug">{hint}</p>
         ) : null}

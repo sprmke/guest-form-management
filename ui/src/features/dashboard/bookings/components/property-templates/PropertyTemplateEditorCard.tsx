@@ -31,6 +31,10 @@ import {
   blockTemplatePreviewKeydown,
 } from '@/features/dashboard/bookings/lib/templatePreviewReadonly';
 
+import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -83,6 +87,11 @@ export function PropertyTemplateEditorCard({
   const editorRef = React.useRef<RichTextEditorHandle>(null);
   const previewIframeRef = React.useRef<HTMLIFrameElement>(null);
   const { mutateAsync: fetchPreview, isPending: previewPending } = usePropertyTemplatePreview();
+  const { canUse: canUseCustomTemplates, isLoading: customTemplatesLoading } =
+    useFeatureGate('customTemplates');
+  const { open: openUpgradeModal } = useUpgradeModal();
+  /** Free-plan soft blur — text stays readable; Placeholders / Reset stay outside. */
+  const editorBlurred = customTemplatesLoading || !canUseCustomTemplates;
 
   React.useEffect(() => {
     let next = normalizeBlockLevelPlaceholdersInHtml(template.content);
@@ -233,6 +242,7 @@ export function PropertyTemplateEditorCard({
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <CardTitle className="text-lg">{template.name}</CardTitle>
+              {isCustom ? <TierBadge feature="customTemplates" /> : null}
               {isEmail ? (
                 <span className="inline-flex items-center gap-1 rounded-md bg-blue-100 px-2 py-0.5 text-[11px] font-medium text-blue-700 dark:bg-blue-950 dark:text-blue-300">
                   <Mail className="h-3 w-3" aria-hidden />
@@ -302,7 +312,13 @@ export function PropertyTemplateEditorCard({
                 size="sm"
                 className="min-h-[44px] sm:min-h-9"
                 disabled={saving}
-                onClick={() => void onSave({ content, sectionImageUrl })}
+                onClick={() => {
+                  if (isCustom && !canUseCustomTemplates) {
+                    if (!customTemplatesLoading) openUpgradeModal('customTemplates');
+                    return;
+                  }
+                  void onSave({ content, sectionImageUrl });
+                }}
               >
                 <Save className="mr-1.5 h-3.5 w-3.5" />
                 {saving ? 'Saving…' : 'Save'}
@@ -312,78 +328,85 @@ export function PropertyTemplateEditorCard({
         </div>
 
         <div className="p-3 sm:p-4">
-          {activeTab === 'preview' ? (
-            isEmail ? (
-              previewPending || !previewHtml ? (
-                <div className="bg-muted/20 text-muted-foreground flex min-h-[280px] items-center justify-center rounded-lg border text-sm">
-                  Loading preview…
-                </div>
+          <div
+            className={cn(
+              'rounded-lg transition-[filter]',
+              editorBlurred && 'saturate-75 blur-[1.5px]'
+            )}
+          >
+            {activeTab === 'preview' ? (
+              isEmail ? (
+                previewPending || !previewHtml ? (
+                  <div className="bg-muted/20 text-muted-foreground flex min-h-[280px] items-center justify-center rounded-lg border text-sm">
+                    Loading preview…
+                  </div>
+                ) : (
+                  <div className="bg-muted/20 overflow-x-auto rounded-lg border">
+                    <iframe
+                      ref={previewIframeRef}
+                      title={`${template.name} preview`}
+                      srcDoc={previewHtml}
+                      className="h-[min(70dvh,640px)] w-full min-w-[320px] border-0 bg-white"
+                      sandbox=""
+                    />
+                  </div>
+                )
               ) : (
-                <div className="bg-muted/20 overflow-x-auto rounded-lg border">
-                  <iframe
-                    ref={previewIframeRef}
-                    title={`${template.name} preview`}
-                    srcDoc={previewHtml}
-                    className="h-[min(70dvh,640px)] w-full min-w-[320px] border-0 bg-white"
-                    sandbox=""
-                  />
+                <div
+                  onClickCapture={handlePreviewCapture}
+                  onKeyDownCapture={handlePreviewKeyCapture}
+                  className={cn(
+                    'border-border bg-card overflow-hidden rounded-lg border shadow-sm',
+                    isStandard &&
+                      allowSectionImage &&
+                      sectionImageDisplayUrl &&
+                      'lg:grid lg:grid-cols-2 lg:items-stretch'
+                  )}
+                >
+                  {isStandard && allowSectionImage && sectionImageDisplayUrl ? (
+                    <div className="relative aspect-[16/10] w-full shrink-0 lg:aspect-auto lg:h-full lg:min-h-[240px]">
+                      <img
+                        key={sectionImagePreviewBust || sectionImageUrl}
+                        src={sectionImageDisplayUrl}
+                        alt=""
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
+                    </div>
+                  ) : null}
+                  <div className="flex min-w-0 flex-col justify-center p-4 sm:p-6">
+                    <h3 className="text-primary mb-4 text-xl font-bold tracking-tight sm:text-2xl">
+                      {previewHeading}
+                    </h3>
+                    <RichTextDisplay
+                      content={previewBody}
+                      className="px-0 py-0"
+                      validPlaceholderKeys={validPlaceholderKeys}
+                    />
+                  </div>
                 </div>
               )
             ) : (
-              <div
-                onClickCapture={handlePreviewCapture}
-                onKeyDownCapture={handlePreviewKeyCapture}
-                className={cn(
-                  'border-border bg-card overflow-hidden rounded-lg border shadow-sm',
-                  isStandard &&
-                    allowSectionImage &&
-                    sectionImageDisplayUrl &&
-                    'lg:grid lg:grid-cols-2 lg:items-stretch'
-                )}
-              >
-                {isStandard && allowSectionImage && sectionImageDisplayUrl ? (
-                  <div className="relative aspect-[16/10] w-full shrink-0 lg:aspect-auto lg:h-full lg:min-h-[240px]">
-                    <img
-                      key={sectionImagePreviewBust || sectionImageUrl}
-                      src={sectionImageDisplayUrl}
-                      alt=""
-                      className="absolute inset-0 h-full w-full object-cover"
-                    />
-                  </div>
-                ) : null}
-                <div className="flex min-w-0 flex-col justify-center p-4 sm:p-6">
-                  <h3 className="text-primary mb-4 text-xl font-bold tracking-tight sm:text-2xl">
-                    {previewHeading}
-                  </h3>
-                  <RichTextDisplay
-                    content={previewBody}
-                    className="px-0 py-0"
-                    validPlaceholderKeys={validPlaceholderKeys}
+              <>
+                {allowSectionImage ? (
+                  <TemplateSectionImageField
+                    templateKey={template.templateKey}
+                    imageUrl={sectionImageUrl}
+                    previewBust={sectionImagePreviewBust}
+                    disabled={saving}
+                    onImageUrlChange={handleSectionImageUrlChange}
                   />
-                </div>
-              </div>
-            )
-          ) : (
-            <>
-              {allowSectionImage ? (
-                <TemplateSectionImageField
-                  templateKey={template.templateKey}
-                  imageUrl={sectionImageUrl}
-                  previewBust={sectionImagePreviewBust}
-                  disabled={saving}
-                  onImageUrlChange={handleSectionImageUrlChange}
+                ) : null}
+                <RichTextEditor
+                  ref={editorRef}
+                  content={content}
+                  onChange={setContent}
+                  minHeight="280px"
+                  validPlaceholderKeys={validPlaceholderKeys}
+                  onImageUpload={isStandard ? handleInlineImageUpload : undefined}
                 />
-              ) : null}
-              <RichTextEditor
-                ref={editorRef}
-                content={content}
-                onChange={setContent}
-                minHeight="280px"
-                validPlaceholderKeys={validPlaceholderKeys}
-                onImageUpload={isStandard ? handleInlineImageUpload : undefined}
-              />
-            </>
-          )}
+              </>
+            )}
+          </div>
         </div>
 
         <PropertyTemplatePlaceholdersDialog

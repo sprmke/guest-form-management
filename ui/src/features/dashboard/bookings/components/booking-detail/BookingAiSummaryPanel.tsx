@@ -31,6 +31,7 @@ import type {
 } from '@/features/dashboard/bookings/lib/types';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
+import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
 
 import { cn } from '@/lib/utils';
 
@@ -194,9 +195,12 @@ export function BookingAiSummaryPanel({ booking, open, onOpenChange, onPreview }
       >
         <header className="border-border flex shrink-0 items-start justify-between gap-3 border-b px-4 py-3 sm:px-5 sm:py-4">
           <div className="min-w-0 flex-1">
-            <h3 id="booking-ai-summary-title" className="text-foreground text-lg font-semibold">
-              AI Summary
-            </h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 id="booking-ai-summary-title" className="text-foreground text-lg font-semibold">
+                AI Summary
+              </h3>
+              <TierBadge feature="aiValidations" />
+            </div>
             <p className="text-muted-foreground mt-0.5 text-sm leading-relaxed">
               AI will review the booking details, documents, and receipts, and highlights anything
               that needs attention.

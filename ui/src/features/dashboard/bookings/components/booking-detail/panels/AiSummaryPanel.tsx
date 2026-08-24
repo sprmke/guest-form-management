@@ -19,6 +19,7 @@ import {
   isBookingAiReviewRunning,
 } from '@/features/dashboard/bookings/lib/bookingAiReviewProgress';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
+import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
 
 import { Button } from '@/components/ui/button';
 
@@ -29,7 +30,13 @@ type Props = {
 
 function PanelShell({ children, action }: { children: React.ReactNode; action?: ReactNode }) {
   return (
-    <BookingDetailCard title="AI Summary" icon={Sparkles} action={action} bodyClassName="!p-0">
+    <BookingDetailCard
+      title="AI Summary"
+      icon={Sparkles}
+      badge={<TierBadge feature="aiValidations" />}
+      action={action}
+      bodyClassName="!p-0"
+    >
       {children}
     </BookingDetailCard>
   );

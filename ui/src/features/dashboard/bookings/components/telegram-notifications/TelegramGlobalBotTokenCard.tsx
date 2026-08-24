@@ -93,6 +93,7 @@ export function TelegramGlobalBotTokenCard() {
               value={botToken}
               disabled={busy}
               helpTab="bot-token"
+              defaultVisible
               maskedLabel={label}
               labelLoading={isResolving}
               placeholder={telegramBotTokenPlaceholder(Boolean(data?.tokenConfigured))}

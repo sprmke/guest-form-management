@@ -9,7 +9,7 @@
  * Plan: docs/planning/NEW_FLOW_PLAN.md §2 (sd columns), §6.1 Q2.1
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -22,6 +22,10 @@ import {
   showDocumentAiModelErrorToast,
   type ReceiptAiVerdict,
 } from '@/features/dashboard/bookings/components/ReceiptAiVerdictBadge';
+import {
+  focusFirstWorkflowFieldError,
+  useRegisterWorkflowProceedValidator,
+} from '@/features/dashboard/bookings/components/workflow-panel/WorkflowProceedValidationContext';
 import {
   WorkflowFormShell,
   workflowFormEditTitle,
@@ -165,6 +169,7 @@ export function SdRefundForm({
   /** Only the check from this visit's upload — falls back to the stored verdict otherwise. */
   const [receiptAiVerdict, setReceiptAiVerdict] = useState<ReceiptAiVerdict>(null);
   const [receiptAiSummary, setReceiptAiSummary] = useState('');
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const displayedVerdict = receiptAiVerdict ?? booking.sd_refund_receipt_ai_verdict ?? null;
   const displayedSummary = receiptAiVerdict
     ? receiptAiSummary
@@ -182,6 +187,28 @@ export function SdRefundForm({
   const totalProfits = profitItems.reduce((s, r) => s + (Number(r.amount) || 0), 0);
   /** Refund = base SD + additional expenses charged to guest − profits retained from guest. */
   const netSD = baseSd + totalExpenses - totalProfits;
+  const netSdError =
+    submitAttempted && netSD < 0
+      ? 'Refund amount cannot be negative — adjust expenses or profits'
+      : null;
+
+  const validateForProceed = useCallback(() => {
+    if (readOnly) return true;
+    setSubmitAttempted(true);
+    if (netSD < 0) {
+      queueMicrotask(() => focusFirstWorkflowFieldError());
+      return false;
+    }
+    onChange({
+      sd_additional_expense_items: expenseItems,
+      sd_additional_profit_items: profitItems,
+      sd_refund_amount: Math.round(netSD * 100) / 100,
+      sd_refund_receipt_url: receiptUrl,
+    });
+    return true;
+  }, [readOnly, netSD, expenseItems, profitItems, receiptUrl, onChange]);
+
+  useRegisterWorkflowProceedValidator('sd_refund', validateForProceed, !readOnly);
 
   useEffect(() => {
     setReceiptUrl(booking.sd_refund_receipt_url?.trim() ?? '');
@@ -323,10 +350,14 @@ export function SdRefundForm({
               : 'border-border bg-muted/50 text-foreground'
           )}
           aria-readonly="true"
+          aria-invalid={!!netSdError || undefined}
+          data-workflow-field-error={netSdError ? 'true' : undefined}
+          tabIndex={netSdError ? -1 : undefined}
         >
           <span className="font-semibold">{formatMoney(netSD)}</span>
           {netSD < 0 && <span className="text-[11px] font-medium">Net cannot be negative</span>}
         </div>
+        {netSdError ? <p className="text-[10px] text-red-600">{netSdError}</p> : null}
       </div>
 
       <div className="space-y-1">
