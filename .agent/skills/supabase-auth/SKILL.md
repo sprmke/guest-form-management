@@ -54,7 +54,7 @@ Refreshes session before edge calls; signs out on expired user.
 
 ## Guest routes
 
-Public flows use **anon key** only — no Supabase session required on `/form`, `/calendar`, `/sd-form`.
+Public browse (listings, calendar) uses **anon key** — no session required. Gated guest surfaces (`/form`, parking `/form`, `/messages`, account) open **`GuestAuthModal`** when anonymous.
 
 ## Docs
 

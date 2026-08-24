@@ -2,9 +2,11 @@
 name: route-guides
 description: >-
   Create or update per-route operator guides in docs/guides/routes when
-  implementing or changing pages, sections, or features. Use when touching
-  UI routes, page behavior, save flows, validation, or when the user mentions
-  route guides, docs/guides, or page documentation.
+  implementing or changing pages, sections, or features. REQUIRED for every
+  route/page/section UX change — use before claiming done. Also use when
+  touching UI routes, page behavior, save flows, validation, or when the user
+  mentions route guides, docs/guides, or page documentation. Pairs with
+  documentation-maintenance.
 ---
 
 # Route guides skill

@@ -170,6 +170,19 @@ function collectSessionContext(root: string): string {
     );
   }
 
+  // Docs sync (Claude/OpenCode cannot auto-load alwaysApply .mdc — mirror session-docs-sync-reminder.sh)
+  chunks.push(
+    [
+      'DOCS SYNC (mandatory): Material code/behavior changes must update matching docs in the SAME change — not later.',
+      'Route/page UX → docs/guides/routes/* (route-guides skill).',
+      'API/env/architecture → docs/PROJECT.md.',
+      'Plans/tiers → docs/architecture/plans-feature-matrix.md + Plans guides.',
+      'Booking/auth invariants → .cursor/rules/booking-workflow.mdc or admin-auth.mdc.',
+      'Invoke documentation-maintenance skill before claiming done.',
+      'Canonical: CLAUDE.md § Docs are the source of truth · .cursor/rules/documentation-maintenance.mdc.',
+    ].join(' ')
+  );
+
   chunks.push(
     [
       'OpenCode project tooling (this repo)',
@@ -276,9 +289,20 @@ export default async function GfmAiToolingPlugin(ctx: PluginInput) {
         '.claude/hooks/check-stack-terminology.sh',
         JSON.stringify({ tool_input: { file_path: filePath } })
       );
-      const { additionalContext } = permissionFromHook(parseHookJson(stack.stdout));
-      if (additionalContext) {
-        output.output = `${output.output || ''}\n\n[${additionalContext}]`;
+      const { additionalContext: stackCtx } = permissionFromHook(parseHookJson(stack.stdout));
+      if (stackCtx) {
+        output.output = `${output.output || ''}\n\n[${stackCtx}]`;
+      }
+
+      // Docs-sync reminder after material code edits (non-blocking)
+      const docs = runHookScript(
+        root,
+        '.claude/hooks/remind-docs-on-code-edit.sh',
+        JSON.stringify({ tool_input: { file_path: filePath } })
+      );
+      const { additionalContext: docsCtx } = permissionFromHook(parseHookJson(docs.stdout));
+      if (docsCtx) {
+        output.output = `${output.output || ''}\n\n[${docsCtx}]`;
       }
     },
   };

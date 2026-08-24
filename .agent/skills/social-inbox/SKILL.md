@@ -16,18 +16,20 @@ Org `/org/:orgSlug/inbox` redirects to Properties. Shared shell: `InboxPage.tsx`
 
 ## Architecture map
 
-| Layer          | Path                                                                      |
-| -------------- | ------------------------------------------------------------------------- |
-| Types (server) | `supabase/functions/_shared/socialInboxTypes.ts`                          |
-| Scope resolve  | `supabase/functions/_shared/metaInboxScope.ts`                            |
-| Inbox auth     | `supabase/functions/_shared/inboxAccess.ts`                               |
-| DB helpers     | `supabase/functions/_shared/socialInboxService.ts`                        |
-| Meta Graph     | `supabase/functions/_shared/metaInboxGraph.ts`                            |
-| Connect/life   | `supabase/functions/_shared/metaInboxConnect.ts`, `metaInboxLifecycle.ts` |
-| Webhook ingest | `supabase/functions/_shared/metaInboxWebhookHandler.ts`                   |
-| AI replies     | `supabase/functions/_shared/socialInboxAiService.ts`                      |
-| UI API         | `ui/src/features/dashboard/inbox/lib/inboxApi.ts`                         |
-| UI hooks       | `ui/src/features/dashboard/inbox/hooks/useInbox.ts`                       |
+| Layer           | Path                                                                                                                                                                                                                                                |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Types (server)  | `supabase/functions/_shared/socialInboxTypes.ts`                                                                                                                                                                                                    |
+| Scope resolve   | `supabase/functions/_shared/metaInboxScope.ts`                                                                                                                                                                                                      |
+| Inbox auth      | `supabase/functions/_shared/inboxAccess.ts`                                                                                                                                                                                                         |
+| DB helpers      | `supabase/functions/_shared/socialInboxService.ts`                                                                                                                                                                                                  |
+| Meta Graph      | `supabase/functions/_shared/metaInboxGraph.ts`                                                                                                                                                                                                      |
+| Connect/life    | `supabase/functions/_shared/metaInboxConnect.ts`, `metaInboxLifecycle.ts`                                                                                                                                                                           |
+| Webhook ingest  | `supabase/functions/_shared/metaInboxWebhookHandler.ts`                                                                                                                                                                                             |
+| AI replies      | `supabase/functions/_shared/socialInboxAiService.ts`                                                                                                                                                                                                |
+| UI API          | `ui/src/features/dashboard/inbox/lib/inboxApi.ts`                                                                                                                                                                                                   |
+| UI hooks        | `ui/src/features/dashboard/inbox/hooks/useInbox.ts`                                                                                                                                                                                                 |
+| Share picker    | `ui/src/features/dashboard/inbox/components/InboxShareResourcesPicker.tsx` — composer icon, inserts property/booking links as plain URLs (no new message type); rendered as tap cards via `ui/src/lib/chat/parseChatRichBlocks.ts#urlLinkCardMeta`  |
+| Doc share token | `supabase/functions/_shared/bookingDocumentShareToken.ts`, `issue-booking-document-share-token/`, `get-guest-booking-document/` — durable GAF/Pet PDF share links (mirrors `guestStayGuide.ts`); see `docs/guides/routes/guest-booking-document.md` |
 
 ## Scope model
 
@@ -35,9 +37,9 @@ Org `/org/:orgSlug/inbox` redirects to Properties. Shared shell: `InboxPage.tsx`
 - **Override** = row with `property_id` or `parking_id` set. Effective connection = override if connected, else org default.
 - **Web** at property: `property_id` filter. Parking web guest chat deferred (`parking_id` column ready).
 - **Meta threads (1A):** inherited scope shows full org Page thread list + “Using org Meta”.
-- **Quick replies / Automation:** org-scoped data; managed from **property** Manage UI (`inbox:manage`). Parking is Channels-only.
+- **Quick replies / Automation:** property is org-scoped (`social_reply_templates`/`social_inbox_settings` row with `parking_id IS NULL`); parking gets its own scoped row(s) (`parking_id` set) with parking-specific default quick replies (`_shared/inboxDefaultQuickReplies.ts#INBOX_DEFAULT_PARKING_QUICK_REPLIES`). Both are managed from the respective Manage UI (`inbox:manage`). Meta (Channels/Facebook/Instagram) is **property-only** — parking has no Meta connect UI and its platform filter is Chat (`web`) only (no **All** tab / switcher when a single channel is available).
 
-Pass `property_id` or `parking_id` on every inbox edge call; `resolveInboxAccess` requires one of them.
+Pass `property_id` or `parking_id` on every inbox edge call; `resolveInboxAccess` requires one of them. Any direct `social_inbox_settings` query must filter by `parking_id` (`.is('parking_id', null)` for the org/property-default row, `.eq('parking_id', ...)` for a parking row) — the column is no longer globally unique per `organization_id`.
 
 ## Permissions
 
@@ -50,8 +52,8 @@ Pass `property_id` or `parking_id` on every inbox edge call; `resolveInboxAccess
 ## Manage menu
 
 1. **Messages** — property + parking
-2. **Channels** — property + parking
-3. **Quick replies** / **Automation** — property only (`showSettingsManageTabs`)
+2. **Channels** — property only (`showChannelsTab`); parking has no Meta connect
+3. **Quick replies** / **Automation** — property + parking (`showSettingsManageTabs`)
 
 ## Related rules
 

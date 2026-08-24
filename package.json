@@ -44,6 +44,7 @@
     "stop:supabase:clean": "./scripts/dev/run-with-ui-dev-env.sh ./scripts/dev/bunx --bun supabase@latest stop --no-backup --yes",
     "db:reset": "./scripts/dev/run-with-ui-dev-env.sh ./scripts/dev/bunx --bun supabase@latest db reset",
     "db:migrate": "./scripts/dev/run-with-ui-dev-env.sh ./scripts/dev/bunx --bun supabase@latest migration up --local --include-all",
+    "seed:mock-listings": "node scripts/dev/generate-mock-listings-seed.mjs",
     "sync:prod-data": "./scripts/data/sync-prod-public-data-to-local.sh",
     "sync:prod-data:restore": "RESTORE_ONLY=1 ./scripts/data/sync-prod-public-data-to-local.sh",
     "sync:ai-knowledge-base": "bun scripts/sync-ai-knowledge-base.ts",

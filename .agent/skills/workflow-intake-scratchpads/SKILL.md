@@ -21,16 +21,18 @@ Each item block starts with `===`, then a **title line** with exactly one leadin
 
 | Emoji | Meaning                                  | Sync source                                                                    |
 | ----- | ---------------------------------------- | ------------------------------------------------------------------------------ |
-| ✅    | Shipped — plan fully complete            | Parent plan in `docs/workflow/done/` (or route guide shipped without a plan)   |
-| 🚧    | In progress — work started, plan open    | Parent plan in `docs/workflow/in-progress/` (even if a v1 slice is in `done/`) |
-| 📋    | Planned — plan written, not started yet  | Plan in `docs/workflow/planned/` only                                          |
-| 🔵    | Pending / open — no plan yet             | No matching plan; backlog idea only                                            |
 | ❌    | Cancelled / won't do — explicit decision | Matching doc in `docs/workflow/wont-do/` or scratchpad-only with reason        |
+| ✅    | Shipped — plan fully complete            | Parent plan in `docs/workflow/done/` (or route guide shipped without a plan)   |
+| 📋    | Planned — plan written, not started yet  | Plan in `docs/workflow/planned/` only                                          |
+| 🚧    | In progress — work started, plan open    | Parent plan in `docs/workflow/in-progress/` (even if a v1 slice is in `done/`) |
+| 🔵    | Pending / open — no plan yet             | No matching plan; backlog idea only                                            |
 
-**Legend line** (both files, after frontmatter):
+**Scratchpad sort order:** ❌ → ✅ → 📋 → 🚧 → 🔵 (matches legend line — won't do and shipped first, open backlog last).
+
+**Legend line** (both files, after frontmatter — order matches scratchpad sort):
 
 ```markdown
-**Status legend:** ✅ done · 🚧 in progress · 📋 planned (plan doc written) · 🔵 pending / open · ❌ cancelled / won't do
+**Status legend:** ❌ cancelled / won't do · ✅ done · 📋 planned (plan doc written) · 🚧 in progress · 🔵 pending / open
 ```
 
 Bump frontmatter `updated:` to today when you change either scratchpad.

@@ -30,11 +30,13 @@ Permanent backlogs: `_to-prompt.md`, `_to-plan.md`. **Always sync** when moving 
 
 | Emoji | Meaning                                              |
 | ----- | ---------------------------------------------------- |
-| ✅    | Shipped (`done/`)                                    |
-| 🚧    | In progress (`in-progress/`)                         |
-| 📋    | Plan written (`planned/`)                            |
-| 🔵    | Open — no plan yet                                   |
 | ❌    | Cancelled / won't do (`wont-do/` or scratchpad-only) |
+| ✅    | Shipped (`done/`)                                    |
+| 📋    | Plan written (`planned/`)                            |
+| 🚧    | In progress (`in-progress/`)                         |
+| 🔵    | Open — no plan yet                                   |
+
+Scratchpad **sort order** matches the legend: ❌ → ✅ → 📋 → 🚧 → 🔵.
 
 Full rules: **`.agent/skills/workflow-intake-scratchpads/SKILL.md`**
 
