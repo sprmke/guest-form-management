@@ -8,9 +8,7 @@
 import { DatabaseService } from '../_shared/databaseService.ts';
 import { jsonResponse } from '../_shared/httpResponse.ts';
 import { verifyParkingTeamAccess } from '../_shared/orgAuth.ts';
-import { listParkingIdsForOrganization } from '../_shared/parkingScope.ts';
 import {
-  listPropertyIdsForOrganization,
   readOrgIdFromUrl,
   readOrgSlugFromUrl,
   readPropertyIdFromUrl,
@@ -32,8 +30,7 @@ serveAuthenticated('list-bookings', async (req) => {
 
   let propertyId: string | undefined;
   let parkingId: string | undefined;
-  let orgPropertyIds: string[] | undefined;
-  let orgParkingIds: string[] | undefined;
+  let orgId: string | undefined;
   let includePropertyMeta = false;
   let includeParkingMeta = false;
 
@@ -43,23 +40,21 @@ serveAuthenticated('list-bookings', async (req) => {
     includeParkingMeta = true;
   } else if (orgSlug || orgIdParam) {
     const ctx = await resolveOrgAccessContext(req, 'org:bookings:view');
-    orgPropertyIds = await listPropertyIdsForOrganization(ctx.org.id);
-    orgParkingIds = await listParkingIdsForOrganization(ctx.org.id);
+    orgId = ctx.org.id;
     includePropertyMeta = true;
     includeParkingMeta = true;
 
     if (explicitPropertyId) {
-      const { property } = await resolveScopedPropertyAccess(
+      const { property, org: propertyOrg } = await resolveScopedPropertyAccess(
         req,
         'bookings:view',
         explicitPropertyId
       );
-      if (!orgPropertyIds.includes(property.id)) {
+      if (propertyOrg.id !== ctx.org.id) {
         return jsonResponse(req, { success: false, error: 'Property not in organization' }, 403);
       }
       propertyId = property.id;
-      orgPropertyIds = undefined;
-      orgParkingIds = undefined;
+      orgId = undefined;
       includePropertyMeta = true;
       includeParkingMeta = false;
     }
@@ -87,6 +82,7 @@ serveAuthenticated('list-bookings', async (req) => {
     p.get('show_completed_bookings') === 'true' ||
     p.get('show_previous_bookings') === 'true' ||
     p.get('hide_stale_completed') === 'false';
+  const expandImportedBatch = p.get('expand_imported_batch') === 'true';
   const sort = (p.get('sort') ?? 'status_priority:asc') as
     | 'status_priority:asc'
     | 'check_in_date:asc'
@@ -99,8 +95,7 @@ serveAuthenticated('list-bookings', async (req) => {
   const { rows, total } = await DatabaseService.listBookings({
     propertyId,
     parkingId,
-    orgPropertyIds,
-    orgParkingIds,
+    orgId,
     includePropertyMeta,
     includeParkingMeta,
     bookingKind,
@@ -114,6 +109,7 @@ serveAuthenticated('list-bookings', async (req) => {
     page,
     limit,
     showCompletedBookings,
+    expandImportedBatch,
   });
 
   return jsonResponse(req, { success: true, data: rows, total, page, limit });

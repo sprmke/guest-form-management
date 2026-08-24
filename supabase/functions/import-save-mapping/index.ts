@@ -5,7 +5,7 @@
  * Saving from previewed resets to mapped so preview must re-run.
  */
 
-import { resolveImportAccess } from '../_shared/importAccess.ts';
+import { requireImportPlanFeature, resolveImportAccess } from '../_shared/importAccess.ts';
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import {
   isImportBatchStatus,
@@ -44,6 +44,8 @@ serveAuthenticated('import-save-mapping', async (req) => {
   requireHttpMethod(req, 'POST');
 
   const access = await resolveImportAccess(req);
+  const planBlock = await requireImportPlanFeature(req, access.propertyId);
+  if (planBlock) return planBlock;
   const body = await readJsonBody(req);
 
   const batchId = typeof body.batchId === 'string' ? body.batchId.trim() : '';

@@ -1,5 +1,5 @@
 /**
- * list-host-organizations — GET orgs owned by a host (super admin).
+ * list-host-organizations — GET orgs owned by a host (super admin), paginated server-side.
  */
 
 import { createServiceClient, serializeOrganization, type OrgRow } from '../_shared/orgAuth.ts';
@@ -12,26 +12,39 @@ serveAuthenticated('list-host-organizations', async (req) => {
   await verifySuperAdminJwt(req);
 
   const url = new URL(req.url);
-  const hostId = url.searchParams.get('hostId')?.trim() ?? '';
+  const p = url.searchParams;
+  const hostId = p.get('hostId')?.trim() ?? '';
   if (!hostId) {
     return jsonError(req, 'hostId is required');
   }
+  const page = Math.max(1, parseInt(p.get('page') ?? '1', 10));
+  const limit = Math.min(100, Math.max(1, parseInt(p.get('limit') ?? '31', 10)));
 
   const supabase = createServiceClient();
-  const { data, error } = await supabase
+
+  const fromIdx = (page - 1) * limit;
+  const toIdx = fromIdx + limit - 1;
+
+  const {
+    data,
+    error,
+    count: total,
+  } = await supabase
     .from('organizations')
-    .select('*')
+    .select('*', { count: 'exact' })
     .eq('owner_id', hostId)
-    .order('name', { ascending: true });
+    .order('name', { ascending: true })
+    .range(fromIdx, toIdx);
 
   if (error) {
     console.error('[list-host-organizations]', error.message);
     throw new Error('Failed to list host organizations');
   }
 
-  const orgs = (data ?? []) as OrgRow[];
+  const pagedOrgs = (data ?? []) as OrgRow[];
+
   const organizations = await Promise.all(
-    orgs.map(async (org) => {
+    pagedOrgs.map(async (org) => {
       const [{ count: propertyCount }, { count: parkingCount }] = await Promise.all([
         supabase
           .from('properties')
@@ -54,5 +67,5 @@ serveAuthenticated('list-host-organizations', async (req) => {
     })
   );
 
-  return jsonSuccess(req, { organizations });
+  return jsonSuccess(req, { organizations, total: total ?? 0, page, limit });
 });

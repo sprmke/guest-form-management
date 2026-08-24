@@ -5,13 +5,14 @@
  * Auth: resolveImportAccess.
  *
  * SIDE-EFFECT BYPASS: This function inserts directly into guest_submissions
- * without routing through workflowOrchestrator. IMPORTED is a terminal-entry
- * status with no calendar, email, or PDF side effects wired anywhere in the
- * orchestrator — making the bypass safe by design, not just by convention.
+ * without routing through workflowOrchestrator. Past check-ins get status IMPORTED;
+ * today/future check-ins get PENDING_REVIEW (imported_from_batch_id set on all).
+ * No calendar, email, or PDF side effects on insert — bypass safe by design.
  * Never call workflowOrchestrator.transition here.
  */
 
-import { resolveImportAccess } from '../_shared/importAccess.ts';
+import { importCommitStatusForCheckIn } from '../_shared/importCommitStatus.ts';
+import { requireImportPlanFeature, resolveImportAccess } from '../_shared/importAccess.ts';
 import {
   isImportBatchStatus,
   type ImportBatchStatus,
@@ -62,9 +63,11 @@ function buildSubmissionRow(
   batchId: string,
   now: string
 ): Record<string, unknown> {
+  const commitStatus = importCommitStatusForCheckIn(mappedData.check_in_date);
+
   const row: Record<string, unknown> = {
     property_id: propertyId,
-    status: 'IMPORTED',
+    status: commitStatus,
     imported_from_batch_id: batchId,
     status_updated_at: now,
   };
@@ -95,6 +98,8 @@ serveAuthenticated('import-commit', async (req) => {
   requireHttpMethod(req, 'POST');
 
   const access = await resolveImportAccess(req);
+  const planBlock = await requireImportPlanFeature(req, access.propertyId);
+  if (planBlock) return planBlock;
   const body = await readJsonBody(req);
 
   const batchId = typeof body.batchId === 'string' ? body.batchId.trim() : '';

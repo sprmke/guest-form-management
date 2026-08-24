@@ -4,7 +4,7 @@
  * Auth: resolveImportAccess.
  */
 
-import { resolveImportAccess } from '../_shared/importAccess.ts';
+import { requireImportPlanFeature, resolveImportAccess } from '../_shared/importAccess.ts';
 import {
   canImportBatchTransition,
   isImportBatchStatus,
@@ -104,6 +104,8 @@ serveAuthenticated('import-preview', async (req) => {
   }
 
   const access = await resolveImportAccess(req);
+  const planBlock = await requireImportPlanFeature(req, access.propertyId);
+  if (planBlock) return planBlock;
   const body = req.method === 'POST' ? await readJsonBody(req) : {};
   const batchId = readBatchId(req, body);
   if (!batchId) return jsonError(req, 'batchId is required');

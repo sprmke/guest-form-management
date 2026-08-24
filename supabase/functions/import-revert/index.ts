@@ -7,14 +7,15 @@
  * dryRun=true (default false): loads and analyses submissions, returns counts/warnings
  * WITHOUT changing any status. Safe to call before showing the confirm dialog.
  *
- * Default (dryRun=false): cancels rows still at IMPORTED status; rows moved to other
- * statuses are skipped and returned in `moved[]`.
+ * Default (dryRun=false): cancels rows still at IMPORTED or PENDING_REVIEW (import entry);
+ * rows advanced to other statuses are skipped and returned in `moved[]`.
  * Pass `includeMoved: true` to also cancel those moved rows.
  *
  * Transitions use WorkflowOrchestrator with manual=true and ALL side-effect flags
  * explicitly set to false — imported bookings have no email history from the import path.
  */
 
+import { isImportBatchRevertableStatus } from '../_shared/importCommitStatus.ts';
 import { resolveImportAccess } from '../_shared/importAccess.ts';
 import {
   isImportBatchStatus,
@@ -110,8 +111,8 @@ serveAuthenticated('import-revert', async (req) => {
     }
 
     const all = submissions ?? [];
-    const importedRows = all.filter((s) => s.status === 'IMPORTED');
-    const movedRows = all.filter((s) => s.status !== 'IMPORTED');
+    const importedRows = all.filter((s) => isImportBatchRevertableStatus(s.status));
+    const movedRows = all.filter((s) => !isImportBatchRevertableStatus(s.status));
     const modifiedCount = all.filter(
       (s) => committedAt != null && typeof s.updated_at === 'string' && s.updated_at > committedAt
     ).length;
@@ -168,9 +169,9 @@ serveAuthenticated('import-revert', async (req) => {
 
   const allSubmissions = submissions ?? [];
 
-  // Separate IMPORTED rows from rows moved into the live pipeline.
-  const importedRows = allSubmissions.filter((s) => s.status === 'IMPORTED');
-  const movedRows = allSubmissions.filter((s) => s.status !== 'IMPORTED');
+  // Separate revertable import rows from rows moved into the live pipeline.
+  const importedRows = allSubmissions.filter((s) => isImportBatchRevertableStatus(s.status));
+  const movedRows = allSubmissions.filter((s) => !isImportBatchRevertableStatus(s.status));
 
   const movedDetails: MovedRow[] = movedRows.map((s) => ({
     bookingId: s.id,
@@ -192,7 +193,7 @@ serveAuthenticated('import-revert', async (req) => {
     const message =
       allSubmissions.length === 0
         ? 'No bookings found for this import batch.'
-        : 'Nothing to cancel — all bookings have been moved out of Imported status. Enable "Also cancel moved bookings" to include them.';
+        : 'Nothing to cancel — all bookings have been moved out of Imported or Pending Review. Enable "Also cancel moved bookings" to include them.';
 
     console.warn(`[import-revert] no-op guard triggered for batch ${batchId}: ${message}`);
     return jsonError(req, message);
@@ -204,7 +205,7 @@ serveAuthenticated('import-revert', async (req) => {
   for (const submission of toCancel) {
     try {
       // WorkflowOrchestrator with manual=true — same path admin manual cancel uses.
-      // IMPORTED → CANCELLED is in the manual-override graph (statusMachine.ts).
+      // IMPORTED → CANCELLED or PENDING_REVIEW → CANCELLED (manual override graph).
       // All side-effect flags are explicitly false (see REVERT_DEV_CONTROLS above).
       await WorkflowOrchestrator.transition(
         submission.id,
