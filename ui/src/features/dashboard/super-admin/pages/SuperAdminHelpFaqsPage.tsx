@@ -1,8 +1,14 @@
 import { useMemo, useState } from 'react';
 
+import { useSearchParams } from 'react-router-dom';
+
 import { ArrowDown, ArrowUp, HelpCircle, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import {
+  AdminListPagination,
+  AdminListPerPageSelect,
+} from '@/features/dashboard/bookings/components/AdminListToolbar';
 import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import { SuperAdminEmptyState } from '@/features/dashboard/super-admin/components/shared/SuperAdminEmptyState';
 import { SuperAdminPageLoading } from '@/features/dashboard/super-admin/components/shared/SuperAdminPageLoading';
@@ -28,6 +34,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
+import {
+  ADMIN_DEFAULT_PAGE_SIZE,
+  buildPageItems,
+  normalizeAdminPageLimit,
+} from '@/lib/table/pagination';
 import { cn } from '@/lib/utils';
 
 function FaqRow({
@@ -120,7 +131,12 @@ function FaqRow({
 }
 
 export function SuperAdminHelpFaqsPage() {
-  const { data, isLoading, error } = useHelpCenterFaqsAdmin();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const page = Number(searchParams.get('page') ?? '1');
+  const limit = normalizeAdminPageLimit(
+    Number(searchParams.get('limit') ?? String(ADMIN_DEFAULT_PAGE_SIZE))
+  );
+  const { data, isLoading, error } = useHelpCenterFaqsAdmin({ page, limit });
   const updateFaq = useUpdateHelpCenterFaq();
   const deleteFaq = useDeleteHelpCenterFaq();
 
@@ -128,6 +144,33 @@ export function SuperAdminHelpFaqsPage() {
   const [deleteTarget, setDeleteTarget] = useState<AdminHelpCenterFaq | null>(null);
 
   const faqs = data?.faqs ?? [];
+  const total = data?.total ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / limit));
+  const pageItems = buildPageItems(page, pageCount);
+
+  const setPage = (nextPage: number) =>
+    setSearchParams(
+      (prev) => {
+        const sp = new URLSearchParams(prev);
+        if (nextPage === 1) sp.delete('page');
+        else sp.set('page', String(nextPage));
+        return sp;
+      },
+      { replace: true }
+    );
+
+  const setLimit = (nextLimit: number) =>
+    setSearchParams(
+      (prev) => {
+        const sp = new URLSearchParams(prev);
+        if (nextLimit === ADMIN_DEFAULT_PAGE_SIZE) sp.delete('limit');
+        else sp.set('limit', String(nextLimit));
+        sp.delete('page');
+        return sp;
+      },
+      { replace: true }
+    );
+
   const categories = useMemo(() => Array.from(new Set(faqs.map((f) => f.category))), [faqs]);
 
   const groupedByCategory = useMemo(() => {
@@ -189,6 +232,10 @@ export function SuperAdminHelpFaqsPage() {
         <>
           <SuperAdminHelpFaqsSummaryCards faqs={faqs} />
 
+          <div className="flex justify-end">
+            <AdminListPerPageSelect limit={limit} onChange={setLimit} />
+          </div>
+
           {groupedByCategory.length === 0 ? (
             <SuperAdminEmptyState icon={HelpCircle} title="No FAQs yet" />
           ) : (
@@ -213,6 +260,17 @@ export function SuperAdminHelpFaqsPage() {
               </div>
             ))
           )}
+
+          {pageCount > 1 ? (
+            <AdminListPagination
+              ariaLabel="FAQs pagination"
+              page={page}
+              pageCount={pageCount}
+              pageItems={pageItems}
+              isLoading={isLoading}
+              onPageChange={setPage}
+            />
+          ) : null}
         </>
       )}
 

@@ -5,10 +5,6 @@ import { formatMoneyCompact } from '@/utils/format/currency';
 
 /** Host-facing checkout price label for super-admin plan lists. */
 export function formatPricingPlanHostPrice(plan: PricingPlan): string {
-  if (plan.pricingModel === 'commission') {
-    return `${plan.commissionRatePercent ?? 0}%`;
-  }
-
   const list = Math.max(0, Math.floor(plan.pricePhp ?? 0));
   if (list <= 0) return formatMoneyCompact(0);
 

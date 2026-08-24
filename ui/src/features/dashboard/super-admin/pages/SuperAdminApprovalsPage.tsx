@@ -1,7 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
+
+import { useSearchParams } from 'react-router-dom';
 
 import { ClipboardCheck, Filter, Search } from 'lucide-react';
 
+import {
+  AdminListPagination,
+  AdminListPerPageSelect,
+} from '@/features/dashboard/bookings/components/AdminListToolbar';
 import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import { SuperAdminEmptyState } from '@/features/dashboard/super-admin/components/shared/SuperAdminEmptyState';
 import { SuperAdminListViewToggle } from '@/features/dashboard/super-admin/components/shared/SuperAdminListViewToggle';
@@ -16,7 +22,6 @@ import { SuperAdminListingVerificationDialog } from '@/features/dashboard/super-
 import { useApprovals } from '@/features/dashboard/super-admin/hooks/useApprovals';
 import {
   DEFAULT_APPROVALS_FILTERS,
-  filterSuperAdminApprovals,
   isExternalReviewApprovalSummary,
   isListingVerificationApprovalSummary,
   isOrgApprovalSummary,
@@ -41,6 +46,11 @@ import {
 } from '@/components/ui/select';
 import { useAdminMobileGridViewGuard } from '@/hooks/useAdminMobileGridViewGuard';
 import { useIsBelowLg } from '@/hooks/useMediaQuery';
+import {
+  ADMIN_DEFAULT_PAGE_SIZE,
+  buildPageItems,
+  normalizeAdminPageLimit,
+} from '@/lib/table/pagination';
 
 function ApprovalsEmptyState({ filtered }: { filtered: boolean }) {
   return (
@@ -52,8 +62,21 @@ function ApprovalsEmptyState({ filtered }: { filtered: boolean }) {
 }
 
 export function SuperAdminApprovalsPage() {
-  const { data: approvals = [], isLoading, error } = useApprovals();
-  const [filters, setFilters] = useState<SuperAdminApprovalsFilters>(DEFAULT_APPROVALS_FILTERS);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const page = Number(searchParams.get('page') ?? '1');
+  const limit = normalizeAdminPageLimit(
+    Number(searchParams.get('limit') ?? String(ADMIN_DEFAULT_PAGE_SIZE))
+  );
+  const filters: SuperAdminApprovalsFilters = {
+    search: searchParams.get('search') ?? DEFAULT_APPROVALS_FILTERS.search,
+    status: (searchParams.get('status') ??
+      DEFAULT_APPROVALS_FILTERS.status) as SuperAdminApprovalsFilters['status'],
+    type: (searchParams.get('type') ??
+      DEFAULT_APPROVALS_FILTERS.type) as SuperAdminApprovalsFilters['type'],
+  };
+  const { data, isLoading, isFetching, error } = useApprovals(filters, page, limit);
+  const approvals = data?.rows ?? [];
+  const total = data?.total ?? 0;
   const [selectedOrg, setSelectedOrg] = useState<OrgApprovalSummary | null>(null);
   const [selectedListing, setSelectedListing] = useState<ListingVerificationApprovalSummary | null>(
     null
@@ -63,12 +86,52 @@ export function SuperAdminApprovalsPage() {
   const isMobileLayout = useIsBelowLg();
   useAdminMobileGridViewGuard(isMobileLayout, viewMode, setViewMode);
 
-  const filteredApprovals = useMemo(
-    () => filterSuperAdminApprovals(approvals, filters),
-    [approvals, filters]
-  );
   const hasActiveFilters = superAdminApprovalsHasActiveFilters(filters);
   const showTableView = viewMode === 'table' && !isMobileLayout;
+  const pageCount = Math.max(1, Math.ceil(total / limit));
+  const pageItems = buildPageItems(page, pageCount);
+
+  const setPage = (nextPage: number) => {
+    setSearchParams(
+      (prev) => {
+        const sp = new URLSearchParams(prev);
+        if (nextPage <= 1) sp.delete('page');
+        else sp.set('page', String(nextPage));
+        return sp;
+      },
+      { replace: true }
+    );
+  };
+
+  const setLimit = (nextLimit: number) => {
+    setSearchParams(
+      (prev) => {
+        const sp = new URLSearchParams(prev);
+        if (nextLimit === ADMIN_DEFAULT_PAGE_SIZE) sp.delete('limit');
+        else sp.set('limit', String(nextLimit));
+        sp.delete('page');
+        return sp;
+      },
+      { replace: true }
+    );
+  };
+
+  function updateFilters(next: SuperAdminApprovalsFilters) {
+    setSearchParams(
+      (prev) => {
+        const sp = new URLSearchParams(prev);
+        if (!next.search.trim()) sp.delete('search');
+        else sp.set('search', next.search);
+        if (next.status === DEFAULT_APPROVALS_FILTERS.status) sp.delete('status');
+        else sp.set('status', next.status);
+        if (next.type === 'all') sp.delete('type');
+        else sp.set('type', next.type);
+        sp.delete('page');
+        return sp;
+      },
+      { replace: true }
+    );
+  }
 
   function handleSelect(item: ApprovalQueueItem) {
     if (isOrgApprovalSummary(item)) {
@@ -111,9 +174,7 @@ export function SuperAdminApprovalsPage() {
                 />
                 <Input
                   value={filters.search}
-                  onChange={(event) =>
-                    setFilters((prev) => ({ ...prev, search: event.target.value }))
-                  }
+                  onChange={(event) => updateFilters({ ...filters, search: event.target.value })}
                   placeholder="Search approvals…"
                   className="h-10 pl-9"
                   aria-label="Search approvals"
@@ -123,10 +184,10 @@ export function SuperAdminApprovalsPage() {
               <Select
                 value={filters.type}
                 onValueChange={(value) =>
-                  setFilters((prev) => ({
-                    ...prev,
+                  updateFilters({
+                    ...filters,
                     type: value as SuperAdminApprovalsFilters['type'],
-                  }))
+                  })
                 }
               >
                 <SelectTrigger className="h-10 w-[9.5rem] shrink-0" aria-label="Filter by type">
@@ -144,10 +205,10 @@ export function SuperAdminApprovalsPage() {
               <Select
                 value={filters.status}
                 onValueChange={(value) =>
-                  setFilters((prev) => ({
-                    ...prev,
+                  updateFilters({
+                    ...filters,
                     status: value as SuperAdminApprovalsFilters['status'],
-                  }))
+                  })
                 }
               >
                 <SelectTrigger className="h-10 w-[9.5rem] shrink-0" aria-label="Filter by status">
@@ -164,28 +225,38 @@ export function SuperAdminApprovalsPage() {
               </Select>
             </div>
 
-            <SuperAdminListViewToggle
-              viewMode={viewMode}
-              onViewModeChange={setViewMode}
-              hideTableView={isMobileLayout}
-              className="self-end sm:self-auto"
-            />
+            <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
+              <AdminListPerPageSelect limit={limit} onChange={setLimit} />
+              <SuperAdminListViewToggle
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
+                hideTableView={isMobileLayout}
+              />
+            </div>
           </div>
 
-          {filteredApprovals.length > 0 ? (
+          {approvals.length > 0 ? (
             showTableView ? (
-              <SuperAdminApprovalsTable approvals={filteredApprovals} onSelect={handleSelect} />
+              <SuperAdminApprovalsTable approvals={approvals} onSelect={handleSelect} />
             ) : (
-              <SuperAdminApprovalsCardGrid approvals={filteredApprovals} onSelect={handleSelect} />
+              <SuperAdminApprovalsCardGrid approvals={approvals} onSelect={handleSelect} />
             )
           ) : (
             <ApprovalsEmptyState filtered={hasActiveFilters} />
           )}
 
-          <SuperAdminResultsMeta
-            visibleCount={filteredApprovals.length}
-            totalCount={approvals.length}
-          />
+          {pageCount > 1 ? (
+            <AdminListPagination
+              ariaLabel="Approvals pagination"
+              page={page}
+              pageCount={pageCount}
+              pageItems={pageItems}
+              isLoading={isLoading || isFetching}
+              onPageChange={setPage}
+            />
+          ) : null}
+
+          <SuperAdminResultsMeta visibleCount={approvals.length} totalCount={total} />
         </>
       )}
 

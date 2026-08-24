@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type {
   SupportTicket,
@@ -6,12 +6,15 @@ import type {
 } from '@/features/dashboard/help-support/lib/supportTicketApi';
 import { callEdgeFunction } from '@/features/dashboard/org/lib/edgeClient';
 
+import { ADMIN_DEFAULT_PAGE_SIZE } from '@/lib/table/pagination';
+
 export type AdminSupportTicket = SupportTicket & {
   organizationName: string;
   organizationSlug: string;
 };
 
 export type SupportTicketAdminFilters = {
+  search: string | null;
   category: string | null;
   status: string | null;
   orgId: string | null;
@@ -19,21 +22,28 @@ export type SupportTicketAdminFilters = {
 
 export const SUPPORT_TICKETS_ADMIN_QUERY_KEY = ['super-admin', 'support-tickets'] as const;
 
-function filtersToQuery(filters: SupportTicketAdminFilters): string {
+function filtersToQuery(filters: SupportTicketAdminFilters, page: number, limit: number): string {
   const params = new URLSearchParams();
+  if (filters.search) params.set('search', filters.search);
   if (filters.category) params.set('category', filters.category);
   if (filters.status) params.set('status', filters.status);
   if (filters.orgId) params.set('org_id', filters.orgId);
-  const qs = params.toString();
-  return qs ? `?${qs}` : '';
+  params.set('page', String(page));
+  params.set('limit', String(limit));
+  return `?${params.toString()}`;
 }
 
-export function useSupportTicketsAdmin(filters: SupportTicketAdminFilters) {
+export function useSupportTicketsAdmin(
+  filters: SupportTicketAdminFilters,
+  page: number = 1,
+  limit: number = ADMIN_DEFAULT_PAGE_SIZE
+) {
   return useQuery({
-    queryKey: [...SUPPORT_TICKETS_ADMIN_QUERY_KEY, filters],
+    queryKey: [...SUPPORT_TICKETS_ADMIN_QUERY_KEY, filters, page, limit],
+    placeholderData: keepPreviousData,
     queryFn: () =>
-      callEdgeFunction<{ tickets: AdminSupportTicket[] }>(
-        `list-support-tickets-admin${filtersToQuery(filters)}`
+      callEdgeFunction<{ tickets: AdminSupportTicket[]; total: number }>(
+        `list-support-tickets-admin${filtersToQuery(filters, page, limit)}`
       ),
   });
 }
