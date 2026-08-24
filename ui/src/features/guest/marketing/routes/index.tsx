@@ -30,6 +30,8 @@ import { ParkingRequestStatusPage } from '@/features/guest/marketing/parkings/pa
 import { MarketingLayoutShell } from '@/features/guest/marketing/shared/components/MarketingLayoutShell';
 import { SearchResultsPage } from '@/features/guest/search/pages/SearchResultsPage';
 
+import { NotFoundPage } from '@/routes/NotFoundPage';
+
 function DevelopmentParkingListRedirect() {
   const { slug = '' } = useParams<{ slug: string }>();
   return <Navigate to={`/developments/${slug}/parking`} replace />;
@@ -78,5 +80,6 @@ export const marketingRoutes = [
     <Route path="privacy" element={<PrivacyPage />} />
     <Route path="cookies" element={<CookiesPage />} />
     {guestAccountRoutes}
+    <Route path="*" element={<NotFoundPage />} />
   </Route>,
 ];

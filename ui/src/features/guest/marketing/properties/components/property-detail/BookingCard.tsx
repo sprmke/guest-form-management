@@ -564,6 +564,10 @@ export function BookingCard({
           checkIn={checkIn}
           checkOut={checkOut}
           onDatesChange={handleDatesChange}
+          onProceed={() => {
+            setCalendarOpen(false);
+            reserve();
+          }}
         />
       ) : null}
     </motion.div>

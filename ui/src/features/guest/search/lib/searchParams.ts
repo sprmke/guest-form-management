@@ -1,3 +1,4 @@
+import { isParkingLocationFilterParam } from '@/features/guest/marketing/parkings/lib/parkingsQuery';
 import { nearbyCategoryFromQuery } from '@/features/guest/search/lib/searchIntents';
 import type { SearchListingsQuery, SearchListingsType } from '@/features/guest/search/types/search';
 
@@ -56,13 +57,17 @@ function parseCoord(raw: string | null): number | null {
 /**
  * Parse `/search` URL params.
  * Uses adults/children/pets — distinct from `/properties`' collapsed `guests` contract.
- * Accepts legacy `location` as an alias for `where`.
+ * Accepts legacy `location` as an alias for `where` (except parking slot-type filters in `location`).
  * Optional `lat`/`lng` power Nearby geo ranking.
  * Optional `focus` prioritizes a category from the origin listing page.
  * Legacy `infants` is accepted for old URLs but always stored/written as 0 (not offered in UI).
  */
 export function parseSearchParams(sp: URLSearchParams): SearchListingsQuery {
-  const where = (sp.get('where') ?? sp.get('location') ?? '').trim();
+  const whereRaw = (sp.get('where') ?? '').trim();
+  const legacyLocation = (sp.get('location') ?? '').trim();
+  const where =
+    whereRaw ||
+    (legacyLocation && !isParkingLocationFilterParam(legacyLocation) ? legacyLocation : '');
   const nearbyCategory = nearbyCategoryFromQuery(where);
   const explicitType = parseType(sp.get('type'));
 
