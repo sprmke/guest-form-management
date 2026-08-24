@@ -16,6 +16,9 @@ import type {
   FinanceSummary,
 } from '@/features/dashboard/finance/lib/types';
 import { useAdminAssetScope } from '@/features/dashboard/org/lib/adminAssetScope';
+import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 
 import { MobileChoiceItem, MobileChoiceSheet } from '@/components/mobile/MobileChoiceSheet';
 import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
@@ -73,8 +76,14 @@ export function FinanceExportMenu({
     : SECTION_OPTIONS;
   const [loading, setLoading] = useState<FinanceExportType | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const { canUse: canExport, isLoading: entitlementsLoading } = useFeatureGate('financeReporting');
+  const { open: openUpgradeModal } = useUpgradeModal();
 
   async function handlePdfExport(type: FinanceExportType) {
+    if (!canExport) {
+      if (!entitlementsLoading) openUpgradeModal('financeReporting');
+      return;
+    }
     setLoading(type);
     try {
       const needsStays = !isParkingScope && (type === 'stays' || type === 'combined');
@@ -158,7 +167,7 @@ export function FinanceExportMenu({
         <button
           type="button"
           disabled={busy}
-          className={cn(outlineBtnClass, 'gap-1.5 px-3')}
+          className={cn(outlineBtnClass, 'relative gap-1.5 px-3')}
           aria-label="Export report"
         >
           {busy ? (
@@ -168,6 +177,11 @@ export function FinanceExportMenu({
           )}
           <span className="hidden sm:inline">Export report</span>
           <span className="sm:hidden">Report</span>
+          <TierBadge
+            feature="financeReporting"
+            placement="corner"
+            className="hidden sm:inline-flex"
+          />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">

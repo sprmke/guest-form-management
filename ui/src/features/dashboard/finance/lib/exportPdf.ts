@@ -1,4 +1,3 @@
-import { format } from 'date-fns';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -7,22 +6,6 @@ import {
   financePeriodRangeLabel,
   financePresetLabel,
 } from '@/features/dashboard/finance/lib/financeFilterLabels';
-import { registerPdfFonts, setPdfFont } from '@/features/dashboard/finance/lib/pdfFonts';
-import {
-  pdfBookingDate,
-  pdfIsoDate,
-  pdfMoney,
-} from '@/features/dashboard/finance/lib/pdfFormatters';
-import {
-  PDF_COLORS,
-  PDF_FONT,
-  PDF_LAYOUT,
-  PDF_TYPE,
-  drawCard,
-  setPdfDraw,
-  setPdfFill,
-  setPdfText,
-} from '@/features/dashboard/finance/lib/pdfTheme';
 import type {
   FinanceBookingLedgerRow,
   FinanceExportType,
@@ -30,6 +13,25 @@ import type {
   FinanceQuery,
   FinanceSummary,
 } from '@/features/dashboard/finance/lib/types';
+import { registerPdfFonts } from '@/lib/pdf/pdfFonts';
+import { pdfBookingDate, pdfIsoDate, pdfMoney } from '@/lib/pdf/pdfFormatters';
+import { PDF_COLORS } from '@/lib/pdf/pdfTheme';
+import {
+  PDF_TABLE_MONEY_COLUMN,
+  addPageFooter,
+  baseAutoTableOptions,
+  contentWidth,
+  drawBulletNotes,
+  drawHeroMetric,
+  drawKpiGrid,
+  drawReportHeader,
+  drawSectionEyebrow,
+  ensurePageSpace,
+  lastTableY,
+  paintPageBackground,
+  startNewPage,
+  type PdfKpiItem,
+} from '@/lib/pdf/pdfReportLayout';
 
 const REPORT_TYPE_LABEL: Record<FinanceExportType, string> = {
   combined: 'Full finance report',
@@ -38,207 +40,35 @@ const REPORT_TYPE_LABEL: Record<FinanceExportType, string> = {
   operating: 'Transactions',
 };
 
-function paintPageBackground(doc: jsPDF): void {
-  const w = doc.internal.pageSize.getWidth();
-  const h = doc.internal.pageSize.getHeight();
-  setPdfFill(doc, PDF_COLORS.pageBg);
-  doc.rect(0, 0, w, h, 'F');
+function netColumnTextColor(
+  isCompleted: boolean,
+  net: number | null | undefined
+): [number, number, number] {
+  if (!isCompleted) return [...PDF_COLORS.warning];
+  return (net ?? 0) >= 0 ? [...PDF_COLORS.success] : [...PDF_COLORS.destructive];
 }
 
-function startNewPage(doc: jsPDF): number {
-  doc.addPage();
-  paintPageBackground(doc);
-  return PDF_LAYOUT.margin;
-}
-
-function contentWidth(doc: jsPDF): number {
-  return doc.internal.pageSize.getWidth() - PDF_LAYOUT.margin * 2;
-}
-
-function lastTableY(doc: jsPDF, fallback: number): number {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((doc as any).lastAutoTable?.finalY as number | undefined) ?? fallback;
-}
-
-function ensurePageSpace(doc: jsPDF, y: number, minBottom = 48): number {
-  if (y > doc.internal.pageSize.getHeight() - minBottom) {
-    return startNewPage(doc);
-  }
-  return y;
-}
-
-const TABLE_MARGIN = {
-  left: PDF_LAYOUT.margin,
-  right: PDF_LAYOUT.margin,
-  top: PDF_LAYOUT.margin,
-  bottom: 18,
-};
-
-const TABLE_STYLES = {
-  font: PDF_FONT,
-  fontSize: 7.5,
-  cellPadding: 2.5,
-  textColor: PDF_COLORS.foreground,
-  lineColor: PDF_COLORS.border,
-  lineWidth: 0.1,
-  overflow: 'linebreak' as const,
-};
-
-/** Right-aligned money cells — plain decimals, no currency prefix. */
-const PDF_TABLE_MONEY_COLUMN = {
-  halign: 'right' as const,
-  overflow: 'visible' as const,
-  fontSize: 7,
-  cellPadding: { top: 2.5, right: 2, bottom: 2.5, left: 1.5 },
-};
-
-function drawReportHeader(doc: jsPDF, query: FinanceQuery, exportType: FinanceExportType): number {
-  const m = PDF_LAYOUT.margin;
-  const w = doc.internal.pageSize.getWidth();
-  const cardW = w - m * 2;
-  const cardY = 10;
-  const cardH = 24;
-
-  drawCard(doc, m, cardY, cardW, cardH, PDF_LAYOUT.cardRadius, { shadow: false });
-
-  const badgeSize = 10;
-  const badgeX = m + 4;
-  const badgeY = cardY + (cardH - badgeSize) / 2;
-  setPdfFill(doc, PDF_COLORS.primary);
-  doc.roundedRect(badgeX, badgeY, badgeSize, badgeSize, 2, 2, 'F');
-  setPdfText(doc, PDF_COLORS.primaryFg);
-  setPdfFont(doc, 'bold', 7.5);
-  doc.text('KH', badgeX + badgeSize / 2, badgeY + 6.8, { align: 'center' });
-
-  const textX = badgeX + badgeSize + 4;
-  setPdfText(doc, PDF_COLORS.foreground);
-  setPdfFont(doc, 'bold', PDF_TYPE.title);
-  doc.text('Kame Homes', textX, cardY + 10);
-
-  setPdfFont(doc, 'normal', PDF_TYPE.caption);
-  setPdfText(doc, PDF_COLORS.muted);
-  doc.text(REPORT_TYPE_LABEL[exportType], textX, cardY + 16);
-
-  const generated = format(new Date(), "MMM d, yyyy 'at' h:mm a");
-  doc.text(generated, m + cardW - 4, cardY + 10, { align: 'right' });
-  doc.text('Finance', m + cardW - 4, cardY + 16, { align: 'right' });
-
-  const preset = financePresetLabel(query);
-  const range = financePeriodRangeLabel(query.from, query.to);
-
-  let y = cardY + cardH + PDF_LAYOUT.afterHeaderCard;
-
-  setPdfFont(doc, 'bold', PDF_TYPE.section);
-  setPdfText(doc, PDF_COLORS.foreground);
-  doc.text(preset ? `${preset} · ${range}` : range, m, y);
-
-  y += PDF_LAYOUT.metaLine;
-  setPdfFont(doc, 'normal', PDF_TYPE.caption);
-  setPdfText(doc, PDF_COLORS.muted);
+function buildFinanceHeaderMeta(query: FinanceQuery): string[] {
   const filterParts = ['Grouped by check-in date'];
   if (query.includeCancelled) filterParts.push('Includes cancelled');
   if (query.q.trim()) filterParts.push(`Search: "${query.q.trim()}"`);
-  doc.text(filterParts.join(' · '), m, y);
-
-  return y + PDF_LAYOUT.beforeBlock;
-}
-
-type KpiItem = {
-  label: string;
-  value: string;
-  accent?: 'positive' | 'negative' | 'neutral';
-};
-
-function accentRgb(accent: 'positive' | 'negative' | 'neutral'): readonly [number, number, number] {
-  if (accent === 'positive') return PDF_COLORS.success;
-  if (accent === 'negative') return PDF_COLORS.destructive;
-  return PDF_COLORS.foreground;
-}
-
-function drawSectionEyebrow(doc: jsPDF, y: number, title: string, subtitle?: string): number {
-  const m = PDF_LAYOUT.margin;
-  setPdfFont(doc, 'bold', PDF_TYPE.overline);
-  setPdfText(doc, PDF_COLORS.primary);
-  doc.text(title.toUpperCase(), m, y);
-
-  if (subtitle) {
-    y += PDF_LAYOUT.eyebrowToSubtitle;
-    setPdfFont(doc, 'bold', PDF_TYPE.body);
-    setPdfText(doc, PDF_COLORS.foreground);
-    doc.text(subtitle, m, y);
-    y += PDF_LAYOUT.afterSectionTitle;
-  } else {
-    y += PDF_LAYOUT.afterSectionTitle;
-  }
-
-  return y;
-}
-
-function drawHeroNet(doc: jsPDF, y: number, grandNet: number): number {
-  const m = PDF_LAYOUT.margin;
-  const boxW = contentWidth(doc);
-  const boxH = 26;
-  const valueColor = grandNet >= 0 ? PDF_COLORS.success : PDF_COLORS.destructive;
-
-  drawCard(doc, m, y, boxW, boxH, PDF_LAYOUT.contentRadius, {
-    fill: PDF_COLORS.primarySubtle,
-    shadow: false,
-  });
-
-  setPdfFill(doc, PDF_COLORS.primary);
-  doc.roundedRect(m, y, 3, boxH, 1, 1, 'F');
-
-  setPdfFont(doc, 'bold', PDF_TYPE.overline);
-  setPdfText(doc, PDF_COLORS.primaryDark);
-  doc.text('TOTAL NET', m + 7, y + 10);
-
-  setPdfFont(doc, 'bold', PDF_TYPE.hero);
-  setPdfText(doc, valueColor);
-  doc.text(pdfMoney(grandNet), m + 7, y + 21);
-
-  return y + boxH + PDF_LAYOUT.afterBlock;
-}
-
-function drawKpiGrid(doc: jsPDF, y: number, items: KpiItem[], cols = 3): number {
-  const m = PDF_LAYOUT.margin;
-  const boxW = contentWidth(doc);
-  const colW = boxW / cols;
-  const rowH = 20;
-  const gap = 2.5;
-
-  items.forEach((item, i) => {
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-    const x = m + col * colW;
-    const itemY = y + row * (rowH + gap);
-    const cardW = colW - gap;
-
-    drawCard(doc, x, itemY, cardW, rowH, 2, { shadow: false });
-
-    setPdfFont(doc, 'bold', PDF_TYPE.overline);
-    setPdfText(doc, PDF_COLORS.muted);
-    const labelLines = doc.splitTextToSize(item.label.toUpperCase(), cardW - 5);
-    doc.text(labelLines.slice(0, 2), x + 3, itemY + 6);
-
-    const c = accentRgb(item.accent ?? 'neutral');
-    setPdfFont(doc, 'bold', PDF_TYPE.data);
-    setPdfText(doc, c);
-    const valueLines = doc.splitTextToSize(item.value, cardW - 5);
-    doc.text(valueLines[0], x + 3, itemY + 15);
-  });
-
-  const rows = Math.ceil(items.length / cols);
-  return y + rows * (rowH + gap) + PDF_LAYOUT.sectionGap;
+  return [filterParts.join(' · ')];
 }
 
 function appendOverviewSection(doc: jsPDF, y: number, payload: FinancePdfPayload): number {
   const { summary } = payload;
   const { stays: s, operating: o, grandNet } = summary;
 
-  y = drawHeroNet(doc, y, grandNet);
+  y = drawHeroMetric(
+    doc,
+    y,
+    'Total net',
+    pdfMoney(grandNet),
+    grandNet >= 0 ? PDF_COLORS.success : PDF_COLORS.destructive
+  );
 
   y = drawSectionEyebrow(doc, y, 'Summary', 'Key metrics for the selected period');
-  const overviewKpis: KpiItem[] = [
+  const overviewKpis: PdfKpiItem[] = [
     {
       label: 'Completed net',
       value: pdfMoney(s.hostNetCompleted),
@@ -304,17 +134,9 @@ function appendStaysSection(doc: jsPDF, y: number, payload: FinancePdfPayload): 
     return acc + (row.financials.hostNet ?? 0);
   }, 0);
 
-  function netColumnTextColor(
-    isCompleted: boolean,
-    net: number | null | undefined
-  ): [number, number, number] {
-    if (!isCompleted) return [...PDF_COLORS.warning];
-    return (net ?? 0) >= 0 ? [...PDF_COLORS.success] : [...PDF_COLORS.destructive];
-  }
-
   autoTable(doc, {
+    ...baseAutoTableOptions(tableW),
     startY: y,
-    tableWidth: tableW,
     head: [
       ['Guest', 'Check-in', 'Check-out', 'Status', 'Booking rate', 'Additional fees', 'Host net'],
     ],
@@ -336,24 +158,6 @@ function appendStaysSection(doc: jsPDF, y: number, payload: FinancePdfPayload): 
             ],
           ]
         : undefined,
-    showHead: 'everyPage',
-    showFoot: 'lastPage',
-    margin: TABLE_MARGIN,
-    styles: TABLE_STYLES,
-    headStyles: {
-      fillColor: PDF_COLORS.tableHeadBg,
-      textColor: PDF_COLORS.tableHeadText,
-      fontStyle: 'bold',
-      fontSize: PDF_TYPE.overline,
-      halign: 'left',
-    },
-    footStyles: {
-      fillColor: PDF_COLORS.tableFoot,
-      textColor: PDF_COLORS.foreground,
-      fontStyle: 'bold',
-      fontSize: PDF_TYPE.caption,
-    },
-    alternateRowStyles: { fillColor: PDF_COLORS.tableStripe },
     columnStyles: {
       0: { cellWidth: tableW * 0.27, overflow: 'ellipsize' },
       1: { cellWidth: tableW * 0.1, halign: 'center' },
@@ -361,11 +165,7 @@ function appendStaysSection(doc: jsPDF, y: number, payload: FinancePdfPayload): 
       3: { cellWidth: tableW * 0.16, overflow: 'ellipsize' },
       4: { ...PDF_TABLE_MONEY_COLUMN, cellWidth: tableW * 0.13 },
       5: { ...PDF_TABLE_MONEY_COLUMN, cellWidth: tableW * 0.12 },
-      6: {
-        ...PDF_TABLE_MONEY_COLUMN,
-        cellWidth: tableW * 0.12,
-        fontStyle: 'bold',
-      },
+      6: { ...PDF_TABLE_MONEY_COLUMN, cellWidth: tableW * 0.12, fontStyle: 'bold' },
     },
     didParseCell: (data) => {
       const moneyCol = data.column.index >= 4 && data.column.index <= 6;
@@ -395,7 +195,7 @@ function appendStaysSection(doc: jsPDF, y: number, payload: FinancePdfPayload): 
     },
   });
 
-  return lastTableY(doc, y) + PDF_LAYOUT.afterBlock;
+  return lastTableY(doc, y) + 8;
 }
 
 function appendOperatingSection(doc: jsPDF, y: number, payload: FinancePdfPayload): number {
@@ -419,20 +219,15 @@ function appendOperatingSection(doc: jsPDF, y: number, payload: FinancePdfPayloa
     `${operating.length} transaction${operating.length === 1 ? '' : 's'} in period`
   );
 
-  y = drawKpiGrid(
-    doc,
-    y,
-    [
-      { label: 'Income', value: pdfMoney(incomeTotal), accent: 'positive' },
-      { label: 'Expenses', value: pdfMoney(expenseTotal), accent: 'negative' },
-      {
-        label: 'Transactions net',
-        value: pdfMoney(operatingNet),
-        accent: operatingNet >= 0 ? 'positive' : 'negative',
-      },
-    ],
-    3
-  );
+  y = drawKpiGrid(doc, y, [
+    { label: 'Income', value: pdfMoney(incomeTotal), accent: 'positive' },
+    { label: 'Expenses', value: pdfMoney(expenseTotal), accent: 'negative' },
+    {
+      label: 'Transactions net',
+      value: pdfMoney(operatingNet),
+      accent: operatingNet >= 0 ? 'positive' : 'negative',
+    },
+  ]);
 
   const opRows = operating.map((item) => {
     const amt = pdfMoney(Math.abs(item.amount));
@@ -446,8 +241,8 @@ function appendOperatingSection(doc: jsPDF, y: number, payload: FinancePdfPayloa
   });
 
   autoTable(doc, {
+    ...baseAutoTableOptions(tableW),
     startY: y,
-    tableWidth: tableW,
     head: [['Date', 'Type', 'Label', 'Category', 'Amount']],
     body: opRows.length > 0 ? opRows : [['No transactions in this period.', '', '', '', '']],
     foot:
@@ -462,23 +257,6 @@ function appendOperatingSection(doc: jsPDF, y: number, payload: FinancePdfPayloa
             ],
           ]
         : undefined,
-    showHead: 'everyPage',
-    showFoot: 'lastPage',
-    margin: TABLE_MARGIN,
-    styles: TABLE_STYLES,
-    headStyles: {
-      fillColor: PDF_COLORS.tableHeadBg,
-      textColor: PDF_COLORS.tableHeadText,
-      fontStyle: 'bold',
-      fontSize: PDF_TYPE.overline,
-    },
-    footStyles: {
-      fillColor: PDF_COLORS.tableFoot,
-      textColor: PDF_COLORS.foreground,
-      fontStyle: 'bold',
-      fontSize: PDF_TYPE.caption,
-    },
-    alternateRowStyles: { fillColor: PDF_COLORS.tableStripe },
     columnStyles: {
       0: { cellWidth: tableW * 0.16 },
       1: { cellWidth: tableW * 0.12 },
@@ -506,54 +284,19 @@ function appendOperatingSection(doc: jsPDF, y: number, payload: FinancePdfPayloa
     },
   });
 
-  return lastTableY(doc, y) + PDF_LAYOUT.afterBlock;
+  return lastTableY(doc, y) + 8;
 }
 
 function appendReportDefinitions(doc: jsPDF, y: number): number {
-  const m = PDF_LAYOUT.margin;
-  const noteW = contentWidth(doc);
-
   y = ensurePageSpace(doc, y, 52);
   y = drawSectionEyebrow(doc, y, 'Definitions', 'How ledger and breakdown figures are calculated');
-
-  const lines = [
+  return drawBulletNotes(doc, y, [
     'All amounts are Philippine pesos (PHP) without a currency prefix in tables.',
     'Booking rate = down payment + guest balance (booking rate − down payment).',
     'Additional fees = pet fee + parking margin + additional guest fee (security deposit pass-through excluded).',
     'Host net = booking rate + additional fees + SD settlement profits − SD settlement expenses − parking owner rate (SD settlement lines apply only when COMPLETED). SD collection and SD refund payout are never counted.',
     'Total net = sum of completed host net plus transactions net for this period. In-progress host net (EST) uses the same operating formula without SD pass-through.',
-  ];
-
-  setPdfFont(doc, 'normal', PDF_TYPE.caption);
-  setPdfText(doc, PDF_COLORS.muted);
-
-  for (const line of lines) {
-    y = ensurePageSpace(doc, y, 14);
-    const wrapped = doc.splitTextToSize(`• ${line}`, noteW);
-    doc.text(wrapped, m, y);
-    y += wrapped.length * 3.8 + 1.5;
-  }
-
-  return y + PDF_LAYOUT.afterBlock;
-}
-
-function addPageFooter(doc: jsPDF) {
-  const pages = doc.getNumberOfPages();
-  const pageH = doc.internal.pageSize.getHeight();
-  const pageW = doc.internal.pageSize.getWidth();
-  const m = PDF_LAYOUT.margin;
-
-  for (let i = 1; i <= pages; i++) {
-    doc.setPage(i);
-    setPdfDraw(doc, PDF_COLORS.separator);
-    doc.setLineWidth(0.15);
-    doc.line(m, pageH - 12, pageW - m, pageH - 12);
-
-    setPdfFont(doc, 'normal', PDF_TYPE.caption);
-    setPdfText(doc, PDF_COLORS.muted);
-    doc.text('Kame Homes · Finance', m, pageH - 8);
-    doc.text(`Page ${i} of ${pages}`, pageW - m, pageH - 8, { align: 'right' });
-  }
+  ]);
 }
 
 const PDF_FILENAME_PREFIX: Record<FinanceExportType, string> = {
@@ -578,7 +321,15 @@ async function buildFinanceReportPdf(
   await registerPdfFonts(doc);
   paintPageBackground(doc);
 
-  let y = drawReportHeader(doc, payload.query, type);
+  const preset = financePresetLabel(payload.query);
+  const range = financePeriodRangeLabel(payload.query.from, payload.query.to);
+
+  let y = drawReportHeader(doc, {
+    moduleLabel: 'Finance',
+    reportTypeLabel: REPORT_TYPE_LABEL[type],
+    periodLine: preset ? `${preset} · ${range}` : range,
+    metaLines: buildFinanceHeaderMeta(payload.query),
+  });
 
   if (type === 'overview' || type === 'combined') {
     y = appendOverviewSection(doc, y, payload);
@@ -602,7 +353,7 @@ async function buildFinanceReportPdf(
     y = appendReportDefinitions(doc, y);
   }
 
-  addPageFooter(doc);
+  addPageFooter(doc, 'Finance');
   return doc;
 }
 
