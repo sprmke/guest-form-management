@@ -49,7 +49,7 @@ This is where you read and reply to guest messages for this property: website ch
 - Q: How do I send my guest their approved GAF, a calendar link, or a link to check their security deposit refund?
   A: Tap the **Share** icon (next to Quick reply and Suggest) in the composer. Pick a property link (Property page, Calendar, Chat with host) or search for the guest's booking to insert Stay Guide, Approved GAF, Approved Pet Form, Parking Endorsement, Pay Parking, Security Deposit Refund, or Leave a Review links — whichever apply to that booking's current status and documents.
 
-**Plan gating:** Manual replies and **Manage AI response** stay free. Enabling **Send automatically** requires **`aiChatAutoReply`** (Automation tab pre-flight + **`social-inbox-settings`** PATCH). Runtime auto-reply skips when the property plan lacks the feature; org-level contexts without a property id use **`requireOrgPropertyFeature`** / **`orgHasPropertyWithFeature`** on the server.
+**Plan gating:** Manual replies and **Manage AI response** stay free. Enabling **Send automatically** requires **`aiChatAutoReply`** (Automation tab pre-flight + **`social-inbox-settings`** PATCH) — the **Send automatically** card title shows a solid `TierBadge` when not entitled. Runtime auto-reply skips when the property plan lacks the feature; org-level contexts without a property id use **`requireOrgPropertyFeature`** / **`orgHasPropertyWithFeature`** on the server. **Connecting Meta** (Facebook/Instagram) requires **`metaChatChannel`** (Business tier and up) — client pre-flight on Connect/Reconnect in Channels **and** the empty-state **Connect** button on Facebook/Instagram tabs (`InboxPage` + Channels tab), server check on **`meta-inbox-oauth-start`**; solid corner `TierBadge` sits on those Connect/Reconnect buttons (not the Meta row title). **Quick replies** require **`quickReplies`** (Starter+) to save or insert into a draft — the Quick replies panel itself stays browsable on Free (preview-open policy), only save (client + server **`social-inbox-templates`** POST/PATCH) and insert-into-draft are blocked; list/delete stay ungated on every tier.
 
 ## Permissions
 
@@ -84,18 +84,18 @@ This is where you read and reply to guest messages for this property: website ch
 
 ## API reference
 
-| Function                             | Notes                                                                                   |
-| ------------------------------------ | --------------------------------------------------------------------------------------- |
-| `meta-inbox-*`                       | OAuth / status / disconnect / backfill — require `property_id`                          |
-| `meta-inbox-resubscribe`             | Re-verify + repair Page webhook in place (`inbox:manage`)                               |
-| `social-inbox-threads`               | Scoped list                                                                             |
-| `social-inbox-messages`              | Messages / mark read / edit / unsend                                                    |
-| `social-inbox-send`                  | Replies; optional `useHumanAgentTag` for 24h–7d Meta DMs                                |
-| `social-inbox-templates`             | Quick reply CRUD (`inbox:manage` + `property_id`)                                       |
-| `social-inbox-settings`              | Automation GET/PATCH (`inbox:manage` + `property_id`)                                   |
-| `social-inbox-ai-suggest`            | AI draft (`inbox:reply` + `property_id`)                                                |
-| `issue-booking-document-share-token` | Issue/reuse the GAF/Pet share token for a booking (`bookings:workflow` + `property_id`) |
-| `get-guest-booking-document`         | Public GET — resolves `?token=&doc=gaf\|pet` to a fresh signed URL                      |
+| Function                             | Notes                                                                                                                    |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| `meta-inbox-*`                       | OAuth / status / disconnect / backfill — require `property_id`; `meta-inbox-oauth-start` also requires `metaChatChannel` |
+| `meta-inbox-resubscribe`             | Re-verify + repair Page webhook in place (`inbox:manage`)                                                                |
+| `social-inbox-threads`               | Scoped list                                                                                                              |
+| `social-inbox-messages`              | Messages / mark read / edit / unsend                                                                                     |
+| `social-inbox-send`                  | Replies; optional `useHumanAgentTag` for 24h–7d Meta DMs                                                                 |
+| `social-inbox-templates`             | Quick reply CRUD (`inbox:manage` + `property_id`); POST/PATCH also require `quickReplies` — GET/DELETE stay ungated      |
+| `social-inbox-settings`              | Automation GET/PATCH (`inbox:manage` + `property_id`)                                                                    |
+| `social-inbox-ai-suggest`            | AI draft (`inbox:reply` + `property_id`)                                                                                 |
+| `issue-booking-document-share-token` | Issue/reuse the GAF/Pet share token for a booking (`bookings:workflow` + `property_id`)                                  |
+| `get-guest-booking-document`         | Public GET — resolves `?token=&doc=gaf\|pet` to a fresh signed URL                                                       |
 
 ## Implementation map
 

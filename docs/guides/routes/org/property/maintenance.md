@@ -2,7 +2,7 @@
 title: 'Maintenance — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-17
+updated: 2026-08-24
 ---
 
 # Maintenance — operator guide
@@ -13,11 +13,11 @@ Route: `/org/:orgSlug/property/:propertySlug/maintenance`
 
 ## Progress overview
 
-| Section        | E2E save | Validation | Docs       | Notes                                             |
-| -------------- | -------- | ---------- | ---------- | ------------------------------------------------- |
-| Summary cards  | —        | —          | Documented | Total, Telegram, completed, pending               |
-| Reminders CRUD | ✅       | ✅         | Documented | `maintenance_items`                               |
-| Export report  | ✅       | —          | Documented | PDF menu (header); includes by-category breakdown |
+| Section        | E2E save | Validation | Docs       | Notes                                                                                |
+| -------------- | -------- | ---------- | ---------- | ------------------------------------------------------------------------------------ |
+| Summary cards  | —        | —          | Documented | Total, Telegram, completed, pending                                                  |
+| Reminders CRUD | ✅       | ✅         | Documented | `maintenance_items`                                                                  |
+| Export report  | ✅       | —          | Documented | PDF menu (header); includes by-category breakdown; Starter+ (`maintenanceReporting`) |
 
 ---
 
@@ -59,16 +59,31 @@ This page helps you track upkeep for your property: cleaning schedules, applianc
 
 ---
 
+Client-side PDF generation via **Export report** in the header (shared layout in `ui/src/lib/pdf/` — theme tokens from `index.css`, Plus Jakarta Sans, consistent tables/headers/footers):
+
+| Option           | Content                                          |
+| ---------------- | ------------------------------------------------ |
+| Full report      | Summary + by-category breakdown + reminders list |
+| Overview summary | Summary cards + by-category table only           |
+| Reminders list   | Reminder rows for the period                     |
+
+Filenames: `kame-maintenance-{report\|overview\|reminders}_{from}_{to}.pdf`.
+
+**Plan gating (`maintenanceReporting`, Starter+):** the underlying maintenance data (summary cards, reminders list) is visible on every tier including Free — only the **Export report** action is gated. Client: `useFeatureGate('maintenanceReporting')` disables the menu trigger and opens the upgrade modal on click, with a solid `TierBadge` anchored to the **top-right corner** of the Export button (not inside the label). This export is entirely client-side (PDF built from data already fetched for the page) with no dedicated server export endpoint — nothing to bypass server-side, so there's no matching edge-function check.
+
+---
+
 ## Implementation map
 
-| Concern                | Path                                                                               |
-| ---------------------- | ---------------------------------------------------------------------------------- |
-| Page                   | `ui/src/features/dashboard/maintenance/pages/MaintenancePage.tsx`                  |
-| Summary cards          | `ui/src/features/dashboard/maintenance/components/MaintenanceSummaryCards.tsx`     |
-| Toolbar                | `ui/src/features/dashboard/maintenance/components/MaintenanceRemindersToolbar.tsx` |
-| Filters / sort helpers | `ui/src/features/dashboard/maintenance/lib/maintenanceReminders.ts`                |
-| Reminders list         | `ui/src/features/dashboard/maintenance/components/MaintenanceRemindersTab.tsx`     |
-| API                    | `maintenance-summary`, `maintenance-items`                                         |
+| Concern                | Path                                                                                                                                                                    |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Page                   | `ui/src/features/dashboard/maintenance/pages/MaintenancePage.tsx`                                                                                                       |
+| Summary cards          | `ui/src/features/dashboard/maintenance/components/MaintenanceSummaryCards.tsx`                                                                                          |
+| Toolbar                | `ui/src/features/dashboard/maintenance/components/MaintenanceRemindersToolbar.tsx`                                                                                      |
+| Export menu + PDF      | `ui/src/features/dashboard/maintenance/components/MaintenanceExportMenu.tsx`, `ui/src/features/dashboard/maintenance/lib/exportPdf.ts`, shared PDF layout `@/lib/pdf/*` |
+| Filters / sort helpers | `ui/src/features/dashboard/maintenance/lib/maintenanceReminders.ts`                                                                                                     |
+| Reminders list         | `ui/src/features/dashboard/maintenance/components/MaintenanceRemindersTab.tsx`                                                                                          |
+| API                    | `maintenance-summary`, `maintenance-items`                                                                                                                              |
 
 ---
 

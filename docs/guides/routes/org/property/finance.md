@@ -2,7 +2,7 @@
 title: 'Finance — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-21
+updated: 2026-08-24
 ---
 
 # Finance — operator guide
@@ -13,16 +13,16 @@ Route: `/org/:orgSlug/property/:propertySlug/finance` (also used, minus stays, a
 
 ## Progress overview
 
-| Section            | E2E save | Validation | Docs       | Notes                                    |
-| ------------------ | -------- | ---------- | ---------- | ---------------------------------------- |
-| Summary cards      | —        | —          | Documented | Income, expenses, net, pending           |
-| Charts             | —        | —          | Documented | Cash-flow + income/expense breakdown     |
-| Unified ledger     | ✅       | ✅         | Documented | Stays + transactions in one list         |
-| Transaction CRUD   | ✅       | ✅ Zod     | Documented | `finance_line_items`, recurring series   |
-| Telegram reminders | ✅       | —          | Documented | Per-transaction due-date reminders       |
-| Export report      | ✅       | —          | Documented | Client-side PDF; per-section or combined |
-| Settings tab       | —        | —          | Documented | Redirects to Notifications → Finance     |
-| Mobile shell       | —        | —          | Documented | Brand hero + overlap controls (`max-lg`) |
+| Section            | E2E save | Validation | Docs       | Notes                                                                   |
+| ------------------ | -------- | ---------- | ---------- | ----------------------------------------------------------------------- |
+| Summary cards      | —        | —          | Documented | Income, expenses, net, pending                                          |
+| Charts             | —        | —          | Documented | Cash-flow + income/expense breakdown                                    |
+| Unified ledger     | ✅       | ✅         | Documented | Stays + transactions in one list                                        |
+| Transaction CRUD   | ✅       | ✅ Zod     | Documented | `finance_line_items`, recurring series                                  |
+| Telegram reminders | ✅       | —          | Documented | Per-transaction due-date reminders                                      |
+| Export report      | ✅       | —          | Documented | Client-side PDF; per-section or combined; Starter+ (`financeReporting`) |
+| Settings tab       | —        | —          | Documented | Redirects to Notifications → Finance                                    |
+| Mobile shell       | —        | —          | Documented | Brand hero + overlap controls (`max-lg`)                                |
 
 ---
 
@@ -145,6 +145,8 @@ Client-side PDF generation (no export round-trip beyond fetching the needed data
 
 A separate **`finance-export`** edge function exists for server-generated CSV downloads but is not currently wired to any UI action — the shipped **Export report** menu builds PDFs client-side from the same summary/line-item/booking data already fetched for the page.
 
+**Plan gating (`financeReporting`, Starter+):** the underlying finance data (summary cards, charts, ledger) is visible on every tier including Free — only the **Export report** action itself is gated. Client: `useFeatureGate('financeReporting')` disables the menu trigger and opens the upgrade modal on click, with a solid `TierBadge` anchored to the **top-right corner** of the Export button (not inside the label). Server: `finance-export` also checks `financeReporting` (via `requirePropertyFeature`/`requireOrgPropertyFeature`, using `resolveListingEntitlementPropertyId` so a parking-scoped export resolves to the org's first active property) for integrity, even though the client never calls it today — bypassing the client gate would only let a Free-tier host manually recreate the report from data already visible on-screen, not access anything new.
+
 ---
 
 ## API reference
@@ -172,7 +174,7 @@ A separate **`finance-export`** edge function exists for server-generated CSV do
 | Charts              | `ui/src/features/dashboard/finance/components/FinanceTransactionsChart.tsx`                                                                                                                                                                                   |
 | Transaction form    | `ui/src/features/dashboard/finance/components/OperatingLineItemForm.tsx`                                                                                                                                                                                      |
 | Recurrence modals   | `ui/src/features/dashboard/finance/components/RecurringSeriesModal.tsx`, `ui/src/features/dashboard/finance/components/RecurringDeleteDialog.tsx`                                                                                                             |
-| Export menu + PDF   | `ui/src/features/dashboard/finance/components/FinanceExportMenu.tsx`, `ui/src/features/dashboard/finance/lib/exportPdf.ts`                                                                                                                                    |
+| Export menu + PDF   | `ui/src/features/dashboard/finance/components/FinanceExportMenu.tsx`, `ui/src/features/dashboard/finance/lib/exportPdf.ts`, shared PDF layout `@/lib/pdf/*`                                                                                                   |
 | Mobile page shell   | `ui/src/components/mobile/MobileBrandHero.tsx` (`AdminMobilePage`)                                                                                                                                                                                            |
 | Hooks               | `ui/src/features/dashboard/finance/hooks/useFinanceSummary.ts`, `ui/src/features/dashboard/finance/hooks/useFinanceBookings.ts`, `ui/src/features/dashboard/finance/hooks/useFinanceLineItems.ts`, `ui/src/features/dashboard/finance/hooks/useFinanceApi.ts` |
 | Edge                | `supabase/functions/finance-summary/`, `supabase/functions/finance-bookings/`, `supabase/functions/finance-line-items/`, `supabase/functions/finance-export/`                                                                                                 |

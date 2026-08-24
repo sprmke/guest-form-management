@@ -1,11 +1,11 @@
 ---
-title: 'Property Plans — operator guide'
+title: 'Property Plans & Billing — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-18
+updated: 2026-08-24
 ---
 
-# Property Plans — operator guide
+# Property Plans & Billing — operator guide
 
 Route: `/org/:orgSlug/property/:propertySlug/plans`
 
@@ -25,7 +25,7 @@ Property-scoped subscription tier comparison (5 flat monthly plans). Owners can 
 
 **Access:** any property member with **`settings:view`**. Plan changes require org **owner** (or platform admin).
 
-**Page title:** `${Property Name} - Plans`
+**Page title:** `${Property Name} - Plans & Billing`
 
 **Page description:** “Manage the subscription for this listing — upgrade anytime as you grow.” (desktop header; mobile inline below hero).
 
@@ -47,9 +47,13 @@ Property-scoped subscription tier comparison (5 flat monthly plans). Owners can 
 - **Recent payments:** up to 10 **`property_payment_transactions`** rows with status badges and payment method.
 - After successful payment, **`paymongo-webhook`** assigns the plan and sets **`current_period_start`** / **`current_period_end`** (+1 month).
 - **`past_due`:** banner on property routes; full access until grace expires.
-- **`suspended`:** dashboard restricted to **Plans** and **Help & Support** only (`RequirePropertySubscriptionAccess`); guest-facing booking flows unaffected.
+- **`suspended`:** dashboard restricted to **Plans & Billing** and **Help & Support** only (`RequirePropertySubscriptionAccess`); guest-facing booking flows unaffected.
 
-**Upgrade modal CTA:** **`SubscriptionUpgradeModal`** routes paid-feature prompts to this page.
+**Upgrade modal CTA:** **`SubscriptionUpgradeModal`** resolves the specific minimum plan the blocked feature needs and opens **`PlanReviewDialog`** directly, pre-selected — it no longer routes to this page first.
+
+**Org portfolio coverage:** when this property is slotted into an org's Pro/Business/Business Plus bundle (see [`org/plans.md`](../plans.md)), a banner replaces the usual "pick a paid tier" flow — _"Covered by your org's {tier} plan — manage seats and billing at the org level"_ with a link to `/org/:orgSlug/plans`. Free/Starter/Managed/Commission selection is unaffected either way (org bundling only covers Pro/Business/Business Plus). When the property belongs to an org but isn't yet bundle-covered, a small text cross-link appears instead ("Managing more than one property? Bundle Pro, Business, or Business Plus across your portfolio...") pointing to the org Plans page — this page never sells **Business Plus** on its own (`property-plan` GET excludes it — org-bundle-only, ≤10 properties, see [`org/plans.md`](../plans.md)).
+
+**Mid-cycle plan switches (proration):** switching between two _paid_ tiers while an active subscription is already running credits the unused portion of the current period against the new plan's price — **`PlanReviewDialog`** shows the breakdown (days left → credit → due today) before checkout; **`create-subscription-checkout`** charges the prorated amount (floored at ₱20) and the new period starts fresh from the payment date, not extended from the old period's end. First-time purchases and same-plan renewals are unaffected (full price, as before).
 
 ## Tier ladder (host-facing)
 
@@ -98,4 +102,4 @@ Internal plan codes stay stable in the database; hosts see these names:
 - Pricing is **per listing**, not per organization.
 - Paid upgrades open PayMongo in the browser; the plan activates after payment clears (usually within seconds).
 - Downgrading to Free takes effect immediately for the listing.
-- Renewal reminder emails are sent before period end; unpaid listings become **past due**, then **suspended** after the grace period — pay from Plans to restore dashboard access.
+- Renewal reminder emails are sent before period end; unpaid listings become **past due**, then **suspended** after the grace period — pay from Plans & Billing to restore dashboard access.

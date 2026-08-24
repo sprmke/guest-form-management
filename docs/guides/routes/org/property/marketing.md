@@ -2,7 +2,7 @@
 title: 'Marketing — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-18
+updated: 2026-08-24
 ---
 
 # Marketing — operator guide
@@ -77,7 +77,11 @@ Shared categories: **Promos** (₱500 off, ₱300 off, 10% off, free breakfast, 
 
 **Publish** renders the asset, then opens the publish dialog: pick channel (Facebook / Instagram), account, post vs story, optional AI caption, confirm.
 
-**Plan gating (Free tier):** Create, edit, and autosave stay unrestricted. **Live previews** show a non-removable **Preview** watermark overlay on Calendar, Design, and Video builders. **Publish** is blocked client-side (upgrade modal) and server-side (`publish-to-meta` → **`requireMarketingPublishAllowed`**). Paid tiers with **`marketingStudio: true`** publish normally. AI template/caption generation uses the existing AI credit quota; its **Upgrade** toast action opens the same **`SubscriptionUpgradeModal`** (→ **Plans** page).
+**Plan gating (Free tier, `marketingStudio`):** Create, edit, and autosave stay unrestricted. **Live previews** watermark only the canvas/orientation frame (not the letterboxed workspace chrome) via `PlanGateWatermarkOverlay` (`fit="content"`) on Calendar/Video and `PolotnoPagePlanWatermark` on Design — both use shared `PlanGateWatermarkPattern` (dual dark/light ink so it stays visible on light and dark canvases; sparse diagonal tile). **Template thumbnails** stay sharp (no blur) and get the same compact watermark plus drag/context-menu blocking. **Download** and **Publish** on all three builders open the upgrade modal when not entitled. A solid `TierBadge` sits on the page title (**Marketing**), not on those action buttons. Paid tiers with **`marketingStudio: true`** publish and download normally.
+
+**Plan gating (`aiMarketingGeneration`, Business tier and up):** The sidebar **Generate with AI** button shows a solid corner `TierBadge` (Business). The **Generate** action inside every builder's AI panel (`MarketingAiGeneratePanel`, shared by Calendar/Design/Video) requires `aiMarketingGeneration` — client pre-flight + server check on `generate-marketing-caption`/`generate-marketing-template`. This is separate from and layered on top of the existing per-org **AI credit quota** (a Business+ property can still hit the daily/monthly credit cap and see the same quota-exhausted messaging).
+
+**Plan gating (`customTemplates`, Starter+):** Saving a custom template — the sidebar **Templates → +** ("Save template") action, and Calendar's **Save Template** button for a blank calendar's first save — requires `customTemplates` (`SaveMarketingTemplateButton`, with a solid `TierBadge` on the button's **top-right corner**). The Templates sidebar/picker itself stays fully browsable on every tier (preview-open policy): `MarketingTemplateCard` shows a compact `PlanGateWatermarkPattern` on Free (no blur); name, menu, and click-to-load stay interactive. Drag and context-menu on the thumb image are blocked while watermarked.
 
 **Prerequisite:** Meta Page + Instagram must be connected under the property **Guest Inbox** (`/org/:orgSlug/property/:propertySlug/inbox` → Manage → Channels). If none are connected, the dialog links to Inbox.
 
@@ -191,6 +195,9 @@ See [notifications.md](./notifications.md) for the unified page layout and save 
 | AI template tokens               | `supabase/functions/generate-marketing-template/` + `_shared/marketingTemplateGenerationAi.ts`; calendar compiler `lib/calendarAiTokens.ts`; prompt UI `components/shared/MarketingAiGeneratePanel.tsx`                                                                                                                                   |
 | Meta Graph helpers               | `supabase/functions/_shared/metaPublishing.ts`                                                                                                                                                                                                                                                                                            |
 | Media upload                     | `supabase/functions/_shared/marketingMediaUpload.ts`                                                                                                                                                                                                                                                                                      |
+| Plan-gated watermark             | Shared `PlanGateWatermarkPattern` via `PlanGateWatermarkOverlay` (Calendar/Video, `fit="content"`) + `PolotnoPagePlanWatermark` (Design page only)                                                                                                                                                                                        |
+| Save-custom-template gate        | `ui/src/features/dashboard/marketing/components/shared/SaveMarketingTemplateButton.tsx` (`customTemplates`)                                                                                                                                                                                                                               |
+| Template picker watermark        | `MarketingTemplateCard.tsx` — compact `PlanGateWatermarkPattern` when not entitled to `marketingStudio` (no blur)                                                                                                                                                                                                                         |
 | OAuth scopes                     | `supabase/functions/_shared/metaInboxConfig.ts` (`META_PUBLISHING_SCOPES`)                                                                                                                                                                                                                                                                |
 | Migration                        | `supabase/migrations/20260917120000_marketing_studio.sql`                                                                                                                                                                                                                                                                                 |
 

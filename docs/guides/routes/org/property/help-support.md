@@ -76,9 +76,9 @@ List, new ticket, and conversation live in one Tickets workspace (`/tickets`, `/
 | Page URL           | Bug report       | `category_fields.page_url`           | Auto-filled, hidden                                                                       |
 | Browser info       | Bug report       | `category_fields.browser_info`       | Auto-filled, hidden                                                                       |
 | Attachments        | Bug report       | Storage `support-ticket-attachments` | Optional. 0–3 files, image or video, 20 MB each. Dashed dropzone + previews               |
-| Contact preference | Business inquiry | `category_fields.contact_preference` | Optional, ≤200 chars                                                                      |
+| Contact preference | Business inquiry | `category_fields.contact_preference` | Required, ≤200 chars                                                                      |
 
-Required fields show a red `*`. Submit stays disabled until Subject and Details are filled (and any in-progress attachment upload finishes). Idea no longer has a “why it would help” field.
+Required fields show a red `*`. Submit stays disabled until Subject and Details are filled (plus reach-you for Business), and any in-progress attachment upload finishes. Idea no longer has a “why it would help” field.
 
 ### Save path
 
