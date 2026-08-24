@@ -14,6 +14,8 @@ import type {
   InboxTemplate,
   SaveInboxTemplatePayload,
 } from '@/features/dashboard/inbox/types/inbox';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,9 +58,17 @@ export function InboxQuickReplyFormDialog({
     setGroup(template ? quickReplyGroupFromPlatform(template.platform) : defaultGroup);
   }, [open, template, defaultGroup]);
 
+  const { canUse: canUseQuickReplies, isLoading: quickRepliesLoading } =
+    useFeatureGate('quickReplies');
+  const { open: openUpgradeModal } = useUpgradeModal();
+
   const handleSubmit = async () => {
     if (!title.trim() || !body.trim()) {
       toast.error('Title and message required');
+      return;
+    }
+    if (!canUseQuickReplies) {
+      if (!quickRepliesLoading) openUpgradeModal('quickReplies');
       return;
     }
     try {

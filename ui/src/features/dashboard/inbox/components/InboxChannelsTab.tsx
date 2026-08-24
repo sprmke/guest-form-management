@@ -7,6 +7,9 @@ import { MetaLogo, PlatformLogo } from '@/features/dashboard/inbox/components/Pl
 import { platformLabel } from '@/features/dashboard/inbox/lib/inboxFormat';
 import { isMetaSyncConnectionError } from '@/features/dashboard/inbox/lib/metaInboxSyncErrors';
 import type { InboxConnection } from '@/features/dashboard/inbox/types/inbox';
+import { TierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -171,10 +174,18 @@ export function InboxChannelsTab({
       (igConn.webhookNeedsAttention || igConn.webhookSubscribed === false))
   );
 
+  const { canUse: canUseMetaChatChannel, isLoading: metaChatChannelLoading } =
+    useFeatureGate('metaChatChannel');
+  const { open: openUpgradeModal } = useUpgradeModal();
+
   const handleConnect = () => {
     if (statusLoading) return;
     if (statusError) {
       toast.error('Could not load channels. Refresh and try again.');
+      return;
+    }
+    if (!canUseMetaChatChannel) {
+      if (!metaChatChannelLoading) openUpgradeModal('metaChatChannel');
       return;
     }
     onConnectMeta();
@@ -221,42 +232,46 @@ export function InboxChannelsTab({
             {canManage && (
               <div className="flex flex-wrap items-center justify-end gap-2 sm:shrink-0">
                 {showConnect && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline-primary"
-                    className="h-9 min-h-[44px] gap-1.5 px-3 sm:min-h-9"
-                    disabled={connecting || statusLoading}
-                    onClick={handleConnect}
-                  >
-                    {connecting ? (
-                      <Loader2 className="size-4 animate-spin" aria-hidden />
-                    ) : (
-                      <>
-                        <Plug className="size-4" aria-hidden />
-                        Connect Meta
-                      </>
-                    )}
-                  </Button>
+                  <TierBadgeAnchor feature="metaChatChannel">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline-primary"
+                      className="h-9 min-h-[44px] gap-1.5 px-3 sm:min-h-9"
+                      disabled={connecting || statusLoading}
+                      onClick={handleConnect}
+                    >
+                      {connecting ? (
+                        <Loader2 className="size-4 animate-spin" aria-hidden />
+                      ) : (
+                        <>
+                          <Plug className="size-4" aria-hidden />
+                          Connect Meta
+                        </>
+                      )}
+                    </Button>
+                  </TierBadgeAnchor>
                 )}
                 {showReconnect && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-9 min-h-[44px] gap-1.5 px-3 sm:min-h-9"
-                    disabled={connecting}
-                    onClick={handleConnect}
-                  >
-                    {connecting ? (
-                      <Loader2 className="size-4 animate-spin" aria-hidden />
-                    ) : (
-                      <>
-                        <RefreshCw className="size-4" aria-hidden />
-                        Reconnect
-                      </>
-                    )}
-                  </Button>
+                  <TierBadgeAnchor feature="metaChatChannel">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-9 min-h-[44px] gap-1.5 px-3 sm:min-h-9"
+                      disabled={connecting}
+                      onClick={handleConnect}
+                    >
+                      {connecting ? (
+                        <Loader2 className="size-4 animate-spin" aria-hidden />
+                      ) : (
+                        <>
+                          <RefreshCw className="size-4" aria-hidden />
+                          Reconnect
+                        </>
+                      )}
+                    </Button>
+                  </TierBadgeAnchor>
                 )}
                 {showFixConnection && (
                   <Button

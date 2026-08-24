@@ -2,18 +2,6 @@ import { format, parseISO } from 'date-fns';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-import { registerPdfFonts, setPdfFont } from '@/features/dashboard/finance/lib/pdfFonts';
-import { pdfIsoDate } from '@/features/dashboard/finance/lib/pdfFormatters';
-import {
-  PDF_COLORS,
-  PDF_FONT,
-  PDF_LAYOUT,
-  PDF_TYPE,
-  drawCard,
-  setPdfDraw,
-  setPdfFill,
-  setPdfText,
-} from '@/features/dashboard/finance/lib/pdfTheme';
 import { detectPreset } from '@/features/dashboard/maintenance/lib/maintenancePeriod';
 import type {
   MaintenanceExportType,
@@ -21,6 +9,21 @@ import type {
   MaintenanceQuery,
   MaintenanceSummary,
 } from '@/features/dashboard/maintenance/lib/types';
+import { registerPdfFonts } from '@/lib/pdf/pdfFonts';
+import { pdfIsoDate } from '@/lib/pdf/pdfFormatters';
+import { PDF_COLORS } from '@/lib/pdf/pdfTheme';
+import {
+  addPageFooter,
+  baseAutoTableOptions,
+  contentWidth,
+  drawKpiGrid,
+  drawReportHeader,
+  drawSectionEyebrow,
+  ensurePageSpace,
+  lastTableY,
+  paintPageBackground,
+  startNewPage,
+} from '@/lib/pdf/pdfReportLayout';
 
 const REPORT_TYPE_LABEL: Record<MaintenanceExportType, string> = {
   combined: 'Full maintenance report',
@@ -29,9 +32,9 @@ const REPORT_TYPE_LABEL: Record<MaintenanceExportType, string> = {
 };
 
 const PDF_FILENAME_PREFIX: Record<MaintenanceExportType, string> = {
-  combined: 'maintenance_full',
-  overview: 'maintenance_overview',
-  reminders: 'maintenance_reminders',
+  combined: 'kame-maintenance-report',
+  overview: 'kame-maintenance-overview',
+  reminders: 'kame-maintenance-reminders',
 };
 
 function formatIsoDate(iso: string | null): string {
@@ -74,185 +77,52 @@ type MaintenancePdfPayload = {
   items: MaintenanceItem[];
 };
 
-const TABLE_MARGIN = {
-  left: PDF_LAYOUT.margin,
-  right: PDF_LAYOUT.margin,
-  top: PDF_LAYOUT.margin,
-  bottom: 18,
-};
-
-const TABLE_STYLES = {
-  font: PDF_FONT,
-  fontSize: 7.5,
-  cellPadding: 2.5,
-  textColor: PDF_COLORS.foreground,
-  lineColor: PDF_COLORS.border,
-  lineWidth: 0.1,
-  overflow: 'linebreak' as const,
-};
-
-function paintPageBackground(doc: jsPDF): void {
-  const w = doc.internal.pageSize.getWidth();
-  const h = doc.internal.pageSize.getHeight();
-  setPdfFill(doc, PDF_COLORS.pageBg);
-  doc.rect(0, 0, w, h, 'F');
-}
-
-function startNewPage(doc: jsPDF): number {
-  doc.addPage();
-  paintPageBackground(doc);
-  return PDF_LAYOUT.margin;
-}
-
-function contentWidth(doc: jsPDF): number {
-  return doc.internal.pageSize.getWidth() - PDF_LAYOUT.margin * 2;
-}
-
-function lastTableY(doc: jsPDF, fallback: number): number {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((doc as any).lastAutoTable?.finalY as number | undefined) ?? fallback;
-}
-
-function ensurePageSpace(doc: jsPDF, y: number, minBottom = 48): number {
-  if (y > doc.internal.pageSize.getHeight() - minBottom) {
-    return startNewPage(doc);
-  }
-  return y;
-}
-
-function drawReportHeader(
-  doc: jsPDF,
-  query: MaintenanceQuery,
-  exportType: MaintenanceExportType
-): number {
-  const m = PDF_LAYOUT.margin;
-  const w = doc.internal.pageSize.getWidth();
-  const cardW = w - m * 2;
-  const cardY = 10;
-  const cardH = 24;
-
-  drawCard(doc, m, cardY, cardW, cardH, PDF_LAYOUT.cardRadius, { shadow: false });
-
-  const badgeSize = 10;
-  const badgeX = m + 4;
-  const badgeY = cardY + (cardH - badgeSize) / 2;
-  setPdfFill(doc, PDF_COLORS.primary);
-  doc.roundedRect(badgeX, badgeY, badgeSize, badgeSize, 2, 2, 'F');
-  setPdfText(doc, PDF_COLORS.primaryFg);
-  setPdfFont(doc, 'bold', 7.5);
-  doc.text('KH', badgeX + badgeSize / 2, badgeY + 6.8, { align: 'center' });
-
-  const textX = badgeX + badgeSize + 4;
-  setPdfText(doc, PDF_COLORS.foreground);
-  setPdfFont(doc, 'bold', PDF_TYPE.title);
-  doc.text('Kame Homes', textX, cardY + 10);
-
-  setPdfFont(doc, 'normal', PDF_TYPE.caption);
-  setPdfText(doc, PDF_COLORS.muted);
-  doc.text(REPORT_TYPE_LABEL[exportType], textX, cardY + 16);
-
-  const generated = format(new Date(), "MMM d, yyyy 'at' h:mm a");
-  doc.text(generated, m + cardW - 4, cardY + 10, { align: 'right' });
-  doc.text('Maintenance', m + cardW - 4, cardY + 16, { align: 'right' });
-
-  const preset = presetLabel(query);
-  const range = periodRangeLabel(query.from, query.to);
-
-  let y = cardY + cardH + PDF_LAYOUT.afterHeaderCard;
-
-  setPdfFont(doc, 'bold', PDF_TYPE.section);
-  setPdfText(doc, PDF_COLORS.foreground);
-  doc.text(preset ? `${preset} · ${range}` : range, m, y);
-
-  if (query.q.trim()) {
-    y += PDF_LAYOUT.metaLine;
-    setPdfFont(doc, 'normal', PDF_TYPE.caption);
-    setPdfText(doc, PDF_COLORS.muted);
-    doc.text(`Search: "${query.q.trim()}"`, m, y);
-  }
-
-  return y + PDF_LAYOUT.beforeBlock;
-}
-
-type KpiItem = {
-  label: string;
-  value: string;
-};
-
-function drawSectionEyebrow(doc: jsPDF, y: number, title: string): number {
-  const m = PDF_LAYOUT.margin;
-  setPdfFont(doc, 'bold', PDF_TYPE.overline);
-  setPdfText(doc, PDF_COLORS.primary);
-  doc.text(title.toUpperCase(), m, y);
-  return y + PDF_LAYOUT.afterSectionTitle;
-}
-
-function drawKpiGrid(doc: jsPDF, y: number, items: KpiItem[], cols = 4): number {
-  const m = PDF_LAYOUT.margin;
-  const boxW = contentWidth(doc);
-  const colW = boxW / cols;
-  const rowH = 20;
-  const gap = 2.5;
-
-  items.forEach((item, i) => {
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-    const x = m + col * colW;
-    const itemY = y + row * (rowH + gap);
-    const cardW = colW - gap;
-
-    drawCard(doc, x, itemY, cardW, rowH, 2, { shadow: false });
-
-    setPdfFont(doc, 'bold', PDF_TYPE.overline);
-    setPdfText(doc, PDF_COLORS.muted);
-    const labelLines = doc.splitTextToSize(item.label.toUpperCase(), cardW - 5);
-    doc.text(labelLines.slice(0, 2), x + 3, itemY + 6);
-
-    setPdfFont(doc, 'bold', PDF_TYPE.data);
-    setPdfText(doc, PDF_COLORS.foreground);
-    doc.text(item.value, x + 3, itemY + 15);
-  });
-
-  const rows = Math.ceil(items.length / cols);
-  return y + rows * (rowH + gap) + PDF_LAYOUT.sectionGap;
+function buildMaintenanceHeaderMeta(query: MaintenanceQuery): string[] {
+  if (!query.q.trim()) return [];
+  return [`Search: "${query.q.trim()}"`];
 }
 
 function appendOverviewSection(doc: jsPDF, y: number, summary: MaintenanceSummary): number {
-  y = drawSectionEyebrow(doc, y, 'Summary');
-  y = drawKpiGrid(doc, y, [
-    { label: 'Total', value: String(summary.total) },
-    { label: 'Telegram enabled', value: String(summary.telegramEnabled) },
-    { label: 'Completed', value: String(summary.completed) },
-    { label: 'Pending', value: String(summary.pending) },
-  ]);
+  y = drawSectionEyebrow(doc, y, 'Summary', 'Totals for the selected period');
+  y = drawKpiGrid(
+    doc,
+    y,
+    [
+      { label: 'Total', value: String(summary.total) },
+      { label: 'Telegram enabled', value: String(summary.telegramEnabled) },
+      { label: 'Completed', value: String(summary.completed) },
+      { label: 'Pending', value: String(summary.pending) },
+    ],
+    4
+  );
 
   if (summary.byCategory.length > 0) {
     y = ensurePageSpace(doc, y, 60);
     y = drawSectionEyebrow(doc, y, 'By category');
     const tableW = contentWidth(doc);
     autoTable(doc, {
+      ...baseAutoTableOptions(tableW),
       startY: y,
-      tableWidth: tableW,
-      margin: TABLE_MARGIN,
       head: [['Category', 'Count']],
       body: summary.byCategory.map((row) => [row.category, String(row.count)]),
-      styles: TABLE_STYLES,
-      headStyles: {
-        fillColor: PDF_COLORS.primarySubtle,
-        textColor: PDF_COLORS.primaryDark,
-        fontStyle: 'bold',
-        fontSize: 7,
+      columnStyles: {
+        0: { cellWidth: tableW * 0.72 },
+        1: { cellWidth: tableW * 0.28, halign: 'right' },
       },
-      alternateRowStyles: { fillColor: PDF_COLORS.tableStripe },
     });
-    y = lastTableY(doc, y) + PDF_LAYOUT.sectionGap;
+    y = lastTableY(doc, y) + 7;
   }
 
   return y;
 }
 
 function appendRemindersSection(doc: jsPDF, y: number, items: MaintenanceItem[]): number {
-  y = drawSectionEyebrow(doc, y, `Reminders (${items.length})`);
+  y = drawSectionEyebrow(
+    doc,
+    y,
+    'Reminders',
+    `${items.length} reminder${items.length === 1 ? '' : 's'} in period`
+  );
 
   const tableW = contentWidth(doc);
   const rows = items.map((item) => [
@@ -264,46 +134,30 @@ function appendRemindersSection(doc: jsPDF, y: number, items: MaintenanceItem[])
   ]);
 
   autoTable(doc, {
+    ...baseAutoTableOptions(tableW),
     startY: y,
-    tableWidth: tableW,
-    margin: TABLE_MARGIN,
     head: [['Date', 'Label', 'Category', 'Status', 'Notes']],
     body: rows.length > 0 ? rows : [['No reminders match the selected filters.', '', '', '', '']],
-    styles: TABLE_STYLES,
-    headStyles: {
-      fillColor: PDF_COLORS.primarySubtle,
-      textColor: PDF_COLORS.primaryDark,
-      fontStyle: 'bold',
-      fontSize: 7,
-    },
     columnStyles: {
-      0: { cellWidth: 22 },
-      1: { cellWidth: 42 },
-      2: { cellWidth: 28 },
-      3: { cellWidth: 18 },
-      4: { cellWidth: 'auto' },
+      0: { cellWidth: tableW * 0.14, halign: 'left' },
+      1: { cellWidth: tableW * 0.28 },
+      2: { cellWidth: tableW * 0.18 },
+      3: { cellWidth: tableW * 0.12, halign: 'center' },
+      4: { cellWidth: tableW * 0.28 },
     },
-    alternateRowStyles: { fillColor: PDF_COLORS.tableStripe },
+    didParseCell: (data) => {
+      if (data.section !== 'body' || data.column.index !== 3) return;
+      const status = String(data.cell.raw);
+      if (status === 'Done') {
+        data.cell.styles.textColor = PDF_COLORS.success;
+        data.cell.styles.fontStyle = 'bold';
+      } else if (status === 'Pending') {
+        data.cell.styles.textColor = PDF_COLORS.warning;
+      }
+    },
   });
 
-  return lastTableY(doc, y) + PDF_LAYOUT.sectionGap;
-}
-
-function addPageFooter(doc: jsPDF): void {
-  const pageCount = doc.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i += 1) {
-    doc.setPage(i);
-    const w = doc.internal.pageSize.getWidth();
-    const h = doc.internal.pageSize.getHeight();
-    setPdfDraw(doc, PDF_COLORS.border);
-    doc.setLineWidth(0.1);
-    doc.line(PDF_LAYOUT.margin, h - 12, w - PDF_LAYOUT.margin, h - 12);
-    setPdfFont(doc, 'normal', PDF_TYPE.caption);
-    setPdfText(doc, PDF_COLORS.muted);
-    doc.text(`Page ${i} of ${pageCount}`, w - PDF_LAYOUT.margin, h - 7, {
-      align: 'right',
-    });
-  }
+  return lastTableY(doc, y) + 8;
 }
 
 async function buildMaintenanceReportPdf(
@@ -314,7 +168,15 @@ async function buildMaintenanceReportPdf(
   await registerPdfFonts(doc);
   paintPageBackground(doc);
 
-  let y = drawReportHeader(doc, payload.query, type);
+  const preset = presetLabel(payload.query);
+  const range = periodRangeLabel(payload.query.from, payload.query.to);
+
+  let y = drawReportHeader(doc, {
+    moduleLabel: 'Maintenance',
+    reportTypeLabel: REPORT_TYPE_LABEL[type],
+    periodLine: preset ? `${preset} · ${range}` : range,
+    metaLines: buildMaintenanceHeaderMeta(payload.query),
+  });
 
   if (type === 'overview' || type === 'combined') {
     y = appendOverviewSection(doc, y, payload.summary);
@@ -329,7 +191,7 @@ async function buildMaintenanceReportPdf(
     y = appendRemindersSection(doc, y, payload.items);
   }
 
-  addPageFooter(doc);
+  addPageFooter(doc, 'Maintenance');
   return doc;
 }
 

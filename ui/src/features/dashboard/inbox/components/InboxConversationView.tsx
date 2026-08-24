@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
   Loader2,
+  MessageSquare,
   Pencil,
   RefreshCw,
   Reply,
@@ -42,6 +43,8 @@ import {
 } from '@/features/dashboard/inbox/types/inbox';
 import { handleAiMutationError, isAiQuotaError } from '@/features/dashboard/org/lib/aiQuotaToast';
 import { propertyDashboardPath } from '@/features/dashboard/org/lib/tenantPaths';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 
 import { ChatComposerContextBar } from '@/components/chat/ChatComposerContextBar';
 import {
@@ -160,6 +163,9 @@ export function InboxConversationView({
   const [draftAiFlagged, setDraftAiFlagged] = useState(false);
   const [useHumanAgentTag, setUseHumanAgentTag] = useState(false);
   const [previewAttachment, setPreviewAttachment] = useState<InboxAttachmentPreview | null>(null);
+  const { canUse: canUseQuickReplies, isLoading: quickRepliesLoading } =
+    useFeatureGate('quickReplies');
+  const { open: openUpgradeModal } = useUpgradeModal();
   const [calendarModalOpen, setCalendarModalOpen] = useState(false);
   const [calendarCheckIn, setCalendarCheckIn] = useState<Date | null>(null);
   const [calendarCheckOut, setCalendarCheckOut] = useState<Date | null>(null);
@@ -281,7 +287,8 @@ export function InboxConversationView({
 
   if (!conversation) {
     return (
-      <div className="bg-muted/20 text-muted-foreground flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-2">
+      <div className="bg-muted/20 text-muted-foreground flex min-h-0 flex-1 flex-col items-center justify-center gap-2">
+        <MessageSquare className="size-8 opacity-40" aria-hidden />
         <p className="text-sm">Select a conversation</p>
       </div>
     );
@@ -376,7 +383,7 @@ export function InboxConversationView({
   };
 
   return (
-    <div className="bg-background flex h-full min-h-0 flex-1 flex-col">
+    <div className="bg-muted/20 flex min-h-0 flex-1 flex-col">
       <InboxMediaPreviewDialog
         attachment={previewAttachment}
         open={!!previewAttachment}
@@ -400,7 +407,7 @@ export function InboxConversationView({
         />
       ) : null}
 
-      <div className="border-border/80 bg-card/30 flex shrink-0 items-center gap-3 border-b px-3 py-3 sm:px-4">
+      <div className="border-border bg-card flex shrink-0 items-center gap-3 border-b px-3 py-3 sm:px-4">
         {onBack && (
           <Button
             type="button"
@@ -494,7 +501,13 @@ export function InboxConversationView({
         />
       ) : null}
 
-      <div ref={scrollContainerRef} className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-5">
+      <div
+        ref={scrollContainerRef}
+        className={cn(
+          'min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 py-4 sm:px-5',
+          !isLoading && messages.length === 0 && !loadError && 'flex flex-col'
+        )}
+      >
         {isLoading ? (
           <div className="space-y-3" aria-busy="true" aria-label="Loading messages">
             {MESSAGE_SKELETON_ROWS.map((row, i) => (
@@ -674,13 +687,18 @@ export function InboxConversationView({
                   );
                 }}
               />
-            ) : null}
+            ) : (
+              <div className="flex flex-1 flex-col items-center justify-center py-12 text-center">
+                <MessageSquare className="text-muted-foreground/50 mb-3 size-8" aria-hidden />
+                <p className="text-muted-foreground text-sm">No messages yet</p>
+              </div>
+            )}
           </div>
         )}
       </div>
 
       {canReply && (
-        <div className="border-border/80 bg-muted/20 shrink-0 border-t p-3 sm:p-4">
+        <div className="border-border bg-card shrink-0 border-t p-3 sm:p-4">
           {isWeb && peerTyping ? (
             <p className="text-muted-foreground mb-2 px-1 text-xs" aria-live="polite">
               Guest is typing…
@@ -795,6 +813,10 @@ export function InboxConversationView({
                           <DropdownMenuItem
                             key={t.id}
                             onClick={() => {
+                              if (!canUseQuickReplies) {
+                                if (!quickRepliesLoading) openUpgradeModal('quickReplies');
+                                return;
+                              }
                               setDraft(t.body_text);
                               setDraftFromAi(false);
                             }}

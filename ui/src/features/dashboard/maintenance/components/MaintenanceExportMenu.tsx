@@ -15,6 +15,9 @@ import type {
   MaintenanceSummary,
 } from '@/features/dashboard/maintenance/lib/types';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
+import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 
 import { MobileChoiceItem, MobileChoiceSheet } from '@/components/mobile/MobileChoiceSheet';
 import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
@@ -62,8 +65,15 @@ export function MaintenanceExportMenu({
   const propertyId = usePropertyIdParam();
   const [loading, setLoading] = useState<MaintenanceExportType | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const { canUse: canExport, isLoading: entitlementsLoading } =
+    useFeatureGate('maintenanceReporting');
+  const { open: openUpgradeModal } = useUpgradeModal();
 
   async function handlePdfExport(type: MaintenanceExportType) {
+    if (!canExport) {
+      if (!entitlementsLoading) openUpgradeModal('maintenanceReporting');
+      return;
+    }
     setLoading(type);
     try {
       const needsItems = type === 'reminders' || type === 'combined';
@@ -145,7 +155,7 @@ export function MaintenanceExportMenu({
         <button
           type="button"
           disabled={busy}
-          className={cn(outlineBtnClass, 'gap-1.5 px-3')}
+          className={cn(outlineBtnClass, 'relative gap-1.5 px-3')}
           aria-label="Export report"
         >
           {busy ? (
@@ -155,6 +165,11 @@ export function MaintenanceExportMenu({
           )}
           <span className="hidden sm:inline">Export report</span>
           <span className="sm:hidden">Report</span>
+          <TierBadge
+            feature="maintenanceReporting"
+            placement="corner"
+            className="hidden sm:inline-flex"
+          />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">

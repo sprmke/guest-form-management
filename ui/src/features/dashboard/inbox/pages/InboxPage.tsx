@@ -37,6 +37,8 @@ import type {
   ThreadPlatformFilter,
   ThreadStatusFilter,
 } from '@/features/dashboard/inbox/types/inbox';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 
 import { bottomTabBarOffsetClassName } from '@/components/mobile/BottomTabBar';
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
@@ -108,6 +110,9 @@ export function InboxPage({
   };
 
   const mockActive = useInboxMockActive();
+  const { canUse: canUseMetaChatChannel, isLoading: metaChatChannelLoading } =
+    useFeatureGate('metaChatChannel');
+  const { open: openUpgradeModal } = useUpgradeModal();
 
   useInboxRealtime(orgId);
 
@@ -218,6 +223,10 @@ export function InboxPage({
   ]);
 
   const handleConnectMeta = () => {
+    if (!canUseMetaChatChannel) {
+      if (!metaChatChannelLoading) openUpgradeModal('metaChatChannel');
+      return;
+    }
     connectMeta.mutate(returnPath, {
       onSuccess: () => {
         if (mockActive) toast.success('Preview: Meta channels connected');

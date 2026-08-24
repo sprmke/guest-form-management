@@ -49,7 +49,7 @@ export function InboxThreadRow({ conversation, selected, showPlatform, onSelect 
         <p
           className={cn(
             'mt-0.5 line-clamp-2 text-xs leading-relaxed',
-            unread ? 'text-foreground/80' : 'text-muted-foreground'
+            unread ? 'text-foreground/85' : 'text-foreground/60'
           )}
         >
           {conversation.subject_preview || '—'}

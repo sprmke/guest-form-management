@@ -9,6 +9,7 @@ import { platformLabel } from '@/features/dashboard/inbox/lib/inboxFormat';
 import { INBOX_CHANNEL_ORDER } from '@/features/dashboard/inbox/lib/quickReplyGroups';
 import type { InboxAutomationSettings } from '@/features/dashboard/inbox/types/inbox';
 import { handleAiMutationError, isAiQuotaError } from '@/features/dashboard/org/lib/aiQuotaToast';
+import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 
@@ -109,9 +110,12 @@ export function InboxAutomationTab({ settings, isLoading, saving, onSave }: Prop
               <Sparkles className="size-5" aria-hidden />
             </div>
             <div className="min-w-0">
-              <Label htmlFor="auto-send-enabled" className="text-sm font-semibold">
-                Send automatically
-              </Label>
+              <div className="flex flex-wrap items-center gap-2">
+                <Label htmlFor="auto-send-enabled" className="text-sm font-semibold">
+                  Send automatically
+                </Label>
+                <TierBadge feature="aiChatAutoReply" />
+              </div>
               <p className="text-muted-foreground mt-0.5 text-xs">
                 Sends AI replies without review. Off by default.
               </p>

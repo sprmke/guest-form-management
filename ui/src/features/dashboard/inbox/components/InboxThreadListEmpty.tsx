@@ -1,5 +1,7 @@
 import { Plug, RefreshCw } from 'lucide-react';
 
+import { TierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
+
 import { Button } from '@/components/ui/button';
 
 type Props = {
@@ -37,16 +39,18 @@ export function InboxThreadListEmpty({
       <div className="flex flex-col items-center justify-center gap-3 p-6 text-center">
         <p className="text-muted-foreground text-sm">Connect Meta to receive messages.</p>
         {canConnect && onConnect && (
-          <Button
-            type="button"
-            variant="outline-primary"
-            size="sm"
-            className="h-9 min-h-[44px] gap-1.5 px-3"
-            onClick={onConnect}
-          >
-            <Plug className="size-4" aria-hidden />
-            Connect
-          </Button>
+          <TierBadgeAnchor feature="metaChatChannel">
+            <Button
+              type="button"
+              variant="outline-primary"
+              size="sm"
+              className="h-9 min-h-[44px] gap-1.5 px-3"
+              onClick={onConnect}
+            >
+              <Plug className="size-4" aria-hidden />
+              Connect
+            </Button>
+          </TierBadgeAnchor>
         )}
       </div>
     );
@@ -65,16 +69,18 @@ export function InboxThreadListEmpty({
       <div className="flex flex-col items-center justify-center gap-3 p-6 text-center">
         <p className="text-destructive text-sm">{syncError ?? 'Could not load conversations.'}</p>
         {canConnect && onConnect && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-9 min-h-[44px] gap-1.5 px-3"
-            onClick={onConnect}
-          >
-            <RefreshCw className="size-4" aria-hidden />
-            Reconnect
-          </Button>
+          <TierBadgeAnchor feature="metaChatChannel">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 min-h-[44px] gap-1.5 px-3"
+              onClick={onConnect}
+            >
+              <RefreshCw className="size-4" aria-hidden />
+              Reconnect
+            </Button>
+          </TierBadgeAnchor>
         )}
       </div>
     );
