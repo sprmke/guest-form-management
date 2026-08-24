@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import dayjs from 'dayjs';
@@ -251,11 +251,22 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
   const petVaccinationInputRef = useRef<HTMLInputElement>(null);
   const petImageInputRef = useRef<HTMLInputElement>(null);
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const propertySlug = useGuestPropertySlug();
   const scopedSearchParams = useGuestPropertySearchParams();
   const bookingId = searchParams.get('bookingId');
   const navigate = useNavigate();
-  const { requireGuestAuth, formSubmitResumeTick } = useGuestAuth();
+  const skipAuthGate = Boolean(embed?.skipAuthGate);
+  const { status: guestAuthStatus, requireGuestAuth, formSubmitResumeTick } = useGuestAuth();
+
+  // Same entry gate as `/messages`: require sign-in before the form is usable.
+  useEffect(() => {
+    if (skipAuthGate || guestAuthStatus !== 'anonymous') return;
+    const to = `${location.pathname}${location.search}`;
+    requireGuestAuth(() => undefined, {
+      resume: { type: 'navigate', to },
+    });
+  }, [skipAuthGate, guestAuthStatus, requireGuestAuth, location.pathname, location.search]);
   const {
     data: guestPaymentInfo = DEFAULT_GUEST_PAYMENT_INFO,
     isFetched: guestPaymentInfoFetched,
@@ -1166,7 +1177,7 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
 
   const handleSubmitGuestForm = () => {
     if (!submitReady || isSubmitting || !canProceed) return;
-    if (embed?.skipAuthGate) {
+    if (skipAuthGate) {
       pendingSubmitAfterAuthRef.current = false;
       void form.handleSubmit(onSubmit)();
       return;
@@ -1230,6 +1241,14 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
   }, [formSubmitResumeTick, submitReady, isSubmitting, canProceed]);
 
   const StepIcon = activeStepConfig?.icon ?? User;
+
+  if (!skipAuthGate && (guestAuthStatus === 'loading' || guestAuthStatus === 'anonymous')) {
+    return (
+      <div className={cn(embed?.compactChrome ? 'p-0 sm:p-1' : 'p-4 sm:p-6 lg:p-8')}>
+        <GuestFormPageSkeleton embed={Boolean(embed?.compactChrome)} />
+      </div>
+    );
+  }
 
   return (
     <Form {...form}>
