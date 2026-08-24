@@ -2,7 +2,7 @@
 title: 'Property templates'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-21
+updated: 2026-08-24
 ---
 
 # Property templates
@@ -19,6 +19,8 @@ On **phone/tablet**, the page scrolls inside the section layout (`AdminSectionNa
 
 Operators edit per-property copy here. **Preview and live sends use the same renderer** (`renderPropertyTemplateSendEmail` + `fragments/configurable-template-send.html`). Dynamic blocks (tables, payment breakdown, CTAs) are **`{{placeholders}}` in the template body** — visible in Preview when sample/send HTML is injected.
 
+**Plan gating (`customTemplates`, Starter+):** Free hosts can still browse every template, open **Placeholders** / **Reset**, and save built-in (standard/email) content. Edit and Preview WYSIWYG surfaces use a light readable blur when not entitled. **Add Custom Template** (header, empty-state card, mobile hero) opens the upgrade modal instead of the create dialog. Creating or saving a **custom** template requires the plan — client pre-flight plus `property-templates-settings` (`action: create` and custom-key PATCH). Delete custom stays open.
+
 ## Host-facing knowledge
 
 Templates is where you customize the text guests and your team receive: stay guide sections (house rules, check-in and check-out, parking) and automated emails (booking confirmations, document requests, ready-for-check-in). Preview shows the same layout that goes out to guests, whether that's on the stay guide or in an email.
@@ -33,6 +35,8 @@ Templates is where you customize the text guests and your team receive: stay gui
   A: Yes. Use **Reset to default** on any built-in template to restore the original wording, including dynamic sections like payment tables and signatures.
 - Q: Do custom templates get sent automatically?
   A: Not yet. Custom templates are saved for future use, but only the built-in standard and email templates are wired to guest-facing pages and automated sends today.
+- Q: Why is Add Custom Template asking me to upgrade?
+  A: Custom templates are on Starter and above. You can still edit built-in templates, use placeholders, and reset to defaults on Free.
 
 ## Integration status
 
@@ -56,7 +60,7 @@ Templates is where you customize the text guests and your team receive: stay gui
 
 The four **standard** keys (`house-rules`, `check-in-instructions`, `check-out-instructions`, `parking-reminders`) render on the token-gated guest page **`/properties/:slug/stay-guide?token=`** during the booking access window. See **[[stay-guide|Guest stay guide (token-gated brochure)]]**.
 
-**Stay guide preview** — **Standard templates** group heading includes **Preview stay guide** (opens new tab). URL: **`/properties/:slug/stay-guide?preview=1&property_id=`**; loads via **`GET preview-guest-stay-guide`** with host JWT (`templates:view`). Uses sample guest/booking placeholders so all four standard sections (including parking) are visible without a real booking token.
+**Stay guide preview** — use **Public Pages → Stay Guide → Edit** (live preview) or open the Stay Guide card’s preview URL. Templates edits body copy only; it does not include a **Preview stay guide** button.
 
 ### Previously not wired (email/PDF)
 
@@ -92,17 +96,16 @@ Built-in defaults ship in `propertyTemplates.ts` on the server. Rows in `propert
 
 ## Save paths
 
-| Action                           | API                                                                                                  |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Load all                         | `GET property-templates-settings?property_id=`                                                       |
-| Save built-in / custom content   | `PATCH property-templates-settings` `{ templateKey, content, sectionImageUrl? }`                     |
-| Upload section / inline image    | `POST upload-property-template-asset` multipart `assetType`, `file`, `templateKey` (section only)    |
-| Create custom                    | `PATCH` `{ action: "create", name, content }`                                                        |
-| Delete custom                    | `PATCH` `{ action: "delete", templateKey }`                                                          |
-| Preview (email shell)            | `POST property-templates-preview` `{ templateKey, category, content, name? }`                        |
-| Preview stay guide (public page) | `GET preview-guest-stay-guide?property_id=` — mock booking; opens from **Preview stay guide** button |
-
-Auth: `verifyAdminJwt` + property scope via `property_id` query (same as other admin settings). Stay guide preview uses **`serveAuthenticated`** + **`templates:view`**.
+| Action                                                                                          | API                                                                                                                                 |
+| ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Load all                                                                                        | `GET property-templates-settings?property_id=`                                                                                      |
+| Save built-in / custom content                                                                  | `PATCH property-templates-settings` `{ templateKey, content, sectionImageUrl? }`                                                    |
+| Upload section / inline image                                                                   | `POST upload-property-template-asset` multipart `assetType`, `file`, `templateKey` (section only)                                   |
+| Create custom                                                                                   | `PATCH` `{ action: "create", name, content }` — requires plan feature **`customTemplates`** (429 + `upgradeHook` when not entitled) |
+| Save custom content                                                                             | `PATCH` `{ templateKey: "custom-…", content, name? }` — same **`customTemplates`** gate as create                                   |
+| Delete custom                                                                                   | `PATCH` `{ action: "delete", templateKey }`                                                                                         |
+| Preview (email shell)                                                                           | `POST property-templates-preview` `{ templateKey, category, content, name? }`                                                       |
+| Auth: `verifyAdminJwt` + property scope via `property_id` query (same as other admin settings). |
 
 ## Preview
 

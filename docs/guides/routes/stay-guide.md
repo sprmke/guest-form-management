@@ -82,9 +82,9 @@ From **`public_page_configs`** (`page_type = stay_guide`), included on guest/pre
 
 Both responses include **`sectionConfig`**. Host layout saves via **`public-page-configs`** (see **[[public-pages|Public Pages]]**).
 
-## Admin preview (Templates)
+## Admin preview
 
-**Preview stay guide** on **Templates → Standard templates** opens **`?preview=1&property_id=`** (no guest token). See **[[templates|Property templates]]**.
+**Public Pages → Stay Guide → Edit** shows a live preview. Hosts can also open **`/properties/:slug/stay-guide?preview=1&property_id=`** (no guest token) from the Stay Guide card on Public Pages. Requires the same signed-in host session (`templates:view`). Payload from **`preview-guest-stay-guide`** uses **mock booking data** (sample guest name, Manila-relative check-in/out, parking + pets enabled) so operators can review all standard sections without a live booking token. A **Preview** banner appears at the top of the page. Templates edits standard body copy only — no separate **Preview stay guide** button there.
 
 ## Email
 
@@ -93,10 +93,6 @@ On **`READY_FOR_CHECKIN`** transition, orchestrator calls **`ensureGuestStayGuid
 ## Admin (booking detail)
 
 On **`READY_FOR_CHECKIN`** and later, **WorkflowPanel** shows **Stay guide** with **Open stay guide** + copy. The link is **issued automatically** on transition to **`READY_FOR_CHECKIN`**.
-
-## Admin preview (Templates)
-
-**Templates → Standard templates** → **Preview stay guide** opens **`/properties/:slug/stay-guide?preview=1&property_id=`** in a new tab. Requires the same signed-in host session as the dashboard (`templates:view`). Payload from **`preview-guest-stay-guide`** uses **mock booking data** (sample guest name, Manila-relative check-in/out, parking + pets enabled) so operators can review all standard sections without a live booking token. A **Preview** banner appears at the top of the page.
 
 ## Page Editor
 

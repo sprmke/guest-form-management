@@ -13,12 +13,12 @@ Navigation for **guest-form-management**.
 
 ## Workflow (active feature work)
 
-| Doc                                                | Purpose                                                                                                                                                                                                      |
-| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [`workflow/README.md`](./workflow/README.md)       | Lifecycle: intake → planned → in-progress → done · wont-do                                                                                                                                                   |
-| [`workflow/planned/`](./workflow/planned/)         | Plans not yet shipped                                                                                                                                                                                        |
-| [`workflow/in-progress/`](./workflow/in-progress/) | Active implementation — includes **feature gating** ([`feature-gating-subscription-upgrade.md`](./workflow/in-progress/feature-gating-subscription-upgrade.md)), host pricing tiers, PayMongo (planned next) |
-| [`workflow/done/`](./workflow/done/)               | Verified shipped plans                                                                                                                                                                                       |
+| Doc                                                | Purpose                                                                                                                                                                                                                                                                                    |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [`workflow/README.md`](./workflow/README.md)       | Lifecycle: intake → planned → in-progress → done · wont-do                                                                                                                                                                                                                                 |
+| [`workflow/planned/`](./workflow/planned/)         | Plans not yet shipped                                                                                                                                                                                                                                                                      |
+| [`workflow/in-progress/`](./workflow/in-progress/) | Active implementation — includes the app-wide tier/feature gating audit ([`tier-feature-alignment-audit.md`](./workflow/in-progress/tier-feature-alignment-audit.md)) and org portfolio bundling ([`pricing-portfolio-bundling.md`](./workflow/in-progress/pricing-portfolio-bundling.md)) |
+| [`workflow/done/`](./workflow/done/)               | Verified shipped plans                                                                                                                                                                                                                                                                     |
 
 ## Product backlog (GitHub Issues)
 
@@ -29,18 +29,19 @@ See epics #101–#119 in historical [`archive/todos/BACKLOG_DRAFT.md`](./archive
 
 ## Architecture (live)
 
-| Doc                                                                                  | Purpose                                                             |
-| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------- |
-| [`PROJECT.md`](./PROJECT.md)                                                         | Thin index into `architecture/`                                     |
-| [`architecture/overview.md`](./architecture/overview.md)                             | Stack, repo layout, key files                                       |
-| [`architecture/routing.md`](./architecture/routing.md)                               | Routes and user flows                                               |
-| [`architecture/data-model.md`](./architecture/data-model.md)                         | Postgres schema                                                     |
-| [`architecture/edge-functions.md`](./architecture/edge-functions.md)                 | Edge function inventory                                             |
-| [`architecture/integrations.md`](./architecture/integrations.md)                     | Resend, Google, PDF                                                 |
-| [`architecture/validation-and-env.md`](./architecture/validation-and-env.md)         | Validation + env vars                                               |
-| [`architecture/deployment.md`](./architecture/deployment.md)                         | Deployment summary (links runbooks in archive)                      |
-| [`architecture/roadmap.md`](./architecture/roadmap.md)                               | Roadmap / gaps                                                      |
-| [`architecture/ai-dashboard-assistant.md`](./architecture/ai-dashboard-assistant.md) | AI dashboard assistant — full tool catalog, tiers, RBAC, exclusions |
+| Doc                                                                                  | Purpose                                                              |
+| ------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| [`PROJECT.md`](./PROJECT.md)                                                         | Thin index into `architecture/`                                      |
+| [`architecture/overview.md`](./architecture/overview.md)                             | Stack, repo layout, key files                                        |
+| [`architecture/routing.md`](./architecture/routing.md)                               | Routes and user flows                                                |
+| [`architecture/data-model.md`](./architecture/data-model.md)                         | Postgres schema                                                      |
+| [`architecture/edge-functions.md`](./architecture/edge-functions.md)                 | Edge function inventory                                              |
+| [`architecture/integrations.md`](./architecture/integrations.md)                     | Resend, Google, PDF                                                  |
+| [`architecture/validation-and-env.md`](./architecture/validation-and-env.md)         | Validation + env vars                                                |
+| [`architecture/deployment.md`](./architecture/deployment.md)                         | Deployment summary (links runbooks in archive)                       |
+| [`architecture/roadmap.md`](./architecture/roadmap.md)                               | Roadmap / gaps                                                       |
+| [`architecture/ai-dashboard-assistant.md`](./architecture/ai-dashboard-assistant.md) | AI dashboard assistant — full tool catalog, tiers, RBAC, exclusions  |
+| [`architecture/plans-feature-matrix.md`](./architecture/plans-feature-matrix.md)     | Plan/tier feature × entitlement matrix, client/server gate inventory |
 
 ## Guides (live — per-route behavior)
 

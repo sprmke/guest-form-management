@@ -2,7 +2,7 @@
 title: 'Property Team — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-17
+updated: 2026-08-24
 ---
 
 # Property Team — operator guide
@@ -48,8 +48,12 @@ Team is where you invite people to help run this property and control what they 
   A: Enter their Gmail address (they sign in with Google), choose a role, and they'll get an email link valid for seven days to accept and join this property.
 - Q: Can organization owners see my property team list?
   A: Yes. Organization owners and admins show up in the member list automatically with full access, even though they aren't stored as separate property members.
+- Q: What happens to my team members if I downgrade my plan?
+  A: Nothing is deleted. If your new plan supports fewer members than you currently have active, the most recently added ones are automatically disabled — marked "Plan limit" — until you're back within your plan's limit. Their roles and permissions are saved, not erased. Upgrading again automatically re-enables them, oldest first, with no extra work on your end.
 
-**Plan gating:** Viewing the team is always free. **Send Invitation** is gated by `teamManagement.enabled` and `teamManagement.maxMembers` (active members + pending invites). Free tier opens **`SubscriptionUpgradeModal`** instead of calling `property-team-invitations`; server enforces the same count via **`requireTeamInviteAllowed`**. Client uses **`useFeatureGate` → `canUse`** (fail-closed while entitlements load).
+**Plan gating:** Viewing the team is always free. **Send Invitation** is gated by `teamManagement.enabled` and `teamManagement.maxMembers` (active members + pending invites + the owner + any org-level admins with implicit access — all count toward the cap on both client and server). **Free is capped at 1** (the owner alone — same mechanism as every paid tier's cap, not a separate "disabled" state, so the owner already occupies the one slot and any invite attempt hits the at-limit path); Starter/Pro/Business/Managed/Commission raise the cap (see `docs/architecture/plans-feature-matrix.md`). Over the cap opens **`SubscriptionUpgradeModal`** instead of calling `property-team-invitations`; server enforces the same count via **`requireTeamInviteAllowed`**. Client uses **`useFeatureGate` → `canUse`** (fail-closed while entitlements load). The **Team** page title shows a solid `TierBadge` when the property isn't yet entitled to invite beyond the Free cap. **Manually re-activating** an existing inactive member hits the same cap check — it's blocked with an upgrade prompt if it would push the property over budget, not just invite.
+
+**Downgrade / expiration:** if a plan change (downgrade, a lapsed subscription auto-suspending after nonpayment, or being added to/removed from an org portfolio bundle) drops the seat budget below the number of currently active members, the newest-assigned members are **automatically deactivated** (never removed) until the property is back within budget — same as a manual deactivate (permissions stashed, restorable), just server-triggered. These rows show a **"Plan limit"** badge instead of the plain "Disabled" one, and a banner above the member list offers **Upgrade** whenever 1+ members are in that state. Upgrading later (or an admin freeing a seat by deactivating someone else) automatically restores the longest-waiting plan-limited members first, oldest to newest, up to the new budget — no host action required. A member an admin deactivated on purpose is never touched by this and never auto-restored.
 
 ---
 
@@ -119,12 +123,15 @@ Property delete/archive remains **org owner** only — not a property-role permi
 
 ### Deactivate / activate
 
-| State    | `status`   | `permissions`        | `saved_permissions`        |
-| -------- | ---------- | -------------------- | -------------------------- |
-| Active   | `active`   | Effective grant list | `NULL`                     |
-| Inactive | `inactive` | `[]`                 | Snapshot before deactivate |
+| State                   | `status`   | `permissions`        | `saved_permissions`        | `plan_limited` |
+| ----------------------- | ---------- | -------------------- | -------------------------- | -------------- |
+| Active                  | `active`   | Effective grant list | `NULL`                     | `false`        |
+| Inactive (manual)       | `inactive` | `[]`                 | Snapshot before deactivate | `false`        |
+| Inactive (plan-limited) | `inactive` | `[]`                 | Snapshot before deactivate | `true`         |
 
-On activate: built-in roles restore `saved_permissions` (or role preset if empty). **Custom-role** members restore the **current custom-role preset** (not the pre-deactivate snapshot). Clear `saved_permissions`.
+On activate: built-in roles restore `saved_permissions` (or role preset if empty). **Custom-role** members restore the **current custom-role preset** (not the pre-deactivate snapshot). Clear `saved_permissions` and `plan_limited`.
+
+`plan_limited` distinguishes an admin's deliberate deactivate from one team-seat reconciliation (`reconcilePropertyTeamSeats` in `_shared/planEntitlements.ts`) made automatically because the current plan doesn't cover this seat — see **Downgrade / expiration** above. Any manual status change (deactivate or activate) always clears it, so a real admin decision is never overwritten by a later automatic restore.
 
 ### Invitations
 
@@ -163,7 +170,8 @@ When access is revoked (deactivated member, removed from property, or lost org m
 
 - Search by name or email; filter by role (`MANAGER`, `STAFF`, `VIEWER`, custom).
 - Non-org members: change role via select or **Manage** dialog, **Edit Permissions**, **Deactivate** / **Activate**, **Remove from Property**.
-- Deactivated members: **Disabled** badge, role select locked, **permissions cleared** until reactivated.
+- Deactivated members: **Disabled** badge, role select locked, **permissions cleared** until reactivated. Deactivated by team-seat reconciliation instead of an admin: **Plan limit** badge (tooltip explains why) instead of the plain Disabled one.
+- When 1+ members are currently plan-limited, a banner above the list shows the count with an **Upgrade** button (opens the upgrade modal targeted at `teamManagement`).
 - Org owner and org admins (virtual, `fromOrg: true`): **Org** badge; **Manage in org** link to `/org/:orgSlug/team` when viewer has `org:team:view` (no property-level contact edit).
 - Property members: role dropdown, permissions, deactivate, remove when caller has `team:manage`.
 - Guest-facing contact resolves from active property **MANAGER** `display_name` / `contact_phone`, then org owner team row, then legacy settings.
@@ -200,13 +208,13 @@ Name comes from the invitee's Google account on accept; edit later via **Host de
 
 ## Database
 
-| Table                   | Purpose                                                            |
-| ----------------------- | ------------------------------------------------------------------ |
-| `property_custom_roles` | Named permission presets per property                              |
-| `property_members`      | `user_id`, `role_id`, `permissions`, `status`, `saved_permissions` |
-| `property_invitations`  | Pending invites + token + expiry                                   |
+| Table                   | Purpose                                                                            |
+| ----------------------- | ---------------------------------------------------------------------------------- |
+| `property_custom_roles` | Named permission presets per property                                              |
+| `property_members`      | `user_id`, `role_id`, `permissions`, `status`, `saved_permissions`, `plan_limited` |
+| `property_invitations`  | Pending invites + token + expiry                                                   |
 
-Migration: `supabase/migrations/20260908120000_property_team_rbac.sql`
+Migrations: `supabase/migrations/20260908120000_property_team_rbac.sql`, `supabase/migrations/20261108140000_property_members_plan_limited.sql` (`plan_limited`)
 
 RLS enabled with **no authenticated policies** — edge functions use `service_role` (same pattern as `finance_line_items`).
 
@@ -232,6 +240,8 @@ RLS enabled with **no authenticated policies** — edge functions use `service_r
 
 Auth: Bearer JWT + `verifyPropertyAccess` (`_shared/orgAuth.ts`). `property_id` or body `propertyId` required on team admin endpoints.
 
+**Update member → activate over the seat cap:** PATCH `{ status: 'active' }` on an inactive member runs the same `requireTeamInviteAllowed` check an invite does; if it would exceed `teamManagement.maxMembers`, the response is the standard `{ upgradeHook: true, feature: 'teamManagement' }` envelope (`jsonUpgradeHook`), same shape the client already handles for invite-at-limit.
+
 **Invite email:** On create/resend, `propertyTeamInviteEmail.ts` sends via Resend using the configurable template shell. **Subject:** `{Org name} - {Property name} - Team Invitation`. **Body:** inviter name; `{property} - {unit}` join line as `{name} invites you to join … as {role}`; role description paragraph (built-in presets from `BUILTIN_ROLE_EMAIL_DESCRIPTIONS` in `propertyTeamPermissions.ts`; custom roles — scoped-permissions line); expiry; Google sign-in note; accept CTA. Link: **`{PUBLIC_GUEST_APP_ORIGIN}/accept-invite?token=…`**. Deliverability: verify Resend domain (SPF/DKIM/DMARC) on the sending domain to reduce spam-folder placement.
 
 ---
@@ -247,6 +257,7 @@ Auth: Bearer JWT + `verifyPropertyAccess` (`_shared/orgAuth.ts`). `property_id` 
 | UI constants         | `ui/src/features/dashboard/team/lib/propertyTeamConstants.ts`                                                |
 | Server RBAC          | `supabase/functions/_shared/propertyTeamPermissions.ts`                                                      |
 | Team service         | `supabase/functions/_shared/propertyTeamService.ts`                                                          |
+| Seat reconciliation  | `supabase/functions/_shared/planEntitlements.ts#reconcilePropertyTeamSeats`                                  |
 | Invite email         | `supabase/functions/_shared/propertyTeamInviteEmail.ts`                                                      |
 | Accept page          | `ui/src/features/dashboard/team/pages/AcceptInvitePage.tsx`                                                  |
 | Accept API client    | `ui/src/features/dashboard/team/lib/acceptInviteApi.ts`                                                      |
@@ -281,3 +292,5 @@ Auth: Bearer JWT + `verifyPropertyAccess` (`_shared/orgAuth.ts`). `property_id` 
 - [x] Invite email (Resend) + `/accept-invite` page
 - [x] Enforce permissions on property-scoped admin edge functions + sidebar/route guards
 - [x] Org-level team page (`/org/:orgSlug/team`) + `organization_members`
+- [x] Team-seat downgrade/expiration reconciliation (`plan_limited`, `reconcilePropertyTeamSeats`) — auto-disable over-budget members on plan change/suspension, auto-restore on upgrade, never delete
+- [ ] Org-level team has no equivalent seat-limit or reconciliation concept yet — org roles aren't plan-gated by count today

@@ -93,22 +93,22 @@ Route is registered at the marketing shell level (no dynamic slug conflict).
 - Overview: **`ParkingOverview`** — parking type badge, title, **`ListingPlaceMeta`** (development · tower · level), dimension stats (length / width / height clearance), **`ListingHostCard`** (**Contact Host** opens guest web chat sheet), **`ListingCheckInOutTimes`**, description (**About this parking**). Brand color tints accents via **`ParkingPublicBrandShell`**. Pricing lives in **`BookingCard`** only.
 - Features: **`PropertyAmenities`** when `features[]` is non-empty
 - Location: **`PropertyLocation`** when `parkings.settings` has address or map pin (`get-public-parking` returns `address`, `city`, `province`, `country`, `latitude`, `longitude`, `placeId`)
-- Mobile: sticky **Reserve** bar opens calendar modal when dates missing
+- Mobile: sticky **Reserve** bar opens calendar modal when dates missing; **Continue** in the calendar proceeds to the booking form modal when dates are complete
 
 ### Reserve (in-place modal)
 
-Tapping **Reserve** with dates selected — desktop **`BookingCard`** or the mobile sticky bar — no longer navigates to `/parkings/:parkingSlug/form`. Instead **`useParkingReserve`**'s `onOpenForm` callback (wired from `ParkingDetailPage`) opens **`ParkingBookingFormModal`** right on the detail page, mirroring **`GuestBookingFormModal`** on the property flow:
+Tapping **Reserve** with dates selected — desktop **`BookingCard`** or the mobile sticky bar — no longer navigates to `/parkings/:parkingSlug/form`. Instead **`useParkingReserve`**'s `onOpenForm` callback (wired from `ParkingDetailPage`) opens **`ParkingBookingFormModal`** right on the detail page, mirroring **`GuestBookingFormModal`** on the property flow. The booking calendar modal's **Continue** action closes the calendar and opens the same form modal (auth/resume identical to **Reserve**):
 
 - Guest-auth gated via `requireGuestAuth` with a `parking_booking_form_modal` resume entry (`guestAuthResume.ts`) — an unauthenticated guest is sent through sign-in and returned to `/parkings/:parkingSlug?reserveForm=open[&checkInDate=&checkOutDate=]`, which `ParkingDetailPage` reads once authenticated to reopen the modal (same `reserveForm=open` param convention as `guestPropertyReserveFormOpenPath`, via the parking-specific `guestParkingReserveFormOpenPath`)
 - Renders the same **`ParkingRegistrationForm`** wizard as the standalone form page, inside **`GuestDialogShell`**
 - On successful submit, closes the modal and navigates to `/parkings/requests/:bookingId` (unlike the standalone form page's inline **`FormSuccess`** — the modal forwards straight to tracking since the guest is already mid-session on the slot page)
-- The direct URL `/parkings/:parkingSlug/form` still exists as a standalone fallback (e.g. shared links) and is unchanged
+- The direct URL `/parkings/:parkingSlug/form` still exists as a standalone fallback (e.g. shared links) and uses the same **entry auth gate** as property `/form` and `/messages`
 
 ---
 
 ## Parking form (`/parkings/:parkingSlug/form`)
 
-**`ParkingFormPage`** — guest parking-request form, still reachable directly (shared links, no-JS-modal fallback) even though the Reserve button on the detail page now opens the same form in a modal (see **Reserve (in-place modal)** above). Loads live parking detail via **`get-public-parking`**, then renders a dedicated **`ParkingRegistrationForm`** (not the generic template-driven form-builder engine used by pet/guest-advise forms) inside the page's own header/footer shell.
+**`ParkingFormPage`** — guest parking-request form, still reachable directly (shared links, no-JS-modal fallback) even though the Reserve button on the detail page now opens the same form in a modal (see **Reserve (in-place modal)** above). Anonymous guests hitting this URL get **`GuestAuthModal`** immediately (skeleton until signed in), matching property `/form` and `/messages`. Loads live parking detail via **`get-public-parking`**, then renders a dedicated **`ParkingRegistrationForm`** (not the generic template-driven form-builder engine used by pet/guest-advise forms) inside the page's own header/footer shell.
 
 `ParkingRegistrationForm` (`ui/src/features/guest/marketing/parkings/components/ParkingRegistrationForm.tsx`) is a 3-step wizard modeled on the main guest form (**`GuestForm`**) — same `Form`/`FormField` primitives, the real **`DatePicker`** popover (not a raw `<input type="date">`), and the shared **`GuestFormStepper`** / **`GuestFormStepNavigation`** components. Stepper labels and in-card section titles share one **`title`** per step (`parkingRegistrationSteps.ts`):
 
@@ -120,7 +120,7 @@ Validated with a dedicated Zod schema (`parkingRegistrationSchema.ts`), not RHF 
 
 Save flow:
 
-1. Guest arrives from **Reserve** (dates preserved when present) and must already pass the guest-auth gate used by **`useParkingReserve`**
+1. Guest opens `/parkings/:parkingSlug/form` (or arrives from **Reserve** with dates). If not signed in, **`GuestAuthModal`** opens on entry; OAuth/OTP resumes to the form URL. Reserve modal path already gated via **`useParkingReserve`**.
 2. Form submits through **`useSubmitParkingBookingRequest`** → **`submit-parking-booking-request`**
 3. Server validates org + optional pinned slot, checks candidate availability, and returns **422 `no_parking_available`** with no insert when no eligible parking can take the request
 4. Success shows an inline **`FormSuccess`** card with a **Track Request** link to **`/parkings/requests/:bookingId`** (no page redirect)

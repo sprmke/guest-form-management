@@ -13,18 +13,19 @@ Route: `/org/:orgSlug/property/:propertySlug/settings`
 
 ## Progress overview
 
-| Section            | E2E save | Validation | Docs | Notes                                                                     |
-| ------------------ | -------- | ---------- | ---- | ------------------------------------------------------------------------- |
-| Basic Information  | Done     | Done       | Done | Required fields marked with *; save blocked until complete                |
-| Property Details   | Done     | Done       | Done | Azure North residence defaults + limits                                   |
-| Guest Form         | Done     | Done       | Done | Pet / parking / decor toggles; optional section                           |
-| Location           | Done     | Done       | Done | Address + map pin required                                                |
-| Payment            | Done     | Done       | Done | Server-enforced; QR via upload only                                       |
-| Building Forms     | Done     | Done       | Done | Shared GAF + pet PDF fields                                               |
-| Email automations  | Done     | Done       | Done | Recipients, timing, toggles per property                                  |
-| Integrations       | Done     | Done       | Done | Telegram + AI optional; GAF/pet via Resend inbound                        |
-| Voice Receptionist | Done     | Done       | Done | Opt-in AI voice assistant; own settings row; saves with page Save Changes |
-| Danger Zone        | Done     | Done       | Done | Archive + delete with confirmations                                       |
+| Section            | E2E save | Validation | Docs | Notes                                                                    |
+| ------------------ | -------- | ---------- | ---- | ------------------------------------------------------------------------ |
+| Basic Information  | Done     | Done       | Done | Required fields marked with *; save blocked until complete               |
+| Property Details   | Done     | Done       | Done | Azure North residence defaults + limits                                  |
+| Guest Form         | Done     | Done       | Done | Pet / parking / decor toggles + required Cleaning Time                   |
+| Location           | Done     | Done       | Done | Address + map pin required                                               |
+| Payment            | Done     | Done       | Done | Server-enforced; QR via upload only                                      |
+| Building Forms     | Done     | Done       | Done | Shared GAF + pet PDF fields                                              |
+| Email automations  | Done     | Done       | Done | Recipients, timing, toggles per property                                 |
+| Integrations       | Done     | Done       | Done | Telegram + AI optional; GAF/pet via Resend inbound                       |
+| Voice Receptionist | Done     | Done       | Done | Hidden unless `aiReceptionist` (Business+); saves with page Save Changes |
+| AI Overrides       | Done     | Done       | Done | Hidden unless plan has AI credits (`aiMonthlyCreditAllowance` > 0)       |
+| Danger Zone        | Done     | Done       | Done | Archive + delete with confirmations                                      |
 
 > **Also editable in Page Editor:** Photos & Videos, Brand color, Description, Amenities, House Rules, Cancellation, and Socials — same fields, same storage (`properties.settings` / `app_settings`). Edit in **Settings** or **Public Pages → Property → Edit** (live preview). Do not treat them as separate copies.
 
@@ -57,11 +58,11 @@ Property Settings is where you complete operational setup: basic info, capacity,
 - Q: Where do I upload listing photos?
   A: **Property Settings → Photos & Videos**, or the listing Page Editor gallery. Photos are shared across the listing, property cards, and Marketing.
 - Q: Where is listing verification?
-  A: Open **Verification** from the property sidebar (not org **Get Verified**). That flow covers ownership proof, contract dates, and the Recommended badge for this listing. Submitting listing **Recommended** tier requires a paid plan with **`recommendedBadgeEligible`**; the upgrade modal links to **Plans**.
+  A: Open **Verification** from the property sidebar (not org **Get Verified**). That flow covers ownership proof, contract dates, and the Recommended badge for this listing. Submitting listing **Recommended** tier requires a paid plan with **`recommendedBadgeEligible`**; the upgrade modal links to **Plans & Billing**.
 - Q: My contract is ending — what should I do?
   A: A renewal reminder may appear when you log in. Tap **Submit renewal contract** or use **Verification** in the sidebar to upload an updated contract before the grace period ends.
-- Q: What does the Cleaning Buffer setting do?
-  A: It's the minimum time your cleaner needs between one guest checking out and the next guest checking in **on the same day**. Set it under **Property Details → Cleaning Buffer**. Once set, guests can't pick a check-in or check-out time on the booking form that leaves less than that gap — it's off by default.
+- Q: What does the Cleaning Time setting do?
+  A: It's the shortest gap your cleaner needs between one guest checking out and the next guest checking in **on the same day**. Set it under **Guest Form → Cleaning Time** — it's required and always at least 1 hour. Guests can't pick a check-in or check-out time on the booking form that leaves less than that gap.
 
 ---
 
@@ -156,18 +157,17 @@ Stored in `properties.settings.description` (max 1000 chars). Also editable in t
 
 Stored in `properties.settings` (+ `properties.max_guests` derived from adults + children).
 
-| Field           | Key                     | Default                | Guest-facing use                                                       |
-| --------------- | ----------------------- | ---------------------- | ---------------------------------------------------------------------- |
-| Unit type       | `unitTypeId`            | `studio` (Azure North) | Sets bedrooms, bathrooms, max adults/children                          |
-| Bedrooms        | `bedrooms`              | from unit type         | Read-only; from development unit type config                           |
-| Bathrooms       | `bathrooms`             | from unit type         | Read-only; from development unit type config                           |
-| Floor           | `floors`                | residence limits       | Listing detail                                                         |
-| Check-in        | `checkInTime`           | `14:00`                | Guest form default + early-arrival warning threshold                   |
-| Check-out       | `checkOutTime`          | `12:00`                | Guest form default + late-departure warning threshold                  |
-| Cleaning Buffer | `cleaningBufferMinutes` | off (`null`)           | Minimum gap enforced between a checkout and the next check-in same day |
-| Max adults      | `maxAdults`             | from unit type         | Read-only; guest form occupancy limit                                  |
-| Max children    | `maxChildren`           | from unit type         | Read-only; guest form occupancy limit                                  |
-| Self check-in   | `selfCheckIn`           | `false`                | Public listing + stay guide                                            |
+| Field         | Key            | Default                | Guest-facing use                                      |
+| ------------- | -------------- | ---------------------- | ----------------------------------------------------- |
+| Unit type     | `unitTypeId`   | `studio` (Azure North) | Sets bedrooms, bathrooms, max adults/children         |
+| Bedrooms      | `bedrooms`     | from unit type         | Read-only; from development unit type config          |
+| Bathrooms     | `bathrooms`    | from unit type         | Read-only; from development unit type config          |
+| Floor         | `floors`       | residence limits       | Listing detail                                        |
+| Check-in      | `checkInTime`  | `14:00`                | Guest form default + early-arrival warning threshold  |
+| Check-out     | `checkOutTime` | `12:00`                | Guest form default + late-departure warning threshold |
+| Max adults    | `maxAdults`    | from unit type         | Read-only; guest form occupancy limit                 |
+| Max children  | `maxChildren`  | from unit type         | Read-only; guest form occupancy limit                 |
+| Self check-in | `selfCheckIn`  | `false`                | Public listing + stay guide                           |
 
 **Layout:** row 1 — Unit type, Bedrooms, Bathrooms; row 2 — Floor, Max adults, Max children.
 
@@ -175,9 +175,7 @@ Stored in `properties.settings` (+ `properties.max_guests` derived from adults +
 
 Check-in/out times are picked via the shared **`TimePicker`** (`ui/src/components/ui/time-picker.tsx`, 30-min increments — same component used on the guest form), saved as 24-hour **`HH:mm`** strings. They appear on the public property page, house-rule presets, and — after save — pre-fill the guest booking form Stay step via **`get-guest-payment-info`** → `useGuestPaymentInfo()`.
 
-**Cleaning Buffer** — a `Select` (Off, then 1h–6h in 30-minute steps) storing whole minutes (`60`–`360`, step `30`) or `null` for off. Only applies to a **same-day turnover**: one guest's `checkOutDate` equal to another guest's `checkInDate` on the same property. When set, the guest booking form disables check-in times earlier than `(previous checkout time + buffer)` and check-out times later than `(next check-in time − buffer)` in the `TimePicker`, and `submit-form` re-validates the same rule server-side (`_shared/cleaningBuffer.ts`, `_shared/guestFormSettings.ts`) before saving. Does not affect non-adjacent bookings or dates with no turnover.
-
-Validated on save against residence limits (see Azure North table above); Cleaning Buffer is validated in `_shared/propertySettingsValidation.ts` (must be `null` or a valid 30-minute step between 60 and 360).
+Validated on save against residence limits (see Azure North table above). The **Cleaning Time** buffer lives in the **Guest Form** section below, not here.
 
 ---
 
@@ -208,6 +206,8 @@ Section nav: **Guest Form** (after Property Details). UI: `PropertyGuestFormSett
 Save path: **Save Changes** → dirty `guest-form` section → `update-property` settings merge (`propertyProfileSettingsPatch`).
 
 Public exposure: resolved via **`get-guest-payment-info`** (same request as payment/GAF defaults) → `useGuestPaymentInfo()` on the guest form. Missing/invalid keys default to **`true`** (preserves legacy always-on behavior).
+
+**Cleaning Time** — `cleaningBufferMinutes`, a **required** `Select` (1h–6h in 30-minute steps; no "off" option), stored as whole minutes (`60`–`360`, step `30`). Default (and floor) is **1 hour** — a missing/invalid saved value resolves to 60, never `null`. Only applies to a **same-day turnover**: one guest's `checkOutDate` equal to another guest's `checkInDate` on the same property. The guest booking form disables check-in times earlier than `(previous checkout time + buffer)` and check-out times later than `(next check-in time − buffer)` in the `TimePicker`, and `submit-form` re-validates the same rule server-side (`_shared/cleaningBuffer.ts`, `_shared/guestFormSettings.ts`) before saving. Does not affect non-adjacent bookings or dates with no turnover. Validated in `_shared/propertySettingsValidation.ts` (must be a valid 30-minute step between 60 and 360 — `null`/off is rejected).
 
 **Check-in / check-out times** (configured under **Property Details**, not this section): also resolved via **`get-guest-payment-info`** as **`checkInTime`** / **`checkOutTime`** (24h `HH:mm`; defaults **`14:00`** / **`12:00`**). New guest submissions pre-fill those fields; early/late warnings on the Stay step compare against the property values. Existing **`?bookingId=`** edits keep stored submission times from **`get-form`**.
 
@@ -321,6 +321,8 @@ Production GAF/pet approvals use **Resend inbound** (`approval-email-webhook`); 
 
 Per-property overrides for the platform AI usage limits. NULL limits inherit the organization settings.
 
+**Plan gating:** Hidden from the secondary settings nav and the settings card unless the property plan includes AI credits (`aiMonthlyCreditAllowance` > 0 — Growth/Pro and above). Free and Starter do not show this section.
+
 | Field                | Column                 | Notes                                              |
 | -------------------- | ---------------------- | -------------------------------------------------- |
 | Enable               | `enabled`              | Master per-property AI toggle; also gated globally |
@@ -349,7 +351,7 @@ Save path: page **Save Changes** → `PATCH voice-receptionist-settings?property
 
 **Test voice** — outline button beside the voice picker. `POST voice-receptionist-voice-preview?property_id=` (`settings:edit`) runs a short Gemini TTS sample using the **Basic Information property name** (not tower + unit; e.g. _"Hi, I'm the Solea Ocean View receptionist…"_) and the selected prebuilt voice, then plays PCM audio in the browser. The client sends the current **Property Name** draft so unsaved edits are reflected. Uses Gemini API tokens (not a free local sample). Hook: `usePreviewVoiceReceptionistVoice`.
 
-**Plan gating:** Browsing settings and **Test voice** stay free. Turning **Enable voice receptionist** on or saving with `enabled: true` requires plan feature **`aiReceptionist`** — client opens **`SubscriptionUpgradeModal`**; server checks on **`voice-receptionist-settings`** PATCH and **`voice-receptionist-start`**.
+**Plan gating:** Hidden from the secondary settings nav and the settings card unless the property is entitled to **`aiReceptionist`** (Business and above). When entitled, enable/save still require that feature server-side (`voice-receptionist-settings` PATCH, `voice-receptionist-start`).
 
 **Usage panel** — read-only "Usage — last 30 days" stat grid (sessions today, last 30 days, avg.
 length, estimated cost) below the form fields. `GET voice-receptionist-usage?property_id=`
