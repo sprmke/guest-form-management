@@ -1,8 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+
+import { useSearchParams } from 'react-router-dom';
 
 import { Layers } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { AdminListPagination } from '@/features/dashboard/bookings/components/AdminListToolbar';
 import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import { SuperAdminEmptyState } from '@/features/dashboard/super-admin/components/shared/SuperAdminEmptyState';
 import { SuperAdminPageLoading } from '@/features/dashboard/super-admin/components/shared/SuperAdminPageLoading';
@@ -23,38 +26,90 @@ import {
 } from '@/features/dashboard/super-admin/hooks/usePricingPlans';
 import {
   DEFAULT_SUPER_ADMIN_PRICING_PLANS_FILTERS,
-  filterSuperAdminPricingPlans,
   superAdminPricingPlansHasActiveFilters,
   type SuperAdminPricingPlansViewMode,
 } from '@/features/dashboard/super-admin/lib/superAdminPricingFilters';
 import type { PricingPlan } from '@/features/dashboard/super-admin/types/pricingPlan';
 
-
 import { useAdminMobileGridViewGuard } from '@/hooks/useAdminMobileGridViewGuard';
 import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { usePageTitle } from '@/lib/pageTitle';
+import {
+  ADMIN_DEFAULT_PAGE_SIZE,
+  buildPageItems,
+  normalizeAdminPageLimit,
+} from '@/lib/table/pagination';
 
 export function SuperAdminPricingPlansPage() {
   usePageTitle('Kame Homes - Pricing plans');
-  const { data: plans = [], isLoading, error } = usePricingPlans();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const page = Number(searchParams.get('page') ?? '1');
+  const limit = normalizeAdminPageLimit(
+    Number(searchParams.get('limit') ?? String(ADMIN_DEFAULT_PAGE_SIZE))
+  );
+  const [filters, setFilters] = useState(DEFAULT_SUPER_ADMIN_PRICING_PLANS_FILTERS);
+  const {
+    rows: plans,
+    total,
+    isLoading,
+    isFetching,
+    error,
+  } = usePricingPlans(
+    filters.search,
+    filters.status,
+    Number.isFinite(page) && page > 0 ? Math.floor(page) : 1,
+    limit
+  );
   const updatePlan = useUpdatePricingPlan();
   const [editing, setEditing] = useState<PricingPlan | null>(null);
   const [viewMode, setViewMode] = useState<SuperAdminPricingPlansViewMode>('table');
-  const [filters, setFilters] = useState(DEFAULT_SUPER_ADMIN_PRICING_PLANS_FILTERS);
   const isMobileLayout = useIsBelowLg();
   useAdminMobileGridViewGuard(isMobileLayout, viewMode, setViewMode);
 
-  const filteredPlans = useMemo(
-    () => filterSuperAdminPricingPlans(plans, filters),
-    [plans, filters]
-  );
+  // Filtering (search/status) is already applied server-side by the
+  // edge function — `plans` is the current page of already-filtered rows.
+  const filteredPlans = plans;
   const hasActiveFilters = superAdminPricingPlansHasActiveFilters(filters);
   const showTableView = viewMode === 'table' && !isMobileLayout;
 
-  const subscriptionPlans = useMemo(
-    () => plans.filter((plan) => plan.pricingModel === 'subscription'),
+  const hostLadderPlans = useMemo(
+    () => plans.filter((plan) => plan.code !== 'business_plus'),
     [plans]
   );
+
+  const pageCount = Math.max(1, Math.ceil(total / limit));
+  const pageItems = useMemo(() => buildPageItems(page, pageCount), [page, pageCount]);
+
+  const setPage = (nextPage: number) => {
+    setSearchParams(
+      (prev) => {
+        const sp = new URLSearchParams(prev);
+        if (nextPage === 1) sp.delete('page');
+        else sp.set('page', String(nextPage));
+        return sp;
+      },
+      { replace: true }
+    );
+  };
+
+  const setLimit = (nextLimit: number) => {
+    setSearchParams(
+      (prev) => {
+        const sp = new URLSearchParams(prev);
+        if (nextLimit === ADMIN_DEFAULT_PAGE_SIZE) sp.delete('limit');
+        else sp.set('limit', String(nextLimit));
+        sp.delete('page');
+        return sp;
+      },
+      { replace: true }
+    );
+  };
+
+  // Reset to page 1 whenever a filter changes.
+  useEffect(() => {
+    if (page !== 1) setPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]);
 
   return (
     <div className="space-y-3 sm:space-y-4">
@@ -66,7 +121,7 @@ export function SuperAdminPricingPlansPage() {
         <>
           <AdminPageHeader
             title="Pricing plans"
-            subtitle="Subscription tiers and commission model."
+            subtitle="Subscription tier catalog for host Plans & Billing."
           />
 
           <SuperAdminPricingSummaryCards plans={plans} />
@@ -75,10 +130,11 @@ export function SuperAdminPricingPlansPage() {
             filters={filters}
             viewMode={viewMode}
             hideTableView={isMobileLayout}
+            limit={limit}
             onSearchChange={(search) => setFilters((current) => ({ ...current, search }))}
-            onModelChange={(model) => setFilters((current) => ({ ...current, model }))}
             onStatusChange={(status) => setFilters((current) => ({ ...current, status }))}
             onViewModeChange={setViewMode}
+            onLimitChange={setLimit}
           />
 
           {filteredPlans.length > 0 ? (
@@ -99,12 +155,23 @@ export function SuperAdminPricingPlansPage() {
 
           <SuperAdminPricingPlansResultsMeta
             visibleCount={filteredPlans.length}
-            totalCount={plans.length}
+            totalCount={total}
           />
 
-          {!isLoading && !error && subscriptionPlans.length !== 5 ? (
+          {pageCount > 1 ? (
+            <AdminListPagination
+              ariaLabel="Pricing plans pagination"
+              page={page}
+              pageCount={pageCount}
+              pageItems={pageItems}
+              isLoading={isLoading || isFetching}
+              onPageChange={setPage}
+            />
+          ) : null}
+
+          {!isLoading && !error && !hasActiveFilters && hostLadderPlans.length !== 5 ? (
             <p className="text-muted-foreground text-xs">
-              Expected 5 subscription tiers; found {subscriptionPlans.length}.
+              Expected 5 host subscription tiers; found {hostLadderPlans.length}.
             </p>
           ) : null}
         </>

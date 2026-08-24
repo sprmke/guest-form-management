@@ -1,8 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+
+import { useSearchParams } from 'react-router-dom';
 
 import { Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { AdminListPagination } from '@/features/dashboard/bookings/components/AdminListToolbar';
 import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import { SuperAdminEmptyState } from '@/features/dashboard/super-admin/components/shared/SuperAdminEmptyState';
 import { SuperAdminPageLoading } from '@/features/dashboard/super-admin/components/shared/SuperAdminPageLoading';
@@ -21,39 +24,101 @@ import {
   useAssignPropertyPlan,
   usePricingPlans,
   usePropertySubscriptionsAdmin,
+  usePropertySubscriptionsSummary,
 } from '@/features/dashboard/super-admin/hooks/usePricingPlans';
 import {
   DEFAULT_SUPER_ADMIN_PROPERTY_SUBSCRIPTIONS_FILTERS,
-  filterSuperAdminPropertySubscriptions,
   superAdminPropertySubscriptionsHasActiveFilters,
   type SuperAdminPropertySubscriptionsViewMode,
 } from '@/features/dashboard/super-admin/lib/superAdminPricingFilters';
-
 
 import { Button } from '@/components/ui/button';
 import { useAdminMobileGridViewGuard } from '@/hooks/useAdminMobileGridViewGuard';
 import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { usePageTitle } from '@/lib/pageTitle';
+import {
+  ADMIN_DEFAULT_PAGE_SIZE,
+  buildPageItems,
+  normalizeAdminPageLimit,
+} from '@/lib/table/pagination';
 
 export function SuperAdminPropertySubscriptionsPage() {
   usePageTitle('Kame Homes - Property subscriptions');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const page = Number(searchParams.get('page') ?? '1');
+  const limit = normalizeAdminPageLimit(
+    Number(searchParams.get('limit') ?? String(ADMIN_DEFAULT_PAGE_SIZE))
+  );
   const [viewMode, setViewMode] = useState<SuperAdminPropertySubscriptionsViewMode>('table');
   const [filters, setFilters] = useState(DEFAULT_SUPER_ADMIN_PROPERTY_SUBSCRIPTIONS_FILTERS);
   const isMobileLayout = useIsBelowLg();
   useAdminMobileGridViewGuard(isMobileLayout, viewMode, setViewMode);
 
-  const { data: plans = [] } = usePricingPlans();
-  const { data: properties = [], isLoading, error } = usePropertySubscriptionsAdmin('', '', 500);
+  // Full (unpaginated first page) plan catalog — used only to populate the
+  // assign-plan dropdown, not for the properties list itself.
+  const { rows: plans } = usePricingPlans();
+  const {
+    rows: properties,
+    total,
+    isLoading,
+    isFetching,
+    error,
+  } = usePropertySubscriptionsAdmin(
+    filters.search,
+    filters.planCode,
+    Number.isFinite(page) && page > 0 ? Math.floor(page) : 1,
+    limit
+  );
+  // Platform-wide aggregate counts (not just the current filtered/paginated
+  // page) feeding the summary cards — computed server-side via count-only
+  // queries so it stays cheap at thousands of properties.
+  const { summary } = usePropertySubscriptionsSummary();
   const assignPlan = useAssignPropertyPlan();
   const billingCron = useRunPlatformBillingCron();
 
-  const planOptions = useMemo(() => plans.filter((plan) => plan.isActive), [plans]);
-  const filteredProperties = useMemo(
-    () => filterSuperAdminPropertySubscriptions(properties, filters),
-    [properties, filters]
+  const planOptions = useMemo(
+    () => plans.filter((plan) => plan.isActive && plan.code !== 'business_plus'),
+    [plans]
   );
+  // Filtering (search/planCode) is already applied server-side by the edge
+  // function — `properties` is the current page of already-filtered rows.
+  const filteredProperties = properties;
   const hasActiveFilters = superAdminPropertySubscriptionsHasActiveFilters(filters);
   const showTableView = viewMode === 'table' && !isMobileLayout;
+
+  const pageCount = Math.max(1, Math.ceil(total / limit));
+  const pageItems = useMemo(() => buildPageItems(page, pageCount), [page, pageCount]);
+
+  const setPage = (nextPage: number) => {
+    setSearchParams(
+      (prev) => {
+        const sp = new URLSearchParams(prev);
+        if (nextPage === 1) sp.delete('page');
+        else sp.set('page', String(nextPage));
+        return sp;
+      },
+      { replace: true }
+    );
+  };
+
+  const setLimit = (nextLimit: number) => {
+    setSearchParams(
+      (prev) => {
+        const sp = new URLSearchParams(prev);
+        if (nextLimit === ADMIN_DEFAULT_PAGE_SIZE) sp.delete('limit');
+        else sp.set('limit', String(nextLimit));
+        sp.delete('page');
+        return sp;
+      },
+      { replace: true }
+    );
+  };
+
+  // Reset to page 1 whenever a filter changes.
+  useEffect(() => {
+    if (page !== 1) setPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]);
 
   return (
     <div className="space-y-3 sm:space-y-4">
@@ -79,16 +144,18 @@ export function SuperAdminPropertySubscriptionsPage() {
             }
           />
 
-          <SuperAdminPropertySubscriptionsSummaryCards properties={properties} />
+          <SuperAdminPropertySubscriptionsSummaryCards summary={summary} />
 
           <SuperAdminPropertySubscriptionsToolbar
             filters={filters}
             viewMode={viewMode}
             plans={planOptions}
             hideTableView={isMobileLayout}
+            limit={limit}
             onSearchChange={(search) => setFilters((current) => ({ ...current, search }))}
             onPlanCodeChange={(planCode) => setFilters((current) => ({ ...current, planCode }))}
             onViewModeChange={setViewMode}
+            onLimitChange={setLimit}
           />
 
           {filteredProperties.length > 0 ? (
@@ -142,8 +209,19 @@ export function SuperAdminPropertySubscriptionsPage() {
 
           <SuperAdminPropertySubscriptionsResultsMeta
             visibleCount={filteredProperties.length}
-            totalCount={properties.length}
+            totalCount={total}
           />
+
+          {pageCount > 1 ? (
+            <AdminListPagination
+              ariaLabel="Property subscriptions pagination"
+              page={page}
+              pageCount={pageCount}
+              pageItems={pageItems}
+              isLoading={isLoading || isFetching}
+              onPageChange={setPage}
+            />
+          ) : null}
         </>
       )}
     </div>

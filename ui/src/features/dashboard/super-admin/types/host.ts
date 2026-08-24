@@ -1,3 +1,10 @@
+export type HostsSummary = {
+  total: number;
+  totalOrgs: number;
+  totalProperties: number;
+  totalParking: number;
+};
+
 export type HostStats = {
   organizationCount: number;
   propertyCount: number;
