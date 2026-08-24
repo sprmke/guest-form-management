@@ -1,5 +1,7 @@
 /**
- * list-host-properties — GET all properties across a host's orgs (super admin).
+ * list-host-properties — GET all properties across a host's orgs (super admin),
+ * searched + filtered + paginated server-side.
+ * Query: hostId, q (search name/slug/address/tower/unit/residence), status, type, page, limit
  */
 
 import { createServiceClient, serializeProperty, type PropertyRow } from '../_shared/orgAuth.ts';
@@ -8,6 +10,7 @@ import {
   propertyListStatsOrEmpty,
 } from '../_shared/propertyListStats.ts';
 import { jsonError, jsonSuccess, requireHttpMethod } from '../_shared/httpResponse.ts';
+import { postgrestOrIlikeValue } from '../_shared/publicSearch.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 import { verifySuperAdminJwt } from '../_shared/superAdminAuth.ts';
 
@@ -16,10 +19,16 @@ serveAuthenticated('list-host-properties', async (req) => {
   await verifySuperAdminJwt(req);
 
   const url = new URL(req.url);
-  const hostId = url.searchParams.get('hostId')?.trim() ?? '';
+  const p = url.searchParams;
+  const hostId = p.get('hostId')?.trim() ?? '';
   if (!hostId) {
     return jsonError(req, 'hostId is required');
   }
+  const page = Math.max(1, parseInt(p.get('page') ?? '1', 10));
+  const limit = Math.min(100, Math.max(1, parseInt(p.get('limit') ?? '31', 10)));
+  const q = (p.get('q') ?? '').trim();
+  const status = (p.get('status') ?? 'all').trim();
+  const type = (p.get('type') ?? 'all').trim();
 
   const supabase = createServiceClient();
   const { data: orgs, error: orgError } = await supabase
@@ -34,17 +43,43 @@ serveAuthenticated('list-host-properties', async (req) => {
 
   const orgRows = orgs ?? [];
   if (orgRows.length === 0) {
-    return jsonSuccess(req, { properties: [] });
+    return jsonSuccess(req, { properties: [], total: 0, page, limit });
   }
 
   const orgById = new Map(orgRows.map((org) => [org.id as string, org]));
   const orgIds = orgRows.map((org) => org.id as string);
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('properties')
-    .select('*')
-    .in('organization_id', orgIds)
-    .order('name', { ascending: true });
+    .select('*', { count: 'exact' })
+    .in('organization_id', orgIds);
+
+  if (status !== 'all') query = query.eq('status', status);
+  if (type !== 'all') query = query.eq('type', type);
+
+  if (q) {
+    const pattern = postgrestOrIlikeValue(q);
+    query = query.or(
+      [
+        `name.ilike.${pattern}`,
+        `slug.ilike.${pattern}`,
+        `address.ilike.${pattern}`,
+        `tower_and_unit.ilike.${pattern}`,
+        `tower.ilike.${pattern}`,
+        `unit_number.ilike.${pattern}`,
+        `residence_name.ilike.${pattern}`,
+      ].join(',')
+    );
+  }
+
+  const fromIdx = (page - 1) * limit;
+  const toIdx = fromIdx + limit - 1;
+
+  const {
+    data,
+    error,
+    count: total,
+  } = await query.order('name', { ascending: true }).range(fromIdx, toIdx);
 
   if (error) {
     console.error('[list-host-properties]', error.message);
@@ -76,10 +111,13 @@ serveAuthenticated('list-host-properties', async (req) => {
       const org = orgById.get(property.organization_id);
       return {
         ...serializeProperty(property),
-        stats: statsByPropertyId.get(property.id) ?? propertyListStatsOrEmpty(),
+        stats: propertyListStatsOrEmpty(statsByPropertyId, property.id),
         organizationSlug: org?.slug ?? '',
         organizationName: org?.name ?? '',
       };
     }),
+    total: total ?? 0,
+    page,
+    limit,
   });
 });

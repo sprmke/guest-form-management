@@ -36,14 +36,18 @@ serveAuthenticated('meta-inbox-status', async (req) => {
   }));
 
   const facebook = effective.connection;
-  const metaSyncInProgress = Boolean(facebook && !facebook.last_sync_at);
+  const metaSyncError = facebook?.error_message ?? null;
+  // A recorded error on a never-synced connection means the last attempt failed for good
+  // (bad/expired token, etc.) — stop reporting "in progress" so the client stops spinning
+  // and prompts reconnect instead of polling forever.
+  const metaSyncInProgress = Boolean(facebook && !facebook.last_sync_at && !metaSyncError);
   const metaHasMore = metaBackfillHasMore(facebook);
 
   return jsonSuccess(req, {
     connections: serialized,
     metaConfigured: Boolean(Deno.env.get('META_APP_ID')?.trim()),
     metaSyncInProgress,
-    metaSyncError: null,
+    metaSyncError: facebook && !facebook.last_sync_at ? metaSyncError : null,
     metaHasMore,
     metaSource: effective.source,
     usingOrgMeta: effective.source === 'org',

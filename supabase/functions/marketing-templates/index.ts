@@ -5,6 +5,7 @@
 
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
+import { catchPlanFeatureError, requirePropertyFeature } from '../_shared/planEntitlements.ts';
 import {
   resolveAdminPropertyId,
   resolveOrganizationIdForProperty,
@@ -77,6 +78,16 @@ serveAdmin('marketing-templates', async (req, admin) => {
 
     const rows = (data ?? []) as MarketingTemplateRow[];
     return jsonSuccess(req, { templates: rows.map(serializeTemplate) });
+  }
+
+  if (req.method === 'POST' || req.method === 'PATCH') {
+    try {
+      await requirePropertyFeature(propertyId, 'customTemplates');
+    } catch (err) {
+      const planErr = catchPlanFeatureError(req, err);
+      if (planErr) return planErr;
+      throw err;
+    }
   }
 
   if (req.method === 'POST') {

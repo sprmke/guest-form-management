@@ -62,12 +62,25 @@ serveAuthenticated('list-properties', async (req) => {
   let statsByPropertyId = new Map<string, ReturnType<typeof propertyListStatsOrEmpty>>();
 
   if (propertyIds.length > 0) {
-    const { data: bookingRows, error: bookingsError } = await supabase
-      .from('guest_submissions')
-      .select(
-        'property_id, status, check_in_date, check_out_date, number_of_nights, booking_rate, number_of_adults, number_of_children'
-      )
-      .in('property_id', propertyIds);
+    // Owner/admin scope can span hundreds of properties — filter by organization_id
+    // through an inner-joined embed instead of an `id.in.(...)` list, which blows
+    // past request URI length limits at that scale. Member scope stays a plain
+    // `.in()` since a member's assigned-property set is always small.
+    const bookingsQuery = canListAllProperties
+      ? supabase
+          .from('guest_submissions')
+          .select(
+            'property_id, status, check_in_date, check_out_date, number_of_nights, booking_rate, number_of_adults, number_of_children, properties!inner(organization_id)'
+          )
+          .eq('properties.organization_id', org.id)
+      : supabase
+          .from('guest_submissions')
+          .select(
+            'property_id, status, check_in_date, check_out_date, number_of_nights, booking_rate, number_of_adults, number_of_children'
+          )
+          .in('property_id', propertyIds);
+
+    const { data: bookingRows, error: bookingsError } = await bookingsQuery;
 
     if (bookingsError) {
       console.error('[list-properties] bookings', bookingsError.message);

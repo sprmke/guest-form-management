@@ -7,6 +7,11 @@ import { isMetaReturnOriginAllowed, sanitizeMetaReturnPath } from '../_shared/me
 import { resolveInboxAccess } from '../_shared/inboxAccess.ts';
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
+import {
+  catchPlanFeatureError,
+  requireOrgPropertyFeature,
+  requirePropertyFeature,
+} from '../_shared/planEntitlements.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 function randomState(): string {
@@ -27,6 +32,19 @@ serveAuthenticated('meta-inbox-oauth-start', async (req, user) => {
   }
 
   const ctx = await resolveInboxAccess(req, 'manage', body);
+
+  try {
+    if (ctx.propertyId) {
+      await requirePropertyFeature(ctx.propertyId, 'metaChatChannel');
+    } else {
+      await requireOrgPropertyFeature(ctx.orgId, 'metaChatChannel');
+    }
+  } catch (err) {
+    const planErr = catchPlanFeatureError(req, err);
+    if (planErr) return planErr;
+    throw err;
+  }
+
   let returnPath = '/inbox';
   if (typeof body.returnPath === 'string') {
     returnPath = sanitizeMetaReturnPath(body.returnPath);

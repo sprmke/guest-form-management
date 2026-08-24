@@ -1,9 +1,12 @@
 /**
- * list-platform-properties — GET all properties across every org (super admin).
+ * list-platform-properties — GET properties across every org (super admin), paginated + filtered server-side.
+ * Query: q (search name/slug/address/residence name/org name/org slug), status, type,
+ *        development (all|linked|unlinked), page, limit
  */
 
 import { createServiceClient, serializeProperty, type PropertyRow } from '../_shared/orgAuth.ts';
 import { jsonSuccess, requireHttpMethod } from '../_shared/httpResponse.ts';
+import { postgrestOrIlikeValue } from '../_shared/publicSearch.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 import { verifySuperAdminJwt } from '../_shared/superAdminAuth.ts';
 
@@ -22,40 +25,101 @@ serveAuthenticated('list-platform-properties', async (req) => {
   requireHttpMethod(req, 'GET');
   await verifySuperAdminJwt(req);
 
+  const url = new URL(req.url);
+  const p = url.searchParams;
+  const page = Math.max(1, parseInt(p.get('page') ?? '1', 10));
+  const limit = Math.min(100, Math.max(1, parseInt(p.get('limit') ?? '31', 10)));
+  const q = (p.get('q') ?? '').trim();
+  const status = (p.get('status') ?? 'all').trim();
+  const type = (p.get('type') ?? 'all').trim();
+  const developmentFilter = (p.get('development') ?? 'all').trim();
+
   const supabase = createServiceClient();
 
-  const [
-    { data: orgs, error: orgError },
-    { data: properties, error: propertyError },
-    { data: developments, error: developmentError },
-  ] = await Promise.all([
-    supabase.from('organizations').select('id, slug, name').order('name', { ascending: true }),
-    supabase.from('properties').select('*').order('name', { ascending: true }),
-    supabase.from('developments').select('name, slug'),
-  ]);
+  // Lookup tables (organizations + developments) are small relative to properties —
+  // loading them in full is fine, unlike the properties table itself which must stay paginated.
+  const [{ data: orgs, error: orgError }, { data: developments, error: developmentError }] =
+    await Promise.all([
+      supabase.from('organizations').select('id, slug, name'),
+      supabase.from('developments').select('name, slug'),
+    ]);
 
   if (orgError) {
     console.error('[list-platform-properties] orgs', orgError.message);
     throw new Error('Failed to load organizations');
-  }
-  if (propertyError) {
-    console.error('[list-platform-properties] properties', propertyError.message);
-    throw new Error('Failed to list properties');
   }
   if (developmentError) {
     console.error('[list-platform-properties] developments', developmentError.message);
     throw new Error('Failed to load developments');
   }
 
-  const orgById = new Map((orgs ?? []).map((org) => [org.id as string, org]));
+  const orgRows = orgs ?? [];
+  const orgById = new Map(orgRows.map((org) => [org.id as string, org]));
   const developmentByName = developmentLookupByName(
     (developments ?? []).map((row) => ({
       name: row.name as string,
       slug: row.slug as string,
     }))
   );
+  const developmentNames = Array.from(developmentByName.values()).map((row) => row.name);
 
-  const propertyRows = (properties ?? []) as PropertyRow[];
+  let query = supabase.from('properties').select('*', { count: 'exact' });
+
+  if (status !== 'all') query = query.eq('status', status);
+  if (type !== 'all') query = query.eq('type', type);
+
+  if (developmentFilter === 'linked') {
+    if (developmentNames.length === 0) {
+      return jsonSuccess(req, { properties: [], total: 0, page, limit });
+    }
+    query = query.in('residence_name', developmentNames);
+  } else if (developmentFilter === 'unlinked') {
+    query =
+      developmentNames.length > 0
+        ? query.or(
+            `residence_name.is.null,residence_name.not.in.(${developmentNames
+              .map((name) => `"${name.replace(/"/g, '""')}"`)
+              .join(',')})`
+          )
+        : query;
+  }
+
+  if (q) {
+    const pattern = postgrestOrIlikeValue(q);
+    const orParts = [
+      `name.ilike.${pattern}`,
+      `slug.ilike.${pattern}`,
+      `address.ilike.${pattern}`,
+      `residence_name.ilike.${pattern}`,
+      `type.ilike.${pattern}`,
+      `status.ilike.${pattern}`,
+    ];
+    const matchingOrgIds = orgRows
+      .filter(
+        (org) =>
+          (org.name as string)?.toLowerCase().includes(q.toLowerCase()) ||
+          (org.slug as string)?.toLowerCase().includes(q.toLowerCase())
+      )
+      .map((org) => org.id as string);
+    if (matchingOrgIds.length > 0) {
+      orParts.push(`organization_id.in.(${matchingOrgIds.join(',')})`);
+    }
+    query = query.or(orParts.join(','));
+  }
+
+  const fromIdx = (page - 1) * limit;
+  const toIdx = fromIdx + limit - 1;
+
+  const { data, error, count } = await query
+    .order('name', { ascending: true })
+    .range(fromIdx, toIdx);
+
+  if (error) {
+    console.error('[list-platform-properties] properties', error.message);
+    throw new Error('Failed to list properties');
+  }
+
+  const propertyRows = (data ?? []) as PropertyRow[];
 
   return jsonSuccess(req, {
     properties: propertyRows.map((property) => {
@@ -71,5 +135,8 @@ serveAuthenticated('list-platform-properties', async (req) => {
         developmentName: development?.name ?? null,
       };
     }),
+    total: count ?? 0,
+    page,
+    limit,
   });
 });
