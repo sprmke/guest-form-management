@@ -39,11 +39,24 @@ export type OrgVerificationApprovalRow = {
   parkingAccessLocked: boolean;
 };
 
-export async function listOrgVerificationApprovalRows(): Promise<OrgVerificationApprovalRow[]> {
+export type OrgVerificationApprovalRowFilters = {
+  /** Narrows to orgs whose `host_modes` array includes this mode — pushed down via `.contains()`. */
+  hostMode?: 'property' | 'parking';
+};
+
+export async function listOrgVerificationApprovalRows(
+  filters: OrgVerificationApprovalRowFilters = {}
+): Promise<OrgVerificationApprovalRow[]> {
   const supabase = createServiceClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from('organizations')
     .select('id, name, slug, owner_id, host_modes, settings, created_at');
+
+  if (filters.hostMode) {
+    query = query.contains('host_modes', [filters.hostMode]);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error('[listOrgVerificationApprovalRows]', error.message);

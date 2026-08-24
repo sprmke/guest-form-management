@@ -7,6 +7,7 @@ import { readPropertyIdFromUrl, resolveScopedPropertyAccess } from './propertySc
 import { ensureTelegramParkingSettings } from './parkingTelegramSettingsSeed.ts';
 import { ensurePropertySettings } from './propertySettingsSeed.ts';
 import { ensureTelegramFinanceSettings } from './telegramFinance.ts';
+import { ensureTelegramChatSettings } from './telegramChat.ts';
 import { telegramSettingsPermission } from './telegramSettingsHttp.ts';
 
 export type TelegramAssetScope = { kind: 'property'; id: string } | { kind: 'parking'; id: string };
@@ -55,5 +56,8 @@ export async function ensureTelegramAssetSettings(
   await ensureTelegramParkingSettings(scope.id);
   if (channel === 'finance') {
     await ensureTelegramFinanceSettings({ parkingId: scope.id });
+  }
+  if (channel === 'chat') {
+    await ensureTelegramChatSettings(undefined, scope.id);
   }
 }

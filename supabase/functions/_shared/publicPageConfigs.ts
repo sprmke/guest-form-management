@@ -198,24 +198,27 @@ export function normalizePropertyLandingConfig(raw: unknown): PropertyLandingCon
         continue;
       }
       const existing = sectionById.get(id)!;
+      const isMandatory = id === 'gallery' || id === 'overview';
       sectionById.set(id, {
         id,
-        visible: typeof entry.visible === 'boolean' ? entry.visible : existing.visible,
-        order:
-          typeof entry.order === 'number' && Number.isFinite(entry.order)
-            ? entry.order
-            : existing.order,
+        visible: isMandatory
+          ? true
+          : typeof entry.visible === 'boolean'
+            ? entry.visible
+            : existing.visible,
+        // Order is product-fixed; ignore host-saved order.
+        order: existing.order,
       });
     }
   }
 
-  const sections = PROPERTY_LANDING_SECTION_IDS.map((id) => sectionById.get(id)!).sort(
-    (a, b) =>
-      a.order - b.order ||
-      PROPERTY_LANDING_SECTION_IDS.indexOf(a.id) - PROPERTY_LANDING_SECTION_IDS.indexOf(b.id)
-  );
-  sections.forEach((section, index) => {
-    section.order = index;
+  const sections = PROPERTY_LANDING_SECTION_IDS.map((id, order) => {
+    const section = sectionById.get(id)!;
+    return {
+      ...section,
+      visible: id === 'gallery' || id === 'overview' ? true : section.visible,
+      order,
+    };
   });
 
   return { version: 1, sections };

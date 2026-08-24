@@ -14,6 +14,7 @@ import type { TelegramAssetScope } from './telegramAssetScope.ts';
 import { ensurePropertySettings } from './propertySettingsSeed.ts';
 import { ensureTelegramParkingSettings } from './parkingTelegramSettingsSeed.ts';
 import { ensureTelegramFinanceSettings } from './telegramFinance.ts';
+import { ensureTelegramChatSettings } from './telegramChat.ts';
 import { telegramDbScope } from './telegramAssetScope.ts';
 import {
   buildTelegramCredentialsPatch,
@@ -36,6 +37,8 @@ export async function gateTelegramEnabledPatch(
   body: Record<string, unknown>
 ): Promise<Response | null> {
   if (body.enabled !== true) return null;
+  // Parking routes: temporarily ungated until org-level plan entitlements ship.
+  if (asset.kind === 'parking') return null;
   try {
     const propertyId = await resolveTelegramEntitlementPropertyId(asset);
     await requireTelegramNotificationsEnabled(propertyId);
@@ -57,6 +60,9 @@ export async function loadTelegramSettingsGetPayload<T>(
     await ensureTelegramParkingSettings(asset.id);
     if (channel === 'finance') {
       await ensureTelegramFinanceSettings({ parkingId: asset.id });
+    }
+    if (channel === 'chat') {
+      await ensureTelegramChatSettings(undefined, asset.id);
     }
   }
   const row = await loadRow();

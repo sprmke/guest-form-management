@@ -7,7 +7,7 @@ import { DatabaseService } from './databaseService.ts';
 import { DEFAULT_PUBLIC_GUEST_APP_ORIGIN } from './publicAppOrigin.ts';
 import type { NormalizedInboxAttachment } from './inboxAttachments.ts';
 import { normalizeTelegramTemplateText } from './telegramTemplateNormalize.ts';
-import type { SocialConversationRow, SocialPlatform } from './socialInboxTypes.ts';
+import type { TelegramAssetScopeRef } from './propertyTelegramCredentials.ts';
 
 export type TelegramChatSettings = {
   id: number;
@@ -71,18 +71,24 @@ export function serializeChatSettings(row: TelegramChatSettings | Record<string,
   };
 }
 
-/** Seed one chat settings row per property (idempotent). */
-export async function ensureTelegramChatSettings(propertyId: string): Promise<void> {
-  const existing = await DatabaseService.getTelegramChatSettings(propertyId);
+/** Seed one chat settings row per property or parking slot (idempotent). */
+export async function ensureTelegramChatSettings(
+  propertyId?: string,
+  parkingId?: string
+): Promise<void> {
+  const existing = await DatabaseService.getTelegramChatSettings(propertyId, parkingId);
   if (existing) return;
 
   const supabase = getSupabase();
-  const { error } = await supabase.from('telegram_chat_settings').insert({
-    property_id: propertyId,
+  const row: Record<string, unknown> = {
     enabled: false,
     notify_on_new_message: true,
     new_message_template: CHAT_DEFAULT_NEW_MESSAGE_TEMPLATE,
-  });
+  };
+  if (propertyId) row.property_id = propertyId;
+  if (parkingId) row.parking_id = parkingId;
+
+  const { error } = await supabase.from('telegram_chat_settings').insert(row);
   if (error) {
     console.error('[ensureTelegramChatSettings]', error.message);
     throw new Error('Failed to seed Telegram chat settings');
@@ -188,6 +194,22 @@ async function resolvePropertySlug(propertyId: string | null | undefined): Promi
   return slug || null;
 }
 
+async function resolveParkingName(parkingId: string | null | undefined): Promise<string> {
+  if (!parkingId) return 'Parking';
+  const sb = getSupabase();
+  const { data } = await sb.from('parkings').select('name').eq('id', parkingId).maybeSingle();
+  const name = typeof data?.name === 'string' ? data.name.trim() : '';
+  return name || 'Parking';
+}
+
+async function resolveParkingSlug(parkingId: string | null | undefined): Promise<string | null> {
+  if (!parkingId) return null;
+  const sb = getSupabase();
+  const { data } = await sb.from('parkings').select('slug').eq('id', parkingId).maybeSingle();
+  const slug = typeof data?.slug === 'string' ? data.slug.trim() : '';
+  return slug || null;
+}
+
 function appOrigin(): string {
   const fromEnv = Deno.env.get('PUBLIC_GUEST_APP_ORIGIN')?.trim();
   if (fromEnv) return fromEnv.replace(/\/$/, '');
@@ -225,24 +247,34 @@ export function buildConversationInboxLink(
   orgSlug: string,
   conversationId: string,
   platform: SocialPlatform | string,
-  propertySlug?: string | null
+  opts?: { propertySlug?: string | null; parkingSlug?: string | null }
 ): string {
   const platformParam = inboxPlatformQueryParam(platform);
-  const inboxBase = propertySlug
-    ? `${appOrigin()}/org/${encodeURIComponent(orgSlug)}/property/${encodeURIComponent(propertySlug)}/inbox`
-    : `${appOrigin()}/org/${encodeURIComponent(orgSlug)}/properties`;
+  const propertySlug = opts?.propertySlug?.trim() || null;
+  const parkingSlug = opts?.parkingSlug?.trim() || null;
+  const inboxBase = parkingSlug
+    ? `${appOrigin()}/org/${encodeURIComponent(orgSlug)}/parking/${encodeURIComponent(parkingSlug)}/inbox`
+    : propertySlug
+      ? `${appOrigin()}/org/${encodeURIComponent(orgSlug)}/property/${encodeURIComponent(propertySlug)}/inbox`
+      : `${appOrigin()}/org/${encodeURIComponent(orgSlug)}/properties`;
   return (
     `${inboxBase}` +
     `?conversationId=${encodeURIComponent(conversationId)}&platform=${encodeURIComponent(platformParam)}`
   );
 }
 
-/** Property whose telegram_chat_settings row drives send (web thread property or org fallback). */
-async function resolveChatNotifyPropertyId(
+type ChatNotifyScope = { propertyId?: string; parkingId?: string };
+
+/** Listing whose telegram_chat_settings row drives send. */
+async function resolveChatNotifyScope(
   conversation: SocialConversationRow
-): Promise<string | null> {
+): Promise<ChatNotifyScope | null> {
+  if (conversation.parking_id) {
+    return { parkingId: conversation.parking_id };
+  }
+
   if (conversation.property_id) {
-    return conversation.property_id;
+    return { propertyId: conversation.property_id };
   }
 
   const sb = getSupabase();
@@ -266,7 +298,7 @@ async function resolveChatNotifyPropertyId(
       const { resolvePropertyTelegramCredentials } =
         await import('./propertyTelegramCredentials.ts');
       const creds = await resolvePropertyTelegramCredentials('chat', { propertyId: id });
-      if (creds.ok) return id;
+      if (creds.ok) return { propertyId: id };
     } catch {
       continue;
     }
@@ -323,16 +355,18 @@ export function buildChatPreviewSamplePlaceholders(propertyName?: string): Recor
 
 export async function renderChatDraftPreview(
   template: string,
-  propertyId?: string | null
+  scope?: TelegramAssetScopeRef | null
 ): Promise<ChatDraftRenderResult> {
   const trimmed = sanitizeChatNewMessageTemplate(template);
   if (!trimmed) return { error: 'text is required' };
 
-  let propertyName = 'Azure North';
-  if (propertyId) {
-    propertyName = await resolvePropertyName(propertyId);
+  let listingName = 'Azure North';
+  if (scope?.parkingId) {
+    listingName = await resolveParkingName(scope.parkingId);
+  } else if (scope?.propertyId) {
+    listingName = await resolvePropertyName(scope.propertyId);
   }
-  const placeholders = buildChatPreviewSamplePlaceholders(propertyName);
+  const placeholders = buildChatPreviewSamplePlaceholders(listingName);
   return {
     renderedText: applyPlaceholders(trimmed, placeholders),
     placeholders,
@@ -340,15 +374,15 @@ export async function renderChatDraftPreview(
 }
 
 export async function verifyChatTelegramEnv(
-  propertyId?: string | null,
+  scope?: TelegramAssetScopeRef | null,
   overrides?: { botToken?: string; chatId?: string }
 ) {
   const { verifyPropertyTelegramChannel } = await import('./propertyTelegramCredentials.ts');
-  return verifyPropertyTelegramChannel('chat', propertyId ? { propertyId } : null, overrides);
+  return verifyPropertyTelegramChannel('chat', scope ?? null, overrides);
 }
 
-export async function sendChatDraftPreview(text: string, propertyId?: string | null) {
-  const rendered = await renderChatDraftPreview(text, propertyId);
+export async function sendChatDraftPreview(text: string, scope?: TelegramAssetScopeRef | null) {
+  const rendered = await renderChatDraftPreview(text, scope);
   if (rendered.error || !rendered.renderedText) {
     return {
       sent: false,
@@ -357,11 +391,7 @@ export async function sendChatDraftPreview(text: string, propertyId?: string | n
     };
   }
   const { sendPropertyTelegramMessage } = await import('./propertyTelegramCredentials.ts');
-  const r = await sendPropertyTelegramMessage(
-    'chat',
-    rendered.renderedText,
-    propertyId ? { propertyId } : null
-  );
+  const r = await sendPropertyTelegramMessage('chat', rendered.renderedText, scope ?? null);
   return {
     sent: r.ok,
     error: r.error,
@@ -379,14 +409,17 @@ export async function notifyTelegramChatInbound(input: {
   attachments: NormalizedInboxAttachment[];
   sentAt: string;
 }): Promise<{ sent: boolean; skipped?: string; error?: string }> {
-  const propertyId = await resolveChatNotifyPropertyId(input.conversation);
-  if (!propertyId) {
-    return { sent: false, skipped: 'no_property' };
+  const notifyScope = await resolveChatNotifyScope(input.conversation);
+  if (!notifyScope) {
+    return { sent: false, skipped: 'no_listing' };
   }
 
   let row: Record<string, unknown> | null;
   try {
-    row = await DatabaseService.getTelegramChatSettings(propertyId);
+    row = await DatabaseService.getTelegramChatSettings(
+      notifyScope.propertyId,
+      notifyScope.parkingId
+    );
   } catch (e) {
     console.warn('[telegramChat] load settings:', e);
     return { sent: false, error: e instanceof Error ? e.message : 'load_failed' };
@@ -407,19 +440,26 @@ export async function notifyTelegramChatInbound(input: {
     return { sent: false, skipped: 'no_org_slug' };
   }
 
-  const propertyName = await resolvePropertyName(propertyId);
-  const propertySlug = await resolvePropertySlug(propertyId);
+  const listingName = notifyScope.parkingId
+    ? await resolveParkingName(notifyScope.parkingId)
+    : await resolvePropertyName(notifyScope.propertyId);
+  const propertySlug = notifyScope.propertyId
+    ? await resolvePropertySlug(notifyScope.propertyId)
+    : null;
+  const parkingSlug = notifyScope.parkingId
+    ? await resolveParkingSlug(notifyScope.parkingId)
+    : null;
 
   const conversationLink = buildConversationInboxLink(
     orgSlug,
     input.conversation.id,
     input.conversation.platform,
-    propertySlug
+    { propertySlug, parkingSlug }
   );
 
   const placeholders = buildChatMessagePlaceholders({
     guestName: input.conversation.participant_name ?? 'Guest',
-    propertyName,
+    propertyName: listingName,
     chatSource: formatChatSourceLabel(input.conversation.platform),
     text: input.text,
     attachments: input.attachments,
@@ -436,7 +476,7 @@ export async function notifyTelegramChatInbound(input: {
 
   try {
     const { sendPropertyTelegramMessage } = await import('./propertyTelegramCredentials.ts');
-    const r = await sendPropertyTelegramMessage('chat', message, { propertyId });
+    const r = await sendPropertyTelegramMessage('chat', message, notifyScope);
     if (!r.ok) {
       console.warn('[telegramChat] send failed:', r.error);
       return { sent: false, error: r.error };

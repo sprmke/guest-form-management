@@ -27,6 +27,7 @@ import {
   type AiActorType,
   type RecordAiUsageInput,
 } from './aiUsageService.ts';
+import { computeTotalGuestBalanceFromBooking } from './totalGuestBalance.ts';
 
 export type AiUsageContext = {
   organizationId: string;
@@ -44,6 +45,10 @@ export type ReceiptValidationResult = {
   has_amount: boolean;
   has_date: boolean;
   has_reference: boolean;
+  /** Numeric PHP amount read off the receipt, when legible — null otherwise. */
+  extracted_amount: number | null;
+  /** ISO (YYYY-MM-DD) date read off the receipt, when legible — null otherwise. */
+  extracted_date: string | null;
   /** Gemini/network failure — do not persist verdict; surface to admin for retry. */
   aiModelError?: string;
   /** Which provider produced the result (for logging/debugging). */
@@ -92,7 +97,9 @@ Analyze the image and return ONLY valid JSON (no markdown) with this exact shape
   "summary": "one short sentence for an admin",
   "has_amount": boolean,
   "has_date": boolean,
-  "has_reference": boolean
+  "has_reference": boolean,
+  "extracted_amount": number | null,
+  "extracted_date": "YYYY-MM-DD" | null
 }
 
 Accept TWO forms of payment proof:
@@ -105,6 +112,8 @@ Rules:
 - "unclear": too blurry or ambiguous to tell if it is digital payment proof or PHP cash payment proof.
 - "invalid": clearly NOT payment proof (random photo, scenery, meme, blank, ID only, chat without payment proof, unrelated objects with no visible transfer details or PHP cash).
 - For cash photos: set has_amount true when bill denominations are visible; has_date and has_reference are usually false — that is OK.
+- extracted_amount: the numeric Philippine peso amount actually sent/paid (ignore fees, balances, or unrelated numbers). Null when not legible.
+- extracted_date: the transaction date shown on the screenshot (bank/e-wallet apps always show one), normalized to YYYY-MM-DD. If only a partial date is visible (e.g. no year), infer the most recent plausible year. Null for cash photos or when no date is visible at all.
 - summary must be plain English, max 120 characters, no line breaks.`;
 
 const VALID_ID_PROMPT = `You are validating a government-issued photo ID image for a vacation rental guest check-in in the Philippines.
@@ -140,6 +149,8 @@ function skipped(summary = 'AI validation unavailable'): ReceiptValidationResult
     has_amount: false,
     has_date: false,
     has_reference: false,
+    extracted_amount: null,
+    extracted_date: null,
   };
 }
 
@@ -209,10 +220,25 @@ function parseGeminiJson(
       has_amount: Boolean(parsed.has_amount),
       has_date: Boolean(parsed.has_date),
       has_reference: Boolean(parsed.has_reference),
+      extracted_amount: coerceNumber(parsed.extracted_amount),
+      extracted_date: normalizeExtractedDate(parsed.extracted_date),
     };
   } catch {
     return null;
   }
+}
+
+function coerceNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function normalizeExtractedDate(value: unknown): string | null {
+  const raw = String(value ?? '').trim();
+  return ISO_DATE_RE.test(raw) ? raw : null;
 }
 
 function normalizeVisionMimeType(mimeType: string, path?: string): string {
@@ -615,7 +641,110 @@ async function validateValidIdFromStorageUrl(
   );
 }
 
-export type ReceiptBackfillKind = 'downpayment' | 'balance' | 'parking' | 'valid_id';
+export type ReceiptBackfillKind = 'downpayment' | 'balance' | 'parking' | 'sd_refund' | 'valid_id';
+
+const RECEIPT_DATE_FUTURE_GRACE_DAYS = 1;
+const RECEIPT_DATE_MAX_AGE_DAYS = 180;
+
+function manilaTodayYmd(now = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila' }).format(now);
+}
+
+function daysBetween(fromYmd: string, toYmd: string): number {
+  return Math.round(
+    (new Date(`${toYmd}T00:00:00Z`).getTime() - new Date(`${fromYmd}T00:00:00Z`).getTime()) /
+      86_400_000
+  );
+}
+
+function pesoFormat(amount: number): string {
+  return `₱${amount.toLocaleString('en-PH', { maximumFractionDigits: 2 })}`;
+}
+
+/**
+ * Code-level sanity warnings for the AI-extracted amount/date — never blocks a
+ * transition (see receiptVerdictBlocksAdminTransition, unaffected by these),
+ * just surfaces a note for admin review. Date reasonableness is checked
+ * against today (when the receipt was uploaded), not the booking's check-in
+ * date, since bookings can be made far in advance of the stay.
+ */
+export function evaluateReceiptSanityWarnings(params: {
+  extractedAmount: number | null;
+  extractedDate: string | null;
+  minimumAmount: number | null;
+}): string[] {
+  const { extractedAmount, extractedDate, minimumAmount } = params;
+  const warnings: string[] = [];
+
+  if (
+    extractedAmount !== null &&
+    minimumAmount !== null &&
+    minimumAmount > 0 &&
+    extractedAmount < minimumAmount
+  ) {
+    warnings.push(
+      `Amount ${pesoFormat(extractedAmount)} is below the ${pesoFormat(minimumAmount)} expected.`
+    );
+  }
+
+  if (extractedDate) {
+    const today = manilaTodayYmd();
+    const daysAgo = daysBetween(extractedDate, today);
+    if (daysAgo < -RECEIPT_DATE_FUTURE_GRACE_DAYS) {
+      warnings.push('Receipt date is in the future — please double-check.');
+    } else if (daysAgo > RECEIPT_DATE_MAX_AGE_DAYS) {
+      warnings.push('Receipt date looks unusually old — please double-check.');
+    }
+  }
+
+  return warnings;
+}
+
+function appendSanityWarnings(summary: string, warnings: string[]): string {
+  if (warnings.length === 0) return summary;
+  return `${summary} ${warnings.map((w) => `⚠ ${w}`).join(' ')}`.trim();
+}
+
+/** Minimum PHP amount the receipt is expected to show, per receipt kind — null when unknown/not applicable. */
+export function expectedMinimumAmountForReceiptKind(
+  kind: ReceiptBackfillKind,
+  booking: Record<string, unknown>
+): number | null {
+  switch (kind) {
+    case 'downpayment':
+      return coerceNumber(booking.down_payment) ?? coerceNumber(booking.booking_rate);
+    case 'balance': {
+      const due = computeTotalGuestBalanceFromBooking(booking);
+      return due !== null && due > 0 ? due : null;
+    }
+    case 'parking':
+      return coerceNumber(booking.parking_rate_guest);
+    case 'sd_refund':
+      return coerceNumber(booking.sd_refund_amount);
+    case 'valid_id':
+      return null;
+    default:
+      return null;
+  }
+}
+
+/** Appends amount/date sanity warnings to a receipt's summary — a no-op for valid_id or a failed AI call. */
+export function applyReceiptSanityChecks(
+  kind: ReceiptBackfillKind,
+  booking: Record<string, unknown>,
+  result: ReceiptValidationResult
+): ReceiptValidationResult {
+  if (kind === 'valid_id' || result.aiModelError) return result;
+
+  const warnings = evaluateReceiptSanityWarnings({
+    extractedAmount: result.extracted_amount,
+    extractedDate: result.extracted_date,
+    minimumAmount: expectedMinimumAmountForReceiptKind(kind, booking),
+  });
+  if (warnings.length === 0) return result;
+
+  return { ...result, summary: appendSanityWarnings(result.summary, warnings) };
+}
 
 export type ReceiptBackfillItem = {
   kind: ReceiptBackfillKind;
@@ -673,6 +802,11 @@ export async function backfillMissingReceiptAiVerdicts(
     targets.push({ kind: 'parking', url: parkingUrl });
   }
 
+  const sdRefundUrl = String(booking.sd_refund_receipt_url ?? '').trim();
+  if (receiptUrlNeedsAiBackfill(sdRefundUrl, booking.sd_refund_receipt_ai_verdict as string)) {
+    targets.push({ kind: 'sd_refund', url: sdRefundUrl });
+  }
+
   const validIdUrl = String(booking.valid_id_url ?? '').trim();
   if (receiptUrlNeedsAiBackfill(validIdUrl, booking.valid_id_ai_verdict as string)) {
     targets.push({ kind: 'valid_id', url: validIdUrl });
@@ -681,17 +815,18 @@ export async function backfillMissingReceiptAiVerdicts(
   const validated: ReceiptBackfillItem[] = [];
   const errors: ReceiptBackfillError[] = [];
   for (const target of targets) {
-    const validation =
+    const rawValidation =
       target.kind === 'valid_id'
         ? await validateValidIdFromStorageUrl(target.url, usageContext)
         : await validateReceiptFromStorageUrl(target.url, usageContext);
-    if (validation.aiModelError) {
+    if (rawValidation.aiModelError) {
       errors.push({
         kind: target.kind,
-        message: validation.aiModelError,
+        message: rawValidation.aiModelError,
       });
       continue;
     }
+    const validation = applyReceiptSanityChecks(target.kind, booking, rawValidation);
     validated.push({
       kind: target.kind,
       verdict: validation.verdict,
@@ -715,6 +850,8 @@ export function dbPatchFromReceiptBackfillItems(
         has_amount: false,
         has_date: false,
         has_reference: false,
+        extracted_amount: null,
+        extracted_date: null,
       })
     );
   }
@@ -760,6 +897,10 @@ export type ReceiptValidationDbPatch =
       parking_receipt_ai_summary: string;
     }
   | {
+      sd_refund_receipt_ai_verdict: string;
+      sd_refund_receipt_ai_summary: string;
+    }
+  | {
       valid_id_ai_verdict: string;
       valid_id_ai_summary: string;
     };
@@ -778,6 +919,12 @@ export function dbPatchForDocumentAiValidation(
     return {
       parking_receipt_ai_verdict: result.verdict,
       parking_receipt_ai_summary: result.summary,
+    };
+  }
+  if (kind === 'sd_refund') {
+    return {
+      sd_refund_receipt_ai_verdict: result.verdict,
+      sd_refund_receipt_ai_summary: result.summary,
     };
   }
   if (kind === 'valid_id') {
@@ -800,7 +947,9 @@ export function dbPatchForReceiptValidation(
   return dbPatchForDocumentAiValidation(kind, result);
 }
 
-function receiptKindForAssetType(assetType: string): 'downpayment' | 'balance' | 'parking' | null {
+function receiptKindForAssetType(
+  assetType: string
+): 'downpayment' | 'balance' | 'parking' | 'sd_refund' | null {
   switch (assetType) {
     case 'payment_receipt':
       return 'downpayment';
@@ -808,6 +957,8 @@ function receiptKindForAssetType(assetType: string): 'downpayment' | 'balance' |
       return 'balance';
     case 'parking_payment_receipt':
       return 'parking';
+    case 'sd_refund_receipt':
+      return 'sd_refund';
     default:
       return null;
   }

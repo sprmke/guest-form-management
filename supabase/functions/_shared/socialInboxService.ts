@@ -17,11 +17,20 @@ export function socialInboxDb() {
   return createServiceClient();
 }
 
-export async function ensureSocialInboxSettings(orgId: string): Promise<void> {
+export async function ensureSocialInboxSettings(
+  orgId: string,
+  parkingId: string | null = null
+): Promise<void> {
   const sb = socialInboxDb();
-  await sb
+  let query = sb
     .from('social_inbox_settings')
-    .upsert({ organization_id: orgId }, { onConflict: 'organization_id', ignoreDuplicates: true });
+    .select('id', { count: 'exact', head: true })
+    .eq('organization_id', orgId);
+  query = parkingId ? query.eq('parking_id', parkingId) : query.is('parking_id', null);
+  const { count } = await query;
+  if ((count ?? 0) > 0) return;
+
+  await sb.from('social_inbox_settings').insert({ organization_id: orgId, parking_id: parkingId });
 }
 
 export async function listChannelConnections(orgId: string): Promise<SocialChannelConnectionRow[]> {

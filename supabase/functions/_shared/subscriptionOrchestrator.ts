@@ -5,7 +5,11 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
-import { assignPropertyToPlan } from './planEntitlements.ts';
+import {
+  assignPropertyToPlan,
+  createOrgSubscription,
+  reconcilePropertyTeamSeats,
+} from './planEntitlements.ts';
 import { isPaymongoTestMode } from './paymongoClient.ts';
 import { createPropertySubscriptionCheckoutLink } from './propertySubscriptionCheckout.ts';
 import {
@@ -119,6 +123,24 @@ async function plansUrlForProperty(orgSlug: string, propertySlug: string): Promi
   return `${appOrigin}/org/${orgSlug}/property/${propertySlug}/plans`;
 }
 
+export async function markOrgPaymentFailed(
+  transactionId: string,
+  failureReason: string,
+  rawPayload?: Record<string, unknown>
+): Promise<void> {
+  const sb = db();
+  const { error } = await sb
+    .from('org_payment_transactions')
+    .update({
+      status: 'failed',
+      failure_reason: failureReason.slice(0, 500),
+      raw_webhook_payload: rawPayload ?? null,
+    })
+    .eq('id', transactionId)
+    .eq('status', 'pending');
+  if (error) throw new Error(error.message);
+}
+
 export async function markPropertyPaymentFailed(
   transactionId: string,
   failureReason: string,
@@ -163,10 +185,14 @@ export async function fulfillPropertySubscriptionPayment(input: {
 
   const { data: existingSub } = await sb
     .from('property_subscriptions')
-    .select('id, current_period_end, status')
+    .select('id, plan_id, current_period_end, status')
     .eq('property_id', propertyId)
     .in('status', ['active', 'trialing', 'past_due', 'suspended'])
     .maybeSingle();
+
+  const isPlanSwitch = Boolean(
+    existingSub?.plan_id != null && String(existingSub.plan_id) !== planId
+  );
 
   await assignPropertyToPlan(propertyId, planId, assignedBy, {
     note: 'Paid via PayMongo checkout',
@@ -177,7 +203,12 @@ export async function fulfillPropertySubscriptionPayment(input: {
     existingSub?.current_period_end != null
       ? new Date(String(existingSub.current_period_end))
       : null;
-  const periodStart = existingEnd && existingEnd.getTime() > now.getTime() ? existingEnd : now;
+  // A plan switch is charged the prorated net-due amount (propertySubscriptionCheckout.ts) and
+  // starts a fresh period from today — the credit already bought back the unused old-plan time,
+  // so extending from the old period's end would double-count it. Same-plan renewals still
+  // extend from any remaining time, same as before.
+  const periodStart =
+    !isPlanSwitch && existingEnd && existingEnd.getTime() > now.getTime() ? existingEnd : now;
   const periodEnd = addOneMonth(periodStart);
 
   const { data: subscription, error: subLookupError } = await sb
@@ -234,6 +265,133 @@ export async function fulfillPropertySubscriptionPayment(input: {
   }
 }
 
+type OrgPaymentTransactionRow = {
+  id: string;
+  organization_id: string;
+  org_subscription_id: string | null;
+  plan_id: string;
+  property_ids: string[];
+  provider_reference: string | null;
+  status: string;
+  amount: number;
+};
+
+/** Org portfolio subscription equivalent of fulfillPropertySubscriptionPayment — creates the
+ * org_subscriptions row (via planEntitlements.ts#createOrgSubscription, which also slots the
+ * checked-out properties) and sets a fresh billing period. No plan-switch/proration case exists
+ * yet (an org can only have one bundle at a time; changing tiers is a follow-up, see
+ * pricing-portfolio-bundling.md), so this is always a fresh assignment. */
+export async function fulfillOrgSubscriptionPayment(input: {
+  transactionId: string;
+  providerReference?: string | null;
+  paymentMethodType?: string | null;
+  paidAt?: string | null;
+  rawPayload?: Record<string, unknown>;
+  assignedByUserId?: string | null;
+}): Promise<void> {
+  const sb = db();
+
+  const { data: txn, error: txnError } = await sb
+    .from('org_payment_transactions')
+    .select('*')
+    .eq('id', input.transactionId)
+    .maybeSingle();
+  if (txnError) throw new Error(txnError.message);
+  if (!txn) throw new Error('Org payment transaction not found');
+  if (txn.status === 'paid') return;
+
+  const organizationId = txn.organization_id as string;
+  const planId = txn.plan_id as string;
+  const propertyIds = (txn.property_ids as string[] | null) ?? [];
+  const assignedBy = input.assignedByUserId ?? null;
+
+  // PayMongo has already collected payment by the time this runs — a thrown error here must not
+  // leave the transaction stuck `pending` forever (indistinguishable from "webhook hasn't arrived
+  // yet"). Mark it `failed` with the real reason so it surfaces for manual reconciliation instead.
+  try {
+    const { orgSubscriptionId } = await createOrgSubscription(
+      organizationId,
+      planId,
+      propertyIds,
+      assignedBy
+    );
+
+    const now = new Date();
+    const periodEnd = addOneMonth(now);
+
+    const { error: subUpdateError } = await sb
+      .from('org_subscriptions')
+      .update({
+        current_period_start: now.toISOString(),
+        current_period_end: periodEnd.toISOString(),
+        status: 'active',
+      })
+      .eq('id', orgSubscriptionId);
+    if (subUpdateError) throw new Error(subUpdateError.message);
+
+    const paidAt = input.paidAt ?? new Date().toISOString();
+    const { error: txnUpdateError } = await sb
+      .from('org_payment_transactions')
+      .update({
+        status: 'paid',
+        org_subscription_id: orgSubscriptionId,
+        provider_reference: input.providerReference ?? txn.provider_reference,
+        payment_method_type: input.paymentMethodType ?? null,
+        paid_at: paidAt,
+        raw_webhook_payload: input.rawPayload ?? null,
+      })
+      .eq('id', input.transactionId);
+    if (txnUpdateError) throw new Error(txnUpdateError.message);
+  } catch (err) {
+    await markOrgPaymentFailed(
+      input.transactionId,
+      `Fulfillment error (payment was collected — needs manual review): ${(err as Error).message}`,
+      input.rawPayload
+    );
+    throw err;
+  }
+}
+
+export async function resolveOrgTransactionFromWebhookPayload(
+  payload: Record<string, unknown>
+): Promise<OrgPaymentTransactionRow | null> {
+  const sb = db();
+  const attrs = (payload.data as Record<string, unknown> | undefined)?.attributes as
+    Record<string, unknown> | undefined;
+  const inner = attrs?.data as Record<string, unknown> | undefined;
+  const innerAttrs = inner?.attributes as Record<string, unknown> | undefined;
+  const metadata = innerAttrs?.metadata ?? attrs?.metadata;
+
+  if (readMetadataString(metadata, 'kind') !== 'org_subscription') return null;
+
+  const transactionId = readMetadataString(metadata, 'transaction_id');
+  if (transactionId) {
+    const { data } = await sb
+      .from('org_payment_transactions')
+      .select('*')
+      .eq('id', transactionId)
+      .maybeSingle();
+    return (data as OrgPaymentTransactionRow | null) ?? null;
+  }
+
+  const linkId =
+    (inner?.type === 'link' ? String(inner.id ?? '') : '') ||
+    readMetadataString(metadata, 'link_id');
+  const providerRef =
+    linkId || (inner?.type === 'payment' && typeof inner.id === 'string' ? inner.id : null) || null;
+  if (!providerRef) return null;
+
+  const { data } = await sb
+    .from('org_payment_transactions')
+    .select('*')
+    .eq('provider_reference', providerRef)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return (data as OrgPaymentTransactionRow | null) ?? null;
+}
+
 function readMetadataString(metadata: unknown, key: string): string | null {
   if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return null;
   const value = (metadata as Record<string, unknown>)[key];
@@ -288,6 +446,13 @@ export async function handlePaymongoWebhookEvent(
   const normalized = eventType.toLowerCase();
 
   if (normalized === 'payment.failed') {
+    const orgTxn = await resolveOrgTransactionFromWebhookPayload(payload);
+    if (orgTxn) {
+      if (orgTxn.status !== 'pending') return { handled: false };
+      await markOrgPaymentFailed(orgTxn.id, 'Payment failed', payload);
+      return { handled: true, action: 'marked_org_failed' };
+    }
+
     const txn = await resolveTransactionFromWebhookPayload(payload);
     if (!txn || txn.status !== 'pending') return { handled: false };
     await markPropertyPaymentFailed(txn.id, 'Payment failed', payload);
@@ -311,9 +476,6 @@ export async function handlePaymongoWebhookEvent(
     normalized === 'link.payment.paid' ||
     normalized === 'checkout_session.payment.paid'
   ) {
-    const txn = await resolveTransactionFromWebhookPayload(payload);
-    if (!txn) return { handled: false };
-
     const attrs = (payload.data as Record<string, unknown> | undefined)?.attributes as
       Record<string, unknown> | undefined;
     const inner = attrs?.data as Record<string, unknown> | undefined;
@@ -328,6 +490,23 @@ export async function handlePaymongoWebhookEvent(
       typeof paidAtEpoch === 'number'
         ? new Date(paidAtEpoch * 1000).toISOString()
         : new Date().toISOString();
+
+    const orgTxn = await resolveOrgTransactionFromWebhookPayload(payload);
+    if (orgTxn) {
+      if (orgTxn.status === 'paid') return { handled: false };
+      await fulfillOrgSubscriptionPayment({
+        transactionId: orgTxn.id,
+        providerReference: orgTxn.provider_reference,
+        paymentMethodType,
+        paidAt,
+        rawPayload: payload,
+        assignedByUserId: initiatedBy,
+      });
+      return { handled: true, action: 'fulfilled_org_subscription' };
+    }
+
+    const txn = await resolveTransactionFromWebhookPayload(payload);
+    if (!txn) return { handled: false };
 
     await fulfillPropertySubscriptionPayment({
       transactionId: txn.id,
@@ -478,6 +657,12 @@ export async function runPlatformBillingCycle(): Promise<Record<string, number>>
           continue;
         }
         try {
+          await reconcilePropertyTeamSeats(sub.property_id);
+        } catch (err) {
+          console.error('[platform-billing-cron] team seat reconciliation', sub.property_id, err);
+          counters.errors += 1;
+        }
+        try {
           const ctx = await ctxPromise;
           const plansUrl = await plansUrlForProperty(ctx.orgSlug, ctx.propertySlug);
           await sendSubscriptionSuspendedEmail({
@@ -534,4 +719,5 @@ export async function adminExtendPropertySubscription(input: {
     note: input.note ?? 'Super-admin manual billing extension',
     created_by: input.adminUserId,
   });
+  await reconcilePropertyTeamSeats(input.propertyId);
 }
