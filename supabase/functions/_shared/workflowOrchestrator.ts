@@ -29,6 +29,7 @@ import {
   sendSdRefundFormRequest,
 } from './emailService.ts';
 import {
+  planBlockedAutomationToggleKeys,
   propertyAutomationEnabled,
   type PropertyAutomationToggleKey,
 } from './propertyAutomationToggles.ts';
@@ -140,6 +141,12 @@ export type TransitionResult = {
   booking: any;
   sideEffects: {
     emails: string[];
+    /**
+     * Automation emails this transition would have sent had the property's plan included
+     * `automatedBookingFlow` — e.g. `'gaf_request'`. Client surfaces a manual-action prompt for
+     * these; distinct from a property owner deliberately turning a toggle off (no prompt there).
+     */
+    automationSkippedByPlan: string[];
   };
 };
 
@@ -841,9 +848,14 @@ export class WorkflowOrchestrator {
 
     // 8. Emails — based on side-effect matrix in booking-workflow.mdc §3
     const emailsSent: string[] = [];
+    const automationSkippedByPlan: string[] = [];
 
     const propertyEmailAllowed = async (key: PropertyAutomationToggleKey): Promise<boolean> =>
       propertyAutomationEnabled(propertyId, key);
+    const planBlockedKeys = new Set(await planBlockedAutomationToggleKeys(propertyId));
+    const recordIfPlanBlocked = (key: PropertyAutomationToggleKey, sideEffectName: string) => {
+      if (planBlockedKeys.has(key)) automationSkippedByPlan.push(sideEffectName);
+    };
 
     // PENDING_REVIEW → PENDING_GAF | PENDING_DOCUMENTS | READY_FOR_CHECKIN (D2 skip), same bundle:
     // - GAF request to Azure (only when "gaf" is in the resolved requirements)
@@ -871,6 +883,7 @@ export class WorkflowOrchestrator {
         flag(devControls, 'sendGafRequestEmail')
       ) {
         console.log('[orchestrator] GAF request email skipped (org automation off)');
+        recordIfPlanBlocked('emailGafRequest', 'gaf_request');
       }
 
       if (
@@ -885,6 +898,7 @@ export class WorkflowOrchestrator {
         }
       } else if (flag(devControls, 'sendBookingAcknowledgementEmail')) {
         console.log('[orchestrator] Booking acknowledgement email skipped (org automation off)');
+        recordIfPlanBlocked('emailBookingAcknowledgement', 'booking_acknowledgement');
       }
 
       if (
@@ -914,6 +928,7 @@ export class WorkflowOrchestrator {
         flag(devControls, 'sendPetRequestEmail')
       ) {
         console.log('[orchestrator] Pet request email skipped (org automation off)');
+        recordIfPlanBlocked('emailPetRequest', 'pet_request');
       }
 
       if (
@@ -929,6 +944,7 @@ export class WorkflowOrchestrator {
         }
       } else if (updatedBooking.need_parking && flag(devControls, 'sendParkingBroadcastEmail')) {
         console.log('[orchestrator] Parking broadcast email skipped (org automation off)');
+        recordIfPlanBlocked('emailParkingBroadcast', 'parking_broadcast');
       }
     }
 
@@ -970,6 +986,7 @@ export class WorkflowOrchestrator {
       flag(devControls, 'sendReadyForCheckinEmail')
     ) {
       console.log('[orchestrator] Ready-for-check-in email skipped (org automation off)');
+      recordIfPlanBlocked('emailReadyForCheckin', 'ready_for_checkin');
     }
 
     const sdAmount = Number(updatedBooking.security_deposit ?? 0);
@@ -1007,6 +1024,7 @@ export class WorkflowOrchestrator {
       sdAmount > 0
     ) {
       console.log('[orchestrator] SD refund form email skipped (org automation off)');
+      recordIfPlanBlocked('emailSdRefundCheckout', 'sd_refund_form_request');
     }
 
     // Notification Center — fires alongside the guest-facing emails above, for the
@@ -1088,6 +1106,7 @@ export class WorkflowOrchestrator {
       booking: updatedBooking,
       sideEffects: {
         emails: emailsSent,
+        automationSkippedByPlan,
       },
     };
   }

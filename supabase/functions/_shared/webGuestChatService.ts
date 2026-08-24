@@ -3,6 +3,7 @@
  */
 
 import { loadAuthUserProfile } from './authUserProfile.ts';
+import { loadPublicParkingBySlug } from './parkingScope.ts';
 import { loadPublicPropertyBySlug } from './publicPropertyService.ts';
 import { createServiceClient } from './orgAuth.ts';
 import {
@@ -36,7 +37,11 @@ import {
   parseGuestWebChatAttachments,
 } from './guestChatAttachments.ts';
 
-import { buildWebMessageExternalId, buildWebThreadId } from './webGuestChatIds.ts';
+import {
+  buildParkingWebThreadId,
+  buildWebMessageExternalId,
+  buildWebThreadId,
+} from './webGuestChatIds.ts';
 import { isVoiceReceptionistAvailableForProperty } from './voiceReceptionistService.ts';
 
 /** YYYY-MM-DD inquiry dates from the guest chat / contact-host flow. */
@@ -82,13 +87,16 @@ export async function ensureWebChannelConnection(orgId: string) {
   });
 }
 
+export type WebChatListingRef = {
+  id: string;
+  slug: string;
+  name: string;
+};
+
 export type WebChatStartResult = {
   conversationId: string;
-  property: {
-    id: string;
-    slug: string;
-    name: string;
-  };
+  property?: WebChatListingRef;
+  parking?: WebChatListingRef;
   host: {
     organizationName: string;
     ownerName: string;
@@ -106,11 +114,8 @@ export type WebChatResumeResult = {
   inquiryCheckIn: string | null;
   inquiryCheckOut: string | null;
   replyStatus: 'pending' | 'replied' | 'none' | null;
-  property: {
-    id: string;
-    slug: string;
-    name: string;
-  } | null;
+  property?: WebChatListingRef | null;
+  parking?: WebChatListingRef | null;
   host: {
     organizationName: string;
     ownerName: string;
@@ -119,9 +124,34 @@ export type WebChatResumeResult = {
   voiceReceptionistEnabled: boolean;
 };
 
+export type StartGuestWebChatInput = {
+  propertySlug?: string;
+  parkingSlug?: string;
+  checkInDate: string;
+  checkOutDate: string;
+};
+
+async function loadParkingWebChatHost(organizationId: string): Promise<WebChatStartResult['host']> {
+  const sb = createServiceClient();
+  const { data: org, error } = await sb
+    .from('organizations')
+    .select('name, owner_id')
+    .eq('id', organizationId)
+    .maybeSingle();
+  if (error || !org) {
+    throw new Error('Parking not found');
+  }
+  const profile = await loadAuthUserProfile(sb, org.owner_id as string);
+  return {
+    organizationName: String(org.name ?? 'Host'),
+    ownerName: profile.name.trim() || 'Host',
+    ownerAvatarUrl: profile.avatarUrl,
+  };
+}
+
 export async function resumeGuestWebChat(
   user: AuthenticatedUser,
-  propertySlug: string
+  input: { propertySlug?: string; parkingSlug?: string }
 ): Promise<WebChatResumeResult> {
   const empty: WebChatResumeResult = {
     hasMessages: false,
@@ -130,20 +160,66 @@ export async function resumeGuestWebChat(
     inquiryCheckOut: null,
     replyStatus: null,
     property: null,
+    parking: null,
     host: null,
     voiceReceptionistEnabled: false,
   };
 
-  const slug = propertySlug.trim();
-  if (!slug) return empty;
-
-  const property = await loadPublicPropertyBySlug(slug);
-  if (!property) return empty;
+  const propertySlug = input.propertySlug?.trim() ?? '';
+  const parkingSlug = input.parkingSlug?.trim() ?? '';
+  if ((!propertySlug && !parkingSlug) || (propertySlug && parkingSlug)) {
+    return empty;
+  }
 
   const sb = createServiceClient();
   await linkGuestWebConversationUser(sb, user.id);
 
-  const threadId = buildWebThreadId(property.id, user.id);
+  if (propertySlug) {
+    const property = await loadPublicPropertyBySlug(propertySlug);
+    if (!property) return empty;
+
+    const threadId = buildWebThreadId(property.id, user.id);
+    const { data: conv, error } = await sb
+      .from('social_conversations')
+      .select('id, inquiry_check_in, inquiry_check_out, subject_preview, reply_status')
+      .eq('platform', 'web')
+      .eq('external_thread_id', threadId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('[webGuestChat] resume lookup failed:', error.message);
+      return empty;
+    }
+
+    const voiceReceptionistEnabled = await isVoiceReceptionistAvailableForProperty(property.id);
+    if (!conv?.subject_preview?.trim()) {
+      return { ...empty, voiceReceptionistEnabled };
+    }
+
+    return {
+      hasMessages: true,
+      conversationId: conv.id as string,
+      inquiryCheckIn: (conv.inquiry_check_in as string | null) ?? null,
+      inquiryCheckOut: (conv.inquiry_check_out as string | null) ?? null,
+      replyStatus: (conv.reply_status as WebChatResumeResult['replyStatus']) ?? 'none',
+      property: {
+        id: property.id,
+        slug: property.slug,
+        name: property.name,
+      },
+      host: {
+        organizationName: property.host.organizationName,
+        ownerName: property.host.ownerName,
+        ownerAvatarUrl: property.host.ownerAvatarUrl,
+      },
+      voiceReceptionistEnabled,
+    };
+  }
+
+  const parking = await loadPublicParkingBySlug(parkingSlug);
+  if (!parking) return empty;
+
+  const threadId = buildParkingWebThreadId(parking.id, user.id);
   const { data: conv, error } = await sb
     .from('social_conversations')
     .select('id, inquiry_check_in, inquiry_check_out, subject_preview, reply_status')
@@ -152,14 +228,20 @@ export async function resumeGuestWebChat(
     .maybeSingle();
 
   if (error) {
-    console.error('[webGuestChat] resume lookup failed:', error.message);
+    console.error('[webGuestChat] parking resume lookup failed:', error.message);
     return empty;
   }
 
-  const voiceReceptionistEnabled = await isVoiceReceptionistAvailableForProperty(property.id);
+  const { data: parkingRow } = await sb
+    .from('parkings')
+    .select('organization_id')
+    .eq('id', parking.id)
+    .maybeSingle();
+  if (!parkingRow) return empty;
 
+  const host = await loadParkingWebChatHost(parkingRow.organization_id as string);
   if (!conv?.subject_preview?.trim()) {
-    return { ...empty, voiceReceptionistEnabled };
+    return { ...empty, host, voiceReceptionistEnabled: false };
   }
 
   return {
@@ -168,54 +250,110 @@ export async function resumeGuestWebChat(
     inquiryCheckIn: (conv.inquiry_check_in as string | null) ?? null,
     inquiryCheckOut: (conv.inquiry_check_out as string | null) ?? null,
     replyStatus: (conv.reply_status as WebChatResumeResult['replyStatus']) ?? 'none',
-    property: {
-      id: property.id,
-      slug: property.slug,
-      name: property.name,
+    parking: {
+      id: parking.id,
+      slug: parking.slug,
+      name: parking.name,
     },
-    host: {
-      organizationName: property.host.organizationName,
-      ownerName: property.host.ownerName,
-      ownerAvatarUrl: property.host.ownerAvatarUrl,
-    },
-    voiceReceptionistEnabled,
+    host,
+    voiceReceptionistEnabled: false,
   };
 }
 
 export async function startGuestWebChat(
   user: AuthenticatedUser,
-  input: { propertySlug: string; checkInDate: string; checkOutDate: string }
+  input: StartGuestWebChatInput
 ): Promise<WebChatStartResult> {
   const dates = parseInquiryDates(input.checkInDate, input.checkOutDate);
   if (!dates) {
     throw new Error('Valid checkInDate and checkOutDate (YYYY-MM-DD) required');
   }
 
-  const property = await loadPublicPropertyBySlug(input.propertySlug.trim());
-  if (!property) {
-    throw new Error('Property not found');
+  const propertySlug = input.propertySlug?.trim() ?? '';
+  const parkingSlug = input.parkingSlug?.trim() ?? '';
+  if ((!propertySlug && !parkingSlug) || (propertySlug && parkingSlug)) {
+    throw new Error('Exactly one of propertySlug or parkingSlug is required');
   }
 
   const sb = createServiceClient();
-  const { data: propertyRow, error: propertyError } = await sb
-    .from('properties')
-    .select('id, organization_id')
-    .eq('id', property.id)
-    .maybeSingle();
-  if (propertyError || !propertyRow) {
-    throw new Error('Property not found');
-  }
-
   const profile = await loadAuthUserProfile(sb, user.id);
   const participantName = profile.name.trim() || profile.email.split('@')[0]?.trim() || 'Guest';
 
-  const connection = await ensureWebChannelConnection(propertyRow.organization_id);
-  const threadId = buildWebThreadId(property.id, user.id);
-
   await linkGuestWebConversationUser(sb, user.id);
 
+  if (propertySlug) {
+    const property = await loadPublicPropertyBySlug(propertySlug);
+    if (!property) {
+      throw new Error('Property not found');
+    }
+
+    const { data: propertyRow, error: propertyError } = await sb
+      .from('properties')
+      .select('id, organization_id')
+      .eq('id', property.id)
+      .maybeSingle();
+    if (propertyError || !propertyRow) {
+      throw new Error('Property not found');
+    }
+
+    const connection = await ensureWebChannelConnection(propertyRow.organization_id);
+    const threadId = buildWebThreadId(property.id, user.id);
+
+    const conversation = await upsertConversation({
+      organization_id: propertyRow.organization_id,
+      connection_id: connection.id,
+      platform: 'web',
+      conversation_type: 'dm',
+      external_thread_id: threadId,
+      external_participant_id: user.id,
+      participant_name: participantName,
+      participant_avatar_url: profile.avatarUrl,
+      property_id: property.id,
+      guest_user_id: user.id,
+      inquiry_check_in: dates.checkIn,
+      inquiry_check_out: dates.checkOut,
+      last_message_at: new Date().toISOString(),
+    });
+
+    return {
+      conversationId: conversation.id,
+      property: {
+        id: property.id,
+        slug: property.slug,
+        name: property.name,
+      },
+      host: {
+        organizationName: property.host.organizationName,
+        ownerName: property.host.ownerName,
+        ownerAvatarUrl: property.host.ownerAvatarUrl,
+      },
+      inquiryCheckIn: dates.checkIn,
+      inquiryCheckOut: dates.checkOut,
+      replyStatus: (conversation.reply_status as WebChatStartResult['replyStatus']) ?? 'none',
+      voiceReceptionistEnabled: await isVoiceReceptionistAvailableForProperty(property.id),
+    };
+  }
+
+  const parking = await loadPublicParkingBySlug(parkingSlug);
+  if (!parking) {
+    throw new Error('Parking not found');
+  }
+
+  const { data: parkingRow, error: parkingError } = await sb
+    .from('parkings')
+    .select('id, organization_id')
+    .eq('id', parking.id)
+    .maybeSingle();
+  if (parkingError || !parkingRow) {
+    throw new Error('Parking not found');
+  }
+
+  const host = await loadParkingWebChatHost(parkingRow.organization_id as string);
+  const connection = await ensureWebChannelConnection(parkingRow.organization_id as string);
+  const threadId = buildParkingWebThreadId(parking.id, user.id);
+
   const conversation = await upsertConversation({
-    organization_id: propertyRow.organization_id,
+    organization_id: parkingRow.organization_id as string,
     connection_id: connection.id,
     platform: 'web',
     conversation_type: 'dm',
@@ -223,7 +361,7 @@ export async function startGuestWebChat(
     external_participant_id: user.id,
     participant_name: participantName,
     participant_avatar_url: profile.avatarUrl,
-    property_id: property.id,
+    parking_id: parking.id,
     guest_user_id: user.id,
     inquiry_check_in: dates.checkIn,
     inquiry_check_out: dates.checkOut,
@@ -232,20 +370,16 @@ export async function startGuestWebChat(
 
   return {
     conversationId: conversation.id,
-    property: {
-      id: property.id,
-      slug: property.slug,
-      name: property.name,
+    parking: {
+      id: parking.id,
+      slug: parking.slug,
+      name: parking.name,
     },
-    host: {
-      organizationName: property.host.organizationName,
-      ownerName: property.host.ownerName,
-      ownerAvatarUrl: property.host.ownerAvatarUrl,
-    },
+    host,
     inquiryCheckIn: dates.checkIn,
     inquiryCheckOut: dates.checkOut,
     replyStatus: (conversation.reply_status as WebChatStartResult['replyStatus']) ?? 'none',
-    voiceReceptionistEnabled: await isVoiceReceptionistAvailableForProperty(property.id),
+    voiceReceptionistEnabled: false,
   };
 }
 
