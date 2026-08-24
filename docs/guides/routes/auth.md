@@ -18,14 +18,14 @@ Routes:
 
 ## Progress overview
 
-| Section              | E2E save | Validation | Docs       | Notes                                                            |
-| -------------------- | -------- | ---------- | ---------- | ---------------------------------------------------------------- |
-| Auth layout          | —        | —          | Documented | Split branding panel + form, host or guest copy by pathname      |
-| Host login/register  | ✅       | Client     | Documented | Email OTP + Google OAuth — same component/flow for both modes    |
-| Guest login/register | ✅       | Client     | Documented | Email OTP + Google OAuth — standalone pages (new)                |
-| Guest checkout auth  | ✅       | Client     | Documented | Modal at calendar Proceed + form Submit + save heart — unchanged |
-| Guest account nav    | ✅       | —          | Documented | Avatar on explore when signed in; real "Sign In" link when not   |
-| Mode switcher        | —        | —          | Documented | Global curtain; admin sidebar + marketing/auth triggers          |
+| Section              | E2E save | Validation | Docs       | Notes                                                               |
+| -------------------- | -------- | ---------- | ---------- | ------------------------------------------------------------------- |
+| Auth layout          | —        | —          | Documented | Split branding panel + form, host or guest copy by pathname         |
+| Host login/register  | ✅       | Client     | Documented | Email OTP + Google OAuth — same component/flow for both modes       |
+| Guest login/register | ✅       | Client     | Documented | Email OTP + Google OAuth — standalone pages (new)                   |
+| Guest checkout auth  | ✅       | Client     | Documented | Modal on form/messages entry, calendar Proceed, Reserve, save heart |
+| Guest account nav    | ✅       | —          | Documented | Avatar on explore when signed in; real "Sign In" link when not      |
+| Mode switcher        | —        | —          | Documented | Global curtain; admin sidebar + marketing/auth triggers             |
 
 ---
 
@@ -33,16 +33,16 @@ Routes:
 
 Guests can sign in two ways, both real and both landing in the same Supabase Auth session:
 
-1. **Contextual checkout modal** (`GuestAuthModal`) — appears only when a guest commits to book, contact a host, or save a property. Unchanged by this work.
+1. **Contextual checkout modal** (`GuestAuthModal`) — appears when a guest opens a gated surface (booking form, messages, reserve, contact host, save) or commits an action that needs a session.
 2. **Standalone pages** (`/for-guests/login`, `/for-guests/register`) — reachable directly (nav "Sign In" link, deep links, bookmarks), same email-OTP + Google flow as the modal, just as a full page.
 
-Guests still browse dates and fill the booking form **without signing in**; auth is only required at the point they commit (modal) or if they choose to sign in proactively (standalone page).
+Guests can browse listings and pick dates without signing in. Opening **`/properties/:slug/form`**, **`/parkings/:slug/form`**, or **`/messages`** directly requires auth first (modal + skeleton), same as Reserve / Contact host.
 
 1. **Property detail → Reserve** (desktop `BookingCard`, mobile sticky bar) — `usePropertyReserve` with `onOpenForm` opens **`GuestAuthModal`** first when anonymous, then **`GuestBookingFormModal`** (same pattern as Contact host)
 2. **Calendar → Proceed** — `GuestAuthModal` (Airbnb-style)
 3. **Property calendar → Book Now** — `usePropertyReserve` without `onOpenForm` navigates to `/form` and gates with `GuestAuthModal` first
 4. **Property detail → Contact host** — `GuestAuthModal` first when anonymous, then **`ContactHostSheet`**
-5. **Form → Submit** (final step) — same modal if session expired
+5. **Direct form / messages entry** — `/properties/:slug/form`, `/parkings/:slug/form`, and `/messages` open **`GuestAuthModal`** on load when anonymous (skeleton until signed in); submit still re-checks if the session expired
 6. **Save property (heart)** — any listing card, list row, or detail gallery Save button → `GuestAuthModal` when anonymous; persists to `guest_saved_properties` after login (OAuth resume via `save_property` intent)
 
 Marketing **Become a host?** on explore pages runs the global mode-switch curtain to **`/for-hosts`**. On `/for-hosts`, the pill CTA is **Explore** (back to guest mode); signed-in hosts use the avatar menu for **Dashboard**, signed-out hosts see **Sign In** → **`/for-hosts/login`**. On explore pages, signed-in guests see the avatar menu (**`/account/*`** — profile, stays, wishlist, messages, see **[[profile|Guest account — operator guide]]**), signed-out guests now see a real **Sign In** link → **`/for-guests/login`**.
@@ -50,7 +50,7 @@ Marketing **Become a host?** on explore pages runs the global mode-switch curtai
 ### Sign-in flow (both audiences)
 
 - Single email field → **Continue** → OTP code emailed (unified sign-in/sign-up via `signInWithOtp` + `shouldCreateUser: true`) → 6-digit code entry → **Verify** (auto-submits once all 6 digits are entered)
-- **Google** OAuth for both audiences — Facebook was removed and is not supported
+- **Google** OAuth below the email path — same order as the guest checkout modal: email + Continue, **or** divider, then **Continue with Google** (both audiences). Facebook was removed and is not supported
 - No phone sign-in, no passwords
 - `/register` is a thin copy-only alias of `/login` — same form, same behavior. Since OTP verification auto-creates the account on first code entry, there's no way (or need) to distinguish "logging in" from "signing up"; a returning user who lands on `/register` by mistake just signs in normally
 - The email step and the code-entry step are mutually exclusive views — once a code is sent, the Google button, divider, and register/login cross-link are hidden so the code-entry step stays focused (just Back, the 6-digit input, Verify, and a Resend link with a 30s cooldown)

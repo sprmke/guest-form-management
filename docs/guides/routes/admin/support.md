@@ -2,7 +2,7 @@
 title: 'Super Admin Support Tickets — operator guide'
 status: active
 tags: [guides, routes, admin, help-support]
-updated: 2026-08-17
+updated: 2026-08-24
 ---
 
 # Super Admin Support Tickets — operator guide
@@ -13,11 +13,11 @@ Route: `/admin/support` (+ `/admin/support/faqs`)
 
 ## Progress overview
 
-| Section              | E2E save | Validation | Docs | Notes                                                            |
-| -------------------- | -------- | ---------- | ---- | ---------------------------------------------------------------- |
-| Ticket list          | Done     | N/A        | Done | Search + filters; table/card toggle (grid on mobile)             |
-| Ticket detail dialog | Done     | Done       | Done | Reply thread + status/priority; inbox-style composer             |
-| FAQ editor           | Done     | Done       | Done | First-class nav + overview item; add/edit/reorder/publish/delete |
+| Section              | E2E save | Validation | Docs | Notes                                                                                      |
+| -------------------- | -------- | ---------- | ---- | ------------------------------------------------------------------------------------------ |
+| Ticket list          | Done     | N/A        | Done | Search + filters; table/card toggle (grid on mobile)                                       |
+| Ticket detail dialog | Done     | Done       | Done | Reply thread + status/priority; inbox-style composer                                       |
+| FAQ editor           | Done     | Done       | Done | First-class nav + overview item; add/edit/reorder/publish/delete; URL-persisted pagination |
 
 ---
 
@@ -50,11 +50,13 @@ The platform team reviews every ticket hosts file through their Help & Support p
 
 ### Sections
 
-Search (subject / org name / submitter name / email) + category filter + status filter, all applied client-side over one full ticket fetch. Desktop defaults to a table (subject, org, category, priority, status, date) with a table/grid toggle matching Hosts and Developments. Phone/tablet layouts force the card grid.
+Search (subject / org name / submitter name / email) + category filter + status filter, applied server-side against the full ticket set (not just the loaded page). Desktop defaults to a table (subject, org, category, priority, status, date) with a table/grid toggle matching Hosts and Developments. Phone/tablet layouts force the card grid.
 
 ### Behavior / edge cases
 
 Clicking a ticket opens `SuperAdminTicketDetailDialog` (bottom sheet on mobile, centered dialog on desktop via `ResponsiveModal`). Empty copy distinguishes “no tickets yet” from “no tickets match your filters”.
+
+**Pagination:** standard admin-list pagination (same pattern as the bookings list) — `page`/`limit` persisted in the URL (`?page=`, `?limit=`), default page size 31 (`ADMIN_DEFAULT_PAGE_SIZE`). `GET list-support-tickets-admin` accepts `page`/`limit`/`search`/`category`/`status`/`org_id`, all applied at the DB level: `category`/`status`/`org_id` are `.eq()` filters, `search` matches `subject`/`submitted_by_name`/`submitted_by_email` via `.ilike()` (escaped through `postgrestOrIlikeValue`) OR'd with an `organization_id.in.(...)` lookup against organizations whose name matches (the org name lives on a joined table, so it can't be folded into the same `.ilike()` OR directly). Results are ordered by `created_at` desc and paginated with `.range()` + `count: 'exact'`, returning `{ tickets, total, page, limit }`. `AdminListPagination` renders once at the page level below whichever view (table or grid) is active, and the per-page select (`AdminListPerPageSelect`) lives in `SuperAdminSupportToolbar` next to the view toggle — both are shared across table/grid so switching views never resets the page. Search/category/status filter state lives in the URL (`?search=`, `?category=`, `?status=`) and changing any of them resets to page 1. Because filtering now happens in the database, a ticket that matches your filters will show up on the correct page across the entire ticket set, not just the currently loaded page.
 
 ## Ticket detail dialog
 
@@ -75,20 +77,22 @@ Header shows organization, category, and the host who submitted. Status and prio
 
 ## FAQ editor (`/admin/support/faqs`)
 
-First-class Platform nav item and overview card (label **FAQs**). Category-grouped rows. Up/down arrows swap `sort_order` with the adjacent row in the same category (two `update-help-center-faq` calls). Publish toggle is a `Switch` bound directly to `is_published`. Delete asks for confirmation via `AlertDialog`. Add/edit opens a shared dialog form (category — free text with a datalist of existing categories, question, answer).
+First-class Platform nav item and overview card (label **FAQs**). Category-grouped rows. Up/down arrows swap `sort_order` with the adjacent row in the same category (two `update-help-center-faq` calls) — note this only reorders within the currently loaded page. Publish toggle is a `Switch` bound directly to `is_published`. Delete asks for confirmation via `AlertDialog`. Add/edit opens a shared dialog form (category — free text with a datalist of existing categories, question, answer).
+
+**Pagination:** standard admin-list pagination (same pattern as the bookings list) — `page`/`limit` persisted in the URL (`?page=`, `?limit=`), default page size 31 (`ADMIN_DEFAULT_PAGE_SIZE`). `GET list-help-center-faqs-admin` accepts `page`/`limit`, orders by category then `sort_order`, and paginates via `.range()` + `{ count: 'exact' }` (no full-table fetch), returning `{ faqs, total, page, limit }`. Pagination controls are hidden until there is more than one page; the per-page select (`AdminListPerPageSelect`) resets to page 1 on change. Because pagination is applied after the category/sort_order ordering, a category can in principle split across pages once FAQ counts exceed one page. This page has no search/status/category filter UI today — everything above the per-page select is display-only grouping of the current page's rows.
 
 ## API reference
 
-| Action                            | Endpoint                            |
-| --------------------------------- | ----------------------------------- |
-| List tickets (all orgs)           | `GET list-support-tickets-admin`    |
-| Get ticket + thread               | `GET get-support-ticket-admin`      |
-| Reply as admin                    | `POST reply-support-ticket-admin`   |
-| Update status/priority            | `POST update-support-ticket-status` |
-| List all FAQs (incl. unpublished) | `GET list-help-center-faqs-admin`   |
-| Create FAQ                        | `POST create-help-center-faq`       |
-| Update FAQ (also reorder)         | `POST update-help-center-faq`       |
-| Delete FAQ                        | `POST delete-help-center-faq`       |
+| Action                                        | Endpoint                                                                        |
+| --------------------------------------------- | ------------------------------------------------------------------------------- |
+| List tickets (all orgs), filtered + paginated | `GET list-support-tickets-admin?page=&limit=&search=&category=&status=&org_id=` |
+| Get ticket + thread                           | `GET get-support-ticket-admin`                                                  |
+| Reply as admin                                | `POST reply-support-ticket-admin`                                               |
+| Update status/priority                        | `POST update-support-ticket-status`                                             |
+| List all FAQs (incl. unpublished), paginated  | `GET list-help-center-faqs-admin?page=&limit=`                                  |
+| Create FAQ                                    | `POST create-help-center-faq`                                                   |
+| Update FAQ (also reorder)                     | `POST update-help-center-faq`                                                   |
+| Delete FAQ                                    | `POST delete-help-center-faq`                                                   |
 
 ## Implementation map
 

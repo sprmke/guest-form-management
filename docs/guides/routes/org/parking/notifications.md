@@ -54,7 +54,7 @@ One BotFather token at the top pre-fills Chat, Parking, and Finance module field
 2. **Parking** — reservation request, check-in reminder, payment received (`telegram_parking_settings`)
 3. **Finance** — operating expense due-date reminders (`telegram_finance_settings`)
 
-**Find chat ID** is inline on the Chat ID field — **Scan for chats**, then a group dropdown. Hidden after **Connected** (group name + **Reveal** instead). Saved credentials show **@bot username** and **group name** by default; **Reveal** shows the raw token or chat ID.
+**Find chat ID** is inline on the Chat ID field — **Scan for chats**, then a group dropdown. Hidden after **Connected** (group name + **Reveal** instead). Bot token shows the raw value by default (**Hide** masks characters; the field stays editable); chat ID shows **group name** by default (**Reveal** for the raw id).
 
 Deep links: `?module=finance` scrolls to the Finance section.
 

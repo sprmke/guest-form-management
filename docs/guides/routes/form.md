@@ -2,7 +2,7 @@
 title: 'Guest Form — operator guide'
 status: active
 tags: [guides, routes]
-updated: 2026-08-17
+updated: 2026-08-24
 ---
 
 # Guest Form — operator guide
@@ -16,7 +16,7 @@ Route: `/properties/:propertySlug/form` (legacy `/form?property=<slug>` redirect
 | Section              | E2E save | Validation      | Docs       | Notes                                                       |
 | -------------------- | -------- | --------------- | ---------- | ----------------------------------------------------------- |
 | Multi-step form      | ✅       | ✅ Zod          | Documented | 5 steps (4 for Airbnb)                                      |
-| Auth on submit       | ✅       | —               | Documented | Checkout modal; anonymous fill allowed                      |
+| Auth on entry        | ✅       | —               | Documented | Same as `/messages` — modal + skeleton until signed in      |
 | Overlap / lock check | ✅       | Server          | Documented | Booking overlap + `GUEST_FORM_LOCKED`                       |
 | Cleaning buffer      | ✅       | Client + Server | Documented | Custom `TimePicker` hard-blocks same-day turnover conflicts |
 | Dev controls         | ✅       | —               | Documented | Non-prod only; FormData flags                               |
@@ -26,7 +26,7 @@ Route: `/properties/:propertySlug/form` (legacy `/form?property=<slug>` redirect
 
 ## Overview
 
-The guest booking form, scoped to **`/properties/:propertySlug/form`**. Full-page renders use **`MainLayout`** (brand-color band + **`GuestOperationalHeader`**, overlapping logo via **`GuestFormBrandHeader`**, and **`GuestStayContextBar`** when `checkInDate` / `checkOutDate` are in the URL). The same **`GuestForm`** component also embeds in **`GuestBookingFormModal`** on the property detail page when guests tap **Reserve** (seeded dates via `embed` props — no navigation to `/form`, no shell chrome). Admin **New booking** on the property bookings list links here via `guestFormPath(propertySlug)`. Guests can also reopen an existing submission with **`?bookingId=`** (deep links from host emails or booking status flows) to edit it while it's still `PENDING_REVIEW`.
+The guest booking form, scoped to **`/properties/:propertySlug/form`**. Full-page renders use **`MainLayout`** (brand-color band + **`GuestOperationalHeader`**, overlapping logo via **`GuestFormBrandHeader`**, and **`GuestStayContextBar`** when `checkInDate` / `checkOutDate` are in the URL). Opening the page while anonymous shows **`GuestAuthModal`** immediately (skeleton until signed in — same pattern as **`/messages`**). The same **`GuestForm`** component also embeds in **`GuestBookingFormModal`** on the property detail page when guests tap **Reserve** (seeded dates via `embed` props — no navigation to `/form`, no shell chrome; auth already ran before the modal opens). Admin **New booking** on the property bookings list links here via `guestFormPath(propertySlug)` or embeds with `skipAuthGate`. Guests can also reopen an existing submission with **`?bookingId=`** (deep links from host emails or booking status flows) to edit it while it's still `PENDING_REVIEW` (still requires a guest session).
 
 Legacy **`/form?property=<slug>`** redirects to the scoped route. Deprecated query keys (`dev`, `testing`, submit-form control flags, `from`) are stripped on load; `from=airbnb` migrates to `?source=airbnb`.
 
@@ -45,7 +45,7 @@ The booking form walks a guest through their info, stay dates and guest list, op
 - Q: A guest tried to book dates that are already taken. What do they see?
   A: An "already booked" message telling them those dates aren't available, so they can pick different ones.
 - Q: A guest can't pick a check-in/check-out time that should be available. Why?
-  A: If your property has a **Cleaning Buffer** set (Property Settings → Property Details), the form blocks any check-in or check-out time that leaves less than that gap on a same-day turnover with another guest's stay. They just need to pick a time on the other side of the gap.
+  A: Your property's **Cleaning Time** (Property Settings → Guest Form, always at least 1 hour) blocks any check-in or check-out time that leaves less than that gap on a same-day turnover with another guest's stay. They just need to pick a time on the other side of the gap.
 
 ---
 
@@ -71,8 +71,8 @@ Stepper labels and in-card section headings share the same **`title`** per step 
 
 ### Save path
 
-1. Guest completes all steps → taps **Submit** on the last step.
-2. If not already signed in, the **checkout auth modal** opens (`requireGuestAuth`). On the standalone `/form` page, guests can fill every step anonymously and auth runs only here at submit. On the property-detail **Reserve modal**, auth runs before the modal opens (see [[properties|Property detail]]). On success, submission resumes automatically.
+1. Guest opens `/properties/:propertySlug/form` (direct link, calendar **Book Now**, or legacy redirect). If not signed in, **`GuestAuthModal`** opens immediately (same entry gate as **`/messages`**) and the page shows a skeleton until authenticated. OAuth/OTP resume uses a `navigate` intent back to the form URL. Admin **New booking** embed sets `skipAuthGate` and skips this. On the property-detail **Reserve modal**, auth already ran before the modal opened (see [[properties|Property detail]]); submit still re-checks the session if it expired.
+2. Guest completes all steps → taps **Submit** on the last step.
 3. `GuestForm` builds `FormData` (files kept as files, everything else stringified) and POSTs to **`submit-form`** (property scope via `?property=<slug>` in the query string; side-effect flags via FormData in non-prod only — never in the URL).
 4. `submit-form`:
    - Checks for overlapping bookings on the property for the given dates (skipped if the booking is unchanged).
@@ -87,7 +87,7 @@ Stepper labels and in-card section headings share the same **`title`** per step 
 ### Behavior / edge cases
 
 - **Booking overlap:** blocked with a dedicated `BOOKING_OVERLAP` toast telling the guest to screenshot and contact the host.
-- **Cleaning buffer:** when the property has a `cleaningBufferMinutes` set (Property Settings → Property Details → Cleaning Buffer), same-day turnover conflicts are **hard-blocked**, not just warned. `get-booked-dates` returns each neighboring booking's `checkInTime`/`checkOutTime`; `guestCalendarAvailability.ts` (`minAllowedCheckInTime` / `maxAllowedCheckOutTime`) computes the earliest allowed check-in / latest allowed check-out on the selected date, and the `TimePicker`'s `disabledTime` grays out the disallowed options so the guest structurally can't select them. `guestFormSchema.ts` also enforces the same bound in a `superRefine`, and `submit-form` re-validates it server-side before saving (`_shared/cleaningBuffer.ts`) — errors surface as a `CLEANING_BUFFER` toast. Only applies to same-day turnovers (a booking whose `checkOutDate`/`checkInDate` matches the selected date); non-adjacent stays are unaffected.
+- **Cleaning buffer:** every property has a required `cleaningBufferMinutes` (Property Settings → Guest Form → Cleaning Time, at least 1 hour, no "off" option), so same-day turnover conflicts are always **hard-blocked**, not just warned. `get-booked-dates` returns each neighboring booking's `checkInTime`/`checkOutTime`; `guestCalendarAvailability.ts` (`minAllowedCheckInTime` / `maxAllowedCheckOutTime`) computes the earliest allowed check-in / latest allowed check-out on the selected date, and the `TimePicker`'s `disabledTime` grays out the disallowed options so the guest structurally can't select them. `guestFormSchema.ts` also enforces the same bound in a `superRefine`, and `submit-form` re-validates it server-side before saving (`_shared/cleaningBuffer.ts`) — errors surface as a `CLEANING_BUFFER` toast. Only applies to same-day turnovers (a booking whose `checkOutDate`/`checkInDate` matches the selected date); non-adjacent stays are unaffected.
 - **Time fields use a custom picker, not the native browser control:** both Check-in Time and Check-out Time render the shared `TimePicker` (`ui/src/components/ui/time-picker.tsx`, 30-min increments, 12-hour display) instead of `<input type="time">`, for consistent formatting and to support disabling cleaning-buffer-conflicting times.
 - **Locked booking:** once a submission has moved past `PENDING_REVIEW`, guest edits are rejected server-side (`GUEST_FORM_LOCKED`) and the form disables all fields with a banner.
 - **No workflow email/PDF here:** `submit-form` never sends GAF/acknowledgement/pet/parking email or generates PDFs — those only happen on admin workflow transitions (see `.cursor/rules/booking-workflow.mdc`). The only email `submit-form` can send is the internal **New Booking Request** notify.

@@ -2,24 +2,24 @@
 title: 'For hosts — operator guide'
 status: active
 tags: [guides, routes]
-updated: 2026-08-17
+updated: 2026-08-24
 ---
 
 # For hosts — operator guide
 
 Route: `/for-hosts` · `/for-hosts/pricing`
 
-> **Status:** Documented — **Phase 1 (UI only)**. PMA marketing page; CTAs point to GFM admin sign-in.
+> **Status:** Documented — **Phase 1 (UI only)** for the landing tour; **pricing** is live from the plan catalog.
 
 ## Progress overview
 
-| Section      | E2E save | Validation | Docs       | Notes                                                      |
-| ------------ | -------- | ---------- | ---------- | ---------------------------------------------------------- |
-| Hero + tour  | —        | —          | Documented | 54-second interactive product tour                         |
-| How it works | —        | —          | Documented | Four-step host onboarding                                  |
-| Host reviews | —        | —          | Documented | Mock host quote carousel                                   |
-| Host pricing | —        | —          | Documented | `/for-hosts/pricing` starter plan + closing CTA on landing |
-| Host CTAs    | —        | —          | Documented | → `/for-hosts/login` (Google OAuth)                        |
+| Section      | E2E save | Validation | Docs       | Notes                                                                            |
+| ------------ | -------- | ---------- | ---------- | -------------------------------------------------------------------------------- |
+| Hero + tour  | —        | —          | Documented | 54-second interactive product tour                                               |
+| How it works | —        | —          | Documented | Four-step host onboarding                                                        |
+| Host reviews | —        | —          | Documented | Mock host quote carousel                                                         |
+| Host pricing | —        | —          | Documented | `/for-hosts/pricing` — live Free→Managed ladder + compare matrix (no Commission) |
+| Host CTAs    | —        | —          | Documented | → `/for-hosts/login` (Google OAuth / email OTP); Managed → `/contact`            |
 
 ---
 
@@ -27,7 +27,9 @@ Route: `/for-hosts` · `/for-hosts/pricing`
 
 Host acquisition landing (PMA `(marketing)/for-hosts`). The page opens with the platform value proposition and an in-browser, video-like dashboard tour, then capability stats, host onboarding steps, and host reviews.
 
-**Pricing** lives on **`/for-hosts/pricing`** — same hero pattern as other public footer pages, with the free Starter plan (one property) and sign-up CTA. Footer **Pricing** and host-mode nav **Pricing** link there. Legacy **`/for-hosts#pricing`** redirects to the pricing page.
+**Pricing** lives on **`/for-hosts/pricing`**. It loads the **active subscription** `pricing_plans` catalog via **`list-public-pricing-plans`** (same ladder as property Plans — Free, Starter, Pro, Business, Managed; excludes **Commission** and org-only **Business Plus**) and renders the shared **`PlanTierRail`** + **`PlanFeatureMatrix`** from `planPresentation.ts` (discounted prices, promo badges, incremental feature bullets). Plan CTAs go to **`/for-hosts/login`**; **Managed** goes to **`/contact`**. A callout points multi-property hosts at org portfolio bundling after sign-up. Footer **Pricing** and host-mode nav **Pricing** link here. Legacy **`/for-hosts#pricing`** redirects to the pricing page.
+
+**Keep in sync:** when you change `pricing_plans` seeds/super-admin catalog prices or `planPresentation.ts` copy, verify this page — see **`docs/architecture/plans-feature-matrix.md`** § Public marketing page and **`.cursor/rules/documentation-maintenance.mdc`**.
 
 The 54-second tour uses Remotion Player and nine interactive chapters: dashboard overview, booking workflow, Guest Inbox, finance, pricing, Marketing Studio, maintenance, Telegram alerts, and AI assistance. Chapters auto-advance and loop; hosts can pause, restart, or jump directly to a module. Hover and keyboard focus pause playback. `prefers-reduced-motion` disables autoplay and shows a static tour frame.
 
@@ -68,7 +70,9 @@ This is the marketing page that introduces the platform to property owners befor
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Page                   | `ui/src/features/guest/marketing/pages/ForHostsPage.tsx`                                                                                                          |
 | Pricing page           | `ui/src/features/guest/marketing/pages/ForHostsPricingPage.tsx`                                                                                                   |
-| Starter plan card      | `ui/src/features/guest/marketing/for-hosts/components/HostPricingStarterCard.tsx`                                                                                 |
+| Public plans hook      | `ui/src/features/guest/marketing/for-hosts/hooks/usePublicPricingPlans.ts`                                                                                        |
+| Shared tier UI         | `PlanTierRail` / `PlanFeatureMatrix` / `planPresentation.ts` (dashboard plans module)                                                                             |
+| Public plans API       | `supabase/functions/list-public-pricing-plans/`                                                                                                                   |
 | Landing closing CTA    | `ui/src/features/guest/marketing/for-hosts/components/HostClosingCta.tsx`                                                                                         |
 | Shared public sections | `ui/src/features/guest/marketing/shared/components/MarketingPublic*.tsx` (hero, content, section heading, icon card, callout, FAQ)                                |
 | Host landing sections  | `ui/src/features/guest/marketing/for-hosts/components/**`                                                                                                         |
