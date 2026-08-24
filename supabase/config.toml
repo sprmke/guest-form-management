@@ -46,12 +46,6 @@ secret = "env(GOOGLE_CLIENT_SECRET)"
 redirect_uri = "http://127.0.0.1:54321/auth/v1/callback"
 skip_nonce_check = false
 
-[auth.external.facebook]
-enabled = true
-client_id = "env(FACEBOOK_CLIENT_ID)"
-secret = "env(FACEBOOK_CLIENT_SECRET)"
-redirect_uri = "http://127.0.0.1:54321/auth/v1/callback"
-
 [storage]
 enabled = true
 file_size_limit = "50MiB"
@@ -265,6 +259,12 @@ static_files = [
 verify_jwt = false
 
 [functions.issue-guest-stay-guide-token]
+verify_jwt = false
+
+[functions.issue-booking-document-share-token]
+verify_jwt = false
+
+[functions.get-guest-booking-document]
 verify_jwt = false
 
 [functions.approval-email-webhook]
@@ -530,6 +530,9 @@ verify_jwt = false
 [functions.list-public-place-groups]
 verify_jwt = false
 
+[functions.list-public-pricing-plans]
+verify_jwt = false
+
 [functions.property-templates-settings]
 verify_jwt = false
 
@@ -790,10 +793,16 @@ verify_jwt = false
 [functions.property-plan]
 verify_jwt = false
 
+[functions.org-plan]
+verify_jwt = false
+
 [functions.property-entitlements]
 verify_jwt = false
 
 [functions.create-subscription-checkout]
+verify_jwt = false
+
+[functions.create-org-subscription-checkout]
 verify_jwt = false
 
 [functions.paymongo-webhook]
