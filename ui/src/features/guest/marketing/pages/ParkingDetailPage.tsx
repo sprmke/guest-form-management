@@ -64,6 +64,11 @@ export function ParkingDetailPage() {
     onOpenForm: () => setFormModalOpen(true),
   });
 
+  const handleCalendarProceed = useCallback(() => {
+    setCalendarOpen(false);
+    reserve();
+  }, [reserve]);
+
   useEffect(() => {
     if (status === 'loading') return;
     if (searchParams.get('reserveForm') !== 'open') return;
@@ -316,6 +321,7 @@ export function ParkingDetailPage() {
           checkIn={checkIn}
           checkOut={checkOut}
           onDatesChange={handleDatesChange}
+          onProceed={handleCalendarProceed}
         />
 
         <motion.div

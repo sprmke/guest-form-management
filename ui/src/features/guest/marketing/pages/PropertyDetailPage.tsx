@@ -128,6 +128,11 @@ export function PropertyDetailPage() {
     onOpenForm: () => setFormModalOpen(true),
   });
 
+  const handleCalendarProceed = useCallback(() => {
+    setCalendarOpen(false);
+    reserve();
+  }, [reserve]);
+
   const { contactHost } = usePropertyContactHost({
     propertySlug: propertySlugForActions,
     onContactHost: handleContactHost,
@@ -527,6 +532,7 @@ export function PropertyDetailPage() {
           checkIn={checkIn}
           checkOut={checkOut}
           onDatesChange={handleDatesChange}
+          onProceed={handleCalendarProceed}
         />
 
         <GuestBookingFormModal

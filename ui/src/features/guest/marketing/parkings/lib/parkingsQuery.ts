@@ -103,6 +103,16 @@ export type PublicParkingListItem = {
   longitude?: number | null;
 };
 
+const PARKING_LOCATION_FILTER_SLUGS = new Set(['inside_tower', 'outside_tower', 'motorcycle']);
+
+/** True when `location` holds parking slot-type filters (not a geographic Where query). */
+export function isParkingLocationFilterParam(raw: string | null | undefined): boolean {
+  if (!raw?.trim()) return false;
+  const parts = parseCsvParam(raw);
+  if (parts.length === 0) return false;
+  return parts.every((part) => PARKING_LOCATION_FILTER_SLUGS.has(part));
+}
+
 function parseLocationFilters(sp: URLSearchParams): {
   locations: ParkingLocationFilter[];
   motorcycle: boolean;

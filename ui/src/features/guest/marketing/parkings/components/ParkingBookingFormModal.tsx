@@ -58,6 +58,11 @@ export function ParkingBookingFormModal({
         primaryGuestName: values.guestName,
         guestEmail: values.email,
         guestPhone: values.phone,
+        unitNumber: values.unitNumber,
+        carPlateNumber: values.carPlateNumber,
+        carBrandModel: values.carBrandModel,
+        carColor: values.carColor,
+        notes: values.notes,
       });
       onOpenChange(false);
       navigate(guestParkingRequestStatusPath(result.bookingId));

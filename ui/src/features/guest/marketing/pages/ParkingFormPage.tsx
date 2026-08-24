@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
-import { Navigate, useParams, useSearchParams } from 'react-router-dom';
+import { Navigate, useLocation, useParams, useSearchParams } from 'react-router-dom';
 
 import { toast } from 'sonner';
 
+import { useGuestAuth } from '@/features/guest/auth/context/GuestAuthContext';
 import { formatGuestFooterLabel } from '@/features/guest/form/lib/guestFormBranding';
 import { guestParkingRequestStatusPath } from '@/features/guest/lib/guestPublicPaths';
 import { FormSuccess } from '@/features/guest/marketing/forms/components/FormSuccess';
@@ -32,17 +33,36 @@ const GUEST_FACING_SUBMIT_ERRORS: Record<string, string> = {
 export function ParkingFormPage() {
   const { parkingSlug = '' } = useParams<{ parkingSlug: string }>();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const { status: guestAuthStatus, requireGuestAuth } = useGuestAuth();
   const { data, isLoading, isError } = usePublicParkingDetail(parkingSlug);
   const form = getFormById(PARKING_REGISTRATION_FORM_ID);
   const submitRequest = useSubmitParkingBookingRequest();
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submissionId, setSubmissionId] = useState<string | undefined>();
 
+  const homeHref = parkingSlug ? `/parkings/${encodeURIComponent(parkingSlug)}` : '/parkings';
+
+  // Same entry gate as property `/messages` and `/form`: require sign-in before the form is usable.
+  useEffect(() => {
+    if (guestAuthStatus !== 'anonymous') return;
+    const to = `${location.pathname}${location.search}`;
+    requireGuestAuth(() => undefined, {
+      resume: { type: 'navigate', to },
+    });
+  }, [guestAuthStatus, requireGuestAuth, location.pathname, location.search]);
+
   if (!parkingSlug) {
     return <Navigate to="/parkings" replace />;
   }
 
-  const homeHref = `/parkings/${encodeURIComponent(parkingSlug)}`;
+  if (guestAuthStatus === 'loading' || guestAuthStatus === 'anonymous') {
+    return (
+      <MainLayout homeHref={homeHref}>
+        <GuestFormPageSkeleton />
+      </MainLayout>
+    );
+  }
 
   if (isLoading && !data) {
     return (
@@ -56,8 +76,8 @@ export function ParkingFormPage() {
     return <Navigate to="/parkings" replace />;
   }
 
-  const location = formatParkingLocation(data.tower, data.level, data.slotLabel);
-  const propertyLocation = [data.residenceName, location].filter(Boolean).join(' · ');
+  const parkingLocation = formatParkingLocation(data.tower, data.level, data.slotLabel);
+  const propertyLocation = [data.residenceName, parkingLocation].filter(Boolean).join(' · ');
   const checkInDate = searchParams.get('checkInDate') ?? '';
   const checkOutDate = searchParams.get('checkOutDate') ?? '';
 
@@ -74,6 +94,11 @@ export function ParkingFormPage() {
         primaryGuestName: values.guestName,
         guestEmail: values.email,
         guestPhone: values.phone,
+        unitNumber: values.unitNumber,
+        carPlateNumber: values.carPlateNumber,
+        carBrandModel: values.carBrandModel,
+        carColor: values.carColor,
+        notes: values.notes,
       });
       setSubmissionId(result.bookingId);
       setIsSubmitted(true);

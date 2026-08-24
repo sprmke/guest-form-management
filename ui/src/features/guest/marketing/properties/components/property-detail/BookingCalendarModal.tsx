@@ -25,6 +25,8 @@ export interface BookingCalendarModalProps {
   checkIn: Date | null;
   checkOut: Date | null;
   onDatesChange: (checkIn: Date | null, checkOut: Date | null) => void;
+  /** When set, the primary action closes the calendar and opens the booking form flow. */
+  onProceed?: () => void;
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -37,6 +39,7 @@ export function BookingCalendarModal({
   checkIn,
   checkOut,
   onDatesChange,
+  onProceed,
 }: BookingCalendarModalProps) {
   const nightsCount =
     checkIn && checkOut
@@ -53,6 +56,15 @@ export function BookingCalendarModal({
     : hasCheckIn
       ? 'Now select check-out date'
       : 'Select check-in date';
+
+  const handlePrimaryAction = () => {
+    if (!hasRange) return;
+    if (onProceed) {
+      onProceed();
+      return;
+    }
+    onOpenChange(false);
+  };
 
   return (
     <GuestDialogShell
@@ -95,13 +107,13 @@ export function BookingCalendarModal({
 
           <Button
             type="button"
-            onClick={() => onOpenChange(false)}
+            onClick={handlePrimaryAction}
             disabled={!hasRange}
             className="min-h-[44px] rounded-full px-6"
           >
             {hasRange ? (
               <span className="flex items-center gap-1.5">
-                Save dates
+                {onProceed ? 'Continue' : 'Save dates'}
                 <ArrowRight className="h-3.5 w-3.5" />
               </span>
             ) : (

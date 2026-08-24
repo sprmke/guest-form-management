@@ -11,6 +11,11 @@ export type SubmitParkingBookingRequestInput = {
   primaryGuestName: string;
   guestEmail: string;
   guestPhone?: string;
+  unitNumber: string;
+  carPlateNumber: string;
+  carBrandModel: string;
+  carColor: string;
+  notes?: string;
 };
 
 export type SubmitParkingBookingRequestResult = {
