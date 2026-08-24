@@ -10,16 +10,25 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
 
-const AI_FEATURES = [
-  { id: 'receipt_validation', label: 'Receipt validation' },
-  { id: 'inbox_suggest', label: 'Inbox suggestions' },
-  { id: 'inbox_auto_reply', label: 'Inbox auto-reply' },
-  { id: 'marketing_caption', label: 'Marketing captions' },
-  { id: 'marketing_template', label: 'Marketing templates' },
-  { id: 'import_column_map', label: 'Import column mapping' },
-  { id: 'voice_receptionist', label: 'Voice receptionist' },
-  { id: 'booking_ai_summary', label: 'Booking AI review' },
-];
+/** UI toggles — each row maps to one or more `AiFeature` ids from the server allowlist. */
+const AI_FEATURE_TOGGLES = [
+  { ids: ['receipt_validation'], label: 'Receipt validation' },
+  { ids: ['inbox_suggest'], label: 'Inbox suggestions' },
+  { ids: ['inbox_auto_reply'], label: 'Inbox auto-reply' },
+  { ids: ['marketing_caption'], label: 'Marketing captions' },
+  { ids: ['marketing_template'], label: 'Marketing templates' },
+  { ids: ['import_column_map'], label: 'Import column mapping' },
+  { ids: ['voice_polish'], label: 'Voice polish' },
+  { ids: ['ai_integration_verify'], label: 'Integration verify' },
+  {
+    ids: ['booking_ai_summary_guests', 'booking_ai_summary_pets', 'booking_ai_summary_pricing'],
+    label: 'Booking AI review',
+  },
+  { ids: ['voice_receptionist'], label: 'Voice receptionist' },
+  { ids: ['dashboard_assistant'], label: 'Dashboard assistant' },
+] as const;
+
+const ALL_FEATURE_IDS = AI_FEATURE_TOGGLES.flatMap((toggle) => [...toggle.ids]);
 
 const CARD_CLASS = 'border-border bg-card flex h-full min-w-0 flex-col gap-5 rounded-xl border p-5';
 
@@ -28,7 +37,7 @@ export function AiPlatformKillSwitchCard() {
   const update = useUpdateAiPlatformGlobalSettings();
 
   const allowed = new Set(data?.allowedFeatures ?? []);
-  const allEnabled = data?.enabled && allowed.size === 0;
+  const allEnabled = Boolean(data?.enabled) && allowed.size === 0;
   const controlsDisabled = isLoading || update.isPending;
   const featuresDisabled = controlsDisabled || !data?.enabled;
 
@@ -56,11 +65,20 @@ export function AiPlatformKillSwitchCard() {
     save({ enforceQuotas });
   };
 
-  const handleFeatureChange = (featureId: string, checked: boolean) => {
-    const next = new Set(allowed);
-    if (checked) next.add(featureId);
-    else next.delete(featureId);
-    save({ allowedFeatures: Array.from(next) });
+  const handleFeatureChange = (featureIds: readonly string[], checked: boolean) => {
+    // Empty allowlist = all features allowed. Converting to an explicit list starts from every known id.
+    const next = new Set(allowed.size === 0 ? ALL_FEATURE_IDS : allowed);
+    for (const id of featureIds) {
+      if (checked) next.add(id);
+      else next.delete(id);
+    }
+
+    // Collapse back to empty (= all allowed) when every known feature is selected.
+    const nextList =
+      ALL_FEATURE_IDS.every((id) => next.has(id)) && next.size >= ALL_FEATURE_IDS.length
+        ? []
+        : Array.from(next);
+    save({ allowedFeatures: nextList });
   };
 
   const handleNumberChange = (
@@ -117,18 +135,18 @@ export function AiPlatformKillSwitchCard() {
       <div className="space-y-2">
         <p className="text-sm font-medium">Allowed features</p>
         <div className="grid grid-cols-1 gap-x-8 gap-y-1 sm:grid-cols-2">
-          {AI_FEATURES.map((feature) => {
-            const checked = allEnabled || allowed.has(feature.id);
+          {AI_FEATURE_TOGGLES.map((feature) => {
+            const checked = allEnabled || feature.ids.every((id) => allowed.has(id));
             return (
               <label
-                key={feature.id}
+                key={feature.label}
                 className="flex min-h-[44px] items-center justify-between gap-3 text-sm"
               >
                 <span className="min-w-0">{feature.label}</span>
                 <Switch
                   checked={checked}
                   disabled={featuresDisabled}
-                  onCheckedChange={(value) => handleFeatureChange(feature.id, value)}
+                  onCheckedChange={(value) => handleFeatureChange(feature.ids, value)}
                   aria-label={`Allow ${feature.label}`}
                 />
               </label>

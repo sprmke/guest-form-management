@@ -23,7 +23,6 @@ export function SuperAdminPricingPlansTable({ plans, onEdit }: SuperAdminPricing
     <AdminDataTable minWidth={720}>
       <AdminTableHeadRow>
         <AdminTableTh className="pl-4 pr-3 sm:pl-5">Plan</AdminTableTh>
-        <AdminTableTh className="hidden px-3 sm:table-cell sm:px-4">Model</AdminTableTh>
         <AdminTableTh className="px-3 sm:px-4">Host price</AdminTableTh>
         <AdminTableTh className="hidden px-3 md:table-cell md:px-4">AI credits/month</AdminTableTh>
         <AdminTableTh className="px-3 sm:px-4">Status</AdminTableTh>
@@ -37,9 +36,6 @@ export function SuperAdminPricingPlansTable({ plans, onEdit }: SuperAdminPricing
                 <p className={cn('truncate', adminTableBodyText.primary)}>{plan.name}</p>
                 <p className={cn('truncate', adminTableBodyText.secondary)}>{plan.code}</p>
               </div>
-            </td>
-            <td className={cn(adminTableCell.body, 'hidden capitalize sm:table-cell')}>
-              <p className={adminTableBodyText.secondary}>{plan.pricingModel}</p>
             </td>
             <td className={adminTableCell.body}>
               <p className={cn('tabular-nums', adminTableBodyText.secondary)}>

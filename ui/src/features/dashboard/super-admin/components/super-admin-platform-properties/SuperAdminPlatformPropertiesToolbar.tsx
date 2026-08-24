@@ -1,5 +1,6 @@
 import { Building2, Filter, Landmark, Search } from 'lucide-react';
 
+import { AdminListPerPageSelect } from '@/features/dashboard/bookings/components/AdminListToolbar';
 import {
   ORG_PROPERTY_STATUSES,
   ORG_PROPERTY_TYPES,
@@ -25,22 +26,26 @@ type Props = {
   filters: SuperAdminPlatformPropertiesFilters;
   viewMode: SuperAdminPlatformPropertiesViewMode;
   hideTableView?: boolean;
+  limit: number;
   onSearchChange: (value: string) => void;
   onStatusChange: (value: SuperAdminPlatformPropertiesFilters['status']) => void;
   onTypeChange: (value: string) => void;
   onDevelopmentChange: (value: PlatformPropertiesDevelopmentFilter) => void;
   onViewModeChange: (mode: SuperAdminPlatformPropertiesViewMode) => void;
+  onLimitChange: (limit: number) => void;
 };
 
 export function SuperAdminPlatformPropertiesToolbar({
   filters,
   viewMode,
   hideTableView = false,
+  limit,
   onSearchChange,
   onStatusChange,
   onTypeChange,
   onDevelopmentChange,
   onViewModeChange,
+  onLimitChange,
 }: Props) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -107,12 +112,14 @@ export function SuperAdminPlatformPropertiesToolbar({
         </Select>
       </div>
 
-      <SuperAdminListViewToggle
-        viewMode={viewMode}
-        onViewModeChange={onViewModeChange}
-        hideTableView={hideTableView}
-        className="self-end sm:self-auto"
-      />
+      <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
+        <AdminListPerPageSelect limit={limit} onChange={onLimitChange} />
+        <SuperAdminListViewToggle
+          viewMode={viewMode}
+          onViewModeChange={onViewModeChange}
+          hideTableView={hideTableView}
+        />
+      </div>
     </div>
   );
 }

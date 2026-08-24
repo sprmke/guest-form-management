@@ -37,14 +37,10 @@ export function SuperAdminPricingPlanCard({ plan, onEdit }: Props) {
 
       <dl className="grid grid-cols-2 gap-2 text-sm">
         <div>
-          <dt className="text-muted-foreground text-xs">Model</dt>
-          <dd className="capitalize">{plan.pricingModel}</dd>
-        </div>
-        <div>
           <dt className="text-muted-foreground text-xs">Host price</dt>
           <dd className="tabular-nums">{priceLabel}</dd>
         </div>
-        <div className="col-span-2">
+        <div>
           <dt className="text-muted-foreground text-xs">AI credits/month</dt>
           <dd className="tabular-nums">
             {plan.features.aiMonthlyCreditAllowance.toLocaleString()}

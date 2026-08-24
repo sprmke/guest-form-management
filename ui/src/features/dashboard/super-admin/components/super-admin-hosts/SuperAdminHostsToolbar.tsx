@@ -1,5 +1,6 @@
 import { Search } from 'lucide-react';
 
+import { AdminListPerPageSelect } from '@/features/dashboard/bookings/components/AdminListToolbar';
 import { SuperAdminListViewToggle } from '@/features/dashboard/super-admin/components/shared/SuperAdminListViewToggle';
 import type {
   SuperAdminHostsFilters,
@@ -13,16 +14,20 @@ type Props = {
   filters: SuperAdminHostsFilters;
   viewMode: SuperAdminHostsViewMode;
   hideTableView?: boolean;
+  limit: number;
   onSearchChange: (value: string) => void;
   onViewModeChange: (mode: SuperAdminHostsViewMode) => void;
+  onLimitChange: (limit: number) => void;
 };
 
 export function SuperAdminHostsToolbar({
   filters,
   viewMode,
   hideTableView = false,
+  limit,
   onSearchChange,
   onViewModeChange,
+  onLimitChange,
 }: Props) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -40,12 +45,14 @@ export function SuperAdminHostsToolbar({
         />
       </div>
 
-      <SuperAdminListViewToggle
-        viewMode={viewMode}
-        onViewModeChange={onViewModeChange}
-        hideTableView={hideTableView}
-        className="self-end sm:self-auto"
-      />
+      <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
+        <AdminListPerPageSelect limit={limit} onChange={onLimitChange} />
+        <SuperAdminListViewToggle
+          viewMode={viewMode}
+          onViewModeChange={onViewModeChange}
+          hideTableView={hideTableView}
+        />
+      </div>
     </div>
   );
 }

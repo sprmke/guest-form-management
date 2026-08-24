@@ -1,5 +1,6 @@
 import { Filter, Landmark, Search } from 'lucide-react';
 
+import { AdminListPerPageSelect } from '@/features/dashboard/bookings/components/AdminListToolbar';
 import { SuperAdminListViewToggle } from '@/features/dashboard/super-admin/components/shared/SuperAdminListViewToggle';
 import {
   DEVELOPMENT_STATUSES,
@@ -24,20 +25,24 @@ type Props = {
   filters: SuperAdminDevelopmentsFilters;
   viewMode: SuperAdminDevelopmentsViewMode;
   hideTableView?: boolean;
+  limit: number;
   onSearchChange: (value: string) => void;
   onStatusChange: (value: SuperAdminDevelopmentsFilters['status']) => void;
   onTypeChange: (value: string) => void;
   onViewModeChange: (mode: SuperAdminDevelopmentsViewMode) => void;
+  onLimitChange: (limit: number) => void;
 };
 
 export function SuperAdminDevelopmentsToolbar({
   filters,
   viewMode,
   hideTableView = false,
+  limit,
   onSearchChange,
   onStatusChange,
   onTypeChange,
   onViewModeChange,
+  onLimitChange,
 }: Props) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -92,11 +97,14 @@ export function SuperAdminDevelopmentsToolbar({
         </Select>
       </div>
 
-      <SuperAdminListViewToggle
-        viewMode={viewMode}
-        onViewModeChange={onViewModeChange}
-        hideTableView={hideTableView}
-      />
+      <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
+        <AdminListPerPageSelect limit={limit} onChange={onLimitChange} />
+        <SuperAdminListViewToggle
+          viewMode={viewMode}
+          onViewModeChange={onViewModeChange}
+          hideTableView={hideTableView}
+        />
+      </div>
     </div>
   );
 }

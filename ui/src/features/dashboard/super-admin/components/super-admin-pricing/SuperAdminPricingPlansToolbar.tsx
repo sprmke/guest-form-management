@@ -1,5 +1,6 @@
 import { Filter, Search } from 'lucide-react';
 
+import { AdminListPerPageSelect } from '@/features/dashboard/bookings/components/AdminListToolbar';
 import { SuperAdminListViewToggle } from '@/features/dashboard/super-admin/components/shared/SuperAdminListViewToggle';
 import { SuperAdminResultsMeta } from '@/features/dashboard/super-admin/components/shared/SuperAdminResultsMeta';
 import type {
@@ -20,20 +21,22 @@ type Props = {
   filters: SuperAdminPricingPlansFilters;
   viewMode: SuperAdminPricingPlansViewMode;
   hideTableView?: boolean;
+  limit: number;
   onSearchChange: (value: string) => void;
-  onModelChange: (value: SuperAdminPricingPlansFilters['model']) => void;
   onStatusChange: (value: SuperAdminPricingPlansFilters['status']) => void;
   onViewModeChange: (mode: SuperAdminPricingPlansViewMode) => void;
+  onLimitChange: (limit: number) => void;
 };
 
 export function SuperAdminPricingPlansToolbar({
   filters,
   viewMode,
   hideTableView = false,
+  limit,
   onSearchChange,
-  onModelChange,
   onStatusChange,
   onViewModeChange,
+  onLimitChange,
 }: Props) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -52,20 +55,6 @@ export function SuperAdminPricingPlansToolbar({
           />
         </div>
 
-        <Select value={filters.model} onValueChange={onModelChange}>
-          <SelectTrigger
-            className="h-10 w-[min(100%,10.5rem)] shrink-0 sm:w-[10.5rem]"
-            aria-label="Filter by model"
-          >
-            <SelectValue placeholder="Model" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All models</SelectItem>
-            <SelectItem value="subscription">Subscription</SelectItem>
-            <SelectItem value="commission">Commission</SelectItem>
-          </SelectContent>
-        </Select>
-
         <Select value={filters.status} onValueChange={onStatusChange}>
           <SelectTrigger
             className="h-10 w-[min(100%,9.5rem)] shrink-0 sm:w-[9.5rem]"
@@ -82,12 +71,14 @@ export function SuperAdminPricingPlansToolbar({
         </Select>
       </div>
 
-      <SuperAdminListViewToggle
-        viewMode={viewMode}
-        onViewModeChange={onViewModeChange}
-        hideTableView={hideTableView}
-        className="self-end sm:self-auto"
-      />
+      <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
+        <AdminListPerPageSelect limit={limit} onChange={onLimitChange} />
+        <SuperAdminListViewToggle
+          viewMode={viewMode}
+          onViewModeChange={onViewModeChange}
+          hideTableView={hideTableView}
+        />
+      </div>
     </div>
   );
 }

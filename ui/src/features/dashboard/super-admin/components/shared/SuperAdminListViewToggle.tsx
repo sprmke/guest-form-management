@@ -26,7 +26,7 @@ export function SuperAdminListViewToggle({
   return (
     <div
       className={cn(
-        'border-border/50 bg-card flex shrink-0 items-center gap-1 rounded-xl border p-1 shadow-sm',
+        'border-border/50 bg-card flex shrink-0 items-center gap-1 rounded-xl border px-1 shadow-sm',
         className
       )}
       role="group"

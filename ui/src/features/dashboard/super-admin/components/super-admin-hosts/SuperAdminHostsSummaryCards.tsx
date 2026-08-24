@@ -1,16 +1,13 @@
 import { Building2, Car, Users } from 'lucide-react';
 
 import { AdminMetricCard } from '@/features/dashboard/bookings/components/AdminMetricCard';
-import { superAdminHostsSummaryFromList } from '@/features/dashboard/super-admin/lib/superAdminHostsFilters';
-import type { HostSummary } from '@/features/dashboard/super-admin/types/host';
+import type { HostsSummary } from '@/features/dashboard/super-admin/types/host';
 
 type Props = {
-  hosts: HostSummary[];
+  summary: HostsSummary;
 };
 
-export function SuperAdminHostsSummaryCards({ hosts }: Props) {
-  const summary = superAdminHostsSummaryFromList(hosts);
-
+export function SuperAdminHostsSummaryCards({ summary }: Props) {
   return (
     <section
       aria-label="Host summary"

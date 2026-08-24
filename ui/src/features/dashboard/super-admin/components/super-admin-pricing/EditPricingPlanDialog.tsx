@@ -30,7 +30,6 @@ type EditPricingPlanDialogProps = {
     sortOrder: number;
     pricePhp: number | null;
     discountPercent: number;
-    commissionRatePercent: number | null;
     features: PlanFeatures;
     isActive: boolean;
   }) => Promise<void>;
@@ -50,6 +49,13 @@ const BOOLEAN_FEATURE_KEYS = [
   'aiMarketingGeneration',
   'aiChatAutoReply',
   'fullyManagedByPlatform',
+  'financeReporting',
+  'maintenanceReporting',
+  'metaChatChannel',
+  'quickReplies',
+  'customTemplates',
+  'publicPagesAutosave',
+  'bookingImport',
 ] as const satisfies ReadonlyArray<keyof PlanFeatures>;
 
 export function EditPricingPlanDialog({
@@ -64,7 +70,6 @@ export function EditPricingPlanDialog({
   const [sortOrder, setSortOrder] = useState(0);
   const [pricePhp, setPricePhp] = useState('0');
   const [discountPercent, setDiscountPercent] = useState('0');
-  const [commissionRate, setCommissionRate] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [features, setFeatures] = useState<PlanFeatures>({ ...DEFAULT_PLAN_FEATURES });
 
@@ -75,7 +80,6 @@ export function EditPricingPlanDialog({
     setSortOrder(plan.sortOrder);
     setPricePhp(String(plan.pricePhp ?? 0));
     setDiscountPercent(String(plan.discountPercent ?? 0));
-    setCommissionRate(plan.commissionRatePercent == null ? '' : String(plan.commissionRatePercent));
     setIsActive(plan.isActive);
     setFeatures({ ...plan.features });
   }, [plan]);
@@ -84,8 +88,7 @@ export function EditPricingPlanDialog({
 
   const listPrice = Number(pricePhp) || 0;
   const discount = Number(discountPercent) || 0;
-  const hostPrice =
-    plan.pricingModel === 'subscription' ? discountedPlanPricePhp(listPrice, discount) : null;
+  const hostPrice = discountedPlanPricePhp(listPrice, discount);
 
   return (
     <ResponsiveModal open={open} onOpenChange={onOpenChange}>
@@ -118,54 +121,38 @@ export function EditPricingPlanDialog({
                 onChange={(e) => setSortOrder(Number(e.target.value) || 0)}
               />
             </div>
-            {plan.pricingModel === 'subscription' ? (
-              <div className="space-y-2">
-                <Label htmlFor="plan-price">List price (PHP)</Label>
-                <Input
-                  id="plan-price"
-                  type="number"
-                  min={0}
-                  step={1}
-                  value={pricePhp}
-                  onChange={(e) => setPricePhp(e.target.value)}
-                />
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <Label htmlFor="plan-commission">Commission %</Label>
-                <Input
-                  id="plan-commission"
-                  type="number"
-                  value={commissionRate}
-                  onChange={(e) => setCommissionRate(e.target.value)}
-                />
-              </div>
-            )}
-          </div>
-
-          {plan.pricingModel === 'subscription' ? (
             <div className="space-y-2">
-              <Label htmlFor="plan-discount">Discount %</Label>
+              <Label htmlFor="plan-price">List price (PHP)</Label>
               <Input
-                id="plan-discount"
+                id="plan-price"
                 type="number"
                 min={0}
-                max={100}
                 step={1}
-                value={discountPercent}
-                onChange={(e) => setDiscountPercent(e.target.value)}
+                value={pricePhp}
+                onChange={(e) => setPricePhp(e.target.value)}
               />
             </div>
-          ) : null}
+          </div>
 
-          {hostPrice != null ? (
-            <p className="text-muted-foreground text-sm tabular-nums">
-              Hosts pay ₱{hostPrice.toLocaleString('en-PH')}/month
-              {discount > 0 && hostPrice < listPrice
-                ? ` (₱${listPrice.toLocaleString('en-PH')} list, ${Math.floor(discount)}% off)`
-                : null}
-            </p>
-          ) : null}
+          <div className="space-y-2">
+            <Label htmlFor="plan-discount">Discount %</Label>
+            <Input
+              id="plan-discount"
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              value={discountPercent}
+              onChange={(e) => setDiscountPercent(e.target.value)}
+            />
+          </div>
+
+          <p className="text-muted-foreground text-sm tabular-nums">
+            Hosts pay ₱{hostPrice.toLocaleString('en-PH')}/month
+            {discount > 0 && hostPrice < listPrice
+              ? ` (₱${listPrice.toLocaleString('en-PH')} list, ${Math.floor(discount)}% off)`
+              : null}
+          </p>
 
           <div className="space-y-2">
             <Label htmlFor="plan-ai-credits">AI monthly credits</Label>
@@ -255,15 +242,8 @@ export function EditPricingPlanDialog({
                 name: name.trim(),
                 tagline: tagline.trim() || null,
                 sortOrder,
-                pricePhp: plan.pricingModel === 'subscription' ? Number(pricePhp) || 0 : null,
-                discountPercent:
-                  plan.pricingModel === 'subscription'
-                    ? Math.min(100, Math.max(0, Number(discountPercent) || 0))
-                    : 0,
-                commissionRatePercent:
-                  plan.pricingModel === 'commission'
-                    ? Number(commissionRate) || 0
-                    : plan.commissionRatePercent,
+                pricePhp: Number(pricePhp) || 0,
+                discountPercent: Math.min(100, Math.max(0, Number(discountPercent) || 0)),
                 features,
                 isActive,
               })
