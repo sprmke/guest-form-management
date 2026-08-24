@@ -1,7 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { callEdgeFunction } from '@/features/dashboard/org/lib/edgeClient';
 import type { Development } from '@/features/dashboard/super-admin/types/development';
+
+import { ADMIN_DEFAULT_PAGE_SIZE } from '@/lib/table/pagination';
 
 export const DEVELOPMENTS_QUERY_KEY = ['super-admin', 'developments'] as const;
 
@@ -9,13 +11,36 @@ export function developmentQueryKey(slug: string) {
   return ['super-admin', 'development', slug] as const;
 }
 
-export function useDevelopments() {
+type DevelopmentsResult = {
+  rows: Development[];
+  total: number;
+};
+
+export function useDevelopments(params?: {
+  page?: number;
+  limit?: number;
+  q?: string;
+  status?: string;
+  type?: string;
+}) {
+  const page = params?.page ?? 1;
+  const limit = params?.limit ?? ADMIN_DEFAULT_PAGE_SIZE;
+  const q = params?.q?.trim() ?? '';
+  const status = params?.status ?? 'all';
+  const type = params?.type ?? 'all';
+
   return useQuery({
-    queryKey: DEVELOPMENTS_QUERY_KEY,
-    queryFn: () =>
-      callEdgeFunction<{ developments: Development[] }>('list-developments').then(
-        (data) => data.developments
-      ),
+    queryKey: [...DEVELOPMENTS_QUERY_KEY, page, limit, q, status, type] as const,
+    queryFn: () => {
+      const search = new URLSearchParams({ page: String(page), limit: String(limit) });
+      if (q) search.set('q', q);
+      if (status !== 'all') search.set('status', status);
+      if (type !== 'all') search.set('type', type);
+      return callEdgeFunction<{ developments: Development[]; total: number }>(
+        `list-developments?${search.toString()}`
+      ).then((data): DevelopmentsResult => ({ rows: data.developments, total: data.total }));
+    },
+    placeholderData: keepPreviousData,
   });
 }
 

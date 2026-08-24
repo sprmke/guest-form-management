@@ -1,4 +1,4 @@
-import { BadgePercent, CreditCard, Layers, Sparkles } from 'lucide-react';
+import { CreditCard, Layers, Sparkles, Star } from 'lucide-react';
 
 import { AdminMetricCard } from '@/features/dashboard/bookings/components/AdminMetricCard';
 import { superAdminPricingPlansSummaryFromList } from '@/features/dashboard/super-admin/lib/superAdminPricingFilters';
@@ -24,18 +24,11 @@ export function SuperAdminPricingSummaryCards({ plans }: Props) {
         iconBgClassName="bg-sky-100 dark:bg-sky-900/30"
       />
       <AdminMetricCard
-        title="Subscription tiers"
+        title="Host tiers"
         value={String(summary.subscriptionTiers)}
         icon={CreditCard}
         iconClassName="text-emerald-600 dark:text-emerald-400"
         iconBgClassName="bg-emerald-100 dark:bg-emerald-900/30"
-      />
-      <AdminMetricCard
-        title="Commission plans"
-        value={String(summary.commissionPlans)}
-        icon={BadgePercent}
-        iconClassName="text-violet-600 dark:text-violet-400"
-        iconBgClassName="bg-violet-100 dark:bg-violet-900/30"
       />
       <AdminMetricCard
         title="Active plans"
@@ -43,6 +36,13 @@ export function SuperAdminPricingSummaryCards({ plans }: Props) {
         icon={Sparkles}
         iconClassName="text-amber-600 dark:text-amber-400"
         iconBgClassName="bg-amber-100 dark:bg-amber-900/30"
+      />
+      <AdminMetricCard
+        title="Default plan"
+        value={summary.defaultPlanName}
+        icon={Star}
+        iconClassName="text-violet-600 dark:text-violet-400"
+        iconBgClassName="bg-violet-100 dark:bg-violet-900/30"
       />
     </section>
   );

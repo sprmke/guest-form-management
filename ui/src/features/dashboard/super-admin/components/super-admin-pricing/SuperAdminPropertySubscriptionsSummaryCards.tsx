@@ -1,15 +1,20 @@
 import { Building2, CheckCircle2, CircleDashed, Users } from 'lucide-react';
 
 import { AdminMetricCard } from '@/features/dashboard/bookings/components/AdminMetricCard';
-import { superAdminPropertySubscriptionsSummaryFromList } from '@/features/dashboard/super-admin/lib/superAdminPricingFilters';
-import type { PropertySubscriptionSummary } from '@/features/dashboard/super-admin/types/pricingPlan';
+import type { PropertySubscriptionsSummary } from '@/features/dashboard/super-admin/hooks/usePricingPlans';
 
 type Props = {
-  properties: PropertySubscriptionSummary[];
+  summary: PropertySubscriptionsSummary | null;
 };
 
-export function SuperAdminPropertySubscriptionsSummaryCards({ properties }: Props) {
-  const summary = superAdminPropertySubscriptionsSummaryFromList(properties);
+export function SuperAdminPropertySubscriptionsSummaryCards({ summary }: Props) {
+  const totals = summary ?? {
+    total: 0,
+    assigned: 0,
+    unassigned: 0,
+    activeSubscriptions: 0,
+    organizations: 0,
+  };
 
   return (
     <section
@@ -18,28 +23,28 @@ export function SuperAdminPropertySubscriptionsSummaryCards({ properties }: Prop
     >
       <AdminMetricCard
         title="Properties"
-        value={String(summary.total)}
+        value={String(totals.total)}
         icon={Building2}
         iconClassName="text-sky-600 dark:text-sky-400"
         iconBgClassName="bg-sky-100 dark:bg-sky-900/30"
       />
       <AdminMetricCard
         title="Assigned"
-        value={String(summary.assigned)}
+        value={String(totals.assigned)}
         icon={CheckCircle2}
         iconClassName="text-emerald-600 dark:text-emerald-400"
         iconBgClassName="bg-emerald-100 dark:bg-emerald-900/30"
       />
       <AdminMetricCard
         title="Unassigned"
-        value={String(summary.unassigned)}
+        value={String(totals.unassigned)}
         icon={CircleDashed}
         iconClassName="text-amber-600 dark:text-amber-400"
         iconBgClassName="bg-amber-100 dark:bg-amber-900/30"
       />
       <AdminMetricCard
         title="Organizations"
-        value={String(summary.organizations)}
+        value={String(totals.organizations)}
         icon={Users}
         iconClassName="text-violet-600 dark:text-violet-400"
         iconBgClassName="bg-violet-100 dark:bg-violet-900/30"

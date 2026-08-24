@@ -1,5 +1,6 @@
 import { Filter, Search } from 'lucide-react';
 
+import { AdminListPerPageSelect } from '@/features/dashboard/bookings/components/AdminListToolbar';
 import { SUPPORT_TICKET_CATEGORY_LABELS } from '@/features/dashboard/help-support/lib/supportTicketSchema';
 import { SuperAdminListViewToggle } from '@/features/dashboard/super-admin/components/shared/SuperAdminListViewToggle';
 import {
@@ -22,20 +23,24 @@ type Props = {
   filters: SuperAdminSupportFilters;
   viewMode: SuperAdminSupportViewMode;
   hideTableView?: boolean;
+  limit: number;
   onSearchChange: (value: string) => void;
   onCategoryChange: (value: SuperAdminSupportFilters['category']) => void;
   onStatusChange: (value: SuperAdminSupportFilters['status']) => void;
   onViewModeChange: (mode: SuperAdminSupportViewMode) => void;
+  onLimitChange: (limit: number) => void;
 };
 
 export function SuperAdminSupportToolbar({
   filters,
   viewMode,
   hideTableView = false,
+  limit,
   onSearchChange,
   onCategoryChange,
   onStatusChange,
   onViewModeChange,
+  onLimitChange,
 }: Props) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -96,12 +101,14 @@ export function SuperAdminSupportToolbar({
         </Select>
       </div>
 
-      <SuperAdminListViewToggle
-        viewMode={viewMode}
-        onViewModeChange={onViewModeChange}
-        hideTableView={hideTableView}
-        className="self-end sm:self-auto"
-      />
+      <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
+        <AdminListPerPageSelect limit={limit} onChange={onLimitChange} />
+        <SuperAdminListViewToggle
+          viewMode={viewMode}
+          onViewModeChange={onViewModeChange}
+          hideTableView={hideTableView}
+        />
+      </div>
     </div>
   );
 }

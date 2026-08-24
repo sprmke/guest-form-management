@@ -1,16 +1,25 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { HelpCenterFaq } from '@/features/dashboard/help-support/lib/helpCenterApi';
 import { callEdgeFunction } from '@/features/dashboard/org/lib/edgeClient';
+
+import { ADMIN_DEFAULT_PAGE_SIZE } from '@/lib/table/pagination';
 
 export type AdminHelpCenterFaq = HelpCenterFaq & { is_published: boolean };
 
 export const HELP_CENTER_FAQS_ADMIN_QUERY_KEY = ['super-admin', 'help-center-faqs'] as const;
 
-export function useHelpCenterFaqsAdmin() {
+export function useHelpCenterFaqsAdmin(params?: { page?: number; limit?: number }) {
+  const page = params?.page ?? 1;
+  const limit = params?.limit ?? ADMIN_DEFAULT_PAGE_SIZE;
+
   return useQuery({
-    queryKey: HELP_CENTER_FAQS_ADMIN_QUERY_KEY,
-    queryFn: () => callEdgeFunction<{ faqs: AdminHelpCenterFaq[] }>('list-help-center-faqs-admin'),
+    queryKey: [...HELP_CENTER_FAQS_ADMIN_QUERY_KEY, page, limit] as const,
+    queryFn: () =>
+      callEdgeFunction<{ faqs: AdminHelpCenterFaq[]; total: number }>(
+        `list-help-center-faqs-admin?page=${page}&limit=${limit}`
+      ),
+    placeholderData: keepPreviousData,
   });
 }
 

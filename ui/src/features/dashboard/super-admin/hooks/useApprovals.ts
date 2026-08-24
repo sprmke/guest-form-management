@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useListingAuthorizationAssets } from '@/features/dashboard/org/hooks/useListingAuthorization';
 import {
@@ -12,11 +12,13 @@ import type {
   ListingAuthorizationTier,
   ListingKind,
 } from '@/features/dashboard/org/lib/listingAuthorization';
+import type { SuperAdminApprovalsFilterStatus } from '@/features/dashboard/super-admin/lib/superAdminApprovalsFilters';
 import type {
   ApprovalQueueItem,
   ExternalReviewApprovalSummary,
   ListingVerificationApprovalSummary,
   OrgApprovalSummary,
+  SuperAdminApprovalTypeFilter,
 } from '@/features/dashboard/super-admin/types/approval';
 
 export const APPROVALS_QUERY_KEY = ['super-admin', 'approvals'] as const;
@@ -116,22 +118,39 @@ function normalizeExternalReviewApproval(
   };
 }
 
-export function useApprovals() {
+export type ApprovalsFilters = {
+  search: string;
+  status: SuperAdminApprovalsFilterStatus;
+  type: SuperAdminApprovalTypeFilter;
+};
+
+export function useApprovals(filters: ApprovalsFilters, page: number, limit: number) {
   return useQuery({
-    queryKey: APPROVALS_QUERY_KEY,
-    queryFn: () =>
-      callEdgeFunction<{ approvals: ApprovalQueueItem[] }>('list-super-admin-approvals').then(
-        (data) =>
-          (data.approvals ?? []).map((row) => {
-            if (row.type === 'external_review') {
-              return normalizeExternalReviewApproval(row);
-            }
-            if (row.type === 'listing_verification') {
-              return normalizeListingVerificationApproval(row);
-            }
-            return normalizeOrgApproval(row as Omit<OrgApprovalSummary, 'type'>);
-          })
-      ),
+    queryKey: [...APPROVALS_QUERY_KEY, filters, page, limit],
+    placeholderData: keepPreviousData,
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (filters.search.trim()) params.set('search', filters.search.trim());
+      if (filters.status !== 'all') params.set('status', filters.status);
+      if (filters.type !== 'all') params.set('type', filters.type);
+      params.set('page', String(page));
+      params.set('limit', String(limit));
+
+      return callEdgeFunction<{ approvals: ApprovalQueueItem[]; total: number }>(
+        `list-super-admin-approvals?${params.toString()}`
+      ).then((data) => ({
+        rows: (data.approvals ?? []).map((row) => {
+          if (row.type === 'external_review') {
+            return normalizeExternalReviewApproval(row);
+          }
+          if (row.type === 'listing_verification') {
+            return normalizeListingVerificationApproval(row);
+          }
+          return normalizeOrgApproval(row as Omit<OrgApprovalSummary, 'type'>);
+        }),
+        total: data.total,
+      }));
+    },
   });
 }
 

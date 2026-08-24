@@ -1,5 +1,6 @@
 import { Filter, Search } from 'lucide-react';
 
+import { AdminListPerPageSelect } from '@/features/dashboard/bookings/components/AdminListToolbar';
 import { SuperAdminListViewToggle } from '@/features/dashboard/super-admin/components/shared/SuperAdminListViewToggle';
 import { SuperAdminResultsMeta } from '@/features/dashboard/super-admin/components/shared/SuperAdminResultsMeta';
 import type {
@@ -22,9 +23,11 @@ type Props = {
   viewMode: SuperAdminPropertySubscriptionsViewMode;
   plans: PricingPlan[];
   hideTableView?: boolean;
+  limit: number;
   onSearchChange: (value: string) => void;
   onPlanCodeChange: (value: string) => void;
   onViewModeChange: (mode: SuperAdminPropertySubscriptionsViewMode) => void;
+  onLimitChange: (limit: number) => void;
 };
 
 export function SuperAdminPropertySubscriptionsToolbar({
@@ -32,11 +35,13 @@ export function SuperAdminPropertySubscriptionsToolbar({
   viewMode,
   plans,
   hideTableView = false,
+  limit,
   onSearchChange,
   onPlanCodeChange,
   onViewModeChange,
+  onLimitChange,
 }: Props) {
-  const planOptions = plans.filter((plan) => plan.isActive);
+  const planOptions = plans.filter((plan) => plan.isActive && plan.code !== 'business_plus');
 
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -74,12 +79,14 @@ export function SuperAdminPropertySubscriptionsToolbar({
         </Select>
       </div>
 
-      <SuperAdminListViewToggle
-        viewMode={viewMode}
-        onViewModeChange={onViewModeChange}
-        hideTableView={hideTableView}
-        className="self-end sm:self-auto"
-      />
+      <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
+        <AdminListPerPageSelect limit={limit} onChange={onLimitChange} />
+        <SuperAdminListViewToggle
+          viewMode={viewMode}
+          onViewModeChange={onViewModeChange}
+          hideTableView={hideTableView}
+        />
+      </div>
     </div>
   );
 }
