@@ -8,6 +8,11 @@ import { buildFinanceExportCsv } from '../_shared/financeExport.ts';
 import { financeDbScope, resolveFinanceAssetAccess } from '../_shared/financeAssetScope.ts';
 import { parseFinanceExportType, parseFinanceListQueryParams } from '../_shared/financeHttp.ts';
 import { jsonError } from '../_shared/httpResponse.ts';
+import {
+  catchPlanFeatureError,
+  requirePropertyFeature,
+  resolveListingEntitlementPropertyId,
+} from '../_shared/planEntitlements.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('finance-export', async (req) => {
@@ -16,6 +21,16 @@ serveAuthenticated('finance-export', async (req) => {
   }
 
   const asset = await resolveFinanceAssetAccess(req, 'finance:view');
+
+  try {
+    const entitlementPropertyId = await resolveListingEntitlementPropertyId(asset.kind, asset.id);
+    await requirePropertyFeature(entitlementPropertyId, 'financeReporting');
+  } catch (err) {
+    const planErr = catchPlanFeatureError(req, err);
+    if (planErr) return planErr;
+    throw err;
+  }
+
   const scope = financeDbScope(asset);
   const url = new URL(req.url);
   const p = url.searchParams;

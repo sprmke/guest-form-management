@@ -1,6 +1,7 @@
 /**
  * dashboard-stats — Admin home dashboard aggregates.
  * Property scope: ?property_id=…
+ * Parking scope: ?parking_id=…
  * Org scope: ?org_slug=… or ?org_id=… (aggregates org properties + parking listings)
  */
 
@@ -13,6 +14,7 @@ import {
   resolveOrgAccessContext,
   resolveScopedPropertyAccess,
 } from '../_shared/propertyScope.ts';
+import { readParkingIdFromUrl, resolveScopedParkingAccess } from '../_shared/parkingScope.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('dashboard-stats', async (req, user) => {
@@ -22,13 +24,18 @@ serveAuthenticated('dashboard-stats', async (req, user) => {
 
   const url = new URL(req.url);
   const explicitPropertyId = readPropertyIdFromUrl(url);
+  const explicitParkingId = readParkingIdFromUrl(url);
   const orgSlug = readOrgSlugFromUrl(url);
   const orgIdParam = readOrgIdFromUrl(url);
 
   let propertyId: string | undefined;
+  let parkingId: string | undefined;
   let orgId: string | undefined;
 
-  if (explicitPropertyId) {
+  if (explicitParkingId) {
+    await resolveScopedParkingAccess(req, 'bookings:view');
+    parkingId = explicitParkingId;
+  } else if (explicitPropertyId) {
     const { property } = await resolveScopedPropertyAccess(
       req,
       'bookings:view',
@@ -45,6 +52,7 @@ serveAuthenticated('dashboard-stats', async (req, user) => {
 
   const data = await computeDashboardStats({
     propertyId,
+    parkingId,
     orgId,
     from: url.searchParams.get('from'),
     to: url.searchParams.get('to'),

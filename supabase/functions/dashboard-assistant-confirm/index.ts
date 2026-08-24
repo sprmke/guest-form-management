@@ -17,10 +17,12 @@ import {
   handleEdgeError,
   jsonError,
   jsonSuccess,
+  jsonUpgradeHook,
   readJsonBody,
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
 import { createServiceClient } from '../_shared/orgAuth.ts';
+import { PlanFeatureRequiredError, requirePropertyFeature } from '../_shared/planEntitlements.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 function updateActionBlockStatus(blocks: unknown, actionId: string, status: string) {
@@ -72,6 +74,24 @@ serveAuthenticated('dashboard-assistant-confirm', async (req, user) => {
       .eq('id', pending.conversation_id)
       .maybeSingle();
     if (!conversation) return jsonError(req, 'Conversation not found', 404);
+
+    // A downgrade can happen between the assistant proposing this action and the user confirming
+    // it — re-check entitlement here, not just at proposal time in dashboard-assistant-chat, or a
+    // property that dropped below the required tier could still execute a queued Tier-2 action.
+    // Property-scoped only, mirroring dashboard-assistant-chat's own gate exactly: a conversation
+    // with no property_id is org/parking-scoped and stays interim-ungated there too (see
+    // PARKING_INTERIM_UNGATED_FEATURES) — checking org-level here would diverge from what chat
+    // already allowed for the same conversation.
+    if (confirm && conversation.property_id) {
+      try {
+        await requirePropertyFeature(conversation.property_id as string, 'aiDashboardAssistant');
+      } catch (err) {
+        if (err instanceof PlanFeatureRequiredError) {
+          return jsonUpgradeHook(req, err.message, { feature: err.feature });
+        }
+        throw err;
+      }
+    }
 
     if (!confirm) {
       await sb

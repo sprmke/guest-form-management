@@ -6,6 +6,7 @@
 import { generateMarketingTemplateTokens } from '../_shared/marketingTemplateGenerationAi.ts';
 import { jsonError, jsonResponse, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
 import { isAiPlatformDisabledError, isAiQuotaError } from '../_shared/aiUsageService.ts';
+import { catchPlanFeatureError, requirePropertyFeature } from '../_shared/planEntitlements.ts';
 import { resolveAdminPropertyId } from '../_shared/propertyScope.ts';
 import { serveAdmin } from '../_shared/serveEdge.ts';
 import { createServiceClient } from '../_shared/orgAuth.ts';
@@ -16,6 +17,15 @@ serveAdmin('generate-marketing-template', async (req, admin) => {
   }
 
   const propertyId = await resolveAdminPropertyId(req, admin.id);
+
+  try {
+    await requirePropertyFeature(propertyId, 'aiMarketingGeneration');
+  } catch (err) {
+    const planErr = catchPlanFeatureError(req, err);
+    if (planErr) return planErr;
+    throw err;
+  }
+
   const body = await readJsonBody(req);
 
   const contentType =

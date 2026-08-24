@@ -21,7 +21,7 @@ servePublic('get-booked-dates', async (req) => {
 
   const { data: bookings, error } = await supabase
     .from('guest_submissions')
-    .select('id, check_in_date, check_out_date, status')
+    .select('id, check_in_date, check_out_date, check_in_time, check_out_time, status')
     .eq('property_id', propertyId)
     .neq('status', 'CANCELLED')
     // IMPORTED bookings are historical records — they must not block live availability.
@@ -75,6 +75,8 @@ servePublic('get-booked-dates', async (req) => {
         id: booking.id,
         checkInDate: normalizeDate(booking.check_in_date),
         checkOutDate: normalizeDate(booking.check_out_date),
+        checkInTime: booking.check_in_time || undefined,
+        checkOutTime: booking.check_out_time || undefined,
       })) ?? [];
 
   // Owner-managed blocks are unavailable to guests the same way booked nights are.
