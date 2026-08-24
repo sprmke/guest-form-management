@@ -45,11 +45,9 @@ function filterArticleQaItems(article: HelpCenterArticle, term: string): HelpCen
 
 function ArticleList({
   articles,
-  groupName,
   defaultOpen,
 }: {
   articles: HelpCenterArticle[];
-  groupName: string;
   defaultOpen: boolean;
 }) {
   return (
@@ -59,7 +57,6 @@ function ArticleList({
           key={article.routeGuidePath}
           title={displayHelpArticleTitle(article.title)}
           defaultOpen={defaultOpen}
-          groupName={groupName}
         >
           <dl className="space-y-5">
             {article.qaItems.map((qa) => (
@@ -186,7 +183,6 @@ export function HelpDocumentationPage() {
           ) : (
             <ArticleList
               articles={selectedArticles}
-              groupName="help-guides"
               defaultOpen={hasSearch && selectedArticles.length === 1}
             />
           )}

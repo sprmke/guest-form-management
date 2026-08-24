@@ -98,7 +98,13 @@ export function TicketComposeForm({
   const category = watch('category');
   const subject = watch('subject');
   const description = watch('description');
-  const canSubmit = isSupportTicketDraftComplete({ subject, description });
+  const contactPreference = watch('contactPreference');
+  const canSubmit = isSupportTicketDraftComplete({
+    subject,
+    description,
+    category,
+    contactPreference,
+  });
   const submitting = submitTicket.isPending;
   const uploading = attachmentsBusy;
   const dirty = isDirty || attachments.length > 0;
@@ -141,7 +147,7 @@ export function TicketComposeForm({
               category: values.category,
               subject: values.subject,
               description: values.description,
-              contactPreference: values.contactPreference.trim() || undefined,
+              contactPreference: values.contactPreference.trim(),
             }
           : {
               category: values.category,
@@ -280,6 +286,7 @@ export function TicketComposeForm({
           <TicketField
             htmlFor="ticket-contact-preference"
             label="How should we reach you?"
+            required
             error={contactError}
           >
             <Input
@@ -291,6 +298,7 @@ export function TicketComposeForm({
               error={Boolean(contactError)}
               aria-invalid={Boolean(contactError)}
               aria-describedby={contactError ? 'ticket-contact-preference-error' : undefined}
+              aria-required
             />
           </TicketField>
         </div>

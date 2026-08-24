@@ -50,7 +50,7 @@ export function HelpCenterFaqAccordion() {
     body = (
       <div className="px-4 sm:px-5">
         {visibleFaqs.map((faq) => (
-          <HelpDisclosure key={faq.id} title={faq.question} groupName="help-faq">
+          <HelpDisclosure key={faq.id} title={faq.question}>
             <HelpRichText text={sanitizeHelpBody(faq.answer)} />
           </HelpDisclosure>
         ))}

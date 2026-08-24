@@ -166,7 +166,7 @@ export function TicketThreadPanel({ ticketId, onBack }: { ticketId: string; onBa
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <div className="border-border/80 flex shrink-0 items-start gap-3 border-b px-3 py-3 sm:px-4">
+      <div className="border-border/80 flex shrink-0 items-center gap-3 border-b px-3 py-3 sm:px-4">
         {onBack ? (
           <Button
             type="button"

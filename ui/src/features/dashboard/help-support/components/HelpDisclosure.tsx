@@ -9,10 +9,9 @@ type Props = {
   title: string;
   children: ReactNode;
   defaultOpen?: boolean;
-  groupName?: string;
 };
 
-export function HelpDisclosure({ title, children, defaultOpen = false, groupName }: Props) {
+export function HelpDisclosure({ title, children, defaultOpen = false }: Props) {
   const ref = React.useRef<HTMLDetailsElement>(null);
 
   React.useEffect(() => {
@@ -20,7 +19,7 @@ export function HelpDisclosure({ title, children, defaultOpen = false, groupName
   }, [defaultOpen]);
 
   return (
-    <details ref={ref} name={groupName} className="border-border/70 group border-b last:border-b-0">
+    <details ref={ref} className="border-border/70 group border-b last:border-b-0">
       <summary
         className={cn(
           'text-foreground flex min-h-12 cursor-pointer list-none items-start justify-between gap-4 py-4 text-[15px] font-medium leading-snug sm:py-5 sm:text-base',

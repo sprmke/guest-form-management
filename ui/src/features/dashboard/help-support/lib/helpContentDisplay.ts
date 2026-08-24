@@ -10,6 +10,8 @@ const ROUTE_TAIL_LABELS: Record<string, string> = {
   'help-support': 'Help & Support',
   bookings: 'Bookings',
   calendar: 'Calendar',
+  pricing: 'Pricing',
+  plans: 'Plans & Billing',
   settings: 'Settings',
   team: 'Team',
   finance: 'Finance',

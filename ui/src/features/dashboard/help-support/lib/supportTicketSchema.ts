@@ -30,21 +30,31 @@ const attachmentsSchema = z
   .max(3, 'Attach up to 3 files')
   .default([]);
 
-export const supportTicketDraftSchema = z.object({
-  category: z.enum(SUPPORT_TICKET_CATEGORIES),
-  subject: z
-    .string()
-    .trim()
-    .min(1, 'Subject is required')
-    .max(200, 'Subject must be 200 characters or fewer'),
-  description: z
-    .string()
-    .trim()
-    .min(1, 'Details are required')
-    .max(5000, 'Details must be 5000 characters or fewer'),
-  severity: z.enum(SUPPORT_TICKET_SEVERITIES),
-  contactPreference: z.string().trim().max(200, 'Must be 200 characters or fewer'),
-});
+export const supportTicketDraftSchema = z
+  .object({
+    category: z.enum(SUPPORT_TICKET_CATEGORIES),
+    subject: z
+      .string()
+      .trim()
+      .min(1, 'Subject is required')
+      .max(200, 'Subject must be 200 characters or fewer'),
+    description: z
+      .string()
+      .trim()
+      .min(1, 'Details are required')
+      .max(5000, 'Details must be 5000 characters or fewer'),
+    severity: z.enum(SUPPORT_TICKET_SEVERITIES),
+    contactPreference: z.string().trim().max(200, 'Must be 200 characters or fewer'),
+  })
+  .superRefine((data, ctx) => {
+    if (data.category === 'business_inquiry' && !data.contactPreference.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Tell us how to reach you',
+        path: ['contactPreference'],
+      });
+    }
+  });
 
 export type SupportTicketDraftValues = z.infer<typeof supportTicketDraftSchema>;
 
@@ -72,7 +82,11 @@ export const supportTicketFormSchema = z.discriminatedUnion('category', [
     category: z.literal('business_inquiry'),
     subject: z.string().trim().min(1, 'Subject is required').max(200),
     description: z.string().trim().min(1, 'Details are required').max(5000),
-    contactPreference: z.string().trim().max(200).optional(),
+    contactPreference: z
+      .string()
+      .trim()
+      .min(1, 'Tell us how to reach you')
+      .max(200, 'Must be 200 characters or fewer'),
   }),
 ]);
 
@@ -81,8 +95,12 @@ export type SupportTicketFormValues = z.infer<typeof supportTicketFormSchema>;
 export function isSupportTicketDraftComplete(values: {
   subject: string;
   description: string;
+  category?: SupportTicketCategory;
+  contactPreference?: string;
 }): boolean {
-  return values.subject.trim().length > 0 && values.description.trim().length > 0;
+  if (!values.subject.trim() || !values.description.trim()) return false;
+  if (values.category === 'business_inquiry' && !values.contactPreference?.trim()) return false;
+  return true;
 }
 
 export const SUPPORT_TICKET_CATEGORY_LABELS: Record<SupportTicketCategory, string> = {
