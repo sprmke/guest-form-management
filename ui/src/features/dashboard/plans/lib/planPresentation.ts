@@ -4,9 +4,19 @@
  * Tiers are cumulative, so cards show only what a tier *adds* over the one below it
  * and the matrix carries the full picture. Every value here is derived from the plan
  * row — nothing is illustrative.
+ *
+ * **Public marketing sync:** `/for-hosts/pricing` reuses `buildPlanTiers`,
+ * `PLAN_TIER_CARD_GAINS`, and this module via `list-public-pricing-plans`. When you
+ * change tier copy, feature bullets, or display names here — or seed/update
+ * `pricing_plans` — verify the public pricing page still matches the in-app Plans UI.
+ * Canonical matrix: `docs/architecture/plans-feature-matrix.md`.
  */
 
-import type { PlanFeatureKey, PlanFeatures } from '@/features/dashboard/plans/lib/planFeatures';
+import {
+  isFeatureEnabled,
+  type PlanFeatureKey,
+  type PlanFeatures,
+} from '@/features/dashboard/plans/lib/planFeatures';
 import {
   discountedPlanPricePhp,
   normalizePlanDiscountPercent,
@@ -131,11 +141,17 @@ export const PLAN_TIER_CARD_GAINS: Record<string, string[]> = {
   ],
   starter: [
     'Pricing management',
-    'Public pages access & editor',
-    'Automated document generation',
+    'Public pages access & editor + autosave',
+    'Automated booking emails',
     'Verified badge eligible',
     'Up to 3 team members',
     'Template Management',
+    'Custom templates',
+    'Telegram alerts',
+    'Finance reporting & export',
+    'Maintenance reporting & export',
+    'Inbox quick replies',
+    'AI booking import',
   ],
   growth: [
     'Up to 5 team members',
@@ -154,6 +170,7 @@ export const PLAN_TIER_CARD_GAINS: Record<string, string[]> = {
     'AI dashboard assistant',
     'AI receptionist',
     'AI chat auto-reply',
+    'Meta (Facebook/Instagram) chat channel',
     '10,000 AI credits per month',
   ],
   managed: [
@@ -220,11 +237,16 @@ function planTierCardGains(planCode: string): PlanFeatureChange[] {
 
 /** Matrix row order — also the order bullets appear on a tier card when derived from features. */
 export const PLAN_FEATURE_ROWS: PlanFeatureRow[] = [
-  boolRow('automatedBookingFlow', 'Automated document generation', 'operations'),
+  boolRow('automatedBookingFlow', 'Automated booking emails', 'operations'),
   boolRow('customPages', 'Public pages access & editor', 'operations'),
+  boolRow('publicPagesAutosave', 'Public pages autosave', 'operations'),
   boolRow('marketingStudio', 'Template Management', 'operations'),
   boolRow('aiValidations', 'AI receipt and ID validation', 'operations'),
   boolRow('telegramNotifications', 'Telegram alerts', 'operations'),
+  boolRow('financeReporting', 'Finance reporting & export', 'operations'),
+  boolRow('maintenanceReporting', 'Maintenance reporting & export', 'operations'),
+  boolRow('quickReplies', 'Inbox quick replies', 'operations'),
+  boolRow('metaChatChannel', 'Meta (Facebook/Instagram) chat channel', 'operations'),
 
   boolRow('verifiedBadgeEligible', 'Verified badge eligible', 'visibility'),
   boolRow('recommendedBadgeEligible', 'Recommended badge eligible', 'visibility'),
@@ -241,6 +263,7 @@ export const PLAN_FEATURE_ROWS: PlanFeatureRow[] = [
   },
 
   boolRow('aiMarketingGeneration', 'AI content generation', 'marketing'),
+  boolRow('customTemplates', 'Custom templates', 'marketing'),
   {
     key: 'marketingPublishLimitPerGroup',
     label: 'Marketing publishes',
@@ -470,6 +493,17 @@ export function nextUpgradePlan(
   return ordered[currentIndex + 1] ?? null;
 }
 
+/** Lowest-`sortOrder` plan that has `feature` enabled — the specific tier a gated action needs. */
+export function resolveMinimumPlanForFeature(
+  plans: PropertyPlanDto[],
+  feature: PlanFeatureKey
+): PropertyPlanDto | null {
+  const candidates = plans
+    .filter((plan) => isFeatureEnabled(plan.features, feature))
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  return candidates[0] ?? null;
+}
+
 /** Primary CTA on the current-plan banner when a higher tier exists. */
 export function upgradeBannerActionLabel(plan: PropertyPlanDto): string {
   if (isManagedSalesPlan(plan.code)) return 'Contact sales';
@@ -503,7 +537,7 @@ export function planDiscountLabel(discountPercent: number): string {
   return `${percent}% off`;
 }
 
-const PESO_WHOLE = new Intl.NumberFormat('en-PH', {
+export const PESO_WHOLE = new Intl.NumberFormat('en-PH', {
   style: 'currency',
   currency: 'PHP',
   maximumFractionDigits: 0,
@@ -651,7 +685,7 @@ export const PLAN_FAQ_ITEMS: PlanFaqItem[] = [
   {
     question: 'Can I change my plan at any time?',
     answer:
-      'Yes. Organization owners can switch this listing’s plan from the Plans page. Paid upgrades open PayMongo checkout and take effect once payment clears. Moving to Free applies immediately. Other downgrades use the same plan-selection flow.',
+      'Yes. Organization owners can switch this listing’s plan from Plans & Billing. Paid upgrades open PayMongo checkout and take effect once payment clears. Moving to Free applies immediately. Other downgrades use the same plan-selection flow.',
   },
   {
     question: 'Is pricing per property or per organization?',
@@ -666,7 +700,7 @@ export const PLAN_FAQ_ITEMS: PlanFaqItem[] = [
   {
     question: 'What happens if I miss a renewal payment?',
     answer:
-      'The listing becomes past due. You keep full dashboard access during the grace period. If payment is still missing after grace ends, access is limited to Plans and Help & Support until you pay. Guest forms and bookings for this listing keep working.',
+      'The listing becomes past due. You keep full dashboard access during the grace period. If payment is still missing after grace ends, access is limited to Plans & Billing and Help & Support until you pay. Guest forms and bookings for this listing keep working.',
   },
   {
     question: 'What happens when I downgrade?',

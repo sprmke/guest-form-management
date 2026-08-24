@@ -1,5 +1,6 @@
 import {
   Circle,
+  Crown,
   HeartHandshake,
   Percent,
   Sparkles,
@@ -14,6 +15,7 @@ export const PLAN_TIER_ICONS: Record<string, LucideIcon> = {
   starter: Zap,
   growth: TrendingUp,
   pro: Sparkles,
+  business_plus: Crown,
   managed: HeartHandshake,
   commission: Percent,
 };
@@ -34,6 +36,8 @@ export function planTierIconWellClass(planCode: string, muted = false): string {
       return 'bg-blue-500/10 text-blue-600 dark:text-blue-400';
     case 'pro':
       return 'bg-violet-500/10 text-violet-600 dark:text-violet-400';
+    case 'business_plus':
+      return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400';
     case 'managed':
       return 'bg-amber-500/10 text-amber-700 dark:text-amber-400';
     case 'commission':

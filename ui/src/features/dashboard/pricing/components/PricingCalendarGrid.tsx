@@ -276,7 +276,7 @@ export function PricingCalendarGrid({
       <div
         className="text-muted-foreground border-border/60 mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t pt-3 text-xs"
         role="list"
-        aria-label="Calendar legend"
+        aria-label="Pricing legend"
       >
         <LegendSwatch className="bg-card ring-border ring-1" label="Available" />
         <LegendIcon label="Holiday">

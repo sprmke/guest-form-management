@@ -514,9 +514,9 @@ export function PropertyPricingPage() {
   return (
     <>
       <AdminMobilePage
-        title="Calendar"
+        title="Pricing"
         subtitle="Manage pricing and availability."
-        titleId="calendar-heading"
+        titleId="pricing-heading"
       >
         <PricingStatsRow
           weekdayRate={weekdayRate}

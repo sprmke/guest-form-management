@@ -24,6 +24,13 @@ export type PlanFeatures = {
   aiMarketingGeneration: boolean;
   aiChatAutoReply: boolean;
   fullyManagedByPlatform: boolean;
+  financeReporting: boolean;
+  maintenanceReporting: boolean;
+  metaChatChannel: boolean;
+  quickReplies: boolean;
+  customTemplates: boolean;
+  publicPagesAutosave: boolean;
+  bookingImport: boolean;
 };
 
 export const DEFAULT_PLAN_FEATURES: PlanFeatures = {
@@ -43,6 +50,13 @@ export const DEFAULT_PLAN_FEATURES: PlanFeatures = {
   aiMarketingGeneration: false,
   aiChatAutoReply: false,
   fullyManagedByPlatform: false,
+  financeReporting: false,
+  maintenanceReporting: false,
+  metaChatChannel: false,
+  quickReplies: false,
+  customTemplates: false,
+  publicPagesAutosave: false,
+  bookingImport: false,
 };
 
 export type PlanFeatureKey = keyof PlanFeatures;
@@ -102,7 +116,7 @@ export function canInviteTeamMember(
 }
 
 export const PLAN_FEATURE_LABELS: Record<keyof PlanFeatures, string> = {
-  automatedBookingFlow: 'Automated document generation',
+  automatedBookingFlow: 'Automated booking emails',
   verifiedBadgeEligible: 'Verified badge eligible',
   recommendedBadgeEligible: 'Recommended badge eligible',
   telegramNotifications: 'Telegram alerts',
@@ -118,4 +132,11 @@ export const PLAN_FEATURE_LABELS: Record<keyof PlanFeatures, string> = {
   aiMarketingGeneration: 'AI content generation',
   aiChatAutoReply: 'AI chat auto-reply',
   fullyManagedByPlatform: 'Full-service property management',
+  financeReporting: 'Finance reporting & export',
+  maintenanceReporting: 'Maintenance reporting & export',
+  metaChatChannel: 'Meta (Facebook/Instagram) chat channel',
+  quickReplies: 'Inbox quick replies',
+  customTemplates: 'Custom templates',
+  publicPagesAutosave: 'Public pages autosave',
+  bookingImport: 'AI booking import',
 };

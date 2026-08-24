@@ -40,11 +40,18 @@ export type PropertyPaymentTransactionDto = {
   paidAt: string | null;
 };
 
+export type PropertyOrgCoverageDto = {
+  planName: string;
+  organizationId: string;
+};
+
 export type PropertyPlanResponse = {
   plans: PropertyPlanDto[];
   subscription: PropertySubscriptionDto | null;
   transactions?: PropertyPaymentTransactionDto[];
   pendingCheckoutUrl?: string | null;
+  /** Set when this property is slotted into an org portfolio bundle — see pricing-portfolio-bundling.md. */
+  orgCoverage?: PropertyOrgCoverageDto | null;
 };
 
 async function authHeaders(): Promise<HeadersInit> {

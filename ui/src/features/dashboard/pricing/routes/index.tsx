@@ -8,8 +8,8 @@ import { PropertyPricingPage } from '@/features/dashboard/pricing/pages/Property
 export function pricingPropertyRoute(propertyRoute: PropertyRouteFn): ReactNode {
   return (
     <>
-      <Route path="calendar" element={propertyRoute('calendar', <PropertyPricingPage />)} />
-      <Route path="pricing" element={<Navigate to="../calendar" replace />} />
+      <Route path="pricing" element={propertyRoute('pricing', <PropertyPricingPage />)} />
+      <Route path="calendar" element={<Navigate to="../pricing" replace />} />
     </>
   );
 }

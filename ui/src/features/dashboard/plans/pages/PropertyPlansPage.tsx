@@ -9,6 +9,7 @@ import {
   useHelpSupportBasePath,
 } from '@/features/dashboard/help-support/lib/helpSupportPaths';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
+import { orgPlansPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { CurrentPlanSummary } from '@/features/dashboard/plans/components/CurrentPlanSummary';
 import { PlanBillingPanel } from '@/features/dashboard/plans/components/PlanBillingPanel';
 import { PlanFaqSection } from '@/features/dashboard/plans/components/PlanFaqSection';
@@ -50,7 +51,7 @@ export function PropertyPlansPage() {
   const orgContext = useOptionalOrgContext();
   const helpSupportBase = useHelpSupportBasePath();
   const propertyName = orgContext?.property.name?.trim();
-  usePageTitle(propertyName ? `${propertyName} - Plans` : undefined);
+  usePageTitle(propertyName ? `${propertyName} - Plans & Billing` : undefined);
 
   const { data: access } = usePropertyPermissions();
   const { data, isLoading, error, refetch } = usePropertyPlan();
@@ -88,7 +89,7 @@ export function PropertyPlansPage() {
 
   return (
     <AdminMobilePage
-      title="Plans"
+      title="Plans & Billing"
       subtitle={PLANS_PAGE_SUBTITLE}
       titleId="property-plans-heading"
       dense
@@ -119,6 +120,31 @@ export function PropertyPlansPage() {
         </FloatingPanel>
       ) : (
         <div className="native-stagger flex min-w-0 flex-col gap-5 sm:gap-6 lg:gap-8">
+          {data?.orgCoverage && orgContext?.org.slug ? (
+            <div className="border-primary/30 bg-primary/5 flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4">
+              <p className="text-foreground text-sm">
+                Covered by your org&apos;s <strong>{data.orgCoverage.planName}</strong> portfolio
+                plan — manage seats and billing at the org level.
+              </p>
+              <a
+                href={orgPlansPath(orgContext.org.slug)}
+                className="text-primary shrink-0 text-sm font-semibold underline-offset-2 hover:underline"
+              >
+                Manage org plan
+              </a>
+            </div>
+          ) : orgContext?.org.slug ? (
+            <p className="text-muted-foreground text-xs">
+              Managing more than one property?{' '}
+              <a
+                href={orgPlansPath(orgContext.org.slug)}
+                className="text-primary font-medium underline-offset-2 hover:underline"
+              >
+                Bundle Pro, Business, or Business Plus across your portfolio
+              </a>{' '}
+              instead of paying per property.
+            </p>
+          ) : null}
           <p className="text-foreground max-w-2xl text-base font-medium lg:hidden">
             {PLANS_PAGE_SUBTITLE}
           </p>
@@ -208,6 +234,7 @@ export function PropertyPlansPage() {
         open={Boolean(selectedPlan)}
         plan={selectedPlan}
         currentPlan={currentPlan}
+        subscription={data?.subscription ?? null}
         onOpenChange={(open) => {
           if (!open) setSelectedPlan(null);
         }}
