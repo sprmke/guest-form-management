@@ -4,7 +4,6 @@ import {
   Bell,
   BookOpen,
   Building2,
-  CalendarDays,
   Car,
   CreditCard,
   DollarSign,
@@ -24,6 +23,7 @@ import {
   orgBookingsPath,
   orgDashboardPath,
   orgParkingsPath,
+  orgPlansPath,
   orgPropertiesPath,
   orgSettingsPath,
   orgTeamPath,
@@ -103,6 +103,11 @@ export function buildOrgNavSections(
       Icon: Users,
     },
     {
+      label: 'Plans',
+      href: orgPlansPath(orgSlug),
+      Icon: CreditCard,
+    },
+    {
       label: 'Settings',
       href: orgSettingsPath(orgSlug),
       Icon: Settings,
@@ -143,9 +148,9 @@ export function buildPropertyNavSections(
           Icon: Wrench,
         },
         {
-          label: 'Calendar',
-          href: propertySectionPath(orgSlug, propertySlug, 'calendar'),
-          Icon: CalendarDays,
+          label: 'Pricing',
+          href: propertySectionPath(orgSlug, propertySlug, 'pricing'),
+          Icon: Tags,
         },
         {
           label: 'Team',
@@ -178,7 +183,7 @@ export function buildPropertyNavSections(
           Icon: Globe,
         },
         {
-          label: 'Plans',
+          label: 'Plans & Billing',
           href: propertySectionPath(orgSlug, propertySlug, 'plans'),
           Icon: CreditCard,
         },
@@ -285,7 +290,7 @@ export function filterPropertyNavSections(
       ...section,
       items: section.items.filter((item) => {
         if (item.disabled || !item.href) return true;
-        if (item.label === 'Calendar') {
+        if (item.label === 'Pricing') {
           return hasPropertyPermission(granted, 'pricing:view');
         }
         const required = PROPERTY_NAV_VIEW_PERMISSION[item.label];

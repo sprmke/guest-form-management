@@ -1,4 +1,7 @@
+import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+
+GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 /** Render PDF bytes to PNG data URLs (no browser PDF viewer chrome). */
 export async function renderPdfBytesToPageImages(
@@ -6,10 +9,9 @@ export async function renderPdfBytesToPageImages(
   scale = 1.75,
   maxPages?: number
 ): Promise<string[]> {
-  const pdfjs = await import('pdfjs-dist');
-  pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
-
-  const pdf = await pdfjs.getDocument({ data: bytes.slice() }).promise;
+  // Static import (not `import('pdfjs-dist')`) — Vite's dynamic-deps stub for the bare
+  // package can 404 as `.vite/deps/pdfjs-dist.js` and break Building Forms live preview.
+  const pdf = await getDocument({ data: bytes.slice() }).promise;
   const images: string[] = [];
   const pageLimit =
     typeof maxPages === 'number' && maxPages > 0 ? Math.min(pdf.numPages, maxPages) : pdf.numPages;

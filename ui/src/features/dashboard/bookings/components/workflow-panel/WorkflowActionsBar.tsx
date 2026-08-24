@@ -16,8 +16,9 @@
  * an earlier stage — or after a live autosave failure — **Save** appears so hosts
  * can persist pricing/settlement without opening Edit Booking.
  *
- * The eligibility booleans still come from `useWorkflowActions`; only the
- * presentation is re-ranked.
+ * Form-gated Proceed / Mark complete CTAs stay enabled; the parent runs field
+ * validators on click and surfaces inline errors. Doc-completion gates (e.g. all
+ * pending docs done) still toast a short hint when incomplete.
  */
 
 import { ArrowLeft, ArrowRight, Loader2, Save } from 'lucide-react';
@@ -41,7 +42,6 @@ import {
 } from '@/features/dashboard/bookings/lib/workflowActionButtonStyles';
 import { shortDocStepLabel } from '@/features/dashboard/bookings/lib/workflowStageDeck';
 
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -55,7 +55,6 @@ type Props = {
   prev: BookingStatus | null;
   next: BookingStatus | null;
   onOpenBackConfirm: (toStatus: BookingStatus) => void;
-  selectedPendingDocCanMarkComplete: boolean;
   selectedPendingDocRequired: boolean;
   selectedPendingDocCompleted: boolean;
   activePendingDocSubStatus: PendingDocNestedKey;
@@ -69,23 +68,21 @@ type Props = {
   onOpenForwardProceedConfirm: (toStatus: BookingStatus, label: string) => void;
   showLateParkingActions: boolean;
   livePipelineActions: boolean;
-  isTransitionDisabled: (toStatus: BookingStatus) => boolean;
   cancelPending: boolean;
   onOpenCancelConfirm: () => void;
   /** Persist dirty progress-form drafts without a status transition. */
   showProgressSave?: boolean;
   progressSavePending?: boolean;
   onProgressSave?: () => void;
+  /** Toast when Proceed to RFCI is blocked by incomplete nested docs. */
+  onPendingDocumentsBlocked?: (hint: string) => void;
 };
 
 type PrimaryAction = {
   label: string;
   /** Shorter rail label when shown beside the back CTA in a two-column row. */
   compactLabel?: string;
-  enabled: boolean;
   onSelect: () => void;
-  /** Shown as a tooltip on the disabled CTA — why the forward step is blocked. */
-  blockedHint?: string;
 };
 
 function workflowStatusCtaName(status: BookingStatus, compact: boolean): string {
@@ -103,71 +100,44 @@ function proceedToStatusLabel(status: BookingStatus, compact: boolean): string {
 const quietRowClass =
   'focus-ring flex min-h-[40px] w-full items-center justify-center gap-1.5 rounded-lg px-3 text-[13px] font-medium transition-colors disabled:pointer-events-none disabled:opacity-40';
 
-/**
- * Forward CTA. A disabled native button swallows hover, so the blocked hint
- * lives on a wrapping trigger — the reason appears on hover/focus instead of
- * as a permanent caption under the row.
- */
 function PrimaryCta({
   label,
-  disabled,
   busy,
-  blockedHint,
   paired,
   onSelect,
 }: {
   label: string;
-  disabled: boolean;
   busy: boolean;
-  blockedHint?: string;
   paired?: boolean;
   onSelect: () => void;
 }) {
-  const button = (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onSelect}
-      aria-busy={busy || undefined}
-      aria-label={blockedHint ? `${label}. ${blockedHint}` : undefined}
-      className={cn(
-        workflowPrimaryActionClass(!disabled),
-        'w-full min-w-0 text-center',
-        paired && 'h-full'
-      )}
-    >
-      <span className={cn(workflowActionLabelGroupClass, 'gap-2')}>
-        <span
-          className={paired ? workflowActionLabelTextPairedClass : workflowActionLabelTextClass}
-        >
-          {label}
-        </span>
-        {busy ? (
-          <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
-        ) : (
-          <ArrowRight className="size-4 shrink-0" aria-hidden />
-        )}
-      </span>
-    </button>
-  );
-
-  const wrapperClass = cn('w-full min-w-0', paired && 'h-full');
-
-  if (!blockedHint) {
-    return <div className={wrapperClass}>{button}</div>;
-  }
-
   return (
-    <TooltipProvider delayDuration={200}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className={cn('block', wrapperClass)}>{button}</span>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-[220px] text-center">
-          {blockedHint}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <div className={cn('w-full min-w-0', paired && 'h-full')}>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={onSelect}
+        aria-busy={busy || undefined}
+        className={cn(
+          workflowPrimaryActionClass(!busy),
+          'w-full min-w-0 text-center',
+          paired && 'h-full'
+        )}
+      >
+        <span className={cn(workflowActionLabelGroupClass, 'gap-2')}>
+          <span
+            className={paired ? workflowActionLabelTextPairedClass : workflowActionLabelTextClass}
+          >
+            {label}
+          </span>
+          {busy ? (
+            <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+          ) : (
+            <ArrowRight className="size-4 shrink-0" aria-hidden />
+          )}
+        </span>
+      </button>
+    </div>
   );
 }
 
@@ -182,7 +152,6 @@ export function WorkflowActionsBar({
   prev,
   next,
   onOpenBackConfirm,
-  selectedPendingDocCanMarkComplete,
   selectedPendingDocRequired,
   selectedPendingDocCompleted,
   activePendingDocSubStatus,
@@ -196,12 +165,12 @@ export function WorkflowActionsBar({
   onOpenForwardProceedConfirm,
   showLateParkingActions,
   livePipelineActions,
-  isTransitionDisabled,
   cancelPending,
   onOpenCancelConfirm,
   showProgressSave = false,
   progressSavePending = false,
   onProgressSave,
+  onPendingDocumentsBlocked,
 }: Props) {
   const showCancel = !isTerminal && canCancelBookingAtStatus(status) && (isLiveView || isModal);
   const showTransitions = !isTerminal && (isLiveView || isModal);
@@ -214,41 +183,36 @@ export function WorkflowActionsBar({
   if (inDocStep && selectedPendingDocRequired && !selectedPendingDocCompleted) {
     primary = {
       label: `Mark ${activeDocShortLabel} as complete`,
-      enabled: selectedPendingDocCanMarkComplete,
       onSelect: () =>
         selectedPendingDocUsesApprovalModal
           ? onOpenDocApprovalModal(activePendingDocSubStatus)
           : onMarkPendingDocSubStatusComplete(activePendingDocSubStatus),
-      blockedHint: selectedPendingDocUsesApprovalModal
-        ? undefined
-        : `Fill in the ${activeDocShortLabel.toLowerCase()} details above first.`,
     };
   } else if (inDocStep && showProceedToReadyForCheckin) {
     primary = {
       label: proceedToStatusLabel('READY_FOR_CHECKIN', false),
       compactLabel: proceedToStatusLabel('READY_FOR_CHECKIN', true),
-      enabled: pendingDocumentsComplete,
-      onSelect: () =>
+      onSelect: () => {
+        if (!pendingDocumentsComplete) {
+          onPendingDocumentsBlocked?.(pendingDocumentsBlockedHint);
+          return;
+        }
         onOpenForwardProceedConfirm(
           'READY_FOR_CHECKIN',
           proceedToStatusLabel('READY_FOR_CHECKIN', false)
-        ),
-      blockedHint: pendingDocumentsBlockedHint,
+        );
+      },
     };
   } else if (showLateParkingActions) {
     primary = {
       label: `Mark ${shortDocStepLabel(statusLabel(PARKING_NESTED_KEY))} as complete`,
-      enabled: selectedPendingDocCanMarkComplete,
       onSelect: () => onMarkPendingDocSubStatusComplete(PARKING_NESTED_KEY),
-      blockedHint: 'Fill in the parking details above first.',
     };
   } else if (livePipelineActions && next) {
     primary = {
       label: proceedToStatusLabel(next, false),
       compactLabel: proceedToStatusLabel(next, true),
-      enabled: !isTransitionDisabled(next),
       onSelect: () => onOpenForwardProceedConfirm(next, proceedToStatusLabel(next, false)),
-      blockedHint: 'Fill in the required fields to continue.',
     };
   }
 
@@ -256,7 +220,6 @@ export function WorkflowActionsBar({
   // One in-flight mutation locks the whole footer: a cancel and a transition
   // racing each other would land the booking somewhere neither host intended.
   const actionsBusy = transitionPending || cancelPending || progressSavePending;
-  const primaryDisabled = !primary?.enabled || actionsBusy;
 
   const showTransitionRow = showTransitions && (primary !== null || backTo !== null);
   const pairedTransitionActions = backTo !== null && primary !== null;
@@ -338,9 +301,7 @@ export function WorkflowActionsBar({
           {primary ? (
             <PrimaryCta
               label={primaryButtonLabel ?? primary.label}
-              disabled={primaryDisabled}
-              busy={transitionPending}
-              blockedHint={!primary.enabled && !actionsBusy ? primary.blockedHint : undefined}
+              busy={actionsBusy}
               paired={pairedTransitionActions}
               onSelect={primary.onSelect}
             />

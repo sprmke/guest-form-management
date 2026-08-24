@@ -20,6 +20,7 @@ import {
   matchesDefaultBookingsListVisibility,
   passesListCheckInDateRangeFilter,
 } from '@/features/dashboard/bookings/lib/bookingsListSort';
+import { buildBookingsListStatusOrFilter } from '@/features/dashboard/bookings/lib/bookingsStatusFilter';
 import type { BookingRow, BookingsQuery } from '@/features/dashboard/bookings/lib/types';
 import {
   appendOrgId,
@@ -74,6 +75,9 @@ async function fetchBookingsFromEdgeFunction(
   params.set('limit', String(query.limit));
   if (query.showCompletedBookings) {
     params.set('show_completed_bookings', 'true');
+  }
+  if (query.expandImportedBatch) {
+    params.set('expand_imported_batch', 'true');
   }
 
   if (fetchScope.scope === 'org') {
@@ -169,7 +173,11 @@ export function useBookings(query: BookingsQuery, options?: { scope?: BookingsLi
         }
 
         if (query.status.length > 0) {
-          request = request.in('status', [...query.status]);
+          const statusOr = buildBookingsListStatusOrFilter(
+            query.status,
+            query.expandImportedBatch ?? false
+          );
+          request = statusOr ? request.or(statusOr) : request.in('status', [...query.status]);
         }
 
         if (query.hasPets === true) request = request.eq('has_pets', true);

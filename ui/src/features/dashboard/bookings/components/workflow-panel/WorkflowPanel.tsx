@@ -49,6 +49,10 @@ import {
 import { WorkflowDocApprovalModal } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowDocApprovalModal';
 import { WorkflowDocStepTabs } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowDocStepTabs';
 import { WorkflowPendingReviewAck } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowPendingReviewAck';
+import {
+  WorkflowProceedValidationProvider,
+  useWorkflowProceedValidation,
+} from '@/features/dashboard/bookings/components/workflow-panel/WorkflowProceedValidationContext';
 import { WorkflowProgressMapModal } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowProgressMapModal';
 import { WorkflowStageDeckHeader } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowStageDeckHeader';
 import { WorkflowStageSlide } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowStageSlide';
@@ -139,7 +143,15 @@ type Props = {
   onOpenAiSummary?: (open: boolean) => void;
 };
 
-export function WorkflowPanel({
+export function WorkflowPanel(props: Props) {
+  return (
+    <WorkflowProceedValidationProvider>
+      <WorkflowPanelInner {...props} />
+    </WorkflowProceedValidationProvider>
+  );
+}
+
+function WorkflowPanelInner({
   booking,
   variant = 'rail',
   kanbanTargetStatus = null,
@@ -149,6 +161,7 @@ export function WorkflowPanel({
   aiSummaryOpen = false,
   onOpenAiSummary,
 }: Props) {
+  const { validateForTransition, validateById } = useWorkflowProceedValidation();
   const orgContext = useOptionalOrgContext();
   const propertySlug = resolveBookingPropertySlug(booking, orgContext?.propertySlug) ?? '';
   const isModal = variant === 'modal';
@@ -288,6 +301,28 @@ export function WorkflowPanel({
 
   const handleProgressSave = useCallback(
     async (opts?: { quiet?: boolean }) => {
+      if (!opts?.quiet) {
+        const content = workflowActions.viewedContent;
+        const validatorId =
+          content === 'pricing'
+            ? ('pricing' as const)
+            : content === 'parking'
+              ? ('parking' as const)
+              : content === 'guest_balance'
+                ? ('guest_balance' as const)
+                : content === 'sd_refund'
+                  ? ('sd_refund' as const)
+                  : null;
+        if (validatorId) {
+          const ok = await validateById(validatorId);
+          if (validatorId === 'pricing') {
+            const decorOk = await validateById('surprise_decor');
+            if (!ok || !decorOk) return;
+          } else if (!ok) {
+            return;
+          }
+        }
+      }
       const payload = progressSavePayloadForView(booking, workflowActions.viewedContent, {
         pricing: subFormDrafts.pricingValues,
         parking: subFormDrafts.parkingValues,
@@ -328,6 +363,7 @@ export function WorkflowPanel({
       subFormDrafts.surpriseDecorStaffAck,
       subFormDrafts.clearProgressDirty,
       updateMut,
+      validateById,
     ]
   );
 
@@ -431,7 +467,10 @@ export function WorkflowPanel({
     onKanbanFlowClose?.();
   }, [onKanbanFlowClose]);
 
-  function openForwardProceedConfirm(toStatus: BookingStatus, label: string) {
+  async function openForwardProceedConfirm(toStatus: BookingStatus, label: string) {
+    const ok = await validateForTransition(status, toStatus);
+    if (!ok) return;
+
     const pastStayWarning = shouldWarnPastBookingStayForProceed(status, booking);
     setConfirm({
       toStatus,
@@ -466,11 +505,11 @@ export function WorkflowPanel({
       if (drop.direction === 'back') {
         openBackConfirm(drop.toStatus);
       } else {
-        openForwardProceedConfirm(drop.toStatus, drop.label);
+        void openForwardProceedConfirm(drop.toStatus, drop.label);
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [status, booking, documentRequirements, appSettings?.automationToggles]
+    [status, booking, documentRequirements, appSettings?.automationToggles, validateForTransition]
   );
 
   const kanbanFormBlocksTransition =
@@ -551,6 +590,10 @@ export function WorkflowPanel({
   }
 
   async function handleMarkPendingDocSubStatusComplete(subStatus: PendingDocNestedKey) {
+    if (subStatus === PARKING_NESTED_KEY) {
+      const ok = await validateById('parking');
+      if (!ok) return;
+    }
     const label = nestedKeyLabel(subStatus, documentRequirements);
     try {
       const payload: TransitionPayload = {
@@ -760,7 +803,6 @@ export function WorkflowPanel({
               prev={workflowActions.prev}
               next={workflowActions.next}
               onOpenBackConfirm={openBackConfirm}
-              selectedPendingDocCanMarkComplete={workflowActions.selectedPendingDocCanMarkComplete}
               selectedPendingDocUsesApprovalModal={
                 workflowActions.selectedPendingDocUsesApprovalModal
               }
@@ -768,15 +810,19 @@ export function WorkflowPanel({
               selectedPendingDocCompleted={workflowActions.selectedPendingDocCompleted}
               activePendingDocSubStatus={workflowActions.activePendingDocSubStatus}
               activePendingDocLabel={workflowActions.activePendingDocLabel}
-              onMarkPendingDocSubStatusComplete={handleMarkPendingDocSubStatusComplete}
+              onMarkPendingDocSubStatusComplete={(sub) => {
+                void handleMarkPendingDocSubStatusComplete(sub);
+              }}
               onOpenDocApprovalModal={setDocApprovalModalSub}
               showProceedToReadyForCheckin={workflowActions.showProceedToReadyForCheckin}
               pendingDocumentsComplete={workflowActions.pendingDocumentsComplete}
               pendingDocumentsBlockedHint={workflowActions.pendingDocumentsBlockedHint}
-              onOpenForwardProceedConfirm={openForwardProceedConfirm}
+              onOpenForwardProceedConfirm={(toStatus, label) => {
+                void openForwardProceedConfirm(toStatus, label);
+              }}
+              onPendingDocumentsBlocked={(hint) => toast.error(hint)}
               showLateParkingActions={workflowActions.showLateParkingActions}
               livePipelineActions={workflowActions.livePipelineActions}
-              isTransitionDisabled={subFormDrafts.isTransitionDisabled}
               cancelPending={cancelMut.isPending}
               onOpenCancelConfirm={() => setCancelConfirm(true)}
               showProgressSave={showProgressSave}

@@ -13,6 +13,7 @@ import type {
   WorkflowEmailEffect,
 } from '@/features/dashboard/bookings/lib/workflowTransitionEmailControls';
 
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 
@@ -147,14 +148,15 @@ export function WorkflowConfirmModal({
           </div>
         </div>
         <div className="mt-5 flex shrink-0 justify-end gap-2">
-          <button
+          <Button
             type="button"
+            variant="outline"
             onClick={onCancel}
             disabled={isLoading}
-            className="text-muted-foreground hover:bg-muted min-h-[44px] rounded-xl px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50"
+            className="min-h-[44px]"
           >
             {secondaryLabel}
-          </button>
+          </Button>
           <button
             type="button"
             onClick={onConfirm}

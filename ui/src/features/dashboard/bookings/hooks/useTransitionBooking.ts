@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 import type { SdBank } from '@/features/guest/sd-form/lib/sdFormSchema';
 
@@ -10,8 +11,32 @@ import { BOOKINGS_QUERY_KEY } from '@/features/dashboard/bookings/hooks/useBooki
 import type { BookingStatus } from '@/features/dashboard/bookings/lib/bookingStatus';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
+import { openUpgradeModalFromBridge } from '@/features/dashboard/plans/lib/upgradeModalBridge';
 
 import { supabase } from '@/lib/supabase/client';
+
+/** Human labels for `workflowOrchestrator.ts`'s `automationSkippedByPlan` side-effect names. */
+const AUTOMATION_SKIP_LABELS: Record<string, string> = {
+  gaf_request: 'GAF request email to Azure',
+  pet_request: 'Pet request email to Azure',
+  parking_broadcast: 'Parking broadcast email',
+  booking_acknowledgement: 'Booking acknowledgement email',
+  ready_for_checkin: 'Ready-for-check-in email',
+  sd_refund_form_request: 'Check-out & SD refund email',
+};
+
+function notifyAutomationSkippedByPlan(skipped: string[]): void {
+  if (skipped.length === 0) return;
+  const labels = skipped.map((key) => AUTOMATION_SKIP_LABELS[key] ?? key);
+  toast.warning(`Not sent automatically on your plan: ${labels.join(', ')}`, {
+    description: 'Send these manually for now, or upgrade to automate them.',
+    action: {
+      label: 'Upgrade',
+      onClick: () => openUpgradeModalFromBridge('automatedBookingFlow'),
+    },
+    duration: 8000,
+  });
+}
 
 export type TransitionPayload = {
   booking_rate?: number | null;
@@ -74,6 +99,7 @@ type TransitionResult = {
   booking: BookingRow;
   sideEffects?: {
     emails?: string[];
+    automationSkippedByPlan?: string[];
   };
 };
 
@@ -126,6 +152,7 @@ export function useTransitionBooking() {
       }
       await qc.invalidateQueries({ queryKey: BOOKING_QUERY_KEY(variables.bookingId) });
       await qc.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY });
+      notifyAutomationSkippedByPlan(data?.sideEffects?.automationSkippedByPlan ?? []);
     },
   });
 }
