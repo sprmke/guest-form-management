@@ -1,8 +1,8 @@
 import { CalendarDays, Moon } from 'lucide-react';
 
+import { cn } from '@/lib/utils';
 import { countParkingStayNights, formatParkingStayRange } from '@/utils/format/parkingStayDisplay';
 
-import { cn } from '@/lib/utils';
 
 type Props = {
   checkIn: string;

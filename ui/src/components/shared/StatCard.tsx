@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
+
 import { Link } from 'react-router-dom';
 
 import { TrendingDown, TrendingUp } from 'lucide-react';

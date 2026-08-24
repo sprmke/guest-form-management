@@ -25,6 +25,8 @@ type MobileBrandHeroProps = {
   title: string;
   subtitle?: string;
   titleId?: string;
+  /** Optional plan/status pill next to the title (e.g. `<TierBadge>`). */
+  badge?: ReactNode;
   /** Optional icon actions — top-right, aligned with the tenant switcher row. */
   trailing?: ReactNode;
   /** When true, render super-admin scope readout instead of tenant switcher. */
@@ -50,6 +52,7 @@ export const MobileBrandHero = forwardRef<HTMLElement, MobileBrandHeroProps>(
       title,
       subtitle,
       titleId,
+      badge,
       trailing,
       superAdmin = false,
       pinSentinelRef,
@@ -104,9 +107,19 @@ export const MobileBrandHero = forwardRef<HTMLElement, MobileBrandHeroProps>(
           style={titleStyle}
           aria-hidden={p > 0.85}
         >
-          <h1 id={titleId} className="text-primary-foreground text-xl font-semibold tracking-tight">
-            {title}
-          </h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1
+              id={titleId}
+              className="text-primary-foreground text-xl font-semibold tracking-tight"
+            >
+              {title}
+            </h1>
+            {badge ? (
+              <span className="[&_[data-tier-badge]]:bg-primary-foreground [&_[data-tier-badge]]:text-primary">
+                {badge}
+              </span>
+            ) : null}
+          </div>
           {subtitle ? (
             <p className="text-primary-foreground/75 mt-0.5 line-clamp-2 hidden text-sm lg:block">
               {subtitle}
@@ -171,6 +184,8 @@ type AdminMobilePageProps = {
   title: string;
   subtitle?: string;
   titleId?: string;
+  /** Optional plan/status pill next to the title (e.g. `<TierBadge>`). */
+  badge?: ReactNode;
   heroTrailing?: ReactNode;
   overlap?: ReactNode;
   /** Compact sticky row — defaults to overlap when omitted. */
@@ -201,6 +216,7 @@ export function AdminMobilePage({
   title,
   subtitle,
   titleId,
+  badge,
   heroTrailing,
   overlap,
   stickyPrimary,
@@ -248,6 +264,7 @@ export function AdminMobilePage({
         title={title}
         subtitle={subtitle}
         titleId={titleId}
+        badge={badge}
         trailing={heroTrailing}
         superAdmin={superAdmin}
         pinSentinelRef={overlap ? undefined : heroSentinelRef}
@@ -306,6 +323,7 @@ export function AdminMobilePage({
               card={false}
               title={title}
               subtitle={subtitle}
+              badge={badge}
               actions={desktopActions}
               actionsClassName={desktopActionsClassName}
             />
