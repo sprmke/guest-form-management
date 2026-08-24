@@ -154,7 +154,7 @@ export function NotificationBell({
         className={cn(
           'border-border/50 bg-background text-foreground shadow-elevated-lg',
           'hover:bg-muted/80 relative hidden min-h-[52px] min-w-[52px] items-center justify-center rounded-full border',
-          'fixed right-5 z-40 transition-transform hover:scale-105',
+          'fixed right-5 z-[41] transition-transform hover:scale-105',
           'bottom-[max(1.25rem,env(safe-area-inset-bottom))]',
           'focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
           'motion-reduce:transform-none motion-reduce:hover:scale-100',
@@ -223,7 +223,7 @@ function NotificationCountBadge({ count, fab = false }: { count: number; fab?: b
       className={cn(
         'bg-destructive text-destructive-foreground absolute flex items-center justify-center rounded-full font-semibold leading-none',
         fab
-          ? 'right-0 top-0 h-5 min-w-5 px-1 text-[10px]'
+          ? 'ring-background right-0.5 top-0.5 h-5 min-w-5 px-1 text-[10px] ring-2'
           : 'right-1 top-1 h-4 min-w-[16px] px-1 text-[10px]'
       )}
       aria-hidden

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
-import { Navigate, useParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
 
 import { toast } from 'sonner';
 
@@ -56,6 +56,7 @@ import {
 import { normalizePropertySocialLinksForSave } from '@/features/dashboard/org/lib/propertySocialLinks';
 import { propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { PageEditorHeader } from '@/features/dashboard/page-editor/components/PageEditorHeader';
+import { PageEditorLeaveConfirmDialog } from '@/features/dashboard/page-editor/components/PageEditorLeaveConfirmDialog';
 import { PageEditorPreviewPane } from '@/features/dashboard/page-editor/components/PageEditorPreviewPane';
 import { PageEditorShell } from '@/features/dashboard/page-editor/components/PageEditorShell';
 import {
@@ -80,7 +81,8 @@ import {
 import { STAY_GUIDE_STANDARD_TEMPLATE_KEYS } from '@/features/dashboard/page-editor/lib/stayGuideChapterSections';
 import { usePropertyLandingEditorStore } from '@/features/dashboard/page-editor/stores/propertyLandingEditorStore';
 import { useStayGuideEditorStore } from '@/features/dashboard/page-editor/stores/stayGuideEditorStore';
-import { RequirePropertyFeature } from '@/features/dashboard/plans/components/RequirePropertyFeature';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { SectionContentSkeleton } from '@/components/skeletons/AdminSkeletons';
@@ -142,22 +144,14 @@ export function PageEditorPage() {
     return <Navigate to={propertySectionPath(orgSlug, propertySlug, 'public-pages')} replace />;
   }
 
-  return (
-    <RequirePropertyFeature feature="customPages">
-      {pageId === 'listing' ? (
-        <PropertyLandingPageEditor
-          orgSlug={orgSlug}
-          propertySlug={propertySlug}
-          propertyId={propertyId}
-        />
-      ) : (
-        <StayGuidePageEditor
-          orgSlug={orgSlug}
-          propertySlug={propertySlug}
-          propertyId={propertyId}
-        />
-      )}
-    </RequirePropertyFeature>
+  return pageId === 'listing' ? (
+    <PropertyLandingPageEditor
+      orgSlug={orgSlug}
+      propertySlug={propertySlug}
+      propertyId={propertyId}
+    />
+  ) : (
+    <StayGuidePageEditor orgSlug={orgSlug} propertySlug={propertySlug} propertyId={propertyId} />
   );
 }
 
@@ -170,6 +164,7 @@ function StayGuidePageEditor({
   propertySlug: string;
   propertyId: string | null;
 }) {
+  const navigate = useNavigate();
   const configQuery = usePublicPageConfig('stay_guide');
   const saveMutation = useSavePublicPageConfig('stay_guide');
   const previewQuery = useGuestStayGuidePreview(propertySlug, propertyId ?? '');
@@ -188,6 +183,10 @@ function StayGuidePageEditor({
 
   const [contentDrafts, setContentDrafts] = useState<Record<string, StayGuideSectionDraft>>({});
   const [contentHydrated, setContentHydrated] = useState(false);
+  const { canUse: canUseAutosave } = useFeatureGate('publicPagesAutosave');
+  const { open: openUpgradeModal } = useUpgradeModal();
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [isSavingBeforeLeave, setIsSavingBeforeLeave] = useState(false);
 
   useEffect(() => {
     return () => reset();
@@ -225,6 +224,7 @@ function StayGuidePageEditor({
   const configSave = usePageEditorAutoSave({
     enabled: hydrated && Boolean(propertyId),
     suspended: configQuery.isLoading || !hydrated,
+    persist: canUseAutosave,
     contentFingerprint: fingerprint,
     debounceMs: 1000,
     save: async () => {
@@ -248,6 +248,7 @@ function StayGuidePageEditor({
   const contentSave = usePageEditorAutoSave({
     enabled: contentHydrated && Boolean(propertyId),
     suspended: !contentHydrated || templatesQuery.isLoading,
+    persist: canUseAutosave,
     contentFingerprint,
     debounceMs: 1200,
     save: async () => {
@@ -271,6 +272,17 @@ function StayGuidePageEditor({
 
   const status = mergePageEditorAutoSaveStatuses([configSave.status, contentSave.status]);
   const errorMessage = firstPageEditorAutoSaveError([configSave, contentSave]);
+  const isDirty = status === 'pending';
+
+  useEffect(() => {
+    const handler = (event: BeforeUnloadEvent) => {
+      if (!isDirty) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
 
   const mergedPreview = useMemo(() => {
     if (!previewQuery.data) return null;
@@ -297,6 +309,52 @@ function StayGuidePageEditor({
 
   const backHref = propertySectionPath(orgSlug, propertySlug, 'public-pages');
   const pageMeta = PAGE_EDITOR_META['stay-guide'];
+
+  const saveAllPending = () => Promise.all([configSave.saveNow(), contentSave.saveNow()]);
+
+  const handleManualSaveClick = async () => {
+    if (!canUseAutosave) {
+      openUpgradeModal('publicPagesAutosave');
+      return;
+    }
+    try {
+      await saveAllPending();
+      toast.success('Saved');
+    } catch (error) {
+      toast.error(friendlyToastError(error, 'Could not save changes'));
+    }
+  };
+
+  const handleBack = () => {
+    if (isDirty) {
+      setShowLeaveConfirm(true);
+      return;
+    }
+    navigate(backHref);
+  };
+
+  const handleSaveAndLeave = async () => {
+    if (!canUseAutosave) {
+      setShowLeaveConfirm(false);
+      openUpgradeModal('publicPagesAutosave');
+      return;
+    }
+    setIsSavingBeforeLeave(true);
+    try {
+      await saveAllPending();
+      navigate(backHref);
+    } catch (error) {
+      toast.error(friendlyToastError(error, 'Could not save changes'));
+    } finally {
+      setIsSavingBeforeLeave(false);
+      setShowLeaveConfirm(false);
+    }
+  };
+
+  const handleDiscardAndLeave = () => {
+    setShowLeaveConfirm(false);
+    navigate(backHref);
+  };
 
   const handleDraftChange = (templateKey: string, draft: StayGuideSectionDraft) => {
     setContentDrafts((current) => ({ ...current, [templateKey]: draft }));
@@ -346,13 +404,18 @@ function StayGuidePageEditor({
         header={
           <PageEditorHeader
             pageLabel={pageMeta.label}
-            backHref={backHref}
+            onBack={handleBack}
             autoSaveStatus={status}
             autoSaveError={errorMessage}
             canUndo={historyIndex > 0}
             canRedo={historyIndex < historyLength - 1}
             onUndo={undo}
             onRedo={redo}
+            manualSave={{
+              visible: !canUseAutosave && status === 'pending',
+              onClick: () => void handleManualSaveClick(),
+              isSaving: status === 'saving',
+            }}
           />
         }
         controls={
@@ -371,6 +434,13 @@ function StayGuidePageEditor({
             </PreviewOverrideProvider>
           </PageEditorPreviewPane>
         }
+      />
+      <PageEditorLeaveConfirmDialog
+        open={showLeaveConfirm}
+        onOpenChange={setShowLeaveConfirm}
+        onSaveAndLeave={() => void handleSaveAndLeave()}
+        onDiscardAndLeave={handleDiscardAndLeave}
+        isSaving={isSavingBeforeLeave}
       />
     </PageEditorChrome>
   );
@@ -399,6 +469,7 @@ function PropertyLandingPageEditor({
   propertySlug: string;
   propertyId: string | null;
 }) {
+  const navigate = useNavigate();
   const { property } = useOrgContext();
   const configQuery = usePublicPageConfig('property_landing');
   const saveMutation = useSavePublicPageConfig('property_landing');
@@ -443,6 +514,10 @@ function PropertyLandingPageEditor({
   const [socialBaseline, setSocialBaseline] = useState<AppSettingsFormValues | null>(null);
   const [interactedFields, setInteractedFields] = useState<Record<string, boolean>>({});
   const [savingReviewId, setSavingReviewId] = useState<string | null>(null);
+  const { canUse: canUseAutosave } = useFeatureGate('publicPagesAutosave');
+  const { open: openUpgradeModal } = useUpgradeModal();
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [isSavingBeforeLeave, setIsSavingBeforeLeave] = useState(false);
 
   useEffect(() => {
     return () => reset();
@@ -475,6 +550,7 @@ function PropertyLandingPageEditor({
   const configSave = usePageEditorAutoSave({
     enabled: hydrated && Boolean(propertyId),
     suspended: configQuery.isLoading || !hydrated,
+    persist: canUseAutosave,
     contentFingerprint: fingerprint,
     debounceMs: 1000,
     save: async () => {
@@ -492,6 +568,7 @@ function PropertyLandingPageEditor({
   const brandSave = usePageEditorAutoSave({
     enabled: brandHydrated && Boolean(propertyId) && !brandColorError,
     suspended: !appSettings || !brandHydrated,
+    persist: canUseAutosave,
     contentFingerprint: brandFingerprint,
     debounceMs: 800,
     save: async () => {
@@ -514,6 +591,7 @@ function PropertyLandingPageEditor({
   const contentSave = usePageEditorAutoSave({
     enabled: contentHydrated && Boolean(propertyId) && !cancellationError,
     suspended: !contentHydrated,
+    persist: canUseAutosave,
     contentFingerprint,
     debounceMs: 1000,
     save: async () => {
@@ -549,6 +627,7 @@ function PropertyLandingPageEditor({
   const socialSave = usePageEditorAutoSave({
     enabled: Boolean(socialDraft && propertyId),
     suspended: !socialDraft || !appSettings,
+    persist: canUseAutosave,
     contentFingerprint: socialFingerprint,
     debounceMs: 1000,
     save: async () => {
@@ -595,6 +674,25 @@ function PropertyLandingPageEditor({
     contentSave,
     socialSave,
   ]);
+  const isDirty = status === 'pending';
+
+  useEffect(() => {
+    const handler = (event: BeforeUnloadEvent) => {
+      if (!isDirty) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
+
+  const saveAllPending = () =>
+    Promise.all([
+      configSave.saveNow(),
+      brandSave.saveNow(),
+      contentSave.saveNow(),
+      socialSave.saveNow(),
+    ]);
 
   const handleMediaPersisted = (next: PropertyMediaItem[]) => {
     setMedia(next);
@@ -738,6 +836,50 @@ function PropertyLandingPageEditor({
   const backHref = propertySectionPath(orgSlug, propertySlug, 'public-pages');
   const pageMeta = PAGE_EDITOR_META.listing;
 
+  const handleManualSaveClick = async () => {
+    if (!canUseAutosave) {
+      openUpgradeModal('publicPagesAutosave');
+      return;
+    }
+    try {
+      await saveAllPending();
+      toast.success('Saved');
+    } catch (error) {
+      toast.error(friendlyToastError(error, 'Could not save changes'));
+    }
+  };
+
+  const handleBack = () => {
+    if (isDirty) {
+      setShowLeaveConfirm(true);
+      return;
+    }
+    navigate(backHref);
+  };
+
+  const handleSaveAndLeave = async () => {
+    if (!canUseAutosave) {
+      setShowLeaveConfirm(false);
+      openUpgradeModal('publicPagesAutosave');
+      return;
+    }
+    setIsSavingBeforeLeave(true);
+    try {
+      await saveAllPending();
+      navigate(backHref);
+    } catch (error) {
+      toast.error(friendlyToastError(error, 'Could not save changes'));
+    } finally {
+      setIsSavingBeforeLeave(false);
+      setShowLeaveConfirm(false);
+    }
+  };
+
+  const handleDiscardAndLeave = () => {
+    setShowLeaveConfirm(false);
+    navigate(backHref);
+  };
+
   const isBootstrapping =
     (configQuery.isLoading && !configQuery.data) ||
     (previewQuery.isLoading && !previewQuery.data) ||
@@ -775,13 +917,18 @@ function PropertyLandingPageEditor({
         header={
           <PageEditorHeader
             pageLabel={pageMeta.label}
-            backHref={backHref}
+            onBack={handleBack}
             autoSaveStatus={status}
             autoSaveError={errorMessage}
             canUndo={historyIndex > 0}
             canRedo={historyIndex < historyLength - 1}
             onUndo={undo}
             onRedo={redo}
+            manualSave={{
+              visible: !canUseAutosave && status === 'pending',
+              onClick: () => void handleManualSaveClick(),
+              isSaving: status === 'saving',
+            }}
           />
         }
         controls={
@@ -815,6 +962,13 @@ function PropertyLandingPageEditor({
             </PreviewOverrideProvider>
           </PageEditorPreviewPane>
         }
+      />
+      <PageEditorLeaveConfirmDialog
+        open={showLeaveConfirm}
+        onOpenChange={setShowLeaveConfirm}
+        onSaveAndLeave={() => void handleSaveAndLeave()}
+        onDiscardAndLeave={handleDiscardAndLeave}
+        isSaving={isSavingBeforeLeave}
       />
     </PageEditorChrome>
   );

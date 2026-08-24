@@ -35,6 +35,7 @@ import {
 } from '@/features/dashboard/marketing/lib/video/videoSceneLayers';
 import { resolveVideoTypographyContext } from '@/features/dashboard/marketing/lib/video/videoTemplateTypography';
 import { scaleForVideoFormat } from '@/features/dashboard/marketing/lib/video/videoTextSlotContent';
+import { PlanGateWatermarkOverlay } from '@/features/dashboard/plans/components/PlanGateWatermarkOverlay';
 
 import { cn } from '@/lib/utils';
 
@@ -324,71 +325,73 @@ export const VideoPreviewWorkspace = forwardRef<VideoPreviewWorkspaceHandle, Pro
             className="relative flex items-center justify-center"
             style={{ width: stageWidth, height: stageHeight, minWidth: '100%', minHeight: '100%' }}
           >
-            <div
-              className="relative shrink-0 overflow-hidden rounded-xl shadow-md"
-              style={{
-                width: displayWidth,
-                height: displayHeight,
-              }}
-            >
+            <PlanGateWatermarkOverlay fit="content" className="rounded-xl">
               <div
-                className="absolute left-0 top-0 overflow-hidden"
+                className="relative shrink-0 overflow-hidden rounded-xl shadow-md"
                 style={{
-                  width: frameWidth,
-                  height: frameHeight,
-                  transform: `scale(${zoomFactor})`,
-                  transformOrigin: 'top left',
+                  width: displayWidth,
+                  height: displayHeight,
                 }}
               >
-                <div className="relative size-full overflow-hidden bg-slate-950">
-                  <div className="pointer-events-none absolute inset-0 size-full">
-                    <VideoRemotionPlayer
-                      playerRef={playerRef}
-                      compositionKey={compositionKey}
-                      durationInFrames={durationInFrames}
-                      fps={project.fps}
-                      width={dimensions.width}
-                      height={dimensions.height}
-                      inputProps={inputProps}
-                      previewMuted={previewMuted}
-                      onPlayerInstance={handlePlayerInstance}
-                    />
+                <div
+                  className="absolute left-0 top-0 overflow-hidden"
+                  style={{
+                    width: frameWidth,
+                    height: frameHeight,
+                    transform: `scale(${zoomFactor})`,
+                    transformOrigin: 'top left',
+                  }}
+                >
+                  <div className="relative size-full overflow-hidden bg-slate-950">
+                    <div className="pointer-events-none absolute inset-0 size-full">
+                      <VideoRemotionPlayer
+                        playerRef={playerRef}
+                        compositionKey={compositionKey}
+                        durationInFrames={durationInFrames}
+                        fps={project.fps}
+                        width={dimensions.width}
+                        height={dimensions.height}
+                        inputProps={inputProps}
+                        previewMuted={previewMuted}
+                        onPlayerInstance={handlePlayerInstance}
+                      />
+                    </div>
+                    {editingScene ? (
+                      <VideoTextPositionOverlay
+                        scene={editingScene}
+                        templateTypography={templateTypography}
+                        compositionScale={compositionScale}
+                        previewWidthPx={frameWidth}
+                        compositionWidth={dimensions.width}
+                        selectedElementId={selectedElementId}
+                        onSelectElement={onHighlightElement}
+                        onActivateElement={(layerId) =>
+                          onCanvasSelectElement?.(layerId, editingScene.id)
+                        }
+                        onLayerPositionChange={(layerId, position) => {
+                          onProjectChange(
+                            updateScene(
+                              project,
+                              editingScene.id,
+                              updateSceneLayerPosition(editingScene, layerId, position)
+                            )
+                          );
+                        }}
+                        onLayerWidthChange={(layerId, widthPct) => {
+                          onProjectChange(
+                            updateScene(
+                              project,
+                              editingScene.id,
+                              updateSceneLayer(editingScene, layerId, { widthPct })
+                            )
+                          );
+                        }}
+                      />
+                    ) : null}
                   </div>
-                  {editingScene ? (
-                    <VideoTextPositionOverlay
-                      scene={editingScene}
-                      templateTypography={templateTypography}
-                      compositionScale={compositionScale}
-                      previewWidthPx={frameWidth}
-                      compositionWidth={dimensions.width}
-                      selectedElementId={selectedElementId}
-                      onSelectElement={onHighlightElement}
-                      onActivateElement={(layerId) =>
-                        onCanvasSelectElement?.(layerId, editingScene.id)
-                      }
-                      onLayerPositionChange={(layerId, position) => {
-                        onProjectChange(
-                          updateScene(
-                            project,
-                            editingScene.id,
-                            updateSceneLayerPosition(editingScene, layerId, position)
-                          )
-                        );
-                      }}
-                      onLayerWidthChange={(layerId, widthPct) => {
-                        onProjectChange(
-                          updateScene(
-                            project,
-                            editingScene.id,
-                            updateSceneLayer(editingScene, layerId, { widthPct })
-                          )
-                        );
-                      }}
-                    />
-                  ) : null}
                 </div>
               </div>
-            </div>
+            </PlanGateWatermarkOverlay>
           </div>
         </div>
 

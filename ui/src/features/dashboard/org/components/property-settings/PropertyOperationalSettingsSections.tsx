@@ -40,6 +40,7 @@ type Props = {
   resolveFieldError: (fieldId: string) => string | null;
   markFieldInteracted: (fieldId: string) => void;
   sectionMessages?: Partial<Record<PropertySettingsSectionId, string>>;
+  showVoiceReceptionist?: boolean;
   voiceReceptionist: {
     draft: VoiceReceptionistFormValues | null;
     propertyName?: string;
@@ -65,6 +66,7 @@ export function PropertyOperationalSettingsSections({
   resolveFieldError,
   markFieldInteracted,
   sectionMessages = {},
+  showVoiceReceptionist = true,
   voiceReceptionist,
 }: Props) {
   const uploadMut = useUploadAppSettingsAsset();
@@ -171,16 +173,18 @@ export function PropertyOperationalSettingsSections({
         />
       </AdminSection>
 
-      <PropertyVoiceReceptionistSection
-        draft={voiceReceptionist.draft}
-        propertyName={voiceReceptionist.propertyName}
-        availableVoices={voiceReceptionist.availableVoices}
-        disabled={disabled}
-        isLoading={voiceReceptionist.isLoading}
-        isError={voiceReceptionist.isError}
-        errorMessage={voiceReceptionist.errorMessage}
-        onChange={voiceReceptionist.onChange}
-      />
+      {showVoiceReceptionist ? (
+        <PropertyVoiceReceptionistSection
+          draft={voiceReceptionist.draft}
+          propertyName={voiceReceptionist.propertyName}
+          availableVoices={voiceReceptionist.availableVoices}
+          disabled={disabled}
+          isLoading={voiceReceptionist.isLoading}
+          isError={voiceReceptionist.isError}
+          errorMessage={voiceReceptionist.errorMessage}
+          onChange={voiceReceptionist.onChange}
+        />
+      ) : null}
     </>
   );
 }

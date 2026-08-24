@@ -7,6 +7,9 @@ import {
   useUpdateMarketingTemplate,
   type MarketingTemplateRecord,
 } from '@/features/dashboard/marketing/hooks/useMarketingTemplates';
+import { TierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,6 +50,9 @@ export function SaveMarketingTemplateButton({
   const update = useUpdateMarketingTemplate();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(defaultName);
+  const { canUse: canUseCustomTemplates, isLoading: customTemplatesLoading } =
+    useFeatureGate('customTemplates');
+  const { open: openUpgradeModal } = useUpgradeModal();
 
   const handleSave = async () => {
     const trimmed = name.trim();
@@ -78,30 +84,36 @@ export function SaveMarketingTemplateButton({
 
   return (
     <>
-      <Button
-        type="button"
-        className="min-h-[44px] gap-2"
-        onClick={() => {
-          if (existingTemplateId) {
-            void update
-              .mutateAsync({
-                id: existingTemplateId,
-                name: defaultName.trim() || 'Template',
-                aspectPreset,
-                platform,
-                designJson,
-              })
-              .then((record) => onSaved?.(record));
-            return;
-          }
-          setName(defaultName);
-          setOpen(true);
-        }}
-        disabled={isPending}
-      >
-        <Save className="size-4" aria-hidden />
-        {existingTemplateId ? updateLabel : buttonLabel}
-      </Button>
+      <TierBadgeAnchor feature="customTemplates">
+        <Button
+          type="button"
+          className="min-h-[44px] gap-2"
+          onClick={() => {
+            if (!canUseCustomTemplates) {
+              if (!customTemplatesLoading) openUpgradeModal('customTemplates');
+              return;
+            }
+            if (existingTemplateId) {
+              void update
+                .mutateAsync({
+                  id: existingTemplateId,
+                  name: defaultName.trim() || 'Template',
+                  aspectPreset,
+                  platform,
+                  designJson,
+                })
+                .then((record) => onSaved?.(record));
+              return;
+            }
+            setName(defaultName);
+            setOpen(true);
+          }}
+          disabled={isPending}
+        >
+          <Save className="size-4" aria-hidden />
+          {existingTemplateId ? updateLabel : buttonLabel}
+        </Button>
+      </TierBadgeAnchor>
 
       <ResponsiveModal open={open} onOpenChange={setOpen}>
         <ResponsiveModalContent className="max-w-[min(calc(100vw-1.5rem),24rem)]">

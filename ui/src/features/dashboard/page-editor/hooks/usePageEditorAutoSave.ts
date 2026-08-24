@@ -5,6 +5,8 @@ import type { MarketingAutoSaveStatus } from '@/features/dashboard/marketing/hoo
 type Options = {
   enabled?: boolean;
   suspended?: boolean;
+  /** When false, changes still flip status to 'pending' but never reach the network — no debounce timer, no `save()` call. */
+  persist?: boolean;
   debounceMs?: number;
   contentFingerprint: string | null;
   save: () => Promise<void>;
@@ -36,6 +38,7 @@ export function firstPageEditorAutoSaveError(
 export function usePageEditorAutoSave({
   enabled = true,
   suspended = false,
+  persist = true,
   debounceMs = 1000,
   contentFingerprint,
   save,
@@ -72,6 +75,8 @@ export function usePageEditorAutoSave({
     setStatus((current) => (current === 'pending' ? current : 'pending'));
     setErrorMessage(null);
 
+    if (!persist) return;
+
     const generation = ++saveGenerationRef.current;
     const timer = window.setTimeout(() => {
       void (async () => {
@@ -96,7 +101,7 @@ export function usePageEditorAutoSave({
     }, debounceMs);
 
     return () => window.clearTimeout(timer);
-  }, [contentFingerprint, debounceMs, enabled, suspended]);
+  }, [contentFingerprint, debounceMs, enabled, suspended, persist]);
 
   useEffect(() => {
     return () => {
@@ -110,5 +115,31 @@ export function usePageEditorAutoSave({
     setErrorMessage(null);
   }, []);
 
-  return { status, errorMessage, markSaved };
+  /** Saves immediately, bypassing the debounce — for a manual Save click or a leave-confirm
+   * "Save" choice. Cancels any in-flight debounced save so the two never race each other.
+   * Respects the same `enabled`/`suspended`/`persist` gates as the normal debounced path. */
+  const saveNow = useCallback(async () => {
+    if (!enabled || suspended || !persist) return;
+    if (!contentFingerprint || contentFingerprint === lastSavedFingerprintRef.current) return;
+    const generation = ++saveGenerationRef.current;
+    setStatus('saving');
+    setErrorMessage(null);
+    try {
+      await saveRef.current();
+      if (generation !== saveGenerationRef.current) return;
+      lastSavedFingerprintRef.current = contentFingerprint;
+      setStatus('saved');
+      if (savedFlashTimerRef.current) window.clearTimeout(savedFlashTimerRef.current);
+      savedFlashTimerRef.current = window.setTimeout(() => {
+        setStatus((current) => (current === 'saved' ? 'idle' : current));
+      }, SAVED_FLASH_MS);
+    } catch (error) {
+      if (generation !== saveGenerationRef.current) return;
+      setStatus('error');
+      setErrorMessage(error instanceof Error ? error.message : 'Save failed');
+      throw error;
+    }
+  }, [enabled, suspended, persist, contentFingerprint]);
+
+  return { status, errorMessage, markSaved, saveNow };
 }

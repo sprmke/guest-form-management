@@ -132,7 +132,8 @@ import { registerVideoThumbnailPlaybackPause } from '@/features/dashboard/market
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useOrgSettings } from '@/features/dashboard/org/hooks/useOrgSettings';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
-import { PlanGateWatermarkOverlay } from '@/features/dashboard/plans/components/PlanGateWatermarkOverlay';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -656,7 +657,15 @@ export function VideoEditor({ onPublish }: Props) {
     setProject,
   ]);
 
+  const { canUse: canUseMarketingStudio, isLoading: marketingStudioLoading } =
+    useFeatureGate('marketingStudio');
+  const { open: openUpgradeModal } = useUpgradeModal();
+
   const handleDownload = useCallback(async () => {
+    if (!canUseMarketingStudio) {
+      if (!marketingStudioLoading) openUpgradeModal('marketingStudio');
+      return;
+    }
     setExporting(true);
     try {
       const { blob } = await handleExportVideo();
@@ -673,9 +682,21 @@ export function VideoEditor({ onPublish }: Props) {
     } finally {
       setExporting(false);
     }
-  }, [handleExportVideo, property.slug, selected?.id, savedTemplateId]);
+  }, [
+    handleExportVideo,
+    property.slug,
+    selected?.id,
+    savedTemplateId,
+    canUseMarketingStudio,
+    marketingStudioLoading,
+    openUpgradeModal,
+  ]);
 
   const handlePublish = useCallback(async () => {
+    if (!canUseMarketingStudio) {
+      if (!marketingStudioLoading) openUpgradeModal('marketingStudio');
+      return;
+    }
     if (!onPublish || !project) return;
 
     setExporting(true);
@@ -692,7 +713,16 @@ export function VideoEditor({ onPublish }: Props) {
     } finally {
       setExporting(false);
     }
-  }, [onPublish, project, handleExportVideo, selected?.id, selectedId]);
+  }, [
+    onPublish,
+    project,
+    handleExportVideo,
+    selected?.id,
+    selectedId,
+    canUseMarketingStudio,
+    marketingStudioLoading,
+    openUpgradeModal,
+  ]);
 
   const seekToSceneId = useCallback(
     (sceneId: string, options?: { play?: boolean; mode?: VideoPreviewMode }) => {
@@ -1157,26 +1187,24 @@ export function VideoEditor({ onPublish }: Props) {
                   </TooltipProvider>
                 }
               />
-              <PlanGateWatermarkOverlay className="min-h-0 flex-1">
-                <VideoPreviewWorkspace
-                  ref={previewWorkspaceRef}
-                  playerRef={playerRef}
-                  project={project}
-                  format={format}
-                  durationInFrames={durationInFrames}
-                  inputProps={inputProps}
-                  selectedSceneIndex={selectedSceneIndex}
-                  previewMode={previewMode}
-                  onPreviewModeChange={setPreviewMode}
-                  onPlayingChange={setPreviewPlaying}
-                  onProjectChange={setProject}
-                  compositionKey={compositionKey}
-                  selectedElementId={selectedElementId}
-                  onHighlightElement={setSelectedElementId}
-                  onCanvasSelectElement={handleCanvasSelectElement}
-                  relativeZoom={relativeZoom}
-                />
-              </PlanGateWatermarkOverlay>
+              <VideoPreviewWorkspace
+                ref={previewWorkspaceRef}
+                playerRef={playerRef}
+                project={project}
+                format={format}
+                durationInFrames={durationInFrames}
+                inputProps={inputProps}
+                selectedSceneIndex={selectedSceneIndex}
+                previewMode={previewMode}
+                onPreviewModeChange={setPreviewMode}
+                onPlayingChange={setPreviewPlaying}
+                onProjectChange={setProject}
+                compositionKey={compositionKey}
+                selectedElementId={selectedElementId}
+                onHighlightElement={setSelectedElementId}
+                onCanvasSelectElement={handleCanvasSelectElement}
+                relativeZoom={relativeZoom}
+              />
             </div>
             <VideoTimeline
               project={project}
@@ -1189,7 +1217,11 @@ export function VideoEditor({ onPublish }: Props) {
             />
           </>
         ) : (
-          <div className="flex min-h-0 flex-1 flex-col" aria-busy="true" aria-label="Loading video editor">
+          <div
+            className="flex min-h-0 flex-1 flex-col"
+            aria-busy="true"
+            aria-label="Loading video editor"
+          >
             {/* Inline to avoid circular import; mirrors MarketingStudioSkeleton canvas */}
             <div className="flex min-h-0 flex-1 flex-col gap-3 p-3 sm:p-4">
               <div className="flex items-center justify-between gap-2">

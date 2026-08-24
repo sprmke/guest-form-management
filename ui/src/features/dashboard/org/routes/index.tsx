@@ -18,6 +18,7 @@ import { OrgPropertiesPage } from '@/features/dashboard/org/pages/OrgPropertiesP
 import { OrgSelectorPage } from '@/features/dashboard/org/pages/OrgSelectorPage';
 import { OrgSettingsPage } from '@/features/dashboard/org/pages/OrgSettingsPage';
 import type { OrgRouteFn } from '@/features/dashboard/org/routes/guards';
+import { OrgPlansPage } from '@/features/dashboard/plans/pages/OrgPlansPage';
 import { OrgTeamPage } from '@/features/dashboard/team/pages/OrgTeamPage';
 
 export const orgOnboardingRoutes: ReactNode = (
@@ -37,6 +38,7 @@ export function orgAdminRoutes(orgRoute: OrgRouteFn): ReactNode {
       <Route path="properties" element={orgRoute('properties', <OrgPropertiesPage />)} />
       <Route path="parkings" element={orgRoute('parkings', <OrgParkingsPage />)} />
       <Route path="team" element={orgRoute('team', <OrgTeamPage />)} />
+      <Route path="plans" element={orgRoute('plans', <OrgPlansPage />)} />
       <Route path="inbox" element={<OrgInboxRedirect />} />
       <Route path="help-support" element={orgRoute('help-support', <HelpSupportLayout />)}>
         {helpSupportOrgNestedRoutes()}
