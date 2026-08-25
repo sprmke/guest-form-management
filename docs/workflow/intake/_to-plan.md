@@ -2,7 +2,7 @@
 title: 'Claude To Plan'
 status: archived
 tags: [planning]
-updated: 2026-08-25
+updated: 2026-08-26
 ---
 
 **Status legend:** ❌ cancelled / won't do · ✅ done · 📋 planned (plan doc written) · 🚧 in progress · 🔵 pending / open
@@ -517,7 +517,7 @@ Example:
 
 ===
 
-🚧 Org portfolio pricing bundles (Pro ≤3 / Business ≤5 / Business Plus ≤10)
+✅ Org portfolio pricing bundles (Pro ≤3 / Business ≤5 / Business Plus ≤10)
 
 Pivot from strict per-property billing to org-scoped portfolio caps for Pro/Business tiers while keeping Free/Starter/Managed/Commission per-property.
 
@@ -767,7 +767,88 @@ After we refine the roles & permissions that we have on both org and property le
 
 ===
 
+🔵 When we have multiple properties, we should plan a way for hosts to share and reuse settings or configurations or design for from a property to other properties. Review each property pages, module, flow and check which one we can reuse and re-share to other properties
+
+===
+
 🔵 Update super admin to manage property and parking listing, org management, able see plans, etc
+
+===
+
+✅ Finalize plans & billing
+I noticed some limitation are not respected on free tier like team members, etc.
+Also, make sure we update org level pages & section & elements to display plans pills & badge as well. Like team members per org
+Clicking continue to payment should redirect user to org level, plans & billing page and billing tab?
+We also need to make sure that we cover and require payment when we add more properties
+
+→ **Done:** [`../done/finalize-plans-billing.md`](../done/finalize-plans-billing.md)
+
+===
+
+🔵 Another big change I would like to implement is to refine the whole parking e2e flow.
+Right now, I feel like it's not yet production ready and there are missing features and things that can be improved.
+Let's separate this to multiple phases with multiple tasks per phase and address my main concerns:
+
+#1. Improve overall searching and accept flow
+
+Right now, I feel like we can improve the overall UI/UX and flow when searching of parking. I want to update the UI/UX to feel and look like we are looking a grab driver flow. When guest look for a parking, we should implement the standard and robust flow on picking the best available parking owners on that date and the first one to accept it will get the parking. We should also consider the check-in and check-out time based on guest selection and make sure it will not clash or have any conflicts with previous checkout and next day check-in.
+
+After accepting a parking we should improve and complete the whole e2e flow. What I'm thinking is that when there's a found parking:
+
+- Guest: should be able to use the host payment method and connect it with paymongo. guest can pay via paymongo and after successful payment transaction, we should automatically trigger host to send email to development/pmo email and cc guest on the parking endorsement email.
+- Host: after guest successfully paid parking, we automatically send an parking endorsement email to development/pmo email and cc guest on that email. if possible, we should be able to send copy of email screenshot to guest within our app UI.
+
+I think it's better if we can implement paymongo for parking payment transaction here so that we detected if guest paid successfully or not.
+
+Guest can cancel parking request if not yet paid. We should implement a security or anti spam mechanism as well so that user cannot spam this request and annoy parking host.
+Also, I think we should plan and implement the best way to notify available parking owners and not just do simple broadcast notification and email to all parking owners which kinda annoying specially if someone is fast on accepting bookings. Maybe do batch request? Or check how grab and other big apps do this searching for available parking and implement the best way for this approach.
+
+Once accepted, both guest and host cannot cancel.
+Once parking endorsement is sent to the guest, both guest & parking owner can chat and communicate.
+We should also share both guest and parking owner email and contact number.
+Also, provide contact number for admin incase parking owner is not answering and guest encounter issues on parking?
+
+For the payment, we should do paymongo split payout so that we can profit for every successful parking connection between guest and owner.
+From super admin, we should have new menu and should be able to configure how much is the minimum percentage we get for successful endorsement. The default percentage is 10%. Then we can also configure the minimum weekend rate and weekday rate that we offer to our guest or just use fixed P400?
+
+Also, one important thing is that we should never display or tell how much guest paid to parking owners.
+
+Because, I'm thinking to have a ranking system which parking owners are priority:
+The most priority is the lowest price available on that specific date and time range.
+Example, if the parking owner only priced it at 250 gross,
+for guest, we offer fixed P400,
+then for owners, we should also less the 250 gross - 10% service fee.
+So the total guest paid is 400, the total profit we earn is 400-250=150 +25 (10% service fee) = 175
+and total parking owner net is 225.
+
+Also, make sure that we display how the gross, service fee and net on parking pricing page.
+We should also smartly have ranking system which owner should we prioritize when guest looking for a parking.
+Also, display the computation and other important info like how priority is computed or ranked:
+
+- like lowest price has highest priority,
+- second if guest has smooth arrival & did not encounter any issues or double parking, etc.
+- then third is how fast parking owner accept booking and response to guest chat
+
+We should also display that parking reservation is strictly non-refundable on geust side.
+
+We should support a toggle setting from host to auto-accept and auto-send parking endorsement after guest paid the parking or should be manual acceptance.
+
+Please review all my notes here and I'm sure there are some cases that I missed, edge cases that we need to review and support.
+Make sure we handle everything is this require payment related and we should be able to handle errors properly, etc.
+Also, when payment become successful but the process of sending email failed or canceled by user by some reason, we need to make sure that when guest revisit our page, there should be a fallback or a button to request or re-request parking endorsement once payment is valid and successful.
+
+#2. Update property booking workflow to use our new parking e2e flow instead of doing email broadcast to parking owners
+
+We need to cleanup our existing implementation and existing settings and configuration on how we get a parking when guest wants to avail paid parking on property booking.
+I think right now, we are doing broadcast emails based on the list of parking owner emails from env. We need to cleanup and connect our new parking e2e flow with this scenario.
+
+But we need to plan how we can make this automated as well?
+
+#3. Shareable parking registration link from host for direct booking
+
+From the dashboard, there should be a copyable link for parking owner hosts where they can share their parking registration form link and guest can use this so that they can book parking directly.
+
+We should apply all the same logic and flow that we have from above except that this is direct booking and guest needs to manually fill up their information, car details and pay the parking.
 
 ===
 

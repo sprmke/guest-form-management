@@ -4,18 +4,19 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import { ArrowRight, CreditCard, LayoutGrid } from 'lucide-react';
 
+import { usePublicPricingPlans } from '@/features/guest/marketing/for-hosts/hooks/usePublicPricingPlans';
+import { MarketingPublicCallout } from '@/features/guest/marketing/shared/components/MarketingPublicCallout';
+import { MarketingPublicPageContent } from '@/features/guest/marketing/shared/components/MarketingPublicPageContent';
+import { MarketingPublicPageHero } from '@/features/guest/marketing/shared/components/MarketingPublicPageHero';
+
 import { PlanFeatureMatrix } from '@/features/dashboard/plans/components/PlanFeatureMatrix';
 import { PlanTierRail } from '@/features/dashboard/plans/components/PlanTierRail';
+import type { OrgBundlePlanDto } from '@/features/dashboard/plans/lib/orgPlanApi';
 import {
   buildPlanTiers,
   isManagedSalesPlan,
   planTabSectionTitleClass,
 } from '@/features/dashboard/plans/lib/planPresentation';
-import type { PropertyPlanDto } from '@/features/dashboard/plans/lib/propertyPlanApi';
-import { usePublicPricingPlans } from '@/features/guest/marketing/for-hosts/hooks/usePublicPricingPlans';
-import { MarketingPublicCallout } from '@/features/guest/marketing/shared/components/MarketingPublicCallout';
-import { MarketingPublicPageContent } from '@/features/guest/marketing/shared/components/MarketingPublicPageContent';
-import { MarketingPublicPageHero } from '@/features/guest/marketing/shared/components/MarketingPublicPageHero';
 
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -42,7 +43,7 @@ export function ForHostsPricingPage() {
 
   const tiers = useMemo(() => buildPlanTiers(plans, undefined), [plans]);
 
-  const handleSelectPlan = (plan: PropertyPlanDto) => {
+  const handleSelectPlan = (plan: OrgBundlePlanDto) => {
     if (isManagedSalesPlan(plan.code)) {
       navigate('/contact');
       return;

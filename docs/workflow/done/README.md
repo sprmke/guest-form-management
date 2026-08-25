@@ -2,7 +2,7 @@
 title: 'Completed work'
 status: active
 tags: [workflow, done]
-updated: 2026-08-23
+updated: 2026-08-25
 stage: done
 kind: reference
 ---
@@ -64,5 +64,6 @@ kind: reference
 | [`guest-inbox-meta-hardening.md`](./guest-inbox-meta-hardening.md)                                   | Meta (FB/IG) inbox production hardening — webhook health-check/auto-resubscribe, non-destructive disconnect, HUMAN_AGENT 7-day tag, comment OAuth scope fix, explicit Meta backfill control, security + error UX (8 phases, 2026-08-20)                                                                                                              |
 | [`ai-assistant-universal-context-pickers.md`](./ai-assistant-universal-context-pickers.md)           | Universal per-module context pickers + `image`/`stepper`/`quick_actions` blocks + canvas overlay for the dashboard AI assistant (2026-08-19)                                                                                                                                                                                                         |
 | [`tier-feature-alignment-audit.md`](./tier-feature-alignment-audit.md)                               | App-wide plan/tier feature-gating audit — canonical matrix, new tier keys, client + server enforcement, booking-automation gating, tier badges, upgrade-modal proration, org portfolio bundling (Phases 1-4 of [`pricing-portfolio-bundling.md`](../in-progress/pricing-portfolio-bundling.md), still open), full docs sweep (10 phases, 2026-08-24) |
+| [`finalize-plans-billing.md`](./finalize-plans-billing.md)                                           | Org Team seat caps, org-aware `TierBadge`/`useFeatureGate`, upgrade CTAs → org Plans review, paid-plan property create `billingRequired` (2026-08-25)                                                                                                                                                                                                |
 
 Back to [workflow index](../README.md).

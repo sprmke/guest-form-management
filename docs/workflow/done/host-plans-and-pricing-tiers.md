@@ -11,6 +11,8 @@ kind: plan
 
 > **2026-08-24:** Commission plan is **retired from live UI** (catalog row inactive; super-admin / host Plans / public pricing exclude it). Schema + `COMPLETED` ledger hook remain for a future full product — see `docs/architecture/plans-feature-matrix.md` § Pending: commission pricing.
 
+> **2026-08-25:** This doc's foundation is **superseded** by [`org-level-billing-migration.md`](org-level-billing-migration.md) — billing is now org-level only. `property_subscriptions`, `property_subscription_events`, `booking_commission_charges`, `property-subscriptions-admin`, and `property-plan` (all listed as shipped below) have all been dropped/replaced; `assignPropertyToPlan`/`ensurePropertyDefaultPlan` are deleted. Kept here for history — read the org-level doc for current behavior.
+
 ## Shipped (2026-08-18)
 
 - Migration **`20261023120000_pricing_plans_foundation.sql`** — `pricing_plans`, `property_subscriptions`, `property_subscription_events`, `booking_commission_charges`; seed 5 subscription tiers + 1 commission plan; backfill existing properties to Free.
@@ -20,7 +22,7 @@ kind: plan
 - Commission hook in **`workflowOrchestrator`** on **`→ COMPLETED`**.
 - Super-admin UI **`/admin/pricing/plans`**, **`/admin/pricing/subscriptions`**.
 
-**Next plans (not this doc):** host Plans page → [`host-plans-pricing-page.md`](../done/host-plans-pricing-page.md) (**shipped**); feature gating → [`feature-gating-subscription-upgrade.md`](./feature-gating-subscription-upgrade.md) (**shipped**); PayMongo → [`paymongo-subscription-billing.md`](../done/paymongo-subscription-billing.md); full app-wide gating audit + server-side hardening + tier badges + upgrade-modal proration → [`tier-feature-alignment-audit.md`](../in-progress/tier-feature-alignment-audit.md) (**in progress**); org portfolio bundling (Pro/Business/Business Plus) → [`pricing-portfolio-bundling.md`](../in-progress/pricing-portfolio-bundling.md) (**in progress**).
+**Next plans (not this doc):** host Plans page → [`host-plans-pricing-page.md`](../done/host-plans-pricing-page.md) (**shipped**, superseded UI-wise by the org-level Plans page); feature gating → [`feature-gating-subscription-upgrade.md`](./feature-gating-subscription-upgrade.md) (**shipped**); PayMongo → [`paymongo-subscription-billing.md`](../done/paymongo-subscription-billing.md) (**shipped**, checkout/webhook code since rewritten org-level); full app-wide gating audit + server-side hardening + tier badges + upgrade-modal proration → [`tier-feature-alignment-audit.md`](../done/tier-feature-alignment-audit.md) (**shipped**); org portfolio bundling (Pro/Business/Business Plus, flat cap) → [`pricing-portfolio-bundling.md`](../done/pricing-portfolio-bundling.md) (**shipped, then superseded**); final org-level-only billing model (per-property rate × volume discount, no per-property subscription) → [`org-level-billing-migration.md`](../done/org-level-billing-migration.md) (**shipped, current model**).
 
 ## Context
 

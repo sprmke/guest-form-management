@@ -2,13 +2,15 @@
 title: 'Parking ↔ property production parity'
 stage: in-progress
 status: in-progress
-updated: 2026-08-25
+updated: 2026-08-26
 tags: [workflow, in-progress, parking, property]
 ---
 
 # Parking ↔ property production parity
 
 **Status: v1 parity shipped (2026-08-23). Plan stays open until org-level plan entitlements replace interim parking ungating — see [Pending](#pending--do-not-forget) below.**
+
+**2026-08-25 update, not a close:** [`org-level-billing-migration.md`](../done/org-level-billing-migration.md) shipped org-level billing — `property_subscriptions` is gone entirely and `resolvePropertyEntitlements` now _always_ resolves via the org's subscription (never a per-property fallback). This makes the existing `firstActivePropertyIdForOrg` proxy (used by `resolveTelegramEntitlementPropertyId`/`resolveListingEntitlementPropertyId` for parking) more consistent than before — there's now exactly one entitlement source per org instead of a property potentially diverging from its org's bundle. **It does not close this plan's blocker**, though: that proxy still requires the org to have at least one property to resolve through. An org with parking listings and zero properties still has no entitlement path and would still hit `firstActivePropertyIdForOrg`'s `null` case — `PARKING_INTERIM_UNGATED_FEATURES` in `useFeatureGate.ts` is still load-bearing for that case. Closing this properly needs a genuinely property-independent org entitlement lookup (resolve straight from `organization_id`, no property proxy at all) — out of scope for the billing migration, which was scoped to property billing, not parking's entitlement architecture. One concrete building block the migration does add: `getActiveOrgSubscription(organizationId)` in `_shared/planEntitlements.ts` now exists and resolves a live subscription straight from an org id with no property involved at all — whoever picks this up could build a parking-native `resolveOrgEntitlements(organizationId)` on top of it (merging features + Free fallback the same way `resolvePropertyEntitlements` does) instead of the property-proxy dance.
 
 Align parking with property for production readiness without copying stay-specific product (Meta inbox, GAF/SD, Marketing, Maintenance, public page editors, voice receptionist).
 
@@ -43,10 +45,10 @@ These are **not** optional polish — the plan cannot move to [`../done/`](../do
 
 ### Blocked on org-level plans
 
-| Task                                                                                                                             | Owner / when                                                                                                                    | Touch points                                                                                                                                                                 |
-| -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Replace **interim parking ungating** with real **org entitlement** checks for `telegramNotifications` and `aiDashboardAssistant` | After [`../planned/pricing-portfolio-bundling.md`](../planned/pricing-portfolio-bundling.md) (or successor org-plan plan) ships | `ui/.../plans/hooks/useFeatureGate.ts`, `supabase/functions/_shared/telegramSettingsHttp.ts`, `supabase/functions/dashboard-assistant-chat/index.ts`, `useAiAssistantAccess` |
-| Remove interim-un gate comments/docs; document final org-plan matrix in notifications + AI assistant guides                      | Same release as above                                                                                                           | `docs/guides/routes/org/parking/notifications.md`, `docs/architecture/ai-dashboard-assistant.md`                                                                             |
+| Task                                                                                                                             | Owner / when                                                                                                                                                                                                    | Touch points                                                                                                                                                                 |
+| -------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Replace **interim parking ungating** with real **org entitlement** checks for `telegramNotifications` and `aiDashboardAssistant` | A property-independent `resolveOrgEntitlements(organizationId)` needs to be built on top of the new `getActiveOrgSubscription` (see [`org-level-billing-migration.md`](../done/org-level-billing-migration.md)) | `ui/.../plans/hooks/useFeatureGate.ts`, `supabase/functions/_shared/telegramSettingsHttp.ts`, `supabase/functions/dashboard-assistant-chat/index.ts`, `useAiAssistantAccess` |
+| Remove interim-un gate comments/docs; document final org-plan matrix in notifications + AI assistant guides                      | Same release as above                                                                                                                                                                                           | `docs/guides/routes/org/parking/notifications.md`, `docs/architecture/ai-dashboard-assistant.md`                                                                             |
 
 **Do not** wire parking to `property_subscriptions` / `usePropertyEntitlements` as a permanent fix — parking entitlements are **org-scoped** per locked decision.
 
@@ -73,7 +75,7 @@ Run via normal dev → prod cutover (`bun run deploy:supabase:dev` first; prod o
 
 ## Explicitly out of scope (do not expand this plan)
 
-- Org-level / portfolio subscription implementation itself ([`pricing-portfolio-bundling.md`](../planned/pricing-portfolio-bundling.md))
+- Org-level / portfolio subscription implementation itself ([`org-level-billing-migration.md`](../done/org-level-billing-migration.md))
 - Thick parking booking detail (claim-only stays)
 - Meta Channels on parking
 - Marketing, Maintenance, Templates, Public Pages editor, Voice Receptionist, stay-guide / SD / GAF on parking
