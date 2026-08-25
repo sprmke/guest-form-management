@@ -5,8 +5,16 @@ import {
   PLAN_FEATURE_LABELS,
   type PlanFeatures,
 } from '@/features/dashboard/plans/lib/planFeatures';
-import { discountedPlanPricePhp } from '@/features/dashboard/plans/lib/planPricing';
+import {
+  DEFAULT_VOLUME_DISCOUNT_TIERS,
+  DEFAULT_VOLUME_RAMP_AT_COUNT,
+  DEFAULT_VOLUME_RAMP_FLOOR_PHP,
+  discountedPlanPricePhp,
+  normalizeVolumeDiscountTiers,
+  type VolumeDiscountTier,
+} from '@/features/dashboard/plans/lib/planPricing';
 import type { PricingPlan } from '@/features/dashboard/super-admin/types/pricingPlan';
+import { VolumePricingEditor } from '@/features/dashboard/super-admin/components/super-admin-pricing/VolumePricingEditor';
 
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -30,6 +38,9 @@ type EditPricingPlanDialogProps = {
     sortOrder: number;
     pricePhp: number | null;
     discountPercent: number;
+    volumeDiscountTiers: VolumeDiscountTier[];
+    volumeRampFloorPhp: number;
+    volumeRampAtCount: number;
     features: PlanFeatures;
     isActive: boolean;
   }) => Promise<void>;
@@ -70,6 +81,11 @@ export function EditPricingPlanDialog({
   const [sortOrder, setSortOrder] = useState(0);
   const [pricePhp, setPricePhp] = useState('0');
   const [discountPercent, setDiscountPercent] = useState('0');
+  const [volumeRampFloorPhp, setVolumeRampFloorPhp] = useState(DEFAULT_VOLUME_RAMP_FLOOR_PHP);
+  const [volumeRampAtCount, setVolumeRampAtCount] = useState(DEFAULT_VOLUME_RAMP_AT_COUNT);
+  const [volumeDiscountTiers, setVolumeDiscountTiers] = useState<VolumeDiscountTier[]>([
+    ...DEFAULT_VOLUME_DISCOUNT_TIERS,
+  ]);
   const [isActive, setIsActive] = useState(true);
   const [features, setFeatures] = useState<PlanFeatures>({ ...DEFAULT_PLAN_FEATURES });
 
@@ -80,6 +96,9 @@ export function EditPricingPlanDialog({
     setSortOrder(plan.sortOrder);
     setPricePhp(String(plan.pricePhp ?? 0));
     setDiscountPercent(String(plan.discountPercent ?? 0));
+    setVolumeRampFloorPhp(plan.volumeRampFloorPhp ?? DEFAULT_VOLUME_RAMP_FLOOR_PHP);
+    setVolumeRampAtCount(plan.volumeRampAtCount ?? DEFAULT_VOLUME_RAMP_AT_COUNT);
+    setVolumeDiscountTiers(normalizeVolumeDiscountTiers(plan.volumeDiscountTiers));
     setIsActive(plan.isActive);
     setFeatures({ ...plan.features });
   }, [plan]);
@@ -153,6 +172,19 @@ export function EditPricingPlanDialog({
               ? ` (₱${listPrice.toLocaleString('en-PH')} list, ${Math.floor(discount)}% off)`
               : null}
           </p>
+
+          {!plan.isDefault ? (
+            <VolumePricingEditor
+              listPricePhp={listPrice}
+              discountPercent={discount}
+              volumeRampFloorPhp={volumeRampFloorPhp}
+              volumeRampAtCount={volumeRampAtCount}
+              volumeDiscountTiers={volumeDiscountTiers}
+              onVolumeRampFloorPhpChange={setVolumeRampFloorPhp}
+              onVolumeRampAtCountChange={setVolumeRampAtCount}
+              onVolumeDiscountTiersChange={setVolumeDiscountTiers}
+            />
+          ) : null}
 
           <div className="space-y-2">
             <Label htmlFor="plan-ai-credits">AI monthly credits</Label>
@@ -244,6 +276,9 @@ export function EditPricingPlanDialog({
                 sortOrder,
                 pricePhp: Number(pricePhp) || 0,
                 discountPercent: Math.min(100, Math.max(0, Number(discountPercent) || 0)),
+                volumeDiscountTiers: normalizeVolumeDiscountTiers(volumeDiscountTiers),
+                volumeRampFloorPhp,
+                volumeRampAtCount,
                 features,
                 isActive,
               })

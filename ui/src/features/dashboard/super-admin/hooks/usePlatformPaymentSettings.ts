@@ -44,7 +44,7 @@ export function useUpdatePlatformPaymentSettings() {
 export function useRunPlatformBillingCron() {
   return useMutation({
     mutationFn: () =>
-      callEdgeFunction<{ result: Record<string, number> }>('property-subscriptions-admin', {
+      callEdgeFunction<{ result: Record<string, number> }>('org-subscriptions-admin', {
         method: 'PATCH',
         body: JSON.stringify({ action: 'run_billing_cron' }),
       }).then((data) => data.result),

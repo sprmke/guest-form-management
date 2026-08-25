@@ -2,22 +2,23 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 
 import { callEdgeFunction } from '@/features/dashboard/org/lib/edgeClient';
 import type { PlanFeatures } from '@/features/dashboard/plans/lib/planFeatures';
+import type { VolumeDiscountTier } from '@/features/dashboard/plans/lib/planPricing';
 import type {
+  OrgSubscriptionSummary,
   PricingPlan,
-  PropertySubscriptionSummary,
 } from '@/features/dashboard/super-admin/types/pricingPlan';
 
 import { ADMIN_DEFAULT_PAGE_SIZE } from '@/lib/table/pagination';
 
 export const PRICING_PLANS_QUERY_KEY = ['super-admin', 'pricing-plans'] as const;
-export const PROPERTY_SUBSCRIPTIONS_QUERY_KEY = ['super-admin', 'property-subscriptions'] as const;
+export const ORG_SUBSCRIPTIONS_QUERY_KEY = ['super-admin', 'org-subscriptions'] as const;
 
-export type PropertySubscriptionsSummary = {
+export type OrgSubscriptionsSummary = {
   total: number;
   assigned: number;
   unassigned: number;
   activeSubscriptions: number;
-  organizations: number;
+  properties: number;
 };
 
 export function usePricingPlans(
@@ -58,6 +59,9 @@ export function useUpdatePricingPlan() {
       sortOrder?: number;
       pricePhp?: number | null;
       discountPercent?: number;
+      volumeDiscountTiers?: VolumeDiscountTier[];
+      volumeRampFloorPhp?: number;
+      volumeRampAtCount?: number;
       features?: PlanFeatures;
       isActive?: boolean;
     }) =>
@@ -71,7 +75,7 @@ export function useUpdatePricingPlan() {
   });
 }
 
-export function usePropertySubscriptionsAdmin(
+export function useOrgSubscriptionsAdmin(
   search: string,
   planCode: string,
   page = 1,
@@ -85,28 +89,28 @@ export function usePropertySubscriptionsAdmin(
   const qs = params.toString();
 
   const query = useQuery({
-    queryKey: [...PROPERTY_SUBSCRIPTIONS_QUERY_KEY, search, planCode, page, limit],
+    queryKey: [...ORG_SUBSCRIPTIONS_QUERY_KEY, search, planCode, page, limit],
     queryFn: () =>
-      callEdgeFunction<{ properties: PropertySubscriptionSummary[]; total: number }>(
-        `property-subscriptions-admin?${qs}`
+      callEdgeFunction<{ organizations: OrgSubscriptionSummary[]; total: number }>(
+        `org-subscriptions-admin?${qs}`
       ),
     placeholderData: keepPreviousData,
   });
 
   return {
     ...query,
-    rows: query.data?.properties ?? [],
+    rows: query.data?.organizations ?? [],
     total: query.data?.total ?? 0,
   };
 }
 
 /** Platform-wide (unfiltered) aggregate counts for the summary cards. */
-export function usePropertySubscriptionsSummary() {
+export function useOrgSubscriptionsSummary() {
   const query = useQuery({
-    queryKey: [...PROPERTY_SUBSCRIPTIONS_QUERY_KEY, 'summary'],
+    queryKey: [...ORG_SUBSCRIPTIONS_QUERY_KEY, 'summary'],
     queryFn: () =>
-      callEdgeFunction<{ summary: PropertySubscriptionsSummary }>(
-        'property-subscriptions-admin?summary=true'
+      callEdgeFunction<{ summary: OrgSubscriptionsSummary }>(
+        'org-subscriptions-admin?summary=true'
       ).then((data) => data.summary),
   });
 
@@ -116,16 +120,22 @@ export function usePropertySubscriptionsSummary() {
   };
 }
 
-export function useAssignPropertyPlan() {
+export function useAssignOrgPlan() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { propertyId: string; planId: string; note?: string }) =>
-      callEdgeFunction('property-subscriptions-admin', {
+    mutationFn: (input: {
+      organizationId: string;
+      planId: string;
+      propertyIds?: string[];
+      overridePricePhp?: number;
+      note?: string;
+    }) =>
+      callEdgeFunction('org-subscriptions-admin', {
         method: 'POST',
         body: JSON.stringify(input),
       }),
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: PROPERTY_SUBSCRIPTIONS_QUERY_KEY });
+      await qc.invalidateQueries({ queryKey: ORG_SUBSCRIPTIONS_QUERY_KEY });
     },
   });
 }

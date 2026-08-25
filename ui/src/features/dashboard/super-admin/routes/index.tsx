@@ -11,12 +11,12 @@ import { SuperAdminHelpFaqsPage } from '@/features/dashboard/super-admin/pages/S
 import { SuperAdminHostOrgsPage } from '@/features/dashboard/super-admin/pages/SuperAdminHostOrgsPage';
 import { SuperAdminHostPropertiesPage } from '@/features/dashboard/super-admin/pages/SuperAdminHostPropertiesPage';
 import { SuperAdminHostsPage } from '@/features/dashboard/super-admin/pages/SuperAdminHostsPage';
+import { SuperAdminOrgSubscriptionsPage } from '@/features/dashboard/super-admin/pages/SuperAdminOrgSubscriptionsPage';
 import { SuperAdminOverviewPage } from '@/features/dashboard/super-admin/pages/SuperAdminOverviewPage';
 import { SuperAdminPaymentSettingsPage } from '@/features/dashboard/super-admin/pages/SuperAdminPaymentSettingsPage';
 import { SuperAdminPlatformPropertiesPage } from '@/features/dashboard/super-admin/pages/SuperAdminPlatformPropertiesPage';
 import { SuperAdminPricingPlansPage } from '@/features/dashboard/super-admin/pages/SuperAdminPricingPlansPage';
 import { SuperAdminPropertiesPage } from '@/features/dashboard/super-admin/pages/SuperAdminPropertiesPage';
-import { SuperAdminPropertySubscriptionsPage } from '@/features/dashboard/super-admin/pages/SuperAdminPropertySubscriptionsPage';
 import { SuperAdminSettingsPage } from '@/features/dashboard/super-admin/pages/SuperAdminSettingsPage';
 import { SuperAdminSupportPage } from '@/features/dashboard/super-admin/pages/SuperAdminSupportPage';
 
@@ -32,7 +32,7 @@ export const superAdminRoutes: ReactNode = (
     <Route path="settings" element={<SuperAdminSettingsPage />} />
     <Route path="pricing/plans" element={<SuperAdminPricingPlansPage />} />
     <Route path="pricing/payment-settings" element={<SuperAdminPaymentSettingsPage />} />
-    <Route path="pricing/subscriptions" element={<SuperAdminPropertySubscriptionsPage />} />
+    <Route path="pricing/subscriptions" element={<SuperAdminOrgSubscriptionsPage />} />
     <Route path="properties" element={<SuperAdminPlatformPropertiesPage />} />
     <Route path="hosts/:hostId" element={<SuperAdminHostShell />}>
       <Route index element={<Navigate to="orgs" replace />} />
