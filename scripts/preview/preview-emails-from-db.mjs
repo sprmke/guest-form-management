@@ -126,8 +126,12 @@ const EMAIL_SHELL_STYLE_VARS = {
   emailAttachListCellStyle:
     "padding:18px 20px;background-color:#f1f5f9;border:1px solid #e2e8f0;border-left:4px solid #affd93;border-radius:16px;color:#333333;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.6;",
   emailLogoWrapTdStyle: 'padding:0 0 22px 0;text-align:center;',
+  emailLogoFrameTableStyle:
+    'margin:0 auto;border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;',
+  emailLogoFrameTdStyle:
+    'width:80px;height:80px;max-width:80px;overflow:hidden;border-radius:12px;line-height:0;font-size:0;box-shadow:0 4px 14px rgba(15,23,42,0.08);',
   emailLogoImgStyle:
-    'display:block;margin:0 auto;width:80px;max-width:80px;height:80px;border:0;outline:none;text-decoration:none;border-radius:50%;',
+    'display:block;width:80px;height:80px;border:0;outline:none;text-decoration:none;object-fit:cover;object-position:center;',
 };
 
 const DEFAULT_ORG_BRAND_COLOR = '#24a88e';
@@ -368,14 +372,24 @@ function wrapHouseRulesStandalonePreview(fragmentHtml, emailHeaderLogo) {
         padding: 0 0 22px 0;
         text-align: center;
       }
+      .email-logo-frame {
+        width: 80px;
+        height: 80px;
+        max-width: 80px;
+        overflow: hidden;
+        border-radius: 12px;
+        line-height: 0;
+        font-size: 0;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+      }
       .email-logo {
         display: block;
-        margin: 0 auto;
         width: 80px;
         height: 80px;
         border: 0;
-        border-radius: 50%;
-        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+        border-radius: 12px;
+        object-fit: cover;
+        object-position: center;
       }
       .brand-block {
         margin-bottom: 22px;

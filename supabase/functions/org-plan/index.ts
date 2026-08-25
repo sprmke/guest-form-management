@@ -1,11 +1,17 @@
 /**
- * org-plan — GET org portfolio subscription state + bundle-eligible plans + org properties.
- * Parallel to property-plan (per-property). See docs/workflow/planned/pricing-portfolio-bundling.md.
+ * org-plan — GET org subscription state + subscription plans + org properties. Billing is
+ * org-level only — every active subscription plan is selectable, priced per enrolled property
+ * (rate x count, volume-discounted). See _shared/planPricing.ts#computeOrgSubscriptionTotalPhp.
  */
 
 import { createServiceClient, verifyOrgAccess } from '../_shared/orgAuth.ts';
 import { parsePlanFeatures } from '../_shared/planFeatures.ts';
-import { normalizePlanDiscountPercent } from '../_shared/planPricing.ts';
+import {
+  normalizePlanDiscountPercent,
+  normalizeVolumeDiscountTiers,
+  normalizeVolumeRampAtCount,
+  normalizeVolumeRampFloorPhp,
+} from '../_shared/planPricing.ts';
 import { jsonError, jsonSuccess } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
@@ -21,7 +27,13 @@ function serializePlan(row: Record<string, unknown>) {
     discountPercent: normalizePlanDiscountPercent(
       row.discount_percent == null ? 0 : Number(row.discount_percent)
     ),
-    maxProperties: row.max_properties == null ? null : Number(row.max_properties),
+    volumeDiscountTiers: normalizeVolumeDiscountTiers(row.volume_discount_tiers),
+    volumeRampFloorPhp: normalizeVolumeRampFloorPhp(
+      row.volume_ramp_floor_php == null ? null : Number(row.volume_ramp_floor_php)
+    ),
+    volumeRampAtCount: normalizeVolumeRampAtCount(
+      row.volume_ramp_at_count == null ? null : Number(row.volume_ramp_at_count)
+    ),
     features: parsePlanFeatures(row.features),
     isDefault: Boolean(row.is_default),
   };
@@ -47,11 +59,10 @@ serveAuthenticated('org-plan', async (req) => {
   const { data: plans, error: plansError } = await supabase
     .from('pricing_plans')
     .select(
-      'id, code, name, tagline, sort_order, pricing_model, price_php, discount_percent, features, is_default, max_properties'
+      'id, code, name, tagline, sort_order, pricing_model, price_php, discount_percent, volume_discount_tiers, volume_ramp_floor_php, volume_ramp_at_count, features, is_default'
     )
     .eq('pricing_model', 'subscription')
     .eq('is_active', true)
-    .not('max_properties', 'is', null)
     .order('sort_order', { ascending: true });
   if (plansError) return jsonError(req, plansError.message, 500);
 
@@ -70,10 +81,10 @@ serveAuthenticated('org-plan', async (req) => {
       plan_id,
       pricing_model,
       price_php_snapshot,
-      max_properties_snapshot,
       status,
       current_period_start,
       current_period_end,
+      grace_period_ends_at,
       pricing_plans!inner ( id, code, name )
     `
     )
@@ -99,9 +110,9 @@ serveAuthenticated('org-plan', async (req) => {
       status: orgSubRow.status as string,
       pricePhpSnapshot:
         orgSubRow.price_php_snapshot == null ? null : Number(orgSubRow.price_php_snapshot),
-      maxProperties: Number(orgSubRow.max_properties_snapshot ?? 0),
       currentPeriodStart: (orgSubRow.current_period_start as string | null) ?? null,
       currentPeriodEnd: (orgSubRow.current_period_end as string | null) ?? null,
+      gracePeriodEndsAt: (orgSubRow.grace_period_ends_at as string | null) ?? null,
     };
 
     const { data: slots, error: slotsError } = await supabase
@@ -122,6 +133,14 @@ serveAuthenticated('org-plan', async (req) => {
     .limit(1)
     .maybeSingle();
 
+  const { data: transactions, error: transactionsError } = await supabase
+    .from('org_payment_transactions')
+    .select('id, amount, currency, status, payment_method_type, created_at, paid_at, checkout_url')
+    .eq('organization_id', organizationId)
+    .order('created_at', { ascending: false })
+    .limit(20);
+  if (transactionsError) return jsonError(req, transactionsError.message, 500);
+
   return jsonSuccess(req, {
     plans: (plans ?? []).map((row) => serializePlan(row as Record<string, unknown>)),
     properties: (properties ?? []).map((row) => ({
@@ -132,6 +151,16 @@ serveAuthenticated('org-plan', async (req) => {
     })),
     subscription,
     assignedPropertyIds,
+    transactions: (transactions ?? []).map((row) => ({
+      id: row.id as string,
+      amount: Number(row.amount ?? 0),
+      currency: row.currency as string,
+      status: row.status as string,
+      paymentMethodType: (row.payment_method_type as string | null) ?? null,
+      checkoutUrl: (row.checkout_url as string | null) ?? null,
+      createdAt: row.created_at as string,
+      paidAt: (row.paid_at as string | null) ?? null,
+    })),
     pendingCheckoutUrl: (pendingCheckout?.checkout_url as string | null) ?? null,
   });
 });

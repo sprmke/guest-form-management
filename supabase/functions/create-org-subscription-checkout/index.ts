@@ -1,7 +1,9 @@
 /**
- * create-org-subscription-checkout — Org owner creates a PayMongo Payment Link for a
- * portfolio bundle plan (Pro/Business/Business Plus), covering the selected properties.
- * Parallel to create-subscription-checkout (per-property). See _shared/orgSubscriptionCheckout.ts.
+ * create-org-subscription-checkout — Org owner creates a PayMongo Payment Link for their org
+ * subscription at the chosen tier. Billing covers every property in the organization automatically.
+ * This is the only subscription checkout in the system (billing is org-level only) — handles first
+ * purchase, renewal, and mid-cycle changes (property count and/or tier) via the same function; see
+ * _shared/orgSubscriptionCheckout.ts.
  */
 
 import { verifyOrgOwner } from '../_shared/orgAuth.ts';
@@ -20,18 +22,12 @@ serveAuthenticated('create-org-subscription-checkout', async (req, user) => {
   const body = await readJsonBody(req);
   const organizationId = typeof body.organizationId === 'string' ? body.organizationId.trim() : '';
   const planId = typeof body.planId === 'string' ? body.planId.trim() : '';
-  const propertyIds = Array.isArray(body.propertyIds)
-    ? body.propertyIds.filter((id: unknown): id is string => typeof id === 'string' && id.trim())
-    : [];
 
   if (!organizationId) {
     return jsonError(req, 'organizationId is required');
   }
   if (!planId) {
     return jsonError(req, 'planId is required');
-  }
-  if (propertyIds.length === 0) {
-    return jsonError(req, 'propertyIds must include at least one property');
   }
 
   await verifyOrgOwner(req, organizationId);
@@ -40,7 +36,6 @@ serveAuthenticated('create-org-subscription-checkout', async (req, user) => {
     const result = await createOrgSubscriptionCheckoutLink({
       organizationId,
       planId,
-      propertyIds,
       initiatedBy: user.id,
     });
     return jsonSuccess(req, result);

@@ -10,6 +10,7 @@ import {
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
 import {
+  getOrgTeamInviteCapacity,
   listOrgTeamMembers,
   readTeamOrgId,
   readTeamOrgSlug,
@@ -17,6 +18,7 @@ import {
   requireOrgTeamContext,
   updateOrgTeamMember,
 } from '../_shared/orgTeamService.ts';
+import { catchPlanFeatureError } from '../_shared/planEntitlements.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('org-team-members', async (req) => {
@@ -27,9 +29,11 @@ serveAuthenticated('org-team-members', async (req) => {
 
   if (req.method === 'GET') {
     const ctx = await requireOrgTeamContext(req, orgId, orgSlug);
+    const teamInviteCapacity = await getOrgTeamInviteCapacity(ctx.org.id);
     const members = await listOrgTeamMembers(ctx);
     return jsonSuccess(req, {
       members,
+      teamInviteCapacity,
       access: {
         canManage: ctx.canManage,
         accessKind: ctx.accessKind,
@@ -44,6 +48,8 @@ serveAuthenticated('org-team-members', async (req) => {
       const member = await updateOrgTeamMember(ctx, body);
       return jsonSuccess(req, { member });
     } catch (e) {
+      const planErr = catchPlanFeatureError(req, e);
+      if (planErr) return planErr;
       const msg = e instanceof Error ? e.message : 'Update failed';
       const status = msg === 'Access restricted' ? 403 : msg === 'Member not found' ? 404 : 400;
       return jsonError(req, msg, status);

@@ -29,8 +29,11 @@ import {
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
 import { seedPropertySettings } from '../_shared/propertySettingsSeed.ts';
-import { ensurePropertyDefaultPlan } from '../_shared/planEntitlements.ts';
 import { ensureOrgHostMode } from '../_shared/parkingSlotUnit.ts';
+import {
+  autoEnrollPropertyInOrgSubscription,
+  orgHasLivePaidSubscription,
+} from '../_shared/planEntitlements.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('create-property', async (req, user) => {
@@ -128,11 +131,23 @@ serveAuthenticated('create-property', async (req, user) => {
   try {
     await seedPropertySettings(data.id as string, { residenceName });
     await ensureOrgHostMode(supabase, orgId, 'property');
-    await ensurePropertyDefaultPlan(data.id as string, user.id);
   } catch (e) {
     console.error('[create-property] settings seed:', e);
     return jsonError(req, 'Property created but settings seed failed', 500);
   }
 
-  return jsonSuccess(req, { property: serializeProperty(data) });
+  let billingRequired = false;
+  try {
+    billingRequired = await orgHasLivePaidSubscription(orgId);
+    if (!billingRequired) {
+      await autoEnrollPropertyInOrgSubscription(orgId, data.id as string, user.id);
+    }
+  } catch (e) {
+    console.error('[create-property] subscription auto-enroll:', e);
+  }
+
+  return jsonSuccess(req, {
+    property: serializeProperty(data),
+    billingRequired,
+  });
 });

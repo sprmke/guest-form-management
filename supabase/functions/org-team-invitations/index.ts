@@ -19,6 +19,7 @@ import {
   requireOrgTeamContext,
   resendOrgInvitation,
 } from '../_shared/orgTeamService.ts';
+import { catchPlanFeatureError } from '../_shared/planEntitlements.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('org-team-invitations', async (req) => {
@@ -61,6 +62,8 @@ serveAuthenticated('org-team-invitations', async (req) => {
       const invitation = await createOrgInvitation(ctx, body);
       return jsonSuccess(req, { invitation });
     } catch (e) {
+      const planErr = catchPlanFeatureError(req, e);
+      if (planErr) return planErr;
       const msg = e instanceof Error ? e.message : 'Invite failed';
       const status = msg.includes('already') ? 409 : 400;
       return jsonError(req, msg, status);
