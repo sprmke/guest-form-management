@@ -5,7 +5,15 @@
 
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import { parsePlanFeatures, type PlanFeatures } from '../_shared/planFeatures.ts';
-import { normalizePlanDiscountPercent } from '../_shared/planPricing.ts';
+import {
+  DEFAULT_VOLUME_DISCOUNT_TIERS,
+  DEFAULT_VOLUME_RAMP_AT_COUNT,
+  DEFAULT_VOLUME_RAMP_FLOOR_PHP,
+  normalizePlanDiscountPercent,
+  normalizeVolumeDiscountTiers,
+  normalizeVolumeRampAtCount,
+  normalizeVolumeRampFloorPhp,
+} from '../_shared/planPricing.ts';
 import {
   jsonError,
   jsonSuccess,
@@ -27,6 +35,13 @@ function serializePlan(row: Record<string, unknown>) {
     discountPercent: normalizePlanDiscountPercent(
       row.discount_percent == null ? 0 : Number(row.discount_percent)
     ),
+    volumeDiscountTiers: normalizeVolumeDiscountTiers(row.volume_discount_tiers),
+    volumeRampFloorPhp: normalizeVolumeRampFloorPhp(
+      row.volume_ramp_floor_php == null ? null : Number(row.volume_ramp_floor_php)
+    ),
+    volumeRampAtCount: normalizeVolumeRampAtCount(
+      row.volume_ramp_at_count == null ? null : Number(row.volume_ramp_at_count)
+    ),
     billingInterval: row.billing_interval as string,
     commissionRatePercent:
       row.commission_rate_percent == null ? null : Number(row.commission_rate_percent),
@@ -41,6 +56,13 @@ function serializePlan(row: Record<string, unknown>) {
 function parseFeaturesInput(raw: unknown): PlanFeatures | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
   return parsePlanFeatures(raw);
+}
+
+function parseVolumeDiscountTiersInput(
+  raw: unknown
+): ReturnType<typeof normalizeVolumeDiscountTiers> | null {
+  if (!Array.isArray(raw)) return null;
+  return normalizeVolumeDiscountTiers(raw);
 }
 
 serveSuperAdmin('pricing-plans', async (req) => {
@@ -126,6 +148,16 @@ serveSuperAdmin('pricing-plans', async (req) => {
           typeof body.discountPercent === 'number'
             ? normalizePlanDiscountPercent(body.discountPercent)
             : 0,
+        volume_discount_tiers:
+          parseVolumeDiscountTiersInput(body.volumeDiscountTiers) ?? DEFAULT_VOLUME_DISCOUNT_TIERS,
+        volume_ramp_floor_php:
+          typeof body.volumeRampFloorPhp === 'number'
+            ? normalizeVolumeRampFloorPhp(body.volumeRampFloorPhp)
+            : DEFAULT_VOLUME_RAMP_FLOOR_PHP,
+        volume_ramp_at_count:
+          typeof body.volumeRampAtCount === 'number'
+            ? normalizeVolumeRampAtCount(body.volumeRampAtCount)
+            : DEFAULT_VOLUME_RAMP_AT_COUNT,
         billing_interval: 'month',
         commission_rate_percent: null,
         features,
@@ -167,6 +199,14 @@ serveSuperAdmin('pricing-plans', async (req) => {
     else if (typeof body.pricePhp === 'number') patch.price_php = body.pricePhp;
     if (typeof body.discountPercent === 'number') {
       patch.discount_percent = normalizePlanDiscountPercent(body.discountPercent);
+    }
+    const volumeDiscountTiers = parseVolumeDiscountTiersInput(body.volumeDiscountTiers);
+    if (volumeDiscountTiers) patch.volume_discount_tiers = volumeDiscountTiers;
+    if (typeof body.volumeRampFloorPhp === 'number') {
+      patch.volume_ramp_floor_php = normalizeVolumeRampFloorPhp(body.volumeRampFloorPhp);
+    }
+    if (typeof body.volumeRampAtCount === 'number') {
+      patch.volume_ramp_at_count = normalizeVolumeRampAtCount(body.volumeRampAtCount);
     }
     const features = parseFeaturesInput(body.features);
     if (features) patch.features = features;

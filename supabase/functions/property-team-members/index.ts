@@ -13,6 +13,7 @@ import {
 import { catchPlanFeatureError } from '../_shared/planEntitlements.ts';
 import { TEAM_API_PERMISSIONS } from '../_shared/propertyTeamPermissions.ts';
 import {
+  getPropertyTeamInviteCapacity,
   listPropertyTeamMembers,
   readTeamPropertyId,
   removePropertyTeamMember,
@@ -28,8 +29,9 @@ serveAuthenticated('property-team-members', async (req) => {
 
   if (req.method === 'GET') {
     const ctx = await requireTeamPropertyAccess(req, propertyId, TEAM_API_PERMISSIONS.listMembers);
+    const teamInviteCapacity = await getPropertyTeamInviteCapacity(ctx.org.id, ctx.property.id);
     const members = await listPropertyTeamMembers(ctx);
-    return jsonSuccess(req, { members });
+    return jsonSuccess(req, { members, teamInviteCapacity });
   }
 
   if (req.method === 'PATCH') {

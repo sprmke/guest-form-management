@@ -43,6 +43,23 @@ serveAuthenticated('property-templates-settings', async (req) => {
       return jsonSuccess(req, data);
     }
 
+    if (body.action === 'reset') {
+      const templateKey = typeof body.templateKey === 'string' ? body.templateKey.trim() : '';
+      if (!isBuiltinPropertyTemplateKey(templateKey)) {
+        return jsonError(req, 'Only built-in templates can be reset', 400);
+      }
+      const builtin = getBuiltinPropertyTemplate(templateKey)!;
+      await upsertPropertyTemplateRow({
+        propertyId,
+        templateKey,
+        category: builtin.category,
+        content: builtin.defaultContent,
+        ...(builtin.category === 'standard' ? { sectionImageUrl: null } : {}),
+      });
+      const data = await serializePropertyTemplatesForAdmin(propertyId);
+      return jsonSuccess(req, data);
+    }
+
     if (body.action === 'create') {
       try {
         await requirePropertyFeature(propertyId, 'customTemplates');
@@ -115,6 +132,15 @@ serveAuthenticated('property-templates-settings', async (req) => {
       });
     } else if (isBuiltinPropertyTemplateKey(templateKey)) {
       const builtin = getBuiltinPropertyTemplate(templateKey)!;
+      if (builtin.category === 'email') {
+        try {
+          await requirePropertyFeature(propertyId, 'customTemplates');
+        } catch (err) {
+          const planErr = catchPlanFeatureError(req, err);
+          if (planErr) return planErr;
+          throw err;
+        }
+      }
       await upsertPropertyTemplateRow({
         propertyId,
         templateKey,
