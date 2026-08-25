@@ -2,7 +2,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { useOrgScopeKey } from '@/features/dashboard/org/lib/adminApiScope';
+import { handleAiMutationError, isAiQuotaError } from '@/features/dashboard/org/lib/aiQuotaToast';
 import { orgTeamGet, orgTeamMutate } from '@/features/dashboard/team/lib/orgTeamApi';
+import type { TeamInviteCapacity } from '@/features/dashboard/plans/lib/planFeatures';
 import type {
   OrgRoleId,
   OrgTeamAccess,
@@ -18,6 +20,7 @@ export type OrgTeamData = {
   members: OrgTeamMember[];
   invitations: OrgTeamInvitation[];
   access: OrgTeamAccess;
+  teamInviteCapacity: TeamInviteCapacity | null;
 };
 
 async function loadOrgTeam(orgSlug: string, orgId: string): Promise<OrgTeamData> {
@@ -25,6 +28,7 @@ async function loadOrgTeam(orgSlug: string, orgId: string): Promise<OrgTeamData>
     orgTeamGet<{
       members: OrgTeamMember[];
       access: OrgTeamAccess;
+      teamInviteCapacity?: TeamInviteCapacity;
     }>('/org-team-members', orgSlug, orgId),
     orgTeamGet<{ invitations: OrgTeamInvitation[] }>('/org-team-invitations', orgSlug, orgId),
   ]);
@@ -33,6 +37,7 @@ async function loadOrgTeam(orgSlug: string, orgId: string): Promise<OrgTeamData>
     members: membersPayload.members ?? [],
     invitations: invitationsPayload.invitations ?? [],
     access: membersPayload.access ?? { canManage: false, accessKind: 'org_admin' },
+    teamInviteCapacity: membersPayload.teamInviteCapacity ?? null,
   };
 }
 
@@ -84,6 +89,10 @@ export function useOrgTeamMutations(orgId: string | null) {
       toast.success('Invitation sent');
     },
     onError: (error: Error) => {
+      if (isAiQuotaError(error)) {
+        handleAiMutationError(error);
+        return;
+      }
       toast.error(friendlyToastError(error, 'Failed to send invitation'));
     },
   });
@@ -145,6 +154,10 @@ export function useOrgTeamMutations(orgId: string | null) {
       invalidate();
     },
     onError: (error: Error) => {
+      if (isAiQuotaError(error)) {
+        handleAiMutationError(error);
+        return;
+      }
       toast.error(friendlyToastError(error, 'Failed to update member'));
     },
   });

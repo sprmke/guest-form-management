@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { handleAiMutationError, isAiQuotaError } from '@/features/dashboard/org/lib/aiQuotaToast';
+import type { TeamInviteCapacity } from '@/features/dashboard/plans/lib/planFeatures';
 import { teamGet, teamMutate } from '@/features/dashboard/team/lib/teamApi';
 import type {
   CustomPropertyRole,
@@ -19,11 +20,15 @@ export type PropertyTeamData = {
   members: TeamMember[];
   invitations: TeamInvitation[];
   customRoles: CustomPropertyRole[];
+  teamInviteCapacity: TeamInviteCapacity | null;
 };
 
 async function loadPropertyTeam(propertyId: string): Promise<PropertyTeamData> {
   const [membersPayload, invitationsPayload, customRolesPayload] = await Promise.all([
-    teamGet<{ members: TeamMember[] }>('/property-team-members', propertyId),
+    teamGet<{ members: TeamMember[]; teamInviteCapacity?: TeamInviteCapacity }>(
+      '/property-team-members',
+      propertyId
+    ),
     teamGet<{ invitations: TeamInvitation[] }>('/property-team-invitations', propertyId),
     teamGet<{ customRoles: CustomPropertyRole[] }>('/property-team-custom-roles', propertyId),
   ]);
@@ -32,6 +37,7 @@ async function loadPropertyTeam(propertyId: string): Promise<PropertyTeamData> {
     members: membersPayload.members ?? [],
     invitations: invitationsPayload.invitations ?? [],
     customRoles: customRolesPayload.customRoles ?? [],
+    teamInviteCapacity: membersPayload.teamInviteCapacity ?? null,
   };
 }
 

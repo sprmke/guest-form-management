@@ -6,10 +6,6 @@ import { toast } from 'sonner';
 import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
-import {
-  canInviteTeamMember,
-  countPropertyTeamSlotsUsed,
-} from '@/features/dashboard/plans/lib/planFeatures';
 import { CustomRoleFormDialog } from '@/features/dashboard/team/components/CustomRoleFormDialog';
 import { EditMemberContactDialog } from '@/features/dashboard/team/components/EditMemberContactDialog';
 import {
@@ -72,11 +68,9 @@ export function PropertyTeamPage() {
   const members = data?.members ?? [];
   const invitations = data?.invitations ?? [];
   const customRoles = data?.customRoles ?? [];
-  const { entitlements, isLoading: entitlementsLoading } = useFeatureGate('teamManagement');
+  useFeatureGate('teamManagement');
   const { open: openUpgradeModal } = useUpgradeModal();
-  const teamSlotsUsed = countPropertyTeamSlotsUsed(members, invitations);
-  const planAllowsInvite = canInviteTeamMember(entitlements, teamSlotsUsed);
-  const canInviteByPlan = !entitlementsLoading && Boolean(entitlements) && planAllowsInvite;
+  const canInviteByPlan = data?.teamInviteCapacity?.canInvite ?? false;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState('all');
@@ -108,6 +102,10 @@ export function PropertyTeamPage() {
   );
 
   const openInviteDialog = () => {
+    if (!canInviteByPlan) {
+      openUpgradeModal('teamManagement');
+      return;
+    }
     const roleId = defaultInviteRoleId();
     setInviteEmail('');
     setInviteContactPhone('');
@@ -120,7 +118,7 @@ export function PropertyTeamPage() {
     if (!email) return;
 
     if (!canInviteByPlan) {
-      if (!entitlementsLoading) openUpgradeModal('teamManagement');
+      openUpgradeModal('teamManagement');
       return;
     }
 
@@ -306,6 +304,7 @@ export function PropertyTeamPage() {
       className="min-h-[44px] w-full sm:w-auto"
       onClick={openInviteDialog}
       disabled={isLoading || Boolean(error)}
+      aria-disabled={!canInviteByPlan || undefined}
     >
       <UserPlus className="mr-2 size-4" aria-hidden />
       Invite Member

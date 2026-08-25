@@ -15,6 +15,7 @@ export interface OrgTeamMember {
   lastActive: string | null;
   assignedBy: string;
   isOwner: boolean;
+  planLimited: boolean;
 }
 
 export interface OrgTeamInvitation {

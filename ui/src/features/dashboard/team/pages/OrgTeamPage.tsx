@@ -7,6 +7,9 @@ import { toast } from 'sonner';
 
 import { RequireAdmin } from '@/features/dashboard/bookings/components/RequireAdmin';
 import { useOrganizations } from '@/features/dashboard/org/hooks/useOrganizations';
+import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 import { EditMemberContactDialog } from '@/features/dashboard/team/components/EditMemberContactDialog';
 import {
   defaultOrgInviteRoleId,
@@ -46,6 +49,9 @@ export function OrgTeamPage() {
   const invitations = data?.invitations ?? [];
   const canManage = hasOrgPermission(orgAccess?.permissions, 'org:team:manage');
   const canInvite = hasOrgPermission(orgAccess?.permissions, 'org:team:invite');
+  useFeatureGate('teamManagement');
+  const { open: openUpgradeModal } = useUpgradeModal();
+  const canInviteByPlan = data?.teamInviteCapacity?.canInvite ?? false;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState('all');
@@ -61,6 +67,10 @@ export function OrgTeamPage() {
   const [inviteRoleId, setInviteRoleId] = useState<OrgRoleId>(defaultOrgInviteRoleId());
 
   const openInviteDialog = () => {
+    if (!canInviteByPlan) {
+      openUpgradeModal('teamManagement');
+      return;
+    }
     setInviteEmail('');
     setInviteContactPhone('');
     setInviteRoleId(defaultOrgInviteRoleId());
@@ -70,6 +80,11 @@ export function OrgTeamPage() {
   const handleInvite = async () => {
     const email = inviteEmail.trim();
     if (!email) return;
+
+    if (!canInviteByPlan) {
+      openUpgradeModal('teamManagement');
+      return;
+    }
 
     try {
       await inviteMember.mutateAsync({
@@ -136,6 +151,7 @@ export function OrgTeamPage() {
       className="min-h-[44px] w-full sm:w-auto"
       onClick={openInviteDialog}
       disabled={pageLoading || Boolean(error) || !orgSlug}
+      aria-disabled={!canInviteByPlan || undefined}
     >
       <UserPlus className="mr-2 size-4" aria-hidden />
       Invite Member
@@ -157,6 +173,7 @@ export function OrgTeamPage() {
       <AdminMobilePage
         title="Team"
         subtitle="Manage your organization's team members and permissions."
+        badge={<TierBadge feature="teamManagement" />}
         heroTrailing={heroInviteAction}
         desktopActions={inviteAction}
         desktopActionsClassName="w-full sm:w-auto"
@@ -297,7 +314,7 @@ export function OrgTeamPage() {
                   role: selectedMember.role,
                   permissions: [],
                   status: selectedMember.status,
-                  planLimited: false,
+                  planLimited: selectedMember.planLimited,
                   assignedAt: selectedMember.assignedAt,
                   lastActive: selectedMember.lastActive,
                   assignedBy: selectedMember.assignedBy,
