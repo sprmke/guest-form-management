@@ -3,15 +3,17 @@ import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
-import { propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
-import { usePropertyPlan } from '@/features/dashboard/plans/hooks/usePropertyPlan';
+import { orgPlansPath } from '@/features/dashboard/org/lib/tenantPaths';
+import { usePropertyEntitlements } from '@/features/dashboard/plans/hooks/usePropertyEntitlements';
 import type { PropertySection } from '@/features/dashboard/team/lib/propertyPermissions';
 
 import { FloatingPanel } from '@/components/mobile/FloatingPanel';
 import { RouteGuardSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 
-const ALLOWED_WHEN_SUSPENDED: PropertySection[] = ['plans', 'help-support'];
+/** Billing is org-level — suspension locks every property in the org, not just one, so there's
+ * no per-property "plans" section to exempt anymore; only Help & Support stays reachable. */
+const ALLOWED_WHEN_SUSPENDED: PropertySection[] = ['help-support'];
 
 type Props = {
   section: PropertySection;
@@ -19,34 +21,34 @@ type Props = {
 };
 
 export function RequirePropertySubscriptionAccess({ section, children }: Props) {
-  const { orgSlug, propertySlug } = useOrgContext();
+  const { orgSlug } = useOrgContext();
   const location = useLocation();
-  const { data, isLoading } = usePropertyPlan();
+  const { data, isLoading } = usePropertyEntitlements();
 
   if (isLoading && !data) {
     return <RouteGuardSkeleton />;
   }
 
-  const status = data?.subscription?.status;
+  const status = data?.status;
   const isSuspended = status === 'suspended';
   const isPastDue = status === 'past_due';
+  const plansPath = orgPlansPath(orgSlug);
 
   if (isSuspended && !ALLOWED_WHEN_SUSPENDED.includes(section)) {
-    const plansPath = propertySectionPath(orgSlug, propertySlug, 'plans');
     if (location.pathname !== plansPath) {
       return <Navigate to={plansPath} replace />;
     }
   }
 
-  if (isSuspended && section !== 'plans') {
+  if (isSuspended) {
     return (
       <FloatingPanel padding="lg" className="py-16 text-center">
         <p className="text-foreground text-sm font-semibold">Subscription suspended</p>
         <p className="text-caption mx-auto mt-1 max-w-sm">
-          Pay your plan to restore dashboard access for this listing.
+          Pay your organization’s plan to restore dashboard access.
         </p>
         <Button asChild className="mt-4 min-h-[44px]">
-          <a href={propertySectionPath(orgSlug, propertySlug, 'plans')}>Go to Plans & Billing</a>
+          <a href={plansPath}>Go to Plans & Billing</a>
         </Button>
       </FloatingPanel>
     );
@@ -54,7 +56,7 @@ export function RequirePropertySubscriptionAccess({ section, children }: Props) 
 
   return (
     <>
-      {isPastDue && section !== 'plans' ? (
+      {isPastDue ? (
         <div className="border-destructive/30 bg-destructive/5 text-destructive mb-3 rounded-xl border px-3 py-2 text-sm">
           Subscription past due — pay from Plans & Billing before access is restricted.
         </div>

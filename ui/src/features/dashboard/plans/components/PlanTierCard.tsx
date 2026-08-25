@@ -137,7 +137,7 @@ export function PlanTierCard({
         <div className="shrink-0 pt-8">
           <Button
             type="button"
-            variant={isCurrent ? 'soft' : planSelectButtonVariant(isCurrent, direction)}
+            variant={isCurrent ? 'soft' : planSelectButtonVariant(isCurrent, direction, plan.code)}
             aria-disabled={isCurrent || undefined}
             tabIndex={isCurrent ? -1 : 0}
             onClick={isCurrent ? undefined : onSelect}

@@ -1,6 +1,10 @@
 import { ArrowRight, Check, Loader2, Minus } from 'lucide-react';
 
 import { PlanTierIconWell } from '@/features/dashboard/plans/components/PlanTierIconWell';
+import type {
+  OrgBundlePlanDto,
+  OrgSubscriptionDto,
+} from '@/features/dashboard/plans/lib/orgPlanApi';
 import {
   planFeatureGains,
   planFeatureLosses,
@@ -9,12 +13,11 @@ import {
   PESO_WHOLE,
   type PlanFeatureChange,
 } from '@/features/dashboard/plans/lib/planPresentation';
-import { discountedPlanPricePhp } from '@/features/dashboard/plans/lib/planPricing';
+import {
+  computeOrgSubscriptionTotalPhp,
+  discountedPlanPricePhp,
+} from '@/features/dashboard/plans/lib/planPricing';
 import { computeMidCycleProration } from '@/features/dashboard/plans/lib/planProration';
-import type {
-  PropertyPlanDto,
-  PropertySubscriptionDto,
-} from '@/features/dashboard/plans/lib/propertyPlanApi';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -29,32 +32,48 @@ import { cn } from '@/lib/utils';
 
 type PlanReviewDialogProps = {
   open: boolean;
-  plan: PropertyPlanDto | null;
-  currentPlan: PropertyPlanDto | null;
-  /** Current property_subscriptions row — used only to preview mid-cycle proration. */
-  subscription?: PropertySubscriptionDto | null;
+  plan: OrgBundlePlanDto | null;
+  currentPlan: OrgBundlePlanDto | null;
+  /** Every property in the org — billing always covers the full count. */
+  propertyCount: number;
+  /** Current org_subscriptions row — used only to preview mid-cycle proration. */
+  subscription?: OrgSubscriptionDto | null;
   onOpenChange: (open: boolean) => void;
   onConfirmFree: (planId: string) => Promise<void>;
   onCheckoutPaid: (planId: string) => Promise<void>;
   isSubmitting: boolean;
 };
 
-/** Preview only — the server (`propertySubscriptionCheckout.ts`) always recomputes and charges
- * the authoritative amount; this exists so the host sees the credit before confirming. */
+function orgPlanTotalPhp(plan: OrgBundlePlanDto, propertyCount: number): number {
+  return computeOrgSubscriptionTotalPhp(
+    discountedPlanPricePhp(plan.pricePhp, plan.discountPercent),
+    plan.volumeDiscountTiers,
+    propertyCount,
+    {
+      volumeRampFloorPhp: plan.volumeRampFloorPhp,
+      volumeRampAtCount: plan.volumeRampAtCount,
+    }
+  );
+}
+
+/** Preview only — the server (`orgSubscriptionCheckout.ts`) always recomputes and charges the
+ * authoritative amount; this exists so the host sees the credit before confirming. */
 function midCycleProrationPreview(
-  plan: PropertyPlanDto,
-  currentPlan: PropertyPlanDto | null,
-  subscription: PropertySubscriptionDto | null | undefined
+  plan: OrgBundlePlanDto,
+  currentPlan: OrgBundlePlanDto | null,
+  subscription: OrgSubscriptionDto | null | undefined,
+  propertyCount: number
 ) {
   if (!currentPlan || !subscription) return null;
   if (plan.isDefault || currentPlan.isDefault) return null;
-  if (plan.id === currentPlan.id) return null;
   if (subscription.status !== 'active' && subscription.status !== 'past_due') return null;
   if (!subscription.currentPeriodStart || !subscription.currentPeriodEnd) return null;
   const currentPricePhp = subscription.pricePhpSnapshot;
   if (currentPricePhp == null || currentPricePhp <= 0) return null;
 
-  const targetPricePhp = discountedPlanPricePhp(plan.pricePhp, plan.discountPercent);
+  const targetPricePhp = orgPlanTotalPhp(plan, propertyCount);
+  if (plan.id === currentPlan.id && targetPricePhp === currentPricePhp) return null;
+
   return computeMidCycleProration({
     currentPricePhp,
     currentPeriodStartIso: subscription.currentPeriodStart,
@@ -63,8 +82,16 @@ function midCycleProrationPreview(
   });
 }
 
-function PlanStub({ plan, muted }: { plan: PropertyPlanDto; muted?: boolean }) {
-  const price = planPrice(plan);
+function PlanStub({
+  plan,
+  totalPhp,
+  muted,
+}: {
+  plan: OrgBundlePlanDto;
+  totalPhp: number;
+  muted?: boolean;
+}) {
+  const price = planPrice({ ...plan, chargedPricePhp: totalPhp });
   const title = planDisplayName(plan);
   return (
     <div className="flex min-w-0 items-center gap-3">
@@ -127,6 +154,7 @@ export function PlanReviewDialog({
   open,
   plan,
   currentPlan,
+  propertyCount,
   subscription,
   onOpenChange,
   onConfirmFree,
@@ -139,7 +167,13 @@ export function PlanReviewDialog({
   const gains = planFeatureGains(currentPlan?.features ?? null, plan.features);
   const losses = currentPlan ? planFeatureLosses(currentPlan.features, plan.features) : [];
   const isDownscale = losses.length > 0 && gains.length === 0;
-  const proration = midCycleProrationPreview(plan, currentPlan, subscription);
+  const proration = midCycleProrationPreview(plan, currentPlan, subscription, propertyCount);
+  const targetTotalPhp = orgPlanTotalPhp(plan, propertyCount);
+  const effectivePerPropertyPhp =
+    propertyCount > 0 ? Math.floor(targetTotalPhp / propertyCount) : 0;
+  const currentTotalPhp =
+    subscription?.pricePhpSnapshot ??
+    (currentPlan ? orgPlanTotalPhp(currentPlan, propertyCount) : 0);
 
   const planTitle = planDisplayName(plan);
   const title = currentPlan
@@ -148,12 +182,30 @@ export function PlanReviewDialog({
       : `Upgrade to ${planTitle}`
     : `Choose ${planTitle}`;
 
+  const description = isFree
+    ? 'Your organization keeps running on the free tier.'
+    : proration
+      ? "You're changing mid-cycle — credited for the unused time on your current plan."
+      : 'Review what changes before you continue.';
+
+  const handlePrimaryAction = async () => {
+    if (isFree) {
+      await onConfirmFree(plan.id);
+      onOpenChange(false);
+      return;
+    }
+    await onCheckoutPaid(plan.id);
+    onOpenChange(false);
+  };
+
+  const primaryDisabled = isSubmitting || (!isFree && propertyCount === 0);
+
   return (
     <ResponsiveModal open={open} onOpenChange={onOpenChange}>
       <ResponsiveModalContent
         sheetLayout="split"
         className={cn(
-          'flex max-h-[min(90dvh,36rem)] w-[min(calc(100vw-1.5rem),28rem)] max-w-none flex-col gap-0 overflow-hidden p-0',
+          'flex max-h-[min(90dvh,40rem)] w-[min(calc(100vw-1.5rem),28rem)] max-w-none flex-col gap-0 overflow-hidden p-0',
           'sm:max-w-[28rem] sm:p-0'
         )}
         aria-describedby="plan-review-description"
@@ -161,11 +213,7 @@ export function PlanReviewDialog({
         <ResponsiveModalHeader className="border-border shrink-0 space-y-1 border-b px-5 pb-3.5 pr-14 pt-5 text-left sm:px-6">
           <ResponsiveModalTitle>{title}</ResponsiveModalTitle>
           <ResponsiveModalDescription id="plan-review-description">
-            {isFree
-              ? 'This listing keeps running on the free tier.'
-              : proration
-                ? "You're switching mid-cycle — credited for the unused time on your current plan."
-                : 'Review what changes before you continue.'}
+            {description}
           </ResponsiveModalDescription>
         </ResponsiveModalHeader>
 
@@ -173,15 +221,25 @@ export function PlanReviewDialog({
           <div className="space-y-5">
             {currentPlan ? (
               <div className="border-border bg-muted/30 flex items-center gap-3 rounded-xl border p-3">
-                <PlanStub plan={currentPlan} muted />
+                <PlanStub plan={currentPlan} totalPhp={currentTotalPhp} muted />
                 <ArrowRight className="text-muted-foreground size-4 shrink-0" aria-hidden />
-                <PlanStub plan={plan} />
+                <PlanStub plan={plan} totalPhp={targetTotalPhp} />
               </div>
             ) : (
               <div className="border-border bg-muted/30 rounded-xl border p-3">
-                <PlanStub plan={plan} />
+                <PlanStub plan={plan} totalPhp={targetTotalPhp} />
               </div>
             )}
+
+            {!isFree ? (
+              <p className="text-muted-foreground text-xs">
+                {propertyCount === 0
+                  ? 'Add a property to your organization before subscribing.'
+                  : `Billing covers all ${propertyCount} ${
+                      propertyCount === 1 ? 'property' : 'properties'
+                    } in your organization.`}
+              </p>
+            ) : null}
 
             {proration ? (
               <div className="border-border space-y-1.5 rounded-xl border p-3 text-sm">
@@ -220,6 +278,31 @@ export function PlanReviewDialog({
           </div>
         </div>
 
+        {!isFree && propertyCount > 0 ? (
+          <div
+            className="border-border bg-background shrink-0 border-t px-5 py-3 sm:px-6"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            <div className="flex items-end justify-between gap-3">
+              <span className="text-muted-foreground text-sm">
+                {propertyCount} {propertyCount === 1 ? 'property' : 'properties'}
+              </span>
+              <div className="text-right">
+                <p className="text-foreground text-lg font-semibold tabular-nums">
+                  {planPrice({ ...plan, chargedPricePhp: targetTotalPhp }).amount}
+                  <span className="text-muted-foreground text-sm font-normal">/month</span>
+                </p>
+                {propertyCount > 1 ? (
+                  <p className="text-muted-foreground text-xs tabular-nums">
+                    {PESO_WHOLE.format(effectivePerPropertyPhp)}/property
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         <ResponsiveModalFooter className="border-border shrink-0 gap-2 border-t px-5 py-3.5 sm:flex-row sm:justify-end sm:px-6">
           <Button
             type="button"
@@ -232,16 +315,8 @@ export function PlanReviewDialog({
           <Button
             type="button"
             className="min-h-[44px]"
-            disabled={isSubmitting}
-            onClick={async () => {
-              if (isFree) {
-                await onConfirmFree(plan.id);
-                onOpenChange(false);
-                return;
-              }
-              await onCheckoutPaid(plan.id);
-              onOpenChange(false);
-            }}
+            disabled={primaryDisabled}
+            onClick={handlePrimaryAction}
           >
             {isSubmitting ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
             {isFree ? 'Confirm plan' : 'Continue to payment'}

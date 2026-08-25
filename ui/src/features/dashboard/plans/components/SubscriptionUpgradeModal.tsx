@@ -1,54 +1,66 @@
 import { useMemo } from 'react';
 
+import { useNavigate } from 'react-router-dom';
+
+import { useResolvedOrgId, useOrgSlugParam } from '@/features/dashboard/org/lib/adminApiScope';
+import { orgPlansPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { PlanReviewDialog } from '@/features/dashboard/plans/components/PlanReviewDialog';
-import {
-  useAssignPropertyFreePlan,
-  useCreatePropertyPlanCheckout,
-  usePropertyPlan,
-} from '@/features/dashboard/plans/hooks/usePropertyPlan';
+import { useOrgPlan } from '@/features/dashboard/plans/hooks/useOrgPlan';
 import type { PlanFeatureKey } from '@/features/dashboard/plans/lib/planFeatures';
-import { resolveMinimumPlanForFeature } from '@/features/dashboard/plans/lib/planPresentation';
+import {
+  resolveEffectiveCurrentPlan,
+  resolveMinimumPlanForFeature,
+} from '@/features/dashboard/plans/lib/planPresentation';
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  feature: PlanFeatureKey;
+  feature: PlanFeatureKey | null;
 };
 
 /**
- * Feature-gate entry point into the upgrade flow — resolves the *specific* minimum plan that
- * unlocks `feature` for this property, then reuses `PlanReviewDialog` (the same reviewed,
- * recognized purchase experience as the Plans page) pre-selected to that plan, right where the
- * host already is. No intermediate "here's a generic message, go to the Plans page" step.
+ * Feature-gate entry — resolves the minimum plan for `feature`, shows PlanReviewDialog in place,
+ * and only navigates to org Plans & Billing when the host confirms **Continue to payment**.
  */
 export function SubscriptionUpgradeModal({ open, onOpenChange, feature }: Props) {
-  const { data } = usePropertyPlan();
-  const assignFree = useAssignPropertyFreePlan();
-  const createCheckout = useCreatePropertyPlanCheckout();
+  const navigate = useNavigate();
+  const orgSlug = useOrgSlugParam();
+  const orgId = useResolvedOrgId();
+  const { data } = useOrgPlan(orgId);
 
   const plans = useMemo(() => data?.plans ?? [], [data?.plans]);
-  const currentPlanId = data?.subscription?.planId;
+  const subscription = data?.subscription ?? null;
+  const propertyCount = data?.properties?.length ?? 0;
+
   const currentPlan = useMemo(
-    () => plans.find((plan) => plan.id === currentPlanId) ?? null,
-    [plans, currentPlanId]
+    () => resolveEffectiveCurrentPlan(plans, subscription?.planId),
+    [plans, subscription?.planId]
   );
-  const targetPlan = useMemo(() => resolveMinimumPlanForFeature(plans, feature), [plans, feature]);
+
+  const targetPlan = useMemo(
+    () => (feature ? resolveMinimumPlanForFeature(plans, feature) : null),
+    [plans, feature]
+  );
+
+  const handleContinueToPayment = async (planId: string) => {
+    onOpenChange(false);
+    if (!orgSlug) return;
+    navigate(`${orgPlansPath(orgSlug)}?reviewPlan=${encodeURIComponent(planId)}`);
+  };
 
   return (
     <PlanReviewDialog
       open={open && Boolean(targetPlan)}
       plan={targetPlan}
       currentPlan={currentPlan}
-      subscription={data?.subscription ?? null}
+      propertyCount={propertyCount}
+      subscription={subscription}
       onOpenChange={onOpenChange}
-      onConfirmFree={async (planId) => {
-        await assignFree.mutateAsync(planId);
+      onConfirmFree={async () => {
+        onOpenChange(false);
       }}
-      onCheckoutPaid={async (planId) => {
-        const { checkoutUrl } = await createCheckout.mutateAsync(planId);
-        window.location.assign(checkoutUrl);
-      }}
-      isSubmitting={assignFree.isPending || createCheckout.isPending}
+      onCheckoutPaid={handleContinueToPayment}
+      isSubmitting={false}
     />
   );
 }

@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 
+import { useResolvedOrgId } from '@/features/dashboard/org/lib/adminApiScope';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
-import { usePropertyPlan } from '@/features/dashboard/plans/hooks/usePropertyPlan';
+import { useOrgPlan } from '@/features/dashboard/plans/hooks/useOrgPlan';
 import type { PlanFeatureKey } from '@/features/dashboard/plans/lib/planFeatures';
 import {
   planDisplayName,
@@ -28,7 +29,8 @@ type TierBadgeProps = {
  */
 export function TierBadge({ feature, className, placement = 'inline' }: TierBadgeProps) {
   const { allowed, isLoading: gateLoading } = useFeatureGate(feature);
-  const { data, isLoading: plansLoading } = usePropertyPlan();
+  const orgId = useResolvedOrgId();
+  const { data, isLoading: plansLoading } = useOrgPlan(orgId);
 
   if (gateLoading || plansLoading || allowed || !data) return null;
 

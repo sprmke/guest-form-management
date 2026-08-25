@@ -1,6 +1,10 @@
 import { ArrowRight, ArrowUpRight, Settings, Sparkles } from 'lucide-react';
 
 import { PlanTierIconWell } from '@/features/dashboard/plans/components/PlanTierIconWell';
+import type {
+  OrgBundlePlanDto,
+  OrgSubscriptionDto,
+} from '@/features/dashboard/plans/lib/orgPlanApi';
 import {
   planDisplayName,
   planDisplayNameFromSubscription,
@@ -10,10 +14,6 @@ import {
   subscriptionStatusMeta,
   upgradeBannerActionLabel,
 } from '@/features/dashboard/plans/lib/planPresentation';
-import type {
-  PropertyPlanDto,
-  PropertySubscriptionDto,
-} from '@/features/dashboard/plans/lib/propertyPlanApi';
 
 import { FloatingPanel } from '@/components/mobile/FloatingPanel';
 import { Badge } from '@/components/ui/badge';
@@ -22,20 +22,22 @@ import { cn } from '@/lib/utils';
 
 type CurrentPlanSummaryProps = {
   /** Null when the active subscription sits outside the selectable tier list (e.g. commission). */
-  plan: PropertyPlanDto | null;
-  subscription: PropertySubscriptionDto | null;
+  plan: OrgBundlePlanDto | null;
+  subscription: OrgSubscriptionDto | null;
   canManage?: boolean;
   pendingCheckoutUrl?: string | null;
   onPayNow?: () => void;
   isPaying?: boolean;
-  upgradePlan?: PropertyPlanDto | null;
+  upgradePlan?: OrgBundlePlanDto | null;
   onManageBilling?: () => void;
-  onUpgrade?: (plan: PropertyPlanDto) => void;
+  onUpgrade?: (plan: OrgBundlePlanDto) => void;
+  uncoveredPropertyCount?: number;
+  onCoverUncoveredProperties?: () => void;
 };
 
 function currentPlanBillingLine(
   price: ReturnType<typeof planPrice>,
-  subscription: PropertySubscriptionDto | null
+  subscription: OrgSubscriptionDto | null
 ): string {
   const parts: string[] = [];
 
@@ -51,7 +53,7 @@ function currentPlanBillingLine(
   return parts.join(' · ');
 }
 
-function currentPlanBadge(subscription: PropertySubscriptionDto | null): {
+function currentPlanBadge(subscription: OrgSubscriptionDto | null): {
   label: string;
   variant: 'default' | 'success' | 'secondary' | 'destructive';
 } {
@@ -76,6 +78,8 @@ export function CurrentPlanSummary({
   upgradePlan,
   onManageBilling,
   onUpgrade,
+  uncoveredPropertyCount = 0,
+  onCoverUncoveredProperties,
 }: CurrentPlanSummaryProps) {
   if (!plan && !subscription) return null;
 
@@ -193,6 +197,24 @@ export function CurrentPlanSummary({
             onClick={openCheckout}
           >
             Resume payment
+            <ArrowRight className="size-4" aria-hidden />
+          </Button>
+        </div>
+      ) : null}
+
+      {uncoveredPropertyCount > 0 && onCoverUncoveredProperties ? (
+        <div className="border-primary/15 mt-4 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-muted-foreground text-sm">
+            {uncoveredPropertyCount}{' '}
+            {uncoveredPropertyCount === 1 ? 'property is' : 'properties are'} not on your plan yet.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-[44px] shrink-0"
+            onClick={onCoverUncoveredProperties}
+          >
+            Update billing
             <ArrowRight className="size-4" aria-hidden />
           </Button>
         </div>

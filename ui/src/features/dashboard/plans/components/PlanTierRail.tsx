@@ -3,12 +3,12 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { PlanTierCard } from '@/features/dashboard/plans/components/PlanTierCard';
+import type { OrgBundlePlanDto } from '@/features/dashboard/plans/lib/orgPlanApi';
 import {
   planTabSectionTitleClass,
   planTierFeatureAreaMinHeight,
   type PlanTier,
 } from '@/features/dashboard/plans/lib/planPresentation';
-import type { PropertyPlanDto } from '@/features/dashboard/plans/lib/propertyPlanApi';
 
 import { cn } from '@/lib/utils';
 
@@ -16,7 +16,7 @@ type PlanTierRailProps = {
   tiers: PlanTier[];
   hasCurrentPlan: boolean;
   canSelect: boolean;
-  onSelectPlan: (plan: PropertyPlanDto) => void;
+  onSelectPlan: (plan: OrgBundlePlanDto) => void;
 };
 
 type CarouselLayout = {

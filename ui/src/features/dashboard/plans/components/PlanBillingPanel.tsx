@@ -1,6 +1,11 @@
 import { Receipt } from 'lucide-react';
 
-import { PropertyPlanTransactions } from '@/features/dashboard/plans/components/PropertyPlanTransactions';
+import { OrgPlanTransactions } from '@/features/dashboard/plans/components/OrgPlanTransactions';
+import type {
+  OrgBundlePlanDto,
+  OrgPaymentTransactionDto,
+  OrgSubscriptionDto,
+} from '@/features/dashboard/plans/lib/orgPlanApi';
 import {
   planDisplayName,
   planDisplayNameFromSubscription,
@@ -8,20 +13,15 @@ import {
   subscriptionRenewalLabel,
   subscriptionStatusMeta,
 } from '@/features/dashboard/plans/lib/planPresentation';
-import type {
-  PropertyPlanDto,
-  PropertyPaymentTransactionDto,
-  PropertySubscriptionDto,
-} from '@/features/dashboard/plans/lib/propertyPlanApi';
 
 import { FloatingPanel } from '@/components/mobile/FloatingPanel';
 import { Badge } from '@/components/ui/badge';
 import { formatManilaLongDate } from '@/utils/format/dates';
 
 type PlanBillingPanelProps = {
-  plan: PropertyPlanDto | null;
-  subscription: PropertySubscriptionDto | null;
-  transactions: PropertyPaymentTransactionDto[];
+  plan: OrgBundlePlanDto | null;
+  subscription: OrgSubscriptionDto | null;
+  transactions: OrgPaymentTransactionDto[];
 };
 
 function BillingEmptyState() {
@@ -115,7 +115,7 @@ export function PlanBillingPanel({ plan, subscription, transactions }: PlanBilli
       ) : null}
 
       {transactions.length > 0 ? (
-        <PropertyPlanTransactions transactions={transactions} />
+        <OrgPlanTransactions transactions={transactions} />
       ) : (
         <BillingEmptyState />
       )}

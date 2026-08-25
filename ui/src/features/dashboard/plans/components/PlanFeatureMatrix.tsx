@@ -1,6 +1,7 @@
 import { Check, Minus } from 'lucide-react';
 
 import { PlanPriceLine } from '@/features/dashboard/plans/components/PlanPriceLine';
+import type { OrgBundlePlanDto } from '@/features/dashboard/plans/lib/orgPlanApi';
 import {
   MANAGED_PLAN_CODE,
   planActionLabel,
@@ -12,7 +13,6 @@ import {
   type PlanFeatureValue,
   type PlanTier,
 } from '@/features/dashboard/plans/lib/planPresentation';
-import type { PropertyPlanDto } from '@/features/dashboard/plans/lib/propertyPlanApi';
 
 import { FloatingPanel } from '@/components/mobile/FloatingPanel';
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,7 @@ type PlanFeatureMatrixProps = {
   tiers: PlanTier[];
   hasCurrentPlan: boolean;
   canSelect: boolean;
-  onSelectPlan: (plan: PropertyPlanDto) => void;
+  onSelectPlan: (plan: OrgBundlePlanDto) => void;
   className?: string;
 };
 
@@ -209,7 +209,7 @@ export function PlanFeatureMatrix({
                     <Button
                       type="button"
                       size="sm"
-                      variant={planSelectButtonVariant(isCurrent, direction)}
+                      variant={planSelectButtonVariant(isCurrent, direction, plan.code)}
                       disabled={isCurrent}
                       onClick={() => onSelectPlan(plan)}
                       aria-label={
