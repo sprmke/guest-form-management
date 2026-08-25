@@ -1,4 +1,5 @@
 import type { PlanFeatures } from '@/features/dashboard/plans/lib/planFeatures';
+import type { VolumeDiscountTier } from '@/features/dashboard/plans/lib/planPricing';
 
 export type PricingPlan = {
   id: string;
@@ -9,6 +10,12 @@ export type PricingPlan = {
   pricingModel: 'subscription' | 'commission';
   pricePhp: number | null;
   discountPercent: number;
+  /** Applied to (per-property rate x enrolled count) on top of discountPercent's flat promo. */
+  volumeDiscountTiers: VolumeDiscountTier[];
+  /** Per-property floor at volumeRampAtCount during the 1…N linear ramp. */
+  volumeRampFloorPhp: number;
+  /** Property count where the ramp reaches volumeRampFloorPhp. */
+  volumeRampAtCount: number;
   billingInterval: string;
   commissionRatePercent: number | null;
   features: PlanFeatures;
@@ -18,14 +25,11 @@ export type PricingPlan = {
   updatedAt: string;
 };
 
-export type PropertySubscriptionSummary = {
-  propertyId: string;
-  propertyName: string;
-  propertySlug: string;
-  propertyStatus: string;
+export type OrgSubscriptionSummary = {
   organizationId: string;
   organizationName: string;
   organizationSlug: string;
+  propertyCount: number;
   subscription: {
     id: string;
     planId: string;
@@ -34,7 +38,6 @@ export type PropertySubscriptionSummary = {
     pricingModel: string;
     status: string;
     pricePhpSnapshot: number | null;
-    commissionRatePercentSnapshot: number | null;
     updatedAt: string;
   } | null;
 };
