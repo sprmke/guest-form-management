@@ -1,236 +1,289 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
-import { Check, Loader2 } from 'lucide-react';
+import { FileText, LayoutGrid, Receipt } from 'lucide-react';
 
+import {
+  helpSupportNewTicketPath,
+  useHelpSupportBasePath,
+} from '@/features/dashboard/help-support/lib/helpSupportPaths';
 import { useOrganizations } from '@/features/dashboard/org/hooks/useOrganizations';
-import { PlanTierIconWell } from '@/features/dashboard/plans/components/PlanTierIconWell';
+import { CurrentPlanSummary } from '@/features/dashboard/plans/components/CurrentPlanSummary';
+import { PlanBillingPanel } from '@/features/dashboard/plans/components/PlanBillingPanel';
+import { PlanFaqSection } from '@/features/dashboard/plans/components/PlanFaqSection';
+import { PlanFeatureMatrix } from '@/features/dashboard/plans/components/PlanFeatureMatrix';
+import { PlanReviewDialog } from '@/features/dashboard/plans/components/PlanReviewDialog';
+import { PlanTierRail } from '@/features/dashboard/plans/components/PlanTierRail';
 import { useCreateOrgPlanCheckout, useOrgPlan } from '@/features/dashboard/plans/hooks/useOrgPlan';
 import type { OrgBundlePlanDto } from '@/features/dashboard/plans/lib/orgPlanApi';
+import type { PlanFeatureKey } from '@/features/dashboard/plans/lib/planFeatures';
 import {
-  planDisplayName,
-  planFeatureGains,
-  planPrice,
-  PESO_WHOLE,
+  buildPlanTiers,
+  isManagedSalesPlan,
+  MANAGED_PLAN_INQUIRY_SUBJECT,
+  nextUpgradePlan,
+  PLANS_PAGE_SUBTITLE,
+  planTabSectionTitleClass,
+  resolveEffectiveCurrentPlan,
+  resolveEffectiveCurrentPlanId,
+  resolveMinimumPlanForFeature,
 } from '@/features/dashboard/plans/lib/planPresentation';
 
+import { FloatingPanel } from '@/components/mobile/FloatingPanel';
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
-import { PropertyPlansSkeleton } from '@/components/skeletons/AdminSkeletons';
+import { PlansPageSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { usePageTitle } from '@/lib/pageTitle';
 import { cn } from '@/lib/utils';
 
-function PropertyCoverageBadge({ covered }: { covered: boolean }) {
-  if (!covered) return null;
-  return (
-    <span className="bg-primary/10 text-primary inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold">
-      <Check className="size-3" aria-hidden />
-      Covered
-    </span>
-  );
-}
+type PlansTab = 'plans' | 'billing' | 'compare';
 
+/**
+ * Org subscription hub — one plan covers every property in the org, priced per property with
+ * volume discounts. Tier changes open PlanReviewDialog for a final review (with proration when
+ * it's a genuine mid-cycle change) before charging anything.
+ */
 export function OrgPlansPage() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { orgSlug } = useParams<{ orgSlug: string }>();
   const { data: orgsData, isLoading: orgsLoading } = useOrganizations();
   const org = orgsData?.organizations.find((entry) => entry.slug === orgSlug);
+  const helpSupportBase = useHelpSupportBasePath();
+  usePageTitle(org?.name ? `${org.name} - Plans & Billing` : undefined);
 
   const { data, isLoading, error, refetch } = useOrgPlan(org?.id ?? null);
   const createCheckout = useCreateOrgPlanCheckout(org?.id ?? null);
 
-  const [selectedPlan, setSelectedPlan] = useState<OrgBundlePlanDto | null>(null);
-  const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<PlansTab>('plans');
+  const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
+  const [reviewOpen, setReviewOpen] = useState(false);
 
+  const plans = data?.plans ?? [];
+  const properties = data?.properties ?? [];
+  const assignedPropertyIds = data?.assignedPropertyIds ?? [];
+  const propertyCount = properties.length;
+  const uncoveredPropertyCount = Math.max(0, propertyCount - assignedPropertyIds.length);
   const subscription = data?.subscription ?? null;
-  const assignedPropertyIds = useMemo(
-    () => new Set(data?.assignedPropertyIds ?? []),
-    [data?.assignedPropertyIds]
+
+  const effectiveCurrentPlanId = useMemo(
+    () => resolveEffectiveCurrentPlanId(plans, subscription?.planId),
+    [plans, subscription?.planId]
   );
+
   const currentPlan = useMemo(
-    () => data?.plans.find((plan) => plan.id === subscription?.planId) ?? null,
-    [data?.plans, subscription?.planId]
+    () => resolveEffectiveCurrentPlan(plans, subscription?.planId),
+    [plans, subscription?.planId]
   );
 
-  const toggleProperty = (propertyId: string, maxProperties: number) => {
-    setSelectedPropertyIds((current) => {
-      if (current.includes(propertyId)) {
-        return current.filter((id) => id !== propertyId);
-      }
-      if (current.length >= maxProperties) return current;
-      return [...current, propertyId];
-    });
+  const upgradeTarget = useMemo(
+    () => nextUpgradePlan(plans, effectiveCurrentPlanId),
+    [plans, effectiveCurrentPlanId]
+  );
+
+  useEffect(() => {
+    setPendingPlanId(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subscription?.id, subscription?.planId, propertyCount]);
+
+  const selectedPlan = useMemo(
+    () => plans.find((plan) => plan.id === pendingPlanId) ?? currentPlan,
+    [plans, pendingPlanId, currentPlan]
+  );
+
+  const tiers = useMemo(
+    () => buildPlanTiers(plans, effectiveCurrentPlanId),
+    [plans, effectiveCurrentPlanId]
+  );
+  const hasPlans = plans.length > 0;
+
+  const handleSelectPlan = (plan: OrgBundlePlanDto) => {
+    if (isManagedSalesPlan(plan.code) && helpSupportBase) {
+      navigate(
+        helpSupportNewTicketPath(helpSupportBase, { subject: MANAGED_PLAN_INQUIRY_SUBJECT })
+      );
+      return;
+    }
+    setPendingPlanId(plan.id);
+    setReviewOpen(true);
   };
 
-  const startPlan = (plan: OrgBundlePlanDto) => {
-    setSelectedPlan(plan);
-    setSelectedPropertyIds([]);
-  };
+  useEffect(() => {
+    if (!plans.length) return;
+
+    const tab = searchParams.get('tab');
+    if (tab === 'billing') {
+      setActiveTab('billing');
+    }
+
+    const reviewPlanId = searchParams.get('reviewPlan');
+    const featureParam = searchParams.get('feature');
+    let targetPlanId: string | null = reviewPlanId;
+
+    if (!targetPlanId && featureParam) {
+      const minimumPlan = resolveMinimumPlanForFeature(plans, featureParam as PlanFeatureKey);
+      targetPlanId = minimumPlan?.id ?? null;
+    }
+
+    if (targetPlanId && plans.some((plan) => plan.id === targetPlanId)) {
+      setActiveTab('plans');
+      setPendingPlanId(targetPlanId);
+      setReviewOpen(true);
+    }
+
+    if (tab || reviewPlanId || featureParam) {
+      setSearchParams({}, { replace: true });
+    }
+  }, [plans, searchParams, setSearchParams]);
 
   const isBootstrapping = orgsLoading || (Boolean(org?.id) && isLoading && !data);
 
   if (isBootstrapping) {
     return (
-      <AdminMobilePage title="Portfolio Plans" subtitle="Bundle pricing across your properties.">
-        <PropertyPlansSkeleton />
+      <AdminMobilePage title="Plans & Billing" subtitle={PLANS_PAGE_SUBTITLE}>
+        <PlansPageSkeleton />
       </AdminMobilePage>
     );
   }
 
   if (!org || error) {
     return (
-      <AdminMobilePage title="Portfolio Plans" subtitle="Bundle pricing across your properties.">
-        <div className="text-muted-foreground flex min-h-[40vh] flex-col items-center justify-center gap-3 px-4 text-center text-sm">
-          <p>Could not load portfolio plans.</p>
+      <AdminMobilePage title="Plans & Billing" subtitle={PLANS_PAGE_SUBTITLE}>
+        <FloatingPanel padding="lg" className="flex flex-col items-center gap-3 py-16 text-center">
+          <p className="text-foreground text-sm font-semibold">Could not load plans</p>
+          <p className="text-caption max-w-sm">
+            {error instanceof Error ? error.message : 'Please try again.'}
+          </p>
           <Button type="button" variant="outline" onClick={() => refetch()}>
             Retry
           </Button>
-        </div>
+        </FloatingPanel>
       </AdminMobilePage>
     );
   }
 
   return (
     <AdminMobilePage
-      title="Portfolio Plans"
-      subtitle="Bundle Pro, Business, or Business Plus across multiple properties in one subscription."
+      title="Plans & Billing"
+      subtitle={PLANS_PAGE_SUBTITLE}
+      titleId="org-plans-heading"
+      dense
+      className="min-w-0 max-w-full"
     >
-      <div className="space-y-6">
-        {subscription ? (
-          <section className="border-border bg-muted/30 rounded-xl border p-4">
-            <div className="flex items-center gap-3">
-              <PlanTierIconWell planCode={subscription.planCode} />
-              <div className="min-w-0 flex-1">
-                <p className="text-foreground text-sm font-semibold">{subscription.planName}</p>
-                <p className="text-muted-foreground text-xs tabular-nums">
-                  {subscription.pricePhpSnapshot != null
-                    ? PESO_WHOLE.format(subscription.pricePhpSnapshot)
-                    : '—'}
-                  /month · covers up to {subscription.maxProperties} properties
-                </p>
-              </div>
-            </div>
-            <ul className="mt-3 space-y-1.5">
-              {data?.properties.map((property) => (
-                <li key={property.id} className="flex items-center justify-between gap-2 text-sm">
-                  <span className="truncate">{property.name}</span>
-                  <PropertyCoverageBadge covered={assignedPropertyIds.has(property.id)} />
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : (
-          <>
-            <p className="text-muted-foreground text-sm">
-              No active portfolio subscription. Choose a tier below to bundle multiple properties
-              under one plan instead of paying per property.
-            </p>
+      {!hasPlans ? (
+        <FloatingPanel padding="lg" className="py-16 text-center">
+          <p className="text-foreground text-sm font-semibold">No plans available</p>
+          <p className="text-caption mx-auto mt-1 max-w-sm">
+            Pricing tiers have not been published yet.
+          </p>
+        </FloatingPanel>
+      ) : (
+        <div className="native-stagger flex min-w-0 flex-col gap-5 sm:gap-6 lg:gap-8">
+          <p className="text-foreground max-w-2xl text-base font-medium lg:hidden">
+            {PLANS_PAGE_SUBTITLE}
+          </p>
 
-            <div className="grid gap-3 sm:grid-cols-3">
-              {data?.plans.map((plan) => {
-                const price = planPrice(plan);
-                const gains = planFeatureGains(currentPlan?.features ?? null, plan.features);
-                return (
-                  <div
-                    key={plan.id}
-                    className={cn(
-                      'border-border flex flex-col gap-3 rounded-xl border p-4',
-                      selectedPlan?.id === plan.id && 'border-primary ring-primary/30 ring-2'
-                    )}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <PlanTierIconWell planCode={plan.code} size="sm" />
-                      <p className="text-foreground text-sm font-semibold">
-                        {planDisplayName(plan)}
-                      </p>
-                    </div>
-                    <p className="text-foreground text-xl font-bold tabular-nums">
-                      {price.amount}
-                      <span className="text-muted-foreground text-xs font-normal">
-                        {price.suffix}
-                      </span>
-                    </p>
-                    <p className="text-muted-foreground text-xs">
-                      Up to {plan.maxProperties} properties
-                    </p>
-                    {gains.length > 0 ? (
-                      <ul className="text-muted-foreground space-y-1 text-xs">
-                        {gains.slice(0, 4).map((gain) => (
-                          <li key={gain.key} className="flex items-start gap-1.5">
-                            <Check className="text-primary mt-0.5 size-3 shrink-0" aria-hidden />
-                            {gain.label}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
-                    <Button
-                      type="button"
-                      variant={selectedPlan?.id === plan.id ? 'default' : 'outline'}
-                      className="mt-auto min-h-[44px]"
-                      onClick={() => startPlan(plan)}
-                    >
-                      Select {planDisplayName(plan)}
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
+          {currentPlan ? (
+            <CurrentPlanSummary
+              plan={currentPlan}
+              subscription={subscription}
+              canManage
+              pendingCheckoutUrl={data?.pendingCheckoutUrl}
+              upgradePlan={upgradeTarget}
+              onUpgrade={handleSelectPlan}
+              uncoveredPropertyCount={uncoveredPropertyCount}
+              onCoverUncoveredProperties={
+                subscription && currentPlan && uncoveredPropertyCount > 0
+                  ? () => handleSelectPlan(currentPlan)
+                  : undefined
+              }
+              onManageBilling={() => setActiveTab('billing')}
+            />
+          ) : null}
 
-            {selectedPlan ? (
-              <section className="border-border rounded-xl border p-4">
-                <p className="text-foreground text-sm font-semibold">
-                  Choose up to {selectedPlan.maxProperties} properties
-                </p>
-                <ul className="mt-3 space-y-1">
-                  {data?.properties.map((property) => {
-                    const alreadyCovered = assignedPropertyIds.has(property.id);
-                    const checked = selectedPropertyIds.includes(property.id);
-                    return (
-                      <li key={property.id} className="flex items-center gap-2.5 py-1">
-                        <Checkbox
-                          id={`org-plan-property-${property.id}`}
-                          checked={checked}
-                          disabled={alreadyCovered}
-                          onCheckedChange={() =>
-                            toggleProperty(property.id, selectedPlan.maxProperties ?? 0)
-                          }
-                        />
-                        <label
-                          htmlFor={`org-plan-property-${property.id}`}
-                          className={cn(
-                            'text-sm',
-                            alreadyCovered && 'text-muted-foreground line-through'
-                          )}
-                        >
-                          {property.name}
-                          {alreadyCovered ? ' (already in another portfolio)' : ''}
-                        </label>
-                      </li>
-                    );
-                  })}
-                </ul>
-                <Button
-                  type="button"
-                  className="mt-4 min-h-[44px]"
-                  disabled={selectedPropertyIds.length === 0 || createCheckout.isPending}
-                  onClick={async () => {
-                    const { checkoutUrl } = await createCheckout.mutateAsync({
-                      planId: selectedPlan.id,
-                      propertyIds: selectedPropertyIds,
-                    });
-                    window.location.assign(checkoutUrl);
-                  }}
-                >
-                  {createCheckout.isPending ? (
-                    <Loader2 className="size-4 animate-spin" aria-hidden />
-                  ) : null}
-                  Continue to payment
-                </Button>
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => setActiveTab(value as PlansTab)}
+            className="min-w-0"
+          >
+            <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto p-1 sm:w-auto">
+              <TabsTrigger value="plans" className="gap-2 px-3 py-2">
+                <LayoutGrid className="size-4 shrink-0" aria-hidden />
+                <span>Plans</span>
+              </TabsTrigger>
+              <TabsTrigger value="compare" className="gap-2 px-3 py-2">
+                <FileText className="size-4 shrink-0" aria-hidden />
+                <span>Compare</span>
+              </TabsTrigger>
+              <TabsTrigger value="billing" className="gap-2 px-3 py-2">
+                <Receipt className="size-4 shrink-0" aria-hidden />
+                <span>Billing</span>
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="plans" className="mt-5 space-y-6 sm:mt-6">
+              <section aria-labelledby="choose-plan-heading" className="min-w-0">
+                <PlanTierRail
+                  tiers={tiers}
+                  hasCurrentPlan={Boolean(effectiveCurrentPlanId)}
+                  canSelect
+                  onSelectPlan={handleSelectPlan}
+                />
               </section>
-            ) : null}
-          </>
-        )}
-      </div>
+            </TabsContent>
+
+            <TabsContent value="compare" className="mt-5 sm:mt-6">
+              <section aria-labelledby="compare-features-heading" className="min-w-0">
+                <h2 id="compare-features-heading" className={cn(planTabSectionTitleClass, 'mb-4')}>
+                  Compare features
+                </h2>
+
+                <PlanFeatureMatrix
+                  tiers={tiers}
+                  hasCurrentPlan={Boolean(effectiveCurrentPlanId)}
+                  canSelect
+                  onSelectPlan={handleSelectPlan}
+                  className="border-border/80 shadow-sm"
+                />
+              </section>
+            </TabsContent>
+
+            <TabsContent value="billing" className="mt-5 sm:mt-6">
+              <section aria-labelledby="billing-tab-heading" className="min-w-0">
+                <h2 id="billing-tab-heading" className={cn(planTabSectionTitleClass, 'mb-4')}>
+                  Billing
+                </h2>
+
+                <PlanBillingPanel
+                  plan={currentPlan}
+                  subscription={subscription}
+                  transactions={data?.transactions ?? []}
+                />
+              </section>
+            </TabsContent>
+          </Tabs>
+
+          <PlanFaqSection />
+        </div>
+      )}
+
+      <PlanReviewDialog
+        open={reviewOpen && Boolean(selectedPlan)}
+        plan={selectedPlan}
+        currentPlan={currentPlan}
+        propertyCount={propertyCount}
+        subscription={subscription}
+        onOpenChange={setReviewOpen}
+        onConfirmFree={async () => {}}
+        onCheckoutPaid={async (planId) => {
+          if (!org?.id) return;
+          const { checkoutUrl } = await createCheckout.mutateAsync({ planId });
+          window.location.assign(checkoutUrl);
+        }}
+        isSubmitting={createCheckout.isPending}
+      />
     </AdminMobilePage>
   );
 }
