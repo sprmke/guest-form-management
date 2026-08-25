@@ -1,8 +1,8 @@
-# PayMongo property subscription billing — setup
+# PayMongo org subscription billing — setup
 
-Operational guide for host → platform recurring plan payments via PayMongo Payment Links (QRPH, Maya, online banking). Property-scoped — attaches to **`property_subscriptions`** / **`pricing_plans`**, not a separate org plan catalog.
+Operational guide for host → platform recurring plan payments via PayMongo Payment Links (QRPH, Maya, online banking). **Org-scoped** — one subscription per org (`org_subscriptions`), priced per enrolled property against `pricing_plans`; there is no per-property billing anymore.
 
-Plan: [`docs/workflow/done/paymongo-subscription-billing.md`](../../workflow/done/paymongo-subscription-billing.md).
+Plan: [`docs/workflow/done/paymongo-subscription-billing.md`](../../workflow/done/paymongo-subscription-billing.md) (original per-property build, historical — checkout/webhook code has since been rewritten org-level, see [`docs/workflow/done/org-level-billing-migration.md`](../../workflow/done/org-level-billing-migration.md)).
 
 ## Sandbox (development)
 
@@ -14,7 +14,7 @@ Plan: [`docs/workflow/done/paymongo-subscription-billing.md`](../../workflow/don
    - URL: hosted dev `https://<project>.supabase.co/functions/v1/paymongo-webhook` (or ngrok → local `functions serve` during pure local webhook testing).
    - Events: `payment.paid`, `payment.failed`, `link.payment.paid` (enable all payment/link events available).
    - Copy the endpoint **signing secret** → `PAYMONGO_WEBHOOK_SECRET` in `supabase/.env.local` and hosted dev secrets.
-5. Paid checkout from **Property → Plans** creates a Payment Link via **`create-subscription-checkout`**. After payment, **`paymongo-webhook`** fulfills the plan assignment.
+5. Paid checkout from **Org → Plans & Billing** creates a Payment Link via **`create-org-subscription-checkout`**. After payment, **`paymongo-webhook`** fulfills the subscription (activates it and enrolls the checked-out properties).
 
 ## Live (production)
 
@@ -35,13 +35,13 @@ See also [`docs/architecture/validation-and-env.md`](../../architecture/validati
 
 ## Edge functions
 
-| Function                       | Role                                                                                |
-| ------------------------------ | ----------------------------------------------------------------------------------- |
-| `create-subscription-checkout` | Owner creates Payment Link + pending `property_payment_transactions` row            |
-| `paymongo-webhook`             | Signature verify, dedupe, fulfill subscription on `payment.paid`                    |
-| `platform-payment-settings`    | Super-admin dunning config (singleton `platform_payment_settings`)                  |
-| `platform-billing-cron`        | Daily renewal links + past-due/suspend sweep (see scheduled-jobs doc)               |
-| `property-plan`                | Host Plans & Billing page — subscription status, transactions, pending checkout URL |
+| Function                           | Role                                                                                                                          |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `create-org-subscription-checkout` | Org owner creates Payment Link + pending `org_payment_transactions` row (first purchase, tier switch, or property add/remove) |
+| `paymongo-webhook`                 | Signature verify, dedupe, fulfill subscription on `payment.paid`                                                              |
+| `platform-payment-settings`        | Super-admin dunning config (singleton `platform_payment_settings`)                                                            |
+| `platform-billing-cron`            | Daily renewal links + past-due/suspend sweep + pooled seat clawback (see scheduled-jobs doc)                                  |
+| `org-plan`                         | Host Plans & Billing page — subscription status, transactions, pending checkout URL                                           |
 
 ## PayMongo rails note
 
@@ -49,8 +49,8 @@ Payment Links API does **not** accept a per-link `payment_method_types` filter. 
 
 ## Scope shipped vs original plan
 
-- **Property-scoped** billing on **`property_subscriptions`** / **`pricing_plans`** (not org-level **`platform_subscriptions`**).
-- Host billing UX lives on **Property → Plans** (no org Settings **Billing** tab).
+- **Org-scoped** billing on **`org_subscriptions`** / **`pricing_plans`** — the original per-property design (`property_subscriptions`) shipped first, then was fully replaced by the org-level model; see [`docs/workflow/done/org-level-billing-migration.md`](../../workflow/done/org-level-billing-migration.md).
+- Host billing UX lives on **Org → Plans & Billing** (`/org/:orgSlug/plans`) — there's no per-property Plans page anymore.
 - Super-admin under **`/admin/pricing/*`** (not `/admin/billing/*`).
 - **AI credit PayMongo top-up** remains a separate future plan.
 
