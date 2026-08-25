@@ -25,7 +25,12 @@ import { readPropertyIdFromUrl } from './propertyScope.ts';
 import { sendPropertyTeamInviteEmail } from './propertyTeamInviteEmail.ts';
 import { assertAllowedTeamInviteEmail } from './teamInviteEmail.ts';
 import { parseTeamInviteContactFields } from './teamInviteContact.ts';
-import { reconcilePropertyTeamSeats, requireTeamInviteAllowed } from './planEntitlements.ts';
+import {
+  reconcileTeamSeatsForProperty,
+  requireTeamInviteAllowed,
+  resolveTeamInviteCapacityForOrg,
+  type TeamInviteCapacity,
+} from './planEntitlements.ts';
 
 export type SerializedTeamMember = {
   id: string;
@@ -315,6 +320,14 @@ function serializeMemberRow(
     assignedBy: assignedByLabel,
     fromOrg,
   };
+}
+
+export async function getPropertyTeamInviteCapacity(
+  organizationId: string,
+  propertyId: string
+): Promise<TeamInviteCapacity> {
+  await reconcileTeamSeatsForProperty(propertyId);
+  return resolveTeamInviteCapacityForOrg(organizationId);
 }
 
 export async function listPropertyTeamMembers(
@@ -1121,7 +1134,7 @@ export async function acceptPropertyInvitation(
   // Self-correcting rather than a hard error here: if the invite was created under an
   // since-downgraded plan and accepting pushes past the current seat cap, the new member starts
   // deactivated (plan_limited) instead of the acceptance failing outright for the invited guest.
-  await reconcilePropertyTeamSeats(propertyId);
+  await reconcileTeamSeatsForProperty(propertyId);
 
   return {
     propertyId,

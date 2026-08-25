@@ -1,23 +1,23 @@
 /**
- * Property subscription billing state machine — webhook + cron side effects only.
- * Mutates property_subscriptions + property_payment_transactions; never inline in handlers.
+ * Org subscription billing state machine — webhook + cron side effects only.
+ * Mutates org_subscriptions + org_payment_transactions; never inline in handlers.
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
 import {
-  assignPropertyToPlan,
+  changeOrgSubscription,
   createOrgSubscription,
-  reconcilePropertyTeamSeats,
+  reconcileTeamSeatsForProperty,
 } from './planEntitlements.ts';
 import { isPaymongoTestMode } from './paymongoClient.ts';
-import { createPropertySubscriptionCheckoutLink } from './propertySubscriptionCheckout.ts';
+import { createOrgSubscriptionCheckoutLink } from './orgSubscriptionCheckout.ts';
 import {
-  sendSubscriptionPastDueEmail,
-  sendSubscriptionPaymentFailedEmail,
-  sendSubscriptionReceiptEmail,
-  sendSubscriptionRenewalReminderEmail,
-  sendSubscriptionSuspendedEmail,
+  sendOrgSubscriptionPastDueEmail,
+  sendOrgSubscriptionPaymentFailedEmail,
+  sendOrgSubscriptionReceiptEmail,
+  sendOrgSubscriptionRenewalReminderEmail,
+  sendOrgSubscriptionSuspendedEmail,
 } from './subscriptionBillingEmail.ts';
 import { resolvePublicGuestAppOrigin } from './publicAppOrigin.ts';
 
@@ -26,17 +26,6 @@ export type PlatformPaymentSettings = {
   enabledBanks: string[];
   renewalLinkLeadDays: number;
   gracePeriodDays: number;
-};
-
-export type PropertyPaymentTransactionRow = {
-  id: string;
-  property_id: string;
-  organization_id: string;
-  property_subscription_id: string | null;
-  plan_id: string;
-  provider_reference: string | null;
-  status: string;
-  amount: number;
 };
 
 function db() {
@@ -89,38 +78,26 @@ function formatManilaDate(iso: string): string {
   }
 }
 
-async function loadPropertyBillingContext(propertyId: string) {
+async function loadOrgBillingContext(organizationId: string) {
   const sb = db();
   const { data, error } = await sb
-    .from('properties')
-    .select(
-      `
-      id,
-      name,
-      slug,
-      organization_id,
-      organizations!inner ( id, owner_id, slug, name )
-    `
-    )
-    .eq('id', propertyId)
+    .from('organizations')
+    .select('id, owner_id, slug, name')
+    .eq('id', organizationId)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (!data) throw new Error('Property not found');
-  const org = (data as Record<string, unknown>).organizations as Record<string, unknown>;
+  if (!data) throw new Error('Organization not found');
   return {
-    propertyId: data.id as string,
-    propertyName: String(data.name ?? 'Property'),
-    propertySlug: String(data.slug ?? ''),
-    organizationId: org.id as string,
-    ownerId: org.owner_id as string,
-    orgSlug: String(org.slug ?? ''),
-    orgName: String(org.name ?? ''),
+    organizationId: data.id as string,
+    ownerId: data.owner_id as string,
+    orgSlug: String(data.slug ?? ''),
+    orgName: String(data.name ?? 'Organization'),
   };
 }
 
-async function plansUrlForProperty(orgSlug: string, propertySlug: string): Promise<string> {
+function orgPlansUrl(orgSlug: string): string {
   const appOrigin = resolvePublicGuestAppOrigin(null);
-  return `${appOrigin}/org/${orgSlug}/property/${propertySlug}/plans`;
+  return `${appOrigin}/org/${orgSlug}/plans`;
 }
 
 export async function markOrgPaymentFailed(
@@ -141,130 +118,6 @@ export async function markOrgPaymentFailed(
   if (error) throw new Error(error.message);
 }
 
-export async function markPropertyPaymentFailed(
-  transactionId: string,
-  failureReason: string,
-  rawPayload?: Record<string, unknown>
-): Promise<void> {
-  const sb = db();
-  const { error } = await sb
-    .from('property_payment_transactions')
-    .update({
-      status: 'failed',
-      failure_reason: failureReason.slice(0, 500),
-      raw_webhook_payload: rawPayload ?? null,
-    })
-    .eq('id', transactionId)
-    .eq('status', 'pending');
-  if (error) throw new Error(error.message);
-}
-
-export async function fulfillPropertySubscriptionPayment(input: {
-  transactionId: string;
-  providerReference?: string | null;
-  paymentMethodType?: string | null;
-  paidAt?: string | null;
-  rawPayload?: Record<string, unknown>;
-  assignedByUserId?: string | null;
-}): Promise<void> {
-  const sb = db();
-
-  const { data: txn, error: txnError } = await sb
-    .from('property_payment_transactions')
-    .select('*')
-    .eq('id', input.transactionId)
-    .maybeSingle();
-  if (txnError) throw new Error(txnError.message);
-  if (!txn) throw new Error('Payment transaction not found');
-  if (txn.status === 'paid') return;
-
-  const propertyId = txn.property_id as string;
-  const planId = txn.plan_id as string;
-  const assignedBy = input.assignedByUserId ?? null;
-  const amountPhp = Number(txn.amount ?? 0);
-
-  const { data: existingSub } = await sb
-    .from('property_subscriptions')
-    .select('id, plan_id, current_period_end, status')
-    .eq('property_id', propertyId)
-    .in('status', ['active', 'trialing', 'past_due', 'suspended'])
-    .maybeSingle();
-
-  const isPlanSwitch = Boolean(
-    existingSub?.plan_id != null && String(existingSub.plan_id) !== planId
-  );
-
-  await assignPropertyToPlan(propertyId, planId, assignedBy, {
-    note: 'Paid via PayMongo checkout',
-  });
-
-  const now = new Date();
-  const existingEnd =
-    existingSub?.current_period_end != null
-      ? new Date(String(existingSub.current_period_end))
-      : null;
-  // A plan switch is charged the prorated net-due amount (propertySubscriptionCheckout.ts) and
-  // starts a fresh period from today — the credit already bought back the unused old-plan time,
-  // so extending from the old period's end would double-count it. Same-plan renewals still
-  // extend from any remaining time, same as before.
-  const periodStart =
-    !isPlanSwitch && existingEnd && existingEnd.getTime() > now.getTime() ? existingEnd : now;
-  const periodEnd = addOneMonth(periodStart);
-
-  const { data: subscription, error: subLookupError } = await sb
-    .from('property_subscriptions')
-    .select('id, plan_id, pricing_plans!inner(name)')
-    .eq('property_id', propertyId)
-    .in('status', ['active', 'trialing', 'past_due'])
-    .maybeSingle();
-  if (subLookupError) throw new Error(subLookupError.message);
-  if (!subscription) throw new Error('Subscription missing after payment fulfillment');
-
-  const { error: subUpdateError } = await sb
-    .from('property_subscriptions')
-    .update({
-      current_period_start: periodStart.toISOString(),
-      current_period_end: periodEnd.toISOString(),
-      grace_period_ends_at: null,
-      status: 'active',
-    })
-    .eq('id', subscription.id);
-  if (subUpdateError) throw new Error(subUpdateError.message);
-
-  const paidAt = input.paidAt ?? new Date().toISOString();
-  const { error: txnUpdateError } = await sb
-    .from('property_payment_transactions')
-    .update({
-      status: 'paid',
-      property_subscription_id: subscription.id,
-      provider_reference: input.providerReference ?? txn.provider_reference,
-      payment_method_type: input.paymentMethodType ?? null,
-      paid_at: paidAt,
-      raw_webhook_payload: input.rawPayload ?? null,
-    })
-    .eq('id', input.transactionId);
-  if (txnUpdateError) throw new Error(txnUpdateError.message);
-
-  try {
-    const ctx = await loadPropertyBillingContext(propertyId);
-    const planJoin = (subscription as Record<string, unknown>).pricing_plans as Record<
-      string,
-      unknown
-    >;
-    await sendSubscriptionReceiptEmail({
-      supabase: sb,
-      ownerId: ctx.ownerId,
-      propertyName: ctx.propertyName,
-      planName: String(planJoin.name ?? 'Plan'),
-      amountPhp,
-      orgSlug: ctx.orgSlug,
-      propertySlug: ctx.propertySlug,
-    });
-  } catch (err) {
-    console.error('[subscriptionOrchestrator] receipt email failed', err);
-  }
-}
-
 type OrgPaymentTransactionRow = {
   id: string;
   organization_id: string;
@@ -276,11 +129,14 @@ type OrgPaymentTransactionRow = {
   amount: number;
 };
 
-/** Org portfolio subscription equivalent of fulfillPropertySubscriptionPayment — creates the
- * org_subscriptions row (via planEntitlements.ts#createOrgSubscription, which also slots the
- * checked-out properties) and sets a fresh billing period. No plan-switch/proration case exists
- * yet (an org can only have one bundle at a time; changing tiers is a follow-up, see
- * pricing-portfolio-bundling.md), so this is always a fresh assignment. */
+/**
+ * Fulfills a paid org subscription checkout — fresh purchase, renewal, or a mid-cycle change
+ * (property count and/or tier). Detects which by whether the org already has a live subscription
+ * and whether the plan/enrolled-property set actually changed: a genuine change starts a fresh
+ * billing period (the credit already bought back the unused old-plan time — extending from the
+ * old period's end would double-count it); a same-plan-same-properties renewal extends from any
+ * remaining time, same as before.
+ */
 export async function fulfillOrgSubscriptionPayment(input: {
   transactionId: string;
   providerReference?: string | null;
@@ -304,26 +160,60 @@ export async function fulfillOrgSubscriptionPayment(input: {
   const planId = txn.plan_id as string;
   const propertyIds = (txn.property_ids as string[] | null) ?? [];
   const assignedBy = input.assignedByUserId ?? null;
+  const amountPhp = Number(txn.amount ?? 0);
 
   // PayMongo has already collected payment by the time this runs — a thrown error here must not
   // leave the transaction stuck `pending` forever (indistinguishable from "webhook hasn't arrived
   // yet"). Mark it `failed` with the real reason so it surfaces for manual reconciliation instead.
   try {
-    const { orgSubscriptionId } = await createOrgSubscription(
-      organizationId,
-      planId,
-      propertyIds,
-      assignedBy
-    );
+    const { data: existingSub, error: existingSubError } = await sb
+      .from('org_subscriptions')
+      .select('id, plan_id, current_period_end, status')
+      .eq('organization_id', organizationId)
+      .in('status', ['active', 'trialing', 'past_due', 'suspended'])
+      .maybeSingle();
+    if (existingSubError) throw new Error(existingSubError.message);
+
+    let orgSubscriptionId: string;
+    let isChange = false;
+
+    if (!existingSub) {
+      const created = await createOrgSubscription(organizationId, planId, propertyIds, assignedBy);
+      orgSubscriptionId = created.orgSubscriptionId;
+    } else {
+      orgSubscriptionId = existingSub.id as string;
+      const { data: currentSlots, error: slotsError } = await sb
+        .from('org_subscription_properties')
+        .select('property_id')
+        .eq('org_subscription_id', orgSubscriptionId);
+      if (slotsError) throw new Error(slotsError.message);
+      const currentPropertyIds = new Set((currentSlots ?? []).map((r) => r.property_id as string));
+      const nextPropertyIds = new Set(propertyIds);
+      isChange =
+        String(existingSub.plan_id) !== planId ||
+        currentPropertyIds.size !== nextPropertyIds.size ||
+        [...nextPropertyIds].some((id) => !currentPropertyIds.has(id));
+
+      await changeOrgSubscription(orgSubscriptionId, planId, propertyIds, assignedBy);
+    }
 
     const now = new Date();
-    const periodEnd = addOneMonth(now);
+    const existingEnd =
+      existingSub?.current_period_end != null
+        ? new Date(String(existingSub.current_period_end))
+        : null;
+    const periodStart =
+      existingSub && !isChange && existingEnd && existingEnd.getTime() > now.getTime()
+        ? existingEnd
+        : now;
+    const periodEnd = addOneMonth(periodStart);
 
     const { error: subUpdateError } = await sb
       .from('org_subscriptions')
       .update({
-        current_period_start: now.toISOString(),
+        current_period_start: periodStart.toISOString(),
         current_period_end: periodEnd.toISOString(),
+        grace_period_ends_at: null,
         status: 'active',
       })
       .eq('id', orgSubscriptionId);
@@ -342,6 +232,26 @@ export async function fulfillOrgSubscriptionPayment(input: {
       })
       .eq('id', input.transactionId);
     if (txnUpdateError) throw new Error(txnUpdateError.message);
+
+    try {
+      const { data: planRow } = await sb
+        .from('pricing_plans')
+        .select('name')
+        .eq('id', planId)
+        .maybeSingle();
+      const ctx = await loadOrgBillingContext(organizationId);
+      await sendOrgSubscriptionReceiptEmail({
+        supabase: sb,
+        ownerId: ctx.ownerId,
+        orgName: ctx.orgName,
+        planName: String(planRow?.name ?? 'Plan'),
+        propertyCount: propertyIds.length,
+        amountPhp,
+        orgSlug: ctx.orgSlug,
+      });
+    } catch (err) {
+      console.error('[subscriptionOrchestrator] receipt email failed', err);
+    }
   } catch (err) {
     await markOrgPaymentFailed(
       input.transactionId,
@@ -350,6 +260,12 @@ export async function fulfillOrgSubscriptionPayment(input: {
     );
     throw err;
   }
+}
+
+function readMetadataString(metadata: unknown, key: string): string | null {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return null;
+  const value = (metadata as Record<string, unknown>)[key];
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
 export async function resolveOrgTransactionFromWebhookPayload(
@@ -361,8 +277,6 @@ export async function resolveOrgTransactionFromWebhookPayload(
   const inner = attrs?.data as Record<string, unknown> | undefined;
   const innerAttrs = inner?.attributes as Record<string, unknown> | undefined;
   const metadata = innerAttrs?.metadata ?? attrs?.metadata;
-
-  if (readMetadataString(metadata, 'kind') !== 'org_subscription') return null;
 
   const transactionId = readMetadataString(metadata, 'transaction_id');
   if (transactionId) {
@@ -392,53 +306,6 @@ export async function resolveOrgTransactionFromWebhookPayload(
   return (data as OrgPaymentTransactionRow | null) ?? null;
 }
 
-function readMetadataString(metadata: unknown, key: string): string | null {
-  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return null;
-  const value = (metadata as Record<string, unknown>)[key];
-  return typeof value === 'string' && value.trim() ? value.trim() : null;
-}
-
-export async function resolveTransactionFromWebhookPayload(
-  payload: Record<string, unknown>
-): Promise<PropertyPaymentTransactionRow | null> {
-  const sb = db();
-  const attrs = (payload.data as Record<string, unknown> | undefined)?.attributes as
-    Record<string, unknown> | undefined;
-  const inner = attrs?.data as Record<string, unknown> | undefined;
-  const innerAttrs = inner?.attributes as Record<string, unknown> | undefined;
-  const metadata = innerAttrs?.metadata ?? attrs?.metadata;
-
-  const transactionId = readMetadataString(metadata, 'transaction_id');
-  if (transactionId) {
-    const { data } = await sb
-      .from('property_payment_transactions')
-      .select('*')
-      .eq('id', transactionId)
-      .maybeSingle();
-    return (data as PropertyPaymentTransactionRow | null) ?? null;
-  }
-
-  const linkId =
-    (inner?.type === 'link' ? String(inner.id ?? '') : '') ||
-    readMetadataString(metadata, 'link_id') ||
-    (typeof innerAttrs?.payment_intent_id === 'string' ? null : null);
-
-  const providerRef =
-    linkId || (inner?.type === 'payment' && typeof inner.id === 'string' ? inner.id : null) || null;
-
-  if (!providerRef) return null;
-
-  const { data } = await sb
-    .from('property_payment_transactions')
-    .select('*')
-    .eq('provider_reference', providerRef)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  return (data as PropertyPaymentTransactionRow | null) ?? null;
-}
-
 export async function handlePaymongoWebhookEvent(
   eventType: string,
   payload: Record<string, unknown>
@@ -447,28 +314,20 @@ export async function handlePaymongoWebhookEvent(
 
   if (normalized === 'payment.failed') {
     const orgTxn = await resolveOrgTransactionFromWebhookPayload(payload);
-    if (orgTxn) {
-      if (orgTxn.status !== 'pending') return { handled: false };
-      await markOrgPaymentFailed(orgTxn.id, 'Payment failed', payload);
-      return { handled: true, action: 'marked_org_failed' };
-    }
-
-    const txn = await resolveTransactionFromWebhookPayload(payload);
-    if (!txn || txn.status !== 'pending') return { handled: false };
-    await markPropertyPaymentFailed(txn.id, 'Payment failed', payload);
+    if (!orgTxn || orgTxn.status !== 'pending') return { handled: false };
+    await markOrgPaymentFailed(orgTxn.id, 'Payment failed', payload);
     try {
-      const ctx = await loadPropertyBillingContext(txn.property_id);
-      const plansUrl = await plansUrlForProperty(ctx.orgSlug, ctx.propertySlug);
-      await sendSubscriptionPaymentFailedEmail({
+      const ctx = await loadOrgBillingContext(orgTxn.organization_id);
+      await sendOrgSubscriptionPaymentFailedEmail({
         supabase: db(),
         ownerId: ctx.ownerId,
-        propertyName: ctx.propertyName,
-        plansUrl,
+        orgName: ctx.orgName,
+        plansUrl: orgPlansUrl(ctx.orgSlug),
       });
     } catch (err) {
       console.error('[subscriptionOrchestrator] payment failed email', err);
     }
-    return { handled: true, action: 'marked_failed' };
+    return { handled: true, action: 'marked_org_failed' };
   }
 
   if (
@@ -492,32 +351,17 @@ export async function handlePaymongoWebhookEvent(
         : new Date().toISOString();
 
     const orgTxn = await resolveOrgTransactionFromWebhookPayload(payload);
-    if (orgTxn) {
-      if (orgTxn.status === 'paid') return { handled: false };
-      await fulfillOrgSubscriptionPayment({
-        transactionId: orgTxn.id,
-        providerReference: orgTxn.provider_reference,
-        paymentMethodType,
-        paidAt,
-        rawPayload: payload,
-        assignedByUserId: initiatedBy,
-      });
-      return { handled: true, action: 'fulfilled_org_subscription' };
-    }
+    if (!orgTxn || orgTxn.status === 'paid') return { handled: false };
 
-    const txn = await resolveTransactionFromWebhookPayload(payload);
-    if (!txn) return { handled: false };
-
-    await fulfillPropertySubscriptionPayment({
-      transactionId: txn.id,
-      providerReference: txn.provider_reference,
+    await fulfillOrgSubscriptionPayment({
+      transactionId: orgTxn.id,
+      providerReference: orgTxn.provider_reference,
       paymentMethodType,
       paidAt,
       rawPayload: payload,
       assignedByUserId: initiatedBy,
     });
-
-    return { handled: true, action: 'fulfilled_subscription' };
+    return { handled: true, action: 'fulfilled_org_subscription' };
   }
 
   return { handled: false };
@@ -527,9 +371,8 @@ export function paymongoLivemodeFromEnv(): boolean {
   return !isPaymongoTestMode();
 }
 
-type PaidPlanSubscriptionRow = {
+type LiveOrgSubscriptionRow = {
   id: string;
-  property_id: string;
   organization_id: string;
   plan_id: string;
   status: string;
@@ -552,11 +395,10 @@ export async function runPlatformBillingCycle(): Promise<Record<string, number>>
   const leadMs = settings.renewalLinkLeadDays * 24 * 60 * 60 * 1000;
 
   const { data: subs, error: subsError } = await sb
-    .from('property_subscriptions')
+    .from('org_subscriptions')
     .select(
       `
       id,
-      property_id,
       organization_id,
       plan_id,
       status,
@@ -569,33 +411,44 @@ export async function runPlatformBillingCycle(): Promise<Record<string, number>>
   if (subsError) throw new Error(subsError.message);
 
   for (const raw of subs ?? []) {
-    const sub = raw as unknown as PaidPlanSubscriptionRow;
+    const sub = raw as unknown as LiveOrgSubscriptionRow;
     if (!sub.pricing_plans?.is_active || sub.pricing_plans.is_default) continue;
 
     const periodEnd = new Date(String(sub.current_period_end));
-    const ctxPromise = loadPropertyBillingContext(sub.property_id);
+    const ctxPromise = loadOrgBillingContext(sub.organization_id);
+
+    const { data: enrolledRows, error: enrolledError } = await sb
+      .from('org_subscription_properties')
+      .select('property_id')
+      .eq('org_subscription_id', sub.id);
+    if (enrolledError) {
+      counters.errors += 1;
+      continue;
+    }
+    const enrolledPropertyIds = (enrolledRows ?? []).map((r) => r.property_id as string);
 
     if (sub.status === 'active') {
       const msUntilEnd = periodEnd.getTime() - now.getTime();
       if (msUntilEnd <= leadMs && msUntilEnd > 0) {
         try {
-          const checkout = await createPropertySubscriptionCheckoutLink({
-            propertyId: sub.property_id,
+          const checkout = await createOrgSubscriptionCheckoutLink({
+            organizationId: sub.organization_id,
             planId: sub.plan_id,
+            propertyIds: enrolledPropertyIds,
             purpose: 'renewal',
           });
           const ctx = await ctxPromise;
-          await sendSubscriptionRenewalReminderEmail({
+          await sendOrgSubscriptionRenewalReminderEmail({
             supabase: sb,
             ownerId: ctx.ownerId,
-            propertyName: ctx.propertyName,
+            orgName: ctx.orgName,
             planName: sub.pricing_plans.name,
             periodEndLabel: formatManilaDate(periodEnd.toISOString()),
             checkoutUrl: checkout.checkoutUrl,
           });
           counters.renewalLinks += 1;
         } catch (err) {
-          console.error('[platform-billing-cron] renewal link', sub.property_id, err);
+          console.error('[platform-billing-cron] renewal link', sub.organization_id, err);
           counters.errors += 1;
         }
       }
@@ -604,7 +457,7 @@ export async function runPlatformBillingCycle(): Promise<Record<string, number>>
         const graceEnd = new Date(now);
         graceEnd.setDate(graceEnd.getDate() + settings.gracePeriodDays);
         const { error } = await sb
-          .from('property_subscriptions')
+          .from('org_subscriptions')
           .update({
             status: 'past_due',
             grace_period_ends_at: graceEnd.toISOString(),
@@ -616,23 +469,24 @@ export async function runPlatformBillingCycle(): Promise<Record<string, number>>
           continue;
         }
         try {
-          const checkout = await createPropertySubscriptionCheckoutLink({
-            propertyId: sub.property_id,
+          const checkout = await createOrgSubscriptionCheckoutLink({
+            organizationId: sub.organization_id,
             planId: sub.plan_id,
+            propertyIds: enrolledPropertyIds,
             purpose: 'retry',
             forceNew: true,
           });
           const ctx = await ctxPromise;
-          await sendSubscriptionPastDueEmail({
+          await sendOrgSubscriptionPastDueEmail({
             supabase: sb,
             ownerId: ctx.ownerId,
-            propertyName: ctx.propertyName,
+            orgName: ctx.orgName,
             graceEndLabel: formatManilaDate(graceEnd.toISOString()),
             checkoutUrl: checkout.checkoutUrl,
           });
           counters.pastDue += 1;
         } catch (err) {
-          console.error('[platform-billing-cron] past due', sub.property_id, err);
+          console.error('[platform-billing-cron] past due', sub.organization_id, err);
           counters.errors += 1;
         }
       }
@@ -641,14 +495,14 @@ export async function runPlatformBillingCycle(): Promise<Record<string, number>>
 
     if (sub.status === 'past_due') {
       const { data: graceRow } = await sb
-        .from('property_subscriptions')
+        .from('org_subscriptions')
         .select('grace_period_ends_at')
         .eq('id', sub.id)
         .maybeSingle();
       const graceEndRaw = graceRow?.grace_period_ends_at as string | null;
       if (graceEndRaw && new Date(graceEndRaw).getTime() <= now.getTime()) {
         const { error } = await sb
-          .from('property_subscriptions')
+          .from('org_subscriptions')
           .update({ status: 'suspended' })
           .eq('id', sub.id)
           .eq('status', 'past_due');
@@ -656,24 +510,27 @@ export async function runPlatformBillingCycle(): Promise<Record<string, number>>
           counters.errors += 1;
           continue;
         }
-        try {
-          await reconcilePropertyTeamSeats(sub.property_id);
-        } catch (err) {
-          console.error('[platform-billing-cron] team seat reconciliation', sub.property_id, err);
-          counters.errors += 1;
+        // Every previously-enrolled property individually falls back to Free now — reconcile
+        // each (their pool is no longer the org's, since the subscription is no longer live).
+        for (const propertyId of enrolledPropertyIds) {
+          try {
+            await reconcileTeamSeatsForProperty(propertyId);
+          } catch (err) {
+            console.error('[platform-billing-cron] team seat reconciliation', propertyId, err);
+            counters.errors += 1;
+          }
         }
         try {
           const ctx = await ctxPromise;
-          const plansUrl = await plansUrlForProperty(ctx.orgSlug, ctx.propertySlug);
-          await sendSubscriptionSuspendedEmail({
+          await sendOrgSubscriptionSuspendedEmail({
             supabase: sb,
             ownerId: ctx.ownerId,
-            propertyName: ctx.propertyName,
-            plansUrl,
+            orgName: ctx.orgName,
+            plansUrl: orgPlansUrl(ctx.orgSlug),
           });
           counters.suspended += 1;
         } catch (err) {
-          console.error('[platform-billing-cron] suspended email', sub.property_id, err);
+          console.error('[platform-billing-cron] suspended email', sub.organization_id, err);
           counters.errors += 1;
         }
       }
@@ -683,8 +540,8 @@ export async function runPlatformBillingCycle(): Promise<Record<string, number>>
   return counters;
 }
 
-export async function adminExtendPropertySubscription(input: {
-  propertyId: string;
+export async function adminExtendOrgSubscription(input: {
+  organizationId: string;
   periodEndIso: string;
   status?: 'active' | 'past_due' | 'suspended' | 'canceled';
   note?: string | null;
@@ -692,13 +549,13 @@ export async function adminExtendPropertySubscription(input: {
 }): Promise<void> {
   const sb = db();
   const { data: sub, error } = await sb
-    .from('property_subscriptions')
+    .from('org_subscriptions')
     .select('id')
-    .eq('property_id', input.propertyId)
+    .eq('organization_id', input.organizationId)
     .in('status', ['active', 'trialing', 'past_due', 'suspended'])
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (!sub) throw new Error('No live subscription for property');
+  if (!sub) throw new Error('No live subscription for organization');
 
   const patch: Record<string, unknown> = {
     current_period_end: input.periodEndIso,
@@ -706,18 +563,22 @@ export async function adminExtendPropertySubscription(input: {
   };
   if (input.status) patch.status = input.status;
 
-  const { error: updateError } = await sb
-    .from('property_subscriptions')
-    .update(patch)
-    .eq('id', sub.id);
+  const { error: updateError } = await sb.from('org_subscriptions').update(patch).eq('id', sub.id);
   if (updateError) throw new Error(updateError.message);
 
-  await sb.from('property_subscription_events').insert({
-    property_subscription_id: sub.id,
+  await sb.from('org_subscription_events').insert({
+    org_subscription_id: sub.id,
     event_type: 'status_changed',
     new_status: input.status ?? 'active',
     note: input.note ?? 'Super-admin manual billing extension',
     created_by: input.adminUserId,
   });
-  await reconcilePropertyTeamSeats(input.propertyId);
+
+  const { data: enrolledRows } = await sb
+    .from('org_subscription_properties')
+    .select('property_id')
+    .eq('org_subscription_id', sub.id as string);
+  for (const row of enrolledRows ?? []) {
+    await reconcileTeamSeatsForProperty(row.property_id as string);
+  }
 }

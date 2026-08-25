@@ -10,7 +10,6 @@
 
 import { DatabaseService } from './databaseService.ts';
 import { ensureGuestStayGuideToken } from './guestStayGuide.ts';
-import { recordBookingCommissionChargeIfApplicable } from './planEntitlements.ts';
 import {
   checkGuestBalanceSettlement,
   computeTotalGuestBalanceFromBooking,
@@ -706,22 +705,6 @@ export class WorkflowOrchestrator {
       ...booking,
       status: persistedStatus,
     };
-
-    if (
-      toStatus === 'COMPLETED' &&
-      fromStatus !== 'COMPLETED' &&
-      flag(devControls, 'saveToDatabase') &&
-      propertyId
-    ) {
-      try {
-        await recordBookingCommissionChargeIfApplicable(
-          updatedBooking as Record<string, unknown>,
-          propertyId
-        );
-      } catch (err) {
-        console.error('[orchestrator] Commission charge recording failed (non-fatal):', err);
-      }
-    }
 
     // ── Auto-advance: PENDING_DOCUMENTS → READY_FOR_CHECKIN ──────────────────
     // When a sub-step is marked complete (document_completion_target) and every

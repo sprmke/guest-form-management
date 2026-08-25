@@ -20,6 +20,12 @@ import { sendOrgTeamInviteEmail } from './orgTeamInviteEmail.ts';
 import { assertAllowedTeamInviteEmail } from './teamInviteEmail.ts';
 import { parseTeamInviteContactFields } from './teamInviteContact.ts';
 import { validatePhilippineMobilePhone } from './fieldValidation.ts';
+import {
+  reconcileTeamSeatsForOrganization,
+  requireOrgTeamInviteAllowed,
+  resolveTeamInviteCapacityForOrg,
+  type TeamInviteCapacity,
+} from './planEntitlements.ts';
 
 export type SerializedOrgTeamMember = {
   id: string;
@@ -34,6 +40,7 @@ export type SerializedOrgTeamMember = {
   lastActive: string | null;
   assignedBy: string;
   isOwner: boolean;
+  planLimited: boolean;
 };
 
 export type SerializedOrgTeamInvitation = {
@@ -133,6 +140,7 @@ function serializeMemberRow(
     lastActive: row.last_active_at ? isoDateOnly(row.last_active_at as string) : null,
     assignedBy: assignedByLabel,
     isOwner,
+    planLimited: row.plan_limited === true,
   };
 }
 
@@ -163,7 +171,15 @@ function serializeVirtualOwnerMember(
     lastActive: null,
     assignedBy: 'System',
     isOwner: true,
+    planLimited: false,
   };
+}
+
+export async function getOrgTeamInviteCapacity(
+  organizationId: string
+): Promise<TeamInviteCapacity> {
+  await reconcileTeamSeatsForOrganization(organizationId);
+  return resolveTeamInviteCapacityForOrg(organizationId);
 }
 
 export async function listOrgTeamMembers(
@@ -310,6 +326,8 @@ export async function createOrgInvitation(
   ctx: OrgTeamAccessContext,
   body: Record<string, unknown>
 ): Promise<SerializedOrgTeamInvitation> {
+  await requireOrgTeamInviteAllowed(ctx.org.id);
+
   const emailRaw = typeof body.email === 'string' ? body.email.trim() : '';
   assertAllowedTeamInviteEmail(emailRaw);
   const email = normalizeInviteEmail(emailRaw);
@@ -586,8 +604,13 @@ export async function updateOrgTeamMember(
 
   if (body.status === 'inactive') {
     patch.status = 'inactive';
+    patch.plan_limited = false;
   } else if (body.status === 'active') {
+    if (existing?.status === 'inactive') {
+      await requireOrgTeamInviteAllowed(ctx.org.id);
+    }
     patch.status = 'active';
+    patch.plan_limited = false;
   }
 
   if (typeof body.displayName === 'string') {

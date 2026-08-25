@@ -1,11 +1,15 @@
 /**
- * Per-property plan assignment and entitlement resolution.
+ * Org-level plan assignment and entitlement resolution.
  * Single source of truth — do not duplicate merge logic at call sites.
+ *
+ * Billing is org-level only: one org_subscriptions row (per-property rate x enrolled property
+ * count, volume-discounted) covers whichever properties are enrolled via
+ * org_subscription_properties. A property outside any live org subscription resolves to Free.
+ * There is no per-property subscription anymore.
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
-import { computeBookingFinancials } from './bookingFinance.ts';
 import {
   isFeatureEnabled,
   mergePlanFeatures,
@@ -16,7 +20,11 @@ import {
 import { jsonUpgradeHook } from './httpResponse.ts';
 import type { TelegramAssetScope } from './telegramAssetScope.ts';
 import { upsertAiPlatformOrgSettings } from './aiUsageService.ts';
-import { discountedPlanPricePhp } from './planPricing.ts';
+import {
+  computeOrgSubscriptionTotalPhp,
+  discountedPlanPricePhp,
+  normalizeVolumeDiscountTiers,
+} from './planPricing.ts';
 import { normalizePermissionIds } from './propertyTeamPermissions.ts';
 
 export class PlanFeatureRequiredError extends Error {
@@ -33,14 +41,12 @@ export class PlanFeatureRequiredError extends Error {
 
 export type PricingModel = 'subscription' | 'commission';
 
-export type PropertySubscriptionRow = {
+export type OrgSubscriptionRow = {
   id: string;
-  propertyId: string;
   organizationId: string;
   planId: string;
   pricingModel: PricingModel;
   pricePhpSnapshot: number | null;
-  commissionRatePercentSnapshot: number | null;
   status: string;
   currentPeriodStart: string | null;
   currentPeriodEnd: string | null;
@@ -55,6 +61,8 @@ export type ResolvedPropertyEntitlements = PlanFeatures & {
   planName: string;
   pricingModel: PricingModel;
   status: string;
+  /** org_subscriptions.id (or '' for the unenrolled/Free fallback) — kept under its original
+   * name since it's a thin passthrough field with no other consumer worth a rename. */
   propertySubscriptionId: string;
   planId: string;
 };
@@ -66,6 +74,9 @@ type PricingPlanRow = {
   pricing_model: string;
   price_php: number | null;
   discount_percent: number | null;
+  volume_discount_tiers: unknown;
+  volume_ramp_floor_php: number | null;
+  volume_ramp_at_count: number | null;
   commission_rate_percent: number | null;
   features: unknown;
   is_default: boolean;
@@ -78,21 +89,16 @@ function db() {
   return createClient(url, key);
 }
 
-function serializeSubscription(
+function serializeOrgSubscription(
   sub: Record<string, unknown>,
   plan: PricingPlanRow
-): PropertySubscriptionRow {
+): OrgSubscriptionRow {
   return {
     id: sub.id as string,
-    propertyId: sub.property_id as string,
     organizationId: sub.organization_id as string,
     planId: sub.plan_id as string,
     pricingModel: sub.pricing_model as PricingModel,
     pricePhpSnapshot: sub.price_php_snapshot == null ? null : Number(sub.price_php_snapshot),
-    commissionRatePercentSnapshot:
-      sub.commission_rate_percent_snapshot == null
-        ? null
-        : Number(sub.commission_rate_percent_snapshot),
     status: String(sub.status ?? 'active'),
     currentPeriodStart: (sub.current_period_start as string | null) ?? null,
     currentPeriodEnd: (sub.current_period_end as string | null) ?? null,
@@ -106,13 +112,14 @@ function serializeSubscription(
   };
 }
 
+const PLAN_SELECT_FIELDS =
+  'id, code, name, pricing_model, price_php, discount_percent, volume_discount_tiers, volume_ramp_floor_php, volume_ramp_at_count, commission_rate_percent, features, is_default';
+
 export async function getDefaultPricingPlan(): Promise<PricingPlanRow> {
   const sb = db();
   const { data, error } = await sb
     .from('pricing_plans')
-    .select(
-      'id, code, name, pricing_model, price_php, discount_percent, commission_rate_percent, features, is_default'
-    )
+    .select(PLAN_SELECT_FIELDS)
     .eq('is_default', true)
     .eq('is_active', true)
     .maybeSingle();
@@ -120,9 +127,7 @@ export async function getDefaultPricingPlan(): Promise<PricingPlanRow> {
   if (!data) {
     const { data: fallback, error: fbError } = await sb
       .from('pricing_plans')
-      .select(
-        'id, code, name, pricing_model, price_php, discount_percent, commission_rate_percent, features, is_default'
-      )
+      .select(PLAN_SELECT_FIELDS)
       .eq('code', 'free')
       .maybeSingle();
     if (fbError) throw new Error(fbError.message);
@@ -132,57 +137,42 @@ export async function getDefaultPricingPlan(): Promise<PricingPlanRow> {
   return data as PricingPlanRow;
 }
 
-export async function getActivePropertySubscription(
-  propertyId: string
-): Promise<PropertySubscriptionRow | null> {
+/** The org's current live subscription (active/trialing/past_due), if any. */
+export async function getActiveOrgSubscription(
+  organizationId: string
+): Promise<OrgSubscriptionRow | null> {
   const sb = db();
   const { data, error } = await sb
-    .from('property_subscriptions')
+    .from('org_subscriptions')
     .select(
       `
       id,
-      property_id,
       organization_id,
       plan_id,
       pricing_model,
       price_php_snapshot,
-      commission_rate_percent_snapshot,
       status,
       current_period_start,
       current_period_end,
       feature_overrides,
-      pricing_plans!inner (
-        id,
-        code,
-        name,
-        pricing_model,
-        price_php,
-        commission_rate_percent,
-        features,
-        is_default
-      )
+      pricing_plans!inner (${PLAN_SELECT_FIELDS})
     `
     )
-    .eq('property_id', propertyId)
+    .eq('organization_id', organizationId)
     .in('status', ['active', 'trialing', 'past_due'])
     .maybeSingle();
-
   if (error) throw new Error(error.message);
   if (!data) return null;
 
   const plan = (data as Record<string, unknown>).pricing_plans as PricingPlanRow;
   const { pricing_plans: _planJoin, ...sub } = data as Record<string, unknown>;
-  return serializeSubscription(sub, plan);
+  return serializeOrgSubscription(sub, plan);
 }
 
-/**
- * Org-level portfolio bundle (Pro/Business/Business Plus) covering this property, if any —
- * see docs/workflow/planned/pricing-portfolio-bundling.md. Checked before the per-property
- * subscription; a property slotted into a live org bundle is entitled from that plan instead.
- */
+/** The live org subscription covering this property, if it's enrolled in one. */
 export async function getActiveOrgSubscriptionForProperty(
   propertyId: string
-): Promise<PropertySubscriptionRow | null> {
+): Promise<OrgSubscriptionRow | null> {
   const sb = db();
 
   const { data: slot, error: slotError } = await sb
@@ -205,16 +195,8 @@ export async function getActiveOrgSubscriptionForProperty(
       status,
       current_period_start,
       current_period_end,
-      pricing_plans!inner (
-        id,
-        code,
-        name,
-        pricing_model,
-        price_php,
-        commission_rate_percent,
-        features,
-        is_default
-      )
+      feature_overrides,
+      pricing_plans!inner (${PLAN_SELECT_FIELDS})
     `
     )
     .eq('id', slot.org_subscription_id as string)
@@ -225,29 +207,64 @@ export async function getActiveOrgSubscriptionForProperty(
 
   const plan = (data as Record<string, unknown>).pricing_plans as PricingPlanRow;
   const { pricing_plans: _planJoin, ...sub } = data as Record<string, unknown>;
-  return { ...serializeSubscription(sub, plan), propertyId };
+  return serializeOrgSubscription(sub, plan);
+}
+
+export type ResolvedOrgEntitlements = ResolvedPropertyEntitlements;
+
+/** Org-wide entitlements — live org subscription features or Free default when none. */
+export async function resolveOrgEntitlements(
+  organizationId: string
+): Promise<ResolvedOrgEntitlements> {
+  const subscription = await getActiveOrgSubscription(organizationId);
+
+  if (!subscription) {
+    const defaultPlan = await getDefaultPricingPlan();
+    const merged = parsePlanFeatures(defaultPlan.features);
+    return {
+      ...merged,
+      planCode: defaultPlan.code,
+      planName: defaultPlan.name,
+      pricingModel: defaultPlan.pricing_model as PricingModel,
+      status: 'active',
+      propertySubscriptionId: '',
+      planId: defaultPlan.id,
+    };
+  }
+
+  const merged = mergePlanFeatures(subscription.planFeatures, subscription.featureOverrides);
+
+  return {
+    ...merged,
+    planCode: subscription.planCode,
+    planName: subscription.planName,
+    pricingModel: subscription.pricingModel,
+    status: subscription.status,
+    propertySubscriptionId: subscription.id,
+    planId: subscription.planId,
+  };
+}
+
+/** True when the org has a live subscription on a paid (non-Free) tier. */
+export async function orgHasLivePaidSubscription(organizationId: string): Promise<boolean> {
+  const subscription = await getActiveOrgSubscription(organizationId);
+  return subscription != null && subscription.planCode !== 'free';
 }
 
 export async function resolvePropertyEntitlements(
   propertyId: string
 ): Promise<ResolvedPropertyEntitlements> {
-  let subscription =
-    (await getActiveOrgSubscriptionForProperty(propertyId)) ??
-    (await getActivePropertySubscription(propertyId));
+  let subscription: OrgSubscriptionRow | null =
+    await getActiveOrgSubscriptionForProperty(propertyId);
 
   if (!subscription) {
     const defaultPlan = await getDefaultPricingPlan();
     subscription = {
       id: '',
-      propertyId,
       organizationId: '',
       planId: defaultPlan.id,
       pricingModel: defaultPlan.pricing_model as PricingModel,
       pricePhpSnapshot: defaultPlan.price_php == null ? null : Number(defaultPlan.price_php),
-      commissionRatePercentSnapshot:
-        defaultPlan.commission_rate_percent == null
-          ? null
-          : Number(defaultPlan.commission_rate_percent),
       status: 'active',
       currentPeriodStart: null,
       currentPeriodEnd: null,
@@ -290,29 +307,103 @@ export function catchPlanFeatureError(req: Request, err: unknown): Response | nu
   return null;
 }
 
-export async function countPropertyTeamSlots(propertyId: string): Promise<number> {
+/**
+ * Every property that shares `propertyId`'s quantity-limited entitlements (team seats,
+ * marketing publish cap) — every property enrolled in the same *live* org subscription, or just
+ * `propertyId` alone if it isn't enrolled in one (its own Free/standalone budget). Mirrors
+ * resolvePropertyEntitlements's own org-subscription-first, Free-fallback resolution exactly, so
+ * "which pool is this property in" never disagrees with "which plan is this property on."
+ */
+async function entitlementPoolPropertyIds(propertyId: string): Promise<string[]> {
   const sb = db();
-  const { count: memberCount, error: memberError } = await sb
-    .from('property_members')
-    .select('id', { count: 'exact', head: true })
+  const { data: slot, error } = await sb
+    .from('org_subscription_properties')
+    .select('org_subscription_id, org_subscriptions!inner(status)')
     .eq('property_id', propertyId)
-    .eq('status', 'active');
-  if (memberError) throw new Error(memberError.message);
+    .in('org_subscriptions.status', ['active', 'trialing', 'past_due'])
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!slot) return [propertyId];
 
-  // Was querying the nonexistent 'property_team_invitations' table (real name:
-  // 'property_invitations'), so this always threw once a plan had a finite maxMembers — every
-  // invite on Free/Starter/etc. errored instead of enforcing the cap.
-  const { count: inviteCount, error: inviteError } = await sb
-    .from('property_invitations')
+  const { data: rows, error: rowsError } = await sb
+    .from('org_subscription_properties')
+    .select('property_id')
+    .eq('org_subscription_id', slot.org_subscription_id as string);
+  if (rowsError) throw new Error(rowsError.message);
+  return (rows ?? []).map((r) => r.property_id as string);
+}
+
+async function countPooledTeamSlots(
+  organizationId: string,
+  poolPropertyIds: string[],
+  ownerId: string
+): Promise<number> {
+  const sb = db();
+
+  let memberCount = 0;
+  let inviteCount = 0;
+  if (poolPropertyIds.length > 0) {
+    const { count: activeMembers, error: memberError } = await sb
+      .from('property_members')
+      .select('id', { count: 'exact', head: true })
+      .in('property_id', poolPropertyIds)
+      .eq('status', 'active');
+    if (memberError) throw new Error(memberError.message);
+    memberCount = activeMembers ?? 0;
+
+    const { count: pendingInvites, error: inviteError } = await sb
+      .from('property_invitations')
+      .select('id', { count: 'exact', head: true })
+      .in('property_id', poolPropertyIds)
+      .eq('status', 'pending');
+    if (inviteError) throw new Error(inviteError.message);
+    inviteCount = pendingInvites ?? 0;
+  }
+
+  const { count: orgAdminCount, error: orgAdminError } = await sb
+    .from('organization_members')
     .select('id', { count: 'exact', head: true })
-    .eq('property_id', propertyId)
+    .eq('organization_id', organizationId)
+    .eq('status', 'active')
+    .eq('role_id', 'ADMIN')
+    .neq('user_id', ownerId);
+  if (orgAdminError) throw new Error(orgAdminError.message);
+
+  const { count: orgInviteCount, error: orgInviteError } = await sb
+    .from('organization_invitations')
+    .select('id', { count: 'exact', head: true })
+    .eq('organization_id', organizationId)
     .eq('status', 'pending');
-  if (inviteError) throw new Error(inviteError.message);
+  if (orgInviteError) throw new Error(orgInviteError.message);
 
-  // The owner (and any org-level admins with implicit full property access) never get a
-  // property_members row but still occupy a seat — the client's countPropertyTeamSlotsUsed
-  // counts them via listPropertyTeamMembers' virtual entries. Match that here so a request that
-  // reaches the server isn't allowed to invite past what the client already blocked.
+  const ownerSlot = 1;
+  return ownerSlot + (orgAdminCount ?? 0) + (orgInviteCount ?? 0) + memberCount + inviteCount;
+}
+
+/** Org-wide pooled team-seat count — every property in the org plus org-level members/invites. */
+export async function countOrgWideTeamSlots(organizationId: string): Promise<number> {
+  const sb = db();
+  const { data: org, error: orgError } = await sb
+    .from('organizations')
+    .select('owner_id')
+    .eq('id', organizationId)
+    .maybeSingle();
+  if (orgError) throw new Error(orgError.message);
+  if (!org) return 0;
+
+  const { data: properties, error } = await sb
+    .from('properties')
+    .select('id')
+    .eq('organization_id', organizationId);
+  if (error) throw new Error(error.message);
+  const propertyIds = (properties ?? []).map((row) => row.id as string);
+  return countPooledTeamSlots(organizationId, propertyIds, org.owner_id as string);
+}
+
+export async function countOrgTeamSlots(propertyId: string): Promise<number> {
+  const sb = db();
+  const poolPropertyIds = await entitlementPoolPropertyIds(propertyId);
+
   const { data: property, error: propertyError } = await sb
     .from('properties')
     .select('organization_id')
@@ -321,19 +412,192 @@ export async function countPropertyTeamSlots(propertyId: string): Promise<number
   if (propertyError) throw new Error(propertyError.message);
   if (!property) throw new Error('Property not found');
 
-  const { count: orgAdminCount, error: orgAdminError } = await sb
-    .from('organization_members')
-    .select('id', { count: 'exact', head: true })
-    .eq('organization_id', property.organization_id as string)
-    .eq('status', 'active')
-    .eq('role_id', 'ADMIN');
-  if (orgAdminError) throw new Error(orgAdminError.message);
+  const { data: org, error: orgError } = await sb
+    .from('organizations')
+    .select('owner_id')
+    .eq('id', property.organization_id as string)
+    .maybeSingle();
+  if (orgError) throw new Error(orgError.message);
+  if (!org) throw new Error('Organization not found');
 
-  const ownerSlot = 1;
-  return ownerSlot + (orgAdminCount ?? 0) + (memberCount ?? 0) + (inviteCount ?? 0);
+  return countPooledTeamSlots(
+    property.organization_id as string,
+    poolPropertyIds,
+    org.owner_id as string
+  );
 }
 
-/** Blocks invite when team management is off or maxMembers is reached. */
+export type TeamInviteCapacity = {
+  slotsUsed: number;
+  maxMembers: number | null;
+  teamManagementEnabled: boolean;
+  canInvite: boolean;
+};
+
+export async function resolveTeamInviteCapacityForOrg(
+  organizationId: string
+): Promise<TeamInviteCapacity> {
+  const entitlements = await resolveOrgEntitlements(organizationId);
+  const enabled = entitlements.teamManagement.enabled;
+  const max = enabled ? entitlements.teamManagement.maxMembers : 0;
+  const used = await countOrgWideTeamSlots(organizationId);
+  const canInvite = enabled && (max === null || used < max);
+  return {
+    slotsUsed: used,
+    maxMembers: max,
+    teamManagementEnabled: enabled,
+    canInvite,
+  };
+}
+
+type OrgAdminSeatReconciliation = {
+  budget: number | null;
+  activeCount: number;
+  deactivatedMemberIds: string[];
+  reactivatedMemberIds: string[];
+};
+
+async function reconcileOrgAdminSeats(
+  organizationId: string,
+  entitlements: ResolvedOrgEntitlements
+): Promise<OrgAdminSeatReconciliation> {
+  const sb = db();
+  const maxMembers = entitlements.teamManagement.enabled
+    ? entitlements.teamManagement.maxMembers
+    : 0;
+
+  const result: OrgAdminSeatReconciliation = {
+    budget: null,
+    activeCount: 0,
+    deactivatedMemberIds: [],
+    reactivatedMemberIds: [],
+  };
+
+  const { data: org, error: orgError } = await sb
+    .from('organizations')
+    .select('owner_id')
+    .eq('id', organizationId)
+    .maybeSingle();
+  if (orgError) throw new Error(orgError.message);
+  if (!org) return result;
+  const ownerId = org.owner_id as string;
+
+  const { data: properties, error: propsError } = await sb
+    .from('properties')
+    .select('id')
+    .eq('organization_id', organizationId);
+  if (propsError) throw new Error(propsError.message);
+  const propertyIds = (properties ?? []).map((row) => row.id as string);
+
+  let propertyActive = 0;
+  let propertyPending = 0;
+  if (propertyIds.length > 0) {
+    const { count: activeCount, error: memberError } = await sb
+      .from('property_members')
+      .select('id', { count: 'exact', head: true })
+      .in('property_id', propertyIds)
+      .eq('status', 'active');
+    if (memberError) throw new Error(memberError.message);
+    propertyActive = activeCount ?? 0;
+
+    const { count: pendingCount, error: inviteError } = await sb
+      .from('property_invitations')
+      .select('id', { count: 'exact', head: true })
+      .in('property_id', propertyIds)
+      .eq('status', 'pending');
+    if (inviteError) throw new Error(inviteError.message);
+    propertyPending = pendingCount ?? 0;
+  }
+
+  const { count: orgPending, error: orgInviteError } = await sb
+    .from('organization_invitations')
+    .select('id', { count: 'exact', head: true })
+    .eq('organization_id', organizationId)
+    .eq('status', 'pending');
+  if (orgInviteError) throw new Error(orgInviteError.message);
+
+  let budget: number | null = null;
+  if (maxMembers !== null) {
+    budget = Math.max(0, maxMembers - 1 - propertyActive - propertyPending - (orgPending ?? 0));
+  }
+  result.budget = budget;
+
+  const { data: rows, error: rowsError } = await sb
+    .from('organization_members')
+    .select('id, user_id, status, plan_limited, assigned_at')
+    .eq('organization_id', organizationId)
+    .neq('user_id', ownerId)
+    .order('assigned_at', { ascending: true });
+  if (rowsError) throw new Error(rowsError.message);
+  const members = rows ?? [];
+
+  const active = members.filter((m) => m.status === 'active');
+  result.activeCount = active.length;
+
+  if (budget === null) {
+    const toRestore = members.filter((m) => m.status === 'inactive' && m.plan_limited === true);
+    for (const m of toRestore) {
+      const { error } = await sb
+        .from('organization_members')
+        .update({ status: 'active', plan_limited: false })
+        .eq('id', m.id as string);
+      if (error) throw new Error(error.message);
+      result.reactivatedMemberIds.push(m.id as string);
+    }
+    return result;
+  }
+
+  if (active.length > budget) {
+    const overBy = active.length - budget;
+    const toDeactivate = active.slice(active.length - overBy);
+    for (const m of toDeactivate) {
+      const { error } = await sb
+        .from('organization_members')
+        .update({ status: 'inactive', plan_limited: true })
+        .eq('id', m.id as string);
+      if (error) throw new Error(error.message);
+      result.deactivatedMemberIds.push(m.id as string);
+    }
+    result.activeCount = budget;
+  } else if (active.length < budget) {
+    const room = budget - active.length;
+    const restorable = members
+      .filter((m) => m.status === 'inactive' && m.plan_limited === true)
+      .slice(0, room);
+    for (const m of restorable) {
+      const { error } = await sb
+        .from('organization_members')
+        .update({ status: 'active', plan_limited: false })
+        .eq('id', m.id as string);
+      if (error) throw new Error(error.message);
+      result.reactivatedMemberIds.push(m.id as string);
+    }
+    result.activeCount = active.length + restorable.length;
+  }
+
+  return result;
+}
+
+/** Reconcile org admins + property pool seats for an org (no-op when the org has no properties). */
+export async function reconcileTeamSeatsForOrganization(organizationId: string): Promise<void> {
+  const sb = db();
+  const { data: property, error } = await sb
+    .from('properties')
+    .select('id')
+    .eq('organization_id', organizationId)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (property?.id) {
+    await reconcileTeamSeatsForProperty(property.id as string);
+    return;
+  }
+  const entitlements = await resolveOrgEntitlements(organizationId);
+  await reconcileOrgAdminSeats(organizationId, entitlements);
+}
+
+/** Blocks invite when team management is off or the pool's maxMembers is reached. */
 export async function requireTeamInviteAllowed(
   propertyId: string
 ): Promise<ResolvedPropertyEntitlements> {
@@ -344,7 +608,27 @@ export async function requireTeamInviteAllowed(
 
   const max = entitlements.teamManagement.maxMembers;
   if (max !== null && max >= 0) {
-    const count = await countPropertyTeamSlots(propertyId);
+    const count = await countOrgTeamSlots(propertyId);
+    if (count >= max) {
+      throw new PlanFeatureRequiredError('teamManagement', `Team member limit reached (${max})`);
+    }
+  }
+
+  return entitlements;
+}
+
+/** Blocks org-level invite when team management is off or the org-wide pool maxMembers is reached. */
+export async function requireOrgTeamInviteAllowed(
+  organizationId: string
+): Promise<ResolvedOrgEntitlements> {
+  const entitlements = await resolveOrgEntitlements(organizationId);
+  if (!entitlements.teamManagement.enabled) {
+    throw new PlanFeatureRequiredError('teamManagement');
+  }
+
+  const max = entitlements.teamManagement.maxMembers;
+  if (max !== null && max >= 0) {
+    const count = await countOrgWideTeamSlots(organizationId);
     if (count >= max) {
       throw new PlanFeatureRequiredError('teamManagement', `Team member limit reached (${max})`);
     }
@@ -362,21 +646,23 @@ export type TeamSeatReconciliation = {
 };
 
 /**
- * Keeps property_members in sync with the property's *current* team-seat entitlement after any
- * event that can change it — a plan switch (up or down), a subscription lapsing to suspended, an
- * org-bundle slot/unslot, or an invite accepted while already at the cap. Never deletes a row:
- * over budget, the newest active members are switched to inactive with plan_limited=true (their
- * permissions stashed in saved_permissions, same shape a manual deactivate already uses); once
- * budget frees up — a later upgrade, or an admin manually deactivating someone else first — the
- * longest-waiting plan_limited members are restored automatically, oldest first. A manual
- * deactivation (plan_limited stays false) is never touched by this function; only seats this
- * function itself took away get auto-restored.
+ * Keeps property_members in sync with the *current*, org-wide-pooled team-seat entitlement
+ * shared by every property enrolled in the same live org subscription as `propertyId` (or just
+ * `propertyId` alone if unenrolled) — after any event that can change it: a plan switch, adding
+ * or removing an enrolled property, a subscription lapsing to suspended, or an invite accepted
+ * while already at the cap. Never deletes a row: over budget, the newest-assigned active members
+ * across the *whole pool* are switched to inactive with plan_limited=true (permissions stashed in
+ * saved_permissions, same shape a manual deactivate already uses); once budget frees up — a later
+ * upgrade, another property leaving the pool, or an admin manually deactivating someone else
+ * first — the longest-waiting plan_limited members are restored automatically, oldest first. A
+ * manual deactivation (plan_limited stays false) is never touched by this function; only seats it
+ * took away itself get auto-restored.
  *
  * Deliberately does not enforce assertNotLastPropertyTeamManager's "keep one manager" rule — the
  * seat cap is a hard constraint that must hold regardless, and the org owner (never a
  * property_members row, always full permissions) is the permanent fallback manager.
  */
-export async function reconcilePropertyTeamSeats(
+export async function reconcileTeamSeatsForProperty(
   propertyId: string
 ): Promise<TeamSeatReconciliation> {
   const sb = db();
@@ -400,16 +686,31 @@ export async function reconcilePropertyTeamSeats(
   if (propertyError) throw new Error(propertyError.message);
   if (!property) return result;
 
+  const organizationId = property.organization_id as string;
+  const orgEntitlements = await resolveOrgEntitlements(organizationId);
+  await reconcileOrgAdminSeats(organizationId, orgEntitlements);
+
+  const { data: org, error: orgError } = await sb
+    .from('organizations')
+    .select('owner_id')
+    .eq('id', organizationId)
+    .maybeSingle();
+  if (orgError) throw new Error(orgError.message);
+  const ownerId = (org?.owner_id as string | undefined) ?? '';
+
+  const poolPropertyIds = await entitlementPoolPropertyIds(propertyId);
+
   let budget: number | null = null;
   if (maxMembers !== null) {
     const { count: orgAdminCount, error: orgAdminError } = await sb
       .from('organization_members')
       .select('id', { count: 'exact', head: true })
-      .eq('organization_id', property.organization_id as string)
+      .eq('organization_id', organizationId)
       .eq('status', 'active')
-      .eq('role_id', 'ADMIN');
+      .eq('role_id', 'ADMIN')
+      .neq('user_id', ownerId);
     if (orgAdminError) throw new Error(orgAdminError.message);
-    const virtualSlotsUsed = 1 + (orgAdminCount ?? 0); // owner + org-level admins
+    const virtualSlotsUsed = 1 + (orgAdminCount ?? 0);
     budget = Math.max(0, maxMembers - virtualSlotsUsed);
   }
   result.budget = budget;
@@ -417,7 +718,7 @@ export async function reconcilePropertyTeamSeats(
   const { data: rows, error: rowsError } = await sb
     .from('property_members')
     .select('id, status, plan_limited, permissions, saved_permissions')
-    .eq('property_id', propertyId)
+    .in('property_id', poolPropertyIds)
     .order('assigned_at', { ascending: true });
   if (rowsError) throw new Error(rowsError.message);
   const members = rows ?? [];
@@ -493,10 +794,10 @@ export async function requireTelegramNotificationsEnabled(propertyId: string): P
 async function firstActivePropertyIdForOrg(orgId: string): Promise<string | null> {
   const sb = db();
 
-  // Prefer a property already covered by a live org portfolio bundle — resolving entitlements
-  // from it (via resolvePropertyEntitlements' org-bundle-first check) gives parking the org's
-  // real bundled plan instead of falling through to whatever an unrelated property happens to
-  // have. Closes part of the PARKING_INTERIM_UNGATED_FEATURES carve-out (see plans-feature-matrix.md).
+  // Prefer a property already covered by a live org subscription — resolving entitlements from
+  // it gives parking the org's real plan instead of falling through to whatever an unrelated
+  // property happens to have. Closes part of the PARKING_INTERIM_UNGATED_FEATURES carve-out (see
+  // plans-feature-matrix.md).
   const { data: bundled, error: bundledError } = await sb
     .from('org_subscription_properties')
     .select('property_id, org_subscriptions!inner (organization_id, status)')
@@ -520,7 +821,7 @@ async function firstActivePropertyIdForOrg(orgId: string): Promise<string | null
 }
 
 /** Property-scoped Telegram uses the property id; parking uses the org's first active property
- * (preferring one covered by a live org portfolio bundle, if any — see above). */
+ * (preferring one covered by a live org subscription, if any — see above). */
 export async function resolveTelegramEntitlementPropertyId(
   asset: TelegramAssetScope
 ): Promise<string> {
@@ -632,30 +933,6 @@ async function syncAiCreditsFromPlan(
   });
 }
 
-async function writeSubscriptionEvent(input: {
-  propertySubscriptionId: string;
-  eventType: 'assigned' | 'plan_changed' | 'status_changed' | 'override_set';
-  previousPlanId?: string | null;
-  newPlanId?: string | null;
-  previousStatus?: string | null;
-  newStatus?: string | null;
-  note?: string | null;
-  createdBy?: string | null;
-}): Promise<void> {
-  const sb = db();
-  const { error } = await sb.from('property_subscription_events').insert({
-    property_subscription_id: input.propertySubscriptionId,
-    event_type: input.eventType,
-    previous_plan_id: input.previousPlanId ?? null,
-    new_plan_id: input.newPlanId ?? null,
-    previous_status: input.previousStatus ?? null,
-    new_status: input.newStatus ?? null,
-    note: input.note ?? null,
-    created_by: input.createdBy ?? null,
-  });
-  if (error) throw new Error(error.message);
-}
-
 async function writeOrgSubscriptionEvent(input: {
   orgSubscriptionId: string;
   eventType: 'assigned' | 'plan_changed' | 'status_changed' | 'property_added' | 'property_removed';
@@ -682,178 +959,39 @@ async function writeOrgSubscriptionEvent(input: {
   if (error) throw new Error(error.message);
 }
 
-export async function assignPropertyToPlan(
-  propertyId: string,
-  planId: string,
-  assignedBy: string | null,
-  options?: { featureOverrides?: Record<string, unknown> | null; note?: string | null }
-): Promise<PropertySubscriptionRow> {
+type OrgEligiblePlanRow = PricingPlanRow;
+
+async function loadOrgEligiblePlan(planId: string): Promise<OrgEligiblePlanRow> {
   const sb = db();
-
-  const { data: property, error: propertyError } = await sb
-    .from('properties')
-    .select('id, organization_id')
-    .eq('id', propertyId)
-    .maybeSingle();
-  if (propertyError) throw new Error(propertyError.message);
-  if (!property) throw new Error('Property not found');
-
-  const organizationId = property.organization_id as string;
-
   const { data: plan, error: planError } = await sb
     .from('pricing_plans')
-    .select(
-      'id, code, name, pricing_model, price_php, discount_percent, commission_rate_percent, features, is_default'
-    )
+    .select(PLAN_SELECT_FIELDS)
     .eq('id', planId)
     .eq('is_active', true)
     .maybeSingle();
   if (planError) throw new Error(planError.message);
   if (!plan) throw new Error('Pricing plan not found or inactive');
-  if (plan.code === 'business_plus') {
-    throw new Error('Business Plus is only available through org portfolio bundling');
-  }
   if (plan.pricing_model === 'commission') {
     throw new Error('Commission pricing is not available');
   }
+  return plan as OrgEligiblePlanRow;
+}
 
-  const planRow = plan as PricingPlanRow;
-  const features = parsePlanFeatures(planRow.features);
-
-  const existing = await getActivePropertySubscription(propertyId);
-  let existingRow = existing;
-
-  if (!existingRow) {
-    const { data: suspendedRow, error: suspendedError } = await sb
-      .from('property_subscriptions')
-      .select(
-        `
-        id,
-        property_id,
-        organization_id,
-        plan_id,
-        pricing_model,
-        price_php_snapshot,
-        commission_rate_percent_snapshot,
-        status,
-        current_period_start,
-        current_period_end,
-        feature_overrides,
-        pricing_plans!inner (
-          id,
-          code,
-          name,
-          pricing_model,
-          price_php,
-          discount_percent,
-          commission_rate_percent,
-          features,
-          is_default
-        )
-      `
-      )
-      .eq('property_id', propertyId)
-      .eq('status', 'suspended')
-      .maybeSingle();
-    if (suspendedError) throw new Error(suspendedError.message);
-    if (suspendedRow) {
-      const planJoin = (suspendedRow as Record<string, unknown>).pricing_plans as PricingPlanRow;
-      const { pricing_plans: _p, ...sub } = suspendedRow as Record<string, unknown>;
-      existingRow = serializeSubscription(sub, planJoin);
+function orgSubscriptionTotalForPlan(plan: OrgEligiblePlanRow, propertyCount: number): number {
+  const ratePhp = discountedPlanPricePhp(plan.price_php, plan.discount_percent);
+  return computeOrgSubscriptionTotalPhp(
+    ratePhp,
+    normalizeVolumeDiscountTiers(plan.volume_discount_tiers),
+    propertyCount,
+    {
+      volumeRampFloorPhp: plan.volume_ramp_floor_php,
+      volumeRampAtCount: plan.volume_ramp_at_count,
     }
-  }
-
-  const checkoutPricePhp = discountedPlanPricePhp(planRow.price_php, planRow.discount_percent);
-
-  const row = {
-    property_id: propertyId,
-    organization_id: organizationId,
-    plan_id: planId,
-    pricing_model: planRow.pricing_model,
-    price_php_snapshot: checkoutPricePhp,
-    commission_rate_percent_snapshot: planRow.commission_rate_percent,
-    status: 'active' as const,
-    feature_overrides: options?.featureOverrides ?? existingRow?.featureOverrides ?? null,
-  };
-
-  let subscriptionId: string;
-
-  if (existingRow) {
-    const { data: updated, error: updateError } = await sb
-      .from('property_subscriptions')
-      .update(row)
-      .eq('id', existingRow.id)
-      .select('*')
-      .single();
-    if (updateError) throw new Error(updateError.message);
-    subscriptionId = updated.id as string;
-
-    await writeSubscriptionEvent({
-      propertySubscriptionId: subscriptionId,
-      eventType: existingRow.planId === planId ? 'override_set' : 'plan_changed',
-      previousPlanId: existingRow.planId,
-      newPlanId: planId,
-      previousStatus: existingRow.status,
-      newStatus: 'active',
-      note: options?.note ?? null,
-      createdBy: assignedBy,
-    });
-  } else {
-    const { data: inserted, error: insertError } = await sb
-      .from('property_subscriptions')
-      .insert(row)
-      .select('*')
-      .single();
-    if (insertError) throw new Error(insertError.message);
-    subscriptionId = inserted.id as string;
-
-    await writeSubscriptionEvent({
-      propertySubscriptionId: subscriptionId,
-      eventType: 'assigned',
-      newPlanId: planId,
-      newStatus: 'active',
-      note: options?.note ?? null,
-      createdBy: assignedBy,
-    });
-  }
-
-  await syncAiCreditsFromPlan(
-    organizationId,
-    planRow.code,
-    features.aiMonthlyCreditAllowance,
-    assignedBy ?? 'system'
   );
-  await reconcilePropertyTeamSeats(propertyId);
-
-  const result = await getActivePropertySubscription(propertyId);
-  if (!result) throw new Error('Failed to load property subscription after assign');
-  return result;
 }
 
-type OrgBundlePlanRow = PricingPlanRow & {
-  discount_percent: number | null;
-  max_properties: number | null;
-};
-
-async function loadOrgBundlePlan(planId: string): Promise<OrgBundlePlanRow> {
-  const sb = db();
-  const { data: plan, error: planError } = await sb
-    .from('pricing_plans')
-    .select(
-      'id, code, name, pricing_model, price_php, discount_percent, commission_rate_percent, features, is_default, max_properties'
-    )
-    .eq('id', planId)
-    .eq('is_active', true)
-    .maybeSingle();
-  if (planError) throw new Error(planError.message);
-  if (!plan) throw new Error('Pricing plan not found or inactive');
-  if (plan.max_properties == null) {
-    throw new Error('This plan is not org-bundle-eligible');
-  }
-  return plan as OrgBundlePlanRow;
-}
-
-/** Creates a new org portfolio subscription and slots the given properties into it. */
+/** Creates a new org subscription and slots the given properties into it. No property-count cap
+ * — price scales with volume-discounted rate x count (see orgSubscriptionTotalForPlan). */
 export async function createOrgSubscription(
   organizationId: string,
   planId: string,
@@ -861,14 +999,9 @@ export async function createOrgSubscription(
   assignedBy: string | null
 ): Promise<{ orgSubscriptionId: string }> {
   const sb = db();
-  const plan = await loadOrgBundlePlan(planId);
-  const maxProperties = plan.max_properties as number;
+  const plan = await loadOrgEligiblePlan(planId);
 
   if (propertyIds.length === 0) throw new Error('Select at least one property');
-  if (propertyIds.length > maxProperties) {
-    throw new Error(`This plan covers up to ${maxProperties} properties`);
-  }
-
   const uniquePropertyIds = Array.from(new Set(propertyIds));
 
   const { data: properties, error: propError } = await sb
@@ -889,7 +1022,7 @@ export async function createOrgSubscription(
     .in('property_id', uniquePropertyIds);
   if (slotError) throw new Error(slotError.message);
   if (existingSlots && existingSlots.length > 0) {
-    throw new Error('One or more properties are already covered by a portfolio subscription');
+    throw new Error('One or more properties are already covered by an org subscription');
   }
 
   const { data: existingOrgSub, error: existingOrgSubError } = await sb
@@ -900,10 +1033,12 @@ export async function createOrgSubscription(
     .maybeSingle();
   if (existingOrgSubError) throw new Error(existingOrgSubError.message);
   if (existingOrgSub) {
-    throw new Error('This organization already has an active portfolio subscription');
+    throw new Error(
+      'This organization already has an active subscription — use changeOrgSubscription instead'
+    );
   }
 
-  const checkoutPricePhp = discountedPlanPricePhp(plan.price_php, plan.discount_percent);
+  const totalPricePhp = orgSubscriptionTotalForPlan(plan, uniquePropertyIds.length);
 
   const { data: inserted, error: insertError } = await sb
     .from('org_subscriptions')
@@ -911,8 +1046,7 @@ export async function createOrgSubscription(
       organization_id: organizationId,
       plan_id: planId,
       pricing_model: 'subscription',
-      price_php_snapshot: checkoutPricePhp,
-      max_properties_snapshot: maxProperties,
+      price_php_snapshot: totalPricePhp,
       status: 'active',
     })
     .select('id')
@@ -925,7 +1059,7 @@ export async function createOrgSubscription(
   // existingSlots check above and this loop — the DB unique index rejects it, this doesn't
   // silently corrupt state, but does throw) must not leave a live `active` org_subscriptions row
   // covering fewer properties than were paid for. Clean up on any failure here so the caller sees
-  // one clear error instead of an orphaned, half-slotted bundle.
+  // one clear error instead of an orphaned, half-slotted subscription.
   try {
     await writeOrgSubscriptionEvent({
       orgSubscriptionId,
@@ -957,9 +1091,8 @@ export async function createOrgSubscription(
       features.aiMonthlyCreditAllowance,
       assignedBy ?? 'system'
     );
-    for (const propertyId of uniquePropertyIds) {
-      await reconcilePropertyTeamSeats(propertyId);
-    }
+    // Every property just slotted shares one pool — one reconciliation call covers all of them.
+    await reconcileTeamSeatsForProperty(uniquePropertyIds[0]);
   } catch (err) {
     // org_subscription_properties/org_subscription_events cascade-delete via FK (ON DELETE CASCADE).
     await sb.from('org_subscriptions').delete().eq('id', orgSubscriptionId);
@@ -969,7 +1102,35 @@ export async function createOrgSubscription(
   return { orgSubscriptionId };
 }
 
-/** Adds one more property to an existing live org portfolio subscription, enforcing its cap. */
+/** Adds a newly created property to the org's live subscription, if any. */
+export async function autoEnrollPropertyInOrgSubscription(
+  organizationId: string,
+  propertyId: string,
+  assignedBy: string | null
+): Promise<void> {
+  const sb = db();
+  const { data: liveSub, error: liveSubError } = await sb
+    .from('org_subscriptions')
+    .select('id')
+    .eq('organization_id', organizationId)
+    .in('status', ['active', 'trialing', 'past_due'])
+    .maybeSingle();
+  if (liveSubError) throw new Error(liveSubError.message);
+  if (!liveSub) return;
+
+  const { data: existingSlot, error: slotError } = await sb
+    .from('org_subscription_properties')
+    .select('property_id')
+    .eq('property_id', propertyId)
+    .maybeSingle();
+  if (slotError) throw new Error(slotError.message);
+  if (existingSlot) return;
+
+  await assignPropertyToOrgSubscription(liveSub.id as string, propertyId, assignedBy);
+}
+
+/** Adds one more property to an existing live org subscription and recomputes the total price
+ * for the new property count. No cap — see createOrgSubscription. */
 export async function assignPropertyToOrgSubscription(
   orgSubscriptionId: string,
   propertyId: string,
@@ -979,7 +1140,7 @@ export async function assignPropertyToOrgSubscription(
 
   const { data: orgSub, error: orgSubError } = await sb
     .from('org_subscriptions')
-    .select('id, organization_id, max_properties_snapshot')
+    .select('id, organization_id, plan_id')
     .eq('id', orgSubscriptionId)
     .in('status', ['active', 'trialing', 'past_due'])
     .maybeSingle();
@@ -1003,18 +1164,7 @@ export async function assignPropertyToOrgSubscription(
     .eq('property_id', propertyId)
     .maybeSingle();
   if (slotError) throw new Error(slotError.message);
-  if (existingSlot) throw new Error('Property is already covered by a portfolio subscription');
-
-  const { count, error: countError } = await sb
-    .from('org_subscription_properties')
-    .select('id', { count: 'exact', head: true })
-    .eq('org_subscription_id', orgSubscriptionId);
-  if (countError) throw new Error(countError.message);
-  if ((count ?? 0) >= (orgSub.max_properties_snapshot as number)) {
-    throw new Error(
-      `This plan covers up to ${orgSub.max_properties_snapshot as number} properties`
-    );
-  }
+  if (existingSlot) throw new Error('Property is already covered by an org subscription');
 
   const { error: insertError } = await sb.from('org_subscription_properties').insert({
     org_subscription_id: orgSubscriptionId,
@@ -1023,17 +1173,32 @@ export async function assignPropertyToOrgSubscription(
   });
   if (insertError) throw new Error(insertError.message);
 
+  const { count: newCount, error: countError } = await sb
+    .from('org_subscription_properties')
+    .select('id', { count: 'exact', head: true })
+    .eq('org_subscription_id', orgSubscriptionId);
+  if (countError) throw new Error(countError.message);
+
+  const plan = await loadOrgEligiblePlan(orgSub.plan_id as string);
+  const totalPricePhp = orgSubscriptionTotalForPlan(plan, newCount ?? 0);
+  const { error: updateError } = await sb
+    .from('org_subscriptions')
+    .update({ price_php_snapshot: totalPricePhp })
+    .eq('id', orgSubscriptionId);
+  if (updateError) throw new Error(updateError.message);
+
   await writeOrgSubscriptionEvent({
     orgSubscriptionId,
     eventType: 'property_added',
     propertyId,
     createdBy: assignedBy,
   });
-  await reconcilePropertyTeamSeats(propertyId);
+  await reconcileTeamSeatsForProperty(propertyId);
 }
 
-/** Removes a property from its org portfolio subscription — falls back to Free (or its own
- * independent plan) via the usual resolvePropertyEntitlements fallback, same as the plan doc. */
+/** Removes a property from its org subscription and recomputes the total price for the
+ * remaining property count — falls back to Free for the removed property via the usual
+ * resolvePropertyEntitlements fallback. */
 export async function removePropertyFromOrgSubscription(
   propertyId: string,
   removedBy: string | null
@@ -1048,86 +1213,196 @@ export async function removePropertyFromOrgSubscription(
   if (slotError) throw new Error(slotError.message);
   if (!slot) return;
 
+  const orgSubscriptionId = slot.org_subscription_id as string;
+
   const { error: deleteError } = await sb
     .from('org_subscription_properties')
     .delete()
     .eq('id', slot.id as string);
   if (deleteError) throw new Error(deleteError.message);
 
+  const { data: remaining, error: remainingError } = await sb
+    .from('org_subscription_properties')
+    .select('property_id')
+    .eq('org_subscription_id', orgSubscriptionId);
+  if (remainingError) throw new Error(remainingError.message);
+
+  const { data: orgSub, error: orgSubError } = await sb
+    .from('org_subscriptions')
+    .select('plan_id')
+    .eq('id', orgSubscriptionId)
+    .maybeSingle();
+  if (orgSubError) throw new Error(orgSubError.message);
+  if (orgSub) {
+    // Recompute even for a now-suspended/canceled subscription's price_php_snapshot — harmless,
+    // and keeps the stored total consistent if it's ever reactivated without a fresh checkout.
+    const plan = await loadOrgEligiblePlan(orgSub.plan_id as string);
+    const totalPricePhp = orgSubscriptionTotalForPlan(plan, remaining?.length ?? 0);
+    const { error: updateError } = await sb
+      .from('org_subscriptions')
+      .update({ price_php_snapshot: totalPricePhp })
+      .eq('id', orgSubscriptionId);
+    if (updateError) throw new Error(updateError.message);
+  }
+
   await writeOrgSubscriptionEvent({
-    orgSubscriptionId: slot.org_subscription_id as string,
+    orgSubscriptionId,
     eventType: 'property_removed',
     propertyId,
     createdBy: removedBy,
   });
-  await reconcilePropertyTeamSeats(propertyId);
+
+  // Reconcile the removed property standalone (its pool is now just itself, against Free)...
+  await reconcileTeamSeatsForProperty(propertyId);
+  // ...and reconcile one remaining pool member, if any, since the shrunk pool may now have
+  // headroom to auto-restore a previously plan-limited member on those properties.
+  const stillEnrolled = (remaining ?? []).find((r) => r.property_id !== propertyId);
+  if (stillEnrolled) {
+    await reconcileTeamSeatsForProperty(stillEnrolled.property_id as string);
+  }
 }
 
-export async function ensurePropertyDefaultPlan(
-  propertyId: string,
-  assignedBy: string
-): Promise<PropertySubscriptionRow | null> {
-  const existing = await getActivePropertySubscription(propertyId);
-  if (existing) return existing;
-
-  const defaultPlan = await getDefaultPricingPlan();
-  return assignPropertyToPlan(propertyId, defaultPlan.id, assignedBy, {
-    note: 'Auto-assigned default plan on property creation',
-  });
-}
-
-export async function recordBookingCommissionChargeIfApplicable(
-  booking: Record<string, unknown>,
-  propertyId: string
+/** Changes an already-active org subscription's plan and/or enrolled property set in one write —
+ * the mid-cycle "add/remove properties and/or switch tiers" path (as opposed to
+ * createOrgSubscription's first-purchase-only path). Diffs org_subscription_properties, updates
+ * plan_id/price_php_snapshot, and reconciles pooled team seats once for the changed pool. Pricing
+ * (proration/credit for the change) is computed by the caller (checkout) — this function just
+ * records the resulting state and the new authoritative total. */
+export async function changeOrgSubscription(
+  orgSubscriptionId: string,
+  newPlanId: string,
+  newPropertyIds: string[],
+  changedBy: string | null
 ): Promise<void> {
-  const subscription = await getActivePropertySubscription(propertyId);
-  if (!subscription || subscription.pricingModel !== 'commission') return;
-
-  const rate = subscription.commissionRatePercentSnapshot;
-  if (rate == null || rate <= 0) return;
-
-  const bookingId = String(booking.id ?? '');
-  if (!bookingId) return;
-
   const sb = db();
-  const { data: existing } = await sb
-    .from('booking_commission_charges')
-    .select('id')
-    .eq('booking_id', bookingId)
+
+  const { data: orgSub, error: orgSubError } = await sb
+    .from('org_subscriptions')
+    .select('id, organization_id, plan_id')
+    .eq('id', orgSubscriptionId)
+    .in('status', ['active', 'trialing', 'past_due'])
     .maybeSingle();
-  if (existing) return;
+  if (orgSubError) throw new Error(orgSubError.message);
+  if (!orgSub) throw new Error('Org subscription not found or not active');
 
-  const financials = computeBookingFinancials(booking);
-  const bookingRevenue = financials.hostNet;
-  if (!Number.isFinite(bookingRevenue) || bookingRevenue <= 0) return;
+  const organizationId = orgSub.organization_id as string;
+  const uniquePropertyIds = Array.from(new Set(newPropertyIds));
+  if (uniquePropertyIds.length === 0) throw new Error('Select at least one property');
 
-  const commissionAmount = Math.round(((bookingRevenue * rate) / 100) * 100) / 100;
+  const { data: properties, error: propError } = await sb
+    .from('properties')
+    .select('id, organization_id')
+    .in('id', uniquePropertyIds);
+  if (propError) throw new Error(propError.message);
+  if (!properties || properties.length !== uniquePropertyIds.length) {
+    throw new Error('One or more properties not found');
+  }
+  if (properties.some((p) => (p.organization_id as string) !== organizationId)) {
+    throw new Error('All properties must belong to this organization');
+  }
 
-  const { error } = await sb.from('booking_commission_charges').insert({
-    booking_id: bookingId,
-    property_id: propertyId,
-    property_subscription_id: subscription.id,
-    booking_revenue_php: bookingRevenue,
-    commission_rate_percent: rate,
-    commission_amount_php: commissionAmount,
-    status: 'pending',
-  });
-  if (error) throw new Error(error.message);
+  // A property already slotted in a *different* org subscription can't be added here.
+  const { data: conflictingSlots, error: conflictError } = await sb
+    .from('org_subscription_properties')
+    .select('property_id')
+    .in('property_id', uniquePropertyIds)
+    .neq('org_subscription_id', orgSubscriptionId);
+  if (conflictError) throw new Error(conflictError.message);
+  if (conflictingSlots && conflictingSlots.length > 0) {
+    throw new Error('One or more properties are already covered by a different org subscription');
+  }
+
+  const { data: currentSlots, error: currentSlotsError } = await sb
+    .from('org_subscription_properties')
+    .select('property_id')
+    .eq('org_subscription_id', orgSubscriptionId);
+  if (currentSlotsError) throw new Error(currentSlotsError.message);
+  const currentPropertyIds = new Set((currentSlots ?? []).map((r) => r.property_id as string));
+  const nextPropertyIds = new Set(uniquePropertyIds);
+
+  const toAdd = uniquePropertyIds.filter((id) => !currentPropertyIds.has(id));
+  const toRemove = [...currentPropertyIds].filter((id) => !nextPropertyIds.has(id));
+
+  const plan = await loadOrgEligiblePlan(newPlanId);
+  const totalPricePhp = orgSubscriptionTotalForPlan(plan, uniquePropertyIds.length);
+  const planChanged = newPlanId !== (orgSub.plan_id as string);
+
+  const { error: updateError } = await sb
+    .from('org_subscriptions')
+    .update({ plan_id: newPlanId, price_php_snapshot: totalPricePhp })
+    .eq('id', orgSubscriptionId);
+  if (updateError) throw new Error(updateError.message);
+
+  if (planChanged) {
+    await writeOrgSubscriptionEvent({
+      orgSubscriptionId,
+      eventType: 'plan_changed',
+      previousPlanId: orgSub.plan_id as string,
+      newPlanId,
+      createdBy: changedBy,
+    });
+  }
+
+  for (const propertyId of toAdd) {
+    const { error } = await sb.from('org_subscription_properties').insert({
+      org_subscription_id: orgSubscriptionId,
+      property_id: propertyId,
+      assigned_by: changedBy,
+    });
+    if (error) throw new Error(error.message);
+    await writeOrgSubscriptionEvent({
+      orgSubscriptionId,
+      eventType: 'property_added',
+      propertyId,
+      createdBy: changedBy,
+    });
+  }
+
+  for (const propertyId of toRemove) {
+    const { error } = await sb
+      .from('org_subscription_properties')
+      .delete()
+      .eq('org_subscription_id', orgSubscriptionId)
+      .eq('property_id', propertyId);
+    if (error) throw new Error(error.message);
+    await writeOrgSubscriptionEvent({
+      orgSubscriptionId,
+      eventType: 'property_removed',
+      propertyId,
+      createdBy: changedBy,
+    });
+  }
+
+  const features = parsePlanFeatures(plan.features);
+  await syncAiCreditsFromPlan(
+    organizationId,
+    plan.code,
+    features.aiMonthlyCreditAllowance,
+    changedBy ?? 'system'
+  );
+
+  // Reconcile the new pool (any surviving/added property represents it) and each removed
+  // property standalone (now off the subscription, against Free).
+  await reconcileTeamSeatsForProperty(uniquePropertyIds[0]);
+  for (const propertyId of toRemove) {
+    await reconcileTeamSeatsForProperty(propertyId);
+  }
 }
 
 export async function countMarketingPublications(propertyId: string): Promise<number> {
   const sb = db();
+  const poolPropertyIds = await entitlementPoolPropertyIds(propertyId);
   const { count, error } = await sb
     .from('marketing_publications')
     .select('id', { count: 'exact', head: true })
-    .eq('property_id', propertyId)
+    .in('property_id', poolPropertyIds)
     .eq('status', 'published');
 
   if (error) throw new Error(error.message);
   return count ?? 0;
 }
 
-/** Blocks publish when Marketing Studio is off or per-property publish cap is reached. */
+/** Blocks publish when Marketing Studio is off or the pool's publish cap is reached. */
 export async function requireMarketingPublishAllowed(
   propertyId: string
 ): Promise<ResolvedPropertyEntitlements> {

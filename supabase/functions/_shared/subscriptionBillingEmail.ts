@@ -158,3 +158,100 @@ export async function sendSubscriptionPaymentFailedEmail(opts: {
     ctaUrl: opts.plansUrl,
   });
 }
+
+/** Org-level equivalents — billing is org-scoped, so these name the org and enrolled property
+ * count instead of a single property. */
+
+export async function sendOrgSubscriptionReceiptEmail(opts: {
+  supabase: SupabaseClient;
+  ownerId: string;
+  orgName: string;
+  planName: string;
+  propertyCount: number;
+  amountPhp: number;
+  orgSlug: string;
+}): Promise<void> {
+  const appOrigin = resolvePublicGuestAppOrigin(null);
+  const plansUrl = `${appOrigin}/org/${opts.orgSlug}/plans`;
+  const propertyWord = opts.propertyCount === 1 ? 'property' : 'properties';
+  await sendOwnerBillingEmail({
+    supabase: opts.supabase,
+    ownerId: opts.ownerId,
+    subject: `Payment received — ${opts.orgName}`,
+    headline: 'Subscription payment confirmed',
+    body: `${opts.orgName} is now on ${opts.planName} covering ${opts.propertyCount} ${propertyWord} (₱${opts.amountPhp.toLocaleString('en-PH')}). Your plan is active for the next billing period.`,
+    ctaLabel: 'View plan',
+    ctaUrl: plansUrl,
+  });
+}
+
+export async function sendOrgSubscriptionRenewalReminderEmail(opts: {
+  supabase: SupabaseClient;
+  ownerId: string;
+  orgName: string;
+  planName: string;
+  periodEndLabel: string;
+  checkoutUrl: string;
+}): Promise<void> {
+  await sendOwnerBillingEmail({
+    supabase: opts.supabase,
+    ownerId: opts.ownerId,
+    subject: `Renew ${opts.orgName} — ${opts.planName}`,
+    headline: 'Subscription renewal due soon',
+    body: `${opts.orgName}'s subscription renews on ${opts.periodEndLabel}. Pay now to avoid interruption.`,
+    ctaLabel: 'Pay renewal',
+    ctaUrl: opts.checkoutUrl,
+  });
+}
+
+export async function sendOrgSubscriptionPastDueEmail(opts: {
+  supabase: SupabaseClient;
+  ownerId: string;
+  orgName: string;
+  graceEndLabel: string;
+  checkoutUrl: string;
+}): Promise<void> {
+  await sendOwnerBillingEmail({
+    supabase: opts.supabase,
+    ownerId: opts.ownerId,
+    subject: `Past due — ${opts.orgName}`,
+    headline: 'Subscription payment is past due',
+    body: `Pay before ${opts.graceEndLabel} to keep full dashboard access across ${opts.orgName}'s properties.`,
+    ctaLabel: 'Pay now',
+    ctaUrl: opts.checkoutUrl,
+  });
+}
+
+export async function sendOrgSubscriptionSuspendedEmail(opts: {
+  supabase: SupabaseClient;
+  ownerId: string;
+  orgName: string;
+  plansUrl: string;
+}): Promise<void> {
+  await sendOwnerBillingEmail({
+    supabase: opts.supabase,
+    ownerId: opts.ownerId,
+    subject: `Suspended — ${opts.orgName}`,
+    headline: 'Subscription suspended',
+    body: `${opts.orgName}'s properties are in read-only mode until payment is received. Guest booking flows are unaffected.`,
+    ctaLabel: 'Restore access',
+    ctaUrl: opts.plansUrl,
+  });
+}
+
+export async function sendOrgSubscriptionPaymentFailedEmail(opts: {
+  supabase: SupabaseClient;
+  ownerId: string;
+  orgName: string;
+  plansUrl: string;
+}): Promise<void> {
+  await sendOwnerBillingEmail({
+    supabase: opts.supabase,
+    ownerId: opts.ownerId,
+    subject: `Payment failed — ${opts.orgName}`,
+    headline: 'Payment could not be completed',
+    body: `Your recent payment attempt for ${opts.orgName} did not go through. You can try again from the Plans page.`,
+    ctaLabel: 'Try again',
+    ctaUrl: opts.plansUrl,
+  });
+}
