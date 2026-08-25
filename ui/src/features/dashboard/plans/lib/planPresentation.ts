@@ -12,6 +12,10 @@
  * Canonical matrix: `docs/architecture/plans-feature-matrix.md`.
  */
 
+import type {
+  OrgBundlePlanDto,
+  OrgSubscriptionDto,
+} from '@/features/dashboard/plans/lib/orgPlanApi';
 import {
   isFeatureEnabled,
   type PlanFeatureKey,
@@ -21,10 +25,6 @@ import {
   discountedPlanPricePhp,
   normalizePlanDiscountPercent,
 } from '@/features/dashboard/plans/lib/planPricing';
-import type {
-  PropertyPlanDto,
-  PropertySubscriptionDto,
-} from '@/features/dashboard/plans/lib/propertyPlanApi';
 
 import { formatManilaLongDate } from '@/utils/format/dates';
 
@@ -135,6 +135,7 @@ export const PLAN_TIER_CARD_GAINS: Record<string, string[]> = {
     'Manual booking management',
     'Public guest form',
     'Manual document generation',
+    'Standard template management',
     'Finance management',
     'Maintenance reminders',
     'Notifications',
@@ -145,8 +146,7 @@ export const PLAN_TIER_CARD_GAINS: Record<string, string[]> = {
     'Automated booking emails',
     'Verified badge eligible',
     'Up to 3 team members',
-    'Template Management',
-    'Custom templates',
+    'Advanced template management',
     'Telegram alerts',
     'Finance reporting & export',
     'Maintenance reporting & export',
@@ -179,7 +179,7 @@ export const PLAN_TIER_CARD_GAINS: Record<string, string[]> = {
     'Ideal for hosts with limited time',
     'Full transparency on bookings and finance',
     'Earn from your listing with minimal work & supervision',
-    'Free social media boosts to help promote your listings across different groups',
+    'Free social media boosts from our marketing team to help promote your listings across different groups',
     'Cleaning and maintenance staff available (separate fee)',
   ],
 };
@@ -193,8 +193,8 @@ function normalizeGainLabel(label: string): string {
  * (old middle/top tier features + new seat/publish/search adjustments).
  */
 function resolveTierCardGains(
-  plan: PropertyPlanDto,
-  previous: PropertyPlanDto | null
+  plan: OrgBundlePlanDto,
+  previous: OrgBundlePlanDto | null
 ): PlanFeatureChange[] {
   if (
     plan.code === 'free' ||
@@ -263,7 +263,7 @@ export const PLAN_FEATURE_ROWS: PlanFeatureRow[] = [
   },
 
   boolRow('aiMarketingGeneration', 'AI content generation', 'marketing'),
-  boolRow('customTemplates', 'Custom templates', 'marketing'),
+  boolRow('customTemplates', 'Advanced template management', 'marketing'),
   {
     key: 'marketingPublishLimitPerGroup',
     label: 'Marketing publishes',
@@ -348,7 +348,7 @@ export type PlanFeatureMatrixGroup = {
 };
 
 /** Drops rows that are off in every available tier so the matrix stays honest and short. */
-export function planFeatureMatrixGroups(plans: PropertyPlanDto[]): PlanFeatureMatrixGroup[] {
+export function planFeatureMatrixGroups(plans: OrgBundlePlanDto[]): PlanFeatureMatrixGroup[] {
   const meaningful = PLAN_FEATURE_ROWS.filter((row) =>
     plans.some((plan) => row.value(plan.features).kind !== 'off')
   );
@@ -412,9 +412,9 @@ export function planCapabilityCount(features: PlanFeatures): number {
 }
 
 export type PlanTier = {
-  plan: PropertyPlanDto;
+  plan: OrgBundlePlanDto;
   /** Tier immediately below — the card's "everything in …" anchor. */
-  previous: PropertyPlanDto | null;
+  previous: OrgBundlePlanDto | null;
   isCurrent: boolean;
   /** Highlighted as the catalog's recommended upgrade tier (not necessarily the next rung). */
   isNextStep: boolean;
@@ -440,9 +440,34 @@ export function isManagedSalesPlan(code: string): boolean {
   return code === MANAGED_PLAN_CODE;
 }
 
+/** Free tier row — every org is on this plan when there is no live org subscription. */
+export function resolveDefaultPlan(plans: OrgBundlePlanDto[]): OrgBundlePlanDto | null {
+  return plans.find((plan) => plan.isDefault) ?? plans.find((plan) => plan.code === 'free') ?? null;
+}
+
+/** Plan id for tier highlighting — paid subscription when present, otherwise Free (mirrors server entitlements). */
+export function resolveEffectiveCurrentPlanId(
+  plans: OrgBundlePlanDto[],
+  subscriptionPlanId: string | undefined | null
+): string | undefined {
+  if (subscriptionPlanId && plans.some((plan) => plan.id === subscriptionPlanId)) {
+    return subscriptionPlanId;
+  }
+  return resolveDefaultPlan(plans)?.id;
+}
+
+export function resolveEffectiveCurrentPlan(
+  plans: OrgBundlePlanDto[],
+  subscriptionPlanId: string | undefined | null
+): OrgBundlePlanDto | null {
+  const planId = resolveEffectiveCurrentPlanId(plans, subscriptionPlanId);
+  if (!planId) return null;
+  return plans.find((plan) => plan.id === planId) ?? null;
+}
+
 /** Sorted ladder with each tier's position relative to the active subscription. */
 export function buildPlanTiers(
-  plans: PropertyPlanDto[],
+  plans: OrgBundlePlanDto[],
   currentPlanId: string | undefined
 ): PlanTier[] {
   const ordered = [...plans].sort((a, b) => a.sortOrder - b.sortOrder);
@@ -484,9 +509,9 @@ export function planTierFeatureAreaMinHeight(tiers: PlanTier[]): number {
 
 /** Next tier above the active plan on the sorted ladder — null when already on the highest tier. */
 export function nextUpgradePlan(
-  plans: PropertyPlanDto[],
+  plans: OrgBundlePlanDto[],
   currentPlanId: string | undefined
-): PropertyPlanDto | null {
+): OrgBundlePlanDto | null {
   const ordered = [...plans].sort((a, b) => a.sortOrder - b.sortOrder);
   const currentIndex = ordered.findIndex((plan) => plan.id === currentPlanId);
   if (currentIndex < 0) return ordered[0] ?? null;
@@ -495,9 +520,9 @@ export function nextUpgradePlan(
 
 /** Lowest-`sortOrder` plan that has `feature` enabled — the specific tier a gated action needs. */
 export function resolveMinimumPlanForFeature(
-  plans: PropertyPlanDto[],
+  plans: OrgBundlePlanDto[],
   feature: PlanFeatureKey
-): PropertyPlanDto | null {
+): OrgBundlePlanDto | null {
   const candidates = plans
     .filter((plan) => isFeatureEnabled(plan.features, feature))
     .sort((a, b) => a.sortOrder - b.sortOrder);
@@ -505,7 +530,7 @@ export function resolveMinimumPlanForFeature(
 }
 
 /** Primary CTA on the current-plan banner when a higher tier exists. */
-export function upgradeBannerActionLabel(plan: PropertyPlanDto): string {
+export function upgradeBannerActionLabel(plan: OrgBundlePlanDto): string {
   if (isManagedSalesPlan(plan.code)) return 'Contact sales';
   return `Upgrade to ${planDisplayName(plan)}`;
 }
@@ -545,7 +570,7 @@ export const PESO_WHOLE = new Intl.NumberFormat('en-PH', {
 
 export function planPrice(
   plan: Pick<
-    PropertyPlanDto,
+    OrgBundlePlanDto,
     'isDefault' | 'pricePhp' | 'pricingModel' | 'code' | 'discountPercent'
   > & {
     /** Locked-in subscription amount — skips list/discount math. */
@@ -563,7 +588,11 @@ export function planPrice(
   }
 
   const listPhp = Math.max(0, Math.floor(plan.pricePhp ?? 0));
-  if (plan.isDefault || listPhp <= 0) return { amount: PESO_WHOLE.format(0), suffix: '/month' };
+  // No locked-in subscription total — show the tier's promo per-property rate (billing scales
+  // with enrolled count; suffix matches whole-org totals as `/month`).
+  if (plan.isDefault || listPhp <= 0) {
+    return { amount: PESO_WHOLE.format(0), suffix: '/month' };
+  }
 
   const discountPercent = normalizePlanDiscountPercent(plan.discountPercent);
   const effectivePhp = discountedPlanPricePhp(listPhp, discountPercent);
@@ -627,7 +656,7 @@ export function planPromoBadge(code: string): string | null {
 }
 
 /** Plan title for hosts — prefers catalog name by `code`, not `pricing_plans.name`. */
-export function planDisplayName(plan: Pick<PropertyPlanDto, 'code' | 'name' | 'tagline'>): string {
+export function planDisplayName(plan: Pick<OrgBundlePlanDto, 'code' | 'name' | 'tagline'>): string {
   const fromCode = PLAN_CODE_DISPLAY_NAME[plan.code];
   if (fromCode) return fromCode;
 
@@ -639,7 +668,7 @@ export function planDisplayName(plan: Pick<PropertyPlanDto, 'code' | 'name' | 't
 
 /** Resolve a stored subscription label when the full plan row is unavailable. */
 export function planDisplayNameFromSubscription(
-  subscription: Pick<PropertySubscriptionDto, 'planCode' | 'planName'> | null
+  subscription: Pick<OrgSubscriptionDto, 'planCode' | 'planName'> | null
 ): string {
   if (!subscription) return '';
   const fromCode = PLAN_CODE_DISPLAY_NAME[subscription.planCode];
@@ -647,17 +676,19 @@ export function planDisplayNameFromSubscription(
   return subscription.planName?.trim() || 'Plan';
 }
 
-/** Primary for upgrades; outline for current plan and downgrades. */
+/** Primary for upgrades; outline for current plan and downgrades; primary outline for Managed (Contact sales). */
 export function planSelectButtonVariant(
   isCurrent: boolean,
-  direction: PlanChangeDirection
-): 'default' | 'outline' {
+  direction: PlanChangeDirection,
+  planCode?: string
+): 'default' | 'outline' | 'outline-primary' {
   if (isCurrent || direction === 'downgrade') return 'outline';
+  if (planCode && isManagedSalesPlan(planCode)) return 'outline-primary';
   return 'default';
 }
 
 /** Card subtitle — prefers a host pitch over catalog taglines like "Starter". */
-export function planTierPitch(plan: PropertyPlanDto): string | null {
+export function planTierPitch(plan: OrgBundlePlanDto): string | null {
   const pitch = PLAN_HOST_PITCH[plan.code];
   if (pitch) return pitch;
 
@@ -673,24 +704,24 @@ export function planTierPitch(plan: PropertyPlanDto): string | null {
 }
 
 export const PLANS_PAGE_SUBTITLE =
-  'Manage the subscription for this listing — upgrade anytime as you grow.';
+  'Manage your organization’s subscription — one plan covers every property you enroll.';
 
 export type PlanFaqItem = {
   question: string;
   answer: string;
 };
 
-/** Host-facing billing FAQs — aligned with property-scoped PayMongo subscriptions. */
+/** Host-facing billing FAQs — aligned with org-level PayMongo subscriptions. */
 export const PLAN_FAQ_ITEMS: PlanFaqItem[] = [
   {
     question: 'Can I change my plan at any time?',
     answer:
-      'Yes. Organization owners can switch this listing’s plan from Plans & Billing. Paid upgrades open PayMongo checkout and take effect once payment clears. Moving to Free applies immediately. Other downgrades use the same plan-selection flow.',
+      'Yes. Organization owners can switch tiers or add/remove properties from Plans & Billing at any time. Paid changes open PayMongo checkout and take effect once payment clears. Moving to Free applies immediately.',
   },
   {
     question: 'Is pricing per property or per organization?',
     answer:
-      'Per listing. Each property has its own subscription and billing history. If you manage multiple listings under one organization, each one is billed separately.',
+      'Billing is per organization, priced per enrolled property — your total is the tier’s per-property rate times how many properties you enroll, with the rate dropping at volume breakpoints. A property left out of your subscription stays on Free.',
   },
   {
     question: 'How does monthly billing work?',
@@ -700,12 +731,12 @@ export const PLAN_FAQ_ITEMS: PlanFaqItem[] = [
   {
     question: 'What happens if I miss a renewal payment?',
     answer:
-      'The listing becomes past due. You keep full dashboard access during the grace period. If payment is still missing after grace ends, access is limited to Plans & Billing and Help & Support until you pay. Guest forms and bookings for this listing keep working.',
+      'Your organization becomes past due. You keep full dashboard access during the grace period. If payment is still missing after grace ends, access across your properties is limited to Plans & Billing and Help & Support until you pay. Guest forms and bookings keep working.',
   },
   {
-    question: 'What happens when I downgrade?',
+    question: 'What happens when I downgrade or remove a property?',
     answer:
-      'Features above your new tier are turned off for this listing — team seats, marketing publishes, search placement, AI tools, and other limits follow the plan you’re on. Compare the tiers on the Compare tab before you move down.',
+      'Features above your new tier are turned off org-wide — team seats, marketing publishes, search placement, AI tools, and other limits follow the plan you’re on and are shared across your enrolled properties. Removing a property credits its remaining value toward your next bill; nothing is refunded instantly.',
   },
   {
     question: 'How do AI credits work?',
@@ -741,9 +772,7 @@ export function subscriptionStatusMeta(status: string): SubscriptionStatusMeta {
 }
 
 /** Deadline before a past-due subscription loses dashboard access. */
-export function subscriptionGraceLabel(
-  subscription: PropertySubscriptionDto | null
-): string | null {
+export function subscriptionGraceLabel(subscription: OrgSubscriptionDto | null): string | null {
   if (!subscription?.gracePeriodEndsAt) return null;
   const formatted = formatManilaLongDate(subscription.gracePeriodEndsAt);
   if (!formatted || formatted === '—') return null;
@@ -751,9 +780,7 @@ export function subscriptionGraceLabel(
 }
 
 /** Renewal line for the current-plan panel — omitted entirely when the period is unset. */
-export function subscriptionRenewalLabel(
-  subscription: PropertySubscriptionDto | null
-): string | null {
+export function subscriptionRenewalLabel(subscription: OrgSubscriptionDto | null): string | null {
   if (!subscription?.currentPeriodEnd) return null;
   const formatted = formatManilaLongDate(subscription.currentPeriodEnd);
   if (!formatted || formatted === '—') return null;

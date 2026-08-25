@@ -115,6 +115,13 @@ export function canInviteTeamMember(
   return slotsUsed < max;
 }
 
+export type TeamInviteCapacity = {
+  slotsUsed: number;
+  maxMembers: number | null;
+  teamManagementEnabled: boolean;
+  canInvite: boolean;
+};
+
 export const PLAN_FEATURE_LABELS: Record<keyof PlanFeatures, string> = {
   automatedBookingFlow: 'Automated booking emails',
   verifiedBadgeEligible: 'Verified badge eligible',
@@ -136,7 +143,7 @@ export const PLAN_FEATURE_LABELS: Record<keyof PlanFeatures, string> = {
   maintenanceReporting: 'Maintenance reporting & export',
   metaChatChannel: 'Meta (Facebook/Instagram) chat channel',
   quickReplies: 'Inbox quick replies',
-  customTemplates: 'Custom templates',
+  customTemplates: 'Advanced template management',
   publicPagesAutosave: 'Public pages autosave',
   bookingImport: 'AI booking import',
 };

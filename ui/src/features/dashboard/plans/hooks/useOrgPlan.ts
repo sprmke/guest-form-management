@@ -20,8 +20,7 @@ export function useCreateOrgPlanCheckout(orgId: string | null) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ planId, propertyIds }: { planId: string; propertyIds: string[] }) =>
-      createOrgPlanCheckout(orgId!, planId, propertyIds),
+    mutationFn: ({ planId }: { planId: string }) => createOrgPlanCheckout(orgId!, planId),
     onSuccess: async () => {
       if (orgId) {
         await queryClient.invalidateQueries({ queryKey: orgPlanQueryKey(orgId) });

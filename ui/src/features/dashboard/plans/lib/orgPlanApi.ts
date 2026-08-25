@@ -1,4 +1,5 @@
 import type { PlanFeatures } from '@/features/dashboard/plans/lib/planFeatures';
+import type { VolumeDiscountTier } from '@/features/dashboard/plans/lib/planPricing';
 
 import { supabase } from '@/lib/supabase/client';
 
@@ -15,7 +16,9 @@ export type OrgBundlePlanDto = {
   pricingModel: string;
   pricePhp: number | null;
   discountPercent: number;
-  maxProperties: number | null;
+  volumeDiscountTiers: VolumeDiscountTier[];
+  volumeRampFloorPhp: number;
+  volumeRampAtCount: number;
   features: PlanFeatures;
   isDefault: boolean;
 };
@@ -35,9 +38,20 @@ export type OrgSubscriptionDto = {
   pricingModel: string;
   status: string;
   pricePhpSnapshot: number | null;
-  maxProperties: number;
   currentPeriodStart: string | null;
   currentPeriodEnd: string | null;
+  gracePeriodEndsAt?: string | null;
+};
+
+export type OrgPaymentTransactionDto = {
+  id: string;
+  amount: number;
+  currency: string;
+  status: string;
+  checkoutUrl: string | null;
+  paymentMethodType: string | null;
+  createdAt: string;
+  paidAt: string | null;
 };
 
 export type OrgPlanResponse = {
@@ -46,6 +60,7 @@ export type OrgPlanResponse = {
   subscription: OrgSubscriptionDto | null;
   assignedPropertyIds: string[];
   pendingCheckoutUrl: string | null;
+  transactions: OrgPaymentTransactionDto[];
 };
 
 async function authHeaders(): Promise<HeadersInit> {
@@ -73,15 +88,18 @@ export async function fetchOrgPlan(orgId: string): Promise<OrgPlanResponse> {
   return json.data;
 }
 
+/** Covers first purchase, renewal, and mid-cycle changes (property count and/or tier) — the
+ * server auto-detects which based on whether the org already has a live subscription and
+ * whether the plan or org property count actually changed, prorating when it's a genuine change.
+ * Billing always includes every property in the organization. */
 export async function createOrgPlanCheckout(
   organizationId: string,
-  planId: string,
-  propertyIds: string[]
+  planId: string
 ): Promise<{ checkoutUrl: string; transactionId: string }> {
   const res = await fetch(`${supabaseBaseUrl()}/create-org-subscription-checkout`, {
     method: 'POST',
     headers: await authHeaders(),
-    body: JSON.stringify({ organizationId, planId, propertyIds }),
+    body: JSON.stringify({ organizationId, planId }),
   });
   const json = (await res.json()) as {
     success?: boolean;

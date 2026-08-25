@@ -112,8 +112,9 @@ export const FEATURE_GATE_COPY: Record<PlanFeatureKey, FeatureGateCopy> = {
     ctaLabel: 'View plans',
   },
   customTemplates: {
-    title: 'Custom templates',
-    description: 'Available on Starter and above.',
+    title: 'Advanced template management',
+    description:
+      'Saving email templates and adding custom templates is available on Starter and above. Standard template management stays free.',
     ctaLabel: 'View plans',
   },
   publicPagesAutosave: {

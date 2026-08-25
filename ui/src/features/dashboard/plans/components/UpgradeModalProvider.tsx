@@ -23,9 +23,10 @@ type ProviderProps = {
   children: ReactNode;
 };
 
+/** Opens the inline upgrade review modal; org Plans checkout only after **Continue to payment**. */
 export function UpgradeModalProvider({ children }: ProviderProps) {
   const [open, setOpen] = useState(false);
-  const [feature, setFeature] = useState<PlanFeatureKey>('marketingStudio');
+  const [feature, setFeature] = useState<PlanFeatureKey | null>(null);
 
   const openModal = useCallback((nextFeature: PlanFeatureKey) => {
     setFeature(nextFeature);
@@ -42,7 +43,14 @@ export function UpgradeModalProvider({ children }: ProviderProps) {
   return (
     <UpgradeModalContext.Provider value={value}>
       {children}
-      <SubscriptionUpgradeModal open={open} onOpenChange={setOpen} feature={feature} />
+      <SubscriptionUpgradeModal
+        open={open}
+        feature={feature}
+        onOpenChange={(nextOpen) => {
+          setOpen(nextOpen);
+          if (!nextOpen) setFeature(null);
+        }}
+      />
     </UpgradeModalContext.Provider>
   );
 }
