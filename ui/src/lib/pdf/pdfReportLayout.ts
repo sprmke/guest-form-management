@@ -1,6 +1,4 @@
 import { format } from 'date-fns';
-import type { jsPDF } from 'jspdf';
-import type { UserOptions } from 'jspdf-autotable';
 
 import { setPdfFont } from '@/lib/pdf/pdfFonts';
 import {
@@ -13,6 +11,10 @@ import {
   setPdfFill,
   setPdfText,
 } from '@/lib/pdf/pdfTheme';
+
+import type { jsPDF } from 'jspdf';
+import type { UserOptions } from 'jspdf-autotable';
+
 
 export const PDF_TABLE_MARGIN = {
   left: PDF_LAYOUT.margin,

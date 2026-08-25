@@ -354,7 +354,7 @@ export function MaintenanceOverviewSkeleton() {
   );
 }
 
-export function PropertyPlansSkeleton() {
+export function PlansPageSkeleton() {
   return (
     <div
       className="space-y-5 sm:space-y-6 lg:space-y-8"
