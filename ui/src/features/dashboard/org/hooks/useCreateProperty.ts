@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { ORGANIZATIONS_QUERY_KEY } from '@/features/dashboard/org/hooks/useOrganizations';
 import { callEdgeFunction } from '@/features/dashboard/org/lib/edgeClient';
+import { orgPlanQueryKey } from '@/features/dashboard/plans/hooks/useOrgPlan';
 import type { Property } from '@/features/dashboard/org/types';
 
 export type CreatePropertyInput = {
@@ -18,7 +19,7 @@ export function useCreateProperty() {
 
   return useMutation({
     mutationFn: (input: CreatePropertyInput) =>
-      callEdgeFunction<{ property: Property }>('create-property', {
+      callEdgeFunction<{ property: Property; billingRequired?: boolean }>('create-property', {
         method: 'POST',
         body: JSON.stringify({
           orgId: input.orgId,
@@ -45,6 +46,9 @@ export function useCreateProperty() {
         queryKey: ['properties', input.orgSlug],
       });
       void queryClient.invalidateQueries({ queryKey: ORGANIZATIONS_QUERY_KEY });
+      if (data.billingRequired) {
+        void queryClient.invalidateQueries({ queryKey: orgPlanQueryKey(input.orgId) });
+      }
     },
   });
 }

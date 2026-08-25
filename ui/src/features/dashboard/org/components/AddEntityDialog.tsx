@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import { useNavigate } from 'react-router-dom';
+
 import { AlertCircle, Car, Home, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { TowerUnitConflictAlert } from '@/features/dashboard/org/components/TowerUnitConflictAlert';
 import { useCheckPropertyName } from '@/features/dashboard/org/hooks/useCheckPropertyName';
@@ -8,6 +11,8 @@ import { useCreateParking } from '@/features/dashboard/org/hooks/useCreateParkin
 import { useCreateProperty } from '@/features/dashboard/org/hooks/useCreateProperty';
 import { useParkingSlotConflict } from '@/features/dashboard/org/hooks/useParkingSlotConflict';
 import { useTowerUnitConflict } from '@/features/dashboard/org/hooks/useTowerUnitConflict';
+import { orgPlansPath } from '@/features/dashboard/org/lib/tenantPaths';
+import { useOrgPlan } from '@/features/dashboard/plans/hooks/useOrgPlan';
 import {
   DEFAULT_DEVELOPMENT_NAME,
   getOrgDevelopmentNames,
@@ -139,8 +144,10 @@ export function AddEntityDialog({
   onPropertyCreated,
   onParkingCreated,
 }: Props) {
+  const navigate = useNavigate();
   const createProperty = useCreateProperty();
   const createParking = useCreateParking();
+  const { data: orgPlan } = useOrgPlan(orgId);
 
   const showKindToggle = canAddProperty && canAddParking;
   const [kind, setKind] = useState<AssetKind>(defaultKind);
@@ -273,7 +280,7 @@ export function AddEntityDialog({
 
       setError(null);
       try {
-        const { property } = await createProperty.mutateAsync({
+        const result = await createProperty.mutateAsync({
           orgId,
           orgSlug,
           name: resolvedName,
@@ -282,7 +289,16 @@ export function AddEntityDialog({
           residenceName: developmentName,
         });
         onOpenChange(false);
-        onPropertyCreated?.(property);
+        onPropertyCreated?.(result.property);
+        if (result.billingRequired) {
+          toast.message('Cover this property on your plan');
+          const planId = orgPlan?.subscription?.planId;
+          navigate(
+            planId
+              ? `${orgPlansPath(orgSlug)}?reviewPlan=${encodeURIComponent(planId)}`
+              : orgPlansPath(orgSlug)
+          );
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to add property');
       }

@@ -2,6 +2,7 @@ import { useParams } from 'react-router-dom';
 
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useOptionalParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
+import { useOrganizations } from '@/features/dashboard/org/hooks/useOrganizations';
 
 /** Current property id from nested admin route context (null on org-only pages). */
 export function usePropertyIdParam(): string | null {
@@ -23,6 +24,16 @@ export function useOrgSlugParam(): string | null {
 /** Org id from tenant context (may be null on org slug routes until org list loads). */
 export function useOrgIdParam(): string | null {
   return useOptionalOrgContext()?.org.id ?? null;
+}
+
+/** Org id from route context or organizations list — for org-only pages without property shell. */
+export function useResolvedOrgId(): string | null {
+  const orgId = useOrgIdParam();
+  const orgSlug = useOrgSlugParam();
+  const { data: orgsData } = useOrganizations();
+  if (orgId) return orgId;
+  if (!orgSlug) return null;
+  return orgsData?.organizations.find((entry) => entry.slug === orgSlug)?.id ?? null;
 }
 
 export function useOrgScopeKey(): { orgSlug: string | null; orgId: string | null } {
