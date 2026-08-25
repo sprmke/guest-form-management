@@ -2,7 +2,7 @@
 title: 'Organization Team — operator guide'
 status: active
 tags: [guides, routes, org, team]
-updated: 2026-08-17
+updated: 2026-08-25
 ---
 
 # Organization Team — operator guide
@@ -35,6 +35,8 @@ Organization-scoped **team management**. Members and invitations load from **`or
 The **org owner** (`organizations.owner_id`) appears in the member list **virtually** (`isOwner: true`) — not stored in `organization_members`. Invited **Admins** get full access to all properties in the org (same effective permissions as owner on property routes).
 
 Org **Settings** (profile, danger zone) remains **owner-only** on the server for v1.
+
+**Plan gating:** Viewing the team is always free. **Invite Member** at the pooled cap opens the inline upgrade modal (`teamManagement`); **Continue to payment** goes to org Plans. Server enforces via `requireOrgTeamInviteAllowed`. Loading the members list runs seat reconciliation — excess org admins and property members are auto-deactivated with a **Plan limit** badge.
 
 ---
 
@@ -112,17 +114,17 @@ Name comes from the invitee's Google account on accept; edit later via **Host de
 
 ## API
 
-| Action                         | Function                         | Method | Auth                                                                                |
-| ------------------------------ | -------------------------------- | ------ | ----------------------------------------------------------------------------------- |
-| Current user org access        | `org-access?org_slug=`           | GET    | JWT — returns **`permissions[]`**, **`accessKind`**, capability flags for UI guards |
-| List members (+ virtual owner) | `org-team-members?org_slug=`     | GET    | Owner, platform admin, active org ADMIN                                             |
-| Update member                  | `org-team-members`               | PATCH  | `{ memberId, status? }` — manage                                                    |
-| Remove member                  | `org-team-members`               | DELETE | `{ memberId }` — manage                                                             |
-| List invitations               | `org-team-invitations?org_slug=` | GET    | Same as members                                                                     |
-| Invite                         | `org-team-invitations`           | POST   | `{ email, contactPhone, roleId: 'ADMIN' }` — `org:team:invite`                      |
-| Resend                         | `org-team-invitations`           | POST   | `{ action: 'resend', invitationId }` — `org:team:manage`                            |
-| Cancel                         | `org-team-invitations`           | DELETE | `{ invitationId }` — `org:team:manage`                                              |
-| Accept invite                  | `accept-org-invite`              | POST   | JWT; body `{ token }`; email must match invite                                      |
+| Action                         | Function                         | Method | Auth                                                                                                                                                                  |
+| ------------------------------ | -------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current user org access        | `org-access?org_slug=`           | GET    | JWT — returns **`permissions[]`**, **`accessKind`**, capability flags for UI guards                                                                                   |
+| List members (+ virtual owner) | `org-team-members?org_slug=`     | GET    | Owner, platform admin, active org ADMIN                                                                                                                               |
+| Update member                  | `org-team-members`               | PATCH  | `{ memberId, status? }` — manage; reactivate runs **`requireOrgTeamInviteAllowed`**                                                                                   |
+| Remove member                  | `org-team-members`               | DELETE | `{ memberId }` — manage                                                                                                                                               |
+| List invitations               | `org-team-invitations?org_slug=` | GET    | Same as members                                                                                                                                                       |
+| Invite                         | `org-team-invitations`           | POST   | `{ email, contactPhone, roleId: 'ADMIN' }` — `org:team:invite`; **`requireOrgTeamInviteAllowed`** — at cap returns `{ upgradeHook: true, feature: 'teamManagement' }` |
+| Resend                         | `org-team-invitations`           | POST   | `{ action: 'resend', invitationId }` — `org:team:manage`                                                                                                              |
+| Cancel                         | `org-team-invitations`           | DELETE | `{ invitationId }` — `org:team:manage`                                                                                                                                |
+| Accept invite                  | `accept-org-invite`              | POST   | JWT; body `{ token }`; email must match invite                                                                                                                        |
 
 Invite email link: `/accept-invite?token=…&scope=org`. **Accept page:** org logo + org name (via **`get-team-invite-preview`**); signed-in users must tap **Accept** (no auto-accept on load). **Subject:** `{Org name} - Team Invitation`. **Body:** inviter, org name, Admin role, expiry, accept CTA. Branding/from address uses the org’s **first property** (`getFirstPropertyIdForOrg`) — same Resend shell as property invites. If create fails after Resend errors, the pending row is rolled back; use **Resend** on an existing pending invite to retry delivery. Resend API errors surface in the UI toast (not a generic message).
 

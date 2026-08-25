@@ -1,11 +1,11 @@
 ---
-title: 'Org Portfolio Plans — operator guide'
+title: 'Plans & Billing — operator guide'
 status: active
 tags: [guides, routes, org]
-updated: 2026-08-24
+updated: 2026-08-25
 ---
 
-# Org Portfolio Plans — operator guide
+# Plans & Billing — operator guide
 
 Route: `/org/:orgSlug/plans`
 
@@ -13,66 +13,105 @@ Route: `/org/:orgSlug/plans`
 
 ## Progress overview
 
-| Section          | E2E save | Validation | Docs | Notes                                       |
-| ---------------- | -------- | ---------- | ---- | ------------------------------------------- |
-| Portfolio bundle | Yes      | Server     | Done | PayMongo checkout, first-purchase flow only |
+| Section                | E2E save | Validation | Docs | Notes                                                                     |
+| ---------------------- | -------- | ---------- | ---- | ------------------------------------------------------------------------- |
+| Plan review + checkout | Yes      | Server     | Done | PayMongo checkout for first purchase, tier switch, property-count changes |
+| Downgrade to Free      | No       | —          | Done | UI exists but doesn't call an API yet — see Known gaps                    |
 
 ---
 
 ## Overview
 
-Org-level page for bundling **Pro** (≤3 properties), **Business** (≤5 properties), or **Business Plus** (≤10 properties) under one subscription instead of paying per property. Distinct from the per-property [`org/property/plans.md`](./property/plans.md), which still handles Free/Starter/Managed/Commission for an individual listing regardless of whether the org has a portfolio bundle.
+**Billing is org-level only.** This is the single Plans & Billing surface for an entire organization — there is no per-property plans page. One `org_subscriptions` row covers enrolled properties, priced **per property** at the chosen tier's rate, with volume discounts as the portfolio grows. Checkout always bills for **every property in the org**; successful payment enrolls all of them. Adding a property on a **paid** plan does not auto-enroll — `create-property` returns `billingRequired: true` and the host completes checkout from this page.
 
 **Access:** any org member can view (`org:settings:view`); starting checkout requires org **owner** (or platform admin) — see `verifyOrgOwner`.
 
-**Page title/subtitle:** "Portfolio Plans" / "Bundle Pro, Business, or Business Plus across multiple properties in one subscription."
+**Page title/subtitle:** "Plans & Billing" / see `PLANS_PAGE_SUBTITLE` in `planPresentation.ts`.
 
 ---
 
 ## Behavior
 
-- **No active bundle:** shows the 3 bundle-eligible tier cards (price, property cap, top feature gains vs. the org's current baseline). Selecting a tier opens a property picker — checkboxes over every org property, capped at the tier's `maxProperties`; properties already covered by another org's bundle... (not applicable — a property can only ever be in one org's bundle, enforced server-side) show as already-covered and are disabled. **Continue to payment** calls `create-org-subscription-checkout` and redirects to PayMongo.
-- **Active bundle:** shows a summary card (plan, price, property cap) and the full org property list, each marked **Covered** when it's one of the bundle's slotted properties. No plan-switch or add/remove-property UI yet in this pass — see "Known gaps" below.
-- One org can have **at most one live portfolio subscription** at a time (`active`/`trialing`/`past_due`) — enforced server-side (`org_subscriptions` partial unique index + `createOrgSubscriptionCheckoutLink`'s explicit check).
-- A property already covered by a bundle is excluded from a _different_ org's bundle automatically (`org_subscription_properties.property_id` is unique).
-- **Per-property Plans page banner:** a property slotted into this org's bundle shows a "Covered by your org's {tier} plan" banner instead of its normal tier-card flow — see [`org/property/plans.md`](./property/plans.md).
-- **Checkout-time validation, not just fulfillment-time:** `create-org-subscription-checkout` validates property ownership (every checked property belongs to the requesting org) and bundle-availability (none already slotted elsewhere) **before** creating the PayMongo link — a bad request fails fast instead of collecting payment for a checkout that could never be fulfilled. `createOrgSubscription` re-validates both again at webhook-fulfillment time (the authoritative check, protects against a race between checkout and payment). If bundle creation fails partway through slotting properties, it rolls back cleanly (deletes the partial `org_subscriptions` row) and marks the payment transaction `failed` rather than leaving a paid-for, half-slotted bundle with no explanation.
-- **`business_plus` cannot be purchased standalone on a single property** — it's rejected at the shared plan-assignment function (`assignPropertyToPlan`) and at per-property checkout-link creation, not just excluded from the per-property Plans page's plan list.
+- **Layout:** current-plan summary banner (Free when there is no paid org subscription, otherwise the active tier), then **Plans / Compare / Billing** tabs.
+- **Plans tab:** `PlanTierRail` — one card per active subscription tier (Free, Starter, Pro, Business, Managed), each showing the **per-property monthly rate** (discounted list price, teal `{n}% off` pill when `discount_percent` > 0). The **current** tier is highlighted (Free by default when no `org_subscriptions` row — unlike the old per-property model, Free is not stored as a subscription row at org level). Paid tiers show **Upgrade**; the current card shows **Current plan**. Clicking a non-current tier opens `PlanReviewDialog` immediately. **Managed** opens **Help & Support → New ticket** instead (sales-assisted, manually quoted by a super-admin).
+- **Review dialog:** single step — plan stub comparison (current → target), feature gains/losses, org property count ("Billing covers all X properties in your organization"), live monthly total (`computeOrgSubscriptionTotalPhp` — rate × count, ramp + volume discount, mirrored byte-for-byte from the server), effective ₱/property when count > 1, and a proration breakdown when it's a genuine mid-cycle change. **Continue to payment** is disabled when the org has zero properties.
+- **Volume discounts**: each paid tier carries its own **`volume_discount_tiers`**, **`volume_ramp_floor_php`**, and **`volume_ramp_at_count`** (super-admin editable on **`/admin/pricing/plans`** → Edit). **1–`volume_ramp_at_count` properties:** when the promo rate is above the ramp floor, the per-property rate **ramps linearly** from the full promo rate down to the floor. **Above the ramp count:** `volume_discount_tiers` breakpoints apply to the extended total. Defaults seeded in migrations `20261115120300_smart_volume_discount_tiers.sql` + `20261115120400_pricing_plans_volume_ramp_config.sql` (floor ₱500, ramp at 10, Pro-shaped tier curve). Stacks on top of the flat promotional `discount_percent`.
+- **Confirming** a paid tier calls `create-org-subscription-checkout` (no `propertyIds` — server resolves every org property) and redirects to PayMongo; this same function handles first purchase, a tier switch, and a property-count change when properties were added since the last checkout.
+- **Compare tab:** `PlanFeatureMatrix` — full feature-by-feature grid across every tier, same component previously used on the per-property Plans page (kept as-is, just fed org-level tier data). Clicking a tier here opens the same review dialog as the Plans tab.
+- **Billing tab:** `PlanBillingPanel` — plan, price, renewal date, and `OrgPlanTransactions` (up to 20 `org_payment_transactions` rows with status/method).
+- **Mid-cycle changes (proration):** switching tiers or increasing the org's property count while a subscription is already active reuse the same proration math (`subscriptionProration.ts#computeMidCycleProration`) — the "target price" is the recomputed rate × new property count × discount total. The unused portion of the current period is credited toward the new charge; it never goes below ₱0 and is never a cash refund.
+- **`past_due`:** banner on org/property routes; full access continues until the grace period expires.
+- **`suspended`:** dashboard restricted to **Plans & Billing** and **Help & Support** only (`RequirePropertySubscriptionAccess`, resolved via the property's org subscription); guest-facing booking flows unaffected. Team seats pooled across the org's enrolled properties are clawed back to Free's budget on suspension (`reconcileTeamSeatsForProperty`, run per affected property by the billing cron).
+- **Upgrade CTA:** feature gates open the inline **`SubscriptionUpgradeModal`** (plan review in place). **Continue to payment** navigates to `/org/:orgSlug/plans?reviewPlan=<planId>` where PayMongo checkout runs. Optional `?feature=<PlanFeatureKey>` still opens review when landing on Plans directly. Property create on a paid plan uses `?reviewPlan=<currentPlanId>`. Optional `?tab=billing` opens the Billing tab.
+- **Uncovered properties:** when enrolled count < org property count, `CurrentPlanSummary` shows **Update billing** to open review at the current plan (proration at new count).
+- **Pooled quantity limits:** `teamManagement.maxMembers` and the marketing publish cap are shared across every property enrolled in the same org subscription, not allotted per property — see `entitlementPoolPropertyIds` in `_shared/planEntitlements.ts`.
+- **Property sidebar:** **Plans & Billing** stays in the property nav for discoverability; the link (and `/org/:orgSlug/property/:propertySlug/plans`) goes to the org Plans page — there is no per-property billing UI.
 
 ## Known gaps (flagged, not silently dropped)
 
-- **No UI yet for**: removing a property from the bundle, adding a property to an _existing_ bundle (server functions `assignPropertyToOrgSubscription`/`removePropertyFromOrgSubscription` exist in `_shared/planEntitlements.ts`, ready to wire up), switching bundle tiers mid-cycle (no org-level proration yet — Phase 7's per-property proration wasn't extended here), and recurring billing-cycle automation (renewal reminders, past-due/suspension — `runPlatformBillingCycle` only walks `property_subscriptions` today, not `org_subscriptions`).
-- No receipt or payment-failed email for org subscriptions yet (per-property equivalents exist).
+- **Downgrade-to-Free from an active subscription has no wired action yet.** Selecting the Free tier and confirming (`PlanReviewDialog`'s "Confirm plan" for `isFree`) calls `onConfirmFree`, but `OrgPlansPage`'s implementation is currently a no-op — there is no API call today that cancels an active `org_subscriptions` row. The only way to fully return an org to Free today is a super-admin action via `org-subscriptions-admin`.
+- **Managed's price is sales-assisted, not formula-driven** — its `volume_discount_tiers`/`price_php` exist on the row for consistency, but the actual `org_subscriptions.price_php_snapshot` for a Managed org is entered manually by a super-admin via `org-subscriptions-admin`'s override, bypassing the rate × count × discount computation.
+- Volume pricing (ramp + tiers) is editable per plan on **`/admin/pricing/plans`**; changes apply to new checkouts and subscription changes, not in-flight PayMongo periods.
+
+---
+
+## Tier ladder (host-facing)
+
+Internal plan codes stay stable in the database; hosts see these names. **Monthly (PHP) is the per-property rate**, not a flat plan price — the total charged is this rate × **every property in the org**, then the volume discount curve.
+
+| Display name | Internal code | Per-property monthly (PHP) | Highlights                                                                                                                                                                                |
+| ------------ | ------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Free**     | `free`        | ₱0                         | Dashboard, manual bookings, guest form, manual documents, **standard template management**, finance, maintenance, notifications                                                           |
+| **Starter**  | `starter`     | ₱499 → **₱399**            | 20% off list · pricing management, public listing, automated booking emails, verified badge, 3 pooled team seats, **advanced template management**                                        |
+| **Pro**      | `growth`      | ₱999 → **₱799**            | 20% off list · 5 pooled seats, 30 publishes/channel, top-30 search, AI validation, 1k pooled AI credits                                                                                   |
+| **Business** | `pro`         | ₱1,799 → **₱1,439**        | 20% off list · 10 pooled seats, unlimited publishing, top-15 search, full AI toolkit, 10k pooled AI credits, absorbs what the retired Business Plus tier covered via its own volume curve |
+| **Managed**  | `managed`     | ₱4,999 → **₱3,999**        | 20% off list · Business capabilities + 30k pooled AI credits/mo, full-service ops, sales-assisted pricing                                                                                 |
+
+`business_plus` is retired (`is_active = false`) — folded into Pro's volume-discount curve rather than kept as a separate "many properties" tier.
 
 ---
 
 ## API
 
-| Method | Edge function                      | Auth                           | Notes                                                                                                                                                             |
-| ------ | ---------------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GET    | `org-plan`                         | Org member (`verifyOrgAccess`) | `?orgId=` or `?orgSlug=` — plans, properties, current bundle + assigned property ids                                                                              |
-| POST   | `create-org-subscription-checkout` | Org owner (`verifyOrgOwner`)   | `{ organizationId, planId, propertyIds }` → `checkoutUrl`                                                                                                         |
-| —      | `paymongo-webhook`                 | —                              | Dispatches org vs. property transactions via `metadata.kind === 'org_subscription'`; activates the bundle and slots the checked-out properties on payment success |
+| Method | Edge function                      | Auth                           | Notes                                                                                                                                                                                                         |
+| ------ | ---------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `org-plan`                         | Org member (`verifyOrgAccess`) | `?orgId=` or `?orgSlug=` — every active subscription plan (with `volumeDiscountTiers`), the org's properties, current subscription + enrolled property ids, recent transactions, and any pending checkout URL |
+| POST   | `create-org-subscription-checkout` | Org owner (`verifyOrgOwner`)   | `{ organizationId, planId }` → `{ checkoutUrl }` — bills every org property; handles first purchase, tier switch, and property-count changes                                                                  |
+| —      | `paymongo-webhook`                 | —                              | Dispatches org transactions via `metadata.kind === 'org_subscription'`; activates/updates the subscription and enrolls the checked-out properties on payment success                                          |
 
 ---
 
 ## Implementation map
 
-| Layer               | Path                                                                                                                                                                   |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Page                | `ui/src/features/dashboard/plans/pages/OrgPlansPage.tsx`                                                                                                               |
-| Hook                | `ui/src/features/dashboard/plans/hooks/useOrgPlan.ts`                                                                                                                  |
-| API                 | `ui/src/features/dashboard/plans/lib/orgPlanApi.ts`                                                                                                                    |
-| Edge                | `org-plan`, `create-org-subscription-checkout`, `paymongo-webhook`                                                                                                     |
-| Entitlements        | `_shared/planEntitlements.ts` — `getActiveOrgSubscriptionForProperty`, `createOrgSubscription`, `assignPropertyToOrgSubscription`, `removePropertyFromOrgSubscription` |
-| Checkout            | `_shared/orgSubscriptionCheckout.ts`                                                                                                                                   |
-| Webhook fulfillment | `_shared/subscriptionOrchestrator.ts` — `fulfillOrgSubscriptionPayment`, `resolveOrgTransactionFromWebhookPayload`                                                     |
-| Tables              | `org_subscriptions`, `org_subscription_properties`, `org_subscription_events`, `org_payment_transactions`, `pricing_plans.max_properties`                              |
+| Layer                 | Path                                                                                                                                                                                                                        |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Page                  | `ui/src/features/dashboard/plans/pages/OrgPlansPage.tsx`                                                                                                                                                                    |
+| Summary card          | `ui/src/features/dashboard/plans/components/CurrentPlanSummary.tsx`                                                                                                                                                         |
+| Tier rail             | `ui/src/features/dashboard/plans/components/PlanTierRail.tsx`                                                                                                                                                               |
+| Compare matrix        | `ui/src/features/dashboard/plans/components/PlanFeatureMatrix.tsx`                                                                                                                                                          |
+| Billing tab           | `ui/src/features/dashboard/plans/components/PlanBillingPanel.tsx`, `ui/src/features/dashboard/plans/components/OrgPlanTransactions.tsx`                                                                                     |
+| Review dialog         | `ui/src/features/dashboard/plans/components/PlanReviewDialog.tsx`                                                                                                                                                           |
+| FAQs                  | `ui/src/features/dashboard/plans/components/PlanFaqSection.tsx`                                                                                                                                                             |
+| Hook                  | `ui/src/features/dashboard/plans/hooks/useOrgPlan.ts`                                                                                                                                                                       |
+| API client            | `ui/src/features/dashboard/plans/lib/orgPlanApi.ts`                                                                                                                                                                         |
+| Pricing math (mirror) | `ui/src/features/dashboard/plans/lib/planPricing.ts` — `computeOrgSubscriptionTotalPhp`, `resolveRampEffectivePerPropertyPhp`, `normalizeVolumeDiscountTiers`, `resolveVolumeDiscountPercent`                               |
+| Edge                  | `org-plan`, `create-org-subscription-checkout`, `paymongo-webhook`                                                                                                                                                          |
+| Entitlements          | `_shared/planEntitlements.ts` — `getActiveOrgSubscription`, `createOrgSubscription`, `changeOrgSubscription`, `assignPropertyToOrgSubscription`, `autoEnrollPropertyInOrgSubscription`, `removePropertyFromOrgSubscription` |
+| Checkout              | `_shared/orgSubscriptionCheckout.ts` — `createOrgSubscriptionCheckoutLink`                                                                                                                                                  |
+| Pricing math (server) | `_shared/planPricing.ts` — `computeOrgSubscriptionTotalPhp`, `resolveRampEffectivePerPropertyPhp`                                                                                                                           |
+| Webhook fulfillment   | `_shared/subscriptionOrchestrator.ts` — `fulfillOrgSubscriptionPayment`, `resolveOrgTransactionFromWebhookPayload`                                                                                                          |
+| Billing cron          | `_shared/subscriptionOrchestrator.ts` — `runPlatformBillingCycle` (renewal reminders, past-due/suspension, seat clawback)                                                                                                   |
+| Tables                | `pricing_plans` (+ `volume_discount_tiers`), `org_subscriptions`, `org_subscription_properties`, `org_subscription_events`, `org_payment_transactions`                                                                      |
+
+Full design/rationale: [`docs/workflow/done/org-level-billing-migration.md`](../../../workflow/done/org-level-billing-migration.md).
 
 ---
 
 ## Host-facing knowledge
 
-- Bundling is optional — each property can keep paying its own per-property tier instead.
-- A bundle covers a fixed number of properties (3/5/10 for Pro/Business/Business Plus). Once full, upgrading to a higher bundle tier is the only way to add more (no à-la-carte add-ons).
-- Managed and Commission-model properties always stay per-property — they're not bundle-eligible.
+- Pricing is **per property**, but billed and managed **once for the whole organization** — every listing in the org is included automatically.
+- The more properties in your org, the lower the effective per-property rate — from 1→10 listings the rate steps down linearly to ₱500/property (when the tier's promo rate is higher), then volume discounts at 10+, 20+, 50+, and 100+ (with extra relief at 200+/300+ for very large portfolios).
+- Adding a new property increases your subscription count on the next checkout or is auto-enrolled immediately when you already have an active plan.
+- Paid upgrades open PayMongo in the browser; the plan activates after payment clears (usually within seconds).
+- Unpaid orgs become **past due**, then **suspended** after the grace period — pay from Plans & Billing to restore full dashboard access across every property.
+- Managed is hands-off, sales-assisted hosting — reach out via Help & Support to get a quote instead of self-serve checkout.

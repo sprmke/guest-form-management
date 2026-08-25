@@ -2,7 +2,7 @@
 title: 'Property templates'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-24
+updated: 2026-08-25
 ---
 
 # Property templates
@@ -19,7 +19,7 @@ On **phone/tablet**, the page scrolls inside the section layout (`AdminSectionNa
 
 Operators edit per-property copy here. **Preview and live sends use the same renderer** (`renderPropertyTemplateSendEmail` + `fragments/configurable-template-send.html`). Dynamic blocks (tables, payment breakdown, CTAs) are **`{{placeholders}}` in the template body** — visible in Preview when sample/send HTML is injected.
 
-**Plan gating (`customTemplates`, Starter+):** Free hosts can still browse every template, open **Placeholders** / **Reset**, and save built-in (standard/email) content. Edit and Preview WYSIWYG surfaces use a light readable blur when not entitled. **Add Custom Template** (header, empty-state card, mobile hero) opens the upgrade modal instead of the create dialog. Creating or saving a **custom** template requires the plan — client pre-flight plus `property-templates-settings` (`action: create` and custom-key PATCH). Delete custom stays open.
+**Plan gating (`customTemplates`, Starter+):** Standard templates (house rules, check-in/out, parking reminders) are free — edit, preview, placeholders, reset, and save with no plan gate and no WYSIWYG blur. Email templates stay editable/previewable on Free; **Reset** always restores the shipped default (ungated `action: reset`); **Save** opens the upgrade modal when not entitled (server also gates email-key content PATCH). **Add Custom Template** (header, empty-state card, mobile hero) and create/save **custom** templates require Starter+ — client pre-flight plus `property-templates-settings` (`action: create`, custom-key PATCH, and email-key PATCH). Delete custom stays open. Email and custom cards show a `TierBadge` (replacing the old Email category pill). The **Email templates** and **Custom templates** section headings also show a `TierBadge` when the org is below Starter.
 
 ## Host-facing knowledge
 
@@ -32,11 +32,13 @@ Templates is where you customize the text guests and your team receive: stay gui
 - Q: Where do I upload Stay Guide section photos?
   A: **Public Pages → Stay Guide → Edit → Content**. Templates still edits the text for those sections, but section images upload only in the Stay Guide page editor (with live preview).
 - Q: If I mess up an email template, can I undo it?
-  A: Yes. Use **Reset to default** on any built-in template to restore the original wording, including dynamic sections like payment tables and signatures.
+  A: Yes. Use **Reset to default** on any built-in template to restore the original wording, including dynamic sections like payment tables and signatures. Reset works on Free; saving your own edits still needs Starter.
+- Q: Can I customize email templates on Free?
+  A: You can open, edit, and reset them. Saving your changes requires Starter. Standard stay-guide templates can be edited and saved on Free.
 - Q: Do custom templates get sent automatically?
   A: Not yet. Custom templates are saved for future use, but only the built-in standard and email templates are wired to guest-facing pages and automated sends today.
 - Q: Why is Add Custom Template asking me to upgrade?
-  A: Custom templates are on Starter and above. You can still edit built-in templates, use placeholders, and reset to defaults on Free.
+  A: Custom templates and saving email templates are on Starter and above. You can still fully edit and save the four standard stay-guide templates on Free, and you can preview, edit, and reset email copy — Save just prompts you to upgrade.
 
 ## Integration status
 
@@ -99,13 +101,15 @@ Built-in defaults ship in `propertyTemplates.ts` on the server. Rows in `propert
 | Action                                                                                          | API                                                                                                                                 |
 | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | Load all                                                                                        | `GET property-templates-settings?property_id=`                                                                                      |
-| Save built-in / custom content                                                                  | `PATCH property-templates-settings` `{ templateKey, content, sectionImageUrl? }`                                                    |
+| Save standard content                                                                           | `PATCH property-templates-settings` `{ templateKey, content, sectionImageUrl? }` — free on every tier                               |
+| Save email content                                                                              | same PATCH shape — requires **`customTemplates`** (429 + `upgradeHook` when not entitled); Free UI opens upgrade modal on Save      |
+| Reset built-in to default                                                                       | `PATCH` `{ action: "reset", templateKey }` — free on every tier (including email); restores shipped default content                 |
 | Upload section / inline image                                                                   | `POST upload-property-template-asset` multipart `assetType`, `file`, `templateKey` (section only)                                   |
 | Create custom                                                                                   | `PATCH` `{ action: "create", name, content }` — requires plan feature **`customTemplates`** (429 + `upgradeHook` when not entitled) |
 | Save custom content                                                                             | `PATCH` `{ templateKey: "custom-…", content, name? }` — same **`customTemplates`** gate as create                                   |
 | Delete custom                                                                                   | `PATCH` `{ action: "delete", templateKey }`                                                                                         |
 | Preview (email shell)                                                                           | `POST property-templates-preview` `{ templateKey, category, content, name? }`                                                       |
-| Auth: `verifyAdminJwt` + property scope via `property_id` query (same as other admin settings). |
+| Auth: `verifyAdminJwt` + property scope via `property_id` query (same as other admin settings). |                                                                                                                                     |
 
 ## Preview
 
