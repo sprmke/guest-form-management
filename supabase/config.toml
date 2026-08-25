@@ -787,19 +787,13 @@ verify_jwt = false
 [functions.pricing-plans]
 verify_jwt = false
 
-[functions.property-subscriptions-admin]
-verify_jwt = false
-
-[functions.property-plan]
+[functions.org-subscriptions-admin]
 verify_jwt = false
 
 [functions.org-plan]
 verify_jwt = false
 
 [functions.property-entitlements]
-verify_jwt = false
-
-[functions.create-subscription-checkout]
 verify_jwt = false
 
 [functions.create-org-subscription-checkout]
