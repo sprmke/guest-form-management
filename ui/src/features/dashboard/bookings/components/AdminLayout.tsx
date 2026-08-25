@@ -21,13 +21,13 @@ import { ModeSwitcher } from '@/features/guest/marketing/shared/components/ModeS
 import { AiAssistantLauncherButton } from '@/features/dashboard/ai-assistant/components/AiAssistantLauncherButton';
 import { useAiAssistantAccess } from '@/features/dashboard/ai-assistant/hooks/useAiAssistantAccess';
 import {
-  getAssistantOpenRequestId,
-  subscribeAssistantOpenRequest,
-} from '@/features/dashboard/ai-assistant/lib/assistantOpenStore';
-import {
   isAiAssistantFabVisible,
   notificationFabStackedBottomClassName,
 } from '@/features/dashboard/ai-assistant/lib/assistantFabLayout';
+import {
+  getAssistantOpenRequestId,
+  subscribeAssistantOpenRequest,
+} from '@/features/dashboard/ai-assistant/lib/assistantOpenStore';
 import {
   AdminBrandTheme,
   useAdminBrandThemeStyle,

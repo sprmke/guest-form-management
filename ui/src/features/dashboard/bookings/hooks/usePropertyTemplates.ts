@@ -122,6 +122,29 @@ export function usePropertyTemplateMutations() {
     },
   });
 
+  const resetTemplate = useMutation({
+    mutationFn: async (templateKey: string) => {
+      const headers = await authHeaders();
+      const res = await fetch(scopedFunctionsUrl('/property-templates-settings', propertyId), {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ action: 'reset', templateKey }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? 'Failed to reset template');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      invalidate();
+      toast.success('Template reset');
+    },
+    onError: (error: Error) => {
+      toast.error(friendlyToastError(error, 'Failed to reset template'));
+    },
+  });
+
   const createCustomTemplate = useMutation({
     mutationFn: async (input: { name: string; content: string }) => {
       const headers = await authHeaders();
@@ -168,7 +191,7 @@ export function usePropertyTemplateMutations() {
     },
   });
 
-  return { saveTemplate, createCustomTemplate, deleteCustomTemplate };
+  return { saveTemplate, resetTemplate, createCustomTemplate, deleteCustomTemplate };
 }
 
 export function usePropertyTemplatePreview() {

@@ -29,9 +29,9 @@ import type {
   BookingAiReviewSectionStatus,
   BookingRow,
 } from '@/features/dashboard/bookings/lib/types';
+import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
-import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
 
 import { cn } from '@/lib/utils';
 

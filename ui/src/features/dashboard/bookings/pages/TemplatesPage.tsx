@@ -19,6 +19,7 @@ import {
   iconForTemplateKey,
   STANDARD_TEMPLATE_SECTIONS,
 } from '@/features/dashboard/bookings/lib/propertyTemplateSections';
+import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
 
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
@@ -92,7 +93,7 @@ function templateByKey(
 export function TemplatesPage() {
   const { data, isLoading, error } = usePropertyTemplates();
   const templates = data?.templates;
-  const { saveTemplate, createCustomTemplate, deleteCustomTemplate } =
+  const { saveTemplate, resetTemplate, createCustomTemplate, deleteCustomTemplate } =
     usePropertyTemplateMutations();
   const customTemplates = React.useMemo(
     () => (templates ?? []).filter((t) => t.category === 'custom'),
@@ -139,11 +140,7 @@ export function TemplatesPage() {
   };
 
   const handleReset = async (template: PropertyTemplateDto) => {
-    await saveTemplate.mutateAsync({
-      templateKey: template.templateKey,
-      content: template.defaultContent,
-      sectionImageUrl: null,
-    });
+    await resetTemplate.mutateAsync(template.templateKey);
   };
 
   const addTemplateTrigger = (
@@ -194,7 +191,7 @@ export function TemplatesPage() {
                     key={section.templateKey}
                     template={template}
                     icon={section.icon}
-                    saving={saveTemplate.isPending}
+                    saving={saveTemplate.isPending || resetTemplate.isPending}
                     showSectionImage={false}
                     onSave={(input) => handleSave(template.templateKey, input)}
                     onReset={() => void handleReset(template)}
@@ -207,6 +204,7 @@ export function TemplatesPage() {
               <AdminSectionGroupHeading
                 title="Email templates"
                 count={EMAIL_TEMPLATE_SECTIONS.length}
+                badge={<TierBadge feature="customTemplates" />}
               />
               {EMAIL_TEMPLATE_SECTIONS.map((section) => {
                 const template = templateByKey(templates, section.templateKey);
@@ -216,7 +214,7 @@ export function TemplatesPage() {
                     key={section.templateKey}
                     template={template}
                     icon={section.icon}
-                    saving={saveTemplate.isPending}
+                    saving={saveTemplate.isPending || resetTemplate.isPending}
                     onSave={(input) => handleSave(template.templateKey, input)}
                     onReset={() => void handleReset(template)}
                   />
@@ -226,7 +224,11 @@ export function TemplatesPage() {
 
             {customTemplates.length > 0 ? (
               <div className="space-y-4">
-                <AdminSectionGroupHeading title="Custom templates" count={customTemplates.length} />
+                <AdminSectionGroupHeading
+                  title="Custom templates"
+                  count={customTemplates.length}
+                  badge={<TierBadge feature="customTemplates" />}
+                />
                 {customTemplates.map((template) => (
                   <PropertyTemplateEditorCard
                     key={template.templateKey}

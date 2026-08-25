@@ -9,9 +9,9 @@ import type {
   MaintenanceQuery,
   MaintenanceSummary,
 } from '@/features/dashboard/maintenance/lib/types';
+
 import { registerPdfFonts } from '@/lib/pdf/pdfFonts';
 import { pdfIsoDate } from '@/lib/pdf/pdfFormatters';
-import { PDF_COLORS } from '@/lib/pdf/pdfTheme';
 import {
   addPageFooter,
   baseAutoTableOptions,
@@ -24,6 +24,7 @@ import {
   paintPageBackground,
   startNewPage,
 } from '@/lib/pdf/pdfReportLayout';
+import { PDF_COLORS } from '@/lib/pdf/pdfTheme';
 
 const REPORT_TYPE_LABEL: Record<MaintenanceExportType, string> = {
   combined: 'Full maintenance report',

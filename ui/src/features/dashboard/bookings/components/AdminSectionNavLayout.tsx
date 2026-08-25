@@ -507,6 +507,8 @@ export function AdminSectionNavLayout({
 type AdminSectionGroupHeadingProps = {
   title: string;
   count?: number;
+  /** e.g. a `<TierBadge>` after the count when the whole group requires a higher plan. */
+  badge?: React.ReactNode;
   action?: React.ReactNode;
   className?: string;
 };
@@ -515,6 +517,7 @@ type AdminSectionGroupHeadingProps = {
 export function AdminSectionGroupHeading({
   title,
   count,
+  badge,
   action,
   className,
 }: AdminSectionGroupHeadingProps) {
@@ -527,6 +530,7 @@ export function AdminSectionGroupHeading({
             {count}
           </span>
         ) : null}
+        {badge}
       </div>
       {action}
     </div>

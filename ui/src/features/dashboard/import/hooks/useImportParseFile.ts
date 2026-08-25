@@ -4,11 +4,11 @@
 
 import { useMutation } from '@tanstack/react-query';
 
-import type { ImportParseResult } from '@/features/dashboard/import/types/importParse';
 import {
   importEdgeErrorMessage,
   readImportEdgeJson,
 } from '@/features/dashboard/import/lib/importEdgeResponse';
+import type { ImportParseResult } from '@/features/dashboard/import/types/importParse';
 import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 
 import { supabase } from '@/lib/supabase/client';

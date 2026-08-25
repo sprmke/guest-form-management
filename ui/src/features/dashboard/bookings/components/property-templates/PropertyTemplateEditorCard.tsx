@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Braces, Eye, Mail, Pencil, RotateCcw, Save, Trash2 } from 'lucide-react';
+import { Braces, Eye, Pencil, RotateCcw, Save, Trash2 } from 'lucide-react';
 
 import { extractLeadingSectionHeading } from '@/features/guest/stay-guide/lib/stayGuideContent';
 
@@ -30,7 +30,6 @@ import {
   blockTemplatePreviewAction,
   blockTemplatePreviewKeydown,
 } from '@/features/dashboard/bookings/lib/templatePreviewReadonly';
-
 import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
@@ -90,8 +89,6 @@ export function PropertyTemplateEditorCard({
   const { canUse: canUseCustomTemplates, isLoading: customTemplatesLoading } =
     useFeatureGate('customTemplates');
   const { open: openUpgradeModal } = useUpgradeModal();
-  /** Free-plan soft blur — text stays readable; Placeholders / Reset stay outside. */
-  const editorBlurred = customTemplatesLoading || !canUseCustomTemplates;
 
   React.useEffect(() => {
     let next = normalizeBlockLevelPlaceholdersInHtml(template.content);
@@ -124,8 +121,16 @@ export function PropertyTemplateEditorCard({
   const isEmail = template.category === 'email';
   const isCustom = template.category === 'custom';
   const isStandard = template.category === 'standard';
+  /** Email + custom saves need Starter+; standard templates are free. */
+  const requiresStarterToPersist = isEmail || isCustom;
   const allowSectionImage = isStandard && showSectionImage;
   const uploadTemplateAsset = useUploadPropertyTemplateAsset();
+
+  const openStarterUpgradeIfNeeded = React.useCallback((): boolean => {
+    if (!requiresStarterToPersist || canUseCustomTemplates) return false;
+    if (!customTemplatesLoading) openUpgradeModal('customTemplates');
+    return true;
+  }, [canUseCustomTemplates, customTemplatesLoading, openUpgradeModal, requiresStarterToPersist]);
 
   const placeholderLines = React.useMemo(
     () => propertyPlaceholderLinesForTemplate(template.templateKey, template.category),
@@ -242,13 +247,7 @@ export function PropertyTemplateEditorCard({
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <CardTitle className="text-lg">{template.name}</CardTitle>
-              {isCustom ? <TierBadge feature="customTemplates" /> : null}
-              {isEmail ? (
-                <span className="inline-flex items-center gap-1 rounded-md bg-blue-100 px-2 py-0.5 text-[11px] font-medium text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-                  <Mail className="h-3 w-3" aria-hidden />
-                  Email
-                </span>
-              ) : null}
+              {isEmail || isCustom ? <TierBadge feature="customTemplates" /> : null}
               {hasChanges ? (
                 <span className="inline-flex items-center rounded-md border border-amber-500/50 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300">
                   Unsaved
@@ -313,10 +312,7 @@ export function PropertyTemplateEditorCard({
                 className="min-h-[44px] sm:min-h-9"
                 disabled={saving}
                 onClick={() => {
-                  if (isCustom && !canUseCustomTemplates) {
-                    if (!customTemplatesLoading) openUpgradeModal('customTemplates');
-                    return;
-                  }
+                  if (openStarterUpgradeIfNeeded()) return;
                   void onSave({ content, sectionImageUrl });
                 }}
               >
@@ -328,12 +324,7 @@ export function PropertyTemplateEditorCard({
         </div>
 
         <div className="p-3 sm:p-4">
-          <div
-            className={cn(
-              'rounded-lg transition-[filter]',
-              editorBlurred && 'saturate-75 blur-[1.5px]'
-            )}
-          >
+          <div className="rounded-lg">
             {activeTab === 'preview' ? (
               isEmail ? (
                 previewPending || !previewHtml ? (

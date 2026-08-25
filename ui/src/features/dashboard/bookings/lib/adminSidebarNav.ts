@@ -103,7 +103,7 @@ export function buildOrgNavSections(
       Icon: Users,
     },
     {
-      label: 'Plans',
+      label: 'Plans & Billing',
       href: orgPlansPath(orgSlug),
       Icon: CreditCard,
     },
@@ -184,7 +184,7 @@ export function buildPropertyNavSections(
         },
         {
           label: 'Plans & Billing',
-          href: propertySectionPath(orgSlug, propertySlug, 'plans'),
+          href: orgPlansPath(orgSlug),
           Icon: CreditCard,
         },
         {

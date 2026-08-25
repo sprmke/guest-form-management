@@ -13,9 +13,9 @@ import type {
   FinanceQuery,
   FinanceSummary,
 } from '@/features/dashboard/finance/lib/types';
+
 import { registerPdfFonts } from '@/lib/pdf/pdfFonts';
 import { pdfBookingDate, pdfIsoDate, pdfMoney } from '@/lib/pdf/pdfFormatters';
-import { PDF_COLORS } from '@/lib/pdf/pdfTheme';
 import {
   PDF_TABLE_MONEY_COLUMN,
   addPageFooter,
@@ -32,6 +32,7 @@ import {
   startNewPage,
   type PdfKpiItem,
 } from '@/lib/pdf/pdfReportLayout';
+import { PDF_COLORS } from '@/lib/pdf/pdfTheme';
 
 const REPORT_TYPE_LABEL: Record<FinanceExportType, string> = {
   combined: 'Full finance report',
