@@ -1,18 +1,33 @@
 /**
- * Creates PayMongo checkout links for org portfolio subscription purchases.
- * Mirrors propertySubscriptionCheckout.ts — see that file for the per-property equivalent.
+ * Creates PayMongo checkout links for org subscription purchases, renewals, and mid-cycle
+ * changes (adding/removing properties and/or switching tiers). The only checkout path in the
+ * system — billing is org-level only, see planEntitlements.ts.
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
 import { createPaymongoPaymentLink, phpToCentavos } from './paymongoClient.ts';
-import { discountedPlanPricePhp } from './planPricing.ts';
+import {
+  computeOrgSubscriptionTotalPhp,
+  discountedPlanPricePhp,
+  normalizeVolumeDiscountTiers,
+} from './planPricing.ts';
+import { computeMidCycleProration, type ProrationQuote } from './subscriptionProration.ts';
 import { getPlatformPaymentSettings } from './subscriptionOrchestrator.ts';
+
+export type OrgCheckoutPurpose = 'initial' | 'renewal' | 'retry' | 'change';
+
+/** PayMongo requires a positive minimum charge — floor for the rare case where a downgrade's
+ * unused-time credit would otherwise fully (or more than) cover the new total. Not a
+ * zero-dollar-checkout bypass; that would need its own finance-reporting reconciliation. */
+const MINIMUM_CHECKOUT_AMOUNT_PHP = 20;
 
 export type OrgCheckoutResult = {
   checkoutUrl: string;
   transactionId: string;
   reused: boolean;
+  /** Present when this checkout is a mid-cycle change off an existing subscription. */
+  proration?: ProrationQuote;
 };
 
 function db() {
@@ -25,10 +40,14 @@ function db() {
 export async function createOrgSubscriptionCheckoutLink(input: {
   organizationId: string;
   planId: string;
-  propertyIds: string[];
+  /** Ignored — billing always covers every property in the org. Kept for API compatibility. */
+  propertyIds?: string[];
   initiatedBy?: string | null;
+  purpose?: OrgCheckoutPurpose;
+  forceNew?: boolean;
 }): Promise<OrgCheckoutResult> {
   const sb = db();
+  const purpose = input.purpose ?? 'initial';
 
   const { data: org, error: orgError } = await sb
     .from('organizations')
@@ -40,7 +59,9 @@ export async function createOrgSubscriptionCheckoutLink(input: {
 
   const { data: plan, error: planError } = await sb
     .from('pricing_plans')
-    .select('id, name, price_php, discount_percent, pricing_model, is_active, max_properties')
+    .select(
+      'id, code, name, price_php, discount_percent, volume_discount_tiers, volume_ramp_floor_php, volume_ramp_at_count, pricing_model, is_active, is_default'
+    )
     .eq('id', input.planId)
     .maybeSingle();
   if (planError) throw new Error(planError.message);
@@ -48,70 +69,125 @@ export async function createOrgSubscriptionCheckoutLink(input: {
   if (plan.pricing_model !== 'subscription') {
     throw new Error('Only subscription plans can be purchased');
   }
-  if (plan.max_properties == null) throw new Error('Plan is not org-bundle-eligible');
+  if (plan.is_default) throw new Error('Free plan does not require checkout');
 
-  const uniquePropertyIds = Array.from(new Set(input.propertyIds));
-  if (uniquePropertyIds.length === 0) throw new Error('Select at least one property');
-  if (uniquePropertyIds.length > (plan.max_properties as number)) {
-    throw new Error(`This plan covers up to ${plan.max_properties} properties`);
-  }
-
-  // Validate ownership + bundle-availability before money changes hands — createOrgSubscription
-  // re-checks both at fulfillment time (authoritative, protects against a race between checkout
-  // and webhook), but catching a bad request here avoids charging PayMongo for a checkout that
-  // can never be fulfilled and would otherwise leave the transaction stuck `pending` forever.
-  const { data: properties, error: propError } = await sb
+  const { data: orgProperties, error: orgPropsError } = await sb
     .from('properties')
-    .select('id, organization_id')
-    .in('id', uniquePropertyIds);
-  if (propError) throw new Error(propError.message);
-  if (!properties || properties.length !== uniquePropertyIds.length) {
-    throw new Error('One or more properties not found');
-  }
-  if (properties.some((p) => (p.organization_id as string) !== input.organizationId)) {
-    throw new Error('All properties must belong to this organization');
-  }
-
-  const { data: existingSlots, error: slotError } = await sb
-    .from('org_subscription_properties')
-    .select('property_id')
-    .in('property_id', uniquePropertyIds);
-  if (slotError) throw new Error(slotError.message);
-  if (existingSlots && existingSlots.length > 0) {
-    throw new Error('One or more properties are already covered by a portfolio subscription');
-  }
-
-  const { data: existingOrgSub } = await sb
-    .from('org_subscriptions')
     .select('id')
     .eq('organization_id', input.organizationId)
-    .in('status', ['active', 'trialing', 'past_due'])
-    .maybeSingle();
-  if (existingOrgSub) {
-    throw new Error('This organization already has an active portfolio subscription');
+    .order('created_at', { ascending: true });
+  if (orgPropsError) throw new Error(orgPropsError.message);
+  const uniquePropertyIds = (orgProperties ?? []).map((row) => row.id as string);
+  if (uniquePropertyIds.length === 0) {
+    throw new Error('Add at least one property to your organization before subscribing');
   }
 
-  const amountPhp = discountedPlanPricePhp(plan.price_php, plan.discount_percent);
+  // Status list kept identical to fulfillOrgSubscriptionPayment's `liveSub` lookup
+  // (subscriptionOrchestrator.ts) — a suspended sub's period has always already lapsed, so
+  // including it here doesn't change what gets charged, but keeping the two lists in sync avoids
+  // this pricing check and the webhook-time period logic silently diverging later.
+  const { data: liveSub } = await sb
+    .from('org_subscriptions')
+    .select('id, plan_id, price_php_snapshot, current_period_start, current_period_end')
+    .eq('organization_id', input.organizationId)
+    .in('status', ['active', 'trialing', 'past_due', 'suspended'])
+    .maybeSingle();
+
+  // A property already slotted into a *different* live org subscription can't be checked out here.
+  const { data: conflictingSlots, error: conflictError } = await sb
+    .from('org_subscription_properties')
+    .select('property_id')
+    .in('property_id', uniquePropertyIds)
+    .neq('org_subscription_id', liveSub?.id ?? '00000000-0000-0000-0000-000000000000');
+  if (conflictError) throw new Error(conflictError.message);
+  if (conflictingSlots && conflictingSlots.length > 0) {
+    throw new Error('One or more properties are already covered by a different org subscription');
+  }
+
+  let currentPropertyIds: Set<string> = new Set();
+  if (liveSub) {
+    const { data: currentSlots, error: currentSlotsError } = await sb
+      .from('org_subscription_properties')
+      .select('property_id')
+      .eq('org_subscription_id', liveSub.id as string);
+    if (currentSlotsError) throw new Error(currentSlotsError.message);
+    currentPropertyIds = new Set((currentSlots ?? []).map((r) => r.property_id as string));
+  }
+
+  const targetRatePhp = discountedPlanPricePhp(plan.price_php, plan.discount_percent);
+  const targetTotalPhp = computeOrgSubscriptionTotalPhp(
+    targetRatePhp,
+    normalizeVolumeDiscountTiers(plan.volume_discount_tiers),
+    uniquePropertyIds.length,
+    {
+      volumeRampFloorPhp:
+        plan.volume_ramp_floor_php == null ? null : Number(plan.volume_ramp_floor_php),
+      volumeRampAtCount:
+        plan.volume_ramp_at_count == null ? null : Number(plan.volume_ramp_at_count),
+    }
+  );
+
+  const sameAsLive =
+    liveSub != null &&
+    String(liveSub.plan_id) === String(input.planId) &&
+    currentPropertyIds.size === uniquePropertyIds.length &&
+    uniquePropertyIds.every((id) => currentPropertyIds.has(id));
+
+  let proration: ProrationQuote | undefined;
+  let amountPhp: number;
+
+  if (purpose === 'renewal' || sameAsLive) {
+    amountPhp =
+      liveSub?.price_php_snapshot != null && Number(liveSub.price_php_snapshot) > 0
+        ? Number(liveSub.price_php_snapshot)
+        : targetTotalPhp;
+  } else if (
+    liveSub?.price_php_snapshot != null &&
+    Number(liveSub.price_php_snapshot) > 0 &&
+    liveSub.current_period_start &&
+    liveSub.current_period_end
+  ) {
+    // Mid-cycle change (different plan and/or property set) off an existing subscription — prorate.
+    proration = computeMidCycleProration({
+      currentPricePhp: Number(liveSub.price_php_snapshot),
+      currentPeriodStartIso: String(liveSub.current_period_start),
+      currentPeriodEndIso: String(liveSub.current_period_end),
+      targetPricePhp: targetTotalPhp,
+    });
+    amountPhp = Math.max(MINIMUM_CHECKOUT_AMOUNT_PHP, proration.netDuePhp);
+  } else {
+    amountPhp = targetTotalPhp;
+  }
+
   if (!Number.isFinite(amountPhp) || amountPhp <= 0) {
     throw new Error('Plan has no price configured');
   }
 
   const orgName = String(org.name ?? 'Organization').trim();
 
-  const { data: pendingExisting } = await sb
-    .from('org_payment_transactions')
-    .select('id, checkout_url')
-    .eq('organization_id', input.organizationId)
-    .eq('plan_id', input.planId)
-    .eq('status', 'pending')
-    .maybeSingle();
+  if (!input.forceNew) {
+    const { data: pendingExisting } = await sb
+      .from('org_payment_transactions')
+      .select('id, checkout_url')
+      .eq('organization_id', input.organizationId)
+      .eq('plan_id', input.planId)
+      .eq('status', 'pending')
+      .maybeSingle();
 
-  if (pendingExisting?.checkout_url) {
-    return {
-      checkoutUrl: pendingExisting.checkout_url as string,
-      transactionId: pendingExisting.id as string,
-      reused: true,
-    };
+    if (pendingExisting?.checkout_url) {
+      return {
+        checkoutUrl: pendingExisting.checkout_url as string,
+        transactionId: pendingExisting.id as string,
+        reused: true,
+      };
+    }
+  } else {
+    await sb
+      .from('org_payment_transactions')
+      .update({ status: 'expired' })
+      .eq('organization_id', input.organizationId)
+      .eq('plan_id', input.planId)
+      .eq('status', 'pending');
   }
 
   const { data: txnRow, error: insertError } = await sb
@@ -129,18 +205,22 @@ export async function createOrgSubscriptionCheckoutLink(input: {
   if (insertError) throw new Error(insertError.message);
 
   const transactionId = txnRow.id as string;
+  const descriptionSuffix =
+    purpose === 'renewal' ? ' renewal' : proration ? ' — mid-cycle change' : '';
 
   try {
     await getPlatformPaymentSettings();
     const link = await createPaymongoPaymentLink({
       amountCentavos: phpToCentavos(amountPhp),
-      description: `${orgName} — ${plan.name} portfolio plan (${uniquePropertyIds.length} propert${uniquePropertyIds.length === 1 ? 'y' : 'ies'})`,
+      description: `${orgName} — ${plan.name} plan (${uniquePropertyIds.length} propert${uniquePropertyIds.length === 1 ? 'y' : 'ies'})${descriptionSuffix}`,
       remarks: `organization:${input.organizationId}`,
       metadata: {
         kind: 'org_subscription',
         transaction_id: transactionId,
         organization_id: input.organizationId,
         plan_id: input.planId,
+        purpose: proration ? 'change' : purpose,
+        ...(proration ? { proration_credit_php: String(proration.creditPhp) } : {}),
         ...(input.initiatedBy ? { initiated_by: input.initiatedBy } : {}),
       },
     });
@@ -154,7 +234,7 @@ export async function createOrgSubscriptionCheckoutLink(input: {
       .eq('id', transactionId);
     if (updateError) throw new Error(updateError.message);
 
-    return { checkoutUrl: link.checkoutUrl, transactionId, reused: false };
+    return { checkoutUrl: link.checkoutUrl, transactionId, reused: false, proration };
   } catch (err) {
     await sb
       .from('org_payment_transactions')
