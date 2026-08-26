@@ -2,7 +2,7 @@
 title: 'Parking settings — operator guide'
 status: active
 tags: [guides, routes, org, parking]
-updated: 2026-08-23
+updated: 2026-08-26
 ---
 
 # Parking settings — operator guide
@@ -13,17 +13,18 @@ Route: `/org/:orgSlug/parking/:parkingSlug/settings`
 
 ## Progress overview
 
-| Section           | E2E save | Validation | Docs | Notes                                                 |
-| ----------------- | -------- | ---------- | ---- | ----------------------------------------------------- |
-| Basic Information | Done     | Done       | Done | Parking type/residence/tower/level/slot are read-only |
-| Photos            | Done     | Done       | Done | Single cover photo required                           |
-| Parking Details   | Done     | Done       | Done | Check-in/out required; dimensions optional            |
-| Amenities         | Done     | Done       | Done | At least 1 amenity required                           |
-| Location          | Done     | Done       | Done | Address + map pin required                            |
-| Payment           | Done     | Done       | Done | Server-enforced; QR via upload only                   |
-| Email             | Done     | N/A        | Done | Reservation / confirmed / no-host automation toggles  |
-| Integrations      | Done     | N/A        | Done | Telegram + AI optional; status/shortcuts only         |
-| Danger Zone       | Done     | N/A        | Done | Archive, restore, delete with confirmation            |
+| Section            | E2E save | Validation | Docs | Notes                                                 |
+| ------------------ | -------- | ---------- | ---- | ----------------------------------------------------- |
+| Basic Information  | Done     | Done       | Done | Parking type/residence/tower/level/slot are read-only |
+| Photos             | Done     | Done       | Done | Single cover photo required                           |
+| Parking Details    | Done     | Done       | Done | Check-in/out required; dimensions optional            |
+| Amenities          | Done     | Done       | Done | At least 1 amenity required                           |
+| Location           | Done     | Done       | Done | Address + map pin required                            |
+| Payment            | Done     | Done       | Done | Server-enforced; QR via upload only                   |
+| Email              | Done     | N/A        | Done | Reservation / confirmed / no-host automation toggles  |
+| Booking Automation | Done     | N/A        | Done | Auto-accept top match toggle (Phase 5)                |
+| Integrations       | Done     | N/A        | Done | Telegram + AI optional; status/shortcuts only         |
+| Danger Zone        | Done     | N/A        | Done | Archive, restore, delete with confirmation            |
 
 ## Overview
 
@@ -54,7 +55,7 @@ Parking **Settings** is where you set up a single slot before guests can book it
 
 ## Setup completeness
 
-**Save Changes** is blocked while any required field is incomplete — the same enforcement as [Property Settings](../property/settings.md#setup-completeness). Incomplete sections show a **red dot** on the in-page section nav (desktop `lg+` sidebar) and on the sidebar **Settings** link, driven by the saved parking snapshot outside the editor and by the live draft while editing.
+**Save Changes** is blocked while any required field is incomplete — the button stays visible but **disabled** (tooltip names the first issue), matching [Property Settings](../property/settings.md#setup-completeness). Incomplete sections show a **red dot** on the in-page section nav (desktop `lg+` sidebar) and on the sidebar **Settings** link, driven by the saved parking snapshot outside the editor and by the live draft while editing.
 
 | Rule                                                     | Required? |
 | -------------------------------------------------------- | --------- |
@@ -63,7 +64,8 @@ Parking **Settings** is where you set up a single slot before guests can book it
 | Parking details (check-in / check-out)                   | Yes       |
 | Amenities (at least 1 selected)                          | Yes       |
 | Location (address + map pin)                             | Yes       |
-| Payment (provider, account, QR upload)                   | Yes       |
+| Payment (provider, account name, account number)         | Yes       |
+| Payment QR (per method)                                  | No        |
 | Telegram integrations                                    | No        |
 
 Field-level errors appear **as you edit** (on blur/change). After **Save Changes**, all remaining issues are shown at once and the page scrolls to the first incomplete section. Section banners (orange) appear for **Photos** and **Amenities** — not for sections with individual inputs.
@@ -74,17 +76,18 @@ Logic: `ui/src/features/dashboard/parking/lib/parkingSettingsCompletion.ts`, `ui
 
 ## Sections
 
-| Section         | Storage                                                                                                                                                                         |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Basic info      | `parkings` columns + `parkings.settings` — `brandColor`, `description`; `residence_name`, `parking_type`, `tower`, `level`, `slot_label` (**read-only**, set at creation)       |
-| Photos          | `parkings.settings.coverImage` + `coverImageStoragePath` via **`upload-parking-media`** (single image max)                                                                      |
-| Parking details | `parkings.settings` — optional `spaceLengthM`, `spaceWidthM`, `heightClearanceM`; `checkInTime`, `checkOutTime` (defaults `14:00`, `12:00`) via **`ParkingDetailsSection`**     |
-| Amenities       | `parkings.settings.enabledParkingAmenities`, `customParkingAmenities`, resolved `features[]` (public listing) via **`PATCH update-parking`**                                    |
-| Location        | `parkings.settings` — `address`, `city`, `province`, `country`, `zipCode`, `latitude`, `longitude`, `mapsUrl`, `placeId` (same shape as property; **`PropertyLocationPicker`**) |
-| Payment         | `parking_settings` (`payment_methods`, GCash QR via **`upload-parking-settings-asset`**)                                                                                        |
-| Email           | `parking_settings.automation_toggles` — reservation request, guest confirmed, no-host-available (default **on**)                                                                |
-| Integrations    | `PropertyIntegrationsPanel` (`telegramLayout="parking"`) — Google status (flags), single **Parking** Telegram channel → notifications page, AI services (platform env)          |
-| Danger zone     | **`PATCH update-parking`** `{ status: ACTIVE \| INACTIVE }` archive/restore; **`DELETE delete-parking`** permanent delete                                                       |
+| Section            | Storage                                                                                                                                                                                                                                      |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Basic info         | `parkings` columns + `parkings.settings` — `brandColor`, `description`; `residence_name`, `parking_type`, `tower`, `level`, `slot_label` (**read-only**, set at creation)                                                                    |
+| Photos             | `parkings.settings.coverImage` + `coverImageStoragePath` via **`upload-parking-media`** (single image max)                                                                                                                                   |
+| Parking details    | `parkings.settings` — optional `spaceLengthM`, `spaceWidthM`, `heightClearanceM`; `checkInTime`, `checkOutTime` (defaults `14:00`, `12:00`) via **`ParkingDetailsSection`**                                                                  |
+| Amenities          | `parkings.settings.enabledParkingAmenities`, `customParkingAmenities`, resolved `features[]` (public listing) via **`PATCH update-parking`**                                                                                                 |
+| Location           | `parkings.settings` — `address`, `city`, `province`, `country`, `zipCode`, `latitude`, `longitude`, `mapsUrl`, `placeId` (same shape as property; **`PropertyLocationPicker`**)                                                              |
+| Payment            | `parking_settings` (`payment_methods`, GCash QR via **`upload-parking-settings-asset`**)                                                                                                                                                     |
+| Email              | `parking_settings.automation_toggles` — reservation request, guest confirmed, no-host-available (default **on**)                                                                                                                             |
+| Booking Automation | `parking_settings.automation_toggles.autoAcceptTopMatch` — auto-accepts the top-ranked candidate on the initial dispatch batch instead of waiting for a manual Accept tap (default **off**); guest still has to pay before endorsement fires |
+| Integrations       | `PropertyIntegrationsPanel` (`telegramLayout="parking"`) — Google status (flags), single **Parking** Telegram channel → notifications page, AI services (platform env)                                                                       |
+| Danger zone        | **`PATCH update-parking`** `{ status: ACTIVE \| INACTIVE }` archive/restore; **`DELETE delete-parking`** permanent delete                                                                                                                    |
 
 ### Basic info fields
 
@@ -112,15 +115,16 @@ Parking type, residence, tower, level, and slot number can only be set when the 
 
 ## Save paths
 
-**Save Changes** saves only dirty sections that pass validation — the same section-scoped behavior as Property Settings. If required fields are still incomplete, save is blocked, the page scrolls to the first incomplete section, and a toast names the issue.
+**Save Changes** saves only dirty sections that pass validation — the same section-scoped behavior as Property Settings. If required fields are still incomplete, **Save Changes** stays visible but is **disabled** (tooltip names the first issue); clicking while enabled with incomplete fields still scrolls to the first incomplete section and toasts the issue.
 
 - Basic (brand color, description only — identity fields are read-only) → `PATCH update-parking`
 - Photos → `POST` / `DELETE` **`upload-parking-media?parking_id=`** (auto-saved on upload/remove)
-- Parking details → `PATCH update-parking` (`settings.spaceLengthM`, `spaceWidthM`, `heightClearanceM`, `checkInTime`, `checkOutTime`)
+- Parking details → `PATCH update-parking` (`settings.spaceLengthM`, `settings.spaceWidthM`, `settings.heightClearanceM`, `settings.checkInTime`, `settings.checkOutTime`)
 - Amenities → `PATCH update-parking` (`settings.enabledParkingAmenities`, `settings.customParkingAmenities`, `settings.features`)
 - Location → `PATCH update-parking` (location fields in `parkings.settings`)
-- Payment methods → `PATCH parking-settings?parking_id=`; primary QR → **`upload-parking-settings-asset?parking_id=`**
+- Payment methods → `PATCH parking-settings?parking_id=` (requires org-owner OTP when payment methods change — same **Send OTP** then **Verify and save** flow as [Property Settings](../property/settings.md) § Payment; account name uses full-name validation; **optional** QR per method via **`upload-parking-settings-asset?parking_id=`** stages Storage only until OTP save)
 - Email automations → `PATCH parking-settings?parking_id=` `{ automationToggles: { emailParkingReservationRequest, emailParkingGuestConfirmed, emailParkingNoHostAvailable } }`
+- Booking automation → `PATCH parking-settings?parking_id=` `{ automationToggles: { autoAcceptTopMatch } }` (same JSONB bag as email toggles, separate settings section)
 - Integrations status → `GET parking-settings?parking_id=` (`parkingIntegrations`, `platformSecrets`); Telegram credentials saved from **Notifications** modules
 - Archive / restore → `PATCH update-parking` `{ parkingId, status: 'INACTIVE' | 'ACTIVE' }` — hides/shows public listing (`list-public-parkings` / `get-public-parking` return **ACTIVE** only)
 - Delete → `DELETE delete-parking`
@@ -131,20 +135,24 @@ Since parking type, residence, tower, level, and slot number can't change in Set
 
 ## Implementation map
 
-| Concern                    | Path                                                                         |
-| -------------------------- | ---------------------------------------------------------------------------- |
-| Page                       | `ui/src/features/dashboard/parking/pages/ParkingSettingsPage.tsx`            |
-| Card                       | `ui/src/features/dashboard/parking/components/ParkingSettingsCard.tsx`       |
-| Field label + help         | `ui/src/components/forms/FieldLabel.tsx`                                     |
-| Details section            | `ui/src/features/dashboard/parking/components/ParkingDetailsSection.tsx`     |
-| Features section           | `ui/src/features/dashboard/parking/components/ParkingFeaturesSection.tsx`    |
-| Form draft                 | `ui/src/features/dashboard/parking/lib/parkingSettingsForm.ts`               |
-| Completion / validation    | `ui/src/features/dashboard/parking/lib/parkingSettingsCompletion.ts`         |
-| Field error resolver       | `ui/src/features/dashboard/parking/lib/parkingSettingsFieldError.ts`         |
-| Completion hooks           | `ui/src/features/dashboard/parking/hooks/useParkingSettingsCompletion.ts`    |
-| Sidebar issues store       | `ui/src/features/dashboard/parking/lib/parkingSettingsIssuesStore.ts`        |
-| Sidebar issues sync        | `ui/src/features/dashboard/parking/components/ParkingSettingsIssuesSync.tsx` |
-| Shell (mounts issues sync) | `ui/src/features/dashboard/org/components/ParkingAdminShell.tsx`             |
-| Brand resolve (edge)       | `supabase/functions/_shared/parkingBranding.ts`                              |
-| Public API                 | `get-public-parking` → `loadPublicParkingBySlug`                             |
-| Public UI                  | `ParkingDetailPage`, `ParkingOverview`, `ParkingPublicBrandShell`            |
+| Concern                    | Path                                                                                                           |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Page                       | `ui/src/features/dashboard/parking/pages/ParkingSettingsPage.tsx`                                              |
+| Card                       | `ui/src/features/dashboard/parking/components/ParkingSettingsCard.tsx`                                         |
+| Field label + help         | `ui/src/components/forms/FieldLabel.tsx`                                                                       |
+| Details section            | `ui/src/features/dashboard/parking/components/ParkingDetailsSection.tsx`                                       |
+| Features section           | `ui/src/features/dashboard/parking/components/ParkingFeaturesSection.tsx`                                      |
+| Booking automation section | `ui/src/features/dashboard/parking/components/ParkingBookingAutomationSection.tsx`                             |
+| Form draft                 | `ui/src/features/dashboard/parking/lib/parkingSettingsForm.ts`                                                 |
+| Completion / validation    | `ui/src/features/dashboard/parking/lib/parkingSettingsCompletion.ts`                                           |
+| Field error resolver       | `ui/src/features/dashboard/parking/lib/parkingSettingsFieldError.ts`                                           |
+| Completion hooks           | `ui/src/features/dashboard/parking/hooks/useParkingSettingsCompletion.ts`                                      |
+| Sidebar issues store       | `ui/src/features/dashboard/parking/lib/parkingSettingsIssuesStore.ts`                                          |
+| Sidebar issues sync        | `ui/src/features/dashboard/parking/components/ParkingSettingsIssuesSync.tsx`                                   |
+| Shell (mounts issues sync) | `ui/src/features/dashboard/org/components/ParkingAdminShell.tsx`                                               |
+| Payment OTP dialog         | `ui/src/features/dashboard/org/components/property-settings/SensitiveSettingsOtpDialog.tsx`                    |
+| OTP hook / fingerprint     | `ui/src/features/dashboard/org/hooks/useSettingsVerification.ts`, `.../lib/settingsVerificationFingerprint.ts` |
+| Verification edge          | `supabase/functions/settings-verification/index.ts`, `_shared/settingsVerification.ts`                         |
+| Brand resolve (edge)       | `supabase/functions/_shared/parkingBranding.ts`                                                                |
+| Public API                 | `get-public-parking` → `loadPublicParkingBySlug`                                                               |
+| Public UI                  | `ParkingDetailPage`, `ParkingOverview`, `ParkingPublicBrandShell`                                              |

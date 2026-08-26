@@ -68,7 +68,7 @@ Property Settings is where you complete operational setup: basic info, capacity,
 
 ## Setup completeness
 
-**Save Changes** saves **only dirty sections that pass validation** — you do not need every section complete first. Within a section, only **changed fields** are validated for that save (e.g. contact information can save even when other basic fields are still incomplete). Valid filled sections persist; invalid dirty sections are skipped and highlighted. If some sections save and others do not, you get a toast: _New changes has been saved._
+**Save Changes** saves **only dirty sections that pass validation** — you do not need every section complete first. Within a section, only **changed fields** are validated for that save (e.g. contact information can save even when other basic fields are still incomplete). Valid filled sections persist; invalid dirty sections are skipped and highlighted. **Exception — Payment:** if payment methods are edited, Save is disabled until the whole Payment section’s required fields are valid (it does not partially save other sections alongside an incomplete payment draft). If **no** dirty section is savable, the button stays visible but **disabled**. If some sections save and others do not, you get a toast: _New changes has been saved._
 
 Incomplete sections still show a **red dot** on the in-page section nav (**desktop `lg+` sidebar only** — the mobile horizontal chip strip is hidden) and on the sidebar **Settings** link (for setup tracking). On phone/tablet, Settings uses the same **brand hero** shell as other admin pages (`AdminMobilePage`); Save appears as a hero icon when there are unsaved changes. On desktop, the amber **Unsaved changes** bar is pinned to the **main content column** only (`max-w-4xl`, same measure as the form) so it does not cover the secondary section nav.
 
@@ -77,7 +77,8 @@ Incomplete sections still show a **red dot** on the in-page section nav (**deskt
 | Basic info (name, type, tower/unit for condos, contact fields) | Yes       |
 | Property details (capacity, check-in/out)                      | Yes       |
 | Location (address + map pin)                                   | Yes       |
-| Payment (provider, account, QR upload)                         | Yes       |
+| Payment (provider, account name, account number)               | Yes       |
+| Payment QR (per method)                                        | No        |
 | Building forms (GAF fields + signature)                        | Yes       |
 | Email automations (property/team email, timing, toggles)       | Yes       |
 | Telegram integrations                                          | No        |
@@ -117,11 +118,12 @@ Both use the same column: `properties.status` (`ACTIVE` | `INACTIVE`).
 | Contact role  | `properties.settings.contactRole`  | Required                                                                                                                                                                                                                                              |
 | Phone         | `properties.settings.contactPhone` | Required; PH mobile `09XXXXXXXXX`                                                                                                                                                                                                                     |
 | Email         | `properties.settings.contactEmail` | Required; valid email                                                                                                                                                                                                                                 |
+| Brand color   | `app_settings.brand_color`         | Optional override; empty = inherit org. Changing it marks Settings dirty and shows **Save Changes** (saved with operational basic section via `PATCH app-settings`)                                                                                   |
 
 ### Save path
 
-1. UI draft → **Save Changes** → `update-property` (PATCH)
-2. DB columns + merged `properties.settings` JSONB
+1. UI draft → **Save Changes** → `update-property` (PATCH) for profile fields; brand color → `PATCH app-settings?property_id=`
+2. DB columns + merged `properties.settings` JSONB; brand color on `app_settings`
 
 ### Residence defaults (Azure North Residences)
 
@@ -247,20 +249,22 @@ Social URLs, external reviews, and superhost fields in `app_settings`. Also edit
 
 Per-property operational settings in `app_settings` (not `properties.settings`).
 
-| Field           | Column               | Security notes                                                                 |
-| --------------- | -------------------- | ------------------------------------------------------------------------------ |
-| Bank / e-wallet | `payment_provider`   | Allow-list only (PH providers)                                                 |
-| Account name    | `gcash_name`         | Max 120 chars; no secrets                                                      |
-| Account number  | `gcash_number`       | Format validated per provider type                                             |
-| QR image        | `gcash_qr_image_url` | **Upload only** via `upload-app-settings-asset`; PATCH cannot set URL directly |
+| Field           | Column                                                                     | Security notes                                                                                                                                                                                        |
+| --------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Bank / e-wallet | `payment_provider`                                                         | Allow-list only (PH providers)                                                                                                                                                                        |
+| Account name    | `gcash_name`                                                               | Full name (first + last, min 2 chars each); max 120                                                                                                                                                   |
+| Account number  | `gcash_number`                                                             | Format validated per provider type                                                                                                                                                                    |
+| QR image        | `payment_methods[].qrImageUrl` (+ legacy `gcash_qr_image_url` for primary) | **Optional** per method. Stage via `upload-app-settings-asset`; commits on OTP-gated PATCH. Guest form / ready-for-check-in email show QR only when a real upload exists (no platform seed fallback). |
 
 ### Save path
 
 **Save Changes** → `app-settings` PATCH (admin JWT + `property_id` scope).
 
-When provider, account name, account number, or primary QR reference in the payment-methods draft changed since last save, **Save Changes** opens a confirmation modal first. The host must confirm details are correct and acknowledge they are used for guest booking payments; Kame Homes is not liable for misdirected transfers from incorrect details.
+When payment methods change since last save (account fields **or** any method QR), **Save Changes** opens a verification modal (no header close control — use **Discard changes**). OTP is **not** sent automatically: the host taps **Send OTP** first; only then does the 6-digit input and **Verify and save** appear. A code is emailed to the **org owner only** (branded property email shell; subject **`Payment verification code — {listing}`**; OTP digits use the listing brand color darkened as needed for readable contrast on white). Copy differs by actor: owner → “You, **Name** (Owner), are saving **Payment settings**…” with a self-review caution; team member → “Your team member, **Name** (Role), is saving…” with “contact that person before approving.” Any team member with `settings:edit` can enter the code once the owner shares it. The server rejects payment PATCHes without a valid `settingsVerificationToken`. After a successful save, org + property team members receive a deduplicated notice email (listing name, actor name + role, timestamp Asia/Manila). Short liability copy remains in the modal footer.
 
-QR image upload still saves immediately via `upload-app-settings-asset` (no modal on upload).
+**Account name** uses the same full-name rules as property contact name (first + last, min 2 characters each). **QR code** is optional on every payment method (each method has its own uploader). When **Payment** is dirty, **Save Changes** stays visible but is **disabled** until required payment fields are valid (provider, account name, account number) — QR absence does not block save. Guest payment step and `{{gcash_payment_section}}` (ready-for-check-in) render account details always and QR images only when uploaded.
+
+Choosing a new QR image **stages** the file in Storage and updates the payment draft only — it does **not** write `app_settings` until OTP succeeds and Save completes. Closing the OTP modal without verifying (or a failed verified save) **reverts** the entire Payment section (methods, fields, and QR preview) to the last saved values.
 
 Payment details are shown on the guest form and ready-for-check-in email for **this property only**.
 
@@ -399,19 +403,20 @@ booth UI; premium human concierge portrait). Admin settings fields above are unc
 
 ## API reference (this page)
 
-| Action                                                            | Endpoint                                                 |
-| ----------------------------------------------------------------- | -------------------------------------------------------- |
-| Profile + settings                                                | `PATCH update-property`                                  |
-| Payment + building forms + email automations + workflow documents | `PATCH app-settings?property_id=`                        |
-| Media upload/delete                                               | `POST` / `DELETE upload-property-media?property_id=`     |
-| Payment QR / signature                                            | `POST upload-app-settings-asset?property_id=`            |
-| AI platform overrides (property)                                  | `GET`/`PATCH ai-platform-property-settings?property_id=` |
-| Voice receptionist settings                                       | `GET`/`PATCH voice-receptionist-settings?property_id=`   |
-| Voice receptionist voice preview (TTS)                            | `POST voice-receptionist-voice-preview?property_id=`     |
-| Voice receptionist usage/cost read                                | `GET voice-receptionist-usage?property_id=`              |
-| Archive                                                           | `PATCH update-property` `{ status: "INACTIVE" }`         |
-| Restore                                                           | `PATCH update-property` `{ status: "ACTIVE" }`           |
-| Delete                                                            | `DELETE delete-property` `{ propertyId }`                |
+| Action                                                            | Endpoint                                                                               |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Profile + settings                                                | `PATCH update-property`                                                                |
+| Payment + building forms + email automations + workflow documents | `PATCH app-settings?property_id=` (payment fields require `settingsVerificationToken`) |
+| Payment OTP (org owner)                                           | `POST settings-verification?property_id=` (`send_otp`, `verify_otp`)                   |
+| Media upload/delete                                               | `POST` / `DELETE upload-property-media?property_id=`                                   |
+| Payment QR / signature                                            | `POST upload-app-settings-asset?property_id=`                                          |
+| AI platform overrides (property)                                  | `GET`/`PATCH ai-platform-property-settings?property_id=`                               |
+| Voice receptionist settings                                       | `GET`/`PATCH voice-receptionist-settings?property_id=`                                 |
+| Voice receptionist voice preview (TTS)                            | `POST voice-receptionist-voice-preview?property_id=`                                   |
+| Voice receptionist usage/cost read                                | `GET voice-receptionist-usage?property_id=`                                            |
+| Archive                                                           | `PATCH update-property` `{ status: "INACTIVE" }`                                       |
+| Restore                                                           | `PATCH update-property` `{ status: "ACTIVE" }`                                         |
+| Delete                                                            | `DELETE delete-property` `{ propertyId }`                                              |
 
 ---
 
