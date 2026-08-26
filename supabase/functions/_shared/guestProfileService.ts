@@ -5,6 +5,7 @@
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
 import { loadAuthUserProfile } from './authUserProfile.ts';
+import { normalizePhoneDigits, validatePhilippineMobilePhone } from './fieldValidation.ts';
 import { createServiceClient, type AuthenticatedUser } from './orgAuth.ts';
 import { normalizePropertyMediaItems } from './propertyMedia.ts';
 
@@ -106,6 +107,10 @@ function validatePatch(patch: GuestProfilePatch): string | null {
   if (patch.bio !== undefined && patch.bio !== null && patch.bio.trim().length > 500) {
     return 'Bio must be 500 characters or fewer';
   }
+  if (patch.phone !== undefined && patch.phone !== null && patch.phone.trim()) {
+    const phoneErr = validatePhilippineMobilePhone(patch.phone);
+    if (phoneErr) return phoneErr;
+  }
   if (
     patch.locationLabel !== undefined &&
     patch.locationLabel !== null &&
@@ -144,7 +149,7 @@ export async function patchGuestProfile(
     nextRow.avatar_url = patch.avatarUrl?.trim() || null;
   }
   if (patch.phone !== undefined) {
-    nextRow.phone = patch.phone?.trim() || null;
+    nextRow.phone = patch.phone?.trim() ? normalizePhoneDigits(patch.phone.trim()) : null;
   }
   if (patch.locationLabel !== undefined) {
     nextRow.location_label = patch.locationLabel?.trim() || null;
@@ -160,10 +165,20 @@ export async function patchGuestProfile(
     nextRow.created_at = now;
 
     const { error } = await supabase.from('guest_profiles').insert(nextRow);
-    if (error) throw new Error('Failed to save profile');
+    if (error) {
+      console.error('[guestProfileService] insert failed:', error.message);
+      throw new Error('Failed to save profile');
+    }
   } else {
-    const { error } = await supabase.from('guest_profiles').update(nextRow).eq('user_id', user.id);
-    if (error) throw new Error('Failed to save profile');
+    const { user_id: _userId, ...updatePatch } = nextRow;
+    const { error } = await supabase
+      .from('guest_profiles')
+      .update(updatePatch)
+      .eq('user_id', user.id);
+    if (error) {
+      console.error('[guestProfileService] update failed:', error.message);
+      throw new Error('Failed to save profile');
+    }
   }
 
   return getGuestProfile(user);
