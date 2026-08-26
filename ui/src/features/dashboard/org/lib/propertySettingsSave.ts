@@ -514,13 +514,22 @@ function sectionHasValidationIssue(
     inheritedBrandColor
   );
 
-  if (dirtyFieldIds.length > 0) {
-    return dirtyFieldIds.some((fieldId) => Boolean(completion.fieldErrors[fieldId]));
-  }
-
-  return Object.entries(completion.fieldErrors).some(
+  const sectionHasAnyFieldError = Object.entries(completion.fieldErrors).some(
     ([fieldId, message]) => Boolean(message) && fieldSectionId(fieldId) === sectionId
   );
+
+  if (dirtyFieldIds.length > 0) {
+    if (dirtyFieldIds.some((fieldId) => Boolean(completion.fieldErrors[fieldId]))) {
+      return true;
+    }
+    // Coarse dirty markers (payment methods array) map to fine-grained field error keys.
+    if (sectionId === 'payment' && dirtyFieldIds.includes('payment-methods')) {
+      return sectionHasAnyFieldError;
+    }
+    return false;
+  }
+
+  return sectionHasAnyFieldError;
 }
 
 function firstSectionIssue(
@@ -824,6 +833,7 @@ export type AppSettingsPatchBody = {
   externalReviews?: PropertyExternalReview[];
   superhostVerificationUrl?: string;
   superhostProofImageUrl?: string;
+  settingsVerificationToken?: string;
 };
 
 export function buildAppSettingsPatchForSections(

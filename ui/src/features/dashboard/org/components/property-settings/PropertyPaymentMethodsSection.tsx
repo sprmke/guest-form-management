@@ -3,7 +3,7 @@ import * as React from 'react';
 import { ImagePlus, Loader2, Plus, Star, Trash2, Upload } from 'lucide-react';
 
 import type { AppSettingsDto } from '@/features/dashboard/bookings/hooks/useAppSettings';
-import { resolvePrimaryPaymentQrDisplayUrl } from '@/features/dashboard/lib/storedMediaDisplay';
+import { resolvePaymentMethodQrDisplayUrl } from '@/features/dashboard/lib/storedMediaDisplay';
 import { PaymentProviderSelect } from '@/features/dashboard/org/components/property-settings/PaymentProviderSelect';
 import { SettingsField } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import {
@@ -31,8 +31,8 @@ type Props = {
   resolveFieldError: (fieldId: string) => string | null;
   markFieldInteracted: (fieldId: string) => void;
   onChange: (methods: PropertyPaymentMethod[]) => void;
-  onPrimaryQrFile: (file: File) => void;
-  qrUploadBusy?: boolean;
+  onMethodQrFile: (methodId: string, file: File) => void;
+  qrUploadingMethodId?: string | null;
 };
 
 function providerInitial(provider: string): string {
@@ -41,6 +41,7 @@ function providerInitial(provider: string): string {
 }
 
 function PaymentQrUpload({
+  fieldId,
   provider,
   imageUrl,
   disabled,
@@ -48,6 +49,7 @@ function PaymentQrUpload({
   error,
   onFile,
 }: {
+  fieldId: string;
   provider: string;
   imageUrl: string | null;
   disabled?: boolean;
@@ -59,12 +61,7 @@ function PaymentQrUpload({
   const hasImage = Boolean(imageUrl?.trim());
 
   return (
-    <SettingsField
-      id="payment-qr-image"
-      label={`QR code · ${paymentProviderLabel(provider)}`}
-      required
-      error={error}
-    >
+    <SettingsField id={fieldId} label={`QR code · ${paymentProviderLabel(provider)}`} error={error}>
       <div className="w-fit max-w-full">
         <div className="group/qr relative mx-auto w-fit max-w-full shrink-0 sm:mx-0">
           {busy ? (
@@ -162,7 +159,7 @@ function PaymentMethodCard({
   isPrimary: boolean;
   canRemove: boolean;
   disabled?: boolean;
-  qrImageUrl?: string | null;
+  qrImageUrl: string | null;
   qrUploadBusy?: boolean;
   qrError?: string | null;
   resolveFieldError: (fieldId: string) => string | null;
@@ -171,7 +168,7 @@ function PaymentMethodCard({
   onNumberChange: (value: string) => void;
   onSetPrimary: () => void;
   onRemove: () => void;
-  onQrFile?: (file: File) => void;
+  onQrFile: (file: File) => void;
 }) {
   const prefix = `payment-method-${method.id}`;
   const providerErr = resolveFieldError(`${prefix}-provider`);
@@ -294,23 +291,22 @@ function PaymentMethodCard({
         </SettingsField>
       </div>
 
-      {isPrimary && onQrFile ? (
-        <div
-          className={cn(
-            'border-t px-3 py-4 sm:px-4',
-            isPrimary ? 'border-primary/15 bg-primary/[0.03]' : 'border-border/50'
-          )}
-        >
-          <PaymentQrUpload
-            provider={method.provider}
-            imageUrl={qrImageUrl ?? null}
-            disabled={disabled}
-            busy={qrUploadBusy}
-            error={qrError}
-            onFile={onQrFile}
-          />
-        </div>
-      ) : null}
+      <div
+        className={cn(
+          'border-t px-3 py-4 sm:px-4',
+          isPrimary ? 'border-primary/15 bg-primary/[0.03]' : 'border-border/50'
+        )}
+      >
+        <PaymentQrUpload
+          fieldId={`${prefix}-qr`}
+          provider={method.provider}
+          imageUrl={qrImageUrl}
+          disabled={disabled}
+          busy={qrUploadBusy}
+          error={qrError}
+          onFile={onQrFile}
+        />
+      </div>
     </article>
   );
 }
@@ -322,8 +318,8 @@ export function PropertyPaymentMethodsSection({
   resolveFieldError,
   markFieldInteracted,
   onChange,
-  onPrimaryQrFile,
-  qrUploadBusy,
+  onMethodQrFile,
+  qrUploadingMethodId = null,
 }: Props) {
   const updateMethod = (id: string, patch: Partial<PropertyPaymentMethod>, fieldId: string) => {
     markFieldInteracted(fieldId);
@@ -347,19 +343,18 @@ export function PropertyPaymentMethodsSection({
     onChange([...methods, createEmptyPaymentMethod(false)]);
   };
 
-  const primary = methods.find((m) => m.isPrimary) ?? methods[0];
   const atMethodLimit = methods.length >= MAX_PROPERTY_PAYMENT_METHODS;
-  const primaryQrUrl = resolvePrimaryPaymentQrDisplayUrl({
-    methodQrUrl: primary?.qrImageUrl,
-    legacyQrUrl: data.gcashQrImageUrl,
-    legacyQrSource: data.fieldSources?.gcashQrImageUrl,
-  });
-  const qrError = resolveFieldError('payment-qr-image');
 
   return (
     <div className="space-y-3">
       {methods.map((method) => {
         const isPrimary = method.isPrimary;
+        const qrImageUrl = resolvePaymentMethodQrDisplayUrl({
+          methodQrUrl: method.qrImageUrl,
+          legacyQrUrl: data.gcashQrImageUrl,
+          legacyQrSource: data.fieldSources?.gcashQrImageUrl,
+          useLegacyFallback: isPrimary,
+        });
         return (
           <PaymentMethodCard
             key={method.id}
@@ -367,9 +362,9 @@ export function PropertyPaymentMethodsSection({
             isPrimary={isPrimary}
             canRemove={methods.length > 1}
             disabled={disabled}
-            qrImageUrl={isPrimary ? primaryQrUrl : undefined}
-            qrUploadBusy={isPrimary ? qrUploadBusy : undefined}
-            qrError={isPrimary ? qrError : undefined}
+            qrImageUrl={qrImageUrl}
+            qrUploadBusy={qrUploadingMethodId === method.id}
+            qrError={resolveFieldError(`payment-method-${method.id}-qr`)}
             resolveFieldError={resolveFieldError}
             onProviderChange={(next) =>
               updateMethod(method.id, { provider: next }, `payment-method-${method.id}-provider`)
@@ -385,14 +380,10 @@ export function PropertyPaymentMethodsSection({
               onChange(setPrimaryPaymentMethod(methods, method.id));
             }}
             onRemove={() => removeMethod(method.id)}
-            onQrFile={
-              isPrimary
-                ? (file) => {
-                    markFieldInteracted('payment-qr-image');
-                    onPrimaryQrFile(file);
-                  }
-                : undefined
-            }
+            onQrFile={(file) => {
+              markFieldInteracted(`payment-method-${method.id}-qr`);
+              onMethodQrFile(method.id, file);
+            }}
           />
         );
       })}

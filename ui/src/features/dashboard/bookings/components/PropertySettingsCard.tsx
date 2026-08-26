@@ -44,7 +44,6 @@ import {
   applyBuildingFormsTeamDefaults,
   pickBuildingFormsTeamContact,
 } from '@/features/dashboard/bookings/lib/buildingFormsTeamDefaults';
-import { PaymentSettingsSaveConfirmDialog } from '@/features/dashboard/org/components/property-settings/PaymentSettingsSaveConfirmDialog';
 import { PropertyAiPlatformSection } from '@/features/dashboard/org/components/property-settings/PropertyAiPlatformSection';
 import {
   operationalSettingsDraftIsDirty,
@@ -56,6 +55,7 @@ import {
 } from '@/features/dashboard/org/components/property-settings/PropertyProfileSettingsSections';
 import { PropertySettingsBrandColorPreview } from '@/features/dashboard/org/components/property-settings/PropertySettingsBrandColorPreview';
 import { PropertySocialsBrandingSection } from '@/features/dashboard/org/components/property-settings/PropertySocialsBrandingSection';
+import { SensitiveSettingsOtpDialog } from '@/features/dashboard/org/components/property-settings/SensitiveSettingsOtpDialog';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useCheckPropertyName } from '@/features/dashboard/org/hooks/useCheckPropertyName';
 import { useDeleteProperty } from '@/features/dashboard/org/hooks/useDeleteProperty';
@@ -92,6 +92,7 @@ import {
   planPropertySettingsSave,
 } from '@/features/dashboard/org/lib/propertySettingsSave';
 import { normalizePropertySocialLinksForSave } from '@/features/dashboard/org/lib/propertySocialLinks';
+import { computePaymentSettingsFingerprint } from '@/features/dashboard/org/lib/settingsVerificationFingerprint';
 import { orgPropertiesPath, propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
@@ -192,8 +193,10 @@ export function PropertySettingsCard() {
   );
   const [showValidationErrors, setShowValidationErrors] = useState(false);
   const [interactedFields, setInteractedFields] = useState<Record<string, boolean>>({});
-  const [paymentConfirmOpen, setPaymentConfirmOpen] = useState(false);
+  const [paymentOtpOpen, setPaymentOtpOpen] = useState(false);
+  const [paymentOtpFingerprint, setPaymentOtpFingerprint] = useState('');
   const [savingReviewId, setSavingReviewId] = useState<string | null>(null);
+  const paymentOtpSucceededRef = useRef(false);
 
   const markFieldInteracted = useCallback((fieldId: string) => {
     setInteractedFields((current) => {
@@ -371,12 +374,70 @@ export function PropertySettingsCard() {
   voiceDirtyRef.current = voiceDirty;
   const isDirty = profileDirty || operationalDirty || voiceDirty;
 
+  const savePlan = useMemo(() => {
+    if (!operationalDraft || !operationalBaseline || !appSettings) return null;
+    return planPropertySettingsSave({
+      profileDraft,
+      profileBaseline,
+      operationalDraft,
+      operationalBaseline,
+      completion: settingsCompletion,
+      inheritedBrandColor,
+    });
+  }, [
+    operationalDraft,
+    operationalBaseline,
+    appSettings,
+    profileDraft,
+    profileBaseline,
+    settingsCompletion,
+    inheritedBrandColor,
+  ]);
+
+  const paymentDirty = Boolean(
+    operationalDraft &&
+    operationalBaseline &&
+    paymentMethodsDraftIsDirty(operationalDraft.paymentMethods, operationalBaseline.paymentMethods)
+  );
+  const paymentBlocksSave =
+    paymentDirty &&
+    (savePlan?.blockedSections.includes('payment') ||
+      settingsCompletion.issueSectionIds.includes('payment'));
+
+  const saveDisabledByValidation =
+    Boolean(paymentBlocksSave) ||
+    (Boolean(isDirty) && !voiceDirty && Boolean(savePlan) && !savePlan!.hasSavableWork);
+
+  const saveDisabledReason = (() => {
+    if (!saveDisabledByValidation) return undefined;
+    if (paymentBlocksSave) {
+      const paymentError = Object.entries(settingsCompletion.fieldErrors).find(
+        ([fieldId, message]) =>
+          Boolean(message) &&
+          (fieldId === 'payment-methods' ||
+            fieldId === 'payment-qr-image' ||
+            fieldId.startsWith('payment-method-'))
+      )?.[1];
+      return paymentError ?? 'Complete payment fields to save';
+    }
+    return savePlan?.firstBlockedMessage ?? 'Fix required fields to save';
+  })();
+
   const busy =
     appSettingsLoading ||
     updateAppSettings.isPending ||
     updateVoiceSettings.isPending ||
     deleteProperty.isPending ||
     (updateProperty.isPending && !mediaGalleryBusy);
+
+  const saveDisabled =
+    busy || Boolean(towerConflict) || nameUnavailable || nameChecking || saveDisabledByValidation;
+
+  useEffect(() => {
+    if (saveDisabledByValidation) {
+      setShowValidationErrors(true);
+    }
+  }, [saveDisabledByValidation]);
 
   const propertySlugPrefix = publicPropertySlugUrlPrefix();
 
@@ -464,7 +525,10 @@ export function PropertySettingsCard() {
     setVoiceDraft((current) => (current ? { ...current, [key]: value } : current));
   };
 
-  const handleSave = async (options?: { skipPaymentConfirm?: boolean }) => {
+  const handleSave = async (options?: {
+    skipPaymentVerification?: boolean;
+    settingsVerificationToken?: string;
+  }) => {
     if (!operationalDraft || !operationalBaseline || !appSettings) return;
 
     if (towerConflict) {
@@ -481,6 +545,21 @@ export function PropertySettingsCard() {
       inheritedBrandColor,
     });
 
+    const paymentChanged = paymentMethodsDraftIsDirty(
+      operationalDraft.paymentMethods,
+      operationalBaseline.paymentMethods
+    );
+    if (
+      paymentChanged &&
+      (plan.blockedSections.includes('payment') ||
+        settingsCompletion.issueSectionIds.includes('payment'))
+    ) {
+      setShowValidationErrors(true);
+      toast.error(saveDisabledReason ?? 'Complete payment fields to save');
+      scrollToSettingsSection('payment');
+      return;
+    }
+
     if (!plan.hasSavableWork && !voiceDirty) {
       setShowValidationErrors(true);
       if (plan.firstBlockedMessage) {
@@ -495,13 +574,10 @@ export function PropertySettingsCard() {
     }
 
     const paymentWillSave = plan.operationalSections.includes('payment');
-    const paymentChanged = paymentMethodsDraftIsDirty(
-      operationalDraft.paymentMethods,
-      operationalBaseline.paymentMethods
-    );
-
-    if (paymentWillSave && paymentChanged && !options?.skipPaymentConfirm) {
-      setPaymentConfirmOpen(true);
+    if (paymentWillSave && paymentChanged && !options?.skipPaymentVerification) {
+      const fingerprint = await computePaymentSettingsFingerprint(operationalDraft.paymentMethods);
+      setPaymentOtpFingerprint(fingerprint);
+      setPaymentOtpOpen(true);
       return;
     }
 
@@ -548,7 +624,12 @@ export function PropertySettingsCard() {
         savedOperationalSections
       );
       if (operationalPatch) {
-        const saved = await updateAppSettings.mutateAsync(operationalPatch);
+        const saved = await updateAppSettings.mutateAsync({
+          ...operationalPatch,
+          ...(options?.settingsVerificationToken
+            ? { settingsVerificationToken: options.settingsVerificationToken }
+            : {}),
+        });
         const values = appSettingsToFormValues(saved);
         setOperationalDraft((current) =>
           current
@@ -587,14 +668,43 @@ export function PropertySettingsCard() {
         }
       }
     } catch (error) {
+      if (options?.settingsVerificationToken) {
+        revertPaymentDraft();
+      }
       toast.error(friendlyToastError(error, 'Could not save settings'));
     } finally {
-      setPaymentConfirmOpen(false);
+      setPaymentOtpOpen(false);
+      paymentOtpSucceededRef.current = false;
     }
   };
 
-  const handlePaymentConfirmSave = () => {
-    void handleSave({ skipPaymentConfirm: true });
+  const revertPaymentDraft = useCallback(() => {
+    setOperationalDraft((current) => {
+      if (!current || !operationalBaseline) return current;
+      return {
+        ...current,
+        paymentMethods: operationalBaseline.paymentMethods,
+        paymentProvider: operationalBaseline.paymentProvider,
+        gcashName: operationalBaseline.gcashName,
+        gcashNumber: operationalBaseline.gcashNumber,
+      };
+    });
+  }, [operationalBaseline]);
+
+  const handlePaymentOtpOpenChange = (open: boolean) => {
+    if (!open && !paymentOtpSucceededRef.current) {
+      revertPaymentDraft();
+    }
+    if (!open) paymentOtpSucceededRef.current = false;
+    setPaymentOtpOpen(open);
+  };
+
+  const handlePaymentOtpVerified = (verificationToken: string) => {
+    paymentOtpSucceededRef.current = true;
+    void handleSave({
+      skipPaymentVerification: true,
+      settingsVerificationToken: verificationToken,
+    });
   };
 
   const handleArchiveProperty = async () => {
@@ -649,7 +759,8 @@ export function PropertySettingsCard() {
         isDirty ? (
           <MobileHeroActionButton
             aria-label={busy ? 'Saving' : 'Save changes'}
-            disabled={busy || Boolean(towerConflict) || nameUnavailable || nameChecking}
+            disabled={saveDisabled}
+            title={saveDisabledReason}
             onClick={() => void handleSave()}
           >
             <Save className="size-5" aria-hidden />
@@ -661,7 +772,8 @@ export function PropertySettingsCard() {
           <Button
             type="button"
             onClick={() => void handleSave()}
-            disabled={busy || Boolean(towerConflict) || nameUnavailable || nameChecking}
+            disabled={saveDisabled}
+            title={saveDisabledReason}
             className="min-h-[44px] gap-1.5"
           >
             <Save className="size-4" aria-hidden />
@@ -670,10 +782,12 @@ export function PropertySettingsCard() {
         ) : undefined
       }
     >
-      <PaymentSettingsSaveConfirmDialog
-        open={paymentConfirmOpen}
-        onOpenChange={setPaymentConfirmOpen}
-        onConfirm={handlePaymentConfirmSave}
+      <SensitiveSettingsOtpDialog
+        open={paymentOtpOpen}
+        onOpenChange={handlePaymentOtpOpenChange}
+        scope="property"
+        patchFingerprint={paymentOtpFingerprint}
+        onVerified={handlePaymentOtpVerified}
         busy={busy}
       />
       {operationalDraft && appSettings ? (
@@ -705,7 +819,8 @@ export function PropertySettingsCard() {
                   <Button
                     type="button"
                     onClick={() => void handleSave()}
-                    disabled={busy || Boolean(towerConflict) || nameUnavailable || nameChecking}
+                    disabled={saveDisabled}
+                    title={saveDisabledReason}
                     className="min-h-[44px] w-full sm:w-auto"
                     size="sm"
                   >

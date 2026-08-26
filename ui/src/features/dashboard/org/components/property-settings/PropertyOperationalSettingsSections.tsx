@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import { ClipboardList, Globe, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -17,6 +19,7 @@ import { PropertyPaymentMethodsSection } from '@/features/dashboard/org/componen
 import { PropertySettingsSectionAlert } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import { PropertyVoiceReceptionistSection } from '@/features/dashboard/org/components/property-settings/PropertyVoiceReceptionistSection';
 import {
+  setPaymentMethodQrUrl,
   syncLegacyPaymentFieldsFromMethods,
   type PropertyPaymentMethod,
 } from '@/features/dashboard/org/lib/paymentMethods';
@@ -70,6 +73,7 @@ export function PropertyOperationalSettingsSections({
   voiceReceptionist,
 }: Props) {
   const uploadMut = useUploadAppSettingsAsset();
+  const [qrUploadingMethodId, setQrUploadingMethodId] = useState<string | null>(null);
 
   const setPaymentMethods = (methods: PropertyPaymentMethod[]) => {
     const legacy = syncLegacyPaymentFieldsFromMethods(methods);
@@ -79,13 +83,16 @@ export function PropertyOperationalSettingsSections({
     onChange('gcashNumber', legacy.gcashNumber);
   };
 
-  const handlePrimaryQrFile = async (file: File) => {
-    markFieldInteracted('payment-qr-image');
+  const handleMethodQrFile = async (methodId: string, file: File) => {
+    markFieldInteracted(`payment-method-${methodId}-qr`);
+    setQrUploadingMethodId(methodId);
     try {
-      await uploadMut.mutateAsync({ assetType: 'gcash_qr', file });
-      toast.success('Payment QR updated');
+      const uploaded = await uploadMut.mutateAsync({ assetType: 'gcash_qr', file });
+      setPaymentMethods(setPaymentMethodQrUrl(draft.paymentMethods, methodId, uploaded.url));
     } catch (err) {
       toast.error(friendlyToastError(err, 'Upload failed'));
+    } finally {
+      setQrUploadingMethodId(null);
     }
   };
 
@@ -104,8 +111,8 @@ export function PropertyOperationalSettingsSections({
           resolveFieldError={resolveFieldError}
           markFieldInteracted={markFieldInteracted}
           onChange={setPaymentMethods}
-          onPrimaryQrFile={(file) => void handlePrimaryQrFile(file)}
-          qrUploadBusy={uploadMut.isPending}
+          onMethodQrFile={(methodId, file) => void handleMethodQrFile(methodId, file)}
+          qrUploadingMethodId={qrUploadingMethodId}
         />
       </AdminSection>
 
