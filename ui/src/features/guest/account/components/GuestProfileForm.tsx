@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Camera, Loader2, MapPin, Phone } from 'lucide-react';
 
@@ -11,6 +11,10 @@ import {
   resolveGuestAvatarUrl,
   resolveGuestDisplayName,
 } from '@/features/guest/account/lib/guestAccountIdentity';
+import {
+  guestProfilePhoneError,
+  isGuestProfileDraftValid,
+} from '@/features/guest/account/lib/guestProfileValidation';
 import { useGuestSession } from '@/features/guest/auth/hooks/useGuestSession';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -18,7 +22,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
+import { LocationSearchInput } from '@/lib/google-maps/LocationSearchInput';
 import { cn } from '@/lib/utils';
+import { normalizePhoneDigits } from '@/lib/validation/fieldValidation';
 
 const BIO_MAX = 500;
 
@@ -50,7 +57,29 @@ function draftsEqual(a: ProfileDraft, b: ProfileDraft): boolean {
   );
 }
 
-export function GuestProfileForm() {
+type GuestProfileFormProps = {
+  /** Drop outer card chrome when rendered inside a modal shell. */
+  embedded?: boolean;
+  /** Hide inline save/cancel — modal footer owns actions. */
+  hideFooter?: boolean;
+  formId?: string;
+  onFormStateChange?: (state: GuestProfileFormState) => void;
+};
+
+export type GuestProfileFormState = {
+  isDirty: boolean;
+  isValid: boolean;
+  isPending: boolean;
+  reset: () => void;
+  save: () => void;
+};
+
+export function GuestProfileForm({
+  embedded = false,
+  hideFooter = false,
+  formId,
+  onFormStateChange,
+}: GuestProfileFormProps) {
   const { session } = useGuestSession();
   const { data: profile, isLoading } = useGuestProfile();
   const { updateProfile, uploadAvatar } = useGuestProfileMutations();
@@ -76,18 +105,24 @@ export function GuestProfileForm() {
   const initials = guestInitials(displayNamePreview);
   const email = profile?.email ?? session?.user?.email ?? '';
   const isDirty = useMemo(() => !draftsEqual(draft, savedDraft), [draft, savedDraft]);
+  const isValid = useMemo(() => isGuestProfileDraftValid(draft), [draft]);
+  const phoneError = guestProfilePhoneError(draft.phone);
   const bioRemaining = BIO_MAX - draft.bio.length;
 
   const patchField = <K extends keyof ProfileDraft>(key: K, value: ProfileDraft[K]) => {
     setDraft((current) => ({ ...current, [key]: value }));
   };
 
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
+    if (!isGuestProfileDraftValid(draft) || updateProfile.isPending) return;
+
+    const normalizedPhone = draft.phone.trim() ? normalizePhoneDigits(draft.phone.trim()) : null;
+
     updateProfile.mutate(
       {
         displayName: draft.displayName.trim(),
         bio: draft.bio.trim() || null,
-        phone: draft.phone.trim() || null,
+        phone: normalizedPhone,
         locationLabel: draft.locationLabel.trim() || null,
       },
       {
@@ -95,7 +130,7 @@ export function GuestProfileForm() {
           const trimmed: ProfileDraft = {
             displayName: draft.displayName.trim(),
             bio: draft.bio.trim(),
-            phone: draft.phone.trim(),
+            phone: normalizedPhone ?? '',
             locationLabel: draft.locationLabel.trim(),
           };
           setDraft(trimmed);
@@ -103,7 +138,30 @@ export function GuestProfileForm() {
         },
       }
     );
-  };
+  }, [draft, updateProfile]);
+
+  const resetDraft = useCallback(() => {
+    setDraft(savedDraft);
+  }, [savedDraft]);
+
+  useEffect(() => {
+    if (!embedded || !onFormStateChange) return;
+    onFormStateChange({
+      isDirty,
+      isValid,
+      isPending: updateProfile.isPending,
+      reset: resetDraft,
+      save: handleSave,
+    });
+  }, [
+    embedded,
+    onFormStateChange,
+    isDirty,
+    isValid,
+    updateProfile.isPending,
+    resetDraft,
+    handleSave,
+  ]);
 
   const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -112,79 +170,238 @@ export function GuestProfileForm() {
     event.target.value = '';
   };
 
+  const shellClassName = cn(
+    embedded
+      ? 'w-full'
+      : 'bg-card border-border w-full overflow-hidden rounded-2xl border shadow-sm'
+  );
+
+  const pageGridClassName =
+    'grid grid-cols-1 gap-8 p-6 sm:p-8 lg:grid-cols-[minmax(240px,320px)_minmax(0,1fr)] lg:items-start lg:gap-10 lg:p-10';
+  const modalBodyClassName = 'space-y-6';
+
+  const avatarButton = (
+    <>
+      <button
+        type="button"
+        onClick={() => fileInputRef.current?.click()}
+        className={cn('group relative shrink-0', embedded && 'mx-auto')}
+        aria-label="Change profile photo"
+      >
+        <Avatar
+          className={cn(
+            'ring-background shadow-md',
+            embedded ? 'size-24 ring-4 sm:size-28' : 'size-28 ring-4 sm:size-32'
+          )}
+        >
+          {avatarUrl ? <AvatarImage src={avatarUrl} alt="" referrerPolicy="no-referrer" /> : null}
+          <AvatarFallback
+            className={cn(
+              'from-primary/90 to-primary bg-gradient-to-br text-white',
+              embedded ? 'text-2xl sm:text-3xl' : 'text-2xl'
+            )}
+          >
+            {initials}
+          </AvatarFallback>
+        </Avatar>
+        <span className="bg-background/90 absolute inset-0 flex items-center justify-center rounded-full opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+          {uploadAvatar.isPending ? (
+            <Loader2
+              className={cn('text-foreground animate-spin', embedded ? 'size-6' : 'size-5')}
+              aria-hidden
+            />
+          ) : (
+            <Camera className={cn('text-foreground', embedded ? 'size-6' : 'size-5')} aria-hidden />
+          )}
+        </span>
+      </button>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="sr-only"
+        onChange={handleAvatarChange}
+      />
+    </>
+  );
+
+  const fields = (
+    <div className={cn('grid grid-cols-1 gap-4', !embedded && 'gap-6')}>
+      {embedded && email ? (
+        <div className="space-y-2">
+          <Label htmlFor="guest-email">Email</Label>
+          <Input
+            id="guest-email"
+            value={email}
+            readOnly
+            tabIndex={-1}
+            autoComplete="email"
+            aria-readonly="true"
+            className="bg-muted/50 text-muted-foreground h-10 cursor-default"
+          />
+        </div>
+      ) : null}
+
+      <div className="space-y-2">
+        <Label htmlFor="guest-display-name">Display name</Label>
+        <Input
+          id="guest-display-name"
+          value={draft.displayName}
+          onChange={(event) => patchField('displayName', event.target.value)}
+          maxLength={80}
+          className="h-10"
+          autoComplete="name"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-end justify-between gap-3">
+          <Label htmlFor="guest-bio">Bio</Label>
+          <span
+            className={cn(
+              'text-xs tabular-nums',
+              bioRemaining < 40 ? 'text-destructive' : 'text-muted-foreground'
+            )}
+            aria-live="polite"
+          >
+            {bioRemaining}
+          </span>
+        </div>
+        <Textarea
+          id="guest-bio"
+          value={draft.bio}
+          onChange={(event) => patchField('bio', event.target.value)}
+          rows={embedded ? 3 : 4}
+          maxLength={BIO_MAX}
+          className={cn('resize-y', embedded ? 'min-h-[88px]' : 'min-h-[120px]')}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="guest-phone">Phone</Label>
+        <div className="relative">
+          <Phone
+            className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2"
+            aria-hidden
+          />
+          <Input
+            id="guest-phone"
+            type="tel"
+            value={draft.phone}
+            onChange={(event) => patchField('phone', event.target.value)}
+            placeholder={FORM_PLACEHOLDERS.phone}
+            className={cn('h-10 pl-10 tabular-nums', phoneError && 'border-destructive')}
+            inputMode="tel"
+            autoComplete="tel"
+            aria-invalid={Boolean(phoneError)}
+          />
+        </div>
+        {phoneError ? (
+          <p className="text-destructive text-sm" role="alert">
+            {phoneError}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="guest-location">Location</Label>
+        <LocationSearchInput
+          id="guest-location"
+          value={draft.locationLabel}
+          onChange={(value) => patchField('locationLabel', value)}
+          placeholder="Search location"
+        />
+      </div>
+    </div>
+  );
+
+  const footer = hideFooter ? null : (
+    <div
+      className={cn(
+        'border-border flex flex-col-reverse gap-3 border-t pt-6 sm:flex-row sm:items-center sm:justify-end lg:pt-8',
+        isDirty && 'lg:justify-between'
+      )}
+    >
+      {isDirty ? (
+        <Button
+          type="button"
+          variant="ghost"
+          className="min-h-[44px] sm:mr-auto"
+          onClick={resetDraft}
+          disabled={updateProfile.isPending}
+        >
+          Cancel
+        </Button>
+      ) : (
+        <span className="hidden sm:block" aria-hidden />
+      )}
+      <Button
+        type="button"
+        onClick={handleSave}
+        disabled={!isDirty || !isValid || updateProfile.isPending}
+        className="min-h-[44px] min-w-[7.5rem]"
+      >
+        {updateProfile.isPending ? 'Saving…' : 'Save'}
+      </Button>
+    </div>
+  );
+
   if (isLoading) {
     return (
-      <div className="border-border bg-card w-full overflow-hidden rounded-2xl border shadow-sm">
-        <div className="grid grid-cols-1 gap-8 p-6 sm:p-8 lg:grid-cols-[minmax(240px,320px)_minmax(0,1fr)] lg:items-start lg:gap-10 lg:p-10">
-          <div className="flex flex-col items-center gap-4 sm:items-start">
+      <div className={shellClassName}>
+        {embedded ? (
+          <div className={modalBodyClassName}>
+            <div className="flex justify-center px-1 pb-1 pt-2">
+              <div className="bg-muted size-24 animate-pulse rounded-full sm:size-28" />
+            </div>
+            <div className="space-y-4">
+              <div className="bg-muted h-10 animate-pulse rounded-md" />
+              <div className="bg-muted h-10 animate-pulse rounded-md" />
+              <div className="bg-muted h-[88px] animate-pulse rounded-md" />
+              <div className="bg-muted h-10 animate-pulse rounded-md" />
+              <div className="bg-muted h-10 animate-pulse rounded-md" />
+            </div>
+          </div>
+        ) : (
+          <div className={pageGridClassName}>
             <div className="bg-muted size-28 shrink-0 animate-pulse rounded-full sm:size-32" />
-            <div className="w-full space-y-2 text-center sm:text-left">
-              <div className="bg-muted mx-auto h-6 w-40 animate-pulse rounded-md sm:mx-0" />
-              <div className="bg-muted mx-auto h-4 w-32 animate-pulse rounded-md sm:mx-0" />
+            <div className="space-y-3">
+              <div className="bg-muted h-10 animate-pulse rounded-md" />
+              <div className="bg-muted h-[120px] animate-pulse rounded-md" />
+              <div className="grid grid-cols-1 gap-4">
+                <div className="bg-muted h-10 animate-pulse rounded-md" />
+                <div className="bg-muted h-10 animate-pulse rounded-md" />
+              </div>
             </div>
           </div>
-
-          <div className="space-y-6 lg:space-y-8">
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
-              <div className="space-y-2 lg:col-span-2">
-                <div className="bg-muted h-4 w-24 animate-pulse rounded-md" />
-                <div className="bg-muted h-11 animate-pulse rounded-md" />
-              </div>
-              <div className="space-y-2 lg:col-span-2">
-                <div className="bg-muted h-4 w-16 animate-pulse rounded-md" />
-                <div className="bg-muted h-[120px] animate-pulse rounded-md" />
-              </div>
-              <div className="space-y-2">
-                <div className="bg-muted h-4 w-16 animate-pulse rounded-md" />
-                <div className="bg-muted h-11 animate-pulse rounded-md" />
-              </div>
-              <div className="space-y-2">
-                <div className="bg-muted h-4 w-20 animate-pulse rounded-md" />
-                <div className="bg-muted h-11 animate-pulse rounded-md" />
-              </div>
-            </div>
-            <div className="border-border flex justify-end border-t pt-6 lg:pt-8">
-              <div className="bg-muted h-11 w-32 animate-pulse rounded-md" />
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     );
   }
 
+  if (embedded) {
+    return (
+      <form
+        id={formId}
+        className={shellClassName}
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (isDirty && isValid && !updateProfile.isPending) handleSave();
+        }}
+      >
+        <div className={modalBodyClassName}>
+          <div className="flex justify-center px-1 pb-1 pt-2">{avatarButton}</div>
+          {fields}
+        </div>
+      </form>
+    );
+  }
+
   return (
-    <div className="border-border bg-card w-full overflow-hidden rounded-2xl border shadow-sm">
-      <div className="grid grid-cols-1 gap-8 p-6 sm:p-8 lg:grid-cols-[minmax(240px,320px)_minmax(0,1fr)] lg:items-start lg:gap-10 lg:p-10">
+    <div className={shellClassName}>
+      <div className={pageGridClassName}>
         <div className="space-y-5">
-          <div className="flex flex-col items-center gap-4 sm:items-start">
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="group relative shrink-0"
-              aria-label="Change profile photo"
-            >
-              <Avatar className="ring-background size-28 shadow-md ring-4 sm:size-32">
-                {avatarUrl ? <AvatarImage src={avatarUrl} alt="" /> : null}
-                <AvatarFallback className="from-primary/90 to-primary bg-gradient-to-br text-2xl text-white">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
-              <span className="bg-background/90 absolute inset-0 flex items-center justify-center rounded-full opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-                {uploadAvatar.isPending ? (
-                  <Loader2 className="text-foreground size-6 animate-spin" aria-hidden />
-                ) : (
-                  <Camera className="text-foreground size-6" aria-hidden />
-                )}
-              </span>
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="sr-only"
-              onChange={handleAvatarChange}
-            />
-          </div>
+          <div className="flex flex-col items-center gap-4 sm:items-start">{avatarButton}</div>
 
           <div className="min-w-0 space-y-3 text-center sm:text-left">
             <div>
@@ -220,107 +437,8 @@ export function GuestProfileForm() {
         </div>
 
         <div className="space-y-6 lg:space-y-8">
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
-            <div className="space-y-2 lg:col-span-2">
-              <Label htmlFor="guest-display-name">Display name</Label>
-              <Input
-                id="guest-display-name"
-                value={draft.displayName}
-                onChange={(event) => patchField('displayName', event.target.value)}
-                maxLength={80}
-                className="h-11"
-                autoComplete="name"
-              />
-            </div>
-
-            <div className="space-y-2 lg:col-span-2">
-              <div className="flex items-end justify-between gap-3">
-                <Label htmlFor="guest-bio">Bio</Label>
-                <span
-                  className={cn(
-                    'text-xs tabular-nums',
-                    bioRemaining < 40 ? 'text-destructive' : 'text-muted-foreground'
-                  )}
-                  aria-live="polite"
-                >
-                  {bioRemaining}
-                </span>
-              </div>
-              <Textarea
-                id="guest-bio"
-                value={draft.bio}
-                onChange={(event) => patchField('bio', event.target.value)}
-                rows={4}
-                maxLength={BIO_MAX}
-                className="min-h-[120px] resize-y"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="guest-phone">Phone</Label>
-              <div className="relative">
-                <Phone
-                  className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2"
-                  aria-hidden
-                />
-                <Input
-                  id="guest-phone"
-                  value={draft.phone}
-                  onChange={(event) => patchField('phone', event.target.value)}
-                  className="h-11 pl-10"
-                  inputMode="tel"
-                  autoComplete="tel"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="guest-location">Location</Label>
-              <div className="relative">
-                <MapPin
-                  className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2"
-                  aria-hidden
-                />
-                <Input
-                  id="guest-location"
-                  value={draft.locationLabel}
-                  onChange={(event) => patchField('locationLabel', event.target.value)}
-                  className="h-11 pl-10"
-                  maxLength={120}
-                  autoComplete="address-level2"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div
-            className={cn(
-              'border-border flex flex-col-reverse gap-3 border-t pt-6 sm:flex-row sm:items-center sm:justify-end lg:pt-8',
-              isDirty && 'lg:justify-between'
-            )}
-          >
-            {isDirty ? (
-              <Button
-                type="button"
-                variant="ghost"
-                className="min-h-[44px] sm:mr-auto"
-                onClick={() => setDraft(savedDraft)}
-                disabled={updateProfile.isPending}
-              >
-                Cancel
-              </Button>
-            ) : (
-              <span className="hidden sm:block" aria-hidden />
-            )}
-            <Button
-              type="button"
-              onClick={handleSave}
-              disabled={!isDirty || updateProfile.isPending}
-              className="min-h-[44px] min-w-[7.5rem]"
-            >
-              {updateProfile.isPending ? 'Saving…' : 'Save'}
-            </Button>
-          </div>
+          {fields}
+          {footer}
         </div>
       </div>
     </div>

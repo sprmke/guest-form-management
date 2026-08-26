@@ -11,6 +11,9 @@ interface OtpCodeInputProps {
   disabled?: boolean;
   error?: boolean;
   autoFocus?: boolean;
+  /** Slightly smaller cells for narrow modals. */
+  compact?: boolean;
+  className?: string;
 }
 
 export function OtpCodeInput({
@@ -22,6 +25,8 @@ export function OtpCodeInput({
   disabled,
   error,
   autoFocus = true,
+  compact = false,
+  className,
 }: OtpCodeInputProps) {
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
   const digits = Array.from({ length }, (_, i) => value[i] ?? '');
@@ -81,7 +86,7 @@ export function OtpCodeInput({
   };
 
   return (
-    <div className="flex justify-center gap-2 sm:gap-3">
+    <div className={cn('flex min-w-0 justify-center gap-1.5 sm:gap-2', className)}>
       {digits.map((digit, index) => (
         <input
           key={index}
@@ -99,8 +104,11 @@ export function OtpCodeInput({
           onPaste={handlePaste(index)}
           aria-label={`Digit ${index + 1} of ${length}`}
           className={cn(
-            'bg-background h-14 w-12 rounded-xl border text-center text-xl font-semibold shadow-sm outline-none transition-colors sm:h-16 sm:w-14',
+            'bg-background shrink-0 rounded-xl border text-center font-semibold shadow-sm outline-none transition-colors',
             'focus:border-primary focus:ring-primary/20 focus:ring-2',
+            compact
+              ? 'h-12 w-10 text-lg sm:h-14 sm:w-11 sm:text-xl'
+              : 'h-14 w-11 text-xl sm:h-16 sm:w-12',
             error ? 'border-destructive' : 'border-input',
             disabled && 'opacity-60'
           )}

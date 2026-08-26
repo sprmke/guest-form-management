@@ -1,4 +1,6 @@
-import { Link } from 'react-router-dom';
+import type { MouseEvent } from 'react';
+
+import { Link, useLocation } from 'react-router-dom';
 
 import { LayoutDashboard, LogOut } from 'lucide-react';
 
@@ -11,7 +13,9 @@ import {
 } from '@/features/guest/account/lib/guestAccountIdentity';
 import { GUEST_ACCOUNT_NAV_ITEMS } from '@/features/guest/account/lib/guestAccountNav';
 import { getHostMarketingNavCta } from '@/features/guest/auth/config/auth-navigation';
+import { getAppModeFromPath } from '@/features/guest/auth/config/mode-switch';
 import { useGuestSession } from '@/features/guest/auth/hooks/useGuestSession';
+import { useModeSwitchTransition } from '@/features/guest/marketing/shared/context/ModeSwitchTransitionContext';
 
 import { useOrganizations } from '@/features/dashboard/org/hooks/useOrganizations';
 
@@ -28,10 +32,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 export function GuestAccountMenu() {
+  const { pathname } = useLocation();
   const { status, session } = useGuestSession();
   const { data: profile } = useGuestProfile({ enabled: status === 'authenticated' });
   const { data: orgsData } = useOrganizations({ enabled: status === 'authenticated' });
+  const { switchMode, isTransitioning } = useModeSwitchTransition();
   const signOut = useGuestSignOut();
+  const currentMode = getAppModeFromPath(pathname);
 
   if (status !== 'authenticated' || !session) {
     return null;
@@ -45,6 +52,12 @@ export function GuestAccountMenu() {
 
   const handleSignOut = async () => {
     await signOut();
+  };
+
+  const handleDashboardClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (currentMode !== 'guest' || isTransitioning) return;
+    event.preventDefault();
+    switchMode('host', { destination: dashboardHref });
   };
 
   return (
@@ -67,8 +80,8 @@ export function GuestAccountMenu() {
           <>
             <DropdownMenuLabel className="!text-[10px]">Host</DropdownMenuLabel>
             <DropdownMenuGroup>
-              <DropdownMenuItem asChild>
-                <Link to={dashboardHref}>
+              <DropdownMenuItem asChild disabled={isTransitioning}>
+                <Link to={dashboardHref} onClick={handleDashboardClick}>
                   <LayoutDashboard aria-hidden />
                   Dashboard
                 </Link>
