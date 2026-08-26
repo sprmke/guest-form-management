@@ -34,7 +34,13 @@ function loadGoogleMaps(): Promise<void> {
   return loadPromise;
 }
 
-export function useGoogleMapsLoader() {
+type UseGoogleMapsLoaderOptions = {
+  /** When false, skip loading until re-enabled (e.g. first focus on a search field). */
+  enabled?: boolean;
+};
+
+export function useGoogleMapsLoader(options: UseGoogleMapsLoaderOptions = {}) {
+  const enabled = options.enabled !== false;
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(() => {
     if (!getMapsApiKey()) {
@@ -44,7 +50,7 @@ export function useGoogleMapsLoader() {
   });
 
   useEffect(() => {
-    if (!getMapsApiKey()) return;
+    if (!enabled || !getMapsApiKey()) return;
 
     let cancelled = false;
     loadGoogleMaps()
@@ -63,7 +69,7 @@ export function useGoogleMapsLoader() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [enabled]);
 
   return { ready, error, apiKeyConfigured: Boolean(getMapsApiKey()) };
 }
