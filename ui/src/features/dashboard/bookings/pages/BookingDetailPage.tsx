@@ -54,6 +54,7 @@ import {
   useBookingAiReview,
 } from '@/features/dashboard/bookings/hooks/useBookingAiReview';
 import { useBookingAssetPreview } from '@/features/dashboard/bookings/hooks/useBookingAssetPreview';
+import { useBookingParkingShareLink } from '@/features/dashboard/bookings/hooks/useBookingParkingShareLink';
 import { useBookingStayGuideLink } from '@/features/dashboard/bookings/hooks/useBookingStayGuideLink';
 import { hasBookingAiReviewRun } from '@/features/dashboard/bookings/lib/bookingAiReviewProgress';
 import { buildBookingDetailActions } from '@/features/dashboard/bookings/lib/bookingDetailActions';
@@ -187,6 +188,7 @@ export function BookingDetailPage() {
   }, [booking, navigate, propertySlug]);
 
   const stayGuide = useBookingStayGuideLink(booking);
+  const parkingShareLink = useBookingParkingShareLink(booking);
 
   const handleOpenAiSummary = useCallback(() => setAiSummaryOpen(true), []);
 
@@ -199,9 +201,17 @@ export function BookingDetailPage() {
             onPayParking: handleOpenPayParking,
             onOpenAiSummary: handleOpenAiSummary,
             stayGuide,
+            parkingShareLink,
           })
         : [],
-    [booking, handleStartEdit, handleOpenPayParking, handleOpenAiSummary, stayGuide]
+    [
+      booking,
+      handleStartEdit,
+      handleOpenPayParking,
+      handleOpenAiSummary,
+      stayGuide,
+      parkingShareLink,
+    ]
   );
 
   return (
