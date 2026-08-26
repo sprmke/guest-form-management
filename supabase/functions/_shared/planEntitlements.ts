@@ -26,6 +26,7 @@ import {
   normalizeVolumeDiscountTiers,
 } from './planPricing.ts';
 import { normalizePermissionIds } from './propertyTeamPermissions.ts';
+import { chunkIds, countInIdChunks, selectInIdChunks } from './postgrestInChunks.ts';
 
 export class PlanFeatureRequiredError extends Error {
   readonly upgradeHook = true;
@@ -343,21 +344,21 @@ async function countPooledTeamSlots(
   let memberCount = 0;
   let inviteCount = 0;
   if (poolPropertyIds.length > 0) {
-    const { count: activeMembers, error: memberError } = await sb
-      .from('property_members')
-      .select('id', { count: 'exact', head: true })
-      .in('property_id', poolPropertyIds)
-      .eq('status', 'active');
-    if (memberError) throw new Error(memberError.message);
-    memberCount = activeMembers ?? 0;
+    memberCount = await countInIdChunks(poolPropertyIds, (chunk) =>
+      sb
+        .from('property_members')
+        .select('id', { count: 'exact', head: true })
+        .in('property_id', chunk)
+        .eq('status', 'active')
+    );
 
-    const { count: pendingInvites, error: inviteError } = await sb
-      .from('property_invitations')
-      .select('id', { count: 'exact', head: true })
-      .in('property_id', poolPropertyIds)
-      .eq('status', 'pending');
-    if (inviteError) throw new Error(inviteError.message);
-    inviteCount = pendingInvites ?? 0;
+    inviteCount = await countInIdChunks(poolPropertyIds, (chunk) =>
+      sb
+        .from('property_invitations')
+        .select('id', { count: 'exact', head: true })
+        .in('property_id', chunk)
+        .eq('status', 'pending')
+    );
   }
 
   const { count: orgAdminCount, error: orgAdminError } = await sb
@@ -492,21 +493,21 @@ async function reconcileOrgAdminSeats(
   let propertyActive = 0;
   let propertyPending = 0;
   if (propertyIds.length > 0) {
-    const { count: activeCount, error: memberError } = await sb
-      .from('property_members')
-      .select('id', { count: 'exact', head: true })
-      .in('property_id', propertyIds)
-      .eq('status', 'active');
-    if (memberError) throw new Error(memberError.message);
-    propertyActive = activeCount ?? 0;
+    propertyActive = await countInIdChunks(propertyIds, (chunk) =>
+      sb
+        .from('property_members')
+        .select('id', { count: 'exact', head: true })
+        .in('property_id', chunk)
+        .eq('status', 'active')
+    );
 
-    const { count: pendingCount, error: inviteError } = await sb
-      .from('property_invitations')
-      .select('id', { count: 'exact', head: true })
-      .in('property_id', propertyIds)
-      .eq('status', 'pending');
-    if (inviteError) throw new Error(inviteError.message);
-    propertyPending = pendingCount ?? 0;
+    propertyPending = await countInIdChunks(propertyIds, (chunk) =>
+      sb
+        .from('property_invitations')
+        .select('id', { count: 'exact', head: true })
+        .in('property_id', chunk)
+        .eq('status', 'pending')
+    );
   }
 
   const { count: orgPending, error: orgInviteError } = await sb
@@ -715,13 +716,21 @@ export async function reconcileTeamSeatsForProperty(
   }
   result.budget = budget;
 
-  const { data: rows, error: rowsError } = await sb
-    .from('property_members')
-    .select('id, status, plan_limited, permissions, saved_permissions')
-    .in('property_id', poolPropertyIds)
-    .order('assigned_at', { ascending: true });
-  if (rowsError) throw new Error(rowsError.message);
-  const members = rows ?? [];
+  const members = (
+    await selectInIdChunks<{
+      id: string;
+      status: string;
+      plan_limited: boolean | null;
+      permissions: unknown;
+      saved_permissions: unknown;
+      assigned_at: string | null;
+    }>(poolPropertyIds, (chunk) =>
+      sb
+        .from('property_members')
+        .select('id, status, plan_limited, permissions, saved_permissions, assigned_at')
+        .in('property_id', chunk)
+    )
+  ).sort((a, b) => String(a.assigned_at ?? '').localeCompare(String(b.assigned_at ?? '')));
 
   const active = members.filter((m) => m.status === 'active');
   result.activeCount = active.length;
@@ -1004,24 +1013,22 @@ export async function createOrgSubscription(
   if (propertyIds.length === 0) throw new Error('Select at least one property');
   const uniquePropertyIds = Array.from(new Set(propertyIds));
 
-  const { data: properties, error: propError } = await sb
-    .from('properties')
-    .select('id, organization_id')
-    .in('id', uniquePropertyIds);
-  if (propError) throw new Error(propError.message);
-  if (!properties || properties.length !== uniquePropertyIds.length) {
+  const properties = await selectInIdChunks<{ id: string; organization_id: string }>(
+    uniquePropertyIds,
+    (chunk) => sb.from('properties').select('id, organization_id').in('id', chunk)
+  );
+  if (properties.length !== uniquePropertyIds.length) {
     throw new Error('One or more properties not found');
   }
-  if (properties.some((p) => (p.organization_id as string) !== organizationId)) {
+  if (properties.some((p) => p.organization_id !== organizationId)) {
     throw new Error('All properties must belong to this organization');
   }
 
-  const { data: existingSlots, error: slotError } = await sb
-    .from('org_subscription_properties')
-    .select('property_id')
-    .in('property_id', uniquePropertyIds);
-  if (slotError) throw new Error(slotError.message);
-  if (existingSlots && existingSlots.length > 0) {
+  const existingSlots = await selectInIdChunks<{ property_id: string }>(
+    uniquePropertyIds,
+    (chunk) => sb.from('org_subscription_properties').select('property_id').in('property_id', chunk)
+  );
+  if (existingSlots.length > 0) {
     throw new Error('One or more properties are already covered by an org subscription');
   }
 
@@ -1069,19 +1076,25 @@ export async function createOrgSubscription(
       createdBy: assignedBy,
     });
 
-    for (const propertyId of uniquePropertyIds) {
-      const { error: assignError } = await sb.from('org_subscription_properties').insert({
-        org_subscription_id: orgSubscriptionId,
-        property_id: propertyId,
-        assigned_by: assignedBy,
-      });
+    for (const chunk of chunkIds(uniquePropertyIds)) {
+      const { error: assignError } = await sb.from('org_subscription_properties').insert(
+        chunk.map((propertyId) => ({
+          org_subscription_id: orgSubscriptionId,
+          property_id: propertyId,
+          assigned_by: assignedBy,
+        }))
+      );
       if (assignError) throw new Error(assignError.message);
-      await writeOrgSubscriptionEvent({
-        orgSubscriptionId,
-        eventType: 'property_added',
-        propertyId,
-        createdBy: assignedBy,
-      });
+
+      const { error: eventsError } = await sb.from('org_subscription_events').insert(
+        chunk.map((propertyId) => ({
+          org_subscription_id: orgSubscriptionId,
+          event_type: 'property_added',
+          property_id: propertyId,
+          created_by: assignedBy,
+        }))
+      );
+      if (eventsError) throw new Error(eventsError.message);
     }
 
     const features = parsePlanFeatures(plan.features);
@@ -1289,26 +1302,28 @@ export async function changeOrgSubscription(
   const uniquePropertyIds = Array.from(new Set(newPropertyIds));
   if (uniquePropertyIds.length === 0) throw new Error('Select at least one property');
 
-  const { data: properties, error: propError } = await sb
-    .from('properties')
-    .select('id, organization_id')
-    .in('id', uniquePropertyIds);
-  if (propError) throw new Error(propError.message);
-  if (!properties || properties.length !== uniquePropertyIds.length) {
+  const properties = await selectInIdChunks<{ id: string; organization_id: string }>(
+    uniquePropertyIds,
+    (chunk) => sb.from('properties').select('id, organization_id').in('id', chunk)
+  );
+  if (properties.length !== uniquePropertyIds.length) {
     throw new Error('One or more properties not found');
   }
-  if (properties.some((p) => (p.organization_id as string) !== organizationId)) {
+  if (properties.some((p) => p.organization_id !== organizationId)) {
     throw new Error('All properties must belong to this organization');
   }
 
   // A property already slotted in a *different* org subscription can't be added here.
-  const { data: conflictingSlots, error: conflictError } = await sb
-    .from('org_subscription_properties')
-    .select('property_id')
-    .in('property_id', uniquePropertyIds)
-    .neq('org_subscription_id', orgSubscriptionId);
-  if (conflictError) throw new Error(conflictError.message);
-  if (conflictingSlots && conflictingSlots.length > 0) {
+  const conflictingSlots = await selectInIdChunks<{ property_id: string }>(
+    uniquePropertyIds,
+    (chunk) =>
+      sb
+        .from('org_subscription_properties')
+        .select('property_id')
+        .in('property_id', chunk)
+        .neq('org_subscription_id', orgSubscriptionId)
+  );
+  if (conflictingSlots.length > 0) {
     throw new Error('One or more properties are already covered by a different org subscription');
   }
 
@@ -1343,34 +1358,42 @@ export async function changeOrgSubscription(
     });
   }
 
-  for (const propertyId of toAdd) {
-    const { error } = await sb.from('org_subscription_properties').insert({
-      org_subscription_id: orgSubscriptionId,
-      property_id: propertyId,
-      assigned_by: changedBy,
-    });
+  for (const chunk of chunkIds(toAdd)) {
+    const { error } = await sb.from('org_subscription_properties').insert(
+      chunk.map((propertyId) => ({
+        org_subscription_id: orgSubscriptionId,
+        property_id: propertyId,
+        assigned_by: changedBy,
+      }))
+    );
     if (error) throw new Error(error.message);
-    await writeOrgSubscriptionEvent({
-      orgSubscriptionId,
-      eventType: 'property_added',
-      propertyId,
-      createdBy: changedBy,
-    });
+    const { error: eventsError } = await sb.from('org_subscription_events').insert(
+      chunk.map((propertyId) => ({
+        org_subscription_id: orgSubscriptionId,
+        event_type: 'property_added',
+        property_id: propertyId,
+        created_by: changedBy,
+      }))
+    );
+    if (eventsError) throw new Error(eventsError.message);
   }
 
-  for (const propertyId of toRemove) {
+  for (const chunk of chunkIds(toRemove)) {
     const { error } = await sb
       .from('org_subscription_properties')
       .delete()
       .eq('org_subscription_id', orgSubscriptionId)
-      .eq('property_id', propertyId);
+      .in('property_id', chunk);
     if (error) throw new Error(error.message);
-    await writeOrgSubscriptionEvent({
-      orgSubscriptionId,
-      eventType: 'property_removed',
-      propertyId,
-      createdBy: changedBy,
-    });
+    const { error: eventsError } = await sb.from('org_subscription_events').insert(
+      chunk.map((propertyId) => ({
+        org_subscription_id: orgSubscriptionId,
+        event_type: 'property_removed',
+        property_id: propertyId,
+        created_by: changedBy,
+      }))
+    );
+    if (eventsError) throw new Error(eventsError.message);
   }
 
   const features = parsePlanFeatures(plan.features);
@@ -1392,14 +1415,13 @@ export async function changeOrgSubscription(
 export async function countMarketingPublications(propertyId: string): Promise<number> {
   const sb = db();
   const poolPropertyIds = await entitlementPoolPropertyIds(propertyId);
-  const { count, error } = await sb
-    .from('marketing_publications')
-    .select('id', { count: 'exact', head: true })
-    .in('property_id', poolPropertyIds)
-    .eq('status', 'published');
-
-  if (error) throw new Error(error.message);
-  return count ?? 0;
+  return countInIdChunks(poolPropertyIds, (chunk) =>
+    sb
+      .from('marketing_publications')
+      .select('id', { count: 'exact', head: true })
+      .in('property_id', chunk)
+      .eq('status', 'published')
+  );
 }
 
 /** Blocks publish when Marketing Studio is off or the pool's publish cap is reached. */

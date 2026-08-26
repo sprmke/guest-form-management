@@ -326,8 +326,28 @@ export async function getPropertyTeamInviteCapacity(
   organizationId: string,
   propertyId: string
 ): Promise<TeamInviteCapacity> {
-  await reconcileTeamSeatsForProperty(propertyId);
-  return resolveTeamInviteCapacityForOrg(organizationId);
+  try {
+    await reconcileTeamSeatsForProperty(propertyId);
+  } catch (error) {
+    console.error(
+      '[propertyTeam] reconcileTeamSeatsForProperty failed:',
+      error instanceof Error ? error.message : error
+    );
+  }
+  try {
+    return await resolveTeamInviteCapacityForOrg(organizationId);
+  } catch (error) {
+    console.error(
+      '[propertyTeam] resolveTeamInviteCapacityForOrg failed:',
+      error instanceof Error ? error.message : error
+    );
+    return {
+      slotsUsed: 0,
+      maxMembers: null,
+      teamManagementEnabled: false,
+      canInvite: false,
+    };
+  }
 }
 
 export async function listPropertyTeamMembers(

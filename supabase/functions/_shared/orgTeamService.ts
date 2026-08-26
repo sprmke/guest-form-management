@@ -178,8 +178,28 @@ function serializeVirtualOwnerMember(
 export async function getOrgTeamInviteCapacity(
   organizationId: string
 ): Promise<TeamInviteCapacity> {
-  await reconcileTeamSeatsForOrganization(organizationId);
-  return resolveTeamInviteCapacityForOrg(organizationId);
+  try {
+    await reconcileTeamSeatsForOrganization(organizationId);
+  } catch (error) {
+    console.error(
+      '[orgTeam] reconcileTeamSeatsForOrganization failed:',
+      error instanceof Error ? error.message : error
+    );
+  }
+  try {
+    return await resolveTeamInviteCapacityForOrg(organizationId);
+  } catch (error) {
+    console.error(
+      '[orgTeam] resolveTeamInviteCapacityForOrg failed:',
+      error instanceof Error ? error.message : error
+    );
+    return {
+      slotsUsed: 0,
+      maxMembers: null,
+      teamManagementEnabled: false,
+      canInvite: false,
+    };
+  }
 }
 
 export async function listOrgTeamMembers(
