@@ -3,6 +3,7 @@ import { Car, Copy, CreditCard, ExternalLink, PawPrint, Sparkles } from 'lucide-
 import { hasPayParkingAvailed } from '@/features/guest/pay-parking/lib/payParkingHelpers';
 
 import type { BookingEditTabId } from '@/features/dashboard/bookings/components/booking-detail/edit/BookingEditTabs';
+import type { BookingParkingShareLink } from '@/features/dashboard/bookings/hooks/useBookingParkingShareLink';
 import type { BookingStayGuideLink } from '@/features/dashboard/bookings/hooks/useBookingStayGuideLink';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
@@ -23,6 +24,7 @@ type Args = {
   onPayParking: () => void;
   onOpenAiSummary?: () => void;
   stayGuide: BookingStayGuideLink;
+  parkingShareLink: BookingParkingShareLink;
 };
 
 /**
@@ -36,6 +38,7 @@ export function buildBookingDetailActions({
   onPayParking,
   onOpenAiSummary,
   stayGuide,
+  parkingShareLink,
 }: Args): BookingDetailAction[] {
   const actions: BookingDetailAction[] = [
     ...(onOpenAiSummary
@@ -88,6 +91,25 @@ export function buildBookingDetailActions({
         label: 'Copy stay guide link',
         Icon: Copy,
         onSelect: stayGuide.copy,
+        group: 'guest-links',
+      }
+    );
+  }
+
+  if (parkingShareLink.url) {
+    actions.push(
+      {
+        key: 'parking-share-open',
+        label: 'Open parking link',
+        Icon: ExternalLink,
+        onSelect: parkingShareLink.open,
+        group: 'guest-links',
+      },
+      {
+        key: 'parking-share-copy',
+        label: 'Copy parking link',
+        Icon: Copy,
+        onSelect: parkingShareLink.copy,
         group: 'guest-links',
       }
     );
