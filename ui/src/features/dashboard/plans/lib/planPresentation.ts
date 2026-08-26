@@ -529,6 +529,50 @@ export function resolveMinimumPlanForFeature(
   return candidates[0] ?? null;
 }
 
+/**
+ * Plan to offer when a feature gate fires — next tier when the org already has the feature
+ * (e.g. Free with team seats at cap needs Starter, not another Free review).
+ *
+ * Pass `propertyHasFeature: false` when the property is below the org tier (unenrolled /
+ * Free fallback) so we re-offer the **current** plan (update billing / cover properties)
+ * instead of jumping to the next ladder step (Pro → Business).
+ */
+export function resolveUpgradePlanForFeature(
+  plans: OrgBundlePlanDto[],
+  feature: PlanFeatureKey,
+  currentPlanId: string | undefined | null,
+  propertyHasFeature?: boolean | null
+): OrgBundlePlanDto | null {
+  const minimum = resolveMinimumPlanForFeature(plans, feature);
+  if (!minimum) return null;
+
+  const current =
+    currentPlanId != null ? (plans.find((plan) => plan.id === currentPlanId) ?? null) : null;
+
+  if (current && isFeatureEnabled(current.features, feature)) {
+    // Org plan already includes the feature, but this property does not → enroll / update billing.
+    if (propertyHasFeature === false) return current;
+    return nextUpgradePlan(plans, current.id);
+  }
+
+  return minimum;
+}
+
+/**
+ * Badge label plan when a property-scoped gate is closed — prefer the org's current tier when
+ * it already includes `feature` (unenrolled property), otherwise the minimum tier that unlocks it.
+ */
+export function resolveGateBadgePlan(
+  plans: OrgBundlePlanDto[],
+  feature: PlanFeatureKey,
+  currentPlanId: string | undefined | null
+): OrgBundlePlanDto | null {
+  const current =
+    currentPlanId != null ? (plans.find((plan) => plan.id === currentPlanId) ?? null) : null;
+  if (current && isFeatureEnabled(current.features, feature)) return current;
+  return resolveMinimumPlanForFeature(plans, feature);
+}
+
 /** Primary CTA on the current-plan banner when a higher tier exists. */
 export function upgradeBannerActionLabel(plan: OrgBundlePlanDto): string {
   if (isManagedSalesPlan(plan.code)) return 'Contact sales';

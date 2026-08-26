@@ -176,11 +176,14 @@ export function PlanReviewDialog({
     (currentPlan ? orgPlanTotalPhp(currentPlan, propertyCount) : 0);
 
   const planTitle = planDisplayName(plan);
-  const title = currentPlan
-    ? isDownscale
-      ? `Move to ${planTitle}`
-      : `Upgrade to ${planTitle}`
-    : `Choose ${planTitle}`;
+  const isSamePlan = Boolean(currentPlan && plan.id === currentPlan.id);
+  const title = !currentPlan
+    ? `Choose ${planTitle}`
+    : isSamePlan
+      ? 'Update billing'
+      : isDownscale
+        ? `Move to ${planTitle}`
+        : `Upgrade to ${planTitle}`;
 
   const description = isFree
     ? 'Your organization keeps running on the free tier.'
@@ -219,7 +222,7 @@ export function PlanReviewDialog({
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 [-webkit-overflow-scrolling:touch] sm:px-6">
           <div className="space-y-5">
-            {currentPlan ? (
+            {currentPlan && !isSamePlan ? (
               <div className="border-border bg-muted/30 flex items-center gap-3 rounded-xl border p-3">
                 <PlanStub plan={currentPlan} totalPhp={currentTotalPhp} muted />
                 <ArrowRight className="text-muted-foreground size-4 shrink-0" aria-hidden />
@@ -267,7 +270,7 @@ export function PlanReviewDialog({
 
             {gains.length === 0 && losses.length === 0 ? (
               <p className="text-muted-foreground text-sm">
-                No feature changes — only the price differs.
+                Same features as your current plan. Only the monthly price changes.
               </p>
             ) : (
               <div className="space-y-5">
