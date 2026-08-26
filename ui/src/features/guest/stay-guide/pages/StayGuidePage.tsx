@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { usePreviewOverride } from '@/features/guest/lib/previewOverrideContext';
 import { StayGuideChapter } from '@/features/guest/stay-guide/components/StayGuideChapter';
 import { StayGuideCheckInDocumentsSection } from '@/features/guest/stay-guide/components/StayGuideCheckInDocumentsSection';
+import { StayGuideCompactHeader } from '@/features/guest/stay-guide/components/StayGuideCompactHeader';
 import { StayGuideGalleryCarousel } from '@/features/guest/stay-guide/components/StayGuideGalleryCarousel';
 import { StayGuideHelpSection } from '@/features/guest/stay-guide/components/StayGuideHelpSection';
 import { StayGuideHero } from '@/features/guest/stay-guide/components/StayGuideHero';
@@ -240,11 +241,13 @@ export function StayGuidePage() {
   }
 
   const galleryImages = data.property.galleryImages.filter((url) => url.trim());
+  const showHero = sectionConfig.hero.visible;
+  const showStayPass = sectionConfig.stayPassCard.visible;
 
   return (
     <div className="@container min-h-screen bg-[#FFFFFF] text-[#171717] dark:bg-[#0A0A0A] dark:text-[#FAFAFA]">
-      {sectionConfig.hero.visible ? <StayGuideHero guide={data} /> : null}
-      {sectionConfig.stayPassCard.visible ? <StayPassCard guide={data} /> : null}
+      {showHero ? <StayGuideHero guide={data} /> : <StayGuideCompactHeader guide={data} />}
+      {showStayPass ? <StayPassCard guide={data} overlapHero={showHero} /> : null}
 
       {showCheckInDocuments ? (
         <div className="@2xl:mt-10 mx-auto mt-8 max-w-[720px]">

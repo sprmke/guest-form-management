@@ -3,10 +3,13 @@ import { ArrowRight, DoorOpen, LogOut } from 'lucide-react';
 
 import type { GuestStayGuideDto } from '@/features/guest/stay-guide/lib/api';
 
+import { cn } from '@/lib/utils';
 import { formatStayBoundaryDateShort, formatTimeToAMPM } from '@/utils/format/dates';
 
 interface StayPassCardProps {
   guide: GuestStayGuideDto;
+  /** When true (default), pull up to overlap the hero. When false, use normal top spacing. */
+  overlapHero?: boolean;
 }
 
 function StayPassField({
@@ -34,7 +37,7 @@ function StayPassField({
   );
 }
 
-export function StayPassCard({ guide }: StayPassCardProps) {
+export function StayPassCard({ guide, overlapHero = true }: StayPassCardProps) {
   const reduceMotion = useReducedMotion();
   const guestName = guide.booking.guestName.trim() || 'Guest';
   const propertyName = guide.property.name.trim();
@@ -47,7 +50,10 @@ export function StayPassCard({ guide }: StayPassCardProps) {
     <div
       id="stay-guide-pass"
       data-page-editor-anchor="stay-guide-pass"
-      className="@2xl:-mt-16 @2xl:px-6 @5xl:px-8 relative z-30 mx-auto -mt-6 max-w-[720px] px-4"
+      className={cn(
+        '@2xl:px-6 @5xl:px-8 relative z-30 mx-auto max-w-[720px] px-4',
+        overlapHero ? '@2xl:-mt-16 -mt-6' : '@2xl:mt-8 mt-6'
+      )}
     >
       <motion.div
         initial={reduceMotion ? false : { opacity: 0, y: 24 }}
