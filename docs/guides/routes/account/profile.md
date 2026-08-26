@@ -2,7 +2,7 @@
 title: 'Guest account — operator guide'
 status: active
 tags: [guides, routes, account]
-updated: 2026-08-17
+updated: 2026-08-26
 ---
 
 # Guest account — operator guide
@@ -18,18 +18,18 @@ Routes (authenticated explore mode):
 
 ## Progress overview
 
-| Section    | E2E save | Validation | Docs       | Notes                                                                               |
-| ---------- | -------- | ---------- | ---------- | ----------------------------------------------------------------------------------- |
-| Nav avatar | —        | —          | Documented | Explore: guest menu (Host + Explore groups when org access); host: Dashboard avatar |
-| Profile    | ✅       | Client     | Documented | `guest-profile` + avatar upload                                                     |
-| Stays      | ✅       | —          | Documented | Cross-property web chat hub (`guest-messages`)                                      |
-| Favorites  | ✅       | —          | Documented | `guest_saved_properties`                                                            |
+| Section    | E2E save | Validation      | Docs       | Notes                                                                               |
+| ---------- | -------- | --------------- | ---------- | ----------------------------------------------------------------------------------- |
+| Nav avatar | —        | —               | Documented | Explore: guest menu (Host + Explore groups when org access); host: Dashboard avatar |
+| Profile    | ✅       | Client + server | Documented | `guest-profile` + avatar upload; PH mobile phone; Google Places location            |
+| Stays      | ✅       | —               | Documented | Cross-property web chat hub (`guest-messages`)                                      |
+| Favorites  | ✅       | —               | Documented | `guest_saved_properties`                                                            |
 
 ---
 
 ## Overview
 
-Signed-in guests see a **rounded avatar** in the marketing nav (explore pages only). The dropdown links to account pages. Guests who also own or belong to a host organization see a **Host** section with **Dashboard** above the **Explore** links (Profile · Stays · Favorites). Anonymous guests still use the **checkout auth modal** — no `/for-guests/login` pages.
+Signed-in guests see a **rounded avatar** in the marketing nav (explore pages only). The dropdown links to account pages. Guests who also own or belong to a host organization see a **Host** section with **Dashboard** above the **Explore** links (Profile · Stays · Favorites). **Dashboard** from explore runs the global mode-switch curtain, then opens the org dashboard; from host marketing (`/for-hosts`) it navigates directly. Anonymous guests still use the **checkout auth modal** — no `/for-guests/login` pages.
 
 **Host marketing (`/for-hosts`):** signed-in hosts see the same pill + avatar pattern — **Explore** switches to guest mode; avatar menu opens **Dashboard**. Signed-out hosts see **Explore** + **Sign In**.
 
@@ -65,6 +65,10 @@ Sub-nav: Profile · Stays · Favorites (log out in sidebar footer)
 ## Profile (`/account/profile`)
 
 - Edit display name, bio, phone, location, profile photo
+- Same form opens from the **host dashboard** sidebar account menu → **Profile** (modal)
+- Dashboard modal: centered larger photo, read-only **Email** field above display name; **`/account/profile`** page layout unchanged
+- **Phone:** optional; when set, must be an 11-digit Philippine mobile (`09…`) — same rules as team invites (`validatePhilippineMobilePhone`)
+- **Location:** custom Google Places suggestions list (Philippines, loads Maps JS only after focus); stores city/province/country label (max 120 chars); manual text still works when Maps API is unavailable
 - API: **`guest-profile`** GET/PATCH, **`upload-guest-profile-asset`** POST
 - DB: **`guest_profiles`** (RLS scoped to `auth.uid()`)
 - Avatar resolution: profile row → OAuth metadata → initials
@@ -93,7 +97,8 @@ Saved-properties grid (the guest's heart/favorites list). See [favorites.md](./f
 | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Nav menu       | `ui/src/features/guest/account/components/GuestAccountMenu.tsx`                                                                                                                                           |
 | Layout + guard | `ui/src/features/guest/account/components/GuestAccountLayout.tsx`, `ui/src/features/guest/account/components/GuestAccountSidebar.tsx`, `ui/src/features/guest/account/components/RequireGuestSession.tsx` |
-| Pages          | `ui/src/features/guest/account/pages/*`, `ui/src/features/guest/account/components/GuestMessagesHub.tsx`, `ui/src/features/guest/account/components/GuestMessageThreadRow.tsx`                            |
+| Pages          | `ui/src/features/guest/account/pages/*`, `GuestProfileModal.tsx`, `GuestProfileForm.tsx`, `GuestMessagesHub.tsx`, `GuestMessageThreadRow.tsx`                                                             |
+| Validation     | `ui/src/features/guest/account/lib/guestProfileValidation.ts`, `ui/src/lib/google-maps/LocationSearchInput.tsx`                                                                                           |
 | API client     | `ui/src/features/guest/account/lib/guestAccountApi.ts`                                                                                                                                                    |
 | Edge services  | `supabase/functions/_shared/guestProfileService.ts`                                                                                                                                                       |
 | Migration      | `supabase/migrations/20260920120000_guest_account_profiles.sql`                                                                                                                                           |

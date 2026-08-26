@@ -2,7 +2,7 @@
 title: 'Guest & host auth — operator guide'
 status: active
 tags: [guides, routes, auth]
-updated: 2026-08-23
+updated: 2026-08-26
 ---
 
 # Guest & host auth — operator guide
@@ -18,14 +18,15 @@ Routes:
 
 ## Progress overview
 
-| Section              | E2E save | Validation | Docs       | Notes                                                               |
-| -------------------- | -------- | ---------- | ---------- | ------------------------------------------------------------------- |
-| Auth layout          | —        | —          | Documented | Split branding panel + form, host or guest copy by pathname         |
-| Host login/register  | ✅       | Client     | Documented | Email OTP + Google OAuth — same component/flow for both modes       |
-| Guest login/register | ✅       | Client     | Documented | Email OTP + Google OAuth — standalone pages (new)                   |
-| Guest checkout auth  | ✅       | Client     | Documented | Modal on form/messages entry, calendar Proceed, Reserve, save heart |
-| Guest account nav    | ✅       | —          | Documented | Avatar on explore when signed in; real "Sign In" link when not      |
-| Mode switcher        | —        | —          | Documented | Global curtain; admin sidebar + marketing/auth triggers             |
+| Section                | E2E save | Validation | Docs       | Notes                                                                      |
+| ---------------------- | -------- | ---------- | ---------- | -------------------------------------------------------------------------- |
+| Auth layout            | —        | —          | Documented | Split branding panel + form, host or guest copy by pathname                |
+| Host login/register    | ✅       | Client     | Documented | Email OTP + Google OAuth — same component/flow for both modes              |
+| Guest login/register   | ✅       | Client     | Documented | Email OTP + Google OAuth — standalone pages (new)                          |
+| Guest checkout auth    | ✅       | Client     | Documented | Modal on form/messages entry, calendar Proceed, Reserve, save heart        |
+| Guest account nav      | ✅       | —          | Documented | Avatar on explore when signed in; real "Sign In" link when not             |
+| Host dashboard profile | ✅       | Client     | Documented | Sidebar account menu → **Profile** modal (same form as `/account/profile`) |
+| Mode switcher          | —        | —          | Documented | Global curtain; admin sidebar + marketing/auth triggers                    |
 
 ---
 
@@ -45,7 +46,9 @@ Guests can browse listings and pick dates without signing in. Opening **`/proper
 5. **Direct form / messages entry** — `/properties/:slug/form`, `/parkings/:slug/form`, and `/messages` open **`GuestAuthModal`** on load when anonymous (skeleton until signed in); submit still re-checks if the session expired
 6. **Save property (heart)** — any listing card, list row, or detail gallery Save button → `GuestAuthModal` when anonymous; persists to `guest_saved_properties` after login (OAuth resume via `save_property` intent)
 
-Marketing **Become a host?** on explore pages runs the global mode-switch curtain to **`/for-hosts`**. On `/for-hosts`, the pill CTA is **Explore** (back to guest mode); signed-in hosts use the avatar menu for **Dashboard**, signed-out hosts see **Sign In** → **`/for-hosts/login`**. On explore pages, signed-in guests see the avatar menu (**`/account/*`** — profile, stays, wishlist, messages, see **[[profile|Guest account — operator guide]]**), signed-out guests now see a real **Sign In** link → **`/for-guests/login`**.
+Marketing **Become a host?** on explore pages runs the global mode-switch curtain to **`/for-hosts`**. On explore pages, signed-in guests with host org access see **Dashboard** in the avatar menu under **Host** — that link runs the same mode-switch curtain, then lands on the last org dashboard (or **`/dashboard`**). When already in host mode (e.g. **`/for-hosts`** avatar menu), **Dashboard** navigates directly with no curtain. On `/for-hosts`, the pill CTA is **Explore** (back to guest mode); signed-in hosts use the avatar menu for **Dashboard**, signed-out hosts see **Sign In** → **`/for-hosts/login`**. On explore pages, signed-in guests see the avatar menu (**`/account/*`** — profile, stays, wishlist, messages, see **[[profile|Guest account — operator guide]]**), signed-out guests now see a real **Sign In** link → **`/for-guests/login`**.
+
+On the **host dashboard**, the sidebar footer account menu shows the same avatar resolution as explore (saved profile photo → Google OAuth photo → initials). The trigger keeps name and email; the open menu shows only mode switch, **Profile**, and **Sign out** (no duplicate identity block). **Profile** opens a modal with the same edit form as **`/account/profile`**; saves go to **`guest-profile`** and update explore + dashboard immediately.
 
 ### Sign-in flow (both audiences)
 
@@ -83,6 +86,8 @@ Hosts and guests can both sign in with a one-time code sent to their email, or w
   A: Guests can browse dates and start filling out the form freely. They're only asked to verify their identity right before the booking is actually submitted — though they can also sign in any time from the "Sign In" link.
 - Q: What sign-in options do guests have?
   A: A one-time code sent to their email, or Google. Facebook is not offered.
+- Q: Can I edit my profile from the dashboard?
+  A: Yes — open the account menu at the bottom of the sidebar and choose **Profile**. It is the same info as the guest account profile on explore.
 
 ---
 
@@ -106,6 +111,7 @@ Hosts and guests can both sign in with a one-time code sent to their email, or w
 | Path helpers                      | `ui/src/features/guest/auth/lib/hostAuthPaths.ts`, `ui/src/features/guest/auth/lib/guestAuthPaths.ts`, `ui/src/features/guest/auth/lib/authRedirect.ts` (shared `safeRedirect`)                          |
 | Nav mode/CTA helpers              | `ui/src/features/guest/auth/config/auth-navigation.ts` (`getAuthAudienceFromPath`, `getHostMarketingNavCta`, `getGuestLoginCta`), `ui/src/features/guest/auth/config/mode-switch.ts`                     |
 | Marketing nav sign-in CTA         | `ui/src/features/guest/marketing/shared/components/MarketingNav.tsx`                                                                                                                                     |
+| Dashboard account menu + profile  | `ui/src/features/dashboard/bookings/components/AdminLayout.tsx` (`AdminProfileFooter`), `ui/src/features/guest/account/components/GuestProfileModal.tsx`, `useAccountIdentity.ts`                        |
 | Auth routes                       | `ui/src/features/guest/auth/routes/index.tsx`                                                                                                                                                            |
 
 ---
