@@ -75,13 +75,18 @@ function parseFeatureKey(value: string | undefined): PlanFeatureKey | undefined 
 /** Parse `{ success, data }` edge JSON; throws AiQuotaExceededClientError on quota responses. */
 export async function parseEdgeJsonOrQuota<T>(res: Response): Promise<T> {
   const json = (await res.json()) as EdgeEnvelope;
-  if (json.upgradeHook || res.status === 429) {
-    throw new AiQuotaExceededClientError(json.error, parseFeatureKey(json.feature));
-  }
-  if (!res.ok || !json.success) {
+  throwIfUpgradeHookFromJson(json, res);
+  if (!json.success) {
     throw new Error(json.error ?? 'Request failed');
   }
   return json.data as T;
+}
+
+/** Use after `res.json()` when the body may include upgradeHook (avoids reading the stream twice). */
+export function throwIfUpgradeHookFromJson(json: EdgeEnvelope, res: Response): void {
+  if (json.upgradeHook || res.status === 429) {
+    throw new AiQuotaExceededClientError(json.error, parseFeatureKey(json.feature));
+  }
 }
 
 /** Check a parsed edge envelope before unwrap (inbox-style responses). */

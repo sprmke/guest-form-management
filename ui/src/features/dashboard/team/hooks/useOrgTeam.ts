@@ -3,8 +3,8 @@ import { toast } from 'sonner';
 
 import { useOrgScopeKey } from '@/features/dashboard/org/lib/adminApiScope';
 import { handleAiMutationError, isAiQuotaError } from '@/features/dashboard/org/lib/aiQuotaToast';
-import { orgTeamGet, orgTeamMutate } from '@/features/dashboard/team/lib/orgTeamApi';
 import type { TeamInviteCapacity } from '@/features/dashboard/plans/lib/planFeatures';
+import { orgTeamGet, orgTeamMutate } from '@/features/dashboard/team/lib/orgTeamApi';
 import type {
   OrgRoleId,
   OrgTeamAccess,
@@ -24,7 +24,7 @@ export type OrgTeamData = {
 };
 
 async function loadOrgTeam(orgSlug: string, orgId: string): Promise<OrgTeamData> {
-  const [membersPayload, invitationsPayload] = await Promise.all([
+  const [membersResult, invitationsResult] = await Promise.allSettled([
     orgTeamGet<{
       members: OrgTeamMember[];
       access: OrgTeamAccess;
@@ -32,6 +32,16 @@ async function loadOrgTeam(orgSlug: string, orgId: string): Promise<OrgTeamData>
     }>('/org-team-members', orgSlug, orgId),
     orgTeamGet<{ invitations: OrgTeamInvitation[] }>('/org-team-invitations', orgSlug, orgId),
   ]);
+
+  if (membersResult.status === 'rejected') {
+    throw membersResult.reason instanceof Error
+      ? membersResult.reason
+      : new Error('Failed to load team members');
+  }
+
+  const membersPayload = membersResult.value;
+  const invitationsPayload =
+    invitationsResult.status === 'fulfilled' ? invitationsResult.value : { invitations: [] };
 
   return {
     members: membersPayload.members ?? [],

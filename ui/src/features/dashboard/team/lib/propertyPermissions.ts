@@ -8,8 +8,10 @@ export type PropertyAccessPayload = {
   memberId: string | null;
   propertyId: string;
   orgSlug: string;
+  orgName: string;
   propertySlug: string;
   propertyName: string;
+  planLimited?: boolean;
 };
 
 export type TeamPermissionId = TeamPermission['id'];

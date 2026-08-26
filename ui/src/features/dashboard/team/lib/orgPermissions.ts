@@ -19,6 +19,7 @@ export type OrgAccessPayload = {
   canCreateParkings: boolean;
   canManageParkings: boolean;
   canEditSettings: boolean;
+  planLimited?: boolean;
 };
 
 export function hasOrgPermission(
