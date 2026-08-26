@@ -41,7 +41,7 @@ Host-mode navigation replaces the explore links with **Features**, **How It Work
 
 **Mode switch:** One global curtain (`ModeSwitchTransitionProvider` in `App.tsx`) covers every explore ↔ host crossing so the overlay survives layout remounts:
 
-- Explore → host: marketing nav **Become a host?**, footer **Become a Host**
+- Explore → host: marketing nav **Become a host?**, footer **Become a Host**, explore avatar menu **Dashboard** (when the user has host org access — lands on org dashboard, not `/for-hosts`)
 - Footer **Pricing** → **`/for-hosts/pricing`**
 - Host → explore: admin account menu **Explore / Host** switcher, marketing logo on `/for-hosts`, host-auth mobile logo
 
@@ -60,7 +60,7 @@ This is the marketing page that introduces the platform to property owners befor
 - Q: Why is the narration muted when the tour starts?
   A: Browsers block sound from auto-playing, so tap the unmute button next to the play controls to hear the narration.
 - Q: I'm signed in as a guest, how do I get to my host dashboard?
-  A: Use "Become a host?" to switch into host mode, then sign in or go straight to your dashboard from the account menu.
+  A: Use **Dashboard** in the explore avatar menu (under **Host**) for the mode transition, or **Become a host?** to open host marketing first — then sign in if needed.
 
 ---
 
