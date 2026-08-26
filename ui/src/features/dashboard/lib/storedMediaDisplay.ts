@@ -33,14 +33,31 @@ export function storedOrgSettingsMediaUrl(
   return trimmed;
 }
 
+export function resolvePaymentMethodQrDisplayUrl(input: {
+  methodQrUrl: string | null | undefined;
+  /** Only used when method has no QR — legacy primary column (primary methods only). */
+  legacyQrUrl?: string | null | undefined;
+  legacyQrSource?: AppSettingsFieldSource | undefined;
+  useLegacyFallback?: boolean;
+}): string | null {
+  const methodQr = input.methodQrUrl?.trim();
+  if (methodQr && !isPlatformSeedMediaUrl(methodQr)) return methodQr;
+  if (input.useLegacyFallback) {
+    return storedAppSettingsMediaUrl(input.legacyQrUrl, input.legacyQrSource);
+  }
+  return null;
+}
+
+/** @deprecated Use resolvePaymentMethodQrDisplayUrl */
 export function resolvePrimaryPaymentQrDisplayUrl(input: {
   methodQrUrl: string | null | undefined;
   legacyQrUrl: string | null | undefined;
   legacyQrSource: AppSettingsFieldSource | undefined;
 }): string | null {
-  const methodQr = input.methodQrUrl?.trim();
-  if (methodQr && !isPlatformSeedMediaUrl(methodQr)) return methodQr;
-  return storedAppSettingsMediaUrl(input.legacyQrUrl, input.legacyQrSource);
+  return resolvePaymentMethodQrDisplayUrl({
+    ...input,
+    useLegacyFallback: true,
+  });
 }
 
 export function legacyGcashQrForPaymentMethods(

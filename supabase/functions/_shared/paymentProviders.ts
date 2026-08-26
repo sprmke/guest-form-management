@@ -3,6 +3,8 @@
  * Keep in sync with `ui/src/features/dashboard/org/lib/paymentProviders.ts`.
  */
 
+import { validateFullPersonName } from './fieldValidation.ts';
+
 export type PaymentProviderGroup = 'ewallet' | 'digital_bank' | 'bank';
 
 export type PaymentProviderOption = {
@@ -107,7 +109,7 @@ export function validatePaymentAccountName(raw: string): string | null {
   if (value.length > 120) {
     return 'Account name is too long (max 120 characters)';
   }
-  return null;
+  return validateFullPersonName(value);
 }
 
 export function validatePaymentAccountNumber(provider: string, raw: string): string | null {
@@ -167,7 +169,10 @@ export function paymentSectionTitle(provider: string): string {
   return `Pay via ${normalizePaymentProvider(provider)}`;
 }
 
-export function paymentEmailCopy(provider: string): string {
+export function paymentEmailCopy(provider: string, hasQr = true): string {
   const label = normalizePaymentProvider(provider);
-  return `Save and scan the QR code or send to the ${label} account beside it to pay your total balance upon check-in.`;
+  if (hasQr) {
+    return `Save and scan the QR code or send to the ${label} account beside it to pay your total balance upon check-in.`;
+  }
+  return `Send payment to the ${label} account below to pay your total balance upon check-in.`;
 }

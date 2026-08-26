@@ -35,6 +35,14 @@ function newMethodId(): string {
   return crypto.randomUUID();
 }
 
+/** Drop empty / platform-seed QR paths — QR is optional per payment method. */
+export function sanitizePaymentQrImageUrl(url: string | null | undefined): string | null {
+  const trimmed = url?.trim() || '';
+  if (!trimmed) return null;
+  if (trimmed.toLowerCase().includes('kame-home-gcash-qr-payment')) return null;
+  return trimmed;
+}
+
 export function paymentMethodsFromLegacyRow(
   row: LegacyPaymentRow | null | undefined,
   defaultQrUrl: string
@@ -42,7 +50,8 @@ export function paymentMethodsFromLegacyRow(
   const provider = normalizePaymentProvider(row?.payment_provider);
   const accountName = (row?.gcash_name ?? '').trim();
   const accountNumber = (row?.gcash_number ?? '').trim();
-  const qr = (row?.gcash_qr_image_url ?? '').trim() || defaultQrUrl || null;
+  const qrImageUrl =
+    sanitizePaymentQrImageUrl(row?.gcash_qr_image_url) || sanitizePaymentQrImageUrl(defaultQrUrl);
 
   if (!accountName && !accountNumber && provider === DEFAULT_PAYMENT_PROVIDER) {
     return [];
@@ -54,7 +63,7 @@ export function paymentMethodsFromLegacyRow(
       provider,
       accountName,
       accountNumber,
-      qrImageUrl: qr,
+      qrImageUrl,
       isPrimary: true,
     },
   ];
@@ -79,8 +88,9 @@ export function normalizePaymentMethods(
     );
     const accountName = typeof row.accountName === 'string' ? row.accountName.trim() : '';
     const accountNumber = typeof row.accountNumber === 'string' ? row.accountNumber.trim() : '';
-    const qrImageUrl =
-      typeof row.qrImageUrl === 'string' && row.qrImageUrl.trim() ? row.qrImageUrl.trim() : null;
+    const qrImageUrl = sanitizePaymentQrImageUrl(
+      typeof row.qrImageUrl === 'string' ? row.qrImageUrl : null
+    );
     parsed.push({
       id,
       provider,
@@ -153,7 +163,7 @@ export function serializePaymentMethodsForDb(
     provider: normalizePaymentProvider(m.provider),
     accountName: m.accountName.trim(),
     accountNumber: m.accountNumber.trim(),
-    qrImageUrl: m.qrImageUrl?.trim() || null,
+    qrImageUrl: sanitizePaymentQrImageUrl(m.qrImageUrl),
     isPrimary: m.isPrimary,
   }));
 }
@@ -180,7 +190,8 @@ export function legacyColumnsFromPrimaryMethod(
     payment_provider: primary.provider,
     gcash_name: primary.accountName,
     gcash_number: primary.accountNumber,
-    gcash_qr_image_url: primary.qrImageUrl || fallbackQrUrl || null,
+    gcash_qr_image_url:
+      sanitizePaymentQrImageUrl(primary.qrImageUrl) || sanitizePaymentQrImageUrl(fallbackQrUrl),
   };
 }
 
@@ -190,5 +201,6 @@ export function formatPaymentMethodsForGuest(
   return methods.map((m) => ({
     ...m,
     accountNumber: formatPaymentAccountNumberDisplay(m.provider, m.accountNumber),
+    qrImageUrl: sanitizePaymentQrImageUrl(m.qrImageUrl),
   }));
 }

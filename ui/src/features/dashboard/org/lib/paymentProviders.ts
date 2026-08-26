@@ -3,6 +3,8 @@
  * Keep in sync with `supabase/functions/_shared/paymentProviders.ts`.
  */
 
+import { validateFullPersonName } from '@/lib/validation/fieldValidation';
+
 export type PaymentProviderGroup = 'ewallet' | 'digital_bank' | 'bank';
 
 export type PaymentProviderOption = {
@@ -161,7 +163,7 @@ export function validatePaymentAccountName(raw: string): string | null {
   if (value.length > 120) {
     return 'Account name is too long (max 120 characters)';
   }
-  return null;
+  return validateFullPersonName(value);
 }
 
 export function validatePaymentAccountNumber(provider: string, raw: string): string | null {

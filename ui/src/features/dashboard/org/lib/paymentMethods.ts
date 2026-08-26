@@ -98,6 +98,26 @@ export function setPrimaryPaymentMethod(
   return methods.map((m) => ({ ...m, isPrimary: m.id === id }));
 }
 
+/** Set QR URL on a specific payment method (draft-only until OTP-gated save). */
+export function setPaymentMethodQrUrl(
+  methods: PropertyPaymentMethod[],
+  methodId: string,
+  qrImageUrl: string | null
+): PropertyPaymentMethod[] {
+  const trimmed = qrImageUrl?.trim() || null;
+  return methods.map((m) => (m.id === methodId ? { ...m, qrImageUrl: trimmed } : m));
+}
+
+/** @deprecated Use setPaymentMethodQrUrl */
+export function setPrimaryPaymentMethodQrUrl(
+  methods: PropertyPaymentMethod[],
+  qrImageUrl: string | null
+): PropertyPaymentMethod[] {
+  const primary = primaryPaymentMethod(methods);
+  if (!primary) return methods;
+  return setPaymentMethodQrUrl(methods, primary.id, qrImageUrl);
+}
+
 export function validatePaymentMethods(methods: PropertyPaymentMethod[]): string | null {
   if (methods.length === 0) return 'Add at least one payment method';
   if (methods.length > MAX_PROPERTY_PAYMENT_METHODS) {
