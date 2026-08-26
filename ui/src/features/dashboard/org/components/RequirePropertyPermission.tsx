@@ -27,6 +27,19 @@ export function RequirePropertyPermission({ section, children }: Props) {
     return <RouteGuardSkeleton />;
   }
 
+  if (data?.planLimited) {
+    return (
+      <TenantAccessDenied
+        scope="property"
+        reason="plan_limited"
+        orgSlug={orgSlug}
+        orgName={data.orgName}
+        propertySlug={propertySlug}
+        propertyName={data.propertyName}
+      />
+    );
+  }
+
   if (isError || !data || !canViewPropertySection(data.permissions, section)) {
     const fallback = findFirstAllowedSection(data?.permissions);
     if (fallback) {

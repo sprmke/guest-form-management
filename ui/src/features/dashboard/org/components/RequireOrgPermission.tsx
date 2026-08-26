@@ -39,6 +39,18 @@ export function RequireOrgPermission({ section, children }: Props) {
     return <Navigate to={hostLoginPath(location.pathname + location.search)} replace />;
   }
 
+  if (data?.planLimited) {
+    return (
+      <TenantAccessDenied
+        scope="org"
+        reason="plan_limited"
+        orgSlug={data.orgSlug}
+        orgName={data.orgName}
+        fullScreen
+      />
+    );
+  }
+
   if (data && isPropertyOnlyOrgAccess(data.accessKind) && orgSlug) {
     return <PropertyMemberOrgRedirect orgSlug={orgSlug} />;
   }

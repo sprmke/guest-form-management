@@ -11,6 +11,7 @@ export type Organization = {
   createdAt: string;
   updatedAt: string;
   accessKind?: OrgAccessKind;
+  planLimited?: boolean;
 };
 
 export type ParkingListStats = {
