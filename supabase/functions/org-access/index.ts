@@ -21,6 +21,7 @@ serveAuthenticated('org-access', async (req) => {
     orgId: ctx.org.id,
     orgSlug: ctx.org.slug,
     orgName: ctx.org.name,
+    planLimited: ctx.planLimited === true,
     canManageTeam: hasOrgPermission(ctx.permissions, 'org:team:manage'),
     canInviteTeam: hasOrgPermission(ctx.permissions, 'org:team:invite'),
     canCreateProperties: hasOrgPermission(ctx.permissions, 'org:properties:create'),

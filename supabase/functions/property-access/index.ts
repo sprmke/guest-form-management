@@ -18,7 +18,9 @@ serveAuthenticated('property-access', async (req) => {
     memberId: ctx.memberId ?? null,
     propertyId: ctx.property.id,
     orgSlug: ctx.org.slug,
+    orgName: ctx.org.name,
     propertySlug: ctx.property.slug,
     propertyName: ctx.property.name,
+    planLimited: ctx.planLimited === true,
   });
 });

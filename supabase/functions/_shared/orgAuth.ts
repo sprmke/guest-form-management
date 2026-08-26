@@ -250,6 +250,7 @@ export type PropertyAccessContext = {
   /** Effective permission ids for this request (full catalog for owner/platform admin). */
   permissions: TeamPermissionId[];
   memberId?: string;
+  planLimited?: boolean;
 };
 
 type PropertyMemberDbRow = {
@@ -257,6 +258,7 @@ type PropertyMemberDbRow = {
   role_id: string;
   permissions: unknown;
   status: string;
+  plan_limited?: boolean;
 };
 
 function capStaffMemberPermissions(
@@ -337,7 +339,7 @@ export async function verifyPropertyAccess(
 
   const { data: orgAdminMember, error: orgAdminError } = await supabase
     .from('organization_members')
-    .select('id, status, role_id')
+    .select('id, status, role_id, plan_limited')
     .eq('organization_id', orgRow.id)
     .eq('user_id', user.id)
     .maybeSingle();
@@ -345,6 +347,27 @@ export async function verifyPropertyAccess(
   if (orgAdminError) {
     console.error('[orgAuth] org member lookup failed:', orgAdminError.message);
     throw forbiddenResponse('Could not verify property access');
+  }
+
+  if (
+    orgAdminMember &&
+    orgAdminMember.status === 'inactive' &&
+    orgAdminMember.plan_limited === true &&
+    orgAdminMember.role_id === 'ADMIN'
+  ) {
+    // Soft-allow for property-access / gates only — permissioned callers still 403.
+    if (requiredPermission) {
+      throw forbiddenResponse('Access restricted');
+    }
+    return {
+      user,
+      property: propertyRow,
+      org: orgRow,
+      accessKind: 'org_admin',
+      permissions: [],
+      memberId: orgAdminMember.id as string,
+      planLimited: true,
+    };
   }
 
   if (orgAdminMember && orgAdminMember.status === 'active' && orgAdminMember.role_id === 'ADMIN') {
@@ -364,7 +387,7 @@ export async function verifyPropertyAccess(
 
   const { data: member, error: memberError } = await supabase
     .from('property_members')
-    .select('id, role_id, permissions, status')
+    .select('id, role_id, permissions, status, plan_limited')
     .eq('property_id', propertyId)
     .eq('user_id', user.id)
     .maybeSingle();
@@ -372,6 +395,22 @@ export async function verifyPropertyAccess(
   if (memberError) {
     console.error('[orgAuth] property member lookup failed:', memberError.message);
     throw forbiddenResponse('Could not verify property access');
+  }
+
+  if (member && member.status === 'inactive' && member.plan_limited === true) {
+    // Soft-allow for property-access / gates only — permissioned callers still 403.
+    if (requiredPermission) {
+      throw forbiddenResponse('Access restricted');
+    }
+    return {
+      user,
+      property: propertyRow,
+      org: orgRow,
+      accessKind: 'member',
+      permissions: [],
+      memberId: member.id as string,
+      planLimited: true,
+    };
   }
 
   if (!member || member.status !== 'active') {
@@ -615,19 +654,27 @@ export async function verifyOrgListAccess(
     return { user, org, canListAllProperties: true };
   }
 
-  const { count: orgAdminCount, error: orgAdminError } = await supabase
+  const { data: orgAdminMember, error: orgAdminError } = await supabase
     .from('organization_members')
-    .select('id', { count: 'exact', head: true })
+    .select('id, status, role_id, plan_limited')
     .eq('organization_id', org.id)
     .eq('user_id', user.id)
-    .eq('status', 'active')
-    .eq('role_id', 'ADMIN');
+    .maybeSingle();
 
   if (orgAdminError) {
     throw forbiddenResponse('Could not verify organization access');
   }
-  if ((orgAdminCount ?? 0) > 0) {
+  if (orgAdminMember && orgAdminMember.status === 'active' && orgAdminMember.role_id === 'ADMIN') {
     return { user, org, canListAllProperties: true };
+  }
+  // Plan-limited inactive org admins may list (empty property set) so /org home does not 403.
+  if (
+    orgAdminMember &&
+    orgAdminMember.status === 'inactive' &&
+    orgAdminMember.plan_limited === true &&
+    orgAdminMember.role_id === 'ADMIN'
+  ) {
+    return { user, org, canListAllProperties: false };
   }
 
   const { count, error: memberError } = await supabase
@@ -643,7 +690,27 @@ export async function verifyOrgListAccess(
   if (memberError) {
     throw forbiddenResponse('Could not verify organization access');
   }
-  if ((count ?? 0) === 0) {
+  if ((count ?? 0) > 0) {
+    return { user, org, canListAllProperties: false };
+  }
+
+  // Plan-limited inactive property members may list their assigned properties so
+  // RequireOrgContext can reach PropertyPlanLimitedGate (not a generic 403).
+  const { count: planLimitedCount, error: planLimitedError } = await supabase
+    .from('property_members')
+    .select('id, properties!inner(organization_id)', {
+      count: 'exact',
+      head: true,
+    })
+    .eq('user_id', user.id)
+    .eq('status', 'inactive')
+    .eq('plan_limited', true)
+    .eq('properties.organization_id', org.id);
+
+  if (planLimitedError) {
+    throw forbiddenResponse('Could not verify organization access');
+  }
+  if ((planLimitedCount ?? 0) === 0) {
     throw forbiddenResponse('Access restricted');
   }
 
@@ -725,7 +792,7 @@ export async function verifyOrgAccess(
 
   const { data: orgAdminMember, error: orgAdminError } = await supabase
     .from('organization_members')
-    .select('id, status, role_id')
+    .select('id, status, role_id, plan_limited')
     .eq('organization_id', org.id)
     .eq('user_id', user.id)
     .maybeSingle();
@@ -733,6 +800,27 @@ export async function verifyOrgAccess(
   if (orgAdminError) {
     console.error('[orgAuth] org member lookup failed:', orgAdminError.message);
     throw forbiddenResponse('Could not verify organization access');
+  }
+
+  if (
+    orgAdminMember &&
+    orgAdminMember.status === 'inactive' &&
+    orgAdminMember.plan_limited === true &&
+    orgAdminMember.role_id === 'ADMIN'
+  ) {
+    // Soft-allow for org-access / gates only — permissioned callers still 403.
+    if (requiredPermission) {
+      throw forbiddenResponse('Access restricted');
+    }
+    return {
+      user,
+      org,
+      accessKind: 'org_admin',
+      permissions: [],
+      canListAllProperties: false,
+      memberId: orgAdminMember.id as string,
+      planLimited: true,
+    };
   }
 
   if (orgAdminMember && orgAdminMember.status === 'active' && orgAdminMember.role_id === 'ADMIN') {
@@ -760,6 +848,34 @@ export async function verifyOrgAccess(
     throw forbiddenResponse('Could not verify organization access');
   }
   if ((count ?? 0) === 0) {
+    const { count: planLimitedCount, error: planLimitedError } = await supabase
+      .from('property_members')
+      .select('id, properties!inner(organization_id)', {
+        count: 'exact',
+        head: true,
+      })
+      .eq('user_id', user.id)
+      .eq('status', 'inactive')
+      .eq('plan_limited', true)
+      .eq('properties.organization_id', org.id);
+
+    if (planLimitedError) {
+      throw forbiddenResponse('Could not verify organization access');
+    }
+    if ((planLimitedCount ?? 0) > 0) {
+      // Soft-allow for org-access / gates only — permissioned callers still 403.
+      if (requiredPermission) {
+        throw forbiddenResponse('Access restricted');
+      }
+      return {
+        user,
+        org,
+        accessKind: 'property_member',
+        permissions: [],
+        canListAllProperties: false,
+        planLimited: true,
+      };
+    }
     throw forbiddenResponse('Access restricted');
   }
 
@@ -810,6 +926,7 @@ export type OrgAccessContext = {
   permissions: OrgPermissionId[];
   canListAllProperties: boolean;
   memberId?: string;
+  planLimited?: boolean;
 };
 
 export type OrgTeamAccessKind = 'owner' | 'platform_admin' | 'org_admin';

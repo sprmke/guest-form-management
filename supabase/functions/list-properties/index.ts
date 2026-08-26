@@ -54,7 +54,22 @@ serveAuthenticated('list-properties', async (req) => {
       throw new Error('Failed to list properties');
     }
 
-    const allowed = new Set((memberRows ?? []).map((row) => row.property_id as string));
+    const { data: planLimitedRows, error: planLimitedError } = await supabase
+      .from('property_members')
+      .select('property_id')
+      .eq('user_id', user.id)
+      .eq('status', 'inactive')
+      .eq('plan_limited', true);
+
+    if (planLimitedError) {
+      console.error('[list-properties]', planLimitedError.message);
+      throw new Error('Failed to list properties');
+    }
+
+    const allowed = new Set([
+      ...(memberRows ?? []).map((row) => row.property_id as string),
+      ...(planLimitedRows ?? []).map((row) => row.property_id as string),
+    ]);
     properties = properties.filter((row) => allowed.has(row.id as string));
   }
 

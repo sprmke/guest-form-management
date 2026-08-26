@@ -74,13 +74,32 @@ serveAuthenticated('list-organizations', async (req, user) => {
     throw new Error('Failed to list organizations');
   }
 
+  const { data: planLimitedMemberRows, error: planLimitedMemberError } = await supabase
+    .from('property_members')
+    .select('property_id')
+    .eq('user_id', user.id)
+    .eq('status', 'inactive')
+    .eq('plan_limited', true);
+
+  if (planLimitedMemberError) {
+    console.error('[list-organizations]', planLimitedMemberError.message);
+    throw new Error('Failed to list organizations');
+  }
+
   const memberOrgIds = new Set<string>();
-  const propertyIds = (memberRows ?? []).map((row) => row.property_id as string).filter(Boolean);
+  const planLimitedPropertyOrgIds = new Set<string>();
+  const activePropertyIds = (memberRows ?? [])
+    .map((row) => row.property_id as string)
+    .filter(Boolean);
+  const planLimitedPropertyIds = (planLimitedMemberRows ?? [])
+    .map((row) => row.property_id as string)
+    .filter(Boolean);
+  const propertyIds = [...new Set([...activePropertyIds, ...planLimitedPropertyIds])];
 
   if (propertyIds.length > 0) {
     const { data: props, error: propsError } = await supabase
       .from('properties')
-      .select('organization_id')
+      .select('id, organization_id')
       .in('id', propertyIds);
 
     if (propsError) {
@@ -88,8 +107,17 @@ serveAuthenticated('list-organizations', async (req, user) => {
       throw new Error('Failed to list organizations');
     }
 
+    const activePropertyIdSet = new Set(activePropertyIds);
+    const planLimitedPropertyIdSet = new Set(planLimitedPropertyIds);
     for (const row of props ?? []) {
-      memberOrgIds.add(row.organization_id as string);
+      const orgId = row.organization_id as string;
+      const propertyId = row.id as string;
+      if (activePropertyIdSet.has(propertyId)) {
+        memberOrgIds.add(orgId);
+      }
+      if (planLimitedPropertyIdSet.has(propertyId)) {
+        planLimitedPropertyOrgIds.add(orgId);
+      }
     }
   }
 
@@ -107,12 +135,30 @@ serveAuthenticated('list-organizations', async (req, user) => {
 
   const orgAdminIds = new Set((orgAdminRows ?? []).map((row) => row.organization_id as string));
 
+  const { data: planLimitedOrgAdminRows, error: planLimitedOrgAdminError } = await supabase
+    .from('organization_members')
+    .select('organization_id')
+    .eq('user_id', user.id)
+    .eq('status', 'inactive')
+    .eq('plan_limited', true)
+    .eq('role_id', 'ADMIN');
+
+  if (planLimitedOrgAdminError) {
+    console.error('[list-organizations]', planLimitedOrgAdminError.message);
+    throw new Error('Failed to list organizations');
+  }
+
+  const planLimitedOrgAdminIds = new Set(
+    (planLimitedOrgAdminRows ?? []).map((row) => row.organization_id as string)
+  );
+
   let memberOrgs: OrgRow[] = [];
-  if (memberOrgIds.size > 0) {
+  const propertyScopedOrgIds = [...new Set([...memberOrgIds, ...planLimitedPropertyOrgIds])];
+  if (propertyScopedOrgIds.length > 0) {
     const { data, error } = await supabase
       .from('organizations')
       .select('*')
-      .in('id', [...memberOrgIds]);
+      .in('id', propertyScopedOrgIds);
 
     if (error) {
       console.error('[list-organizations]', error.message);
@@ -126,12 +172,29 @@ serveAuthenticated('list-organizations', async (req, user) => {
     byId.set(org.id, org);
   }
 
+  const extraOrgIds = [...planLimitedOrgAdminIds].filter((id) => !byId.has(id));
+  if (extraOrgIds.length > 0) {
+    const { data, error } = await supabase.from('organizations').select('*').in('id', extraOrgIds);
+    if (error) {
+      console.error('[list-organizations]', error.message);
+      throw new Error('Failed to list organizations');
+    }
+    for (const org of (data ?? []) as OrgRow[]) {
+      byId.set(org.id, org);
+    }
+  }
+
   const organizations = [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
 
   return jsonSuccess(req, {
     organizations: organizations.map((org) => ({
       ...serializeOrganization(org),
       accessKind: accessKindForOrg(org.id, ownedIds, orgAdminIds, platformAdmin),
+      planLimited:
+        !ownedIds.has(org.id) &&
+        !orgAdminIds.has(org.id) &&
+        (planLimitedOrgAdminIds.has(org.id) ||
+          (planLimitedPropertyOrgIds.has(org.id) && !memberOrgIds.has(org.id))),
     })),
   });
 });
