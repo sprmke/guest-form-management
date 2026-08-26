@@ -58,7 +58,13 @@ if n != 1:
     raise SystemExit("Could not disable [db.seed] in supabase/config.toml")
 path.write_text(new)
 PY
+set +o pipefail
 yes | bun run start:supabase
+start_code=${PIPESTATUS[1]}
+set -o pipefail
+if [[ "$start_code" -ne 0 ]]; then
+  exit "$start_code"
+fi
 mv "$CONFIG_BAK" "$CONFIG"
 bun run stop:supabase || true
 
