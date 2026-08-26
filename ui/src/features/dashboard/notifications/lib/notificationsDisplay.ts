@@ -1,6 +1,7 @@
 import {
   CalendarCheck,
   CalendarPlus,
+  Car,
   FileCheck,
   LogIn,
   LogOut,
@@ -39,6 +40,7 @@ const NOTIFICATION_ICONS: Record<NotificationType, LucideIcon> = {
   booking_sd_refund_due: Wallet,
   booking_gaf_auto_approved: FileCheck,
   booking_pet_auto_approved: PawPrint,
+  booking_parking_matched: Car,
 };
 
 /** Category glyph shared by the bell list, Activity page, and realtime toast. */

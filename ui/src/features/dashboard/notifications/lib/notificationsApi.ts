@@ -8,6 +8,7 @@ export type NotificationType =
   | 'booking_sd_refund_due'
   | 'booking_gaf_auto_approved'
   | 'booking_pet_auto_approved'
+  | 'booking_parking_matched'
   | 'inbox_new_message';
 
 export type NotificationRecord = {

@@ -19,6 +19,9 @@ serveAuthenticated('notifications-mark-read', async (req, user) => {
   requireHttpMethod(req, 'POST');
   const body = await readJsonBody(req);
   const ctx = await resolveNotificationsAccess(req, body);
+  if (ctx.planLimited) {
+    return jsonSuccess(req, { markedCount: 0 });
+  }
   const sb = createServiceClient();
 
   const markAll = body.markAll === true;

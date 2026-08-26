@@ -82,6 +82,9 @@ serveAuthenticated('notifications-list', async (req, user) => {
   }
 
   const ctx = await resolveNotificationsAccess(req);
+  if (ctx.planLimited) {
+    return jsonSuccess(req, { notifications: [], nextCursor: null, unreadCount: 0 });
+  }
   const url = new URL(req.url);
   const cursor = url.searchParams.get('cursor');
   const limitRaw = url.searchParams.get('limit');
@@ -181,13 +184,15 @@ serveAuthenticated('notifications-list', async (req, user) => {
 
   const { data: unreadRows, error: unreadError } = await sb
     .from('notifications')
-    .select('id, notification_reads!left(id)')
+    .select('id, type, conversation_id, notification_reads!left(id)')
     .eq('organization_id', ctx.orgId)
     .eq('notification_reads.user_id', user.id)
     .order('created_at', { ascending: false })
     .limit(UNREAD_COUNT_CAP);
   if (unreadError) return jsonError(req, unreadError.message, 500);
 
+  // Must include type + conversation_id so inbox rows collapse one-per-conversation
+  // (legacy per-message rows) — same rule as the list payload above.
   const unreadCount = countCollapsedUnread((unreadRows ?? []) as NotificationRow[]);
 
   return jsonSuccess(req, { notifications, nextCursor, unreadCount });

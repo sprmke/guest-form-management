@@ -6,18 +6,22 @@
  * unrelated Telegram outbound-alert settings pages (propertyTeamPermissions.ts).
  */
 
+import { hasOrgPermission, type OrgPermissionId } from './orgTeamPermissions.ts';
 import {
   verifyOrgAccess,
   verifyParkingTeamAccess,
   verifyPropertyAccess,
   type OrgRow,
 } from './orgAuth.ts';
+import type { TeamPermissionId } from './propertyTeamPermissions.ts';
 
 export type NotificationsAccessContext = {
   org: OrgRow;
   orgId: string;
   propertyId: string | null;
   parkingId: string | null;
+  /** Soft-allowed seat paused by plan reconciliation — callers should return empty data. */
+  planLimited?: boolean;
 };
 
 function readScopeFromUrl(url: URL): {
@@ -71,6 +75,31 @@ function readScopeFromBody(body: Record<string, unknown> | null | undefined): {
   };
 }
 
+function forbiddenAccess(): Response {
+  return new Response(JSON.stringify({ success: false, error: 'Access restricted' }), {
+    status: 403,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+function assertOrgPermission(
+  permissions: readonly OrgPermissionId[],
+  required: OrgPermissionId
+): void {
+  if (!hasOrgPermission(permissions, required)) {
+    throw forbiddenAccess();
+  }
+}
+
+function assertPropertyPermission(
+  permissions: readonly TeamPermissionId[],
+  required: TeamPermissionId
+): void {
+  if (!permissions.includes(required)) {
+    throw forbiddenAccess();
+  }
+}
+
 /**
  * Auth for notification endpoints. Prefer URL query `org_id` / `org_slug` /
  * `property_id` / `parking_id`; body fields are merged when provided (POST).
@@ -91,22 +120,41 @@ export async function resolveNotificationsAccess(
   const parkingId = fromUrl.parkingId ?? fromBody.parkingId;
 
   if (orgId || orgSlug) {
-    const ctx = await verifyOrgAccess(
-      req,
-      { orgId: orgId ?? undefined, orgSlug: orgSlug ?? undefined },
-      'org:dashboard:view'
-    );
-    return { org: ctx.org, orgId: ctx.org.id, propertyId: null, parkingId: null };
+    // Resolve without a permission first so plan-limited seats can soft-allow (empty inbox)
+    // instead of 403 while OrgPlanLimitedGate is mounting / racing shell fetches.
+    const ctx = await verifyOrgAccess(req, {
+      orgId: orgId ?? undefined,
+      orgSlug: orgSlug ?? undefined,
+    });
+    if (!ctx.planLimited) {
+      assertOrgPermission(ctx.permissions, 'org:dashboard:view');
+    }
+    return {
+      org: ctx.org,
+      orgId: ctx.org.id,
+      propertyId: null,
+      parkingId: null,
+      planLimited: ctx.planLimited === true,
+    };
   }
 
   if (propertyId) {
-    const ctx = await verifyPropertyAccess(req, propertyId, 'bookings:view');
-    return { org: ctx.org, orgId: ctx.org.id, propertyId, parkingId: null };
+    const ctx = await verifyPropertyAccess(req, propertyId);
+    if (!ctx.planLimited) {
+      assertPropertyPermission(ctx.permissions, 'bookings:view');
+    }
+    return {
+      org: ctx.org,
+      orgId: ctx.org.id,
+      propertyId,
+      parkingId: null,
+      planLimited: ctx.planLimited === true,
+    };
   }
 
   if (parkingId) {
     const ctx = await verifyParkingTeamAccess(req, parkingId, 'bookings:view');
-    return { org: ctx.org, orgId: ctx.org.id, propertyId: null, parkingId };
+    return { org: ctx.org, orgId: ctx.org.id, propertyId: null, parkingId, planLimited: false };
   }
 
   throw new Response(

@@ -79,9 +79,17 @@ export function NotificationBell({
   const markAllRead = useMarkAllNotificationsRead();
 
   const unreadCount = data?.pages[0]?.unreadCount ?? 0;
+  const hasUnread = unreadCount > 0;
+  /** Soft attention while unread and the panel is closed — avoid motion while reading. */
+  const attentionActive = hasUnread && !open;
   const hasMoreOnServer = Boolean(data?.pages[0]?.nextCursor);
   const viewAllPath = hubPath ? `${hubPath}${notificationsHubActivityHash()}` : null;
-  const ariaLabel = unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications';
+  const ariaLabel = hasUnread ? `Notifications, ${unreadCount} unread` : 'Notifications';
+
+  const bellIconClassName = cn(
+    'h-5 w-5',
+    attentionActive && 'animate-notification-bell-nudge motion-reduce:animate-none'
+  );
 
   const panelBody = (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -162,8 +170,8 @@ export function NotificationBell({
           className
         )}
       >
-        <Bell className="h-5 w-5" aria-hidden />
-        <NotificationCountBadge count={unreadCount} fab />
+        <Bell className={bellIconClassName} aria-hidden />
+        <NotificationCountBadge count={unreadCount} fab attention={attentionActive} />
       </button>
     ) : (
       <Button
@@ -180,8 +188,8 @@ export function NotificationBell({
         aria-expanded={open}
         aria-haspopup="dialog"
       >
-        <Bell className="h-5 w-5" aria-hidden />
-        <NotificationCountBadge count={unreadCount} />
+        <Bell className={bellIconClassName} aria-hidden />
+        <NotificationCountBadge count={unreadCount} attention={attentionActive} />
       </Button>
     );
 
@@ -215,7 +223,15 @@ export function NotificationBell({
   );
 }
 
-function NotificationCountBadge({ count, fab = false }: { count: number; fab?: boolean }) {
+function NotificationCountBadge({
+  count,
+  fab = false,
+  attention = false,
+}: {
+  count: number;
+  fab?: boolean;
+  attention?: boolean;
+}) {
   if (count <= 0) return null;
 
   return (
@@ -224,7 +240,8 @@ function NotificationCountBadge({ count, fab = false }: { count: number; fab?: b
         'bg-destructive text-destructive-foreground absolute flex items-center justify-center rounded-full font-semibold leading-none',
         fab
           ? 'ring-background right-0.5 top-0.5 h-5 min-w-5 px-1 text-[10px] ring-2'
-          : 'right-1 top-1 h-4 min-w-[16px] px-1 text-[10px]'
+          : 'right-1 top-1 h-4 min-w-[16px] px-1 text-[10px]',
+        attention && 'animate-notification-badge-pulse motion-reduce:animate-none'
       )}
       aria-hidden
     >
