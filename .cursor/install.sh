@@ -38,7 +38,28 @@ echo "==== [install] local dev env files ===="
 
 echo "==== [install] start docker + warm images + validate migrations ===="
 "$ROOT/.cursor/docker-up.sh"
-bun run start:supabase
+# Seed SQL expects org fixtures; disable seed for install-time migration validation only.
+CONFIG="$ROOT/supabase/config.toml"
+CONFIG_BAK="${CONFIG}.cloud-agent-install.bak"
+cp "$CONFIG" "$CONFIG_BAK"
+python3 - <<'PY'
+import re
+from pathlib import Path
+path = Path("supabase/config.toml")
+text = path.read_text()
+new, n = re.subn(
+    r"(\[db\.seed\][^\[]*)enabled = true",
+    r"\1enabled = false",
+    text,
+    count=1,
+    flags=re.DOTALL,
+)
+if n != 1:
+    raise SystemExit("Could not disable [db.seed] in supabase/config.toml")
+path.write_text(new)
+PY
+yes | bun run start:supabase
+mv "$CONFIG_BAK" "$CONFIG"
 bun run stop:supabase || true
 
 echo "==== [install] done ===="
