@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { Mail, Shield, UserPlus, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
+import { TeamInviteTierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 import { CustomRoleFormDialog } from '@/features/dashboard/team/components/CustomRoleFormDialog';
@@ -71,6 +71,7 @@ export function PropertyTeamPage() {
   useFeatureGate('teamManagement');
   const { open: openUpgradeModal } = useUpgradeModal();
   const canInviteByPlan = data?.teamInviteCapacity?.canInvite ?? false;
+  const teamInviteCapacityKnown = data?.teamInviteCapacity?.canInvite;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState('all');
@@ -144,6 +145,11 @@ export function PropertyTeamPage() {
   };
 
   const handleToggleMemberStatus = async (member: TeamMember) => {
+    if (!isTeamMemberActive(member) && member.planLimited && !canInviteByPlan) {
+      openUpgradeModal('teamManagement');
+      return;
+    }
+
     try {
       await updateMember.mutateAsync({
         memberId: member.id,
@@ -299,26 +305,30 @@ export function PropertyTeamPage() {
   const customRoleCount = useMemo(() => customRoles.length, [customRoles]);
 
   const inviteAction = canInvite ? (
-    <Button
-      variant="outline"
-      className="min-h-[44px] w-full sm:w-auto"
-      onClick={openInviteDialog}
-      disabled={isLoading || Boolean(error)}
-      aria-disabled={!canInviteByPlan || undefined}
-    >
-      <UserPlus className="mr-2 size-4" aria-hidden />
-      Invite Member
-    </Button>
+    <TeamInviteTierBadgeAnchor canInvite={teamInviteCapacityKnown} className="w-full sm:w-auto">
+      <Button
+        variant="outline"
+        className="min-h-[44px] w-full sm:w-auto"
+        onClick={openInviteDialog}
+        disabled={isLoading || Boolean(error)}
+        aria-disabled={!canInviteByPlan || undefined}
+      >
+        <UserPlus className="mr-2 size-4" aria-hidden />
+        Invite Member
+      </Button>
+    </TeamInviteTierBadgeAnchor>
   ) : undefined;
 
   const heroInviteAction = canInvite ? (
-    <MobileHeroActionButton
-      aria-label="Invite member"
-      onClick={openInviteDialog}
-      disabled={isLoading || Boolean(error)}
-    >
-      <UserPlus className="size-5" aria-hidden />
-    </MobileHeroActionButton>
+    <TeamInviteTierBadgeAnchor canInvite={teamInviteCapacityKnown}>
+      <MobileHeroActionButton
+        aria-label="Invite member"
+        onClick={openInviteDialog}
+        disabled={isLoading || Boolean(error)}
+      >
+        <UserPlus className="size-5" aria-hidden />
+      </MobileHeroActionButton>
+    </TeamInviteTierBadgeAnchor>
   ) : undefined;
 
   return (
@@ -326,7 +336,6 @@ export function PropertyTeamPage() {
       <AdminMobilePage
         title="Team"
         subtitle="Manage your property's team members and permissions."
-        badge={<TierBadge feature="teamManagement" />}
         heroTrailing={heroInviteAction}
         desktopActions={inviteAction}
         desktopActionsClassName="w-full sm:w-auto"

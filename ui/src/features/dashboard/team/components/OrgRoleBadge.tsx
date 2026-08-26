@@ -10,11 +10,18 @@ import { cn } from '@/lib/utils';
 
 type Props = {
   roleId: string;
+  muted?: boolean;
 };
 
-export function OrgRoleBadge({ roleId }: Props) {
+export function OrgRoleBadge({ roleId, muted = false }: Props) {
   return (
-    <Badge className={cn('border-transparent text-white', getOrgRoleColor(roleId))}>
+    <Badge
+      className={cn(
+        muted
+          ? 'border-border bg-muted text-muted-foreground font-normal'
+          : cn('border-transparent text-white', getOrgRoleColor(roleId))
+      )}
+    >
       {getOrgRoleLabel(roleId)}
     </Badge>
   );

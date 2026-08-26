@@ -38,8 +38,7 @@ export function TeamMemberStatusBadge({ status, planLimited = false }: Props) {
           </Badge>
         </TooltipTrigger>
         <TooltipContent>
-          Disabled automatically — your current plan doesn&apos;t cover this seat. Upgrade or free
-          up a seat to restore access.
+          Paused when the plan seat limit was reached. Upgrade or free a seat to restore access.
         </TooltipContent>
       </Tooltip>
     );

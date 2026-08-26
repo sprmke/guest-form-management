@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 
 import { RequireAdmin } from '@/features/dashboard/bookings/components/RequireAdmin';
 import { useOrganizations } from '@/features/dashboard/org/hooks/useOrganizations';
-import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
+import { TeamInviteTierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 import { EditMemberContactDialog } from '@/features/dashboard/team/components/EditMemberContactDialog';
@@ -52,6 +52,7 @@ export function OrgTeamPage() {
   useFeatureGate('teamManagement');
   const { open: openUpgradeModal } = useUpgradeModal();
   const canInviteByPlan = data?.teamInviteCapacity?.canInvite ?? false;
+  const teamInviteCapacityKnown = data?.teamInviteCapacity?.canInvite;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState('all');
@@ -99,6 +100,11 @@ export function OrgTeamPage() {
   };
 
   const handleToggleMemberStatus = async (member: OrgTeamMember) => {
+    if (member.status === 'inactive' && member.planLimited && !canInviteByPlan) {
+      openUpgradeModal('teamManagement');
+      return;
+    }
+
     try {
       await updateMember.mutateAsync({
         memberId: member.id,
@@ -144,28 +150,33 @@ export function OrgTeamPage() {
   };
 
   const pageLoading = isLoading || orgAccessLoading || (!orgId && orgsLoading);
+  const showTeamContent = Boolean(!pageLoading && !error && orgId && data);
 
   const inviteAction = canInvite ? (
-    <Button
-      variant="outline"
-      className="min-h-[44px] w-full sm:w-auto"
-      onClick={openInviteDialog}
-      disabled={pageLoading || Boolean(error) || !orgSlug}
-      aria-disabled={!canInviteByPlan || undefined}
-    >
-      <UserPlus className="mr-2 size-4" aria-hidden />
-      Invite Member
-    </Button>
+    <TeamInviteTierBadgeAnchor canInvite={teamInviteCapacityKnown} className="w-full sm:w-auto">
+      <Button
+        variant="outline"
+        className="min-h-[44px] w-full sm:w-auto"
+        onClick={openInviteDialog}
+        disabled={pageLoading || Boolean(error) || !orgSlug}
+        aria-disabled={!canInviteByPlan || undefined}
+      >
+        <UserPlus className="mr-2 size-4" aria-hidden />
+        Invite Member
+      </Button>
+    </TeamInviteTierBadgeAnchor>
   ) : undefined;
 
   const heroInviteAction = canInvite ? (
-    <MobileHeroActionButton
-      aria-label="Invite member"
-      onClick={openInviteDialog}
-      disabled={pageLoading || Boolean(error) || !orgSlug}
-    >
-      <UserPlus className="size-5" aria-hidden />
-    </MobileHeroActionButton>
+    <TeamInviteTierBadgeAnchor canInvite={teamInviteCapacityKnown}>
+      <MobileHeroActionButton
+        aria-label="Invite member"
+        onClick={openInviteDialog}
+        disabled={pageLoading || Boolean(error) || !orgSlug}
+      >
+        <UserPlus className="size-5" aria-hidden />
+      </MobileHeroActionButton>
+    </TeamInviteTierBadgeAnchor>
   ) : undefined;
 
   return (
@@ -173,7 +184,6 @@ export function OrgTeamPage() {
       <AdminMobilePage
         title="Team"
         subtitle="Manage your organization's team members and permissions."
-        badge={<TierBadge feature="teamManagement" />}
         heroTrailing={heroInviteAction}
         desktopActions={inviteAction}
         desktopActionsClassName="w-full sm:w-auto"
@@ -183,12 +193,12 @@ export function OrgTeamPage() {
         {error ? (
           <Card>
             <CardContent className="text-destructive py-8 text-center text-sm">
-              {(error as Error).message}
+              {(error as Error).message?.trim() || 'Failed to load team members.'}
             </CardContent>
           </Card>
         ) : null}
 
-        {!pageLoading && !error && orgSlug && !orgAccess && !orgFromList ? (
+        {!pageLoading && !error && orgSlug && !orgId ? (
           <Card>
             <CardContent className="text-muted-foreground py-8 text-center text-sm">
               Organization not found.
@@ -196,7 +206,7 @@ export function OrgTeamPage() {
           </Card>
         ) : null}
 
-        {!pageLoading && !error && orgSlug ? (
+        {showTeamContent ? (
           <>
             <OrgTeamStatsCards members={members} invitations={invitations} />
 

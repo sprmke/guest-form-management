@@ -18,6 +18,7 @@ import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeMo
 import { OrgRoleBadge } from '@/features/dashboard/team/components/OrgRoleBadge';
 import { TeamMemberStatusBadge } from '@/features/dashboard/team/components/TeamMemberStatusBadge';
 import { ORG_ROLES } from '@/features/dashboard/team/lib/orgTeamConstants';
+import { planLimitedTeamBannerMessage } from '@/features/dashboard/team/lib/planLimitedTeamCopy';
 import {
   currentTeamMemberRowClassName,
   isCurrentTeamMember,
@@ -111,12 +112,7 @@ export function OrgTeamMembersTab({
         <div className="border-warning/30 bg-warning/10 flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3 sm:p-4">
           <div className="flex items-start gap-2">
             <Sparkles className="text-warning mt-0.5 size-4 shrink-0" aria-hidden />
-            <p className="text-sm">
-              {planLimitedCount === 1
-                ? '1 team member is disabled to fit your current plan.'
-                : `${planLimitedCount} team members are disabled to fit your current plan.`}{' '}
-              Upgrade to restore access — no data or permissions were lost.
-            </p>
+            <p className="text-sm">{planLimitedTeamBannerMessage(planLimitedCount)}</p>
           </div>
           <Button
             type="button"
@@ -217,7 +213,7 @@ export function OrgTeamMembersTab({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <OrgRoleBadge roleId={member.role} />
+                  <OrgRoleBadge roleId={member.role} muted={!isActive || member.planLimited} />
                   <TeamMemberStatusBadge status={member.status} planLimited={member.planLimited} />
                 </div>
 

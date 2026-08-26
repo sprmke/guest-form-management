@@ -17,13 +17,24 @@ type Props = {
   scope?: TeamScope;
   roleId: PropertyRoleId;
   customRoles: CustomPropertyRole[];
+  muted?: boolean;
 };
 
-export function RoleBadge({ scope = 'property', roleId, customRoles }: Props) {
+export function RoleBadge({ scope = 'property', roleId, customRoles, muted = false }: Props) {
   const label = getRoleLabelForScope(scope, roleId, customRoles);
   const color = getRoleColorForScope(scope, roleId, customRoles);
 
-  return <Badge className={cn('border-transparent text-white', color)}>{label}</Badge>;
+  return (
+    <Badge
+      className={cn(
+        muted
+          ? 'border-border bg-muted text-muted-foreground font-normal'
+          : cn('border-transparent text-white', color)
+      )}
+    >
+      {label}
+    </Badge>
+  );
 }
 
 type DotProps = {

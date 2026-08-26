@@ -1,5 +1,5 @@
 import { scopedOrgFunctionsUrl } from '@/features/dashboard/org/lib/adminApiScope';
-import { parseEdgeJsonOrQuota } from '@/features/dashboard/org/lib/aiQuotaToast';
+import { throwIfUpgradeHookFromJson } from '@/features/dashboard/org/lib/aiQuotaToast';
 
 import { supabase } from '@/lib/supabase/client';
 
@@ -57,7 +57,7 @@ export async function orgTeamMutate<T>(
     feature?: string;
   };
   if (json.upgradeHook || res.status === 429) {
-    return parseEdgeJsonOrQuota<T>(res);
+    throwIfUpgradeHookFromJson(json, res);
   }
   if (!res.ok || !json.success) {
     throw new Error(json.error ?? 'Request failed');

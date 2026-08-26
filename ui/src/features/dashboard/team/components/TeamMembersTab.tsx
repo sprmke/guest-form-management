@@ -21,6 +21,7 @@ import { OrgManagedMemberLink } from '@/features/dashboard/team/components/OrgMa
 import { RoleBadge } from '@/features/dashboard/team/components/RoleBadge';
 import { RoleSelectOptions } from '@/features/dashboard/team/components/RoleSelectOptions';
 import { TeamMemberStatusBadge } from '@/features/dashboard/team/components/TeamMemberStatusBadge';
+import { planLimitedTeamBannerMessage } from '@/features/dashboard/team/lib/planLimitedTeamCopy';
 import { handleRoleSelectChange } from '@/features/dashboard/team/lib/roleSelectUtils';
 import {
   currentTeamMemberRowClassName,
@@ -148,12 +149,7 @@ export function TeamMembersTab({
         <div className="border-warning/30 bg-warning/10 flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3 sm:p-4">
           <div className="flex items-start gap-2">
             <Sparkles className="text-warning mt-0.5 size-4 shrink-0" aria-hidden />
-            <p className="text-sm">
-              {planLimitedCount === 1
-                ? '1 team member is disabled to fit your current plan.'
-                : `${planLimitedCount} team members are disabled to fit your current plan.`}{' '}
-              Upgrade to restore access — no data or permissions were lost.
-            </p>
+            <p className="text-sm">{planLimitedTeamBannerMessage(planLimitedCount)}</p>
           </div>
           <Button
             type="button"
@@ -264,7 +260,12 @@ export function TeamMembersTab({
                   className={cn('flex flex-wrap items-center gap-1.5', !isActive && 'opacity-50')}
                   title={!isActive ? 'Role applies when member is active' : undefined}
                 >
-                  <RoleBadge scope={scope} roleId={member.role} customRoles={customRoles} />
+                  <RoleBadge
+                    scope={scope}
+                    roleId={member.role}
+                    customRoles={customRoles}
+                    muted={!isActive || member.planLimited}
+                  />
                   <TeamMemberStatusBadge status={member.status} planLimited={member.planLimited} />
                 </div>
 
