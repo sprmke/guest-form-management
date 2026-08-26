@@ -8,8 +8,12 @@ import { isOrgVerifiedBadge, readOrgVerificationFromSettings } from './orgVerifi
 import { isListingRecommendedBadge, resolveListingAuthorization } from './listingAuthorization.ts';
 import { resolveOrgSettings } from './orgSettings.ts';
 import { resolveOrgBrandColorFromSettings } from './orgSettingsValidation.ts';
-import { loadParkingPricing } from './parkingPricing.ts';
-import { loadPropertyPricing } from './propertyPricing.ts';
+import {
+  batchLoadParkingPricing,
+  batchLoadPropertyPricing,
+  DEFAULT_LISTING_WEEKDAY_RATE,
+  DEFAULT_PARKING_LISTING_WEEKDAY_RATE,
+} from './publicListingFacets.ts';
 import { normalizePropertyMediaItems } from './propertyMedia.ts';
 
 /** Per-listing Recommended badge (listing Tier 2) — independent of the host badge. */
@@ -224,52 +228,50 @@ export async function loadPublicHostByOrgSlug(
   const propertyRows = (propertiesResult.data ?? []) as PropertyListRow[];
   const parkingRows = (parkingsResult.data ?? []) as ParkingListRow[];
 
-  const [properties, parkings] = await Promise.all([
-    Promise.all(
-      propertyRows.map(async (row) => {
-        const settings = row.settings ?? {};
-        const city = readString(settings, 'city');
-        const province = readString(settings, 'province');
-        const country = readString(settings, 'country') || 'Philippines';
-        const media = normalizePropertyMediaItems(settings);
-        const images = media.filter((item) => item.type === 'image').map((item) => item.url);
-        const pricing = await loadPropertyPricing(row.id);
-
-        return {
-          slug: row.slug,
-          name: row.name,
-          type: normalizePropertyTypeLabel(row.type),
-          locationLabel: buildLocationLabel(city, province, country),
-          imageUrl: images[0] ?? null,
-          weekdayNightlyRate: pricing.weekdayNightlyRate,
-          recommendedBadge: isListingRecommendedBadge(
-            resolveListingAuthorization(settings, orgSettings, 'property')
-          ),
-        } satisfies PublicHostPropertyCardDto;
-      })
-    ),
-    Promise.all(
-      parkingRows.map(async (row) => {
-        const settings =
-          row.settings && typeof row.settings === 'object' && !Array.isArray(row.settings)
-            ? row.settings
-            : {};
-        const pricing = await loadParkingPricing(row.id);
-
-        return {
-          slug: row.slug,
-          name: row.name,
-          parkingType: normalizeParkingTypeLabel(row.parking_type),
-          locationLabel: buildParkingLocationLabel(settings, row),
-          imageUrl: firstParkingImageUrl(settings),
-          weekdayNightlyRate: pricing.weekdayNightlyRate,
-          recommendedBadge: isListingRecommendedBadge(
-            resolveListingAuthorization(settings, orgSettings, 'parking')
-          ),
-        } satisfies PublicHostParkingCardDto;
-      })
-    ),
+  const [propertyRates, parkingRates] = await Promise.all([
+    batchLoadPropertyPricing(propertyRows.map((row) => row.id)),
+    batchLoadParkingPricing(parkingRows.map((row) => row.id)),
   ]);
+
+  const properties = propertyRows.map((row) => {
+    const settings = row.settings ?? {};
+    const city = readString(settings, 'city');
+    const province = readString(settings, 'province');
+    const country = readString(settings, 'country') || 'Philippines';
+    const media = normalizePropertyMediaItems(settings);
+    const images = media.filter((item) => item.type === 'image').map((item) => item.url);
+
+    return {
+      slug: row.slug,
+      name: row.name,
+      type: normalizePropertyTypeLabel(row.type),
+      locationLabel: buildLocationLabel(city, province, country),
+      imageUrl: images[0] ?? null,
+      weekdayNightlyRate: propertyRates.get(row.id) ?? DEFAULT_LISTING_WEEKDAY_RATE,
+      recommendedBadge: isListingRecommendedBadge(
+        resolveListingAuthorization(settings, orgSettings, 'property')
+      ),
+    } satisfies PublicHostPropertyCardDto;
+  });
+
+  const parkings = parkingRows.map((row) => {
+    const settings =
+      row.settings && typeof row.settings === 'object' && !Array.isArray(row.settings)
+        ? row.settings
+        : {};
+
+    return {
+      slug: row.slug,
+      name: row.name,
+      parkingType: normalizeParkingTypeLabel(row.parking_type),
+      locationLabel: buildParkingLocationLabel(settings, row),
+      imageUrl: firstParkingImageUrl(settings),
+      weekdayNightlyRate: parkingRates.get(row.id) ?? DEFAULT_PARKING_LISTING_WEEKDAY_RATE,
+      recommendedBadge: isListingRecommendedBadge(
+        resolveListingAuthorization(settings, orgSettings, 'parking')
+      ),
+    } satisfies PublicHostParkingCardDto;
+  });
 
   return {
     slug: org.slug,

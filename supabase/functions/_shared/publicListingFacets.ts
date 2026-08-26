@@ -10,6 +10,9 @@ import { listApprovedPublicExternalReviews } from './propertyExternalReviews.ts'
 /** Same default as propertyPricing.ts DEFAULT_WEEKDAY — keep in sync. */
 export const DEFAULT_LISTING_WEEKDAY_RATE = 2799;
 
+/** Same default as parkingPricing.ts DEFAULT_PARKING_WEEKDAY — keep in sync. */
+export const DEFAULT_PARKING_LISTING_WEEKDAY_RATE = 300;
+
 export type ReviewStats = {
   rating: number | null;
   reviewCount: number;
@@ -58,6 +61,38 @@ export async function batchLoadPropertyPricing(
 
   for (const id of propertyIds) {
     if (!result.has(id)) result.set(id, DEFAULT_LISTING_WEEKDAY_RATE);
+  }
+  return result;
+}
+
+/** Single batched read of weekday rates — no ensureParkingSettings side effect. */
+export async function batchLoadParkingPricing(parkingIds: string[]): Promise<Map<string, number>> {
+  const result = new Map<string, number>();
+  if (parkingIds.length === 0) return result;
+
+  const supabase = createServiceClient();
+  for (const chunk of chunkIds(parkingIds)) {
+    const { data, error } = await supabase
+      .from('parking_settings')
+      .select('parking_id, weekday_nightly_rate')
+      .in('parking_id', chunk);
+    if (error) {
+      console.warn('[publicListingFacets] parking pricing batch failed:', error.message);
+      continue;
+    }
+    for (const row of data ?? []) {
+      const id = row.parking_id as string | null;
+      if (!id) continue;
+      const rate =
+        row.weekday_nightly_rate != null && Number.isFinite(Number(row.weekday_nightly_rate))
+          ? Number(row.weekday_nightly_rate)
+          : DEFAULT_PARKING_LISTING_WEEKDAY_RATE;
+      result.set(id, rate);
+    }
+  }
+
+  for (const id of parkingIds) {
+    if (!result.has(id)) result.set(id, DEFAULT_PARKING_LISTING_WEEKDAY_RATE);
   }
   return result;
 }
