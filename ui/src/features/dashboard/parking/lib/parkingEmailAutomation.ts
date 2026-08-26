@@ -2,6 +2,7 @@ export const PARKING_AUTOMATION_TOGGLE_KEYS = [
   'emailParkingReservationRequest',
   'emailParkingGuestConfirmed',
   'emailParkingNoHostAvailable',
+  'autoAcceptTopMatch',
 ] as const;
 
 export type ParkingAutomationToggleKey = (typeof PARKING_AUTOMATION_TOGGLE_KEYS)[number];
@@ -12,12 +13,21 @@ export const DEFAULT_PARKING_AUTOMATION_TOGGLES: ParkingAutomationToggles = {
   emailParkingReservationRequest: true,
   emailParkingGuestConfirmed: true,
   emailParkingNoHostAvailable: true,
+  autoAcceptTopMatch: false,
 };
+
+/** Email toggles only — rendered in the "Email automation" section. */
+export const PARKING_EMAIL_AUTOMATION_TOGGLE_KEYS = [
+  'emailParkingReservationRequest',
+  'emailParkingGuestConfirmed',
+  'emailParkingNoHostAvailable',
+] as const satisfies readonly ParkingAutomationToggleKey[];
 
 export const PARKING_AUTOMATION_TOGGLE_LABELS: Record<ParkingAutomationToggleKey, string> = {
   emailParkingReservationRequest: 'Reservation request',
   emailParkingGuestConfirmed: 'Guest confirmed',
   emailParkingNoHostAvailable: 'No host available',
+  autoAcceptTopMatch: 'Auto-accept top match',
 };
 
 export function mergeParkingAutomationToggles(raw: unknown): ParkingAutomationToggles {

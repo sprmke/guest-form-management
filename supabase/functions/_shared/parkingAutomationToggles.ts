@@ -1,5 +1,7 @@
 /**
- * Per-parking email automation master switches (`parking_settings.automation_toggles`).
+ * Per-parking automation master switches (`parking_settings.automation_toggles`) — email
+ * sends plus (Phase 5) `autoAcceptTopMatch`, which isn't an email setting but shares this same
+ * JSONB bag rather than adding a dedicated column.
  */
 
 import { createServiceClient } from './orgAuth.ts';
@@ -8,6 +10,7 @@ export const PARKING_AUTOMATION_TOGGLE_KEYS = [
   'emailParkingReservationRequest',
   'emailParkingGuestConfirmed',
   'emailParkingNoHostAvailable',
+  'autoAcceptTopMatch',
 ] as const;
 
 export type ParkingAutomationToggleKey = (typeof PARKING_AUTOMATION_TOGGLE_KEYS)[number];
@@ -18,6 +21,7 @@ export const DEFAULT_PARKING_AUTOMATION_TOGGLES: ParkingAutomationToggles = {
   emailParkingReservationRequest: true,
   emailParkingGuestConfirmed: true,
   emailParkingNoHostAvailable: true,
+  autoAcceptTopMatch: false,
 };
 
 export function mergeParkingAutomationToggles(raw: unknown): ParkingAutomationToggles {
