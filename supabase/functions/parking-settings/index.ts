@@ -20,6 +20,13 @@ import {
 } from '../_shared/httpResponse.ts';
 import { resolveScopedParkingAccess } from '../_shared/parkingScope.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+import {
+  computePaymentSettingsFingerprint,
+  extractPaymentMethodsFromPatchBody,
+  patchBodyTouchesPaymentSettings,
+  requireSettingsVerificationToken,
+} from '../_shared/settingsVerification.ts';
+import { notifyParkingPaymentSettingsChanged } from '../_shared/settingsChangeNotifyEmail.ts';
 
 function serializeParkingSettingsRow(
   row: Record<string, unknown>,
@@ -43,9 +50,9 @@ function serializeParkingSettingsRow(
   };
 }
 
-serveAuthenticated('parking-settings', async (req) => {
+serveAuthenticated('parking-settings', async (req, user) => {
   const permission = req.method === 'GET' ? 'org:parkings:view' : 'org:parkings:manage';
-  const { parkingRow } = await resolveScopedParkingAccess(req, permission);
+  const { parkingRow, org } = await resolveScopedParkingAccess(req, permission);
   const parkingId = parkingRow.id;
   const supabase = createServiceClient();
 
@@ -71,6 +78,30 @@ serveAuthenticated('parking-settings', async (req) => {
   if (req.method === 'PATCH') {
     requireHttpMethod(req, 'PATCH');
     const body = await readJsonBody(req);
+    let paymentSettingsChanged = false;
+
+    if (patchBodyTouchesPaymentSettings(body)) {
+      const methods = extractPaymentMethodsFromPatchBody(body);
+      if (!methods) {
+        return jsonError(req, 'paymentMethods is required when updating payment settings');
+      }
+      const patchFingerprint = await computePaymentSettingsFingerprint(methods);
+      const token =
+        typeof body.settingsVerificationToken === 'string' ? body.settingsVerificationToken : '';
+      try {
+        await requireSettingsVerificationToken({
+          token,
+          organizationId: org.id,
+          parkingId: parkingRow.id as string,
+          patchFingerprint,
+        });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Verification required';
+        return jsonError(req, msg, 403);
+      }
+      paymentSettingsChanged = true;
+    }
+
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
     if (typeof body.gcashName === 'string') patch.gcash_name = body.gcashName.trim() || null;
@@ -83,6 +114,28 @@ serveAuthenticated('parking-settings', async (req) => {
     }
     if (Array.isArray(body.paymentMethods)) {
       patch.payment_methods = body.paymentMethods;
+      const methods = body.paymentMethods as Array<{
+        isPrimary?: boolean;
+        qrImageUrl?: string | null;
+        provider?: string;
+        accountName?: string;
+        accountNumber?: string;
+      }>;
+      const primary = methods.find((m) => m.isPrimary === true) ?? methods[0];
+      if (primary) {
+        if (typeof primary.qrImageUrl === 'string') {
+          patch.gcash_qr_image_url = primary.qrImageUrl.trim() || null;
+        }
+        if (typeof primary.provider === 'string' && !body.paymentProvider) {
+          patch.payment_provider = primary.provider.trim() || null;
+        }
+        if (typeof primary.accountName === 'string' && body.gcashName === undefined) {
+          patch.gcash_name = primary.accountName.trim() || null;
+        }
+        if (typeof primary.accountNumber === 'string' && body.gcashNumber === undefined) {
+          patch.gcash_number = primary.accountNumber.trim() || null;
+        }
+      }
     }
     if (
       body.parkingNotificationTemplates &&
@@ -120,6 +173,19 @@ serveAuthenticated('parking-settings', async (req) => {
     if (error) {
       console.error('[parking-settings]', error.message);
       return jsonError(req, 'Failed to update parking settings', 500);
+    }
+
+    if (paymentSettingsChanged) {
+      notifyParkingPaymentSettingsChanged({
+        supabase,
+        organizationId: org.id,
+        parkingId: parkingRow.id as string,
+        ownerId: org.owner_id,
+        parkingName: parkingRow.name as string,
+        actorUserId: user.id,
+      }).catch((err) => {
+        console.error('[parking-settings] settings change notify failed', err);
+      });
     }
 
     return jsonSuccess(req, serializeParkingSettingsRow(data as Record<string, unknown>));

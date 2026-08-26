@@ -69,6 +69,10 @@ function storagePathForAsset(
     if (idx < 0 || idx > 2) throw new Error('photoIndex must be 0, 1, or 2');
     return `${ASSET_CONFIG.external_review_stay_photo.storagePrefix}/${propertyId}/${reviewId}/${idx}${ext}`;
   }
+  // Payment QR: unique object path so staging uploads do not overwrite the live QR before OTP save.
+  if (assetType === 'gcash_qr') {
+    return `${ASSET_CONFIG.gcash_qr.storagePrefix}/${propertyId}/${crypto.randomUUID()}${ext}`;
+  }
   return `${ASSET_CONFIG[assetType].storagePrefix}/${propertyId}/current${ext}`;
 }
 
@@ -145,7 +149,9 @@ serve(async (req) => {
         : safePublicUrl;
 
     const config = ASSET_CONFIG[assetType];
-    if (config.column) {
+    // Payment QR is staging-only here — `app_settings` / payment_methods update on OTP-gated PATCH.
+    const persistColumn = config.column && assetType !== 'gcash_qr';
+    if (persistColumn && config.column) {
       const patch: Record<string, string> = {
         [config.column]: persistedUrl,
       };
@@ -182,7 +188,7 @@ serve(async (req) => {
           url: persistedUrl,
           bucket: BUCKET,
           path: storagePath,
-          column: config.column ?? null,
+          column: persistColumn ? (config.column ?? null) : null,
         },
       }),
       { headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }

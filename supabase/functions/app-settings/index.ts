@@ -50,10 +50,18 @@ import {
   serializeExternalReviewsForOwnerPatch,
 } from '../_shared/propertyExternalReviews.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+import { createServiceClient } from '../_shared/orgAuth.ts';
+import {
+  computePaymentSettingsFingerprint,
+  extractPaymentMethodsFromPatchBody,
+  patchBodyTouchesPaymentSettings,
+  requireSettingsVerificationToken,
+} from '../_shared/settingsVerification.ts';
+import { notifyPropertyPaymentSettingsChanged } from '../_shared/settingsChangeNotifyEmail.ts';
 
-serveAuthenticated('app-settings', async (req) => {
+serveAuthenticated('app-settings', async (req, user) => {
   const permission = req.method === 'GET' ? 'settings:view' : 'settings:edit';
-  const { property } = await resolveScopedPropertyAccess(req, permission);
+  const { property, org } = await resolveScopedPropertyAccess(req, permission);
   const propertyId = property.id;
 
   if (req.method === 'GET') {
@@ -75,6 +83,30 @@ serveAuthenticated('app-settings', async (req) => {
 
   if (req.method === 'PATCH') {
     const body = await readJsonBody(req);
+    let paymentSettingsChanged = false;
+
+    if (patchBodyTouchesPaymentSettings(body)) {
+      const methods = extractPaymentMethodsFromPatchBody(body);
+      if (!methods) {
+        return jsonError(req, 'paymentMethods is required when updating payment settings');
+      }
+      const patchFingerprint = await computePaymentSettingsFingerprint(methods);
+      const token =
+        typeof body.settingsVerificationToken === 'string' ? body.settingsVerificationToken : '';
+      try {
+        await requireSettingsVerificationToken({
+          token,
+          organizationId: org.id,
+          propertyId: property.id,
+          patchFingerprint,
+        });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Verification required';
+        return jsonError(req, msg, 403);
+      }
+      paymentSettingsChanged = true;
+    }
+
     const patch: Record<string, unknown> = {};
     const currentRow = await loadAppSettingsRow(propertyId);
     let paymentProvider = normalizePaymentProvider(currentRow?.payment_provider);
@@ -346,6 +378,21 @@ serveAuthenticated('app-settings', async (req) => {
     await DatabaseService.updateAppSettings(patch, propertyId);
     invalidateAppSettingsCache(propertyId);
     const data = await serializeAppSettingsForAdmin(propertyId);
+
+    if (paymentSettingsChanged) {
+      const supabase = createServiceClient();
+      notifyPropertyPaymentSettingsChanged({
+        supabase,
+        organizationId: org.id,
+        propertyId: property.id,
+        ownerId: org.owner_id,
+        propertyName: property.name,
+        actorUserId: user.id,
+      }).catch((err) => {
+        console.error('[app-settings] settings change notify failed', err);
+      });
+    }
+
     return jsonSuccess(req, data);
   }
 

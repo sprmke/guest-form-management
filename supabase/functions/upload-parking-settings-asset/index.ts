@@ -5,9 +5,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { corsHeaders } from '../_shared/cors.ts';
-import { createServiceClient } from '../_shared/orgAuth.ts';
 import { resolveScopedParkingAccess } from '../_shared/parkingScope.ts';
-import { ensureParkingSettings } from '../_shared/parkingSettingsSeed.ts';
 import { formatPublicUrl } from '../_shared/utils.ts';
 
 const BUCKET = 'app-settings-assets';
@@ -15,9 +13,8 @@ const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 type AssetType = 'gcash_qr';
 
-const ASSET_CONFIG: Record<AssetType, { column: string; storagePrefix: string }> = {
+const ASSET_CONFIG: Record<AssetType, { storagePrefix: string }> = {
   gcash_qr: {
-    column: 'gcash_qr_image_url',
     storagePrefix: 'parking-gcash-qr',
   },
 };
@@ -61,7 +58,8 @@ serve(async (req) => {
         : mime === 'image/webp'
           ? '.webp'
           : '.jpg';
-    const storagePath = `${ASSET_CONFIG[assetType].storagePrefix}/${parkingId}/current${ext}`;
+    // Unique path — staging only; parking_settings row updates on OTP-gated PATCH.
+    const storagePath = `${ASSET_CONFIG[assetType].storagePrefix}/${parkingId}/${crypto.randomUUID()}${ext}`;
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -70,7 +68,7 @@ serve(async (req) => {
 
     const { error: uploadError } = await supabase.storage
       .from(BUCKET)
-      .upload(storagePath, file, { upsert: true, contentType: mime });
+      .upload(storagePath, file, { upsert: false, contentType: mime });
 
     if (uploadError) {
       throw new Error(`Upload failed: ${uploadError.message}`);
@@ -81,21 +79,7 @@ serve(async (req) => {
     } = supabase.storage.from(BUCKET).getPublicUrl(storagePath);
     const safePublicUrl = formatPublicUrl(publicUrl);
 
-    await ensureParkingSettings(parkingId);
-    const service = createServiceClient();
-    const { error: updateError } = await service
-      .from('parking_settings')
-      .update({
-        [ASSET_CONFIG[assetType].column]: safePublicUrl,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('parking_id', parkingId);
-
-    if (updateError) {
-      throw new Error(updateError.message);
-    }
-
-    console.log(`[upload-parking-settings-asset] Uploaded ${assetType} for ${parkingId}`);
+    console.log(`[upload-parking-settings-asset] Staged ${assetType} for ${parkingId}`);
 
     return new Response(
       JSON.stringify({
@@ -104,7 +88,7 @@ serve(async (req) => {
           url: safePublicUrl,
           bucket: BUCKET,
           path: storagePath,
-          column: ASSET_CONFIG[assetType].column,
+          column: null,
         },
       }),
       { headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
