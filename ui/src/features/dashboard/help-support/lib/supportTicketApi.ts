@@ -12,6 +12,8 @@ export type SupportTicketScopeParams = {
   orgId: string | null;
   propertyId: string | null;
   parkingId: string | null;
+  /** Explore Contact /account/tickets — omit org params so the API uses guest channel. */
+  channel?: 'host' | 'guest';
 };
 
 export type SupportTicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
@@ -36,7 +38,7 @@ export type SupportTicket = {
 export type SupportTicketMessage = {
   id: string;
   ticket_id: string;
-  sender_type: 'host' | 'admin';
+  sender_type: 'host' | 'guest' | 'admin';
   sender_user_id: string | null;
   sender_name: string;
   body: string;
@@ -46,6 +48,7 @@ export type SupportTicketMessage = {
 
 function scopeQuery(scope: SupportTicketScopeParams): URLSearchParams {
   const params = new URLSearchParams();
+  if (scope.channel === 'guest') return params;
   appendOrgId(params, scope.orgSlug, scope.orgId);
   appendPropertyId(params, scope.propertyId);
   appendParkingId(params, scope.parkingId);
@@ -109,8 +112,10 @@ export async function uploadSupportTicketAttachment(
   formData.append('file', file);
   if (scope.orgSlug) formData.append('orgSlug', scope.orgSlug);
   if (scope.orgId) formData.append('orgId', scope.orgId);
-  if (scope.propertyId) formData.append('propertyId', scope.propertyId);
-  if (scope.parkingId) formData.append('parkingId', scope.parkingId);
+  if (scope.channel !== 'guest') {
+    if (scope.propertyId) formData.append('propertyId', scope.propertyId);
+    if (scope.parkingId) formData.append('parkingId', scope.parkingId);
+  }
 
   const baseUrl = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/$/, '');
   const res = await fetch(`${baseUrl}/upload-support-ticket-attachment`, {

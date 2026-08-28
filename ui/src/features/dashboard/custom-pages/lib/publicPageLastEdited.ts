@@ -2,6 +2,10 @@ import { formatDistanceToNow } from 'date-fns';
 
 import { defaultPropertyLandingSectionConfig } from '@/features/guest/marketing/properties/lib/propertyLandingSections';
 import type { PropertyLandingSectionConfig } from '@/features/guest/marketing/properties/types/publicProperty';
+import {
+  defaultPropertyShowcaseConfig,
+  type PropertyShowcaseConfig,
+} from '@/features/guest/marketing/showcase/types/showcase';
 import type { StayGuideSectionConfig } from '@/features/guest/stay-guide/lib/api';
 import { defaultStayGuideSectionConfig } from '@/features/guest/stay-guide/lib/stayGuideChapters';
 
@@ -11,8 +15,12 @@ import type {
 } from '@/features/dashboard/page-editor/hooks/usePublicPageConfig';
 
 /** Gallery page id → `public_page_configs.page_type`. */
-export function publicPageTypeForGalleryId(pageId: 'listing' | 'stay-guide'): PublicPageType {
-  return pageId === 'listing' ? 'property_landing' : 'stay_guide';
+export function publicPageTypeForGalleryId(
+  pageId: 'listing' | 'stay-guide' | 'showcase'
+): PublicPageType {
+  if (pageId === 'listing') return 'property_landing';
+  if (pageId === 'showcase') return 'property_showcase';
+  return 'stay_guide';
 }
 
 function isDefaultPublicPageConfig(dto: PublicPageConfigDto): boolean {
@@ -20,6 +28,13 @@ function isDefaultPublicPageConfig(dto: PublicPageConfigDto): boolean {
     return (
       JSON.stringify(dto.config as StayGuideSectionConfig) ===
       JSON.stringify(defaultStayGuideSectionConfig())
+    );
+  }
+  if (dto.pageType === 'property_showcase') {
+    const config = dto.config as PropertyShowcaseConfig;
+    return (
+      config.published === false &&
+      JSON.stringify(config.sections) === JSON.stringify(defaultPropertyShowcaseConfig().sections)
     );
   }
   return (

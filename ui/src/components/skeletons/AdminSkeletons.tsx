@@ -583,9 +583,9 @@ export function BookingsCalendarSkeleton({
   compact?: boolean;
 } = {}) {
   const cellClass = compact
-    ? 'min-h-8 w-full rounded-md'
-    : 'aspect-square w-full rounded-lg sm:min-h-[88px] sm:aspect-auto';
-  const gridPad = compact ? 'gap-0.5 px-1.5 pb-1.5 pt-1 sm:px-2' : 'gap-1 px-2 pb-3 pt-3 sm:px-3';
+    ? 'h-[3rem] w-full self-start'
+    : 'aspect-square min-h-[4.5rem] w-full self-start';
+  const gridPad = compact ? 'p-1.5 sm:p-2' : 'p-2 sm:p-3';
 
   const grid = (
     <div
@@ -605,13 +605,26 @@ export function BookingsCalendarSkeleton({
           </div>
         </div>
       ) : null}
-      <div className={cn('grid grid-cols-7', gridPad)}>
-        {Array.from({ length: 7 }).map((_, i) => (
-          <Skeleton key={`dow-${i}`} className="mx-auto h-3 w-6 rounded-full" />
-        ))}
-        {Array.from({ length: 35 }).map((_, i) => (
-          <Skeleton key={`day-${i}`} className={cellClass} />
-        ))}
+      <div className={gridPad}>
+        <div className="border-border/50 overflow-hidden rounded-lg border">
+          <div className="bg-border/40 grid grid-cols-7 gap-px border-b">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <Skeleton key={`dow-${i}`} className="mx-auto my-2 h-3 w-6 rounded-full" />
+            ))}
+          </div>
+          <div className="flex flex-col">
+            {Array.from({ length: 5 }).map((_, week) => (
+              <div
+                key={`week-${week}`}
+                className="bg-border/40 border-border/40 grid grid-cols-7 gap-px border-t first:border-t-0"
+              >
+                {Array.from({ length: 7 }).map((_, day) => (
+                  <Skeleton key={`day-${week}-${day}`} className={cn(cellClass, 'rounded-none')} />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -715,7 +728,7 @@ export function DashboardSkeleton() {
               <Skeleton key={`dow-${i}`} className="mx-auto h-3 w-6 rounded-full" />
             ))}
             {Array.from({ length: 35 }).map((_, i) => (
-              <Skeleton key={`day-${i}`} className="min-h-8 w-full rounded-md" />
+              <Skeleton key={`day-${i}`} className="h-[3rem] w-full self-start rounded-md" />
             ))}
           </div>
         </section>

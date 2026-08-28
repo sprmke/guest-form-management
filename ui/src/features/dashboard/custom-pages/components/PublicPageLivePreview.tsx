@@ -16,6 +16,7 @@ const PREVIEW_HEIGHT: Record<PropertyGuestPublicPage['id'], number> = {
   form: 820,
   messages: 720,
   'stay-guide': 880,
+  showcase: 900,
   'sd-form': 820,
   'guest-review': 720,
   'pay-parking': 760,

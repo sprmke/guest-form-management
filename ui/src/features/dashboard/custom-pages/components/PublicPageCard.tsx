@@ -21,6 +21,13 @@ type Props = {
   variant?: 'editable' | 'static';
   /** Relative time line for editable cards; omit or null to hide. */
   lastEditedLabel?: string | null;
+  /** When false, hide the Edit control (view-only Public Pages grant). */
+  canEdit?: boolean;
+  /** Optional publish chip for showcase (and future surfaces). */
+  publishState?: 'published' | 'draft' | null;
+  /** When true, Edit opens upgrade instead of the editor. */
+  locked?: boolean;
+  onUnlock?: () => void;
 };
 
 async function copyPublicPageLink(href: string, label: string) {
@@ -38,6 +45,10 @@ export function PublicPageCard({
   coverUrl,
   variant: variantProp,
   lastEditedLabel = null,
+  canEdit = true,
+  publishState = null,
+  locked = false,
+  onUnlock,
 }: Props) {
   const { orgSlug, propertySlug } = useOrgContext();
   const Icon = page.icon;
@@ -47,14 +58,14 @@ export function PublicPageCard({
   const previewSrc = withGuestEmbedPreviewUrl(href);
   const variant = variantProp ?? (page.editable ? 'editable' : 'static');
   const editHref =
-    variant === 'editable'
+    variant === 'editable' && canEdit && !locked
       ? `${propertySectionPath(orgSlug, propertySlug, 'public-pages')}/${page.id}/edit`
       : null;
 
   return (
     <article
       className={cn(
-        'surface-card-interactive native-press group relative flex min-h-[44px] flex-col overflow-hidden',
+        'surface-card-interactive native-press group relative flex h-full min-h-[44px] flex-col overflow-hidden',
         variant === 'editable' && 'ring-border/60 sm:shadow-sm'
       )}
     >
@@ -76,7 +87,7 @@ export function PublicPageCard({
 
       <div
         className={cn(
-          'flex flex-col gap-2.5 px-3.5 py-3 sm:py-3.5',
+          'flex flex-1 flex-col gap-2.5 px-3.5 py-3 sm:py-3.5',
           variant === 'editable' && 'sm:gap-3 sm:px-4 sm:py-4'
         )}
       >
@@ -98,29 +109,55 @@ export function PublicPageCard({
             >
               {page.label}
             </span>
-            <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs leading-relaxed">
+            {publishState ? (
+              <span
+                className={cn(
+                  'mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide',
+                  publishState === 'published'
+                    ? 'bg-success/15 text-success'
+                    : 'bg-muted text-muted-foreground'
+                )}
+              >
+                {publishState === 'published' ? 'Published' : 'Draft'}
+              </span>
+            ) : null}
+            <p className="text-muted-foreground mt-0.5 line-clamp-2 min-h-[2.5rem] text-xs leading-relaxed">
               {page.description}
             </p>
-            {variant === 'editable' && lastEditedLabel ? (
-              <p className="text-muted-foreground mt-1.5 text-xs">{lastEditedLabel}</p>
+            {variant === 'editable' ? (
+              <p className="text-muted-foreground mt-1.5 min-h-4 text-xs">
+                {lastEditedLabel ?? '\u00a0'}
+              </p>
             ) : null}
           </div>
         </div>
 
-        {editHref ? (
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="default"
-              size="sm"
-              className="h-9 min-h-[44px] flex-1 gap-1.5"
-              asChild
-            >
-              <Link to={editHref}>
-                <Pencil className="size-3.5" aria-hidden />
-                Edit
-              </Link>
-            </Button>
+        {variant === 'editable' ? (
+          <div className="mt-auto flex gap-2">
+            {editHref ? (
+              <Button
+                type="button"
+                variant="outline-primary"
+                size="sm"
+                className="h-9 min-h-[44px] flex-1 gap-1.5"
+                asChild
+              >
+                <Link to={editHref}>
+                  <Pencil className="size-3.5" aria-hidden />
+                  Edit
+                </Link>
+              </Button>
+            ) : locked && canEdit ? (
+              <Button
+                type="button"
+                variant="outline-primary"
+                size="sm"
+                className="h-9 min-h-[44px] flex-1 gap-1.5"
+                onClick={onUnlock}
+              >
+                Upgrade
+              </Button>
+            ) : null}
             <Button
               type="button"
               variant="outline"
@@ -149,7 +186,7 @@ export function PublicPageCard({
             </Button>
           </div>
         ) : (
-          <div className="flex gap-2">
+          <div className="mt-auto flex gap-2">
             <Button
               type="button"
               variant="outline"
@@ -162,7 +199,7 @@ export function PublicPageCard({
             </Button>
             <Button
               type="button"
-              variant="default"
+              variant="outline-primary"
               size="sm"
               className="h-9 min-h-[44px] flex-1 gap-1.5"
               asChild

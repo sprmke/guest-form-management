@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
 
+import type { PropertyShowcaseConfig } from '@/features/guest/marketing/showcase/types/showcase';
+
 import { PublicPageCard } from '@/features/dashboard/custom-pages/components/PublicPageCard';
 import {
   publicPageLastEditedLabel,
@@ -9,7 +11,12 @@ import { useOptionalOrgContext } from '@/features/dashboard/org/components/Requi
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { orgPropertyCardModel } from '@/features/dashboard/org/lib/orgPropertyCardModel';
 import { usePublicPageConfig } from '@/features/dashboard/page-editor/hooks/usePublicPageConfig';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { usePropertyEntitlements } from '@/features/dashboard/plans/hooks/usePropertyEntitlements';
+import { isFeatureEnabled } from '@/features/dashboard/plans/lib/planFeatures';
 import { buildPropertyGuestPublicPages } from '@/features/dashboard/property/lib/propertyGuestPublicPages';
+import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
+import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
 
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 
@@ -19,9 +26,26 @@ export function CustomPagesPage() {
   const propertyId = usePropertyIdParam();
   const propertyName = orgContext?.property.name?.trim() || 'Property';
   const coverUrl = orgContext ? orgPropertyCardModel(orgContext.property).thumbnailUrl : null;
+  const { data: access } = usePropertyPermissions();
+  const { open } = useUpgradeModal();
+  const entitlements = usePropertyEntitlements();
+  const canShowcase = entitlements.data
+    ? isFeatureEnabled(entitlements.data, 'propertyShowcase')
+    : false;
+  const canEditListing = hasPropertyPermission(access?.permissions, 'publicPages.property:edit');
+  const canEditStayGuide = hasPropertyPermission(access?.permissions, 'publicPages.stayGuide:edit');
+  const canEditShowcase = hasPropertyPermission(access?.permissions, 'publicPages.showcase:edit');
+
+  function canEditPage(pageId: string): boolean {
+    if (pageId === 'listing') return canEditListing;
+    if (pageId === 'stay-guide') return canEditStayGuide;
+    if (pageId === 'showcase') return canEditShowcase;
+    return false;
+  }
 
   const stayGuideConfig = usePublicPageConfig('stay_guide');
   const listingConfig = usePublicPageConfig('property_landing');
+  const showcaseConfig = usePublicPageConfig('property_showcase');
 
   const pages = useMemo(() => {
     if (!propertySlug.trim() || !propertyId) return [];
@@ -31,11 +55,20 @@ export function CustomPagesPage() {
   const editablePages = useMemo(() => pages.filter((page) => page.editable), [pages]);
   const staticPages = useMemo(() => pages.filter((page) => !page.editable), [pages]);
 
-  function lastEditedFor(pageId: 'listing' | 'stay-guide'): string | null {
+  function lastEditedFor(pageId: 'listing' | 'stay-guide' | 'showcase'): string | null {
     const pageType = publicPageTypeForGalleryId(pageId);
-    const query = pageType === 'stay_guide' ? stayGuideConfig : listingConfig;
+    const query =
+      pageType === 'stay_guide'
+        ? stayGuideConfig
+        : pageType === 'property_showcase'
+          ? showcaseConfig
+          : listingConfig;
     return publicPageLastEditedLabel(query.data, query.isLoading);
   }
+
+  const showcasePublished =
+    showcaseConfig.data &&
+    (showcaseConfig.data.config as PropertyShowcaseConfig).published === true;
 
   return (
     <AdminMobilePage
@@ -52,16 +85,22 @@ export function CustomPagesPage() {
             >
               Design your pages
             </h2>
-            <ul className="grid list-none gap-3 p-0 sm:grid-cols-2 sm:gap-4">
+            <ul className="grid list-none gap-3 p-0 sm:grid-cols-2 sm:items-stretch sm:gap-4">
               {editablePages.map((page) => (
-                <li key={page.id}>
+                <li key={page.id} className="h-full">
                   <PublicPageCard
                     page={page}
                     propertyName={propertyName}
                     coverUrl={coverUrl}
                     variant="editable"
+                    canEdit={canEditPage(page.id)}
+                    locked={page.id === 'showcase' && !canShowcase}
+                    onUnlock={() => open('propertyShowcase')}
+                    publishState={
+                      page.id === 'showcase' ? (showcasePublished ? 'published' : 'draft') : null
+                    }
                     lastEditedLabel={
-                      page.id === 'listing' || page.id === 'stay-guide'
+                      page.id === 'listing' || page.id === 'stay-guide' || page.id === 'showcase'
                         ? lastEditedFor(page.id)
                         : null
                     }
@@ -80,9 +119,9 @@ export function CustomPagesPage() {
             >
               Other guest pages
             </h2>
-            <ul className="grid list-none gap-3 p-0 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
+            <ul className="grid list-none gap-3 p-0 sm:grid-cols-2 sm:items-stretch sm:gap-4 xl:grid-cols-3">
               {staticPages.map((page) => (
-                <li key={page.id}>
+                <li key={page.id} className="h-full">
                   <PublicPageCard
                     page={page}
                     propertyName={propertyName}

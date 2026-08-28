@@ -305,91 +305,40 @@ export function PayParkingPageSkeleton({ title }: { title: string }) {
   );
 }
 
-/** Mirrors `PropertyPageHeader`'s real card: 72x72 image + label/name/meta-row column. */
-export function PropertyPageHeaderSkeleton() {
-  return (
-    <div className="border-border bg-card rounded-2xl border shadow-sm">
-      <div className="flex items-center gap-4 p-4 sm:p-5">
-        <Skeleton className="h-[72px] w-[72px] shrink-0 rounded-xl" />
-        <div className="min-w-0 flex-1 space-y-1.5">
-          <div className="flex items-center justify-between gap-2">
-            <Skeleton className="h-2.5 w-20" />
-            <Skeleton className="h-2.5 w-16" />
-          </div>
-          <Skeleton className="h-4.5 w-2/3" />
-          <Skeleton className="h-3 w-1/2" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /**
- * Mirrors `FormPageWrapper`'s real shell used by `ParkingFormPage` (and
- * `PropertyFormPage`/`DevelopmentFormPage`): fixed toolbar rendered live (no data
- * dependency), property header card, then the bordered dynamic-form card.
+ * Mirrors `ParkingRequestStatusPage`: brand header + stay summary + status body
+ * (same shell rhythm as the request form).
  */
-export function FormPageWrapperSkeleton({ toolbar }: { toolbar?: React.ReactNode }) {
-  return (
-    <div className="bg-background min-h-screen pb-24 pt-16" aria-busy="true" aria-label="Loading">
-      {toolbar}
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto w-full max-w-2xl space-y-5">
-          <PropertyPageHeaderSkeleton />
-          <div className="border-border bg-card overflow-hidden rounded-2xl border shadow-[0_8px_40px_-16px_rgba(0,0,0,0.12)]">
-            <div className="border-border/70 flex items-center gap-3 border-b px-6 py-5 sm:px-8">
-              <Skeleton className="h-10 w-10 shrink-0 rounded-xl" />
-              <Skeleton className="h-5 w-40" />
-            </div>
-            <div className="space-y-4 px-6 py-7 sm:px-8 sm:py-8">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <GuestFormFieldSkeleton key={i} />
-              ))}
-              <Skeleton className="h-11 w-full rounded-xl" />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Mirrors `ParkingRequestStatusPage`'s real shell: fixed toolbar rendered live, back
- * link, and `ParkingRequestStatusView`'s bordered card (icon + badge + title header,
- * stay-summary block, and action button).
- */
-export function ParkingRequestStatusPageSkeleton({ toolbar }: { toolbar?: React.ReactNode }) {
+export function ParkingRequestStatusPageSkeleton() {
   return (
     <div
-      className="bg-background min-h-screen pb-20 pt-16"
+      className="relative space-y-5 p-4 sm:p-6 lg:p-8"
       aria-busy="true"
       aria-label="Loading parking request"
     >
-      {toolbar}
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto w-full max-w-lg space-y-4">
-          <Skeleton className="h-4 w-28" />
-          <div className="border-border bg-card overflow-hidden rounded-2xl border shadow-[0_8px_40px_-16px_rgba(0,0,0,0.12)]">
-            <div className="border-border/60 space-y-4 border-b px-6 pb-6 pt-7 sm:px-8 sm:pt-8">
-              <Skeleton className="h-12 w-12 rounded-2xl" />
-              <div className="space-y-2">
-                <Skeleton className="h-5 w-32 rounded-full" />
-                <Skeleton className="h-7 w-2/3" />
-              </div>
-            </div>
-            <div className="space-y-5 px-6 py-6 sm:px-8 sm:py-7">
-              <div className="border-border/80 bg-muted/30 flex gap-3 rounded-xl border p-4 sm:p-5">
-                <Skeleton className="h-10 w-10 shrink-0 rounded-lg" />
-                <div className="min-w-0 flex-1 space-y-1.5">
-                  <Skeleton className="h-4 w-40" />
-                  <Skeleton className="h-3 w-24" />
-                </div>
-              </div>
-              <Skeleton className="h-11 w-full rounded-xl" />
-            </div>
+      <GuestFormBrandHeaderSkeleton title="Parking request" />
+      <div className="bg-muted/40 flex items-start gap-3 rounded-xl px-3 py-3">
+        <Skeleton className="mt-0.5 h-4 w-4 shrink-0 rounded" />
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-3 w-28" />
+        </div>
+      </div>
+      <div className="space-y-5">
+        <div className="space-y-2.5">
+          <div className="flex justify-between gap-3">
+            <Skeleton className="h-3 w-36" />
+            <Skeleton className="h-3 w-8" />
+          </div>
+          <div className="flex gap-1">
+            <Skeleton className="h-1.5 flex-1 rounded-full" />
+            <Skeleton className="h-1.5 flex-1 rounded-full" />
+            <Skeleton className="h-1.5 flex-1 rounded-full" />
           </div>
         </div>
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="mx-auto h-28 w-28 rounded-full" />
+        <Skeleton className="h-11 w-full rounded-xl" />
       </div>
     </div>
   );

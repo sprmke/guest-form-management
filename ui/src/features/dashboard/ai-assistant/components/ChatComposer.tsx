@@ -4,8 +4,10 @@ import { FileText, ImagePlus, Paperclip, Send, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { ChatComposerContextHub } from '@/features/dashboard/ai-assistant/components/ChatComposerContextHub';
+import { ChatComposerVoiceButton } from '@/features/dashboard/ai-assistant/components/ChatComposerVoiceButton';
 import { ChatComposerSearchAllProvider } from '@/features/dashboard/ai-assistant/components/ChatComposerSearchAllContext';
 import { ChatContextCommandPalette } from '@/features/dashboard/ai-assistant/components/ChatContextCommandPalette';
+import { useSpeechToText } from '@/features/dashboard/ai-assistant/hooks/useSpeechToText';
 import {
   ATTACHED_CONTEXT_MAX,
   attachedContextKey,
@@ -74,6 +76,17 @@ export function ChatComposer({
     [attachedContext]
   );
 
+  const {
+    supported: speechSupported,
+    listening,
+    toggle: toggleSpeech,
+    stop: stopSpeech,
+  } = useSpeechToText({
+    value,
+    onChange: setValue,
+    disabled,
+  });
+
   const openPalette = () => {
     setPaletteMounted(true);
     setPaletteOpen(true);
@@ -139,6 +152,7 @@ export function ChatComposer({
     const trimmed = value.trim();
     if (disabled) return;
     if (!trimmed && attachments.length === 0) return;
+    stopSpeech();
     onSend({
       text: trimmed,
       attachedContext,
@@ -197,7 +211,13 @@ export function ChatComposer({
           </div>
         )}
 
-        <div className="border-border bg-background focus-within:ring-ring flex flex-col rounded-xl border p-1.5 focus-within:ring-2">
+        <div
+          className={cn(
+            'border-border bg-background focus-within:ring-ring flex flex-col rounded-xl border p-1.5 focus-within:ring-2',
+            listening &&
+              'border-destructive/40 ring-destructive/30 focus-within:ring-destructive/30 ring-2'
+          )}
+        >
           <input
             id={imageInputId}
             type="file"
@@ -226,7 +246,10 @@ export function ChatComposer({
           <textarea
             ref={textareaRef}
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e) => {
+              if (listening) stopSpeech();
+              setValue(e.target.value);
+            }}
             onKeyDown={(e) => {
               if (e.nativeEvent.isComposing || e.keyCode === 229) return;
               if (e.key === 'Enter' && !e.shiftKey) {
@@ -234,8 +257,8 @@ export function ChatComposer({
                 submit();
               }
             }}
-            placeholder="Ask about bookings, finance, or maintenance…"
-            aria-label="Message"
+            placeholder={listening ? 'Listening…' : 'Ask about bookings, finance, or maintenance…'}
+            aria-label={listening ? 'Message, voice input active' : 'Message'}
             rows={1}
             disabled={disabled}
             className="text-foreground placeholder:text-muted-foreground min-h-10 w-full resize-none overflow-hidden bg-transparent px-2.5 pb-1 pt-1.5 text-left text-sm leading-5 [overflow-wrap:anywhere] focus-visible:outline-none disabled:opacity-50"
@@ -243,6 +266,13 @@ export function ChatComposer({
           />
 
           <div className="flex items-center gap-0.5">
+            <ChatComposerContextHub
+              selectedKeys={selectedKeys}
+              onSelect={addContext}
+              disabled={disabled}
+              overlayContainer={overlayContainer}
+            />
+
             <Popover open={attachOpen} onOpenChange={setAttachOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -287,12 +317,16 @@ export function ChatComposer({
               </PopoverContent>
             </Popover>
 
-            <ChatComposerContextHub
-              selectedKeys={selectedKeys}
-              onSelect={addContext}
-              disabled={disabled}
-              overlayContainer={overlayContainer}
-            />
+            {speechSupported ? (
+              <ChatComposerVoiceButton
+                listening={listening}
+                disabled={disabled}
+                onClick={() => {
+                  toggleSpeech();
+                  textareaRef.current?.focus();
+                }}
+              />
+            ) : null}
 
             <Button
               size="icon"

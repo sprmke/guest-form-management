@@ -14,7 +14,18 @@ import {
 import type { SupportTicketAttachmentDraft } from '../lib/supportTicketSchema';
 
 function scopeKey(scope: SupportTicketScopeParams) {
-  return [scope.orgSlug, scope.orgId, scope.propertyId, scope.parkingId] as const;
+  return [
+    scope.channel ?? 'host',
+    scope.orgSlug,
+    scope.orgId,
+    scope.propertyId,
+    scope.parkingId,
+  ] as const;
+}
+
+function scopeEnabled(scope: SupportTicketScopeParams): boolean {
+  if (scope.channel === 'guest') return true;
+  return Boolean(scope.orgSlug || scope.orgId);
 }
 
 export function useSupportTickets() {
@@ -22,7 +33,7 @@ export function useSupportTickets() {
   return useQuery({
     queryKey: ['support-tickets', ...scopeKey(scope)],
     queryFn: () => fetchSupportTickets(scope),
-    enabled: Boolean(scope.orgSlug || scope.orgId),
+    enabled: scopeEnabled(scope),
   });
 }
 
@@ -31,7 +42,7 @@ export function useSupportTicket(ticketId: string | null) {
   return useQuery({
     queryKey: ['support-ticket', ticketId, ...scopeKey(scope)],
     queryFn: () => fetchSupportTicket(scope, ticketId as string),
-    enabled: Boolean(ticketId) && Boolean(scope.orgSlug || scope.orgId),
+    enabled: Boolean(ticketId) && scopeEnabled(scope),
   });
 }
 
