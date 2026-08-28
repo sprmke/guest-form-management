@@ -1,6 +1,13 @@
-export type OrgRoleId = 'OWNER' | 'ADMIN';
+import type { CustomPropertyRole } from '@/features/dashboard/team/types/propertyTeam';
+
+export type OrgRoleId = 'OWNER' | 'ADMIN' | string;
 
 export type OrgTeamMemberStatus = 'active' | 'inactive';
+
+export type OrgListingAssignmentsPayload = {
+  properties?: Array<{ propertyId: string; roleId: string; permissions: string[] }>;
+  parkings?: Array<{ parkingId: string; roleId: string; permissions: string[] }>;
+};
 
 export interface OrgTeamMember {
   id: string;
@@ -10,6 +17,10 @@ export interface OrgTeamMember {
   displayName: string;
   contactPhone: string;
   role: OrgRoleId;
+  permissions: string[];
+  allListings: boolean;
+  listingAssignments: OrgListingAssignmentsPayload | null;
+  listingScopeSummary: string;
   status: OrgTeamMemberStatus;
   assignedAt: string;
   lastActive: string | null;
@@ -22,10 +33,16 @@ export interface OrgTeamInvitation {
   id: string;
   email: string;
   role: OrgRoleId;
+  permissions: string[];
+  allListings: boolean;
+  listingAssignments: OrgListingAssignmentsPayload | null;
+  listingScopeSummary: string;
   sentAt: string;
   expiresAt: string;
   sentBy: string;
 }
+
+export type CustomOrgRole = CustomPropertyRole;
 
 export type OrgTeamTab = 'members' | 'invitations' | 'permissions';
 

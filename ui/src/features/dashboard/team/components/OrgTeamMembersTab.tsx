@@ -28,7 +28,7 @@ import {
   canEditOrgMemberContact,
   memberContactLabel,
 } from '@/features/dashboard/team/lib/teamMemberContact';
-import type { OrgTeamMember } from '@/features/dashboard/team/types/orgTeam';
+import type { CustomOrgRole, OrgTeamMember } from '@/features/dashboard/team/types/orgTeam';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -53,6 +53,7 @@ import { cn } from '@/lib/utils';
 
 type Props = {
   members: OrgTeamMember[];
+  customRoles: CustomOrgRole[];
   searchQuery: string;
   filterRole: string;
   onSearchChange: (value: string) => void;
@@ -76,6 +77,7 @@ function memberInitials(name: string) {
 
 export function OrgTeamMembersTab({
   members,
+  customRoles,
   searchQuery,
   filterRole,
   onSearchChange,
@@ -213,7 +215,16 @@ export function OrgTeamMembersTab({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <OrgRoleBadge roleId={member.role} muted={!isActive || member.planLimited} />
+                  <OrgRoleBadge
+                    roleId={member.role}
+                    customRoles={customRoles}
+                    muted={!isActive || member.planLimited}
+                  />
+                  {!member.isOwner ? (
+                    <Badge variant="outline" className="font-normal">
+                      {member.listingScopeSummary}
+                    </Badge>
+                  ) : null}
                   <TeamMemberStatusBadge status={member.status} planLimited={member.planLimited} />
                 </div>
 

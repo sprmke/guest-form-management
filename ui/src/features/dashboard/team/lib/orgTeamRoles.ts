@@ -1,52 +1,70 @@
+import type { CustomPropertyRole } from '@/features/dashboard/team/types/propertyTeam';
 import {
-  type BuiltinOrgRole,
   ORG_ROLE_PERMISSIONS,
-  ORG_ROLES,
-  orgRoleConfig,
+  ORG_TEAM_PERMISSIONS,
 } from '@/features/dashboard/team/lib/orgTeamConstants';
-import type { OrgRoleId } from '@/features/dashboard/team/types/orgTeam';
+import {
+  findOrgTemplateIdByName,
+  isSeededOrgTemplateName,
+  SEEDED_ORG_TEMPLATE_NAMES,
+  sortOrgTemplatesForDisplay,
+} from '@/features/dashboard/team/lib/orgTeamTemplates';
 
-export type OrgRoleMatrixColumn = {
-  id: OrgRoleId;
-  label: string;
-  color: string;
-  permissions: string[];
-};
+export const ORG_CUSTOM_ROLE_COLOR = 'bg-violet-500';
+export const ORG_SEEDED_TEMPLATE_COLOR = 'bg-sky-500';
 
-export function buildOrgRoleMatrixColumns(): OrgRoleMatrixColumn[] {
-  return ORG_ROLES.map((role) => ({
-    id: role.value,
-    label: role.label,
-    color: role.color,
-    permissions: ORG_ROLE_PERMISSIONS[role.value],
-  }));
+export type CustomOrgRole = CustomPropertyRole;
+
+export function isOrgAdminRoleId(roleId: string): boolean {
+  return roleId === 'ADMIN';
 }
 
-export function getOrgRolePermissions(roleId: OrgRoleId): string[] {
-  if (roleId === 'OWNER' || roleId === 'ADMIN') {
-    return [...ORG_ROLE_PERMISSIONS[roleId]];
-  }
+export function getOrgRoleLabel(roleId: string, customRoles: CustomOrgRole[]): string {
+  if (isOrgAdminRoleId(roleId)) return 'Admin';
+  return customRoles.find((role) => role.id === roleId)?.name ?? roleId;
+}
+
+export function getOrgRoleColor(roleId: string, customRoles: CustomOrgRole[]): string {
+  if (isOrgAdminRoleId(roleId)) return 'bg-purple-500';
+  const custom = customRoles.find((role) => role.id === roleId);
+  if (custom && isSeededOrgTemplateName(custom.name)) return ORG_SEEDED_TEMPLATE_COLOR;
+  return ORG_CUSTOM_ROLE_COLOR;
+}
+
+export function getOrgRolePermissions(roleId: string, customRoles: CustomOrgRole[]): string[] {
+  if (isOrgAdminRoleId(roleId)) return [...ORG_ROLE_PERMISSIONS.ADMIN];
+  const custom = customRoles.find((role) => role.id === roleId);
+  if (custom) return [...custom.permissions];
   return [];
 }
 
-export function countOrgMembersWithRole(
-  roleId: OrgRoleId,
-  members: { role: OrgRoleId; isOwner?: boolean }[],
-  invitations: { role: OrgRoleId }[]
+export function defaultOrgInviteTemplateId(customRoles: CustomOrgRole[]): string {
+  const operationsId = findOrgTemplateIdByName(customRoles, SEEDED_ORG_TEMPLATE_NAMES.OPERATIONS);
+  if (operationsId) return operationsId;
+  const sorted = sortOrgTemplatesForDisplay(customRoles);
+  if (sorted[0]) return sorted[0].id;
+  return 'ADMIN';
+}
+
+export function buildOrgTemplateMatrixColumns(customRoles: CustomOrgRole[]) {
+  return sortOrgTemplatesForDisplay(customRoles).map((role) => ({
+    id: role.id,
+    label: role.name,
+    color: isSeededOrgTemplateName(role.name) ? ORG_SEEDED_TEMPLATE_COLOR : ORG_CUSTOM_ROLE_COLOR,
+    permissions: role.permissions,
+    isCustom: true,
+  }));
+}
+
+export function countOrgMembersWithTemplateRole(
+  roleId: string,
+  members: { role: string; isOwner?: boolean }[],
+  invitations: { role: string }[]
 ): number {
-  if (roleId === 'OWNER') {
-    return members.filter((m) => m.isOwner || m.role === 'OWNER').length;
-  }
   return (
-    members.filter((m) => m.role === roleId && !m.isOwner).length +
-    invitations.filter((i) => i.role === roleId).length
+    members.filter((member) => !member.isOwner && member.role === roleId).length +
+    invitations.filter((invitation) => invitation.role === roleId).length
   );
 }
 
-export function isBuiltinOrgRoleId(roleId: string): roleId is BuiltinOrgRole {
-  return roleId === 'OWNER' || roleId === 'ADMIN';
-}
-
-export function orgRoleLabel(roleId: OrgRoleId): string {
-  return orgRoleConfig(roleId)?.label ?? roleId;
-}
+export { ORG_TEAM_PERMISSIONS };

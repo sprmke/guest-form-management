@@ -5,8 +5,17 @@ import {
   getRolePermissions,
   SEEDED_TEMPLATE_COLOR,
 } from '@/features/dashboard/team/lib/propertyTeamRoles';
-import { isPropertyAdminRoleId } from '@/features/dashboard/team/lib/propertyTeamConstants';
+import {
+  buildOrgTemplateMatrixColumns,
+  getOrgRoleColor,
+  getOrgRoleLabel,
+  getOrgRolePermissions,
+  isOrgAdminRoleId,
+  ORG_SEEDED_TEMPLATE_COLOR,
+} from '@/features/dashboard/team/lib/orgTeamRoles';
 import { isSeededTemplateName } from '@/features/dashboard/team/lib/propertyTeamTemplates';
+import { isSeededOrgTemplateName } from '@/features/dashboard/team/lib/orgTeamTemplates';
+import { isPropertyAdminRoleId } from '@/features/dashboard/team/lib/propertyTeamConstants';
 import {
   getTeamScopeConfig,
   type TeamScope,
@@ -35,6 +44,9 @@ export function isBuiltinRoleIdForScope(scope: TeamScope, roleId: PropertyRoleId
   if (scope === 'property') {
     return isPropertyAdminRoleId(roleId);
   }
+  if (scope === 'org') {
+    return isOrgAdminRoleId(roleId);
+  }
   return configFor(scope).builtinRoles.some((role) => role.value === roleId);
 }
 
@@ -45,6 +57,9 @@ export function getRoleLabelForScope(
 ): string {
   if (scope === 'property') {
     return getRoleLabel(roleId, customRoles);
+  }
+  if (scope === 'org') {
+    return getOrgRoleLabel(roleId, customRoles);
   }
   const config = configFor(scope);
   const builtin = config.builtinRoles.find((role) => role.value === roleId);
@@ -59,6 +74,9 @@ export function getRoleColorForScope(
 ): string {
   if (scope === 'property') {
     return getRoleColor(roleId, customRoles);
+  }
+  if (scope === 'org') {
+    return getOrgRoleColor(roleId, customRoles);
   }
   const config = configFor(scope);
   const builtin = config.builtinRoles.find((role) => role.value === roleId);
@@ -75,6 +93,9 @@ export function getRolePermissionsForScope(
   if (scope === 'property') {
     return getRolePermissions(roleId, customRoles);
   }
+  if (scope === 'org') {
+    return getOrgRolePermissions(roleId, customRoles);
+  }
   const config = configFor(scope);
   const preset = config.rolePermissions[roleId];
   if (preset) return [...preset];
@@ -88,6 +109,9 @@ export function buildRoleMatrixColumnsForScope(
 ): RoleMatrixColumn[] {
   if (scope === 'property') {
     return buildRoleMatrixColumns(customRoles);
+  }
+  if (scope === 'org') {
+    return buildOrgTemplateMatrixColumns(customRoles);
   }
 
   const config = configFor(scope);
@@ -121,4 +145,9 @@ export function countMembersWithRole(
   );
 }
 
-export { SEEDED_TEMPLATE_COLOR, isSeededTemplateName };
+export {
+  SEEDED_TEMPLATE_COLOR,
+  ORG_SEEDED_TEMPLATE_COLOR,
+  isSeededTemplateName,
+  isSeededOrgTemplateName,
+};

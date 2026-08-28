@@ -24,6 +24,9 @@ module.exports = {
         cormorant: ['Cormorant Garamond', 'Georgia', 'serif'],
         instrument: ['Instrument Serif', 'Fraunces', 'Georgia', 'serif'],
         fraunces: ['Fraunces', 'Georgia', 'serif'],
+        grotesk: ['Space Grotesk', 'Outfit', 'system-ui', 'sans-serif'],
+        jost: ['Jost', 'Outfit', 'system-ui', 'sans-serif'],
+        figtree: ['Figtree', 'Plus Jakarta Sans', 'system-ui', 'sans-serif'],
       },
       fontSize: {
         '2xs': ['0.625rem', { lineHeight: '0.875rem' }],

@@ -6,6 +6,7 @@ import { RoleDot } from '@/features/dashboard/team/components/RoleBadge';
 import { ADD_CUSTOM_ROLE_VALUE } from '@/features/dashboard/team/lib/roleSelectUtils';
 import { PROPERTY_ADMIN_ROLE_ID } from '@/features/dashboard/team/lib/propertyTeamConstants';
 import { sortTemplatesForDisplay } from '@/features/dashboard/team/lib/propertyTeamTemplates';
+import { sortOrgTemplatesForDisplay } from '@/features/dashboard/team/lib/orgTeamTemplates';
 import { getTeamScopeConfig, type TeamScope } from '@/features/dashboard/team/lib/teamScopeConfig';
 import type { CustomPropertyRole } from '@/features/dashboard/team/types/propertyTeam';
 
@@ -34,8 +35,11 @@ export function RoleSelectOptions({
 }: Props) {
   const nodes: ReactNode[] = [];
 
-  if (scope === 'property') {
-    const templates = sortTemplatesForDisplay(customRoles);
+  if (scope === 'property' || scope === 'org') {
+    const templates =
+      scope === 'property'
+        ? sortTemplatesForDisplay(customRoles)
+        : sortOrgTemplatesForDisplay(customRoles);
     if (templates.length > 0) {
       nodes.push(
         <SelectGroup key="templates">
@@ -56,11 +60,15 @@ export function RoleSelectOptions({
       nodes.push(<SelectSeparator key="sep-custom-perms" />);
       nodes.push(
         <SelectGroup key="custom-permissions">
-          <SelectLabel>Full access</SelectLabel>
-          <SelectItem value={PROPERTY_ADMIN_ROLE_ID}>
+          <SelectLabel>{scope === 'org' ? 'Preset' : 'Full access'}</SelectLabel>
+          <SelectItem value={scope === 'org' ? 'ADMIN' : PROPERTY_ADMIN_ROLE_ID}>
             <div className="flex items-center gap-2">
-              <RoleDot scope={scope} roleId={PROPERTY_ADMIN_ROLE_ID} customRoles={customRoles} />
-              <span>Admin (full access)</span>
+              <RoleDot
+                scope={scope}
+                roleId={scope === 'org' ? 'ADMIN' : PROPERTY_ADMIN_ROLE_ID}
+                customRoles={customRoles}
+              />
+              <span>{scope === 'org' ? 'Admin (preset)' : 'Admin (full access)'}</span>
             </div>
           </SelectItem>
         </SelectGroup>

@@ -10,11 +10,13 @@ import { useOrganizations } from '@/features/dashboard/org/hooks/useOrganization
 import { TeamInviteTierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
-import { EditMemberContactDialog } from '@/features/dashboard/team/components/EditMemberContactDialog';
+import { CustomRoleFormDialog } from '@/features/dashboard/team/components/CustomRoleFormDialog';
 import {
-  defaultOrgInviteRoleId,
+  defaultOrgInviteForm,
   OrgInviteMemberDialog,
+  type OrgInviteFormState,
 } from '@/features/dashboard/team/components/OrgInviteMemberDialog';
+import { OrgManageMemberDialog } from '@/features/dashboard/team/components/OrgManageMemberDialog';
 import { OrgTeamInvitationsTab } from '@/features/dashboard/team/components/OrgTeamInvitationsTab';
 import { OrgTeamMembersTab } from '@/features/dashboard/team/components/OrgTeamMembersTab';
 import { OrgTeamPermissionsTab } from '@/features/dashboard/team/components/OrgTeamPermissionsTab';
@@ -23,8 +25,12 @@ import { RemoveMemberDialog } from '@/features/dashboard/team/components/RemoveM
 import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermissions';
 import { useOrgTeam, useOrgTeamMutations } from '@/features/dashboard/team/hooks/useOrgTeam';
 import { hasOrgPermission } from '@/features/dashboard/team/lib/orgPermissions';
-import type { OrgRoleId, OrgTeamMember, OrgTeamTab } from '@/features/dashboard/team/types/orgTeam';
-import type { EditMemberContactSaveInput } from '@/features/dashboard/team/types/teamContact';
+import { countOrgMembersWithTemplateRole } from '@/features/dashboard/team/lib/orgTeamRoles';
+import type {
+  CustomOrgRole,
+  OrgTeamMember,
+  OrgTeamTab,
+} from '@/features/dashboard/team/types/orgTeam';
 
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
@@ -42,13 +48,24 @@ export function OrgTeamPage() {
   const orgId = orgAccess?.orgId ?? orgFromList?.id ?? null;
 
   const { data, isLoading, error } = useOrgTeam(orgId);
-  const { inviteMember, resendInvitation, cancelInvitation, updateMember, removeMember } =
-    useOrgTeamMutations(orgId);
+  const {
+    inviteMember,
+    resendInvitation,
+    cancelInvitation,
+    updateMember,
+    removeMember,
+    createCustomRole,
+    updateCustomRole,
+    deleteCustomRole,
+  } = useOrgTeamMutations(orgId);
 
   const members = data?.members ?? [];
   const invitations = data?.invitations ?? [];
-  const canManage = hasOrgPermission(orgAccess?.permissions, 'org:team:manage');
-  const canInvite = hasOrgPermission(orgAccess?.permissions, 'org:team:invite');
+  const customRoles = data?.customRoles ?? [];
+
+  const canManage = hasOrgPermission(orgAccess?.permissions, 'org.team.members:edit');
+  const canManageRoles = hasOrgPermission(orgAccess?.permissions, 'org.team.roles:edit');
+  const canInvite = hasOrgPermission(orgAccess?.permissions, 'org.team.invitations:add');
   useFeatureGate('teamManagement');
   const { open: openUpgradeModal } = useUpgradeModal();
   const canInviteByPlan = data?.teamInviteCapacity?.canInvite ?? false;
@@ -59,29 +76,32 @@ export function OrgTeamPage() {
   const [selectedTab, setSelectedTab] = useState<OrgTeamTab>('members');
 
   const [showInviteDialog, setShowInviteDialog] = useState(false);
-  const [showContactDialog, setShowContactDialog] = useState(false);
+  const [inviteForm, setInviteForm] = useState<OrgInviteFormState>(() =>
+    defaultOrgInviteForm(customRoles)
+  );
+  const [showManageDialog, setShowManageDialog] = useState(false);
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
   const [selectedMember, setSelectedMember] = useState<OrgTeamMember | null>(null);
 
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteContactPhone, setInviteContactPhone] = useState('');
-  const [inviteRoleId, setInviteRoleId] = useState<OrgRoleId>(defaultOrgInviteRoleId());
+  const [showCustomRoleDialog, setShowCustomRoleDialog] = useState(false);
+  const [customRoleFormMode, setCustomRoleFormMode] = useState<'create' | 'edit'>('create');
+  const [editingCustomRoleId, setEditingCustomRoleId] = useState<string | null>(null);
+  const [customRoleName, setCustomRoleName] = useState('');
+  const [customRolePermissions, setCustomRolePermissions] = useState<string[]>([]);
+
+  const memberCountByRole = (roleId: string) =>
+    countOrgMembersWithTemplateRole(roleId, members, invitations);
 
   const openInviteDialog = () => {
     if (!canInviteByPlan) {
       openUpgradeModal('teamManagement');
       return;
     }
-    setInviteEmail('');
-    setInviteContactPhone('');
-    setInviteRoleId(defaultOrgInviteRoleId());
+    setInviteForm(defaultOrgInviteForm(customRoles));
     setShowInviteDialog(true);
   };
 
   const handleInvite = async () => {
-    const email = inviteEmail.trim();
-    if (!email) return;
-
     if (!canInviteByPlan) {
       openUpgradeModal('teamManagement');
       return;
@@ -89,9 +109,12 @@ export function OrgTeamPage() {
 
     try {
       await inviteMember.mutateAsync({
-        email,
-        contactPhone: inviteContactPhone,
-        roleId: inviteRoleId,
+        email: inviteForm.email.trim(),
+        contactPhone: inviteForm.contactPhone,
+        roleId: inviteForm.roleId,
+        permissions: inviteForm.permissions,
+        allListings: inviteForm.allListings,
+        listingAssignments: inviteForm.listingAssignments,
       });
       setShowInviteDialog(false);
     } catch {
@@ -116,22 +139,24 @@ export function OrgTeamPage() {
     }
   };
 
-  const handleEditContact = (member: OrgTeamMember) => {
+  const handleManageMember = (member: OrgTeamMember) => {
     setSelectedMember(member);
-    setShowContactDialog(true);
+    setShowManageDialog(true);
   };
 
-  const handleSaveContact = async (input: EditMemberContactSaveInput) => {
-    if (!selectedMember) return;
+  const handleSaveManageMember = async (input: {
+    memberId: string;
+    displayName: string;
+    contactPhone: string;
+    roleId: string;
+    permissions: string[];
+    allListings: boolean;
+    listingAssignments: OrgInviteFormState['listingAssignments'];
+  }) => {
     try {
-      await updateMember.mutateAsync({
-        memberId: selectedMember.id,
-        displayName: input.displayName,
-        contactPhone: input.contactPhone,
-        ...(input.roleId ? { roleId: input.roleId } : {}),
-      });
+      await updateMember.mutateAsync(input);
       toast.success('Member updated');
-      setShowContactDialog(false);
+      setShowManageDialog(false);
       setSelectedMember(null);
     } catch {
       /* toast handled in mutation */
@@ -144,6 +169,62 @@ export function OrgTeamPage() {
       await removeMember.mutateAsync(selectedMember.id);
       setShowRemoveDialog(false);
       setSelectedMember(null);
+    } catch {
+      /* toast handled in mutation */
+    }
+  };
+
+  const openCreateCustomRole = () => {
+    setCustomRoleFormMode('create');
+    setEditingCustomRoleId(null);
+    setCustomRoleName('');
+    setCustomRolePermissions([]);
+    setShowCustomRoleDialog(true);
+  };
+
+  const openEditCustomRole = (role: CustomOrgRole) => {
+    setCustomRoleFormMode('edit');
+    setEditingCustomRoleId(role.id);
+    setCustomRoleName(role.name);
+    setCustomRolePermissions([...role.permissions]);
+    setShowCustomRoleDialog(true);
+  };
+
+  const openDuplicateCustomRole = (role: CustomOrgRole) => {
+    setCustomRoleFormMode('create');
+    setEditingCustomRoleId(null);
+    setCustomRoleName(`${role.name} copy`);
+    setCustomRolePermissions([...role.permissions]);
+    setShowCustomRoleDialog(true);
+  };
+
+  const handleSaveCustomRole = async () => {
+    const name = customRoleName.trim();
+    if (!name || customRolePermissions.length === 0) return;
+
+    try {
+      if (customRoleFormMode === 'create') {
+        await createCustomRole.mutateAsync({ name, permissions: customRolePermissions });
+      } else if (editingCustomRoleId) {
+        await updateCustomRole.mutateAsync({
+          roleId: editingCustomRoleId,
+          name,
+          permissions: customRolePermissions,
+        });
+      }
+      setShowCustomRoleDialog(false);
+    } catch {
+      /* toast handled in mutation */
+    }
+  };
+
+  const handleDeleteCustomRole = async (role: CustomOrgRole) => {
+    if (memberCountByRole(role.id) > 0) {
+      toast.error('Remove members from this role before deleting');
+      return;
+    }
+    try {
+      await deleteCustomRole.mutateAsync(role.id);
     } catch {
       /* toast handled in mutation */
     }
@@ -217,7 +298,7 @@ export function OrgTeamPage() {
               >
                 <SlidingTabsList
                   size="primary"
-                  remeasureDeps={[members.length, invitations.length]}
+                  remeasureDeps={[members.length, invitations.length, customRoles.length]}
                 >
                   <SlidingTabsTrigger value="members">
                     <Users className="size-4" aria-hidden />
@@ -245,12 +326,13 @@ export function OrgTeamPage() {
               {selectedTab === 'members' ? (
                 <OrgTeamMembersTab
                   members={members}
+                  customRoles={customRoles}
                   searchQuery={searchQuery}
                   filterRole={filterRole}
                   onSearchChange={setSearchQuery}
                   onFilterRoleChange={setFilterRole}
                   onToggleStatus={handleToggleMemberStatus}
-                  onEditContact={handleEditContact}
+                  onEditContact={handleManageMember}
                   onRemove={(member) => {
                     setSelectedMember(member);
                     setShowRemoveDialog(true);
@@ -274,40 +356,68 @@ export function OrgTeamPage() {
                 />
               ) : null}
 
-              {selectedTab === 'permissions' ? <OrgTeamPermissionsTab /> : null}
+              {selectedTab === 'permissions' ? (
+                <OrgTeamPermissionsTab
+                  customRoles={customRoles}
+                  members={members}
+                  invitations={invitations}
+                  onCreateCustomRole={openCreateCustomRole}
+                  onEditCustomRole={openEditCustomRole}
+                  onDeleteCustomRole={handleDeleteCustomRole}
+                  onDuplicateCustomRole={openDuplicateCustomRole}
+                  canManage={canManageRoles}
+                />
+              ) : null}
             </div>
           </>
         ) : null}
 
-        <OrgInviteMemberDialog
-          open={showInviteDialog}
-          onOpenChange={setShowInviteDialog}
-          email={inviteEmail}
-          contactPhone={inviteContactPhone}
-          roleId={inviteRoleId}
-          onEmailChange={setInviteEmail}
-          onContactPhoneChange={setInviteContactPhone}
-          onRoleChange={setInviteRoleId}
-          onSubmit={handleInvite}
-          submitPending={inviteMember.isPending}
+        {orgSlug ? (
+          <OrgInviteMemberDialog
+            open={showInviteDialog}
+            orgSlug={orgSlug}
+            customRoles={customRoles}
+            onOpenChange={setShowInviteDialog}
+            form={inviteForm}
+            onFormChange={(patch) => setInviteForm((prev) => ({ ...prev, ...patch }))}
+            onSubmit={handleInvite}
+            submitPending={inviteMember.isPending}
+            onAddCustomRole={canManageRoles ? openCreateCustomRole : undefined}
+            showAddCustomRole={canManageRoles}
+          />
+        ) : null}
+
+        <OrgManageMemberDialog
+          open={showManageDialog}
+          orgSlug={orgSlug ?? ''}
+          member={selectedMember}
+          customRoles={customRoles}
+          onOpenChange={setShowManageDialog}
+          onSave={handleSaveManageMember}
+          savePending={updateMember.isPending}
+          onAddCustomRole={canManageRoles ? openCreateCustomRole : undefined}
+          showAddCustomRole={canManageRoles}
         />
 
-        <EditMemberContactDialog
-          open={showContactDialog}
-          member={selectedMember}
-          roleConfig={
-            selectedMember
-              ? {
-                  scope: 'org',
-                  roleId: selectedMember.role,
-                  locked: selectedMember.isOwner,
-                  editable: canManage && !selectedMember.isOwner,
-                }
-              : null
+        <CustomRoleFormDialog
+          scope="org"
+          open={showCustomRoleDialog}
+          mode={customRoleFormMode}
+          name={customRoleName}
+          permissions={customRolePermissions}
+          roles={customRoles}
+          onOpenChange={setShowCustomRoleDialog}
+          onNameChange={setCustomRoleName}
+          onTogglePermission={(permissionId) =>
+            setCustomRolePermissions((prev) =>
+              prev.includes(permissionId)
+                ? prev.filter((id) => id !== permissionId)
+                : [...prev, permissionId]
+            )
           }
-          onOpenChange={setShowContactDialog}
-          onSave={handleSaveContact}
-          savePending={updateMember.isPending}
+          onPermissionsChange={setCustomRolePermissions}
+          onSubmit={handleSaveCustomRole}
+          submitPending={createCustomRole.isPending || updateCustomRole.isPending}
         />
 
         <RemoveMemberDialog
@@ -322,7 +432,7 @@ export function OrgTeamPage() {
                   displayName: selectedMember.displayName,
                   contactPhone: selectedMember.contactPhone,
                   role: selectedMember.role,
-                  permissions: [],
+                  permissions: selectedMember.permissions,
                   status: selectedMember.status,
                   planLimited: selectedMember.planLimited,
                   assignedAt: selectedMember.assignedAt,

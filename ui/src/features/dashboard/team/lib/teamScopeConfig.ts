@@ -10,7 +10,14 @@ import {
 } from '@/features/dashboard/team/lib/propertyTeamConstants';
 import type { TeamPermission } from '@/features/dashboard/team/types/propertyTeam';
 
-export type TeamScope = 'property' | 'parking';
+import {
+  ORG_PERMISSION_CATEGORIES,
+  ORG_ROLE_PERMISSIONS,
+  ORG_ROLES,
+  ORG_TEAM_PERMISSIONS,
+} from '@/features/dashboard/team/lib/orgTeamConstants';
+
+export type TeamScope = 'property' | 'parking' | 'org';
 
 export type BuiltinRoleOption = {
   value: string;
@@ -30,6 +37,18 @@ export type TeamScopeConfig = {
 };
 
 export function getTeamScopeConfig(scope: TeamScope): TeamScopeConfig {
+  if (scope === 'org') {
+    return {
+      scope: 'org',
+      permissions: ORG_TEAM_PERMISSIONS,
+      categories: ORG_PERMISSION_CATEGORIES,
+      builtinRoles: ORG_ROLES.filter((role) => role.value === 'ADMIN'),
+      rolePermissions: { ADMIN: ORG_ROLE_PERMISSIONS.ADMIN },
+      removeFromLabel: 'Remove from Organization',
+      subtitle: "Manage your organization's team members and permissions.",
+    };
+  }
+
   if (scope === 'parking') {
     return {
       scope: 'parking',

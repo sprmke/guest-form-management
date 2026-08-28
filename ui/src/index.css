@@ -244,6 +244,19 @@
     height: 0;
   }
 
+  /** Page editor template picker — no scroll chrome inside scaled live previews. */
+  .showcase-template-thumb-surface,
+  .showcase-template-thumb-surface * {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .showcase-template-thumb-surface *::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
   /**
    * Phone/tablet: hide scrollbars (keep scroll) for a native-app feel.
    * Desktop/large keeps visible scroll affordances.
@@ -2252,26 +2265,114 @@ html.guest-embed-preview *::-webkit-scrollbar {
 @layer utilities {
   .showcase-scope {
     --showcase-display-scale: 1;
+    --showcase-body-scale: 1;
+    font-size: calc(1rem * var(--showcase-body-scale));
   }
 
   .showcase-scope.showcase-scale-sm {
     --showcase-display-scale: 0.9;
+    --showcase-body-scale: 0.9375;
+  }
+
+  .showcase-scope.showcase-scale-md {
+    --showcase-display-scale: 1;
+    --showcase-body-scale: 1;
   }
 
   .showcase-scope.showcase-scale-lg {
-    --showcase-display-scale: 1.08;
+    --showcase-display-scale: 1.12;
+    --showcase-body-scale: 1.0625;
   }
 
-  .showcase-scope.showcase-scale-sm :is(h1, h2) {
-    font-size: calc(1em * var(--showcase-display-scale));
+  /* Rem-based Tailwind body utilities inherit scoped body scale. */
+  .showcase-scope .text-base {
+    font-size: 1em;
   }
 
-  .showcase-scope.showcase-scale-lg :is(h1, h2) {
-    font-size: calc(1em * var(--showcase-display-scale));
+  .showcase-scope .text-sm {
+    font-size: 0.875em;
+  }
+
+  .showcase-scope .text-lg {
+    font-size: 1.125em;
+  }
+
+  .showcase-scope .text-xl {
+    font-size: 1.25em;
   }
 
   .showcase-scope.showcase-warm-tint {
     filter: sepia(0.06) saturate(1.05);
+  }
+
+  .showcase-scope.showcase-custom-palette,
+  .showcase-scope.showcase-media-palette {
+    transition:
+      background-color 0.35s ease,
+      color 0.35s ease,
+      border-color 0.35s ease;
+  }
+
+  /**
+   * Soft palette borders on dark surfaces. Body/muted copy uses semantic tokens
+   * (`text-muted-foreground` + ink CSS vars) — do not remap `text-white/*` here
+   * (chromeless hero type on photos still needs white/cream overlays).
+   */
+  .showcase-scope[data-showcase-surface='dark'] {
+    --tw-prose-body: hsl(var(--showcase-ink-muted, var(--muted-foreground)));
+  }
+
+  .showcase-scope[data-showcase-surface='dark'] .border-white\/8,
+  .showcase-scope[data-showcase-surface='dark'] .border-white\/10,
+  .showcase-scope[data-showcase-surface='dark'] .border-white\/12,
+  .showcase-scope[data-showcase-surface='dark'] .border-white\/14,
+  .showcase-scope[data-showcase-surface='dark'] .border-white\/15,
+  .showcase-scope[data-showcase-surface='dark'] .border-white\/18,
+  .showcase-scope[data-showcase-surface='dark'] .border-white\/20,
+  .showcase-scope[data-showcase-surface='dark'] .border-white\/25,
+  .showcase-scope[data-showcase-surface='dark'] .border-white\/28,
+  .showcase-scope[data-showcase-surface='dark'] .border-white\/30 {
+    border-color: hsl(var(--showcase-border, var(--border))) !important;
+  }
+
+  .showcase-scope[data-showcase-surface='light'] .border-black\/10,
+  .showcase-scope[data-showcase-surface='light'] .border-black\/15,
+  .showcase-scope[data-showcase-surface='light'] .border-neutral-900\/10 {
+    border-color: hsl(var(--showcase-border, var(--border))) !important;
+  }
+
+  .showcase-mock-badge {
+    border-color: hsl(var(--showcase-border-strong, var(--border)));
+    background-color: color-mix(
+      in srgb,
+      hsl(var(--showcase-accent, var(--primary))) 16%,
+      transparent
+    );
+    color: hsl(var(--showcase-ink, var(--foreground)));
+  }
+
+  .showcase-scope[data-showcase-surface='dark']
+    .showcase-mock-badge:not(.showcase-mock-badge--on-light),
+  .showcase-mock-badge--on-dark {
+    border-color: color-mix(in srgb, hsl(var(--showcase-accent, var(--primary))) 45%, transparent);
+    background-color: color-mix(
+      in srgb,
+      hsl(var(--showcase-accent, var(--primary))) 22%,
+      transparent
+    );
+    color: hsl(var(--showcase-ink, 40 20% 92%));
+  }
+
+  .showcase-scope[data-showcase-surface='light']
+    .showcase-mock-badge:not(.showcase-mock-badge--on-dark),
+  .showcase-mock-badge--on-light {
+    border-color: color-mix(in srgb, hsl(var(--showcase-accent, var(--primary))) 40%, transparent);
+    background-color: color-mix(
+      in srgb,
+      hsl(var(--showcase-accent, var(--primary))) 12%,
+      transparent
+    );
+    color: hsl(var(--showcase-ink, var(--foreground)));
   }
 
   @keyframes showcase-marquee {

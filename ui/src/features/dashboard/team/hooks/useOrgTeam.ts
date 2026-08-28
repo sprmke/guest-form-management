@@ -4,8 +4,10 @@ import { toast } from 'sonner';
 import { useOrgScopeKey } from '@/features/dashboard/org/lib/adminApiScope';
 import { handleAiMutationError, isAiQuotaError } from '@/features/dashboard/org/lib/aiQuotaToast';
 import type { TeamInviteCapacity } from '@/features/dashboard/plans/lib/planFeatures';
+import type { OrgListingAssignments } from '@/features/dashboard/team/components/OrgListingAssignmentPicker';
 import { orgTeamGet, orgTeamMutate } from '@/features/dashboard/team/lib/orgTeamApi';
 import type {
+  CustomOrgRole,
   OrgRoleId,
   OrgTeamAccess,
   OrgTeamInvitation,
@@ -19,18 +21,20 @@ export const ORG_TEAM_QUERY_KEY = ['org-team'] as const;
 export type OrgTeamData = {
   members: OrgTeamMember[];
   invitations: OrgTeamInvitation[];
+  customRoles: CustomOrgRole[];
   access: OrgTeamAccess;
   teamInviteCapacity: TeamInviteCapacity | null;
 };
 
 async function loadOrgTeam(orgSlug: string, orgId: string): Promise<OrgTeamData> {
-  const [membersResult, invitationsResult] = await Promise.allSettled([
+  const [membersResult, invitationsResult, customRolesResult] = await Promise.allSettled([
     orgTeamGet<{
       members: OrgTeamMember[];
       access: OrgTeamAccess;
       teamInviteCapacity?: TeamInviteCapacity;
     }>('/org-team-members', orgSlug, orgId),
     orgTeamGet<{ invitations: OrgTeamInvitation[] }>('/org-team-invitations', orgSlug, orgId),
+    orgTeamGet<{ customRoles: CustomOrgRole[] }>('/org-team-custom-roles', orgSlug, orgId),
   ]);
 
   if (membersResult.status === 'rejected') {
@@ -42,10 +46,13 @@ async function loadOrgTeam(orgSlug: string, orgId: string): Promise<OrgTeamData>
   const membersPayload = membersResult.value;
   const invitationsPayload =
     invitationsResult.status === 'fulfilled' ? invitationsResult.value : { invitations: [] };
+  const customRolesPayload =
+    customRolesResult.status === 'fulfilled' ? customRolesResult.value : { customRoles: [] };
 
   return {
     members: membersPayload.members ?? [],
     invitations: invitationsPayload.invitations ?? [],
+    customRoles: customRolesPayload.customRoles ?? [],
     access: membersPayload.access ?? { canManage: false, accessKind: 'org_admin' },
     teamInviteCapacity: membersPayload.teamInviteCapacity ?? null,
   };
@@ -80,7 +87,14 @@ export function useOrgTeamMutations(orgId: string | null) {
   };
 
   const inviteMember = useMutation({
-    mutationFn: async (input: { email: string; contactPhone: string; roleId: OrgRoleId }) => {
+    mutationFn: async (input: {
+      email: string;
+      contactPhone: string;
+      roleId: OrgRoleId;
+      permissions: string[];
+      allListings: boolean;
+      listingAssignments: OrgListingAssignments;
+    }) => {
       const { orgSlug: slug, orgId: id } = requireOrg();
       return orgTeamMutate<{ invitation: OrgTeamInvitation }>(
         '/org-team-invitations',
@@ -91,6 +105,9 @@ export function useOrgTeamMutations(orgId: string | null) {
           email: input.email.trim(),
           contactPhone: input.contactPhone.trim(),
           roleId: input.roleId,
+          permissions: input.permissions,
+          allListings: input.allListings,
+          listingAssignments: input.listingAssignments,
         }
       );
     },
@@ -150,6 +167,9 @@ export function useOrgTeamMutations(orgId: string | null) {
       displayName?: string;
       contactPhone?: string;
       roleId?: string;
+      permissions?: string[];
+      allListings?: boolean;
+      listingAssignments?: OrgListingAssignments;
     }) => {
       const { orgSlug: slug, orgId: id } = requireOrg();
       return orgTeamMutate<{ member: OrgTeamMember }>(
@@ -188,11 +208,70 @@ export function useOrgTeamMutations(orgId: string | null) {
     },
   });
 
+  const createCustomRole = useMutation({
+    mutationFn: async (input: { name: string; permissions: string[] }) => {
+      const { orgSlug: slug, orgId: id } = requireOrg();
+      return orgTeamMutate<{ customRole: CustomOrgRole }>(
+        '/org-team-custom-roles',
+        slug,
+        id,
+        'POST',
+        input
+      );
+    },
+    onSuccess: () => {
+      invalidate();
+      toast.success('Role created');
+    },
+    onError: (error: Error) => {
+      toast.error(friendlyToastError(error, 'Failed to create role'));
+    },
+  });
+
+  const updateCustomRole = useMutation({
+    mutationFn: async (input: { roleId: string; name?: string; permissions?: string[] }) => {
+      const { orgSlug: slug, orgId: id } = requireOrg();
+      return orgTeamMutate<{ customRole: CustomOrgRole }>(
+        '/org-team-custom-roles',
+        slug,
+        id,
+        'PATCH',
+        input
+      );
+    },
+    onSuccess: () => {
+      invalidate();
+      toast.success('Role updated');
+    },
+    onError: (error: Error) => {
+      toast.error(friendlyToastError(error, 'Failed to update role'));
+    },
+  });
+
+  const deleteCustomRole = useMutation({
+    mutationFn: async (roleId: string) => {
+      const { orgSlug: slug, orgId: id } = requireOrg();
+      return orgTeamMutate<{ deleted: boolean }>('/org-team-custom-roles', slug, id, 'DELETE', {
+        roleId,
+      });
+    },
+    onSuccess: () => {
+      invalidate();
+      toast.success('Role deleted');
+    },
+    onError: (error: Error) => {
+      toast.error(friendlyToastError(error, 'Failed to delete role'));
+    },
+  });
+
   return {
     inviteMember,
     resendInvitation,
     cancelInvitation,
     updateMember,
     removeMember,
+    createCustomRole,
+    updateCustomRole,
+    deleteCustomRole,
   };
 }
