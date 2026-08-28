@@ -83,10 +83,10 @@ import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { PlanGateWatermarkOverlay } from '@/features/dashboard/plans/components/PlanGateWatermarkOverlay';
 import { TierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
 import { useMarketingPermissions } from '@/features/dashboard/marketing/hooks/useMarketingPermissions';
+import { useMarketingMediaAccent } from '@/features/dashboard/marketing/hooks/useMarketingMediaAccent';
 
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { resolveOrgBrandHex } from '@/lib/theme/brandColor';
 import { cn } from '@/lib/utils';
 
 import { CalendarFormatPicker } from './CalendarFormatPicker';
@@ -185,6 +185,12 @@ export function CalendarBuilder({
     return gallery.filter((item) => item.type === 'image');
   }, [publicProperty?.media, publicProperty?.images]);
 
+  const propertyPhotoUrls = useMemo(
+    () => calendarPropertyImages.map((item) => item.url),
+    [calendarPropertyImages]
+  );
+  const { accentColor } = useMarketingMediaAccent(propertyPhotoUrls, brandColor);
+
   const propertyPhotoUrl = calendarPropertyImages[0]?.url;
 
   const calendarRef = useRef<HTMLDivElement>(null);
@@ -228,7 +234,7 @@ export function CalendarBuilder({
   const nextMonth = useCalendarBuilderStore((state) => state.nextMonth);
   const prevMonth = useCalendarBuilderStore((state) => state.prevMonth);
 
-  const canvasFrame = normalizeCalendarCanvasFrame(styles.canvasFrame, brandColor);
+  const canvasFrame = normalizeCalendarCanvasFrame(styles.canvasFrame, accentColor);
 
   const activeSourcePresetId = useMemo(() => {
     if (selectedTemplateKey?.startsWith('preset:')) {
@@ -360,7 +366,7 @@ export function CalendarBuilder({
 
   const mergeCanvasFormat = useCallback(
     (format: CalendarCanvasFormat) => {
-      const defaults = canvasFrameDefaultsForFormat(format, brandColor);
+      const defaults = canvasFrameDefaultsForFormat(format, accentColor);
       const current = normalizeCalendarStyles(useCalendarBuilderStore.getState().styles);
       return normalizeCalendarStyles({
         ...current,
@@ -373,7 +379,7 @@ export function CalendarBuilder({
         },
       });
     },
-    [brandColor]
+    [accentColor]
   );
 
   const handleCanvasFormatChange = useCallback(
@@ -414,7 +420,7 @@ export function CalendarBuilder({
             setActiveAutosaveTemplateId(null);
             setSelectedTemplateKey('preset:default');
             setStyles(mergeCanvasFormat(format), { markDirty: false });
-            applyPreset('default', brandColor, propertyPhotoUrl);
+            applyPreset('default', accentColor, propertyPhotoUrl);
             setIsDirty(false);
             saveToHistory();
             return;
@@ -434,7 +440,7 @@ export function CalendarBuilder({
       apiTemplates,
       applyPreset,
       beginAutoSaveSuspension,
-      brandColor,
+      accentColor,
       customAutosaveEnabled,
       designerAutosaveEnabled,
       endAutoSaveSuspension,
@@ -454,7 +460,7 @@ export function CalendarBuilder({
         setActiveCustomTemplateId(null);
 
         if (isCalendarBlankPreset(presetId)) {
-          applyPreset(presetId, brandColor, propertyPhotoUrl);
+          applyPreset(presetId, accentColor, propertyPhotoUrl);
           setActiveAutosaveTemplateId(null);
           setSelectedTemplateKey(`preset:${presetId}`);
           setShowAdvancedSettings(options?.openAdvanced ?? false);
@@ -473,7 +479,7 @@ export function CalendarBuilder({
           );
           setActiveAutosaveTemplateId(autosave!.id);
         } else {
-          applyPreset(presetId, brandColor, propertyPhotoUrl);
+          applyPreset(presetId, accentColor, propertyPhotoUrl);
           setActiveAutosaveTemplateId(null);
         }
 
@@ -488,7 +494,7 @@ export function CalendarBuilder({
       apiTemplates,
       applyPreset,
       beginAutoSaveSuspension,
-      brandColor,
+      accentColor,
       canvasFrame.format,
       endAutoSaveSuspension,
       propertyPhotoUrl,
@@ -615,7 +621,7 @@ export function CalendarBuilder({
       contentType: 'calendar' as const,
       presetIds: calendarPresetIds,
       canvasFormat: canvasFrame.format,
-      brandColor,
+      brandColor: accentColor,
       propertyPhotoUrl,
       previewMonth,
       previewBookings: previewBookingsForDisplay,
@@ -624,7 +630,7 @@ export function CalendarBuilder({
     [
       calendarPresetIds,
       canvasFrame.format,
-      brandColor,
+      accentColor,
       propertyPhotoUrl,
       previewMonth,
       previewBookingsForDisplay,
@@ -655,7 +661,7 @@ export function CalendarBuilder({
   const lastAppliedBrandRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const normalized = resolveOrgBrandHex(brandColor).toLowerCase();
+    const normalized = accentColor.toLowerCase();
     if (lastAppliedBrandRef.current === normalized) return;
     lastAppliedBrandRef.current = normalized;
     beginAutoSaveSuspension();
@@ -664,13 +670,19 @@ export function CalendarBuilder({
       const preservePresetPalette = Boolean(
         activeSourcePresetId && !isCalendarBlankPreset(activeSourcePresetId)
       );
-      setStyles(applyBrandAccentToCalendarStyles(current, brandColor, { preservePresetPalette }), {
+      setStyles(applyBrandAccentToCalendarStyles(current, accentColor, { preservePresetPalette }), {
         markDirty: false,
       });
     } finally {
       endAutoSaveSuspension();
     }
-  }, [activeSourcePresetId, beginAutoSaveSuspension, brandColor, endAutoSaveSuspension, setStyles]);
+  }, [
+    activeSourcePresetId,
+    beginAutoSaveSuspension,
+    accentColor,
+    endAutoSaveSuspension,
+    setStyles,
+  ]);
 
   useEffect(() => {
     setRelativeZoom(100);
@@ -735,9 +747,9 @@ export function CalendarBuilder({
     beginAutoSaveSuspension();
     try {
       if (activeSourcePresetId && !isCalendarBlankPreset(activeSourcePresetId)) {
-        applyPreset(activeSourcePresetId, brandColor, propertyPhotoUrl);
+        applyPreset(activeSourcePresetId, accentColor, propertyPhotoUrl);
       } else {
-        resetStyles(brandColor);
+        resetStyles(accentColor);
       }
       setIsDirty(false);
     } finally {
@@ -864,7 +876,7 @@ export function CalendarBuilder({
           const photoUrl = randomPhoto ?? undefined;
           const styles = resolveAiGeneratedCalendarStyles(tokens, {
             format,
-            brandColor,
+            brandColor: accentColor,
             propertyPhotoUrl: photoUrl,
           });
           return {
@@ -953,7 +965,7 @@ export function CalendarBuilder({
       amenitiesText,
       availabilityText,
       beginAutoSaveSuspension,
-      brandColor,
+      accentColor,
       calendarPropertyImages,
       canvasFrame.format,
       endAutoSaveSuspension,
@@ -1053,7 +1065,7 @@ export function CalendarBuilder({
               {showAdvancedSettings ? (
                 <div className="space-y-4 pb-4">
                   <CalendarFormatPicker
-                    brandColor={brandColor}
+                    brandColor={accentColor}
                     onFormatChange={handleCanvasFormatChange}
                   />
                   {canvasFrame.format !== 'square' ? <CanvasFramePanel /> : null}
@@ -1088,7 +1100,7 @@ export function CalendarBuilder({
                     </TierBadgeAnchor>
                   ) : null}
                   <CalendarFormatPicker
-                    brandColor={brandColor}
+                    brandColor={accentColor}
                     onFormatChange={handleCanvasFormatChange}
                   />
                   <CalendarTemplateSidebar
@@ -1408,6 +1420,8 @@ export function CalendarBuilder({
         }}
         contentType="calendar"
         generating={aiGenerateBusy || generateTemplate.isPending}
+        propertyPhotoUrls={propertyPhotoUrls}
+        brandColor={brandColor}
         contextOptions={[
           {
             key: 'propertyPhoto',

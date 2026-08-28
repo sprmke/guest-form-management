@@ -6,6 +6,10 @@ import {
   isSeededTemplateName,
   sortTemplatesForDisplay,
 } from '@/features/dashboard/team/lib/propertyTeamTemplates';
+import {
+  isSeededOrgTemplateName,
+  sortOrgTemplatesForDisplay,
+} from '@/features/dashboard/team/lib/orgTeamTemplates';
 import { getTeamScopeConfig, type TeamScope } from '@/features/dashboard/team/lib/teamScopeConfig';
 import type { CustomPropertyRole } from '@/features/dashboard/team/types/propertyTeam';
 
@@ -188,13 +192,21 @@ export function CustomRolesSection({
 }: Props) {
   const config = getTeamScopeConfig(scope);
   const isProperty = scope === 'property';
+  const isOrg = scope === 'org';
+  const usesTemplates = isProperty || isOrg;
 
   const defaultRoles = isProperty
     ? sortTemplatesForDisplay(customRoles.filter((role) => isSeededTemplateName(role.name)))
-    : [];
+    : isOrg
+      ? sortOrgTemplatesForDisplay(customRoles.filter((role) => isSeededOrgTemplateName(role.name)))
+      : [];
   const customOnly = isProperty
     ? sortTemplatesForDisplay(customRoles.filter((role) => !isSeededTemplateName(role.name)))
-    : customRoles;
+    : isOrg
+      ? sortOrgTemplatesForDisplay(
+          customRoles.filter((role) => !isSeededOrgTemplateName(role.name))
+        )
+      : customRoles;
 
   return (
     <Card>
@@ -202,7 +214,7 @@ export function CustomRolesSection({
         <CardTitle className="text-base sm:text-lg">Roles</CardTitle>
       </CardHeader>
       <CardContent className="space-y-5 pt-0">
-        {isProperty ? (
+        {usesTemplates ? (
           <>
             <RoleGroup title="Default" count={defaultRoles.length}>
               <ul className="border-border divide-border divide-y rounded-lg border">

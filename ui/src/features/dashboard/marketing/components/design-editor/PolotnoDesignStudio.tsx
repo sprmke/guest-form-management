@@ -26,6 +26,7 @@ import { useMarketingAutoSave } from '@/features/dashboard/marketing/hooks/useMa
 import { useMarketingAutoSaveSuspension } from '@/features/dashboard/marketing/hooks/useMarketingAutoSaveSuspension';
 import { useMarketingBookedDates } from '@/features/dashboard/marketing/hooks/useMarketingBookedDates';
 import { useMarketingCatalog } from '@/features/dashboard/marketing/hooks/useMarketingCatalog';
+import { useMarketingMediaAccent } from '@/features/dashboard/marketing/hooks/useMarketingMediaAccent';
 import {
   saveMarketingTemplate,
   useMarketingTemplates,
@@ -169,6 +170,19 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
 
   bindingRef.current = binding;
 
+  const propertyPhotoUrls = useMemo(() => {
+    if (publicProperty?.media?.length) {
+      return publicProperty.media
+        .filter((item) => item.type === 'image' && item.url)
+        .map((item) => item.url);
+    }
+    return (
+      publicProperty?.images?.filter(Boolean) ??
+      (binding.propertyPhoto ? [binding.propertyPhoto] : [])
+    );
+  }, [publicProperty?.media, publicProperty?.images, binding.propertyPhoto]);
+  const { accentColor } = useMarketingMediaAccent(propertyPhotoUrls, brandColor);
+
   const showPresetTemplates = catalog.isBuiltinCategory(category);
   const templates = useMemo(
     () =>
@@ -219,7 +233,9 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
           return;
         }
 
-        const doc = buildPolotnoCampaignDocument(templateId, bindingRef.current!, { brandColor });
+        const doc = buildPolotnoCampaignDocument(templateId, bindingRef.current!, {
+          brandColor: accentColor,
+        });
         if (!doc) return;
 
         setSavedTemplateId(null);
@@ -235,11 +251,25 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
         endAutoSaveSuspension();
       }
     },
-    [beginAutoSaveSuspension, brandColor, endAutoSaveSuspension, format]
+    [beginAutoSaveSuspension, accentColor, endAutoSaveSuspension, format]
   );
 
   const applyTemplateRef = useRef(applyTemplate);
   applyTemplateRef.current = applyTemplate;
+
+  const lastAppliedAccentRef = useRef<string | null>(null);
+  useEffect(() => {
+    const normalized = accentColor.toLowerCase();
+    if (lastAppliedAccentRef.current === null) {
+      lastAppliedAccentRef.current = normalized;
+      return;
+    }
+    if (lastAppliedAccentRef.current === normalized) return;
+    lastAppliedAccentRef.current = normalized;
+    // Live-retint builtin presets only — leave saved/AI custom canvases alone.
+    if (!selectedId || savedTemplateId) return;
+    void applyTemplateRef.current(selectedId);
+  }, [accentColor, selectedId, savedTemplateId]);
 
   const applySavedTemplate = useCallback(
     async (record: MarketingTemplateRecord) => {
@@ -430,7 +460,7 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
           return {
             format,
             document: resolveAiGeneratedDesignDocument(binding, tokens, format, {
-              brandColor,
+              brandColor: accentColor,
               propertyPhotoUrl: photoUrl,
               orgLogoUrl,
               includeCta: input.includeContext.cta ?? true,
@@ -533,7 +563,7 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
     [
       beginAutoSaveSuspension,
       binding,
-      brandColor,
+      accentColor,
       catalog,
       endAutoSaveSuspension,
       format,
@@ -749,7 +779,7 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
         <MarketingTemplatesPanel
           tab="design"
           contentType="design"
-          brandColor={brandColor}
+          brandColor={accentColor}
           formatOptions={formatOptions}
           format={format}
           onFormatChange={(value) => {
@@ -798,7 +828,7 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
             <KamePolotnoEditor
               store={store}
               propertyImageUrls={propertyImageUrls}
-              brandColor={brandColor}
+              brandColor={accentColor}
               logoUrl={orgLogoUrl}
               style={{ width: '100%', height: '100%' }}
               onResetDesign={handleResetDesign}
@@ -831,6 +861,8 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
         }}
         contentType="design"
         generating={aiGenerateBusy || generateTemplate.isPending}
+        propertyPhotoUrls={propertyPhotoUrls}
+        brandColor={brandColor}
         contextOptions={[
           {
             key: 'propertyPhoto',

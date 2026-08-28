@@ -134,7 +134,7 @@ export function PlanFeatureMatrix({
                     'border-border/70 border-b px-5 py-2 text-left'
                   )}
                 >
-                  <span className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">
+                  <span className="text-muted-foreground text-xs font-semibold tracking-wide">
                     {group.label}
                   </span>
                 </th>

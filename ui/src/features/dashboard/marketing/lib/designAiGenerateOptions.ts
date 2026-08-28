@@ -233,6 +233,12 @@ export type DesignAiGeneratePreferences = {
   backgroundMood: DesignBackgroundMood | 'auto';
   category: DesignCampaignCategory;
   content: string;
+  /** From the “Property colors” Look template — photos when available, else brand. */
+  lookPalette?: {
+    primary: string;
+    secondary: string;
+    accent: string;
+  };
 };
 
 export const DEFAULT_DESIGN_AI_PREFERENCES: DesignAiGeneratePreferences = {
@@ -256,6 +262,7 @@ export function applyDesignAiPreferencesToTokens(
     backgroundMood:
       preferences.backgroundMood === 'auto' ? tokens.backgroundMood : preferences.backgroundMood,
     category: preferences.category,
+    ...(preferences.lookPalette ? { palette: preferences.lookPalette } : {}),
   };
 }
 

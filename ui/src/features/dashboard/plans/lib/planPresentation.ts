@@ -28,13 +28,35 @@ import {
 
 import { formatManilaLongDate } from '@/utils/format/dates';
 
+/** Matrix section = product page / module hosts already know from the sidebar. */
 export type PlanFeatureGroup =
-  'operations' | 'visibility' | 'marketing' | 'ai' | 'team' | 'managed';
+  | 'dashboard'
+  | 'bookings'
+  | 'finance'
+  | 'maintenance'
+  | 'pricing'
+  | 'publicPages'
+  | 'templates'
+  | 'notifications'
+  | 'inbox'
+  | 'marketing'
+  | 'visibility'
+  | 'ai'
+  | 'team'
+  | 'managed';
 
 export const PLAN_FEATURE_GROUP_LABELS: Record<PlanFeatureGroup, string> = {
-  operations: 'Operations',
-  visibility: 'Guest visibility',
+  dashboard: 'Dashboard',
+  bookings: 'Bookings',
+  finance: 'Finance',
+  maintenance: 'Maintenance',
+  pricing: 'Pricing',
+  publicPages: 'Public pages',
+  templates: 'Templates',
+  notifications: 'Notifications',
+  inbox: 'Inbox',
   marketing: 'Marketing',
+  visibility: 'Visibility',
   ai: 'AI',
   team: 'Team',
   managed: 'Managed hosting',
@@ -87,21 +109,28 @@ const SEARCH_TIER_RANK: Record<PlanFeatures['searchVisibilityTier'], number> = {
   top10: 2,
 };
 
-/** Included on every tier — shown in Compare and on the Free card. */
-export const PLAN_BASELINE_MATRIX_ROWS: { key: string; label: string }[] = [
-  { key: 'baseline-dashboard', label: 'Dashboard overview' },
-  { key: 'baseline-bookings', label: 'Manual booking management' },
-  { key: 'baseline-guest-form', label: 'Public guest form' },
-  { key: 'baseline-manual-docs', label: 'Manual document generation' },
-  { key: 'baseline-finance', label: 'Finance management' },
-  { key: 'baseline-maintenance', label: 'Maintenance reminders' },
-  { key: 'baseline-notifications', label: 'Notifications' },
+/** Included on every tier — folded into the matching module section in Compare. */
+export const PLAN_BASELINE_MATRIX_ROWS: {
+  key: string;
+  label: string;
+  group: PlanFeatureGroup;
+}[] = [
+  { key: 'baseline-dashboard', label: 'Dashboard overview', group: 'dashboard' },
+  { key: 'baseline-bookings', label: 'Manual booking management', group: 'bookings' },
+  { key: 'baseline-guest-form', label: 'Public guest form', group: 'bookings' },
+  { key: 'baseline-manual-docs', label: 'Manual document generation', group: 'bookings' },
+  { key: 'baseline-finance', label: 'Finance management', group: 'finance' },
+  { key: 'baseline-maintenance', label: 'Maintenance reminders', group: 'maintenance' },
+  { key: 'baseline-notifications', label: 'In-app notifications', group: 'notifications' },
 ];
 
-/** Core tools unlocked from Starter — not on Free in the compare matrix. */
-export const PLAN_STARTER_MATRIX_ROWS: { key: string; label: string; minSortOrder: number }[] = [
-  { key: 'starter-pricing', label: 'Pricing management', minSortOrder: 2 },
-];
+/** Unlocked from Starter — not on Free; sits in the Pricing module section. */
+export const PLAN_STARTER_MATRIX_ROWS: {
+  key: string;
+  label: string;
+  group: PlanFeatureGroup;
+  minSortOrder: number;
+}[] = [{ key: 'starter-pricing', label: 'Pricing management', group: 'pricing', minSortOrder: 2 }];
 
 /** Managed-only rows — marketing copy on the Managed card, not entitlement keys. */
 export const PLAN_MANAGED_MATRIX_ROWS: { key: string; label: string; managedOnly: true }[] = [
@@ -236,36 +265,29 @@ function planTierCardGains(planCode: string): PlanFeatureChange[] {
   }));
 }
 
-/** Matrix row order — also the order bullets appear on a tier card when derived from features. */
+/** Matrix row order within each module — also drives derived tier-card bullets. */
 export const PLAN_FEATURE_ROWS: PlanFeatureRow[] = [
-  boolRow('automatedBookingFlow', 'Automated booking emails', 'operations'),
-  boolRow('customPages', 'Public pages access & editor', 'operations'),
-  boolRow('publicPagesAutosave', 'Public pages autosave', 'operations'),
-  boolRow('propertyShowcase', 'Property showcase pages', 'operations'),
-  boolRow('marketingStudio', 'Template Management', 'operations'),
-  boolRow('aiValidations', 'AI receipt and ID validation', 'operations'),
-  boolRow('telegramNotifications', 'Telegram alerts', 'operations'),
-  boolRow('financeReporting', 'Finance reporting & export', 'operations'),
-  boolRow('maintenanceReporting', 'Maintenance reporting & export', 'operations'),
-  boolRow('quickReplies', 'Inbox quick replies', 'operations'),
-  boolRow('metaChatChannel', 'Meta (Facebook/Instagram) chat channel', 'operations'),
+  boolRow('automatedBookingFlow', 'Automated booking emails', 'bookings'),
+  boolRow('bookingImport', 'AI booking import', 'bookings'),
+  boolRow('aiValidations', 'AI receipt and ID validation', 'bookings'),
 
-  boolRow('verifiedBadgeEligible', 'Verified badge eligible', 'visibility'),
-  boolRow('recommendedBadgeEligible', 'Recommended badge eligible', 'visibility'),
-  {
-    key: 'searchVisibilityTier',
-    label: 'Search placement',
-    group: 'visibility',
-    value: (features) =>
-      features.searchVisibilityTier === 'none'
-        ? { kind: 'off' }
-        : { kind: 'text', text: SEARCH_TIER_LABEL[features.searchVisibilityTier] },
-    rank: (features) => SEARCH_TIER_RANK[features.searchVisibilityTier],
-    describe: (features) => `${SEARCH_TIER_LABEL[features.searchVisibilityTier]} search placement`,
-  },
+  boolRow('financeReporting', 'Finance reporting & export', 'finance'),
+  boolRow('maintenanceReporting', 'Maintenance reporting & export', 'maintenance'),
+
+  boolRow('customPages', 'Public pages access & editor', 'publicPages'),
+  boolRow('publicPagesAutosave', 'Public pages autosave', 'publicPages'),
+  boolRow('propertyShowcase', 'Property showcase pages', 'publicPages'),
+
+  boolRow('marketingStudio', 'Template management', 'templates'),
+  boolRow('customTemplates', 'Advanced template management', 'templates'),
+
+  boolRow('telegramNotifications', 'Telegram alerts', 'notifications'),
+
+  boolRow('quickReplies', 'Inbox quick replies', 'inbox'),
+  boolRow('metaChatChannel', 'Meta (Facebook/Instagram) chat channel', 'inbox'),
+  boolRow('aiChatAutoReply', 'AI chat auto-reply', 'inbox'),
 
   boolRow('aiMarketingGeneration', 'AI content generation', 'marketing'),
-  boolRow('customTemplates', 'Advanced template management', 'marketing'),
   {
     key: 'marketingPublishLimitPerGroup',
     label: 'Marketing publishes',
@@ -287,9 +309,22 @@ export const PLAN_FEATURE_ROWS: PlanFeatureRow[] = [
         : `${features.marketingPublishLimitPerGroup} publishes per channel`,
   },
 
+  boolRow('verifiedBadgeEligible', 'Verified badge eligible', 'visibility'),
+  boolRow('recommendedBadgeEligible', 'Recommended badge eligible', 'visibility'),
+  {
+    key: 'searchVisibilityTier',
+    label: 'Search placement',
+    group: 'visibility',
+    value: (features) =>
+      features.searchVisibilityTier === 'none'
+        ? { kind: 'off' }
+        : { kind: 'text', text: SEARCH_TIER_LABEL[features.searchVisibilityTier] },
+    rank: (features) => SEARCH_TIER_RANK[features.searchVisibilityTier],
+    describe: (features) => `${SEARCH_TIER_LABEL[features.searchVisibilityTier]} search placement`,
+  },
+
   boolRow('aiDashboardAssistant', 'AI dashboard assistant', 'ai'),
   boolRow('aiReceptionist', 'AI receptionist', 'ai'),
-  boolRow('aiChatAutoReply', 'AI chat auto-reply', 'ai'),
   {
     key: 'aiMonthlyCreditAllowance',
     label: 'AI credits',
@@ -330,59 +365,55 @@ export const PLAN_FEATURE_ROWS: PlanFeatureRow[] = [
 ];
 
 export const PLAN_FEATURE_GROUP_ORDER: PlanFeatureGroup[] = [
-  'operations',
-  'visibility',
+  'dashboard',
+  'bookings',
+  'finance',
+  'maintenance',
+  'pricing',
+  'publicPages',
+  'templates',
+  'notifications',
+  'inbox',
   'marketing',
+  'visibility',
   'ai',
   'team',
   'managed',
 ];
 
 export type PlanFeatureMatrixGroup = {
-  group: PlanFeatureGroup | 'baseline';
+  group: PlanFeatureGroup;
   label: string;
   rows: Array<
     | PlanFeatureRow
-    | { key: string; label: string; baseline: true }
-    | { key: string; label: string; minSortOrder: number }
+    | { key: string; label: string; group: PlanFeatureGroup; baseline: true }
+    | { key: string; label: string; group: PlanFeatureGroup; minSortOrder: number }
     | { key: string; label: string; managedOnly: true }
   >;
 };
 
-/** Drops rows that are off in every available tier so the matrix stays honest and short. */
+/** Builds Compare sections by product module — baseline + paid rows share a header. */
 export function planFeatureMatrixGroups(plans: OrgBundlePlanDto[]): PlanFeatureMatrixGroup[] {
   const meaningful = PLAN_FEATURE_ROWS.filter((row) =>
     plans.some((plan) => row.value(plan.features).kind !== 'off')
   );
+  const hasManaged = plans.some((plan) => plan.code === MANAGED_PLAN_CODE);
 
-  const featureGroups = PLAN_FEATURE_GROUP_ORDER.map((group) => {
-    const rows = meaningful.filter((row) => row.group === group);
-    if (group === 'managed') {
-      const hasManaged = plans.some((plan) => plan.code === MANAGED_PLAN_CODE);
-      return {
-        group,
-        label: PLAN_FEATURE_GROUP_LABELS[group],
-        rows: [...rows, ...(hasManaged ? PLAN_MANAGED_MATRIX_ROWS : [])],
-      };
-    }
+  return PLAN_FEATURE_GROUP_ORDER.map((group) => {
+    const baselineRows = PLAN_BASELINE_MATRIX_ROWS.filter((row) => row.group === group).map(
+      (row) => ({ ...row, baseline: true as const })
+    );
+    const starterRows = PLAN_STARTER_MATRIX_ROWS.filter((row) => row.group === group);
+    const featureRows = meaningful.filter((row) => row.group === group);
+    const managedExtra = group === 'managed' && hasManaged ? PLAN_MANAGED_MATRIX_ROWS : [];
+
+    const rows = [...baselineRows, ...starterRows, ...featureRows, ...managedExtra];
     return {
       group,
       label: PLAN_FEATURE_GROUP_LABELS[group],
       rows,
     };
   }).filter((entry) => entry.rows.length > 0);
-
-  return [
-    {
-      group: 'baseline' as const,
-      label: 'Core tools',
-      rows: [
-        ...PLAN_BASELINE_MATRIX_ROWS.map((row) => ({ ...row, baseline: true as const })),
-        ...PLAN_STARTER_MATRIX_ROWS,
-      ],
-    },
-    ...featureGroups,
-  ];
 }
 
 export type PlanFeatureChange = {

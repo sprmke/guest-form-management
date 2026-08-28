@@ -1,29 +1,22 @@
-import { Check } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+
+import { Check, ImageIcon, Loader2, Sparkles } from 'lucide-react';
 
 import { OrgSettingsField } from '@/features/dashboard/org/components/org-settings/OrgSettingsFields';
 import { SettingsField } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { BRAND_COLOR_PRESETS } from '@/lib/theme/brandColorPresets';
 import { DEFAULT_ORG_BRAND_COLOR } from '@/lib/theme/brandColor';
+import { extractBrandAccentFromPhotos } from '@/lib/theme/photoBrandColor';
 import { cn } from '@/lib/utils';
-
-/** Curated pastel-leaning hues, ordered by hue — kept mid saturation/lightness so each reads well as a flat swatch. */
-const BRAND_COLOR_PRESETS = [
-  { label: 'Coral', hex: '#FB923C' },
-  { label: 'Amber', hex: '#FBBF24' },
-  { label: 'Lime', hex: '#A3E635' },
-  { label: 'Emerald', hex: '#34D399' },
-  { label: 'Teal', hex: DEFAULT_ORG_BRAND_COLOR },
-  { label: 'Sky', hex: '#38BDF8' },
-  { label: 'Indigo', hex: '#6366F1' },
-  { label: 'Violet', hex: '#A78BFA' },
-  { label: 'Fuchsia', hex: '#E879F9' },
-  { label: 'Pink', hex: '#F472B6' },
-  { label: 'Rose', hex: '#FB7185' },
-] as const;
 
 const RAINBOW_SWATCH_BACKGROUND =
   'conic-gradient(from 180deg, #FB923C, #FBBF24, #A3E635, #34D399, #38BDF8, #6366F1, #E879F9, #FB7185, #FB923C)';
+
+const PHOTO_SWATCH_IDLE_BACKGROUND =
+  'conic-gradient(from 200deg, #E8D5B7 0deg, #C9A66B 72deg, #D4B896 144deg, #F0E4CE 216deg, #B8895A 288deg, #E8D5B7 360deg)';
 
 type Props = {
   id: string;
@@ -41,7 +34,101 @@ type Props = {
    * Property Settings / Org Settings keep the default label.
    */
   hideLabel?: boolean;
+  /** Property-only: gallery image URLs for on-demand accent extraction. */
+  photoUrls?: string[];
 };
+
+function PhotoBrandColorSwatch({
+  disabled,
+  photoUrls,
+  pickerValue,
+  extractedHex,
+  onExtractedHexChange,
+  onChange,
+}: {
+  disabled?: boolean;
+  photoUrls: string[];
+  pickerValue: string;
+  extractedHex: string | null;
+  onExtractedHexChange: (hex: string | null) => void;
+  onChange: (value: string) => void;
+}) {
+  const hasPhotos = photoUrls.length > 0;
+  const photoSignature = useMemo(() => photoUrls.join('|'), [photoUrls]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    onExtractedHexChange(null);
+  }, [photoSignature, onExtractedHexChange]);
+
+  const isSelected =
+    Boolean(extractedHex) && pickerValue.toLowerCase() === extractedHex!.toLowerCase();
+
+  async function handleExtract() {
+    if (!hasPhotos || disabled || loading) return;
+    setLoading(true);
+    try {
+      const hex = await extractBrandAccentFromPhotos(photoUrls);
+      if (hex) {
+        onExtractedHexChange(hex);
+        onChange(hex);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const inactive = disabled || !hasPhotos;
+
+  const tooltip = hasPhotos
+    ? 'Extract brand color from your uploaded photos'
+    : 'Upload property photos to enable';
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex rounded-full">
+          <button
+            type="button"
+            disabled={disabled || loading}
+            aria-disabled={inactive}
+            onClick={() => void handleExtract()}
+            className={cn(
+              'relative flex size-11 shrink-0 items-center justify-center rounded-full border shadow-sm transition-transform',
+              'focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+              !hasPhotos && 'border-muted-foreground/30 bg-muted/35 border-dashed',
+              hasPhotos && !isSelected && 'border-border hover:scale-105 active:scale-95',
+              inactive && 'cursor-not-allowed opacity-50',
+              isSelected && 'ring-foreground ring-offset-background ring-2 ring-offset-2'
+            )}
+            style={
+              isSelected && extractedHex
+                ? { backgroundColor: extractedHex }
+                : hasPhotos
+                  ? { background: PHOTO_SWATCH_IDLE_BACKGROUND }
+                  : undefined
+            }
+            aria-label={tooltip}
+            aria-pressed={isSelected}
+          >
+            {loading ? (
+              <Loader2 className="text-foreground size-4 animate-spin" aria-hidden />
+            ) : isSelected ? (
+              <Check className="size-4 text-white drop-shadow-sm" aria-hidden />
+            ) : hasPhotos ? (
+              <Sparkles className="size-4 text-white drop-shadow-sm" aria-hidden />
+            ) : (
+              <ImageIcon className="text-muted-foreground/55 size-4" aria-hidden />
+            )}
+          </button>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-[220px] text-center">
+        {tooltip}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 function BrandColorControls({
   id,
@@ -50,12 +137,38 @@ function BrandColorControls({
   disabled,
   resetValue = DEFAULT_ORG_BRAND_COLOR,
   onChange,
-}: Pick<Props, 'id' | 'value' | 'resolvedColor' | 'disabled' | 'resetValue' | 'onChange'>) {
+  photoUrls,
+}: Pick<
+  Props,
+  'id' | 'value' | 'resolvedColor' | 'disabled' | 'resetValue' | 'onChange' | 'photoUrls'
+>) {
   const pickerValue = value.trim() || resolvedColor;
   const isAtResetValue = value.trim().toLowerCase() === resetValue.trim().toLowerCase();
-  const isCustomSelected = !BRAND_COLOR_PRESETS.some(
+  const [extractedHex, setExtractedHex] = useState<string | null>(null);
+  const [choseCustom, setChoseCustom] = useState(false);
+
+  const matchesPreset = BRAND_COLOR_PRESETS.some(
     (preset) => preset.hex.toLowerCase() === pickerValue.toLowerCase()
   );
+  const matchesPhoto =
+    Boolean(extractedHex) && pickerValue.toLowerCase() === extractedHex!.toLowerCase();
+  /** Rainbow swatch only when the host used the color picker — not photo extract / presets. */
+  const isCustomSelected = choseCustom && !matchesPreset && !matchesPhoto;
+
+  const applyPresetOrReset = (next: string) => {
+    setChoseCustom(false);
+    onChange(next);
+  };
+
+  const applyPhotoExtract = (next: string) => {
+    setChoseCustom(false);
+    onChange(next);
+  };
+
+  const applyCustomPicker = (next: string) => {
+    setChoseCustom(true);
+    onChange(next);
+  };
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -66,7 +179,7 @@ function BrandColorControls({
             key={preset.hex}
             type="button"
             disabled={disabled}
-            onClick={() => onChange(preset.hex)}
+            onClick={() => applyPresetOrReset(preset.hex)}
             className={cn(
               'border-border flex size-11 shrink-0 items-center justify-center rounded-full border shadow-sm transition-transform',
               'disabled:pointer-events-none disabled:opacity-50',
@@ -80,6 +193,16 @@ function BrandColorControls({
           </button>
         );
       })}
+      {photoUrls ? (
+        <PhotoBrandColorSwatch
+          disabled={disabled}
+          photoUrls={photoUrls}
+          pickerValue={pickerValue}
+          extractedHex={extractedHex}
+          onExtractedHexChange={setExtractedHex}
+          onChange={applyPhotoExtract}
+        />
+      ) : null}
       <label
         htmlFor={`${id}-picker`}
         className={cn(
@@ -94,7 +217,7 @@ function BrandColorControls({
           id={`${id}-picker`}
           type="color"
           value={pickerValue}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(event) => applyCustomPicker(event.target.value)}
           disabled={disabled}
           className="absolute inset-0 size-full cursor-pointer opacity-0"
           aria-label="Pick a custom brand color"
@@ -105,7 +228,7 @@ function BrandColorControls({
         variant="outline"
         disabled={disabled || isAtResetValue}
         className="min-h-[44px] shrink-0"
-        onClick={() => onChange(resetValue)}
+        onClick={() => applyPresetOrReset(resetValue)}
         aria-label="Reset brand color to default"
       >
         Reset
@@ -125,9 +248,11 @@ export function BrandColorField({
   resetValue,
   onChange,
   hideLabel = false,
+  photoUrls,
 }: Props) {
   const effectiveResetValue =
     resetValue ?? (layout === 'property' ? resolvedColor : DEFAULT_ORG_BRAND_COLOR);
+  const propertyPhotoUrls = layout === 'property' ? photoUrls : undefined;
 
   const controls = (
     <BrandColorControls
@@ -137,6 +262,7 @@ export function BrandColorField({
       disabled={disabled}
       resetValue={effectiveResetValue}
       onChange={onChange}
+      photoUrls={propertyPhotoUrls}
     />
   );
 

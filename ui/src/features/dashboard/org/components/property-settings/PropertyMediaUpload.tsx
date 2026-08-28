@@ -251,6 +251,7 @@ function SortableImageCard({
   item,
   disabled,
   busy,
+  reorderDisabled,
   onSetPrimary,
   onRemove,
   onPreview,
@@ -258,13 +259,14 @@ function SortableImageCard({
   item: PropertyMediaItem;
   disabled: boolean;
   busy: boolean;
+  reorderDisabled?: boolean;
   onSetPrimary: () => void;
   onRemove: () => void;
   onPreview: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
-    disabled: disabled || busy,
+    disabled: disabled || busy || reorderDisabled,
   });
 
   return (
@@ -511,6 +513,7 @@ export function PropertyMediaUpload({
   const scopeId = developmentId ?? propertyId;
   const [busyId, setBusyId] = useState<string | null>(null);
   const [uploadingKind, setUploadingKind] = useState<PropertyMediaUploadKind | null>(null);
+  const [uploadingSlotKey, setUploadingSlotKey] = useState<string | null>(null);
   const [previewItem, setPreviewItem] = useState<PropertyMediaItem | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
 
@@ -584,7 +587,11 @@ export function PropertyMediaUpload({
     }
   };
 
-  const processFiles = async (files: FileList | File[], kind: PropertyMediaUploadKind) => {
+  const processFiles = async (
+    files: FileList | File[],
+    kind: PropertyMediaUploadKind,
+    slotKey?: string
+  ) => {
     const list = Array.from(files);
     if (list.length === 0) return;
 
@@ -598,6 +605,7 @@ export function PropertyMediaUpload({
     }
 
     setUploadingKind(kind);
+    setUploadingSlotKey(slotKey ?? (kind === 'video' ? 'video' : `slot-${images.length}`));
     let working = [...items];
     let currentCounts = countPropertyMedia(working);
 
@@ -618,6 +626,10 @@ export function PropertyMediaUpload({
         working = result.media;
         currentCounts = countPropertyMedia(working);
         applyMedia(working, true);
+        if (kind === 'image') {
+          const nextImages = partitionPropertyMedia(working).images;
+          setUploadingSlotKey(`slot-${nextImages.length}`);
+        }
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'Upload failed');
         break;
@@ -628,14 +640,16 @@ export function PropertyMediaUpload({
       toast.success(kind === 'video' ? 'Video uploaded' : 'Photo uploaded');
     }
     setUploadingKind(null);
+    setUploadingSlotKey(null);
   };
 
   const handleFileInput = (
     event: React.ChangeEvent<HTMLInputElement>,
-    kind: PropertyMediaUploadKind
+    kind: PropertyMediaUploadKind,
+    slotKey?: string
   ) => {
     const files = event.target.files;
-    if (files?.length) void processFiles(files, kind);
+    if (files?.length) void processFiles(files, kind, slotKey);
     event.target.value = '';
   };
 
@@ -643,7 +657,11 @@ export function PropertyMediaUpload({
     event.preventDefault();
     if (disabled || isBusy) return;
     if (event.dataTransfer.files?.length) {
-      void processFiles(event.dataTransfer.files, kind);
+      void processFiles(
+        event.dataTransfer.files,
+        kind,
+        kind === 'video' ? 'video' : `slot-${images.length}`
+      );
     }
   };
 
@@ -691,7 +709,7 @@ export function PropertyMediaUpload({
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
           >
-            <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 lg:gap-3">
               <SortableContext items={images.map((item) => item.id)} strategy={rectSortingStrategy}>
                 {imageSlots.map((item, index) =>
                   item ? (
@@ -699,7 +717,8 @@ export function PropertyMediaUpload({
                       key={item.id}
                       item={item}
                       disabled={disabled}
-                      busy={isBusy || busyId === item.id}
+                      busy={busyId === item.id}
+                      reorderDisabled={uploadingKind !== null}
                       onSetPrimary={() => setPrimary(item.id)}
                       onRemove={() => void handleRemove(item)}
                       onPreview={() => openPreview(item)}
@@ -710,8 +729,8 @@ export function PropertyMediaUpload({
                       kind="image"
                       slotKey={`slot-${index}`}
                       enabled={imagePickerEnabled}
-                      busy={isBusy && uploadingKind === 'image'}
-                      onSelected={(event) => handleFileInput(event, 'image')}
+                      busy={uploadingSlotKey === `slot-${index}`}
+                      onSelected={(event) => handleFileInput(event, 'image', `slot-${index}`)}
                     />
                   )
                 )}
@@ -721,7 +740,7 @@ export function PropertyMediaUpload({
                 <VideoMediaCard
                   item={video}
                   disabled={disabled}
-                  busy={isBusy || busyId === video.id}
+                  busy={busyId === video.id}
                   onRemove={() => void handleRemove(video)}
                   onPreview={() => openPreview(video)}
                 />
@@ -730,8 +749,8 @@ export function PropertyMediaUpload({
                   kind="video"
                   slotKey="video"
                   enabled={videoPickerEnabled}
-                  busy={isBusy && uploadingKind === 'video'}
-                  onSelected={(event) => handleFileInput(event, 'video')}
+                  busy={uploadingSlotKey === 'video'}
+                  onSelected={(event) => handleFileInput(event, 'video', 'video')}
                 />
               )}
             </div>

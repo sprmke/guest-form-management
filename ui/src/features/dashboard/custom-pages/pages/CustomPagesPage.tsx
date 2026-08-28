@@ -1,16 +1,9 @@
 import { useMemo } from 'react';
 
-import type { PropertyShowcaseConfig } from '@/features/guest/marketing/showcase/types/showcase';
-
 import { PublicPageCard } from '@/features/dashboard/custom-pages/components/PublicPageCard';
-import {
-  publicPageLastEditedLabel,
-  publicPageTypeForGalleryId,
-} from '@/features/dashboard/custom-pages/lib/publicPageLastEdited';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { orgPropertyCardModel } from '@/features/dashboard/org/lib/orgPropertyCardModel';
-import { usePublicPageConfig } from '@/features/dashboard/page-editor/hooks/usePublicPageConfig';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { usePropertyEntitlements } from '@/features/dashboard/plans/hooks/usePropertyEntitlements';
 import { isFeatureEnabled } from '@/features/dashboard/plans/lib/planFeatures';
@@ -19,6 +12,10 @@ import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePrope
 import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
 
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
+
+/** Shared card grid: 1 col mobile, 2 from sm, 3 from lg — both gallery sections. */
+const PUBLIC_PAGE_CARD_GRID_CLASS =
+  'grid list-none gap-3 p-0 sm:grid-cols-2 sm:items-stretch sm:gap-4 lg:grid-cols-3';
 
 export function CustomPagesPage() {
   const orgContext = useOptionalOrgContext();
@@ -43,10 +40,6 @@ export function CustomPagesPage() {
     return false;
   }
 
-  const stayGuideConfig = usePublicPageConfig('stay_guide');
-  const listingConfig = usePublicPageConfig('property_landing');
-  const showcaseConfig = usePublicPageConfig('property_showcase');
-
   const pages = useMemo(() => {
     if (!propertySlug.trim() || !propertyId) return [];
     return buildPropertyGuestPublicPages(propertySlug, propertyId);
@@ -54,21 +47,6 @@ export function CustomPagesPage() {
 
   const editablePages = useMemo(() => pages.filter((page) => page.editable), [pages]);
   const staticPages = useMemo(() => pages.filter((page) => !page.editable), [pages]);
-
-  function lastEditedFor(pageId: 'listing' | 'stay-guide' | 'showcase'): string | null {
-    const pageType = publicPageTypeForGalleryId(pageId);
-    const query =
-      pageType === 'stay_guide'
-        ? stayGuideConfig
-        : pageType === 'property_showcase'
-          ? showcaseConfig
-          : listingConfig;
-    return publicPageLastEditedLabel(query.data, query.isLoading);
-  }
-
-  const showcasePublished =
-    showcaseConfig.data &&
-    (showcaseConfig.data.config as PropertyShowcaseConfig).published === true;
 
   return (
     <AdminMobilePage
@@ -85,7 +63,7 @@ export function CustomPagesPage() {
             >
               Design your pages
             </h2>
-            <ul className="grid list-none gap-3 p-0 sm:grid-cols-2 sm:items-stretch sm:gap-4">
+            <ul className={PUBLIC_PAGE_CARD_GRID_CLASS}>
               {editablePages.map((page) => (
                 <li key={page.id} className="h-full">
                   <PublicPageCard
@@ -96,14 +74,6 @@ export function CustomPagesPage() {
                     canEdit={canEditPage(page.id)}
                     locked={page.id === 'showcase' && !canShowcase}
                     onUnlock={() => open('propertyShowcase')}
-                    publishState={
-                      page.id === 'showcase' ? (showcasePublished ? 'published' : 'draft') : null
-                    }
-                    lastEditedLabel={
-                      page.id === 'listing' || page.id === 'stay-guide' || page.id === 'showcase'
-                        ? lastEditedFor(page.id)
-                        : null
-                    }
                   />
                 </li>
               ))}
@@ -119,7 +89,7 @@ export function CustomPagesPage() {
             >
               Other guest pages
             </h2>
-            <ul className="grid list-none gap-3 p-0 sm:grid-cols-2 sm:items-stretch sm:gap-4 xl:grid-cols-3">
+            <ul className={PUBLIC_PAGE_CARD_GRID_CLASS}>
               {staticPages.map((page) => (
                 <li key={page.id} className="h-full">
                   <PublicPageCard

@@ -57,6 +57,11 @@ import {
   type VideoAiSuggestion,
 } from '@/features/dashboard/marketing/lib/videoAiGenerateOptions';
 import {
+  isMarketingAiPhotoPaletteSuggestion,
+  MARKETING_AI_PHOTO_PALETTE_SUGGESTION_IDS,
+  resolveMarketingAiLookPresentation,
+} from '@/features/dashboard/marketing/lib/marketingAiPhotoPalette';
+import {
   MarketingAiGenerateStepper,
   marketingAiGenerateStepCopy,
   type MarketingAiGenerateStepIndex,
@@ -65,6 +70,7 @@ import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 import { useMarketingPermissions } from '@/features/dashboard/marketing/hooks/useMarketingPermissions';
+import { useShowcaseMediaPalette } from '@/features/guest/marketing/showcase/hooks/useShowcaseMediaPalette';
 
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -110,6 +116,10 @@ export type MarketingAiGeneratePanelProps = {
     label: string;
     available: boolean;
   }>;
+  /** Property photo URLs — first Look template uses photos, else brand (same as blank defaults). */
+  propertyPhotoUrls?: string[];
+  /** Org/property brand — fallback when no photos for the first Look template. */
+  brandColor?: string;
   suggestions?: CalendarAiSuggestion[] | DesignAiSuggestion[] | VideoAiSuggestion[];
   generating?: boolean;
   onGenerate: (input: MarketingAiGenerateInput) => void | Promise<void>;
@@ -411,6 +421,8 @@ export function MarketingAiGeneratePanel({
   onOpenChange,
   contentType,
   contextOptions = [],
+  propertyPhotoUrls = [],
+  brandColor,
   suggestions = defaultSuggestionsFor(contentType),
   generating = false,
   onGenerate,
@@ -438,6 +450,62 @@ export function MarketingAiGeneratePanel({
   const isDesign = contentType === 'design';
   const isVideo = contentType === 'video';
 
+  const photoUrls = useMemo(
+    () => [...new Set(propertyPhotoUrls.filter(Boolean))].slice(0, 10),
+    [propertyPhotoUrls]
+  );
+  const { palette: mediaPalette } = useShowcaseMediaPalette(
+    photoUrls,
+    open && photoUrls.length > 0
+  );
+  const lookPresentation = useMemo(
+    () => resolveMarketingAiLookPresentation(brandColor, mediaPalette),
+    [brandColor, mediaPalette]
+  );
+
+  const resolvedSuggestions = useMemo(():
+    CalendarAiSuggestion[] | DesignAiSuggestion[] | VideoAiSuggestion[] => {
+    const photoId = MARKETING_AI_PHOTO_PALETTE_SUGGESTION_IDS[contentType];
+    const { title, summary, calendarPreview, designPreview, videoMood } = lookPresentation;
+
+    if (contentType === 'calendar') {
+      return (suggestions as CalendarAiSuggestion[]).map((suggestion) =>
+        suggestion.id !== photoId
+          ? suggestion
+          : {
+              ...suggestion,
+              title,
+              summary,
+              palette: calendarPreview,
+            }
+      );
+    }
+
+    if (contentType === 'video') {
+      return (suggestions as VideoAiSuggestion[]).map((suggestion) =>
+        suggestion.id !== photoId
+          ? suggestion
+          : {
+              ...suggestion,
+              title,
+              summary,
+              mood: videoMood,
+            }
+      );
+    }
+
+    return (suggestions as DesignAiSuggestion[]).map((suggestion) =>
+      suggestion.id !== photoId
+        ? suggestion
+        : {
+            ...suggestion,
+            title,
+            summary,
+            palette: designPreview,
+          }
+    );
+  }, [suggestions, lookPresentation, contentType]);
+
   useEffect(() => {
     if (!open) {
       setPrompt('');
@@ -450,6 +518,23 @@ export function MarketingAiGeneratePanel({
       setStepIndex(0);
     }
   }, [open, contentType]);
+
+  // Keep stamped property palette in sync when photos/brand resolve after the first template is selected.
+  useEffect(() => {
+    if (!selectedSuggestionId) return;
+    if (!isMarketingAiPhotoPaletteSuggestion(contentType, selectedSuggestionId)) return;
+    const { tokenPalette, videoMood } = lookPresentation;
+    if (isCalendar) {
+      setCalendarPreferences((prev) => ({ ...prev, lookPalette: tokenPalette }));
+    } else if (isDesign) {
+      setDesignPreferences((prev) => ({ ...prev, lookPalette: tokenPalette }));
+    } else if (isVideo) {
+      setVideoPreferences((prev) => ({
+        ...prev,
+        lookMood: videoMood,
+      }));
+    }
+  }, [lookPresentation, selectedSuggestionId, contentType, isCalendar, isDesign, isVideo]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
@@ -483,13 +568,13 @@ export function MarketingAiGeneratePanel({
   }, [isVideo, videoPreferences.category]);
 
   const visibleSuggestions = useMemo(() => {
-    if (suggestionsExpanded || suggestions.length <= SUGGESTIONS_PREVIEW_COUNT) {
-      return suggestions;
+    if (suggestionsExpanded || resolvedSuggestions.length <= SUGGESTIONS_PREVIEW_COUNT) {
+      return resolvedSuggestions;
     }
-    return suggestions.slice(0, SUGGESTIONS_PREVIEW_COUNT);
-  }, [suggestions, suggestionsExpanded]);
+    return resolvedSuggestions.slice(0, SUGGESTIONS_PREVIEW_COUNT);
+  }, [resolvedSuggestions, suggestionsExpanded]);
 
-  const canToggleSuggestions = suggestions.length > SUGGESTIONS_PREVIEW_COUNT;
+  const canToggleSuggestions = resolvedSuggestions.length > SUGGESTIONS_PREVIEW_COUNT;
 
   const setCalendarElement = (key: keyof CalendarAiElements, value: boolean) => {
     setCalendarPreferences((prev) => ({
@@ -567,13 +652,16 @@ export function MarketingAiGeneratePanel({
     return <DesignSuggestionPreview palette={suggestion.palette} />;
   };
 
-  // Suggestions are Look vibes: fill the prompt, and for video also stamp mood
-  // colors + soft Look locks. Never touch Category/Content.
+  // Suggestions are Look vibes: fill the prompt, and stamp palette/mood locks.
+  // First template always stamps property colors (photos, else brand).
   const handleSuggestion = (
     suggestion: CalendarAiSuggestion | DesignAiSuggestion | VideoAiSuggestion
   ) => {
     setSelectedSuggestionId(suggestion.id);
     setPrompt(suggestion.prompt);
+    const isPropertyLook = isMarketingAiPhotoPaletteSuggestion(contentType, suggestion.id);
+    const tokenPalette = isPropertyLook ? lookPresentation.tokenPalette : null;
+
     if (isVideoSuggestion(suggestion)) {
       setVideoPreferences((prev) => ({
         ...prev,
@@ -585,7 +673,21 @@ export function MarketingAiGeneratePanel({
           ? { fontPairing: suggestion.lookLocks.fontPairing }
           : null),
       }));
+      return;
     }
+
+    if (isCalendarSuggestion(suggestion)) {
+      setCalendarPreferences((prev) => ({
+        ...prev,
+        lookPalette: tokenPalette ?? undefined,
+      }));
+      return;
+    }
+
+    setDesignPreferences((prev) => ({
+      ...prev,
+      lookPalette: tokenPalette ?? undefined,
+    }));
   };
 
   const handleGenerate = async () => {
@@ -787,7 +889,7 @@ export function MarketingAiGeneratePanel({
             {stepIndex === 1 ? (
               <>
                 <SuggestionsSection
-                  suggestions={suggestions}
+                  suggestions={resolvedSuggestions}
                   visibleSuggestions={visibleSuggestions}
                   canToggleSuggestions={canToggleSuggestions}
                   suggestionsExpanded={suggestionsExpanded}
@@ -807,6 +909,14 @@ export function MarketingAiGeneratePanel({
                     if (isVideo) {
                       setVideoPreferences((prev) =>
                         prev.lookMood ? { ...prev, lookMood: undefined } : prev
+                      );
+                    } else if (isCalendar) {
+                      setCalendarPreferences((prev) =>
+                        prev.lookPalette ? { ...prev, lookPalette: undefined } : prev
+                      );
+                    } else if (isDesign) {
+                      setDesignPreferences((prev) =>
+                        prev.lookPalette ? { ...prev, lookPalette: undefined } : prev
                       );
                     }
                   }}

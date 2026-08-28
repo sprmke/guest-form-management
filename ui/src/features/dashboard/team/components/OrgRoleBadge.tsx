@@ -1,28 +1,26 @@
-import {
-  getOrgRoleColor,
-  getOrgRoleLabel,
-  ORG_ROLES,
-} from '@/features/dashboard/team/lib/orgTeamConstants';
-import type { OrgRoleId } from '@/features/dashboard/team/types/orgTeam';
+import { ORG_ROLES } from '@/features/dashboard/team/lib/orgTeamConstants';
+import { getOrgRoleColor, getOrgRoleLabel } from '@/features/dashboard/team/lib/orgTeamRoles';
+import type { CustomOrgRole, OrgRoleId } from '@/features/dashboard/team/types/orgTeam';
 
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 type Props = {
   roleId: string;
+  customRoles?: CustomOrgRole[];
   muted?: boolean;
 };
 
-export function OrgRoleBadge({ roleId, muted = false }: Props) {
+export function OrgRoleBadge({ roleId, customRoles = [], muted = false }: Props) {
   return (
     <Badge
       className={cn(
         muted
           ? 'border-border bg-muted text-muted-foreground font-normal'
-          : cn('border-transparent text-white', getOrgRoleColor(roleId))
+          : cn('border-transparent text-white', getOrgRoleColor(roleId, customRoles))
       )}
     >
-      {getOrgRoleLabel(roleId)}
+      {getOrgRoleLabel(roleId, customRoles)}
     </Badge>
   );
 }
@@ -34,8 +32,6 @@ type DotProps = {
 
 export function OrgRoleDot({ roleId, className }: DotProps) {
   const config = ORG_ROLES.find((r) => r.value === roleId);
-  if (!config) {
-    return <div className={cn('size-2 shrink-0 rounded-full bg-gray-500', className)} />;
-  }
-  return <div className={cn('size-2 shrink-0 rounded-full', config.color, className)} />;
+  const color = config?.color ?? getOrgRoleColor(roleId, []);
+  return <div className={cn('size-2 shrink-0 rounded-full', color, className)} />;
 }

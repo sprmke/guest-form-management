@@ -19,12 +19,8 @@ type Props = {
   propertyName: string;
   coverUrl: string | null;
   variant?: 'editable' | 'static';
-  /** Relative time line for editable cards; omit or null to hide. */
-  lastEditedLabel?: string | null;
   /** When false, hide the Edit control (view-only Public Pages grant). */
   canEdit?: boolean;
-  /** Optional publish chip for showcase (and future surfaces). */
-  publishState?: 'published' | 'draft' | null;
   /** When true, Edit opens upgrade instead of the editor. */
   locked?: boolean;
   onUnlock?: () => void;
@@ -44,9 +40,7 @@ export function PublicPageCard({
   propertyName,
   coverUrl,
   variant: variantProp,
-  lastEditedLabel = null,
   canEdit = true,
-  publishState = null,
   locked = false,
   onUnlock,
 }: Props) {
@@ -109,26 +103,9 @@ export function PublicPageCard({
             >
               {page.label}
             </span>
-            {publishState ? (
-              <span
-                className={cn(
-                  'mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide',
-                  publishState === 'published'
-                    ? 'bg-success/15 text-success'
-                    : 'bg-muted text-muted-foreground'
-                )}
-              >
-                {publishState === 'published' ? 'Published' : 'Draft'}
-              </span>
-            ) : null}
             <p className="text-muted-foreground mt-0.5 line-clamp-2 min-h-[2.5rem] text-xs leading-relaxed">
               {page.description}
             </p>
-            {variant === 'editable' ? (
-              <p className="text-muted-foreground mt-1.5 min-h-4 text-xs">
-                {lastEditedLabel ?? '\u00a0'}
-              </p>
-            ) : null}
           </div>
         </div>
 

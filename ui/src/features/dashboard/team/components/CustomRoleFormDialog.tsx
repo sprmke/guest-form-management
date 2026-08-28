@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 
 import { ApplyTemplatePicker } from '@/features/dashboard/team/components/ApplyTemplatePicker';
 import { PermissionsTreeView } from '@/features/dashboard/team/components/PermissionsTreeView';
+import { ORG_PERMISSION_CATALOG } from '@/features/dashboard/team/lib/orgPermissionCatalog';
+import { PROPERTY_PERMISSION_CATALOG } from '@/features/dashboard/team/lib/propertyPermissionCatalog';
 import { getTeamScopeConfig, type TeamScope } from '@/features/dashboard/team/lib/teamScopeConfig';
 import type { CustomPropertyRole } from '@/features/dashboard/team/types/propertyTeam';
 
@@ -52,14 +54,17 @@ export function CustomRoleFormDialog({
   const [sensitiveResolver, setSensitiveResolver] = useState<((ok: boolean) => void) | null>(null);
 
   const isProperty = scope === 'property';
+  const isOrg = scope === 'org';
+  const usesTree = isProperty || isOrg;
+  const permissionCatalog = isOrg ? ORG_PERMISSION_CATALOG : PROPERTY_PERMISSION_CATALOG;
   const title =
     mode === 'create'
       ? isProperty
         ? 'New role'
-        : 'New custom role'
+        : 'New role'
       : isProperty
         ? 'Edit role'
-        : 'Edit custom role';
+        : 'Edit role';
   const canSubmit = name.trim().length > 0 && permissions.length > 0;
 
   const config = getTeamScopeConfig(scope);
@@ -125,7 +130,7 @@ export function CustomRoleFormDialog({
                 />
               </div>
 
-              {isProperty ? (
+              {usesTree ? (
                 <>
                   {roles.length > 0 && onPermissionsChange ? (
                     <ApplyTemplatePicker
@@ -140,6 +145,7 @@ export function CustomRoleFormDialog({
                   <PermissionsTreeView
                     permissions={permissions}
                     onChange={handleTreeChange}
+                    catalog={permissionCatalog}
                     onSensitiveEnable={requestSensitiveEnable}
                   />
                 </>

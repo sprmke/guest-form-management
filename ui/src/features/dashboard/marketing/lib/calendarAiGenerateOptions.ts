@@ -306,6 +306,12 @@ export type CalendarAiGeneratePreferences = {
   fontPairing: CalendarFontPairing | 'auto';
   backgroundMood: CalendarBackgroundMood | 'auto';
   elements: CalendarAiElements;
+  /** From the “Property colors” Look template — photos when available, else brand. */
+  lookPalette?: {
+    primary: string;
+    secondary: string;
+    accent: string;
+  };
 };
 
 export const DEFAULT_CALENDAR_AI_PREFERENCES: CalendarAiGeneratePreferences = {
@@ -327,6 +333,7 @@ export function applyCalendarAiPreferencesToTokens(
     fontPairing: preferences.fontPairing === 'auto' ? tokens.fontPairing : preferences.fontPairing,
     backgroundMood:
       preferences.backgroundMood === 'auto' ? tokens.backgroundMood : preferences.backgroundMood,
+    ...(preferences.lookPalette ? { palette: preferences.lookPalette } : {}),
   };
 }
 

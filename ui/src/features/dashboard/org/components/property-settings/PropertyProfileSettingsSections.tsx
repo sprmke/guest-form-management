@@ -90,6 +90,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { TimePicker } from '@/components/ui/time-picker';
 import type { AvailabilityCheckState } from '@/lib/availabilityCheckState';
+import { collectPropertyPhotoUrls } from '@/lib/theme/photoBrandColor';
 import { cn } from '@/lib/utils';
 
 function FieldGrid({ children }: { children: React.ReactNode }) {
@@ -351,6 +352,7 @@ export function PropertyProfileMainSections({
           disabled={lock('basic')}
           error={fieldError('property-brand-color')}
           help="Applies to this property’s dashboard pages & public-facing pages such as guest forms, email templates, and other related content."
+          photoUrls={collectPropertyPhotoUrls(draft.media)}
           onChange={(value) => {
             markFieldInteracted('property-brand-color');
             onBrandColorChange(value);

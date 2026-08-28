@@ -45,6 +45,7 @@ import { useGenerateMarketingTemplate } from '@/features/dashboard/marketing/hoo
 import { useMarketingAutoSave } from '@/features/dashboard/marketing/hooks/useMarketingAutoSave';
 import { useMarketingBookedDates } from '@/features/dashboard/marketing/hooks/useMarketingBookedDates';
 import { useMarketingCatalog } from '@/features/dashboard/marketing/hooks/useMarketingCatalog';
+import { useMarketingMediaAccent } from '@/features/dashboard/marketing/hooks/useMarketingMediaAccent';
 import { useMarketingSidebarLayout } from '@/features/dashboard/marketing/hooks/useMarketingSidebarLayout';
 import {
   saveMarketingTemplate,
@@ -251,6 +252,11 @@ export function VideoEditor({ onPublish }: Props) {
 
   const dimensions = VIDEO_FORMAT_DIMENSIONS[format];
   const brandColor = (org.settings?.brandColor as string | undefined) ?? '#e8752a';
+  const propertyPhotoUrls = useMemo(
+    () => propertyImages.filter((item) => item.type === 'image').map((item) => item.url),
+    [propertyImages]
+  );
+  const { accentColor } = useMarketingMediaAccent(propertyPhotoUrls, brandColor);
   const orgLogoUrl =
     orgSettings?.emailLogoUrl?.trim() ||
     org.logoUrl?.trim() ||
@@ -402,10 +408,10 @@ export function VideoEditor({ onPublish }: Props) {
     () =>
       resolveVideoTypographyContext(
         project?.templateId ?? selected?.id,
-        brandColor,
+        accentColor,
         project?.palette
       ),
-    [project?.templateId, project?.palette, selected?.id, brandColor]
+    [project?.templateId, project?.palette, selected?.id, accentColor]
   );
 
   const motionProfile = useMemo(
@@ -415,7 +421,7 @@ export function VideoEditor({ onPublish }: Props) {
 
   /** Preview, export, and the drag overlay all read the same resolved identity. */
   const inputProps = useMemo<VideoCompositionProps>(() => {
-    const resolvedBrandColor = typeof brandColor === 'string' ? brandColor : '#e8752a';
+    const resolvedBrandColor = typeof accentColor === 'string' ? accentColor : '#e8752a';
     if (!project) {
       // Placeholder while the project loads — let the composition resolve from its
       // own template id so the skeleton stays internally consistent.
@@ -430,7 +436,7 @@ export function VideoEditor({ onPublish }: Props) {
       typography: templateTypography,
       motionProfile,
     };
-  }, [project, brandColor, binding, format, templateTypography, motionProfile]);
+  }, [project, accentColor, binding, format, templateTypography, motionProfile]);
 
   const durationInFrames = useMemo(
     () => (project ? videoProjectDurationInFrames(project) : 150),
@@ -533,7 +539,7 @@ export function VideoEditor({ onPublish }: Props) {
         videoTemplatesForCategory(cat).map((template) => {
           // Same resolver the renderer uses, so the picker can't promise a colour
           // the video never shows.
-          const palette = videoTemplatePalette(template.id, brandColor);
+          const palette = videoTemplatePalette(template.id, accentColor);
           return {
             id: template.id,
             name: template.name,
@@ -544,7 +550,7 @@ export function VideoEditor({ onPublish }: Props) {
           };
         })
       ),
-    [format, brandColor]
+    [format, accentColor]
   );
 
   // Background pre-warm order: current category first, so it never sits
@@ -586,7 +592,7 @@ export function VideoEditor({ onPublish }: Props) {
         const cacheKey = videoPresetThumbnailKey(
           templateId,
           format,
-          brandColor,
+          accentColor,
           marketingBindingCacheKey(thumbBinding)
         );
         if (getCachedMarketingThumbnail(cacheKey)) continue;
@@ -596,7 +602,7 @@ export function VideoEditor({ onPublish }: Props) {
         // heavy Remotion capture at the same time as the one the host is
         // actually looking at, or both stall each other.
         const dataUrl = await withGlobalRenderSlot(() =>
-          renderVideoPresetThumbnail(templateId, format, thumbBinding, brandColor)
+          renderVideoPresetThumbnail(templateId, format, thumbBinding, accentColor)
         );
         if (cancelled || !dataUrl) continue;
 
@@ -615,7 +621,7 @@ export function VideoEditor({ onPublish }: Props) {
     // scan-and-render loop continuously while editing, causing jank). `binding`
     // is a stable useMemo that only changes for real property/photo changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasProjectForThumbWarm, format, formatPresetIdsForWarm, brandColor, binding]);
+  }, [hasProjectForThumbWarm, format, formatPresetIdsForWarm, accentColor, binding]);
 
   const handleExportVideo = useCallback(async () => {
     if (!project) throw new Error('No project');
@@ -838,7 +844,10 @@ export function VideoEditor({ onPublish }: Props) {
         let failedCount = 0;
         for (const variant of variants) {
           try {
-            const thumbnailDataUrl = await renderVideoProjectThumbnail(variant.project, brandColor);
+            const thumbnailDataUrl = await renderVideoProjectThumbnail(
+              variant.project,
+              accentColor
+            );
             const record = await saveMarketingTemplate(propertyId, {
               name: tokens.label,
               contentType: 'video',
@@ -908,7 +917,7 @@ export function VideoEditor({ onPublish }: Props) {
     },
     [
       binding,
-      brandColor,
+      accentColor,
       catalog,
       format,
       generateTemplate,
@@ -1101,13 +1110,13 @@ export function VideoEditor({ onPublish }: Props) {
             aspectPreset={format}
             platform={format === 'landscape' ? 'facebook' : 'instagram'}
             videoTemplateMenus="minimal"
-            brandColor={brandColor}
+            brandColor={accentColor}
             binding={binding}
             onOpenAiGenerate={() => setAiGenerateOpen(true)}
             aiGenerateBusy={aiGenerateBusy || generateTemplate.isPending}
             captureSaveThumbnail={async () => {
               if (!project) return null;
-              return captureLiveVideoProjectThumbnail(project, brandColor);
+              return captureLiveVideoProjectThumbnail(project, accentColor);
             }}
           />
         )}
@@ -1231,7 +1240,7 @@ export function VideoEditor({ onPublish }: Props) {
               onProjectChange={setProject}
               onAddScene={handleAddScene}
               isPlaying={previewPlaying}
-              brandColor={brandColor}
+              brandColor={accentColor}
             />
           </>
         ) : (
@@ -1272,6 +1281,8 @@ export function VideoEditor({ onPublish }: Props) {
         }}
         contentType="video"
         generating={aiGenerateBusy || generateTemplate.isPending}
+        propertyPhotoUrls={propertyPhotoUrls}
+        brandColor={brandColor}
         contextOptions={[
           {
             key: 'propertyPhoto',

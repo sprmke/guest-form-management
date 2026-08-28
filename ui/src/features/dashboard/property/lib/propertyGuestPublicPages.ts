@@ -55,6 +55,23 @@ export function buildPropertyGuestPublicPages(
 ): PropertyGuestPublicPage[] {
   return [
     {
+      id: 'showcase',
+      label: 'Showcase',
+      description: 'Shareable animated landing page for this property.',
+      path: guestShowcasePath(propertySlug),
+      icon: Sparkles,
+      editable: true,
+      openUsesEmbed: true,
+    },
+    {
+      id: 'stay-guide',
+      label: 'Stay Guide',
+      description: 'House rules and check-in info sent at ready-for-checkin.',
+      path: guestStayGuidePreviewPath(propertySlug, propertyId),
+      icon: BookOpen,
+      editable: true,
+    },
+    {
       id: 'listing',
       label: 'Property',
       description: 'Photos, rates, amenities, and reserve actions on your listing.',
@@ -85,23 +102,6 @@ export function buildPropertyGuestPublicPages(
       path: guestMessagesPreviewPath(propertySlug),
       icon: MessageCircle,
       editable: false,
-    },
-    {
-      id: 'stay-guide',
-      label: 'Stay Guide',
-      description: 'House rules and check-in info sent at ready-for-checkin.',
-      path: guestStayGuidePreviewPath(propertySlug, propertyId),
-      icon: BookOpen,
-      editable: true,
-    },
-    {
-      id: 'showcase',
-      label: 'Showcase',
-      description: 'Shareable animated landing page for this property.',
-      path: guestShowcasePath(propertySlug),
-      icon: Sparkles,
-      editable: true,
-      openUsesEmbed: true,
     },
     {
       id: 'sd-form',
