@@ -22,7 +22,8 @@ ui/src/features/guest/
     pages/            ← route entry components
     routes/index.tsx
     shared/components/  MarketingLayoutShell, MarketingImage, MarketingNav, …
-    properties/ developments/ forms/ guest-landing/ legal/
+    properties/ developments/ guest-landing/ legal/
+    forms/              ← FormSuccess + parkingFormCopy only (Pattern B mock forms removed)
   calendar/           ← /calendar (operational)
   form/               ← /form, /success
   sd-form/
@@ -33,14 +34,14 @@ ui/src/features/guest/
 
 ## Phase 1 vs Phase 2
 
-**Phase 1 (current):** Visual parity with PMA; **mock data**; Reserve / public forms do not hit edge functions.
+**Phase 1 (current):** Visual parity with PMA; browse/list pages still use mock or partial APIs. **Operational flows are live:** property booking (`/properties/:slug/form` → `submit-form`), parking registration (`/parkings/:slug/form` → `submit-parking-booking-request`). Pattern B mock form routes (`…/forms/:formId`) were removed — see [`docs/workflow/done/pattern-b-mock-forms-cleanup.md`](../../docs/workflow/done/pattern-b-mock-forms-cleanup.md).
 
 **Phase 2 (next):**
 
 1. Public property/development catalog API
 2. `BookingCard` Reserve → `/form?property=&checkInDate=&checkOutDate=`
 3. Property marketing calendar → `get-booked-dates`
-4. `PublicFormRenderer` → real form submission endpoint
+4. Property booking form → `submit-form` edge function (operational `/properties/:slug/form`)
 5. Replace mock images with Storage URLs from property settings
 
 ## Checklist when porting a PMA component

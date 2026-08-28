@@ -9,18 +9,19 @@ description: Resend transactional email from Edge Functions — HTML templates, 
 
 - **Provider:** Resend (`RESEND_API_KEY` edge secret)
 - **Templates:** HTML in `supabase/functions/_shared/email-templates/`
-- **Render:** `_shared/renderEmailHtml.ts`, `_shared/emailService.ts`
+- **Render:** `_shared/renderEmailHtml.ts`, `_shared/brandedEmailShell.ts`, `_shared/emailService.ts` / `propertyTemplateEmail.ts`
 - **Orchestration:** `_shared/workflowOrchestrator.ts` on status transitions
 
 No React Email package — plain HTML + placeholder replacement.
 
 ## Adding a template
 
-1. Create `supabase/functions/_shared/email-templates/my-template.html`
-2. Add fragments if reusing header/footer from `fragments/`
-3. Register sender in `emailService.ts`
-4. Add **`static_files`** entries in `supabase/config.toml` for every function that loads the template (see `supabase-edge-functions.mdc`)
-5. Preview locally: `bun run preview:emails`
+1. Prefer **body HTML** + **`renderBrandedEmailShell`** (`_shared/brandedEmailShell.ts`) for new standalone transactional mail — same shell as property template sends (`fragments/configurable-template-send.html`).
+2. Or create a full-document file under `supabase/functions/_shared/email-templates/` only when matching legacy workflow HTML.
+3. Add fragments if reusing header/footer from `fragments/`
+4. Register sender in `emailService.ts` / dedicated `*Email.ts` module
+5. Add **`static_files`** entries in `supabase/config.toml` for every function that loads the template (see `supabase-edge-functions.mdc`)
+6. Preview locally: `bun run preview:emails` (full-document workflow templates); body-only templates preview via send path / shell wrap
 
 ## Workflow emails
 

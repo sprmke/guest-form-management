@@ -79,10 +79,7 @@ export function PropertyShowcaseEditorPanel({ propertyImages }: Props) {
             </button>
           ))}
         </div>
-      </StyleSection>
-
-      <StyleSection title="Publish" defaultOpen>
-        <div className="flex min-h-11 items-center justify-between gap-3">
+        <div className="border-border mt-4 flex min-h-11 items-center justify-between gap-3 border-t pt-4">
           <Label htmlFor="showcase-published">Published</Label>
           <Switch
             id="showcase-published"

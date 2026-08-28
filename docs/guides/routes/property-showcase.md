@@ -73,7 +73,7 @@ Showcase is a one-page link you can send to guests with your property’s photos
 - Route: `/org/:orgSlug/property/:propertySlug/public-pages/showcase/edit`
 - Permission: `publicPages.showcase:edit`
 - Plan: `propertyShowcase` (Growth+) for editor entry / publish / template; `publicPagesAutosave` for autosave persistence
-- Controls: template picker, publish toggle, section reorder + visibility, copy/image overrides, columns, palette / typography / motion, undo/redo, click-section-in-preview → focus control
+- Controls: template picker + **Published** toggle, section reorder + visibility, copy/image overrides, columns, palette / typography / motion, undo/redo, click-section-in-preview → focus control
 - Preview chrome: header uses **sticky** (not viewport-fixed) inside the preview scrollport; Aurora **section progress rail** is live-site only (hidden in editor/embed so it never overlaps dashboard UI)
 
 ## API

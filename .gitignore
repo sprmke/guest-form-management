@@ -18,6 +18,7 @@
 **/.env.development.local
 **/.env.test
 **/.env.production
+**/.env-backups
 supabase/.env.dev.local
 supabase/.env.prod.local
 supabase/.env.*.local
