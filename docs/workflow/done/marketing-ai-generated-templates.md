@@ -1,14 +1,14 @@
 ---
 stage: done
 title: 'Marketing 4: AI-Generated Marketing Calendar, Design & Video Templates — Implementation Plan'
-status: in-progress
+status: done
 tags: [planning, planned-modules, marketing, templates]
-updated: 2026-08-19
+updated: 2026-08-27
 ---
 
 # Marketing 4: AI-Generated Marketing Calendar, Design & Video Templates — Implementation Plan
 
-**Status:** In progress — **calendar tab production-hardened** (edge + compiler + Generate with AI modal + fan-out save for 3 orientations + empty-prompt guards + partial-save handling). **Design tab AI generate shipped** (category/content/include options + readability hardening + new layout archetypes). **Video tab AI generate shipped** (scene-storyboard compiler + Generate with AI modal + fan-out save for 3 formats).
+**Status:** Done — calendar, design, and video AI generate shipped; generate modal UX polished (2026-08-27 stepper + validation).
 
 ### Video AI generate (2026-08-13)
 
@@ -40,7 +40,9 @@ updated: 2026-08-19
 
 ### Generate modal UX (2026-08-09)
 
-- 12 pastel Instagrammable suggestions (`calendarAiGenerateOptions.ts`); modal shows 4 by default with **View more** / **Show less**; each card has a mini palette preview
+- 12 pastel Instagrammable suggestions (`calendarAiGenerateOptions.ts`); modal shows 4 by default with **View more** / **Show less**; each card has a mini calendar-card preview (two-week bubble grid tinted by the theme palette)
+- **Suggestion preview redesign (2026-08-27):** Calendar/Design/Video Look cards no longer use abstract palette swatches — each renders a realistic mini mock of the output (calendar bubble grid; Quiet Coast editorial promo with scrim/eyebrow/headline/CTA; video frame with bottom scrim + scene filmstrip). Components: `CalendarAiGenerateVisuals.tsx`, `DesignAiGenerateVisuals.tsx`, `VideoAiGenerateVisuals.tsx`.
+- **Three-step wizard (2026-08-27):** Calendar, Design, and Video share `MarketingAiGeneratePanel` with **Content → Look → Settings** steps. Header uses Import-style segmented progress + `1/3` counter (`SegmentedStepProgress`); scroll body shows step title + description (`WizardStepHeading` / `marketingAiGenerateStepCopy`). Look step labels cards **Templates**; footer: Cancel | Back + Next (Settings: Generate). **Next** gated per step (Content message for design/video; Look template or prompt). Include toggles use bordered card list + visible switch tracks.
 - Layout / Type / Background use visual choice buttons (layout/background thumbnails, type sample glyph) with Auto default; prefs sent to edge + applied as token locks client-side
 - Include chips always visible; unavailable photo/amenities disabled with title hint
 - Header: “Creates beautiful AI generated calendars you can edit.” (Design: “…designs you can edit.”)

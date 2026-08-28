@@ -31,7 +31,7 @@ The fix (validated against the real routing/component tree, not assumed) is to m
 - `.guest-enter*` CSS keyframes (`index.css` ~808–891) and `guestEnterClass`/`navState.ts` have exactly one real consumer (`MainLayout`) for this flow. `useParkingReserve.ts` also writes `guestEnter` into nav state but nothing reads it (parking flow renders under `MarketingLayoutShell`, not `MainLayout`) — that write is already dead today and stays untouched (parking is out of scope).
 - Brand-color CSS variables are currently applied three separate ways: `MainLayout`'s own effect (from `useGuestPaymentInfo`), `GuestPublicBrandShell` wraps around both `PropertyDetailPage` _and_ redundantly around `PropertyChatPage`, and a third unrelated mechanism (`useMarketingBrandColor` → only feeds the mode-switch curtain-wipe gradient, doesn't touch `--primary`). The new shell collapses the first two into one call site.
 - Two different data sources feed "brand" chrome today: `usePublicPropertyDetail` (edge fn `get-public-property`, react-query, mock-fallback only on 404 — real data path, not purely mock) powers the property page; `useGuestPaymentInfo` (edge fn `get-guest-payment-info`) powers the booking-flow header. **Decision**: standardize header + showcase panel on `usePublicPropertyDetail`, fetched once at the shell level — it already carries name/images/brandColor/eyebrow data, avoids a second round-trip, and eliminates a real risk of the two endpoints disagreeing on name/logo for the same slug. `useGuestPaymentInfo` keeps being called directly inside the 6 pages for everything that isn't chrome (payment methods, pet/parking toggles, fees, etc.) — only the `<GuestFormBrandHeader>` JSX is removed from each.
-- `properties/:propertySlug/stay-guide` and `properties/:propertySlug/forms/:formId` are separate route trees this plan does not touch.
+- `properties/:propertySlug/stay-guide` is a separate route tree this plan does not touch. (Pattern B mock form routes `…/forms/:formId` were **removed** 2026-08-27 — see [`../done/pattern-b-mock-forms-cleanup.md`](../done/pattern-b-mock-forms-cleanup.md).)
 - Tailwind container max-width is `1400px` (`2xl` screen) — the shell frame matches the property page's existing `container mx-auto px-4 sm:px-6 lg:px-8`.
 
 ## Architecture
@@ -123,7 +123,7 @@ Showcase-panel mode transitions (full↔compact↔hidden) animate via the same d
 - Visual: no flash of default brand color between index/calendar/form (brand vars applied once, at shell level).
 - `page.emulateMedia({ reducedMotion: 'reduce' })` pass: content-pane swap and panel mode change are instant.
 - Touch targets: header back/admin/theme buttons, panel expand toggle, lightbox controls all ≥44×44px.
-- Confirm `stay-guide` and `forms/:formId` routes render identically pre/post change.
+- Confirm `stay-guide` route renders identically pre/post change.
 - Confirm `/parkings/...` flow is byte-for-byte unaffected by the `MainLayout` deletion.
 - Confirm guest-auth interrupt-and-resume (sign-in mid-Reserve/mid-Contact-host) still lands correctly with `guestEnter` dropped from the resume state payload.
 - Confirm `GuestFormSuccess.tsx` still receives `bookingData` via `location.state` after the `guestEnter` key removal from `GuestForm.tsx`'s two success-navigate calls.
