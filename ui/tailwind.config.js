@@ -20,6 +20,9 @@ module.exports = {
           'Segoe UI',
           'sans-serif',
         ],
+        outfit: ['Outfit', 'Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+        cormorant: ['Cormorant Garamond', 'Georgia', 'serif'],
+        instrument: ['Instrument Serif', 'Fraunces', 'Georgia', 'serif'],
         fraunces: ['Fraunces', 'Georgia', 'serif'],
       },
       fontSize: {

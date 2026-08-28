@@ -2,7 +2,7 @@ import { countParkingNights } from '@/features/guest/pay-parking/lib/payParkingH
 
 import { formatStayDateRange, toGuestSubmissionDate } from '@/utils/format/dates';
 
-/** ISO or booking date strings → readable range, e.g. `Aug 25 - 27, 2026`. */
+/** ISO or booking date strings → readable range, e.g. `Sep 24-28, 2026`. */
 export function formatParkingStayRange(
   checkIn: string | null | undefined,
   checkOut: string | null | undefined
