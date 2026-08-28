@@ -1,5 +1,9 @@
 /**
  * property-entitlements — GET resolved plan features for a property (read-only).
+ *
+ * Returns the full `ResolvedPropertyEntitlements` payload (every `PlanFeatures` key +
+ * plan metadata). Do not hand-pick feature fields — missing keys make the client treat
+ * paid features as off (`isFeatureEnabled` → false) even when the org is on Pro.
  */
 
 import { resolvePropertyEntitlements } from '../_shared/planEntitlements.ts';
@@ -19,28 +23,6 @@ serveAuthenticated('property-entitlements', async (req) => {
 
   const entitlements = await resolvePropertyEntitlements(propertyId);
 
-  return jsonSuccess(req, {
-    planId: entitlements.planId,
-    planCode: entitlements.planCode,
-    planName: entitlements.planName,
-    pricingModel: entitlements.pricingModel,
-    status: entitlements.status,
-    propertySubscriptionId: entitlements.propertySubscriptionId,
-    automatedBookingFlow: entitlements.automatedBookingFlow,
-    verifiedBadgeEligible: entitlements.verifiedBadgeEligible,
-    recommendedBadgeEligible: entitlements.recommendedBadgeEligible,
-    telegramNotifications: entitlements.telegramNotifications,
-    teamManagement: entitlements.teamManagement,
-    searchVisibilityTier: entitlements.searchVisibilityTier,
-    marketingPublishLimitPerGroup: entitlements.marketingPublishLimitPerGroup,
-    aiValidations: entitlements.aiValidations,
-    aiMonthlyCreditAllowance: entitlements.aiMonthlyCreditAllowance,
-    marketingStudio: entitlements.marketingStudio,
-    customPages: entitlements.customPages,
-    aiDashboardAssistant: entitlements.aiDashboardAssistant,
-    aiReceptionist: entitlements.aiReceptionist,
-    aiMarketingGeneration: entitlements.aiMarketingGeneration,
-    aiChatAutoReply: entitlements.aiChatAutoReply,
-    fullyManagedByPlatform: entitlements.fullyManagedByPlatform,
-  });
+  // Spread the full resolved row — every PlanFeatures key must reach the client.
+  return jsonSuccess(req, { ...entitlements });
 });

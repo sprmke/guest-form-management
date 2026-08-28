@@ -1,35 +1,63 @@
 /**
- * Resolve the org/property/parking scope a support ticket was filed from.
- * Help & Support is visible to every team member (no dedicated permission gate),
- * mirroring the baseline access org/property/parking members already have for
- * Dashboard — see docs/workflow/in-progress/help-support-center.md "Nav + routing wiring".
+ * Resolve support-ticket scope for host (org/property/parking) or guest explore (no org).
+ * Host Help & Support: every team member. Guest Contact /account/tickets: any signed-in user.
  */
 
 import {
   type AuthenticatedUser,
   type OrgRow,
+  verifyAuthenticatedUser,
   verifyOrgAccess,
   verifyParkingTeamAccess,
   verifyPropertyAccess,
 } from './orgAuth.ts';
 
+export type SupportTicketChannel = 'host' | 'guest';
+
 export type SupportTicketScope = {
   user: AuthenticatedUser;
-  org: OrgRow;
+  channel: SupportTicketChannel;
+  org: OrgRow | null;
   propertyId: string | null;
   propertyName: string | null;
   parkingId: string | null;
   parkingName: string | null;
 };
 
+export type SupportTicketScopeInput = {
+  orgSlug?: string | null;
+  orgId?: string | null;
+  propertyId?: string | null;
+  parkingId?: string | null;
+};
+
+function hasHostScope(scope: SupportTicketScopeInput): boolean {
+  return Boolean(scope.propertyId || scope.parkingId || scope.orgSlug || scope.orgId);
+}
+
+/** Host org-scoped access, or guest channel when no org/property/parking is provided. */
 export async function resolveSupportTicketScope(
   req: Request,
-  scope: { orgSlug?: string | null; orgId?: string | null; propertyId?: string | null; parkingId?: string | null }
+  scope: SupportTicketScopeInput
 ): Promise<SupportTicketScope> {
+  if (!hasHostScope(scope)) {
+    const user = await verifyAuthenticatedUser(req);
+    return {
+      user,
+      channel: 'guest',
+      org: null,
+      propertyId: null,
+      propertyName: null,
+      parkingId: null,
+      parkingName: null,
+    };
+  }
+
   if (scope.propertyId) {
     const access = await verifyPropertyAccess(req, scope.propertyId);
     return {
       user: access.user,
+      channel: 'host',
       org: access.org,
       propertyId: access.property.id,
       propertyName: access.property.name,
@@ -42,6 +70,7 @@ export async function resolveSupportTicketScope(
     const access = await verifyParkingTeamAccess(req, scope.parkingId);
     return {
       user: access.user,
+      channel: 'host',
       org: access.org,
       propertyId: null,
       propertyName: null,
@@ -56,6 +85,7 @@ export async function resolveSupportTicketScope(
   });
   return {
     user: orgAccess.user,
+    channel: 'host',
     org: orgAccess.org,
     propertyId: null,
     propertyName: null,

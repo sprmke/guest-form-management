@@ -5,28 +5,21 @@
 import { resolveAppSettings } from './appSettings.ts';
 import { formatResendFromAddress, loadPropertyEmailBranding } from './propertyEmailBranding.ts';
 import { renderPropertyTemplateSendEmail } from './propertyTemplateEmail.ts';
+import { createServiceClient } from './orgAuth.ts';
 import {
-  BUILTIN_ROLE_EMAIL_DESCRIPTIONS,
-  type BuiltinPropertyRole,
-  isBuiltinPropertyRole,
+  isPropertyAdminRoleId,
   normalizePermissionIds,
+  PROPERTY_ADMIN_EMAIL_DESCRIPTION,
   type PropertyCustomRoleRow,
 } from './propertyTeamPermissions.ts';
 import { escapeHtml, withEmailShellStyleVars } from './renderEmailHtml.ts';
-import { createServiceClient } from './orgAuth.ts';
-
-const BUILTIN_ROLE_LABELS: Record<BuiltinPropertyRole, string> = {
-  MANAGER: 'Manager',
-  STAFF: 'Staff',
-  VIEWER: 'Viewer',
-};
 
 function resolveRoleLabel(
   roleId: string,
   customRolesById: Map<string, PropertyCustomRoleRow>
 ): string {
-  if (isBuiltinPropertyRole(roleId)) {
-    return BUILTIN_ROLE_LABELS[roleId];
+  if (isPropertyAdminRoleId(roleId)) {
+    return 'Admin';
   }
   return customRolesById.get(roleId)?.name ?? 'Custom';
 }
@@ -35,12 +28,12 @@ function resolveRoleDescription(
   roleId: string,
   customRolesById: Map<string, PropertyCustomRoleRow>
 ): string {
-  if (isBuiltinPropertyRole(roleId)) {
-    return BUILTIN_ROLE_EMAIL_DESCRIPTIONS[roleId];
+  if (isPropertyAdminRoleId(roleId)) {
+    return PROPERTY_ADMIN_EMAIL_DESCRIPTION;
   }
   const custom = customRolesById.get(roleId);
   if (custom) {
-    return 'This custom role grants scoped access to this property based on assigned permissions.';
+    return 'This permission template grants scoped access to this property based on assigned permissions.';
   }
   return 'This role grants access to this property.';
 }

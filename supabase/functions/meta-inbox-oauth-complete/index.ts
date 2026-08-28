@@ -19,7 +19,7 @@ serveAuthenticated('meta-inbox-oauth-complete', async (req, user) => {
   }
 
   const body = (await readJsonBody(req)) as Record<string, unknown>;
-  const ctx = await resolveInboxAccess(req, 'manage', body);
+  const ctx = await resolveInboxAccess(req, 'channels_add', body);
   const pickerState = String(body.pickerState ?? '').trim();
   const pageId = String(body.pageId ?? '').trim();
   if (!pickerState || !pageId) {

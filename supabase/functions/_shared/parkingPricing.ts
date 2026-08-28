@@ -9,6 +9,8 @@ import {
   insertParkingBlockedRange,
   loadParkingBlockedDateKeys,
 } from './parkingBlockedDates.ts';
+import { resolveParkingPlatformSettings } from './parkingPlatformSettings.ts';
+import { ensureParkingDirectBookingToken } from './parkingDirectLink.ts';
 
 export const DEFAULT_PARKING_WEEKDAY = 300;
 export const DEFAULT_PARKING_WEEKEND = 400;
@@ -19,6 +21,20 @@ export type ParkingPricingDto = {
   dateOverrides: Record<string, number>;
   bookedDateKeys: string[];
   blockedDateKeys: string[];
+  /**
+   * Live super-admin-configured guest rate cap (Phase 4) — a host rate at or above this is a
+   * guaranteed-loss match, excluded from the match pool entirely. Host-readable here since
+   * `platform-parking-settings` itself is super-admin-only.
+   */
+  guestRateCapWeekday: number;
+  guestRateCapWeekend: number;
+  /** Live super-admin-configured commission %, for the host-facing fee/net-payout breakdown. */
+  commissionPct: number;
+  /** Phase 8 — commission % applied to bookings made through this listing's direct link. */
+  directCommissionPct: number;
+  /** Phase 8 — opaque token + slug for building the shareable direct-booking link. */
+  directBookingToken: string;
+  directBookingSlug: string;
 };
 
 export type ParkingPricingPatch = {
@@ -145,6 +161,25 @@ function validateDateKey(date: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(date);
 }
 
+/** Fri/Sat/Sun — mirrors the weekend definition used across the parking match engine. */
+function isWeekendRateDay(dateKey: string): boolean {
+  const day = new Date(`${dateKey}T00:00:00`).getDay();
+  return day === 0 || day === 5 || day === 6;
+}
+
+/**
+ * Phase 2 decision D5 / Phase 3 fast-follow: a host rate at or above the guest rate cap is a
+ * guaranteed-loss match, so it's rejected outright here — never silently clamped. Applies to
+ * the base weekday/weekend rate and to per-date overrides alike.
+ */
+function assertWithinGuestRateCap(value: number, cap: number, label: string): void {
+  if (value > cap) {
+    throw new Error(
+      `${label} of ₱${value} is above the platform's guest rate cap of ₱${cap} and can't be saved.`
+    );
+  }
+}
+
 async function loadDateOverrides(parkingId: string): Promise<Record<string, number>> {
   const supabase = createServiceClient();
   const { data, error } = await supabase
@@ -191,17 +226,26 @@ export async function loadParkingPricing(
     throw new Error(`Failed to load parking pricing: ${error.message}`);
   }
 
-  const [dateOverrides, bookedDateKeys, blockedDateKeys] = await Promise.all([
-    loadDateOverrides(parkingId),
-    loadParkingBookedDateKeys(parkingId, options?.monthStart, options?.monthEnd),
-    loadParkingBlockedDateKeys(parkingId, options?.monthStart, options?.monthEnd),
-  ]);
+  const [dateOverrides, bookedDateKeys, blockedDateKeys, platformSettings, directLink] =
+    await Promise.all([
+      loadDateOverrides(parkingId),
+      loadParkingBookedDateKeys(parkingId, options?.monthStart, options?.monthEnd),
+      loadParkingBlockedDateKeys(parkingId, options?.monthStart, options?.monthEnd),
+      resolveParkingPlatformSettings(),
+      ensureParkingDirectBookingToken(parkingId),
+    ]);
 
   return {
     ...rowToDefaults(row as ParkingSettingsPricingRow | null),
     dateOverrides,
     bookedDateKeys,
     blockedDateKeys,
+    guestRateCapWeekday: platformSettings.guestRateWeekday,
+    guestRateCapWeekend: platformSettings.guestRateWeekend,
+    commissionPct: platformSettings.commissionPct,
+    directCommissionPct: platformSettings.directCommissionPct,
+    directBookingToken: directLink.token,
+    directBookingSlug: directLink.slug,
   };
 }
 
@@ -212,18 +256,32 @@ export async function saveParkingPricing(
 ): Promise<ParkingPricingDto> {
   await ensureParkingSettings(parkingId);
   const supabase = createServiceClient();
+  const platformSettings = await resolveParkingPlatformSettings();
 
   const settingsPatch: Record<string, unknown> = {};
-  const fields: Array<[keyof ParkingPricingPatch, string, string]> = [
-    ['weekdayNightlyRate', 'weekday_nightly_rate', 'Weekday rate'],
-    ['weekendNightlyRate', 'weekend_nightly_rate', 'Weekend rate'],
+  const fields: Array<[keyof ParkingPricingPatch, string, string, number]> = [
+    [
+      'weekdayNightlyRate',
+      'weekday_nightly_rate',
+      'Weekday rate',
+      platformSettings.guestRateWeekday,
+    ],
+    [
+      'weekendNightlyRate',
+      'weekend_nightly_rate',
+      'Weekend rate',
+      platformSettings.guestRateWeekend,
+    ],
   ];
 
-  for (const [patchKey, dbKey, label] of fields) {
+  for (const [patchKey, dbKey, label, cap] of fields) {
     if (patch[patchKey] === undefined) continue;
     const validated = validateMoneyField(patch[patchKey], label);
     if (typeof validated === 'string') throw new Error(validated);
-    if (validated !== null) settingsPatch[dbKey] = validated;
+    if (validated !== null) {
+      assertWithinGuestRateCap(validated, cap, label);
+      settingsPatch[dbKey] = validated;
+    }
   }
 
   if (Object.keys(settingsPatch).length > 0) {
@@ -255,6 +313,10 @@ export async function saveParkingPricing(
       const validated = validateMoneyField(rate, 'Override rate');
       if (typeof validated === 'string') throw new Error(validated);
       if (validated === null) throw new Error('Override rate is required');
+      const cap = isWeekendRateDay(date)
+        ? platformSettings.guestRateWeekend
+        : platformSettings.guestRateWeekday;
+      assertWithinGuestRateCap(validated, cap, `Override rate for ${date}`);
       return {
         parking_id: parkingId,
         pricing_date: date,

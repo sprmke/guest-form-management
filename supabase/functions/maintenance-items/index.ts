@@ -17,7 +17,16 @@ import { resolveScopedPropertyAccess } from '../_shared/propertyScope.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('maintenance-items', async (req, user) => {
-  const permission = req.method === 'GET' ? 'maintenance:view' : 'maintenance:edit';
+  const permission =
+    req.method === 'GET'
+      ? ('maintenance:view' as const)
+      : req.method === 'POST'
+        ? ('maintenance.reminders:add' as const)
+        : req.method === 'PATCH'
+          ? ('maintenance.reminders:edit' as const)
+          : req.method === 'DELETE'
+            ? ('maintenance.reminders:delete' as const)
+            : ('maintenance:view' as const);
   const { property } = await resolveScopedPropertyAccess(req, permission);
   const propertyId = property.id;
   const email = user.email;

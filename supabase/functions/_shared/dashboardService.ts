@@ -590,7 +590,8 @@ export async function computeDashboardStats(
       scopedQueries.push(
         supabase
           .from('guest_submissions')
-          .select('*, parkings!inner(organization_id)')
+          // Disambiguate from guest_submissions.parking_pinned_id → parkings (broadcast flow).
+          .select('*, parkings!guest_submissions_parking_id_fkey!inner(organization_id)')
           .eq('parkings.organization_id', params.orgId as string)
       );
     }
@@ -664,14 +665,6 @@ export async function computeDashboardStats(
     const status = String(row.status ?? '');
     if (CANCELLED.has(status)) continue;
 
-    const breakdownStatus = statusForBreakdown(status);
-    if (breakdownStatus) {
-      statusBreakdownCounts.set(
-        breakdownStatus,
-        (statusBreakdownCounts.get(breakdownStatus) ?? 0) + 1
-      );
-    }
-
     const checkInIso = checkInDateToIso(String(row.check_in_date ?? ''));
     const checkOutIso = checkInDateToIso(String(row.check_out_date ?? ''));
     if (!checkInIso) continue;
@@ -717,6 +710,14 @@ export async function computeDashboardStats(
     }
 
     if (checkInInRange) {
+      const breakdownStatus = statusForBreakdown(status);
+      if (breakdownStatus) {
+        statusBreakdownCounts.set(
+          breakdownStatus,
+          (statusBreakdownCounts.get(breakdownStatus) ?? 0) + 1
+        );
+      }
+
       const bucketKey = bucketKeyForDate(checkInIso, from, to);
       if (bucketKey && trendBookingsByKey.has(bucketKey)) {
         trendBookingsByKey.set(bucketKey, (trendBookingsByKey.get(bucketKey) ?? 0) + 1);

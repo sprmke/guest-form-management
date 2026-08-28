@@ -5,14 +5,8 @@
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
 import { loadAuthUserProfile } from './authUserProfile.ts';
-import { isBuiltinPropertyRole, type BuiltinPropertyRole } from './propertyTeamPermissions.ts';
+import { isCustomRoleId, isPropertyAdminRoleId } from './propertyTeamPermissions.ts';
 import { isBuiltinParkingRole, type BuiltinParkingRole } from './parkingTeamPermissions.ts';
-
-const PROPERTY_ROLE_LABELS: Record<BuiltinPropertyRole, string> = {
-  MANAGER: 'Manager',
-  STAFF: 'Staff',
-  VIEWER: 'Viewer',
-};
 
 const PARKING_ROLE_LABELS: Record<BuiltinParkingRole, string> = {
   MANAGER: 'Manager',
@@ -65,20 +59,22 @@ export async function resolveSettingsChangeActor(opts: {
 
     const roleId = (propertyMember?.role_id as string | undefined)?.trim() ?? '';
     if (roleId) {
-      if (isBuiltinPropertyRole(roleId)) {
-        return { name, email, roleLabel: PROPERTY_ROLE_LABELS[roleId] };
+      if (isPropertyAdminRoleId(roleId)) {
+        return { name, email, roleLabel: 'Admin' };
       }
-      const { data: custom } = await opts.supabase
-        .from('property_custom_roles')
-        .select('name')
-        .eq('id', roleId)
-        .eq('property_id', opts.propertyId)
-        .maybeSingle();
-      return {
-        name,
-        email,
-        roleLabel: (custom?.name as string | undefined)?.trim() || 'Team member',
-      };
+      if (isCustomRoleId(roleId)) {
+        const { data: custom } = await opts.supabase
+          .from('property_custom_roles')
+          .select('name')
+          .eq('id', roleId)
+          .eq('property_id', opts.propertyId)
+          .maybeSingle();
+        return {
+          name,
+          email,
+          roleLabel: (custom?.name as string | undefined)?.trim() || 'Team member',
+        };
+      }
     }
   }
 

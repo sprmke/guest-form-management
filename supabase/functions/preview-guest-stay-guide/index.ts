@@ -15,7 +15,7 @@ serveAuthenticated('preview-guest-stay-guide', async (req) => {
     return jsonError(req, `Method ${req.method} not allowed`, 405);
   }
 
-  const { property } = await resolveScopedPropertyAccess(req, 'templates:view');
+  const { property } = await resolveScopedPropertyAccess(req, 'publicPages:view');
   const url = new URL(req.url);
   const propertySlug = (url.searchParams.get('property') ?? '').trim() || property.slug;
 

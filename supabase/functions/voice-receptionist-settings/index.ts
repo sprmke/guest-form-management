@@ -1,6 +1,6 @@
 /**
  * voice-receptionist-settings — Property-scoped GET/PATCH for AI voice receptionist config.
- * Auth: property team member (settings:view for GET, settings:edit for PATCH).
+ * Auth: property team member (settings:view for GET, settings.voiceReceptionist:edit for PATCH).
  */
 
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
@@ -14,7 +14,7 @@ import {
 } from '../_shared/voiceReceptionistService.ts';
 
 serveAuthenticated('voice-receptionist-settings', async (req) => {
-  const permission = req.method === 'GET' ? 'settings:view' : 'settings:edit';
+  const permission = req.method === 'GET' ? 'settings:view' : 'settings.voiceReceptionist:edit';
   const { property } = await resolveScopedPropertyAccess(req, permission);
 
   if (req.method === 'GET') {

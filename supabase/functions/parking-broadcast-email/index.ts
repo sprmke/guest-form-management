@@ -83,7 +83,7 @@ serve(async (req) => {
       });
     }
 
-    await resolveScopedPropertyAccess(req, 'bookings:workflow', bookingPropertyId);
+    await resolveScopedPropertyAccess(req, 'bookings.detail.workflow:edit', bookingPropertyId);
 
     // ── 4. Guard: booking must require parking ─────────────────────────────────
     if (!booking.need_parking) {

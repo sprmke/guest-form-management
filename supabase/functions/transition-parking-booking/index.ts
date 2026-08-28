@@ -41,8 +41,9 @@ serveAuthenticated('transition-parking-booking', async (req) => {
   if (!isParkingStatus(fromStatus)) {
     return jsonError(req, `Unknown parking status: ${fromStatus}`);
   }
-  // PENDING_HOST_ACCEPTANCE only resolves via claim/decline/expire — never a plain transition.
-  if (fromStatus === 'PENDING_HOST_ACCEPTANCE') {
+  // PENDING_HOST_ACCEPTANCE only resolves via claim/decline/expire; PENDING_PAYMENT only via
+  // webhook fulfillment, payment-TTL release, or guest cancel — never a plain transition.
+  if (fromStatus === 'PENDING_HOST_ACCEPTANCE' || fromStatus === 'PENDING_PAYMENT') {
     return jsonError(req, `Cannot transition from ${fromStatus} to ${toStatus}`);
   }
   if (!canTransition(fromStatus, toStatus)) {

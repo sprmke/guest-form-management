@@ -8,11 +8,12 @@ import {
   upsertAiPlatformPropertySettings,
 } from '../_shared/aiUsageService.ts';
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
+import { catchPlanFeatureError, requirePropertyFeature } from '../_shared/planEntitlements.ts';
 import { resolveScopedPropertyAccess } from '../_shared/propertyScope.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('ai-platform-property-settings', async (req, user) => {
-  const permission = req.method === 'GET' ? 'settings:view' : 'settings:edit';
+  const permission = req.method === 'GET' ? 'settings:view' : 'settings.aiOverrides:edit';
   const { property } = await resolveScopedPropertyAccess(req, permission);
 
   if (req.method === 'GET') {
@@ -21,6 +22,13 @@ serveAuthenticated('ai-platform-property-settings', async (req, user) => {
   }
 
   if (req.method === 'PATCH') {
+    try {
+      await requirePropertyFeature(property.id, 'aiMonthlyCreditAllowance');
+    } catch (err) {
+      const planErr = catchPlanFeatureError(req, err);
+      if (planErr) return planErr;
+      throw err;
+    }
     const body = await readJsonBody(req);
     if (body.enabled !== undefined && typeof body.enabled !== 'boolean') {
       return jsonError(req, 'enabled must be a boolean when provided', 400);

@@ -1,6 +1,6 @@
 /**
  * property-templates-settings — Admin GET/PATCH for property template content.
- * Auth: verifyAdminJwt
+ * Auth: Phase 5 granular templates.* leaves (+ publicPagesAutosaveGate for page-editor autosave).
  */
 
 import {
@@ -18,145 +18,177 @@ import {
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
 import { catchPlanFeatureError, requirePropertyFeature } from '../_shared/planEntitlements.ts';
 import { resolveScopedPropertyAccess } from '../_shared/propertyScope.ts';
+import type { TeamPermissionId } from '../_shared/propertyTeamPermissions.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
-serveAuthenticated('property-templates-settings', async (req) => {
-  const permission = req.method === 'GET' ? 'templates:view' : 'templates:edit';
-  const { property } = await resolveScopedPropertyAccess(req, permission);
-  const propertyId = property.id;
+async function maybeGatePublicPagesAutosave(
+  req: Request,
+  propertyId: string,
+  body: Record<string, unknown>
+): Promise<Response | null> {
+  if (body.publicPagesAutosaveGate !== true) return null;
+  try {
+    await requirePropertyFeature(propertyId, 'publicPagesAutosave');
+    return null;
+  } catch (err) {
+    return catchPlanFeatureError(req, err);
+  }
+}
 
+serveAuthenticated('property-templates-settings', async (req) => {
   if (req.method === 'GET') {
-    const data = await serializePropertyTemplatesForAdmin(propertyId);
+    const { property } = await resolveScopedPropertyAccess(req, 'templates:view');
+    const data = await serializePropertyTemplatesForAdmin(property.id);
     return jsonSuccess(req, data);
   }
 
-  if (req.method === 'PATCH') {
-    const body = await readJsonBody(req);
+  if (req.method !== 'PATCH') {
+    return jsonError(req, 'Method not allowed', 405);
+  }
 
-    if (body.action === 'delete') {
-      const templateKey = typeof body.templateKey === 'string' ? body.templateKey.trim() : '';
-      if (!isCustomTemplateKey(templateKey)) {
-        return jsonError(req, 'Only custom templates can be deleted', 400);
-      }
-      await deletePropertyTemplateRow(propertyId, templateKey);
-      const data = await serializePropertyTemplatesForAdmin(propertyId);
-      return jsonSuccess(req, data);
-    }
+  const body = await readJsonBody(req);
 
-    if (body.action === 'reset') {
-      const templateKey = typeof body.templateKey === 'string' ? body.templateKey.trim() : '';
-      if (!isBuiltinPropertyTemplateKey(templateKey)) {
-        return jsonError(req, 'Only built-in templates can be reset', 400);
-      }
-      const builtin = getBuiltinPropertyTemplate(templateKey)!;
-      await upsertPropertyTemplateRow({
-        propertyId,
-        templateKey,
-        category: builtin.category,
-        content: builtin.defaultContent,
-        ...(builtin.category === 'standard' ? { sectionImageUrl: null } : {}),
-      });
-      const data = await serializePropertyTemplatesForAdmin(propertyId);
-      return jsonSuccess(req, data);
-    }
-
-    if (body.action === 'create') {
-      try {
-        await requirePropertyFeature(propertyId, 'customTemplates');
-      } catch (err) {
-        const planErr = catchPlanFeatureError(req, err);
-        if (planErr) return planErr;
-        throw err;
-      }
-
-      const name = typeof body.name === 'string' ? body.name : '';
-      const content = typeof body.content === 'string' ? body.content : '';
-      const nameErr = validateCustomTemplateName(name);
-      if (nameErr) return jsonError(req, nameErr, 400);
-      const contentErr = validateTemplateContent(content);
-      if (contentErr) return jsonError(req, contentErr, 400);
-
-      const customCount = await countCustomTemplates(propertyId);
-      if (customCount >= MAX_CUSTOM_TEMPLATES) {
-        return jsonError(req, `Maximum ${MAX_CUSTOM_TEMPLATES} custom templates allowed`, 400);
-      }
-
-      const templateKey = `custom-${crypto.randomUUID()}`;
-      await upsertPropertyTemplateRow({
-        propertyId,
-        templateKey,
-        category: 'custom',
-        name: name.trim(),
-        content,
-      });
-      const data = await serializePropertyTemplatesForAdmin(propertyId);
-      return jsonSuccess(req, data);
-    }
-
+  if (body.action === 'delete') {
+    const { property } = await resolveScopedPropertyAccess(req, 'templates.custom:delete');
+    const gate = await maybeGatePublicPagesAutosave(req, property.id, body);
+    if (gate) return gate;
     const templateKey = typeof body.templateKey === 'string' ? body.templateKey.trim() : '';
-    const content = typeof body.content === 'string' ? body.content : null;
-    const sectionImageUrl =
-      body.sectionImageUrl === null || typeof body.sectionImageUrl === 'string'
-        ? (body.sectionImageUrl as string | null)
-        : undefined;
-
-    if (!templateKey) {
-      return jsonError(req, 'templateKey is required', 400);
+    if (!isCustomTemplateKey(templateKey)) {
+      return jsonError(req, 'Only custom templates can be deleted', 400);
     }
-    if (content === null) {
-      return jsonError(req, 'content is required', 400);
+    await deletePropertyTemplateRow(property.id, templateKey);
+    const data = await serializePropertyTemplatesForAdmin(property.id);
+    return jsonSuccess(req, data);
+  }
+
+  if (body.action === 'reset') {
+    const templateKey = typeof body.templateKey === 'string' ? body.templateKey.trim() : '';
+    if (!isBuiltinPropertyTemplateKey(templateKey)) {
+      return jsonError(req, 'Only built-in templates can be reset', 400);
+    }
+    const builtin = getBuiltinPropertyTemplate(templateKey)!;
+    const resetPerm: TeamPermissionId =
+      builtin.category === 'email' ? 'templates.email:edit' : 'templates.standard:edit';
+    const { property } = await resolveScopedPropertyAccess(req, resetPerm);
+    const gate = await maybeGatePublicPagesAutosave(req, property.id, body);
+    if (gate) return gate;
+    await upsertPropertyTemplateRow({
+      propertyId: property.id,
+      templateKey,
+      category: builtin.category,
+      content: builtin.defaultContent,
+      ...(builtin.category === 'standard' ? { sectionImageUrl: null } : {}),
+    });
+    const data = await serializePropertyTemplatesForAdmin(property.id);
+    return jsonSuccess(req, data);
+  }
+
+  if (body.action === 'create') {
+    const { property } = await resolveScopedPropertyAccess(req, 'templates.custom:add');
+    try {
+      await requirePropertyFeature(property.id, 'customTemplates');
+    } catch (err) {
+      const planErr = catchPlanFeatureError(req, err);
+      if (planErr) return planErr;
+      throw err;
     }
 
+    const name = typeof body.name === 'string' ? body.name : '';
+    const content = typeof body.content === 'string' ? body.content : '';
+    const nameErr = validateCustomTemplateName(name);
+    if (nameErr) return jsonError(req, nameErr, 400);
     const contentErr = validateTemplateContent(content);
     if (contentErr) return jsonError(req, contentErr, 400);
 
-    if (isCustomTemplateKey(templateKey)) {
+    const customCount = await countCustomTemplates(property.id);
+    if (customCount >= MAX_CUSTOM_TEMPLATES) {
+      return jsonError(req, `Maximum ${MAX_CUSTOM_TEMPLATES} custom templates allowed`, 400);
+    }
+
+    const templateKey = `custom-${crypto.randomUUID()}`;
+    await upsertPropertyTemplateRow({
+      propertyId: property.id,
+      templateKey,
+      category: 'custom',
+      name: name.trim(),
+      content,
+    });
+    const data = await serializePropertyTemplatesForAdmin(property.id);
+    return jsonSuccess(req, data);
+  }
+
+  const templateKey = typeof body.templateKey === 'string' ? body.templateKey.trim() : '';
+  const content = typeof body.content === 'string' ? body.content : null;
+  const sectionImageUrl =
+    body.sectionImageUrl === null || typeof body.sectionImageUrl === 'string'
+      ? (body.sectionImageUrl as string | null)
+      : undefined;
+
+  if (!templateKey) {
+    return jsonError(req, 'templateKey is required', 400);
+  }
+  if (content === null) {
+    return jsonError(req, 'content is required', 400);
+  }
+
+  const contentErr = validateTemplateContent(content);
+  if (contentErr) return jsonError(req, contentErr, 400);
+
+  if (isCustomTemplateKey(templateKey)) {
+    const { property } = await resolveScopedPropertyAccess(req, 'templates.custom:edit');
+    const gate = await maybeGatePublicPagesAutosave(req, property.id, body);
+    if (gate) return gate;
+    try {
+      await requirePropertyFeature(property.id, 'customTemplates');
+    } catch (err) {
+      const planErr = catchPlanFeatureError(req, err);
+      if (planErr) return planErr;
+      throw err;
+    }
+    const name = typeof body.name === 'string' ? body.name.trim() : '';
+    if (name) {
+      const nameErr = validateCustomTemplateName(name);
+      if (nameErr) return jsonError(req, nameErr, 400);
+    }
+    await upsertPropertyTemplateRow({
+      propertyId: property.id,
+      templateKey,
+      category: 'custom',
+      name: name || undefined,
+      content,
+    });
+    const data = await serializePropertyTemplatesForAdmin(property.id);
+    return jsonSuccess(req, data);
+  }
+
+  if (isBuiltinPropertyTemplateKey(templateKey)) {
+    const builtin = getBuiltinPropertyTemplate(templateKey)!;
+    const editPerm: TeamPermissionId =
+      builtin.category === 'email' ? 'templates.email:edit' : 'templates.standard:edit';
+    const { property } = await resolveScopedPropertyAccess(req, editPerm);
+    const gate = await maybeGatePublicPagesAutosave(req, property.id, body);
+    if (gate) return gate;
+    if (builtin.category === 'email') {
       try {
-        await requirePropertyFeature(propertyId, 'customTemplates');
+        await requirePropertyFeature(property.id, 'customTemplates');
       } catch (err) {
         const planErr = catchPlanFeatureError(req, err);
         if (planErr) return planErr;
         throw err;
       }
-      const name = typeof body.name === 'string' ? body.name.trim() : '';
-      if (name) {
-        const nameErr = validateCustomTemplateName(name);
-        if (nameErr) return jsonError(req, nameErr, 400);
-      }
-      await upsertPropertyTemplateRow({
-        propertyId,
-        templateKey,
-        category: 'custom',
-        name: name || undefined,
-        content,
-      });
-    } else if (isBuiltinPropertyTemplateKey(templateKey)) {
-      const builtin = getBuiltinPropertyTemplate(templateKey)!;
-      if (builtin.category === 'email') {
-        try {
-          await requirePropertyFeature(propertyId, 'customTemplates');
-        } catch (err) {
-          const planErr = catchPlanFeatureError(req, err);
-          if (planErr) return planErr;
-          throw err;
-        }
-      }
-      await upsertPropertyTemplateRow({
-        propertyId,
-        templateKey,
-        category: builtin.category,
-        content,
-        ...(builtin.category === 'standard' && sectionImageUrl !== undefined
-          ? { sectionImageUrl }
-          : {}),
-      });
-    } else {
-      return jsonError(req, 'Unknown template key', 400);
     }
-
-    const data = await serializePropertyTemplatesForAdmin(propertyId);
+    await upsertPropertyTemplateRow({
+      propertyId: property.id,
+      templateKey,
+      category: builtin.category,
+      content,
+      ...(builtin.category === 'standard' && sectionImageUrl !== undefined
+        ? { sectionImageUrl }
+        : {}),
+    });
+    const data = await serializePropertyTemplatesForAdmin(property.id);
     return jsonSuccess(req, data);
   }
 
-  return jsonError(req, 'Method not allowed', 405);
+  return jsonError(req, 'Unknown template key', 400);
 });

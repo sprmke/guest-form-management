@@ -3,6 +3,7 @@
  * Preview uses sample HTML; sends use booking-specific HTML from emailService.
  */
 
+import type { AppSettingsResolved } from './appSettings.ts';
 import { buildSocialContactMentionsHtml, type GuestFacingContactInfo } from './guestContactInfo.ts';
 import type { PropertyEmailBranding } from './propertyEmailBranding.ts';
 import { formatPhilippineMobileDisplay } from './fieldValidation.ts';
@@ -332,6 +333,8 @@ export function buildBookingAcknowledgementFlowSectionHtml(input: {
   checkOut: string;
   brandColor: string;
   contact: GuestFacingContactInfo;
+  /** Phase 7 — self-serve parking CTA, shown only when set (guest signaled need_parking). */
+  parkingUrl?: string | null;
 }): string {
   const unit = escapeHtml(input.unitLabel);
   const checkIn = escapeHtml(input.checkIn);
@@ -353,7 +356,24 @@ export function buildBookingAcknowledgementFlowSectionHtml(input: {
     'Once your GAF is approved, we will send you a <strong>Booking Confirmation email</strong> with all the details you need for your arrival.',
     input.brandColor
   );
-  return `${summary}${notifySectionTitle("What's next", input.brandColor)}${step1}${stepRowGap()}${step2}${stepRowGap()}${step3}`;
+  const parkingCallout = buildParkingSelfServeCalloutHtml(input.parkingUrl);
+  return `${summary}${notifySectionTitle("What's next", input.brandColor)}${step1}${stepRowGap()}${step2}${stepRowGap()}${step3}${parkingCallout}`;
+}
+
+/**
+ * Phase 7 — guest signaled parking interest on the form but pricing/reservation now happens
+ * through the marketplace, not this email. Reuses the `.callout-parking` fragment CSS already
+ * shipped in every property template (previously unused in any generated HTML).
+ */
+function buildParkingSelfServeCalloutHtml(parkingUrl: string | null | undefined): string {
+  const url = parkingUrl?.trim();
+  if (!url) return '';
+  const tdStyle =
+    "background-color:#fff4e0;border:1px solid #d4a574;border-left-width:4px;border-left-color:#c4884a;border-radius:0 16px 16px 0;padding:18px 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.55;color:#5c4428;";
+  const titleStyle =
+    "display:block;margin-bottom:6px;font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:#7a5a32;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;";
+  const strongStyle = 'color:#5c4428;font-weight:700;';
+  return `<table role="presentation" class="callout-outer callout-parking" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0 0 0;width:100%;border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;"><tr><td style="${tdStyle}"><strong class="callout-title" style="${titleStyle}">Need parking?</strong>You mentioned you'd like paid parking for your stay. Reserve and pay for a spot separately — <a href="${escapeHtml(url)}" class="callout-strong" style="${strongStyle}text-decoration:underline;">find parking near your stay</a>.</td></tr></table>`;
 }
 
 export function buildReadyForCheckinBookingSummarySectionHtml(input: {
@@ -603,39 +623,88 @@ function samplePaymentBreakdownSection(brandColor?: string | null): string {
 
 export function buildGcashPaymentSectionHtml(
   settings: AppSettingsResolved,
-  paymentQrImageUrl: string
+  paymentQrImageUrlByMethodId: Record<string, string> = {}
 ): string {
-  const paymentProvider = normalizePaymentProvider(settings.paymentProvider);
-  const accountNumberLabel = paymentAccountNumberLabel(paymentProvider);
-  const paymentCopy = paymentEmailCopy(paymentProvider);
-  const qrAlt = escapeHtml(paymentQrAltText(paymentProvider));
+  const methods =
+    settings.paymentMethods?.length > 0
+      ? [
+          ...settings.paymentMethods.filter((m) => m.isPrimary),
+          ...settings.paymentMethods.filter((m) => !m.isPrimary),
+        ]
+      : [
+          {
+            id: 'legacy',
+            provider: settings.paymentProvider,
+            accountName: settings.gcashName,
+            accountNumber: settings.gcashNumber,
+            qrImageUrl: settings.gcashQrImageUrl || null,
+            isPrimary: true,
+          },
+        ];
 
-  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;margin:22px 0 0 0;">
+  const blocks = methods.map((method) => {
+    const paymentProvider = normalizePaymentProvider(method.provider);
+    const accountNumberLabel = paymentAccountNumberLabel(paymentProvider);
+    const rawQr =
+      paymentQrImageUrlByMethodId[method.id] ||
+      (method.qrImageUrl && !method.qrImageUrl.includes('kame-home-gcash-qr-payment')
+        ? method.qrImageUrl
+        : '');
+    const hasQr = Boolean(rawQr);
+    const paymentCopy = paymentEmailCopy(paymentProvider, hasQr);
+    const qrAlt = escapeHtml(paymentQrAltText(paymentProvider));
+    const titleSuffix = methods.length > 1 ? ` — ${escapeHtml(paymentProvider)}` : '';
+    const accountCell = `<td align="left" valign="middle" style="padding:0;vertical-align:middle">
+          <p class="gcash-payment-label">Account name</p>
+          <p class="gcash-payment-value gcash-payment-value-spaced">${escapeHtml(method.accountName)}</p>
+          <p class="gcash-payment-label">${escapeHtml(accountNumberLabel)}</p>
+          <p class="gcash-payment-value">${escapeHtml(method.accountNumber)}</p>
+        </td>`;
+    const row = hasQr
+      ? `<tr>
+        <td align="left" valign="top" style="padding:0 16px 0 0;width:250px;vertical-align:top;"><img src="${escapeHtml(rawQr)}" width="250" alt="${qrAlt}" style="display:block;width:100%;max-width:250px;height:auto;border:1px solid #e2e8f0;border-radius:12px;"/></td>
+        ${accountCell}
+      </tr>`
+      : `<tr>${accountCell}</tr>`;
+
+    return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;margin:22px 0 0 0;">
   <tr><td style="padding:0;vertical-align:top">
     ${notifySectionTitle(
-      `Total balance payment — ${escapeHtml(paymentProvider)}`,
+      `Total balance payment${titleSuffix}`,
       settings.brandColor,
       'margin:0 0 8px 0'
     )}
     <p class="gcash-payment-copy">${escapeHtml(paymentCopy)}</p>
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse">
-      <tr>
-        <td align="left" valign="top" style="padding:0 16px 0 0;width:250px;vertical-align:top;"><img src="${paymentQrImageUrl}" width="250" alt="${qrAlt}" style="display:block;width:100%;max-width:250px;height:auto;border:1px solid #e2e8f0;border-radius:12px;"/></td>
-        <td align="left" valign="middle" style="padding:0;vertical-align:middle">
-          <p class="gcash-payment-label">Account name</p>
-          <p class="gcash-payment-value gcash-payment-value-spaced">${escapeHtml(settings.gcashName)}</p>
-          <p class="gcash-payment-label">${escapeHtml(accountNumberLabel)}</p>
-          <p class="gcash-payment-value">${escapeHtml(settings.gcashNumber)}</p>
-        </td>
-      </tr>
+      ${row}
     </table>
   </td></tr>
 </table>`;
+  });
+
+  return blocks.join('');
 }
 
 function sampleGcashPaymentSection(settings: AppSettingsResolved): string {
-  const qrPlaceholder = 'https://via.placeholder.com/250x250.png?text=Payment+QR';
-  return buildGcashPaymentSectionHtml(settings, escapeHtml(qrPlaceholder));
+  const methods = settings.paymentMethods?.length
+    ? settings.paymentMethods
+    : [
+        {
+          id: 'sample',
+          provider: settings.paymentProvider,
+          accountName: settings.gcashName || 'Sample Account',
+          accountNumber: settings.gcashNumber || '09XX XXX XXXX',
+          qrImageUrl: null,
+          isPrimary: true,
+        },
+      ];
+  const qrById: Record<string, string> = {};
+  for (const m of methods) {
+    if (m.qrImageUrl && !m.qrImageUrl.includes('kame-home-gcash-qr-payment')) {
+      qrById[m.id] = escapeHtml(m.qrImageUrl);
+    }
+  }
+  return buildGcashPaymentSectionHtml({ ...settings, paymentMethods: methods }, qrById);
 }
 
 /** Total guest balance due at check-in (same formula as sendReadyForCheckin). */
@@ -908,6 +977,9 @@ export function buildSampleDynamicSections(input: {
           checkOut: 'July 12, 2026',
           brandColor,
           contact: sampleContact,
+          // Phase 7 — sample-only so template editors can see the parking callout's layout;
+          // the real send only includes it when the booking actually signaled need_parking.
+          parkingUrl: 'https://example.com/parkings',
         });
         break;
       case 'ready_for_checkin_booking_summary_section':

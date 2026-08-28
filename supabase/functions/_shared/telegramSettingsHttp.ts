@@ -21,14 +21,49 @@ import {
   telegramCredentialsDto,
 } from './telegramCredentialsPatch.ts';
 import type { TelegramChannel } from './propertyTelegramCredentials.ts';
+import { NOTIFICATION_MODULE_EDIT_IDS } from './accessPermissionExpansion.ts';
+import type { TeamPermissionId } from './propertyTeamPermissions.ts';
 
 export type ManilaTimeSlot = { hour: number; minute: number };
 
-export function telegramSettingsPermission(
-  req: Request
-): 'notifications:view' | 'notifications:edit' {
-  return req.method === 'GET' ? 'notifications:view' : 'notifications:edit';
+/** Property Telegram module → Phase 6 leaf (`admin` channel = Operations UI). */
+export function telegramModuleEditPermission(channel: TelegramChannel): TeamPermissionId | null {
+  switch (channel) {
+    case 'chat':
+      return 'notifications.chat:edit';
+    case 'marketing':
+      return 'notifications.marketing:edit';
+    case 'staff':
+      return 'notifications.staff:edit';
+    case 'admin':
+      return 'notifications.operations:edit';
+    case 'finance':
+      return 'notifications.finance:edit';
+    case 'maintenance':
+      return 'notifications.maintenance:edit';
+    case 'parking':
+      return null;
+  }
 }
+
+export function telegramSettingsPermission(
+  req: Request,
+  channel?: TelegramChannel
+): TeamPermissionId {
+  if (req.method === 'GET') return 'notifications:view';
+  if (!channel) {
+    // Callers that need any-of-six for global bot must use resolveTelegramAssetAccess
+    // without relying on a single leaf from this helper.
+    return 'notifications:view';
+  }
+  const leaf = telegramModuleEditPermission(channel);
+  if (!leaf) return 'notifications:view';
+  return leaf;
+}
+
+export const TELEGRAM_ANY_MODULE_EDIT_IDS: readonly TeamPermissionId[] = [
+  ...NOTIFICATION_MODULE_EDIT_IDS,
+];
 
 /** Gate PATCH when enabling Telegram notifications (plan tier). */
 export async function gateTelegramEnabledPatch(

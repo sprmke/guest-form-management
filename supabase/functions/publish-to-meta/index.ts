@@ -13,17 +13,17 @@ import {
   type MetaPublishType as PublishType,
 } from '../_shared/marketingPublishAction.ts';
 import { publishToFacebookPagePhoto, publishToInstagramMedia } from '../_shared/metaPublishing.ts';
-import { createServiceClient } from '../_shared/orgAuth.ts';
+import { createServiceClient, requirePropertyPermissionAndFeature } from '../_shared/orgAuth.ts';
 import { jsonError, jsonSuccess, jsonUpgradeHook, readJsonBody } from '../_shared/httpResponse.ts';
 import {
   PlanFeatureRequiredError,
   requireMarketingPublishAllowed,
 } from '../_shared/planEntitlements.ts';
 import {
-  resolveAdminPropertyId,
   resolveOrganizationIdForProperty,
+  resolveScopedPropertyAccess,
 } from '../_shared/propertyScope.ts';
-import { serveAdmin } from '../_shared/serveEdge.ts';
+import { serveAuthenticated } from '../_shared/serveEdge.ts';
 import type { SocialChannelConnectionRow } from '../_shared/socialInboxTypes.ts';
 
 type PublicationRow = {
@@ -86,13 +86,53 @@ function isFutureSchedule(scheduledAt: string | null | undefined): boolean {
   return !Number.isNaN(ms) && ms > Date.now();
 }
 
-serveAdmin('publish-to-meta', async (req, admin) => {
-  const propertyId = await resolveAdminPropertyId(req, admin.id);
-  const organizationId = await resolveOrganizationIdForProperty(propertyId);
+serveAuthenticated('publish-to-meta', async (req) => {
   const sb = createServiceClient();
+  const url = new URL(req.url);
+  let propertyId: string;
+  let actorUserId: string | null = null;
 
   if (req.method === 'GET') {
-    const limitRaw = new URL(req.url).searchParams.get('limit');
+    try {
+      const scoped = await resolveScopedPropertyAccess(req, 'marketing:view');
+      propertyId = scoped.property.id;
+      await requirePropertyPermissionAndFeature(
+        req,
+        propertyId,
+        'marketing:view',
+        'marketingStudio'
+      );
+    } catch (err) {
+      if (err instanceof Response) return err;
+      throw err;
+    }
+  } else if (req.method === 'POST') {
+    try {
+      const scoped = await resolveScopedPropertyAccess(req, 'marketing.publish:add');
+      propertyId = scoped.property.id;
+      const access = await requirePropertyPermissionAndFeature(
+        req,
+        propertyId,
+        'marketing.publish:add',
+        'marketingStudio'
+      );
+      actorUserId = access.user.id;
+      await requireMarketingPublishAllowed(propertyId);
+    } catch (err) {
+      if (err instanceof Response) return err;
+      if (err instanceof PlanFeatureRequiredError) {
+        return jsonUpgradeHook(req, err.message, { feature: err.feature });
+      }
+      throw err;
+    }
+  } else {
+    return jsonError(req, 'Method not allowed', 405);
+  }
+
+  const organizationId = await resolveOrganizationIdForProperty(propertyId);
+
+  if (req.method === 'GET') {
+    const limitRaw = url.searchParams.get('limit');
     const limit = Math.min(Math.max(Number(limitRaw) || 30, 1), 100);
 
     const { data, error } = await sb
@@ -143,15 +183,6 @@ serveAdmin('publish-to-meta', async (req, admin) => {
     return jsonError(req, 'Facebook video publishing is not supported in v1', 400);
   }
 
-  try {
-    await requireMarketingPublishAllowed(propertyId);
-  } catch (err) {
-    if (err instanceof PlanFeatureRequiredError) {
-      return jsonUpgradeHook(req, err.message, { feature: err.feature });
-    }
-    throw err;
-  }
-
   let mediaUrl: string;
   try {
     mediaUrl = await resolvePublicMarketingMediaUrl(sb, propertyId, rawMediaUrl);
@@ -184,7 +215,7 @@ serveAdmin('publish-to-meta', async (req, admin) => {
     caption: caption || null,
     status: 'pending' as const,
     scheduled_at: scheduledAt,
-    created_by: admin.id,
+    created_by: actorUserId,
   };
 
   const { data: publication, error: insertError } = await sb

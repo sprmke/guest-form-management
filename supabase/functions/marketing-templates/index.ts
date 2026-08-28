@@ -1,16 +1,16 @@
 /**
- * marketing-templates — Admin CRUD for property-scoped marketing design templates.
- * Auth: serveAdmin + resolveAdminPropertyId.
+ * marketing-templates — CRUD for property-scoped marketing design templates.
+ * Auth: Phase 7 marketing.* leaves + plan gates on save paths.
  */
 
-import { createServiceClient } from '../_shared/orgAuth.ts';
+import { createServiceClient, requirePropertyPermissionAndFeature } from '../_shared/orgAuth.ts';
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
-import { catchPlanFeatureError, requirePropertyFeature } from '../_shared/planEntitlements.ts';
 import {
-  resolveAdminPropertyId,
   resolveOrganizationIdForProperty,
+  resolveScopedPropertyAccess,
 } from '../_shared/propertyScope.ts';
-import { serveAdmin } from '../_shared/serveEdge.ts';
+import type { TeamPermissionId } from '../_shared/propertyTeamPermissions.ts';
+import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 const CONTENT_TYPES = new Set(['calendar', 'design', 'video']);
 
@@ -50,11 +50,78 @@ function parseDesignJson(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>;
 }
 
-serveAdmin('marketing-templates', async (req, admin) => {
-  const propertyId = await resolveAdminPropertyId(req, admin.id);
+async function resolveMarketingPropertyId(
+  req: Request,
+  permission: TeamPermissionId
+): Promise<string> {
+  try {
+    const ctx = await resolveScopedPropertyAccess(req, permission);
+    return ctx.property.id;
+  } catch (err) {
+    if (err instanceof Response) throw err;
+    throw err;
+  }
+}
+
+serveAuthenticated('marketing-templates', async (req) => {
+  const url = new URL(req.url);
+  let propertyId: string;
+  let actorUserId: string | null = null;
+
+  if (req.method === 'GET') {
+    try {
+      propertyId = await resolveMarketingPropertyId(req, 'marketing:view');
+      await requirePropertyPermissionAndFeature(
+        req,
+        propertyId,
+        'marketing:view',
+        'marketingStudio'
+      );
+    } catch (err) {
+      if (err instanceof Response) return err;
+      throw err;
+    }
+  } else if (req.method === 'POST') {
+    try {
+      propertyId = await resolveMarketingPropertyId(req, 'marketing.templates:add');
+      const ctx = await requirePropertyPermissionAndFeature(
+        req,
+        propertyId,
+        'marketing.templates:add',
+        'customTemplates'
+      );
+      actorUserId = ctx.user.id;
+    } catch (err) {
+      if (err instanceof Response) return err;
+      throw err;
+    }
+  } else if (req.method === 'PATCH') {
+    try {
+      propertyId = await resolveMarketingPropertyId(req, 'marketing.templates:edit');
+      await requirePropertyPermissionAndFeature(
+        req,
+        propertyId,
+        'marketing.templates:edit',
+        'customTemplates'
+      );
+    } catch (err) {
+      if (err instanceof Response) return err;
+      throw err;
+    }
+  } else if (req.method === 'DELETE') {
+    try {
+      propertyId = await resolveMarketingPropertyId(req, 'marketing.templates:delete');
+      await requirePropertyPermissionAndFeature(req, propertyId, 'marketing.templates:delete');
+    } catch (err) {
+      if (err instanceof Response) return err;
+      throw err;
+    }
+  } else {
+    return jsonError(req, 'Method not allowed', 405);
+  }
+
   const organizationId = await resolveOrganizationIdForProperty(propertyId);
   const sb = createServiceClient();
-  const url = new URL(req.url);
 
   if (req.method === 'GET') {
     const templateId = url.searchParams.get('id')?.trim();
@@ -78,16 +145,6 @@ serveAdmin('marketing-templates', async (req, admin) => {
 
     const rows = (data ?? []) as MarketingTemplateRow[];
     return jsonSuccess(req, { templates: rows.map(serializeTemplate) });
-  }
-
-  if (req.method === 'POST' || req.method === 'PATCH') {
-    try {
-      await requirePropertyFeature(propertyId, 'customTemplates');
-    } catch (err) {
-      const planErr = catchPlanFeatureError(req, err);
-      if (planErr) return planErr;
-      throw err;
-    }
   }
 
   if (req.method === 'POST') {
@@ -115,7 +172,7 @@ serveAdmin('marketing-templates', async (req, admin) => {
         platform,
         aspect_preset: aspectPreset,
         design_json: designJson,
-        created_by: admin.id,
+        created_by: actorUserId,
       })
       .select('*')
       .single();

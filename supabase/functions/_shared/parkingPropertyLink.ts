@@ -54,6 +54,9 @@ export type LinkableParkingBookingDto = {
   carPlateNumber: string | null;
   carBrandModel: string | null;
   carColor: string | null;
+  guestName: string | null;
+  guestEmail: string | null;
+  guestPhone: string | null;
 };
 
 type BookingRow = {
@@ -66,6 +69,9 @@ type BookingRow = {
   car_plate_number: string | null;
   car_brand_model: string | null;
   car_color: string | null;
+  primary_guest_name: string | null;
+  guest_email: string | null;
+  guest_phone_number: string | null;
 };
 
 type PropertyRow = { id: string; slug: string; name: string };
@@ -87,7 +93,7 @@ export async function listLinkableParkingBookingsForGuest(
   const { data: bookings, error } = await supabase
     .from('guest_submissions')
     .select(
-      'id, status, property_id, check_in_date, check_out_date, tower_and_unit_number, car_plate_number, car_brand_model, car_color'
+      'id, status, property_id, check_in_date, check_out_date, tower_and_unit_number, car_plate_number, car_brand_model, car_color, primary_guest_name, guest_email, guest_phone_number'
     )
     .not('property_id', 'is', null)
     .eq('need_parking', true)
@@ -141,6 +147,9 @@ export async function listLinkableParkingBookingsForGuest(
       carPlateNumber: row.car_plate_number,
       carBrandModel: row.car_brand_model,
       carColor: row.car_color,
+      guestName: row.primary_guest_name,
+      guestEmail: row.guest_email,
+      guestPhone: row.guest_phone_number,
     } satisfies LinkableParkingBookingDto;
   });
 }

@@ -20,6 +20,12 @@ import {
   sendOrgSubscriptionSuspendedEmail,
 } from './subscriptionBillingEmail.ts';
 import { resolvePublicGuestAppOrigin } from './publicAppOrigin.ts';
+import {
+  extractWebhookInner,
+  readMetadataString,
+  readWebhookKind,
+} from './paymongoWebhookMetadata.ts';
+import { handleParkingPaymentWebhookEvent } from './parkingPaymentOrchestrator.ts';
 
 export type PlatformPaymentSettings = {
   enabledPaymentMethods: string[];
@@ -262,21 +268,11 @@ export async function fulfillOrgSubscriptionPayment(input: {
   }
 }
 
-function readMetadataString(metadata: unknown, key: string): string | null {
-  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return null;
-  const value = (metadata as Record<string, unknown>)[key];
-  return typeof value === 'string' && value.trim() ? value.trim() : null;
-}
-
 export async function resolveOrgTransactionFromWebhookPayload(
   payload: Record<string, unknown>
 ): Promise<OrgPaymentTransactionRow | null> {
   const sb = db();
-  const attrs = (payload.data as Record<string, unknown> | undefined)?.attributes as
-    Record<string, unknown> | undefined;
-  const inner = attrs?.data as Record<string, unknown> | undefined;
-  const innerAttrs = inner?.attributes as Record<string, unknown> | undefined;
-  const metadata = innerAttrs?.metadata ?? attrs?.metadata;
+  const { inner, metadata } = extractWebhookInner(payload);
 
   const transactionId = readMetadataString(metadata, 'transaction_id');
   if (transactionId) {
@@ -312,6 +308,15 @@ export async function handlePaymongoWebhookEvent(
 ): Promise<{ handled: boolean; action?: string }> {
   const normalized = eventType.toLowerCase();
 
+  // Dispatch by metadata.kind first — without this, a parking-payment webhook would fall
+  // through into the org-subscription lookup below and silently no-op (different table, no
+  // match found). 'org_subscription' or absent kind (older links, all pre-Phase-3) both take
+  // the existing org path unchanged.
+  const kind = readWebhookKind(payload);
+  if (kind === 'parking_booking') {
+    return handleParkingPaymentWebhookEvent(normalized, payload);
+  }
+
   if (normalized === 'payment.failed') {
     const orgTxn = await resolveOrgTransactionFromWebhookPayload(payload);
     if (!orgTxn || orgTxn.status !== 'pending') return { handled: false };
@@ -335,11 +340,7 @@ export async function handlePaymongoWebhookEvent(
     normalized === 'link.payment.paid' ||
     normalized === 'checkout_session.payment.paid'
   ) {
-    const attrs = (payload.data as Record<string, unknown> | undefined)?.attributes as
-      Record<string, unknown> | undefined;
-    const inner = attrs?.data as Record<string, unknown> | undefined;
-    const innerAttrs = inner?.attributes as Record<string, unknown> | undefined;
-    const metadata = innerAttrs?.metadata ?? attrs?.metadata;
+    const { innerAttrs, metadata } = extractWebhookInner(payload);
     const initiatedBy = readMetadataString(metadata, 'initiated_by');
     const source = innerAttrs?.source as Record<string, unknown> | undefined;
     const paymentMethodType = typeof source?.type === 'string' ? source.type : null;

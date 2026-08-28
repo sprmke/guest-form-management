@@ -26,10 +26,15 @@ import {
 } from './parkingTeamPermissions.ts';
 import {
   allTeamPermissions,
-  BUILTIN_ROLE_PERMISSIONS,
   effectiveMemberPermissions,
   type TeamPermissionId,
 } from './propertyTeamPermissions.ts';
+import type { PlanFeatureKey } from './planFeatures.ts';
+import {
+  catchPlanFeatureError,
+  requirePropertyFeature,
+  type ResolvedPropertyEntitlements,
+} from './planEntitlements.ts';
 
 export type AuthenticatedUser = {
   id: string;
@@ -261,15 +266,6 @@ type PropertyMemberDbRow = {
   plan_limited?: boolean;
 };
 
-function capStaffMemberPermissions(
-  roleId: string,
-  permissions: TeamPermissionId[]
-): TeamPermissionId[] {
-  if (roleId !== 'STAFF') return permissions;
-  const allowed = new Set(BUILTIN_ROLE_PERMISSIONS.STAFF);
-  return permissions.filter((permission) => allowed.has(permission));
-}
-
 /**
  * JWT + property access for org owner, platform admin, or active property_members row.
  * Optional requiredPermission enforces RBAC (team:*, bookings:*, etc.).
@@ -418,13 +414,10 @@ export async function verifyPropertyAccess(
   }
 
   const memberRow = member as PropertyMemberDbRow;
-  const permissions = capStaffMemberPermissions(
-    memberRow.role_id,
-    effectiveMemberPermissions({
-      permissions: memberRow.permissions,
-      status: 'active',
-    })
-  );
+  const permissions = effectiveMemberPermissions({
+    permissions: memberRow.permissions,
+    status: 'active',
+  });
 
   if (permissions.length === 0) {
     throw forbiddenResponse('Access restricted');
@@ -1089,4 +1082,34 @@ export function serializeParking(parking: ParkingRow) {
     createdAt: parking.created_at,
     updatedAt: parking.updated_at,
   };
+}
+
+export type PropertyPermissionAndFeatureContext = PropertyAccessContext & {
+  entitlements?: ResolvedPropertyEntitlements;
+};
+
+/**
+ * Team permission (outer gate) + optional plan feature (inner gate) with one error contract.
+ * Returns a Response on plan-feature denial; throws verifyPropertyAccess failures as before.
+ */
+export async function requirePropertyPermissionAndFeature(
+  req: Request,
+  propertyId: string,
+  permission: TeamPermissionId,
+  feature?: PlanFeatureKey
+): Promise<PropertyPermissionAndFeatureContext> {
+  const ctx = await verifyPropertyAccess(req, propertyId, permission);
+  if (!feature) {
+    return ctx;
+  }
+  try {
+    const entitlements = await requirePropertyFeature(propertyId, feature);
+    return { ...ctx, entitlements };
+  } catch (err) {
+    const planResponse = catchPlanFeatureError(req, err);
+    if (planResponse) {
+      throw planResponse;
+    }
+    throw err;
+  }
 }

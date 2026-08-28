@@ -14,7 +14,9 @@ import {
   defaultPermissionsForRole,
   inviteExpiresAt,
   hasPropertyPermission,
-  isBuiltinPropertyRole,
+  hasPropertyTeamManageAccess,
+  isCustomRoleId,
+  isPropertyAdminRoleId,
   normalizeInviteEmail,
   normalizePermissionIds,
   allTeamPermissions,
@@ -129,7 +131,7 @@ export async function assertCustomRoleForProperty(
   customRolesById: Map<string, PropertyCustomRoleRow>
 ): Promise<void> {
   assertValidRoleId(roleId);
-  if (isBuiltinPropertyRole(roleId)) return;
+  if (isPropertyAdminRoleId(roleId)) return;
   if (!customRolesById.has(roleId)) {
     const { data } = await supabase
       .from('property_custom_roles')
@@ -151,6 +153,8 @@ export function resolveAssignPermissions(
   if (Array.isArray(explicitPermissions)) {
     const normalized = normalizePermissionIds(explicitPermissions);
     if (normalized.length > 0) return normalized;
+    // Explicit empty array is never a valid active grant (invite / role change footgun).
+    throw new Error('At least one permission is required');
   }
   return defaultPermissionsForRole(roleId, customRolesById);
 }
@@ -235,7 +239,7 @@ async function assertNotLastPropertyTeamManager(
   if (!target || target.status !== 'active') return;
 
   const targetPerms = normalizePermissionIds(target.permissions);
-  if (!hasPropertyPermission(targetPerms, 'team:manage')) return;
+  if (!hasPropertyTeamManageAccess(targetPerms)) return;
 
   const { data: activeRows, error } = await supabase
     .from('property_members')
@@ -248,7 +252,7 @@ async function assertNotLastPropertyTeamManager(
   }
 
   const manageCount = (activeRows ?? []).filter((row) =>
-    hasPropertyPermission(normalizePermissionIds(row.permissions), 'team:manage')
+    hasPropertyTeamManageAccess(normalizePermissionIds(row.permissions))
   ).length;
 
   if (manageCount <= 1) {
@@ -418,7 +422,7 @@ export async function listPropertyTeamMembers(
     avatar: ownerProfile.avatar,
     displayName: ownerDisplayName,
     contactPhone: ownerContactPhone,
-    role: 'MANAGER',
+    role: 'ADMIN',
     permissions: allTeamPermissions(),
     status: 'active',
     planLimited: false,
@@ -444,7 +448,7 @@ export async function listPropertyTeamMembers(
       avatar: profile.avatar,
       displayName,
       contactPhone,
-      role: 'MANAGER',
+      role: 'ADMIN',
       permissions: allTeamPermissions(),
       status: 'active',
       planLimited: false,
@@ -792,7 +796,7 @@ export async function updatePropertyTeamMember(
       await requireTeamInviteAllowed(propertyId);
     }
     patch.status = 'active';
-    if (!isBuiltinPropertyRole(nextRoleId)) {
+    if (isCustomRoleId(nextRoleId)) {
       patch.permissions = resolveAssignPermissions(nextRoleId, customRoles, undefined);
     } else {
       const saved = existing.saved_permissions

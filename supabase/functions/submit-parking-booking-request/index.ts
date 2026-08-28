@@ -1,10 +1,13 @@
 /**
- * submit-parking-booking-request — public guest submit for the parking broadcast flow.
+ * submit-parking-booking-request — guest-authenticated submit for the parking broadcast flow
+ * (Phase 3: was public/anon; the guest-facing Reserve/form flows already required sign-in
+ * client-side before this endpoint was ever called, this just verifies it server-side too —
+ * needed for ownership checks on cancel/pay-now and anti-spam rate limiting).
  * Inserts a pre-claim `PENDING_HOST_ACCEPTANCE` row (parking_id null) and fans out to
  * eligible candidates. Returns 422 with no insert when zero candidates are eligible.
  */
 
-import { createServiceClient } from '../_shared/orgAuth.ts';
+import { createServiceClient, type ParkingRow } from '../_shared/orgAuth.ts';
 import {
   jsonError,
   jsonSuccess,
@@ -13,10 +16,15 @@ import {
 } from '../_shared/httpResponse.ts';
 import {
   fanOutParkingBroadcast,
-  findParkingBroadcastCandidates,
   parkingBroadcastTtlMs,
+  resolveNextParkingBatch,
 } from '../_shared/parkingBroadcast.ts';
-import { servePublic } from '../_shared/serveEdge.ts';
+import { claimParkingBooking } from '../_shared/parkingBroadcastActions.ts';
+import { parkingAutomationEnabled } from '../_shared/parkingAutomationToggles.ts';
+import { assertParkingSubmitAllowed, ParkingAntiSpamError } from '../_shared/parkingAntiSpam.ts';
+import { resolveParkingBookingChannel } from '../_shared/parkingDirectLink.ts';
+import { ParkingLinkError, verifyLinkablePropertyBooking } from '../_shared/parkingPropertyLink.ts';
+import { serveAuthenticated } from '../_shared/serveEdge.ts';
 import { countStayNights } from '../_shared/utils.ts';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -27,7 +35,7 @@ function toMmDdYyyy(yyyyMmDd: string): string {
   return `${mm}-${dd}-${yyyy}`;
 }
 
-servePublic('submit-parking-booking-request', async (req) => {
+serveAuthenticated('submit-parking-booking-request', async (req, user) => {
   requireHttpMethod(req, 'POST');
   const body = await readJsonBody(req);
 
@@ -46,6 +54,10 @@ servePublic('submit-parking-booking-request', async (req) => {
   const carBrandModel = typeof body.carBrandModel === 'string' ? body.carBrandModel.trim() : '';
   const carColor = typeof body.carColor === 'string' ? body.carColor.trim() : '';
   const notes = typeof body.notes === 'string' ? body.notes.trim() : '';
+  const linkedPropertyBookingId =
+    typeof body.linkedPropertyBookingId === 'string' ? body.linkedPropertyBookingId.trim() : '';
+  const directLinkToken =
+    typeof body.directLinkToken === 'string' ? body.directLinkToken.trim() : '';
 
   if (!parkingId && !bodyOrgId) {
     return jsonError(req, 'parkingId or organizationId is required');
@@ -62,6 +74,25 @@ servePublic('submit-parking-booking-request', async (req) => {
   if (!EMAIL_RE.test(guestEmail)) {
     return jsonError(req, 'A valid guestEmail is required');
   }
+  // No hard match-check against the authenticated user's own email: the admin dashboard's
+  // "New booking" modal reuses this same endpoint to submit on a guest's behalf (see
+  // docs/guides/routes/org/parking/bookings.md), where the caller (host) and guestEmail are
+  // legitimately different people. guest_auth_user_id below is the real ownership binding for
+  // pay-now/cancel, not this field. That same mismatch is also how we tell a genuine guest
+  // self-submission apart from a host submitting on someone else's behalf — the anti-spam
+  // limit below only applies to the former (a host legitimately creating several bookings for
+  // different guests should never get rate-limited as if they were spamming).
+  const isSelfServiceGuestSubmit = guestEmail.toLowerCase() === user.email.toLowerCase();
+  if (isSelfServiceGuestSubmit) {
+    try {
+      await assertParkingSubmitAllowed(user.id);
+    } catch (err) {
+      if (err instanceof ParkingAntiSpamError) {
+        return jsonError(req, err.message, err.status);
+      }
+      throw err;
+    }
+  }
   if (!unitNumber) {
     return jsonError(req, 'unitNumber is required');
   }
@@ -73,6 +104,16 @@ servePublic('submit-parking-booking-request', async (req) => {
   }
   if (!carColor) {
     return jsonError(req, 'carColor is required');
+  }
+  if (linkedPropertyBookingId) {
+    try {
+      await verifyLinkablePropertyBooking(linkedPropertyBookingId, user.id, user.email);
+    } catch (err) {
+      if (err instanceof ParkingLinkError) {
+        return jsonError(req, err.message, err.status);
+      }
+      throw err;
+    }
   }
 
   const supabase = createServiceClient();
@@ -102,7 +143,13 @@ servePublic('submit-parking-booking-request', async (req) => {
   const checkInDb = toMmDdYyyy(checkInDate);
   const checkOutDb = toMmDdYyyy(checkOutDate);
 
-  const candidates = await findParkingBroadcastCandidates({
+  // Phase 8 — only a pinned request (a specific listing's own link) can be a direct-link
+  // booking; a channel token means nothing for an org-wide search request.
+  const bookingChannel = parkingId
+    ? await resolveParkingBookingChannel(parkingId, directLinkToken)
+    : 'standard';
+
+  const batch = await resolveNextParkingBatch({
     organizationId,
     requestedVehicleType: vehicleType,
     checkInDate: checkInDb,
@@ -110,7 +157,7 @@ servePublic('submit-parking-booking-request', async (req) => {
     pinnedParkingId: parkingId || null,
   });
 
-  if (candidates.length === 0) {
+  if (batch.length === 0) {
     return jsonError(req, 'no_parking_available', 422);
   }
 
@@ -124,6 +171,10 @@ servePublic('submit-parking-booking-request', async (req) => {
       property_id: null,
       parking_id: null,
       parking_request_organization_id: organizationId,
+      parking_pinned_id: parkingId || null,
+      parking_booking_channel: bookingChannel,
+      linked_property_booking_id: linkedPropertyBookingId || null,
+      guest_auth_user_id: user.id,
       requested_vehicle_type: vehicleType,
       status: 'PENDING_HOST_ACCEPTANCE',
       status_updated_at: new Date().toISOString(),
@@ -172,7 +223,8 @@ servePublic('submit-parking-booking-request', async (req) => {
         checkOutDate: checkOutDb,
         expiresAtIso,
       },
-      candidates
+      batch,
+      1
     );
   } catch (err) {
     // Broadcast insert itself failed (not just a per-candidate notify failure, which
@@ -186,6 +238,34 @@ servePublic('submit-parking-booking-request', async (req) => {
     );
     await supabase.from('guest_submissions').delete().eq('id', inserted.id);
     return jsonError(req, 'Failed to notify hosts, please try again', 500);
+  }
+
+  // Phase 5 auto-accept — only checked against the initial batch's top candidate; a re-batch
+  // after a decline/timeout still waits for a manual accept (v1 scope, not a hard requirement).
+  // Isolated so a claim failure never fails the submit itself — the guest's request is already
+  // live either way, just waiting on a manual accept instead.
+  try {
+    const topCandidate = batch[0]?.candidate;
+    if (topCandidate && (await parkingAutomationEnabled(topCandidate.id, 'autoAcceptTopMatch'))) {
+      const { data: parkingRow } = await supabase
+        .from('parkings')
+        .select('*')
+        .eq('id', topCandidate.id)
+        .maybeSingle();
+      if (parkingRow) {
+        await claimParkingBooking(
+          topCandidate.id,
+          String(inserted.id),
+          '',
+          parkingRow as ParkingRow
+        );
+      }
+    }
+  } catch (err) {
+    console.error(
+      '[submit-parking-booking-request] auto-accept failed, leaving for manual accept:',
+      err instanceof Error ? err.message : err
+    );
   }
 
   return jsonSuccess(req, {

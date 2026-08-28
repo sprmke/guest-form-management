@@ -1,12 +1,14 @@
 /**
- * update-property — PATCH property details (owner only).
+ * update-property — PATCH property details (team RBAC + Phase 5 section leaves).
+ * Permanent delete stays on delete-property (owner-only). Archive/restore uses
+ * settings.dangerZone:edit.
  */
 
 import {
   allocatePropertySlug,
   createServiceClient,
   serializeProperty,
-  verifyPropertyOwner,
+  verifyPropertyAccess,
 } from '../_shared/orgAuth.ts';
 import {
   DUPLICATE_PROPERTY_NAME_MESSAGE,
@@ -25,6 +27,8 @@ import {
   readJsonBody,
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
+import { catchPlanFeatureError, requirePropertyFeature } from '../_shared/planEntitlements.ts';
+import { updatePropertyPatchPermissions } from '../_shared/settingsPatchPermissions.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('update-property', async (req) => {
@@ -36,7 +40,25 @@ serveAuthenticated('update-property', async (req) => {
     return jsonError(req, 'propertyId is required');
   }
 
-  const { property } = await verifyPropertyOwner(req, propertyId);
+  const needed = updatePropertyPatchPermissions(body);
+  if (needed.length === 0) {
+    return jsonError(req, 'No valid fields to update');
+  }
+
+  const { property } = await verifyPropertyAccess(req, propertyId, needed[0]!);
+  for (const perm of needed.slice(1)) {
+    await verifyPropertyAccess(req, propertyId, perm);
+  }
+
+  if (body.publicPagesAutosaveGate === true) {
+    try {
+      await requirePropertyFeature(propertyId, 'publicPagesAutosave');
+    } catch (err) {
+      const planErr = catchPlanFeatureError(req, err);
+      if (planErr) return planErr;
+      throw err;
+    }
+  }
 
   const patch: Record<string, unknown> = {};
 

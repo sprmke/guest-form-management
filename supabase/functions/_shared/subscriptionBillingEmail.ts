@@ -1,14 +1,17 @@
 /**
- * Owner emails for property subscription billing (PayMongo).
+ * Owner emails for property / org subscription billing (PayMongo).
  */
 
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
+import { buildEmailCtaHtml, renderBrandedEmailShell } from './brandedEmailShell.ts';
 import { loadAuthUserProfile } from './authUserProfile.ts';
 import { escapeHtml } from './renderEmailHtml.ts';
 import { resolvePublicGuestAppOrigin } from './publicAppOrigin.ts';
 
 const RESEND_API = 'https://api.resend.com/emails';
+
+const BODY_P = 'margin:0 0 16px 0;font-size:15px;line-height:1.6;color:#333333;';
 
 async function sendOwnerBillingEmail(opts: {
   supabase: SupabaseClient;
@@ -18,6 +21,8 @@ async function sendOwnerBillingEmail(opts: {
   body: string;
   ctaLabel?: string;
   ctaUrl?: string;
+  brandName?: string;
+  unitLabel?: string;
 }): Promise<boolean> {
   const owner = await loadAuthUserProfile(opts.supabase, opts.ownerId);
   if (!owner.email?.trim()) {
@@ -32,17 +37,21 @@ async function sendOwnerBillingEmail(opts: {
     return false;
   }
 
+  const brandName = opts.brandName?.trim() || 'Kame Homes';
   const ctaBlock =
-    opts.ctaUrl && opts.ctaLabel
-      ? `<p style="margin:24px 0 0 0;"><a href="${escapeHtml(opts.ctaUrl)}" style="display:inline-block;padding:12px 20px;background:#0d9488;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">${escapeHtml(opts.ctaLabel)}</a></p>`
-      : '';
+    opts.ctaUrl && opts.ctaLabel ? buildEmailCtaHtml(opts.ctaLabel, opts.ctaUrl, null) : '';
 
-  const html = `<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;font-size:15px;line-height:1.6;color:#111827;">
-<p style="margin:0 0 12px 0;">Hi ${escapeHtml(owner.name || 'there')},</p>
-<p style="margin:0 0 12px 0;font-size:17px;font-weight:600;">${escapeHtml(opts.headline)}</p>
-<p style="margin:0;">${escapeHtml(opts.body)}</p>
-${ctaBlock}
-</div>`;
+  const bodyHtml = `<p style="${BODY_P}">Hi ${escapeHtml(owner.name || 'there')},</p>
+<p style="${BODY_P}">${escapeHtml(opts.body)}</p>
+${ctaBlock}`;
+
+  const html = await renderBrandedEmailShell({
+    brandName,
+    unitLabel: opts.unitLabel?.trim() || brandName,
+    emailTitle: opts.headline,
+    bodyHtml,
+    brandColor: null,
+  });
 
   const res = await fetch(RESEND_API, {
     method: 'POST',
@@ -85,6 +94,7 @@ export async function sendSubscriptionReceiptEmail(opts: {
     body: `${opts.propertyName} is now on ${opts.planName} (₱${opts.amountPhp.toLocaleString('en-PH')}). Your plan is active for the next billing period.`,
     ctaLabel: 'View plan',
     ctaUrl: plansUrl,
+    unitLabel: opts.propertyName,
   });
 }
 
@@ -104,6 +114,7 @@ export async function sendSubscriptionRenewalReminderEmail(opts: {
     body: `${opts.propertyName} renews on ${opts.periodEndLabel}. Pay now to avoid interruption.`,
     ctaLabel: 'Pay renewal',
     ctaUrl: opts.checkoutUrl,
+    unitLabel: opts.propertyName,
   });
 }
 
@@ -122,6 +133,7 @@ export async function sendSubscriptionPastDueEmail(opts: {
     body: `Pay before ${opts.graceEndLabel} to keep full dashboard access for this listing.`,
     ctaLabel: 'Pay now',
     ctaUrl: opts.checkoutUrl,
+    unitLabel: opts.propertyName,
   });
 }
 
@@ -139,6 +151,7 @@ export async function sendSubscriptionSuspendedEmail(opts: {
     body: `${opts.propertyName} is in read-only mode until payment is received. Guest booking flows are unaffected.`,
     ctaLabel: 'Restore access',
     ctaUrl: opts.plansUrl,
+    unitLabel: opts.propertyName,
   });
 }
 
@@ -156,6 +169,7 @@ export async function sendSubscriptionPaymentFailedEmail(opts: {
     body: `Your recent payment attempt for ${opts.propertyName} did not go through. You can try again from the Plans page.`,
     ctaLabel: 'Try again',
     ctaUrl: opts.plansUrl,
+    unitLabel: opts.propertyName,
   });
 }
 
@@ -182,6 +196,8 @@ export async function sendOrgSubscriptionReceiptEmail(opts: {
     body: `${opts.orgName} is now on ${opts.planName} covering ${opts.propertyCount} ${propertyWord} (₱${opts.amountPhp.toLocaleString('en-PH')}). Your plan is active for the next billing period.`,
     ctaLabel: 'View plan',
     ctaUrl: plansUrl,
+    brandName: opts.orgName,
+    unitLabel: opts.orgName,
   });
 }
 
@@ -201,6 +217,8 @@ export async function sendOrgSubscriptionRenewalReminderEmail(opts: {
     body: `${opts.orgName}'s subscription renews on ${opts.periodEndLabel}. Pay now to avoid interruption.`,
     ctaLabel: 'Pay renewal',
     ctaUrl: opts.checkoutUrl,
+    brandName: opts.orgName,
+    unitLabel: opts.orgName,
   });
 }
 
@@ -219,6 +237,8 @@ export async function sendOrgSubscriptionPastDueEmail(opts: {
     body: `Pay before ${opts.graceEndLabel} to keep full dashboard access across ${opts.orgName}'s properties.`,
     ctaLabel: 'Pay now',
     ctaUrl: opts.checkoutUrl,
+    brandName: opts.orgName,
+    unitLabel: opts.orgName,
   });
 }
 
@@ -236,6 +256,8 @@ export async function sendOrgSubscriptionSuspendedEmail(opts: {
     body: `${opts.orgName}'s properties are in read-only mode until payment is received. Guest booking flows are unaffected.`,
     ctaLabel: 'Restore access',
     ctaUrl: opts.plansUrl,
+    brandName: opts.orgName,
+    unitLabel: opts.orgName,
   });
 }
 
@@ -253,5 +275,7 @@ export async function sendOrgSubscriptionPaymentFailedEmail(opts: {
     body: `Your recent payment attempt for ${opts.orgName} did not go through. You can try again from the Plans page.`,
     ctaLabel: 'Try again',
     ctaUrl: opts.plansUrl,
+    brandName: opts.orgName,
+    unitLabel: opts.orgName,
   });
 }

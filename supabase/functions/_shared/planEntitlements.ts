@@ -1412,6 +1412,135 @@ export async function changeOrgSubscription(
   }
 }
 
+/**
+ * Host self-serve downgrade — no PayMongo. Paid→paid: `changeOrgSubscription` immediately
+ * (period bounds kept; next renewal uses the new total). Paid→Free: cancel the live
+ * subscription, unenroll every property (Free via entitlement fallback), claw seats, and
+ * reset AI credit allowance. Rejects upgrades and same-tier changes (those stay on checkout).
+ */
+export async function applyOrgPlanDowngrade(
+  organizationId: string,
+  targetPlanId: string,
+  changedBy: string | null
+): Promise<{ orgSubscriptionId: string | null; toFree: boolean }> {
+  const sb = db();
+
+  const live = await getActiveOrgSubscription(organizationId);
+  if (!live) {
+    throw new Error('No active subscription to change');
+  }
+
+  const { data: currentPlan, error: currentPlanError } = await sb
+    .from('pricing_plans')
+    .select('id, sort_order, is_default')
+    .eq('id', live.planId)
+    .maybeSingle();
+  if (currentPlanError) throw new Error(currentPlanError.message);
+  if (!currentPlan) throw new Error('Current plan not found');
+
+  const { data: targetPlan, error: targetPlanError } = await sb
+    .from('pricing_plans')
+    .select('id, code, sort_order, is_default, is_active, pricing_model, features')
+    .eq('id', targetPlanId)
+    .maybeSingle();
+  if (targetPlanError) throw new Error(targetPlanError.message);
+  if (!targetPlan || !targetPlan.is_active) throw new Error('Plan not found');
+  if (targetPlan.pricing_model !== 'subscription') {
+    throw new Error('Only subscription plans can be selected');
+  }
+
+  const toFree = Boolean(targetPlan.is_default);
+  const currentSort = Number(currentPlan.sort_order ?? 0);
+  const targetSort = Number(targetPlan.sort_order ?? 0);
+
+  if (toFree) {
+    if (currentPlan.is_default) {
+      throw new Error('Already on the Free plan');
+    }
+  } else if (targetPlanId === live.planId || targetSort >= currentSort) {
+    throw new Error('Use checkout to upgrade or update billing');
+  }
+
+  // Drop any pending PayMongo links — the host is leaving the quoted tier.
+  await sb
+    .from('org_payment_transactions')
+    .update({ status: 'expired' })
+    .eq('organization_id', organizationId)
+    .eq('status', 'pending');
+
+  if (toFree) {
+    const { data: slots, error: slotsError } = await sb
+      .from('org_subscription_properties')
+      .select('property_id')
+      .eq('org_subscription_id', live.id);
+    if (slotsError) throw new Error(slotsError.message);
+    const propertyIds = (slots ?? []).map((row) => row.property_id as string);
+
+    const previousStatus = live.status;
+    const { error: cancelError } = await sb
+      .from('org_subscriptions')
+      .update({ status: 'canceled', price_php_snapshot: 0 })
+      .eq('id', live.id);
+    if (cancelError) throw new Error(cancelError.message);
+
+    await writeOrgSubscriptionEvent({
+      orgSubscriptionId: live.id,
+      eventType: 'status_changed',
+      previousPlanId: live.planId,
+      newPlanId: targetPlanId,
+      previousStatus,
+      newStatus: 'canceled',
+      note: 'Host downgraded to Free',
+      createdBy: changedBy,
+    });
+
+    for (const chunk of chunkIds(propertyIds)) {
+      const { error: deleteError } = await sb
+        .from('org_subscription_properties')
+        .delete()
+        .eq('org_subscription_id', live.id)
+        .in('property_id', chunk);
+      if (deleteError) throw new Error(deleteError.message);
+      const { error: eventsError } = await sb.from('org_subscription_events').insert(
+        chunk.map((propertyId) => ({
+          org_subscription_id: live.id,
+          event_type: 'property_removed',
+          property_id: propertyId,
+          created_by: changedBy,
+        }))
+      );
+      if (eventsError) throw new Error(eventsError.message);
+    }
+
+    const freeFeatures = parsePlanFeatures(targetPlan.features);
+    await syncAiCreditsFromPlan(
+      organizationId,
+      String(targetPlan.code),
+      freeFeatures.aiMonthlyCreditAllowance,
+      changedBy ?? 'system'
+    );
+
+    for (const propertyId of propertyIds) {
+      await reconcileTeamSeatsForProperty(propertyId);
+    }
+
+    return { orgSubscriptionId: live.id, toFree: true };
+  }
+
+  const { data: slots, error: slotsError } = await sb
+    .from('org_subscription_properties')
+    .select('property_id')
+    .eq('org_subscription_id', live.id);
+  if (slotsError) throw new Error(slotsError.message);
+  const propertyIds = (slots ?? []).map((row) => row.property_id as string);
+  if (propertyIds.length === 0) {
+    throw new Error('Subscription has no enrolled properties');
+  }
+
+  await changeOrgSubscription(live.id, targetPlanId, propertyIds, changedBy);
+  return { orgSubscriptionId: live.id, toFree: false };
+}
+
 export async function countMarketingPublications(propertyId: string): Promise<number> {
   const sb = db();
   const poolPropertyIds = await entitlementPoolPropertyIds(propertyId);

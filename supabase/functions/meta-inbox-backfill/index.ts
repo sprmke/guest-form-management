@@ -54,7 +54,7 @@ serve(async (req) => {
       if (!orgId) return jsonError(req, 'organizationId required', 400);
     } else {
       await verifyAuthenticatedUser(req);
-      const permission = light ? 'view' : 'manage';
+      const permission = light ? 'view' : 'channels_add';
       const ctx = await resolveInboxAccess(req, permission, body as Record<string, unknown>);
       orgId = ctx.orgId;
     }

@@ -130,6 +130,9 @@ verify_jwt = false
 [functions.get-public-property]
 verify_jwt = false
 
+[functions.get-public-showcase]
+verify_jwt = false
+
 [functions.get-residence-unit-types]
 verify_jwt = false
 
@@ -202,6 +205,13 @@ static_files = [
 ]
 
 [functions.expire-parking-broadcasts]
+verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
+
+[functions.send-parking-reminders]
 verify_jwt = false
 static_files = [
   "./functions/_shared/email-templates/*.html",
@@ -314,6 +324,17 @@ verify_jwt = false
 
 [functions.app-settings]
 verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
+
+[functions.settings-verification]
+verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
 
 [functions.dashboard-stats]
 verify_jwt = false
@@ -486,6 +507,10 @@ verify_jwt = false
 
 [functions.parking-settings]
 verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
 
 [functions.upload-parking-media]
 verify_jwt = false
@@ -799,7 +824,39 @@ verify_jwt = false
 [functions.create-org-subscription-checkout]
 verify_jwt = false
 
+[functions.apply-org-plan-downgrade]
+verify_jwt = false
+
 [functions.paymongo-webhook]
+verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
+
+[functions.create-parking-payment-checkout]
+verify_jwt = false
+
+[functions.cancel-parking-booking]
+verify_jwt = false
+
+[functions.list-linkable-property-bookings]
+verify_jwt = false
+
+[functions.get-linked-parking-booking]
+verify_jwt = false
+
+[functions.request-parking-endorsement]
+verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
+
+[functions.platform-parking-settings]
+verify_jwt = false
+
+[functions.parking-payouts]
 verify_jwt = false
 
 [functions.platform-payment-settings]

@@ -8,7 +8,12 @@ import { ensureTelegramParkingSettings } from './parkingTelegramSettingsSeed.ts'
 import { ensurePropertySettings } from './propertySettingsSeed.ts';
 import { ensureTelegramFinanceSettings } from './telegramFinance.ts';
 import { ensureTelegramChatSettings } from './telegramChat.ts';
-import { telegramSettingsPermission } from './telegramSettingsHttp.ts';
+import {
+  TELEGRAM_ANY_MODULE_EDIT_IDS,
+  telegramModuleEditPermission,
+} from './telegramSettingsHttp.ts';
+import { hasPropertyPermission, type TeamPermissionId } from './propertyTeamPermissions.ts';
+import type { TelegramChannel } from './propertyTelegramCredentials.ts';
 
 export type TelegramAssetScope = { kind: 'property'; id: string } | { kind: 'parking'; id: string };
 
@@ -22,7 +27,21 @@ export function telegramDbScope(scope: TelegramAssetScope): TelegramDbScope {
   return { parkingId: scope.id };
 }
 
-export async function resolveTelegramAssetAccess(req: Request): Promise<TelegramAssetScope> {
+function forbiddenTelegram(): never {
+  throw new Response(JSON.stringify({ success: false, error: 'Access restricted' }), {
+    status: 403,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+/**
+ * @param channel — when set, PATCH/POST require that module's edit leaf.
+ *   Omit for telegram-global-settings (any one of the six module edits — Q3).
+ */
+export async function resolveTelegramAssetAccess(
+  req: Request,
+  channel?: TelegramChannel
+): Promise<TelegramAssetScope> {
   const url = new URL(req.url);
   const parkingId = readParkingIdFromUrl(url);
   const propertyId = readPropertyIdFromUrl(url);
@@ -40,9 +59,25 @@ export async function resolveTelegramAssetAccess(req: Request): Promise<Telegram
     return { kind: 'parking', id: parkingRow.id };
   }
 
-  const permission = telegramSettingsPermission(req);
-  const { property } = await resolveScopedPropertyAccess(req, permission);
-  return { kind: 'property', id: property.id };
+  if (req.method === 'GET') {
+    const { property } = await resolveScopedPropertyAccess(req, 'notifications:view');
+    return { kind: 'property', id: property.id };
+  }
+
+  if (channel) {
+    const leaf = telegramModuleEditPermission(channel);
+    if (!leaf) forbiddenTelegram();
+    const { property } = await resolveScopedPropertyAccess(req, leaf);
+    return { kind: 'property', id: property.id };
+  }
+
+  // Global bot token: editable with any one module edit (Q3).
+  const ctx = await resolveScopedPropertyAccess(req, 'notifications:view');
+  const ok = TELEGRAM_ANY_MODULE_EDIT_IDS.some((id) =>
+    hasPropertyPermission(ctx.permissions, id as TeamPermissionId)
+  );
+  if (!ok) forbiddenTelegram();
+  return { kind: 'property', id: ctx.property.id };
 }
 
 export async function ensureTelegramAssetSettings(

@@ -2,7 +2,7 @@
  * get-booking-ai-review — Polling endpoint for the booking AI review job row.
  *
  * Trigger: GET /functions/v1/get-booking-ai-review?property_id=<id>&bookingId=<id>
- * Auth:    resolveScopedPropertyAccess(req, 'bookings:edit')
+ * Auth:    resolveScopedPropertyAccess(req, 'bookings.detail.stay:edit')
  *
  * Completed/failed rows include `stale_sections`: section ids whose stored
  * fingerprint no longer matches the live booking (computed, not stored).
@@ -22,7 +22,7 @@ import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('get-booking-ai-review', async (req) => {
   requireHttpMethod(req, 'GET');
-  const { property } = await resolveScopedPropertyAccess(req, 'bookings:edit');
+  const { property } = await resolveScopedPropertyAccess(req, 'bookings.detail.stay:edit');
   const propertyId = property.id;
 
   const url = new URL(req.url);

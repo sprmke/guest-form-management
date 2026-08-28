@@ -22,6 +22,7 @@ export type PlanFeatures = {
   aiMonthlyCreditAllowance: number;
   marketingStudio: boolean;
   customPages: boolean;
+  propertyShowcase: boolean;
   aiDashboardAssistant: boolean;
   aiReceptionist: boolean;
   aiMarketingGeneration: boolean;
@@ -48,6 +49,7 @@ export const DEFAULT_PLAN_FEATURES: PlanFeatures = {
   aiMonthlyCreditAllowance: 0,
   marketingStudio: false,
   customPages: false,
+  propertyShowcase: false,
   aiDashboardAssistant: false,
   aiReceptionist: false,
   aiMarketingGeneration: false,
@@ -113,6 +115,7 @@ export function parsePlanFeatures(raw: unknown): PlanFeatures {
         : base.aiMonthlyCreditAllowance,
     marketingStudio: asBool(obj.marketingStudio, base.marketingStudio),
     customPages: asBool(obj.customPages, base.customPages),
+    propertyShowcase: asBool(obj.propertyShowcase, base.propertyShowcase),
     aiDashboardAssistant: asBool(obj.aiDashboardAssistant, base.aiDashboardAssistant),
     aiReceptionist: asBool(obj.aiReceptionist, base.aiReceptionist),
     aiMarketingGeneration: asBool(obj.aiMarketingGeneration, base.aiMarketingGeneration),

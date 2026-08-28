@@ -38,7 +38,7 @@ import {
 } from '../_shared/telegramCredentialsPatch.ts';
 
 serveAuthenticated('telegram-finance-settings', async (req) => {
-  const asset = await resolveTelegramAssetAccess(req);
+  const asset = await resolveTelegramAssetAccess(req, 'finance');
   const scope = telegramDbScope(asset);
 
   if (req.method === 'GET') {

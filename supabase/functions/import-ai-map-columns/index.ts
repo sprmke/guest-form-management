@@ -4,7 +4,7 @@
  */
 
 import { suggestImportColumnMappings } from '../_shared/importColumnMappingAi.ts';
-import { requireImportPlanFeature, resolveImportAccess } from '../_shared/importAccess.ts';
+import { resolveImportAccessWithPlan } from '../_shared/importAccess.ts';
 import {
   canImportBatchTransition,
   canRunImportAiColumnMapping,
@@ -74,9 +74,7 @@ async function updateBatchStatus(
 serveAuthenticated('import-ai-map-columns', async (req) => {
   requireHttpMethod(req, 'POST');
 
-  const access = await resolveImportAccess(req);
-  const planBlock = await requireImportPlanFeature(req, access.propertyId);
-  if (planBlock) return planBlock;
+  const access = await resolveImportAccessWithPlan(req);
   const body = await readJsonBody(req);
   const batchId = typeof body.batchId === 'string' ? body.batchId.trim() : '';
   if (!batchId) {

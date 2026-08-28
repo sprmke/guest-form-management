@@ -41,6 +41,7 @@ import {
   telegramUnknownAction,
   telegramVerifyResponse,
 } from '../_shared/telegramSettingsHttp.ts';
+import { catchPlanFeatureError, requirePropertyFeature } from '../_shared/planEntitlements.ts';
 import { resolveScopedPropertyAccess } from '../_shared/propertyScope.ts';
 import { resolvePublicGuestAppOrigin } from '../_shared/publicAppOrigin.ts';
 import { ensurePropertySettings } from '../_shared/propertySettingsSeed.ts';
@@ -50,7 +51,8 @@ import {
   serializeExternalReviewsForOwnerPatch,
 } from '../_shared/propertyExternalReviews.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
-import { createServiceClient } from '../_shared/orgAuth.ts';
+import { createServiceClient, verifyPropertyAccess } from '../_shared/orgAuth.ts';
+import { appSettingsPatchPermissions } from '../_shared/settingsPatchPermissions.ts';
 import {
   computePaymentSettingsFingerprint,
   extractPaymentMethodsFromPatchBody,
@@ -60,17 +62,17 @@ import {
 import { notifyPropertyPaymentSettingsChanged } from '../_shared/settingsChangeNotifyEmail.ts';
 
 serveAuthenticated('app-settings', async (req, user) => {
-  const permission = req.method === 'GET' ? 'settings:view' : 'settings:edit';
-  const { property, org } = await resolveScopedPropertyAccess(req, permission);
-  const propertyId = property.id;
-
   if (req.method === 'GET') {
+    const { property } = await resolveScopedPropertyAccess(req, 'settings:view');
+    const propertyId = property.id;
     await ensurePropertySettings(propertyId);
     const data = await serializeAppSettingsForAdmin(propertyId);
     return jsonSuccess(req, data);
   }
 
   if (req.method === 'POST') {
+    const { property } = await resolveScopedPropertyAccess(req, 'settings.integrations:view');
+    void property;
     const body = await readJsonBody(req);
     const action = parseAction(body).trim();
 
@@ -83,6 +85,24 @@ serveAuthenticated('app-settings', async (req, user) => {
 
   if (req.method === 'PATCH') {
     const body = await readJsonBody(req);
+    const needed = appSettingsPatchPermissions(body);
+    if (needed.length === 0) {
+      return jsonError(req, 'No valid fields to update');
+    }
+    const { property, org } = await resolveScopedPropertyAccess(req, needed[0]!);
+    for (const perm of needed.slice(1)) {
+      await verifyPropertyAccess(req, property.id, perm);
+    }
+    if (body.publicPagesAutosaveGate === true) {
+      try {
+        await requirePropertyFeature(property.id, 'publicPagesAutosave');
+      } catch (err) {
+        const planErr = catchPlanFeatureError(req, err);
+        if (planErr) return planErr;
+        throw err;
+      }
+    }
+    const propertyId = property.id;
     let paymentSettingsChanged = false;
 
     if (patchBodyTouchesPaymentSettings(body)) {

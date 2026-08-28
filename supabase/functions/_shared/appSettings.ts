@@ -435,8 +435,7 @@ function pickPropertyFieldsFromRow(
   const lead = pickDbInt(row?.sd_refund_cron_email_lead_minutes, 180, 0, 10080);
   const maxAge = pickDbInt(row?.sd_refund_cron_max_checkout_age_days, 30, 0, 365);
   const parkingRate = pickMoney(row?.default_parking_rate_guest, 400);
-  const defaultQr = `${originBase}/${DEFAULT_GCASH_QR_RELATIVE_PATH}`;
-  const paymentMethods = normalizePaymentMethods(row?.payment_methods, row, defaultQr);
+  const paymentMethods = normalizePaymentMethods(row?.payment_methods, row, '');
   const primary = paymentMethods.find((m) => m.isPrimary) ?? paymentMethods[0];
   const gcashName = pickDbString(primary?.accountName ?? row?.gcash_name);
   const gcashNumber = pickDbString(primary?.accountNumber ?? row?.gcash_number);
@@ -544,7 +543,7 @@ export async function resolveAppSettings(propertyId?: string | null): Promise<Ap
       property.paymentProvider.value,
       property.gcashNumber.value
     ),
-    gcashQrImageUrl: property.gcashQr.value || `${originBase}/${DEFAULT_GCASH_QR_RELATIVE_PATH}`,
+    gcashQrImageUrl: property.gcashQr.value,
     paymentProvider: property.paymentProvider.value,
     paymentMethods: property.paymentMethods,
     ...property.gaf.resolved,

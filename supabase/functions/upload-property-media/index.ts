@@ -101,7 +101,7 @@ serve(async (req) => {
   }
 
   try {
-    const { property } = await resolveScopedPropertyAccess(req, 'settings:edit');
+    const { property } = await resolveScopedPropertyAccess(req, 'settings.media:edit');
     const propertyId = property.id;
 
     const supabase = createClient(

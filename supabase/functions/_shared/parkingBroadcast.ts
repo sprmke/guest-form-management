@@ -10,6 +10,7 @@ import { createServiceClient, type ParkingRow } from './orgAuth.ts';
 import { parkingDatesOverlap } from './parkingDateOverlap.ts';
 import { hasParkingBlockedNightsInRange } from './parkingBlockedDates.ts';
 import { parkingAutomationEnabled } from './parkingAutomationToggles.ts';
+import { minutesBetweenTimes } from './cleaningBuffer.ts';
 import {
   getOrgSlug,
   sendParkingReservationRequestEmail,
@@ -17,6 +18,12 @@ import {
 } from './parkingBroadcastEmail.ts';
 import { loadParkingTelegramSettingsRow, templateTextForKey } from './telegramParking.ts';
 import { resolvePropertyTelegramCredentials } from './propertyTelegramCredentials.ts';
+import {
+  PARKING_BATCH_SIZE,
+  PARKING_TURNOVER_BUFFER_MINUTES,
+  rankAndDedupeParkingCandidates,
+  type RankedParkingCandidate,
+} from './parkingBroadcastRanking.ts';
 
 /**
  * Non-terminal (or effectively-still-occupying) statuses for date-overlap purposes.
@@ -47,7 +54,16 @@ export function parkingBroadcastTtlMs(
 
 export type ParkingBroadcastCandidate = Pick<
   ParkingRow,
-  'id' | 'name' | 'slug' | 'organization_id' | 'residence_name' | 'tower' | 'level' | 'slot_label'
+  | 'id'
+  | 'name'
+  | 'slug'
+  | 'organization_id'
+  | 'residence_name'
+  | 'tower'
+  | 'level'
+  | 'slot_label'
+  | 'created_at'
+  | 'settings'
 >;
 
 /**
@@ -60,18 +76,24 @@ export async function findParkingBroadcastCandidates(input: {
   checkInDate: string;
   checkOutDate: string;
   pinnedParkingId?: string | null;
+  excludeParkingIds?: string[];
 }): Promise<ParkingBroadcastCandidate[]> {
   const supabase = createServiceClient();
 
   let query = supabase
     .from('parkings')
-    .select('id, name, slug, organization_id, residence_name, tower, level, slot_label')
+    .select(
+      'id, name, slug, organization_id, residence_name, tower, level, slot_label, created_at, settings'
+    )
     .eq('organization_id', input.organizationId)
     .eq('status', 'ACTIVE')
     .contains('accepted_vehicle_types', [input.requestedVehicleType]);
 
   if (input.pinnedParkingId) {
     query = query.eq('id', input.pinnedParkingId);
+  }
+  if (input.excludeParkingIds && input.excludeParkingIds.length > 0) {
+    query = query.not('id', 'in', `(${input.excludeParkingIds.join(',')})`);
   }
 
   const { data: parkings, error } = await query;
@@ -80,6 +102,7 @@ export async function findParkingBroadcastCandidates(input: {
   }
   const candidates = (parkings ?? []) as ParkingBroadcastCandidate[];
   if (candidates.length === 0) return [];
+  const candidatesById = new Map(candidates.map((c) => [c.id, c]));
 
   const parkingIds = candidates.map((c) => c.id);
   const { data: occupying, error: occupyingError } = await supabase
@@ -101,9 +124,32 @@ export async function findParkingBroadcastCandidates(input: {
     const existingCheckIn = String(row.parking_check_in_date ?? row.check_in_date ?? '');
     const existingCheckOut = String(row.parking_check_out_date ?? row.check_out_date ?? '');
     if (!existingCheckIn || !existingCheckOut) continue;
+
     if (
       parkingDatesOverlap(input.checkInDate, input.checkOutDate, existingCheckIn, existingCheckOut)
     ) {
+      conflictedParkingIds.add(parkingId);
+      continue;
+    }
+
+    // Same-day back-to-back (decision #5): not a date-range overlap, but still needs the
+    // locked 30 min turnover buffer between the two bookings on this exact slot.
+    const isSameDayTurnover =
+      input.checkInDate === existingCheckOut || input.checkOutDate === existingCheckIn;
+    if (!isSameDayTurnover) continue;
+
+    const candidate = candidatesById.get(parkingId);
+    const settings = (candidate?.settings ?? {}) as Record<string, unknown>;
+    const listingCheckInTime =
+      typeof settings.checkInTime === 'string' && settings.checkInTime.trim()
+        ? settings.checkInTime.trim()
+        : '14:00';
+    const listingCheckOutTime =
+      typeof settings.checkOutTime === 'string' && settings.checkOutTime.trim()
+        ? settings.checkOutTime.trim()
+        : '12:00';
+    const gapMinutes = minutesBetweenTimes(listingCheckOutTime, listingCheckInTime);
+    if (gapMinutes < PARKING_TURNOVER_BUFFER_MINUTES) {
       conflictedParkingIds.add(parkingId);
     }
   }
@@ -119,6 +165,29 @@ export async function findParkingBroadcastCandidates(input: {
     if (!blocked) available.push(candidate);
   }
   return available;
+}
+
+/**
+ * Resolves the next ranked, deduped, price-capped batch of up to `PARKING_BATCH_SIZE`
+ * candidates for a booking — excluding any parking already broadcast to in a prior batch.
+ * Used for both the initial batch (submit) and every subsequent batch (batch-advance).
+ */
+export async function resolveNextParkingBatch(input: {
+  organizationId: string;
+  requestedVehicleType: 'car' | 'motorcycle';
+  checkInDate: string;
+  checkOutDate: string;
+  pinnedParkingId?: string | null;
+  excludeParkingIds?: string[];
+}): Promise<RankedParkingCandidate[]> {
+  const rawCandidates = await findParkingBroadcastCandidates(input);
+  if (rawCandidates.length === 0) return [];
+  const ranked = await rankAndDedupeParkingCandidates(
+    rawCandidates,
+    input.checkInDate,
+    input.checkOutDate
+  );
+  return ranked.slice(0, PARKING_BATCH_SIZE);
 }
 
 export type ParkingHostRecipient = { userId: string; email: string };
@@ -173,6 +242,44 @@ export async function resolveParkingHostRecipients(
   return recipients;
 }
 
+export type ParkingHostContact = { name: string; email: string; phone: string | null };
+
+/**
+ * Phase 5 guest-facing contact reveal — the same recipient pool as `resolveParkingHostRecipients`
+ * (owner first, by Set insertion order), enriched with `parking_members.display_name`/
+ * `contact_phone` when available. Caller (`get-parking-booking-status`) gates this on
+ * `endorsement_sent_at IS NOT NULL` — never call before endorsement is sent.
+ */
+export async function resolveParkingHostContact(
+  supabase: SupabaseClient,
+  parking: Pick<ParkingRow, 'id' | 'organization_id'>
+): Promise<ParkingHostContact | null> {
+  const recipients = await resolveParkingHostRecipients(supabase, parking);
+  if (recipients.length === 0) return null;
+  const primary = recipients[0];
+
+  const [{ data: memberRow }, { data: userData }] = await Promise.all([
+    supabase
+      .from('parking_members')
+      .select('display_name, contact_phone')
+      .eq('parking_id', parking.id)
+      .eq('user_id', primary.userId)
+      .maybeSingle(),
+    supabase.auth.admin.getUserById(primary.userId),
+  ]);
+
+  const authName =
+    (userData?.user?.user_metadata?.full_name as string | undefined) ||
+    (userData?.user?.user_metadata?.name as string | undefined) ||
+    '';
+
+  return {
+    name: (memberRow?.display_name as string | undefined)?.trim() || authName || 'Parking host',
+    email: primary.email,
+    phone: (memberRow?.contact_phone as string | undefined)?.trim() || null,
+  };
+}
+
 export type ParkingBroadcastBookingInput = {
   id: string;
   guestName: string;
@@ -182,21 +289,26 @@ export type ParkingBroadcastBookingInput = {
 };
 
 /**
- * Inserts a `pending` broadcast row per candidate and notifies (Telegram + email).
- * Notify failures are logged and skipped per-candidate — never rolls back the booking.
+ * Inserts a `pending` broadcast row per ranked candidate (stamped with `batchNumber` and the
+ * host_gross it was ranked on) and notifies (Telegram + email). Notify failures are logged
+ * and skipped per-candidate — never rolls back the booking. Used for both the initial batch
+ * (submit) and every subsequent batch (`advanceOrTerminateParkingBatch`).
  */
 export async function fanOutParkingBroadcast(
   booking: ParkingBroadcastBookingInput,
-  candidates: ParkingBroadcastCandidate[]
+  ranked: RankedParkingCandidate[],
+  batchNumber = 1
 ): Promise<void> {
-  if (candidates.length === 0) return;
+  if (ranked.length === 0) return;
   const supabase = createServiceClient();
 
   const { error: insertError } = await supabase.from('parking_booking_broadcasts').insert(
-    candidates.map((c) => ({
+    ranked.map(({ candidate, hostGross }) => ({
       booking_id: booking.id,
-      parking_id: c.id,
+      parking_id: candidate.id,
       response: 'pending',
+      batch_number: batchNumber,
+      host_gross_at_broadcast: hostGross,
     }))
   );
   if (insertError) {
@@ -204,7 +316,7 @@ export async function fanOutParkingBroadcast(
   }
 
   await Promise.all(
-    candidates.map(async (candidate) => {
+    ranked.map(async ({ candidate }) => {
       try {
         await notifyParkingCandidate(supabase, booking, candidate);
       } catch (err) {

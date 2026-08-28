@@ -52,7 +52,7 @@ function asAdminDraftScenario(scenario: string): AdminDraftScenario {
 }
 
 serveAuthenticated('telegram-admin-settings', async (req) => {
-  const asset = await resolveTelegramAssetAccess(req);
+  const asset = await resolveTelegramAssetAccess(req, 'admin');
   const scope = telegramDbScope(asset);
 
   if (req.method === 'GET') {

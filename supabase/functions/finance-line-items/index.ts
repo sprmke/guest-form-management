@@ -22,11 +22,20 @@ function isKind(v: unknown): v is FinanceLineItemKind {
 }
 
 serveAuthenticated('finance-line-items', async (req, user) => {
-  const permission = req.method === 'GET' ? 'finance:view' : 'finance:edit';
+  const url = new URL(req.url);
+  const parkingId = url.searchParams.get('parking_id');
+  const permission = (() => {
+    if (req.method === 'GET') return 'finance:view' as const;
+    // Parking team RBAC stays on coarse finance:edit until Phase 9.
+    if (parkingId) return 'finance:edit' as const;
+    if (req.method === 'POST') return 'finance.transactions:add' as const;
+    if (req.method === 'PATCH') return 'finance.transactions:edit' as const;
+    if (req.method === 'DELETE') return 'finance.transactions:delete' as const;
+    return 'finance:view' as const;
+  })();
   const asset = await resolveFinanceAssetAccess(req, permission);
   const scope = financeDbScope(asset);
   const email = user.email;
-  const url = new URL(req.url);
 
   if (req.method === 'GET') {
     const seriesId = url.searchParams.get('recurrence_series_id');

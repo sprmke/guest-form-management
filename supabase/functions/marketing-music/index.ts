@@ -1,13 +1,13 @@
 /**
  * marketing-music — Jamendo browse/search + cache audio to property-media for video export.
- * Auth: serveAdmin + resolveAdminPropertyId.
+ * Auth: serveAuthenticated + marketing.* property-team RBAC.
  *
  * GET  ?q=&order=popularity_week&limit=20 — browse Jamendo (requires JAMENDO_CLIENT_ID)
  * POST JSON { action: 'import-jamendo', trackId } | { action: 'import-url', url }
  * POST multipart file= — upload own audio
  */
 
-import { createServiceClient } from '../_shared/orgAuth.ts';
+import { createServiceClient, requirePropertyPermissionAndFeature } from '../_shared/orgAuth.ts';
 import {
   fetchJamendoTrackById,
   fetchJamendoTracks,
@@ -20,8 +20,8 @@ import {
   fetchRemoteAudioBytes,
   uploadMarketingAudioBytes,
 } from '../_shared/marketingMusicStorage.ts';
-import { resolveAdminPropertyId } from '../_shared/propertyScope.ts';
-import { serveAdmin } from '../_shared/serveEdge.ts';
+import { resolveScopedPropertyAccess } from '../_shared/propertyScope.ts';
+import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 type ImportedMusic = {
   url: string;
@@ -31,10 +31,42 @@ type ImportedMusic = {
   trackId?: string;
 };
 
-serveAdmin('marketing-music', async (req, admin) => {
-  const propertyId = await resolveAdminPropertyId(req, admin.id);
+serveAuthenticated('marketing-music', async (req) => {
   const sb = createServiceClient();
   const url = new URL(req.url);
+  let propertyId: string;
+
+  if (req.method === 'GET') {
+    try {
+      const scoped = await resolveScopedPropertyAccess(req, 'marketing:view');
+      propertyId = scoped.property.id;
+      await requirePropertyPermissionAndFeature(
+        req,
+        propertyId,
+        'marketing:view',
+        'marketingStudio'
+      );
+    } catch (err) {
+      if (err instanceof Response) return err;
+      throw err;
+    }
+  } else if (req.method === 'POST') {
+    try {
+      const scoped = await resolveScopedPropertyAccess(req, 'marketing.content:edit');
+      propertyId = scoped.property.id;
+      await requirePropertyPermissionAndFeature(
+        req,
+        propertyId,
+        'marketing.content:edit',
+        'marketingStudio'
+      );
+    } catch (err) {
+      if (err instanceof Response) return err;
+      throw err;
+    }
+  } else {
+    return jsonError(req, 'Method not allowed', 405);
+  }
 
   if (req.method === 'GET') {
     const clientId = readJamendoClientId();

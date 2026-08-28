@@ -18,7 +18,17 @@ serveAuthenticated('social-inbox-templates', async (req) => {
     req.method === 'GET' || req.method === 'DELETE'
       ? null
       : ((await readJsonBody(req)) as Record<string, unknown>);
-  const ctx = await resolveInboxAccess(req, 'manage', body);
+  const capability =
+    req.method === 'GET'
+      ? 'quick_replies'
+      : req.method === 'POST'
+        ? 'quick_replies_add'
+        : req.method === 'PATCH'
+          ? 'quick_replies_edit'
+          : req.method === 'DELETE'
+            ? 'quick_replies_delete'
+            : 'manage';
+  const ctx = await resolveInboxAccess(req, capability, body);
   const sb = createServiceClient();
 
   if (req.method === 'POST' || req.method === 'PATCH') {

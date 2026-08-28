@@ -29,6 +29,7 @@ import {
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
 import { seedPropertySettings } from '../_shared/propertySettingsSeed.ts';
+import { seedPropertyTeamTemplates } from '../_shared/propertyTeamTemplates.ts';
 import { ensureOrgHostMode } from '../_shared/parkingSlotUnit.ts';
 import {
   autoEnrollPropertyInOrgSubscription,
@@ -130,6 +131,7 @@ serveAuthenticated('create-property', async (req, user) => {
 
   try {
     await seedPropertySettings(data.id as string, { residenceName });
+    await seedPropertyTeamTemplates(supabase, data.id as string);
     await ensureOrgHostMode(supabase, orgId, 'property');
   } catch (e) {
     console.error('[create-property] settings seed:', e);

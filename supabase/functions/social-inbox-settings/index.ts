@@ -16,7 +16,7 @@ import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('social-inbox-settings', async (req) => {
   const body = req.method === 'GET' ? null : ((await readJsonBody(req)) as Record<string, unknown>);
-  const ctx = await resolveInboxAccess(req, 'manage', body);
+  const ctx = await resolveInboxAccess(req, 'automation', body);
   await ensureSocialInboxSettings(ctx.orgId, ctx.parkingId);
   const sb = socialInboxDb();
 

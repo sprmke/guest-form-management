@@ -3,7 +3,7 @@
  *
  * Trigger: POST /functions/v1/booking-ai-review?property_id=<id>
  * Body:    { bookingId: string, force?: boolean, refresh?: boolean }
- * Auth:    resolveScopedPropertyAccess(req, 'bookings:edit')
+ * Auth:    resolveScopedPropertyAccess(req, 'bookings.detail.stay:edit')
  *
  * A completed job is returned as-is unless `refresh` is true and at least one
  * section's inputs have changed (or the prior job failed / got stuck). Section
@@ -41,7 +41,7 @@ import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('booking-ai-review', async (req, user) => {
   requireHttpMethod(req, 'POST');
-  const { property, org } = await resolveScopedPropertyAccess(req, 'bookings:edit');
+  const { property, org } = await resolveScopedPropertyAccess(req, 'bookings.detail.stay:edit');
   const propertyId = property.id;
 
   try {

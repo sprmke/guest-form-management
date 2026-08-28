@@ -24,7 +24,6 @@ import {
   sendPetEmail,
   sendBookingAcknowledgement,
   sendReadyForCheckin,
-  sendParkingBroadcast,
   sendSdRefundFormRequest,
 } from './emailService.ts';
 import {
@@ -914,21 +913,10 @@ export class WorkflowOrchestrator {
         recordIfPlanBlocked('emailPetRequest', 'pet_request');
       }
 
-      if (
-        updatedBooking.need_parking &&
-        flag(devControls, 'sendParkingBroadcastEmail') &&
-        (await propertyEmailAllowed('emailParkingBroadcast'))
-      ) {
-        try {
-          await sendParkingBroadcast(updatedBooking);
-          emailsSent.push('parking_broadcast');
-        } catch (err) {
-          console.error('[orchestrator] Parking broadcast email failed:', err);
-        }
-      } else if (updatedBooking.need_parking && flag(devControls, 'sendParkingBroadcastEmail')) {
-        console.log('[orchestrator] Parking broadcast email skipped (org automation off)');
-        recordIfPlanBlocked('emailParkingBroadcast', 'parking_broadcast');
-      }
+      // Phase 7: retired — a new need_parking signal no longer triggers the legacy env-list
+      // broadcast email. Guests self-serve through the marketplace instead (see
+      // guestFormSteps.ts / parkingPropertyLink.ts). parking-broadcast-email/index.ts (manual
+      // admin resend) and this booking's own historical broadcast state, if any, are untouched.
     }
 
     // Issue stay-guide token whenever booking reaches READY_FOR_CHECKIN.

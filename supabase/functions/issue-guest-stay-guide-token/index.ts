@@ -22,7 +22,7 @@ import type { GuestSubmission } from '../_shared/types.ts';
 
 serveAuthenticated('issue-guest-stay-guide-token', async (req) => {
   requireHttpMethod(req, 'POST');
-  const { property } = await resolveScopedPropertyAccess(req, 'bookings:workflow');
+  const { property } = await resolveScopedPropertyAccess(req, 'bookings.detail.workflow:edit');
   const propertyId = property.id;
   const body = await readJsonBody(req);
   const bookingId = body?.bookingId;

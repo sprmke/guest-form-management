@@ -14,7 +14,7 @@ serveAuthenticated('meta-inbox-resubscribe', async (req) => {
   }
 
   const body = (await readJsonBody(req)) as Record<string, unknown>;
-  const ctx = await resolveInboxAccess(req, 'manage', body);
+  const ctx = await resolveInboxAccess(req, 'channels_add', body);
   const effective = await resolveEffectiveMetaConnection(ctx.orgId, ctx.scope);
   const facebook = effective.connections.find((connection) => connection.platform === 'facebook');
 

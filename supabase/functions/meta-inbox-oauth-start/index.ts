@@ -31,7 +31,7 @@ serveAuthenticated('meta-inbox-oauth-start', async (req, user) => {
     body = {};
   }
 
-  const ctx = await resolveInboxAccess(req, 'manage', body);
+  const ctx = await resolveInboxAccess(req, 'channels_add', body);
 
   try {
     if (ctx.propertyId) {

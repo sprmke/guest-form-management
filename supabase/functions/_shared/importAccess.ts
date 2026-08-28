@@ -1,18 +1,22 @@
 /**
  * Import access — org ↔ property permission pairing (mirrors inboxAccess.ts).
  *
- * org:import:manage ↔ import:manage
+ * org:import:manage ↔ bookings.import:add (Phase 3 rename of import:manage)
  * Property-scoped endpoints require property_id; verifyPropertyAccess layers org owner/admin.
  */
 
-import { verifyPropertyAccess, type PropertyAccessContext } from './orgAuth.ts';
+import {
+  requirePropertyPermissionAndFeature,
+  verifyPropertyAccess,
+  type PropertyAccessContext,
+} from './orgAuth.ts';
 import type { OrgPermissionId } from './orgTeamPermissions.ts';
 import { catchPlanFeatureError, requirePropertyFeature } from './planEntitlements.ts';
 import type { TeamPermissionId } from './propertyTeamPermissions.ts';
 import { readPropertyIdFromUrl } from './propertyScope.ts';
 
 const ORG_PERM: OrgPermissionId = 'org:import:manage';
-const SCOPE_PERM: TeamPermissionId = 'import:manage';
+const SCOPE_PERM: TeamPermissionId = 'bookings.import:add';
 
 export type ImportAccessContext = PropertyAccessContext & {
   orgId: string;
@@ -25,7 +29,7 @@ export const IMPORT_ACCESS_PERMISSIONS = {
   property: SCOPE_PERM,
 } as const;
 
-export async function resolveImportAccess(req: Request): Promise<ImportAccessContext> {
+async function readRequiredPropertyId(req: Request): Promise<string> {
   const url = new URL(req.url);
   const propertyId = readPropertyIdFromUrl(url);
   if (!propertyId) {
@@ -34,7 +38,12 @@ export async function resolveImportAccess(req: Request): Promise<ImportAccessCon
       headers: { 'Content-Type': 'application/json' },
     });
   }
+  return propertyId;
+}
 
+/** Permission gate only (upload / list / cancel stay open without plan). */
+export async function resolveImportAccess(req: Request): Promise<ImportAccessContext> {
+  const propertyId = await readRequiredPropertyId(req);
   const ctx = await verifyPropertyAccess(req, propertyId, SCOPE_PERM);
   return {
     ...ctx,
@@ -43,7 +52,25 @@ export async function resolveImportAccess(req: Request): Promise<ImportAccessCon
   };
 }
 
-/** Starter+ gate for match / preview / commit (upload + cancel stay open for preview). */
+/**
+ * Permission + bookingImport plan gate (D17) — use for match / preview / commit / mapping.
+ */
+export async function resolveImportAccessWithPlan(req: Request): Promise<ImportAccessContext> {
+  const propertyId = await readRequiredPropertyId(req);
+  const ctx = await requirePropertyPermissionAndFeature(
+    req,
+    propertyId,
+    SCOPE_PERM,
+    'bookingImport'
+  );
+  return {
+    ...ctx,
+    orgId: ctx.org.id,
+    propertyId,
+  };
+}
+
+/** Plan-only check when access was already resolved. */
 export async function requireImportPlanFeature(
   req: Request,
   propertyId: string

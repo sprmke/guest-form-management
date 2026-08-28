@@ -143,7 +143,27 @@ serveAuthenticated('upload-booking-asset', async (req, user) => {
 
   if (!assetType || !ASSET_CONFIG[assetType]) throw new Error(`Invalid assetType: "${assetType}"`);
 
-  const permission = isWorkflowAssetType(assetType) ? 'bookings:workflow' : 'bookings:edit';
+  let permission:
+    | 'bookings.detail.workflow:edit'
+    | 'bookings.detail.guests:edit'
+    | 'bookings.detail.pets:edit'
+    | 'bookings.detail.pricing:edit'
+    | 'bookings.detail.stay:edit' = 'bookings.detail.stay:edit';
+  if (isWorkflowAssetType(assetType)) {
+    permission = 'bookings.detail.workflow:edit';
+  } else if (
+    assetType === 'valid_id' ||
+    assetType === 'guest2_valid_id' ||
+    assetType === 'guest3_valid_id' ||
+    assetType === 'guest4_valid_id' ||
+    assetType === 'guest5_valid_id'
+  ) {
+    permission = 'bookings.detail.guests:edit';
+  } else if (assetType === 'pet_vaccination' || assetType === 'pet_image') {
+    permission = 'bookings.detail.pets:edit';
+  } else if (assetType === 'payment_receipt') {
+    permission = 'bookings.detail.pricing:edit';
+  }
   const { property } = await resolveScopedPropertyAccess(req, permission);
   const propertyId = property.id;
 

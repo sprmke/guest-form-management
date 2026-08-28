@@ -5,23 +5,29 @@
 import { generateMarketingCaption } from '../_shared/marketingCaptionAi.ts';
 import { jsonError, jsonResponse, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
 import { isAiPlatformDisabledError, isAiQuotaError } from '../_shared/aiUsageService.ts';
-import { catchPlanFeatureError, requirePropertyFeature } from '../_shared/planEntitlements.ts';
-import { resolveAdminPropertyId } from '../_shared/propertyScope.ts';
-import { serveAdmin } from '../_shared/serveEdge.ts';
-import { createServiceClient } from '../_shared/orgAuth.ts';
+import { createServiceClient, requirePropertyPermissionAndFeature } from '../_shared/orgAuth.ts';
+import { resolveScopedPropertyAccess } from '../_shared/propertyScope.ts';
+import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
-serveAdmin('generate-marketing-caption', async (req, admin) => {
+serveAuthenticated('generate-marketing-caption', async (req) => {
   if (req.method !== 'POST') {
     return jsonError(req, 'Method not allowed', 405);
   }
 
-  const propertyId = await resolveAdminPropertyId(req, admin.id);
-
+  let propertyId: string;
+  let actorUserId: string;
   try {
-    await requirePropertyFeature(propertyId, 'aiMarketingGeneration');
+    const scoped = await resolveScopedPropertyAccess(req, 'marketing.generate:add');
+    propertyId = scoped.property.id;
+    const access = await requirePropertyPermissionAndFeature(
+      req,
+      propertyId,
+      'marketing.generate:add',
+      'aiMarketingGeneration'
+    );
+    actorUserId = access.user.id;
   } catch (err) {
-    const planErr = catchPlanFeatureError(req, err);
-    if (planErr) return planErr;
+    if (err instanceof Response) return err;
     throw err;
   }
 
@@ -56,22 +62,17 @@ serveAdmin('generate-marketing-caption', async (req, admin) => {
       contentHint: contentHint || undefined,
       nightlyRate: nightlyRate || undefined,
       availabilityText: availabilityText || undefined,
-      actorUserId: admin.id,
+      actorUserId,
       actorType: 'staff',
     });
-
     return jsonSuccess(req, { caption });
   } catch (err) {
     if (isAiQuotaError(err)) {
-      return jsonResponse(
-        req,
-        { success: false, error: (err as Error).message, upgradeHook: true },
-        429
-      );
+      return jsonResponse(req, { success: false, error: err.message }, 429);
     }
     if (isAiPlatformDisabledError(err)) {
-      return jsonError(req, (err as Error).message, 503);
+      return jsonResponse(req, { success: false, error: err.message }, 503);
     }
-    return jsonError(req, (err as Error).message, 503);
+    return jsonError(req, err instanceof Error ? err.message : 'Failed to generate caption', 500);
   }
 });

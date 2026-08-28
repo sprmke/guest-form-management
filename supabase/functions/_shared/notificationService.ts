@@ -12,6 +12,7 @@ export type NotificationType =
   | 'booking_sd_refund_due'
   | 'booking_gaf_auto_approved'
   | 'booking_pet_auto_approved'
+  | 'booking_parking_matched'
   | 'inbox_new_message';
 
 /** Legacy inbox rows stored this generic title before participant names shipped. */

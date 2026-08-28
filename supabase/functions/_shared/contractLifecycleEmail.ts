@@ -4,6 +4,7 @@
 
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
+import { buildEmailCtaHtml, renderBrandedEmailShell } from './brandedEmailShell.ts';
 import { loadAuthUserProfile } from './authUserProfile.ts';
 import type { ContractLeg, ContractNoticeMilestone } from './contractLifecycle.ts';
 import { resolvePublicGuestAppOrigin } from './publicAppOrigin.ts';
@@ -90,15 +91,20 @@ export async function sendContractLifecycleNoticeEmail(opts: {
   const appOrigin = resolvePublicGuestAppOrigin(null);
   const dashboardUrl = `${appOrigin}/org`;
 
-  const template = await loadEmailTemplate('contract-lifecycle-notice');
-  const html = replacePlaceholders(template, {
-    organization_name: escapeHtml(opts.organizationName),
+  const bodyTemplate = await loadEmailTemplate('contract-lifecycle-notice');
+  const bodyHtml = replacePlaceholders(bodyTemplate, {
     owner_name: escapeHtml(owner.name || 'there'),
-    headline: escapeHtml(copy.headline),
     body: escapeHtml(copy.body),
-    leg_label: escapeHtml(legLabel),
     contract_end_date: escapeHtml(opts.contractEndYmd),
-    dashboard_url: dashboardUrl,
+    dashboard_cta: buildEmailCtaHtml('Open dashboard', dashboardUrl, null),
+  });
+
+  const html = await renderBrandedEmailShell({
+    brandName: opts.organizationName,
+    unitLabel: legLabel,
+    emailTitle: copy.headline,
+    bodyHtml,
+    brandColor: null,
   });
 
   const res = await fetch(RESEND_API, {

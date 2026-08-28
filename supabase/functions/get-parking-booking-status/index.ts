@@ -3,11 +3,31 @@
  * The booking UUID in the URL is the bearer capability — do not add a list endpoint.
  */
 
-import { createServiceClient } from '../_shared/orgAuth.ts';
-import { resolveParkingHostContact } from '../_shared/parkingBroadcast.ts';
-import { resolveParkingPlatformSettings } from '../_shared/parkingPlatformSettings.ts';
 import { jsonError, jsonSuccess } from '../_shared/httpResponse.ts';
+import { createServiceClient } from '../_shared/orgAuth.ts';
+import { resolveOrgSettings } from '../_shared/orgSettings.ts';
+import {
+  DEFAULT_ORG_BRAND_COLOR,
+  resolveOrgBrandColorFromSettings,
+} from '../_shared/orgSettingsValidation.ts';
+import { resolveParkingHostContact } from '../_shared/parkingBroadcast.ts';
+import { loadResolvedBrandColorByParkingId } from '../_shared/parkingBranding.ts';
+import { resolveParkingPlatformSettings } from '../_shared/parkingPlatformSettings.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
+
+function readParkingCoverImage(
+  settings: Record<string, unknown> | null | undefined
+): string | null {
+  if (!settings || typeof settings !== 'object') return null;
+  const coverImage = settings.coverImage;
+  if (typeof coverImage === 'string' && coverImage.trim()) return coverImage.trim();
+  const images = settings.images;
+  if (Array.isArray(images)) {
+    const first = images.find((value) => typeof value === 'string' && value.trim());
+    if (typeof first === 'string') return first.trim();
+  }
+  return null;
+}
 
 servePublic('get-parking-booking-status', async (req) => {
   if (req.method !== 'GET') {
@@ -42,19 +62,30 @@ servePublic('get-parking-booking-status', async (req) => {
 
   let parkingLabel: string | null = null;
   let parkingSlug: string | null = null;
+  let parkingName: string | null = null;
+  let residenceName: string | null = null;
+  let coverImage: string | null = null;
+  let brandColor = DEFAULT_ORG_BRAND_COLOR;
+  let logoUrl: string | null = null;
   let organizationName: string | null = null;
   let hostContact: { name: string; email: string; phone: string | null } | null = null;
 
   if (booking.parking_id) {
     const { data: parking } = await supabase
       .from('parkings')
-      .select('name, slug, slot_label, tower, organization_id')
+      .select('name, slug, slot_label, tower, residence_name, settings, organization_id')
       .eq('id', booking.parking_id)
       .maybeSingle();
     if (parking) {
       parkingLabel =
         [parking.slot_label, parking.tower].filter(Boolean).join(' · ') || parking.name;
       parkingSlug = (parking.slug as string | undefined) ?? null;
+      parkingName = (parking.name as string | undefined) ?? null;
+      residenceName = (parking.residence_name as string | undefined) ?? null;
+      coverImage = readParkingCoverImage((parking.settings ?? {}) as Record<string, unknown>);
+      brandColor = await loadResolvedBrandColorByParkingId(String(booking.parking_id));
+      const orgSettings = await resolveOrgSettings(parking.organization_id as string);
+      logoUrl = orgSettings.emailLogoUrl?.trim() || null;
       const { data: org } = await supabase
         .from('organizations')
         .select('name')
@@ -71,12 +102,16 @@ servePublic('get-parking-booking-status', async (req) => {
       }
     }
   } else if (booking.parking_request_organization_id) {
+    const orgId = String(booking.parking_request_organization_id);
     const { data: org } = await supabase
       .from('organizations')
-      .select('name')
-      .eq('id', booking.parking_request_organization_id)
+      .select('name, settings')
+      .eq('id', orgId)
       .maybeSingle();
     organizationName = (org?.name as string | undefined) ?? null;
+    brandColor = resolveOrgBrandColorFromSettings((org?.settings ?? {}) as Record<string, unknown>);
+    const orgSettings = await resolveOrgSettings(orgId);
+    logoUrl = orgSettings.emailLogoUrl?.trim() || null;
   }
 
   // Which TTL is live depends on status — parking_broadcast_expires_at is stale once claimed
@@ -96,6 +131,11 @@ servePublic('get-parking-booking-status', async (req) => {
     batchNumber: Number(booking.parking_broadcast_batch_number ?? 1),
     parkingLabel,
     parkingSlug,
+    parkingName,
+    residenceName,
+    coverImage,
+    brandColor,
+    logoUrl,
     endorsementNote: booking.parking_endorsement_note ?? null,
     organizationName,
     endorsementSentAt: booking.endorsement_sent_at ?? null,

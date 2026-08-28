@@ -14,6 +14,7 @@ import {
 } from './planPricing.ts';
 import { computeMidCycleProration, type ProrationQuote } from './subscriptionProration.ts';
 import { getPlatformPaymentSettings } from './subscriptionOrchestrator.ts';
+import { selectInIdChunks } from './postgrestInChunks.ts';
 
 export type OrgCheckoutPurpose = 'initial' | 'renewal' | 'retry' | 'change';
 
@@ -94,13 +95,16 @@ export async function createOrgSubscriptionCheckoutLink(input: {
     .maybeSingle();
 
   // A property already slotted into a *different* live org subscription can't be checked out here.
-  const { data: conflictingSlots, error: conflictError } = await sb
-    .from('org_subscription_properties')
-    .select('property_id')
-    .in('property_id', uniquePropertyIds)
-    .neq('org_subscription_id', liveSub?.id ?? '00000000-0000-0000-0000-000000000000');
-  if (conflictError) throw new Error(conflictError.message);
-  if (conflictingSlots && conflictingSlots.length > 0) {
+  const conflictingSlots = await selectInIdChunks<{ property_id: string }>(
+    uniquePropertyIds,
+    (chunk) =>
+      sb
+        .from('org_subscription_properties')
+        .select('property_id')
+        .in('property_id', chunk)
+        .neq('org_subscription_id', liveSub?.id ?? '00000000-0000-0000-0000-000000000000')
+  );
+  if (conflictingSlots.length > 0) {
     throw new Error('One or more properties are already covered by a different org subscription');
   }
 

@@ -82,15 +82,26 @@ serve(async (req) => {
   }
 
   try {
-    const { property } = await resolveScopedPropertyAccess(req, 'settings:edit');
-    const propertyId = property.id;
-
     if (req.method !== 'POST') {
       throw new Error(`Method ${req.method} not allowed`);
     }
 
     const formData = await req.formData();
     const assetType = formData.get('assetType') as AssetType;
+    if (!assetType || !ASSET_CONFIG[assetType]) {
+      throw new Error(`Invalid assetType: "${assetType}"`);
+    }
+
+    const permission =
+      assetType === 'gcash_qr'
+        ? ('settings.payment:edit' as const)
+        : assetType === 'gaf_unit_owner_signature'
+          ? ('settings.buildingForms:edit' as const)
+          : ('settings.socials:edit' as const);
+
+    const { property } = await resolveScopedPropertyAccess(req, permission);
+    const propertyId = property.id;
+
     const file = formData.get('file') as File;
     const fileName = (formData.get('fileName') as string) || file?.name;
     const reviewId = (formData.get('reviewId') as string | null)?.trim() || undefined;
@@ -98,9 +109,6 @@ serve(async (req) => {
     const photoIndex =
       photoIndexRaw == null || photoIndexRaw === '' ? undefined : Number(photoIndexRaw);
 
-    if (!assetType || !ASSET_CONFIG[assetType]) {
-      throw new Error(`Invalid assetType: "${assetType}"`);
-    }
     if (!file) throw new Error('file is required');
     if (!fileName) throw new Error('fileName is required');
 

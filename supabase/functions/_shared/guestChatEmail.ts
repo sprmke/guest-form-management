@@ -2,8 +2,9 @@
  * Offline email when a host (or web auto-reply) sends an outbound web chat message.
  */
 
+import { buildEmailCtaHtml, renderBrandedEmailShell } from './brandedEmailShell.ts';
 import { loadAuthUserProfile } from './authUserProfile.ts';
-import { resolveEmailOnPrimaryHex, resolveEmailPrimaryHex } from './emailBrandColor.ts';
+import { resolveEmailPrimaryHex } from './emailBrandColor.ts';
 import { parseInboxAttachmentPreviews } from './inboxAttachments.ts';
 import { resolvePublicGuestAppOrigin } from './publicAppOrigin.ts';
 import { escapeHtml, loadEmailTemplate, replacePlaceholders } from './renderEmailHtml.ts';
@@ -52,7 +53,6 @@ export async function maybeNotifyGuestOfHostWebReply(opts: {
   if (!guest.email?.trim()) return;
 
   let propertyName = 'Your stay inquiry';
-  let propertySlug: string | null = null;
   const propertyId = conv?.property_id as string | null | undefined;
   if (propertyId) {
     const { data: property } = await sb
@@ -61,7 +61,6 @@ export async function maybeNotifyGuestOfHostWebReply(opts: {
       .eq('id', propertyId)
       .maybeSingle();
     if (property?.name) propertyName = String(property.name);
-    if (property?.slug) propertySlug = String(property.slug);
   }
 
   const { data: orgRow } = await sb
@@ -80,16 +79,25 @@ export async function maybeNotifyGuestOfHostWebReply(opts: {
     return;
   }
 
-  const template = await loadEmailTemplate('guest-chat-reply');
   const brandColor = (orgRow?.brand_color_hex as string | undefined)?.trim() || null;
-  const html = replacePlaceholders(template, {
-    brand_color: resolveEmailPrimaryHex(brandColor),
-    brand_on_color: resolveEmailOnPrimaryHex(brandColor),
-    property_name: escapeHtml(propertyName),
+  const primary = resolveEmailPrimaryHex(brandColor);
+  const hostName = (orgRow?.name as string | undefined)?.trim() || 'Your host';
+  const bodyTemplate = await loadEmailTemplate('guest-chat-reply');
+  const bodyHtml = replacePlaceholders(bodyTemplate, {
+    brand_color: primary,
     guest_name: escapeHtml(guest.name || 'there'),
-    host_name: escapeHtml((orgRow?.name as string | undefined)?.trim() || 'Your host'),
+    host_name: escapeHtml(hostName),
     message_preview: escapeHtml(previewFromMessage(msg.body_text, msg.attachments)),
-    messages_url: messagesUrl,
+    messages_cta: buildEmailCtaHtml('View conversation', messagesUrl, brandColor),
+  });
+
+  const html = await renderBrandedEmailShell({
+    brandName: hostName,
+    unitLabel: propertyName,
+    emailTitle: 'New message',
+    bodyHtml,
+    brandColor,
+    propertyId,
   });
 
   const res = await fetch(RESEND_API, {

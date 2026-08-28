@@ -55,7 +55,7 @@ function staffDraftByScenario<T>(
 }
 
 serveAuthenticated('telegram-staff-settings', async (req) => {
-  const asset = await resolveTelegramAssetAccess(req);
+  const asset = await resolveTelegramAssetAccess(req, 'staff');
   const scope = telegramDbScope(asset);
 
   if (req.method === 'GET') {

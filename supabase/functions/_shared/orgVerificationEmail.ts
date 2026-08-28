@@ -4,6 +4,7 @@
 
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
+import { buildEmailCtaHtml, renderBrandedEmailShell } from './brandedEmailShell.ts';
 import { loadAuthUserProfile } from './authUserProfile.ts';
 import { resolvePublicGuestAppOrigin } from './publicAppOrigin.ts';
 import { escapeHtml, loadEmailTemplate, replacePlaceholders } from './renderEmailHtml.ts';
@@ -31,18 +32,26 @@ export async function sendOrgVerificationRejectedEmail(opts: {
 
   const reason = opts.rejectionReason.trim();
   const rejectionReasonBlock = reason
-    ? `<div style="margin:0 0 16px 0;padding:12px 16px;border-left:3px solid #dc2626;background:#fef2f2;border-radius:8px;font-size:14px;line-height:1.5;color:#111827;"><p style="margin:0 0 6px 0;font-size:11px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#b91c1c;">Reason</p><p style="margin:0;white-space:pre-wrap;">${escapeHtml(reason)}</p></div>`
+    ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 16px 0;border-collapse:separate;border-spacing:0;"><tr><td style="padding:18px 20px;background-color:#fde8e8;border:1px solid #e8a0a0;border-radius:16px;font-size:14px;line-height:1.55;color:#6b2d2d;"><p style="margin:0 0 6px 0;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#8b3a3a;">Reason</p><p style="margin:0;white-space:pre-wrap;">${escapeHtml(reason)}</p></td></tr></table>`
     : '';
 
   const appOrigin = resolvePublicGuestAppOrigin(null);
   const applyUrl = `${appOrigin}/onboarding`;
 
-  const template = await loadEmailTemplate('org-verification-rejected');
-  const html = replacePlaceholders(template, {
+  const bodyTemplate = await loadEmailTemplate('org-verification-rejected');
+  const bodyHtml = replacePlaceholders(bodyTemplate, {
     organization_name: escapeHtml(opts.organizationName),
     owner_name: escapeHtml(owner.name || 'there'),
     rejection_reason_block: rejectionReasonBlock,
-    apply_url: applyUrl,
+    apply_cta: buildEmailCtaHtml('Start a new application', applyUrl, null),
+  });
+
+  const html = await renderBrandedEmailShell({
+    brandName: 'Kame Homes',
+    unitLabel: opts.organizationName,
+    emailTitle: 'Host verification declined',
+    bodyHtml,
+    brandColor: null,
   });
 
   const res = await fetch(RESEND_API, {

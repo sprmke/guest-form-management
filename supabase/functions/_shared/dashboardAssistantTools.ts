@@ -99,6 +99,7 @@ import { computeTotalGuestBalanceFromBooking } from './totalGuestBalance.ts';
 import { normalizeDateToYYYYMMDD } from './utils.ts';
 import {
   createServiceClient,
+  requirePropertyPermissionAndFeature,
   verifyOrgAccess,
   verifyOrgOwner,
   verifyOrgTeamAccess,
@@ -106,8 +107,11 @@ import {
   verifyPropertyAccess,
   verifyPropertyOwner,
 } from './orgAuth.ts';
-import { resolveAdminPropertyId, resolveOrganizationIdForProperty } from './propertyScope.ts';
-import { verifyAdminJwt } from './auth.ts';
+import { resolveOrganizationIdForProperty } from './propertyScope.ts';
+import type { PlanFeatureKey } from './planFeatures.ts';
+import { requireMarketingPublishAllowed } from './planEntitlements.ts';
+import { updatePropertyPatchPermissions } from './settingsPatchPermissions.ts';
+import type { TeamPermissionId } from './propertyTeamPermissions.ts';
 import { generateMarketingCaption } from './marketingCaptionAi.ts';
 import { generateMarketingTemplateTokens } from './marketingTemplateGenerationAi.ts';
 import { fetchJamendoTracks, readJamendoClientId } from './jamendoMusic.ts';
@@ -1219,7 +1223,7 @@ async function toolGetInboxSettings(
   if (!scopeArgs.propertyId && !scopeArgs.parkingId) {
     return { ok: false, error: 'propertyId or parkingId is required' };
   }
-  const inboxCtx = await resolveInboxAccess(ctx.req, 'manage', scopeArgs);
+  const inboxCtx = await resolveInboxAccess(ctx.req, 'automation', scopeArgs);
   const sb = createServiceClient();
   const settingsQuery = sb
     .from('social_inbox_settings')
@@ -1247,7 +1251,7 @@ async function toolListInboxQuickReplyTemplates(
   if (!scopeArgs.propertyId && !scopeArgs.parkingId) {
     return { ok: false, error: 'propertyId or parkingId is required' };
   }
-  const inboxCtx = await resolveInboxAccess(ctx.req, 'manage', scopeArgs);
+  const inboxCtx = await resolveInboxAccess(ctx.req, 'quick_replies', scopeArgs);
   const sb = createServiceClient();
   const templatesQuery = sb
     .from('social_reply_templates')
@@ -1267,21 +1271,17 @@ async function toolListInboxQuickReplyTemplates(
 }
 
 /**
- * Marketing Studio has no property-team RBAC today — every marketing edge function gates on
- * `verifyAdminJwt` (the global `ADMIN_ALLOWED_EMAILS` allowlist), not `verifyPropertyAccess`/
- * `TeamPermissionId` like the rest of this catalog. These tools mirror that real boundary exactly
- * rather than inventing a property-scoped permission the actual endpoints don't enforce — see
- * docs/architecture/ai-dashboard-assistant.md §3.8. A host who isn't a global admin will get a
- * plain access-denied refusal here, same as they would calling the real endpoint directly.
+ * Marketing Studio tools use the same property-team RBAC + plan gates as the edge functions (Phase 7).
  */
-async function verifyMarketingAdminAccess(
+async function verifyMarketingPropertyAccess(
   ctx: ToolExecutionContext,
-  propertyId: string
+  propertyId: string,
+  permission: TeamPermissionId,
+  feature?: PlanFeatureKey
 ): Promise<{ propertyId: string; organizationId: string }> {
-  const admin = await verifyAdminJwt(ctx.req);
-  const resolvedPropertyId = await resolveAdminPropertyId(ctx.req, admin.id, propertyId);
-  const organizationId = await resolveOrganizationIdForProperty(resolvedPropertyId);
-  return { propertyId: resolvedPropertyId, organizationId };
+  await requirePropertyPermissionAndFeature(ctx.req, propertyId, permission, feature);
+  const organizationId = await resolveOrganizationIdForProperty(propertyId);
+  return { propertyId, organizationId };
 }
 
 async function toolListMarketingTemplates(
@@ -1290,7 +1290,12 @@ async function toolListMarketingTemplates(
 ): Promise<ToolResult> {
   const propertyId = str(args, 'propertyId');
   if (!propertyId) return { ok: false, error: 'propertyId is required' };
-  const access = await verifyMarketingAdminAccess(ctx, propertyId);
+  const access = await verifyMarketingPropertyAccess(
+    ctx,
+    propertyId,
+    'marketing:view',
+    'marketingStudio'
+  );
   const sb = createServiceClient();
   const { data, error } = await sb
     .from('marketing_templates')
@@ -1317,7 +1322,12 @@ async function toolGetMarketingPublishHistory(
 ): Promise<ToolResult> {
   const propertyId = str(args, 'propertyId');
   if (!propertyId) return { ok: false, error: 'propertyId is required' };
-  const access = await verifyMarketingAdminAccess(ctx, propertyId);
+  const access = await verifyMarketingPropertyAccess(
+    ctx,
+    propertyId,
+    'marketing:view',
+    'marketingStudio'
+  );
   const sb = createServiceClient();
   const { data, error } = await sb
     .from('marketing_publications')
@@ -1347,7 +1357,7 @@ async function toolSearchMarketingMusic(
 ): Promise<ToolResult> {
   const propertyId = str(args, 'propertyId');
   if (!propertyId) return { ok: false, error: 'propertyId is required' };
-  await verifyMarketingAdminAccess(ctx, propertyId);
+  await verifyMarketingPropertyAccess(ctx, propertyId, 'marketing:view', 'marketingStudio');
 
   const clientId = readJamendoClientId();
   if (!clientId) return { ok: true, data: { tracks: [], jamendoConfigured: false } };
@@ -1373,7 +1383,12 @@ async function toolDraftMarketingCaption(
 ): Promise<ToolResult> {
   const propertyId = str(args, 'propertyId');
   if (!propertyId) return { ok: false, error: 'propertyId is required' };
-  const access = await verifyMarketingAdminAccess(ctx, propertyId);
+  const access = await verifyMarketingPropertyAccess(
+    ctx,
+    propertyId,
+    'marketing.generate:add',
+    'aiMarketingGeneration'
+  );
 
   const sb = createServiceClient();
   const { data: propertyRow, error } = await sb
@@ -1416,7 +1431,12 @@ async function toolDraftMarketingTemplate(
   if (prompt.length > 500) return { ok: false, error: 'Prompt is too long (max 500 characters)' };
   const contentType =
     args.contentType === 'design' || args.contentType === 'video' ? args.contentType : 'calendar';
-  const access = await verifyMarketingAdminAccess(ctx, propertyId);
+  const access = await verifyMarketingPropertyAccess(
+    ctx,
+    propertyId,
+    'marketing.generate:add',
+    'aiMarketingGeneration'
+  );
 
   const sb = createServiceClient();
   const { data: propertyRow, error } = await sb
@@ -1477,7 +1497,7 @@ async function toolProposeAddFinanceLineItem(
         'kind (expense|income), label, category, amount, and occurredOn (YYYY-MM-DD) are required',
     };
   }
-  const { propertyId } = await resolveTargetProperty(ctx, args, 'finance:edit');
+  const { propertyId } = await resolveTargetProperty(ctx, args, 'finance.transactions:add');
 
   // TIER2_ONLY_TOOL_NAMES short-circuits classifyActionRisk — always confirmed, never auto-executed.
   const tier = classifyActionRisk({
@@ -1516,7 +1536,7 @@ async function toolProposeCreateMaintenanceItem(
   }
   const category = str(args, 'category') ?? null;
   const notes = str(args, 'notes') ?? null;
-  const { propertyId } = await resolveTargetProperty(ctx, args, 'maintenance:edit');
+  const { propertyId } = await resolveTargetProperty(ctx, args, 'maintenance.reminders:add');
 
   // TIER2_ONLY_TOOL_NAMES short-circuits classifyActionRisk — always confirmed, never auto-executed.
   const tier = classifyActionRisk({
@@ -1549,7 +1569,7 @@ async function toolRunReceiptValidation(
 ): Promise<ToolResult> {
   const bookingId = str(args, 'bookingId');
   if (!bookingId) return { ok: false, error: 'bookingId is required' };
-  const propertyId = await resolveBookingProperty(ctx, bookingId, 'bookings:edit');
+  const propertyId = await resolveBookingProperty(ctx, bookingId, 'bookings.detail.pricing:edit');
 
   const tier = classifyActionRisk({
     toolName: 'run_receipt_validation',
@@ -1582,7 +1602,7 @@ async function toolRunReceiptValidation(
 
   const booking = await DatabaseService.getBookingById(bookingId);
   if (!booking) return { ok: false, error: 'Booking not found' };
-  const access = await verifyPropertyAccess(ctx.req, propertyId, 'bookings:edit');
+  const access = await verifyPropertyAccess(ctx.req, propertyId, 'bookings.detail.pricing:edit');
   const { validated, errors } = await backfillMissingReceiptAiVerdicts(
     booking as Record<string, unknown>,
     {
@@ -1618,7 +1638,7 @@ async function toolProposeTransitionBooking(
     string,
     unknown
   >;
-  const propertyId = await resolveBookingProperty(ctx, bookingId, 'bookings:workflow');
+  const propertyId = await resolveBookingProperty(ctx, bookingId, 'bookings.detail.workflow:edit');
 
   const booking = await DatabaseService.getBookingById(bookingId);
   if (!booking) return { ok: false, error: 'Booking not found' };
@@ -1681,7 +1701,7 @@ async function toolProposeCancelBooking(
 ): Promise<ToolResult> {
   const bookingId = str(args, 'bookingId');
   if (!bookingId) return { ok: false, error: 'bookingId is required' };
-  const propertyId = await resolveBookingProperty(ctx, bookingId, 'bookings:workflow');
+  const propertyId = await resolveBookingProperty(ctx, bookingId, 'bookings.detail.workflow:edit');
 
   // Always Tier 2 — TIER2_ONLY_TOOL_NAMES short-circuits classifyActionRisk before any edge check.
   const tier = classifyActionRisk({
@@ -1903,6 +1923,21 @@ async function toolProposeRemoveTeamMember(
   };
 }
 
+async function requireUpdatePropertyLeafPermissions(
+  req: Request,
+  propertyId: string,
+  body: Record<string, unknown>
+): Promise<void> {
+  const needed = updatePropertyPatchPermissions(body);
+  if (needed.length === 0) {
+    throw new Error('No valid fields to update');
+  }
+  await verifyPropertyAccess(req, propertyId, needed[0] as TeamPermissionId);
+  for (const perm of needed.slice(1)) {
+    await verifyPropertyAccess(req, propertyId, perm as TeamPermissionId);
+  }
+}
+
 function buildPropertyProfilePatchFromArgs(
   args: Record<string, unknown>
 ): { patch: PropertyProfilePatchInput; summaryFields: string[] } | { error: string } {
@@ -1926,11 +1961,18 @@ async function toolProposeUpdatePropertyProfile(
   const built = buildPropertyProfilePatchFromArgs(args);
   if ('error' in built) return { ok: false, error: built.error };
 
-  // update-property is owner-only server-side (verifyPropertyOwner) — mirror that constraint
-  // exactly, same reasoning as propose_update_org_profile.
+  // update-property uses Phase 5 settings.* leaves — mirror that RBAC here.
   const propertyId = defaultPropertyId(ctx, args);
   if (!propertyId) return { ok: false, error: 'propertyId is required (no property in scope)' };
-  await verifyPropertyOwner(ctx.req, propertyId);
+  try {
+    await requireUpdatePropertyLeafPermissions(
+      ctx.req,
+      propertyId,
+      built.patch as Record<string, unknown>
+    );
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Permission denied' };
+  }
 
   const tier = classifyActionRisk({
     toolName: 'propose_update_property_profile',
@@ -1961,7 +2003,7 @@ async function toolProposeUpdatePropertyProfile(
   });
 
   try {
-    const { property } = await verifyPropertyOwner(ctx.req, propertyId);
+    const { property } = await verifyPropertyAccess(ctx.req, propertyId);
     const updated = await applyPropertyProfilePatch(property, built.patch);
     return { ok: true, riskTier: tier, auditPropertyId: propertyId, data: { property: updated } };
   } catch (err) {
@@ -2017,9 +2059,14 @@ async function toolProposeUpdatePropertySettings(
   const propertyId = defaultPropertyId(ctx, args);
   if (!propertyId) return { ok: false, error: 'propertyId is required (no property in scope)' };
 
-  // update-property (and therefore its settings blob) is owner-only server-side — mirror that
-  // constraint exactly, same reasoning as propose_update_property_profile.
-  await verifyPropertyOwner(ctx.req, propertyId);
+  // update-property settings blob uses Phase 5 settings.* leaves — mirror that RBAC here.
+  try {
+    await requireUpdatePropertyLeafPermissions(ctx.req, propertyId, {
+      settings: built.patch,
+    });
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Permission denied' };
+  }
 
   const tier = classifyActionRisk({
     toolName: 'propose_update_property_settings',
@@ -2350,7 +2397,7 @@ async function toolProposeUpdatePropertyBaseRate(
   }
   if (Object.keys(patch).length === 0) return { ok: false, error: 'No valid fields to update' };
 
-  const { propertyId } = await resolveTargetProperty(ctx, args, 'pricing:edit');
+  const { propertyId } = await resolveTargetProperty(ctx, args, 'pricing.rates:edit');
 
   const tier = classifyActionRisk({
     toolName: 'propose_update_property_base_rate',
@@ -2382,7 +2429,7 @@ async function toolProposeSetPropertyDateRateOverride(
   if (!date || !isValidCalendarDateKey(date) || !Number.isFinite(rate) || rate < 0) {
     return { ok: false, error: 'A valid date (YYYY-MM-DD) and a non-negative rate are required' };
   }
-  const { propertyId } = await resolveTargetProperty(ctx, args, 'pricing:edit');
+  const { propertyId } = await resolveTargetProperty(ctx, args, 'pricing.rates:edit');
 
   const tier = classifyActionRisk({
     toolName: 'propose_set_property_date_rate_override',
@@ -2423,7 +2470,7 @@ async function toolProposeAddPropertyHolidayRule(
       error: 'name, startDate, endDate (YYYY-MM-DD), and a non-negative percentage are required',
     };
   }
-  const { propertyId } = await resolveTargetProperty(ctx, args, 'pricing:edit');
+  const { propertyId } = await resolveTargetProperty(ctx, args, 'pricing.rates:edit');
 
   const tier = classifyActionRisk({
     toolName: 'propose_add_property_holiday_rule',
@@ -2464,7 +2511,7 @@ async function toolProposeBlockPropertyDates(
     return { ok: false, error: 'startDate and endDate (YYYY-MM-DD) are required' };
   }
   const note = str(args, 'note');
-  const { propertyId } = await resolveTargetProperty(ctx, args, 'pricing:edit');
+  const { propertyId } = await resolveTargetProperty(ctx, args, 'pricing.blocks:add');
 
   const tier = classifyActionRisk({
     toolName: 'propose_block_property_dates',
@@ -2514,7 +2561,7 @@ async function toolProposeUnblockPropertyDates(
     };
   }
 
-  const { propertyId } = await resolveTargetProperty(ctx, args, 'pricing:edit');
+  const { propertyId } = await resolveTargetProperty(ctx, args, 'pricing.blocks:delete');
 
   const tier = classifyActionRisk({
     toolName: 'propose_unblock_property_dates',
@@ -2774,7 +2821,13 @@ async function toolProposePublishToMeta(
     };
   }
   const caption = str(args, 'caption') ?? '';
-  const access = await verifyMarketingAdminAccess(ctx, propertyId);
+  const access = await verifyMarketingPropertyAccess(
+    ctx,
+    propertyId,
+    'marketing.publish:add',
+    'marketingStudio'
+  );
+  await requireMarketingPublishAllowed(access.propertyId);
 
   const tier = classifyActionRisk({
     toolName: 'propose_publish_to_meta',
@@ -2809,7 +2862,11 @@ export async function executeConfirmedAction(
   if (toolName === 'propose_cancel_booking') {
     const bookingId = str(inputPayload, 'bookingId');
     if (!bookingId) return { ok: false, error: 'bookingId is required' };
-    const propertyId = await resolveBookingProperty(ctx, bookingId, 'bookings:workflow');
+    const propertyId = await resolveBookingProperty(
+      ctx,
+      bookingId,
+      'bookings.detail.workflow:edit'
+    );
 
     await assertActionSafeToExecute({
       toolName: 'propose_cancel_booking',
@@ -2840,7 +2897,11 @@ export async function executeConfirmedAction(
     const payload = (
       inputPayload.payload && typeof inputPayload.payload === 'object' ? inputPayload.payload : {}
     ) as Record<string, unknown>;
-    const propertyId = await resolveBookingProperty(ctx, bookingId, 'bookings:workflow');
+    const propertyId = await resolveBookingProperty(
+      ctx,
+      bookingId,
+      'bookings.detail.workflow:edit'
+    );
 
     await assertActionSafeToExecute({
       toolName: 'propose_transition_booking',
@@ -2867,7 +2928,7 @@ export async function executeConfirmedAction(
   if (toolName === 'run_receipt_validation') {
     const bookingId = str(inputPayload, 'bookingId');
     if (!bookingId) return { ok: false, error: 'bookingId is required' };
-    const propertyId = await resolveBookingProperty(ctx, bookingId, 'bookings:edit');
+    const propertyId = await resolveBookingProperty(ctx, bookingId, 'bookings.detail.pricing:edit');
 
     await assertActionSafeToExecute({
       toolName: 'run_receipt_validation',
@@ -2881,7 +2942,7 @@ export async function executeConfirmedAction(
 
     const booking = await DatabaseService.getBookingById(bookingId);
     if (!booking) return { ok: false, error: 'Booking not found' };
-    const access = await verifyPropertyAccess(ctx.req, propertyId, 'bookings:edit');
+    const access = await verifyPropertyAccess(ctx.req, propertyId, 'bookings.detail.pricing:edit');
     const { validated, errors } = await backfillMissingReceiptAiVerdicts(
       booking as Record<string, unknown>,
       {
@@ -2923,7 +2984,11 @@ export async function executeConfirmedAction(
     ) {
       return { ok: false, error: 'Malformed proposal payload' };
     }
-    const { propertyId } = await resolveTargetProperty(ctx, inputPayload, 'finance:edit');
+    const { propertyId } = await resolveTargetProperty(
+      ctx,
+      inputPayload,
+      'finance.transactions:add'
+    );
 
     await assertActionSafeToExecute({
       toolName: 'propose_add_finance_line_item',
@@ -2954,7 +3019,11 @@ export async function executeConfirmedAction(
     }
     const category = str(inputPayload, 'category') ?? null;
     const notes = str(inputPayload, 'notes') ?? null;
-    const { propertyId } = await resolveTargetProperty(ctx, inputPayload, 'maintenance:edit');
+    const { propertyId } = await resolveTargetProperty(
+      ctx,
+      inputPayload,
+      'maintenance.reminders:add'
+    );
 
     await assertActionSafeToExecute({
       toolName: 'propose_create_maintenance_item',
@@ -3108,7 +3177,17 @@ export async function executeConfirmedAction(
   if (toolName === 'propose_update_property_profile') {
     const propertyId = str(inputPayload, 'propertyId');
     if (!propertyId) return { ok: false, error: 'Malformed proposal payload' };
-    const { property } = await verifyPropertyOwner(ctx.req, propertyId);
+    const {
+      summary: _summary,
+      propertyId: _pid,
+      ...patchFields
+    } = inputPayload as Record<string, unknown> & { summary?: unknown; propertyId?: unknown };
+    try {
+      await requireUpdatePropertyLeafPermissions(ctx.req, propertyId, patchFields);
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'Permission denied' };
+    }
+    const { property } = await verifyPropertyAccess(ctx.req, propertyId);
 
     await assertActionSafeToExecute({
       toolName: 'propose_update_property_profile',
@@ -3120,11 +3199,6 @@ export async function executeConfirmedAction(
     });
 
     try {
-      const {
-        summary: _summary,
-        propertyId: _pid,
-        ...patchFields
-      } = inputPayload as Record<string, unknown> & { summary?: unknown; propertyId?: unknown };
       const updated = await applyPropertyProfilePatch(
         property,
         patchFields as PropertyProfilePatchInput
@@ -3144,7 +3218,17 @@ export async function executeConfirmedAction(
   if (toolName === 'propose_update_property_settings') {
     const propertyId = str(inputPayload, 'propertyId');
     if (!propertyId) return { ok: false, error: 'Malformed proposal payload' };
-    const { property } = await verifyPropertyOwner(ctx.req, propertyId);
+    const {
+      summary: _summary,
+      propertyId: _pid,
+      ...patchFields
+    } = inputPayload as Record<string, unknown> & { summary?: unknown; propertyId?: unknown };
+    try {
+      await requireUpdatePropertyLeafPermissions(ctx.req, propertyId, { settings: patchFields });
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'Permission denied' };
+    }
+    const { property } = await verifyPropertyAccess(ctx.req, propertyId);
 
     await assertActionSafeToExecute({
       toolName: 'propose_update_property_settings',
@@ -3156,11 +3240,6 @@ export async function executeConfirmedAction(
     });
 
     try {
-      const {
-        summary: _summary,
-        propertyId: _pid,
-        ...patchFields
-      } = inputPayload as Record<string, unknown> & { summary?: unknown; propertyId?: unknown };
       const updated = await applyPropertySettingsPatch(
         property,
         patchFields as PropertySettingsPatchInput
@@ -3409,7 +3488,7 @@ export async function executeConfirmedAction(
   if (toolName === 'propose_update_property_base_rate') {
     const propertyId = str(inputPayload, 'propertyId');
     if (!propertyId) return { ok: false, error: 'Malformed proposal payload' };
-    await verifyPropertyAccess(ctx.req, propertyId, 'pricing:edit');
+    await verifyPropertyAccess(ctx.req, propertyId, 'pricing.rates:edit');
 
     await assertActionSafeToExecute({
       toolName: 'propose_update_property_base_rate',
@@ -3454,7 +3533,7 @@ export async function executeConfirmedAction(
     ) {
       return { ok: false, error: 'Malformed proposal payload' };
     }
-    await verifyPropertyAccess(ctx.req, propertyId, 'pricing:edit');
+    await verifyPropertyAccess(ctx.req, propertyId, 'pricing.rates:edit');
 
     await assertActionSafeToExecute({
       toolName: 'propose_set_property_date_rate_override',
@@ -3497,7 +3576,7 @@ export async function executeConfirmedAction(
     ) {
       return { ok: false, error: 'Malformed proposal payload' };
     }
-    await verifyPropertyAccess(ctx.req, propertyId, 'pricing:edit');
+    await verifyPropertyAccess(ctx.req, propertyId, 'pricing.rates:edit');
 
     await assertActionSafeToExecute({
       toolName: 'propose_add_property_holiday_rule',
@@ -3539,7 +3618,7 @@ export async function executeConfirmedAction(
       return { ok: false, error: 'Malformed proposal payload' };
     }
     const note = str(inputPayload, 'note');
-    await verifyPropertyAccess(ctx.req, propertyId, 'pricing:edit');
+    await verifyPropertyAccess(ctx.req, propertyId, 'pricing.blocks:add');
 
     await assertActionSafeToExecute({
       toolName: 'propose_block_property_dates',
@@ -3566,7 +3645,7 @@ export async function executeConfirmedAction(
     const endDate = str(inputPayload, 'endDate');
     if (!propertyId || !startDate || !endDate)
       return { ok: false, error: 'Malformed proposal payload' };
-    await verifyPropertyAccess(ctx.req, propertyId, 'pricing:edit');
+    await verifyPropertyAccess(ctx.req, propertyId, 'pricing.blocks:delete');
 
     await assertActionSafeToExecute({
       toolName: 'propose_unblock_property_dates',
@@ -3728,7 +3807,13 @@ export async function executeConfirmedAction(
       return { ok: false, error: 'Malformed proposal payload' };
     }
     const caption = str(inputPayload, 'caption') ?? '';
-    const access = await verifyMarketingAdminAccess(ctx, propertyId);
+    const access = await verifyMarketingPropertyAccess(
+      ctx,
+      propertyId,
+      'marketing.publish:add',
+      'marketingStudio'
+    );
+    await requireMarketingPublishAllowed(access.propertyId);
 
     await assertActionSafeToExecute({
       toolName: 'propose_publish_to_meta',
@@ -4195,7 +4280,10 @@ export const TOOL_DECLARATIONS = [
       type: 'object',
       properties: {
         email: { type: 'string' },
-        roleId: { type: 'string', description: 'e.g. ADMIN, VIEWER — defaults to ADMIN' },
+        roleId: {
+          type: 'string',
+          description: 'ADMIN or a permission-template UUID — defaults to ADMIN',
+        },
       },
       required: ['email'],
     },
@@ -4256,7 +4344,7 @@ export const TOOL_DECLARATIONS = [
   {
     name: 'propose_update_property_profile',
     description:
-      'Update a property profile (name, address, max guests, status, tower/unit, or residence name). Owner-only. For amenities, house rules, cancellation policy, or capacity/contact details use propose_update_property_settings instead.',
+      'Update a property profile (name, address, max guests, status, tower/unit, or residence name). Requires the matching settings.* permission. For amenities, house rules, cancellation policy, or capacity/contact details use propose_update_property_settings instead.',
     parameters: {
       type: 'object',
       properties: {
@@ -4374,7 +4462,7 @@ export const TOOL_DECLARATIONS = [
   {
     name: 'list_parking_bookings',
     description:
-      'List parking bookings/requests, optionally filtered by parking slot, status, or date range. Statuses: PENDING_HOST_ACCEPTANCE (awaiting broadcast response), PENDING_REVIEW, READY_FOR_CHECKIN, COMPLETED, CANCELLED, NO_HOST_AVAILABLE.',
+      'List parking bookings/requests, optionally filtered by parking slot, status, or date range. Statuses: PENDING_HOST_ACCEPTANCE (awaiting broadcast response), PENDING_PAYMENT (host accepted, awaiting guest payment), PENDING_REVIEW (paid & confirmed), READY_FOR_CHECKIN, COMPLETED, CANCELLED, NO_HOST_AVAILABLE.',
     parameters: {
       type: 'object',
       properties: {
@@ -4397,7 +4485,7 @@ export const TOOL_DECLARATIONS = [
   {
     name: 'propose_claim_parking_booking',
     description:
-      'Accept/claim a broadcast parking request for this parking slot — commits the slot and emails the guest a confirmation. Always requires host confirmation; first-Accept-wins, may fail if another host already claimed it.',
+      'Accept/claim a broadcast parking request for this parking slot — commits the slot and emails the guest to pay and confirm (the guest still needs to complete payment before the booking is fully confirmed). Always requires host confirmation; first-Accept-wins, may fail if another host already claimed it.',
     parameters: {
       type: 'object',
       properties: {
@@ -4411,7 +4499,7 @@ export const TOOL_DECLARATIONS = [
   {
     name: 'propose_decline_parking_booking',
     description:
-      "Decline this parking slot's candidacy for a broadcast request. If every candidate has declined, the request terminates and the guest is notified. Always requires host confirmation.",
+      "Decline this parking slot's candidacy for a broadcast request. If every candidate in the current ranked batch has declined, the system offers the next batch of hosts automatically, or terminates and notifies the guest once no candidates remain. Always requires host confirmation.",
     parameters: {
       type: 'object',
       properties: {

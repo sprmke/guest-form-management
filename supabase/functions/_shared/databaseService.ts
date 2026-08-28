@@ -789,7 +789,8 @@ export class DatabaseService {
         baseRequests.push(
           this.supabase
             .from('guest_submissions')
-            .select('*, parkings!inner(organization_id)')
+            // Disambiguate from guest_submissions.parking_pinned_id → parkings (broadcast flow).
+            .select('*, parkings!guest_submissions_parking_id_fkey!inner(organization_id)')
             .eq('parkings.organization_id', orgId)
         );
       }

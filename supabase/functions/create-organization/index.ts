@@ -45,6 +45,7 @@ import { seedParkingSettings } from '../_shared/parkingSettingsSeed.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 import { seedOrgSettings } from '../_shared/orgSettingsSeed.ts';
 import { seedPropertySettings } from '../_shared/propertySettingsSeed.ts';
+import { seedPropertyTeamTemplates } from '../_shared/propertyTeamTemplates.ts';
 
 function parseHostModes(body: Record<string, unknown>): string[] {
   if (Array.isArray(body.hostModes)) {
@@ -274,6 +275,7 @@ serveAuthenticated('create-organization', async (req, user) => {
 
     try {
       await seedPropertySettings(prop.id as string);
+      await seedPropertyTeamTemplates(supabase, prop.id as string);
     } catch (e) {
       console.error('[create-organization] property settings seed:', e);
       await rollbackOrg();

@@ -189,7 +189,7 @@ serve(async (req) => {
           { status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
         );
       }
-      const { property } = await resolveScopedPropertyAccess(req, 'bookings:workflow');
+      const { property } = await resolveScopedPropertyAccess(req, 'bookings.detail.workflow:edit');
       adminPropertyId = property.id;
       await verifyBookingBelongsToProperty(scopedBookingId, adminPropertyId);
       scoped = true;

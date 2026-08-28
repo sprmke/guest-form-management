@@ -37,7 +37,7 @@ import {
 } from '../_shared/telegramCredentialsPatch.ts';
 
 serveAuthenticated('telegram-chat-settings', async (req) => {
-  const asset = await resolveTelegramAssetAccess(req);
+  const asset = await resolveTelegramAssetAccess(req, 'chat');
   const scope = telegramDbScope(asset);
 
   if (req.method === 'GET') {

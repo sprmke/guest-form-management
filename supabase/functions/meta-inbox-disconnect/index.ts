@@ -17,7 +17,7 @@ serveAuthenticated('meta-inbox-disconnect', async (req) => {
     return jsonError(req, 'Method not allowed', 405);
   }
   const body = (await readJsonBody(req)) as Record<string, unknown>;
-  const ctx = await resolveInboxAccess(req, 'manage', body);
+  const ctx = await resolveInboxAccess(req, 'channels_delete', body);
   const platform = typeof body.platform === 'string' ? body.platform : 'meta';
   const deleteMessages = true;
 

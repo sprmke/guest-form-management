@@ -14,7 +14,7 @@ serveAuthenticated('voice-receptionist-voice-preview', async (req) => {
     return jsonError(req, 'Method not allowed', 405);
   }
 
-  const access = await resolveScopedPropertyAccess(req, 'settings:edit');
+  const access = await resolveScopedPropertyAccess(req, 'settings.voiceReceptionist:edit');
 
   const body = await readJsonBody(req);
   const voiceId = String(body.voiceId ?? body.voice_id ?? '').trim();

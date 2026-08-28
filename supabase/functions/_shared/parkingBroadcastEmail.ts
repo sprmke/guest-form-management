@@ -36,7 +36,7 @@ export async function getOrgSlug(organizationId: string): Promise<string | null>
   return (data?.slug as string | undefined) ?? null;
 }
 
-function parkingLocationLabel(
+export function parkingLocationLabel(
   parking: Pick<ParkingRow, 'name' | 'residence_name' | 'tower' | 'level' | 'slot_label'>
 ): string {
   const parts = [parking.name.trim()];
@@ -53,7 +53,7 @@ function requireResendKey(): string {
   return key;
 }
 
-async function resolveParkingEmailBranding(organizationId: string) {
+export async function resolveParkingEmailBranding(organizationId: string) {
   const brandingPropertyId = await getFirstPropertyIdForOrg(organizationId);
   if (!brandingPropertyId) {
     throw new Error('No property available for email branding in this organization');
@@ -65,10 +65,11 @@ async function resolveParkingEmailBranding(organizationId: string) {
   return { brandingPropertyId, settings, branding };
 }
 
-async function sendResendEmail(input: {
+export async function sendResendEmail(input: {
   fromDisplayName: string;
   fromEmail: string;
   to: string;
+  cc?: string[];
   replyTo: string;
   subject: string;
   html: string;
@@ -81,6 +82,7 @@ async function sendResendEmail(input: {
     body: JSON.stringify({
       from: formatResendFromAddress(input.fromDisplayName, input.fromEmail),
       to: [input.to],
+      ...(input.cc && input.cc.length > 0 ? { cc: input.cc } : {}),
       reply_to: input.replyTo,
       subject: input.subject,
       html: input.html,
@@ -101,6 +103,9 @@ const HOST_REQUEST_BODY_TEMPLATE = `<p style="margin:0 0 16px 0;font-size:15px;l
 
 const GUEST_CONFIRMED_BODY_TEMPLATE = `<p style="margin:0 0 16px 0;font-size:15px;line-height:1.6;color:#333333;">Your parking request for <strong>{{parking_location}}</strong> ({{check_in_date}} to {{check_out_date}}) has been accepted.</p>
 {{endorsement_block}}`;
+
+const GUEST_AWAITING_PAYMENT_BODY_TEMPLATE = `<p style="margin:0 0 16px 0;font-size:15px;line-height:1.6;color:#333333;">A host accepted your parking request for <strong>{{parking_location}}</strong> ({{check_in_date}} to {{check_out_date}}). Pay before {{expires_at}} to confirm your reservation.</p>
+<p>{{pay_now_cta}}</p>`;
 
 const GUEST_NO_HOST_BODY_TEMPLATE = `<p style="margin:0 0 16px 0;font-size:15px;line-height:1.6;color:#333333;">No host was available to accept your parking request for {{check_in_date}} to {{check_out_date}}. Please try another listing or contact us for help.</p>`;
 
@@ -224,6 +229,55 @@ export async function sendParkingConfirmedEmail(input: ParkingConfirmedEmailInpu
     subject: `${branding.organizationName} - Parking Confirmed ${formatEmailDateRange(input.checkInDate, input.checkOutDate)}`,
     html,
     errorLabel: 'parking confirmed email',
+  });
+}
+
+export type ParkingAwaitingPaymentEmailInput = {
+  to: string;
+  parking: Pick<
+    ParkingRow,
+    'name' | 'organization_id' | 'residence_name' | 'tower' | 'level' | 'slot_label'
+  >;
+  checkInDate: string;
+  checkOutDate: string;
+  expiresAtIso: string;
+  bookingId: string;
+};
+
+/** Guest "host accepted, pay to confirm" nudge — sent once, on claim (Phase 3). */
+export async function sendParkingAwaitingPaymentEmail(
+  input: ParkingAwaitingPaymentEmailInput
+): Promise<void> {
+  const { brandingPropertyId, settings, branding } = await resolveParkingEmailBranding(
+    input.parking.organization_id
+  );
+  const parkingLocation = parkingLocationLabel(input.parking);
+  const payUrl = `${settings.publicGuestAppOrigin.replace(/\/+$/, '')}/parkings/requests/${input.bookingId}`;
+
+  const html = await renderPropertyTemplateSendEmail({
+    propertyId: brandingPropertyId,
+    templateKey: 'email-booking-acknowledgement',
+    emailTitle: 'Parking — Pay to Confirm',
+    contentOverride: GUEST_AWAITING_PAYMENT_BODY_TEMPLATE,
+    branding,
+    placeholderVars: {
+      parking_location: escapeHtml(parkingLocation),
+      expires_at: escapeHtml(formatExpiresAt(input.expiresAtIso)),
+      pay_now_cta: buildCtaHtml(payUrl, 'Pay Now', settings.brandColor),
+      tower_and_unit_number: escapeHtml(parkingLocation),
+      check_in_date: escapeHtml(input.checkInDate),
+      check_out_date: escapeHtml(input.checkOutDate),
+    },
+  });
+
+  await sendResendEmail({
+    fromDisplayName: branding.organizationName,
+    fromEmail: branding.fromEmail,
+    to: input.to,
+    replyTo: settings.emailReplyTo,
+    subject: `${branding.organizationName} - Pay to Confirm Parking ${formatEmailDateRange(input.checkInDate, input.checkOutDate)}`,
+    html,
+    errorLabel: 'parking awaiting-payment email',
   });
 }
 

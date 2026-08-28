@@ -32,7 +32,7 @@ serve(async (req) => {
   }
 
   try {
-    const { property } = await resolveScopedPropertyAccess(req, 'templates:edit');
+    const { property } = await resolveScopedPropertyAccess(req, 'templates.standard:edit');
     const propertyId = property.id;
 
     if (req.method !== 'POST') {

@@ -6,20 +6,15 @@ import { resolveAppSettings } from './appSettings.ts';
 import { loadPropertyEmailBranding } from './propertyEmailBranding.ts';
 import { createServiceClient } from './orgAuth.ts';
 import { DEFAULT_EMAIL_LOGO_URL } from './renderEmailHtml.ts';
-import { isBuiltinPropertyRole, type BuiltinPropertyRole } from './propertyTeamPermissions.ts';
+import { isPropertyAdminRoleId } from './propertyTeamPermissions.ts';
 import { isBuiltinParkingRole, type BuiltinParkingRole } from './parkingTeamPermissions.ts';
 
 const ORG_ROLE_LABELS: Record<string, string> = {
   ADMIN: 'Admin',
 };
 
-const BUILTIN_ROLE_LABELS: Record<BuiltinPropertyRole, string> = {
-  MANAGER: 'Manager',
-  STAFF: 'Staff',
-  VIEWER: 'Viewer',
-};
-
 const BUILTIN_PARKING_ROLE_LABELS: Record<BuiltinParkingRole, string> = {
+  MANAGER: 'Manager',
   STAFF: 'Staff',
   VIEWER: 'Viewer',
 };
@@ -82,8 +77,8 @@ async function resolveLogoUrl(propertyId: string | null): Promise<string> {
 }
 
 async function loadPropertyRoleLabel(propertyId: string, roleId: string): Promise<string> {
-  if (isBuiltinPropertyRole(roleId)) {
-    return BUILTIN_ROLE_LABELS[roleId];
+  if (isPropertyAdminRoleId(roleId)) {
+    return 'Admin';
   }
   const supabase = createServiceClient();
   const { data } = await supabase

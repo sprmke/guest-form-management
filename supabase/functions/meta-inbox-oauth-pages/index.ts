@@ -49,7 +49,8 @@ serveAuthenticated('meta-inbox-oauth-pages', async (req, user) => {
   }
 
   if (propertyId) {
-    const ctx = await verifyPropertyAccess(req, propertyId, 'inbox:manage');
+    // Phase 6: property uses leaf ids (retired inbox:manage expands on read only).
+    const ctx = await verifyPropertyAccess(req, propertyId, 'inbox.channels:add');
     if (ctx.org.id !== data.organization_id) {
       return jsonError(req, 'Picker session expired', 404);
     }

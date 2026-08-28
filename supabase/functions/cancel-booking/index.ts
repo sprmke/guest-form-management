@@ -19,7 +19,7 @@ import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('cancel-booking', async (req) => {
   requireHttpMethod(req, 'POST');
-  const { property } = await resolveScopedPropertyAccess(req, 'bookings:workflow');
+  const { property } = await resolveScopedPropertyAccess(req, 'bookings.detail.workflow:edit');
   const propertyId = property.id;
   const body = await readJsonBody(req);
   const { bookingId, confirm, devControls = {} } = body;

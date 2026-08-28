@@ -23,7 +23,7 @@ import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('send-sd-refund-form-email', async (req) => {
   requireHttpMethod(req, 'POST');
-  const { property } = await resolveScopedPropertyAccess(req, 'bookings:workflow');
+  const { property } = await resolveScopedPropertyAccess(req, 'bookings.detail.workflow:edit');
   const propertyId = property.id;
   const body = await readJsonBody(req);
   const bookingId = body?.bookingId;

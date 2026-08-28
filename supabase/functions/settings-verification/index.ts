@@ -62,7 +62,7 @@ serveAuthenticated('settings-verification', async (req, user) => {
     let parkingId: string | null = null;
 
     if (propertyIdParam) {
-      const { property, org } = await resolveScopedPropertyAccess(req, 'settings:edit');
+      const { property, org } = await resolveScopedPropertyAccess(req, 'settings.payment:edit');
       organizationId = org.id;
       ownerId = org.owner_id;
       listingName = property.name;
@@ -129,7 +129,7 @@ serveAuthenticated('settings-verification', async (req, user) => {
     }
 
     if (verified.propertyId) {
-      await resolveScopedPropertyAccess(req, 'settings:edit');
+      await resolveScopedPropertyAccess(req, 'settings.payment:edit');
     } else if (verified.parkingId) {
       await resolveScopedParkingAccess(req, 'org:parkings:manage');
     }

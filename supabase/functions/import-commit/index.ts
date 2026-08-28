@@ -12,7 +12,7 @@
  */
 
 import { importCommitStatusForCheckIn } from '../_shared/importCommitStatus.ts';
-import { requireImportPlanFeature, resolveImportAccess } from '../_shared/importAccess.ts';
+import { resolveImportAccessWithPlan } from '../_shared/importAccess.ts';
 import {
   isImportBatchStatus,
   type ImportBatchStatus,
@@ -97,9 +97,7 @@ function buildSubmissionRow(
 serveAuthenticated('import-commit', async (req) => {
   requireHttpMethod(req, 'POST');
 
-  const access = await resolveImportAccess(req);
-  const planBlock = await requireImportPlanFeature(req, access.propertyId);
-  if (planBlock) return planBlock;
+  const access = await resolveImportAccessWithPlan(req);
   const body = await readJsonBody(req);
 
   const batchId = typeof body.batchId === 'string' ? body.batchId.trim() : '';

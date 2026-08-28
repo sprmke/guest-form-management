@@ -1,12 +1,13 @@
 /**
  * Guest-facing contact + social links for workflow emails.
- * Team members (property MANAGER, then org owner) are the source of truth.
+ * Team members (property team manager, then org owner) are the source of truth.
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import type { AppSettingsResolved } from './appSettings.ts';
 import { formatPhilippineMobileDisplay } from './fieldValidation.ts';
 import { DEFAULT_FACEBOOK_PAGE_URL } from './orgSocialLinks.ts';
+import { hasPropertyTeamManageAccess, normalizePermissionIds } from './propertyTeamPermissions.ts';
 import { escapeHtml, emailSocialLinkStyle } from './renderEmailHtml.ts';
 
 export type GuestFacingContactInfo = {
@@ -104,15 +105,16 @@ async function loadHostContactFromTeam(propertyId: string): Promise<{
 
   const orgId = property.organization_id as string;
 
-  const { data: managers } = await supabase
+  const { data: members } = await supabase
     .from('property_members')
-    .select('user_id, display_name, contact_phone, role_id, assigned_at')
+    .select('user_id, display_name, contact_phone, permissions, assigned_at')
     .eq('property_id', propertyId)
     .eq('status', 'active')
-    .eq('role_id', 'MANAGER')
     .order('assigned_at', { ascending: true });
 
-  for (const row of managers ?? []) {
+  for (const row of members ?? []) {
+    const permissions = normalizePermissionIds(row.permissions);
+    if (!hasPropertyTeamManageAccess(permissions)) continue;
     const profile = await getAuthProfile(row.user_id as string);
     const name =
       typeof row.display_name === 'string' && row.display_name.trim()
