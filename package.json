@@ -46,6 +46,7 @@
     "db:migrate": "./scripts/dev/run-with-ui-dev-env.sh ./scripts/dev/bunx --bun supabase@latest migration up --local --include-all",
     "seed:mock-listings": "node scripts/dev/generate-mock-listings-seed.mjs",
     "seed:monaco-2612": "./scripts/dev/run-with-ui-dev-env.sh ./scripts/dev/bunx --bun supabase@latest db query --local -f scripts/dev/seed-monaco-2612-demo-data.sql",
+    "seed:monaco-2612-media": "./scripts/dev/run-with-ui-dev-env.sh ./scripts/dev/bunx --bun supabase@latest db query --local -f scripts/dev/seed-monaco-2612-mock-media.sql",
     "sync:prod-data": "./scripts/data/sync-prod-public-data-to-local.sh",
     "sync:prod-data:restore": "RESTORE_ONLY=1 ./scripts/data/sync-prod-public-data-to-local.sh",
     "sync:ai-knowledge-base": "bun scripts/sync-ai-knowledge-base.ts",
