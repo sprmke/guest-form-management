@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import { readE2EGuestSession } from '@/lib/e2e/guestSession';
 import { supabase } from '@/lib/supabase/client';
 
 import type { Session } from '@supabase/supabase-js';
@@ -7,11 +8,21 @@ import type { Session } from '@supabase/supabase-js';
 export type GuestSessionStatus = 'loading' | 'anonymous' | 'authenticated';
 
 export function useGuestSession() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const e2eSession = readE2EGuestSession();
+  const [session, setSession] = useState<Session | null>(() => e2eSession);
+  const [isLoading, setIsLoading] = useState(() => e2eSession === null);
 
   useEffect(() => {
     let cancelled = false;
+    const mockedSession = readE2EGuestSession();
+
+    if (mockedSession) {
+      setSession(mockedSession);
+      setIsLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
 
     supabase.auth
       .getSession()
@@ -27,6 +38,7 @@ export function useGuestSession() {
       });
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, next) => {
+      if (readE2EGuestSession()) return;
       setSession(next);
       setIsLoading(false);
     });

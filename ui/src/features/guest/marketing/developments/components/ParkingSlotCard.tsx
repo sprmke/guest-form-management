@@ -52,7 +52,7 @@ export function ParkingSlotCard({
   const previewFeatures = slot.features.slice(0, 2);
   const reserveHref = detailSlug
     ? `/parkings/${detailSlug}`
-    : `/developments/${developmentSlug}/forms/${slot.formId}`;
+    : `/developments/${developmentSlug}/parking`;
 
   if (variant === 'carousel') {
     const place = city?.trim() || 'this area';
@@ -60,28 +60,28 @@ export function ParkingSlotCard({
 
     return (
       <motion.div
-        initial={{ opacity: 0, y: 16 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: Math.min(index, 6) * 0.04 }}
+        transition={{ duration: 0.3, delay: Math.min(index, 4) * 0.03 }}
         className="group"
       >
         <Link to={reserveHref} className="block">
-          <div className="relative mb-2 aspect-square overflow-hidden rounded-xl">
+          <div className="bg-muted relative mb-2.5 aspect-square overflow-hidden rounded-xl">
             {imageUrl ? (
               <Image
                 src={imageUrl}
                 alt=""
                 fill
-                className="object-cover transition-transform duration-500 group-hover:scale-105"
+                className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03] motion-reduce:transform-none"
                 sizes="(max-width: 640px) 240px, 260px"
               />
             ) : (
               <div className="from-muted to-muted/60 h-full w-full bg-gradient-to-br" />
             )}
 
-            <div className="absolute left-3 top-3">
-              <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-slate-900 shadow-sm backdrop-blur-sm">
-                <BadgeIcon className="h-3.5 w-3.5" aria-hidden />
+            <div className="absolute left-2.5 top-2.5">
+              <span className="bg-background/90 text-foreground inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium shadow-sm backdrop-blur-sm">
+                <BadgeIcon className="h-3 w-3" aria-hidden />
                 {badgeConfig.label}
               </span>
             </div>
@@ -92,15 +92,15 @@ export function ParkingSlotCard({
               Parking in {place}
             </h3>
             {secondaryLine ? (
-              <p className="text-muted-foreground line-clamp-1 text-sm">{secondaryLine}</p>
+              <p className="text-muted-foreground line-clamp-1 text-xs">{secondaryLine}</p>
             ) : null}
             {slot.ratePerNight != null ? (
-              <p className="text-foreground text-sm">
+              <p className="text-foreground pt-0.5 text-sm">
                 <span className="font-semibold">₱{slot.ratePerNight.toLocaleString()}</span>
                 <span className="text-muted-foreground"> / night</span>
               </p>
             ) : (
-              <p className="text-foreground text-sm font-semibold">Included</p>
+              <p className="text-foreground pt-0.5 text-sm font-semibold">Included</p>
             )}
           </div>
         </Link>

@@ -15,7 +15,6 @@ export interface ParkingSlot {
   /** Rate per night in PHP. Undefined = included with booking (free) */
   ratePerNight?: number;
   features: string[];
-  formId: string;
   /** Optional hero image; falls back to type-based mock stock photo */
   imageUrl?: string;
   notes?: string;

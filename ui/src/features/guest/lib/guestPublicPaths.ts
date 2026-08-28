@@ -227,6 +227,14 @@ export function absoluteGuestPropertyUrl(propertySlug: string): string {
   return absoluteGuestPath(guestPropertyPath(propertySlug));
 }
 
+export function guestShowcasePath(propertySlug: string): string {
+  return `${propertyBase(propertySlug)}/showcase`;
+}
+
+export function absoluteGuestShowcaseUrl(propertySlug: string): string {
+  return absoluteGuestPath(guestShowcasePath(propertySlug));
+}
+
 export function absoluteGuestPath(path: string): string {
   const normalized = path.startsWith('/') ? path : `/${path}`;
   if (typeof window === 'undefined') return normalized;

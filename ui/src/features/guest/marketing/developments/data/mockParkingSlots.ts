@@ -18,7 +18,6 @@ export const mockParkingSlots: ParkingSlot[] = [
     isAvailable: true,
     ratePerNight: 350,
     features: ['CCTV', '24/7 Security', 'Fire Suppression'],
-    formId: 'dev-parking-form',
   },
   {
     id: 'azure-monaco-b1-002',
@@ -30,7 +29,6 @@ export const mockParkingSlots: ParkingSlot[] = [
     isAvailable: false,
     ratePerNight: 350,
     features: ['CCTV', '24/7 Security', 'Fire Suppression'],
-    formId: 'dev-parking-form',
   },
   {
     id: 'azure-monaco-b1-003',
@@ -42,7 +40,6 @@ export const mockParkingSlots: ParkingSlot[] = [
     isAvailable: true,
     ratePerNight: 400,
     features: ['CCTV', '24/7 Security', 'Fire Suppression'],
-    formId: 'dev-parking-form',
   },
   {
     id: 'azure-monaco-g-001',
@@ -54,7 +51,6 @@ export const mockParkingSlots: ParkingSlot[] = [
     isAvailable: true,
     ratePerNight: 300,
     features: ['CCTV', '24/7 Security'],
-    formId: 'dev-parking-form',
   },
   {
     id: 'azure-monaco-g-002',
@@ -66,7 +62,6 @@ export const mockParkingSlots: ParkingSlot[] = [
     isAvailable: false,
     ratePerNight: 300,
     features: ['CCTV', '24/7 Security'],
-    formId: 'dev-parking-form',
   },
   {
     id: 'azure-monaco-m01',
@@ -78,7 +73,6 @@ export const mockParkingSlots: ParkingSlot[] = [
     isAvailable: true,
     ratePerNight: 200,
     features: ['CCTV', '24/7 Security', 'Covered Shade'],
-    formId: 'dev-parking-form',
   },
 
   // ── Bali tower ─────────────────────────────────────────────────────
@@ -92,7 +86,6 @@ export const mockParkingSlots: ParkingSlot[] = [
     isAvailable: true,
     ratePerNight: 320,
     features: ['CCTV', '24/7 Security', 'Fire Suppression'],
-    formId: 'dev-parking-form',
   },
   {
     id: 'azure-bali-b1-002',
@@ -104,7 +97,6 @@ export const mockParkingSlots: ParkingSlot[] = [
     isAvailable: true,
     ratePerNight: 320,
     features: ['CCTV', '24/7 Security', 'Fire Suppression'],
-    formId: 'dev-parking-form',
   },
   {
     id: 'azure-bali-g-001',
@@ -116,7 +108,6 @@ export const mockParkingSlots: ParkingSlot[] = [
     isAvailable: true,
     ratePerNight: 250,
     features: ['CCTV', '24/7 Security'],
-    formId: 'dev-parking-form',
   },
   {
     id: 'azure-bali-g-002',
@@ -128,7 +119,6 @@ export const mockParkingSlots: ParkingSlot[] = [
     isAvailable: false,
     ratePerNight: 250,
     features: ['CCTV', '24/7 Security'],
-    formId: 'dev-parking-form',
   },
   {
     id: 'azure-bali-b2-001',
@@ -140,7 +130,6 @@ export const mockParkingSlots: ParkingSlot[] = [
     isAvailable: true,
     ratePerNight: 450,
     features: ['CCTV', '24/7 Security', 'Fire Suppression'],
-    formId: 'dev-parking-form',
   },
   {
     id: 'azure-bali-m01',
@@ -152,7 +141,6 @@ export const mockParkingSlots: ParkingSlot[] = [
     isAvailable: true,
     ratePerNight: 180,
     features: ['CCTV', '24/7 Security', 'Covered Shade'],
-    formId: 'dev-parking-form',
   },
 
   // ── Barbados tower ────────────────────────────────────────────────
@@ -166,7 +154,6 @@ export const mockParkingSlots: ParkingSlot[] = [
     isAvailable: true,
     ratePerNight: 500,
     features: ['EV Charging Station', 'CCTV', '24/7 Security'],
-    formId: 'dev-parking-form',
   },
   {
     id: 'azure-barbados-b2-002',
@@ -178,7 +165,6 @@ export const mockParkingSlots: ParkingSlot[] = [
     isAvailable: true,
     ratePerNight: 400,
     features: ['Accessible Ramp', 'CCTV', '24/7 Security', 'Extra Wide Bay'],
-    formId: 'dev-parking-form',
   },
   {
     id: 'azure-barbados-b3-001',
@@ -190,7 +176,6 @@ export const mockParkingSlots: ParkingSlot[] = [
     isAvailable: false,
     ratePerNight: 500,
     features: ['EV Charging Station', 'CCTV', '24/7 Security'],
-    formId: 'dev-parking-form',
   },
   {
     id: 'azure-barbados-g-001',
@@ -202,7 +187,6 @@ export const mockParkingSlots: ParkingSlot[] = [
     isAvailable: true,
     ratePerNight: 280,
     features: ['CCTV', '24/7 Security'],
-    formId: 'dev-parking-form',
   },
   {
     id: 'azure-barbados-m01',
@@ -214,7 +198,6 @@ export const mockParkingSlots: ParkingSlot[] = [
     isAvailable: true,
     ratePerNight: 250,
     features: ['CCTV', '24/7 Security', 'Covered Shade'],
-    formId: 'dev-parking-form',
   },
   {
     id: 'azure-barbados-m02',
@@ -226,7 +209,6 @@ export const mockParkingSlots: ParkingSlot[] = [
     isAvailable: false,
     ratePerNight: 250,
     features: ['CCTV', '24/7 Security', 'Covered Shade'],
-    formId: 'dev-parking-form',
   },
 
   // ── Bay ground parking ─────────────────────────────────────────────
@@ -240,7 +222,6 @@ export const mockParkingSlots: ParkingSlot[] = [
     isAvailable: true,
     ratePerNight: 200,
     features: ['CCTV', '24/7 Security', 'Visitor Parking'],
-    formId: 'dev-parking-form',
     notes: 'Open-air bays along the lagoon promenade',
   },
   {
@@ -253,7 +234,6 @@ export const mockParkingSlots: ParkingSlot[] = [
     isAvailable: true,
     ratePerNight: 200,
     features: ['CCTV', '24/7 Security', 'Visitor Parking'],
-    formId: 'dev-parking-form',
   },
   {
     id: 'azure-bay-g-003',
@@ -265,7 +245,6 @@ export const mockParkingSlots: ParkingSlot[] = [
     isAvailable: false,
     ratePerNight: 200,
     features: ['CCTV', '24/7 Security', 'Visitor Parking'],
-    formId: 'dev-parking-form',
   },
   {
     id: 'azure-bay-g-004',
@@ -277,7 +256,6 @@ export const mockParkingSlots: ParkingSlot[] = [
     isAvailable: true,
     ratePerNight: 220,
     features: ['CCTV', '24/7 Security', 'Oversized Vehicle'],
-    formId: 'dev-parking-form',
     notes: 'SUV / van bays near commercial strip',
   },
   {
@@ -290,7 +268,6 @@ export const mockParkingSlots: ParkingSlot[] = [
     isAvailable: true,
     ratePerNight: 120,
     features: ['CCTV', 'Covered Shade'],
-    formId: 'dev-parking-form',
   },
 
   // ── Crosswinds Tagaytay ────────────────────────────────────────────
@@ -304,7 +281,6 @@ export const mockParkingSlots: ParkingSlot[] = [
     isAvailable: true,
     ratePerNight: 250,
     features: ['CCTV', 'Gated Access'],
-    formId: 'dev-parking-form',
   },
   {
     id: 'crosswinds-p2',
@@ -317,7 +293,6 @@ export const mockParkingSlots: ParkingSlot[] = [
     ratePerNight: 250,
     imageUrl: 'https://images.unsplash.com/photo-1568605117037-7b3c22336e38?w=800&q=80',
     features: ['CCTV', 'Gated Access'],
-    formId: 'dev-parking-form',
   },
   {
     id: 'crosswinds-p3',
@@ -329,7 +304,6 @@ export const mockParkingSlots: ParkingSlot[] = [
     isAvailable: false,
     ratePerNight: 350,
     features: ['CCTV', '24/7 Security', 'Covered'],
-    formId: 'dev-parking-form',
   },
   {
     id: 'crosswinds-p4',
@@ -341,7 +315,6 @@ export const mockParkingSlots: ParkingSlot[] = [
     isAvailable: true,
     ratePerNight: 150,
     features: ['CCTV', 'Covered Shade'],
-    formId: 'dev-parking-form',
   },
 ];
 

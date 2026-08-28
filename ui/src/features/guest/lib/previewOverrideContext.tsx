@@ -13,7 +13,15 @@ export type PropertyLandingPreviewOverride = {
   data: ResolvedPropertyDetail;
 };
 
-export type PreviewOverride = StayGuidePreviewOverride | PropertyLandingPreviewOverride;
+export type PropertyShowcasePreviewOverride = {
+  kind: 'property-showcase';
+  data: ResolvedPropertyDetail;
+  showcaseConfig: import('@/features/guest/marketing/showcase/types/showcase').PropertyShowcaseConfig;
+  templateKey: string;
+};
+
+export type PreviewOverride =
+  StayGuidePreviewOverride | PropertyLandingPreviewOverride | PropertyShowcasePreviewOverride;
 
 const PreviewOverrideContext = createContext<PreviewOverride | null>(null);
 
