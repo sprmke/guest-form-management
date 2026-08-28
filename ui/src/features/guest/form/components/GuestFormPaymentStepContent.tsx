@@ -9,11 +9,11 @@ import {
 import {
   computeGuestFormPaymentBreakdown,
   GUEST_DOWN_PAYMENT_RATE_PER_NIGHT,
-  GUEST_PARKING_RATE_PER_NIGHT,
 } from '@/features/guest/form/lib/guestFormPayment';
 import type { GuestFormData } from '@/features/guest/form/schemas/guestFormSchema';
 
 import { InlineCopyIconButton } from '@/features/dashboard/bookings/components/InlineCopyIconButton';
+import { isPlatformSeedMediaUrl } from '@/features/dashboard/lib/storedMediaDisplay';
 import {
   DEFAULT_PAYMENT_PROVIDER,
   normalizePaymentProvider,
@@ -26,19 +26,17 @@ import { formatMoney } from '@/utils/format/currency';
 
 import type { UseFormReturn } from 'react-hook-form';
 
-const DEFAULT_PAYMENT_QR_SRC = '/images/kame-home-gcash-qr-payment.jpg';
+function guestFacingQrUrl(url: string | null | undefined): string | null {
+  const trimmed = url?.trim();
+  if (!trimmed || isPlatformSeedMediaUrl(trimmed)) return null;
+  return trimmed;
+}
 
-function PaymentMethodCard({
-  method,
-  qrFallback,
-}: {
-  method: GuestPaymentMethod;
-  qrFallback: string;
-}) {
+function PaymentMethodCard({ method }: { method: GuestPaymentMethod }) {
   const paymentProvider = normalizePaymentProvider(method.provider);
   const accountName = method.accountName;
   const accountNumber = method.accountNumber;
-  const paymentQrSrc = method.qrImageUrl || qrFallback;
+  const paymentQrSrc = guestFacingQrUrl(method.qrImageUrl);
   const accountNumberLabel = paymentAccountNumberLabel(paymentProvider);
   const payTitle = paymentSectionTitle(paymentProvider);
 
@@ -65,7 +63,13 @@ function PaymentMethodCard({
   return (
     <div className="space-y-3">
       <p className="text-foreground text-sm font-semibold">{payTitle}</p>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-stretch md:gap-5">
+      <div
+        className={
+          paymentQrSrc
+            ? 'grid grid-cols-1 gap-4 md:grid-cols-2 md:items-stretch md:gap-5'
+            : 'grid grid-cols-1 gap-4'
+        }
+      >
         <div
           className="border-border/60 bg-card flex min-w-0 flex-col justify-center gap-4 rounded-xl border px-4 py-5 sm:px-5 sm:py-6"
           aria-label={`${paymentProvider} account details`}
@@ -98,17 +102,19 @@ function PaymentMethodCard({
           </div>
         </div>
 
-        <div className="border-border/60 bg-card flex min-w-0 items-center justify-center overflow-hidden rounded-xl border p-2 shadow-sm sm:p-3">
-          <img
-            src={paymentQrSrc}
-            alt={paymentQrAltText(paymentProvider)}
-            className="h-auto max-h-[min(70dvh,28rem)] w-full object-contain"
-            width={320}
-            height={480}
-            loading="lazy"
-            decoding="async"
-          />
-        </div>
+        {paymentQrSrc ? (
+          <div className="border-border/60 bg-card flex min-w-0 items-center justify-center overflow-hidden rounded-xl border p-2 shadow-sm sm:p-3">
+            <img
+              src={paymentQrSrc}
+              alt={paymentQrAltText(paymentProvider)}
+              className="h-auto max-h-[min(70dvh,28rem)] w-full object-contain"
+              width={320}
+              height={480}
+              loading="lazy"
+              decoding="async"
+            />
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -126,29 +132,10 @@ export function GuestFormPaymentStepContent({ form }: Props) {
   const { data: paymentInfo } = useGuestPaymentInfo();
   const checkInDate = form.watch('checkInDate');
   const checkOutDate = form.watch('checkOutDate');
-  const needParking = form.watch('needParking');
-  const parkingSameAsBookingDuration = form.watch('parkingSameAsBookingDuration');
-  const parkingCheckInDate = form.watch('parkingCheckInDate');
-  const parkingCheckOutDate = form.watch('parkingCheckOutDate');
 
   const breakdown = useMemo(
-    () =>
-      computeGuestFormPaymentBreakdown({
-        checkInDate,
-        checkOutDate,
-        needParking,
-        parkingSameAsBookingDuration,
-        parkingCheckInDate,
-        parkingCheckOutDate,
-      }),
-    [
-      checkInDate,
-      checkOutDate,
-      needParking,
-      parkingSameAsBookingDuration,
-      parkingCheckInDate,
-      parkingCheckOutDate,
-    ]
+    () => computeGuestFormPaymentBreakdown({ checkInDate, checkOutDate }),
+    [checkInDate, checkOutDate]
   );
 
   const paymentMethods = paymentInfo?.paymentMethods?.length
@@ -160,12 +147,11 @@ export function GuestFormPaymentStepContent({ form }: Props) {
             provider: paymentInfo?.paymentProvider ?? DEFAULT_PAYMENT_PROVIDER,
             accountName: paymentInfo?.gcashName ?? '',
             accountNumber: paymentInfo?.gcashNumber ?? '',
-            qrImageUrl: paymentInfo?.gcashQrImageUrl ?? null,
+            qrImageUrl: guestFacingQrUrl(paymentInfo?.gcashQrImageUrl),
             isPrimary: true,
           },
         ]
       : [];
-  const qrFallback = paymentInfo?.gcashQrImageUrl || DEFAULT_PAYMENT_QR_SRC;
   const orderedMethods = [
     ...paymentMethods.filter((m) => m.isPrimary),
     ...paymentMethods.filter((m) => !m.isPrimary),
@@ -191,19 +177,6 @@ export function GuestFormPaymentStepContent({ form }: Props) {
               {formatMoney(breakdown.staySubtotal)}
             </dd>
           </div>
-          {breakdown.parkingSubtotal != null && breakdown.parkingNights != null ? (
-            <div className="flex items-start justify-between gap-3">
-              <dt>
-                Parking ({nightLabel(breakdown.parkingNights)})
-                <span className="mt-0.5 block text-xs">
-                  {formatMoney(GUEST_PARKING_RATE_PER_NIGHT)} × {breakdown.parkingNights}
-                </span>
-              </dt>
-              <dd className="text-foreground shrink-0 font-medium tabular-nums">
-                {formatMoney(breakdown.parkingSubtotal)}
-              </dd>
-            </div>
-          ) : null}
           <div className="border-primary/15 flex items-center justify-between gap-3 border-t pt-2">
             <dt className="text-foreground font-semibold">Total due now</dt>
             <dd className="text-primary text-lg font-bold tabular-nums tracking-tight">
@@ -215,9 +188,7 @@ export function GuestFormPaymentStepContent({ form }: Props) {
 
       <div className="space-y-4">
         {orderedMethods.length > 0
-          ? orderedMethods.map((method) => (
-              <PaymentMethodCard key={method.id} method={method} qrFallback={qrFallback} />
-            ))
+          ? orderedMethods.map((method) => <PaymentMethodCard key={method.id} method={method} />)
           : null}
       </div>
     </div>

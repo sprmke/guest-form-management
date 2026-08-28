@@ -18,9 +18,9 @@ export function resolveGuestFormLogoUrl(
   return DEFAULT_ORG_LOGO_URL;
 }
 
-export function formatPaidParkingDescription(rate: number, residenceName: string | null): string {
+export function formatPaidParkingDescription(residenceName: string | null): string {
   const place = formatResidenceShortName(residenceName) || 'the building';
-  return `₱${rate.toLocaleString('en-PH')} per night inside ${place} and is subject to availability.`;
+  return `We'll help you reserve and pay for a spot inside ${place} separately, after this booking is confirmed.`;
 }
 
 export function formatNoPaidParkingDescription(_residenceName: string | null): string {
@@ -54,7 +54,7 @@ export function formatGuestFooterLabel(
 
 export function formatParkingStepHint(residenceName: string | null): string {
   const place = formatResidenceShortName(residenceName) || 'the building';
-  return `Optional paid parking inside ${place}`;
+  return `Optional paid parking inside ${place} — reserved separately`;
 }
 
 export function formatGuestSuccessAdministration(residenceName: string | null): string {

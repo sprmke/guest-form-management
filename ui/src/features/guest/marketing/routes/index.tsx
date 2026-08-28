@@ -5,7 +5,6 @@ import { AboutPage } from '@/features/guest/marketing/pages/AboutPage';
 import { ContactPage } from '@/features/guest/marketing/pages/ContactPage';
 import { CookiesPage } from '@/features/guest/marketing/pages/CookiesPage';
 import { DevelopmentDetailPage } from '@/features/guest/marketing/pages/DevelopmentDetailPage';
-import { DevelopmentFormPage } from '@/features/guest/marketing/pages/DevelopmentFormPage';
 import { DevelopmentParkingListPage } from '@/features/guest/marketing/pages/DevelopmentParkingListPage';
 import { DevelopmentPropertiesPage } from '@/features/guest/marketing/pages/DevelopmentPropertiesPage';
 import { DevelopmentsListPage } from '@/features/guest/marketing/pages/DevelopmentsListPage';
@@ -22,7 +21,6 @@ import { PrivacyPage } from '@/features/guest/marketing/pages/PrivacyPage';
 import { PropertiesListPage } from '@/features/guest/marketing/pages/PropertiesListPage';
 import { PropertiesLocationPage } from '@/features/guest/marketing/pages/PropertiesLocationPage';
 import { PropertyDetailPage } from '@/features/guest/marketing/pages/PropertyDetailPage';
-import { PropertyFormPage } from '@/features/guest/marketing/pages/PropertyFormPage';
 import { ServicesPage } from '@/features/guest/marketing/pages/ServicesPage';
 import { SupportPage } from '@/features/guest/marketing/pages/SupportPage';
 import { TermsPage } from '@/features/guest/marketing/pages/TermsPage';
@@ -60,7 +58,6 @@ export const marketingRoutes = [
     <Route path="parkings/:parkingSlug/form" element={<ParkingFormPage />} />
     <Route path="parkings/:parkingSlug" element={<ParkingDetailPage />} />
     <Route path="properties/:propertySlug" element={<PropertyDetailPage />} />
-    <Route path="properties/:propertySlug/forms/:formId" element={<PropertyFormPage />} />
     <Route path="developments" element={<DevelopmentsListPage />} />
     {/* Location browse — must be before `:slug` so `in` is not treated as a development slug */}
     <Route path="developments/in/:location" element={<DevelopmentsLocationPage />} />
@@ -72,7 +69,6 @@ export const marketingRoutes = [
       element={<DevelopmentParkingCategoryRedirect />}
     />
     <Route path="developments/:slug/parking/list" element={<DevelopmentParkingListRedirect />} />
-    <Route path="developments/:slug/forms/:formId" element={<DevelopmentFormPage />} />
     <Route path="about" element={<AboutPage />} />
     <Route path="contact" element={<ContactPage />} />
     <Route path="support" element={<SupportPage />} />

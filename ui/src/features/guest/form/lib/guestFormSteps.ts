@@ -77,16 +77,6 @@ export function getGuestFormStepCount(flags: GuestFormVisibilityFlags): number {
   return buildVisibleSteps(flags).length;
 }
 
-function stayNightCount(values: GuestFormData): number {
-  return Math.max(
-    0,
-    Math.ceil(
-      (new Date(values.checkOutDate).getTime() - new Date(values.checkInDate).getTime()) /
-        (1000 * 60 * 60 * 24)
-    )
-  );
-}
-
 /** Fields to validate when leaving a step (includes conditional paths from guestFormSchema). */
 export function getFieldsForGuestFormStep(
   step: GuestFormStepId,
@@ -167,21 +157,9 @@ export function getFieldsForGuestFormStep(
       }
       return fields;
     }
-    case 3: {
-      if (!values.needParking) return ['needParking'];
-      const fields: (keyof GuestFormData)[] = [
-        'needParking',
-        'carPlateNumber',
-        'carBrandModel',
-        'carColor',
-      ];
-      const nights = stayNightCount(values);
-      const useStayDates = nights <= 1 || values.parkingSameAsBookingDuration !== false;
-      if (!useStayDates) {
-        fields.push('parkingCheckInDate', 'parkingCheckOutDate');
-      }
-      return fields;
-    }
+    case 3:
+      // Phase 7: pure interest toggle — no dependent fields.
+      return ['needParking'];
     case 4: {
       if (!values.hasPets) return ['hasPets'];
       return [

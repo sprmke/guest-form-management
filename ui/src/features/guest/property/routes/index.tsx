@@ -28,6 +28,7 @@ import { PayParkingPage } from '@/features/guest/pay-parking/pages/PayParkingPag
 import { GuestReviewPage } from '@/features/guest/sd-form/pages/GuestReviewPage';
 import { SdFormPage } from '@/features/guest/sd-form/pages/SdFormPage';
 import { StayGuidePage } from '@/features/guest/stay-guide/pages/StayGuidePage';
+import { PropertyShowcasePage } from '@/features/guest/marketing/showcase/pages/PropertyShowcasePage';
 
 import { MainLayout } from '@/layouts/MainLayout';
 import { useFavicon } from '@/lib/favicon';
@@ -146,6 +147,11 @@ export const propertyGuestRoutes = [
     key="property-stay-guide"
     path="properties/:propertySlug/stay-guide"
     element={<StayGuidePage />}
+  />,
+  <Route
+    key="property-showcase"
+    path="properties/:propertySlug/showcase"
+    element={<PropertyShowcasePage />}
   />,
   <Route
     key="property-booking-document"

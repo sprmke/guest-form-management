@@ -134,6 +134,7 @@ export type ResolvedPropertyDetail = {
   latitude: number | null;
   longitude: number | null;
   placeId: string | null;
+  mapsUrl: string | null;
   residenceName: string | null;
   tower: string | null;
   unitNumber: string | null;

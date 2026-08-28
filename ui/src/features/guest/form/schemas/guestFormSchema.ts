@@ -330,62 +330,9 @@ function buildGuestFormSchema(options: GuestFormSchemaOptions) {
         });
       }
 
-      if (data.needParking) {
-        if (!data.carPlateNumber) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: 'Car plate number is required when parking is needed',
-            path: ['carPlateNumber'],
-          });
-        }
-        if (!data.carBrandModel) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: 'Car brand and model is required when parking is needed',
-            path: ['carBrandModel'],
-          });
-        }
-        if (!data.carColor) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: 'Car color is required when parking is needed',
-            path: ['carColor'],
-          });
-        }
-
-        const stayNights = Math.max(
-          0,
-          Math.ceil(
-            (new Date(data.checkOutDate).getTime() - new Date(data.checkInDate).getTime()) /
-              (1000 * 60 * 60 * 24)
-          )
-        );
-        const useStayDates = stayNights <= 1 || data.parkingSameAsBookingDuration !== false;
-        const parkIn = useStayDates ? data.checkInDate : data.parkingCheckInDate;
-        const parkOut = useStayDates ? data.checkOutDate : data.parkingCheckOutDate;
-
-        if (!parkIn?.trim()) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: 'Please select parking check-in date',
-            path: ['parkingCheckInDate'],
-          });
-        }
-        if (!parkOut?.trim()) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: 'Please select parking check-out date',
-            path: ['parkingCheckOutDate'],
-          });
-        }
-        if (parkIn && parkOut && parkOut <= parkIn) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: 'Parking check-out must be after check-in',
-            path: ['parkingCheckOutDate'],
-          });
-        }
-      }
+      // Phase 7: needParking is now a pure interest signal (guest self-serves vehicle/date
+      // details later through the marketplace, see docs/guides/routes/parkings.md) — no
+      // dependent fields to require here anymore.
 
       if (data.hasPets) {
         if (!data.petName) {

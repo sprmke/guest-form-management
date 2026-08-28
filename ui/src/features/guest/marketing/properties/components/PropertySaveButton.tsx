@@ -164,7 +164,7 @@ export function PropertySaveButton({
           size="sm"
           disabled={isPending}
           className={cn(
-            'gap-2 rounded-full backdrop-blur-sm transition-colors duration-300',
+            'min-h-[44px] gap-2 rounded-full backdrop-blur-sm transition-colors duration-300',
             isSaved
               ? 'bg-rose-500 text-white hover:bg-rose-600'
               : 'bg-background/90 hover:bg-background',
@@ -175,8 +175,8 @@ export function PropertySaveButton({
           aria-pressed={isSaved}
           aria-label={isSaved ? 'Unsave property' : 'Save property'}
         >
-          <SaveHeartIcon active={isSaved} size="sm" burst={burstKey} />
-          <span className="hidden sm:inline">{isSaved ? 'Saved' : 'Save'}</span>
+          <SaveHeartIcon active={isSaved} burst={burstKey} />
+          <span className="@sm:inline hidden">{isSaved ? 'Saved' : 'Save'}</span>
         </Button>
         {unsaveDialog}
       </>

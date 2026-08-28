@@ -17,7 +17,6 @@ import { useFavicon } from '@/lib/favicon';
 import { APP_TITLE, usePageTitle } from '@/lib/pageTitle';
 
 function isFocusedGuestFlowRoute(pathname: string) {
-  if (pathname.includes('/forms/')) return true;
   if (/^\/parkings\/requests\/[^/]+\/?$/.test(pathname)) return true;
   if (/^\/parkings\/[^/]+\/form\/?$/.test(pathname)) return true;
   return false;

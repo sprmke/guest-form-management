@@ -14,6 +14,7 @@ import {
 } from '@/features/guest/auth/config/auth-navigation';
 import { useGuestSession } from '@/features/guest/auth/hooks/useGuestSession';
 import { scrollToSection } from '@/features/guest/marketing/for-hosts/lib/scrollToSection';
+import { MarketingBrandLogo } from '@/features/guest/marketing/shared/components/MarketingBrandLogo';
 import { HostAccountMenu } from '@/features/guest/marketing/shared/components/HostAccountMenu';
 import {
   useListingNavMorph,
@@ -257,21 +258,16 @@ export function MarketingNav() {
               onClick={handleExploreHome}
               className="group relative z-20 flex shrink-0 items-center gap-2"
             >
-              <div className="from-primary to-primary/80 shadow-primary/25 group-hover:shadow-primary/40 relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br shadow-lg transition-shadow">
-                <span className="text-xl font-bold text-white">K</span>
-                <div className="absolute inset-0 rounded-xl bg-white/20 opacity-0 transition-opacity group-hover:opacity-100" />
-              </div>
-              <span
-                className={cn(
-                  'overflow-hidden whitespace-nowrap text-xl font-bold tracking-tight transition-[max-width,opacity] duration-300 ease-out',
+              <MarketingBrandLogo
+                wordmarkClassName={cn(
                   headerSolid ? 'text-foreground' : 'text-foreground dark:text-white',
                   collapseBrandForSearch
-                    ? 'max-w-0 opacity-0 lg:max-w-[12rem] lg:opacity-100'
-                    : 'max-w-[12rem] opacity-100'
+                    ? 'max-w-0 overflow-hidden opacity-0 lg:max-w-[12rem] lg:opacity-100'
+                    : 'max-w-[12rem] opacity-100',
+                  'overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-300 ease-out'
                 )}
-              >
-                Kame<span className="text-primary">Homes</span>
-              </span>
+                markClassName="group-hover:shadow-primary/40 transition-shadow"
+              />
             </Link>
 
             {scrollSearchEnabled ? (

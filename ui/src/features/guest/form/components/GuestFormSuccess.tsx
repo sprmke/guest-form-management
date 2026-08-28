@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
 
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 
 import dayjs from 'dayjs';
-import { Users, User, PawPrint, Mail, Phone, Info } from 'lucide-react';
+import { Users, User, PawPrint, Mail, Phone, Info, Car } from 'lucide-react';
 
 import {
   DEFAULT_GUEST_PAYMENT_INFO,
@@ -196,6 +196,29 @@ export function GuestFormSuccess() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Parking interest (Phase 7) — self-serve marketplace, not part of this total */}
+                  {bookingData.needParking && (
+                    <div className="border-t pt-5">
+                      <div className="border-primary/20 bg-primary/5 flex items-start gap-4 rounded-lg border p-4">
+                        <div className="bg-primary/10 rounded-lg p-2">
+                          <Car className="text-primary h-5 w-5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-foreground mb-1 text-sm font-bold">Need parking?</p>
+                          <p className="text-muted-foreground text-sm">
+                            Reserve and pay for a spot separately, once you're signed in as a guest.
+                          </p>
+                          <Link
+                            to="/parkings"
+                            className="text-primary mt-2 inline-block text-sm font-semibold underline underline-offset-2"
+                          >
+                            Find parking near your stay
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Pet Information */}
                   {bookingData.hasPets && bookingData.petName && (

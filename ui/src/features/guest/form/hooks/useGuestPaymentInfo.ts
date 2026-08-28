@@ -52,7 +52,7 @@ export type GuestPaymentInfo = {
 export const DEFAULT_GUEST_PAYMENT_INFO: GuestPaymentInfo = {
   gcashName: '',
   gcashNumber: '',
-  gcashQrImageUrl: '/images/kame-home-gcash-qr-payment.jpg',
+  gcashQrImageUrl: '',
   paymentProvider: 'GCash',
   paymentMethods: [],
   emailLogoUrl: '/images/logo.png',

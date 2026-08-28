@@ -27,7 +27,6 @@ import {
   GuestFormInfoCallout,
   GuestFormOptionCard,
 } from '@/features/guest/form/components/GuestFormOptionCard';
-import { GuestFormParkingDates } from '@/features/guest/form/components/GuestFormParkingDates';
 import { GuestFormPaymentStepContent } from '@/features/guest/form/components/GuestFormPaymentStepContent';
 import { GuestFormStepNavigation } from '@/features/guest/form/components/GuestFormStepNavigation';
 import { GuestFormStepper } from '@/features/guest/form/components/GuestFormStepper';
@@ -306,10 +305,7 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
   );
 
   const parkingNoPaidDescription = formatNoPaidParkingDescription(guestPaymentInfo.residenceName);
-  const parkingPaidDescription = formatPaidParkingDescription(
-    guestPaymentInfo.defaultParkingRateGuest,
-    guestPaymentInfo.residenceName
-  );
+  const parkingPaidDescription = formatPaidParkingDescription(guestPaymentInfo.residenceName);
   const petPolicyTitle = formatPetPolicyTitle(guestPaymentInfo.residenceName);
   const petPolicyResidence =
     formatResidenceShortName(guestPaymentInfo.residenceName) || 'The building';
@@ -1853,64 +1849,14 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
                     </div>
 
                     {form.watch('needParking') && (
-                      <div className="space-y-4 pt-5">
-                        <FormField
-                          control={form.control}
-                          name="carPlateNumber"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>
-                                Car Plate Number <span className="text-destructive">*</span>
-                              </FormLabel>
-                              <FormControl>
-                                <Input placeholder="Ex. ABC123" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="carBrandModel"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>
-                                Car Brand & Model <span className="text-destructive">*</span>
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  placeholder="Ex. Honda Civic"
-                                  {...field}
-                                  onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="carColor"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>
-                                Car Color <span className="text-destructive">*</span>
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  placeholder="Ex. Red"
-                                  {...field}
-                                  onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <GuestFormParkingDates form={form} />
+                      <div className="border-primary/20 bg-primary/5 space-y-2 rounded-lg border p-4 pt-4">
+                        <p className="text-foreground text-sm font-medium">
+                          Good news — you don't need to add vehicle or date details here.
+                        </p>
+                        <p className="text-muted-foreground text-sm">
+                          Once your booking is confirmed, we'll send you a link to reserve and pay
+                          for a specific parking spot for your exact stay dates.
+                        </p>
                       </div>
                     )}
                   </div>
