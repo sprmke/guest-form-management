@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { format, eachDayOfInterval, isSameDay, isBefore, startOfToday } from 'date-fns';
 
+import { ParkingDirectLinkCard } from '@/features/dashboard/parking/components/ParkingDirectLinkCard';
 import { ParkingPricingRatesFormCard } from '@/features/dashboard/parking/components/ParkingPricingRatesFormCard';
 import { ParkingPricingStatsRow } from '@/features/dashboard/parking/components/ParkingPricingStatsRow';
 import {
@@ -362,10 +363,13 @@ export function ParkingPricingPage() {
             getPriceForDate={getPriceForDate}
           />
 
-          <div className="lg:sticky lg:top-5">
+          <div className="space-y-3 lg:sticky lg:top-5">
             <ParkingPricingRatesFormCard
               weekdayRate={weekdayRate}
               weekendRate={weekendRate}
+              guestRateCapWeekday={pricingData?.guestRateCapWeekday}
+              guestRateCapWeekend={pricingData?.guestRateCapWeekend}
+              commissionPct={pricingData?.commissionPct}
               readOnly={!canEdit}
               hasChanges={hasChanges}
               saving={saveMutation.isPending}
@@ -378,6 +382,12 @@ export function ParkingPricingPage() {
                 setHasChanges(true);
               }}
               onSaveClick={handleSaveClick}
+            />
+            <ParkingDirectLinkCard
+              slug={pricingData?.directBookingSlug}
+              token={pricingData?.directBookingToken}
+              commissionPct={pricingData?.commissionPct}
+              directCommissionPct={pricingData?.directCommissionPct}
             />
           </div>
         </div>

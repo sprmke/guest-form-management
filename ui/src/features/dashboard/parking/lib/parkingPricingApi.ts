@@ -6,6 +6,14 @@ export type ParkingPricingDto = ParkingPricingDefaults & {
   dateOverrides: Record<string, number>;
   bookedDateKeys: string[];
   blockedDateKeys: string[];
+  /** Live super-admin-configured guest rate cap (Phase 4) — see parkingPricingDefaults.ts. */
+  guestRateCapWeekday: number;
+  guestRateCapWeekend: number;
+  commissionPct: number;
+  /** Phase 8 — direct-booking link commission + link-building fields. */
+  directCommissionPct: number;
+  directBookingToken: string;
+  directBookingSlug: string;
 };
 
 export type ParkingPricingPatch = Partial<ParkingPricingDefaults> & {

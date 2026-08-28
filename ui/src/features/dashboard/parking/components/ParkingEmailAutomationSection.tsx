@@ -1,7 +1,7 @@
 import {
   DEFAULT_PARKING_AUTOMATION_TOGGLES,
-  PARKING_AUTOMATION_TOGGLE_KEYS,
   PARKING_AUTOMATION_TOGGLE_LABELS,
+  PARKING_EMAIL_AUTOMATION_TOGGLE_KEYS,
   type ParkingAutomationToggles,
 } from '@/features/dashboard/parking/lib/parkingEmailAutomation';
 
@@ -19,7 +19,7 @@ export function ParkingEmailAutomationSection({ value, disabled, onChange }: Pro
 
   return (
     <div className="space-y-3">
-      {PARKING_AUTOMATION_TOGGLE_KEYS.map((key) => (
+      {PARKING_EMAIL_AUTOMATION_TOGGLE_KEYS.map((key) => (
         <div key={key} className="flex min-h-[44px] items-center justify-between gap-4">
           <Label htmlFor={`parking-automation-${key}`} className="text-sm font-medium">
             {PARKING_AUTOMATION_TOGGLE_LABELS[key]}

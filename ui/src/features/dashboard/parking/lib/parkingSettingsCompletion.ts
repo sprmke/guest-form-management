@@ -39,15 +39,10 @@ export type ParkingSettingsCompletionResult = {
   isComplete: boolean;
 };
 
-function paymentQrConfigured(appSettings: AppSettingsDto | null): boolean {
-  if (!appSettings) return false;
-  return appSettings.fieldSources.gcashQrImageUrl === 'db';
-}
-
 export function computeParkingSettingsCompletion(
   input: ParkingSettingsCompletionInput
 ): ParkingSettingsCompletionResult {
-  const { profile, operational, details, features, location, coverImage, appSettings } = input;
+  const { profile, operational, details, features, location, coverImage } = input;
   const fieldErrors: Record<string, string> = {};
   const sectionMessages: Partial<Record<ParkingSettingsSectionId, string>> = {};
   const issueSectionIds: ParkingSettingsSectionId[] = [];
@@ -145,8 +140,6 @@ export function computeParkingSettingsCompletion(
         addFieldError(`${prefix}-name`, accountNameErr, 'payment');
       } else if (!method.accountName.trim()) {
         addFieldError(`${prefix}-name`, 'Enter the account name', 'payment');
-      } else if (method.accountName.trim().length < 2) {
-        addFieldError(`${prefix}-name`, 'Enter the full account holder name', 'payment');
       }
 
       const accountNumberErr = validatePaymentAccountNumber(method.provider, method.accountNumber);
@@ -155,10 +148,6 @@ export function computeParkingSettingsCompletion(
       } else if (!method.accountNumber.trim()) {
         addFieldError(`${prefix}-number`, 'Enter the account number', 'payment');
       }
-    }
-
-    if (!paymentQrConfigured(appSettings)) {
-      addFieldError('payment-qr-image', 'Upload a payment QR code', 'payment');
     }
   }
 

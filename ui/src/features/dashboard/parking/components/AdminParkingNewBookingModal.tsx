@@ -135,14 +135,7 @@ export function AdminParkingNewBookingModal({
       open={open}
       onOpenChange={handleOpenChange}
       title={
-        <div className="flex items-center gap-3">
-          <div className="bg-primary/10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full">
-            <Car className="text-primary h-3.5 w-3.5" />
-          </div>
-          <DialogTitle className="text-foreground text-base font-semibold">
-            New Parking Booking
-          </DialogTitle>
-        </div>
+        <DialogTitle className="text-foreground text-base font-semibold">New booking</DialogTitle>
       }
       sizeClassName="max-w-[min(calc(100vw-1.5rem),36rem)] sm:max-w-[min(90vw,40rem)]"
       heightClassName="max-h-[min(92dvh,48rem)]"
