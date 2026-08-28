@@ -1,4 +1,5 @@
-import { type ORG_ROLE_PERMISSIONS } from '@/features/dashboard/team/lib/orgTeamConstants';
+import { expandLegacyOrgPermissionIds } from '@/features/dashboard/team/lib/orgLegacyPermissionExpansion';
+import { ORG_ROLE_PERMISSIONS } from '@/features/dashboard/team/lib/orgTeamConstants';
 
 export type OrgAccessKind = 'owner' | 'platform_admin' | 'org_admin' | 'property_member';
 
@@ -22,35 +23,41 @@ export type OrgAccessPayload = {
   planLimited?: boolean;
 };
 
+function expandGranted(permissions: readonly string[] | undefined): string[] {
+  return expandLegacyOrgPermissionIds(permissions ?? []);
+}
+
 export function hasOrgPermission(
   permissions: readonly string[] | undefined,
-  required: OrgPermissionId
+  required: string
 ): boolean {
-  return permissions?.includes(required) ?? false;
+  const granted = expandGranted(permissions);
+  const requiredExpanded = expandLegacyOrgPermissionIds([required]);
+  return requiredExpanded.some((id) => granted.includes(id));
 }
 
 /** Minimum view permission per org sidebar nav label. */
-export const ORG_NAV_VIEW_PERMISSION: Record<string, OrgPermissionId> = {
-  Dashboard: 'org:dashboard:view',
-  Bookings: 'org:bookings:view',
-  Properties: 'org:properties:view',
-  Parkings: 'org:parkings:view',
-  Team: 'org:team:view',
-  Settings: 'org:settings:view',
-  Plans: 'org:settings:view',
+export const ORG_NAV_VIEW_PERMISSION: Record<string, string> = {
+  Dashboard: 'org.dashboard:view',
+  Bookings: 'org.bookings:view',
+  Properties: 'org.properties:view',
+  Parkings: 'org.parkings:view',
+  Team: 'org.team:view',
+  Settings: 'org.settings:view',
+  Plans: 'org.plans:view',
 };
 
 /** Minimum view permission per org route section. */
 export const ORG_SECTION_VIEW_PERMISSION = {
-  dashboard: 'org:dashboard:view',
-  bookings: 'org:bookings:view',
-  properties: 'org:properties:view',
-  parkings: 'org:parkings:view',
-  team: 'org:team:view',
-  settings: 'org:settings:view',
-  plans: 'org:settings:view',
-  'help-support': 'org:dashboard:view',
-} as const satisfies Record<string, OrgPermissionId>;
+  dashboard: 'org.dashboard:view',
+  bookings: 'org.bookings:view',
+  properties: 'org.properties:view',
+  parkings: 'org.parkings:view',
+  team: 'org.team:view',
+  settings: 'org.settings:view',
+  plans: 'org.plans:view',
+  'help-support': 'org.dashboard:view',
+} as const satisfies Record<string, string>;
 
 export type OrgSection = keyof typeof ORG_SECTION_VIEW_PERMISSION;
 

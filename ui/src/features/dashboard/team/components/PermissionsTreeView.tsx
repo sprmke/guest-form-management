@@ -74,13 +74,11 @@ function PermissionRow({
   node,
   checked,
   disabled,
-  showDescription,
   onToggle,
 }: {
   node: PermissionCatalogNode;
   checked: boolean;
   disabled: boolean;
-  showDescription?: boolean;
   onToggle: (next: boolean) => void;
 }) {
   const inputId = `perm-${node.key}`;
@@ -114,7 +112,7 @@ function PermissionRow({
             </Badge>
           ) : null}
         </span>
-        {showDescription && node.description ? (
+        {node.description ? (
           <span className="text-muted-foreground text-xs font-normal leading-snug">
             {node.description}
           </span>
@@ -229,14 +227,13 @@ export function PermissionsTreeView({
     return leafIds.filter((id) => selected.has(id)).length;
   };
 
-  const renderLeafRows = (leaves: PermissionCatalogNode[], showDescription = false) =>
+  const renderLeafRows = (leaves: PermissionCatalogNode[]) =>
     leaves.map((leaf) => (
       <PermissionRow
         key={leaf.key}
         node={leaf}
         checked={selected.has(leaf.id as string)}
         disabled={readOnly}
-        showDescription={showDescription}
         onToggle={(next) => {
           void handleToggleLeaf(leaf, next);
         }}
@@ -257,7 +254,7 @@ export function PermissionsTreeView({
     return (
       <div className="space-y-1 pb-1 pt-1">
         {accessLeaves.length > 0 ? (
-          <PermissionGroup title="Access">{renderLeafRows(accessLeaves, true)}</PermissionGroup>
+          <PermissionGroup title="Access">{renderLeafRows(accessLeaves)}</PermissionGroup>
         ) : null}
         {otherDirectLeaves.length > 0 ? (
           <PermissionGroup>{renderLeafRows(otherDirectLeaves)}</PermissionGroup>

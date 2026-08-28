@@ -1,0 +1,135 @@
+/**
+ * Org hub permission catalog for PermissionsTreeView (UI hierarchy only).
+ */
+
+import type {
+  PermissionAction,
+  PermissionCatalogNode,
+} from '@/features/dashboard/team/lib/propertyPermissionCatalog';
+import { ORG_TEAM_PERMISSIONS } from '@/features/dashboard/team/lib/orgTeamConstants';
+
+export type OrgPermissionCatalog = readonly PermissionCatalogNode[];
+
+const MODULE_ORDER = [
+  'dashboard',
+  'bookings',
+  'properties',
+  'parkings',
+  'settings',
+  'plans',
+  'team',
+  'import',
+] as const;
+
+const MODULE_LABELS: Record<string, string> = {
+  dashboard: 'Dashboard',
+  bookings: 'Bookings',
+  properties: 'Properties',
+  parkings: 'Parkings',
+  settings: 'Settings',
+  plans: 'Plans & Billing',
+  team: 'Team',
+  import: 'Import',
+};
+
+const SENSITIVE_ORG_PERMISSION_IDS = new Set([
+  'org.team.members:edit',
+  'org.team.members:delete',
+  'org.team.roles:add',
+  'org.team.roles:edit',
+  'org.team.roles:delete',
+]);
+
+function actionFromPermissionId(id: string): PermissionAction {
+  const action = id.includes(':') ? id.split(':').pop()! : 'edit';
+  if (action === 'view') return 'view';
+  if (action === 'add') return 'add';
+  if (action === 'delete') return 'delete';
+  return 'edit';
+}
+
+function moduleFromPermissionId(id: string): string {
+  const withoutOrg = id.startsWith('org.') ? id.slice(4) : id;
+  const segment = withoutOrg.split('.')[0] ?? withoutOrg.split(':')[0] ?? 'org';
+  if (segment === 'import') return 'import';
+  return segment;
+}
+
+function parentKeyForPermission(id: string): string {
+  if (id.startsWith('org.settings.')) return 'settings.sections';
+  if (id.startsWith('org.team.invitations')) return 'team.invitations';
+  if (id.startsWith('org.team.members')) return 'team.members';
+  if (id.startsWith('org.team.roles')) return 'team.roles';
+  if (id === 'org.properties:create' || id === 'org.properties:manage') return 'properties';
+  if (id === 'org.parkings:create' || id === 'org.parkings:manage') return 'parkings';
+  return moduleFromPermissionId(id);
+}
+
+function buildOrgCatalog(): PermissionCatalogNode[] {
+  const nodes: PermissionCatalogNode[] = [];
+
+  MODULE_ORDER.forEach((module, moduleIndex) => {
+    nodes.push({
+      id: null,
+      key: module,
+      parentKey: null,
+      module,
+      label: MODULE_LABELS[module] ?? module,
+      order: moduleIndex,
+    });
+  });
+
+  nodes.push(
+    {
+      id: null,
+      key: 'settings.sections',
+      parentKey: 'settings',
+      module: 'settings',
+      label: 'Edit',
+      order: 0,
+    },
+    {
+      id: null,
+      key: 'team.invitations',
+      parentKey: 'team',
+      module: 'team',
+      label: 'Invitations',
+      order: 0,
+    },
+    {
+      id: null,
+      key: 'team.members',
+      parentKey: 'team',
+      module: 'team',
+      label: 'Members',
+      order: 1,
+    },
+    {
+      id: null,
+      key: 'team.roles',
+      parentKey: 'team',
+      module: 'team',
+      label: 'Roles',
+      order: 2,
+    }
+  );
+
+  ORG_TEAM_PERMISSIONS.forEach((permission, index) => {
+    const module = moduleFromPermissionId(permission.id);
+    nodes.push({
+      id: permission.id,
+      key: permission.id.replace(/:/g, '.'),
+      parentKey: parentKeyForPermission(permission.id),
+      module,
+      label: permission.name.replace(/^(View|Edit|Manage|Add)\s+/i, '').trim() || permission.name,
+      description: permission.description,
+      action: actionFromPermissionId(permission.id),
+      order: index,
+      sensitive: SENSITIVE_ORG_PERMISSION_IDS.has(permission.id),
+    });
+  });
+
+  return nodes;
+}
+
+export const ORG_PERMISSION_CATALOG: OrgPermissionCatalog = buildOrgCatalog();
