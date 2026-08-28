@@ -2,7 +2,7 @@
 title: 'Guest Form — operator guide'
 status: active
 tags: [guides, routes]
-updated: 2026-08-24
+updated: 2026-08-26
 ---
 
 # Guest Form — operator guide
@@ -34,7 +34,7 @@ Legacy **`/form?property=<slug>`** redirects to the scoped route. Deprecated que
 
 ## Host-facing knowledge
 
-The booking form walks a guest through their info, stay dates and guest list, optional paid parking, optional pets, and (for non-Airbnb bookings) a downpayment receipt upload. A guest can reopen their own submission to make changes only while it's still awaiting your review; once you've started processing it, they're told to contact you directly instead of editing it themselves.
+The booking form walks a guest through their info, stay dates and guest list, an optional paid-parking interest toggle, optional pets, and (for non-Airbnb bookings) a downpayment receipt upload. A guest can reopen their own submission to make changes only while it's still awaiting your review; once you've started processing it, they're told to contact you directly instead of editing it themselves.
 
 **Common host questions**
 
@@ -42,6 +42,8 @@ The booking form walks a guest through their info, stay dates and guest list, op
   A: Guests can only edit their own submission while it's still in the initial "awaiting review" stage. Once you've moved it forward, they're shown a message to contact you on Facebook or Airbnb for changes instead.
 - Q: Why doesn't the Airbnb booking form ask for a payment receipt?
   A: Airbnb bookings skip the downpayment step entirely, since Airbnb handles that payment on their platform, not through Kame Home.
+- Q: A guest checked "Yes, reserve paid parking" — where's their vehicle info / parking charge?
+  A: As of Phase 7, parking is a pure interest signal here — no vehicle info or charge is collected on this form anymore, and it's not part of the downpayment total. The guest reserves and pays for a specific spot separately through the parking marketplace (`/parkings`), either from a link on their booking-confirmation page/email, or a pre-arrival reminder email if they haven't by ~3 days before check-in. Once they self-serve and pay, it shows up automatically on this booking's detail page (Parking tab) — no manual entry needed from you.
 - Q: A guest tried to book dates that are already taken. What do they see?
   A: An "already booked" message telling them those dates aren't available, so they can pick different ones.
 - Q: A guest can't pick a check-in/check-out time that should be available. Why?
@@ -51,13 +53,13 @@ The booking form walks a guest through their info, stay dates and guest list, op
 
 ## Steps
 
-| #   | Step    | Content                                                                                                                                                                                          | Airbnb     |
-| --- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------- |
-| 1   | Guest   | Facebook/Airbnb name, email, phone, address, nationality, guest list (names/ages/valid ID)                                                                                                       | ✅         |
-| 2   | Stay    | Check-in/out dates + times (custom `TimePicker`, defaults from property **`checkInTime`/`checkOutTime`** via `get-guest-payment-info`), special requests, how they found us, surprise decor flag | ✅         |
-| 3   | Parking | Optional paid parking (plate, brand/model, color, optional custom parking dates)                                                                                                                 | ✅         |
-| 4   | Pets    | Optional pet details (name, type, breed, age, vaccination date, vaccination record + pet photo)                                                                                                  | ✅         |
-| 5   | Payment | Downpayment breakdown (GCash/bank) + receipt upload                                                                                                                                              | ❌ skipped |
+| #   | Step    | Content                                                                                                                                                                                                                | Airbnb     |
+| --- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| 1   | Guest   | Facebook/Airbnb name, email, phone, address, nationality, guest list (names/ages/valid ID)                                                                                                                             | ✅         |
+| 2   | Stay    | Check-in/out dates + times (custom `TimePicker`, defaults from property **`checkInTime`/`checkOutTime`** via `get-guest-payment-info`), special requests, how they found us, surprise decor flag                       | ✅         |
+| 3   | Parking | Pure interest toggle (`needParking`) — no vehicle/date/pricing fields here anymore (Phase 7). Guests who opt in reserve and pay for a spot separately through the parking marketplace, after this booking is confirmed | ✅         |
+| 4   | Pets    | Optional pet details (name, type, breed, age, vaccination date, vaccination record + pet photo)                                                                                                                        | ✅         |
+| 5   | Payment | Downpayment breakdown + pay-to accounts (QR shown only when the host uploaded one) + receipt upload                                                                                                                    | ❌ skipped |
 
 Airbnb bookings (`?source=airbnb`, or a booking with `booking_source = 'Airbnb'`) get **4 steps** — Payment is omitted entirely and `paymentReceipt` is not required. See `.cursor/rules/booking-workflow.mdc` § Airbnb source behavior for the full list of Airbnb-specific differences downstream of submission.
 
@@ -96,7 +98,7 @@ Stepper labels and in-card section headings share the same **`title`** per step 
 - **Property check-in/out times:** on mount, `get-guest-payment-info` returns the property's `checkInTime` / `checkOutTime` (24h `HH:mm` from `properties.settings`; defaults `14:00` / `12:00`). New submissions pre-fill those fields once the fetch completes. Early check-in and late check-out banners compare the guest's selected time against the property values. Reopening `?bookingId=` keeps the stored submission times from `get-form`.
 - **Property guest capacity:** same payload includes `maxAdults` / `maxChildren` from the property's unit type. The guest list shows a **Maximum Guests Reminder** when occupancy exceeds those limits (building rule: age 4+ = adult, age 0–3 = child). `submit-form` enforces the same limits server-side.
 - **Primary guest name:** pre-fills from the step-1 contact name (Facebook/Airbnb/full name) and stays editable; if the guest changes the primary name separately, later contact-name edits no longer overwrite it.
-- **Property branding (header + shell):** eyebrow line = `tower_and_unit · residence` (short residence name); logo = org `emailLogoUrl` with fallback to primary property gallery image; top band = org **brand color** gradient via `MainLayout`; footer = org name + residence. Parking/pet copy uses `defaultParkingRateGuest`, `petFee`, and `residenceName` from the same payload. GAF owner/unit fields pre-fill from `gaf*` columns on load (not hardcoded defaults).
+- **Property branding (header + shell):** eyebrow line = `tower_and_unit · residence` (short residence name); logo = org `emailLogoUrl` with fallback to primary property gallery image; top band = org **brand color** gradient via `MainLayout`; footer = org name + residence. Pet copy uses `petFee` and `residenceName` from the same payload; the parking step's copy references `residenceName` only (no rate — see Phase 7 note above). GAF owner/unit fields pre-fill from `gaf*` columns on load (not hardcoded defaults).
 
 ---
 

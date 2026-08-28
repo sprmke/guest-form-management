@@ -23,7 +23,7 @@ Route: `/admin/support` (+ `/admin/support/faqs`)
 
 ## Overview
 
-Platform super-admins triage every host-filed support ticket across all organizations, reply to hosts, and manage status/priority. FAQs are a separate first-class page (sidebar + overview card), not a button on the tickets list.
+Platform super-admins triage every support ticket across all organizations **and** explore guest tickets (`channel=guest`, shown as **Explore guest**), reply, and manage status/priority. FAQs are a separate first-class page (sidebar + overview card), not a button on the tickets list.
 
 **Access:** `RequireSuperAdmin` (`SUPER_ADMIN_EMAILS`), same tier as Approvals/Hosts/Developments.
 

@@ -18,15 +18,15 @@ Routes:
 
 ## Progress overview
 
-| Section                | E2E save | Validation | Docs       | Notes                                                                      |
-| ---------------------- | -------- | ---------- | ---------- | -------------------------------------------------------------------------- |
-| Auth layout            | —        | —          | Documented | Split branding panel + form, host or guest copy by pathname                |
-| Host login/register    | ✅       | Client     | Documented | Email OTP + Google OAuth — same component/flow for both modes              |
-| Guest login/register   | ✅       | Client     | Documented | Email OTP + Google OAuth — standalone pages (new)                          |
-| Guest checkout auth    | ✅       | Client     | Documented | Modal on form/messages entry, calendar Proceed, Reserve, save heart        |
-| Guest account nav      | ✅       | —          | Documented | Avatar on explore when signed in; real "Sign In" link when not             |
-| Host dashboard profile | ✅       | Client     | Documented | Sidebar account menu → **Profile** modal (same form as `/account/profile`) |
-| Mode switcher          | —        | —          | Documented | Global curtain; admin sidebar + marketing/auth triggers                    |
+| Section                | E2E save | Validation | Docs       | Notes                                                                                   |
+| ---------------------- | -------- | ---------- | ---------- | --------------------------------------------------------------------------------------- |
+| Auth layout            | —        | —          | Documented | Split panel + form; host left uses shared **`HostWorkspaceSidePanel`** (`auth` variant) |
+| Host login/register    | ✅       | Client     | Documented | Email OTP + Google OAuth — same component/flow for both modes                           |
+| Guest login/register   | ✅       | Client     | Documented | Email OTP + Google OAuth — standalone pages (new)                                       |
+| Guest checkout auth    | ✅       | Client     | Documented | Modal on form/messages entry, calendar Proceed, Reserve, save heart                     |
+| Guest account nav      | ✅       | —          | Documented | Avatar on explore when signed in; real "Sign In" link when not                          |
+| Host dashboard profile | ✅       | Client     | Documented | Sidebar account menu → **Profile** modal (same form as `/account/profile`)              |
+| Mode switcher          | —        | —          | Documented | Global curtain; admin sidebar + marketing/auth triggers                                 |
 
 ---
 
@@ -62,6 +62,8 @@ Resume after OAuth (guest): `sessionStorage` (`guestAuthResume.ts`) restores nav
 
 ### Host sign-in
 
+**Layout (lg+, host routes):** 50/50 split — left **`HostWorkspaceSidePanel`** (`variant="auth"`) shared with onboarding: solid **`bg-primary`**, **`MarketingBrandLogo`**, headline + description, compact **`HostDashboardTourPlayer`** (expand modal). No footer links on the panel. Guest auth routes keep the legacy gradient branding panel with feature cards.
+
 1. User enters their email (OTP) or clicks **Continue with Google** on `/for-hosts/login` or `/for-hosts/register`.
 2. Either path lands a normal Supabase Auth session — `useAdminSession` treats any session as signed-in regardless of which method was used.
 3. On success, **`useHostGoogleAuth`** (name unchanged, now also drives OTP) + **`resolvePostSignInPath`** routes to onboarding or the org dashboard.
@@ -93,26 +95,27 @@ Hosts and guests can both sign in with a one-time code sent to their email, or w
 
 ## Implementation map
 
-| Concern                           | Path                                                                                                                                                                                                     |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Guest checkout modal + context    | `ui/src/features/guest/auth/components/GuestAuthModal.tsx`                                                                                                                                               |
-|                                   | `ui/src/features/guest/auth/context/GuestAuthContext.tsx`                                                                                                                                                |
-| Session / OTP / OAuth (shared)    | `ui/src/features/guest/auth/hooks/useGuestSession.ts`                                                                                                                                                    |
-|                                   | `ui/src/features/guest/auth/hooks/useGuestAuthActions.ts` (used by both audiences)                                                                                                                       |
-| OAuth resume (checkout modal)     | `ui/src/features/guest/auth/lib/guestAuthResume.ts`                                                                                                                                                      |
-| Calendar / Reserve / Save gates   | `ui/src/features/guest/calendar/pages/CalendarPage.tsx`, `ui/src/features/guest/marketing/properties/hooks/usePropertyReserve.ts`, `ui/src/features/guest/marketing/properties/hooks/usePropertySave.ts` |
-| Form gate                         | `ui/src/features/guest/form/components/GuestForm.tsx`                                                                                                                                                    |
-| Unified auth page content         | `ui/src/features/guest/auth/components/AuthPageContent.tsx` (email OTP two-step + `OtpCodeInput.tsx` + `GoogleSignInButton`)                                                                             |
-| Host standalone pages             | `ui/src/features/guest/auth/pages/HostAuthPages.tsx` (`HostLoginPage`, `HostRegisterPage`)                                                                                                               |
-| Host OTP + OAuth + redirect hook  | `ui/src/features/guest/auth/hooks/useHostGoogleAuth.ts`                                                                                                                                                  |
-| Guest standalone pages            | `ui/src/features/guest/auth/pages/GuestAuthPages.tsx` (`GuestLoginPage`, `GuestRegisterPage`)                                                                                                            |
-| Guest OTP + OAuth + redirect hook | `ui/src/features/guest/auth/hooks/useGuestAuthPage.ts`                                                                                                                                                   |
-| Auth page config                  | `ui/src/features/guest/auth/config/auth-page-config.ts` (`AUTH_PAGE_CONFIG.host` / `.guest`)                                                                                                             |
-| Path helpers                      | `ui/src/features/guest/auth/lib/hostAuthPaths.ts`, `ui/src/features/guest/auth/lib/guestAuthPaths.ts`, `ui/src/features/guest/auth/lib/authRedirect.ts` (shared `safeRedirect`)                          |
-| Nav mode/CTA helpers              | `ui/src/features/guest/auth/config/auth-navigation.ts` (`getAuthAudienceFromPath`, `getHostMarketingNavCta`, `getGuestLoginCta`), `ui/src/features/guest/auth/config/mode-switch.ts`                     |
-| Marketing nav sign-in CTA         | `ui/src/features/guest/marketing/shared/components/MarketingNav.tsx`                                                                                                                                     |
-| Dashboard account menu + profile  | `ui/src/features/dashboard/bookings/components/AdminLayout.tsx` (`AdminProfileFooter`), `ui/src/features/guest/account/components/GuestProfileModal.tsx`, `useAccountIdentity.ts`                        |
-| Auth routes                       | `ui/src/features/guest/auth/routes/index.tsx`                                                                                                                                                            |
+| Concern                            | Path                                                                                                                                                                                                     |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Auth layout (host panel)           | `ui/src/features/guest/auth/components/AuthLayout.tsx`                                                                                                                                                   |
+| Host workspace side panel (shared) | `ui/src/features/guest/marketing/shared/components/HostWorkspaceSidePanel.tsx` — also used by onboarding (`OnboardingFeatureShowcase`)                                                                   |
+|                                    | `ui/src/features/guest/auth/context/GuestAuthContext.tsx`                                                                                                                                                |
+| Session / OTP / OAuth (shared)     | `ui/src/features/guest/auth/hooks/useGuestSession.ts`                                                                                                                                                    |
+|                                    | `ui/src/features/guest/auth/hooks/useGuestAuthActions.ts` (used by both audiences)                                                                                                                       |
+| OAuth resume (checkout modal)      | `ui/src/features/guest/auth/lib/guestAuthResume.ts`                                                                                                                                                      |
+| Calendar / Reserve / Save gates    | `ui/src/features/guest/calendar/pages/CalendarPage.tsx`, `ui/src/features/guest/marketing/properties/hooks/usePropertyReserve.ts`, `ui/src/features/guest/marketing/properties/hooks/usePropertySave.ts` |
+| Form gate                          | `ui/src/features/guest/form/components/GuestForm.tsx`                                                                                                                                                    |
+| Unified auth page content          | `ui/src/features/guest/auth/components/AuthPageContent.tsx` (email OTP two-step + `OtpCodeInput.tsx` + `GoogleSignInButton`)                                                                             |
+| Host standalone pages              | `ui/src/features/guest/auth/pages/HostAuthPages.tsx` (`HostLoginPage`, `HostRegisterPage`)                                                                                                               |
+| Host OTP + OAuth + redirect hook   | `ui/src/features/guest/auth/hooks/useHostGoogleAuth.ts`                                                                                                                                                  |
+| Guest standalone pages             | `ui/src/features/guest/auth/pages/GuestAuthPages.tsx` (`GuestLoginPage`, `GuestRegisterPage`)                                                                                                            |
+| Guest OTP + OAuth + redirect hook  | `ui/src/features/guest/auth/hooks/useGuestAuthPage.ts`                                                                                                                                                   |
+| Auth page config                   | `ui/src/features/guest/auth/config/auth-page-config.ts` (`AUTH_PAGE_CONFIG.host` / `.guest`)                                                                                                             |
+| Path helpers                       | `ui/src/features/guest/auth/lib/hostAuthPaths.ts`, `ui/src/features/guest/auth/lib/guestAuthPaths.ts`, `ui/src/features/guest/auth/lib/authRedirect.ts` (shared `safeRedirect`)                          |
+| Nav mode/CTA helpers               | `ui/src/features/guest/auth/config/auth-navigation.ts` (`getAuthAudienceFromPath`, `getHostMarketingNavCta`, `getGuestLoginCta`), `ui/src/features/guest/auth/config/mode-switch.ts`                     |
+| Marketing nav sign-in CTA          | `ui/src/features/guest/marketing/shared/components/MarketingNav.tsx`                                                                                                                                     |
+| Dashboard account menu + profile   | `ui/src/features/dashboard/bookings/components/AdminLayout.tsx` (`AdminProfileFooter`), `ui/src/features/guest/account/components/GuestProfileModal.tsx`, `useAccountIdentity.ts`                        |
+| Auth routes                        | `ui/src/features/guest/auth/routes/index.tsx`                                                                                                                                                            |
 
 ---
 

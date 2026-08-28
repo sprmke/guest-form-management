@@ -2,7 +2,7 @@
 title: 'Legal & company pages — operator guide'
 status: active
 tags: [guides, routes]
-updated: 2026-08-17
+updated: 2026-08-27
 ---
 
 # Legal & company pages — operator guide
@@ -13,20 +13,20 @@ Routes: `/terms` · `/privacy` · `/cookies` · `/about` · `/contact` · `/supp
 
 ## Progress overview
 
-| Section          | E2E save | Validation | Docs       | Notes                                       |
-| ---------------- | -------- | ---------- | ---------- | ------------------------------------------- |
-| Terms of Service | —        | —          | Documented | Grounded in booking workflow + PH law       |
-| Privacy Policy   | —        | —          | Documented | Guest/host PII + named processors           |
-| Cookie Policy    | —        | —          | Documented | Auth/session + prefs; no ad pixels          |
-| About            | —        | —          | Documented | Product capabilities; no fabricated history |
-| Contact          | —        | —          | Documented | Static mailto / phone / Manila              |
-| Support          | —        | —          | Documented | Guest + host FAQ                            |
+| Section          | E2E save | Validation | Docs       | Notes                                                                     |
+| ---------------- | -------- | ---------- | ---------- | ------------------------------------------------------------------------- |
+| Terms of Service | —        | —          | Documented | Grounded in booking workflow + PH law                                     |
+| Privacy Policy   | —        | —          | Documented | Guest/host PII + named processors                                         |
+| Cookie Policy    | —        | —          | Documented | Auth/session + prefs; no ad pixels                                        |
+| About            | —        | —          | Documented | Product capabilities; no fabricated history                               |
+| Contact          | Yes      | Yes        | Documented | Explore guest auth + ticket modal; guest Tickets under `/account/tickets` |
+| Support          | —        | —          | Documented | Guest + host FAQ                                                          |
 
 ---
 
 ## Overview
 
-Footer links from **`MarketingFooter`**. No forms or API calls. Legal pages use **`LegalSimplePage`** (shared **`MarketingPublicPageHero`** with About / Contact / Support). Operating brand: **Kame Homes**; contact **hello@kamehomes.com**.
+Footer links from **`MarketingFooter`**. Legal pages use **`LegalSimplePage`** (shared **`MarketingPublicPageHero`** with About / Contact / Support). Operating brand: **Kame Homes**; guest fallback **hello@kamehomes.com**.
 
 Footer **Pricing** points to **`/for-hosts/pricing`**. Careers, Blog, and Host Resources were removed from the footer (no backing content).
 
@@ -45,7 +45,7 @@ These public pages explain the company, how to reach support, common guest/host 
 - Q: Are my verification documents covered by the privacy policy?
   A: Yes. The policy describes host verification uploads and how they're stored privately.
 - Q: Where do guests go for help?
-  A: Support (`/support`) for FAQs, or Contact (`/contact`) / hello@kamehomes.com.
+  A: Support (`/support`) for FAQs, or Contact (`/contact`) — signed-in explore guests open a ticket (same form as Help & Support); stay questions can also email hello@kamehomes.com.
 
 ---
 
@@ -54,7 +54,7 @@ These public pages explain the company, how to reach support, common guest/host 
 - All routes render inside **`MarketingLayoutShell`** (nav + footer).
 - Shared hero band: **`MarketingPublicPageHero`** (centered eyebrow / title / description by default) + body via **`MarketingPublicPageContent`**. Company pages reuse **`MarketingPublicSectionHeading`**, **`MarketingPublicIconCard`**, **`MarketingPublicCallout`**, and **`MarketingPublicFaqList`** for consistent spacing and typography. Legal / Support / Pricing use **`narrow`** on both hero and content so title and body share one **centered** reading column (`mx-auto max-w-3xl`). Legal pages use **`LegalSimplePage`** (divided sections, left hero blob).
 - Content is hard-coded in page components; no CMS.
-- Contact is **static** (mailto / tel) — no contact-form backend.
+- **Contact** (`/contact`) — four ticket categories (**Broken**, **Idea**, **Question**, **Business**) matching Help & Support. Clicking a category requires **explore** sign-in (`/for-guests/login?redirect=…`), then opens the same **`NewTicketModal`**. Deep links: `?category=` and optional `?subject=` (e.g. Managed plan from **`/for-hosts/pricing`**). After submit → **`/account/tickets/:ticketId`**. Org-scoped host tickets remain under dashboard Help & Support. Guests also see Support + mailto fallback below the categories.
 - Cookie policy states current footprint: Supabase Auth session storage, UI preferences (e.g. theme); no analytics/ad-tracking scripts on these surfaces.
 
 ---
@@ -64,7 +64,7 @@ These public pages explain the company, how to reach support, common guest/host 
 | Concern | Path                                                                                                                                                                                                                                          |
 | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | About   | `ui/src/features/guest/marketing/pages/AboutPage.tsx`                                                                                                                                                                                         |
-| Contact | `ui/src/features/guest/marketing/pages/ContactPage.tsx`                                                                                                                                                                                       |
+| Contact | `ui/src/features/guest/marketing/pages/ContactPage.tsx` · `marketing/contact/components/*` · reuses `NewTicketModal` + `submit-support-ticket`                                                                                                |
 | Support | `ui/src/features/guest/marketing/pages/SupportPage.tsx`                                                                                                                                                                                       |
 | Terms   | `ui/src/features/guest/marketing/pages/TermsPage.tsx`                                                                                                                                                                                         |
 | Privacy | `ui/src/features/guest/marketing/pages/PrivacyPage.tsx`                                                                                                                                                                                       |

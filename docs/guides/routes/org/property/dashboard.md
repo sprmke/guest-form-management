@@ -2,7 +2,7 @@
 title: 'Property Dashboard — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-18
+updated: 2026-08-28
 ---
 
 # Property Dashboard — operator guide
@@ -13,16 +13,16 @@ Route: `/org/:orgSlug/property/:propertySlug`
 
 ## Progress overview
 
-| Section               | E2E save | Validation | Docs       | Notes                                                    |
-| --------------------- | -------- | ---------- | ---------- | -------------------------------------------------------- |
-| Date range filter     | —        | —          | Documented | Week / Month / Year / Custom, `?from`/`?to`              |
-| Stat cards            | —        | —          | Documented | Always first                                             |
-| Board (2×3)           | —        | —          | Documented | Equal half-width cells; attention/calendar/cash/maint/tx |
-| Loading skeleton      | —        | —          | Documented | Mirrors KPI + 2×3 board (compact mini calendar cells)    |
-| Needs attention card  | —        | —          | Documented | Board cell; swaps to Recent bookings when clear          |
-| Maintenance reminders | —        | —          | Documented | Board cell; pending/done + next reminders                |
-| View Property         | —        | —          | Documented | Opens the public listing in a new tab                    |
-| Mobile shell          | —        | —          | Documented | Sticky collapsing brand hero + overlap (`max-lg`)        |
+| Section               | E2E save | Validation | Docs       | Notes                                                            |
+| --------------------- | -------- | ---------- | ---------- | ---------------------------------------------------------------- |
+| Date range filter     | —        | —          | Documented | Week / Month / Year / Custom, `?from`/`?to`                      |
+| Stat cards            | —        | —          | Documented | Always first                                                     |
+| Board (2×3)           | —        | —          | Documented | Equal half-width cells; attention/calendar/cash/maint/tx         |
+| Loading skeleton      | —        | —          | Documented | Mirrors KPI + 2×3 board (short fixed-height mini calendar cells) |
+| Needs attention card  | —        | —          | Documented | Board cell; swaps to Recent bookings when clear                  |
+| Maintenance reminders | —        | —          | Documented | Board cell; pending/done + next reminders                        |
+| View Property         | —        | —          | Documented | Opens the public listing in a new tab                            |
+| Mobile shell          | —        | —          | Documented | Sticky collapsing brand hero + overlap (`max-lg`)                |
 
 ---
 
@@ -133,9 +133,9 @@ Empty states use a dashed panel (icon + title + short description). Maintenance 
 
 List cards (Needs attention, Maintenance, Transactions) show at most **5** rows. When more exist, a bottom **View all (+N more)** link opens the matching module with the same period (`/bookings`, `/maintenance`, `/finance`). Header **View** links remain for one-tap navigation when the list is short. Transaction rows are two lines: label + amount, then category / due / status on one meta row.
 
-Mini calendar: short day strip with **day numbers always visible**; status-colored stay bands sit under each week (not over the dates). Alternating week wash + muted tint on occupied days aid scanning. **Year** and custom ranges spanning more than one calendar month switch to the yearly dot grid (no stay pills); the Name/Price header toggle is hidden in those views because labels do not render. On single-month week/month/custom ranges, Name/Price toggle: **Price** shows the full stay total (`booking_rate`), not the per-night split. Each week fragment of a multi-week stay repeats the label (no empty continuation bars). Compact mode omits the per-day count badge.
+Mini calendar: **fixed short day cells** (not square — keeps the card from towering over an empty Needs attention list) with the same occupancy overlay as bookings month view — status-colored stay pills sit inside the week (inset from the cell edges with a small bottom gap and lane spacing), spanning multi-night stays as one continuous band with status-tone borders. Days that exceed visible lanes show a **+N** chip; hover highlights every segment of that stay and shows a pricing-style tip. **Year** and custom ranges spanning more than one calendar month switch to the yearly dot grid (no stay pills); the Name/Price header toggle is hidden in those views because labels do not render. On single-month week/month/custom ranges, Name/Price toggle: **Price** shows the full stay total (`booking_rate`), not the per-night split. Each week fragment of a multi-week stay repeats the label (no empty continuation bars). Compact mode omits the per-day count badge.
 
-Initial page load uses `DashboardSkeleton` (`AdminSkeletons.tsx`): same gaps as the live board (`gap-2.5` / `lg:grid-cols-2`), compact calendar day placeholders (not square tiles), and header actions that match each card (Name/Price toggle, attention badge, View links, breakdown segment). Per-card refresh skeletons inside Maintenance / Transactions / Attention use the same row heights.
+Initial page load uses `DashboardSkeleton` (`AdminSkeletons.tsx`): same gaps as the live board (`gap-2.5` / `lg:grid-cols-2`), compact calendar day placeholders at the same short fixed height, and header actions that match each card (Name/Price toggle, attention badge, View links, breakdown segment). Per-card refresh skeletons inside Maintenance / Transactions / Attention use the same row heights.
 
 Cash flow / breakdown / transactions / calendar data still come from `finance-line-items`, `finance-bookings`, and `list-bookings` for the selected period. Tapping a calendar day or booking pill navigates to that booking's detail page.
 
@@ -194,6 +194,19 @@ This is the home page for a single property. It starts with period performance, 
 | Finance chart         | `ui/src/features/dashboard/finance/components/FinanceTransactionsChart.tsx`           |
 | Mini calendar         | `ui/src/features/dashboard/bookings/components/BookingCalendarView.tsx`               |
 | Mobile page shell     | `ui/src/components/mobile/MobileBrandHero.tsx` (`AdminMobilePage`)                    |
+
+---
+
+## Permissions
+
+Route gate: property member with access (dashboard is the property home). Board widgets respect owning-module leaves:
+
+| Widget / query                        | Required permission |
+| ------------------------------------- | ------------------- |
+| Finance chart + Transactions due card | `finance:view`      |
+| Maintenance reminders card            | `maintenance:view`  |
+
+Without the leaf, the card is omitted and its finance/maintenance queries stay disabled. Calendar / attention / KPI strip are not gated by those leaves.
 
 ---
 

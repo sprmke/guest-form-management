@@ -2,7 +2,7 @@
 title: 'Bookings List — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-24
+updated: 2026-08-27
 ---
 
 # Bookings List — operator guide
@@ -20,7 +20,7 @@ Route: `/org/:orgSlug/property/:propertySlug/bookings`
 | Table / card / calendar views | —         | —          | Done | Existing behavior                                                 |
 | Kanban view                   | via modal | —          | Done | Reuses `WorkflowPanel` from detail page                           |
 | New booking (modal)           | via modal | server     | Done | Embeds `GuestForm`; skips guest auth gate; inline success view    |
-| CSV import (modal wizard)     | via modal | server     | Done | Property-scoped; `import:manage` + Starter+ `bookingImport`       |
+| CSV import (modal wizard)     | via modal | server     | Done | Property-scoped; `bookings.import:add` + Starter+ `bookingImport` |
 | Mobile shell                  | —         | —          | Done | Brand hero + overlap filters (`max-lg` only)                      |
 
 ---
@@ -35,7 +35,7 @@ Layout (top → bottom):
 2. **Desktop (`lg+`):** page header — **date range** (top right) + **Import** (outline) + **New booking** → opens `AdminNewBookingModal` (in-dashboard modal; see below)
 3. **Summary cards** — Action Required, Pending Docs, Confirmed Stays, History (Finance-style `surface-card`; count + inline status hints; click toggles `?stage=` filter)
 4. **Toolbar** (`BookingFilters` in page body — always visible, matches Finance / Maintenance):
-   - **Mobile (`max-lg`):** search + refine icon (opens sheet for status / more filters / sort / per-page) + view toggle
+   - **Mobile (`max-lg`):** search + refine icon (opens sheet for status / more filters / sort / per-page) + view toggle (**Kanban** hidden below `md` / phone width)
    - **Desktop (`lg+`):** **Status** · **Filters** (more only) · **search (flex)** · sort · per-page · **View**. Filters left of search; presentation controls on the right. Toolbar controls match Team height (`h-10` + `min-h-[44px]` → 44px). Status/Filters popovers omit redundant titles and use comfortable row spacing.
 5. Active view content + pagination (table/card only)
 
@@ -50,15 +50,19 @@ This page is your main dashboard for all bookings at this property. Summary card
 - Q: What do the summary cards at the top mean?
   A: They group bookings by where they are in your workflow: things needing your action, waiting on guest documents, confirmed upcoming stays, and past or cancelled bookings. Tap a card to filter the list.
 - Q: Can I move a booking forward without opening every detail page?
-  A: Yes. In kanban view you can drag bookings between columns or click a card to open a quick workflow panel with the same actions as the full booking page.
+  A: Yes on **tablet and desktop** (Kanban view). Drag bookings between columns — the board auto-scrolls near the edges, and status chips above the board stay visible (valid ones highlight green while you drag). You can also click a card to open a quick workflow panel with the same actions as the full booking page. On phone, use card or table (desktop) and open a booking for workflow actions.
 - Q: How do I create a new booking?
   A: Use **New booking** in the page header. It opens the same guest booking form in a dialog, right in the dashboard — fill it out on the guest's behalf. After you submit, you can add another booking or jump straight to the new booking's detail page.
 - Q: Can I bulk-import bookings from a spreadsheet?
   A: Yes on **Starter and above**. Use **Import** beside **New booking** (property bookings only). You can open the wizard and upload a file on Free to try it, but continuing past the first step asks you to upgrade. On a paid plan, confirm column mapping, then review the rows. Select **Need fixing** to see problem rows; **Fix** opens the complete row so you can correct every invalid value together. **Skipped** rows stay openable the same way, so use **Restore** to bring them back, or **Fix** to correct them. Past stays commit as **Imported**; today and future stays show **Pending Review** but still appear when you filter by **Imported**. No new-booking emails or calendar events on import.
+- Q: How do I read the calendar view?
+  A: Use **Month**, **Week**, or **Day** in the calendar toolbar. Month shows stays as colored pills across nights — click a pill to open that booking, or click a day for the side list. If a day has more stays than fit in the cell, you’ll see a **+N** chip — click the day to review them all. Week and Day show an hour grid so you can see checkout/check-in gaps; multi-night stays read as one continuous block. Hover uses a darker shade of that booking’s status color (not the brand primary). A pricing-style tip appears on hover. In week view, tap a day header to zoom into that day.
 
 ---
 
 ## New booking (modal)
+
+**Gated:** org owner/admin, or property team members with **`bookings.create:add`**. Hidden at org-wide bookings scope.
 
 **Entry:** **New booking** button in the page header (desktop) or hero icon (mobile). Opens `AdminNewBookingModal` — no route change, target property fixed from the current page context.
 
@@ -73,7 +77,7 @@ Submission goes through the same `submit-form` edge function and side effects (e
 
 ## CSV import (modal wizard)
 
-**Gated:** org owner/admin, or property team members explicitly granted **`import:manage`**. Hidden at org-wide bookings scope. Plan feature **`bookingImport`** (Starter+): Free hosts can open the wizard and upload a file (preview-open); **Continue** on Upload (and Match / Preview / Commit server paths) open the upgrade modal / require the plan. The **Import** toolbar button shows a solid `TierBadge` when not entitled.
+**Gated:** org owner/admin, or property team members with **`bookings.import:add`** (legacy stored id `import:manage` still expands). Hidden at org-wide bookings scope. Plan feature **`bookingImport`** (Starter+): Free hosts can open the wizard and upload a file (preview-open); **Continue** on Upload (and Match / Preview / Commit server paths) open the upgrade modal / require the plan. The **Import** toolbar button shows a solid `TierBadge` when not entitled. Permission gates visibility; plan gates actionability.
 
 **Entry:** **Import** button in the page header (desktop) or hero icon (mobile). Opens `ImportWizardModal` — no route change. Target property is fixed from the current page context (no property picker).
 
@@ -117,21 +121,23 @@ When a stage is active, the list query sends the matching `status[]` values to `
 
 ## Views
 
-| View     | URL               | Notes                                                                                               |
-| -------- | ----------------- | --------------------------------------------------------------------------------------------------- |
-| Table    | default (desktop) | `BookingTable`                                                                                      |
-| Card     | `?view=card`      | Mobile default                                                                                      |
-| Kanban   | `?view=kanban`    | Last view toggle; reuses card styling (`GuestAvatar`, flags, `StatusBadge` columns); workflow modal |
-| Calendar | `?view=calendar`  | Month grid; `limit=100`, `showCompletedBookings=true`                                               |
+| View     | URL               | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| -------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Table    | default (desktop) | `BookingTable`                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Card     | `?view=card`      | Mobile default                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Kanban   | `?view=kanban`    | **Property scope only**, **`md+`** (768px+). Hidden on phone and at org-wide scope. Reuses card styling; workflow modal                                                                                                                                                                                                                                                                                                                                        |
+| Calendar | `?view=calendar`  | **Month** (default): square day cells; occupancy pills inset from cell edges with status-tone borders; multi-week join sides open; stacked lanes + `+N` overflow chips. **Week** / **Day**: hourly time grid; stay blocks use status-tone borders only (no brand-primary / destructive clash rings); hover darkens the same status tone across the whole stay; pricing-style tooltips. Month \| Week \| Day toggle (`limit=100`, `showCompletedBookings=true`) |
 
 ---
 
 ## Kanban
 
-- Columns follow workflow order: Pending Review → GAF / Parking / Pet → Ready for Check-in → Ready for Check-out → Pending SD Refund → Completed. There is **no** separate **Pending Documents** column — bookings with `status = PENDING_DOCUMENTS` appear in the first incomplete nested step (GAF, then parking, then pet; all complete → Ready for Check-in). **Cancelled** bookings are omitted from the board.
-- **Click** a card → opens the workflow sheet with stage-specific forms and actions (no progress stepper). **Drop** on a valid column → skips the intermediate guest-summary / Proceed shell and opens the **transition confirm** directly when no sub-form is required; otherwise opens only the required sub-form sheet (pricing, guest balance, etc.) and then the confirm once the form is complete. Uses `WorkflowPanel` `variant="modal"`, which swaps its body for the Pending Review confirmation card while the booking sits on that status. Forms use `WorkflowFormShell` `variant="modal"` (no nested sub-form card). Dropping on **GAF / Parking / Pet** from **Pending Review** is valid when **Proceed to Pending Documents** would place the booking on that sub-step (there is no separate Docs column).
-- Invalid drops show “Cannot drop here”; valid drops use the same confirm flow as `/bookings/:bookingId` (automation triggers stay on the detail page).
-- Drag-drop does **not** auto-transition without confirm — the host still confirms in `WorkflowConfirmModal` (or completes a required sub-form first).
+- **Availability:** property bookings only, viewport **`md` and up** (tablet → desktop). The view toggle omits Kanban on phone; `?view=kanban` redirects to card when the viewport is below `md`.
+- Columns follow workflow order: Pending Review → GAF / Parking / Pet → Ready for Check-in → Ready for Check-out → Pending SD Refund → Completed. There is **no** separate **Pending Documents** column — bookings with `status = PENDING_DOCUMENTS` appear in the first incomplete nested step (GAF, then parking, then pet; all complete → Ready for Check-in). **Cancelled** bookings are omitted from the board. Columns are slightly narrower so more stages fit before horizontal scroll.
+- **Click** a card → opens the workflow sheet with stage-specific forms and actions (no progress stepper). **Drop** on a valid column (or on a sticky destination chip in the always-visible jump rail) → skips the intermediate guest-summary / Proceed shell and opens the **transition confirm** directly when no sub-form is required; otherwise opens only the required sub-form sheet (pricing, guest balance, etc.) and then the confirm once the form is complete. Uses `WorkflowPanel` `variant="modal"`. Forms use `WorkflowFormShell` `variant="modal"` (section title, no nested card chrome). From **Pending Review**, the only docs drop target is **Pending GAF Request** (not Parking / Pet) — that drop still runs **Proceed to Pending Documents**. **Pending Review → Ready for Check-in** is only valid when the property has **no** document requirements (D2 empty list).
+- Destination chips stay mounted above the board (no show/hide jump). Idle: every column is a muted scroll shortcut. While dragging, allowed chips turn green (`cursor-copy`) and disallowed chips mute; columns also get a green/red wash. Chips always **wrap** (icon + short label, no horizontal scrollbar at any width — the board below owns horizontal scroll). Full status names are in each chip’s tooltip / `aria-label`. Drag overlay stays opaque (`bg-card`); the grip is a small corner control that does not reserve a left column.
+- The kanban workflow dialog is a **single custom shell**: header with guest name + status subtitle + close, scrollable body, sticky action footer. Drop confirm-only hides that shell via CSS so `WorkflowPanel` stays mounted while `WorkflowConfirmModal` portals on top.
+- Drag uses `@dnd-kit` with **edge auto-scroll**. Valid drops use the same confirm flow as `/bookings/:bookingId` (automation triggers stay on the detail page). Drag-drop does **not** auto-transition without confirm.
 
 ---
 
@@ -150,9 +156,20 @@ New: `stage` (see above).
 ## API
 
 - `list-bookings` edge function — admin JWT; see [[PROJECT|Guest Form Management — Project Documentation]] API table.
-- CSV import: `import-parse-file`, `import-ai-map-columns`, `import-save-mapping`, `import-preview`, `import-update-row`, `import-commit`, `import-cancel` — all require **`import:manage`** (or org owner/admin) + `?property_id=`. Match / preview / commit paths also require plan **`bookingImport`** (Starter+).
+- CSV import: `import-parse-file`, `import-ai-map-columns`, `import-save-mapping`, `import-preview`, `import-update-row`, `import-commit`, `import-cancel` — all require **`bookings.import:add`** (or org owner/admin) + `?property_id=`. Match / preview / commit paths also require plan **`bookingImport`** (Starter+).
 
 ---
+
+## Permissions
+
+| Action                   | Permission                      |
+| ------------------------ | ------------------------------- |
+| View list / open detail  | `bookings:view`                 |
+| New booking              | `bookings.create:add`           |
+| CSV import               | `bookings.import:add` (+ plan)  |
+| Kanban drag → transition | `bookings.detail.workflow:edit` |
+
+Kanban card open still works without workflow permission (Progress rail read-only). Org-wide bookings scope hides New / Import / workflow mutations.
 
 ## Implementation map
 

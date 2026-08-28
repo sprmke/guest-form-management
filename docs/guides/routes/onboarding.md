@@ -2,7 +2,7 @@
 title: 'Onboarding — operator guide'
 status: active
 tags: [guides, routes, onboarding]
-updated: 2026-08-17
+updated: 2026-08-27
 ---
 
 # Onboarding — operator guide
@@ -26,13 +26,15 @@ Route: `/onboarding`
 
 New hosts land here after Google sign-in when they have no organization. Creates an **organization**, first **property** and/or **parking**, then submits **base host verification** for review.
 
+**Layout (lg+):** 50/50 split — left **`OnboardingFeatureShowcase`** → **`HostWorkspaceSidePanel`** (`variant="onboarding"`): solid **`bg-primary`**, **`MarketingBrandLogo`**, setup copy + compact tour card. Tour video has an **expand** control (top-right) that opens a larger preview modal; playback and chapter stay in sync when opening or closing. Right column: wizard on subtle muted canvas + theme toggle. Mobile: form only.
+
 If the user already has an **accessible** organization (owned or assigned, and not hard-rejected), the page redirects to **`/org/:slug/dashboard`** (last-used or first) — same rule as the **`/org`** hub. A user may own **at most one usable** organization; **`create-organization`** rejects a second owned org with **409**, but owners whose only org was **hard-rejected** may start a **new application**. Hard-rejected hosts land on **`/verification-rejected`** after sign-in.
 
 ---
 
 ## Host-facing knowledge
 
-First-time hosts complete this wizard right after signing in with Google: organization details, what you host (property and/or parking), and identity verification uploads.
+First-time hosts complete this wizard right after signing in with Google: organization details, what you host (property and/or parking), and identity verification uploads. On desktop, the left panel plays an interactive product tour of bookings, inbox, finance, and other modules while you complete setup.
 
 **Common host questions**
 
@@ -181,19 +183,22 @@ When a property or parking listing's hosting contract nears expiry, is in grace,
 
 ## Implementation map
 
-| Concern           | Path                                                                                                   |
-| ----------------- | ------------------------------------------------------------------------------------------------------ |
-| Page              | `ui/src/features/dashboard/org/pages/OnboardingPage.tsx`                                               |
-| Rights fields     | `ui/.../components/onboarding/OnboardingVerificationRightsFields.tsx`                                  |
-| Step header       | `ui/.../components/onboarding/OnboardingStepHeader.tsx`                                                |
-| Account menu      | `ui/.../components/onboarding/OnboardingProfileHeader.tsx` — Switch account · Sign out                 |
-| Proof upload UI   | `ui/.../components/onboarding/OnboardingProofUpload.tsx`                                               |
-| Host verify       | `ui/.../components/onboarding/OnboardingHostVerificationSection.tsx`                                   |
-| Property verify   | `ui/.../components/onboarding/OnboardingHostAccessVerificationSection.tsx`                             |
-| Parking verify    | `ui/.../components/onboarding/OnboardingParkingVerificationSection.tsx`                                |
-| Get Verified      | `ui/.../components/verification/GetVerifiedModal.tsx` (`HostVerificationChangesGate` in `AdminLayout`) |
-| Badge preview     | `ui/.../components/verification/RecommendedBadgePreview.tsx`                                           |
-| Verification copy | `ui/.../lib/verificationCopy.ts`                                                                       |
-| Shared types      | `ui/.../lib/orgVerification.ts` + `supabase/functions/_shared/orgVerification.ts`                      |
-| Edge              | `create-organization`, `upload-org-verification-asset`, `submit-org-verification`                      |
-| Storage           | migration `20260922120000_org_verification_assets.sql`                                                 |
+| Concern           | Path                                                                                                                         |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Page              | `ui/src/features/dashboard/org/pages/OnboardingPage.tsx`                                                                     |
+| Feature showcase  | `ui/.../components/onboarding/OnboardingFeatureShowcase.tsx` — thin wrapper over **`HostWorkspaceSidePanel`** (`onboarding`) |
+| Shared side panel | `ui/src/features/guest/marketing/shared/components/HostWorkspaceSidePanel.tsx` — also **`AuthLayout`** host routes (`auth`)  |
+| Product tour      | `ui/src/features/guest/marketing/for-hosts/components/HostDashboardTourPlayer.tsx` (shared w/ marketing)                     |
+| Rights fields     | `ui/.../components/onboarding/OnboardingVerificationRightsFields.tsx`                                                        |
+| Step header       | `ui/.../components/onboarding/OnboardingStepHeader.tsx`                                                                      |
+| Account menu      | `ui/.../components/onboarding/OnboardingProfileHeader.tsx` — Switch account · Sign out                                       |
+| Proof upload UI   | `ui/.../components/onboarding/OnboardingProofUpload.tsx`                                                                     |
+| Host verify       | `ui/.../components/onboarding/OnboardingHostVerificationSection.tsx`                                                         |
+| Property verify   | `ui/.../components/onboarding/OnboardingHostAccessVerificationSection.tsx`                                                   |
+| Parking verify    | `ui/.../components/onboarding/OnboardingParkingVerificationSection.tsx`                                                      |
+| Get Verified      | `ui/.../components/verification/GetVerifiedModal.tsx` (`HostVerificationChangesGate` in `AdminLayout`)                       |
+| Badge preview     | `ui/.../components/verification/RecommendedBadgePreview.tsx`                                                                 |
+| Verification copy | `ui/.../lib/verificationCopy.ts`                                                                                             |
+| Shared types      | `ui/.../lib/orgVerification.ts` + `supabase/functions/_shared/orgVerification.ts`                                            |
+| Edge              | `create-organization`, `upload-org-verification-asset`, `submit-org-verification`                                            |
+| Storage           | migration `20260922120000_org_verification_assets.sql`                                                                       |

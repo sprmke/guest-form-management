@@ -2,7 +2,7 @@
 title: 'For hosts — operator guide'
 status: active
 tags: [guides, routes]
-updated: 2026-08-24
+updated: 2026-08-27
 ---
 
 # For hosts — operator guide
@@ -27,9 +27,9 @@ Route: `/for-hosts` · `/for-hosts/pricing`
 
 Host acquisition landing (PMA `(marketing)/for-hosts`). The page opens with the platform value proposition and an in-browser, video-like dashboard tour, then capability stats, host onboarding steps, and host reviews.
 
-**Pricing** lives on **`/for-hosts/pricing`**. It loads the **active subscription** `pricing_plans` catalog via **`list-public-pricing-plans`** (same ladder as property Plans — Free, Starter, Pro, Business, Managed; excludes **Commission** and org-only **Business Plus**) and renders the shared **`PlanTierRail`** + **`PlanFeatureMatrix`** from `planPresentation.ts` (discounted prices, promo badges, incremental feature bullets). Plan CTAs go to **`/for-hosts/login`**; **Managed** goes to **`/contact`**. A callout points multi-property hosts at org portfolio bundling after sign-up. Footer **Pricing** and host-mode nav **Pricing** link here. Legacy **`/for-hosts#pricing`** redirects to the pricing page.
+**Pricing** lives on **`/for-hosts/pricing`**. It loads the **active subscription** `pricing_plans` catalog via **`list-public-pricing-plans`** (same ladder as property Plans — Free, Starter, Pro, Business, Managed; excludes **Commission** and org-only **Business Plus**) and renders the shared **`PlanTierRail`** + **`PlanFeatureMatrix`** from `planPresentation.ts` (discounted prices, promo badges, incremental feature bullets). Plan CTAs go to **`/for-hosts/login`**; **Managed** goes to **`/contact?category=business_inquiry&subject=Managed%20plan%20inquiry`** (same ticket flow as Help & Support). Footer **Pricing** and host-mode nav **Pricing** link here. Legacy **`/for-hosts#pricing`** redirects to the pricing page.
 
-**Keep in sync:** when you change `pricing_plans` seeds/super-admin catalog prices or `planPresentation.ts` copy, verify this page — see **`docs/architecture/plans-feature-matrix.md`** § Public marketing page and **`.cursor/rules/documentation-maintenance.mdc`**.
+**Keep in sync:** when you change `pricing_plans` seeds/super-admin catalog prices or `planPresentation.ts` copy (including entitlements such as **`propertyShowcase`**), verify this page — see **`docs/architecture/plans-feature-matrix.md`** § Public marketing page and **`.cursor/rules/documentation-maintenance.mdc`**.
 
 The 54-second tour uses Remotion Player and nine interactive chapters: dashboard overview, booking workflow, Guest Inbox, finance, pricing, Marketing Studio, maintenance, Telegram alerts, and AI assistance. Chapters auto-advance and loop; hosts can pause, restart, or jump directly to a module. Hover and keyboard focus pause playback. `prefers-reduced-motion` disables autoplay and shows a static tour frame.
 

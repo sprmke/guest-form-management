@@ -13,7 +13,7 @@ Route: `/org/:orgSlug/parking/:parkingSlug`
 
 ## Overview
 
-Parking-scoped home. **UI mirrors** the property dashboard (`DashboardPage`): on **phone/tablet** the shared **brand hero** shell (`AdminMobilePage`) with date range in an overlapping toolbar and **View Parking** as a hero icon; desktop keeps the compact header + date filter + View Parking. KPI stat cards, finance chart + transactions-due card + mini calendar. Metrics load live via **`dashboard-stats?parking_id=`** for this slot (bookings scoped to `guest_submissions.parking_id`).
+Parking-scoped home. **UI mirrors** the property dashboard (`DashboardPage`): on **phone/tablet** the shared **brand hero** shell (`AdminMobilePage`) with date range in an overlapping toolbar and **View Parking** as a hero icon; desktop keeps the compact header + date filter + View Parking. KPI stat cards, finance chart + transactions-due card + mini calendar (same short fixed-height occupancy overlay as property). Metrics load live via **`dashboard-stats?parking_id=`** for this slot (bookings scoped to `guest_submissions.parking_id`).
 
 ---
 

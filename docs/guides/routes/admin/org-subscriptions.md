@@ -2,7 +2,7 @@
 title: 'Super Admin org subscriptions — operator guide'
 status: active
 tags: [guides, routes, admin]
-updated: 2026-08-25
+updated: 2026-08-26
 ---
 
 # Super Admin org subscriptions — operator guide
@@ -37,6 +37,7 @@ Route: `/admin/pricing/subscriptions`
 - **Pagination:** standard admin-list `page`/`limit` pattern — real database-level pagination via `.select('*', { count: 'exact' })` + `.range()`. Default 31, capped 100.
 - **Table/grid row:** organization, property count, current plan + status + snapshot price. Row detail (`?organizationId=`) shows recent subscription events + payment transactions.
 - **Assign / change:** one plan selector + **Apply** per row. Calls POST with `{ organizationId, planId }` — enrolls every property the org owns by default (there's no per-property picker here; that granularity is the host-facing `/org/:orgSlug/plans` page's job — pass `propertyIds` explicitly only if a narrower enrollment is needed via direct API use). An optional **override price** field bypasses the rate × count × volume-discount formula entirely — this is the mechanism for entering a manually-quoted Managed price.
+- Large orgs (hundreds of properties) are safe: `createOrgSubscription` / `changeOrgSubscription` (and related pool counts) chunk PostgREST `.in()` filters via `_shared/postgrestInChunks.ts` so validation never hits **"URI too long"** when enrolling every property at once.
 - Creating a fresh subscription vs. changing an existing one is handled transparently server-side (`createOrgSubscription` vs. `changeOrgSubscription`) — the admin UI doesn't need to know which case applies.
 
 New properties do **not** auto-receive a paid plan on creation — an org with no subscription simply resolves every property to Free until one is assigned here or purchased via the org's own Plans page.
@@ -55,13 +56,13 @@ New properties do **not** auto-receive a paid plan on creation — an org with n
 
 ## Implementation map
 
-| Layer      | Path                                                                                                                                                                                                                     |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Page       | `ui/src/features/dashboard/super-admin/pages/SuperAdminOrgSubscriptionsPage.tsx`                                                                                                                                         |
-| Components | `super-admin/components/super-admin-pricing/SuperAdminOrgSubscriptionsTable.tsx`, `SuperAdminOrgSubscriptionCard.tsx`, `SuperAdminOrgSubscriptionsSummaryCards.tsx`, `SuperAdminOrgSubscriptionsToolbar.tsx`             |
-| Hooks      | `usePricingPlans.ts`, `usePlatformPaymentSettings.ts` (`useRunPlatformBillingCron`)                                                                                                                                      |
-| Edge       | `supabase/functions/org-subscriptions-admin/index.ts`                                                                                                                                                                    |
-| Shared     | `supabase/functions/_shared/planEntitlements.ts` (`createOrgSubscription`, `changeOrgSubscription`, `getActiveOrgSubscription`), `subscriptionOrchestrator.ts` (`runPlatformBillingCycle`, `adminExtendOrgSubscription`) |
+| Layer      | Path                                                                                                                                                                                                                                                                                                  |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Page       | `ui/src/features/dashboard/super-admin/pages/SuperAdminOrgSubscriptionsPage.tsx`                                                                                                                                                                                                                      |
+| Components | `super-admin/components/super-admin-pricing/SuperAdminOrgSubscriptionsTable.tsx`, `SuperAdminOrgSubscriptionCard.tsx`, `SuperAdminOrgSubscriptionsSummaryCards.tsx`, `SuperAdminOrgSubscriptionsToolbar.tsx`                                                                                          |
+| Hooks      | `usePricingPlans.ts`, `usePlatformPaymentSettings.ts` (`useRunPlatformBillingCron`)                                                                                                                                                                                                                   |
+| Edge       | `supabase/functions/org-subscriptions-admin/index.ts`                                                                                                                                                                                                                                                 |
+| Shared     | `supabase/functions/_shared/planEntitlements.ts` (`createOrgSubscription`, `changeOrgSubscription`, `getActiveOrgSubscription`), `postgrestInChunks.ts` (URI-safe `.in()` chunking for large property lists), `subscriptionOrchestrator.ts` (`runPlatformBillingCycle`, `adminExtendOrgSubscription`) |
 
 ---
 

@@ -13,17 +13,17 @@ Route: `/org/:orgSlug/dashboard`
 
 ## Progress overview
 
-| Section                  | E2E save | Validation | Docs | Notes                                                      |
-| ------------------------ | -------- | ---------- | ---- | ---------------------------------------------------------- |
-| Date range filter        | —        | —          | Done | Same presets as property dashboard                         |
-| Stat cards               | —        | —          | Done | Revenue, bookings, occupancy, properties/listings          |
-| Revenue / bookings chart | —        | —          | Done | Working toggle; `AdminSurfaceCardHeader`                   |
-| Booking status donut     | —        | —          | Done | Large chart; labels via hover/tap (no legend list)         |
-| Recent bookings          | —        | —          | Done | Compact divided list; resource name + dates, no kind badge |
-| Pending actions          | —        | —          | Done | From `dashboard-stats.attention` (org bookings deep links) |
-| Listings performance     | —        | —          | Done | All/Properties/Parkings tabs only when org has both kinds  |
-| Add listing              | ✅       | ✅         | Done | Opens unified `AddEntityDialog`                            |
-| Loading skeleton         | —        | —          | Done | `OrgDashboardSkeleton` mirrors KPI + 2×2 board + listings  |
+| Section                  | E2E save | Validation | Docs | Notes                                                         |
+| ------------------------ | -------- | ---------- | ---- | ------------------------------------------------------------- |
+| Date range filter        | —        | —          | Done | Same presets as property dashboard                            |
+| Stat cards               | —        | —          | Done | Revenue, bookings, occupancy, properties/listings             |
+| Revenue / bookings chart | —        | —          | Done | Working toggle; `AdminSurfaceCardHeader`                      |
+| Booking status donut     | —        | —          | Done | Period-scoped by check-in; total in center; sr-only breakdown |
+| Recent bookings          | —        | —          | Done | Compact divided list; resource name + dates, no kind badge    |
+| Pending actions          | —        | —          | Done | From `dashboard-stats.attention` (org bookings deep links)    |
+| Listings performance     | —        | —          | Done | All/Properties/Parkings tabs only when org has both kinds     |
+| Add listing              | ✅       | ✅         | Done | Opens unified `AddEntityDialog`                               |
+| Loading skeleton         | —        | —          | Done | `OrgDashboardSkeleton` mirrors KPI + 2×2 board + listings     |
 
 ---
 
@@ -31,7 +31,7 @@ Route: `/org/:orgSlug/dashboard`
 
 Org-level performance overview across **all properties** and, when present, **parking listings** in the organization. Layout matches the property dashboard density: KPI strip, then an equal-width `lg:grid-cols-2` board (`items-stretch`), then a full-width listings performance card.
 
-Page title **Dashboard**. Subtitle is _Performance across all properties._ or _Performance across all properties and parking._ when `parkingCount > 0`. On **phone/tablet** (`max-lg`), shared **brand hero** shell (`AdminMobilePage`): teal hero + title/subtitle, date range in overlapping floating toolbar, **Add listing** as hero icon when permitted. Desktop (`lg+`) keeps compact header with date filter + Add listing. Selected **`?from` / `?to`** (Asia/Manila) drives KPIs, charts, recent bookings, and listing performance.
+Page title **Dashboard**. Subtitle is _Performance across all properties._ or _Performance across all properties and parking._ when `parkingCount > 0`. On **phone/tablet** (`max-lg`), shared **brand hero** shell (`AdminMobilePage`): teal hero + title/subtitle, date range in overlapping floating toolbar, **Add listing** as hero icon when permitted. Desktop (`lg+`) keeps compact header with date filter + Add listing. Selected **`?from` / `?to`** (Asia/Manila) drives KPIs, charts, status breakdown, recent bookings, and listing performance.
 
 **Add listing** (when the user can create property and/or parking): same unified modal as the workspace switcher **+** (title **New listing**). Creating a listing navigates to its dashboard.
 
@@ -91,9 +91,9 @@ Card subtitle (desktop): **Revenue & bookings over time**. Buckets: **daily** wh
 
 ## Booking Status
 
-Large donut from `statusBreakdown` — **no vertical legend**. Card subtitle: **Active bookings by status** (counts are current pipeline, not period-scoped). Slice fills use **`STATUS_TONE_HEX`** from `@/lib/status-tone-colors` — same Tailwind 500 hues as booking status badge dots (rose, yellow, teal, amber, orange, sky, violet, slate). Slice labels and counts appear on **hover / tap** (tooltip + center label). Center shows total active count when no slice is active. Screen-reader list remains for accessibility.
+Large donut from `statusBreakdown` — **no vertical legend**. Card subtitle: **Bookings by status · {period label}** (same **`from` / `to`** filter as KPIs and recent bookings — check-in date in range). Slice fills use **`STATUS_TONE_HEX`** from `@/lib/status-tone-colors` — same Tailwind 500 hues as booking status badge dots (rose, yellow, teal, amber, orange, sky, violet, slate). Center shows the **total booking count in the period**. Per-status counts are in a screen-reader-only list (no hover/tap selection or slice tooltips).
 
-**Pending Documents** sums `PENDING_DOCUMENTS`, `PENDING_GAF`, `PENDING_PARKING_REQUEST`, and `PENDING_PET_REQUEST`. Donut slices render only for counts > 0. Counts are **current** non-cancelled bookings org-wide (property + parking; not limited to the selected period).
+**Pending Documents** sums `PENDING_DOCUMENTS`, `PENDING_GAF`, `PENDING_PARKING_REQUEST`, and `PENDING_PET_REQUEST`. Donut slices render only for counts > 0. Cancelled bookings are excluded.
 
 ---
 
@@ -121,6 +121,8 @@ Empty state: dashed panel with **All clear**.
 
 When the org has **both** properties and parking listings, header tabs filter the in-card list (default **All**). With only one kind, tabs are hidden and **View** opens the org properties or parkings index. Card subtitle: **Revenue & occupancy · {period label}**. Kind badges (Property / Parking) show only on **All** when both kinds exist. Each row: name, location, bookings count, occupancy %, revenue, occupancy bar. Row tap → that asset’s dashboard.
 
+When the filtered list has **more than 5** listings, the card shows **5 rows per page** with **Previous** / **Next** controls and a `{start}–{end} of {total}` counter. Switching **All** / **Properties** / **Parkings** resets to page 1.
+
 ---
 
 ## Host-facing knowledge
@@ -134,7 +136,7 @@ This is the landing page for an organization. It rolls up revenue, bookings, and
 - Q: Why don’t I see Parking on the dashboard?
   A: Parking labels and listing rows only appear after you add at least one parking listing to the organization.
 - Q: Where did the booking status list go?
-  A: Hover or tap a slice of the chart to see the status name and count.
+  A: The chart shows bookings in the selected period by stage using colors. The number in the center matches **Total Bookings** for that period. Open **Bookings** for the full list by status.
 - Q: Can I create a new property or parking listing from here?
   A: Yes, if you have permission. Use **Add listing** in the header.
 - Q: A contract-expired reminder appeared. If I close it, will it come back?

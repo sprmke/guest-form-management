@@ -2,7 +2,7 @@
 title: 'Developments (guest marketing) — operator guide'
 status: active
 tags: [guides, routes, developments]
-updated: 2026-08-17
+updated: 2026-08-27
 ---
 
 # Developments (guest marketing) — operator guide
@@ -15,26 +15,24 @@ Routes:
 - `/developments/:slug/properties` — all units in development
 - `/developments/:slug/parking` — parking slot list
 - `/developments/:slug/parking/category` · `…/parking/list` — legacy redirects → `…/parking`
-- `/developments/:slug/forms/:formId` — development-scoped public form
 
 > **Status:** Documented — list + filters live via `list-public-developments` (URL facets/sort, chips, mobile sheet sort). Location browse uses `locationSlug` on the same APIs.
 
 ## Progress overview
 
-| Section            | E2E save | Validation | Docs       | Notes                                                                                                                                                                           |
-| ------------------ | -------- | ---------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Developments list  | —        | —          | Documented | Live `list-public-developments`; URL-driven filters + facets                                                                                                                    |
-| Location browse    | —        | —          | Documented | Properties grouped by development                                                                                                                                               |
-| Development detail | —        | —          | Documented | Hero, amenities, unit + parking previews                                                                                                                                        |
-| Properties in dev  | —        | —          | Documented | Links to `/properties/:slug`                                                                                                                                                    |
-| Parking flow       | —        | —          | Documented | Slot list at `…/parking`; compact carousel cards (same as `/parkings`) — square photo, Inside/Outside badge, **Parking in {city}**, tower · level subtitle on development pages |
-| Development form   | —        | —          | Documented | Mock submit                                                                                                                                                                     |
+| Section            | E2E save | Validation | Docs       | Notes                                                                                 |
+| ------------------ | -------- | ---------- | ---------- | ------------------------------------------------------------------------------------- |
+| Developments list  | —        | —          | Documented | Live `list-public-developments`; URL-driven filters + facets                          |
+| Location browse    | —        | —          | Documented | Properties grouped by development                                                     |
+| Development detail | —        | —          | Documented | Hero, amenities, unit + parking previews                                              |
+| Properties in dev  | —        | —          | Documented | Links to `/properties/:slug`                                                          |
+| Parking flow       | —        | —          | Documented | Slot list at `…/parking`; Reserve links to `/parkings/:slug` when `detailSlug` is set |
 
 ---
 
 ## Overview
 
-Condominium / building marketing pages (PMA `features/marketing/developments/**`). Used for multi-unit developments and shared parking forms.
+Condominium / building marketing pages (PMA `features/marketing/developments/**`). Used for multi-unit developments and shared parking listings.
 
 **Unknown slug:** redirects to **`/developments`**.
 
@@ -48,10 +46,8 @@ Development pages market a whole building or condominium, so guests can browse u
 
 - Q: When should I use a development page instead of a single property listing?
   A: Use it when you manage multiple units or shared parking in one building. Guests see the building first, then pick a unit or slot.
-- Q: What are the custom form links on a development?
-  A: They're optional public questionnaires, like parking interest surveys. They're separate from the main guest booking form and not wired to live submissions yet.
-- Q: Why can guests see parking on my development but not book it there?
-  A: The parking list is informational today; operational parking payment still goes through the booking workflow after a guest reserves a stay.
+- Q: How do guests book parking from a development page?
+  A: Parking slot cards link to `/parkings/:slug` when the slot is live. Guests reserve through the operational parking form at `/parkings/:slug/form`.
 
 ---
 
@@ -111,12 +107,6 @@ Not connected to operational **`/bookings/:id/parking`** (admin/guest pay parkin
 
 ---
 
-## Development form (`/developments/:slug/forms/:formId`)
-
-**`DevelopmentFormPage`** — same **`PublicFormRenderer`** shell as property forms; definitions from **`mockForms`**.
-
----
-
 ## Implementation map
 
 | Concern    | Path                                                                |
@@ -125,7 +115,6 @@ Not connected to operational **`/bookings/:id/parking`** (admin/guest pay parkin
 |            | `DevelopmentsLocationPage.tsx`                                      |
 |            | `DevelopmentDetailPage.tsx`, `DevelopmentPropertiesPage.tsx`        |
 |            | `DevelopmentParkingListPage.tsx`                                    |
-|            | `DevelopmentFormPage.tsx`                                           |
 | Components | `ui/src/features/guest/marketing/developments/components/**`        |
 |            | `DevelopmentsByLocation.tsx`, `DevelopmentsLocationRow.tsx`         |
 | Grouping   | `developments/lib/groupDevelopmentsByLocation.ts`                   |

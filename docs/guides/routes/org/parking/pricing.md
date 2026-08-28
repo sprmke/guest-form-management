@@ -2,25 +2,28 @@
 title: 'Parking Pricing — operator guide'
 status: active
 tags: [guides, routes, org, parking]
-updated: 2026-08-17
+updated: 2026-08-27
 ---
 
 # Parking Pricing — operator guide
 
 Route: `/org/:orgSlug/parking/:parkingSlug/pricing`
 
-> **Status:** Documented — weekday/weekend base rates + calendar overrides (no fees).
+> **Status:** Documented — weekday/weekend base rates + calendar overrides (no fees); payout preview + guest-rate cap enforcement, live super-admin config since Phase 4; direct booking link since Phase 8.
 
 ## Progress overview
 
-| Section               | E2E save | Validation | Docs | Notes                                             |
-| --------------------- | -------- | ---------- | ---- | ------------------------------------------------- |
-| Base rates            | ✅       | ✅         | Done | `parking_settings.weekday_nightly_rate` / weekend |
-| Calendar custom dates | ✅       | ✅         | Done | `parking_pricing_date_overrides`                  |
-| Date blocks           | ✅       | ✅         | Done | `parking_blocked_dates`; broadcast + calendar UI  |
-| Fees                  | —        | —          | N/A  | Not applicable for parking                        |
-| Booked nights         | ✅       | —          | Done | `bookedDateKeys` from claimed parking bookings    |
-| Team access           | —        | —          | Done | `org:parkings:view` / `org:parkings:manage`       |
+| Section                       | E2E save | Validation | Docs | Notes                                                                                  |
+| ----------------------------- | -------- | ---------- | ---- | -------------------------------------------------------------------------------------- |
+| Base rates                    | ✅       | ✅         | Done | `parking_settings.weekday_nightly_rate` / weekend                                      |
+| Calendar custom dates         | ✅       | ✅         | Done | `parking_pricing_date_overrides`                                                       |
+| Date blocks                   | ✅       | ✅         | Done | `parking_blocked_dates`; broadcast + calendar UI                                       |
+| Fees                          | —        | —          | N/A  | Not applicable for parking                                                             |
+| Booked nights                 | ✅       | —          | Done | `bookedDateKeys` from claimed parking bookings                                         |
+| Team access                   | —        | —          | Done | `org:parkings:view` / `org:parkings:manage`                                            |
+| Payout preview (Phase 3/4)    | —        | —          | Done | Service fee + net payout shown under each rate field — display only, live commission % |
+| Guest-rate cap (Phase 3/4)    | ✅       | ✅         | Done | Rejected client- and server-side, not silently clamped; cap is live super-admin config |
+| Direct booking link (Phase 8) | —        | —          | Done | Copyable link at a reduced commission — see below                                      |
 
 ---
 
@@ -31,6 +34,12 @@ Parking **Pricing** mirrors the property pricing calendar but only stores **week
 **Permissions:** `org:parkings:view` to open the page; `org:parkings:manage` to edit rates and calendar overrides.
 
 **Defaults (seed):** weekday ₱300, weekend ₱400.
+
+**Guest rate cap (Phase 3/4):** a host rate can't be saved above the platform's guest rate,
+which a super-admin now sets live (`/admin/parking/payouts` — see
+`docs/guides/routes/admin/parking-payouts.md`), separately for weekday and weekend. A host
+priced at or above the guest rate is a guaranteed-loss match, so it's rejected outright, client-
+and server-side, never silently clamped down to the cap.
 
 ---
 
@@ -46,6 +55,12 @@ Parking **Pricing** sets how much guests pay per night for this slot. You define
   A: Yes. Click or drag those dates on the calendar and set a custom nightly amount. Custom dates show with a pen icon in the legend.
 - Q: Will booked or blocked nights block the calendar?
   A: **Booked** nights (claimed reservations) and **Blocked** nights (owner-managed closures) show on the calendar and are excluded from broadcast candidate matching. Block future dates via the pricing modal **Block** action; unblock the same way.
+- Q: What's the "Service fee" and "You get" line under each rate?
+  A: A preview of the platform's commission on that rate — the service fee is what the platform keeps, "You get" is your payout per night at that rate. Disbursement itself is currently handled manually by the platform team, not automatically through the app.
+- Q: Why can't I save a rate above a certain amount?
+  A: That's the platform's current guest rate — the price a guest actually pays. A host rate at or above it would mean the platform loses money on every match at that rate, so it's blocked from saving rather than silently reduced. The exact cap can change if the platform adjusts its guest rate.
+- Q: What's the direct booking link for?
+  A: A link you can share yourself (text, chat, wherever) that takes a guest straight to your listing's booking form instead of the general marketplace search. Bookings through it pay a lower platform commission since you sourced the guest yourself — the exact split-savings is shown on the card.
 
 ---
 
@@ -64,12 +79,27 @@ Three KPI chips: weekday base rate, weekend premium %, count of custom calendar 
 
 ### Base rates (right column)
 
-| Field               | DB column              | Default |
-| ------------------- | ---------------------- | ------- |
-| Weekday (per night) | `weekday_nightly_rate` | ₱300    |
-| Fri–Sun (per night) | `weekend_nightly_rate` | ₱400    |
+| Field               | DB column              | Default | Cap (default seed)       |
+| ------------------- | ---------------------- | ------- | ------------------------ |
+| Weekday (per night) | `weekday_nightly_rate` | ₱300    | Live — ₱400 default seed |
+| Fri–Sun (per night) | `weekend_nightly_rate` | ₱400    | Live — ₱400 default seed |
+
+Cap and commission % are read live from the `parking-pricing` GET response
+(`guestRateCapWeekday`/`guestRateCapWeekend`/`commissionPct`, sourced from the super-admin
+`/admin/parking/payouts` config) — not hardcoded. Each field shows a **Service fee** / **You
+get** line underneath using that live commission %. A rate above the cap shows an inline
+warning and disables **Save** until lowered.
 
 **Save** at the bottom of the card when values change.
+
+### Direct booking link (Phase 8)
+
+Below the rates card: **Direct booking link** — one-line commission summary, monospace URL preview, and **Copy link** for `/parkings/:slug/form?dl=<token>` — the exact
+same booking form guests reach from search, carrying an opaque per-listing token instead. The
+card states both commission rates plainly (e.g. "5% commission via this link · standard 10%"). The token
+is generated automatically the first time this page loads for the listing (nothing to configure)
+and never changes. A guest following the link still signs in as usual — the link only changes
+which commission rate applies, not whether sign-in is required.
 
 ### Save dialog (base rate changes)
 
@@ -85,7 +115,7 @@ Three KPI chips: weekday base rate, weekend premium %, count of custom calendar 
 
 | Method | Edge function     | Query          | Body (PATCH)                                                                                 |
 | ------ | ----------------- | -------------- | -------------------------------------------------------------------------------------------- |
-| GET    | `parking-pricing` | `?parking_id=` | —                                                                                            |
+| GET    | `parking-pricing` | `?parking_id=` | — (also returns `directCommissionPct`/`directBookingToken`/`directBookingSlug`, Phase 8)     |
 | PATCH  | `parking-pricing` | `?parking_id=` | `weekdayNightlyRate`, `weekendNightlyRate`, `dateOverrides`, `blockRange`, `unblockDateKeys` |
 
 Auth: signed-in user + org parking permission. `verify_jwt = false`; handler uses `verifyAuthenticatedUser` + `resolveScopedParkingAccess`.
@@ -94,12 +124,15 @@ Auth: signed-in user + org parking permission. `verify_jwt = false`; handler use
 
 ## Implementation map
 
-| Layer                | Path                                                                                                            |
-| -------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Page                 | `ui/src/features/dashboard/parking/pages/ParkingPricingPage.tsx`                                                |
-| Hooks                | `ui/src/features/dashboard/parking/hooks/useParkingPricing.ts`                                                  |
-| API client           | `ui/src/features/dashboard/parking/lib/parkingPricingApi.ts`                                                    |
-| Edge                 | `supabase/functions/parking-pricing/index.ts`                                                                   |
-| Shared               | `supabase/functions/_shared/parkingPricing.ts`, `parkingBlockedDates.ts`                                        |
-| Migration            | `supabase/migrations/20260918140000_parking_pricing.sql`, `20261104120000_parking_blocked_dates_automation.sql` |
-| Calendar UI (shared) | `ui/src/features/dashboard/pricing/components/PricingCalendarGrid.tsx`                                          |
+| Layer                                                               | Path                                                                                                                                                                                                              |
+| ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Page                                                                | `ui/src/features/dashboard/parking/pages/ParkingPricingPage.tsx`                                                                                                                                                  |
+| Rates form card (payout preview, cap warning)                       | `ui/src/features/dashboard/parking/components/ParkingPricingRatesFormCard.tsx`                                                                                                                                    |
+| Direct link card (Phase 8)                                          | `ui/src/features/dashboard/parking/components/ParkingDirectLinkCard.tsx`                                                                                                                                          |
+| Hooks                                                               | `ui/src/features/dashboard/parking/hooks/useParkingPricing.ts`                                                                                                                                                    |
+| API client                                                          | `ui/src/features/dashboard/parking/lib/parkingPricingApi.ts`                                                                                                                                                      |
+| Client-side fallback-only cap / commission defaults (pre-load only) | `ui/src/features/dashboard/parking/lib/parkingPricingDefaults.ts`                                                                                                                                                 |
+| Edge                                                                | `supabase/functions/parking-pricing/index.ts`                                                                                                                                                                     |
+| Shared                                                              | `supabase/functions/_shared/parkingPricing.ts` (incl. server-side cap enforcement), `parkingPlatformSettings.ts` (live config resolver), `parkingBlockedDates.ts`, `parkingDirectLink.ts` (Phase 8 token)         |
+| Migration                                                           | `supabase/migrations/20260918140000_parking_pricing.sql`, `20261104120000_parking_blocked_dates_automation.sql`, `20261129120000_parking_platform_settings.sql`, `20261202120000_parking_direct_booking_link.sql` |
+| Calendar UI (shared)                                                | `ui/src/features/dashboard/pricing/components/PricingCalendarGrid.tsx`                                                                                                                                            |
