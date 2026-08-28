@@ -1,0 +1,74 @@
+/**
+ * Guest-initiated parking request cancellation (Phase 3, overview decision D7/#5) — allowed any
+ * time before payment succeeds: while still searching (`PENDING_HOST_ACCEPTANCE`) or while a
+ * payment window is open (`PENDING_PAYMENT`). Once paid, cancellation is not self-service.
+ */
+
+import { createServiceClient } from './orgAuth.ts';
+import { releaseParkingClaim } from './parkingPaymentOrchestrator.ts';
+
+export class ParkingCancellationError extends Error {
+  status: number;
+  constructor(message: string, status = 400) {
+    super(message);
+    this.status = status;
+  }
+}
+
+export async function cancelParkingBooking(
+  bookingId: string,
+  userId: string
+): Promise<{ cancelled: boolean }> {
+  const supabase = createServiceClient();
+
+  const { data: booking } = await supabase
+    .from('guest_submissions')
+    .select('id, status, guest_auth_user_id, parking_broadcast_batch_number')
+    .eq('id', bookingId)
+    .maybeSingle();
+
+  if (!booking) throw new ParkingCancellationError('Booking not found', 404);
+  if (String(booking.guest_auth_user_id ?? '') !== userId) {
+    throw new ParkingCancellationError('Not your booking', 403);
+  }
+
+  const nowIso = new Date().toISOString();
+
+  if (booking.status === 'PENDING_HOST_ACCEPTANCE') {
+    const { data: cancelled, error } = await supabase
+      .from('guest_submissions')
+      .update({ status: 'CANCELLED', status_updated_at: nowIso, updated_at: nowIso })
+      .eq('id', bookingId)
+      .eq('status', 'PENDING_HOST_ACCEPTANCE')
+      .select('id')
+      .maybeSingle();
+    if (error) throw new ParkingCancellationError('Failed to cancel booking', 500);
+    if (!cancelled) throw new ParkingCancellationError('Nothing to cancel', 409);
+
+    await supabase
+      .from('parking_booking_broadcasts')
+      .update({ response: 'expired', responded_at: nowIso })
+      .eq('booking_id', bookingId)
+      .eq('batch_number', Number(booking.parking_broadcast_batch_number ?? 1))
+      .eq('response', 'pending');
+
+    return { cancelled: true };
+  }
+
+  if (booking.status === 'PENDING_PAYMENT') {
+    const { released } = await releaseParkingClaim(bookingId);
+    if (!released) throw new ParkingCancellationError('Nothing to cancel', 409);
+
+    // Terminal step, not a batch-advance — the guest asked to stop, not to keep searching.
+    const { error } = await supabase
+      .from('guest_submissions')
+      .update({ status: 'CANCELLED', status_updated_at: nowIso, updated_at: nowIso })
+      .eq('id', bookingId)
+      .eq('status', 'PENDING_HOST_ACCEPTANCE');
+    if (error) throw new ParkingCancellationError('Failed to cancel booking', 500);
+
+    return { cancelled: true };
+  }
+
+  throw new ParkingCancellationError('This request can no longer be cancelled', 409);
+}
