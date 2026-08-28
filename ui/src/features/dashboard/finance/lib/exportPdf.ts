@@ -2,10 +2,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 import { statusLabel } from '@/features/dashboard/bookings/lib/bookingStatus';
-import {
-  financePeriodRangeLabel,
-  financePresetLabel,
-} from '@/features/dashboard/finance/lib/financeFilterLabels';
+import { financePeriodRangeLabel } from '@/features/dashboard/finance/lib/financeFilterLabels';
 import type {
   FinanceBookingLedgerRow,
   FinanceExportType,
@@ -17,11 +14,23 @@ import type {
 import { registerPdfFonts } from '@/lib/pdf/pdfFonts';
 import { pdfBookingDate, pdfIsoDate, pdfMoney } from '@/lib/pdf/pdfFormatters';
 import {
+  computeStayTableTotals,
+  formatStayHostNetCell,
+  formatStayHostNetFoot,
+  stayHostNetFootIsEstimate,
+  stayHostNetFootTotal,
+  stayRowDisplayNet,
+} from '@/lib/pdf/pdfFinanceTotals';
+import {
   PDF_TABLE_MONEY_COLUMN,
   addPageFooter,
+  advanceSectionGap,
+  applyPdfTableFootCell,
   baseAutoTableOptions,
+  buildPdfReportHeaderOptions,
   contentWidth,
   drawBulletNotes,
+  drawEmptyState,
   drawHeroMetric,
   drawKpiGrid,
   drawReportHeader,
@@ -29,16 +38,16 @@ import {
   ensurePageSpace,
   lastTableY,
   paintPageBackground,
-  startNewPage,
   type PdfKpiItem,
 } from '@/lib/pdf/pdfReportLayout';
-import { PDF_COLORS } from '@/lib/pdf/pdfTheme';
+import { pdfStatusTextColor } from '@/lib/pdf/pdfStatusColors';
+import { PDF_COLORS, PDF_LAYOUT, beginPdfTheme } from '@/lib/pdf/pdfTheme';
 
 const REPORT_TYPE_LABEL: Record<FinanceExportType, string> = {
-  combined: 'Full finance report',
-  overview: 'Overview summary',
+  combined: 'Finance report',
+  overview: 'Finance overview',
   stays: 'Stays ledger',
-  operating: 'Transactions',
+  operating: 'Transactions report',
 };
 
 function netColumnTextColor(
@@ -50,30 +59,35 @@ function netColumnTextColor(
 }
 
 function buildFinanceHeaderMeta(query: FinanceQuery): string[] {
-  const filterParts = ['Grouped by check-in date'];
-  if (query.includeCancelled) filterParts.push('Includes cancelled');
-  if (query.q.trim()) filterParts.push(`Search: "${query.q.trim()}"`);
-  return [filterParts.join(' · ')];
+  if (!query.q.trim()) return [];
+  return [`Search: "${query.q.trim()}"`];
 }
 
 function appendOverviewSection(doc: jsPDF, y: number, payload: FinancePdfPayload): number {
   const { summary } = payload;
   const { stays: s, operating: o, grandNet } = summary;
 
+  const heroSecondary =
+    s.projectedNetPipeline !== 0
+      ? `Pipeline estimate ${pdfMoney(s.projectedNetPipeline)} (in progress)`
+      : undefined;
+
   y = drawHeroMetric(
     doc,
     y,
-    'Total net',
+    'Total net (PHP)',
     pdfMoney(grandNet),
-    grandNet >= 0 ? PDF_COLORS.success : PDF_COLORS.destructive
+    grandNet >= 0 ? PDF_COLORS.success : PDF_COLORS.destructive,
+    heroSecondary
   );
 
   y = drawSectionEyebrow(doc, y, 'Summary', 'Key metrics for the selected period');
+  y += 2;
   const overviewKpis: PdfKpiItem[] = [
     {
       label: 'Completed net',
       value: pdfMoney(s.hostNetCompleted),
-      accent: s.hostNetCompleted >= 0 ? 'positive' : 'negative',
+      accent: s.hostNetCompleted > 0 ? 'positive' : s.hostNetCompleted < 0 ? 'negative' : 'neutral',
     },
     { label: 'Total booking rates', value: pdfMoney(s.bookingRate) },
     { label: 'Additional fees', value: pdfMoney(s.otherFees) },
@@ -87,24 +101,24 @@ function appendOverviewSection(doc: jsPDF, y: number, payload: FinancePdfPayload
     {
       label: 'Transactions net',
       value: pdfMoney(o.net),
-      accent: o.net >= 0 ? 'positive' : 'negative',
+      accent: o.net > 0 ? 'positive' : o.net < 0 ? 'negative' : 'neutral',
     },
-    { label: 'Transactions income', value: pdfMoney(o.income), accent: 'positive' },
-    { label: 'Transactions expenses', value: pdfMoney(o.expenses), accent: 'negative' },
+    {
+      label: 'Transactions income',
+      value: pdfMoney(o.income),
+      accent: o.income > 0 ? 'positive' : 'neutral',
+    },
+    {
+      label: 'Transactions expenses',
+      value: pdfMoney(o.expenses),
+      accent: o.expenses > 0 ? 'negative' : 'neutral',
+    },
   ];
-  if (s.projectedNetPipeline !== 0) {
-    overviewKpis.push({
-      label: 'Pipeline estimate',
-      value: pdfMoney(s.projectedNetPipeline),
-      accent: s.projectedNetPipeline >= 0 ? 'positive' : 'negative',
-    });
-  }
   return drawKpiGrid(doc, y, overviewKpis);
 }
 
 function appendStaysSection(doc: jsPDF, y: number, payload: FinancePdfPayload): number {
-  const { summary, stays } = payload;
-  const s = summary.stays;
+  const { stays } = payload;
   const tableW = contentWidth(doc);
 
   y = drawSectionEyebrow(
@@ -114,11 +128,15 @@ function appendStaysSection(doc: jsPDF, y: number, payload: FinancePdfPayload): 
     `${stays.length} stay${stays.length === 1 ? '' : 's'} in period`
   );
 
+  if (stays.length === 0) {
+    return drawEmptyState(doc, y, 'No stays match the selected filters.');
+  }
+
+  const stayTotals = computeStayTableTotals(stays);
+
   const stayRows = stays.map((row) => {
     const fin = row.financials;
-    const net = fin.isCompleted ? fin.hostNet : fin.projectedNet;
     const guest = row.guest_facebook_name || row.primary_guest_name || '-';
-    const netLabel = fin.isCompleted ? pdfMoney(net ?? 0) : `${pdfMoney(net ?? 0)} est`;
     return [
       guest,
       pdfBookingDate(row.check_in_date),
@@ -126,92 +144,117 @@ function appendStaysSection(doc: jsPDF, y: number, payload: FinancePdfPayload): 
       statusLabel(row.status),
       pdfMoney(fin.bookingRate),
       pdfMoney(fin.otherFees),
-      netLabel,
+      formatStayHostNetCell(fin),
     ];
   });
 
-  const completedNetTotal = stays.reduce((acc, row) => {
-    if (!row.financials.isCompleted) return acc;
-    return acc + (row.financials.hostNet ?? 0);
-  }, 0);
+  const footHostNet = formatStayHostNetFoot(stayTotals.completedNet, stayTotals.pipelineNet);
 
   autoTable(doc, {
     ...baseAutoTableOptions(tableW),
     startY: y,
-    head: [
-      ['Guest', 'Check-in', 'Check-out', 'Status', 'Booking rate', 'Additional fees', 'Host net'],
+    // Short headers avoid mid-word wraps in narrow date columns.
+    head: [['Guest', 'In', 'Out', 'Status', 'Rate', 'Fees', 'Host net']],
+    body: stayRows,
+    foot: [
+      [
+        'Totals',
+        '',
+        '',
+        '',
+        pdfMoney(stayTotals.bookingRate),
+        pdfMoney(stayTotals.otherFees),
+        footHostNet,
+      ],
     ],
-    body:
-      stayRows.length > 0
-        ? stayRows
-        : [['No stays match the selected filters.', '', '', '', '', '', '']],
-    foot:
-      stayRows.length > 0
-        ? [
-            [
-              'Totals',
-              '',
-              '',
-              '',
-              pdfMoney(s.bookingRate),
-              pdfMoney(s.otherFees),
-              pdfMoney(completedNetTotal),
-            ],
-          ]
-        : undefined,
     columnStyles: {
-      0: { cellWidth: tableW * 0.27, overflow: 'ellipsize' },
-      1: { cellWidth: tableW * 0.1, halign: 'center' },
-      2: { cellWidth: tableW * 0.1, halign: 'center' },
-      3: { cellWidth: tableW * 0.16, overflow: 'ellipsize' },
+      0: { cellWidth: tableW * 0.24, overflow: 'linebreak' },
+      1: { cellWidth: tableW * 0.09, halign: 'center', overflow: 'ellipsize' },
+      2: { cellWidth: tableW * 0.09, halign: 'center', overflow: 'ellipsize' },
+      3: { cellWidth: tableW * 0.2, overflow: 'linebreak' },
       4: { ...PDF_TABLE_MONEY_COLUMN, cellWidth: tableW * 0.13 },
       5: { ...PDF_TABLE_MONEY_COLUMN, cellWidth: tableW * 0.12 },
-      6: { ...PDF_TABLE_MONEY_COLUMN, cellWidth: tableW * 0.12, fontStyle: 'bold' },
+      6: { ...PDF_TABLE_MONEY_COLUMN, cellWidth: tableW * 0.13, fontStyle: 'bold' },
     },
     didParseCell: (data) => {
-      const moneyCol = data.column.index >= 4 && data.column.index <= 6;
-      if (!moneyCol) return;
-
-      if (data.section === 'body' || data.section === 'foot') {
-        data.cell.styles.overflow = 'visible';
-        data.cell.styles.halign = 'right';
-      }
-
-      if (data.column.index !== 6) return;
-
-      if (data.section === 'body') {
-        const row = stays[data.row.index];
-        if (!row) return;
-        const fin = row.financials;
-        const net = fin.isCompleted ? fin.hostNet : fin.projectedNet;
-        data.cell.styles.fontStyle = fin.isCompleted ? 'bold' : 'normal';
-        data.cell.styles.textColor = netColumnTextColor(fin.isCompleted, net);
+      if (data.section === 'head') {
+        data.cell.styles.overflow = 'ellipsize';
+        data.cell.styles.halign =
+          data.column.index >= 4
+            ? 'right'
+            : data.column.index >= 1 && data.column.index <= 2
+              ? 'center'
+              : 'left';
         return;
       }
 
+      applyPdfTableFootCell(data);
+
       if (data.section === 'foot') {
-        data.cell.styles.fontStyle = 'bold';
-        data.cell.styles.textColor = netColumnTextColor(true, completedNetTotal);
+        if (data.column.index === 4) {
+          data.cell.styles.textColor =
+            stayTotals.bookingRate > 0 ? PDF_COLORS.success : PDF_COLORS.foreground;
+        } else if (data.column.index === 5) {
+          data.cell.styles.textColor =
+            stayTotals.otherFees > 0 ? PDF_COLORS.success : PDF_COLORS.foreground;
+        } else if (data.column.index === 6) {
+          const total = stayHostNetFootTotal(stayTotals.completedNet, stayTotals.pipelineNet);
+          if (stayHostNetFootIsEstimate(stayTotals.completedNet, stayTotals.pipelineNet)) {
+            data.cell.styles.textColor = netColumnTextColor(false, total);
+          } else {
+            data.cell.styles.textColor = netColumnTextColor(true, stayTotals.completedNet);
+          }
+          data.cell.styles.overflow = 'ellipsize';
+        }
+        return;
       }
+
+      if (data.section !== 'body') return;
+
+      const row = stays[data.row.index];
+      if (!row) return;
+
+      if (data.column.index === 3) {
+        data.cell.styles.textColor = pdfStatusTextColor(row.status);
+        return;
+      }
+
+      const moneyCol = data.column.index >= 4 && data.column.index <= 6;
+      if (!moneyCol) return;
+
+      data.cell.styles.halign = 'right';
+
+      const fin = row.financials;
+
+      if (data.column.index === 4 && (fin.bookingRate ?? 0) > 0) {
+        data.cell.styles.textColor = PDF_COLORS.success;
+        return;
+      }
+
+      if (data.column.index === 5 && (fin.otherFees ?? 0) > 0) {
+        data.cell.styles.textColor = PDF_COLORS.success;
+        return;
+      }
+
+      if (data.column.index !== 6) return;
+      const net = stayRowDisplayNet(fin);
+      data.cell.styles.fontStyle = fin.isCompleted ? 'bold' : 'normal';
+      data.cell.styles.textColor = netColumnTextColor(fin.isCompleted, net);
     },
   });
 
-  return lastTableY(doc, y) + 8;
+  return lastTableY(doc, y) + PDF_LAYOUT.afterBlock;
 }
 
 function appendOperatingSection(doc: jsPDF, y: number, payload: FinancePdfPayload): number {
-  const { operating } = payload;
+  const { operating, summary } = payload;
   const tableW = contentWidth(doc);
 
-  y = ensurePageSpace(doc, y);
+  y = ensurePageSpace(doc, y, 56);
 
-  const incomeTotal = operating
-    .filter((i) => i.kind === 'income')
-    .reduce((a, i) => a + i.amount, 0);
-  const expenseTotal = operating
-    .filter((i) => i.kind === 'expense')
-    .reduce((a, i) => a + i.amount, 0);
-  const operatingNet = incomeTotal - expenseTotal;
+  const incomeTotal = summary.operating.income;
+  const expenseTotal = summary.operating.expenses;
+  const operatingNet = summary.operating.net;
 
   y = drawSectionEyebrow(
     doc,
@@ -220,13 +263,26 @@ function appendOperatingSection(doc: jsPDF, y: number, payload: FinancePdfPayloa
     `${operating.length} transaction${operating.length === 1 ? '' : 's'} in period`
   );
 
+  if (operating.length === 0) {
+    return drawEmptyState(doc, y, 'No transactions in this period.');
+  }
+
+  y += 2;
   y = drawKpiGrid(doc, y, [
-    { label: 'Income', value: pdfMoney(incomeTotal), accent: 'positive' },
-    { label: 'Expenses', value: pdfMoney(expenseTotal), accent: 'negative' },
+    {
+      label: 'Income',
+      value: pdfMoney(incomeTotal),
+      accent: incomeTotal > 0 ? 'positive' : 'neutral',
+    },
+    {
+      label: 'Expenses',
+      value: pdfMoney(expenseTotal),
+      accent: expenseTotal > 0 ? 'negative' : 'neutral',
+    },
     {
       label: 'Transactions net',
       value: pdfMoney(operatingNet),
-      accent: operatingNet >= 0 ? 'positive' : 'negative',
+      accent: operatingNet > 0 ? 'positive' : operatingNet < 0 ? 'negative' : 'neutral',
     },
   ]);
 
@@ -245,36 +301,39 @@ function appendOperatingSection(doc: jsPDF, y: number, payload: FinancePdfPayloa
     ...baseAutoTableOptions(tableW),
     startY: y,
     head: [['Date', 'Type', 'Label', 'Category', 'Amount']],
-    body: opRows.length > 0 ? opRows : [['No transactions in this period.', '', '', '', '']],
-    foot:
-      opRows.length > 0
-        ? [
-            [
-              'Totals',
-              '',
-              '',
-              '',
-              `${operatingNet >= 0 ? '+' : '-'}${pdfMoney(Math.abs(operatingNet))}`,
-            ],
-          ]
-        : undefined,
+    body: opRows,
+    foot: [
+      ['Totals', '', '', '', `${operatingNet >= 0 ? '+' : '-'}${pdfMoney(Math.abs(operatingNet))}`],
+    ],
     columnStyles: {
       0: { cellWidth: tableW * 0.16 },
       1: { cellWidth: tableW * 0.12 },
-      2: { cellWidth: tableW * 0.34 },
-      3: { cellWidth: tableW * 0.18 },
+      2: { cellWidth: tableW * 0.28, overflow: 'linebreak' },
+      3: { cellWidth: tableW * 0.24, overflow: 'linebreak', halign: 'left' },
       4: { ...PDF_TABLE_MONEY_COLUMN, cellWidth: tableW * 0.2, fontStyle: 'bold' },
     },
     didParseCell: (data) => {
-      if (data.section === 'body' && data.column.index === 1) {
+      applyPdfTableFootCell(data, 4);
+
+      if (data.section === 'foot' && data.column.index === 4) {
+        data.cell.styles.textColor =
+          operatingNet >= 0 ? PDF_COLORS.success : PDF_COLORS.destructive;
+        return;
+      }
+
+      if (data.section !== 'body') return;
+
+      if (data.column.index === 1) {
         const kind = String(data.cell.raw);
         if (kind === 'Income') {
           data.cell.styles.textColor = PDF_COLORS.success;
         } else if (kind === 'Expense') {
           data.cell.styles.textColor = PDF_COLORS.destructive;
         }
+        return;
       }
-      if (data.section === 'body' && data.column.index === 4) {
+
+      if (data.column.index === 4) {
         const raw = String(data.cell.raw);
         if (raw.startsWith('+')) {
           data.cell.styles.textColor = PDF_COLORS.success;
@@ -285,18 +344,19 @@ function appendOperatingSection(doc: jsPDF, y: number, payload: FinancePdfPayloa
     },
   });
 
-  return lastTableY(doc, y) + 8;
+  return lastTableY(doc, y) + PDF_LAYOUT.afterBlock;
 }
 
 function appendReportDefinitions(doc: jsPDF, y: number): number {
-  y = ensurePageSpace(doc, y, 52);
-  y = drawSectionEyebrow(doc, y, 'Definitions', 'How ledger and breakdown figures are calculated');
+  y = ensurePageSpace(doc, y, 48);
+  y = drawSectionEyebrow(doc, y, 'Definitions');
   return drawBulletNotes(doc, y, [
-    'All amounts are Philippine pesos (PHP) without a currency prefix in tables.',
-    'Booking rate = down payment + guest balance (booking rate − down payment).',
-    'Additional fees = pet fee + parking margin + additional guest fee (security deposit pass-through excluded).',
-    'Host net = booking rate + additional fees + SD settlement profits − SD settlement expenses − parking owner rate (SD settlement lines apply only when COMPLETED). SD collection and SD refund payout are never counted.',
-    'Total net = sum of completed host net plus transactions net for this period. In-progress host net (EST) uses the same operating formula without SD pass-through.',
+    'Amounts are Philippine pesos (PHP).',
+    'Booking rate = down payment + guest balance.',
+    'Additional fees = pet fee + parking margin + additional guest fee (SD pass-through excluded).',
+    'Host net = booking rate + additional fees + SD settlement profits − SD settlement expenses − parking owner rate (SD settlement only when completed).',
+    'Stays table totals sum the rows shown. Host net footer is one combined total; est when any in-progress stays are included.',
+    'Total net = completed host net + transactions net. In-progress host net (est) is shown separately in the hero pipeline line.',
   ]);
 }
 
@@ -312,6 +372,10 @@ export type FinancePdfPayload = {
   summary: FinanceSummary;
   stays: FinanceBookingLedgerRow[];
   operating: FinanceLineItem[];
+  /** Tower + unit (or parking location) for header/footer. */
+  scopeLabel?: string | null;
+  /** Resolved property/org brand hex (sidebar primary). */
+  brandColor?: string | null;
 };
 
 async function buildFinanceReportPdf(
@@ -319,42 +383,45 @@ async function buildFinanceReportPdf(
   type: FinanceExportType = 'combined'
 ): Promise<jsPDF> {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  beginPdfTheme(payload.brandColor);
   await registerPdfFonts(doc);
   paintPageBackground(doc);
 
-  const preset = financePresetLabel(payload.query);
   const range = financePeriodRangeLabel(payload.query.from, payload.query.to);
 
-  let y = drawReportHeader(doc, {
-    moduleLabel: 'Finance',
-    reportTypeLabel: REPORT_TYPE_LABEL[type],
-    periodLine: preset ? `${preset} · ${range}` : range,
-    metaLines: buildFinanceHeaderMeta(payload.query),
-  });
+  let y = drawReportHeader(
+    doc,
+    buildPdfReportHeaderOptions(
+      REPORT_TYPE_LABEL[type],
+      payload.scopeLabel,
+      range,
+      buildFinanceHeaderMeta(payload.query)
+    )
+  );
 
   if (type === 'overview' || type === 'combined') {
     y = appendOverviewSection(doc, y, payload);
   }
 
   if (type === 'stays' || type === 'combined') {
-    if (type === 'combined') {
-      y = startNewPage(doc);
-    } else {
-      y = ensurePageSpace(doc, y, 80);
-    }
+    y = advanceSectionGap(y);
+    y = ensurePageSpace(doc, y, type === 'combined' ? 90 : 80);
     y = appendStaysSection(doc, y, payload);
   }
 
   if (type === 'operating' || type === 'combined') {
+    y = advanceSectionGap(y);
     y = ensurePageSpace(doc, y, 70);
     y = appendOperatingSection(doc, y, payload);
   }
 
   if (type === 'combined' || type === 'overview') {
+    y = advanceSectionGap(y);
+    y = ensurePageSpace(doc, y, 52);
     y = appendReportDefinitions(doc, y);
   }
 
-  addPageFooter(doc, 'Finance');
+  addPageFooter(doc, 'Finance', payload.scopeLabel);
   return doc;
 }
 

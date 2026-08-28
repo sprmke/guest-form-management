@@ -27,8 +27,8 @@ import { formatMoney } from '@/utils/format/currency';
 type Props = {
   rows: FinanceLedgerEntry[];
   isLoading?: boolean;
-  onEditTransaction: (entry: FinanceLedgerEntry) => void;
-  onDeleteTransaction: (entry: FinanceLedgerEntry) => void;
+  onEditTransaction?: (entry: FinanceLedgerEntry) => void;
+  onDeleteTransaction?: (entry: FinanceLedgerEntry) => void;
   onOpenSeries?: (entry: FinanceLedgerEntry) => void;
 };
 
@@ -81,7 +81,7 @@ export function FinanceLedgerTable({
                 return;
               }
               if (entry.source === 'transaction') {
-                onEditTransaction(entry);
+                onEditTransaction?.(entry);
               }
             };
 
@@ -175,25 +175,29 @@ export function FinanceLedgerTable({
                           <Repeat className="size-4" />
                         </button>
                       ) : null}
-                      <button
-                        type="button"
-                        className={adminTableIconButtonClass}
-                        aria-label="Edit transaction"
-                        onClick={() => onEditTransaction(entry)}
-                      >
-                        <Pencil className="size-4" />
-                      </button>
-                      <button
-                        type="button"
-                        className={cn(
-                          adminTableIconButtonClass,
-                          'hover:bg-destructive/10 hover:text-destructive'
-                        )}
-                        aria-label="Delete transaction"
-                        onClick={() => onDeleteTransaction(entry)}
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
+                      {onEditTransaction ? (
+                        <button
+                          type="button"
+                          className={adminTableIconButtonClass}
+                          aria-label="Edit transaction"
+                          onClick={() => onEditTransaction(entry)}
+                        >
+                          <Pencil className="size-4" />
+                        </button>
+                      ) : null}
+                      {onDeleteTransaction ? (
+                        <button
+                          type="button"
+                          className={cn(
+                            adminTableIconButtonClass,
+                            'hover:bg-destructive/10 hover:text-destructive'
+                          )}
+                          aria-label="Delete transaction"
+                          onClick={() => onDeleteTransaction(entry)}
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      ) : null}
                     </div>
                   ) : (
                     <button

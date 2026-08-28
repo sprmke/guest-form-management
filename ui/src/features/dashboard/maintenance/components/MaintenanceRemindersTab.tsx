@@ -64,6 +64,8 @@ type Props = {
   onCreateOpenChange: (open: boolean) => void;
   calendarInitialMonth?: Date;
   onCalendarMonthChange?: (month: Date) => void;
+  canEdit?: boolean;
+  canDelete?: boolean;
 };
 
 export function MaintenanceRemindersTab({
@@ -73,6 +75,8 @@ export function MaintenanceRemindersTab({
   onCreateOpenChange,
   calendarInitialMonth,
   onCalendarMonthChange,
+  canEdit = true,
+  canDelete = true,
 }: Props) {
   const {
     data: items = [],
@@ -107,6 +111,7 @@ export function MaintenanceRemindersTab({
   }, [createOpen, onCreateOpenChange]);
 
   async function openEdit(item: MaintenanceItem) {
+    if (!canEdit) return;
     setEditing(item);
     if (item.recurrence_series_id) {
       try {
@@ -359,25 +364,29 @@ export function MaintenanceRemindersTab({
                           <Repeat className="size-4" />
                         </button>
                       ) : null}
-                      <button
-                        type="button"
-                        className={adminTableIconButtonClass}
-                        aria-label="Edit"
-                        onClick={() => openEdit(item)}
-                      >
-                        <Pencil className="size-4" />
-                      </button>
-                      <button
-                        type="button"
-                        className={cn(
-                          adminTableIconButtonClass,
-                          'hover:bg-destructive/10 hover:text-destructive'
-                        )}
-                        aria-label="Delete"
-                        onClick={() => setDeleting(item)}
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
+                      {canEdit ? (
+                        <button
+                          type="button"
+                          className={adminTableIconButtonClass}
+                          aria-label="Edit"
+                          onClick={() => openEdit(item)}
+                        >
+                          <Pencil className="size-4" />
+                        </button>
+                      ) : null}
+                      {canDelete ? (
+                        <button
+                          type="button"
+                          className={cn(
+                            adminTableIconButtonClass,
+                            'hover:bg-destructive/10 hover:text-destructive'
+                          )}
+                          aria-label="Delete"
+                          onClick={() => setDeleting(item)}
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      ) : null}
                     </div>
                   </td>
                 </tr>

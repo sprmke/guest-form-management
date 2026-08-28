@@ -9,8 +9,8 @@ import { cn } from '@/lib/utils';
 import { formatIsoDate } from '@/utils/format/bookingDisplay';
 
 type ItemActions = {
-  onEdit: (item: MaintenanceItem) => void;
-  onDelete: (item: MaintenanceItem) => void;
+  onEdit?: (item: MaintenanceItem) => void;
+  onDelete?: (item: MaintenanceItem) => void;
   onOpenSeries?: (item: MaintenanceItem) => void;
 };
 
@@ -49,8 +49,8 @@ export function MaintenanceRemindersCardGrid({
           key={item.id}
           item={item}
           showStatus={showStatus}
-          onEdit={() => onEdit(item)}
-          onDelete={() => onDelete(item)}
+          onEdit={onEdit ? () => onEdit(item) : undefined}
+          onDelete={onDelete ? () => onDelete(item) : undefined}
           onOpenSeries={onOpenSeries ? () => onOpenSeries(item) : undefined}
         />
       ))}
@@ -67,11 +67,12 @@ function MaintenanceReminderCard({
 }: {
   item: MaintenanceItem;
   showStatus: boolean;
-  onEdit: () => void;
-  onDelete: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
   onOpenSeries?: () => void;
 }) {
   const handleKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!onEdit) return;
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       onEdit();
@@ -85,7 +86,7 @@ function MaintenanceReminderCard({
     <div
       role="button"
       tabIndex={0}
-      onClick={onEdit}
+      onClick={() => onEdit?.()}
       onKeyDown={handleKey}
       aria-label={`Edit reminder ${item.label}`}
       className={cn(
@@ -160,26 +161,30 @@ function MaintenanceReminderCard({
             <Repeat className="size-4" />
           </CardIconAction>
         ) : null}
-        <CardIconAction
-          label="Edit"
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit();
-          }}
-        >
-          <Pencil className="size-4" />
-        </CardIconAction>
-        <CardIconAction
-          label="Delete"
-          destructive
-          edge="right"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-        >
-          <Trash2 className="size-4" />
-        </CardIconAction>
+        {onEdit ? (
+          <CardIconAction
+            label="Edit"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit();
+            }}
+          >
+            <Pencil className="size-4" />
+          </CardIconAction>
+        ) : null}
+        {onDelete ? (
+          <CardIconAction
+            label="Delete"
+            destructive
+            edge="right"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+          >
+            <Trash2 className="size-4" />
+          </CardIconAction>
+        ) : null}
       </div>
     </div>
   );

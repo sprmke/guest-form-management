@@ -1,4 +1,6 @@
-/** Design tokens mirrored from `ui/src/index.css` (`:root` light theme). */
+/** Design tokens mirrored from `ui/src/index.css` (`:root` light theme). Print-first. */
+
+import { DEFAULT_ORG_BRAND_COLOR, resolveOrgBrandHex } from '@/lib/theme/brandColor';
 
 function hslToRgb(h: number, sPct: number, lPct: number): [number, number, number] {
   const s = sPct / 100;
@@ -31,57 +33,145 @@ function hslToRgb(h: number, sPct: number, lPct: number): [number, number, numbe
   return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
 }
 
-function rgb(h: number, s: number, l: number): [number, number, number] {
+function rgbFromHsl(h: number, s: number, l: number): [number, number, number] {
   return hslToRgb(h, s, l);
+}
+
+function parseHex(hex: string): { r: number; g: number; b: number } | null {
+  const match = /^#([0-9A-Fa-f]{6})$/.exec(hex.trim());
+  if (!match) return null;
+  const raw = match[1];
+  return {
+    r: parseInt(raw.slice(0, 2), 16),
+    g: parseInt(raw.slice(2, 4), 16),
+    b: parseInt(raw.slice(4, 6), 16),
+  };
+}
+
+function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } {
+  const rn = r / 255;
+  const gn = g / 255;
+  const bn = b / 255;
+  const max = Math.max(rn, gn, bn);
+  const min = Math.min(rn, gn, bn);
+  const delta = max - min;
+  let h = 0;
+  if (delta !== 0) {
+    if (max === rn) h = ((gn - bn) / delta) % 6;
+    else if (max === gn) h = (bn - rn) / delta + 2;
+    else h = (rn - gn) / delta + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  const l = (max + min) / 2;
+  const s = delta === 0 ? 0 : delta / (1 - Math.abs(2 * l - 1));
+  return { h, s: s * 100, l: l * 100 };
 }
 
 export const PDF_FONT = 'PJS';
 
 export const PDF_LAYOUT = {
   margin: 14,
-  contentRadius: 4,
-  cardRadius: 3,
-  afterHeaderCard: 5,
-  metaLine: 3.5,
-  beforeBlock: 6,
-  afterBlock: 8,
-  eyebrowToSubtitle: 3.5,
-  afterSectionTitle: 5,
-  gap: 4,
-  sectionGap: 7,
+  cardRadius: 3.5,
+  contentRadius: 3.5,
+  afterHeaderCard: 10,
+  metaLine: 3.8,
+  beforeBlock: 10,
+  afterBlock: 14,
+  afterSectionTitle: 8,
+  sectionGap: 16,
+  sectionLead: 12,
+  kpiGap: 3,
+  kpiRowH: 20,
 } as const;
 
 export const PDF_TYPE = {
-  overline: 6.5,
+  overline: 7,
   caption: 7.5,
+  label: 7,
   body: 9,
-  data: 10,
-  section: 11,
-  title: 12.5,
-  hero: 19,
+  table: 8,
+  data: 11,
+  section: 13,
+  title: 15,
+  hero: 20,
 } as const;
 
-export const PDF_COLORS = {
-  pageBg: rgb(220, 18, 97),
-  card: [255, 255, 255] as [number, number, number],
-  border: rgb(220, 13, 91),
-  separator: rgb(220, 13, 91),
-  foreground: rgb(224, 71, 4),
-  muted: rgb(220, 9, 46),
-  primary: rgb(168, 65, 40),
-  primaryDark: rgb(168, 65, 28),
-  primaryFg: [255, 255, 255] as [number, number, number],
-  primarySubtle: rgb(168, 55, 92),
-  secondary: rgb(220, 14, 96),
-  success: rgb(168, 65, 40),
-  warning: rgb(43, 96, 56),
-  destructive: rgb(0, 84, 60),
-  shadow: rgb(224, 71, 4),
-  tableHeadBg: rgb(168, 55, 94),
-  tableHeadText: rgb(168, 65, 28),
-  tableStripe: rgb(220, 14, 98),
-  tableFoot: rgb(220, 14, 96),
-} as const;
+export type PdfRgb = [number, number, number];
+
+export type PdfColorPalette = {
+  pageBg: PdfRgb;
+  card: PdfRgb;
+  border: PdfRgb;
+  separator: PdfRgb;
+  foreground: PdfRgb;
+  muted: PdfRgb;
+  primary: PdfRgb;
+  primaryDark: PdfRgb;
+  primaryFg: PdfRgb;
+  primarySubtle: PdfRgb;
+  secondary: PdfRgb;
+  success: PdfRgb;
+  warning: PdfRgb;
+  destructive: PdfRgb;
+  shadow: PdfRgb;
+  tableHeadBg: PdfRgb;
+  tableHeadText: PdfRgb;
+  tableStripe: PdfRgb;
+  tableFoot: PdfRgb;
+  emptyFill: PdfRgb;
+};
+
+function brandPaletteFromHex(
+  hex: string
+): Pick<PdfColorPalette, 'primary' | 'primaryDark' | 'primarySubtle'> {
+  const parsed = parseHex(resolveOrgBrandHex(hex));
+  const fallback = parseHex(DEFAULT_ORG_BRAND_COLOR)!;
+  const { r, g, b } = parsed ?? fallback;
+  const { h, s, l } = rgbToHsl(r, g, b);
+  const sat = Math.max(35, Math.min(s, 85));
+  return {
+    primary: [r, g, b],
+    primaryDark: rgbFromHsl(h, sat, Math.max(18, Math.min(l - 10, 32))),
+    primarySubtle: rgbFromHsl(h, Math.min(sat, 28), 97),
+  };
+}
+
+function buildPalette(brandHex?: string | null): PdfColorPalette {
+  const brand = brandPaletteFromHex(brandHex ?? DEFAULT_ORG_BRAND_COLOR);
+  return {
+    pageBg: rgbFromHsl(220, 18, 97),
+    card: [255, 255, 255],
+    border: rgbFromHsl(220, 13, 91),
+    separator: rgbFromHsl(220, 13, 88),
+    foreground: rgbFromHsl(224, 71, 4),
+    muted: rgbFromHsl(220, 9, 46),
+    primary: brand.primary,
+    primaryDark: brand.primaryDark,
+    primaryFg: [255, 255, 255],
+    primarySubtle: brand.primarySubtle,
+    secondary: rgbFromHsl(220, 14, 96),
+    /** Semantic positive — teal, matches app status "green" tone (not brand color). */
+    success: [20, 184, 166],
+    warning: rgbFromHsl(38, 92, 44),
+    destructive: rgbFromHsl(0, 72, 48),
+    shadow: rgbFromHsl(224, 40, 88),
+    tableHeadBg: rgbFromHsl(220, 14, 97),
+    tableHeadText: rgbFromHsl(224, 45, 18),
+    tableStripe: rgbFromHsl(220, 12, 99),
+    tableFoot: rgbFromHsl(220, 14, 96),
+    emptyFill: rgbFromHsl(220, 12, 97),
+  };
+}
+
+/** Mutable active palette — set via `beginPdfTheme` at the start of each export. */
+export const PDF_COLORS: PdfColorPalette = buildPalette(DEFAULT_ORG_BRAND_COLOR);
+
+/** Apply property/org brand hex for this PDF generation pass. */
+export function beginPdfTheme(brandHex?: string | null): void {
+  const next = buildPalette(brandHex);
+  Object.assign(PDF_COLORS, next);
+}
 
 export function setPdfFill(
   doc: import('jspdf').jsPDF,
@@ -104,18 +194,6 @@ export function setPdfText(
   doc.setTextColor(color[0], color[1], color[2]);
 }
 
-function drawCardShadow(
-  doc: import('jspdf').jsPDF,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  r: number
-): void {
-  setPdfFill(doc, PDF_COLORS.tableStripe);
-  doc.roundedRect(x + 0.35, y + 0.5, w, h, r, r, 'F');
-}
-
 export function drawCard(
   doc: import('jspdf').jsPDF,
   x: number,
@@ -123,13 +201,14 @@ export function drawCard(
   w: number,
   h: number,
   r: number,
-  options?: { shadow?: boolean; fill?: readonly [number, number, number] }
+  options?: { fill?: readonly [number, number, number]; border?: boolean }
 ): void {
-  if (options?.shadow !== false) {
-    drawCardShadow(doc, x, y, w, h, r);
-  }
   setPdfFill(doc, options?.fill ?? PDF_COLORS.card);
+  if (options?.border === false) {
+    doc.roundedRect(x, y, w, h, r, r, 'F');
+    return;
+  }
   setPdfDraw(doc, PDF_COLORS.border);
-  doc.setLineWidth(0.2);
+  doc.setLineWidth(0.18);
   doc.roundedRect(x, y, w, h, r, r, 'FD');
 }

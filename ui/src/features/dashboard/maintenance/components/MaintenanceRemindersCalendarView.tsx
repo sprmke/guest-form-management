@@ -10,8 +10,8 @@ import type { MaintenanceItem } from '@/features/dashboard/maintenance/lib/types
 import { cn } from '@/lib/utils';
 
 type ItemActions = {
-  onEdit: (item: MaintenanceItem) => void;
-  onDelete: (item: MaintenanceItem) => void;
+  onEdit?: (item: MaintenanceItem) => void;
+  onDelete?: (item: MaintenanceItem) => void;
   onOpenSeries?: (item: MaintenanceItem) => void;
 };
 
@@ -58,8 +58,8 @@ export function MaintenanceRemindersCalendarView({
         <MaintenanceReminderDayCard
           item={item}
           showStatus={showStatus}
-          onEdit={() => onEdit(item)}
-          onDelete={() => onDelete(item)}
+          onEdit={onEdit ? () => onEdit(item) : undefined}
+          onDelete={onDelete ? () => onDelete(item) : undefined}
           onOpenSeries={onOpenSeries ? () => onOpenSeries(item) : undefined}
         />
       )}
@@ -82,8 +82,8 @@ function MaintenanceReminderDayCard({
 }: {
   item: MaintenanceItem;
   showStatus: boolean;
-  onEdit: () => void;
-  onDelete: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
   onOpenSeries?: () => void;
 }) {
   return (
@@ -120,12 +120,16 @@ function MaintenanceReminderDayCard({
             <Repeat className="size-4" />
           </DayIconButton>
         ) : null}
-        <DayIconButton label="Edit" onClick={onEdit}>
-          <Pencil className="size-4" />
-        </DayIconButton>
-        <DayIconButton label="Delete" destructive onClick={onDelete}>
-          <Trash2 className="size-4" />
-        </DayIconButton>
+        {onEdit ? (
+          <DayIconButton label="Edit" onClick={onEdit}>
+            <Pencil className="size-4" />
+          </DayIconButton>
+        ) : null}
+        {onDelete ? (
+          <DayIconButton label="Delete" destructive onClick={onDelete}>
+            <Trash2 className="size-4" />
+          </DayIconButton>
+        ) : null}
       </div>
     </div>
   );

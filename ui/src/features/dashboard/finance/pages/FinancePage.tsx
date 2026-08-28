@@ -53,6 +53,8 @@ import type { FinanceLineItem, FinanceQuery } from '@/features/dashboard/finance
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { assetScopeKey, useAdminAssetScope } from '@/features/dashboard/org/lib/adminAssetScope';
 import { propertyNotificationsPath } from '@/features/dashboard/org/lib/tenantPaths';
+import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
+import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
 
 import { FloatingPanel, FloatingToolbar } from '@/components/mobile/FloatingPanel';
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
@@ -70,6 +72,17 @@ export function FinancePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const isMobileLayout = useIsBelowLg();
   const isBelowMd = useIsBelowMd();
+  const { data: propertyAccess } = usePropertyPermissions();
+  const isParkingScope = Boolean(scope.parkingId);
+  const canAddTransaction =
+    isParkingScope ||
+    hasPropertyPermission(propertyAccess?.permissions, 'finance.transactions:add');
+  const canEditTransaction =
+    isParkingScope ||
+    hasPropertyPermission(propertyAccess?.permissions, 'finance.transactions:edit');
+  const canDeleteTransaction =
+    isParkingScope ||
+    hasPropertyPermission(propertyAccess?.permissions, 'finance.transactions:delete');
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<FinanceLineItem | null>(null);
@@ -224,13 +237,13 @@ export function FinancePage() {
   const chartsLoading = lineItemsQuery.isPending || chartBookingsQueryResult.isPending;
 
   function handleEditEntry(entry: FinanceLedgerEntry) {
-    if (!entry.transaction) return;
+    if (!canEditTransaction || !entry.transaction) return;
     setEditingItem(entry.transaction);
     setCreateOpen(false);
   }
 
   function handleDeleteEntry(entry: FinanceLedgerEntry) {
-    if (!entry.transaction) return;
+    if (!canDeleteTransaction || !entry.transaction) return;
     setDeletingItem(entry.transaction);
   }
 
@@ -240,6 +253,7 @@ export function FinancePage() {
   }
 
   function handleOpenCreate() {
+    if (!canAddTransaction) return;
     setEditingItem(null);
     setCreateOpen(true);
   }
@@ -258,11 +272,13 @@ export function FinancePage() {
           summary={summaryQuery.data}
           operating={lineItemsQuery.data}
         />
-        <button type="button" className="native-cta sm:px-3.5" onClick={handleOpenCreate}>
-          <Plus className="size-4" aria-hidden />
-          <span className="hidden sm:inline">Add Transaction</span>
-          <span className="sm:hidden">Add</span>
-        </button>
+        {canAddTransaction ? (
+          <button type="button" className="native-cta sm:px-3.5" onClick={handleOpenCreate}>
+            <Plus className="size-4" aria-hidden />
+            <span className="hidden sm:inline">Add Transaction</span>
+            <span className="sm:hidden">Add</span>
+          </button>
+        ) : null}
       </div>
     </div>
   );
@@ -284,7 +300,7 @@ export function FinancePage() {
       query={query}
       summary={summaryQuery.data}
       operating={lineItemsQuery.data}
-      leadingActions={[financeAddTransactionAction(handleOpenCreate)]}
+      leadingActions={canAddTransaction ? [financeAddTransactionAction(handleOpenCreate)] : []}
     />
   );
 
@@ -329,8 +345,8 @@ export function FinancePage() {
             isRefreshing={isLedgerRefreshing}
             initialMonth={dateNav.dateRange.from ?? undefined}
             onMonthChange={handleCalendarMonthChange}
-            onEditTransaction={handleEditEntry}
-            onDeleteTransaction={handleDeleteEntry}
+            onEditTransaction={canEditTransaction ? handleEditEntry : undefined}
+            onDeleteTransaction={canDeleteTransaction ? handleDeleteEntry : undefined}
             onOpenSeries={handleOpenSeries}
           />
         </FloatingPanel>
@@ -340,8 +356,8 @@ export function FinancePage() {
         <FinanceLedgerTable
           rows={pagedEntries.rows}
           isLoading={isLedgerLoading}
-          onEditTransaction={handleEditEntry}
-          onDeleteTransaction={handleDeleteEntry}
+          onEditTransaction={canEditTransaction ? handleEditEntry : undefined}
+          onDeleteTransaction={canDeleteTransaction ? handleDeleteEntry : undefined}
           onOpenSeries={handleOpenSeries}
         />
       ) : null}
@@ -359,8 +375,8 @@ export function FinancePage() {
             rows={pagedEntries.rows}
             isLoading={isLedgerLoading}
             isRefreshing={isLedgerRefreshing}
-            onEditTransaction={handleEditEntry}
-            onDeleteTransaction={handleDeleteEntry}
+            onEditTransaction={canEditTransaction ? handleEditEntry : undefined}
+            onDeleteTransaction={canDeleteTransaction ? handleDeleteEntry : undefined}
             onOpenSeries={handleOpenSeries}
           />
         )

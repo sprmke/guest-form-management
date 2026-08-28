@@ -14,10 +14,13 @@ import type {
   MaintenanceQuery,
   MaintenanceSummary,
 } from '@/features/dashboard/maintenance/lib/types';
+import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
+import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
+import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
 
 import { MobileChoiceItem, MobileChoiceSheet } from '@/components/mobile/MobileChoiceSheet';
 import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
@@ -28,6 +31,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
+import { pdfPropertyScope } from '@/lib/pdf/pdfScopeLabel';
+import { usePdfBrandColor } from '@/lib/pdf/usePdfBrandColor';
 import { cn } from '@/lib/utils';
 
 const FULL_REPORT = { type: 'combined' as const, label: 'Full report' };
@@ -63,11 +68,19 @@ export function MaintenanceExportMenu({
   leadingActions = [],
 }: Props) {
   const propertyId = usePropertyIdParam();
+  const orgContext = useOptionalOrgContext();
+  const brandColor = usePdfBrandColor();
+  const pdfScope = orgContext?.property ? pdfPropertyScope(orgContext.property) : null;
   const [loading, setLoading] = useState<MaintenanceExportType | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const { canUse: canExport, isLoading: entitlementsLoading } =
     useFeatureGate('maintenanceReporting');
   const { open: openUpgradeModal } = useUpgradeModal();
+  const { data: propertyAccess } = usePropertyPermissions();
+  const canSeeExport = hasPropertyPermission(
+    propertyAccess?.permissions,
+    'maintenance.export:view'
+  );
 
   async function handlePdfExport(type: MaintenanceExportType) {
     if (!canExport) {
@@ -85,7 +98,16 @@ export function MaintenanceExportMenu({
           : Promise.resolve([]),
       ]);
 
-      await downloadMaintenanceReportPdf({ query, summary, items }, type);
+      await downloadMaintenanceReportPdf(
+        {
+          query,
+          summary,
+          items,
+          scopeLabel: pdfScope?.label,
+          brandColor,
+        },
+        type
+      );
       toast.success('PDF downloaded');
     } catch (e) {
       toast.error(friendlyToastError(e, 'PDF export failed'));
@@ -96,6 +118,10 @@ export function MaintenanceExportMenu({
 
   const busy = loading !== null;
   const exportItems = [FULL_REPORT, ...SECTION_OPTIONS];
+
+  if (!canSeeExport && leadingActions.length === 0) {
+    return null;
+  }
 
   if (variant === 'hero') {
     const hasLeading = leadingActions.length > 0;
@@ -130,23 +156,31 @@ export function MaintenanceExportMenu({
                 />
               );
             })}
-            {hasLeading ? <div className="border-border/60 my-1.5 border-t" aria-hidden /> : null}
-            {exportItems.map((opt) => (
-              <MobileChoiceItem
-                key={opt.type}
-                label={loading === opt.type ? 'Preparing…' : opt.label}
-                disabled={busy}
-                icon={<FileText className="size-5" aria-hidden />}
-                onSelect={() => {
-                  void handlePdfExport(opt.type);
-                  setSheetOpen(false);
-                }}
-              />
-            ))}
+            {hasLeading && canSeeExport ? (
+              <div className="border-border/60 my-1.5 border-t" aria-hidden />
+            ) : null}
+            {canSeeExport
+              ? exportItems.map((opt) => (
+                  <MobileChoiceItem
+                    key={opt.type}
+                    label={loading === opt.type ? 'Preparing…' : opt.label}
+                    disabled={busy}
+                    icon={<FileText className="size-5" aria-hidden />}
+                    onSelect={() => {
+                      void handlePdfExport(opt.type);
+                      setSheetOpen(false);
+                    }}
+                  />
+                ))
+              : null}
           </div>
         </MobileChoiceSheet>
       </>
     );
+  }
+
+  if (!canSeeExport) {
+    return null;
   }
 
   return (

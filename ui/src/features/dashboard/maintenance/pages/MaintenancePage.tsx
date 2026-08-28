@@ -29,6 +29,8 @@ import { collectMaintenanceCategories } from '@/features/dashboard/maintenance/l
 import type { MaintenanceQuery } from '@/features/dashboard/maintenance/lib/types';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { propertyNotificationsPath } from '@/features/dashboard/org/lib/tenantPaths';
+import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
+import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
 
 import { FloatingToolbar } from '@/components/mobile/FloatingPanel';
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
@@ -44,6 +46,19 @@ export function MaintenancePage() {
   const isMobileLayout = useIsBelowLg();
   const isBelowMd = useIsBelowMd();
   const [createOpen, setCreateOpen] = useState(false);
+  const { data: propertyAccess } = usePropertyPermissions();
+  const canAddReminder = hasPropertyPermission(
+    propertyAccess?.permissions,
+    'maintenance.reminders:add'
+  );
+  const canEditReminder = hasPropertyPermission(
+    propertyAccess?.permissions,
+    'maintenance.reminders:edit'
+  );
+  const canDeleteReminder = hasPropertyPermission(
+    propertyAccess?.permissions,
+    'maintenance.reminders:delete'
+  );
 
   const query = useMemo(() => {
     const parsed = parseMaintenanceQueryFromParams(searchParams);
@@ -134,15 +149,17 @@ export function MaintenancePage() {
         fullWidth={isBelowMd}
       />
       <MaintenanceExportMenu query={query} summary={summaryQuery.data} items={itemsQuery.data} />
-      <button
-        type="button"
-        className="native-cta sm:w-auto sm:px-3.5"
-        onClick={() => setCreateOpen(true)}
-      >
-        <Plus className="size-4" aria-hidden />
-        <span className="hidden sm:inline">Add reminder</span>
-        <span className="sm:hidden">Add</span>
-      </button>
+      {canAddReminder ? (
+        <button
+          type="button"
+          className="native-cta sm:w-auto sm:px-3.5"
+          onClick={() => setCreateOpen(true)}
+        >
+          <Plus className="size-4" aria-hidden />
+          <span className="hidden sm:inline">Add reminder</span>
+          <span className="sm:hidden">Add</span>
+        </button>
+      ) : null}
     </div>
   );
 
@@ -163,7 +180,9 @@ export function MaintenancePage() {
       query={query}
       summary={summaryQuery.data}
       items={itemsQuery.data}
-      leadingActions={[maintenanceAddReminderAction(() => setCreateOpen(true))]}
+      leadingActions={
+        canAddReminder ? [maintenanceAddReminderAction(() => setCreateOpen(true))] : []
+      }
     />
   );
 
@@ -208,10 +227,12 @@ export function MaintenancePage() {
       <MaintenanceRemindersTab
         query={query}
         onQueryChange={setQuery}
-        createOpen={createOpen}
+        createOpen={createOpen && canAddReminder}
         onCreateOpenChange={setCreateOpen}
         calendarInitialMonth={dateNav.dateRange.from ?? undefined}
         onCalendarMonthChange={handleCalendarMonthChange}
+        canEdit={canEditReminder}
+        canDelete={canDeleteReminder}
       />
     </AdminMobilePage>
   );

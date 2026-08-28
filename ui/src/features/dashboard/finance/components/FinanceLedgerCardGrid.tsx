@@ -18,8 +18,8 @@ type Props = {
   rows: FinanceLedgerEntry[];
   isLoading: boolean;
   isRefreshing?: boolean;
-  onEditTransaction: (entry: FinanceLedgerEntry) => void;
-  onDeleteTransaction: (entry: FinanceLedgerEntry) => void;
+  onEditTransaction?: (entry: FinanceLedgerEntry) => void;
+  onDeleteTransaction?: (entry: FinanceLedgerEntry) => void;
   onOpenSeries?: (entry: FinanceLedgerEntry) => void;
 };
 
@@ -54,7 +54,7 @@ export function FinanceLedgerCardGrid({
               setDrawerStay(entry.stay ?? null);
               return;
             }
-            onEditTransaction(entry);
+            onEditTransaction?.(entry);
           };
 
           return (
@@ -133,7 +133,7 @@ export function FinanceLedgerCardGrid({
                         type="button"
                         className="text-muted-foreground hover:bg-muted/60 hover:text-foreground inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg"
                         aria-label="Edit transaction"
-                        onClick={() => onEditTransaction(entry)}
+                        onClick={() => onEditTransaction?.(entry)}
                       >
                         <Pencil className="size-4" />
                       </button>
@@ -141,7 +141,7 @@ export function FinanceLedgerCardGrid({
                         type="button"
                         className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg"
                         aria-label="Delete transaction"
-                        onClick={() => onDeleteTransaction(entry)}
+                        onClick={() => onDeleteTransaction?.(entry)}
                       >
                         <Trash2 className="size-4" />
                       </button>

@@ -22,8 +22,8 @@ type Props = {
   isRefreshing?: boolean;
   initialMonth?: Date;
   onMonthChange?: (month: Date) => void;
-  onEditTransaction: (entry: FinanceLedgerEntry) => void;
-  onDeleteTransaction: (entry: FinanceLedgerEntry) => void;
+  onEditTransaction?: (entry: FinanceLedgerEntry) => void;
+  onDeleteTransaction?: (entry: FinanceLedgerEntry) => void;
   onOpenSeries?: (entry: FinanceLedgerEntry) => void;
 };
 
@@ -92,8 +92,8 @@ function LedgerCalendarDayCard({
 }: {
   entry: FinanceLedgerEntry;
   onOpenStay: (stay: NonNullable<FinanceLedgerEntry['stay']>) => void;
-  onEditTransaction: (entry: FinanceLedgerEntry) => void;
-  onDeleteTransaction: (entry: FinanceLedgerEntry) => void;
+  onEditTransaction?: (entry: FinanceLedgerEntry) => void;
+  onDeleteTransaction?: (entry: FinanceLedgerEntry) => void;
   onOpenSeries?: (entry: FinanceLedgerEntry) => void;
 }) {
   const isIncome = entry.type === 'income';
@@ -149,7 +149,7 @@ function LedgerCalendarDayCard({
                 type="button"
                 className="text-muted-foreground hover:bg-muted/60 hover:text-foreground inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg"
                 aria-label="Edit transaction"
-                onClick={() => onEditTransaction(entry)}
+                onClick={() => onEditTransaction?.(entry)}
               >
                 <Pencil className="size-4" />
               </button>
@@ -157,7 +157,7 @@ function LedgerCalendarDayCard({
                 type="button"
                 className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg"
                 aria-label="Delete transaction"
-                onClick={() => onDeleteTransaction(entry)}
+                onClick={() => onDeleteTransaction?.(entry)}
               >
                 <Trash2 className="size-4" />
               </button>

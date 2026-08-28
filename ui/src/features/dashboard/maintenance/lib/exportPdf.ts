@@ -2,7 +2,6 @@ import { format, parseISO } from 'date-fns';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-import { detectPreset } from '@/features/dashboard/maintenance/lib/maintenancePeriod';
 import type {
   MaintenanceExportType,
   MaintenanceItem,
@@ -14,21 +13,27 @@ import { registerPdfFonts } from '@/lib/pdf/pdfFonts';
 import { pdfIsoDate } from '@/lib/pdf/pdfFormatters';
 import {
   addPageFooter,
+  advanceSectionGap,
+  applyPdfTableFootCell,
   baseAutoTableOptions,
+  buildPdfReportHeaderOptions,
   contentWidth,
+  drawEmptyState,
+  drawHeroMetric,
   drawKpiGrid,
   drawReportHeader,
   drawSectionEyebrow,
   ensurePageSpace,
   lastTableY,
   paintPageBackground,
-  startNewPage,
+  type PdfKpiItem,
 } from '@/lib/pdf/pdfReportLayout';
-import { PDF_COLORS } from '@/lib/pdf/pdfTheme';
+import { pdfMaintenanceStatusColor } from '@/lib/pdf/pdfStatusColors';
+import { PDF_COLORS, PDF_LAYOUT, beginPdfTheme } from '@/lib/pdf/pdfTheme';
 
 const REPORT_TYPE_LABEL: Record<MaintenanceExportType, string> = {
-  combined: 'Full maintenance report',
-  overview: 'Overview summary',
+  combined: 'Maintenance report',
+  overview: 'Maintenance overview',
   reminders: 'Reminders list',
 };
 
@@ -54,18 +59,6 @@ function periodRangeLabel(from: string | null, to: string | null): string {
   return `Through ${formatIsoDate(to)}`;
 }
 
-function presetLabel(query: MaintenanceQuery): string | null {
-  const preset = detectPreset(query.from, query.to);
-  if (preset === 'custom') return null;
-  const labels = {
-    this_month: 'This month',
-    last_month: 'Last month',
-    ytd: 'Year to date',
-    all: 'All time',
-  } as const;
-  return labels[preset];
-}
-
 function itemStatusLabel(item: MaintenanceItem): string {
   if (item.completed_at) return 'Done';
   if (item.telegram_reminder_enabled) return 'Pending';
@@ -76,6 +69,8 @@ type MaintenancePdfPayload = {
   query: MaintenanceQuery;
   summary: MaintenanceSummary;
   items: MaintenanceItem[];
+  scopeLabel?: string | null;
+  brandColor?: string | null;
 };
 
 function buildMaintenanceHeaderMeta(query: MaintenanceQuery): string[] {
@@ -84,34 +79,45 @@ function buildMaintenanceHeaderMeta(query: MaintenanceQuery): string[] {
 }
 
 function appendOverviewSection(doc: jsPDF, y: number, summary: MaintenanceSummary): number {
+  y = drawHeroMetric(doc, y, 'Total reminders', String(summary.total), PDF_COLORS.foreground);
+
   y = drawSectionEyebrow(doc, y, 'Summary', 'Totals for the selected period');
-  y = drawKpiGrid(
-    doc,
-    y,
-    [
-      { label: 'Total', value: String(summary.total) },
-      { label: 'Telegram enabled', value: String(summary.telegramEnabled) },
-      { label: 'Completed', value: String(summary.completed) },
-      { label: 'Pending', value: String(summary.pending) },
-    ],
-    4
-  );
+  y += 2;
+  const kpis: PdfKpiItem[] = [
+    { label: 'Telegram enabled', value: String(summary.telegramEnabled) },
+    {
+      label: 'Completed',
+      value: String(summary.completed),
+      accent: summary.completed > 0 ? 'positive' : 'neutral',
+    },
+    {
+      label: 'Pending',
+      value: String(summary.pending),
+      accent: summary.pending > 0 ? 'estimate' : 'neutral',
+    },
+  ];
+  y = drawKpiGrid(doc, y, kpis, 3);
 
   if (summary.byCategory.length > 0) {
     y = ensurePageSpace(doc, y, 60);
     y = drawSectionEyebrow(doc, y, 'By category');
     const tableW = contentWidth(doc);
+    const categoryTotal = summary.byCategory.reduce((acc, row) => acc + row.count, 0);
     autoTable(doc, {
       ...baseAutoTableOptions(tableW),
       startY: y,
       head: [['Category', 'Count']],
       body: summary.byCategory.map((row) => [row.category, String(row.count)]),
+      foot: [['Total', String(categoryTotal)]],
       columnStyles: {
-        0: { cellWidth: tableW * 0.72 },
-        1: { cellWidth: tableW * 0.28, halign: 'right' },
+        0: { cellWidth: tableW * 0.72, halign: 'left' },
+        1: { cellWidth: tableW * 0.28, halign: 'left' },
+      },
+      didParseCell: (data) => {
+        applyPdfTableFootCell(data, 99, { 1: 'left' });
       },
     });
-    y = lastTableY(doc, y) + 7;
+    y = lastTableY(doc, y) + PDF_LAYOUT.afterBlock;
   }
 
   return y;
@@ -124,6 +130,10 @@ function appendRemindersSection(doc: jsPDF, y: number, items: MaintenanceItem[])
     'Reminders',
     `${items.length} reminder${items.length === 1 ? '' : 's'} in period`
   );
+
+  if (items.length === 0) {
+    return drawEmptyState(doc, y, 'No reminders match the selected filters.');
+  }
 
   const tableW = contentWidth(doc);
   const rows = items.map((item) => [
@@ -138,27 +148,27 @@ function appendRemindersSection(doc: jsPDF, y: number, items: MaintenanceItem[])
     ...baseAutoTableOptions(tableW),
     startY: y,
     head: [['Date', 'Label', 'Category', 'Status', 'Notes']],
-    body: rows.length > 0 ? rows : [['No reminders match the selected filters.', '', '', '', '']],
+    body: rows,
     columnStyles: {
       0: { cellWidth: tableW * 0.14, halign: 'left' },
-      1: { cellWidth: tableW * 0.28 },
-      2: { cellWidth: tableW * 0.18 },
+      1: { cellWidth: tableW * 0.28, overflow: 'linebreak', halign: 'left' },
+      2: { cellWidth: tableW * 0.18, overflow: 'linebreak', halign: 'left' },
       3: { cellWidth: tableW * 0.12, halign: 'center' },
-      4: { cellWidth: tableW * 0.28 },
+      4: { cellWidth: tableW * 0.28, overflow: 'linebreak', halign: 'left' },
     },
     didParseCell: (data) => {
+      applyPdfTableFootCell(data);
+
       if (data.section !== 'body' || data.column.index !== 3) return;
       const status = String(data.cell.raw);
+      data.cell.styles.textColor = pdfMaintenanceStatusColor(status);
       if (status === 'Done') {
-        data.cell.styles.textColor = PDF_COLORS.success;
         data.cell.styles.fontStyle = 'bold';
-      } else if (status === 'Pending') {
-        data.cell.styles.textColor = PDF_COLORS.warning;
       }
     },
   });
 
-  return lastTableY(doc, y) + 8;
+  return lastTableY(doc, y) + PDF_LAYOUT.afterBlock;
 }
 
 async function buildMaintenanceReportPdf(
@@ -166,33 +176,33 @@ async function buildMaintenanceReportPdf(
   type: MaintenanceExportType = 'combined'
 ): Promise<jsPDF> {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  beginPdfTheme(payload.brandColor);
   await registerPdfFonts(doc);
   paintPageBackground(doc);
 
-  const preset = presetLabel(payload.query);
   const range = periodRangeLabel(payload.query.from, payload.query.to);
 
-  let y = drawReportHeader(doc, {
-    moduleLabel: 'Maintenance',
-    reportTypeLabel: REPORT_TYPE_LABEL[type],
-    periodLine: preset ? `${preset} · ${range}` : range,
-    metaLines: buildMaintenanceHeaderMeta(payload.query),
-  });
+  let y = drawReportHeader(
+    doc,
+    buildPdfReportHeaderOptions(
+      REPORT_TYPE_LABEL[type],
+      payload.scopeLabel,
+      range,
+      buildMaintenanceHeaderMeta(payload.query)
+    )
+  );
 
   if (type === 'overview' || type === 'combined') {
     y = appendOverviewSection(doc, y, payload.summary);
   }
 
   if (type === 'reminders' || type === 'combined') {
-    if (type === 'combined') {
-      y = startNewPage(doc);
-    } else {
-      y = ensurePageSpace(doc, y, 70);
-    }
+    y = advanceSectionGap(y);
+    y = ensurePageSpace(doc, y, type === 'combined' && payload.items.length === 0 ? 40 : 70);
     y = appendRemindersSection(doc, y, payload.items);
   }
 
-  addPageFooter(doc, 'Maintenance');
+  addPageFooter(doc, 'Maintenance', payload.scopeLabel);
   return doc;
 }
 
