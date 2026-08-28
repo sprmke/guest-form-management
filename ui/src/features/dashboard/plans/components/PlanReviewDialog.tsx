@@ -10,6 +10,7 @@ import {
   planFeatureLosses,
   planDisplayName,
   planPrice,
+  isPlanDowngrade,
   PESO_WHOLE,
   type PlanFeatureChange,
 } from '@/features/dashboard/plans/lib/planPresentation';
@@ -39,7 +40,9 @@ type PlanReviewDialogProps = {
   /** Current org_subscriptions row — used only to preview mid-cycle proration. */
   subscription?: OrgSubscriptionDto | null;
   onOpenChange: (open: boolean) => void;
-  onConfirmFree: (planId: string) => Promise<void>;
+  /** Paid→Free or paid→lower paid — applied immediately (no PayMongo). */
+  onConfirmDowngrade: (planId: string) => Promise<void>;
+  /** Upgrade / same-plan billing update — starts PayMongo checkout. */
   onCheckoutPaid: (planId: string) => Promise<void>;
   isSubmitting: boolean;
 };
@@ -157,13 +160,14 @@ export function PlanReviewDialog({
   propertyCount,
   subscription,
   onOpenChange,
-  onConfirmFree,
+  onConfirmDowngrade,
   onCheckoutPaid,
   isSubmitting,
 }: PlanReviewDialogProps) {
   if (!plan) return null;
 
   const isFree = plan.isDefault;
+  const isDowngrade = isPlanDowngrade(currentPlan, plan);
   const gains = planFeatureGains(currentPlan?.features ?? null, plan.features);
   const losses = currentPlan ? planFeatureLosses(currentPlan.features, plan.features) : [];
   const isDownscale = losses.length > 0 && gains.length === 0;
@@ -181,19 +185,21 @@ export function PlanReviewDialog({
     ? `Choose ${planTitle}`
     : isSamePlan
       ? 'Update billing'
-      : isDownscale
+      : isDownscale || isDowngrade
         ? `Move to ${planTitle}`
         : `Upgrade to ${planTitle}`;
 
   const description = isFree
     ? 'Your organization keeps running on the free tier.'
-    : proration
-      ? "You're changing mid-cycle — credited for the unused time on your current plan."
-      : 'Review what changes before you continue.';
+    : isDowngrade
+      ? 'Takes effect now. Unused time on your current plan is not refunded.'
+      : proration
+        ? "You're changing mid-cycle — credited for the unused time on your current plan."
+        : 'Review what changes before you continue.';
 
   const handlePrimaryAction = async () => {
-    if (isFree) {
-      await onConfirmFree(plan.id);
+    if (isDowngrade) {
+      await onConfirmDowngrade(plan.id);
       onOpenChange(false);
       return;
     }
@@ -201,7 +207,8 @@ export function PlanReviewDialog({
     onOpenChange(false);
   };
 
-  const primaryDisabled = isSubmitting || (!isFree && propertyCount === 0);
+  const primaryDisabled = isSubmitting || (!isFree && !isDowngrade && propertyCount === 0);
+  const primaryLabel = isDowngrade ? 'Confirm downgrade' : 'Continue to payment';
 
   return (
     <ResponsiveModal open={open} onOpenChange={onOpenChange}>
@@ -244,7 +251,7 @@ export function PlanReviewDialog({
               </p>
             ) : null}
 
-            {proration ? (
+            {proration && !isDowngrade ? (
               <div className="border-border space-y-1.5 rounded-xl border p-3 text-sm">
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-muted-foreground">
@@ -322,7 +329,7 @@ export function PlanReviewDialog({
             onClick={handlePrimaryAction}
           >
             {isSubmitting ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-            {isFree ? 'Confirm plan' : 'Continue to payment'}
+            {primaryLabel}
           </Button>
         </ResponsiveModalFooter>
       </ResponsiveModalContent>

@@ -2,8 +2,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { ORGANIZATIONS_QUERY_KEY } from '@/features/dashboard/org/hooks/useOrganizations';
 import { callEdgeFunction } from '@/features/dashboard/org/lib/edgeClient';
-import { orgPlanQueryKey } from '@/features/dashboard/plans/hooks/useOrgPlan';
 import type { Property } from '@/features/dashboard/org/types';
+import { orgPlanQueryKey } from '@/features/dashboard/plans/hooks/useOrgPlan';
 
 export type CreatePropertyInput = {
   orgId: string;

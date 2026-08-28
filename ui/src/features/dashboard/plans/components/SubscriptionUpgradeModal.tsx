@@ -86,7 +86,7 @@ export function SubscriptionUpgradeModal({ open, onOpenChange, feature }: Props)
       propertyCount={propertyCount}
       subscription={subscription}
       onOpenChange={onOpenChange}
-      onConfirmFree={async () => {
+      onConfirmDowngrade={async () => {
         onOpenChange(false);
       }}
       onCheckoutPaid={handleContinueToPayment}

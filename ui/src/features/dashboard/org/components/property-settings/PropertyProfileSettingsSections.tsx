@@ -119,6 +119,8 @@ type ProfileSectionsProps = {
   brandColor: string;
   inheritedBrandColor: string;
   onBrandColorChange: (value: string) => void;
+  /** When true for a section id, that section's fields are read-only. */
+  sectionEditLocked?: Partial<Record<PropertySettingsSectionId, boolean>>;
 };
 
 export function PropertyProfileMainSections({
@@ -144,8 +146,11 @@ export function PropertyProfileMainSections({
   brandColor,
   inheritedBrandColor,
   onBrandColorChange,
+  sectionEditLocked = {},
 }: ProfileSectionsProps) {
   const fieldError = resolveFieldError;
+  const lock = (sectionId: PropertySettingsSectionId) =>
+    disabled || Boolean(sectionEditLocked[sectionId]);
 
   const setField = <K extends keyof PropertyProfileDraft>(
     key: K,
@@ -312,7 +317,7 @@ export function PropertyProfileMainSections({
             id="property-name"
             value={draft.name}
             onChange={(event) => setField('name', event.target.value, 'property-name')}
-            disabled={disabled}
+            disabled={lock('basic')}
             placeholder="Enter property name"
             maxLength={120}
             aria-invalid={Boolean(fieldError('property-name') || nameUnavailable)}
@@ -328,7 +333,7 @@ export function PropertyProfileMainSections({
               id="property-slug"
               value={slugPreview}
               readOnly
-              disabled={disabled}
+              disabled={lock('basic')}
               placeholder="property-slug"
               className="bg-muted/40 max-w-xs"
               autoComplete="off"
@@ -343,7 +348,7 @@ export function PropertyProfileMainSections({
           value={brandColor}
           resolvedColor={inheritedBrandColor}
           resetValue={inheritedBrandColor}
-          disabled={disabled}
+          disabled={lock('basic')}
           error={fieldError('property-brand-color')}
           help="Applies to this property’s dashboard pages & public-facing pages such as guest forms, email templates, and other related content."
           onChange={(value) => {
@@ -363,7 +368,7 @@ export function PropertyProfileMainSections({
               id="property-type"
               value={propertyTypeLabel}
               readOnly
-              disabled={disabled}
+              disabled={lock('basic')}
               tabIndex={-1}
               aria-readonly="true"
               aria-invalid={Boolean(fieldError('property-type'))}
@@ -385,7 +390,7 @@ export function PropertyProfileMainSections({
                 id="property-residence"
                 value={draft.residenceName.trim() || residenceOptions[0] || ''}
                 readOnly
-                disabled={disabled}
+                disabled={lock('basic')}
                 tabIndex={-1}
                 aria-readonly="true"
                 aria-invalid={Boolean(fieldError('property-residence'))}
@@ -409,7 +414,7 @@ export function PropertyProfileMainSections({
                   id="property-tower"
                   value={draft.tower || ''}
                   readOnly
-                  disabled={disabled}
+                  disabled={lock('basic')}
                   tabIndex={-1}
                   aria-readonly="true"
                   aria-invalid={Boolean(fieldError('property-tower') || hasDuplicate)}
@@ -430,7 +435,7 @@ export function PropertyProfileMainSections({
                   id="property-unit"
                   value={draft.unitNumber}
                   readOnly
-                  disabled={disabled}
+                  disabled={lock('basic')}
                   tabIndex={-1}
                   aria-readonly="true"
                   aria-invalid={Boolean(fieldError('property-unit') || hasDuplicate)}
@@ -458,7 +463,7 @@ export function PropertyProfileMainSections({
             id="property-description"
             value={draft.description}
             onChange={(event) => onChange('description', event.target.value)}
-            disabled={disabled}
+            disabled={lock('basic')}
             placeholder="Describe your property..."
             rows={12}
             maxLength={1000}
@@ -485,7 +490,7 @@ export function PropertyProfileMainSections({
           onChange={(media) => onChange('media', media)}
           onPersisted={onMediaPersisted}
           onPersistOrder={onPersistMediaOrder}
-          disabled={disabled || mediaGalleryBusy}
+          disabled={lock('media') || mediaGalleryBusy}
         />
       </AdminSection>
 
@@ -505,7 +510,7 @@ export function PropertyProfileMainSections({
             <Select
               value={draft.unitTypeId || undefined}
               onValueChange={handleUnitTypeChange}
-              disabled={disabled || unitTypes.length === 0}
+              disabled={lock('details') || unitTypes.length === 0}
             >
               <SelectTrigger
                 id="property-unit-type"
@@ -540,7 +545,7 @@ export function PropertyProfileMainSections({
                 type="number"
                 value={draft.bedrooms}
                 readOnly
-                disabled={disabled}
+                disabled={lock('details')}
                 tabIndex={-1}
                 aria-readonly="true"
                 aria-invalid={Boolean(fieldError('property-bedrooms'))}
@@ -569,7 +574,7 @@ export function PropertyProfileMainSections({
                 step={0.5}
                 value={draft.bathrooms}
                 readOnly
-                disabled={disabled}
+                disabled={lock('details')}
                 tabIndex={-1}
                 aria-readonly="true"
                 aria-invalid={Boolean(fieldError('property-bathrooms'))}
@@ -600,7 +605,7 @@ export function PropertyProfileMainSections({
                   'property-floors'
                 )
               }
-              disabled={disabled}
+              disabled={lock('details')}
               aria-invalid={Boolean(fieldError('property-floors'))}
               className={cn(fieldError('property-floors') && 'border-destructive')}
             />
@@ -622,7 +627,7 @@ export function PropertyProfileMainSections({
                 type="number"
                 value={draft.maxAdults}
                 readOnly
-                disabled={disabled}
+                disabled={lock('details')}
                 tabIndex={-1}
                 aria-readonly="true"
                 className={cn(
@@ -649,7 +654,7 @@ export function PropertyProfileMainSections({
                 type="number"
                 value={draft.maxChildren}
                 readOnly
-                disabled={disabled}
+                disabled={lock('details')}
                 tabIndex={-1}
                 aria-readonly="true"
                 className={cn(
@@ -672,7 +677,7 @@ export function PropertyProfileMainSections({
               id="property-check-in"
               value={draft.checkInTime}
               onChange={(value) => setField('checkInTime', value, 'property-check-in')}
-              disabled={disabled}
+              disabled={lock('details')}
               aria-invalid={Boolean(fieldError('property-check-in'))}
             />
           </SettingsField>
@@ -687,7 +692,7 @@ export function PropertyProfileMainSections({
               id="property-check-out"
               value={draft.checkOutTime}
               onChange={(value) => setField('checkOutTime', value, 'property-check-out')}
-              disabled={disabled}
+              disabled={lock('details')}
               aria-invalid={Boolean(fieldError('property-check-out'))}
             />
           </SettingsField>
@@ -697,7 +702,7 @@ export function PropertyProfileMainSections({
           <Checkbox
             checked={draft.selfCheckIn}
             onCheckedChange={(checked) => onChange('selfCheckIn', checked === true)}
-            disabled={disabled}
+            disabled={lock('details')}
             className="mt-0.5"
           />
           <span className="space-y-1">
@@ -764,7 +769,7 @@ export function PropertyProfileMainSections({
                           <button
                             key={amenity.id}
                             type="button"
-                            disabled={disabled}
+                            disabled={lock('amenities')}
                             onClick={() => toggleAmenity(amenity.id)}
                             className={cn(
                               'flex min-h-[44px] items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition-colors',
@@ -791,7 +796,7 @@ export function PropertyProfileMainSections({
                           >
                             <button
                               type="button"
-                              disabled={disabled}
+                              disabled={lock('amenities')}
                               onClick={() => toggleAmenity(amenity.id)}
                               className="flex min-w-0 flex-1 items-center gap-3 text-left text-sm"
                             >
@@ -803,7 +808,7 @@ export function PropertyProfileMainSections({
                               variant="ghost"
                               size="icon"
                               className="min-h-[44px] min-w-[44px] shrink-0"
-                              disabled={disabled}
+                              disabled={lock('amenities')}
                               onClick={() => removeCustomAmenity(amenity.id)}
                               aria-label={`Remove ${amenity.name}`}
                             >
@@ -826,14 +831,14 @@ export function PropertyProfileMainSections({
                             addCustomAmenity(category.id);
                           }
                         }}
-                        disabled={disabled}
+                        disabled={lock('amenities')}
                         placeholder="Add custom amenity..."
                         maxLength={CUSTOM_AMENITY_MAX_LENGTH}
                       />
                       <Button
                         type="button"
                         variant="outline"
-                        disabled={disabled || !newCustomAmenityInputs[category.id]?.trim()}
+                        disabled={lock('amenities') || !newCustomAmenityInputs[category.id]?.trim()}
                         onClick={() => addCustomAmenity(category.id)}
                         className="min-h-[44px] shrink-0"
                       >
@@ -898,7 +903,7 @@ export function PropertyProfileMainSections({
                           <button
                             key={rule.id}
                             type="button"
-                            disabled={disabled}
+                            disabled={lock('house-rules')}
                             onClick={() => toggleHouseRule(rule.id)}
                             className={cn(
                               'flex min-h-[44px] items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition-colors',
@@ -925,7 +930,7 @@ export function PropertyProfileMainSections({
                           >
                             <button
                               type="button"
-                              disabled={disabled}
+                              disabled={lock('house-rules')}
                               onClick={() => toggleHouseRule(rule.id)}
                               className="flex min-w-0 flex-1 items-center gap-3 text-left text-sm"
                             >
@@ -937,7 +942,7 @@ export function PropertyProfileMainSections({
                               variant="ghost"
                               size="icon"
                               className="min-h-[44px] min-w-[44px] shrink-0"
-                              disabled={disabled}
+                              disabled={lock('house-rules')}
                               onClick={() => removeCustomHouseRule(rule.id)}
                               aria-label={`Remove ${rule.name}`}
                             >
@@ -960,14 +965,16 @@ export function PropertyProfileMainSections({
                             addCustomHouseRule(category.id);
                           }
                         }}
-                        disabled={disabled}
+                        disabled={lock('house-rules')}
                         placeholder="Add custom rule..."
                         maxLength={HOUSE_RULE_CUSTOM_MAX_LENGTH}
                       />
                       <Button
                         type="button"
                         variant="outline"
-                        disabled={disabled || !newCustomHouseRuleInputs[category.id]?.trim()}
+                        disabled={
+                          lock('house-rules') || !newCustomHouseRuleInputs[category.id]?.trim()
+                        }
                         onClick={() => addCustomHouseRule(category.id)}
                         className="min-h-[44px] shrink-0"
                       >
@@ -985,7 +992,7 @@ export function PropertyProfileMainSections({
 
       <PropertyGuestFormSettingsSection
         draft={draft}
-        disabled={disabled}
+        disabled={lock('house-rules')}
         onChange={onChange}
         setField={setField}
         resolveFieldError={fieldError}
@@ -993,7 +1000,7 @@ export function PropertyProfileMainSections({
 
       <PropertyCancellationPolicySection
         policy={draft.cancellationPolicy}
-        disabled={disabled}
+        disabled={lock('house-rules')}
         resolveFieldError={fieldError}
         markFieldInteracted={markFieldInteracted}
         onChange={(policy) => onChange('cancellationPolicy', policy)}
@@ -1001,7 +1008,7 @@ export function PropertyProfileMainSections({
 
       <AdminSection id="location" title="Location" icon={MapPin} description="Address and map pin.">
         <PropertyLocationPicker
-          disabled={disabled}
+          disabled={lock('location')}
           addressError={fieldError('property-address')}
           mapError={fieldError('property-location-map')}
           onFieldInteract={markFieldInteracted}
@@ -1036,6 +1043,7 @@ export function PropertyDangerZoneSection({
   propertyName,
   isArchived,
   disabled = false,
+  showDelete = true,
   onArchive,
   onRestore,
   onDelete,
@@ -1046,6 +1054,8 @@ export function PropertyDangerZoneSection({
   propertyName: string;
   isArchived: boolean;
   disabled?: boolean;
+  /** Permanent delete is owner-only (D10) — hide when false. */
+  showDelete?: boolean;
   onArchive: () => Promise<void>;
   onRestore: () => Promise<void>;
   onDelete: () => Promise<void>;
@@ -1127,24 +1137,26 @@ export function PropertyDangerZoneSection({
           )}
         </div>
 
-        <div className="border-destructive/50 flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <p className="text-destructive text-sm font-medium">Delete Property</p>
-            <p className="text-muted-foreground text-sm">
-              Permanently removes this property, its gallery, integrations, and settings. Only
-              allowed when there is no booking history. This cannot be undone.
-            </p>
+        {showDelete ? (
+          <div className="border-destructive/50 flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <p className="text-destructive text-sm font-medium">Delete Property</p>
+              <p className="text-muted-foreground text-sm">
+                Permanently removes this property, its gallery, integrations, and settings. Only
+                allowed when there is no booking history. This cannot be undone.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={disabled || deletePending}
+              className="min-h-[44px] shrink-0"
+              onClick={() => setDeleteOpen(true)}
+            >
+              {deletePending ? 'Deleting…' : 'Delete Property'}
+            </Button>
           </div>
-          <Button
-            type="button"
-            variant="destructive"
-            disabled={disabled || deletePending}
-            className="min-h-[44px] shrink-0"
-            onClick={() => setDeleteOpen(true)}
-          >
-            {deletePending ? 'Deleting…' : 'Delete Property'}
-          </Button>
-        </div>
+        ) : null}
       </div>
 
       <ResponsiveModal open={archiveOpen} onOpenChange={setArchiveOpen}>

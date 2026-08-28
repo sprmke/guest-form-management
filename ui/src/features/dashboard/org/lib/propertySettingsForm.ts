@@ -333,8 +333,10 @@ export type PropertyProfileUpdatePayload = {
   residenceName?: string;
   address?: string;
   maxGuests?: number;
-  status: 'ACTIVE' | 'INACTIVE';
+  status?: 'ACTIVE' | 'INACTIVE';
   settings?: Record<string, unknown>;
+  /** Page Editor autosave — server requires `publicPagesAutosave` plan feature. */
+  publicPagesAutosaveGate?: boolean;
 };
 
 export function propertyProfileSettingsPatch(draft: PropertyProfileDraft): Record<string, unknown> {

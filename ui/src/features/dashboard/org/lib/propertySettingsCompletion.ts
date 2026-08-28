@@ -91,7 +91,10 @@ export type PropertySettingsSectionId =
   | 'payment'
   | 'building-forms'
   | 'email-automations'
-  | 'integrations';
+  | 'integrations'
+  | 'voice-receptionist'
+  | 'ai'
+  | 'danger';
 
 export type PropertySettingsCompletionInput = {
   profile: PropertyProfileDraft;
@@ -110,11 +113,6 @@ export type PropertySettingsCompletionResult = {
   firstErrorMessage: string | null;
   isComplete: boolean;
 };
-
-function paymentQrConfigured(appSettings: AppSettingsDto | null): boolean {
-  if (!appSettings) return false;
-  return appSettings.fieldSources.gcashQrImageUrl === 'db';
-}
 
 function signatureConfigured(appSettings: AppSettingsDto | null): boolean {
   if (!appSettings) return false;
@@ -368,8 +366,6 @@ export function computePropertySettingsCompletion(
         addFieldError(`${prefix}-name`, accountNameErr, 'payment');
       } else if (!method.accountName.trim()) {
         addFieldError(`${prefix}-name`, 'Enter the account name', 'payment');
-      } else if (method.accountName.trim().length < 2) {
-        addFieldError(`${prefix}-name`, 'Enter the full account holder name', 'payment');
       }
 
       const accountNumberErr = validatePaymentAccountNumber(method.provider, method.accountNumber);
@@ -378,10 +374,6 @@ export function computePropertySettingsCompletion(
       } else if (!method.accountNumber.trim()) {
         addFieldError(`${prefix}-number`, 'Enter the account number', 'payment');
       }
-    }
-
-    if (!paymentQrConfigured(appSettings)) {
-      addFieldError('payment-qr-image', 'Upload a payment QR code', 'payment');
     }
   }
 

@@ -1,8 +1,16 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Link } from 'react-router-dom';
 
-import { ArrowUpRight, Building2, Calendar, Layers, ParkingCircle } from 'lucide-react';
+import {
+  ArrowUpRight,
+  Building2,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Layers,
+  ParkingCircle,
+} from 'lucide-react';
 
 import { formatOrgPropertyCurrency } from '@/features/dashboard/org/lib/orgPropertyDisplay';
 import {
@@ -17,6 +25,7 @@ import type {
 } from '@/features/dashboard/property/lib/types';
 
 import { AdminSurfaceCardHeader } from '@/components/shared/AdminSurfaceCardHeader';
+import { Button } from '@/components/ui/button';
 import { SegmentedControl } from '@/components/ui/sliding-tabs';
 import { resourceKindBadgeClasses } from '@/lib/statusToneColors';
 import { cn } from '@/lib/utils';
@@ -33,6 +42,8 @@ type AssetRow = {
 };
 
 type ListingFilter = 'all' | 'property' | 'parking';
+
+const LISTINGS_PAGE_SIZE = 5;
 
 type Props = {
   orgSlug: string;
@@ -60,6 +71,7 @@ export function OrgPropertiesPerformanceCard({
   const showListingTabs = hasProperties && hasParkings;
   const viewListingsHref = hasProperties ? orgPropertiesPath(orgSlug) : orgParkingsPath(orgSlug);
   const [listingFilter, setListingFilter] = useState<ListingFilter>('all');
+  const [page, setPage] = useState(0);
 
   const rows = useMemo<AssetRow[]>(() => {
     const propertyRows: AssetRow[] = properties.map((property) => ({
@@ -89,6 +101,21 @@ export function OrgPropertiesPerformanceCard({
     if (!showListingTabs || listingFilter === 'all') return rows;
     return rows.filter((row) => row.kind === listingFilter);
   }, [listingFilter, rows, showListingTabs]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [listingFilter]);
+
+  const pageCount = Math.max(1, Math.ceil(visibleRows.length / LISTINGS_PAGE_SIZE));
+
+  useEffect(() => {
+    setPage((current) => Math.min(current, pageCount - 1));
+  }, [pageCount]);
+
+  const safePage = Math.min(page, pageCount - 1);
+  const pageStart = safePage * LISTINGS_PAGE_SIZE;
+  const paginatedRows = visibleRows.slice(pageStart, pageStart + LISTINGS_PAGE_SIZE);
+  const showPagination = visibleRows.length > LISTINGS_PAGE_SIZE;
 
   const emptyMessage =
     listingFilter === 'property'
@@ -151,7 +178,7 @@ export function OrgPropertiesPerformanceCard({
         <p className="text-muted-foreground py-8 text-center text-sm">{emptyMessage}</p>
       ) : (
         <div className="space-y-2">
-          {visibleRows.map((asset) => {
+          {paginatedRows.map((asset) => {
             const href =
               asset.kind === 'parking'
                 ? parkingSectionPath(orgSlug, asset.slug, 'dashboard')
@@ -215,6 +242,39 @@ export function OrgPropertiesPerformanceCard({
           })}
         </div>
       )}
+
+      {showPagination ? (
+        <div className="border-border mt-3 flex items-center justify-between gap-3 border-t pt-3">
+          <p className="text-muted-foreground text-xs tabular-nums">
+            {pageStart + 1}–{Math.min(pageStart + LISTINGS_PAGE_SIZE, visibleRows.length)} of{' '}
+            {visibleRows.length}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="size-11"
+              aria-label="Previous listings"
+              disabled={safePage === 0}
+              onClick={() => setPage((current) => Math.max(0, current - 1))}
+            >
+              <ChevronLeft className="size-4" aria-hidden />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="size-11"
+              aria-label="Next listings"
+              disabled={safePage >= pageCount - 1}
+              onClick={() => setPage((current) => Math.min(pageCount - 1, current + 1))}
+            >
+              <ChevronRight className="size-4" aria-hidden />
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

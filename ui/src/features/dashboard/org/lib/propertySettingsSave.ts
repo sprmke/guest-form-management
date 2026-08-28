@@ -719,7 +719,6 @@ export function buildProfilePatchForSections(
   const sectionSet = new Set(sections);
   const payload: PropertyProfileUpdatePayload = {
     propertyId,
-    status: draft.status,
   };
   const settings: Record<string, unknown> = {};
   let hasSettings = false;
@@ -834,6 +833,8 @@ export type AppSettingsPatchBody = {
   superhostVerificationUrl?: string;
   superhostProofImageUrl?: string;
   settingsVerificationToken?: string;
+  /** Page Editor autosave — server requires `publicPagesAutosave` plan feature. */
+  publicPagesAutosaveGate?: boolean;
 };
 
 export function buildAppSettingsPatchForSections(

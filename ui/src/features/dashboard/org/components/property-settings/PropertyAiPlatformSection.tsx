@@ -39,7 +39,7 @@ export function PropertyAiPlatformSection() {
   const { data: propertyAccess } = usePropertyPermissions();
   const update = useUpdateAiPlatformPropertySettings();
 
-  const canEdit = hasPropertyPermission(propertyAccess?.permissions, 'settings:edit');
+  const canEdit = hasPropertyPermission(propertyAccess?.permissions, 'settings.aiOverrides:edit');
   const readOnly = !canEdit;
 
   const [draft, setDraft] = React.useState<Draft | null>(null);

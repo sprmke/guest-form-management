@@ -35,6 +35,7 @@ type Props = {
   residenceName: string;
   towerUnitLabel: string;
   disabled?: boolean;
+  sectionEditLocked?: Partial<Record<PropertySettingsSectionId, boolean>>;
   onChange: <K extends keyof AppSettingsFormValues>(
     key: K,
     value: AppSettingsFormValues[K]
@@ -64,6 +65,7 @@ export function PropertyOperationalSettingsSections({
   residenceName,
   towerUnitLabel,
   disabled = false,
+  sectionEditLocked = {},
   onChange,
   onAutomationToggleChange,
   resolveFieldError,
@@ -74,6 +76,8 @@ export function PropertyOperationalSettingsSections({
 }: Props) {
   const uploadMut = useUploadAppSettingsAsset();
   const [qrUploadingMethodId, setQrUploadingMethodId] = useState<string | null>(null);
+  const lock = (sectionId: PropertySettingsSectionId) =>
+    disabled || Boolean(sectionEditLocked[sectionId]);
 
   const setPaymentMethods = (methods: PropertyPaymentMethod[]) => {
     const legacy = syncLegacyPaymentFieldsFromMethods(methods);
@@ -107,7 +111,7 @@ export function PropertyOperationalSettingsSections({
         <PropertyPaymentMethodsSection
           data={data}
           methods={draft.paymentMethods}
-          disabled={disabled}
+          disabled={lock('payment')}
           resolveFieldError={resolveFieldError}
           markFieldInteracted={markFieldInteracted}
           onChange={setPaymentMethods}
@@ -134,7 +138,7 @@ export function PropertyOperationalSettingsSections({
             data.gafUnitOwnerSignatureUrl,
             data.fieldSources?.gafUnitOwnerSignatureUrl
           )}
-          disabled={disabled}
+          disabled={lock('building-forms')}
           onChange={(key, value) => {
             const fieldIds: Partial<Record<keyof AppSettingsFormValues, string>> = {
               gafUnitOwner: 'gaf-unit-owner',
@@ -153,7 +157,7 @@ export function PropertyOperationalSettingsSections({
       <PropertyEmailAutomationsSection
         draft={draft}
         residenceName={residenceName}
-        disabled={disabled}
+        disabled={lock('email-automations')}
         resolveFieldError={resolveFieldError}
         markFieldInteracted={markFieldInteracted}
         onChange={onChange}
@@ -185,7 +189,7 @@ export function PropertyOperationalSettingsSections({
           draft={voiceReceptionist.draft}
           propertyName={voiceReceptionist.propertyName}
           availableVoices={voiceReceptionist.availableVoices}
-          disabled={disabled}
+          disabled={lock('voice-receptionist')}
           isLoading={voiceReceptionist.isLoading}
           isError={voiceReceptionist.isError}
           errorMessage={voiceReceptionist.errorMessage}

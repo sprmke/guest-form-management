@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
 import { PieChart as PieChartIcon } from 'lucide-react';
-import { Cell, Pie, PieChart, ResponsiveContainer, Sector } from 'recharts';
+import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 
 import {
   DASHBOARD_STATUS_BREAKDOWN_ORDER,
@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 
 type Props = {
   slices: DashboardPipelineSlice[];
+  rangeLabel?: string;
   className?: string;
 };
 
@@ -53,87 +54,11 @@ function normalizeStatusSlices(slices: DashboardPipelineSlice[]): SliceRow[] {
   }));
 }
 
-const SLICE_EXPAND_PX = 6;
-const SLICE_EXPAND_MS = 220;
-
-function easeOutCubic(t: number) {
-  return 1 - (1 - t) ** 3;
-}
-
-function DonutTooltipContent({ label, count }: { label: string; count: number }) {
-  return (
-    <div className="border-border bg-card rounded-lg border px-2.5 py-1.5 shadow-lg">
-      <p className="text-sm font-medium">{label}</p>
-      <p className="text-muted-foreground text-sm tabular-nums">
-        {count} booking{count === 1 ? '' : 's'}
-      </p>
-    </div>
-  );
-}
-
-function ActiveSlice(props: {
-  cx?: number;
-  cy?: number;
-  innerRadius?: number;
-  outerRadius?: number;
-  startAngle?: number;
-  endAngle?: number;
-  fill?: string;
-}) {
-  const {
-    cx = 0,
-    cy = 0,
-    innerRadius = 0,
-    outerRadius = 0,
-    startAngle = 0,
-    endAngle = 0,
-    fill,
-  } = props;
-  const [expandedOuter, setExpandedOuter] = useState(outerRadius);
-
-  useEffect(() => {
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reducedMotion) {
-      setExpandedOuter(outerRadius + SLICE_EXPAND_PX);
-      return;
-    }
-
-    let frame = 0;
-    const start = performance.now();
-
-    const tick = (now: number) => {
-      const progress = Math.min(1, (now - start) / SLICE_EXPAND_MS);
-      setExpandedOuter(outerRadius + SLICE_EXPAND_PX * easeOutCubic(progress));
-      if (progress < 1) frame = requestAnimationFrame(tick);
-    };
-
-    setExpandedOuter(outerRadius);
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [outerRadius]);
-
-  return (
-    <Sector
-      cx={cx}
-      cy={cy}
-      innerRadius={innerRadius}
-      outerRadius={expandedOuter}
-      startAngle={startAngle}
-      endAngle={endAngle}
-      fill={fill}
-      stroke="hsl(var(--card))"
-      strokeWidth={2}
-    />
-  );
-}
-
-export function OrgBookingStatusDonut({ slices, className }: Props) {
+export function OrgBookingStatusDonut({ slices, rangeLabel, className }: Props) {
   const data = useMemo(() => normalizeStatusSlices(slices), [slices]);
   const chartData = useMemo(() => data.filter((item) => item.count > 0), [data]);
   const total = useMemo(() => chartData.reduce((sum, item) => sum + item.count, 0), [chartData]);
-  const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
-  const active = activeIndex != null ? chartData[activeIndex] : null;
   const summary = data
     .filter((item) => item.count > 0)
     .map((item) => `${item.label}: ${item.count}`)
@@ -150,7 +75,7 @@ export function OrgBookingStatusDonut({ slices, className }: Props) {
       <AdminSurfaceCardHeader
         icon={PieChartIcon}
         title="Booking Status"
-        description="Active bookings by status"
+        description={rangeLabel ? `Bookings by status · ${rangeLabel}` : 'Bookings by status'}
         iconClassName="bg-muted/80"
       />
 
@@ -170,12 +95,7 @@ export function OrgBookingStatusDonut({ slices, className }: Props) {
                   nameKey="label"
                   stroke="hsl(var(--card))"
                   strokeWidth={2}
-                  activeIndex={activeIndex ?? undefined}
-                  activeShape={ActiveSlice}
-                  onMouseEnter={(_, index) => setActiveIndex(index)}
-                  onMouseLeave={() => setActiveIndex(null)}
-                  onClick={(_, index) => setActiveIndex(index)}
-                  style={{ cursor: 'pointer', outline: 'none' }}
+                  isAnimationActive={false}
                 >
                   {chartData.map((entry) => (
                     <Cell key={entry.status} fill={entry.color} />
@@ -184,32 +104,13 @@ export function OrgBookingStatusDonut({ slices, className }: Props) {
               </PieChart>
             </ResponsiveContainer>
 
-            {active ? (
-              <div className="pointer-events-none absolute left-1/2 top-[10%] z-20 -translate-x-1/2">
-                <DonutTooltipContent label={active.label} count={active.count} />
-              </div>
-            ) : null}
-
             <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center px-6 text-center">
-              {active ? (
-                <>
-                  <p className="text-foreground text-2xl font-bold tabular-nums tracking-tight sm:text-3xl">
-                    {active.count}
-                  </p>
-                  <p className="text-muted-foreground mt-0.5 max-w-[9rem] truncate text-[11px] font-medium sm:text-xs">
-                    {active.label}
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="text-foreground text-2xl font-bold tabular-nums tracking-tight sm:text-3xl">
-                    {total}
-                  </p>
-                  <p className="text-muted-foreground mt-0.5 text-[11px] font-medium sm:text-xs">
-                    Active
-                  </p>
-                </>
-              )}
+              <p className="text-foreground text-2xl font-bold tabular-nums tracking-tight sm:text-3xl">
+                {total}
+              </p>
+              <p className="text-muted-foreground mt-0.5 text-[11px] font-medium sm:text-xs">
+                Bookings
+              </p>
             </div>
           </>
         ) : (
@@ -218,12 +119,12 @@ export function OrgBookingStatusDonut({ slices, className }: Props) {
               className="border-muted size-[160px] rounded-full border-[18px] sm:size-[200px] sm:border-[22px]"
               aria-hidden
             />
-            <p className="text-muted-foreground text-sm">No active bookings</p>
+            <p className="text-muted-foreground text-sm">No bookings in this period</p>
           </div>
         )}
       </div>
 
-      <ul className="sr-only" aria-label={summary || 'No active bookings by status'}>
+      <ul className="sr-only" aria-label={summary || 'No bookings by status in this period'}>
         {data.map((item) => (
           <li key={item.status}>
             {item.label}: {item.count}

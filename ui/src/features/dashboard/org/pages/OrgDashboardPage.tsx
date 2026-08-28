@@ -180,7 +180,7 @@ export function OrgDashboardPage() {
 
             <div className="grid min-w-0 items-stretch gap-2.5 sm:gap-3 lg:grid-cols-2 lg:gap-4">
               <OrgRevenueBookingsChart data={data.trendSeries} isLoading={isLoading} />
-              <OrgBookingStatusDonut slices={data.statusBreakdown} />
+              <OrgBookingStatusDonut slices={data.statusBreakdown} rangeLabel={rangeLabel} />
               <OrgRecentBookingsList
                 orgSlug={orgSlug}
                 bookings={data.recentBookings}

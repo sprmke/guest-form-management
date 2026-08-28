@@ -40,6 +40,11 @@ export function RequirePropertyPermission({ section, children }: Props) {
     );
   }
 
+  // Help & Support is baseline access for every active property member (plan intent).
+  if (section === 'help-support' && data && !data.planLimited) {
+    return children;
+  }
+
   if (isError || !data || !canViewPropertySection(data.permissions, section)) {
     const fallback = findFirstAllowedSection(data?.permissions);
     if (fallback) {

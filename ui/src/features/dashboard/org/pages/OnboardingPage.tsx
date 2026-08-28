@@ -9,6 +9,7 @@ import { hostLoginPath } from '@/features/guest/auth/lib/hostAuthPaths';
 
 import { RequireAdmin } from '@/features/dashboard/bookings/components/RequireAdmin';
 import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
+import { OnboardingFeatureShowcase } from '@/features/dashboard/org/components/onboarding/OnboardingFeatureShowcase';
 import { OnboardingHostAccessVerificationSection } from '@/features/dashboard/org/components/onboarding/OnboardingHostAccessVerificationSection';
 import { OnboardingHostVerificationSection } from '@/features/dashboard/org/components/onboarding/OnboardingHostVerificationSection';
 import { OnboardingParkingVerificationSection } from '@/features/dashboard/org/components/onboarding/OnboardingParkingVerificationSection';
@@ -35,7 +36,10 @@ import {
   submitListingAuthorization,
   uploadListingAuthorizationAsset,
 } from '@/features/dashboard/org/lib/listingAuthorizationApi';
-import { resolveOrgLandingPath } from '@/features/dashboard/org/lib/orgLanding';
+import {
+  HOST_VERIFICATION_REJECTED_PATH,
+  resolveOrgLandingPath,
+} from '@/features/dashboard/org/lib/orgLanding';
 import { DUPLICATE_ORGANIZATION_NAME_MESSAGE } from '@/features/dashboard/org/lib/orgSettingsValidation';
 import {
   type OrgSocialProofPlatform,
@@ -99,6 +103,7 @@ import {
   resolveNameAvailabilityState,
 } from '@/lib/availabilityCheckState';
 import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
+import { usePageTitle } from '@/lib/pageTitle';
 import { cn } from '@/lib/utils';
 import {
   validateFullPersonName,
@@ -106,7 +111,6 @@ import {
 } from '@/lib/validation/fieldValidation';
 import { getManilaYmdToday } from '@/utils/format/dates';
 
-const ONBOARDING_STEPS = 3;
 type OnboardingStep = 1 | 2 | 3;
 
 function orgContactNameError(value: string): string | null {
@@ -191,6 +195,7 @@ function HostModeOption({
 }
 
 export function OnboardingPage() {
+  usePageTitle('Kame Homes - Onboarding');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { email, name, session } = useAdminSession();
@@ -583,9 +588,9 @@ export function OnboardingPage() {
       </RequireAdmin>
     );
   }
-  // Hard-rejected-only owners may start a new application here.
+  // Stay when no usable org (none, plan-limited-only, or hard-rejected-only).
   const landing = resolveOrgLandingPath(existingOrgs);
-  if (existingOrgs.length > 0 && landing !== '/verification-rejected') {
+  if (landing !== '/onboarding' && landing !== HOST_VERIFICATION_REJECTED_PATH) {
     return (
       <RequireAdmin>
         <Navigate to={landing} replace />
@@ -595,25 +600,10 @@ export function OnboardingPage() {
 
   return (
     <RequireAdmin>
-      <div className="flex min-h-screen">
-        <div
-          className="bg-sidebar-primary relative hidden flex-col justify-between overflow-hidden p-10 lg:flex lg:w-[46%] xl:w-[44%]"
-          aria-hidden="true"
-        >
-          <div className="relative z-10 space-y-4">
-            <h1 className="text-[48px] font-extrabold leading-none tracking-tight text-white">
-              Kame Home
-            </h1>
-            <p className="max-w-sm text-[15px] leading-relaxed text-white/85">
-              Set up your organization and first rental unit or parking slot.
-            </p>
-          </div>
-          <p className="relative z-10 text-xs font-medium uppercase tracking-wider text-white/60">
-            Step {step} of {ONBOARDING_STEPS}
-          </p>
-        </div>
+      <div className="grid min-h-screen lg:grid-cols-2">
+        <OnboardingFeatureShowcase />
 
-        <div className="bg-background relative flex flex-1 flex-col px-3 py-8 sm:px-6 sm:py-12">
+        <div className="bg-muted/25 lg:bg-muted/15 relative flex min-w-0 flex-col px-3 py-8 sm:px-6 sm:py-12">
           <div className="absolute right-3 top-3 sm:right-6 sm:top-6">
             <ThemeToggle />
           </div>
