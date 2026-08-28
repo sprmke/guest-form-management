@@ -1,18 +1,40 @@
-import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import useEmblaCarousel from 'embla-carousel-react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { ShowcaseCanvas } from '@/features/guest/marketing/showcase/components/ShowcaseCanvas';
-import { ShowcaseGalleryStrip } from '@/features/guest/marketing/showcase/components/ShowcaseGalleryStrip';
-import { ShowcaseHostSection } from '@/features/guest/marketing/showcase/components/ShowcaseHostSection';
+import { ShowcaseGalleryCarousel } from '@/features/guest/marketing/showcase/components/ShowcaseGalleryCarousel';
+import { ShowcaseReviewsCarousel } from '@/features/guest/marketing/showcase/components/ShowcaseReviewsCarousel';
+import { EditorialHostSection } from '@/features/guest/marketing/showcase/templates/shared/ShowcaseHostSections';
 import { ShowcaseLocationSection } from '@/features/guest/marketing/showcase/components/ShowcaseLocationSection';
 import { ShowcaseReveal } from '@/features/guest/marketing/showcase/components/ShowcaseMotion';
 import { useShowcaseTheme } from '@/features/guest/marketing/showcase/components/ShowcaseThemeProvider';
 import { useShowcaseStyle } from '@/features/guest/marketing/showcase/components/ShowcaseStyleProvider';
 import { useShowcaseContainedChrome } from '@/features/guest/marketing/showcase/lib/showcaseChrome';
-import { resolveShowcaseMotionReduced } from '@/features/guest/marketing/showcase/lib/showcaseStyleConfig';
+import {
+  resolveShowcaseCssColumnsClass,
+  resolveShowcaseGridColsClass,
+  resolveShowcasePrimaryCtaHref,
+  resolveShowcaseSecondaryCtaHref,
+  showcaseCtaSectionPyClass,
+  showcaseSectionPyClass,
+  shouldRenderShowcaseSection,
+} from '@/features/guest/marketing/showcase/lib/showcaseSectionLayout';
+import {
+  resolveShowcaseCanvasPaused,
+  resolveShowcaseMotionReduced,
+} from '@/features/guest/marketing/showcase/lib/showcaseStyleConfig';
+import {
+  showcaseBodyTextClass,
+  showcaseEditorialSectionHeadingClass,
+  showcaseScaledClampClass,
+} from '@/features/guest/marketing/showcase/lib/showcaseTypographyScale';
+import { ShowcaseSectionIntro } from '@/features/guest/marketing/showcase/components/ShowcaseSectionIntro';
+import {
+  ShowcaseCtaActions,
+  primaryButtonClass,
+  secondaryButtonClass,
+  showcaseCtaBaseClass,
+} from '@/features/guest/marketing/showcase/components/ShowcaseCtaActions';
 import type {
   ShowcaseData,
   ShowcaseResolvedSection,
@@ -32,7 +54,7 @@ function EditorialHero({
   const containedChrome = useShowcaseContainedChrome(data.embed);
   const motionReduced = resolveShowcaseMotionReduced(data.config, data.reducedMotion, data.embed);
   const images = section.images.length > 0 ? section.images : [];
-  const canvasOff = data.embed || data.reducedMotion || !data.config.motion.canvas;
+  const canvasOff = resolveShowcaseCanvasPaused(data.config, data.reducedMotion);
   const placeholders =
     mode === 'dark'
       ? ['bg-[#2a241c]', 'bg-[#252019]', 'bg-[#1f1a15]']
@@ -48,39 +70,34 @@ function EditorialHero({
       )}
     >
       <ShowcaseCanvas variant="grain" paused={canvasOff} className="opacity-30" />
-      <div className="@lg:grid-cols-12 @lg:items-end @lg:gap-10 relative z-10 mx-auto grid max-w-6xl grid-cols-1 gap-6">
-        <div className="@lg:col-span-5 min-w-0">
+      <div className="@lg:grid-cols-12 @lg:items-center @lg:gap-10 relative z-10 mx-auto grid max-w-6xl grid-cols-1 gap-6">
+        <div className="@lg:col-span-5 @lg:py-4 min-w-0">
           <ShowcaseReveal reduced={motionReduced}>
-            <p className={cn('text-base tracking-[0.06em]', tokens.muted)}>{data.locationLabel}</p>
+            <p className={cn('text-base tracking-[0.06em]', tokens.muted)}>{data.heroEyebrow}</p>
             <h1
               className={cn(
                 displayFontClass,
-                '@sm:text-6xl @lg:text-7xl mt-3 text-[clamp(1.875rem,7vw,2.75rem)] leading-[0.98] tracking-tight'
+                showcaseScaledClampClass(1.875, 7, 4.5),
+                'mt-3 leading-[0.98] tracking-tight'
               )}
             >
               {section.heading === 'Your stay' ? data.propertyName : section.heading}
             </h1>
             {section.subheading ? (
-              <p className={cn('mt-4 max-w-md text-base leading-relaxed', tokens.body)}>
+              <p className={cn('mt-4 max-w-md', showcaseBodyTextClass, tokens.body)}>
                 {section.subheading}
               </p>
             ) : null}
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
-                to={data.formPath}
-                className={cn(
-                  'inline-flex min-h-11 cursor-pointer items-center justify-center rounded-full px-7 text-base font-medium transition-opacity duration-200 hover:opacity-90',
-                  tokens.primaryBtn
-                )}
+                to={resolveShowcasePrimaryCtaHref(section.ctaTarget, data)}
+                className={cn(showcaseCtaBaseClass, primaryButtonClass('editorial', mode))}
               >
                 {section.ctaLabel || 'Request stay'}
               </Link>
               <Link
-                to={data.calendarPath}
-                className={cn(
-                  'inline-flex min-h-11 cursor-pointer items-center justify-center rounded-full border px-7 text-base font-medium',
-                  tokens.secondaryBtn
-                )}
+                to={resolveShowcaseSecondaryCtaHref(data)}
+                className={cn(showcaseCtaBaseClass, secondaryButtonClass('editorial', mode))}
               >
                 Check dates
               </Link>
@@ -130,111 +147,6 @@ function EditorialHero({
   );
 }
 
-function TestimonialCarousel({ data }: { data: ShowcaseData }) {
-  const { tokens } = useShowcaseTheme();
-  const items =
-    data.testimonials.length > 0
-      ? data.testimonials
-      : [{ id: 'empty', author: 'Guests', body: 'Reviews will appear here.', rating: null }];
-  const [emblaRef, emblaApi] = useEmblaCarousel({
-    loop: items.length > 1,
-    align: 'start',
-    skipSnaps: false,
-  });
-  const [selected, setSelected] = useState(0);
-
-  const onSelect = useCallback(() => {
-    if (!emblaApi) return;
-    setSelected(emblaApi.selectedScrollSnap());
-  }, [emblaApi]);
-
-  useEffect(() => {
-    if (!emblaApi) return;
-    onSelect();
-    emblaApi.on('select', onSelect);
-    return () => {
-      emblaApi.off('select', onSelect);
-    };
-  }, [emblaApi, onSelect]);
-
-  if (data.reducedMotion || data.embed) {
-    return (
-      <div className="mt-5 flex gap-4 overflow-x-auto pb-2">
-        {items.map((item) => (
-          <blockquote
-            key={item.id}
-            className={cn(
-              'min-w-[min(100%,280px)] max-w-sm shrink-0 rounded-md p-6',
-              tokens.testimonialCard
-            )}
-          >
-            <p className={tokens.testimonialQuote}>{item.body}</p>
-            <footer
-              className={cn('mt-4 text-sm uppercase tracking-[0.1em]', tokens.testimonialFooter)}
-            >
-              {item.author}
-            </footer>
-          </blockquote>
-        ))}
-      </div>
-    );
-  }
-
-  return (
-    <div className="mt-5">
-      <div className="overflow-hidden" ref={emblaRef}>
-        <div className="flex gap-4">
-          {items.map((item) => (
-            <blockquote
-              key={item.id}
-              className={cn(
-                '@sm:basis-[60%] @lg:basis-[42%] min-w-0 shrink-0 grow-0 basis-[88%] rounded-md p-6',
-                tokens.testimonialCard
-              )}
-            >
-              <p className={tokens.testimonialQuote}>{item.body}</p>
-              <footer
-                className={cn('mt-4 text-sm uppercase tracking-[0.1em]', tokens.testimonialFooter)}
-              >
-                {item.author}
-              </footer>
-            </blockquote>
-          ))}
-        </div>
-      </div>
-      {items.length > 1 ? (
-        <div className="mt-6 flex items-center gap-3">
-          <button
-            type="button"
-            className={cn(
-              'flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-full border',
-              tokens.testimonialControl
-            )}
-            aria-label="Previous review"
-            onClick={() => emblaApi?.scrollPrev()}
-          >
-            <ChevronLeft className="size-4" aria-hidden />
-          </button>
-          <button
-            type="button"
-            className={cn(
-              'flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-full border',
-              tokens.testimonialControl
-            )}
-            aria-label="Next review"
-            onClick={() => emblaApi?.scrollNext()}
-          >
-            <ChevronRight className="size-4" aria-hidden />
-          </button>
-          <p className={cn('text-sm uppercase tracking-[0.12em]', tokens.muted)}>
-            {selected + 1} / {items.length}
-          </p>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 export function EditorialSections({ data }: { data: ShowcaseData }) {
   const { tokens } = useShowcaseTheme();
   const hero = data.sections.find((s) => s.id === 'hero');
@@ -244,7 +156,7 @@ export function EditorialSections({ data }: { data: ShowcaseData }) {
       {hero ? <EditorialHero data={data} section={hero} /> : null}
 
       {data.sections
-        .filter((s) => s.id !== 'hero')
+        .filter((s) => s.id !== 'hero' && shouldRenderShowcaseSection(s, data))
         .map((section) => {
           if (section.id === 'gallery') {
             return (
@@ -252,18 +164,23 @@ export function EditorialSections({ data }: { data: ShowcaseData }) {
                 key={section.id}
                 id={section.id}
                 data-page-editor-anchor={section.id}
-                className="@sm:py-24 scroll-mt-20 py-16"
+                className={cn('scroll-mt-20', showcaseSectionPyClass)}
               >
                 <div className="@sm:px-6 @lg:px-8 mx-auto max-w-6xl px-4">
                   <ShowcaseReveal reduced={data.reducedMotion}>
-                    <h2 className="font-cormorant @sm:text-5xl text-3xl tracking-tight">
-                      {section.heading}
-                    </h2>
+                    <ShowcaseSectionIntro
+                      section={section}
+                      headingClassName={showcaseEditorialSectionHeadingClass}
+                      tokens={tokens}
+                      showBody={false}
+                    />
                   </ShowcaseReveal>
                   <div className="mt-5">
-                    <ShowcaseGalleryStrip
+                    <ShowcaseGalleryCarousel
                       images={section.images}
                       propertyName={data.propertyName}
+                      variant="editorial"
+                      chrome="full"
                       imageClassName="rounded-sm"
                     />
                   </div>
@@ -278,15 +195,22 @@ export function EditorialSections({ data }: { data: ShowcaseData }) {
                 key={section.id}
                 id={section.id}
                 data-page-editor-anchor={section.id}
-                className="@sm:py-24 scroll-mt-20 py-16"
+                className={cn('scroll-mt-20', showcaseSectionPyClass)}
               >
                 <div className="@sm:px-6 @lg:px-8 mx-auto max-w-6xl px-4">
                   <ShowcaseReveal reduced={data.reducedMotion}>
-                    <h2 className="font-cormorant @sm:text-5xl text-3xl tracking-tight">
-                      {section.heading}
-                    </h2>
+                    <ShowcaseSectionIntro
+                      section={section}
+                      headingClassName={showcaseEditorialSectionHeadingClass}
+                      tokens={tokens}
+                      showBody={false}
+                    />
                   </ShowcaseReveal>
-                  <TestimonialCarousel data={data} />
+                  <ShowcaseReviewsCarousel
+                    reviews={data.testimonials}
+                    variant="editorial"
+                    className="mt-5"
+                  />
                 </div>
               </section>
             );
@@ -298,18 +222,18 @@ export function EditorialSections({ data }: { data: ShowcaseData }) {
                 key={section.id}
                 data={data}
                 section={section}
-                headingClassName="font-cormorant @sm:text-5xl text-3xl tracking-tight"
+                headingClassName={showcaseEditorialSectionHeadingClass}
               />
             );
           }
 
           if (section.id === 'host') {
             return (
-              <ShowcaseHostSection
+              <EditorialHostSection
                 key={section.id}
                 data={data}
                 section={section}
-                headingClassName="font-cormorant @sm:text-5xl text-3xl tracking-tight"
+                headingClassName={showcaseEditorialSectionHeadingClass}
               />
             );
           }
@@ -320,38 +244,29 @@ export function EditorialSections({ data }: { data: ShowcaseData }) {
                 key={section.id}
                 id={section.id}
                 data-page-editor-anchor={section.id}
-                className="@sm:py-28 scroll-mt-20 py-20"
+                className={cn('scroll-mt-20', showcaseCtaSectionPyClass)}
               >
-                <div className="@sm:px-6 mx-auto max-w-3xl px-4 text-center">
+                <div
+                  className={cn(
+                    '@sm:px-10 @sm:py-14 mx-auto max-w-3xl px-4 py-10 text-center',
+                    tokens.ctaSurface
+                  )}
+                >
                   <ShowcaseReveal reduced={data.reducedMotion}>
-                    <h2 className="font-cormorant @sm:text-5xl text-3xl tracking-tight">
-                      {section.heading}
-                    </h2>
-                    {section.subheading ? (
-                      <p className={cn('mx-auto mt-3 max-w-md text-base', tokens.subheading)}>
-                        {section.subheading}
-                      </p>
-                    ) : null}
-                    <div className="mt-8 flex flex-wrap justify-center gap-3">
-                      <Link
-                        to={data.formPath}
-                        className={cn(
-                          'inline-flex min-h-11 cursor-pointer items-center justify-center rounded-full px-7 text-base font-medium',
-                          tokens.primaryBtn
-                        )}
-                      >
-                        {section.ctaLabel || 'Book now'}
-                      </Link>
-                      <Link
-                        to={data.calendarPath}
-                        className={cn(
-                          'inline-flex min-h-11 cursor-pointer items-center justify-center rounded-full border px-7 text-base font-medium',
-                          tokens.secondaryBtn
-                        )}
-                      >
-                        View calendar
-                      </Link>
-                    </div>
+                    <ShowcaseSectionIntro
+                      section={section}
+                      headingClassName={showcaseEditorialSectionHeadingClass}
+                      tokens={tokens}
+                      align="center"
+                    />
+                    <ShowcaseCtaActions
+                      data={data}
+                      ctaLabel={section.ctaLabel}
+                      ctaTarget={section.ctaTarget}
+                      primaryLabel="Book now"
+                      secondaryLabel="View calendar"
+                      className="mt-6"
+                    />
                   </ShowcaseReveal>
                 </div>
               </section>
@@ -377,19 +292,19 @@ function EditorialGeneric({
     <section
       id={section.id}
       data-page-editor-anchor={section.id}
-      className="@sm:py-24 scroll-mt-20 py-16"
+      className={cn('scroll-mt-20', showcaseSectionPyClass)}
     >
       <div className="@sm:px-6 @lg:px-8 mx-auto max-w-6xl px-4">
         <ShowcaseReveal reduced={data.reducedMotion}>
-          <h2 className="font-cormorant @sm:text-5xl text-3xl tracking-tight">{section.heading}</h2>
-          {section.subheading ? (
-            <p className={cn('mt-2 max-w-2xl text-base', tokens.subheading)}>
-              {section.subheading}
-            </p>
-          ) : null}
+          <ShowcaseSectionIntro
+            section={section}
+            headingClassName={showcaseEditorialSectionHeadingClass}
+            tokens={tokens}
+            showBody={section.id !== 'amenities' && section.id !== 'highlights'}
+          />
         </ShowcaseReveal>
         {section.id === 'amenities' ? (
-          <ul className="@sm:columns-2 @lg:columns-3 mt-5 columns-1 gap-8">
+          <ul className={cn(resolveShowcaseCssColumnsClass(section.columns, 3), 'mt-5')}>
             {data.amenities.map((item) => (
               <li
                 key={item}
@@ -401,7 +316,7 @@ function EditorialGeneric({
           </ul>
         ) : null}
         {section.id === 'highlights' ? (
-          <ul className="@sm:grid-cols-2 @lg:grid-cols-4 mt-5 grid grid-cols-1 gap-3">
+          <ul className={cn(resolveShowcaseGridColsClass(section.columns, 4), 'mt-5')}>
             {data.highlights.map((item) => (
               <li
                 key={item}
@@ -415,7 +330,7 @@ function EditorialGeneric({
             ))}
           </ul>
         ) : null}
-        {section.body && section.id !== 'amenities' && section.id !== 'highlights' ? (
+        {section.body && (section.id === 'amenities' || section.id === 'highlights') ? (
           <p className={cn('@sm:text-lg mt-5 max-w-2xl text-base leading-relaxed', tokens.body)}>
             {section.body}
           </p>

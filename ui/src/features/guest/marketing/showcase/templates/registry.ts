@@ -8,7 +8,7 @@ import type {
 export type ShowcaseTemplateEntry = {
   key: ShowcaseTemplateKey;
   label: string;
-  variant: 'aurora' | 'monolith' | 'editorial';
+  variant: 'aurora' | 'monolith' | 'editorial' | 'verso' | 'atlas' | 'haven';
   component: ComponentType<{ data: ShowcaseData }>;
 };
 
@@ -45,6 +45,36 @@ export const SHOWCASE_TEMPLATE_REGISTRY: ShowcaseTemplateEntry[] = [
           default: m.EditorialTemplate,
         })
       )
+    ),
+  },
+  {
+    key: 'showcase-verso',
+    label: 'Verso',
+    variant: 'verso',
+    component: lazy(() =>
+      import('@/features/guest/marketing/showcase/templates/verso/VersoTemplate').then((m) => ({
+        default: m.VersoTemplate,
+      }))
+    ),
+  },
+  {
+    key: 'showcase-atlas',
+    label: 'Atlas',
+    variant: 'atlas',
+    component: lazy(() =>
+      import('@/features/guest/marketing/showcase/templates/atlas/AtlasTemplate').then((m) => ({
+        default: m.AtlasTemplate,
+      }))
+    ),
+  },
+  {
+    key: 'showcase-haven',
+    label: 'Haven',
+    variant: 'haven',
+    component: lazy(() =>
+      import('@/features/guest/marketing/showcase/templates/haven/HavenTemplate').then((m) => ({
+        default: m.HavenTemplate,
+      }))
     ),
   },
 ];
