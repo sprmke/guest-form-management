@@ -35,6 +35,10 @@ Route: `/org/:orgSlug/property/:propertySlug/settings`
 
 Living operator spec for property settings: what each section does, how data is saved, and setup completeness. **Save Changes** persists only dirty sections that pass validation — incomplete required areas still show a red dot for setup tracking.
 
+### Permissions (Phase 5)
+
+Route/nav: `settings:view`. Each section has its own edit leaf (`settings.basicInfo:edit`, `settings.media:edit`, …). Shared listing fields (media, amenities, house rules, cancellation, socials) use the same `settings.*` ids from Public Pages (Q2). Integrations is `settings.integrations:view` only. Archive/restore: `settings.dangerZone:edit`. Permanent delete stays owner-only (D10). Payment OTP still required **in addition to** `settings.payment:edit`. Profile/content saves go through `update-property` with the matching section leaf (no longer owner-only).
+
 ---
 
 ## Host-facing knowledge
@@ -260,7 +264,7 @@ Per-property operational settings in `app_settings` (not `properties.settings`).
 
 **Save Changes** → `app-settings` PATCH (admin JWT + `property_id` scope).
 
-When payment methods change since last save (account fields **or** any method QR), **Save Changes** opens a verification modal (no header close control — use **Discard changes**). OTP is **not** sent automatically: the host taps **Send OTP** first; only then does the 6-digit input and **Verify and save** appear. A code is emailed to the **org owner only** (branded property email shell; subject **`Payment verification code — {listing}`**; OTP digits use the listing brand color darkened as needed for readable contrast on white). Copy differs by actor: owner → “You, **Name** (Owner), are saving **Payment settings**…” with a self-review caution; team member → “Your team member, **Name** (Role), is saving…” with “contact that person before approving.” Any team member with `settings:edit` can enter the code once the owner shares it. The server rejects payment PATCHes without a valid `settingsVerificationToken`. After a successful save, org + property team members receive a deduplicated notice email (listing name, actor name + role, timestamp Asia/Manila). Short liability copy remains in the modal footer.
+When payment methods change since last save (account fields **or** any method QR), **Save Changes** opens a verification modal (no header close control — use **Discard changes**). OTP is **not** sent automatically: the host taps **Send OTP** first; only then does the 6-digit input and **Verify and save** appear. A code is emailed to the **org owner only** (branded property email shell; subject **`Payment verification code — {listing}`**; OTP digits use the listing brand color darkened as needed for readable contrast on white). Copy differs by actor: owner → “You, **Name** (Owner), are saving **Payment settings**…” with a self-review caution; team member → “Your team member, **Name** (Role), is saving…” with “contact that person before approving.” Any team member with `settings.payment:edit` can enter the code once the owner shares it. The server rejects payment PATCHes without a valid `settingsVerificationToken`. After a successful save, org + property team members receive a deduplicated notice email (listing name, actor name + role, timestamp Asia/Manila). Short liability copy remains in the modal footer.
 
 **Account name** uses the same full-name rules as property contact name (first + last, min 2 characters each). **QR code** is optional on every payment method (each method has its own uploader). When **Payment** is dirty, **Save Changes** stays visible but is **disabled** until required payment fields are valid (provider, account name, account number) — QR absence does not block save. Guest payment step and `{{gcash_payment_section}}` (ready-for-check-in) render account details always and QR images only when uploaded.
 
@@ -334,7 +338,7 @@ Per-property overrides for the platform AI usage limits. NULL limits inherit the
 | Monthly call limit   | `monthly_call_limit`   | Blank = inherit from organization                  |
 | Daily cost USD limit | `daily_cost_usd_limit` | Blank = inherit from organization                  |
 
-Save path: section-local **Save** button → `PATCH ai-platform-property-settings?property_id=` (`settings:edit`). Hook: `useAiPlatformPropertySettings.ts` (added to `useAiPlatformSettings.ts`). UI: `PropertyAiPlatformSection.tsx`.
+Save path: section-local **Save** button → `PATCH ai-platform-property-settings?property_id=` (`settings.aiOverrides:edit` + plan `aiMonthlyCreditAllowance`). Hook: `useAiPlatformPropertySettings.ts` (added to `useAiPlatformSettings.ts`). UI: `PropertyAiPlatformSection.tsx`.
 
 ---
 
@@ -351,9 +355,9 @@ Opt-in AI voice assistant guests can talk to (check-in, wifi, parking, and other
 | Max per guest / day | `max_sessions_per_guest_per_day`                                           | Default 3; allowed **1–999**                                                    |
 | Max concurrent      | `max_concurrent_sessions`                                                  | Default 3, property-wide; allowed **1–50**                                      |
 
-Save path: page **Save Changes** → `PATCH voice-receptionist-settings?property_id=` when this section is dirty (`settings:edit`). Hook: `useVoiceReceptionistSettings.ts`. UI: `PropertyVoiceReceptionistSection.tsx` (controlled from `PropertySettingsCard.tsx`).
+Save path: page **Save Changes** → `PATCH voice-receptionist-settings?property_id=` when this section is dirty (`settings.voiceReceptionist:edit`; enabling also requires plan `aiReceptionist`). Hook: `useVoiceReceptionistSettings.ts`. UI: `PropertyVoiceReceptionistSection.tsx` (controlled from `PropertySettingsCard.tsx`).
 
-**Test voice** — outline button beside the voice picker. `POST voice-receptionist-voice-preview?property_id=` (`settings:edit`) runs a short Gemini TTS sample using the **Basic Information property name** (not tower + unit; e.g. _"Hi, I'm the Solea Ocean View receptionist…"_) and the selected prebuilt voice, then plays PCM audio in the browser. The client sends the current **Property Name** draft so unsaved edits are reflected. Uses Gemini API tokens (not a free local sample). Hook: `usePreviewVoiceReceptionistVoice`.
+**Test voice** — outline button beside the voice picker. `POST voice-receptionist-voice-preview?property_id=` (`settings.voiceReceptionist:edit`) runs a short Gemini TTS sample using the **Basic Information property name** (not tower + unit; e.g. _"Hi, I'm the Solea Ocean View receptionist…"_) and the selected prebuilt voice, then plays PCM audio in the browser. The client sends the current **Property Name** draft so unsaved edits are reflected. Uses Gemini API tokens (not a free local sample). Hook: `usePreviewVoiceReceptionistVoice`.
 
 **Plan gating:** Hidden from the secondary settings nav and the settings card unless the property is entitled to **`aiReceptionist`** (Business and above). When entitled, enable/save still require that feature server-side (`voice-receptionist-settings` PATCH, `voice-receptionist-start`).
 
@@ -380,13 +384,13 @@ booth UI; premium human concierge portrait). Admin settings fields above are unc
 
 ### Archive
 
-- Confirmation modal → `update-property` with `status: INACTIVE`
+- Confirmation modal → `update-property` with `status: INACTIVE` (`settings.dangerZone:edit`)
 - Does **not** delete data
 
 ### Restore
 
 - Shown when property is archived (Inactive)
-- Confirmation modal → `update-property` with `status: ACTIVE`
+- Confirmation modal → `update-property` with `status: ACTIVE` (`settings.dangerZone:edit`)
 - **409** when another org already has an ACTIVE listing for the same tower+unit — toast shows the server message; property stays Inactive
 
 ### Delete

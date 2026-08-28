@@ -2,7 +2,7 @@
 title: 'Property Guest Inbox'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-22
+updated: 2026-08-28
 ---
 
 # Property Guest Inbox
@@ -13,12 +13,12 @@ Route: `/org/:orgSlug/property/:propertySlug/inbox`
 
 ## Progress overview
 
-| Section       | E2E | Validation | Docs | Notes                                                           |
-| ------------- | --- | ---------- | ---- | --------------------------------------------------------------- |
-| Messages      | Yes | Yes        | Yes  | Web scoped to property; Meta = effective connection             |
-| Channels      | Yes | Yes        | Yes  | First connect becomes org-default Meta; later connects override |
-| Quick replies | Yes | Yes        | Yes  | Org-scoped templates; managed here with `inbox:manage`          |
-| Automation    | Yes | Yes        | Yes  | Org-scoped AI settings; managed here with `inbox:manage`        |
+| Section       | E2E | Validation | Docs | Notes                                                                                      |
+| ------------- | --- | ---------- | ---- | ------------------------------------------------------------------------------------------ |
+| Messages      | Yes | Yes        | Yes  | Web scoped to property; Meta = effective connection                                        |
+| Channels      | Yes | Yes        | Yes  | First connect becomes org-default Meta; later connects override                            |
+| Quick replies | Yes | Yes        | Yes  | Org-scoped templates; managed here with `inbox.quickReplies:*` / `inbox.automation:edit`   |
+| Automation    | Yes | Yes        | Yes  | Org-scoped AI settings; managed here with `inbox.quickReplies:*` / `inbox.automation:edit` |
 
 ## Overview
 
@@ -53,18 +53,22 @@ This is where you read and reply to guest messages for this property: website ch
 
 ## Permissions
 
-| Permission     | UI                                                                    |
-| -------------- | --------------------------------------------------------------------- |
-| `inbox:view`   | Open inbox, read threads                                              |
-| `inbox:reply`  | Send replies, AI suggest                                              |
-| `inbox:manage` | Channels connect/disconnect, quick replies, automation, full backfill |
+| Permissions                                    | UI                                                                  |
+| ---------------------------------------------- | ------------------------------------------------------------------- |
+| `inbox:view`                                   | Open inbox, read threads                                            |
+| `inbox.messages:edit`                          | Send replies, AI suggest                                            |
+| `inbox.channels:add` / `:delete`               | Connect / disconnect Meta (+ full backfill); Channels manage button |
+| `inbox.quickReplies:add` / `:edit` / `:delete` | Quick reply CRUD; Quick replies manage button                       |
+| `inbox.automation:edit`                        | Automation settings; Automation manage button                       |
+
+Manage chrome is **leaf-split**: Channels / Quick replies / Automation buttons and modal tabs only appear when the matching leaves above are granted (not a single umbrella manage flag).
 
 ## Behavior
 
 - **Manage actions:** Desktop (`lg+`) shows separate header buttons — **Channels**, **Quick replies**, **Automation** — each opening its modal. Mobile (`max-lg`) groups them in the hero **Inbox actions** menu (bottom sheet).
 - **Channel order:** Inbox tabs, quick-reply filters/groups, and automation platform toggles use **All** (when present), then **Chat**, **Facebook**, **Instagram**.
 - **Manage AI response:** textarea label is **Tone & rules**; a **?** tooltip explains that property facts and Quick replies are already injected. **Reset to default** restores the shipped starter copy.
-- **View property** on web threads → admin property dashboard (`propertyDashboardPath`), not the public listing.
+- **Thread list:** stay dates + channel pill when relevant; no property-name badge (inbox is already property- or parking-scoped).
 - **First Meta connect** from a property (when no org-default Page exists) writes the **org-default** connection so Marketing Studio and other properties can inherit it.
 - **Webhook health:** connected Meta rows record `webhook_last_verified_at` and retry attempts. After repeated failed checks, Channels shows **Fix connection**, which re-verifies and re-subscribes the messaging webhook fields in place — without disconnecting or wiping history.
 - **Proactive Meta warnings:** Channels can also surface invalid tokens or soon-expiring tokens before a host hits a send failure. **Reconnect** refreshes the full OAuth grant; **Fix connection** remains the lighter webhook-only repair.
@@ -84,18 +88,18 @@ This is where you read and reply to guest messages for this property: website ch
 
 ## API reference
 
-| Function                             | Notes                                                                                                                    |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
-| `meta-inbox-*`                       | OAuth / status / disconnect / backfill — require `property_id`; `meta-inbox-oauth-start` also requires `metaChatChannel` |
-| `meta-inbox-resubscribe`             | Re-verify + repair Page webhook in place (`inbox:manage`)                                                                |
-| `social-inbox-threads`               | Scoped list                                                                                                              |
-| `social-inbox-messages`              | Messages / mark read / edit / unsend                                                                                     |
-| `social-inbox-send`                  | Replies; optional `useHumanAgentTag` for 24h–7d Meta DMs                                                                 |
-| `social-inbox-templates`             | Quick reply CRUD (`inbox:manage` + `property_id`); POST/PATCH also require `quickReplies` — GET/DELETE stay ungated      |
-| `social-inbox-settings`              | Automation GET/PATCH (`inbox:manage` + `property_id`)                                                                    |
-| `social-inbox-ai-suggest`            | AI draft (`inbox:reply` + `property_id`)                                                                                 |
-| `issue-booking-document-share-token` | Issue/reuse the GAF/Pet share token for a booking (`bookings:workflow` + `property_id`)                                  |
-| `get-guest-booking-document`         | Public GET — resolves `?token=&doc=gaf\|pet` to a fresh signed URL                                                       |
+| Function                             | Notes                                                                                                                                                                                                   |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `meta-inbox-*`                       | OAuth / status / disconnect / backfill — require `property_id`; channel connect uses `inbox.channels:add` (`meta-inbox-oauth-start` / `meta-inbox-oauth-pages` / complete) + `metaChatChannel` on start |
+| `meta-inbox-resubscribe`             | Re-verify + repair Page webhook in place (`inbox.channels:add`)                                                                                                                                         |
+| `social-inbox-threads`               | Scoped list                                                                                                                                                                                             |
+| `social-inbox-messages`              | Messages / mark read / edit / unsend                                                                                                                                                                    |
+| `social-inbox-send`                  | Replies; optional `useHumanAgentTag` for 24h–7d Meta DMs                                                                                                                                                |
+| `social-inbox-templates`             | Quick reply CRUD (`inbox.quickReplies:*` + `property_id`); POST/PATCH also require `quickReplies` — GET/DELETE stay ungated                                                                             |
+| `social-inbox-settings`              | Automation GET/PATCH (`inbox.automation:edit` + `property_id`)                                                                                                                                          |
+| `social-inbox-ai-suggest`            | AI draft (`inbox.messages:edit` + `property_id`)                                                                                                                                                        |
+| `issue-booking-document-share-token` | Issue/reuse the GAF/Pet share token for a booking (`bookings.detail.workflow:edit` + `property_id`)                                                                                                     |
+| `get-guest-booking-document`         | Public GET — resolves `?token=&doc=gaf\|pet` to a fresh signed URL                                                                                                                                      |
 
 ## Implementation map
 

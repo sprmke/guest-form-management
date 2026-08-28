@@ -2,7 +2,7 @@
 title: 'Finance — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-24
+updated: 2026-08-26
 ---
 
 # Finance — operator guide
@@ -143,9 +143,25 @@ Client-side PDF generation (no export round-trip beyond fetching the needed data
 | Stays ledger     | Stay rows for the period (hidden on parking scope) |
 | Transactions     | Manual operating transactions for the period       |
 
+**PDF layout (shared `@/lib/pdf/*`):** Soft page canvas; masthead **`Finance Report - {unit}`** + **`Date Range:`** subtitle; Plus Jakarta Sans (ExtraBold masthead/hero, Bold section titles); bordered KPI stat cards; white table header/footer rows matching body styling; status and money columns use app semantic colors (badge tones, green/red/amber). Category column left-aligned; amount columns right-aligned. Stays **Host net** footer is one combined total (`est` when in-progress stays included). Transactions KPI cards above table; table foot shows net only. Footer: `{tower/unit} · Finance`. Amounts are PHP.
+
 A separate **`finance-export`** edge function exists for server-generated CSV downloads but is not currently wired to any UI action — the shipped **Export report** menu builds PDFs client-side from the same summary/line-item/booking data already fetched for the page.
 
-**Plan gating (`financeReporting`, Starter+):** the underlying finance data (summary cards, charts, ledger) is visible on every tier including Free — only the **Export report** action itself is gated. Client: `useFeatureGate('financeReporting')` disables the menu trigger and opens the upgrade modal on click, with a solid `TierBadge` anchored to the **top-right corner** of the Export button (not inside the label). Server: `finance-export` also checks `financeReporting` (via `requirePropertyFeature`/`requireOrgPropertyFeature`, using `resolveListingEntitlementPropertyId` so a parking-scoped export resolves to the org's first active property) for integrity, even though the client never calls it today — bypassing the client gate would only let a Free-tier host manually recreate the report from data already visible on-screen, not access anything new.
+**Plan gating (`financeReporting`, Starter+):** Export also requires **`finance.export:view`** (permission = visibility; plan = actionability). The underlying finance data (summary cards, charts, ledger) is visible with `finance:view` on every tier including Free. Client: `useFeatureGate('financeReporting')` reads the full feature set from **`property-entitlements`** (every `PlanFeatures` key must be present — omitted keys are treated as off). When gated, the menu opens the upgrade modal, with a solid `TierBadge` on the Export button. Server: `finance-export` uses `requirePropertyPermissionAndFeature(..., 'finance.export:view', 'financeReporting')` for property scope (parking scope still uses `finance:view` + plan until Phase 9).
+
+---
+
+## Permissions
+
+| Capability         | Required permission            |
+| ------------------ | ------------------------------ |
+| Open Finance route | `finance:view`                 |
+| Add transaction    | `finance.transactions:add`     |
+| Edit transaction   | `finance.transactions:edit`    |
+| Delete transaction | `finance.transactions:delete`  |
+| Export report      | `finance.export:view` (+ plan) |
+
+Legacy stored `finance:edit` expands to all transaction + export leaves. Parking finance still uses coarse `finance:edit` for mutations until Phase 9.
 
 ---
 

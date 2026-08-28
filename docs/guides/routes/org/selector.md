@@ -23,13 +23,14 @@ Route: `/org`
 
 Authenticated hosts hitting **`/org`** never see an organization picker. The page loads **`list-organizations`**, then redirects:
 
-| Condition        | Destination                                                                                                    |
-| ---------------- | -------------------------------------------------------------------------------------------------------------- |
-| One or more orgs | **`/org/:slug/dashboard`** — last-used slug from `localStorage` when still accessible, otherwise the first org |
-| Zero orgs        | **`/onboarding`**                                                                                              |
-| List error       | **`/onboarding`**                                                                                              |
+| Condition                                                   | Destination                                                                                                    |
+| ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| One or more usable orgs                                     | **`/org/:slug/dashboard`** — last-used slug from `localStorage` when still accessible, otherwise the first org |
+| Zero orgs, or only plan-limited seats (`planLimited: true`) | **`/onboarding`** — start a new organization                                                                   |
+| All orgs hard-rejected                                      | **`/verification-rejected`**                                                                                   |
+| List error                                                  | **`/onboarding`**                                                                                              |
 
-Users may be **assigned** to multiple orgs (owner, org admin, or property member) and switch via the sidebar tenant switcher. They **cannot create** a second owned org — onboarding redirects away when any org already exists, and **`create-organization`** returns **409** if the caller already owns one.
+Usable orgs exclude plan-limited seats and hard-rejected host verification. Users may be **assigned** to multiple orgs (owner, org admin, or property member) and switch via the sidebar tenant switcher. They **cannot create** a second owned org — onboarding redirects away when a usable owned org already exists, and **`create-organization`** returns **409** if the caller already owns one (hard-rejected owners may start a new application).
 
 ---
 
@@ -51,7 +52,8 @@ Visiting the organization hub does not show a list of organizations to pick from
 ## Behavior / edge cases
 
 - **Property-only members** who land on an org dashboard are redirected by **`PropertyMemberOrgRedirect`** to an assigned property. If that org has no properties, try another accessible org; otherwise show access denied (never loop back to `/org` forever).
-- Other failed context guards (`RequireOrgContext`, `RequireParkingContext`, delete-org, access-denied **Home**) still navigate to **`/org`**, which re-resolves the landing path.
+- Access denied / **Access paused** (**`TenantAccessDenied`**) always offers **Home** → **`/org`**, which re-resolves the landing path (other usable org, or **`/onboarding`** when only plan-limited seats remain).
+- Other failed context guards (`RequireOrgContext`, `RequireParkingContext`, delete-org) still navigate to **`/org`**, which re-resolves the landing path.
 - Post-sign-in with redirect **`/org`** uses the same **`resolveOrgLandingPath`** helper as this page.
 
 ---

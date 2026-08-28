@@ -15,7 +15,6 @@ Routes:
 - `/hosts/:orgSlug` — public org/host profile + listings
 - `/properties/:propertySlug/calendar` — property-scoped calendar UI
 - `/properties/:propertySlug/messages` — guest ↔ host web chat (see [chat.md](./properties/chat.md))
-- `/properties/:propertySlug/forms/:formId` — dynamic form builder preview
 
 > **Status:** Documented — **Phase 2a (detail API)** for `/properties/:propertySlug`; **list + filters** live via `list-public-properties` (URL-backed facets/sort). Location/development sub-browse pages still mock.
 
@@ -27,7 +26,6 @@ Routes:
 | Location browse   | —        | —          | Documented | `/properties/in/:location` (live via `locationSlug`) |
 | Detail page       | —        | —          | Documented | Live API + mock fallback; see below                  |
 | Property calendar | —        | —          | Documented | Live `get-booked-dates` via `PublicPropertyCalendar` |
-| Public form       | —        | —          | Documented | `PublicFormRenderer`; mock submit                    |
 
 ---
 
@@ -41,7 +39,7 @@ Browse and view rental listings. Ported from PMA `features/marketing/properties/
 
 **Save / wishlist:** Heart on **`PropertyCard`** (grid + carousel), **`PropertyListItem`**, and detail **`PropertyGallery`** uses **`usePropertySave`** → **`requireGuestAuth`** when anonymous, then persists to **`guest_saved_properties`** (shared TanStack Query cache). OAuth return resumes via **`save_property`** intent in **`guestAuthResume.ts`**.
 
-**Host profile link:** Org name on the property detail host card links to **`/hosts/:orgSlug`** (e.g. `/hosts/kame-homes`). Public page clears the fixed marketing nav (`pt-20` / `lg:pt-24`), applies org **brand color** (`GuestPublicBrandShell`), circular org logo, name → hosted-by → tagline → description → circular social icons, then compact grids of **ACTIVE** homes and **ACTIVE** parkings (when the org has either). Admin dashboard uses **`/org/:orgSlug`** — public guest URLs use **`/hosts/`** to avoid confusion. API: **`get-public-host?org=`**.
+**Host profile link:** Org name on the property detail host card links to **`/hosts/:orgSlug`** (e.g. `/hosts/kame-homes`). Public page clears the fixed marketing nav (`pt-20` / `lg:pt-24`), applies org **brand color** (`GuestPublicBrandShell`), circular org logo, name → hosted-by → tagline → description → circular social icons, then **Homes** / **Parkings** tabs (when both exist) with paginated grids of **ACTIVE** listings. Admin dashboard uses **`/org/:orgSlug`** — public guest URLs use **`/hosts/`** to avoid confusion. API: **`get-public-host?org=`** (batched pricing reads; missing settings rows fall back to platform defaults, no seed on read).
 
 **Unknown slug:** detail redirects to **`/properties`**.
 
@@ -81,8 +79,10 @@ This is where guests browse homes, open a listing, save favorites, contact the h
 
 **`HostPublicPage`** — guest-facing org brochure (distinct from the signed-in dashboard at **`/org/:orgSlug`**).
 
-- Loads org branding, tagline, description, and social links via **`get-public-host`**
+- Loads org branding, tagline, description, and social links via **`get-public-host`** (batched pricing reads; missing settings rows fall back to platform defaults)
 - Grids of **ACTIVE** properties and **ACTIVE** parkings when the org has either
+- When the org has **both** homes and parkings, **`HostPublicListingsTabs`** (pill tabs + counts, same pattern as `/search`) switches between the two listing types — one grid at a time instead of stacked sections. Tab row: tabs left, inline pagination right. When only one type exists, a single section header + grid (no tabs).
+- Each grid paginates client-side to **four visible rows** (`HOST_LISTING_MAX_ROWS` in `hostListingGrid.ts`) — page size = column count × 4, derived from the live grid width via `useHostListingPageSize`. Changing tab or page scrolls the listings panel back into view.
 - Org name on **`ListingHostCard`** (property + parking detail) links here
 - **Verified** badge when enhanced verification is approved (see [onboarding.md](./onboarding.md))
 
@@ -132,31 +132,23 @@ Gap analysis (ratings, nearby POIs, etc.): **[[public-property-catalog|Public pr
 
 **Responsive layout** — listing chrome uses **CSS container queries** (`@container` / `@5xl:` ≈ 1024px content width), not only viewport `lg:` / `md:`. Below that width: single column, hero gallery, 2-col stats, fixed bottom **Reserve** bar. At `@5xl+`: `BookingCard` sidebar + collage gallery. Page Editor preview frames (mobile ≤420px or a narrow desktop pane) therefore match real phone/tablet layouts even when the host browser is wide.
 
-| Section     | Component                                                                             | Data                                                                                                                                                     |
-| ----------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gallery     | `PropertyGallery`                                                                     | API media URLs or mock images                                                                                                                            |
-| Overview    | `PropertyOverview`                                                                    | API profile; **`ListingPlaceMeta`** (development link → `/developments/:slug`, tower · floor, geo); host card; cancellation highlight; ratings mock-only |
-| Amenities   | `PropertyAmenities`                                                                   | Resolved amenity labels; preview grid + modal for full list                                                                                              |
-| Location    | `PropertyLocation` + `PropertyMapEmbed`                                               | Google/OSM iframe when pinned; decorative fallback if no pin                                                                                             |
-| Rules       | `PropertyRules`                                                                       | House rules preview (6) + modal; cancellation live; safety mock-only                                                                                     |
-| Reviews     | `PropertyReviews`                                                                     | Guest + approved external reviews; comment clamped to 2 lines with **See more** modal; photos inline + in modal                                          |
-| Booking     | `BookingCard` + `GuestBookingFormModal`                                               | API pricing; Reserve → in-page `GuestForm` modal                                                                                                         |
-| Similar     | `SimilarProperties`                                                                   | other mock listings (unchanged)                                                                                                                          |
-| Parking CTA | Link when `getParkingFormForProperty` returns a form → development parking form route |
+| Section     | Component                                                                | Data                                                                                                                                                     |
+| ----------- | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Gallery     | `PropertyGallery`                                                        | API media URLs or mock images                                                                                                                            |
+| Overview    | `PropertyOverview`                                                       | API profile; **`ListingPlaceMeta`** (development link → `/developments/:slug`, tower · floor, geo); host card; cancellation highlight; ratings mock-only |
+| Amenities   | `PropertyAmenities`                                                      | Resolved amenity labels; preview grid + modal for full list                                                                                              |
+| Location    | `PropertyLocation` + `PropertyMapEmbed`                                  | Google/OSM iframe when pinned; decorative fallback if no pin                                                                                             |
+| Rules       | `PropertyRules`                                                          | House rules preview (6) + modal; cancellation live; safety mock-only                                                                                     |
+| Reviews     | `PropertyReviews`                                                        | Guest + approved external reviews; comment clamped to 2 lines with **See more** modal; photos inline + in modal                                          |
+| Booking     | `BookingCard` + `GuestBookingFormModal`                                  | API pricing; Reserve → in-page `GuestForm` modal                                                                                                         |
+| Similar     | `SimilarProperties`                                                      | other mock listings (unchanged)                                                                                                                          |
+| Parking CTA | Marketplace **`/parkings`** browse or linked slot detail when configured |
 
 ---
 
 ## Property calendar (`/properties/:propertySlug/calendar`)
 
 Same route and component as the operational booking picker — see **[calendar.md](./calendar.md)**. **`CalendarPage`** embeds **`PublicPropertyCalendar`** (`embedded`, no duplicate date summary). The property detail **`BookingCalendarModal`** uses the same grid in **`compact`** mode.
-
----
-
-## Property form (`/properties/:propertySlug/forms/:formId`)
-
-**`PropertyFormPage`** loads form definition from **`mockForms`**. **`PublicFormRenderer`** renders multi-step builder fields; submit is **mock** (no `submit-form`).
-
-Operational guest booking form remains **`/form`** (see [form.md](./form.md)).
 
 ---
 
@@ -168,7 +160,6 @@ Operational guest booking form remains **`/form`** (see [form.md](./form.md)).
 | List properties | **`list-public-properties`** — page of cards; totals/facets over full filtered set; 20k fail-closed ceiling |
 | Place groups    | **`list-public-place-groups?family=properties`** — bounded location rows + enriched card previews           |
 | Booked dates    | **`get-booked-dates?property=`** — `useGuestBookedDates` → `PublicPropertyCalendar`, `BookingCalendarModal` |
-| Form submit     | Property-scoped form submission API                                                                         |
 
 Full field map + dashboard gaps: **[[public-property-catalog|Public property catalog — reference]]**.
 
@@ -176,31 +167,30 @@ Full field map + dashboard gaps: **[[public-property-catalog|Public property cat
 
 ## Implementation map
 
-| Concern        | Path                                                                           |
-| -------------- | ------------------------------------------------------------------------------ |
-| Pages          | `ui/src/features/guest/marketing/pages/PropertiesListPage.tsx`                 |
-|                | `PropertiesLocationPage.tsx`                                                   |
-|                | `PropertyDetailPage.tsx`, `PropertyFormPage.tsx`                               |
-| Calendar       | `property/components/PublicPropertyCalendar.tsx` (shared with `CalendarPage`)  |
-| Reserve modal  | `properties/components/property-detail/GuestBookingFormModal.tsx`              |
-|                | `properties/hooks/usePropertyReserve.ts` (`onOpenForm`)                        |
-| Components     | `ui/src/features/guest/marketing/properties/components/**`                     |
-|                | `PropertiesByLocation.tsx`, `PropertiesLocationRow.tsx`                        |
-| Grouping       | `properties/lib/groupPropertiesByLocation.ts`                                  |
-| Place groups   | `shared/hooks/usePublicPlaceGroups.ts`; `list-public-place-groups/index.ts`    |
-| Shared slug    | `marketing/shared/lib/locationSlug.ts`                                         |
-| Forms UI       | `ui/src/features/guest/marketing/forms/components/**`                          |
-| Mock data      | `properties/data/mockProperties.ts`, `mockPropertyDetail.ts`                   |
-| Live detail    | `properties/hooks/usePublicPropertyDetail.ts`, `types/publicProperty.ts`       |
-| Section config | `properties/lib/propertyLandingSections.ts` (`resolvePropertyLandingSections`) |
-| Page Editor    | `ui/src/features/dashboard/page-editor/` (Property Landing panel)              |
-| Booked dates   | `form/hooks/useGuestBookedDates.ts`, `form/lib/fetchGuestBookedDates.ts`       |
-|                | `calendar/lib/guestCalendarAvailability.ts`                                    |
-|                | `properties/lib/mapPublicPropertyDetail.ts`                                    |
-|                | `forms/data/mockForms.ts`                                                      |
-| Image helper   | `marketing/shared/components/MarketingImage.tsx` (Vite `img` wrapper)          |
-| Scroll search  | `marketing/shared/context/ListingScrollSearchContext.tsx`, `MarketingNav.tsx`  |
-| Routes         | `ui/src/features/guest/marketing/routes/index.tsx`                             |
+| Concern        | Path                                                                                      |
+| -------------- | ----------------------------------------------------------------------------------------- |
+| Pages          | `ui/src/features/guest/marketing/pages/PropertiesListPage.tsx`                            |
+|                | `PropertiesLocationPage.tsx`                                                              |
+|                | `PropertyDetailPage.tsx`                                                                  |
+| Calendar       | `property/components/PublicPropertyCalendar.tsx` (shared with `CalendarPage`)             |
+| Reserve modal  | `properties/components/property-detail/GuestBookingFormModal.tsx`                         |
+|                | `properties/hooks/usePropertyReserve.ts` (`onOpenForm`)                                   |
+| Components     | `ui/src/features/guest/marketing/properties/components/**`                                |
+|                | `PropertiesByLocation.tsx`, `PropertiesLocationRow.tsx`                                   |
+| Grouping       | `properties/lib/groupPropertiesByLocation.ts`                                             |
+| Place groups   | `shared/hooks/usePublicPlaceGroups.ts`; `list-public-place-groups/index.ts`               |
+| Shared slug    | `marketing/shared/lib/locationSlug.ts`                                                    |
+| Forms UI       | `ui/src/features/guest/marketing/forms/components/FormSuccess.tsx` (parking success only) |
+| Mock data      | `properties/data/mockProperties.ts`, `mockPropertyDetail.ts`                              |
+| Live detail    | `properties/hooks/usePublicPropertyDetail.ts`, `types/publicProperty.ts`                  |
+| Section config | `properties/lib/propertyLandingSections.ts` (`resolvePropertyLandingSections`)            |
+| Page Editor    | `ui/src/features/dashboard/page-editor/` (Property Landing panel)                         |
+| Booked dates   | `form/hooks/useGuestBookedDates.ts`, `form/lib/fetchGuestBookedDates.ts`                  |
+|                | `calendar/lib/guestCalendarAvailability.ts`                                               |
+|                | `properties/lib/mapPublicPropertyDetail.ts`                                               |
+| Image helper   | `marketing/shared/components/MarketingImage.tsx` (Vite `img` wrapper)                     |
+| Scroll search  | `marketing/shared/context/ListingScrollSearchContext.tsx`, `MarketingNav.tsx`             |
+| Routes         | `ui/src/features/guest/marketing/routes/index.tsx`                                        |
 
 ---
 

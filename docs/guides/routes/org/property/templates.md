@@ -19,7 +19,11 @@ On **phone/tablet**, the page scrolls inside the section layout (`AdminSectionNa
 
 Operators edit per-property copy here. **Preview and live sends use the same renderer** (`renderPropertyTemplateSendEmail` + `fragments/configurable-template-send.html`). Dynamic blocks (tables, payment breakdown, CTAs) are **`{{placeholders}}` in the template body** — visible in Preview when sample/send HTML is injected.
 
-**Plan gating (`customTemplates`, Starter+):** Standard templates (house rules, check-in/out, parking reminders) are free — edit, preview, placeholders, reset, and save with no plan gate and no WYSIWYG blur. Email templates stay editable/previewable on Free; **Reset** always restores the shipped default (ungated `action: reset`); **Save** opens the upgrade modal when not entitled (server also gates email-key content PATCH). **Add Custom Template** (header, empty-state card, mobile hero) and create/save **custom** templates require Starter+ — client pre-flight plus `property-templates-settings` (`action: create`, custom-key PATCH, and email-key PATCH). Delete custom stays open. Email and custom cards show a `TierBadge` (replacing the old Email category pill). The **Email templates** and **Custom templates** section headings also show a `TierBadge` when the org is below Starter.
+**Plan gating (`customTemplates`, Starter+):** Standard templates (house rules, check-in/out, parking reminders) are free — edit, preview, placeholders, reset, and save with no plan gate and no WYSIWYG blur. Email templates stay editable/previewable on Free; **Reset** always restores the shipped default (ungated `action: reset`); **Save** opens the upgrade modal when not entitled (server also gates email-key content PATCH). **Add Custom Template** (page header / mobile hero) and create/save **custom** templates require Starter+ — client pre-flight plus `property-templates-settings` (`action: create`, custom-key PATCH, and email-key PATCH). Delete custom stays open. Email and custom cards show a `TierBadge` (replacing the old Email category pill). The **Email templates** and **Custom templates** section headings also show a `TierBadge` when the org is below Starter.
+
+### Permissions (Phase 5)
+
+Route/nav: `templates:view`. In-page: `templates.standard:edit`, `templates.email:edit`, `templates.custom:{add,edit,delete}`. Members without an edit leaf see preview-only cards (no Save/Reset/Delete). Add Custom is hidden without `templates.custom:add`.
 
 ## Host-facing knowledge
 
@@ -188,32 +192,32 @@ Platform defaults (not property-specific): **`DEFAULT_EMAIL_LOGO_URL`** when org
 
 Preview uses **`buildSampleDynamicSections()`** with demo dates/names/phones. **Production sends** resolve real values from booking rows + org/property settings (never legacy Kame Home / Monaco 2604 literals).
 
-| Section placeholder                             | Templates                                              | Live data source                                                                         |
-| ----------------------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
-| `{{urgent_notice}}`                             | GAF, pet, parking, new booking                         | Same-day check-in vs Asia/Manila today                                                   |
-| `{{update_notice}}`                             | GAF, pet, parking                                      | Resubmit flag + unit label from branding                                                 |
-| `{{email_signature_section}}`                   | GAF, pet, parking, acknowledgement, ready-for-check-in | `app_settings.gaf_unit_owner` + unit label                                               |
-| `{{pet_details_section}}`                       | Pet request                                            | Guest form / booking pet fields                                                          |
-| `{{pet_attachments_section}}`                   | Pet request                                            | Static attachment list (no property-specific copy)                                       |
-| `{{parking_reply_callout_section}}`             | Parking request                                        | Static ops callout                                                                       |
-| `{{booking_vehicle_copy}}`                      | Parking request                                        | Booking vehicle fields + unit label                                                      |
-| `{{new_booking_detail_tables}}`                 | New booking notify                                     | Booking stay/guest/notable columns                                                       |
-| `{{downpayment_receipt_ai_section}}`            | New booking notify                                     | `dp_receipt_ai_*` on booking (empty when absent)                                         |
-| `{{booking_link_cta}}`                          | New booking notify                                     | Admin booking URL + org brand color                                                      |
-| `{{booking_acknowledgement_flow_section}}`      | Acknowledgement                                        | Unit + booking dates; step 2 includes Facebook + Airbnb “message us on …” links          |
-| `{{ready_for_checkin_booking_summary_section}}` | Ready for check-in                                     | Booking dates/times/pax + unit label                                                     |
-| `{{document_reminders_section}}`                | Ready for check-in                                     | GAF always; parking/pet lines from `need_parking` / `has_pets`                           |
-| `{{payment_breakdown_section}}`                 | Ready for check-in                                     | Booking pricing columns (empty when total balance is 0)                                  |
-| `{{gcash_payment_section}}`                     | Ready for check-in                                     | `app_settings` payment provider, account name/number, QR (empty when total balance is 0) |
-| `{{ready_for_checkin_contact_section}}`         | Ready for check-in                                     | Facebook + Airbnb links; phone + email from property profile → org profile               |
-| `{{facebook_page_url}}`                         | Acknowledgement, RFCI, SD refund                       | Resolved Facebook URL (`app_settings` → `org_settings`)                                  |
-| `{{airbnb_url}}`                                | Acknowledgement, RFCI, SD refund                       | Resolved Airbnb URL (`app_settings` → `org_settings`)                                    |
-| `{{contact_name}}`                              | Acknowledgement, RFCI, SD refund                       | Property `contactName` → org `contactName`                                               |
-| `{{contact_phone}}`                             | Acknowledgement, RFCI, SD refund                       | Property `contactPhone` → org `contactPhone`                                             |
-| `{{contact_email}}`                             | Acknowledgement, RFCI, SD refund                       | Property `contactEmail` → org `contactEmail`                                             |
-| `{{social_contact_mentions}}`                   | Acknowledgement, RFCI, SD refund                       | “message us on **Facebook** or **Airbnb**” — only platform names linked                  |
-| `{{sd_refund_checklist_section}}`               | SD refund                                              | Unit label (elevator card step)                                                          |
-| `{{sd_refund_details_section}}`                 | SD refund                                              | Security deposit amount, `/sd-form` URL, brand color                                     |
+| Section placeholder                             | Templates                                              | Live data source                                                                                               |
+| ----------------------------------------------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `{{urgent_notice}}`                             | GAF, pet, parking, new booking                         | Same-day check-in vs Asia/Manila today                                                                         |
+| `{{update_notice}}`                             | GAF, pet, parking                                      | Resubmit flag + unit label from branding                                                                       |
+| `{{email_signature_section}}`                   | GAF, pet, parking, acknowledgement, ready-for-check-in | `app_settings.gaf_unit_owner` + unit label                                                                     |
+| `{{pet_details_section}}`                       | Pet request                                            | Guest form / booking pet fields                                                                                |
+| `{{pet_attachments_section}}`                   | Pet request                                            | Static attachment list (no property-specific copy)                                                             |
+| `{{parking_reply_callout_section}}`             | Parking request                                        | Static ops callout                                                                                             |
+| `{{booking_vehicle_copy}}`                      | Parking request                                        | Booking vehicle fields + unit label                                                                            |
+| `{{new_booking_detail_tables}}`                 | New booking notify                                     | Booking stay/guest/notable columns                                                                             |
+| `{{downpayment_receipt_ai_section}}`            | New booking notify                                     | `dp_receipt_ai_*` on booking (empty when absent)                                                               |
+| `{{booking_link_cta}}`                          | New booking notify                                     | Admin booking URL + org brand color                                                                            |
+| `{{booking_acknowledgement_flow_section}}`      | Acknowledgement                                        | Unit + booking dates; step 2 includes Facebook + Airbnb “message us on …” links                                |
+| `{{ready_for_checkin_booking_summary_section}}` | Ready for check-in                                     | Booking dates/times/pax + unit label                                                                           |
+| `{{document_reminders_section}}`                | Ready for check-in                                     | GAF always; parking/pet lines from `need_parking` / `has_pets`                                                 |
+| `{{payment_breakdown_section}}`                 | Ready for check-in                                     | Booking pricing columns (empty when total balance is 0)                                                        |
+| `{{gcash_payment_section}}`                     | Ready for check-in                                     | All payment methods (account name/number); QR image only when uploaded (empty section when total balance is 0) |
+| `{{ready_for_checkin_contact_section}}`         | Ready for check-in                                     | Facebook + Airbnb links; phone + email from property profile → org profile                                     |
+| `{{facebook_page_url}}`                         | Acknowledgement, RFCI, SD refund                       | Resolved Facebook URL (`app_settings` → `org_settings`)                                                        |
+| `{{airbnb_url}}`                                | Acknowledgement, RFCI, SD refund                       | Resolved Airbnb URL (`app_settings` → `org_settings`)                                                          |
+| `{{contact_name}}`                              | Acknowledgement, RFCI, SD refund                       | Property `contactName` → org `contactName`                                                                     |
+| `{{contact_phone}}`                             | Acknowledgement, RFCI, SD refund                       | Property `contactPhone` → org `contactPhone`                                                                   |
+| `{{contact_email}}`                             | Acknowledgement, RFCI, SD refund                       | Property `contactEmail` → org `contactEmail`                                                                   |
+| `{{social_contact_mentions}}`                   | Acknowledgement, RFCI, SD refund                       | “message us on **Facebook** or **Airbnb**” — only platform names linked                                        |
+| `{{sd_refund_checklist_section}}`               | SD refund                                              | Unit label (elevator card step)                                                                                |
+| `{{sd_refund_details_section}}`                 | SD refund                                              | Security deposit amount, `/sd-form` URL, brand color                                                           |
 
 Plain body placeholders (`{{guest_name}}`, `{{property_name}}`, etc.) are filled by **`buildBookingPlaceholderVars()`** from the booking row + **`loadPropertyEmailBranding()`** + merged app settings.
 

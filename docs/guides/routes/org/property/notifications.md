@@ -39,7 +39,9 @@ Single hub for **in-app activity** (booking workflow + inbox events in the bell)
 - **Activity** section lists org-wide in-app notifications (same data as the bell).
 - Desktop: the bell floats above the AI assistant button and opens a **slide-over panel**. Phone: tap **Notifications** in the bottom menu for the same sheet. **View all** opens this page at **Activity** when more than five items exist.
 - Rows open the related booking or inbox thread; **Mark all as read** on the full list.
+- With unread items, the desktop bell uses a soft periodic ring nudge and the count badge a gentle pulse (paused while the panel is open; respects `prefers-reduced-motion`). The mobile **Notifications** tab badge uses the same pulse.
 - Inbox rows show the guest **participant name** as the title with an inline **channel pill** (**Chat**, **Facebook**, or **Instagram**), matching the Inbox thread list — **one row per conversation**, not per message.
+- The bell **unread badge** uses the same collapse rule as the list: one unread per inbox conversation (plus each unread booking event). Legacy per-message `inbox_new_message` rows for one thread count as **1**, not N. `notifications-list` computes `unreadCount` from the recent capped window with `type` + `conversation_id` selected so collapse can run.
 - When available, a **stay date range** appears under the name (e.g. `Aug 14 - 15, 2026` for inquiry or booked dates).
 - The realtime **toast** uses the same guest name as the title with an inline **channel pill** (**Chat**, **Facebook**, or **Instagram**) for inbox rows, a **channel glyph** for inbox or a **category glyph** for booking events, the message preview in the body, and the stay range beneath it. Its **View** action uses the brand primary colour, and repeat messages in one conversation replace the open toast instead of stacking.
 - List is capped in height inside the **Activity** card; scroll within the card loads the next page (20 per request) — not a full-page dump.
@@ -150,8 +152,11 @@ Credentials unlock logic: `telegramCredentialsReady()` — saved token **and** c
 
 ## Permissions
 
-- `RequireAdmin` + `RequireOrgContext` via `PropertyAdminShell`.
-- Server: `verifyAdminJwt` on every settings edge function.
+- Page route: `notifications:view`.
+- Per Telegram module edit: `notifications.{chat,marketing,staff,operations,finance,maintenance}:edit`.
+- Shared bot-token card: editable with **any one** of the six module edit grants (Q3).
+- Plan: all six module edits also require `telegramNotifications`.
+- Server: `verifyPropertyAccess` / `resolveTelegramAssetAccess` on every settings edge function.
 
 ---
 

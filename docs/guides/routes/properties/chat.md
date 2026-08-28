@@ -105,7 +105,7 @@ See [[2026-07-30-ai-voice-receptionist|AI Voice Receptionist — Implementation 
 | `voice-receptionist-tool`  | POST   | Guest JWT | `{ sessionId, topic }` — property-fact tool call from the live model                                                                                          |
 | `voice-receptionist-end`   | POST   | Guest JWT | `{ sessionId, endReason, transcript }` — ends session; **one** batch Flash polish → `social_messages` (`source_mode='voice'`)                                 |
 
-Host replies use **`social-inbox-send`** (web branch). When the guest is offline, host web replies trigger **`guestChatEmail.ts`** → Resend **`guest-chat-reply.html`** (deduped via **`social_messages.guest_reply_email_sent_at`**).
+Host replies use **`social-inbox-send`** (web branch). When the guest is offline, host web replies trigger **`guestChatEmail.ts`** → body from **`guest-chat-reply.html`** wrapped in **`renderBrandedEmailShell`** (same card shell as property template emails; deduped via **`social_messages.guest_reply_email_sent_at`**).
 
 **Realtime typing:** Supabase Broadcast channel **`chat-typing:{conversationId}`** (guest ↔ host; not persisted).
 

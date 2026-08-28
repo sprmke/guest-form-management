@@ -2,121 +2,166 @@
 title: 'Parking Playwright'
 status: active
 tags: [guides, testing, parking, playwright]
-updated: 2026-08-20
+updated: 2026-08-27
 ---
 
 # Parking Playwright
 
-Feature-scoped Playwright coverage for the standalone parking request flow. The suite is organized to mirror the app's parking domains instead of keeping all E2E files in one flat folder.
+Feature-scoped Playwright coverage for the standalone parking marketplace flow (Phases 1–8) plus legacy property pay-parking and property-booking linked parking (Phase 7). The suite is organized to mirror the app's parking domains instead of keeping all E2E files in one flat folder.
 
 ## Scope
 
-- Guest parking request submit: `ui/e2e/features/parking/guest/parkingGuestRequest.spec.ts`
-- Host dashboard accept flow: `ui/e2e/features/parking/host/parkingHostClaim.spec.ts`
-- Decline / expiry / no-host outcomes: `ui/e2e/features/parking/flows/parkingGuestHostOutcomes.spec.ts`
-- Side-by-side guest + host demo: `ui/e2e/features/parking/flows/parkingGuestHostSideBySide.spec.ts`
-- Local Supabase-backed guest + host acceptance: `ui/e2e/features/parking/live/parkingGuestHostLocal.spec.ts`
-- Shared mocks and state: `ui/e2e/features/parking/shared/parkingFlowHarness.ts`
-- Shared local-stack helpers: `ui/e2e/features/parking/shared/parkingLiveLocalHarness.ts`
+| Spec                                            | What it covers                                                                                    |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `guest/parkingGuestRequest.spec.ts`             | Guest submit → waiting screen; mocked payment after accept                                        |
+| `guest/parkingMarketplaceEdgeCases.spec.ts`     | `no_parking_available`; linkable property-stay picker (Phase 7)                                   |
+| `guest/guestFormParkingCta.spec.ts`             | Guest form success → **Need parking?** CTA links to `/parkings`                                   |
+| `host/parkingHostClaim.spec.ts`                 | Host accept → **Awaiting Payment** (Phase 3)                                                      |
+| `host/parkingHostNewBooking.spec.ts`            | Host **New booking** modal on parking dashboard                                                   |
+| `flows/parkingGuestHostOutcomes.spec.ts`        | Expire, decline, cancel while searching                                                           |
+| `flows/parkingGuestHostSideBySide.spec.ts`      | **Two-window demo** — full happy path, decline, cancel after accept, direct link                  |
+| `legacy/payParkingFlow.spec.ts`                 | Legacy `/properties/:slug/parking/:bookingId` — guest submit + host **Add pay parking** broadcast |
+| `property/propertyBookingLinkedParking.spec.ts` | Property booking detail **Parking** tab — linked marketplace match (not legacy owner fields)      |
+| `live/parkingGuestHostLocal.spec.ts`            | Local Supabase accept path (requires `./dev.sh`)                                                  |
+| `shared/parkingFlowHarness.ts`                  | Shared mocks + helpers                                                                            |
+| `shared/payParkingFlowHarness.ts`               | Legacy pay-parking mocks                                                                          |
+| `shared/propertyBookingParkingHarness.ts`       | Property booking + linked parking mocks                                                           |
+| `shared/parkingLiveLocalHarness.ts`             | Local stack helpers                                                                               |
+| `shared/parkingSideBySideHelpers.ts`            | Side-by-side browser launch + demo pacing                                                         |
+
+## Coverage matrix
+
+| Scenario                                                     | Spec                                      | Notes                                                          |
+| ------------------------------------------------------------ | ----------------------------------------- | -------------------------------------------------------------- |
+| Marketplace submit → host accept → guest pay → complete      | Side-by-side + `parkingGuestRequest`      | Payment mocked via `create-parking-payment-checkout`           |
+| Host decline / request expire / guest cancel while searching | `parkingGuestHostOutcomes` + side-by-side |                                                                |
+| Cancel after host accept (awaiting payment)                  | Side-by-side                              |                                                                |
+| Direct booking link (`?dl=`)                                 | Side-by-side                              | Host pricing card + guest form                                 |
+| `no_parking_available` on submit                             | `parkingMarketplaceEdgeCases`             |                                                                |
+| Link marketplace request to property stay                    | `parkingMarketplaceEdgeCases`             | Phase 7 stay picker                                            |
+| Guest form success → find parking CTA                        | `guestFormParkingCta`                     | Post-submit when `needParking: true`                           |
+| Legacy pay-parking guest vehicle form                        | `payParkingFlow`                          | Pre-marketplace property flow                                  |
+| Host manual **Add pay parking** + broadcast email            | `payParkingFlow`                          | Admin mode on legacy pay-parking URL                           |
+| Property booking linked parking panel                        | `propertyBookingLinkedParking`            | Host sees match status + host contact, not legacy owner fields |
+| Host new parking booking modal                               | `parkingHostNewBooking`                   |                                                                |
+| Real local Supabase submit + accept                          | `parkingGuestHostLocal`                   | No guest auth / no PayMongo yet                                |
+
+### Intentional gaps (not automated)
+
+- Real PayMongo Payment Link + webhook settlement
+- Payment window expiry / resume-search UX
+- Endorsement resend button
+- IP/device anti-spam, super-admin payout ledger
+- Guest chat sheet open assertion (mock exists; not asserted in chromium-only specs)
+- Seeded guest account on local live stack (use mocked suite for full guest flows)
 
 ## Runner setup
 
 - Repo config: `playwright.config.ts`
 - Root scripts:
-  - `bun run test:e2e`
-  - `bun run test:e2e:headed`
-  - `bun run test:e2e:parking`
+  - `bun run test:e2e:parking` — mocked chromium suite (excludes live local)
   - `bun run test:e2e:parking:headed`
-  - `bun run test:e2e:parking:side-by-side`
+  - `bun run test:e2e:parking:side-by-side` — **two headed windows** (guest + host)
   - `bun run test:e2e:parking:side-by-side:slow`
-  - `bun run test:e2e:parking:local`
-  - `bun run test:e2e:parking:local:headed`
-  - `bun run test:e2e:parking:screens`
-  - `bun run test:e2e:parking:screens:local`
+  - `bun run test:e2e:parking:side-by-side:video` / `:slow:video`
+  - `bun run test:e2e:parking:local` — real local Supabase (`PLAYWRIGHT_LOCAL_LIVE=1`)
+  - `bun run test:e2e:parking:screens` / `:screens:local`
 - Browser install: `npx playwright install chromium`
 
 The config boots the Vite app automatically on `http://127.0.0.1:4173` and keeps Playwright artifacts under `test-results/playwright/`.
 
-## Mocked dashboard auth
+## Mocked auth (dev-only)
 
-Parking dashboard routes normally require a real Supabase host session. For Playwright-only local runs, the UI accepts a dev-only localStorage session payload from `ui/src/lib/e2e/adminSession.ts`.
+Parking dashboard routes normally require a real Supabase host session. For Playwright-only local runs, the UI accepts dev-only localStorage session payloads:
 
-- Storage key: `kame:e2e-admin-session`
-- Enabled only when the Vite app is running in dev mode
-- Used by `useAdminSession`, `edgeClient`, and parking bookings list fetches
+| Role               | Storage key              | Read by                                                                                                            |
+| ------------------ | ------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| Host / admin       | `kame:e2e-admin-session` | `useAdminSession`, `edgeClient`, parking bookings fetches                                                          |
+| Host Supabase auth | `sb-127-auth-token`      | `fetchPropertyEntitlements`, `fetchBookingAiReview`, other `supabase.auth.getSession()` callers on property routes |
+| Guest              | `kame:e2e-guest-session` | `useGuestSession`, guest edge calls (`submit-parking-booking-request`, pay-now, cancel)                            |
 
-This keeps the production auth flow unchanged while letting Playwright enter `/org/:orgSlug/parking/:parkingSlug/...` screens without Google OAuth during mocked E2E runs.
-
-## Local Supabase-backed flow
-
-`bun run test:e2e:parking:local` runs a second layer against the live local stack instead of intercepting parking endpoints.
-
-- Requires the local stack already running (`./dev.sh` is the easiest path)
-- Uses the seeded parking org `kame-homes` and parking slug `monaco-level-2-slot-27`
-- Signs in the seeded host account `sprmke.dev@gmail.com` through local Supabase Auth
-- Writes both the real Supabase auth storage key and the dev-only `kame:e2e-admin-session` helper so dashboard fetches and direct `guest_submissions` reads both use the real session
-- Cleans up the generated booking rows by guest email before and after the test
+Both E2E keys are enabled only when the Vite app runs in dev mode (`ui/src/lib/e2e/adminSession.ts`, `ui/src/lib/e2e/guestSession.ts`).
 
 ## Side-by-side demo
 
 `bun run test:e2e:parking:side-by-side` launches two headed Chromium windows:
 
-1. Guest request form + request status
-2. Host parking dashboard bookings/detail
+1. **Guest** — registration form (3-step), request status, Pay Now, confirmation
+2. **Host** — parking bookings list/detail, accept, awaiting payment, mark active, complete
 
-Both windows share the same mocked parking-request state, so accepting on the host side updates the guest status view in the same run.
+Both windows share the same mocked parking-request state, so host actions update the guest status view in the same run.
+
+### Scenarios (side-by-side file)
+
+| Test                | Flow                                                                                      |
+| ------------------- | ----------------------------------------------------------------------------------------- |
+| Full marketplace    | Submit → host accept → guest pay → endorsement/contact/chat → host mark active → complete |
+| Host decline        | Guest waiting → host decline → guest no-host                                              |
+| Cancel after accept | Guest awaiting payment → cancel request                                                   |
+| Direct link         | Host pricing card + guest submit via `?dl=` token                                         |
 
 ### Slow / demo pacing
-
-The side-by-side spec launches its own headed Chromium windows. To watch the flow at a readable pace:
 
 ```bash
 bun run test:e2e:parking:side-by-side:slow
 ```
 
-That preset uses:
+Preset: `PLAYWRIGHT_SLOW_MO=600`, `PLAYWRIGHT_DEMO_PAUSE_MS=2000`.
 
-- `PLAYWRIGHT_SLOW_MO=600` — delays each Playwright action (click, fill, navigation) by 600ms
-- `PLAYWRIGHT_DEMO_PAUSE_MS=2000` — adds a 2s hold after each major step (guest waiting screen, host opens booking, accept, final guest reload)
-
-Tune manually:
+Even slower (manual tuning):
 
 ```bash
 PLAYWRIGHT_SLOW_MO=1000 PLAYWRIGHT_DEMO_PAUSE_MS=3000 bun run test:e2e:parking:side-by-side
 ```
 
-Step through interactively with the Playwright Inspector after the guest lands on the waiting screen:
+Record video (saved under `test-results/playwright/` — there is no `--video=on` CLI flag):
+
+```bash
+bun run test:e2e:parking:side-by-side:video
+bun run test:e2e:parking:side-by-side:slow:video
+```
+
+Step through interactively:
 
 ```bash
 PLAYWRIGHT_INSPECT=1 bun run test:e2e:parking:side-by-side
 ```
 
-Record the run regardless of pass/fail:
+## Mocked API coverage (harness)
 
-```bash
-bun run test:e2e:parking:side-by-side -- --video=on
-```
+`installParkingFlowMocks` intercepts:
+
+- **Phase 1:** submit, status poll, claim, decline, broadcast status, list-bookings, transition
+- **Phase 3:** `create-parking-payment-checkout` (simulates PayMongo redirect back to status page), `cancel-parking-booking`
+- **Phase 5:** endorsement fields on status payload, `request-parking-endorsement`, guest web chat resume/start/messages
+- **Phase 7:** `list-linkable-property-bookings`, `get-linked-parking-booking`
+- **Phase 8:** `parking-pricing` (direct link token), `directLinkToken` on submit
+- **Property admin shell:** `list-organizations`, `list-properties`, `property-access`, `property-entitlements`, `get-booking-ai-review`, `get-booking-ai-assistant-audit`, `notifications-list`, `guest_submissions` REST
+
+Claim sets **`PENDING_PAYMENT`** (not `PENDING_REVIEW`). Payment mock flips to **`PENDING_REVIEW`** with endorsement sent + host contact reveal.
+
+## Local Supabase-backed flow
+
+`bun run test:e2e:parking:local` runs against the live local stack:
+
+- Requires `./dev.sh` (or equivalent local Supabase + UI)
+- Seeded parking org `kame-homes`, slug `monaco-level-2-slot-27`
+- Host: `sprmke.dev@gmail.com` via local Supabase Auth
+- Cleans up generated booking rows by guest email before/after
+
+**Note:** the local layer currently covers submit + host accept → guest **awaiting payment**. Real PayMongo checkout is not exercised (same production-readiness gap as manual QA).
 
 ## Screen captures
-
-Parking E2E can write full-page PNGs for every major step into `ui/screen-tmp/parking-e2e/`. Everything under `ui/screen-tmp/` is gitignored (only `.gitkeep` is tracked), so captures cannot be committed and **stay on your machine when you switch branches** — git does not remove ignored local files on checkout.
 
 ```bash
 bun run test:e2e:parking:screens
 ```
 
-That runs the mocked chromium suite plus the side-by-side demo. Each test gets its own subfolder (`guest-request`, `host-claim`, `outcome-expired`, `side-by-side`, etc.) with numbered step files such as `01-guest-guest-form.png`.
-
-For the local Supabase layer (requires `./dev.sh`):
-
-```bash
-bun run test:e2e:parking:screens:local
-```
-
-Helper: `ui/e2e/features/parking/shared/parkingScreenCapture.ts`.
+Writes PNGs to `ui/screen-tmp/parking-e2e/` (gitignored). Helper: `shared/parkingScreenCapture.ts`.
 
 ## Current limitations
 
-- The live local layer currently covers the accept path only; decline/expiry branches still live in the mocked suite.
-- The side-by-side flow is Chromium-specific because it relies on explicit window size and position.
-- Existing Tailwind/Browserslist warnings still appear during Vite startup, but they do not block the suite.
+- Real PayMongo Payment Link / webhook is not verified in any automated layer (mock checkout only).
+- Local live layer does not sign in a guest account yet — guest form requires auth; use mocked suite for full guest flows until a seeded guest test user is wired.
+- Side-by-side flow is Chromium-specific (explicit window size/position).
+- IP/device anti-spam and super-admin payout ledger are not covered.

@@ -22,7 +22,7 @@ Legacy `/calendar` redirects here.
 | Booked stays on calendar | Done     | Done       | Done | Spanning pills; click for guest modal     |
 | Block / unblock dates    | Done     | Done       | Done | Checkout-exclusive ranges                 |
 | Guest availability       | Done     | Done       | Done | Blocks are returned as unavailable ranges |
-| Permissions              | N/A      | Done       | Done | `pricing:view` / `pricing:edit`           |
+| Permissions              | N/A      | Done       | Done | `pricing:view` / rates + blocks leaves    |
 
 ---
 
@@ -70,13 +70,15 @@ dates that should not be available to guests.
 
 ## Permissions
 
-| Capability                         | Required permission |
-| ---------------------------------- | ------------------- |
-| Open Pricing route                 | `pricing:view`      |
-| Change rates, fees, or date blocks | `pricing:edit`      |
+| Capability                    | Required permission     |
+| ----------------------------- | ----------------------- |
+| Open Pricing route            | `pricing:view`          |
+| Edit rates / fees / overrides | `pricing.rates:edit`    |
+| Block dates                   | `pricing.blocks:add`    |
+| Unblock dates                 | `pricing.blocks:delete` |
 
-- Without `pricing:edit`, the calendar and fee sidebar are read-only.
-- The server enforces `pricing:view` on GET and `pricing:edit` on PATCH.
+- Without rate/block leaves, the calendar and fee sidebar stay read-only for that action.
+- Server: GET → `pricing:view`; PATCH checks the leaves present in the body (`pricing.rates:edit`, `pricing.blocks:add`, and/or `pricing.blocks:delete`). Legacy stored `pricing:edit` still expands to all three leaves.
 
 ---
 

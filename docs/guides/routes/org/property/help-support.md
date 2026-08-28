@@ -2,7 +2,7 @@
 title: 'Property Help & Support'
 status: active
 tags: [guides, routes, org, property, help-support]
-updated: 2026-08-17
+updated: 2026-08-28
 ---
 
 # Property Help & Support
@@ -22,7 +22,7 @@ Route: `/org/:orgSlug/property/:propertySlug/help-support` (+ `/docs`, `/tickets
 
 ## Overview
 
-Property team members open Help & Support to find answers, chat with the AI assistant, and contact the Kame Homes team. FAQs, Guides, and Tickets stay under the same Help & Support title. Four clickable summary cards (same style as Finance and Bookings) stay at the top, with Ask AI last; FAQs, Guides, and Tickets swap the content below. Visible to **every** team member regardless of role (same baseline as Dashboard), not gated behind a specific permission.
+Property team members open Help & Support to find answers, chat with the AI assistant, and contact the Kame Homes team. FAQs, Guides, and Tickets stay under the same Help & Support title. Four clickable summary cards (same style as Finance and Bookings) stay at the top, with Ask AI last; FAQs, Guides, and Tickets swap the content below. Visible to **every** non–plan-limited property team member (same baseline as the Help nav item). Route guard (`RequirePropertyPermission`) does **not** require `bookings:view` — plan-limited members still hit the plan gate.
 
 ## Host-facing knowledge
 

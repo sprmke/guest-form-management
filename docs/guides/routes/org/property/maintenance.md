@@ -2,7 +2,7 @@
 title: 'Maintenance — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-24
+updated: 2026-08-26
 ---
 
 # Maintenance — operator guide
@@ -59,7 +59,7 @@ This page helps you track upkeep for your property: cleaning schedules, applianc
 
 ---
 
-Client-side PDF generation via **Export report** in the header (shared layout in `ui/src/lib/pdf/` — theme tokens from `index.css`, Plus Jakarta Sans, consistent tables/headers/footers):
+Client-side PDF generation via **Export report** in the header (shared layout in `ui/src/lib/pdf/`):
 
 | Option           | Content                                          |
 | ---------------- | ------------------------------------------------ |
@@ -67,9 +67,25 @@ Client-side PDF generation via **Export report** in the header (shared layout in
 | Overview summary | Summary cards + by-category table only           |
 | Reminders list   | Reminder rows for the period                     |
 
-Filenames: `kame-maintenance-{report\|overview\|reminders}_{from}_{to}.pdf`.
+**PDF layout (shared `@/lib/pdf/*`):** Soft page canvas; masthead **`Maintenance Report - {unit}`** + **`Date Range:`** subtitle; Plus Jakarta Sans (ExtraBold titles, Bold sections); bordered KPI cards; white table header/footer rows; status colors match in-app badges; category, count, and notes columns left-aligned. Hero metric uses brand accent rail. Footer: `{tower/unit} · Maintenance`.
 
-**Plan gating (`maintenanceReporting`, Starter+):** the underlying maintenance data (summary cards, reminders list) is visible on every tier including Free — only the **Export report** action is gated. Client: `useFeatureGate('maintenanceReporting')` disables the menu trigger and opens the upgrade modal on click, with a solid `TierBadge` anchored to the **top-right corner** of the Export button (not inside the label). This export is entirely client-side (PDF built from data already fetched for the page) with no dedicated server export endpoint — nothing to bypass server-side, so there's no matching edge-function check.
+Filenames: `kame-maintenance-{report|overview|reminders}_{from}_{to}.pdf`.
+
+**Plan gating (`maintenanceReporting`, Starter+):** Export also requires **`maintenance.export:view`** (permission = visibility; plan = actionability). Reminder data stays visible with `maintenance:view` on every tier. Client: `useFeatureGate('maintenanceReporting')`. Export is client-side PDF only (no server export endpoint).
+
+---
+
+## Permissions
+
+| Capability       | Required permission                |
+| ---------------- | ---------------------------------- |
+| Open Maintenance | `maintenance:view`                 |
+| Add reminder     | `maintenance.reminders:add`        |
+| Edit reminder    | `maintenance.reminders:edit`       |
+| Delete reminder  | `maintenance.reminders:delete`     |
+| Export report    | `maintenance.export:view` (+ plan) |
+
+Legacy stored `maintenance:edit` expands to all reminder + export leaves.
 
 ---
 

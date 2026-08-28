@@ -2,7 +2,7 @@
 title: 'AI dashboard assistant — manual test flows'
 status: active
 tags: [guides, testing, ai]
-updated: 2026-08-19
+updated: 2026-08-27
 ---
 
 # AI dashboard assistant — step-by-step manual testing
@@ -28,7 +28,7 @@ This flow has **never been run through an actual browser** as of 2026-08-15 — 
 | 5   | Tier-2 deny                | Clicking Cancel leaves the booking untouched and marks the card "cancelled"                                             |
 | 6   | Tier-2 idempotency         | Confirming an already-resolved action is a clean no-op, never a double-execute                                          |
 | 7   | Tier-2 expiry              | A proposal older than 15 minutes can no longer be confirmed                                                             |
-| 8   | Permission re-check        | A low-permission (VIEWER) property member cannot get a write action to execute, even if the model tries                 |
+| 8   | Permission re-check        | A low-permission (**Read Only** template) property member cannot get a write action to execute, even if the model tries |
 | 9   | Cross-scope escalation     | Asking about a _different_ booking/property than the one currently open always requires confirmation                    |
 | 10  | Bulk escalation            | A request that bundles 2+ write actions in one turn always requires confirmation, regardless of each action's own tier  |
 | 11  | Booking-detail audit trail | Actions taken on a booking show up in its "Actions taken by AI assistant" card, newest first                            |
@@ -38,6 +38,7 @@ This flow has **never been run through an actual browser** as of 2026-08-15 — 
 | 15  | Mobile 375px               | Launcher + slide-over panel usable at iPhone SE width, 44×44px targets                                                  |
 | 16  | Starter prompts            | Empty chat shows a Questions / Actions switcher (not page tabs), 5 randomized items for the active side                 |
 | 17  | Attachments + booking pin  | Paperclip attaches JPEG/PNG/WebP/PDF; calendar pins a stay; send works with files and no text                           |
+| 18  | Speech-to-text             | Mic fills the composer on Chrome/Safari/Edge (HTTPS); primary listening state; tap again to stop; send clears listening |
 
 ---
 
@@ -76,14 +77,24 @@ This flow has **never been run through an actual browser** as of 2026-08-15 — 
 
 ### 2.2 Attachments + context pin (#17)
 
-1. Open a new chat. Expect a paperclip and a **module pin** icon beside the composer (each ≥ 44×44px), not a second chat mode. The pin icon matches the page: calendar on Bookings, building on Properties, users on Team, and so on.
+1. Open a new chat. Expect toolbar order **bookmark (pin) → paperclip → mic (when supported) → send** beside the composer (each ≥ 44×44px). The pin icon matches the page: calendar on Bookings, building on Properties, users on Team, and so on.
 2. Paperclip → **Photo** — pick a JPEG/PNG/WebP. Expect a chip above the textarea. Same for **File** with a PDF.
 3. Try a 5th file or a non-allowed type — expect a short error toast, no send.
 4. On Bookings, calendar → search or pick a stay grouped by check-in month (guest, dates, status). On a booking detail, **This page** is listed first. Expect a chip with guest name and dates. You can pin more than one stay. Send with the chip still pinned and empty text + a file — the turn should go through.
 5. Ask the assistant to check the receipt against the pinned booking. Expect it to use that booking (and `run_receipt_validation` when you ask to validate). Pins travel as `attachedContext` and do not overwrite the current page.
 6. Reload the conversation from History — user bubble should still list file names (not the raw bytes).
 7. Send a question — expect a left-aligned **card bubble** with sparkles and bouncing dots (not a bare “Thinking…” line). Opening History must not show that bubble.
-8. Type several lines in the composer (Shift+Enter) — text stays **left-aligned and full-width** above attach / pin / send, grows up to **10 lines**, then scrolls. Enter still sends.
+8. Type several lines in the composer (Shift+Enter) — text stays **left-aligned and full-width** above pin / attach / mic / send, grows up to **10 lines**, then scrolls. Enter still sends.
+
+### 2.3 Speech-to-text (#18)
+
+1. In Chrome or Safari on HTTPS (or localhost), open the assistant — expect a **mic** icon after paperclip.
+2. Tap mic — allow microphone if prompted. Composer shows **Listening…** placeholder, primary-tint mic button, and three subtle meter bars under the icon.
+3. Speak a short question; words appear while you talk (interim + final).
+4. Tap mic again — listening stops; partial text stays editable.
+5. Type text first, then mic — new speech appends after existing words.
+6. Send — mic stops; message sends as usual.
+7. Firefox or unsupported contexts — mic hidden; no broken layout.
 
 Per-module pin (open the assistant from that page; icon ≥ 44×44px; chip appears; send a short question that should name the pinned item):
 
@@ -158,7 +169,7 @@ If the assistant instead proposes and waits for confirmation, check whether the 
 
 ### 6.1 Permission re-check
 
-1. Create (or use) a property-team member with a **VIEWER**-style role that lacks `bookings:workflow`.
+1. Create (or use) a property-team member on the **Read Only** template (or a custom set without `bookings.detail.workflow:edit`).
 2. Sign in as that member, open the assistant, and ask it to move or cancel a booking.
 3. Expect a plain refusal ("access restricted" wording) — **never** a Confirm/Cancel card. The point is the tool executor rejects it server-side even if the model attempted the call; a card here would mean the RBAC re-check isn't wired correctly.
 
@@ -196,7 +207,7 @@ If the assistant instead proposes and waits for confirmation, check whether the 
 
 1. Resize to 375×667 (iPhone SE) or use device emulation.
 2. Confirm **Assistant** is a bottom tab (not a floating button overlapping the dock) and is at least 44×44px. Tap it — the same slide-over opens.
-3. Open the panel — it should be wider than a typical `md` sheet on desktop (`sm:max-w-xl` when chat-only), composer stays one row (attach, pin, input, send) and reachable above the keyboard, Confirm/Cancel buttons are each ≥44px tall.
+3. Open the panel — it should be wider than a typical `md` sheet on desktop (`sm:max-w-xl` when chat-only), composer stays one row (pin, attach, mic when supported, send) and reachable above the keyboard, Confirm/Cancel buttons are each ≥44px tall.
 4. Scroll a long conversation — thread scrolls independently of the page.
 5. **Canvas:** ask for a booking journey (or a table with more than 8 rows). At **375** and **768**, **Open** replaces the chat; **Back** returns to the thread with composer text still there. At **1024+**, the sheet widens, canvas is on the left, chat (~24rem) stays on the right. Suggested chips fill the composer and do not send.
 
