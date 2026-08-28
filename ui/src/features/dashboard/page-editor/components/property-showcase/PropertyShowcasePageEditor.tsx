@@ -9,6 +9,7 @@ import { PropertyShowcasePage } from '@/features/guest/marketing/showcase/pages/
 import {
   defaultPropertyShowcaseConfig,
   isShowcaseTemplateKey,
+  showcaseConfigForSave,
   type PropertyShowcaseConfig,
   type ShowcaseTemplateKey,
 } from '@/features/guest/marketing/showcase/types/showcase';
@@ -18,7 +19,11 @@ import { PageEditorLeaveConfirmDialog } from '@/features/dashboard/page-editor/c
 import { PageEditorPreviewPane } from '@/features/dashboard/page-editor/components/PageEditorPreviewPane';
 import { PageEditorShell } from '@/features/dashboard/page-editor/components/PageEditorShell';
 import { PropertyShowcaseEditorPanel } from '@/features/dashboard/page-editor/components/property-showcase/PropertyShowcaseEditorPanel';
-import { usePageEditorAutoSave } from '@/features/dashboard/page-editor/hooks/usePageEditorAutoSave';
+import {
+  mergePageEditorAutoSaveStatuses,
+  usePageEditorAutoSave,
+} from '@/features/dashboard/page-editor/hooks/usePageEditorAutoSave';
+import { resolvePageEditorPublicLinks } from '@/features/dashboard/page-editor/lib/pageEditorPublicLinks';
 import {
   usePublicPageConfig,
   useSavePublicPageConfig,
@@ -139,7 +144,7 @@ export function PropertyShowcasePageEditor({
     enabled: canAutosave && hydrated,
     contentFingerprint: hydrated ? JSON.stringify(config) : null,
     save: async () => {
-      await saveConfig.mutateAsync(config);
+      await saveConfig.mutateAsync(showcaseConfigForSave(config));
       markClean();
     },
   });
@@ -150,19 +155,13 @@ export function PropertyShowcasePageEditor({
     save: async () => {
       if (!propertyId) return;
       await patchShowcaseTemplate(propertyId, templateKey);
+      markClean();
     },
   });
 
-  const status =
-    configSave.status === 'error' || templateSave.status === 'error'
-      ? 'error'
-      : configSave.status === 'saving' || templateSave.status === 'saving'
-        ? 'saving'
-        : configSave.status === 'pending' || templateSave.status === 'pending'
-          ? 'pending'
-          : configSave.status === 'saved' || templateSave.status === 'saved'
-            ? 'saved'
-            : 'idle';
+  const status = mergePageEditorAutoSaveStatuses([configSave.status, templateSave.status]);
+  /** Paid plans: autosave status is source of truth (store `isDirty` stays true after undo/template). */
+  const hasUnsavedChanges = canAutosave ? status === 'pending' || status === 'error' : isDirty;
 
   const mergedPreview = useMemo(() => {
     if (!previewQuery.data) return null;
@@ -176,15 +175,19 @@ export function PropertyShowcasePageEditor({
 
   const propertyImages = previewQuery.data?.images ?? [];
   const backHref = propertySectionPath(orgSlug, propertySlug, 'public-pages');
+  const publicLinks = useMemo(
+    () => (propertyId ? resolvePageEditorPublicLinks('showcase', propertySlug, propertyId) : null),
+    [propertyId, propertySlug]
+  );
 
   const saveAll = async () => {
-    await saveConfig.mutateAsync(config);
+    await saveConfig.mutateAsync(showcaseConfigForSave(config));
     if (propertyId) await patchShowcaseTemplate(propertyId, templateKey);
     markClean();
   };
 
   const handleBack = () => {
-    if (isDirty) {
+    if (hasUnsavedChanges) {
       setShowLeaveConfirm(true);
       return;
     }
@@ -207,7 +210,7 @@ export function PropertyShowcasePageEditor({
     );
   }
 
-  if (configQuery.isLoading || previewQuery.isLoading || !hydrated) {
+  if (configQuery.isLoading || previewQuery.isLoading || !hydrated || !previewQuery.data) {
     return (
       <AdminMobilePage title="Showcase" titleId="showcase-editor-heading">
         <SectionContentSkeleton rows={5} className="min-h-[50vh]" />
@@ -224,12 +227,11 @@ export function PropertyShowcasePageEditor({
             onBack={handleBack}
             autoSaveStatus={status}
             autoSaveError={configSave.errorMessage ?? templateSave.errorMessage}
-            canUndo={historyIndex > 0}
-            canRedo={historyIndex < historyLength - 1}
-            onUndo={undo}
-            onRedo={redo}
+            openHref={publicLinks?.openHref}
+            copyHref={publicLinks?.copyHref}
+            publicPageLabel={publicLinks?.pageLabel}
             manualSave={{
-              visible: !canAutosave && status === 'pending',
+              visible: !canAutosave && hasUnsavedChanges,
               onClick: () => {
                 void (async () => {
                   if (!canAutosave) {
@@ -248,9 +250,20 @@ export function PropertyShowcasePageEditor({
             }}
           />
         }
-        controls={<PropertyShowcaseEditorPanel propertyImages={propertyImages} />}
+        controls={
+          <PropertyShowcaseEditorPanel
+            property={previewQuery.data}
+            propertyImages={propertyImages}
+            propertyBrandColor={previewQuery.data?.brandColor}
+          />
+        }
         preview={
-          <PageEditorPreviewPane>
+          <PageEditorPreviewPane
+            canUndo={historyIndex > 0}
+            canRedo={historyIndex < historyLength - 1}
+            onUndo={undo}
+            onRedo={redo}
+          >
             {mergedPreview ? (
               <PreviewOverrideProvider value={mergedPreview}>
                 <PropertyShowcasePage />

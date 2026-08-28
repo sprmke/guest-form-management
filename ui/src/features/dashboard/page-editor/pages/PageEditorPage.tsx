@@ -82,6 +82,7 @@ import {
   useSavePublicPageConfig,
 } from '@/features/dashboard/page-editor/hooks/usePublicPageConfig';
 import { STAY_GUIDE_STANDARD_TEMPLATE_KEYS } from '@/features/dashboard/page-editor/lib/stayGuideChapterSections';
+import { resolvePageEditorPublicLinks } from '@/features/dashboard/page-editor/lib/pageEditorPublicLinks';
 import { usePropertyLandingEditorStore } from '@/features/dashboard/page-editor/stores/propertyLandingEditorStore';
 import { useStayGuideEditorStore } from '@/features/dashboard/page-editor/stores/stayGuideEditorStore';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
@@ -343,6 +344,11 @@ function StayGuidePageEditor({
 
   const backHref = propertySectionPath(orgSlug, propertySlug, 'public-pages');
   const pageMeta = PAGE_EDITOR_META['stay-guide'];
+  const publicLinks = useMemo(
+    () =>
+      propertyId ? resolvePageEditorPublicLinks('stay-guide', propertySlug, propertyId) : null,
+    [propertyId, propertySlug]
+  );
 
   const saveAllPending = () => Promise.all([configSave.saveNow(), contentSave.saveNow()]);
 
@@ -441,10 +447,9 @@ function StayGuidePageEditor({
             onBack={handleBack}
             autoSaveStatus={status}
             autoSaveError={errorMessage}
-            canUndo={historyIndex > 0}
-            canRedo={historyIndex < historyLength - 1}
-            onUndo={undo}
-            onRedo={redo}
+            openHref={publicLinks?.openHref}
+            copyHref={publicLinks?.copyHref}
+            publicPageLabel={publicLinks?.pageLabel}
             manualSave={{
               visible: !canUseAutosave && status === 'pending',
               onClick: () => void handleManualSaveClick(),
@@ -462,7 +467,12 @@ function StayGuidePageEditor({
           />
         }
         preview={
-          <PageEditorPreviewPane>
+          <PageEditorPreviewPane
+            canUndo={historyIndex > 0}
+            canRedo={historyIndex < historyLength - 1}
+            onUndo={undo}
+            onRedo={redo}
+          >
             <PreviewOverrideProvider value={mergedPreview}>
               <StayGuidePage />
             </PreviewOverrideProvider>
@@ -869,6 +879,10 @@ function PropertyLandingPageEditor({
 
   const backHref = propertySectionPath(orgSlug, propertySlug, 'public-pages');
   const pageMeta = PAGE_EDITOR_META.listing;
+  const publicLinks = useMemo(
+    () => (propertyId ? resolvePageEditorPublicLinks('listing', propertySlug, propertyId) : null),
+    [propertyId, propertySlug]
+  );
 
   const handleManualSaveClick = async () => {
     if (!canUseAutosave) {
@@ -954,10 +968,9 @@ function PropertyLandingPageEditor({
             onBack={handleBack}
             autoSaveStatus={status}
             autoSaveError={errorMessage}
-            canUndo={historyIndex > 0}
-            canRedo={historyIndex < historyLength - 1}
-            onUndo={undo}
-            onRedo={redo}
+            openHref={publicLinks?.openHref}
+            copyHref={publicLinks?.copyHref}
+            publicPageLabel={publicLinks?.pageLabel}
             manualSave={{
               visible: !canUseAutosave && status === 'pending',
               onClick: () => void handleManualSaveClick(),
@@ -990,7 +1003,12 @@ function PropertyLandingPageEditor({
           />
         }
         preview={
-          <PageEditorPreviewPane>
+          <PageEditorPreviewPane
+            canUndo={historyIndex > 0}
+            canRedo={historyIndex < historyLength - 1}
+            onUndo={undo}
+            onRedo={redo}
+          >
             <PreviewOverrideProvider value={mergedPreview}>
               <PropertyDetailPage />
             </PreviewOverrideProvider>

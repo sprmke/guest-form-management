@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import { ChevronDown } from 'lucide-react';
 
 import { StyleSection } from '@/features/dashboard/marketing/components/calendar-builder/components/panels/StyleSection';
 import { CopyOverrideField } from '@/features/dashboard/page-editor/components/shared/CopyOverrideField';
+import { CtaOverrideField } from '@/features/dashboard/page-editor/components/shared/CtaOverrideField';
+import { HeroEyebrowField } from '@/features/dashboard/page-editor/components/shared/HeroEyebrowField';
 import { ImageSlotPicker } from '@/features/dashboard/page-editor/components/shared/ImageSlotPicker';
 import { SectionReorderList } from '@/features/dashboard/page-editor/components/shared/SectionReorderList';
 import {
@@ -12,16 +14,32 @@ import {
   PaletteControl,
   TypographyControl,
 } from '@/features/dashboard/page-editor/components/shared/StyleControls';
-import { PageEditorRevealTarget } from '@/features/dashboard/page-editor/lib/pageEditorPreviewScroll';
+import {
+  PageEditorRevealTarget,
+  usePageEditorPreviewScroll,
+} from '@/features/dashboard/page-editor/lib/pageEditorPreviewScroll';
+import { ShowcaseTemplatePicker } from '@/features/dashboard/page-editor/components/property-showcase/ShowcaseTemplatePicker';
+import {
+  buildShowcaseSectionCopyOverride,
+  buildShowcaseSectionCtaOverride,
+  resolveShowcaseSectionEditorBaselines,
+  resolveShowcaseSectionEditorDisplayCopy,
+  resolveShowcaseSectionEditorDisplayCta,
+  showcaseEditorBaselineConfigKey,
+} from '@/features/dashboard/page-editor/lib/showcaseSectionEditorCopy';
+import { resolveShowcaseSectionEditorFields } from '@/features/dashboard/page-editor/lib/showcaseSectionEditorFields';
 import { usePropertyShowcaseEditorStore } from '@/features/dashboard/page-editor/stores/propertyShowcaseEditorStore';
-import { SHOWCASE_TEMPLATE_REGISTRY } from '@/features/guest/marketing/showcase/templates/registry';
+import type { ResolvedPropertyDetail } from '@/features/guest/marketing/properties/types/publicProperty';
+import { resolveShowcaseEditorStyleFields } from '@/features/guest/marketing/showcase/lib/showcaseEditorStyleFields';
+import { showcasePropertyHasDevelopment } from '@/features/guest/marketing/showcase/lib/showcaseHeroEyebrow';
+import { useShowcaseMediaPalette } from '@/features/guest/marketing/showcase/hooks/useShowcaseMediaPalette';
+import { scrollShowcaseToTop } from '@/features/guest/marketing/showcase/lib/showcaseScroll';
 import {
   SHOWCASE_SECTION_IDS,
   type ShowcaseSectionId,
+  type ShowcaseTemplateKey,
 } from '@/features/guest/marketing/showcase/types/showcase';
 
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 
 const SECTION_LABELS: Record<ShowcaseSectionId, string> = {
@@ -37,13 +55,18 @@ const SECTION_LABELS: Record<ShowcaseSectionId, string> = {
 };
 
 type Props = {
+  property: ResolvedPropertyDetail;
   propertyImages: string[];
+  propertyBrandColor?: string | null;
 };
 
-export function PropertyShowcaseEditorPanel({ propertyImages }: Props) {
+export function PropertyShowcaseEditorPanel({
+  property,
+  propertyImages,
+  propertyBrandColor,
+}: Props) {
   const config = usePropertyShowcaseEditorStore((s) => s.config);
   const templateKey = usePropertyShowcaseEditorStore((s) => s.templateKey);
-  const setPublished = usePropertyShowcaseEditorStore((s) => s.setPublished);
   const setTemplateKey = usePropertyShowcaseEditorStore((s) => s.setTemplateKey);
   const setSectionVisible = usePropertyShowcaseEditorStore((s) => s.setSectionVisible);
   const reorderSections = usePropertyShowcaseEditorStore((s) => s.reorderSections);
@@ -51,45 +74,53 @@ export function PropertyShowcaseEditorPanel({ propertyImages }: Props) {
   const setSectionColumns = usePropertyShowcaseEditorStore((s) => s.setSectionColumns);
   const setSectionImageSlots = usePropertyShowcaseEditorStore((s) => s.setSectionImageSlots);
   const setSectionCta = usePropertyShowcaseEditorStore((s) => s.setSectionCta);
+  const setSectionHeroEyebrow = usePropertyShowcaseEditorStore((s) => s.setSectionHeroEyebrow);
+  const setSectionLocationLead = usePropertyShowcaseEditorStore((s) => s.setSectionLocationLead);
   const setPalette = usePropertyShowcaseEditorStore((s) => s.setPalette);
   const setTypography = usePropertyShowcaseEditorStore((s) => s.setTypography);
   const setMotion = usePropertyShowcaseEditorStore((s) => s.setMotion);
+  const previewScroll = usePageEditorPreviewScroll();
 
   const [openSection, setOpenSection] = useState<ShowcaseSectionId | null>('hero');
 
+  const handleTemplateChange = useCallback(
+    (next: ShowcaseTemplateKey) => {
+      setTemplateKey(next);
+      const scrollPreviewToTop = () => {
+        previewScroll?.scrollToTop('auto');
+        scrollShowcaseToTop('auto');
+      };
+      window.requestAnimationFrame(scrollPreviewToTop);
+      window.setTimeout(scrollPreviewToTop, 120);
+    },
+    [previewScroll, setTemplateKey]
+  );
+
+  const baselineConfigKey = showcaseEditorBaselineConfigKey(config);
+  const sectionBaselines = useMemo(
+    () => resolveShowcaseSectionEditorBaselines(config, property, templateKey),
+    [baselineConfigKey, property, templateKey]
+  );
+
   const orderedSections = [...config.sections].sort((a, b) => a.order - b.order);
+  const styleFields = resolveShowcaseEditorStyleFields(templateKey);
+  const { palette: mediaPalette } = useShowcaseMediaPalette(
+    propertyImages,
+    propertyImages.length > 0
+  );
 
   return (
     <div className="min-w-0">
       <StyleSection title="Template" defaultOpen>
-        <div className="grid gap-2">
-          {SHOWCASE_TEMPLATE_REGISTRY.map((entry) => (
-            <button
-              key={entry.key}
-              type="button"
-              onClick={() => setTemplateKey(entry.key)}
-              className={cn(
-                'min-h-11 rounded-lg border px-3 py-2 text-left text-sm',
-                templateKey === entry.key
-                  ? 'border-primary bg-primary/10'
-                  : 'border-border hover:bg-muted/40'
-              )}
-            >
-              {entry.label}
-            </button>
-          ))}
-        </div>
-        <div className="border-border mt-4 flex min-h-11 items-center justify-between gap-3 border-t pt-4">
-          <Label htmlFor="showcase-published">Published</Label>
-          <Switch
-            id="showcase-published"
-            checked={config.published}
-            onCheckedChange={setPublished}
-          />
-        </div>
+        <ShowcaseTemplatePicker
+          value={templateKey}
+          onChange={handleTemplateChange}
+          property={property}
+          config={config}
+        />
       </StyleSection>
 
-      <StyleSection title="Sections" defaultOpen>
+      <StyleSection title="Sections">
         <SectionReorderList
           items={orderedSections.map((section) => ({
             id: section.id,
@@ -107,10 +138,15 @@ export function PropertyShowcaseEditorPanel({ propertyImages }: Props) {
         <div className="space-y-4">
           <PaletteControl
             mode={config.palette.mode}
-            accent={config.palette.accent}
+            customPaletteBase={config.palette.customPaletteBase}
             overlay={config.palette.overlay}
+            propertyBrandColor={propertyBrandColor}
+            mediaPalette={mediaPalette}
+            showOverlay={styleFields.heroOverlay}
             onModeChange={(mode) => setPalette({ mode })}
-            onAccentChange={(accent) => setPalette({ accent })}
+            onCustomPaletteBaseChange={(customPaletteBase) =>
+              setPalette({ mode: 'custom', customPaletteBase })
+            }
             onOverlayChange={(overlay) => setPalette({ overlay })}
           />
           <TypographyControl
@@ -118,11 +154,14 @@ export function PropertyShowcaseEditorPanel({ propertyImages }: Props) {
             scale={config.typography.scale}
             onDisplayFontChange={(displayFont) => setTypography({ displayFont })}
             onScaleChange={(scale) => setTypography({ scale })}
+            hideDisplayFont={!styleFields.displayFont}
           />
           <MotionControl
             intensity={config.motion.intensity}
             parallax={config.motion.parallax}
             canvas={config.motion.canvas}
+            showParallax={styleFields.parallax}
+            showCanvas={styleFields.canvas}
             onIntensityChange={(intensity) => setMotion({ intensity })}
             onParallaxChange={(parallax) => setMotion({ parallax })}
             onCanvasChange={(canvas) => setMotion({ canvas })}
@@ -135,6 +174,13 @@ export function PropertyShowcaseEditorPanel({ propertyImages }: Props) {
           {SHOWCASE_SECTION_IDS.map((id) => {
             const section = config.sections.find((entry) => entry.id === id);
             if (!section) return null;
+            const fields = resolveShowcaseSectionEditorFields(id);
+            const baseline = sectionBaselines.get(id);
+            const displayCopy = resolveShowcaseSectionEditorDisplayCopy(section.copy, baseline);
+            const displayCta = resolveShowcaseSectionEditorDisplayCta(
+              section.ctaLabel,
+              section.ctaTarget
+            );
             const open = openSection === id;
             return (
               <PageEditorRevealTarget key={id} anchor={id}>
@@ -153,31 +199,66 @@ export function PropertyShowcaseEditorPanel({ propertyImages }: Props) {
                   </button>
                   {open ? (
                     <div className="border-border space-y-4 border-t px-3 py-3">
+                      {id === 'hero' ? (
+                        <HeroEyebrowField
+                          value={section.heroEyebrow}
+                          onChange={(next) => setSectionHeroEyebrow(id, next)}
+                          developmentAvailable={showcasePropertyHasDevelopment(property)}
+                          developmentName={property.residenceName}
+                          label="Above heading"
+                          idPrefix="showcase-hero-eyebrow"
+                        />
+                      ) : null}
+                      {id === 'location' ? (
+                        <HeroEyebrowField
+                          value={section.locationLead}
+                          onChange={(next) => setSectionLocationLead(id, next)}
+                          developmentAvailable={showcasePropertyHasDevelopment(property)}
+                          developmentName={property.residenceName}
+                          label="Under heading"
+                          idPrefix="showcase-location-lead"
+                        />
+                      ) : null}
                       <CopyOverrideField
-                        value={section.copy ?? {}}
-                        onChange={(copy) => setSectionCopy(id, copy)}
-                        onReset={() => setSectionCopy(id, {})}
+                        idPrefix={`showcase-${id}-copy`}
+                        value={displayCopy}
+                        showHeading={fields.heading}
+                        showSubheading={fields.subheading}
+                        showBody={fields.body}
+                        onChange={(copy) =>
+                          setSectionCopy(id, buildShowcaseSectionCopyOverride(baseline, copy))
+                        }
                       />
-                      {id === 'amenities' || id === 'highlights' ? (
+                      {fields.columns ? (
                         <ColumnCountControl
                           value={section.columns ?? 3}
                           onChange={(columns) => setSectionColumns(id, columns)}
                         />
                       ) : null}
-                      {id === 'gallery' || id === 'hero' ? (
+                      {fields.imageSlots ? (
                         <ImageSlotPicker
                           images={propertyImages}
-                          selected={section.imageSlots ?? []}
-                          onChange={(slots) => setSectionImageSlots(id, slots)}
+                          selected={
+                            id === 'hero'
+                              ? (section.imageSlots ?? []).slice(0, 1)
+                              : (section.imageSlots ?? [])
+                          }
+                          onChange={(slots) =>
+                            setSectionImageSlots(id, id === 'hero' ? slots.slice(0, 1) : slots)
+                          }
+                          scope={id === 'gallery' ? 'gallery' : 'hero'}
+                          selectionMode={id === 'hero' ? 'single' : 'multi'}
                         />
                       ) : null}
-                      {id === 'cta' || id === 'hero' ? (
-                        <CopyOverrideField
-                          value={{
-                            heading: section.ctaLabel,
-                            body: section.ctaTarget,
+                      {fields.cta ? (
+                        <CtaOverrideField
+                          idPrefix={`showcase-${id}-cta`}
+                          ctaLabel={displayCta.ctaLabel}
+                          ctaTarget={displayCta.ctaTarget}
+                          onChange={(ctaLabel, ctaTarget) => {
+                            const override = buildShowcaseSectionCtaOverride(ctaLabel, ctaTarget);
+                            setSectionCta(id, override.ctaLabel, override.ctaTarget);
                           }}
-                          onChange={(value) => setSectionCta(id, value.heading, value.body)}
                         />
                       ) : null}
                     </div>

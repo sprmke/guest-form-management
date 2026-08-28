@@ -3,8 +3,11 @@ import { immer } from 'zustand/middleware/immer';
 
 import {
   defaultPropertyShowcaseConfig,
+  normalizeShowcasePaletteMode,
+  SHOWCASE_PRESET_PALETTE_IDS,
   SHOWCASE_SECTION_IDS,
   type PropertyShowcaseConfig,
+  type ShowcasePaletteMode,
   type ShowcaseSectionId,
   type ShowcaseTemplateKey,
 } from '@/features/guest/marketing/showcase/types/showcase';
@@ -30,7 +33,6 @@ type PropertyShowcaseEditorState = {
 type PropertyShowcaseEditorActions = {
   hydrate: (config: PropertyShowcaseConfig, templateKey: ShowcaseTemplateKey) => void;
   reset: () => void;
-  setPublished: (published: boolean) => void;
   setTemplateKey: (templateKey: ShowcaseTemplateKey) => void;
   setSectionVisible: (id: ShowcaseSectionId, visible: boolean) => void;
   reorderSections: (orderedIds: ShowcaseSectionId[]) => void;
@@ -41,6 +43,14 @@ type PropertyShowcaseEditorActions = {
   setSectionColumns: (id: ShowcaseSectionId, columns: number) => void;
   setSectionImageSlots: (id: ShowcaseSectionId, imageSlots: string[]) => void;
   setSectionCta: (id: ShowcaseSectionId, ctaLabel?: string, ctaTarget?: string) => void;
+  setSectionHeroEyebrow: (
+    id: ShowcaseSectionId,
+    heroEyebrow: PropertyShowcaseConfig['sections'][number]['heroEyebrow']
+  ) => void;
+  setSectionLocationLead: (
+    id: ShowcaseSectionId,
+    locationLead: PropertyShowcaseConfig['sections'][number]['locationLead']
+  ) => void;
   setPalette: (palette: Partial<PropertyShowcaseConfig['palette']>) => void;
   setTypography: (typography: Partial<PropertyShowcaseConfig['typography']>) => void;
   setMotion: (motion: Partial<PropertyShowcaseConfig['motion']>) => void;
@@ -54,6 +64,39 @@ type PropertyShowcaseEditorActions = {
 function cloneSnapshot(snapshot: Snapshot): Snapshot {
   return JSON.parse(JSON.stringify(snapshot)) as Snapshot;
 }
+
+function applyTemplateTypography(
+  templateKey: ShowcaseTemplateKey,
+  typography: PropertyShowcaseConfig['typography']
+): PropertyShowcaseConfig['typography'] {
+  if (templateKey === 'showcase-monolith') {
+    return { ...typography, displayFont: 'instrument' };
+  }
+  if (templateKey === 'showcase-editorial') {
+    return { ...typography, displayFont: 'cormorant' };
+  }
+  if (templateKey === 'showcase-haven') {
+    return { ...typography, displayFont: 'fraunces' };
+  }
+  if (templateKey === 'showcase-verso') {
+    return { ...typography, displayFont: 'outfit' };
+  }
+  if (templateKey === 'showcase-atlas') {
+    return { ...typography, displayFont: 'jakarta' };
+  }
+  if (templateKey === 'showcase-aurora' && typography.displayFont === 'cormorant') {
+    return { ...typography, displayFont: 'outfit' };
+  }
+  return typography;
+}
+
+const PALETTE_MODES = new Set<ShowcasePaletteMode>([
+  'default',
+  'brand',
+  'media',
+  'custom',
+  ...SHOWCASE_PRESET_PALETTE_IDS,
+]);
 
 export function normalizeShowcaseConfig(config: PropertyShowcaseConfig): PropertyShowcaseConfig {
   const byId = new Map(config.sections.map((section) => [section.id, section]));
@@ -70,9 +113,12 @@ export function normalizeShowcaseConfig(config: PropertyShowcaseConfig): Propert
     version: 1,
     published: Boolean(config.published),
     palette: {
-      mode: config.palette?.mode ?? 'light',
+      mode: PALETTE_MODES.has(config.palette?.mode as ShowcasePaletteMode)
+        ? (config.palette!.mode as ShowcasePaletteMode)
+        : normalizeShowcasePaletteMode(config.palette?.mode),
       accent: config.palette?.accent ?? 'brand',
       customAccent: config.palette?.customAccent ?? null,
+      customPaletteBase: config.palette?.customPaletteBase ?? null,
       overlay: config.palette?.overlay ?? 'soft',
     },
     typography: {
@@ -95,6 +141,8 @@ export function normalizeShowcaseConfig(config: PropertyShowcaseConfig): Propert
         imageSlots: existing?.imageSlots,
         ctaLabel: existing?.ctaLabel,
         ctaTarget: existing?.ctaTarget,
+        heroEyebrow: id === 'hero' ? existing?.heroEyebrow : undefined,
+        locationLead: id === 'location' ? existing?.locationLead : undefined,
       };
     }),
   };
@@ -132,6 +180,7 @@ export const usePropertyShowcaseEditorStore = create<
     hydrate: (config, templateKey) =>
       set((state) => {
         const next = normalizeShowcaseConfig(config);
+        next.typography = applyTemplateTypography(templateKey, next.typography);
         state.config = next;
         state.templateKey = templateKey;
         state.history = [cloneSnapshot({ config: next, templateKey })];
@@ -151,16 +200,10 @@ export const usePropertyShowcaseEditorStore = create<
         state.hydrated = false;
       }),
 
-    setPublished: (published) =>
-      set((state) => {
-        state.config.published = published;
-        state.isDirty = true;
-        pushHistory(state);
-      }),
-
     setTemplateKey: (templateKey) =>
       set((state) => {
         state.templateKey = templateKey;
+        state.config.typography = applyTemplateTypography(templateKey, state.config.typography);
         state.isDirty = true;
         pushHistory(state);
       }),
@@ -224,6 +267,26 @@ export const usePropertyShowcaseEditorStore = create<
         if (!section) return;
         section.ctaLabel = ctaLabel?.trim() || undefined;
         section.ctaTarget = ctaTarget?.trim() || undefined;
+        state.isDirty = true;
+        pushHistory(state);
+      }),
+
+    setSectionHeroEyebrow: (id, heroEyebrow) =>
+      set((state) => {
+        if (id !== 'hero') return;
+        const section = state.config.sections.find((entry) => entry.id === id);
+        if (!section) return;
+        section.heroEyebrow = heroEyebrow;
+        state.isDirty = true;
+        pushHistory(state);
+      }),
+
+    setSectionLocationLead: (id, locationLead) =>
+      set((state) => {
+        if (id !== 'location') return;
+        const section = state.config.sections.find((entry) => entry.id === id);
+        if (!section) return;
+        section.locationLead = locationLead;
         state.isDirty = true;
         pushHistory(state);
       }),

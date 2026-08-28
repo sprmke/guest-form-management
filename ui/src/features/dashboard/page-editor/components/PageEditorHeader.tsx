@@ -1,8 +1,8 @@
 import { ArrowLeft } from 'lucide-react';
 
 import { MarketingAutoSaveStatus } from '@/features/dashboard/marketing/components/shared/MarketingAutoSaveStatus';
-import { MarketingEditorHistoryControls } from '@/features/dashboard/marketing/components/shared/MarketingEditorHistoryControls';
 import type { MarketingAutoSaveStatus as AutoSaveStatus } from '@/features/dashboard/marketing/hooks/useMarketingAutoSave';
+import { PageEditorPreviewActions } from '@/features/dashboard/page-editor/components/PageEditorPreviewActions';
 import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
 
 import { Button } from '@/components/ui/button';
@@ -15,12 +15,11 @@ type Props = {
   onBack: () => void;
   autoSaveStatus: AutoSaveStatus;
   autoSaveError?: string | null;
-  canUndo: boolean;
-  canRedo: boolean;
-  onUndo: () => void;
-  onRedo: () => void;
   /** Shown instead of the autosave status when the plan doesn't include autosave (`publicPagesAutosave`) — opens the upgrade modal on click. */
   manualSave?: { visible: boolean; onClick: () => void; isSaving?: boolean };
+  openHref?: string;
+  copyHref?: string;
+  publicPageLabel?: string;
 };
 
 export function PageEditorHeader({
@@ -28,12 +27,13 @@ export function PageEditorHeader({
   onBack,
   autoSaveStatus,
   autoSaveError,
-  canUndo,
-  canRedo,
-  onUndo,
-  onRedo,
   manualSave,
+  openHref,
+  copyHref,
+  publicPageLabel,
 }: Props) {
+  const showPageLinks = Boolean(openHref && copyHref && publicPageLabel);
+
   return (
     <header className="border-border bg-card flex min-h-14 shrink-0 items-center gap-2 border-b px-3 sm:gap-3 sm:px-4">
       <Button
@@ -54,7 +54,7 @@ export function PageEditorHeader({
         <TierBadge feature="publicPagesAutosave" />
       </div>
 
-      <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
         <div className="flex min-w-[5.5rem] justify-end sm:min-w-[6.5rem]">
           {manualSave?.visible ? (
             <Button
@@ -70,12 +70,13 @@ export function PageEditorHeader({
             <MarketingAutoSaveStatus status={autoSaveStatus} errorMessage={autoSaveError} />
           )}
         </div>
-        <MarketingEditorHistoryControls
-          canUndo={canUndo}
-          canRedo={canRedo}
-          onUndo={onUndo}
-          onRedo={onRedo}
-        />
+        {showPageLinks ? (
+          <PageEditorPreviewActions
+            openHref={openHref!}
+            copyHref={copyHref!}
+            pageLabel={publicPageLabel!}
+          />
+        ) : null}
       </div>
     </header>
   );

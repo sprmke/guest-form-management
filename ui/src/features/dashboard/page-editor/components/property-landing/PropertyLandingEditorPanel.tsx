@@ -24,8 +24,8 @@ import { PropertyLandingHouseRulesControl } from '@/features/dashboard/page-edit
 import { PageEditorRevealTarget } from '@/features/dashboard/page-editor/lib/pageEditorPreviewScroll';
 import { usePropertyLandingEditorStore } from '@/features/dashboard/page-editor/stores/propertyLandingEditorStore';
 
-
 import { Textarea } from '@/components/ui/textarea';
+import { collectPropertyPhotoUrls } from '@/lib/theme/photoBrandColor';
 
 const OPTIONAL_SECTION_LABELS: Record<string, string> = {
   amenities: 'Amenities',
@@ -142,6 +142,7 @@ export function PropertyLandingEditorPanel({
             resetValue={inheritedBrandColor}
             error={brandColorError}
             hideLabel
+            photoUrls={collectPropertyPhotoUrls(media)}
             onChange={onBrandColorChange}
           />
         </div>

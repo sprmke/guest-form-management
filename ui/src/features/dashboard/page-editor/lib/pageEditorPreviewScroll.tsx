@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, type ReactNo
 type PageEditorPreviewScrollApi = {
   registerScrollRoot: (el: HTMLElement | null) => void;
   scrollToAnchor: (anchor: string) => void;
+  scrollToTop: (behavior?: ScrollBehavior) => void;
 };
 
 const PageEditorPreviewScrollContext = createContext<PageEditorPreviewScrollApi | null>(null);
@@ -36,8 +37,16 @@ export function PageEditorPreviewScrollProvider({ children }: { children: ReactN
     root.scrollTo({ top, behavior: 'smooth' });
   }, []);
 
+  const scrollToTop = useCallback((behavior: ScrollBehavior = 'auto') => {
+    const root = rootRef.current;
+    if (!root) return;
+    root.scrollTo({ top: 0, behavior });
+  }, []);
+
   return (
-    <PageEditorPreviewScrollContext.Provider value={{ registerScrollRoot, scrollToAnchor }}>
+    <PageEditorPreviewScrollContext.Provider
+      value={{ registerScrollRoot, scrollToAnchor, scrollToTop }}
+    >
       {children}
     </PageEditorPreviewScrollContext.Provider>
   );
