@@ -29,7 +29,7 @@ import {
   computeReadyForCheckinTotalDue,
 } from './propertyTemplateEmailSections.ts';
 import { formatDateForEmail } from './utils.ts';
-import { resolveAppSettings, DEFAULT_GCASH_QR_RELATIVE_PATH } from './appSettings.ts';
+import { resolveAppSettings } from './appSettings.ts';
 import { buildGuestFacingPlaceholderVars, loadGuestFacingContactInfo } from './guestContactInfo.ts';
 import {
   buildBookingPlaceholderVars,
@@ -44,6 +44,7 @@ import {
   resolveEmailUnitLabel,
   sanitizeAttachmentToken,
 } from './propertyEmailBranding.ts';
+import { buildEmailCtaHtml, renderBrandedEmailShell } from './brandedEmailShell.ts';
 import { escapeHtml } from './renderEmailHtml.ts';
 import { resolvePublicGuestAppOrigin } from './publicAppOrigin.ts';
 
@@ -143,78 +144,79 @@ function toBase64(bytes: Uint8Array): string {
   return btoa(chunks.join(''));
 }
 
-/** `content_id` for Resend inline image; `<img src="cid:…">` must match without the prefix. */
-const READY_FOR_CHECKIN_PAYMENT_QR_CONTENT_ID = 'kame-home-gcash-qr';
+/** `content_id` prefix for Resend inline payment QR images (`cid:payment-qr-<methodId>`). */
+const READY_FOR_CHECKIN_PAYMENT_QR_CONTENT_ID_PREFIX = 'payment-qr-';
 
-async function loadBundledReadyForCheckinPaymentQr(): Promise<Uint8Array | null> {
+type ReadyForCheckinQrAsset = {
+  methodId: string;
+  bytes: Uint8Array;
+  contentType: string;
+  filename: string;
+  contentId: string;
+};
+
+async function fetchPaymentQrBytes(
+  url: string
+): Promise<{ bytes: Uint8Array; contentType: string; filename: string } | null> {
   try {
-    const url = new URL('./email-assets/kame-home-gcash-qr-payment.jpg', import.meta.url);
-    return await Deno.readFile(url);
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.warn('[emailService] Payment QR fetch failed:', res.status, url);
+      return null;
+    }
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    if (bytes.length === 0) return null;
+    const contentType = res.headers.get('content-type')?.split(';')[0]?.trim() || 'image/jpeg';
+    const ext = contentType === 'image/png' ? 'png' : contentType === 'image/webp' ? 'webp' : 'jpg';
+    return { bytes, contentType, filename: `payment-qr.${ext}` };
   } catch (err) {
-    console.warn('[emailService] Bundled payment QR asset missing or unreadable:', err);
+    console.warn('[emailService] Payment QR fetch error:', err);
     return null;
   }
 }
 
-type ReadyForCheckinQrAsset = {
-  bytes: Uint8Array | null;
-  contentType: string;
-  filename: string;
-  fallbackUrl: string;
-};
-
-async function resolveReadyForCheckinPaymentQr(
+async function resolveReadyForCheckinPaymentQrs(
   settings: Awaited<ReturnType<typeof resolveAppSettings>>
-): Promise<ReadyForCheckinQrAsset> {
-  const originBase = settings.publicGuestAppOrigin.replace(/\/+$/, '');
-  const defaultUrl = `${originBase}/${DEFAULT_GCASH_QR_RELATIVE_PATH}`;
-  const fallbackUrl = settings.gcashQrImageUrl || defaultUrl;
-  const isCustomUpload = !!settings.gcashQrImageUrl && settings.gcashQrImageUrl !== defaultUrl;
+): Promise<{ assets: ReadyForCheckinQrAsset[]; qrSrcByMethodId: Record<string, string> }> {
+  const methods =
+    settings.paymentMethods?.length > 0
+      ? settings.paymentMethods
+      : settings.gcashQrImageUrl
+        ? [
+            {
+              id: 'legacy',
+              provider: settings.paymentProvider,
+              accountName: settings.gcashName,
+              accountNumber: settings.gcashNumber,
+              qrImageUrl: settings.gcashQrImageUrl,
+              isPrimary: true,
+            },
+          ]
+        : [];
 
-  if (isCustomUpload) {
-    try {
-      const res = await fetch(settings.gcashQrImageUrl);
-      if (res.ok) {
-        const bytes = new Uint8Array(await res.arrayBuffer());
-        if (bytes.length > 0) {
-          const contentType =
-            res.headers.get('content-type')?.split(';')[0]?.trim() || 'image/jpeg';
-          const ext =
-            contentType === 'image/png' ? 'png' : contentType === 'image/webp' ? 'webp' : 'jpg';
-          return {
-            bytes,
-            contentType,
-            filename: `gcash-qr.${ext}`,
-            fallbackUrl,
-          };
-        }
-      }
-      console.warn(
-        '[emailService] Custom GCash QR fetch failed:',
-        res.status,
-        settings.gcashQrImageUrl
-      );
-    } catch (err) {
-      console.warn('[emailService] Custom GCash QR fetch error:', err);
+  const assets: ReadyForCheckinQrAsset[] = [];
+  const qrSrcByMethodId: Record<string, string> = {};
+
+  for (const method of methods) {
+    const url = (method.qrImageUrl ?? '').trim();
+    if (!url || url.includes('kame-home-gcash-qr-payment')) continue;
+    const fetched = await fetchPaymentQrBytes(url);
+    if (!fetched) {
+      qrSrcByMethodId[method.id] = url;
+      continue;
     }
+    const contentId = `${READY_FOR_CHECKIN_PAYMENT_QR_CONTENT_ID_PREFIX}${method.id}`;
+    assets.push({
+      methodId: method.id,
+      bytes: fetched.bytes,
+      contentType: fetched.contentType,
+      filename: fetched.filename,
+      contentId,
+    });
+    qrSrcByMethodId[method.id] = `cid:${contentId}`;
   }
 
-  const bundled = await loadBundledReadyForCheckinPaymentQr();
-  if (bundled && bundled.length > 0) {
-    return {
-      bytes: bundled,
-      contentType: 'image/jpeg',
-      filename: 'kame-home-gcash-qr-payment.jpg',
-      fallbackUrl,
-    };
-  }
-
-  return {
-    bytes: null,
-    contentType: 'image/jpeg',
-    filename: 'kame-home-gcash-qr-payment.jpg',
-    fallbackUrl,
-  };
+  return { assets, qrSrcByMethodId };
 }
 
 type ResendAttachment = {
@@ -785,6 +787,9 @@ export async function sendBookingAcknowledgement(booking: GuestSubmission) {
           checkOut: displayCheckOutDate,
           brandColor: settings.brandColor,
           contact: guestContact,
+          parkingUrl: booking.need_parking
+            ? `${settings.publicGuestAppOrigin.replace(/\/+$/, '')}/parkings`
+            : null,
         }),
         email_signature_section: buildEmailSignatureSectionHtml(settings.gafUnitOwner, unitLabel),
       },
@@ -838,20 +843,13 @@ export async function sendReadyForCheckin(booking: GuestSubmission) {
   const totalDueAtCheckin = computeReadyForCheckinTotalDue(booking);
   const showPaymentSections = totalDueAtCheckin > 0;
 
-  let paymentQrImageUrl = '';
-  let qrAssetBytes: Uint8Array | null = null;
-  let qrAssetFilename = '';
-  let qrAssetContentType = '';
+  let qrSrcByMethodId: Record<string, string> = {};
+  let qrAssets: ReadyForCheckinQrAsset[] = [];
 
   if (showPaymentSections) {
-    const qrAsset = await resolveReadyForCheckinPaymentQr(settings);
-    qrAssetBytes = qrAsset.bytes;
-    qrAssetFilename = qrAsset.filename;
-    qrAssetContentType = qrAsset.contentType;
-    paymentQrImageUrl =
-      qrAsset.bytes && qrAsset.bytes.length > 0
-        ? `cid:${READY_FOR_CHECKIN_PAYMENT_QR_CONTENT_ID}`
-        : escapeHtml(qrAsset.fallbackUrl);
+    const resolved = await resolveReadyForCheckinPaymentQrs(settings);
+    qrAssets = resolved.assets;
+    qrSrcByMethodId = resolved.qrSrcByMethodId;
   }
 
   const guestContact = await loadGuestFacingContactInfo(propertyId, settings);
@@ -883,7 +881,7 @@ export async function sendReadyForCheckin(booking: GuestSubmission) {
         )
       : '',
     gcash_payment_section: showPaymentSections
-      ? buildGcashPaymentSectionHtml(settings, paymentQrImageUrl)
+      ? buildGcashPaymentSectionHtml(settings, qrSrcByMethodId)
       : '',
     ready_for_checkin_contact_section: buildReadyForCheckinContactSectionHtml(
       guestContact,
@@ -912,15 +910,17 @@ export async function sendReadyForCheckin(booking: GuestSubmission) {
   // ── Build attachments ─────────────────────────────────────────────────────────
   const attachments: ResendAttachment[] = [];
 
-  if (showPaymentSections && qrAssetBytes && qrAssetBytes.length > 0) {
-    attachments.push({
-      filename: qrAssetFilename,
-      content: toBase64(qrAssetBytes),
-      encoding: 'base64',
-      content_type: qrAssetContentType,
-      content_id: READY_FOR_CHECKIN_PAYMENT_QR_CONTENT_ID,
-    });
-    console.log('[readyForCheckin] Inline payment QR (CID attachment)');
+  if (showPaymentSections && qrAssets.length > 0) {
+    for (const asset of qrAssets) {
+      attachments.push({
+        filename: asset.filename,
+        content: toBase64(asset.bytes),
+        encoding: 'base64',
+        content_type: asset.contentType,
+        content_id: asset.contentId,
+      });
+    }
+    console.log(`[readyForCheckin] Inline payment QR x${qrAssets.length} (CID attachment)`);
   }
 
   // Approved GAF PDF — always attach if available
@@ -1238,18 +1238,26 @@ export async function sendSupportTicketNotify(ticket: {
     ? `Parking — ${ticket.parkingName}`
     : ticket.propertyName
       ? `Property — ${ticket.propertyName}`
-      : 'Organization-level';
+      : ticket.organizationName === 'Explore guest'
+        ? 'Explore (guest)'
+        : 'Organization-level';
   const categoryLabel = SUPPORT_TICKET_CATEGORY_LABELS[ticket.category] ?? ticket.category;
 
-  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#111827;">
-<p style="margin:0 0 16px 0;">New support ticket from <strong>${escapeHtml(ticket.organizationName)}</strong> (${escapeHtml(scopeLabel)}).</p>
-<table style="width:100%;border-collapse:collapse;margin:0 0 16px 0;">
-<tr><td style="padding:4px 8px 4px 0;color:#6b7280;">Category</td><td style="padding:4px 0;font-weight:600;">${escapeHtml(categoryLabel)}</td></tr>
-<tr><td style="padding:4px 8px 4px 0;color:#6b7280;">Subject</td><td style="padding:4px 0;font-weight:600;">${escapeHtml(ticket.subject)}</td></tr>
-<tr><td style="padding:4px 8px 4px 0;color:#6b7280;">From</td><td style="padding:4px 0;">${escapeHtml(ticket.submittedByName)} &lt;${escapeHtml(ticket.submittedByEmail)}&gt;</td></tr>
+  const bodyHtml = `<p style="margin:0 0 16px 0;font-size:15px;line-height:1.6;color:#333333;">New support ticket from <strong>${escapeHtml(ticket.organizationName)}</strong> (${escapeHtml(scopeLabel)}).</p>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" class="data-table" style="width:100%;table-layout:fixed;border:1px solid #e2e8f0;border-radius:16px;border-collapse:separate;border-spacing:0;overflow:hidden;font-size:14px;margin:0 0 16px 0;">
+<tr><td class="tbl-label" style="padding:12px 16px;background-color:#f8fafc;border-bottom:1px solid #e2e8f0;font-weight:600;color:#475569;width:32%;">Category</td><td class="tbl-value" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;color:#333333;">${escapeHtml(categoryLabel)}</td></tr>
+<tr><td class="tbl-label" style="padding:12px 16px;background-color:#f8fafc;border-bottom:1px solid #e2e8f0;font-weight:600;color:#475569;">Subject</td><td class="tbl-value" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;color:#333333;">${escapeHtml(ticket.subject)}</td></tr>
+<tr><td class="tbl-label" style="padding:12px 16px;background-color:#f8fafc;font-weight:600;color:#475569;">From</td><td class="tbl-value" style="padding:12px 16px;background-color:#ffffff;color:#333333;">${escapeHtml(ticket.submittedByName)} &lt;${escapeHtml(ticket.submittedByEmail)}&gt;</td></tr>
 </table>
-<div style="margin:0 0 16px 0;padding:12px 16px;background:#f9fafb;border-radius:8px;white-space:pre-wrap;">${escapeHtml(ticket.bodyPreview)}</div>
-</div>`;
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 8px 0;border-collapse:separate;border-spacing:0;"><tr><td style="padding:18px 20px;background-color:#f1f5f9;border:1px solid #e2e8f0;border-radius:16px;font-size:14px;line-height:1.55;color:#333333;white-space:pre-wrap;">${escapeHtml(ticket.bodyPreview)}</td></tr></table>`;
+
+  const html = await renderBrandedEmailShell({
+    brandName: 'Kame Homes',
+    unitLabel: ticket.organizationName,
+    emailTitle: 'New support ticket',
+    bodyHtml,
+    brandColor: null,
+  });
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -1286,17 +1294,25 @@ export async function sendSupportTicketReplyNotify(ticket: {
   const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
   const fromEmail = Deno.env.get('RESEND_FROM_EMAIL')?.trim();
   if (!RESEND_API_KEY || !fromEmail) {
-    console.warn('[sendSupportTicketReplyNotify] RESEND_API_KEY or RESEND_FROM_EMAIL missing — skip');
+    console.warn(
+      '[sendSupportTicketReplyNotify] RESEND_API_KEY or RESEND_FROM_EMAIL missing — skip'
+    );
     return;
   }
 
   const appOrigin = resolvePublicGuestAppOrigin(null);
   const ticketUrl = `${appOrigin}/org/${ticket.orgSlug}/help-support/tickets/${ticket.id}`;
 
-  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#111827;">
-<p style="margin:0 0 16px 0;">There's a new reply on your support ticket <strong>${escapeHtml(ticket.subject)}</strong>.</p>
-<div style="margin:28px 0 8px 0;text-align:center;"><a href="${escapeHtml(ticketUrl)}" target="_blank" rel="noopener" style="display:inline-block;padding:10px 20px;border-radius:8px;background:#111827;color:#ffffff;text-decoration:none;font-weight:600;">View the ticket</a></div>
-</div>`;
+  const bodyHtml = `<p style="margin:0 0 16px 0;font-size:15px;line-height:1.6;color:#333333;">There's a new reply on your support ticket <strong>${escapeHtml(ticket.subject)}</strong>.</p>
+${buildEmailCtaHtml('View the ticket', ticketUrl, null)}`;
+
+  const html = await renderBrandedEmailShell({
+    brandName: 'Kame Homes',
+    unitLabel: 'Help & Support',
+    emailTitle: 'New reply on your ticket',
+    bodyHtml,
+    brandColor: null,
+  });
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',

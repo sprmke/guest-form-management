@@ -1,88 +1,17 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Host verification decision</title>
-  </head>
-  <body
-    style="
-      margin: 0;
-      padding: 0;
-      background: #f3f4f6;
-      font-family:
-        system-ui,
-        -apple-system,
-        Segoe UI,
-        sans-serif;
-    "
-  >
-    <table
-      role="presentation"
-      width="100%"
-      cellspacing="0"
-      cellpadding="0"
-      style="background: #f3f4f6; padding: 24px 12px"
-    >
-      <tr>
-        <td align="center">
-          <table
-            role="presentation"
-            width="100%"
-            cellspacing="0"
-            cellpadding="0"
-            style="max-width: 560px; background: #ffffff; border-radius: 16px; overflow: hidden"
-          >
-            <tr>
-              <td style="height: 4px; background: #0f766e"></td>
-            </tr>
-            <tr>
-              <td style="padding: 28px 24px 8px 24px">
-                <p style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600; color: #111827">
-                  Host verification declined
-                </p>
-                <p style="margin: 0; font-size: 14px; color: #6b7280">{{organization_name}}</p>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding: 8px 24px 24px 24px">
-                <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.5; color: #374151">
-                  Hi {{owner_name}},
-                </p>
-                <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.5; color: #374151">
-                  Thank you for your interest in hosting with Kame Homes. After reviewing your
-                  submission, we are unable to approve verification for
-                  <strong>{{organization_name}}</strong> at this time. Access to the host dashboard
-                  for this account has been closed.
-                </p>
-                {{rejection_reason_block}}
-                <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.5; color: #374151">
-                  If you would like to try again, you are welcome to start a new application and
-                  submit clear, complete documents that meet our requirements.
-                </p>
-                <a
-                  href="{{apply_url}}"
-                  style="
-                    display: inline-block;
-                    margin-top: 8px;
-                    padding: 12px 18px;
-                    background: #0f766e;
-                    color: #ffffff;
-                    text-decoration: none;
-                    border-radius: 10px;
-                    font-size: 14px;
-                    font-weight: 600;
-                  "
-                  >Start a new application</a
-                >
-                <p style="margin: 24px 0 0 0; font-size: 13px; line-height: 1.5; color: #9ca3af">
-                  — The Kame Homes team
-                </p>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-  </body>
-</html>
+<p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #333333">
+  Hi {{owner_name}},
+</p>
+<p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #333333">
+  Thank you for your interest in hosting with Kame Homes. After reviewing your submission, we are
+  unable to approve verification for <strong>{{organization_name}}</strong> at this time. Access to
+  the host dashboard for this account has been closed.
+</p>
+{{rejection_reason_block}}
+<p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #333333">
+  If you would like to try again, you are welcome to start a new application and submit clear,
+  complete documents that meet our requirements.
+</p>
+{{apply_cta}}
+<p style="margin: 24px 0 0 0; font-size: 13px; line-height: 1.55; color: #666666">
+  — The Kame Homes team
+</p>
