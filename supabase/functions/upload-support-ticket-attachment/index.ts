@@ -1,6 +1,6 @@
 /**
- * upload-support-ticket-attachment — bug-report screenshot/video upload, ahead of
- * submit-support-ticket. Private bucket — returns a storage path, not a public URL.
+ * upload-support-ticket-attachment — screenshot/video ahead of submit.
+ * Host: path under org id. Guest: path under guest/{userId}.
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
@@ -49,7 +49,8 @@ serveAuthenticated('upload-support-ticket-attachment', async (req) => {
     String(file.name ?? 'upload')
       .replace(/[^\w.\-() ]+/g, '_')
       .slice(0, 120) || 'upload';
-  const storagePath = `${scope.org.id}/${scope.user.id}/${crypto.randomUUID()}-${safeName}`;
+  const root = scope.org?.id ?? `guest`;
+  const storagePath = `${root}/${scope.user.id}/${crypto.randomUUID()}-${safeName}`;
 
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',

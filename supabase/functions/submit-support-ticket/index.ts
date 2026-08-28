@@ -1,8 +1,6 @@
 /**
  * submit-support-ticket — POST creates a support ticket + its first message.
- * Auth: org/property/parking scoped (whichever the host filed it from), no
- * dedicated permission gate — Help & Support is visible to every team member.
- * Docs: docs/workflow/in-progress/help-support-center.md, Module 3.
+ * Host: org/property/parking scoped. Guest explore: channel=guest, no org.
  */
 
 import { loadAuthUserProfile } from '../_shared/authUserProfile.ts';
@@ -94,11 +92,13 @@ serveAuthenticated('submit-support-ticket', async (req) => {
 
   const sb = createServiceClient();
   const profile = await loadAuthUserProfile(sb, scope.user.id);
+  const senderType = scope.channel === 'guest' ? 'guest' : 'host';
 
   const { data: ticket, error: ticketError } = await sb
     .from('support_tickets')
     .insert({
-      organization_id: scope.org.id,
+      channel: scope.channel,
+      organization_id: scope.org?.id ?? null,
       property_id: scope.propertyId,
       parking_id: scope.parkingId,
       submitted_by_user_id: scope.user.id,
@@ -123,7 +123,7 @@ serveAuthenticated('submit-support-ticket', async (req) => {
     .from('support_ticket_messages')
     .insert({
       ticket_id: ticket.id,
-      sender_type: 'host',
+      sender_type: senderType,
       sender_user_id: scope.user.id,
       sender_name: profile.name,
       body: description,
@@ -142,7 +142,7 @@ serveAuthenticated('submit-support-ticket', async (req) => {
 
   try {
     await sendSupportTicketNotify({
-      organizationName: scope.org.name,
+      organizationName: scope.org?.name ?? 'Explore guest',
       propertyName: scope.propertyName,
       parkingName: scope.parkingName,
       category,

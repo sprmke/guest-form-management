@@ -1,6 +1,5 @@
 /**
- * reply-support-ticket — POST host adds a reply to an existing ticket thread.
- * Docs: docs/workflow/in-progress/help-support-center.md, Module 3.
+ * reply-support-ticket — POST host/guest adds a reply to an existing ticket thread.
  */
 
 import { loadAuthUserProfile } from '../_shared/authUserProfile.ts';
@@ -50,24 +49,27 @@ serveAuthenticated('reply-support-ticket', async (req) => {
 
   const sb = createServiceClient();
 
-  const { data: ticket, error: ticketError } = await sb
-    .from('support_tickets')
-    .select('id, status')
-    .eq('id', ticketId)
-    .eq('organization_id', scope.org.id)
-    .maybeSingle();
+  let ticketQuery = sb.from('support_tickets').select('id, status').eq('id', ticketId);
+  if (scope.channel === 'guest') {
+    ticketQuery = ticketQuery.eq('channel', 'guest').eq('submitted_by_user_id', scope.user.id);
+  } else if (scope.org) {
+    ticketQuery = ticketQuery.eq('organization_id', scope.org.id).eq('channel', 'host');
+  }
+
+  const { data: ticket, error: ticketError } = await ticketQuery.maybeSingle();
 
   if (ticketError) throw new Error(ticketError.message);
   if (!ticket) return jsonError(req, 'Ticket not found', 404);
 
   const profile = await loadAuthUserProfile(sb, scope.user.id);
   const attachments = parseAttachments(body.attachments);
+  const senderType = scope.channel === 'guest' ? 'guest' : 'host';
 
   const { data: created, error: insertError } = await sb
     .from('support_ticket_messages')
     .insert({
       ticket_id: ticketId,
-      sender_type: 'host',
+      sender_type: senderType,
       sender_user_id: scope.user.id,
       sender_name: profile.name,
       body: message,
@@ -80,7 +82,6 @@ serveAuthenticated('reply-support-ticket', async (req) => {
     return jsonError(req, `Failed to save reply: ${insertError?.message ?? 'unknown error'}`, 500);
   }
 
-  // A host reply on a resolved/closed ticket signals it needs another look.
   if (ticket.status === 'resolved' || ticket.status === 'closed') {
     await sb.from('support_tickets').update({ status: 'in_progress' }).eq('id', ticketId);
   }

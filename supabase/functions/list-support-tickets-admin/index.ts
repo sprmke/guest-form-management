@@ -23,7 +23,7 @@ serveSuperAdmin('list-support-tickets-admin', async (req) => {
   const sb = createServiceClient();
   let query = sb
     .from('support_tickets')
-    .select('*, organizations!inner(id, name, slug)', { count: 'exact' })
+    .select('*, organizations(id, name, slug)', { count: 'exact' })
     .order('created_at', { ascending: false });
 
   if (category) query = query.eq('category', category);
@@ -38,9 +38,6 @@ serveSuperAdmin('list-support-tickets-admin', async (req) => {
       `submitted_by_email.ilike.${pattern}`,
     ];
 
-    // organizationName is a joined column — PostgREST .or() can't filter it inline
-    // alongside root-table columns, so resolve matching org ids first and fold them
-    // into the same OR via organization_id.in.(...).
     const { data: orgMatches, error: orgError } = await sb
       .from('organizations')
       .select('id')
@@ -62,12 +59,14 @@ serveSuperAdmin('list-support-tickets-admin', async (req) => {
 
   const tickets = (data ?? []).map((row) => {
     const { organizations, ...ticket } = row as typeof row & {
-      organizations: { id: string; name: string; slug: string };
+      organizations: { id: string; name: string; slug: string } | null;
     };
+    const isGuest = !organizations;
     return {
       ...ticket,
-      organizationName: organizations.name,
-      organizationSlug: organizations.slug,
+      organizationName: organizations?.name ?? 'Explore guest',
+      organizationSlug: organizations?.slug ?? null,
+      channel: (ticket as { channel?: string }).channel ?? (isGuest ? 'guest' : 'host'),
     };
   });
 

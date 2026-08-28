@@ -1,7 +1,6 @@
 /**
- * list-support-tickets — GET the caller's own submitted tickets ("My Tickets"),
- * scoped to org/property/parking (whichever the current admin route resolves).
- * Docs: docs/workflow/in-progress/help-support-center.md, Module 3.
+ * list-support-tickets — GET the caller's own tickets.
+ * Host scope: org-filtered. Guest explore: channel=guest for this user.
  */
 
 import { createServiceClient } from '../_shared/orgAuth.ts';
@@ -21,14 +20,20 @@ serveAuthenticated('list-support-tickets', async (req) => {
   });
 
   const sb = createServiceClient();
-  const { data, error } = await sb
+  let query = sb
     .from('support_tickets')
     .select('*')
-    .eq('organization_id', scope.org.id)
     .eq('submitted_by_user_id', scope.user.id)
     .order('created_at', { ascending: false })
     .limit(200);
 
+  if (scope.channel === 'guest') {
+    query = query.eq('channel', 'guest');
+  } else if (scope.org) {
+    query = query.eq('organization_id', scope.org.id).eq('channel', 'host');
+  }
+
+  const { data, error } = await query;
   if (error) throw new Error(error.message);
 
   return jsonSuccess(req, { tickets: data ?? [] });

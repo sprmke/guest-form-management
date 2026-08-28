@@ -1,8 +1,6 @@
 /**
- * get-support-ticket — GET a single ticket + its reply thread.
- * Any active member of the ticket's org can view (not restricted to the submitter —
- * matches support_tickets RLS, which is org-scoped, not per-user).
- * Docs: docs/workflow/in-progress/help-support-center.md, Module 3.
+ * get-support-ticket — GET a single ticket + reply thread.
+ * Host: any org member. Guest: submitter only (channel=guest).
  */
 
 import { createServiceClient } from '../_shared/orgAuth.ts';
@@ -30,12 +28,14 @@ serveAuthenticated('get-support-ticket', async (req) => {
 
   const sb = createServiceClient();
 
-  const { data: ticket, error: ticketError } = await sb
-    .from('support_tickets')
-    .select('*')
-    .eq('id', ticketId)
-    .eq('organization_id', scope.org.id)
-    .maybeSingle();
+  let ticketQuery = sb.from('support_tickets').select('*').eq('id', ticketId);
+  if (scope.channel === 'guest') {
+    ticketQuery = ticketQuery.eq('channel', 'guest').eq('submitted_by_user_id', scope.user.id);
+  } else if (scope.org) {
+    ticketQuery = ticketQuery.eq('organization_id', scope.org.id).eq('channel', 'host');
+  }
+
+  const { data: ticket, error: ticketError } = await ticketQuery.maybeSingle();
 
   if (ticketError) throw new Error(ticketError.message);
   if (!ticket) return jsonError(req, 'Ticket not found', 404);

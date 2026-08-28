@@ -22,7 +22,7 @@ serveSuperAdmin('get-support-ticket-admin', async (req) => {
 
   const { data: row, error: ticketError } = await sb
     .from('support_tickets')
-    .select('*, organizations!inner(id, name, slug)')
+    .select('*, organizations(id, name, slug)')
     .eq('id', ticketId)
     .maybeSingle();
 
@@ -30,12 +30,12 @@ serveSuperAdmin('get-support-ticket-admin', async (req) => {
   if (!row) return jsonError(req, 'Ticket not found', 404);
 
   const { organizations, ...ticketRow } = row as typeof row & {
-    organizations: { id: string; name: string; slug: string };
+    organizations: { id: string; name: string; slug: string } | null;
   };
   const ticket = {
     ...ticketRow,
-    organizationName: organizations.name,
-    organizationSlug: organizations.slug,
+    organizationName: organizations?.name ?? 'Explore guest',
+    organizationSlug: organizations?.slug ?? null,
   };
 
   const { data: messages, error: messagesError } = await sb
