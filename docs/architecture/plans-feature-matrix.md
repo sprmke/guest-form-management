@@ -47,6 +47,8 @@ When revisited: reactivate `pricing_model = commission` UX on super-admin + host
 
 When you change seed migrations, super-admin plan edits, or `PLAN_TIER_CARD_GAINS` / feature rows, open **`/for-hosts/pricing`** and **`/org/:orgSlug/plans`** (the only in-app Plans page — billing is org-level only) and confirm they still tell the same story. Agents: **`.cursor/rules/documentation-maintenance.mdc`** lists this as a required sync surface.
 
+**Compare matrix grouping:** `planFeatureMatrixGroups()` sections rows by product module (Dashboard, Bookings, Finance, Maintenance, Pricing, Public pages, Templates, Notifications, Inbox, Marketing, Visibility, AI, Team, Managed hosting). Baseline Free tools fold into the same module as related paid upgrades (e.g. Finance management + Finance reporting).
+
 ## Feature × tier matrix (current, shipped)
 
 `✅` = entitled, `—` = not entitled. Values read directly from the final state of the seed migrations (`free` / `starter` / `growth` / `pro` / `managed` / `commission`). The **`commission` column is historical** — that plan is inactive and not sold (see Pending above).

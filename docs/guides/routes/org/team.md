@@ -2,39 +2,43 @@
 title: 'Organization Team — operator guide'
 status: active
 tags: [guides, routes, org, team]
-updated: 2026-08-25
+updated: 2026-08-28
 ---
 
 # Organization Team — operator guide
 
 Route: `/org/:orgSlug/team`
 
-> **Status:** Documented (live — org team v1)
+> **Status:** Documented (granular org hub RBAC + listing assignment)
 
 ## Progress overview
 
-| Section         | E2E save | Validation     | Docs       | Notes                                  |
-| --------------- | -------- | -------------- | ---------- | -------------------------------------- |
-| Stats cards     | ✓        | —              | Documented | From API member/invite counts          |
-| Roles card      | —        | —              | Documented | Owner + Admin descriptions             |
-| Members tab     | ✓        | —              | Documented | Search, deactivate, remove             |
-| Invitations tab | ✓        | Email required | Documented | Invite, resend (email), cancel         |
-| Permissions tab | —        | —              | Documented | Standard roles + org permission matrix |
-| Invite dialog   | ✓        | Email required | Documented | Admin role only                        |
-| Remove dialog   | ✓        | —              | Documented | Destructive confirm                    |
-| RBAC            | ✓        | —              | Documented | Owner + org ADMIN                      |
+| Section           | E2E save | Validation       | Docs       | Notes                                 |
+| ----------------- | -------- | ---------------- | ---------- | ------------------------------------- |
+| Stats cards       | ✓        | —                | Documented | From API member/invite counts         |
+| Roles / templates | ✓        | Name + perms     | Documented | Seeded + custom org hub templates     |
+| Members tab       | ✓        | —                | Documented | Search, scope summary, manage, remove |
+| Invitations tab   | ✓        | Email + listings | Documented | Invite, resend, cancel                |
+| Permissions tab   | ✓        | Tree + CRUD      | Documented | Editable templates + matrix           |
+| Invite dialog     | ✓        | Email + listings | Documented | Org tree + listing picker             |
+| Manage dialog     | ✓        | —                | Documented | Contact + org perms + listings        |
+| Remove dialog     | ✓        | —                | Documented | Cleans org-assigned listing rows      |
+| RBAC              | ✓        | —                | Documented | Granular org leaves + listing scope   |
 
 ---
 
 ## Overview
 
-Organization-scoped **team management**. Members and invitations load from **`org-team-*`** edge functions via **`useOrgTeam`**.
+Organization-scoped **team management** with **granular org hub permissions** and **listing assignment** (properties + parkings). Members and invitations load from **`org-team-*`** edge functions via **`useOrgTeam`**.
 
-**Summary cards** (top of page): Total Members, Owners, Admins, Pending Invites — `AdminMetricCard` / `OrgTeamStatsCards` (same shell as Finance, Bookings, Maintenance).
+The **org owner** appears virtually (`isOwner: true`). Invited members get:
 
-The **org owner** (`organizations.owner_id`) appears in the member list **virtually** (`isOwner: true`) — not stored in `organization_members`. Invited **Admins** get full access to all properties in the org (same effective permissions as owner on property routes).
+1. **Org hub permissions** — leaf IDs on `organization_members.permissions` (dashboard, cross-listing bookings, inventory, team, settings sections, plans view, import).
+2. **Listing access** — either **All listings** (`all_listings = true`, current + future) or explicit assignments materialized as `property_members` / `parking_members` with `assigned_via_org = true`.
 
-Org **Settings** (profile, danger zone) remains **owner-only** on the server for v1.
+**Seat counting:** Org admin rows count toward org team seats; org-assigned property/parking rows do **not** add property-pool seats.
+
+Org **delete** and **Plans checkout/downgrade** remain **owner-only** (not grantable).
 
 **Plan gating:** Viewing the team is always free. **Invite Member** at the pooled cap opens the inline upgrade modal (`teamManagement`); **Continue to payment** goes to org Plans. Server enforces via `requireOrgTeamInviteAllowed`. Loading the members list runs seat reconciliation — excess org admins and property members are auto-deactivated with a **Plan limit** badge.
 
@@ -102,29 +106,41 @@ Org admins receive full **property** access on all org properties (implicit; not
 
 ## Invite Member dialog
 
-| Field | Storage                                  | Validation                                                                         |
-| ----- | ---------------------------------------- | ---------------------------------------------------------------------------------- |
-| Email | `organization_invitations.email`         | Required, trimmed; **`@gmail.com`** or **`@googlemail.com`** only (Google sign-in) |
-| Phone | `organization_invitations.contact_phone` | Required PH mobile `09XXXXXXXXX`; copied to `organization_members` on accept       |
-| Role  | `role_id`                                | **`ADMIN`** only (invitable)                                                       |
+| Field               | Storage                                  | Validation                                                                         |
+| ------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------- |
+| Email               | `organization_invitations.email`         | Gmail / Googlemail only                                                            |
+| Phone               | `organization_invitations.contact_phone` | PH mobile                                                                          |
+| Org role / template | `role_id`                                | Built-in `ADMIN` or `organization_custom_roles.id`                                 |
+| Org permissions     | `permissions` JSONB                      | Granular leaf array; tree UI                                                       |
+| All listings        | `all_listings`                           | Toggle — includes current + future listings                                        |
+| Listing assignments | `listing_assignments`                    | When not all listings: `{ properties: [{ propertyId, roleId }], parkings: [...] }` |
 
-Name comes from the invitee's Google account on accept; edit later via **Host details** on the member row.
+Default invite mode: **Select listings** (empty until host picks). **All listings** opt-in for co-admins.
+
+On accept, `accept-org-invite` upserts `organization_members` and calls **`syncOrgListingMemberships`** to create/update org-assigned `property_members` / `parking_members`.
+
+---
+
+## Manage member dialog
+
+PATCH **`org-team-members`** with `{ memberId, displayName?, contactPhone?, roleId?, permissions?, allListings?, listingAssignments?, status? }`. Listing changes re-sync org-assigned rows. Remove deletes org-assigned property/parking memberships for that user in the org.
 
 ---
 
 ## API
 
-| Action                         | Function                         | Method | Auth                                                                                                                                                                  |
-| ------------------------------ | -------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current user org access        | `org-access?org_slug=`           | GET    | JWT — returns **`permissions[]`**, **`accessKind`**, capability flags for UI guards                                                                                   |
-| List members (+ virtual owner) | `org-team-members?org_slug=`     | GET    | Owner, platform admin, active org ADMIN. Returns **`teamInviteCapacity`**; seat reconcile / capacity lookup failures are soft-failed so the member list still loads.  |
-| Update member                  | `org-team-members`               | PATCH  | `{ memberId, status? }` — manage; reactivate runs **`requireOrgTeamInviteAllowed`**                                                                                   |
-| Remove member                  | `org-team-members`               | DELETE | `{ memberId }` — manage                                                                                                                                               |
-| List invitations               | `org-team-invitations?org_slug=` | GET    | Same as members                                                                                                                                                       |
-| Invite                         | `org-team-invitations`           | POST   | `{ email, contactPhone, roleId: 'ADMIN' }` — `org:team:invite`; **`requireOrgTeamInviteAllowed`** — at cap returns `{ upgradeHook: true, feature: 'teamManagement' }` |
-| Resend                         | `org-team-invitations`           | POST   | `{ action: 'resend', invitationId }` — `org:team:manage`                                                                                                              |
-| Cancel                         | `org-team-invitations`           | DELETE | `{ invitationId }` — `org:team:manage`                                                                                                                                |
-| Accept invite                  | `accept-org-invite`              | POST   | JWT; body `{ token }`; email must match invite                                                                                                                        |
+| Action                            | Function                          | Method            | Auth / body                                                                     |
+| --------------------------------- | --------------------------------- | ----------------- | ------------------------------------------------------------------------------- |
+| Current user org access           | `org-access?org_slug=`            | GET               | JWT — `permissions[]`, `canListAllProperties`, capability flags                 |
+| List members (+ virtual owner)    | `org-team-members?org_slug=`      | GET               | `org.team:view`; returns `teamInviteCapacity`                                   |
+| Update member                     | `org-team-members`                | PATCH             | Permissions + listing fields; reactivate → `requireOrgTeamInviteAllowed`        |
+| Remove member                     | `org-team-members`                | DELETE            | `{ memberId }` — cleans org-assigned listing rows                               |
+| List invitations                  | `org-team-invitations?org_slug=`  | GET               | Same as members                                                                 |
+| Invite                            | `org-team-invitations`            | POST              | `{ email, contactPhone, roleId, permissions, allListings, listingAssignments }` |
+| Resend / cancel invite            | `org-team-invitations`            | POST / DELETE     | `org.team.invitations:*`                                                        |
+| Accept invite                     | `accept-org-invite`               | POST              | JWT `{ token }`; syncs listing memberships                                      |
+| List custom roles                 | `org-team-custom-roles?org_slug=` | GET               | `org.team:view`                                                                 |
+| Create / update / delete template | `org-team-custom-roles`           | POST/PATCH/DELETE | `org.team.roles:*`                                                              |
 
 Invite email link: `/accept-invite?token=…&scope=org`. **Accept page:** org logo + org name (via **`get-team-invite-preview`**); signed-in users must tap **Accept** (no auto-accept on load). **Subject:** `{Org name} - Team Invitation`. **Body:** inviter, org name, Admin role, expiry, accept CTA. Branding/from address uses the org’s **first property** (`getFirstPropertyIdForOrg`) — same Resend shell as property invites. If create fails after Resend errors, the pending row is rolled back; use **Resend** on an existing pending invite to retry delivery. Resend API errors surface in the UI toast (not a generic message).
 
@@ -136,30 +152,33 @@ When org access is revoked (deactivated org admin, removed member), **`RequireOr
 
 ## Database
 
-| Table                      | Purpose                                 |
-| -------------------------- | --------------------------------------- |
-| `organization_members`     | Active org admins (`role_id = 'ADMIN'`) |
-| `organization_invitations` | Pending org invites (7-day TTL)         |
+| Table                               | Purpose                                                                               |
+| ----------------------------------- | ------------------------------------------------------------------------------------- |
+| `organization_members`              | Org admins: `permissions`, `all_listings`, `listing_assignments`, `saved_permissions` |
+| `organization_invitations`          | Pending invites with same permission/listing payload                                  |
+| `organization_custom_roles`         | Org hub templates (Full Access, Operations, Read Only, custom)                        |
+| `property_members.assigned_via_org` | Listing grant from org team — excluded from property seat pool                        |
+| `parking_members.assigned_via_org`  | Same for parking                                                                      |
 
-Migration: `supabase/migrations/20260909120000_org_team.sql`
+Migration: `supabase/migrations/20261209130000_org_team_granular_permissions.sql`
 
 ---
 
 ## Implementation map
 
-| Area             | Path                                                                                          |
-| ---------------- | --------------------------------------------------------------------------------------------- |
-| Page             | `ui/src/features/dashboard/team/pages/OrgTeamPage.tsx`                                        |
-| Summary cards    | `ui/src/features/dashboard/team/components/OrgTeamStatsCards.tsx` (`AdminMetricCard`)         |
-| Hook             | `ui/src/features/dashboard/team/hooks/useOrgTeam.ts`                                          |
-| Org access hook  | `ui/src/features/dashboard/team/hooks/useOrgPermissions.ts`                                   |
-| Route guard      | `ui/src/features/dashboard/org/components/RequireOrgPermission.tsx`                           |
-| Access denied UI | `ui/src/features/dashboard/org/components/TenantAccessDenied.tsx`                             |
-| Edge functions   | `org-access`, `org-team-members`, `org-team-invitations`, `accept-org-invite`                 |
-| Shared server    | `_shared/orgTeamService.ts`, `_shared/orgTeamPermissions.ts`, `_shared/orgTeamInviteEmail.ts` |
-| Route            | `ui/src/features/dashboard/routes/index.tsx`                                                  |
-| Sidebar          | `ui/src/features/dashboard/bookings/lib/adminSidebarNav.ts` — Org → Team                      |
-| Accept page      | `ui/src/features/dashboard/team/pages/AcceptInvitePage.tsx`                                   |
+| Area             | Path                                                                                                                                           |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Page             | `ui/src/features/dashboard/team/pages/OrgTeamPage.tsx`                                                                                         |
+| Summary cards    | `ui/src/features/dashboard/team/components/OrgTeamStatsCards.tsx` (`AdminMetricCard`)                                                          |
+| Hook             | `ui/src/features/dashboard/team/hooks/useOrgTeam.ts`                                                                                           |
+| Org access hook  | `ui/src/features/dashboard/team/hooks/useOrgPermissions.ts`                                                                                    |
+| Route guard      | `ui/src/features/dashboard/org/components/RequireOrgPermission.tsx`                                                                            |
+| Access denied UI | `ui/src/features/dashboard/org/components/TenantAccessDenied.tsx`                                                                              |
+| Edge functions   | `org-access`, `org-team-members`, `org-team-invitations`, `org-team-custom-roles`, `accept-org-invite`                                         |
+| Shared server    | `_shared/orgTeamService.ts`, `_shared/orgTeamPermissions.ts`, `_shared/orgTeamListingAssignment.ts`, `_shared/orgLegacyPermissionExpansion.ts` |
+| Route            | `ui/src/features/dashboard/routes/index.tsx`                                                                                                   |
+| Sidebar          | `ui/src/features/dashboard/bookings/lib/adminSidebarNav.ts` — Org → Team                                                                       |
+| Accept page      | `ui/src/features/dashboard/team/pages/AcceptInvitePage.tsx`                                                                                    |
 
 ---
 

@@ -219,11 +219,11 @@ Name comes from the invitee's Google account on accept; edit later via **Host de
 
 ### Edit Permissions dialog
 
-| Field       | Storage                                 | Validation                                                                                                                                                                                                                     |
-| ----------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Based on    | `role_id` (member edit)                 | Pick an existing role as baseline, or **Custom** to clear all checkboxes; confirm before replace/clear                                                                                                                         |
-| Permissions | `permissions` JSONB                     | Module accordion. **Access** = Open page (+ Export where applicable) with short hints; other groups = what they can change. Enabling any edit auto-checks **Open page**. Feature labels use sentence case. Search filter only. |
-| Sensitive   | `team.members:*` / `team.customRoles:*` | Confirm before enabling a sensitive leaf **or** checking a parent that would select sensitive descendants                                                                                                                      |
+| Field       | Storage                                 | Validation                                                                                                                                                                                                                                                   |
+| ----------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Based on    | `role_id` (member edit)                 | Pick an existing role as baseline, or **Custom** to clear all checkboxes; confirm before replace/clear                                                                                                                                                       |
+| Permissions | `permissions` JSONB                     | Module accordion. **Access** = Open page (+ Export where applicable) with short hints; other groups show what they can change, each with a one-line hint. Enabling any edit auto-checks **Open page**. Feature labels use sentence case. Search filter only. |
+| Sensitive   | `team.members:*` / `team.customRoles:*` | Confirm before enabling a sensitive leaf **or** checking a parent that would select sensitive descendants                                                                                                                                                    |
 
 Dialogs use sticky header/footer with content-only scroll (`sheetLayout="split"`), ~48rem wide on desktop. `fromOrg` virtual rows open read-only. Plan-gated leaves show `TierBadge` when the org plan lacks the mapped feature.
 
