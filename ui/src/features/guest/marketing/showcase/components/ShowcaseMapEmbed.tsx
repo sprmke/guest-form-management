@@ -8,16 +8,25 @@ type Props = {
   longitude?: number | null;
   address?: string;
   placeId?: string | null;
+  mapsUrl?: string | null;
   className?: string;
 };
 
-export function ShowcaseMapEmbed({ latitude, longitude, address, placeId, className }: Props) {
+export function ShowcaseMapEmbed({
+  latitude,
+  longitude,
+  address,
+  placeId,
+  mapsUrl,
+  className,
+}: Props) {
   const { mode } = useShowcaseTheme();
   const embedSrc = resolvePropertyMapEmbedSrc({
     latitude,
     longitude,
     address,
     placeId,
+    mapsUrl,
   });
 
   if (!embedSrc) {

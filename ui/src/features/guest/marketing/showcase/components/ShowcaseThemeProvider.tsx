@@ -1,22 +1,12 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react';
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 
 import {
   getShowcaseThemeTokens,
-  resolveShowcaseInitialMode,
   showcaseThemeStorageKey,
   type ShowcaseColorMode,
   type ShowcaseThemeTokens,
   type ShowcaseVariant,
 } from '@/features/guest/marketing/showcase/lib/showcaseThemeTokens';
-import type { PropertyShowcaseConfig } from '@/features/guest/marketing/showcase/types/showcase';
 
 type ShowcaseThemeContextValue = {
   mode: ShowcaseColorMode;
@@ -46,26 +36,18 @@ function readStoredMode(
 export function ShowcaseThemeProvider({
   variant,
   propertySlug,
-  config,
   configControlled = false,
   children,
 }: {
   variant: ShowcaseVariant;
   propertySlug: string;
-  config: PropertyShowcaseConfig;
-  /** When true (Page Editor preview), mode follows config.palette.mode — no localStorage. */
+  /** When true (Page Editor preview), toggles apply live but are not persisted for guests. */
   configControlled?: boolean;
   children: ReactNode;
 }) {
-  const defaultMode = resolveShowcaseInitialMode(config.palette.mode);
   const [mode, setModeState] = useState<ShowcaseColorMode>(() =>
-    configControlled ? defaultMode : readStoredMode(propertySlug, variant, defaultMode)
+    configControlled ? 'light' : readStoredMode(propertySlug, variant, 'light')
   );
-
-  useEffect(() => {
-    if (!configControlled) return;
-    setModeState(resolveShowcaseInitialMode(config.palette.mode));
-  }, [configControlled, config.palette.mode]);
 
   const setMode = useCallback(
     (next: ShowcaseColorMode) => {

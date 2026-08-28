@@ -3,11 +3,24 @@ import {
   guestFormPath,
   guestHostPath,
 } from '@/features/guest/lib/guestPublicPaths';
+import {
+  resolveShowcaseHeroEyebrow,
+  resolveShowcaseLocationLead,
+} from '@/features/guest/marketing/showcase/lib/showcaseHeroEyebrow';
+import {
+  formatShowcaseAreaLabel,
+  resolveShowcaseLocationFields,
+} from '@/features/guest/marketing/showcase/lib/showcaseLocation';
+import {
+  applyShowcasePreviewMocks,
+  SHOWCASE_SECTION_HEADING,
+} from '@/features/guest/marketing/showcase/lib/showcaseSectionMock';
 import { publicContactPath } from '@/features/guest/marketing/contact/lib/publicContactParams';
 import type { ResolvedPropertyDetail } from '@/features/guest/marketing/properties/types/publicProperty';
 import {
   defaultPropertyShowcaseConfig,
   isShowcaseTemplateKey,
+  normalizeShowcasePaletteMode,
   SHOWCASE_SECTION_IDS,
   type PropertyShowcaseConfig,
   type ShowcaseData,
@@ -19,15 +32,21 @@ import {
 } from '@/features/guest/marketing/showcase/types/showcase';
 
 const SECTION_DEFAULTS: Record<ShowcaseSectionId, { heading: string; subheading?: string }> = {
-  hero: { heading: 'Your stay', subheading: 'A place made for arriving well' },
-  gallery: { heading: 'Gallery' },
-  about: { heading: 'About' },
-  amenities: { heading: 'Amenities' },
-  highlights: { heading: 'Highlights' },
-  location: { heading: 'Location' },
-  testimonials: { heading: 'Guest voices' },
-  host: { heading: 'Your host', subheading: 'Questions before you book? Reach out anytime.' },
-  cta: { heading: 'Ready to book?', subheading: 'Check dates or start your request' },
+  hero: { heading: SHOWCASE_SECTION_HEADING.hero, subheading: 'A place made for arriving well' },
+  gallery: { heading: SHOWCASE_SECTION_HEADING.gallery },
+  about: { heading: SHOWCASE_SECTION_HEADING.about },
+  amenities: { heading: SHOWCASE_SECTION_HEADING.amenities },
+  highlights: { heading: SHOWCASE_SECTION_HEADING.highlights },
+  location: { heading: SHOWCASE_SECTION_HEADING.location },
+  testimonials: { heading: SHOWCASE_SECTION_HEADING.testimonials },
+  host: {
+    heading: SHOWCASE_SECTION_HEADING.host,
+    subheading: 'Questions before you book? Reach out anytime.',
+  },
+  cta: {
+    heading: SHOWCASE_SECTION_HEADING.cta,
+    subheading: 'Check dates or start your request',
+  },
 };
 
 function prefersReducedMotion(): boolean {
@@ -45,10 +64,12 @@ function resolveImages(property: ResolvedPropertyDetail, slots: string[] | undef
   const all = property.images.length
     ? property.images
     : property.media.filter((m) => m.type === 'image').map((m) => m.url);
+  // Empty slots = host wants the full property library (default).
   if (!slots?.length) return all.slice(0, 12);
   const byUrl = new Set(all);
-  const picked = slots.filter((url) => byUrl.has(url));
-  return picked.length > 0 ? picked : all.slice(0, 12);
+  // Explicit selection must be respected — never fall back to all photos when
+  // the host has curated slots (stale URLs simply drop out of the set).
+  return slots.filter((url) => byUrl.has(url)).slice(0, 12);
 }
 
 function normalizeConfig(raw: unknown): PropertyShowcaseConfig {
@@ -82,7 +103,14 @@ function normalizeConfig(raw: unknown): PropertyShowcaseConfig {
   return {
     version: 1,
     published: typeof obj.published === 'boolean' ? obj.published : base.published,
-    palette: { ...base.palette, ...(obj.palette ?? {}) },
+    palette: {
+      ...base.palette,
+      ...(obj.palette ?? {}),
+      mode: normalizeShowcasePaletteMode((obj.palette as { mode?: unknown } | undefined)?.mode),
+      customPaletteBase:
+        (obj.palette as { customPaletteBase?: string | null } | undefined)?.customPaletteBase ??
+        base.palette.customPaletteBase,
+    },
     typography: { ...base.typography, ...(obj.typography ?? {}) },
     motion: { ...base.motion, ...(obj.motion ?? {}) },
     sections,
@@ -113,6 +141,8 @@ export function mapShowcaseData(input: {
   config: unknown;
   templateKey: string;
   guestContact?: Partial<ShowcaseGuestContact> | null;
+  /** Fill lorem / stock media when sections are enabled but empty (editor, draft, embed). */
+  previewPlaceholders?: boolean;
 }): ShowcaseData {
   const config = normalizeConfig(input.config);
   const templateKey: ShowcaseTemplateKey = isShowcaseTemplateKey(input.templateKey)
@@ -137,10 +167,35 @@ export function mapShowcaseData(input: {
     property.checkInTime ? `Check-in ${property.checkInTime}` : '',
   ].filter(Boolean);
 
-  const city =
-    property.location.split(',')[0]?.trim() ||
-    property.address.split(',')[0]?.trim() ||
-    property.location;
+  const locationFields = resolveShowcaseLocationFields({
+    address: property.address,
+    city: property.city,
+    state: property.state,
+    country: property.country,
+    locationLabel: property.location,
+    location: property.location,
+  });
+
+  const heroSection = config.sections.find((section) => section.id === 'hero');
+  const heroEyebrow = resolveShowcaseHeroEyebrow(
+    property,
+    locationFields.locationLabel,
+    heroSection?.heroEyebrow
+  );
+
+  const locationSection = config.sections.find((section) => section.id === 'location');
+  const areaLabelForLead = formatShowcaseAreaLabel({
+    address: locationFields.address,
+    city: locationFields.city,
+    state: locationFields.state,
+    country: locationFields.country,
+    locationLabel: locationFields.locationLabel,
+  });
+  const locationLead = resolveShowcaseLocationLead(
+    property,
+    areaLabelForLead || locationFields.locationLabel,
+    locationSection?.locationLead
+  );
 
   const sections: ShowcaseResolvedSection[] = config.sections
     .filter((section) => section.visible)
@@ -150,12 +205,14 @@ export function mapShowcaseData(input: {
       const images = resolveImages(property, section.imageSlots);
       let body = section.copy?.body;
       if (section.id === 'about' && !body) body = property.description ?? undefined;
-      if (section.id === 'location' && !body) {
-        body = property.address?.trim() || undefined;
-      }
+      const rawHeading = section.copy?.heading?.trim();
+      const heading =
+        rawHeading === 'Guest voices'
+          ? SHOWCASE_SECTION_HEADING.testimonials
+          : rawHeading || defaults.heading;
       return {
         ...section,
-        heading: section.copy?.heading?.trim() || defaults.heading,
+        heading,
         subheading: section.copy?.subheading?.trim() || defaults.subheading,
         body,
         images,
@@ -163,14 +220,16 @@ export function mapShowcaseData(input: {
     });
 
   const brandColor = property.brandColor || 'hsl(168 65% 40%)';
-  const accentColor =
-    config.palette.accent === 'custom' && config.palette.customAccent
-      ? config.palette.customAccent
-      : brandColor;
+  const accentColor = brandColor;
 
   const orgSlug = property.host?.organizationSlug?.trim() || '';
 
-  return {
+  const previewPlaceholders =
+    input.previewPlaceholders === true
+      ? true
+      : (input.previewPlaceholders ?? (embed || !config.published));
+
+  const result: ShowcaseData = {
     templateKey,
     published: config.published,
     propertyId: property.id,
@@ -179,11 +238,13 @@ export function mapShowcaseData(input: {
     brandColor,
     logoUrl: property.host?.organizationLogoUrl ?? null,
     description: property.description,
-    locationLabel: property.location,
-    address: property.address,
-    city,
-    state: property.state,
-    country: property.country,
+    locationLabel: locationFields.locationLabel,
+    heroEyebrow,
+    locationLead,
+    address: locationFields.address,
+    city: locationFields.city,
+    state: locationFields.state,
+    country: locationFields.country,
     zipCode: property.zipCode,
     amenities: property.amenities ?? [],
     highlights,
@@ -212,4 +273,6 @@ export function mapShowcaseData(input: {
     embed,
     reducedMotion,
   };
+
+  return previewPlaceholders ? applyShowcasePreviewMocks(result) : result;
 }

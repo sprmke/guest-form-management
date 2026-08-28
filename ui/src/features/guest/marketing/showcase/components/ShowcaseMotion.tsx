@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, useContext, type ReactNode, type MouseEvent } from 'react';
-import { motion, useMotionValue, useSpring } from 'framer-motion';
+import { useEffect, useRef, useState, useContext, type ReactNode } from 'react';
+import { motion } from 'framer-motion';
 
 import { cn } from '@/lib/utils';
 import { ShowcaseStyleContext } from '@/features/guest/marketing/showcase/components/ShowcaseStyleProvider';
 import { useShowcaseTheme } from '@/features/guest/marketing/showcase/components/ShowcaseThemeProvider';
+import { monolithStatValueClass } from '@/features/guest/marketing/showcase/templates/monolith/monolithTypography';
 
 export function ShowcaseReveal({
   children,
@@ -29,48 +30,6 @@ export function ShowcaseReveal({
       whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
       viewport={{ once: true, margin: '-12% 0px' }}
       transition={{ duration, delay, ease: [0.22, 1, 0.36, 1] }}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
-export function MagneticCta({
-  children,
-  className,
-  reduced,
-}: {
-  children: ReactNode;
-  className?: string;
-  reduced?: boolean;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  const springX = useSpring(x, { stiffness: 280, damping: 22, mass: 0.4 });
-  const springY = useSpring(y, { stiffness: 280, damping: 22, mass: 0.4 });
-
-  function onMove(event: MouseEvent<HTMLDivElement>) {
-    if (reduced || !ref.current) return;
-    const rect = ref.current.getBoundingClientRect();
-    const dx = event.clientX - (rect.left + rect.width / 2);
-    const dy = event.clientY - (rect.top + rect.height / 2);
-    x.set(dx * 0.22);
-    y.set(dy * 0.22);
-  }
-
-  function onLeave() {
-    x.set(0);
-    y.set(0);
-  }
-
-  return (
-    <motion.div
-      ref={ref}
-      style={reduced ? undefined : { x: springX, y: springY }}
-      onMouseMove={onMove}
-      onMouseLeave={onLeave}
-      className={cn('inline-flex', className)}
     >
       {children}
     </motion.div>
@@ -111,10 +70,10 @@ export function AnimatedStat({
   label: string;
   reduced?: boolean;
 }) {
-  const { tokens } = useShowcaseTheme();
+  const { tokens, variant } = useShowcaseTheme();
   const numeric = Number.parseFloat(value.replace(/[^\d.]/g, ''));
+  const hasNumber = /^\d+$/.test(value.trim());
   const suffix = value.replace(/[\d.\s]/g, '');
-  const hasNumber = Number.isFinite(numeric) && !Number.isNaN(numeric);
   const [display, setDisplay] = useState(reduced || !hasNumber ? value : `0${suffix}`);
   const seen = useRef(false);
 
@@ -144,7 +103,14 @@ export function AnimatedStat({
 
   return (
     <div id={`stat-${label}`} className="min-w-0">
-      <p className="font-instrument @sm:text-5xl text-4xl tracking-tight">{display}</p>
+      <p
+        className={cn(
+          'font-instrument tracking-tight',
+          variant === 'monolith' ? monolithStatValueClass : '@sm:text-5xl text-4xl'
+        )}
+      >
+        {display}
+      </p>
       <p className={cn('mt-1 text-sm uppercase tracking-[0.12em]', tokens.muted)}>{label}</p>
     </div>
   );

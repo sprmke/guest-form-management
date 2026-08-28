@@ -20,7 +20,7 @@ export function ShowcaseCanvas({
     const canvas = canvasRef.current;
     if (!canvas || paused) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: variant === 'grain' });
     if (!ctx) return;
 
     let raf = 0;
@@ -31,6 +31,7 @@ export function ShowcaseCanvas({
       const parent = canvas.parentElement;
       if (!parent) return;
       const { width, height } = parent.getBoundingClientRect();
+      if (width < 1 || height < 1) return;
       canvas.width = Math.max(1, Math.floor(width * dpr));
       canvas.height = Math.max(1, Math.floor(height * dpr));
       canvas.style.width = `${width}px`;
@@ -45,6 +46,10 @@ export function ShowcaseCanvas({
       }
       t += 0.008;
       const { width, height } = canvas.getBoundingClientRect();
+      if (width < 1 || height < 1) {
+        raf = requestAnimationFrame(draw);
+        return;
+      }
       ctx.clearRect(0, 0, width, height);
 
       if (variant === 'mesh') {
@@ -78,17 +83,23 @@ export function ShowcaseCanvas({
           ctx.fill();
         }
       } else {
+        // Noise in buffer pixels (putImageData ignores the current transform).
+        const bw = canvas.width;
+        const bh = canvas.height;
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.fillStyle = 'hsla(0, 0%, 0%, 0.04)';
-        ctx.fillRect(0, 0, width, height);
-        const image = ctx.createImageData(Math.floor(width), Math.floor(height));
-        for (let i = 0; i < image.data.length; i += 4) {
+        ctx.fillRect(0, 0, bw, bh);
+        const image = ctx.createImageData(bw, bh);
+        const data = image.data;
+        for (let i = 0; i < data.length; i += 4) {
           const n = Math.random() * 255;
-          image.data[i] = n;
-          image.data[i + 1] = n;
-          image.data[i + 2] = n;
-          image.data[i + 3] = 18;
+          data[i] = n;
+          data[i + 1] = n;
+          data[i + 2] = n;
+          data[i + 3] = 18;
         }
         ctx.putImageData(image, 0, 0);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       }
 
       raf = requestAnimationFrame(draw);
@@ -102,7 +113,7 @@ export function ShowcaseCanvas({
       ([entry]) => {
         visibleRef.current = Boolean(entry?.isIntersecting);
       },
-      { threshold: 0.05 }
+      { threshold: 0.01 }
     );
     io.observe(canvas);
 

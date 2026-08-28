@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 
+import { findPrimaryShowcaseSection } from '@/features/guest/marketing/showcase/lib/showcaseScroll';
+
 export function useScrollSpy(sectionIds: string[], rootMargin = '-40% 0px -45% 0px') {
   const [activeId, setActiveId] = useState(sectionIds[0] ?? '');
 
   useEffect(() => {
     if (sectionIds.length === 0) return;
     const elements = sectionIds
-      .map((id) => document.getElementById(id))
+      .map((id) => findPrimaryShowcaseSection(id))
       .filter((el): el is HTMLElement => Boolean(el));
     if (elements.length === 0) return;
 

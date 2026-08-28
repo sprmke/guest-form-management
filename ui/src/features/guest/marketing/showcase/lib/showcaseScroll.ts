@@ -1,13 +1,177 @@
+/**
+ * Live / editor primary showcase — excludes Page Editor template-picker thumbs
+ * so global DOM lookups never hit duplicate `#hero` nodes inside miniatures.
+ */
+export const SHOWCASE_PRIMARY_SCOPE_SELECTOR =
+  '.showcase-scope:not([data-showcase-template-thumb])';
+
+/** CSS custom properties painted on `.showcase-scope` (palette + accent). */
+const SHOWCASE_SCOPE_CSS_VARS = [
+  '--background',
+  '--foreground',
+  '--card',
+  '--card-foreground',
+  '--popover',
+  '--popover-foreground',
+  '--primary',
+  '--primary-foreground',
+  '--secondary',
+  '--secondary-foreground',
+  '--muted',
+  '--muted-foreground',
+  '--accent',
+  '--accent-foreground',
+  '--border',
+  '--input',
+  '--ring',
+  '--showcase-surface',
+  '--showcase-surface-elevated',
+  '--showcase-ink',
+  '--showcase-ink-muted',
+  '--showcase-ink-faint',
+  '--showcase-border',
+  '--showcase-border-strong',
+  '--showcase-accent',
+  '--showcase-on-accent',
+] as const;
+
+export type ShowcaseScopeThemeSnapshot = {
+  style: Record<string, string>;
+  surface: string | null;
+};
+
+/**
+ * Snapshot palette vars from the primary showcase scope so portaled UI
+ * (mobile menu in Page Editor / embed) keeps brand surfaces + accent.
+ */
+export function readShowcaseScopeTheme(
+  scope: HTMLElement | null = typeof document !== 'undefined'
+    ? document.querySelector<HTMLElement>(SHOWCASE_PRIMARY_SCOPE_SELECTOR)
+    : null
+): ShowcaseScopeThemeSnapshot | null {
+  if (!scope) return null;
+
+  const computed = getComputedStyle(scope);
+  const style: Record<string, string> = {};
+  for (const key of SHOWCASE_SCOPE_CSS_VARS) {
+    const value = computed.getPropertyValue(key).trim();
+    if (value) style[key] = value;
+  }
+
+  // Do not copy scope backgroundColor/color onto portaled overlays — that would
+  // paint the full-screen dialog (including the dimmed backdrop). Panels use
+  // --showcase-surface / --showcase-ink via Tailwind classes instead.
+
+  return {
+    style,
+    surface: scope.getAttribute('data-showcase-surface'),
+  };
+}
+
+/** Nearest ancestor that scrolls vertically (Page Editor preview pane, embed root, etc.). */
+export function findShowcaseScrollableAncestor(start: HTMLElement | null): HTMLElement | null {
+  let el = start?.parentElement ?? null;
+  while (el) {
+    const { overflowY } = getComputedStyle(el);
+    if (/(auto|scroll|overlay)/.test(overflowY)) {
+      return el;
+    }
+    el = el.parentElement;
+  }
+  return null;
+}
+
+/** Hero (or any section) belonging to the primary showcase only. */
+export function findPrimaryShowcaseSection(sectionId: string): HTMLElement | null {
+  const escaped = CSS.escape(sectionId);
+  return (
+    document.querySelector<HTMLElement>(`${SHOWCASE_PRIMARY_SCOPE_SELECTOR} #${escaped}`) ??
+    document.querySelector<HTMLElement>(
+      `${SHOWCASE_PRIMARY_SCOPE_SELECTOR} [data-page-editor-anchor="${escaped}"]`
+    )
+  );
+}
+
+export function findPrimaryShowcaseHero(): HTMLElement | null {
+  return findPrimaryShowcaseSection('hero');
+}
+
+/** Scroll container for showcase: marked root, editor preview ancestor, or null (= window). */
+export function resolveShowcaseScrollRoot(options: {
+  embed: boolean;
+  containedChrome: boolean;
+  anchor?: HTMLElement | null;
+}): HTMLElement | null {
+  const markedRoot = document.querySelector<HTMLElement>(
+    `${SHOWCASE_PRIMARY_SCOPE_SELECTOR}[data-showcase-scroll-root]`
+  );
+  if (markedRoot) return markedRoot;
+
+  const anchor = options.anchor ?? findPrimaryShowcaseHero();
+  if (options.embed || options.containedChrome) {
+    return findShowcaseScrollableAncestor(anchor);
+  }
+
+  const ancestor = findShowcaseScrollableAncestor(anchor);
+  if (ancestor && ancestor !== document.documentElement && ancestor !== document.body) {
+    return ancestor;
+  }
+
+  return null;
+}
+
 /** Scroll the showcase root (embed / Page Editor) or the document on live guest pages. */
 export function scrollShowcaseToTop(behavior: ScrollBehavior = 'smooth') {
-  const root =
-    document.querySelector<HTMLElement>('[data-showcase-scroll-root]') ??
-    document.querySelector<HTMLElement>('.showcase-scope');
+  const embedRoot = document.querySelector<HTMLElement>(
+    `${SHOWCASE_PRIMARY_SCOPE_SELECTOR}[data-showcase-scroll-root]`
+  );
+  if (embedRoot) {
+    embedRoot.scrollTo({ top: 0, behavior });
+    return;
+  }
 
-  if (root) {
-    root.scrollTo({ top: 0, behavior });
+  const hero = findPrimaryShowcaseHero();
+  const previewRoot = findShowcaseScrollableAncestor(hero);
+  if (previewRoot) {
+    previewRoot.scrollTo({ top: 0, behavior });
     return;
   }
 
   window.scrollTo({ top: 0, behavior });
+}
+
+/** Monolith / Aurora header switches to solid bar once hero clears the chrome. */
+export const SHOWCASE_HEADER_SOLID_THRESHOLD_PX = 76;
+
+/** @deprecated use SHOWCASE_HEADER_SOLID_THRESHOLD_PX */
+export const MONOLITH_HEADER_SOLID_THRESHOLD_PX = SHOWCASE_HEADER_SOLID_THRESHOLD_PX;
+
+/**
+ * True when the hero section has scrolled past the header chrome.
+ * Uses the nearest scrollport top (Page Editor preview, embed) — not always viewport y=0.
+ */
+export function isShowcaseHeaderSolid(
+  thresholdPx = SHOWCASE_HEADER_SOLID_THRESHOLD_PX,
+  scrollRoot?: HTMLElement | null
+): boolean {
+  const hero = findPrimaryShowcaseHero();
+  if (!hero) return true;
+
+  const heroRect = hero.getBoundingClientRect();
+  const root = scrollRoot ?? findShowcaseScrollableAncestor(hero);
+
+  if (root) {
+    const rootTop = root.getBoundingClientRect().top;
+    return heroRect.bottom <= rootTop + thresholdPx;
+  }
+
+  return heroRect.bottom <= thresholdPx;
+}
+
+/** @deprecated use isShowcaseHeaderSolid */
+export function isMonolithHeaderSolid(
+  thresholdPx = SHOWCASE_HEADER_SOLID_THRESHOLD_PX,
+  scrollRoot?: HTMLElement | null
+): boolean {
+  return isShowcaseHeaderSolid(thresholdPx, scrollRoot);
 }

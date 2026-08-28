@@ -1,35 +1,81 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+
 import { Menu, Moon, Sun, X } from 'lucide-react';
 
+import { usePreviewForcesMobile } from '@/features/guest/lib/previewViewportContext';
 import { ShowcaseFooter } from '@/features/guest/marketing/showcase/components/ShowcaseFooter';
-import {
-  SmoothScrollProvider,
-  useSmoothScroll,
-} from '@/features/guest/marketing/showcase/components/SmoothScrollProvider';
-import {
-  ShowcaseThemeProvider,
-  useShowcaseTheme,
-} from '@/features/guest/marketing/showcase/components/ShowcaseThemeProvider';
+import { ShowcaseMobileMenu } from '@/features/guest/marketing/showcase/components/ShowcaseMobileMenu';
 import {
   ShowcaseStyleProvider,
   useShowcaseStyle,
 } from '@/features/guest/marketing/showcase/components/ShowcaseStyleProvider';
 import {
+  ShowcaseThemeProvider,
+  useShowcaseTheme,
+} from '@/features/guest/marketing/showcase/components/ShowcaseThemeProvider';
+import {
+  SmoothScrollProvider,
+  useSmoothScroll,
+} from '@/features/guest/marketing/showcase/components/SmoothScrollProvider';
+import { useScrollSpy } from '@/features/guest/marketing/showcase/hooks/useScrollSpy';
+import {
   useShowcaseConfigControlled,
   useShowcaseContainedChrome,
 } from '@/features/guest/marketing/showcase/lib/showcaseChrome';
-import { scrollShowcaseToTop } from '@/features/guest/marketing/showcase/lib/showcaseScroll';
+import { useShowcaseMediaPalette } from '@/features/guest/marketing/showcase/hooks/useShowcaseMediaPalette';
+import { collectShowcaseMediaUrls } from '@/features/guest/marketing/showcase/lib/showcaseMediaPalette';
 import {
+  findPrimaryShowcaseHero,
+  isShowcaseHeaderSolid,
+  resolveShowcaseScrollRoot,
+  scrollShowcaseToTop,
+  SHOWCASE_HEADER_SOLID_THRESHOLD_PX,
+} from '@/features/guest/marketing/showcase/lib/showcaseScroll';
+import type { ShowcaseMediaPalette } from '@/features/guest/marketing/showcase/lib/showcaseMediaPalette';
+import {
+  resolveShowcasePaletteAccent,
+  resolveShowcasePaletteToneStyle,
+  resolveShowcasePaletteTones,
+} from '@/features/guest/marketing/showcase/lib/showcasePaletteSurfaces';
+import {
+  resolveShowcaseCustomPaletteClass,
   resolveShowcaseWarmTintClass,
   showcasePrimaryCssVar,
 } from '@/features/guest/marketing/showcase/lib/showcaseStyleConfig';
-import { useScrollSpy } from '@/features/guest/marketing/showcase/hooks/useScrollSpy';
+import { resolveShowcaseHeaderChrome } from '@/features/guest/marketing/showcase/lib/showcaseHeaderChrome';
+import type { ShowcaseVariant } from '@/features/guest/marketing/showcase/lib/showcaseThemeTokens';
+import {
+  auroraBrandTitleClass,
+  auroraNavLinkClass,
+} from '@/features/guest/marketing/showcase/templates/aurora/auroraHeader';
+import {
+  monolithBrandTitleClass,
+  monolithHeaderChromeClass,
+} from '@/features/guest/marketing/showcase/templates/monolith/monolithTypography';
 import type { ShowcaseData } from '@/features/guest/marketing/showcase/types/showcase';
-import { usePreviewForcesMobile } from '@/features/guest/lib/previewViewportContext';
+import { useShowcaseTemplateThumbSurface } from '@/features/guest/marketing/showcase/lib/showcaseTemplateThumbSurface';
+
 import { useFavicon } from '@/lib/favicon';
 import { usePageTitle } from '@/lib/pageTitle';
 import { cn } from '@/lib/utils';
+
+function brandTitleClass(variant: ShowcaseVariant): string {
+  if (variant === 'monolith') return monolithBrandTitleClass;
+  if (variant === 'aurora') return auroraBrandTitleClass;
+  if (variant === 'verso') {
+    return 'font-jost text-sm font-semibold uppercase tracking-[0.18em]';
+  }
+  if (variant === 'atlas') {
+    return 'font-grotesk text-sm font-medium tracking-tight @sm:text-base';
+  }
+  if (variant === 'haven') {
+    return 'font-fraunces text-base font-medium tracking-tight @sm:text-lg';
+  }
+  if (variant === 'editorial') {
+    return 'font-cormorant text-lg font-medium tracking-tight @sm:text-xl';
+  }
+  return 'text-base font-medium';
+}
 
 function ShowcaseThemeToggle({ hidden, className }: { hidden?: boolean; className?: string }) {
   const { mode, toggleMode, tokens } = useShowcaseTheme();
@@ -41,8 +87,9 @@ function ShowcaseThemeToggle({ hidden, className }: { hidden?: boolean; classNam
       type="button"
       onClick={toggleMode}
       className={cn(
-        'flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center rounded-lg transition-colors duration-200',
-        className ?? tokens.themeToggleHover
+        'flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center transition-colors duration-200',
+        tokens.themeToggleHover,
+        className
       )}
       aria-label={mode === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
     >
@@ -55,8 +102,9 @@ function ShowcaseThemeToggle({ hidden, className }: { hidden?: boolean; classNam
   );
 }
 
-function ShowcaseBrand({ data }: { data: ShowcaseData }) {
+function ShowcaseBrand({ data, onHeroHeader }: { data: ShowcaseData; onHeroHeader?: boolean }) {
   const { tokens, variant } = useShowcaseTheme();
+  const chrome = resolveShowcaseHeaderChrome(variant);
   const [logoFailed, setLogoFailed] = useState(false);
   const showLogo = Boolean(data.logoUrl) && !logoFailed;
 
@@ -64,14 +112,16 @@ function ShowcaseBrand({ data }: { data: ShowcaseData }) {
     <button
       type="button"
       onClick={() => scrollShowcaseToTop()}
-      className="@lg:max-w-[40%] flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-2.5 overflow-hidden text-left"
+      className="@lg:max-w-[40%] flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-left"
       aria-label="Back to top"
     >
       {showLogo ? (
         <span
           className={cn(
-            'size-9 shrink-0 overflow-hidden rounded-md shadow-sm sm:size-10',
-            tokens.brandLogoBg
+            'size-9 shrink-0 overflow-hidden shadow-sm sm:size-10',
+            chrome.brandMark,
+            tokens.brandLogoBg,
+            onHeroHeader && 'ring-1 ring-white/25'
           )}
         >
           <img
@@ -84,198 +134,203 @@ function ShowcaseBrand({ data }: { data: ShowcaseData }) {
       ) : (
         <span
           className={cn(
-            'inline-flex size-9 shrink-0 items-center justify-center rounded-md text-sm font-bold sm:size-10',
-            tokens.brandFallback,
-            variant === 'monolith' && 'rounded-none'
+            'inline-flex size-9 shrink-0 items-center justify-center text-sm font-bold sm:size-10',
+            chrome.brandMark,
+            tokens.brandFallback
           )}
         >
           {data.propertyName.charAt(0).toUpperCase()}
         </span>
       )}
-      <p className="truncate text-base font-medium">{data.propertyName}</p>
+      <p className={cn('min-w-0 truncate', brandTitleClass(variant))}>{data.propertyName}</p>
     </button>
   );
 }
 
-function useMonolithHeaderSolid(data: ShowcaseData, variant: string) {
-  const [solid, setSolid] = useState(false);
+const HERO_TRACKING_VARIANTS = new Set(['monolith', 'aurora', 'verso', 'atlas']);
+
+function useShowcasePastHero(data: ShowcaseData, variant: string, containedChrome: boolean) {
+  const tracksHero = HERO_TRACKING_VARIANTS.has(variant);
+  const [pastHero, setPastHero] = useState(() => {
+    if (!tracksHero) return false;
+    const hero = findPrimaryShowcaseHero();
+    const scrollRoot = resolveShowcaseScrollRoot({
+      embed: data.embed,
+      containedChrome,
+      anchor: hero,
+    });
+    return isShowcaseHeaderSolid(SHOWCASE_HEADER_SOLID_THRESHOLD_PX, scrollRoot);
+  });
 
   useEffect(() => {
-    if (variant !== 'monolith') {
-      setSolid(false);
+    if (!tracksHero) {
+      setPastHero(false);
       return;
     }
 
-    const hero = document.getElementById('hero');
+    const hero = findPrimaryShowcaseHero();
     if (!hero) {
-      setSolid(true);
+      setPastHero(true);
       return;
     }
 
-    const root =
-      document.querySelector<HTMLElement>('[data-showcase-scroll-root]') ??
-      document.querySelector<HTMLElement>('.showcase-scope');
+    const update = () => {
+      const scrollRoot = resolveShowcaseScrollRoot({
+        embed: data.embed,
+        containedChrome,
+        anchor: hero,
+      });
+      setPastHero(isShowcaseHeaderSolid(SHOWCASE_HEADER_SOLID_THRESHOLD_PX, scrollRoot));
+    };
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setSolid(!entry?.isIntersecting || (entry.intersectionRatio ?? 0) < 0.55);
-      },
-      {
-        root: root && root !== document.documentElement ? root : null,
-        threshold: [0, 0.55, 1],
-      }
-    );
+    const scrollRoot = resolveShowcaseScrollRoot({
+      embed: data.embed,
+      containedChrome,
+      anchor: hero,
+    });
 
-    observer.observe(hero);
-    return () => observer.disconnect();
-  }, [data.propertySlug, data.templateKey, variant]);
+    update();
+    scrollRoot?.addEventListener('scroll', update, { passive: true });
+    if (!scrollRoot) window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update, { passive: true });
 
-  return solid;
+    const ro = new ResizeObserver(update);
+    ro.observe(hero);
+
+    return () => {
+      scrollRoot?.removeEventListener('scroll', update);
+      if (!scrollRoot) window.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+      ro.disconnect();
+    };
+  }, [containedChrome, data.embed, data.propertySlug, data.templateKey, tracksHero, variant]);
+
+  return pastHero;
 }
 
-function ShowcaseNav({ data, containedChrome }: { data: ShowcaseData; containedChrome: boolean }) {
+function ShowcaseNav({
+  data,
+  containedChrome,
+  menuOpen,
+  onMenuOpenChange,
+  interactive,
+}: {
+  data: ShowcaseData;
+  containedChrome: boolean;
+  menuOpen: boolean;
+  onMenuOpenChange: (open: boolean) => void;
+  /** False inside template-picker thumbs — chrome is decorative only. */
+  interactive: boolean;
+}) {
   const { scrollToAnchor } = useSmoothScroll();
   const { tokens, variant } = useShowcaseTheme();
-  const [menuOpen, setMenuOpen] = useState(false);
   const forceMobile = usePreviewForcesMobile();
-  const configControlled = useShowcaseConfigControlled();
   const navSections = data.sections.filter((s) => s.id !== 'hero').slice(0, 6);
   const ids = data.sections.map((s) => s.id);
-  const active = useScrollSpy(ids);
-  const monolithHeaderSolid = useMonolithHeaderSolid(data, variant);
+  const active = useScrollSpy(interactive ? ids : []);
+  const pastHero = useShowcasePastHero(data, variant, containedChrome);
   const heroSection = data.sections.find((section) => section.id === 'hero');
   const heroHasImage = Boolean(heroSection?.images[0]);
-  const monolithOverlay = variant === 'monolith' && !monolithHeaderSolid;
-  const monolithOnDarkHero = monolithOverlay && heroHasImage;
-
-  useEffect(() => {
-    if (!menuOpen || forceMobile || containedChrome) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, [menuOpen, forceMobile, containedChrome]);
-
-  function goTo(id: string) {
-    setMenuOpen(false);
-    window.setTimeout(() => scrollToAnchor(id), 40);
-  }
+  const overlayOnHero = HERO_TRACKING_VARIANTS.has(variant) && !pastHero && heroHasImage;
+  const headerOnHero = overlayOnHero;
+  const chrome = resolveShowcaseHeaderChrome(variant);
+  const surface = overlayOnHero ? tokens.headerHero || tokens.header : tokens.header;
+  const floatingPanel = variant === 'haven';
+  const overlayHeader = overlayOnHero;
 
   return (
     <header
+      data-showcase-header=""
       className={cn(
-        'inset-x-0 top-0 z-40 transition-[background-color,border-color,backdrop-filter,color] duration-300',
+        variant === 'monolith' && monolithHeaderChromeClass,
+        'inset-x-0 top-0 z-[90] transition-[background-color,border-color,box-shadow,color,backdrop-filter,opacity] duration-300',
         containedChrome ? 'sticky' : 'fixed',
-        monolithOverlay
-          ? cn(
-              'border-transparent bg-transparent backdrop-blur-none',
-              monolithOnDarkHero ? 'text-white' : 'text-inherit'
-            )
-          : cn('border-b', tokens.header)
+        chrome.shell,
+        overlayHeader && 'border-transparent',
+        !floatingPanel && surface,
+        // Fade behind the overlay, but keep the toggle clickable so reopen/close
+        // still works if the portaled panel is delayed or missed.
+        menuOpen && 'opacity-0'
       )}
     >
-      <div className="mx-auto flex max-w-6xl items-center gap-2 px-4 py-3 sm:px-6">
-        <ShowcaseBrand data={data} />
+      <div className={cn(chrome.inner, floatingPanel && surface)}>
+        <ShowcaseBrand data={data} onHeroHeader={headerOnHero} />
 
-        <nav
-          className={cn('ml-auto hidden shrink-0 items-center gap-0.5', !forceMobile && '@lg:flex')}
-          aria-label="Showcase sections"
-        >
-          {navSections.map((section, index) => (
-            <button
-              key={section.id}
-              type="button"
-              onClick={() => scrollToAnchor(section.id)}
-              className={cn(
-                'min-h-11 cursor-pointer rounded-full px-2.5 text-sm font-medium transition-colors duration-200 xl:px-3',
-                active === section.id
-                  ? monolithOnDarkHero
-                    ? 'text-white underline underline-offset-8'
-                    : variant === 'monolith'
-                      ? tokens.navMonolithActive
-                      : tokens.navActive
-                  : monolithOnDarkHero
-                    ? 'text-white/65 hover:text-white'
-                    : tokens.navInactive,
-                variant === 'monolith' && 'rounded-none text-xs uppercase tracking-[0.12em]'
-              )}
-            >
-              {variant === 'monolith' ? `${String(index + 1).padStart(2, '0')}` : section.heading}
-            </button>
-          ))}
-        </nav>
-
-        <div className="@lg:ml-0 ml-auto flex items-center gap-0.5">
-          <ShowcaseThemeToggle
-            hidden={configControlled}
-            className={monolithOnDarkHero ? 'hover:bg-white/10' : undefined}
-          />
-          <button
-            type="button"
+        {interactive ? (
+          <nav
             className={cn(
-              'flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center rounded-lg',
-              !forceMobile && '@lg:hidden',
-              monolithOnDarkHero ? 'hover:bg-white/10' : tokens.themeToggleHover,
-              variant === 'monolith' && 'rounded-none'
+              'ml-auto hidden shrink-0 items-center gap-0.5',
+              !forceMobile && '@lg:flex'
             )}
-            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((open) => !open)}
+            aria-label="Showcase sections"
           >
-            {menuOpen ? (
-              <X className="size-5" aria-hidden />
-            ) : (
-              <Menu className="size-5" aria-hidden />
-            )}
-          </button>
-        </div>
-      </div>
+            {navSections.map((section) => {
+              const isActive = active === section.id;
+              const navTone = headerOnHero
+                ? isActive
+                  ? chrome.navOnHeroActive
+                  : chrome.navOnHeroInactive
+                : isActive
+                  ? variant === 'monolith'
+                    ? tokens.navMonolithActive
+                    : tokens.navActive
+                  : tokens.navInactive;
 
-      <AnimatePresence>
-        {menuOpen ? (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className={cn(
-              'absolute inset-x-0 top-full border-b shadow-lg',
-              !forceMobile && '@lg:hidden',
-              tokens.headerSheet
-            )}
-          >
-            <nav
-              className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-3"
-              aria-label="Showcase sections"
-            >
-              {navSections.map((section, index) => (
+              return (
                 <button
                   key={section.id}
                   type="button"
-                  onClick={() => goTo(section.id)}
+                  onClick={() => scrollToAnchor(section.id)}
                   className={cn(
-                    'flex min-h-11 w-full cursor-pointer items-center justify-between rounded-xl px-3 text-left text-base font-medium transition-colors duration-200',
-                    active === section.id
-                      ? tokens.menuItemActive
-                      : variant === 'monolith'
-                        ? tokens.menuItemMonolith
-                        : tokens.menuItemInactive,
-                    variant === 'monolith' && 'rounded-none'
+                    'min-h-11 cursor-pointer font-medium transition-colors duration-200',
+                    chrome.navItem,
+                    variant === 'aurora' ? auroraNavLinkClass : 'text-sm',
+                    navTone
                   )}
                 >
-                  <span>{section.heading}</span>
-                  {variant === 'monolith' ? (
-                    <span className="text-xs tracking-wider opacity-50">
-                      {String(index + 1).padStart(2, '0')}
-                    </span>
-                  ) : null}
+                  {section.heading}
                 </button>
-              ))}
-            </nav>
-          </motion.div>
+              );
+            })}
+          </nav>
         ) : null}
-      </AnimatePresence>
+
+        <div className="@lg:ml-0 ml-auto flex items-center gap-0.5">
+          {interactive ? <ShowcaseThemeToggle className={chrome.iconButton} /> : null}
+          {interactive ? (
+            <button
+              type="button"
+              className={cn(
+                'flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center',
+                !forceMobile && '@lg:hidden',
+                chrome.iconButton,
+                tokens.themeToggleHover,
+                headerOnHero && 'text-inherit hover:bg-white/10',
+                menuOpen && 'pointer-events-auto relative z-[210]'
+              )}
+              aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={menuOpen}
+              onClick={() => onMenuOpenChange(!menuOpen)}
+            >
+              {menuOpen ? (
+                <X className="size-5" aria-hidden />
+              ) : (
+                <Menu className="size-5" aria-hidden />
+              )}
+            </button>
+          ) : (
+            <span
+              className={cn(
+                'flex min-h-11 min-w-11 shrink-0 items-center justify-center',
+                chrome.iconButton
+              )}
+              aria-hidden
+            >
+              <Menu className="size-5" />
+            </span>
+          )}
+        </div>
+      </div>
     </header>
   );
 }
@@ -295,38 +350,98 @@ function DeepLinkScroll({ enabled }: { enabled: boolean }) {
 function ShowcaseShellInner({
   data,
   containedChrome,
+  mediaPalette,
   children,
 }: {
   data: ShowcaseData;
   containedChrome: boolean;
+  mediaPalette: ShowcaseMediaPalette | null;
   children: ReactNode;
 }) {
-  const { tokens } = useShowcaseTheme();
+  const isTemplateThumb = useShowcaseTemplateThumbSurface();
+  const { tokens, variant, mode: themeMode } = useShowcaseTheme();
   const { displayFontClass, headingScaleClass, bodyScaleClass } = useShowcaseStyle();
-  const smooth = !data.embed && !data.reducedMotion && data.config.motion.intensity !== 'subtle';
+  const accentColor = resolveShowcasePaletteAccent(
+    data.config.palette.mode,
+    themeMode,
+    data.accentColor,
+    mediaPalette,
+    data.brandColor,
+    data.config.palette.customPaletteBase
+  );
+  const paletteTones = resolveShowcasePaletteTones(
+    data.config.palette.mode,
+    themeMode,
+    mediaPalette,
+    data.brandColor,
+    data.config.palette.customPaletteBase
+  );
+  const paletteToneStyle = resolveShowcasePaletteToneStyle(
+    data.config.palette.mode,
+    themeMode,
+    mediaPalette,
+    data.brandColor,
+    data.config.palette.customPaletteBase
+  );
+  const smooth =
+    !data.reducedMotion && data.config.motion.intensity !== 'subtle' && !isTemplateThumb;
+  const scopeDisplayFont = variant === 'monolith' ? 'font-sans' : displayFontClass;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const navSections = data.sections.filter((section) => section.id !== 'hero').slice(0, 6);
+  const activeSectionId = useScrollSpy(
+    isTemplateThumb ? [] : data.sections.map((section) => section.id)
+  );
 
   return (
     <SmoothScrollProvider enabled={smooth}>
       <div
         className={cn(
           'showcase-scope @container relative isolate w-full min-w-0',
-          displayFontClass,
+          scopeDisplayFont,
           headingScaleClass,
           bodyScaleClass,
-          resolveShowcaseWarmTintClass(data.config.palette.mode),
-          data.embed
+          resolveShowcaseWarmTintClass(
+            data.config.palette.mode,
+            mediaPalette?.warmHue,
+            data.config.palette.customPaletteBase
+          ),
+          resolveShowcaseCustomPaletteClass(data.config.palette.mode),
+          data.embed && !isTemplateThumb
             ? 'h-[100dvh] overflow-y-auto overflow-x-hidden overscroll-y-contain'
-            : 'min-h-[100dvh]',
+            : isTemplateThumb
+              ? 'h-full overflow-hidden'
+              : 'min-h-[100dvh]',
           tokens.page
         )}
-        data-showcase-scroll-root={data.embed ? '' : undefined}
+        data-showcase-template-thumb={isTemplateThumb ? '' : undefined}
+        data-showcase-scroll-root={data.embed && !isTemplateThumb ? '' : undefined}
+        data-showcase-surface={
+          paletteTones ? (paletteTones.surfaceIsDark ? 'dark' : 'light') : themeMode
+        }
         style={{
-          ['--primary' as string]: showcasePrimaryCssVar(data.accentColor),
-          ['--showcase-accent' as string]: showcasePrimaryCssVar(data.accentColor),
+          ['--primary' as string]: showcasePrimaryCssVar(accentColor),
+          ['--showcase-accent' as string]: showcasePrimaryCssVar(accentColor),
+          ...paletteToneStyle,
         }}
       >
-        <ShowcaseNav data={data} containedChrome={containedChrome} />
-        <DeepLinkScroll enabled={!data.embed && !containedChrome} />
+        <ShowcaseNav
+          data={data}
+          containedChrome={containedChrome}
+          menuOpen={menuOpen}
+          onMenuOpenChange={setMenuOpen}
+          interactive={!isTemplateThumb}
+        />
+        {!isTemplateThumb ? (
+          <ShowcaseMobileMenu
+            open={menuOpen}
+            onClose={() => setMenuOpen(false)}
+            data={data}
+            containedChrome={containedChrome}
+            activeSectionId={activeSectionId}
+            navSections={navSections}
+          />
+        ) : null}
+        <DeepLinkScroll enabled={!data.embed && !containedChrome && !isTemplateThumb} />
         <main>{children}</main>
         <ShowcaseFooter data={data} />
       </div>
@@ -340,21 +455,27 @@ function ShowcaseShellBody({
   children,
 }: {
   data: ShowcaseData;
-  variant: 'aurora' | 'monolith' | 'editorial';
+  variant: ShowcaseVariant;
   children: ReactNode;
 }) {
   const containedChrome = useShowcaseContainedChrome(data.embed);
   const configControlled = useShowcaseConfigControlled();
+  const mediaEnabled = data.config.palette.mode === 'media';
+  const mediaUrls = useMemo(() => collectShowcaseMediaUrls(data), [data]);
+  const { palette: mediaPalette } = useShowcaseMediaPalette(mediaUrls, mediaEnabled);
 
   return (
     <ShowcaseThemeProvider
       variant={variant}
       propertySlug={data.propertySlug}
-      config={data.config}
       configControlled={configControlled}
     >
       <ShowcaseStyleProvider config={data.config}>
-        <ShowcaseShellInner data={data} containedChrome={containedChrome}>
+        <ShowcaseShellInner
+          data={data}
+          containedChrome={containedChrome}
+          mediaPalette={mediaPalette}
+        >
           {children}
         </ShowcaseShellInner>
       </ShowcaseStyleProvider>
@@ -368,12 +489,13 @@ export function ShowcaseShell({
   children,
 }: {
   data: ShowcaseData;
-  variant: 'aurora' | 'monolith' | 'editorial';
+  variant: ShowcaseVariant;
   children: ReactNode;
   className?: string;
 }) {
-  usePageTitle(`${data.propertyName} - Showcase`);
-  useFavicon(data.logoUrl ?? undefined);
+  const isTemplateThumb = useShowcaseTemplateThumbSurface();
+  usePageTitle(isTemplateThumb ? undefined : `${data.propertyName} - Showcase`);
+  useFavicon(isTemplateThumb ? undefined : (data.logoUrl ?? undefined));
 
   return (
     <ShowcaseShellBody data={data} variant={variant}>

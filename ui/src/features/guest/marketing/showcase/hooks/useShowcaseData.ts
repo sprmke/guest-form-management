@@ -56,6 +56,7 @@ function mockShowcase(slug: string, published = true): ShowcaseData | null {
     property,
     config,
     templateKey: 'showcase-aurora',
+    previewPlaceholders: true,
   });
 }
 
@@ -119,6 +120,7 @@ async function fetchShowcase(slug: string, preview: boolean): Promise<ShowcaseDa
     config: payload.config ?? defaultPropertyShowcaseConfig(),
     templateKey: payload.templateKey ?? 'showcase-aurora',
     guestContact,
+    ...(preview || !payload.published ? { previewPlaceholders: true as const } : {}),
   });
 }
 
@@ -132,6 +134,7 @@ export function useShowcaseData(propertySlug: string) {
           property: override.data,
           config: override.showcaseConfig,
           templateKey: override.templateKey,
+          previewPlaceholders: true,
         })
       : null;
 

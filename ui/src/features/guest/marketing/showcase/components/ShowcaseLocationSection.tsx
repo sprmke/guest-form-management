@@ -1,10 +1,18 @@
 import { Navigation } from 'lucide-react';
 
 import { ShowcaseMapEmbed } from '@/features/guest/marketing/showcase/components/ShowcaseMapEmbed';
+import { ShowcaseSectionHeading } from '@/features/guest/marketing/showcase/components/ShowcaseSectionHeading';
 import { ShowcaseReveal } from '@/features/guest/marketing/showcase/components/ShowcaseMotion';
 import { useShowcaseStyle } from '@/features/guest/marketing/showcase/components/ShowcaseStyleProvider';
 import { useShowcaseTheme } from '@/features/guest/marketing/showcase/components/ShowcaseThemeProvider';
-import { formatShowcaseAddress } from '@/features/guest/marketing/showcase/lib/showcaseLocation';
+import {
+  formatShowcaseAddress,
+  formatShowcaseMapsLink,
+  formatShowcaseStreetLine,
+  hasShowcaseLocationContent,
+  shouldShowShowcaseStreetLine,
+} from '@/features/guest/marketing/showcase/lib/showcaseLocation';
+import { showcaseSectionPyClass } from '@/features/guest/marketing/showcase/lib/showcaseSectionLayout';
 import { resolveShowcaseMotionReduced } from '@/features/guest/marketing/showcase/lib/showcaseStyleConfig';
 import type {
   ShowcaseData,
@@ -21,25 +29,9 @@ type Props = {
 };
 
 function openDirections(data: ShowcaseData) {
-  if (data.mapsUrl?.trim()) {
-    window.open(data.mapsUrl.trim(), '_blank', 'noopener,noreferrer');
-    return;
-  }
-  const fullAddress = formatShowcaseAddress(data);
-  if (data.latitude != null && data.longitude != null) {
-    window.open(
-      `https://www.google.com/maps/search/?api=1&query=${data.latitude},${data.longitude}`,
-      '_blank',
-      'noopener,noreferrer'
-    );
-    return;
-  }
-  if (fullAddress) {
-    window.open(
-      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`,
-      '_blank',
-      'noopener,noreferrer'
-    );
+  const link = formatShowcaseMapsLink(data);
+  if (link) {
+    window.open(link, '_blank', 'noopener,noreferrer');
   }
 }
 
@@ -52,14 +44,27 @@ export function ShowcaseLocationSection({
   const { tokens } = useShowcaseTheme();
   const { displayFontClass } = useShowcaseStyle();
   const motionReduced = resolveShowcaseMotionReduced(data.config, data.reducedMotion, data.embed);
-  const fullAddress = formatShowcaseAddress(data);
-  const areaLabel = [data.locationLabel, data.state, data.country].filter(Boolean).join(', ');
+  const lead = data.locationLead.trim();
+  const streetLine = formatShowcaseStreetLine(data);
+  const mapQuery = formatShowcaseAddress(data);
+  const showStreet = shouldShowShowcaseStreetLine(lead, streetLine);
+  const customBody = section.body?.trim() ?? '';
+  const isPreviewLocationCopy = customBody.includes(
+    'Directions and address details come from property settings'
+  );
+  const showCustomBody =
+    customBody.length > 0 &&
+    !isPreviewLocationCopy &&
+    customBody !== streetLine &&
+    customBody !== lead &&
+    !lead.toLowerCase().includes(customBody.toLowerCase());
+  const showPreviewBanner = section.usesPreviewMock && !hasShowcaseLocationContent(data);
 
   return (
     <section
       id={section.id}
       data-page-editor-anchor={section.id}
-      className="@sm:py-24 scroll-mt-20 py-16"
+      className={cn('scroll-mt-20', showcaseSectionPyClass)}
     >
       <div
         className={cn(
@@ -68,23 +73,23 @@ export function ShowcaseLocationSection({
         )}
       >
         <ShowcaseReveal reduced={motionReduced}>
-          <h2
-            className={cn(
+          <ShowcaseSectionHeading
+            heading={section.heading}
+            headingClassName={cn(
               displayFontClass,
               headingClassName ?? '@sm:text-4xl text-3xl font-semibold tracking-tight'
             )}
-          >
-            {section.heading}
-          </h2>
-          <p className={cn('mt-3 text-base font-medium', tokens.body)}>{areaLabel}</p>
-          {fullAddress ? (
+            usesPreviewMock={showPreviewBanner}
+          />
+          {lead ? <p className={cn('mt-3 text-base font-medium', tokens.body)}>{lead}</p> : null}
+          {showStreet ? (
             <p className={cn('mt-2 max-w-md text-base leading-relaxed', tokens.muted)}>
-              {fullAddress}
+              {streetLine}
             </p>
           ) : null}
-          {section.body && section.body !== fullAddress && section.body !== data.address ? (
+          {showCustomBody ? (
             <p className={cn('mt-3 max-w-md text-base leading-relaxed', tokens.body)}>
-              {section.body}
+              {customBody}
             </p>
           ) : null}
         </ShowcaseReveal>
@@ -97,7 +102,8 @@ export function ShowcaseLocationSection({
                 latitude={data.latitude}
                 longitude={data.longitude}
                 placeId={data.placeId}
-                address={fullAddress}
+                mapsUrl={data.mapsUrl}
+                address={mapQuery}
               />
             </div>
             <button

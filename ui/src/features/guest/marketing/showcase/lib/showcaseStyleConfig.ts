@@ -1,4 +1,10 @@
+import {
+  getShowcasePresetPalette,
+  isShowcasePresetPaletteId,
+} from '@/features/guest/marketing/showcase/lib/showcasePresetPalettes';
+import { parseBrandColorHsl } from '@/features/guest/marketing/showcase/lib/showcaseBrandPalette';
 import type { PropertyShowcaseConfig } from '@/features/guest/marketing/showcase/types/showcase';
+import { hexToHslComponents } from '@/lib/theme/brandColor';
 
 type DisplayFont = PropertyShowcaseConfig['typography']['displayFont'];
 type TypeScale = PropertyShowcaseConfig['typography']['scale'];
@@ -17,7 +23,21 @@ const DISPLAY_FONT_CLASS: Record<DisplayFont, string> = {
 export function showcasePrimaryCssVar(accentColor: string): string {
   const match = accentColor.match(/hsl\(\s*([\d.]+)\s+([\d.]+)%\s+([\d.]+)%\s*\)/i);
   if (match) return `${match[1]} ${match[2]}% ${match[3]}%`;
-  return accentColor;
+
+  const hex = accentColor.trim();
+  if (/^#[0-9a-f]{3}$/i.test(hex)) {
+    const expanded = hex
+      .slice(1)
+      .split('')
+      .map((char) => char + char)
+      .join('');
+    return hexToHslComponents(`#${expanded}`);
+  }
+  if (/^#[0-9a-f]{6}$/i.test(hex)) {
+    return hexToHslComponents(hex);
+  }
+
+  return hexToHslComponents(accentColor);
 }
 
 /** Resolved accent for inline gradients (Framer Motion cannot use `var(--primary)` reliably). */
@@ -56,10 +76,9 @@ export function resolveShowcaseHeadingScaleClass(scale: TypeScale): string {
   return 'showcase-scale-md';
 }
 
-export function resolveShowcaseBodyScaleClass(scale: TypeScale): string {
-  if (scale === 'sm') return 'text-[15px] leading-relaxed';
-  if (scale === 'lg') return 'text-[17px] leading-relaxed';
-  return 'text-base leading-relaxed';
+/** @deprecated Body scale is applied on `.showcase-scope` via `--showcase-body-scale`. */
+export function resolveShowcaseBodyScaleClass(_scale: TypeScale): string {
+  return '';
 }
 
 export function resolveShowcaseHeroOverlayClass(overlay: PaletteOverlay): string {
@@ -69,17 +88,45 @@ export function resolveShowcaseHeroOverlayClass(overlay: PaletteOverlay): string
 }
 
 export function resolveShowcaseWarmTintClass(
-  paletteMode: PropertyShowcaseConfig['palette']['mode']
+  paletteMode: PropertyShowcaseConfig['palette']['mode'],
+  mediaWarmHue?: boolean,
+  customPaletteBase?: string | null
 ): string {
-  return paletteMode === 'warm' ? 'showcase-warm-tint' : '';
+  if (isShowcasePresetPaletteId(paletteMode) && getShowcasePresetPalette(paletteMode).warmTint) {
+    return 'showcase-warm-tint';
+  }
+  if (paletteMode === 'media' && mediaWarmHue) return 'showcase-warm-tint';
+  if (paletteMode === 'custom' && customPaletteBase) {
+    const { h } = parseBrandColorHsl(customPaletteBase);
+    if (h <= 55 || h >= 295) return 'showcase-warm-tint';
+  }
+  return '';
 }
 
+export function resolveShowcaseCustomPaletteClass(
+  paletteMode: PropertyShowcaseConfig['palette']['mode']
+): string {
+  return paletteMode === 'default' ? '' : 'showcase-custom-palette';
+}
+
+/** @deprecated Use resolveShowcaseCustomPaletteClass */
+export function resolveShowcaseMediaPaletteClass(
+  paletteMode: PropertyShowcaseConfig['palette']['mode']
+): string {
+  return resolveShowcaseCustomPaletteClass(paletteMode);
+}
+
+/**
+ * Soften entrance / kinetic motion. Only OS reduced-motion and Subtle intensity —
+ * not `?embed=1` or the Page Editor — so hosts can preview canvas, parallax, and
+ * Ken Burns with the Style toggles they turned on.
+ */
 export function resolveShowcaseMotionReduced(
   config: PropertyShowcaseConfig,
   reducedMotion: boolean,
-  embed: boolean
+  _embed = false
 ): boolean {
-  if (reducedMotion || embed) return true;
+  if (reducedMotion) return true;
   return config.motion.intensity === 'subtle';
 }
 
@@ -89,11 +136,23 @@ export function resolveShowcaseRevealDuration(intensity: MotionIntensity): numbe
   return 0.7;
 }
 
+/** Pause mesh/grain canvas when the host disabled it or the guest prefers reduced motion. */
+export function resolveShowcaseCanvasPaused(
+  config: PropertyShowcaseConfig,
+  reducedMotion: boolean
+): boolean {
+  return reducedMotion || !config.motion.canvas;
+}
+
+/**
+ * Scroll parallax (Aurora hero/sections, Atlas hero). Honors the Parallax toggle;
+ * Subtle intensity still opts out so “calm” stays calm.
+ */
 export function resolveShowcaseParallaxEnabled(
   config: PropertyShowcaseConfig,
   reducedMotion: boolean,
-  embed: boolean
+  _embed = false
 ): boolean {
-  if (reducedMotion || embed || !config.motion.parallax) return false;
+  if (reducedMotion || !config.motion.parallax) return false;
   return config.motion.intensity !== 'subtle';
 }

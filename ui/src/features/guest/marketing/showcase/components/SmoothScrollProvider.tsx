@@ -1,5 +1,7 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 
+import { findPrimaryShowcaseSection } from '@/features/guest/marketing/showcase/lib/showcaseScroll';
+
 type SmoothScrollApi = {
   scrollToAnchor: (id: string) => void;
   enabled: boolean;
@@ -7,7 +9,7 @@ type SmoothScrollApi = {
 
 const SmoothScrollContext = createContext<SmoothScrollApi>({
   scrollToAnchor: (id) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    findPrimaryShowcaseSection(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   },
   enabled: false,
 });
@@ -31,7 +33,7 @@ export function SmoothScrollProvider({
     () => ({
       enabled,
       scrollToAnchor: (id: string) => {
-        const el = document.getElementById(id);
+        const el = findPrimaryShowcaseSection(id);
         if (!el) return;
         el.scrollIntoView({
           behavior: enabled ? 'smooth' : 'auto',
