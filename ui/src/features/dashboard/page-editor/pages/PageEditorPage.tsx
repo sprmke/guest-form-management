@@ -28,6 +28,8 @@ import { normalizeBlockLevelPlaceholdersInHtml } from '@/features/dashboard/book
 import { applyPropertyTemplatePlaceholders } from '@/features/dashboard/bookings/lib/propertyTemplatePlaceholders';
 import { PropertySettingsBrandColorPreview } from '@/features/dashboard/org/components/property-settings/PropertySettingsBrandColorPreview';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
+import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
+import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
 import { useOrgBrandColor } from '@/features/dashboard/org/hooks/useOrgBrandColor';
 import {
   orgSettingsToFormValues,
@@ -63,6 +65,7 @@ import {
   PropertyLandingEditorPanel,
   type LandingProfileContent,
 } from '@/features/dashboard/page-editor/components/property-landing/PropertyLandingEditorPanel';
+import { PropertyShowcasePageEditor } from '@/features/dashboard/page-editor/components/property-showcase/PropertyShowcasePageEditor';
 import { StayGuideEditorPanel } from '@/features/dashboard/page-editor/components/stay-guide/StayGuideEditorPanel';
 import {
   draftFromTemplate,
@@ -90,11 +93,12 @@ import { friendlyToastError } from '@/lib/feedback/toastMessages';
 import { usePageTitle } from '@/lib/pageTitle';
 import { propertyBrandColorStoredValue } from '@/lib/theme/brandColor';
 
-const EDITABLE_PAGE_IDS = new Set(['stay-guide', 'listing']);
+const EDITABLE_PAGE_IDS = new Set(['stay-guide', 'listing', 'showcase']);
 
 const PAGE_EDITOR_META = {
   listing: { label: 'Property' },
   'stay-guide': { label: 'Stay Guide' },
+  showcase: { label: 'Showcase' },
 } as const;
 
 function PageEditorChrome({ children }: { children: ReactNode }) {
@@ -129,28 +133,57 @@ export function PageEditorPage() {
   const { pageId = '' } = useParams<{ pageId: string }>();
   const { orgSlug, propertySlug, property } = useOrgContext();
   const propertyId = usePropertyIdParam();
+  const { data: access, isLoading: accessLoading } = usePropertyPermissions();
 
   const title =
     pageId === 'listing'
       ? property?.name
         ? `${property.name} - Edit Listing`
         : 'Edit Listing'
-      : property?.name
-        ? `${property.name} - Edit Stay Guide`
-        : 'Edit Stay Guide';
+      : pageId === 'showcase'
+        ? property?.name
+          ? `${property.name} - Edit Showcase`
+          : 'Edit Showcase'
+        : property?.name
+          ? `${property.name} - Edit Stay Guide`
+          : 'Edit Stay Guide';
   usePageTitle(title);
 
   if (!EDITABLE_PAGE_IDS.has(pageId)) {
     return <Navigate to={propertySectionPath(orgSlug, propertySlug, 'public-pages')} replace />;
   }
 
-  return pageId === 'listing' ? (
-    <PropertyLandingPageEditor
-      orgSlug={orgSlug}
-      propertySlug={propertySlug}
-      propertyId={propertyId}
-    />
-  ) : (
+  const requiredEdit =
+    pageId === 'listing'
+      ? 'publicPages.property:edit'
+      : pageId === 'showcase'
+        ? 'publicPages.showcase:edit'
+        : 'publicPages.stayGuide:edit';
+  if (!accessLoading && !hasPropertyPermission(access?.permissions, requiredEdit)) {
+    return <Navigate to={propertySectionPath(orgSlug, propertySlug, 'public-pages')} replace />;
+  }
+
+  if (pageId === 'listing') {
+    return (
+      <PropertyLandingPageEditor
+        orgSlug={orgSlug}
+        propertySlug={propertySlug}
+        propertyId={propertyId}
+      />
+    );
+  }
+
+  if (pageId === 'showcase') {
+    return (
+      <PropertyShowcasePageEditor
+        orgSlug={orgSlug}
+        propertySlug={propertySlug}
+        propertyId={propertyId}
+      />
+    );
+  }
+
+  return (
     <StayGuidePageEditor orgSlug={orgSlug} propertySlug={propertySlug} propertyId={propertyId} />
   );
 }
@@ -265,6 +298,7 @@ function StayGuidePageEditor({
           content: draft.content,
           sectionImageUrl: draft.sectionImageUrl,
           silent: true,
+          publicPagesAutosaveGate: true,
         });
       }
     },
@@ -574,7 +608,7 @@ function PropertyLandingPageEditor({
     save: async () => {
       if (!appSettings) return;
       const stored = propertyBrandColorStoredValue(brandColor, inheritedBrandColor);
-      await updateAppSettings.mutateAsync({ brandColor: stored });
+      await updateAppSettings.mutateAsync({ brandColor: stored, publicPagesAutosaveGate: true });
     },
   });
 
@@ -598,7 +632,7 @@ function PropertyLandingPageEditor({
       if (!propertyId) return;
       await updateProperty.mutateAsync({
         propertyId,
-        status: property.status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE',
+        publicPagesAutosaveGate: true,
         settings: {
           description: content.description.trim(),
           enabledAmenities: content.enabledAmenities,
@@ -641,6 +675,7 @@ function PropertyLandingPageEditor({
         mainSocialPlatform: normalized.mainSocialPlatform,
         externalReviews: socialDraft.externalReviews,
         superhostVerificationUrl: socialDraft.superhostVerificationUrl,
+        publicPagesAutosaveGate: true,
       });
       const values = appSettingsToFormValues(saved);
       setSocialDraft((current) =>
@@ -704,7 +739,6 @@ function PropertyLandingPageEditor({
     try {
       await updateProperty.mutateAsync({
         propertyId,
-        status: property.status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE',
         settings: { media: next },
       });
       setMedia(next);
