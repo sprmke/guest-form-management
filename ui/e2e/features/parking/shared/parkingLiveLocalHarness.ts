@@ -18,14 +18,14 @@ export const liveParkingFlowPaths = {
 } as const;
 
 export const liveParkingFlowLabels = {
-  guestName: 'Guest Name',
+  guestName: 'Guest name',
   email: 'Email',
-  phone: 'Phone Number',
-  unitNumber: 'Unit Number',
-  vehicleType: 'Vehicle Type',
-  submit: 'Submit Parking Request',
+  phone: 'Phone',
+  unitNumber: 'Unit',
+  vehicleType: 'Vehicle type',
+  submit: 'Submit request',
   accept: 'Accept',
-  accessInstructions: 'Access instructions (optional)',
+  accessInstructions: 'Access instructions',
 } as const;
 
 type LocalAuthSession = {
@@ -154,14 +154,16 @@ export async function submitLiveGuestParkingRequest(page: Page, seed: LiveParkin
   await page.getByLabel(liveParkingFlowLabels.guestName).fill(seed.guestName);
   await page.getByLabel(liveParkingFlowLabels.email).fill(seed.guestEmail);
   await page.getByLabel(liveParkingFlowLabels.phone).fill(seed.guestPhone);
+  await page.getByRole('button', { name: 'Continue' }).click();
   await page.getByLabel(liveParkingFlowLabels.unitNumber).fill(seed.unitNumber);
-  await page.getByLabel(liveParkingFlowLabels.vehicleType).selectOption('car');
-  await page.getByLabel('Car Plate Number').fill(seed.carPlateNumber);
-  await page.getByLabel('Car Brand/Model').fill(seed.carBrandModel);
-  await page.getByLabel('Car Color').fill(seed.carColor);
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.getByLabel(liveParkingFlowLabels.vehicleType).click();
+  await page.getByRole('option', { name: 'Car' }).click();
+  await page.getByLabel('Plate').fill(seed.carPlateNumber);
+  await page.getByLabel('Brand / model').fill(seed.carBrandModel);
+  await page.getByLabel('Color').fill(seed.carColor);
   await page.getByRole('button', { name: liveParkingFlowLabels.submit }).click();
   await captureParkingScreen(page, 'guest-submit-success', { role: 'guest' });
-  await page.getByRole('link', { name: 'Track Request' }).click();
   await expect(page).toHaveURL(/\/parkings\/requests\/[^/]+$/);
   await captureParkingScreen(page, 'guest-waiting', { role: 'guest' });
 }

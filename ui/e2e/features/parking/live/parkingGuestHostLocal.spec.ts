@@ -9,6 +9,7 @@ import {
   signInLocalParkingHost,
   submitLiveGuestParkingRequest,
 } from '../shared/parkingLiveLocalHarness';
+import { parkingGuestStatusLabels, parkingHostStatusLabels } from '../shared/parkingFlowHarness';
 import { captureParkingScreen, setParkingScreenSuite } from '../shared/parkingScreenCapture';
 
 test.describe('parking live local flow', () => {
@@ -40,7 +41,9 @@ test.describe('parking live local flow', () => {
       await installLocalParkingHostSession(hostPage, hostSession);
 
       await submitLiveGuestParkingRequest(page, seed);
-      await expect(page.getByText('Waiting for a host')).toBeVisible();
+      await expect(
+        page.getByRole('heading', { name: parkingGuestStatusLabels.findingHost })
+      ).toBeVisible();
       await captureParkingScreen(page, 'guest-waiting-final', { role: 'guest' });
 
       await hostPage.goto(buildLiveParkingHostBookingsPath(seed));
@@ -57,14 +60,16 @@ test.describe('parking live local flow', () => {
         .fill(seed.endorsementNote);
       await hostPage.getByRole('button', { name: liveParkingFlowLabels.accept }).click();
 
-      await expect(hostPage.getByText('Pending Review')).toBeVisible();
-      await captureParkingScreen(hostPage, 'host-booking-accepted', { role: 'host' });
+      await expect(hostPage.getByText(parkingHostStatusLabels.awaitingPayment)).toBeVisible();
+      await captureParkingScreen(hostPage, 'host-booking-awaiting-payment', { role: 'host' });
 
       await page.reload();
-      await expect(page.getByRole('heading', { name: 'Request accepted' })).toBeVisible();
-      await expect(page.getByText(seed.endorsementNote)).toBeVisible();
-      await expect(page.getByText('Assigned slot')).toBeVisible();
-      await captureParkingScreen(page, 'guest-accepted-final', { role: 'guest' });
+      await expect(
+        page.getByRole('heading', { name: parkingGuestStatusLabels.payToConfirm })
+      ).toBeVisible();
+      await expect(page.getByText(parkingGuestStatusLabels.payDetail)).toBeVisible();
+      await expect(page.getByText(parkingGuestStatusLabels.nonRefundable)).toBeVisible();
+      await captureParkingScreen(page, 'guest-awaiting-payment-final', { role: 'guest' });
     } finally {
       await cleanupLiveParkingBookings(request, seed.guestEmail);
       await hostContext.close();

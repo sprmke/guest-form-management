@@ -1,96 +1,227 @@
-import { chromium, expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 import {
   createParkingFlowState,
+  guestPayForParking,
+  hostAcceptPendingBooking,
   installParkingFlowMocks,
   parkingFlowLabels,
   parkingFlowPaths,
+  parkingGuestStatusLabels,
+  parkingHostStatusLabels,
   submitGuestParkingRequest,
 } from '../shared/parkingFlowHarness';
 import { captureParkingScreen, setParkingScreenSuite } from '../shared/parkingScreenCapture';
+import {
+  closeParkingSideBySideBrowsers,
+  demoPause,
+  launchParkingSideBySideBrowsers,
+  sideBySideTimeoutMs,
+} from '../shared/parkingSideBySideHelpers';
 
-function readPositiveIntEnv(name: string): number {
-  const raw = process.env[name];
-  if (!raw) return 0;
-  const parsed = Number.parseInt(raw, 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
-}
+test.describe('parking guest and host side by side', () => {
+  test('full marketplace flow: submit, accept, pay, confirm, and complete', async (_fixtures, testInfo) => {
+    test.setTimeout(sideBySideTimeoutMs());
+    test.skip(
+      testInfo.project.name !== 'chromium-side-by-side',
+      'Run this scenario with the chromium-side-by-side project.'
+    );
 
-async function demoPause(...pages: Page[]) {
-  const pauseMs = readPositiveIntEnv('PLAYWRIGHT_DEMO_PAUSE_MS');
-  if (!pauseMs) return;
-  await Promise.all(pages.map((page) => page.waitForTimeout(pauseMs)));
-}
+    const state = createParkingFlowState();
+    setParkingScreenSuite('side-by-side-full');
+    const browsers = await launchParkingSideBySideBrowsers();
 
-test('guest and host can run the mocked parking flow side by side', async ({
-  browserName,
-}, testInfo) => {
-  void browserName;
-  const slowMo = readPositiveIntEnv('PLAYWRIGHT_SLOW_MO');
-  const demoPauseMs = readPositiveIntEnv('PLAYWRIGHT_DEMO_PAUSE_MS');
-  test.setTimeout(slowMo || demoPauseMs ? 180_000 : 60_000);
-  test.skip(
-    testInfo.project.name !== 'chromium-side-by-side',
-    'Run this scenario with the chromium-side-by-side project.'
-  );
+    try {
+      const { guestPage, hostPage } = browsers;
+      await installParkingFlowMocks(guestPage, state);
+      await installParkingFlowMocks(hostPage, state);
 
-  const state = createParkingFlowState();
-  setParkingScreenSuite('side-by-side');
-  const guestBrowser = await chromium.launch({
-    headless: false,
-    slowMo,
-    args: ['--window-position=0,40', '--window-size=900,980'],
-  });
-  const hostBrowser = await chromium.launch({
-    headless: false,
-    slowMo,
-    args: ['--window-position=920,40', '--window-size=900,980'],
-  });
+      await submitGuestParkingRequest(guestPage);
+      await expect(
+        guestPage.getByRole('heading', { name: parkingGuestStatusLabels.findingHost })
+      ).toBeVisible();
+      await expect(guestPage.getByText(parkingGuestStatusLabels.searchingNearby)).toBeVisible();
+      await captureParkingScreen(guestPage, 'guest-waiting', { role: 'guest' });
+      await demoPause(guestPage, hostPage);
 
-  try {
-    const guestContext = await guestBrowser.newContext({ viewport: { width: 900, height: 960 } });
-    const hostContext = await hostBrowser.newContext({ viewport: { width: 900, height: 960 } });
-    const guestPage = await guestContext.newPage();
-    const hostPage = await hostContext.newPage();
+      if (process.env.PLAYWRIGHT_INSPECT === '1') {
+        await guestPage.pause();
+      }
 
-    await installParkingFlowMocks(guestPage, state);
-    await installParkingFlowMocks(hostPage, state);
+      await hostPage.goto(parkingFlowPaths.hostBookings);
+      const bookingRow = hostPage.getByRole('button', { name: 'Open booking for Jamie Park' });
+      await expect(bookingRow).toBeVisible();
+      await expect(bookingRow).toContainText(parkingHostStatusLabels.findingHost);
+      await captureParkingScreen(hostPage, 'host-bookings-list', { role: 'host' });
+      await demoPause(hostPage);
+      await bookingRow.click();
+      await captureParkingScreen(hostPage, 'host-booking-detail-pending', { role: 'host' });
+      await demoPause(hostPage);
 
-    await submitGuestParkingRequest(guestPage);
-    await expect(guestPage.getByText('Waiting for a host')).toBeVisible();
-    await captureParkingScreen(guestPage, 'guest-waiting', { role: 'guest' });
-    await demoPause(guestPage, hostPage);
+      await hostAcceptPendingBooking(hostPage);
+      await expect(hostPage.getByText(parkingHostStatusLabels.awaitingPayment)).toBeVisible();
+      await expect(hostPage.getByText(parkingHostStatusLabels.bookingAccepted)).toBeVisible();
+      await captureParkingScreen(hostPage, 'host-booking-awaiting-payment', { role: 'host' });
+      await demoPause(hostPage, guestPage);
 
-    if (process.env.PLAYWRIGHT_INSPECT === '1') {
-      await guestPage.pause();
+      await guestPage.reload();
+      await expect(
+        guestPage.getByRole('heading', { name: parkingGuestStatusLabels.payToConfirm })
+      ).toBeVisible();
+      await expect(guestPage.getByText(parkingGuestStatusLabels.payDetail)).toBeVisible();
+      await expect(
+        guestPage.getByText(parkingGuestStatusLabels.assignedSlot, { exact: true })
+      ).toBeVisible();
+      await expect(guestPage.getByText(parkingGuestStatusLabels.nonRefundable)).toBeVisible();
+      await captureParkingScreen(guestPage, 'guest-awaiting-payment', { role: 'guest' });
+      await demoPause(guestPage);
+
+      await guestPayForParking(guestPage, state);
+      await expect(
+        guestPage.getByRole('heading', { name: parkingGuestStatusLabels.parkingConfirmed })
+      ).toBeVisible();
+      await expect(
+        guestPage.getByText('Use the Tower 1 ramp and show this request at the guard.')
+      ).toBeVisible();
+      await guestPage
+        .getByRole('button', { name: parkingGuestStatusLabels.hostAndEndorsement })
+        .click();
+      await expect(
+        guestPage.getByRole('button', { name: parkingGuestStatusLabels.chatWithHost })
+      ).toBeVisible();
+      await captureParkingScreen(guestPage, 'guest-paid-confirmed', { role: 'guest' });
+      await demoPause(guestPage, hostPage);
+
+      await hostPage.reload();
+      await expect(hostPage.getByText(parkingHostStatusLabels.pendingReview)).toBeVisible({
+        timeout: 15_000,
+      });
+      await captureParkingScreen(hostPage, 'host-pending-review', { role: 'host' });
+      await demoPause(hostPage);
+
+      await hostPage.getByRole('button', { name: parkingFlowLabels.markReady }).click();
+      await expect(hostPage.getByText(parkingHostStatusLabels.readyForCheckin)).toBeVisible();
+      await captureParkingScreen(hostPage, 'host-ready-for-checkin', { role: 'host' });
+      await demoPause(hostPage);
+
+      await hostPage.getByRole('button', { name: parkingFlowLabels.complete }).click();
+      await expect(hostPage.getByText(parkingHostStatusLabels.completed)).toBeVisible();
+      await captureParkingScreen(hostPage, 'host-completed', { role: 'host' });
+      await captureParkingScreen(guestPage, 'guest-paid-final', { role: 'guest' });
+    } finally {
+      await closeParkingSideBySideBrowsers(browsers);
     }
+  });
 
-    await hostPage.goto(parkingFlowPaths.hostBookings);
-    await captureParkingScreen(hostPage, 'host-bookings-list', { role: 'host' });
-    await demoPause(hostPage);
-    await hostPage.getByRole('button', { name: 'Open booking for Jamie Park' }).click();
-    await captureParkingScreen(hostPage, 'host-booking-detail-pending', { role: 'host' });
-    await demoPause(hostPage);
-    await hostPage
-      .getByLabel(parkingFlowLabels.accessInstructions)
-      .fill('Use the Tower 1 ramp and show this request at the guard.');
-    await hostPage.getByRole('button', { name: parkingFlowLabels.accept }).click();
-    await captureParkingScreen(hostPage, 'host-booking-accepted', { role: 'host' });
-    await demoPause(hostPage, guestPage);
+  test('host decline closes the guest request', async (_fixtures, testInfo) => {
+    test.setTimeout(sideBySideTimeoutMs());
+    test.skip(
+      testInfo.project.name !== 'chromium-side-by-side',
+      'Run this scenario with the chromium-side-by-side project.'
+    );
 
-    await guestPage.reload();
-    await expect(guestPage.getByRole('heading', { name: 'Request accepted' })).toBeVisible();
-    await captureParkingScreen(guestPage, 'guest-accepted', { role: 'guest' });
-    await demoPause(guestPage, hostPage);
-    await expect(guestPage.getByText('Tower 1 · B2 · 12A')).toBeVisible();
-    await expect(
-      guestPage.getByText('Use the Tower 1 ramp and show this request at the guard.')
-    ).toBeVisible();
-    await expect(hostPage.getByText('Pending Review')).toBeVisible();
-    await captureParkingScreen(guestPage, 'guest-accepted-final', { role: 'guest' });
-    await captureParkingScreen(hostPage, 'host-pending-review-final', { role: 'host' });
-  } finally {
-    await guestBrowser.close();
-    await hostBrowser.close();
-  }
+    const state = createParkingFlowState();
+    setParkingScreenSuite('side-by-side-decline');
+    const browsers = await launchParkingSideBySideBrowsers();
+
+    try {
+      const { guestPage, hostPage } = browsers;
+      await installParkingFlowMocks(guestPage, state);
+      await installParkingFlowMocks(hostPage, state);
+
+      await submitGuestParkingRequest(guestPage, { skipScreens: true });
+      await expect(
+        guestPage.getByRole('heading', { name: parkingGuestStatusLabels.findingHost })
+      ).toBeVisible();
+
+      await hostPage.goto(parkingFlowPaths.hostBookings);
+      await hostPage.getByRole('button', { name: 'Open booking for Jamie Park' }).click();
+      await hostPage.getByRole('button', { name: parkingFlowLabels.decline }).click();
+      await expect(hostPage.getByText('Request declined')).toBeVisible();
+      await captureParkingScreen(hostPage, 'host-declined', { role: 'host' });
+
+      await guestPage.reload();
+      await expect(
+        guestPage.getByRole('heading', { name: parkingGuestStatusLabels.noHostAvailable })
+      ).toBeVisible();
+      await captureParkingScreen(guestPage, 'guest-no-host', { role: 'guest' });
+    } finally {
+      await closeParkingSideBySideBrowsers(browsers);
+    }
+  });
+
+  test('guest can cancel while awaiting payment after host accept', async (_fixtures, testInfo) => {
+    test.setTimeout(sideBySideTimeoutMs());
+    test.skip(
+      testInfo.project.name !== 'chromium-side-by-side',
+      'Run this scenario with the chromium-side-by-side project.'
+    );
+
+    const state = createParkingFlowState();
+    setParkingScreenSuite('side-by-side-cancel-payment');
+    const browsers = await launchParkingSideBySideBrowsers();
+
+    try {
+      const { guestPage, hostPage } = browsers;
+      await installParkingFlowMocks(guestPage, state);
+      await installParkingFlowMocks(hostPage, state);
+
+      await submitGuestParkingRequest(guestPage, { skipScreens: true });
+      await hostPage.goto(parkingFlowPaths.hostBookings);
+      await hostPage.getByRole('button', { name: 'Open booking for Jamie Park' }).click();
+      await hostAcceptPendingBooking(hostPage);
+
+      await guestPage.reload();
+      await expect(
+        guestPage.getByRole('heading', { name: parkingGuestStatusLabels.payToConfirm })
+      ).toBeVisible();
+      await guestPage.getByRole('button', { name: parkingFlowLabels.cancelRequest }).click();
+      await guestPage
+        .getByRole('alertdialog')
+        .getByRole('button', { name: 'Cancel request' })
+        .click();
+      await expect(
+        guestPage.getByRole('heading', { name: parkingGuestStatusLabels.requestCancelled })
+      ).toBeVisible();
+      await captureParkingScreen(guestPage, 'guest-cancelled-after-accept', { role: 'guest' });
+    } finally {
+      await closeParkingSideBySideBrowsers(browsers);
+    }
+  });
+
+  test('direct booking link and host pricing card are wired', async (_fixtures, testInfo) => {
+    test.setTimeout(sideBySideTimeoutMs());
+    test.skip(
+      testInfo.project.name !== 'chromium-side-by-side',
+      'Run this scenario with the chromium-side-by-side project.'
+    );
+
+    const state = createParkingFlowState();
+    setParkingScreenSuite('side-by-side-direct-link');
+    const browsers = await launchParkingSideBySideBrowsers();
+
+    try {
+      const { guestPage, hostPage } = browsers;
+      await installParkingFlowMocks(guestPage, state);
+      await installParkingFlowMocks(hostPage, state);
+
+      await hostPage.goto(parkingFlowPaths.hostPricing);
+      await expect(hostPage.getByText('Direct booking link')).toBeVisible();
+      await expect(hostPage.getByRole('button', { name: 'Copy link' })).toBeVisible();
+      await captureParkingScreen(hostPage, 'host-pricing-direct-link', { role: 'host' });
+
+      await submitGuestParkingRequest(guestPage, {
+        formPath: parkingFlowPaths.guestDirectLinkForm,
+        skipScreens: true,
+      });
+      expect(state.bookingChannel).toBe('direct_link');
+      expect(state.lastSubmitBody?.directLinkToken).toBeTruthy();
+      await expect(
+        guestPage.getByRole('heading', { name: parkingGuestStatusLabels.findingHost })
+      ).toBeVisible();
+      await captureParkingScreen(guestPage, 'guest-direct-link-submitted', { role: 'guest' });
+    } finally {
+      await closeParkingSideBySideBrowsers(browsers);
+    }
+  });
 });
