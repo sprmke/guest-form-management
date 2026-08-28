@@ -180,8 +180,12 @@ function readCustomAmenities(
 
 function readNullableCoord(settings: Record<string, unknown>, key: string): number | null {
   const value = settings[key];
-  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
-  return value;
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
 }
 
 /** 24h "14:00" → guest-facing "2:00 PM" */

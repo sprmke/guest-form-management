@@ -9,6 +9,7 @@ import {
   getOrCreateCustomPage,
   isShowcaseTemplateKey,
   parseCustomPageType,
+  SHOWCASE_TEMPLATE_KEYS,
   updateCustomPageTemplate,
 } from '../_shared/customPages.ts';
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
@@ -57,7 +58,7 @@ serveAuthenticated('custom-pages-settings', async (req) => {
     if (!isShowcaseTemplateKey(templateKey)) {
       return jsonError(
         req,
-        'templateKey must be showcase-aurora, showcase-monolith, or showcase-editorial',
+        `templateKey must be one of: ${SHOWCASE_TEMPLATE_KEYS.join(', ')}`,
         400
       );
     }

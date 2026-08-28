@@ -28,6 +28,9 @@ serveAuthenticated('org-access', async (req) => {
     canManageProperties: hasOrgPermission(ctx.permissions, 'org:properties:manage'),
     canCreateParkings: hasOrgPermission(ctx.permissions, 'org:parkings:create'),
     canManageParkings: hasOrgPermission(ctx.permissions, 'org:parkings:manage'),
-    canEditSettings: hasOrgPermission(ctx.permissions, 'org:settings:edit'),
+    canEditSettings:
+      hasOrgPermission(ctx.permissions, 'org.settings.basic:edit') ||
+      hasOrgPermission(ctx.permissions, 'org:settings:edit'),
+    canViewPlans: hasOrgPermission(ctx.permissions, 'org.plans:view'),
   });
 });

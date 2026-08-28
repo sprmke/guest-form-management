@@ -334,32 +334,8 @@ async function entitlementPoolPropertyIds(propertyId: string): Promise<string[]>
   return (rows ?? []).map((r) => r.property_id as string);
 }
 
-async function countPooledTeamSlots(
-  organizationId: string,
-  poolPropertyIds: string[],
-  ownerId: string
-): Promise<number> {
+async function countOrgAdminTeamSlots(organizationId: string, ownerId: string): Promise<number> {
   const sb = db();
-
-  let memberCount = 0;
-  let inviteCount = 0;
-  if (poolPropertyIds.length > 0) {
-    memberCount = await countInIdChunks(poolPropertyIds, (chunk) =>
-      sb
-        .from('property_members')
-        .select('id', { count: 'exact', head: true })
-        .in('property_id', chunk)
-        .eq('status', 'active')
-    );
-
-    inviteCount = await countInIdChunks(poolPropertyIds, (chunk) =>
-      sb
-        .from('property_invitations')
-        .select('id', { count: 'exact', head: true })
-        .in('property_id', chunk)
-        .eq('status', 'pending')
-    );
-  }
 
   const { count: orgAdminCount, error: orgAdminError } = await sb
     .from('organization_members')
@@ -377,11 +353,60 @@ async function countPooledTeamSlots(
     .eq('status', 'pending');
   if (orgInviteError) throw new Error(orgInviteError.message);
 
-  const ownerSlot = 1;
-  return ownerSlot + (orgAdminCount ?? 0) + (orgInviteCount ?? 0) + memberCount + inviteCount;
+  return 1 + (orgAdminCount ?? 0) + (orgInviteCount ?? 0);
 }
 
-/** Org-wide pooled team-seat count — every property in the org plus org-level members/invites. */
+async function countPropertyPoolTeamSlots(poolPropertyIds: string[]): Promise<number> {
+  const sb = db();
+
+  let memberCount = 0;
+  let inviteCount = 0;
+  if (poolPropertyIds.length > 0) {
+    memberCount = await countInIdChunks(poolPropertyIds, (chunk) =>
+      sb
+        .from('property_members')
+        .select('id', { count: 'exact', head: true })
+        .in('property_id', chunk)
+        .eq('status', 'active')
+        .eq('assigned_via_org', false)
+    );
+
+    inviteCount = await countInIdChunks(poolPropertyIds, (chunk) =>
+      sb
+        .from('property_invitations')
+        .select('id', { count: 'exact', head: true })
+        .in('property_id', chunk)
+        .eq('status', 'pending')
+    );
+  }
+
+  return memberCount + inviteCount;
+}
+
+async function countPooledTeamSlots(
+  organizationId: string,
+  poolPropertyIds: string[],
+  ownerId: string
+): Promise<number> {
+  const orgSlots = await countOrgAdminTeamSlots(organizationId, ownerId);
+  const propertySlots = await countPropertyPoolTeamSlots(poolPropertyIds);
+  // Owner is included in orgSlots; property pool excludes org-assigned members.
+  return orgSlots + propertySlots - 1;
+}
+
+/** Org admin + pending org invites (+ owner slot) — used for org team invite capacity. */
+export async function countOrgAdminTeamSlotsForOrg(organizationId: string): Promise<number> {
+  const sb = db();
+  const { data: org, error: orgError } = await sb
+    .from('organizations')
+    .select('owner_id')
+    .eq('id', organizationId)
+    .maybeSingle();
+  if (orgError) throw new Error(orgError.message);
+  if (!org) return 0;
+  return countOrgAdminTeamSlots(organizationId, org.owner_id as string);
+}
+/** Org-wide pooled team-seat count — org admin seats + direct property team seats. */
 export async function countOrgWideTeamSlots(organizationId: string): Promise<number> {
   const sb = db();
   const { data: org, error: orgError } = await sb
@@ -441,7 +466,7 @@ export async function resolveTeamInviteCapacityForOrg(
   const entitlements = await resolveOrgEntitlements(organizationId);
   const enabled = entitlements.teamManagement.enabled;
   const max = enabled ? entitlements.teamManagement.maxMembers : 0;
-  const used = await countOrgWideTeamSlots(organizationId);
+  const used = await countOrgAdminTeamSlotsForOrg(organizationId);
   const canInvite = enabled && (max === null || used < max);
   return {
     slotsUsed: used,
@@ -609,7 +634,9 @@ export async function requireTeamInviteAllowed(
 
   const max = entitlements.teamManagement.maxMembers;
   if (max !== null && max >= 0) {
-    const count = await countOrgTeamSlots(propertyId);
+    const poolPropertyIds = await entitlementPoolPropertyIds(propertyId);
+    const propertySlots = await countPropertyPoolTeamSlots(poolPropertyIds);
+    const count = 1 + propertySlots;
     if (count >= max) {
       throw new PlanFeatureRequiredError('teamManagement', `Team member limit reached (${max})`);
     }
@@ -629,7 +656,7 @@ export async function requireOrgTeamInviteAllowed(
 
   const max = entitlements.teamManagement.maxMembers;
   if (max !== null && max >= 0) {
-    const count = await countOrgWideTeamSlots(organizationId);
+    const count = await countOrgAdminTeamSlotsForOrg(organizationId);
     if (count >= max) {
       throw new PlanFeatureRequiredError('teamManagement', `Team member limit reached (${max})`);
     }

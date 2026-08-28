@@ -13,9 +13,9 @@ import { resolveSupabaseServiceRoleKey, resolveSupabaseUrl } from './supabaseRun
 
 import {
   allOrgPermissions,
+  effectiveOrgMemberPermissions,
   hasOrgPermission,
   ORG_PROPERTY_MEMBER_PERMISSIONS,
-  ORG_ROLE_PERMISSIONS,
   type OrgPermissionId,
 } from './orgTeamPermissions.ts';
 import {
@@ -335,7 +335,7 @@ export async function verifyPropertyAccess(
 
   const { data: orgAdminMember, error: orgAdminError } = await supabase
     .from('organization_members')
-    .select('id, status, role_id, plan_limited')
+    .select('id, status, role_id, plan_limited, permissions, all_listings')
     .eq('organization_id', orgRow.id)
     .eq('user_id', user.id)
     .maybeSingle();
@@ -367,18 +367,21 @@ export async function verifyPropertyAccess(
   }
 
   if (orgAdminMember && orgAdminMember.status === 'active' && orgAdminMember.role_id === 'ADMIN') {
-    const ctx: PropertyAccessContext = {
-      user,
-      property: propertyRow,
-      org: orgRow,
-      accessKind: 'org_admin',
-      permissions: allTeamPermissions(),
-      memberId: orgAdminMember.id as string,
-    };
-    if (requiredPermission && !ctx.permissions.includes(requiredPermission)) {
-      throw forbiddenResponse('Access restricted');
+    if (orgAdminMember.all_listings === true) {
+      const ctx: PropertyAccessContext = {
+        user,
+        property: propertyRow,
+        org: orgRow,
+        accessKind: 'org_admin',
+        permissions: allTeamPermissions(),
+        memberId: orgAdminMember.id as string,
+      };
+      if (requiredPermission && !ctx.permissions.includes(requiredPermission)) {
+        throw forbiddenResponse('Access restricted');
+      }
+      return ctx;
     }
-    return ctx;
+    // Scoped org admin — fall through to property_members row below.
   }
 
   const { data: member, error: memberError } = await supabase
@@ -532,7 +535,7 @@ export async function verifyParkingTeamAccess(
 
   const { data: orgAdminMember, error: orgAdminError } = await supabase
     .from('organization_members')
-    .select('id, status, role_id')
+    .select('id, status, role_id, plan_limited, permissions, all_listings')
     .eq('organization_id', orgRow.id)
     .eq('user_id', user.id)
     .maybeSingle();
@@ -542,19 +545,41 @@ export async function verifyParkingTeamAccess(
     throw forbiddenResponse('Could not verify parking access');
   }
 
-  if (orgAdminMember && orgAdminMember.status === 'active' && orgAdminMember.role_id === 'ADMIN') {
-    const ctx: ParkingTeamAccessContext = {
+  if (
+    orgAdminMember &&
+    orgAdminMember.status === 'inactive' &&
+    orgAdminMember.plan_limited === true &&
+    orgAdminMember.role_id === 'ADMIN'
+  ) {
+    if (requiredPermission) {
+      throw forbiddenResponse('Access restricted');
+    }
+    return {
       user,
       parking: parkingRow,
       org: orgRow,
       accessKind: 'org_admin',
-      permissions: allParkingTeamPermissions(),
+      permissions: [],
       memberId: orgAdminMember.id as string,
     };
-    if (requiredPermission && !ctx.permissions.includes(requiredPermission)) {
-      throw forbiddenResponse('Access restricted');
+  }
+
+  if (orgAdminMember && orgAdminMember.status === 'active' && orgAdminMember.role_id === 'ADMIN') {
+    if (orgAdminMember.all_listings === true) {
+      const ctx: ParkingTeamAccessContext = {
+        user,
+        parking: parkingRow,
+        org: orgRow,
+        accessKind: 'org_admin',
+        permissions: allParkingTeamPermissions(),
+        memberId: orgAdminMember.id as string,
+      };
+      if (requiredPermission && !ctx.permissions.includes(requiredPermission)) {
+        throw forbiddenResponse('Access restricted');
+      }
+      return ctx;
     }
-    return ctx;
+    // Scoped org admin — fall through to parking_members row below.
   }
 
   const { data: member, error: memberError } = await supabase
@@ -649,7 +674,7 @@ export async function verifyOrgListAccess(
 
   const { data: orgAdminMember, error: orgAdminError } = await supabase
     .from('organization_members')
-    .select('id, status, role_id, plan_limited')
+    .select('id, status, role_id, plan_limited, permissions, all_listings')
     .eq('organization_id', org.id)
     .eq('user_id', user.id)
     .maybeSingle();
@@ -658,7 +683,7 @@ export async function verifyOrgListAccess(
     throw forbiddenResponse('Could not verify organization access');
   }
   if (orgAdminMember && orgAdminMember.status === 'active' && orgAdminMember.role_id === 'ADMIN') {
-    return { user, org, canListAllProperties: true };
+    return { user, org, canListAllProperties: orgAdminMember.all_listings === true };
   }
   // Plan-limited inactive org admins may list (empty property set) so /org home does not 403.
   if (
@@ -785,7 +810,7 @@ export async function verifyOrgAccess(
 
   const { data: orgAdminMember, error: orgAdminError } = await supabase
     .from('organization_members')
-    .select('id, status, role_id, plan_limited')
+    .select('id, status, role_id, plan_limited, permissions, all_listings')
     .eq('organization_id', org.id)
     .eq('user_id', user.id)
     .maybeSingle();
@@ -821,8 +846,8 @@ export async function verifyOrgAccess(
       user,
       org,
       accessKind: 'org_admin',
-      permissions: [...ORG_ROLE_PERMISSIONS.ADMIN],
-      canListAllProperties: true,
+      permissions: effectiveOrgMemberPermissions(orgAdminMember),
+      canListAllProperties: orgAdminMember.all_listings === true,
       memberId: orgAdminMember.id as string,
     });
   }
@@ -932,6 +957,21 @@ export type OrgTeamAccessContext = {
   canManage: boolean;
 };
 
+export function hasOrgTeamManagePermission(granted: readonly string[]): boolean {
+  return (
+    hasOrgPermission(granted, 'org.team.members:edit') ||
+    hasOrgPermission(granted, 'org.team.members:delete') ||
+    hasOrgPermission(granted, 'org.team.invitations:edit') ||
+    hasOrgPermission(granted, 'org.team.invitations:delete')
+  );
+}
+
+export function hasOrgTeamInvitePermission(granted: readonly string[]): boolean {
+  return (
+    hasOrgPermission(granted, 'org.team.invitations:add') || hasOrgTeamManagePermission(granted)
+  );
+}
+
 /**
  * JWT + org team access for owner, platform admin, or active org ADMIN member.
  * Property-only members cannot access org team routes.
@@ -941,17 +981,13 @@ export async function verifyOrgTeamAccess(
   scope: { orgId?: string; orgSlug?: string },
   options?: { requireManage?: boolean; requireInvite?: boolean }
 ): Promise<OrgTeamAccessContext> {
-  const ctx = await verifyOrgAccess(req, scope, 'org:team:view');
+  const ctx = await verifyOrgAccess(req, scope, 'org.team:view');
 
-  if (options?.requireManage && !hasOrgPermission(ctx.permissions, 'org:team:manage')) {
+  if (options?.requireManage && !hasOrgTeamManagePermission(ctx.permissions)) {
     throw forbiddenResponse('Access restricted');
   }
 
-  if (
-    options?.requireInvite &&
-    !hasOrgPermission(ctx.permissions, 'org:team:invite') &&
-    !hasOrgPermission(ctx.permissions, 'org:team:manage')
-  ) {
+  if (options?.requireInvite && !hasOrgTeamInvitePermission(ctx.permissions)) {
     throw forbiddenResponse('Access restricted');
   }
 
@@ -960,7 +996,7 @@ export async function verifyOrgTeamAccess(
     org: ctx.org,
     accessKind: ctx.accessKind as OrgTeamAccessKind,
     memberId: ctx.memberId,
-    canManage: hasOrgPermission(ctx.permissions, 'org:team:manage'),
+    canManage: hasOrgTeamManagePermission(ctx.permissions),
   };
 }
 

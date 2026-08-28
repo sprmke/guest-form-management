@@ -606,6 +606,9 @@ static_files = [
   "./functions/_shared/email-templates/fragments/*.html",
 ]
 
+[functions.org-team-custom-roles]
+verify_jwt = false
+
 [functions.accept-org-invite]
 verify_jwt = false
 
