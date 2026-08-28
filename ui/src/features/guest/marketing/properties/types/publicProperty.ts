@@ -128,6 +128,7 @@ export type ResolvedPropertyDetail = {
   description: string | null;
   location: string;
   address: string;
+  city: string;
   state: string | null;
   country: string;
   zipCode: string | null;
