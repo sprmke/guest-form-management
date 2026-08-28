@@ -2,7 +2,7 @@ import { PlatformLogo } from '@/features/dashboard/inbox/components/PlatformLogo
 import { formatInboxTime, platformLabel } from '@/features/dashboard/inbox/lib/inboxFormat';
 import type { InboxConversation } from '@/features/dashboard/inbox/types/inbox';
 
-import { softBadgeClasses, toneBadgeClasses } from '@/lib/statusToneColors';
+import { softBadgeClasses } from '@/lib/statusToneColors';
 import { cn } from '@/lib/utils';
 import { formatStayDateRange } from '@/utils/format/dates';
 
@@ -55,16 +55,6 @@ export function InboxThreadRow({ conversation, selected, showPlatform, onSelect 
           {conversation.subject_preview || '—'}
         </p>
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-          {conversation.platform === 'web' && conversation.property_name ? (
-            <span
-              className={cn(
-                'border px-1.5 py-0.5 text-[10px] font-medium',
-                toneBadgeClasses('green')
-              )}
-            >
-              {conversation.property_name}
-            </span>
-          ) : null}
           {conversation.platform === 'web' &&
           conversation.inquiry_check_in &&
           conversation.inquiry_check_out ? (

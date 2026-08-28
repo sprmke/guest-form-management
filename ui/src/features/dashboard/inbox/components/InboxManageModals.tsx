@@ -28,6 +28,9 @@ type Props = {
   open: InboxManageModal;
   onOpenChange: (open: InboxManageModal) => void;
   canManage: boolean;
+  canManageChannels?: boolean;
+  canManageQuickReplies?: boolean;
+  canManageAutomation?: boolean;
   showChannelsTab?: boolean;
   showSettingsManageTabs?: boolean;
   usingOrgMeta?: boolean;
@@ -54,10 +57,13 @@ type Props = {
 function buildInboxManageItems(
   showChannelsTab: boolean,
   showSettingsManageTabs: boolean,
-  onOpen: (modal: InboxManageModal) => void
+  onOpen: (modal: InboxManageModal) => void,
+  allowChannels: boolean,
+  allowQuickReplies: boolean,
+  allowAutomation: boolean
 ): MobileHeroActionMenuItem[] {
   const items: MobileHeroActionMenuItem[] = [];
-  if (showChannelsTab) {
+  if (showChannelsTab && allowChannels) {
     items.push({
       key: 'channels',
       label: 'Channels',
@@ -66,20 +72,22 @@ function buildInboxManageItems(
     });
   }
   if (showSettingsManageTabs) {
-    items.push(
-      {
+    if (allowQuickReplies) {
+      items.push({
         key: 'quick-replies',
         label: 'Quick replies',
         Icon: Zap,
         onSelect: () => onOpen('quick-replies'),
-      },
-      {
+      });
+    }
+    if (allowAutomation) {
+      items.push({
         key: 'automation',
         label: 'Automation',
         Icon: Sparkles,
         onSelect: () => onOpen('automation'),
-      }
-    );
+      });
+    }
   }
   return items;
 }
@@ -96,12 +104,18 @@ function InboxManageActionButton({ item }: { item: MobileHeroActionMenuItem }) {
 
 export function InboxManageToolbar({
   canManage,
+  canManageChannels,
+  canManageQuickReplies,
+  canManageAutomation,
   showChannelsTab = true,
   showSettingsManageTabs = true,
   onOpen,
   variant = 'default',
 }: {
   canManage: boolean;
+  canManageChannels?: boolean;
+  canManageQuickReplies?: boolean;
+  canManageAutomation?: boolean;
   showChannelsTab?: boolean;
   showSettingsManageTabs?: boolean;
   onOpen: (modal: InboxManageModal) => void;
@@ -109,7 +123,17 @@ export function InboxManageToolbar({
 }) {
   if (!canManage) return null;
 
-  const items = buildInboxManageItems(showChannelsTab, showSettingsManageTabs, onOpen);
+  const allowChannels = canManageChannels ?? canManage;
+  const allowQuickReplies = canManageQuickReplies ?? canManage;
+  const allowAutomation = canManageAutomation ?? canManage;
+  const items = buildInboxManageItems(
+    showChannelsTab,
+    showSettingsManageTabs,
+    onOpen,
+    allowChannels,
+    allowQuickReplies,
+    allowAutomation
+  );
   if (items.length === 0) return null;
 
   if (variant === 'hero') {
@@ -133,6 +157,9 @@ export function InboxManageModals({
   open,
   onOpenChange,
   canManage,
+  canManageChannels,
+  canManageQuickReplies,
+  canManageAutomation,
   showChannelsTab = true,
   showSettingsManageTabs = true,
   usingOrgMeta = false,
@@ -157,9 +184,13 @@ export function InboxManageModals({
 }: Props) {
   if (!canManage) return null;
 
+  const allowChannels = canManageChannels ?? canManage;
+  const allowQuickReplies = canManageQuickReplies ?? canManage;
+  const allowAutomation = canManageAutomation ?? canManage;
+
   return (
     <>
-      {showChannelsTab ? (
+      {showChannelsTab && allowChannels ? (
         <ResponsiveModal
           open={open === 'channels'}
           onOpenChange={(next) => onOpenChange(next ? 'channels' : null)}
@@ -177,7 +208,7 @@ export function InboxManageModals({
                 usingOrgMeta={usingOrgMeta}
                 statusLoading={connectionsLoading}
                 statusError={connectionsError}
-                canManage={canManage}
+                canManage={allowChannels}
                 connecting={connecting}
                 disconnecting={disconnecting}
                 resubscribing={resubscribing}
@@ -192,50 +223,54 @@ export function InboxManageModals({
 
       {showSettingsManageTabs ? (
         <>
-          <ResponsiveModal
-            open={open === 'quick-replies'}
-            onOpenChange={(next) => onOpenChange(next ? 'quick-replies' : null)}
-          >
-            <ResponsiveModalContent
-              sheetLayout="split"
-              className="flex max-h-[min(92dvh,760px)] min-h-0 max-w-[min(calc(100vw-1.5rem),52rem)] flex-col overflow-hidden sm:max-w-[min(92vw,52rem)] lg:min-h-[min(80dvh,560px)]"
+          {allowQuickReplies ? (
+            <ResponsiveModal
+              open={open === 'quick-replies'}
+              onOpenChange={(next) => onOpenChange(next ? 'quick-replies' : null)}
             >
-              <ResponsiveModalHeader className="shrink-0">
-                <ResponsiveModalTitle>Quick replies</ResponsiveModalTitle>
-              </ResponsiveModalHeader>
-              <div className="flex min-h-0 flex-1 flex-col">
-                <InboxQuickRepliesTab
-                  templates={templates}
-                  isLoading={templatesLoading}
-                  saving={templatesSaving}
-                  onSave={onSaveTemplate}
-                  onDelete={onDeleteTemplate}
-                />
-              </div>
-            </ResponsiveModalContent>
-          </ResponsiveModal>
+              <ResponsiveModalContent
+                sheetLayout="split"
+                className="flex max-h-[min(92dvh,760px)] min-h-0 max-w-[min(calc(100vw-1.5rem),52rem)] flex-col overflow-hidden sm:max-w-[min(92vw,52rem)] lg:min-h-[min(80dvh,560px)]"
+              >
+                <ResponsiveModalHeader className="shrink-0">
+                  <ResponsiveModalTitle>Quick replies</ResponsiveModalTitle>
+                </ResponsiveModalHeader>
+                <div className="flex min-h-0 flex-1 flex-col">
+                  <InboxQuickRepliesTab
+                    templates={templates}
+                    isLoading={templatesLoading}
+                    saving={templatesSaving}
+                    onSave={onSaveTemplate}
+                    onDelete={onDeleteTemplate}
+                  />
+                </div>
+              </ResponsiveModalContent>
+            </ResponsiveModal>
+          ) : null}
 
-          <ResponsiveModal
-            open={open === 'automation'}
-            onOpenChange={(next) => onOpenChange(next ? 'automation' : null)}
-          >
-            <ResponsiveModalContent
-              sheetLayout="split"
-              className="flex max-h-[min(92dvh,720px)] max-w-[min(calc(100vw-1.5rem),44rem)] flex-col overflow-hidden sm:max-w-[min(92vw,44rem)]"
+          {allowAutomation ? (
+            <ResponsiveModal
+              open={open === 'automation'}
+              onOpenChange={(next) => onOpenChange(next ? 'automation' : null)}
             >
-              <ResponsiveModalHeader className="shrink-0">
-                <ResponsiveModalTitle>Automation</ResponsiveModalTitle>
-              </ResponsiveModalHeader>
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-                <InboxAutomationTab
-                  settings={automationSettings}
-                  isLoading={automationLoading}
-                  saving={automationSaving}
-                  onSave={onSaveAutomation}
-                />
-              </div>
-            </ResponsiveModalContent>
-          </ResponsiveModal>
+              <ResponsiveModalContent
+                sheetLayout="split"
+                className="flex max-h-[min(92dvh,720px)] max-w-[min(calc(100vw-1.5rem),44rem)] flex-col overflow-hidden sm:max-w-[min(92vw,44rem)]"
+              >
+                <ResponsiveModalHeader className="shrink-0">
+                  <ResponsiveModalTitle>Automation</ResponsiveModalTitle>
+                </ResponsiveModalHeader>
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                  <InboxAutomationTab
+                    settings={automationSettings}
+                    isLoading={automationLoading}
+                    saving={automationSaving}
+                    onSave={onSaveAutomation}
+                  />
+                </div>
+              </ResponsiveModalContent>
+            </ResponsiveModal>
+          ) : null}
         </>
       ) : null}
     </>

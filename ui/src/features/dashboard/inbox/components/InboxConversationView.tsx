@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
-import { Link } from 'react-router-dom';
-
 import {
   ArrowLeft,
   Loader2,
@@ -42,7 +40,6 @@ import {
   canHostUnsendMessage,
 } from '@/features/dashboard/inbox/types/inbox';
 import { handleAiMutationError, isAiQuotaError } from '@/features/dashboard/org/lib/aiQuotaToast';
-import { propertyDashboardPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 
@@ -115,7 +112,6 @@ type Props = {
   isLoading: boolean;
   canReply: boolean;
   templates: InboxTemplate[];
-  orgSlug?: string | null;
   onBack?: () => void;
   onSend: (
     text: string,
@@ -141,7 +137,6 @@ export function InboxConversationView({
   isLoading,
   canReply,
   templates,
-  orgSlug,
   onBack,
   onSend,
   onEdit,
@@ -425,12 +420,6 @@ export function InboxConversationView({
           <p className="truncate text-sm font-semibold">{name}</p>
           <div className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-2 text-[11px]">
             <span>{platformLabel(conversation.platform)}</span>
-            {isWeb && conversation.property_name ? (
-              <>
-                <span aria-hidden>·</span>
-                <span className="truncate">{conversation.property_name}</span>
-              </>
-            ) : null}
             {isWeb && conversation.inquiry_check_in && conversation.inquiry_check_out ? (
               <>
                 <span aria-hidden>·</span>
@@ -452,25 +441,6 @@ export function InboxConversationView({
             )}
           </div>
         </div>
-        {isWeb && conversation.property_slug ? (
-          orgSlug ? (
-            <Link
-              to={propertyDashboardPath(orgSlug, conversation.property_slug)}
-              className="text-primary flex min-h-[44px] shrink-0 items-center self-center px-1 text-xs font-medium underline-offset-2 hover:underline"
-            >
-              View property
-            </Link>
-          ) : (
-            <a
-              href={`/properties/${encodeURIComponent(conversation.property_slug)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary flex min-h-[44px] shrink-0 items-center self-center px-1 text-xs font-medium underline-offset-2 hover:underline"
-            >
-              View property
-            </a>
-          )
-        ) : null}
         {conversation.linked_post_url && (
           <a
             href={conversation.linked_post_url}

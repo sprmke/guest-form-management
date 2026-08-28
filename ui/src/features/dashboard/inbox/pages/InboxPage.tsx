@@ -49,6 +49,9 @@ export type InboxPageProps = {
   returnPath: string;
   canReply: boolean;
   canManage: boolean;
+  canManageChannels?: boolean;
+  canManageQuickReplies?: boolean;
+  canManageAutomation?: boolean;
   /** Quick replies + Automation. Property and parking both show these; only Channels (Meta) is property-only. */
   showSettingsManageTabs: boolean;
   scope?: InboxApiScope | null;
@@ -61,12 +64,18 @@ export function InboxPage({
   returnPath,
   canReply,
   canManage,
+  canManageChannels,
+  canManageQuickReplies,
+  canManageAutomation,
   showSettingsManageTabs,
   scope,
   orgSlug,
   orgId,
 }: InboxPageProps) {
   const showChannelsTab = kind === 'property';
+  const allowChannels = canManageChannels ?? canManage;
+  const allowQuickReplies = canManageQuickReplies ?? canManage;
+  const allowAutomation = canManageAutomation ?? canManage;
   useAdminLayoutFillMain(true);
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -292,6 +301,9 @@ export function InboxPage({
       heroTrailing={
         <InboxManageToolbar
           canManage={canManage}
+          canManageChannels={allowChannels}
+          canManageQuickReplies={allowQuickReplies}
+          canManageAutomation={allowAutomation}
           showChannelsTab={showChannelsTab}
           showSettingsManageTabs={showSettingsManageTabs}
           onOpen={setManageModal}
@@ -301,6 +313,9 @@ export function InboxPage({
       desktopActions={
         <InboxManageToolbar
           canManage={canManage}
+          canManageChannels={allowChannels}
+          canManageQuickReplies={allowQuickReplies}
+          canManageAutomation={allowAutomation}
           showChannelsTab={showChannelsTab}
           showSettingsManageTabs={showSettingsManageTabs}
           onOpen={setManageModal}
@@ -353,7 +368,7 @@ export function InboxPage({
                 emptyVariant={threadEmptyVariant}
                 syncError={metaSyncError}
                 loadError={threadsErrorValue instanceof Error ? threadsErrorValue.message : null}
-                canConnect={canManage}
+                canConnect={allowChannels}
                 onConnect={handleConnectMeta}
                 onRetryLoad={() => void refetchThreads()}
                 hasMore={!!hasMoreThreads}
@@ -379,7 +394,6 @@ export function InboxPage({
                 isLoading={messagesLoading && !!selectedId}
                 canReply={canReply}
                 templates={templatesQuery.data ?? []}
-                orgSlug={orgSlug}
                 onBack={() => setMobileShowConversation(false)}
                 hasOlderMessages={!!hasOlderMessages}
                 loadingOlder={loadingOlderMessages}
@@ -426,6 +440,9 @@ export function InboxPage({
           open={manageModal}
           onOpenChange={setManageModal}
           canManage={canManage}
+          canManageChannels={allowChannels}
+          canManageQuickReplies={allowQuickReplies}
+          canManageAutomation={allowAutomation}
           showChannelsTab={showChannelsTab}
           showSettingsManageTabs={showSettingsManageTabs}
           usingOrgMeta={connectionsData?.usingOrgMeta}

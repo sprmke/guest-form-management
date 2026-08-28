@@ -9,11 +9,21 @@ import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPer
 export function PropertyInboxPage() {
   const orgContext = useOptionalOrgContext();
   const { data: access } = usePropertyPermissions();
+  const permissions = access?.permissions;
 
   const orgSlug = orgContext?.orgSlug ?? null;
   const orgId = orgContext?.org.id ?? null;
   const propertyId = orgContext?.property.id ?? null;
   const scope = useMemo(() => (propertyId ? { propertyId } : null), [propertyId]);
+
+  const canManageChannels =
+    hasPropertyPermission(permissions, 'inbox.channels:add') ||
+    hasPropertyPermission(permissions, 'inbox.channels:delete');
+  const canManageQuickReplies =
+    hasPropertyPermission(permissions, 'inbox.quickReplies:add') ||
+    hasPropertyPermission(permissions, 'inbox.quickReplies:edit') ||
+    hasPropertyPermission(permissions, 'inbox.quickReplies:delete');
+  const canManageAutomation = hasPropertyPermission(permissions, 'inbox.automation:edit');
 
   return (
     <InboxPage
@@ -23,8 +33,11 @@ export function PropertyInboxPage() {
           ? propertyInboxPath(orgSlug, orgContext.propertySlug)
           : '/inbox'
       }
-      canReply={hasPropertyPermission(access?.permissions, 'inbox:reply')}
-      canManage={hasPropertyPermission(access?.permissions, 'inbox:manage')}
+      canReply={hasPropertyPermission(permissions, 'inbox.messages:edit')}
+      canManage={canManageChannels || canManageQuickReplies || canManageAutomation}
+      canManageChannels={canManageChannels}
+      canManageQuickReplies={canManageQuickReplies}
+      canManageAutomation={canManageAutomation}
       showSettingsManageTabs
       scope={scope}
       orgSlug={orgSlug}
