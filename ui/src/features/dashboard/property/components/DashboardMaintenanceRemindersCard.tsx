@@ -138,7 +138,7 @@ export function DashboardMaintenanceRemindersCard({ from, to, rangeLabel, classN
                 ? `Scheduled tasks for ${rangeLabel} will show here.`
                 : 'Scheduled tasks for this period will show here.'}
             </p>
-            <Button asChild variant="outline-primary" size="sm" className="mt-1 min-h-[44px]">
+            <Button asChild variant="outline" size="sm" className="mt-1 min-h-[44px]">
               <Link to={maintenanceHref}>Add Reminder</Link>
             </Button>
           </div>

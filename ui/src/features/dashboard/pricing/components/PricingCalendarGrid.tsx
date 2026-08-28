@@ -6,6 +6,7 @@ import {
   endOfMonth,
   eachDayOfInterval,
   isSameDay,
+  isSameMonth,
   addMonths,
   subMonths,
   isToday,
@@ -137,8 +138,7 @@ export function PricingCalendarGrid({
     <section className="surface-card min-w-0 p-4 sm:p-5">
       <AdminSurfaceCardHeader
         icon={CalendarDays}
-        title="Rates & availability"
-        description="Manage pricing and availability"
+        title="Pricing & Availability"
         iconClassName="bg-muted/80"
         action={
           <div className="flex items-center gap-1">
@@ -188,8 +188,8 @@ export function PricingCalendarGrid({
             {weeks.map((week) => (
               <div key={week.weekIndex} className="relative">
                 <div className="relative z-0 grid grid-cols-7 gap-1.5 sm:gap-2">
-                  {week.days.map((day, colIdx) =>
-                    day ? (
+                  {week.days.map((day) =>
+                    isSameMonth(day, currentMonth) ? (
                       <PricingDayCell
                         key={day.toISOString()}
                         day={day}
@@ -205,7 +205,7 @@ export function PricingCalendarGrid({
                       />
                     ) : (
                       <div
-                        key={`pad-${week.weekIndex}-${colIdx}`}
+                        key={day.toISOString()}
                         className="aspect-square min-h-[4.5rem]"
                         aria-hidden
                       />

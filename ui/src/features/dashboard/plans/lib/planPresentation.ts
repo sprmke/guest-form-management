@@ -159,6 +159,7 @@ export const PLAN_TIER_CARD_GAINS: Record<string, string[]> = {
     'Top 30 search placement',
     'AI receipt and ID validation',
     'Recommended badge eligible',
+    'Property showcase landing pages',
     'Template Management',
     '1,000 AI credits per month',
   ],
@@ -240,6 +241,7 @@ export const PLAN_FEATURE_ROWS: PlanFeatureRow[] = [
   boolRow('automatedBookingFlow', 'Automated booking emails', 'operations'),
   boolRow('customPages', 'Public pages access & editor', 'operations'),
   boolRow('publicPagesAutosave', 'Public pages autosave', 'operations'),
+  boolRow('propertyShowcase', 'Property showcase pages', 'operations'),
   boolRow('marketingStudio', 'Template Management', 'operations'),
   boolRow('aiValidations', 'AI receipt and ID validation', 'operations'),
   boolRow('telegramNotifications', 'Telegram alerts', 'operations'),
@@ -426,6 +428,17 @@ export type PlanTier = {
 };
 
 export type PlanChangeDirection = 'current' | 'upgrade' | 'downgrade';
+
+/** True when moving to Free or a lower ladder tier — self-serve, no PayMongo. */
+export function isPlanDowngrade(
+  currentPlan: OrgBundlePlanDto | null | undefined,
+  targetPlan: OrgBundlePlanDto
+): boolean {
+  if (!currentPlan || currentPlan.id === targetPlan.id) return false;
+  if (targetPlan.isDefault) return !currentPlan.isDefault;
+  if (currentPlan.isDefault) return false;
+  return targetPlan.sortOrder < currentPlan.sortOrder;
+}
 
 /** Internal plan code for the tier we recommend hosts upgrade to (`pro` = Business). */
 export const RECOMMENDED_PLAN_CODE = 'pro';
@@ -780,7 +793,7 @@ export const PLAN_FAQ_ITEMS: PlanFaqItem[] = [
   {
     question: 'What happens when I downgrade or remove a property?',
     answer:
-      'Features above your new tier are turned off org-wide — team seats, marketing publishes, search placement, AI tools, and other limits follow the plan you’re on and are shared across your enrolled properties. Removing a property credits its remaining value toward your next bill; nothing is refunded instantly.',
+      'Downgrades take effect immediately — no payment step. Features above your new tier turn off org-wide (team seats, marketing publishes, search placement, AI tools, and other limits). Removing a property credits its remaining value toward your next bill; unused time on a downgrade is not refunded as cash.',
   },
   {
     question: 'How do AI credits work?',

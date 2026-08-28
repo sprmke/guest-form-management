@@ -39,6 +39,8 @@ type Props = {
   orgSlug: string;
   propertySlug: string;
   attentionLoading?: boolean;
+  canViewFinance?: boolean;
+  canViewMaintenance?: boolean;
 };
 
 /**
@@ -56,6 +58,8 @@ export function DashboardFinanceCalendarSection({
   orgSlug,
   propertySlug,
   attentionLoading,
+  canViewFinance = true,
+  canViewMaintenance = true,
 }: Props) {
   const rangeFrom = fromIsoDate(from);
   const rangeTo = fromIsoDate(to);
@@ -85,9 +89,9 @@ export function DashboardFinanceCalendarSection({
     [from, to]
   );
 
-  const lineItemsQuery = useFinanceLineItems(financeQuery, { enabled: true });
+  const lineItemsQuery = useFinanceLineItems(financeQuery, { enabled: canViewFinance });
   const financeBookingsQuery = useFinanceBookings(financeQuery, {
-    enabled: true,
+    enabled: canViewFinance,
   });
   const bookingsQueryResult = useBookings(bookingsQuery);
 
@@ -155,26 +159,32 @@ export function DashboardFinanceCalendarSection({
         isLoading={attentionLoading}
       />
 
-      <FinanceTransactionsChart
-        embedded
-        isLoading={financeChartsLoading}
-        cashFlowData={chartData.cashFlowData}
-        incomeBreakdown={chartData.incomeBreakdown}
-        expenseBreakdown={chartData.expenseBreakdown}
-        financeHref={financeHref}
-      />
+      {canViewFinance ? (
+        <FinanceTransactionsChart
+          embedded
+          isLoading={financeChartsLoading}
+          cashFlowData={chartData.cashFlowData}
+          incomeBreakdown={chartData.incomeBreakdown}
+          expenseBreakdown={chartData.expenseBreakdown}
+          financeHref={financeHref}
+        />
+      ) : null}
 
-      <DashboardMaintenanceRemindersCard from={from} to={to} rangeLabel={rangeLabel} />
+      {canViewMaintenance ? (
+        <DashboardMaintenanceRemindersCard from={from} to={to} rangeLabel={rangeLabel} />
+      ) : null}
 
-      <DashboardTransactionsDueCard
-        items={lineItemsQuery.data ?? []}
-        from={from}
-        to={to}
-        rangeLabel={rangeLabel}
-        datePreset={datePreset}
-        isLoading={lineItemsQuery.isLoading}
-        isRefreshing={lineItemsQuery.isFetching}
-      />
+      {canViewFinance ? (
+        <DashboardTransactionsDueCard
+          items={lineItemsQuery.data ?? []}
+          from={from}
+          to={to}
+          rangeLabel={rangeLabel}
+          datePreset={datePreset}
+          isLoading={lineItemsQuery.isLoading}
+          isRefreshing={lineItemsQuery.isFetching}
+        />
+      ) : null}
     </div>
   );
 }

@@ -1,4 +1,14 @@
-import { BookOpen, Calendar, Car, FileText, Home, MessageCircle, Star, Wallet } from 'lucide-react';
+import {
+  BookOpen,
+  Calendar,
+  Car,
+  FileText,
+  Home,
+  MessageCircle,
+  Sparkles,
+  Star,
+  Wallet,
+} from 'lucide-react';
 
 import {
   guestCalendarPath,
@@ -9,6 +19,7 @@ import {
   guestPropertyPath,
   guestReviewShellPath,
   guestSdFormShellPath,
+  guestShowcasePath,
   guestStayGuidePreviewPath,
 } from '@/features/guest/lib/guestPublicPaths';
 
@@ -21,6 +32,7 @@ export type PropertyGuestPublicPage = {
     | 'form'
     | 'messages'
     | 'stay-guide'
+    | 'showcase'
     | 'sd-form'
     | 'guest-review'
     | 'pay-parking';
@@ -81,6 +93,15 @@ export function buildPropertyGuestPublicPages(
       path: guestStayGuidePreviewPath(propertySlug, propertyId),
       icon: BookOpen,
       editable: true,
+    },
+    {
+      id: 'showcase',
+      label: 'Showcase',
+      description: 'Shareable animated landing page for this property.',
+      path: guestShowcasePath(propertySlug),
+      icon: Sparkles,
+      editable: true,
+      openUsesEmbed: true,
     },
     {
       id: 'sd-form',

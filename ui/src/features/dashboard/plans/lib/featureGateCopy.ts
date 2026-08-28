@@ -122,6 +122,11 @@ export const FEATURE_GATE_COPY: Record<PlanFeatureKey, FeatureGateCopy> = {
     description: 'Available on Starter and above.',
     ctaLabel: 'View plans',
   },
+  propertyShowcase: {
+    title: 'Property showcase',
+    description: 'Animated showcase landing pages are available on Growth and above.',
+    ctaLabel: 'View plans',
+  },
   bookingImport: {
     title: 'AI booking import',
     description: 'Importing bookings from CSV or Excel is available on Starter and above.',

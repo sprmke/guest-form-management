@@ -8,6 +8,8 @@ import {
   useSyncDateRangeWithQuery,
 } from '@/features/dashboard/bookings/hooks/useDateNavigation';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
+import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
+import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
 import { usePropertyRejectedExternalReviewsAttentionItem } from '@/features/dashboard/org/hooks/usePropertyRejectedExternalReviewsAttentionItem';
 import { DashboardFinanceCalendarSection } from '@/features/dashboard/property/components/DashboardFinanceCalendarSection';
 import { DashboardStatCards } from '@/features/dashboard/property/components/DashboardStatCards';
@@ -37,6 +39,9 @@ export function DashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const isBelowMd = useIsBelowMd();
   const { propertySlug, orgSlug } = useOrgContext();
+  const { data: access } = usePropertyPermissions();
+  const canViewFinance = hasPropertyPermission(access?.permissions, 'finance:view');
+  const canViewMaintenance = hasPropertyPermission(access?.permissions, 'maintenance:view');
   const { data, isLoading, error, refetch } = useDashboardStats();
 
   const period = useMemo(() => resolveDashboardPeriod(searchParams), [searchParams]);
@@ -145,6 +150,8 @@ export function DashboardPage() {
               orgSlug={orgSlug}
               propertySlug={propertySlug}
               attentionLoading={isLoading}
+              canViewFinance={canViewFinance}
+              canViewMaintenance={canViewMaintenance}
             />
           ) : null}
         </div>

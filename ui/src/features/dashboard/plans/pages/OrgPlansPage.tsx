@@ -15,7 +15,11 @@ import { PlanFaqSection } from '@/features/dashboard/plans/components/PlanFaqSec
 import { PlanFeatureMatrix } from '@/features/dashboard/plans/components/PlanFeatureMatrix';
 import { PlanReviewDialog } from '@/features/dashboard/plans/components/PlanReviewDialog';
 import { PlanTierRail } from '@/features/dashboard/plans/components/PlanTierRail';
-import { useCreateOrgPlanCheckout, useOrgPlan } from '@/features/dashboard/plans/hooks/useOrgPlan';
+import {
+  useCreateOrgPlanCheckout,
+  useApplyOrgPlanDowngrade,
+  useOrgPlan,
+} from '@/features/dashboard/plans/hooks/useOrgPlan';
 import type { OrgBundlePlanDto } from '@/features/dashboard/plans/lib/orgPlanApi';
 import type { PlanFeatureKey } from '@/features/dashboard/plans/lib/planFeatures';
 import {
@@ -56,6 +60,7 @@ export function OrgPlansPage() {
 
   const { data, isLoading, error, refetch } = useOrgPlan(org?.id ?? null);
   const createCheckout = useCreateOrgPlanCheckout(org?.id ?? null);
+  const applyDowngrade = useApplyOrgPlanDowngrade(org?.id ?? null);
 
   const [activeTab, setActiveTab] = useState<PlansTab>('plans');
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
@@ -276,13 +281,16 @@ export function OrgPlansPage() {
         propertyCount={propertyCount}
         subscription={subscription}
         onOpenChange={setReviewOpen}
-        onConfirmFree={async () => {}}
+        onConfirmDowngrade={async (planId) => {
+          if (!org?.id) return;
+          await applyDowngrade.mutateAsync({ planId });
+        }}
         onCheckoutPaid={async (planId) => {
           if (!org?.id) return;
           const { checkoutUrl } = await createCheckout.mutateAsync({ planId });
           window.location.assign(checkoutUrl);
         }}
-        isSubmitting={createCheckout.isPending}
+        isSubmitting={createCheckout.isPending || applyDowngrade.isPending}
       />
     </AdminMobilePage>
   );

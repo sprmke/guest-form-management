@@ -111,3 +111,24 @@ export async function createOrgPlanCheckout(
   }
   return json.data;
 }
+
+/** Self-serve downgrade (paid→lower paid or paid→Free) — applies immediately, no PayMongo. */
+export async function applyOrgPlanDowngrade(
+  organizationId: string,
+  planId: string
+): Promise<{ orgSubscriptionId: string | null; toFree: boolean }> {
+  const res = await fetch(`${supabaseBaseUrl()}/apply-org-plan-downgrade`, {
+    method: 'POST',
+    headers: await authHeaders(),
+    body: JSON.stringify({ organizationId, planId }),
+  });
+  const json = (await res.json()) as {
+    success?: boolean;
+    error?: string;
+    data?: { orgSubscriptionId: string | null; toFree: boolean };
+  };
+  if (!res.ok || !json.success || !json.data) {
+    throw new Error(json.error ?? 'Could not change plan');
+  }
+  return json.data;
+}

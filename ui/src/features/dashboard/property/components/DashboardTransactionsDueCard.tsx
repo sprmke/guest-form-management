@@ -129,7 +129,7 @@ export function DashboardTransactionsDueCard({
             <p className="text-caption max-w-xs">
               Recurring bills and payment due dates for {rangeLabel} will show here.
             </p>
-            <Button asChild variant="outline-primary" size="sm" className="mt-1 min-h-[44px]">
+            <Button asChild variant="outline" size="sm" className="mt-1 min-h-[44px]">
               <Link to={transactionsHref}>Add Transaction</Link>
             </Button>
           </div>

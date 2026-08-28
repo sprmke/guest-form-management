@@ -13,8 +13,8 @@ import {
   normalizeVolumeDiscountTiers,
   type VolumeDiscountTier,
 } from '@/features/dashboard/plans/lib/planPricing';
-import type { PricingPlan } from '@/features/dashboard/super-admin/types/pricingPlan';
 import { VolumePricingEditor } from '@/features/dashboard/super-admin/components/super-admin-pricing/VolumePricingEditor';
+import type { PricingPlan } from '@/features/dashboard/super-admin/types/pricingPlan';
 
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';

@@ -9,6 +9,7 @@ import {
   LifeBuoy,
   Sparkles,
   Users,
+  Wallet,
 } from 'lucide-react';
 
 import { superAdminPaths } from '@/features/dashboard/super-admin/lib/superAdminPaths';
@@ -40,6 +41,7 @@ export const SUPER_ADMIN_PLATFORM_DESTINATIONS: SuperAdminPlatformNavItem[] = [
     href: superAdminPaths.propertySubscriptions,
     Icon: CreditCard,
   },
+  { label: 'Parking payouts', href: superAdminPaths.parkingPayouts, Icon: Wallet },
   { label: 'Support tickets', href: superAdminPaths.support, Icon: LifeBuoy },
   { label: 'FAQs', href: superAdminPaths.supportFaqs, Icon: HelpCircle },
   { label: 'AI Management', href: superAdminPaths.settings, Icon: Sparkles },

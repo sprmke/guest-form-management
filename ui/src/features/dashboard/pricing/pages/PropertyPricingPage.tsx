@@ -73,7 +73,10 @@ const BUSY_MONTH_CELEBRATION_THRESHOLD = 20;
 export function PropertyPricingPage() {
   const { data: access } = usePropertyPermissions();
   const permissions = access?.permissions;
-  const canEdit = hasPropertyPermission(permissions, 'pricing:edit');
+  const canEditRates = hasPropertyPermission(permissions, 'pricing.rates:edit');
+  const canBlockDates = hasPropertyPermission(permissions, 'pricing.blocks:add');
+  const canUnblockDates = hasPropertyPermission(permissions, 'pricing.blocks:delete');
+  const canSelectDates = canEditRates || canBlockDates || canUnblockDates;
 
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const { data: pricingData, isLoading, isError, error } = usePropertyPricing(currentMonth);
@@ -260,7 +263,7 @@ export function PropertyPricingPage() {
   );
 
   const handleDateClick = (date: Date) => {
-    if (isBefore(date, startOfToday()) || !canEdit || bookedDateKeys.has(dateKey(date))) {
+    if (isBefore(date, startOfToday()) || !canSelectDates || bookedDateKeys.has(dateKey(date))) {
       return;
     }
     if (justSelectedRef.current) {
@@ -286,7 +289,7 @@ export function PropertyPricingPage() {
   };
 
   const handleDateMouseDown = (date: Date) => {
-    if (isBefore(date, startOfToday()) || !canEdit || bookedDateKeys.has(dateKey(date))) {
+    if (isBefore(date, startOfToday()) || !canSelectDates || bookedDateKeys.has(dateKey(date))) {
       return;
     }
     setIsSelecting(true);
@@ -299,7 +302,7 @@ export function PropertyPricingPage() {
     if (
       !isSelecting ||
       isBefore(date, startOfToday()) ||
-      !canEdit ||
+      !canSelectDates ||
       bookedDateKeys.has(dateKey(date))
     ) {
       return;
@@ -367,6 +370,7 @@ export function PropertyPricingPage() {
   );
 
   const applyCustomPrice = () => {
+    if (!canEditRates) return;
     if (!newPrice.trim() || selectedDates.length === 0) return;
     const price = parseFloat(newPrice);
     if (!Number.isFinite(price) || price < 0) return;
@@ -384,7 +388,7 @@ export function PropertyPricingPage() {
   };
 
   const blockSelected = async () => {
-    if (selectedDates.length === 0 || !canEdit) return;
+    if (selectedDates.length === 0 || !canBlockDates) return;
 
     // Revalidate against current state right before mutating — availability may
     // have refreshed (new booking, or a date rolling into the past) since the
@@ -414,7 +418,7 @@ export function PropertyPricingPage() {
   };
 
   const unblockSelected = () => {
-    if (selectedDates.length === 0 || !canEdit) return;
+    if (selectedDates.length === 0 || !canUnblockDates) return;
     saveMutation.mutate(
       { unblockDateKeys: selectedDates.map((date) => dateKey(date)) },
       {
@@ -545,7 +549,7 @@ export function PropertyPricingPage() {
               weekdayRate={weekdayRate}
               weekendRate={weekendRate}
               fees={fees}
-              readOnly={!canEdit}
+              readOnly={!canEditRates}
               hasChanges={hasChanges}
               saving={saveMutation.isPending}
               onWeekdayChange={(value) => {
@@ -564,7 +568,7 @@ export function PropertyPricingPage() {
       </AdminMobilePage>
 
       <PricingDateModal
-        open={dateModalOpen && selectedDates.length > 0 && canEdit}
+        open={dateModalOpen && selectedDates.length > 0 && canSelectDates}
         onOpenChange={(open) => {
           setDateModalOpen(open);
           if (!open) clearSelection();
@@ -576,8 +580,8 @@ export function PropertyPricingPage() {
         onNewPriceChange={setNewPrice}
         onResetToDefault={resetSelectedToDefault}
         onApply={applyCustomPrice}
-        onBlock={blockSelected}
-        onUnblock={unblockSelected}
+        onBlock={canBlockDates ? blockSelected : undefined}
+        onUnblock={canUnblockDates ? unblockSelected : undefined}
         saving={saveMutation.isPending}
       />
 

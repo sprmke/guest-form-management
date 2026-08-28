@@ -19,6 +19,7 @@ export type PlanFeatures = {
   aiMonthlyCreditAllowance: number;
   marketingStudio: boolean;
   customPages: boolean;
+  propertyShowcase: boolean;
   aiDashboardAssistant: boolean;
   aiReceptionist: boolean;
   aiMarketingGeneration: boolean;
@@ -45,6 +46,7 @@ export const DEFAULT_PLAN_FEATURES: PlanFeatures = {
   aiMonthlyCreditAllowance: 0,
   marketingStudio: false,
   customPages: false,
+  propertyShowcase: false,
   aiDashboardAssistant: false,
   aiReceptionist: false,
   aiMarketingGeneration: false,
@@ -134,6 +136,7 @@ export const PLAN_FEATURE_LABELS: Record<keyof PlanFeatures, string> = {
   aiMonthlyCreditAllowance: 'AI credits',
   marketingStudio: 'Template Management',
   customPages: 'Public pages access & editor',
+  propertyShowcase: 'Property showcase landing pages',
   aiDashboardAssistant: 'AI dashboard assistant',
   aiReceptionist: 'AI receptionist',
   aiMarketingGeneration: 'AI content generation',
