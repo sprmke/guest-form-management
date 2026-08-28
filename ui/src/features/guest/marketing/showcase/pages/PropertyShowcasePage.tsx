@@ -1,0 +1,68 @@
+import { useParams } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
+
+import { usePreviewOverride } from '@/features/guest/lib/previewOverrideContext';
+import { useShowcaseData } from '@/features/guest/marketing/showcase/hooks/useShowcaseData';
+import { getShowcaseTemplate } from '@/features/guest/marketing/showcase/templates/registry';
+import { usePageTitle } from '@/lib/pageTitle';
+import { Suspense } from 'react';
+
+export function PropertyShowcasePage() {
+  const { propertySlug: routeSlug = '' } = useParams();
+  const previewOverride = usePreviewOverride();
+  const isEditorPreview = previewOverride?.kind === 'property-showcase';
+  const propertySlug = routeSlug || (isEditorPreview ? previewOverride.data.slug : '');
+  const { data, isLoading, isError } = useShowcaseData(propertySlug);
+  usePageTitle(data?.propertyName ? `${data.propertyName} - Showcase` : undefined);
+
+  if (!propertySlug && !isEditorPreview) {
+    return <Navigate to="/properties" replace />;
+  }
+
+  if (isLoading) {
+    return (
+      <div className="bg-background flex min-h-[100dvh] items-center justify-center">
+        <div className="bg-muted h-8 w-8 animate-pulse rounded-full" aria-hidden />
+        <span className="sr-only">Loading</span>
+      </div>
+    );
+  }
+
+  if (isError || !data) {
+    return (
+      <div className="bg-background flex min-h-[100dvh] items-center justify-center px-4">
+        <p className="text-muted-foreground text-sm">Showcase unavailable</p>
+      </div>
+    );
+  }
+
+  if (!data.published) {
+    const preview =
+      isEditorPreview ||
+      (typeof window !== 'undefined' &&
+        (new URLSearchParams(window.location.search).get('embed') === '1' ||
+          new URLSearchParams(window.location.search).get('preview') === '1'));
+    if (!preview) {
+      return (
+        <div className="bg-background flex min-h-[100dvh] items-center justify-center px-4">
+          <p className="text-muted-foreground text-sm">Not available</p>
+        </div>
+      );
+    }
+  }
+
+  const entry = getShowcaseTemplate(data.templateKey);
+  const Template = entry.component;
+
+  return (
+    <Suspense
+      fallback={
+        <div className="bg-background flex min-h-[100dvh] items-center justify-center">
+          <div className="bg-muted h-8 w-8 animate-pulse rounded-full" aria-hidden />
+        </div>
+      }
+    >
+      <Template data={data} />
+    </Suspense>
+  );
+}
