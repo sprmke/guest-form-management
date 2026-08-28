@@ -5,6 +5,12 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+import {
+  BRAND_COLOR_PRESET_IDS,
+  normalizeShowcaseCuratedPaletteId,
+  type BrandColorPresetId,
+} from './brandColorPresets.ts';
+
 export type PublicPageType = 'stay_guide' | 'property_landing' | 'property_showcase';
 
 export type StayGuideChapterId = 'getting-in' | 'make-yourself-at-home' | 'before-you-go';
@@ -62,15 +68,24 @@ export type PropertyShowcaseSectionConfig = {
   imageSlots?: string[];
   ctaLabel?: string;
   ctaTarget?: string;
+  heroEyebrow?: {
+    source: 'location' | 'development' | 'custom';
+    customText?: string;
+  };
+  locationLead?: {
+    source: 'location' | 'development' | 'custom';
+    customText?: string;
+  };
 };
 
 export type PropertyShowcaseConfig = {
   version: 1;
   published: boolean;
   palette: {
-    mode: 'light' | 'dark' | 'warm';
+    mode: 'default' | 'brand' | 'media' | 'custom' | BrandColorPresetId;
     accent: 'brand' | 'custom';
     customAccent: string | null;
+    customPaletteBase: string | null;
     overlay: 'none' | 'soft' | 'strong';
   };
   typography: {
@@ -164,11 +179,12 @@ export function defaultPropertyLandingConfig(): PropertyLandingConfig {
 export function defaultPropertyShowcaseConfig(): PropertyShowcaseConfig {
   return {
     version: 1,
-    published: false,
+    published: true,
     palette: {
-      mode: 'light',
+      mode: 'default',
       accent: 'brand',
       customAccent: null,
+      customPaletteBase: null,
       overlay: 'soft',
     },
     typography: {
@@ -338,6 +354,21 @@ function normalizeShowcaseImageSlots(raw: unknown): string[] | undefined {
   return slots.length > 0 ? slots : undefined;
 }
 
+function normalizeShowcaseHeroEyebrow(
+  raw: unknown
+): PropertyShowcaseSectionConfig['heroEyebrow'] | undefined {
+  if (!isRecord(raw)) return undefined;
+  const source = raw.source;
+  if (source !== 'location' && source !== 'development' && source !== 'custom') return undefined;
+  const customText = readOptionalString(raw.customText, 120);
+  if (source === 'location' && !customText) return undefined;
+  if (source === 'custom') return { source: 'custom', customText };
+  if (source === 'development') return { source: 'development' };
+  return { source: 'location' };
+}
+
+const normalizeShowcaseLocationLead = normalizeShowcaseHeroEyebrow;
+
 export function normalizePropertyShowcaseConfig(raw: unknown): PropertyShowcaseConfig {
   const base = defaultPropertyShowcaseConfig();
   if (!isRecord(raw)) return base;
@@ -376,6 +407,14 @@ export function normalizePropertyShowcaseConfig(raw: unknown): PropertyShowcaseC
         imageSlots: normalizeShowcaseImageSlots(entry.imageSlots) ?? existing.imageSlots,
         ctaLabel: readOptionalString(entry.ctaLabel, 60) ?? existing.ctaLabel,
         ctaTarget: readOptionalString(entry.ctaTarget, 200) ?? existing.ctaTarget,
+        heroEyebrow:
+          sectionId === 'hero'
+            ? (normalizeShowcaseHeroEyebrow(entry.heroEyebrow) ?? existing.heroEyebrow)
+            : undefined,
+        locationLead:
+          sectionId === 'location'
+            ? (normalizeShowcaseLocationLead(entry.locationLead) ?? existing.locationLead)
+            : undefined,
       });
     }
   }
@@ -396,10 +435,29 @@ export function normalizePropertyShowcaseConfig(raw: unknown): PropertyShowcaseC
   const typographyRaw = isRecord(raw.typography) ? raw.typography : {};
   const motionRaw = isRecord(raw.motion) ? raw.motion : {};
 
-  const mode =
-    paletteRaw.mode === 'dark' || paletteRaw.mode === 'warm' || paletteRaw.mode === 'light'
-      ? paletteRaw.mode
-      : base.palette.mode;
+  const presetModes = new Set<string>([
+    ...BRAND_COLOR_PRESET_IDS,
+    'warm',
+    'ocean',
+    'blush',
+    'forest',
+    'slate',
+    'dusk',
+  ]);
+
+  let mode: PropertyShowcaseConfig['palette']['mode'] = base.palette.mode;
+  if (
+    paletteRaw.mode === 'default' ||
+    paletteRaw.mode === 'brand' ||
+    paletteRaw.mode === 'media' ||
+    paletteRaw.mode === 'custom'
+  ) {
+    mode = paletteRaw.mode;
+  } else if (paletteRaw.mode === 'light' || paletteRaw.mode === 'dark') {
+    mode = 'default';
+  } else if (presetModes.has(String(paletteRaw.mode))) {
+    mode = normalizeShowcaseCuratedPaletteId(paletteRaw.mode) ?? base.palette.mode;
+  }
   const accent =
     paletteRaw.accent === 'custom' || paletteRaw.accent === 'brand'
       ? paletteRaw.accent
@@ -438,6 +496,7 @@ export function normalizePropertyShowcaseConfig(raw: unknown): PropertyShowcaseC
       mode,
       accent,
       customAccent: normalizeAccentColor(paletteRaw.customAccent),
+      customPaletteBase: normalizeAccentColor(paletteRaw.customPaletteBase),
       overlay,
     },
     typography: { displayFont, scale },

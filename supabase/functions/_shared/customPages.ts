@@ -13,6 +13,9 @@ export const SHOWCASE_TEMPLATE_KEYS = [
   'showcase-aurora',
   'showcase-monolith',
   'showcase-editorial',
+  'showcase-verso',
+  'showcase-atlas',
+  'showcase-haven',
 ] as const;
 
 export type ShowcaseTemplateKey = (typeof SHOWCASE_TEMPLATE_KEYS)[number];
