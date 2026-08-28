@@ -17,6 +17,7 @@ type Props = {
   onCreateCustomRole: () => void;
   onEditCustomRole: (role: CustomPropertyRole) => void;
   onDeleteCustomRole: (role: CustomPropertyRole) => void;
+  onDuplicateCustomRole?: (role: CustomPropertyRole) => void;
   canManage?: boolean;
 };
 
@@ -27,10 +28,12 @@ export function TeamPermissionsTab({
   onCreateCustomRole,
   onEditCustomRole,
   onDeleteCustomRole,
+  onDuplicateCustomRole,
   canManage = true,
 }: Props) {
   const config = getTeamScopeConfig(scope);
   const columns = buildRoleMatrixColumnsForScope(scope, customRoles);
+  const matrixTitle = 'Role permissions';
 
   return (
     <div className="space-y-3 sm:space-y-4">
@@ -41,11 +44,12 @@ export function TeamPermissionsTab({
         onCreate={onCreateCustomRole}
         onEdit={onEditCustomRole}
         onDelete={onDeleteCustomRole}
+        onDuplicate={onDuplicateCustomRole}
         canManage={canManage}
       />
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base sm:text-lg">Role Permissions</CardTitle>
+          <CardTitle className="text-base sm:text-lg">{matrixTitle}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto rounded-xl">
