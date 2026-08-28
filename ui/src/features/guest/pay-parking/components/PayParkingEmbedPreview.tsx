@@ -9,7 +9,7 @@ import { pickGuestBrandHeaderProps } from '@/features/guest/form/lib/guestFormBr
 import { GuestFormBrandHeader } from '@/components/branding/GuestFormBrandHeader';
 import { Label } from '@/components/ui/label';
 
-const PAY_PARKING_BRAND_TITLE = 'Pay Parking Form';
+const PAY_PARKING_BRAND_TITLE = 'Pay parking';
 
 /** Dashboard Public Pages iframe — pay parking guest form. */
 export function PayParkingEmbedPreview() {

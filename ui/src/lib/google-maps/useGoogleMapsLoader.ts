@@ -2,7 +2,17 @@ import { useEffect, useState } from 'react';
 
 import { importLibrary, setOptions } from '@googlemaps/js-api-loader';
 
-let loadPromise: Promise<void> | null = null;
+/** Libraries loaded by map pickers and listing map views. */
+export const GOOGLE_MAPS_LIBRARIES_FULL = ['core', 'maps', 'places', 'geocoding'] as const;
+
+/** Places autocomplete only — guest profile location, lighter than full stack. */
+export const GOOGLE_MAPS_LIBRARIES_PLACES = ['places'] as const;
+
+export type GoogleMapsLibrary =
+  (typeof GOOGLE_MAPS_LIBRARIES_FULL)[number] | (typeof GOOGLE_MAPS_LIBRARIES_PLACES)[number];
+
+const loadedLibraries = new Set<string>();
+let optionsConfigured = false;
 
 function getMapsApiKey(): string {
   return (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined)?.trim() ?? '';
@@ -12,35 +22,37 @@ export function getGoogleMapsApiKey(): string {
   return getMapsApiKey();
 }
 
-function loadGoogleMaps(): Promise<void> {
+async function loadGoogleMapsLibraries(libraries: readonly GoogleMapsLibrary[]): Promise<void> {
   const apiKey = getMapsApiKey();
   if (!apiKey) {
-    return Promise.reject(new Error('VITE_GOOGLE_MAPS_API_KEY is not configured'));
+    throw new Error('VITE_GOOGLE_MAPS_API_KEY is not configured');
   }
 
-  if (!loadPromise) {
+  if (!optionsConfigured) {
     setOptions({
       key: apiKey,
       v: 'weekly',
     });
-    loadPromise = Promise.all([
-      importLibrary('core'),
-      importLibrary('maps'),
-      importLibrary('places'),
-      importLibrary('geocoding'),
-    ]).then(() => undefined);
+    optionsConfigured = true;
   }
 
-  return loadPromise;
+  const pending = libraries.filter((name) => !loadedLibraries.has(name));
+  if (pending.length === 0) return;
+
+  await Promise.all(pending.map((name) => importLibrary(name)));
+  pending.forEach((name) => loadedLibraries.add(name));
 }
 
 type UseGoogleMapsLoaderOptions = {
   /** When false, skip loading until re-enabled (e.g. first focus on a search field). */
   enabled?: boolean;
+  /** Default: full stack for map embeds / property location picker. */
+  libraries?: readonly GoogleMapsLibrary[];
 };
 
 export function useGoogleMapsLoader(options: UseGoogleMapsLoaderOptions = {}) {
   const enabled = options.enabled !== false;
+  const libraries = options.libraries ?? GOOGLE_MAPS_LIBRARIES_FULL;
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(() => {
     if (!getMapsApiKey()) {
@@ -53,7 +65,7 @@ export function useGoogleMapsLoader(options: UseGoogleMapsLoaderOptions = {}) {
     if (!enabled || !getMapsApiKey()) return;
 
     let cancelled = false;
-    loadGoogleMaps()
+    loadGoogleMapsLibraries(libraries)
       .then(() => {
         if (!cancelled) {
           setReady(true);
@@ -69,7 +81,7 @@ export function useGoogleMapsLoader(options: UseGoogleMapsLoaderOptions = {}) {
     return () => {
       cancelled = true;
     };
-  }, [enabled]);
+  }, [enabled, libraries]);
 
   return { ready, error, apiKeyConfigured: Boolean(getMapsApiKey()) };
 }

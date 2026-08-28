@@ -36,7 +36,7 @@ import { friendlyToastError } from '@/lib/feedback/toastMessages';
 import { cn } from '@/lib/utils';
 import { toCapitalCase } from '@/utils/text/formatters';
 
-const PAY_PARKING_BRAND_TITLE = 'Pay Parking Form';
+const PAY_PARKING_BRAND_TITLE = 'Pay parking';
 
 const PAY_PARKING_SHELL = 'relative space-y-6 p-4 sm:p-6 lg:p-8';
 

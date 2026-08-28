@@ -19,7 +19,7 @@ function PayParkingSectionShell({
 }) {
   return (
     <section aria-label={ariaLabel} className="form-section !px-4 !py-5 sm:!px-5 sm:!py-6">
-      <div className="form-section-header">
+      <div className="form-section-header mb-4">
         <Icon className="form-section-icon" aria-hidden />
         <h2 className="form-section-title !text-base sm:!text-lg">{title}</h2>
       </div>
@@ -28,35 +28,17 @@ function PayParkingSectionShell({
   );
 }
 
-function PayParkingHighlightBox({
-  ariaLabel,
-  children,
-}: {
-  ariaLabel: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      className="border-primary/25 bg-primary/5 rounded-lg border-2 px-4 py-4"
-      role="group"
-      aria-label={ariaLabel}
-    >
-      {children}
-    </div>
-  );
-}
-
 export function PayParkingIntro({ data }: { data: PayParkingBootstrap }) {
   const nights = data.number_of_nights || 1;
 
   return (
     <PayParkingSectionShell icon={CalendarDays} title="Booking Info" ariaLabel="Booking Info">
-      <div className="space-y-2">
-        <p className="text-foreground text-xl font-bold">{data.primary_guest_name}</p>
-        <p className="font-base text-foreground text-sm font-medium leading-snug">
+      <div className="space-y-1.5">
+        <p className="text-foreground text-lg font-bold">{data.primary_guest_name}</p>
+        <p className="text-foreground text-sm font-medium leading-snug">
           {formatStayDateRange(data.check_in_date, data.check_out_date)}
         </p>
-        <p className="text-primary/70 text-sm font-semibold">
+        <p className="text-muted-foreground text-sm">
           {nights} night{nights !== 1 ? 's' : ''} · {data.pax} guest
           {data.pax !== 1 ? 's' : ''}
         </p>
@@ -76,21 +58,17 @@ function PayParkingDetailsCard({ data }: { data: PayParkingBootstrap }) {
       title="Parking Details"
       ariaLabel="Parking Details"
     >
-      <PayParkingHighlightBox ariaLabel="Parking details breakdown">
-        <div className="space-y-2">
-          <p className="text-foreground text-sm font-medium leading-snug">
-            {formatStayDateRange(data.parking_check_in_date, data.parking_check_out_date)}
-          </p>
-          <div className="border-primary/15 flex items-center justify-between gap-4 border-t pt-2">
-            <span className="text-primary text-2xl font-bold tabular-nums tracking-tight sm:text-3xl">
-              {formatMoney(totalEstimate)}
-            </span>
-            <p className="text-primary/70 text-sm font-semibold">
-              {formatMoney(ratePerNight)} / night
-            </p>
-          </div>
+      <div className="bg-muted/40 space-y-3 rounded-xl px-4 py-3.5">
+        <p className="text-foreground text-sm font-medium leading-snug">
+          {formatStayDateRange(data.parking_check_in_date, data.parking_check_out_date)}
+        </p>
+        <div className="border-border/60 flex items-end justify-between gap-4 border-t pt-3">
+          <span className="text-foreground text-2xl font-bold tabular-nums tracking-tight sm:text-3xl">
+            {formatMoney(totalEstimate)}
+          </span>
+          <p className="text-muted-foreground text-sm">{formatMoney(ratePerNight)} / night</p>
         </div>
-      </PayParkingHighlightBox>
+      </div>
     </PayParkingSectionShell>
   );
 }
@@ -101,10 +79,13 @@ export const PayParkingRateCard = PayParkingDetailsCard;
 export function PayParkingLastMinuteWarning({ residenceName }: { residenceName?: string | null }) {
   return (
     <p
-      className="mt-3 flex gap-2 rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2.5 text-left text-sm leading-relaxed text-amber-950/90"
+      className="mt-3 flex gap-2 rounded-xl border border-amber-200/70 bg-amber-50/70 px-3 py-2.5 text-left text-sm leading-relaxed text-amber-950/90 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100/90"
       role="alert"
     >
-      <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden />
+      <AlertCircle
+        className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400"
+        aria-hidden
+      />
       <span>{formatPayParkingLastMinuteWarning(residenceName ?? null)}</span>
     </p>
   );
@@ -113,10 +94,13 @@ export function PayParkingLastMinuteWarning({ residenceName }: { residenceName?:
 function PayParkingNonRefundableNote() {
   return (
     <p
-      className="flex gap-2 rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2.5 text-sm leading-relaxed text-amber-950/90"
+      className="flex gap-2 rounded-xl border border-amber-200/70 bg-amber-50/70 px-3 py-2.5 text-sm leading-relaxed text-amber-950/90 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100/90"
       role="note"
     >
-      <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden />
+      <AlertCircle
+        className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400"
+        aria-hidden
+      />
       <span>
         Parking fee is{' '}
         <span className="font-semibold">non-refundable and cannot be re-scheduled</span> after you

@@ -323,6 +323,18 @@
     }
   }
 
+  @keyframes voice-meter {
+    0%,
+    100% {
+      transform: scaleY(0.4);
+      opacity: 0.5;
+    }
+    50% {
+      transform: scaleY(1);
+      opacity: 1;
+    }
+  }
+
   @keyframes shimmer {
     0% {
       background-position: -200% 0;
@@ -373,6 +385,50 @@
 
   .animate-pulse-subtle {
     animation: pulse-subtle 2s ease-in-out infinite;
+  }
+
+  .animate-voice-meter {
+    animation: voice-meter 0.9s ease-in-out infinite;
+  }
+
+  /* Notification bell — soft attention when unread (not continuous shake). */
+  @keyframes notification-bell-nudge {
+    0%,
+    82%,
+    100% {
+      transform: rotate(0deg);
+    }
+    86% {
+      transform: rotate(9deg);
+    }
+    90% {
+      transform: rotate(-7deg);
+    }
+    94% {
+      transform: rotate(4deg);
+    }
+    97% {
+      transform: rotate(-2deg);
+    }
+  }
+
+  @keyframes notification-badge-pulse {
+    0%,
+    100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.1);
+    }
+  }
+
+  .animate-notification-bell-nudge {
+    transform-origin: top center;
+    animation: notification-bell-nudge 3.5s ease-in-out infinite;
+  }
+
+  .animate-notification-badge-pulse {
+    animation: notification-badge-pulse 2.4s ease-in-out infinite;
   }
 
   .animate-shimmer {
@@ -1125,6 +1181,8 @@
     .animate-fade-in,
     .animate-fade-in-up,
     .animate-float,
+    .animate-notification-bell-nudge,
+    .animate-notification-badge-pulse,
     .guest-enter,
     .guest-enter-forward,
     .guest-enter-back,
@@ -2070,6 +2128,89 @@ input.ui-native-datetime[type='datetime-local']::-webkit-calendar-picker-indicat
   }
 }
 
+/* Google Places Autocomplete (legacy widget — property location picker). Soft chrome only. */
+.pac-container {
+  z-index: 200 !important;
+  margin-top: 0.25rem !important;
+  overflow: hidden !important;
+  border: 1px solid hsl(var(--border) / 0.5) !important;
+  border-radius: var(--radius) !important;
+  background: hsl(var(--popover)) !important;
+  background-color: hsl(var(--popover)) !important;
+  /* Soft elevation — Google’s default shadow is very heavy. */
+  box-shadow: 0 8px 24px -8px hsl(var(--shadow-color) / 0.18) !important;
+  font-family: inherit !important;
+  pointer-events: auto !important;
+}
+
+.pac-container::after {
+  display: none !important;
+}
+
+.pac-item {
+  display: block !important;
+  padding: 0.625rem 0.75rem !important;
+  border-top: 1px solid hsl(var(--border) / 0.55) !important;
+  cursor: pointer !important;
+  color: hsl(var(--popover-foreground)) !important;
+  font-size: 0.875rem !important;
+  line-height: 1.35 !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+}
+
+.pac-item:first-child {
+  border-top: none !important;
+}
+
+.pac-item:hover,
+.pac-item-selected {
+  background: hsl(var(--accent)) !important;
+}
+
+.pac-item-query {
+  display: block !important;
+  color: hsl(var(--foreground)) !important;
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+  line-height: 1.35 !important;
+}
+
+.pac-matched {
+  color: hsl(var(--foreground)) !important;
+  font-weight: 600 !important;
+}
+
+.pac-icon {
+  display: none !important;
+}
+
+.pac-item > span:not(.pac-item-query):not(.pac-matched) {
+  display: block !important;
+  margin-top: 0.125rem !important;
+  color: hsl(var(--muted-foreground)) !important;
+  font-size: 0.8125rem !important;
+  font-weight: 400 !important;
+  line-height: 1.3 !important;
+}
+
+.pac-logo {
+  margin: 0 !important;
+  padding: 0.375rem 0.75rem 0.5rem !important;
+  height: auto !important;
+  line-height: 1 !important;
+}
+
+.pac-logo::after {
+  margin: 0 !important;
+  padding: 0 !important;
+  height: 0.875rem !important;
+  background-position: right center !important;
+  background-size: contain !important;
+  opacity: 0.45 !important;
+}
+
 /* Google Maps Embed API iframes do not support native dark mode — approximate when JS API is unavailable. */
 .property-map-embed-dark {
   filter: invert(90%) hue-rotate(180deg) brightness(0.92) contrast(0.9);
@@ -2106,4 +2247,47 @@ html.guest-embed-preview *::-webkit-scrollbar {
   display: none;
   width: 0;
   height: 0;
+}
+
+@layer utilities {
+  .showcase-scope {
+    --showcase-display-scale: 1;
+  }
+
+  .showcase-scope.showcase-scale-sm {
+    --showcase-display-scale: 0.9;
+  }
+
+  .showcase-scope.showcase-scale-lg {
+    --showcase-display-scale: 1.08;
+  }
+
+  .showcase-scope.showcase-scale-sm :is(h1, h2) {
+    font-size: calc(1em * var(--showcase-display-scale));
+  }
+
+  .showcase-scope.showcase-scale-lg :is(h1, h2) {
+    font-size: calc(1em * var(--showcase-display-scale));
+  }
+
+  .showcase-scope.showcase-warm-tint {
+    filter: sepia(0.06) saturate(1.05);
+  }
+
+  @keyframes showcase-marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+  .animate-showcase-marquee {
+    animation: showcase-marquee 36s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-showcase-marquee {
+      animation: none;
+    }
+  }
 }

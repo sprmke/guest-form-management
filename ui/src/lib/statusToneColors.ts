@@ -66,6 +66,53 @@ export const STATUS_TONE_STYLES: Record<StatusTone, StatusToneStyle> = {
   },
 };
 
+/**
+ * Week/day time-grid stay blocks — status-tone chrome only (never brand primary).
+ * `hover` is a darker wash of the same tone for stay-wide highlight.
+ */
+export const STATUS_TONE_CALENDAR_BLOCK: Record<StatusTone, { base: string; hover: string }> = {
+  red: {
+    base: 'border-rose-300 bg-rose-50 text-rose-900 dark:border-rose-500/45 dark:bg-rose-950/45 dark:text-rose-100',
+    hover:
+      'border-rose-500 bg-rose-100 text-rose-950 dark:border-rose-400 dark:bg-rose-900/55 dark:text-rose-50',
+  },
+  yellow: {
+    base: 'border-yellow-300 bg-yellow-50 text-yellow-950 dark:border-yellow-500/45 dark:bg-yellow-950/40 dark:text-yellow-100',
+    hover:
+      'border-yellow-500 bg-yellow-100 text-yellow-950 dark:border-yellow-400 dark:bg-yellow-900/50 dark:text-yellow-50',
+  },
+  green: {
+    base: 'border-teal-300 bg-teal-50 text-teal-950 dark:border-teal-500/45 dark:bg-teal-950/40 dark:text-teal-100',
+    hover:
+      'border-teal-500 bg-teal-100 text-teal-950 dark:border-teal-400 dark:bg-teal-900/50 dark:text-teal-50',
+  },
+  amber: {
+    base: 'border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-500/45 dark:bg-amber-950/40 dark:text-amber-100',
+    hover:
+      'border-amber-500 bg-amber-100 text-amber-950 dark:border-amber-400 dark:bg-amber-900/50 dark:text-amber-50',
+  },
+  orange: {
+    base: 'border-orange-300 bg-orange-50 text-orange-950 dark:border-orange-500/45 dark:bg-orange-950/40 dark:text-orange-100',
+    hover:
+      'border-orange-500 bg-orange-100 text-orange-950 dark:border-orange-400 dark:bg-orange-900/50 dark:text-orange-50',
+  },
+  blue: {
+    base: 'border-sky-300 bg-sky-50 text-sky-950 dark:border-sky-500/45 dark:bg-sky-950/40 dark:text-sky-100',
+    hover:
+      'border-sky-500 bg-sky-100 text-sky-950 dark:border-sky-400 dark:bg-sky-900/50 dark:text-sky-50',
+  },
+  purple: {
+    base: 'border-violet-300 bg-violet-50 text-violet-950 dark:border-violet-500/45 dark:bg-violet-950/45 dark:text-violet-100',
+    hover:
+      'border-violet-500 bg-violet-100 text-violet-950 dark:border-violet-400 dark:bg-violet-900/55 dark:text-violet-50',
+  },
+  neutral: {
+    base: 'border-slate-300 bg-slate-100 text-slate-800 dark:border-slate-500/45 dark:bg-slate-900/55 dark:text-slate-200',
+    hover:
+      'border-slate-500 bg-slate-200 text-slate-900 dark:border-slate-400 dark:bg-slate-800/70 dark:text-slate-50',
+  },
+};
+
 export type StatusToneSurface = {
   color: string;
   bgColor: string;

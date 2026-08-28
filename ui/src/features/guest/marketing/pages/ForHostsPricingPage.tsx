@@ -1,11 +1,9 @@
 import { useMemo } from 'react';
 
-import { Link, useNavigate } from 'react-router-dom';
-
-import { ArrowRight, CreditCard, LayoutGrid } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 import { usePublicPricingPlans } from '@/features/guest/marketing/for-hosts/hooks/usePublicPricingPlans';
-import { MarketingPublicCallout } from '@/features/guest/marketing/shared/components/MarketingPublicCallout';
+import { publicContactPath } from '@/features/guest/marketing/contact/lib/publicContactParams';
 import { MarketingPublicPageContent } from '@/features/guest/marketing/shared/components/MarketingPublicPageContent';
 import { MarketingPublicPageHero } from '@/features/guest/marketing/shared/components/MarketingPublicPageHero';
 
@@ -15,6 +13,7 @@ import type { OrgBundlePlanDto } from '@/features/dashboard/plans/lib/orgPlanApi
 import {
   buildPlanTiers,
   isManagedSalesPlan,
+  MANAGED_PLAN_INQUIRY_SUBJECT,
   planTabSectionTitleClass,
 } from '@/features/dashboard/plans/lib/planPresentation';
 
@@ -45,7 +44,12 @@ export function ForHostsPricingPage() {
 
   const handleSelectPlan = (plan: OrgBundlePlanDto) => {
     if (isManagedSalesPlan(plan.code)) {
-      navigate('/contact');
+      navigate(
+        publicContactPath({
+          category: 'business_inquiry',
+          subject: MANAGED_PLAN_INQUIRY_SUBJECT,
+        })
+      );
       return;
     }
     navigate('/for-hosts/login');
@@ -97,42 +101,6 @@ export function ForHostsPricingPage() {
             </section>
           </div>
         ) : null}
-
-        <MarketingPublicCallout
-          variant="inset"
-          className="mt-12"
-          icon={CreditCard}
-          title="Managing more than one property?"
-          body={
-            <>
-              After sign-up, bundle Pro, Business, or Business Plus across your portfolio from the
-              org Plans page. Questions before you start?{' '}
-              <Link to="/contact" className="text-primary font-medium hover:underline">
-                Contact us
-              </Link>
-              .
-            </>
-          }
-          actions={
-            <>
-              <Button variant="outline" className="min-h-[44px] rounded-full" asChild>
-                <Link to="/for-hosts">
-                  <LayoutGrid className="mr-2 h-4 w-4" aria-hidden />
-                  Back to overview
-                </Link>
-              </Button>
-              <Button
-                className="bg-primary hover:bg-primary/90 min-h-[44px] rounded-full text-white"
-                asChild
-              >
-                <Link to="/for-hosts/login">
-                  Create account
-                  <ArrowRight className="ml-2 h-4 w-4" aria-hidden />
-                </Link>
-              </Button>
-            </>
-          }
-        />
       </MarketingPublicPageContent>
     </div>
   );

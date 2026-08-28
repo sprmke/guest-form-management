@@ -175,11 +175,13 @@ export const stringToDate = (dateString: string): Date => {
 export function formatDateRangeFromDates(from: Date, to: Date): string {
   if (isSameYear(from, to)) {
     if (isSameMonth(from, to)) {
-      return `${format(from, 'MMM d')} - ${format(to, 'd, yyyy')}`;
+      // e.g. Sep 24-28, 2026
+      return `${format(from, 'MMM d')}-${format(to, 'd, yyyy')}`;
     }
-    return `${format(from, 'MMM d')} - ${format(to, 'MMM d, yyyy')}`;
+    // e.g. Sep 28-Oct 2, 2026
+    return `${format(from, 'MMM d')}-${format(to, 'MMM d, yyyy')}`;
   }
-  return `${format(from, 'MMM d, yyyy')} - ${format(to, 'MMM d, yyyy')}`;
+  return `${format(from, 'MMM d, yyyy')}-${format(to, 'MMM d, yyyy')}`;
 }
 
 function parseStayBoundaryDate(raw: string): Date | null {
@@ -208,7 +210,7 @@ export function formatStayBoundaryDateShort(raw: string | null | undefined): str
 }
 
 /**
- * ISO `YYYY-MM-DD` or booking `MM-DD-YYYY` → readable stay range, e.g. `Aug 11 - 18, 2026`.
+ * ISO `YYYY-MM-DD` or booking `MM-DD-YYYY` → readable stay range, e.g. `Sep 24-28, 2026`.
  */
 export function formatStayDateRange(
   checkIn: string | null | undefined,

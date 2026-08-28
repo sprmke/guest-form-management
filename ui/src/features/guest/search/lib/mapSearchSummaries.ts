@@ -112,7 +112,6 @@ export function mapParkingSummaryToSlot(summary: ParkingSearchSummary): {
       isAvailable: true,
       ratePerNight: summary.ratePerNight ?? undefined,
       features: summary.features,
-      formId: summary.slug,
       imageUrl: resolveListingCoverImage(
         summary.images,
         summary.coverImage ?? summary.images[0],

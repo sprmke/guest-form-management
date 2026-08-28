@@ -1,110 +1,159 @@
-import { Link } from 'react-router-dom';
-
-import { Building2, LifeBuoy, Mail, MapPin, Phone, Users } from 'lucide-react';
-
-import { MarketingPublicIconCard } from '@/features/guest/marketing/shared/components/MarketingPublicIconCard';
+import { NewTicketModal } from '@/features/dashboard/help-support/components/NewTicketModal';
+import { SupportTicketScopeProvider } from '@/features/dashboard/help-support/context/SupportTicketScopeContext';
+import type { SupportTicketCategory } from '@/features/dashboard/help-support/lib/supportTicketSchema';
+import { MANAGED_PLAN_INQUIRY_SUBJECT } from '@/features/dashboard/plans/lib/planPresentation';
+import { GUEST_ACCOUNT_TICKETS_PATH } from '@/features/guest/account/lib/guestAccountPaths';
+import { PublicContactCategoryGrid } from '@/features/guest/marketing/contact/components/PublicContactCategoryGrid';
+import { PublicContactSignInDialog } from '@/features/guest/marketing/contact/components/PublicContactSignInDialog';
+import { parsePublicContactCategory } from '@/features/guest/marketing/contact/lib/publicContactParams';
+import { useGuestSession } from '@/features/guest/auth/hooks/useGuestSession';
 import { MarketingPublicPageContent } from '@/features/guest/marketing/shared/components/MarketingPublicPageContent';
 import { MarketingPublicPageHero } from '@/features/guest/marketing/shared/components/MarketingPublicPageHero';
 import { MarketingPublicSectionHeading } from '@/features/guest/marketing/shared/components/MarketingPublicSectionHeading';
 
+import { Button } from '@/components/ui/button';
 import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
 
-const contactCards = [
-  {
-    icon: Mail,
-    title: 'General',
-    body: 'Product questions, partnerships, and anything that does not fit the categories below.',
-    href: 'mailto:hello@kamehomes.com',
-    action: 'Email hello@kamehomes.com',
-  },
-  {
-    icon: Building2,
-    title: 'Hosts',
-    body: 'Organization setup, onboarding, and questions about host tools.',
-    href: 'mailto:hello@kamehomes.com?subject=Host%20support',
-    action: 'Email host support',
-  },
-  {
-    icon: Users,
-    title: 'Guests',
-    body: 'Bookings, documents, check-in, or security-deposit questions for a stay.',
-    href: 'mailto:hello@kamehomes.com?subject=Guest%20support',
-    action: 'Email guest support',
-  },
-] as const;
+import { LifeBuoy, Mail } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+
+const GUEST_TICKET_SCOPE = {
+  channel: 'guest' as const,
+  orgSlug: null,
+  orgId: null,
+  propertyId: null,
+  parkingId: null,
+};
+
+function resolveDefaultSubject(searchParams: URLSearchParams): string | undefined {
+  const subject = searchParams.get('subject')?.trim();
+  if (subject) return subject;
+  if (searchParams.get('category') === 'business_inquiry') {
+    return MANAGED_PLAN_INQUIRY_SUBJECT;
+  }
+  return undefined;
+}
 
 export function ContactPage() {
   usePageTitle(publicPageTitle('Contact'));
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { status } = useGuestSession();
+  const ready = status !== 'loading';
+  const isAuthenticated = status === 'authenticated';
+
+  const [ticketModalOpen, setTicketModalOpen] = useState(false);
+  const [signInOpen, setSignInOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<SupportTicketCategory | undefined>();
+  const [defaultSubject, setDefaultSubject] = useState<string | undefined>();
+  const autoOpenedRef = useRef(false);
+
+  const clearContactParams = useCallback(() => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('category');
+    next.delete('subject');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const openTicketFlow = useCallback(
+    (category: SupportTicketCategory, subject?: string) => {
+      setSelectedCategory(category);
+      setDefaultSubject(subject);
+
+      if (!ready) return;
+
+      if (isAuthenticated) {
+        setTicketModalOpen(true);
+        return;
+      }
+
+      setSignInOpen(true);
+    },
+    [isAuthenticated, ready]
+  );
+
+  const handleCategorySelect = (category: SupportTicketCategory) => {
+    openTicketFlow(category);
+  };
+
+  useEffect(() => {
+    if (!ready || autoOpenedRef.current) return;
+
+    const category = parsePublicContactCategory(searchParams.get('category'));
+    if (!category) return;
+
+    autoOpenedRef.current = true;
+    openTicketFlow(category, resolveDefaultSubject(searchParams));
+  }, [openTicketFlow, ready, searchParams]);
+
+  const handleTicketSubmitted = (ticketId: string) => {
+    setTicketModalOpen(false);
+    clearContactParams();
+    navigate(`${GUEST_ACCOUNT_TICKETS_PATH}/${ticketId}`);
+  };
+
+  const handleTicketModalOpenChange = (open: boolean) => {
+    setTicketModalOpen(open);
+    if (!open) {
+      clearContactParams();
+      setSelectedCategory(undefined);
+      setDefaultSubject(undefined);
+    }
+  };
+
   return (
     <div className="bg-background min-h-screen">
       <MarketingPublicPageHero
         eyebrow="Contact"
-        title="Talk to the team"
-        description="Email is the fastest way to reach us. Include your booking ID or organization name when you have one so we can help without back-and-forth."
+        title="Send us a message"
+        description="Pick what your message is about. Sign in with your explore account to open a ticket."
         blobPosition="right"
+        narrow
       />
 
-      <MarketingPublicPageContent>
-        <ul className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          {contactCards.map(({ icon, title, body, href, action }) => (
-            <li key={title}>
-              <MarketingPublicIconCard
-                icon={icon}
-                title={title}
-                body={body}
-                href={href}
-                action={action}
-              />
-            </li>
-          ))}
-        </ul>
+      <MarketingPublicPageContent narrow>
+        <PublicContactCategoryGrid onSelect={handleCategorySelect} />
 
-        <div className="border-border bg-muted/40 mt-10 grid grid-cols-1 gap-8 rounded-2xl border p-6 sm:grid-cols-2 sm:p-8">
-          <div>
-            <MarketingPublicSectionHeading title="Office" titleClassName="text-xl sm:text-xl" />
-            <address className="text-muted-foreground mt-4 space-y-3 text-sm not-italic">
-              <div className="flex items-start gap-3">
-                <MapPin className="text-primary mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-                <span>Manila, Philippines</span>
-              </div>
-              <div className="flex items-start gap-3">
-                <Mail className="text-primary mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-                <a href="mailto:hello@kamehomes.com" className="hover:text-foreground">
-                  hello@kamehomes.com
-                </a>
-              </div>
-              <div className="flex items-start gap-3">
-                <Phone className="text-primary mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-                <a href="tel:+639123456789" className="hover:text-foreground">
-                  +63 912 345 6789
-                </a>
-              </div>
-            </address>
-          </div>
-          <div>
-            <MarketingPublicSectionHeading
-              title="Check Support first"
-              description="Common booking and hosting answers live on Support. Host product overview is on For Hosts."
-              titleClassName="text-xl sm:text-xl"
-            />
-            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-              <Link
-                to="/support"
-                className="border-border bg-background text-foreground hover:bg-muted inline-flex min-h-[44px] items-center justify-center gap-2 rounded-full border px-5 text-sm font-semibold transition-colors"
-              >
-                <LifeBuoy className="h-4 w-4" aria-hidden />
-                Open Support
+        <div className="border-border bg-muted/40 mt-10 rounded-2xl border p-6 sm:p-8">
+          <MarketingPublicSectionHeading
+            title="Booking as a guest?"
+            description="For stay questions, try Support first or email us with your booking ID."
+            titleClassName="text-xl sm:text-xl"
+          />
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+            <Button variant="outline" className="min-h-[44px] rounded-full" asChild>
+              <Link to="/support">
+                <LifeBuoy className="mr-2 h-4 w-4" aria-hidden />
+                Support
               </Link>
-              <Link
-                to="/for-hosts"
-                className="bg-primary hover:bg-primary/90 inline-flex min-h-[44px] items-center justify-center rounded-full px-5 text-sm font-semibold text-white transition-colors"
-              >
-                For hosts
-              </Link>
-            </div>
+            </Button>
+            <Button variant="outline" className="min-h-[44px] rounded-full" asChild>
+              <a href="mailto:hello@kamehomes.com?subject=Guest%20support">
+                <Mail className="mr-2 h-4 w-4" aria-hidden />
+                hello@kamehomes.com
+              </a>
+            </Button>
           </div>
         </div>
       </MarketingPublicPageContent>
+
+      <PublicContactSignInDialog
+        open={signInOpen}
+        onOpenChange={setSignInOpen}
+        category={selectedCategory}
+        subject={defaultSubject}
+      />
+
+      <SupportTicketScopeProvider scope={GUEST_TICKET_SCOPE}>
+        <NewTicketModal
+          open={ticketModalOpen}
+          onOpenChange={handleTicketModalOpenChange}
+          onSubmitted={handleTicketSubmitted}
+          defaultCategory={selectedCategory}
+          defaultSubject={defaultSubject}
+        />
+      </SupportTicketScopeProvider>
     </div>
   );
 }
