@@ -298,7 +298,6 @@ export function toParkingListEntry(item: PublicParkingListItem): ParkingListEntr
     isAvailable: true,
     ratePerNight: item.ratePerNight,
     features: item.features,
-    formId: item.slug,
     imageUrl: resolveListingCoverImage(undefined, item.coverImage, 'parking', item.slug),
   };
 

@@ -1,5 +1,5 @@
-import { motion } from 'framer-motion';
-import { ArrowUpFromLine, Car, MoveHorizontal, Ruler } from 'lucide-react';
+import { motion, useReducedMotion } from 'framer-motion';
+import { ArrowUpFromLine, Car, Clock, MoveHorizontal, Ruler } from 'lucide-react';
 
 import {
   developmentDetailPath,
@@ -7,7 +7,6 @@ import {
 } from '@/features/guest/marketing/developments/lib/resolvePublicDevelopment';
 import { formatParkingDimensionMeters } from '@/features/guest/marketing/parkings/lib/parkingDimensions';
 import { parkingTypeLabel } from '@/features/guest/marketing/parkings/lib/parkingTypeLabel';
-import { ListingCheckInOutTimes } from '@/features/guest/marketing/shared/components/ListingCheckInOutTimes';
 import { ListingExpandableText } from '@/features/guest/marketing/shared/components/ListingExpandableText';
 import {
   ListingHostCard,
@@ -15,7 +14,6 @@ import {
 } from '@/features/guest/marketing/shared/components/ListingHostCard';
 import { ListingPlaceMeta } from '@/features/guest/marketing/shared/components/ListingPlaceMeta';
 import { ListingRecommendedBadge } from '@/features/guest/marketing/shared/components/ListingRecommendedBadge';
-import { ListingStatItem } from '@/features/guest/marketing/shared/components/ListingStatItem';
 import { buildParkingPlacementLabels } from '@/features/guest/marketing/shared/lib/listingPlacement';
 
 import {
@@ -39,10 +37,27 @@ type Props = {
   heightClearanceM?: number | null;
   checkInTime?: string;
   checkOutTime?: string;
-  /** This listing's badge — shown next to the parking type. */
   recommendedBadge?: boolean;
   onContactHost?: () => void;
 };
+
+function DimensionChip({
+  icon: Icon,
+  value,
+  label,
+}: {
+  icon: typeof Ruler;
+  value: string;
+  label: string;
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-2">
+      <Icon className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
+      <span className="text-foreground text-sm font-medium tabular-nums">{value}</span>
+      <span className="text-muted-foreground text-sm">{label}</span>
+    </div>
+  );
+}
 
 export function ParkingOverview({
   name,
@@ -61,6 +76,7 @@ export function ParkingOverview({
   checkOutTime = '12:00 PM',
   onContactHost,
 }: Props) {
+  const reduceMotion = useReducedMotion();
   const development = resolvePublicDevelopment(residenceName);
   const placementLabels = buildParkingPlacementLabels(tower, level);
   const resolvedGeo = geoLocation?.trim() || development?.locationLabel || null;
@@ -70,28 +86,24 @@ export function ParkingOverview({
   const heightLabel = formatParkingDimensionMeters(heightClearanceM)!;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-2 flex flex-wrap items-center gap-2"
-        >
+    <motion.div
+      initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+      className="space-y-8"
+    >
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="bg-primary/10 text-primary inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium">
             <Car className="h-3.5 w-3.5" aria-hidden />
             {parkingTypeLabel(parkingType)}
           </span>
           {recommendedBadge ? <ListingRecommendedBadge size="md" /> : null}
-        </motion.div>
+        </div>
 
-        <motion.h1
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
-          className="text-foreground mb-2 text-2xl font-bold sm:text-3xl lg:text-4xl"
-        >
+        <h1 className="text-foreground text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">
           {name}
-        </motion.h1>
+        </h1>
 
         <ListingPlaceMeta
           development={
@@ -101,42 +113,35 @@ export function ParkingOverview({
           }
           placementLabels={placementLabels}
           geoLocation={resolvedGeo}
-          motionDelay={0.1}
         />
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15 }}
-        className="border-border bg-card grid grid-cols-2 gap-4 rounded-2xl border p-4 sm:grid-cols-3"
-      >
-        <ListingStatItem icon={Ruler} value={lengthLabel} label="length" />
-        <ListingStatItem icon={MoveHorizontal} value={widthLabel} label="width" />
-        <ListingStatItem icon={ArrowUpFromLine} value={heightLabel} label="height clearance" />
-      </motion.div>
+      <div className="border-border/70 flex flex-wrap gap-x-6 gap-y-3 border-y py-4">
+        <DimensionChip icon={Ruler} value={lengthLabel} label="length" />
+        <DimensionChip icon={MoveHorizontal} value={widthLabel} label="width" />
+        <DimensionChip icon={ArrowUpFromLine} value={heightLabel} label="clearance" />
+        <div
+          className="text-muted-foreground bg-border hidden h-5 w-px self-center sm:block"
+          aria-hidden
+        />
+        <div className="flex min-w-0 items-center gap-2">
+          <Clock className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
+          <span className="text-foreground text-sm font-medium">{checkInTime}</span>
+          <span className="text-muted-foreground text-sm">in</span>
+          <span className="text-muted-foreground text-sm">·</span>
+          <span className="text-foreground text-sm font-medium">{checkOutTime}</span>
+          <span className="text-muted-foreground text-sm">out</span>
+        </div>
+      </div>
 
-      {host ? (
-        <ListingHostCard host={host} motionDelay={0.2} onContactHost={onContactHost} />
-      ) : null}
-
-      <ListingCheckInOutTimes
-        checkInTime={checkInTime}
-        checkOutTime={checkOutTime}
-        motionDelay={0.3}
-      />
+      {host ? <ListingHostCard host={host} onContactHost={onContactHost} /> : null}
 
       {description ? (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35 }}
-          className="space-y-4"
-        >
-          <h2 className="text-foreground text-xl font-semibold">About this parking</h2>
-          <ListingExpandableText text={description} maxLines={8} />
-        </motion.div>
+        <div className="space-y-3">
+          <h2 className="text-foreground text-lg font-semibold">About this parking</h2>
+          <ListingExpandableText text={description} maxLines={6} />
+        </div>
       ) : null}
-    </div>
+    </motion.div>
   );
 }

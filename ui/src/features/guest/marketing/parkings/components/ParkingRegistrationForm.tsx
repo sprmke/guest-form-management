@@ -1,11 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 
 import { GuestFormStepNavigation } from '@/features/guest/form/components/GuestFormStepNavigation';
-import { GuestFormStepper } from '@/features/guest/form/components/GuestFormStepper';
+import { ParkingLinkedStayConfirm } from '@/features/guest/marketing/parkings/components/ParkingLinkedStayConfirm';
+import { ParkingStayChooser } from '@/features/guest/marketing/parkings/components/ParkingStayChooser';
+import type { LinkableParkingBooking } from '@/features/guest/marketing/parkings/hooks/useLinkableParkingBookings';
 import {
   parkingRegistrationSchema,
   type ParkingRegistrationValues,
@@ -15,9 +18,12 @@ import {
   getFieldsForParkingStep,
   isParkingStepComplete,
   PARKING_REGISTRATION_STEP_COUNT,
-  PARKING_REGISTRATION_STEPS,
 } from '@/features/guest/marketing/parkings/lib/parkingRegistrationSteps';
 
+import {
+  PARKING_REQUEST_FORM_STEPS,
+  ParkingFlowStepper,
+} from '@/components/parking/ParkingFlowStepper';
 import { DatePicker } from '@/components/ui/date-picker';
 import {
   Form,
@@ -35,8 +41,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
+import { parkingFlowStep, parkingFlowTransition } from '@/lib/parking/parkingFlowMotion';
 import {
   DATE_PICKER_DISPLAY_FORMAT,
   dateToString,
@@ -45,20 +53,64 @@ import {
 } from '@/utils/format/dates';
 import { toCapitalCase } from '@/utils/text/formatters';
 
+type RequestPhase = 'loading' | 'choose' | 'confirm' | 'manual';
+
 interface ParkingRegistrationFormProps {
   defaultValues?: Partial<ParkingRegistrationValues>;
-  /** Read-only tower/building label shown beside Unit Number, when known for this slot. */
   towerLabel?: string | null;
-  onSubmit: (data: ParkingRegistrationValues) => Promise<void>;
+  linkableBookings?: LinkableParkingBooking[];
+  /** While true, delay stay-chooser vs manual so we don't flash the stepper. */
+  isLinkableLoading?: boolean;
+  onSubmit: (
+    data: ParkingRegistrationValues,
+    linkedPropertyBookingId: string | null
+  ) => Promise<void>;
+}
+
+function clearLinkedFields(form: ReturnType<typeof useForm<ParkingRegistrationValues>>) {
+  form.setValue('guestName', '');
+  form.setValue('email', '');
+  form.setValue('phone', '');
+  form.setValue('unitNumber', '');
+  form.setValue('carPlateNumber', '');
+  form.setValue('carBrandModel', '');
+  form.setValue('carColor', '');
+  form.setValue('vehicleType', undefined as unknown as ParkingRegistrationValues['vehicleType']);
+}
+
+function applyLinkedBooking(
+  form: ReturnType<typeof useForm<ParkingRegistrationValues>>,
+  linked: LinkableParkingBooking
+) {
+  if (linked.guestName) form.setValue('guestName', linked.guestName);
+  if (linked.guestEmail) form.setValue('email', linked.guestEmail);
+  if (linked.guestPhone) {
+    form.setValue('phone', linked.guestPhone.replace(/[^\d]/g, '').slice(0, 11));
+  }
+  if (linked.towerAndUnitNumber) form.setValue('unitNumber', linked.towerAndUnitNumber);
+  if (linked.carPlateNumber) form.setValue('carPlateNumber', linked.carPlateNumber);
+  if (linked.carBrandModel) form.setValue('carBrandModel', linked.carBrandModel);
+  if (linked.carColor) form.setValue('carColor', linked.carColor);
+  // Property stays don't store vehicle type — default car when plate/brand present.
+  if (linked.carPlateNumber || linked.carBrandModel) {
+    form.setValue('vehicleType', 'car');
+  }
 }
 
 export function ParkingRegistrationForm({
   defaultValues,
   towerLabel,
+  linkableBookings = [],
+  isLinkableLoading = false,
   onSubmit,
 }: ParkingRegistrationFormProps) {
+  const reduceMotion = useReducedMotion();
+  const [phase, setPhase] = useState<RequestPhase>(() =>
+    isLinkableLoading ? 'loading' : linkableBookings.length > 0 ? 'choose' : 'manual'
+  );
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [linkedBookingId, setLinkedBookingId] = useState<string | null>(null);
 
   const form = useForm<ParkingRegistrationValues>({
     resolver: zodResolver(parkingRegistrationSchema),
@@ -79,8 +131,71 @@ export function ParkingRegistrationForm({
     mode: 'all',
   });
 
-  const activeStepConfig = PARKING_REGISTRATION_STEPS.find((step) => step.id === currentStep);
   const canProceed = isParkingStepComplete(currentStep, form.getValues());
+  const linkedBooking =
+    linkedBookingId != null
+      ? (linkableBookings.find((booking) => booking.id === linkedBookingId) ?? null)
+      : null;
+
+  useEffect(() => {
+    if (isLinkableLoading) {
+      setPhase((prev) =>
+        prev === 'manual' || prev === 'confirm' || prev === 'choose' ? prev : 'loading'
+      );
+      return;
+    }
+    setPhase((prev) => {
+      if (prev === 'loading') {
+        return linkableBookings.length > 0 ? 'choose' : 'manual';
+      }
+      return prev;
+    });
+  }, [isLinkableLoading, linkableBookings.length]);
+
+  const handleSelectStay = (bookingId: string) => {
+    const linked = linkableBookings.find((booking) => booking.id === bookingId);
+    if (!linked) return;
+    setLinkedBookingId(bookingId);
+    applyLinkedBooking(form, linked);
+
+    const phone = (linked.guestPhone ?? '').replace(/[^\d]/g, '').slice(0, 11);
+    const incomplete =
+      !linked.guestName?.trim() ||
+      !linked.guestEmail?.trim() ||
+      phone.length < 10 ||
+      !linked.towerAndUnitNumber?.trim() ||
+      !linked.carPlateNumber?.trim() ||
+      !linked.carBrandModel?.trim() ||
+      !linked.carColor?.trim() ||
+      !form.getValues('checkInDate') ||
+      !form.getValues('checkOutDate');
+
+    if (incomplete) {
+      setCurrentStep(1);
+      setPhase('manual');
+      return;
+    }
+
+    setPhase('confirm');
+  };
+
+  const handleSelectManual = () => {
+    setLinkedBookingId(null);
+    clearLinkedFields(form);
+    setCurrentStep(1);
+    setPhase('manual');
+  };
+
+  const handleConfirmBack = () => {
+    setLinkedBookingId(null);
+    clearLinkedFields(form);
+    setPhase('choose');
+  };
+
+  const handleEditDetails = () => {
+    setCurrentStep(1);
+    setPhase('manual');
+  };
 
   const handleNextStep = async () => {
     if (!canProceed) {
@@ -92,337 +207,429 @@ export function ParkingRegistrationForm({
   };
 
   const handleBackStep = () => {
+    if (currentStep === 1 && linkableBookings.length > 0) {
+      handleConfirmBack();
+      return;
+    }
     setCurrentStep((step) => clampParkingStep(step - 1) as 1 | 2 | 3);
   };
 
-  const handleFinalSubmit = form.handleSubmit(async (values) => {
-    setIsSubmitting(true);
-    try {
-      await onSubmit(values);
-    } finally {
-      setIsSubmitting(false);
+  const handleFinalSubmit = form.handleSubmit(
+    async (values) => {
+      setIsSubmitting(true);
+      try {
+        await onSubmit(values, linkedBookingId);
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    () => {
+      toast.error('Please complete all required fields before submitting.');
     }
-  });
+  );
+
+  if (phase === 'loading') {
+    return (
+      <div className="space-y-3" aria-busy="true" aria-label="Loading stays">
+        <Skeleton className="h-5 w-28" />
+        <Skeleton className="h-[4.25rem] w-full rounded-xl" />
+        <Skeleton className="h-[4.25rem] w-full rounded-xl" />
+      </div>
+    );
+  }
 
   return (
     <Form {...form}>
       <form onSubmit={(e) => e.preventDefault()} className="space-y-6" noValidate>
-        <GuestFormStepper activeStep={currentStep} steps={PARKING_REGISTRATION_STEPS} />
+        <AnimatePresence mode="wait" initial={false}>
+          {phase === 'choose' ? (
+            <motion.div
+              key="choose"
+              initial={reduceMotion ? false : parkingFlowStep.initial}
+              animate={parkingFlowStep.animate}
+              exit={reduceMotion ? undefined : parkingFlowStep.exit}
+              transition={parkingFlowTransition(reduceMotion, 0.28)}
+            >
+              <ParkingStayChooser
+                bookings={linkableBookings}
+                onSelectStay={handleSelectStay}
+                onSelectManual={handleSelectManual}
+              />
+            </motion.div>
+          ) : null}
 
-        <div className="border-border/80 bg-card space-y-5 rounded-xl border px-4 py-5 shadow-sm sm:px-6 sm:py-6">
-          <header className="border-separator flex items-center gap-3 border-b pb-4">
-            <div className="bg-primary/15 text-primary flex size-10 shrink-0 items-center justify-center rounded-lg">
-              {activeStepConfig && <activeStepConfig.icon className="size-5" aria-hidden />}
-            </div>
-            <div>
-              <h2 className="text-foreground text-base font-semibold sm:text-lg">
-                {activeStepConfig?.title}
-              </h2>
-              <p className="text-muted-foreground text-sm">{activeStepConfig?.hint}</p>
-            </div>
-          </header>
+          {phase === 'confirm' && linkedBooking ? (
+            <motion.div
+              key="confirm"
+              initial={reduceMotion ? false : parkingFlowStep.initial}
+              animate={parkingFlowStep.animate}
+              exit={reduceMotion ? undefined : parkingFlowStep.exit}
+              transition={parkingFlowTransition(reduceMotion, 0.28)}
+            >
+              <ParkingLinkedStayConfirm
+                booking={linkedBooking}
+                form={form}
+                isSubmitting={isSubmitting}
+                onBack={handleConfirmBack}
+                onEditDetails={handleEditDetails}
+                onSubmit={() => void handleFinalSubmit()}
+              />
+            </motion.div>
+          ) : null}
 
-          {currentStep === 1 && (
-            <div className="space-y-4">
-              <FormField
-                control={form.control}
-                name="guestName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Guest Name <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input placeholder={FORM_PLACEHOLDERS.fullName} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+          {phase === 'manual' ? (
+            <motion.div
+              key="manual"
+              initial={reduceMotion ? false : parkingFlowStep.initial}
+              animate={parkingFlowStep.animate}
+              exit={reduceMotion ? undefined : parkingFlowStep.exit}
+              transition={parkingFlowTransition(reduceMotion, 0.28)}
+              className="space-y-6"
+            >
+              <ParkingFlowStepper
+                steps={PARKING_REQUEST_FORM_STEPS}
+                activeIndex={currentStep - 1}
               />
 
-              <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 md:[&>*]:min-w-0">
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem className="min-w-0">
-                      <FormLabel>
-                        Email <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input type="email" placeholder={FORM_PLACEHOLDERS.email} {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem className="min-w-0">
-                      <FormLabel>
-                        Phone Number <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          type="tel"
-                          inputMode="numeric"
-                          placeholder={FORM_PLACEHOLDERS.phone}
-                          {...field}
-                          value={field.value || ''}
-                          onChange={(e) => {
-                            const value = e.target.value.replace(/[^\d]/g, '');
-                            field.onChange(value.slice(0, 11));
-                            form.trigger('phone');
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-          )}
-
-          {currentStep === 2 && (
-            <div className="space-y-4">
-              <div
-                className={
-                  towerLabel
-                    ? 'grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 md:[&>*]:min-w-0'
-                    : undefined
-                }
-              >
-                {towerLabel && (
-                  <FormItem className="min-w-0">
-                    <FormLabel>Tower</FormLabel>
-                    <FormControl>
-                      <Input value={towerLabel} readOnly disabled />
-                    </FormControl>
-                  </FormItem>
-                )}
-
-                <FormField
-                  control={form.control}
-                  name="unitNumber"
-                  render={({ field }) => (
-                    <FormItem className="min-w-0">
-                      <FormLabel>
-                        Unit Number <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input placeholder={FORM_PLACEHOLDERS.unitNumber} {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 md:[&>*]:min-w-0">
-                <FormField
-                  control={form.control}
-                  name="checkInDate"
-                  render={({ field }) => (
-                    <FormItem className="min-w-0">
-                      <FormLabel>
-                        Check-in Date <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <DatePicker
-                          date={field.value ? stringToDate(field.value) : undefined}
-                          rangeEnd={
-                            form.watch('checkOutDate')
-                              ? stringToDate(form.watch('checkOutDate'))
-                              : undefined
-                          }
-                          onSelect={(date) => {
-                            if (!date) return;
-                            const dateStr = dateToString(date);
-                            field.onChange(dateStr);
-                            form.setValue('checkOutDate', getNextDay(dateStr));
-                          }}
-                          disabled={(date) => {
-                            const today = new Date();
-                            today.setHours(0, 0, 0, 0);
-                            return date < today;
-                          }}
-                          minDate={new Date()}
-                          placeholder={DATE_PICKER_DISPLAY_FORMAT}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="checkOutDate"
-                  render={({ field }) => (
-                    <FormItem className="min-w-0">
-                      <FormLabel>
-                        Check-out Date <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <DatePicker
-                          date={field.value ? stringToDate(field.value) : undefined}
-                          rangeEnd={
-                            form.watch('checkInDate')
-                              ? stringToDate(form.watch('checkInDate'))
-                              : undefined
-                          }
-                          onSelect={(date) => {
-                            if (date) field.onChange(dateToString(date));
-                          }}
-                          disabled={(date) => {
-                            const checkInDate = form.watch('checkInDate');
-                            if (checkInDate) {
-                              return date <= stringToDate(checkInDate);
-                            }
-                            const today = new Date();
-                            today.setHours(0, 0, 0, 0);
-                            return date < today;
-                          }}
-                          minDate={
-                            form.watch('checkInDate')
-                              ? stringToDate(getNextDay(form.watch('checkInDate')))
-                              : new Date()
-                          }
-                          placeholder={DATE_PICKER_DISPLAY_FORMAT}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-          )}
-
-          {currentStep === 3 && (
-            <div className="space-y-4">
-              <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 md:[&>*]:min-w-0">
-                <FormField
-                  control={form.control}
-                  name="vehicleType"
-                  render={({ field }) => (
-                    <FormItem className="min-w-0">
-                      <FormLabel>
-                        Vehicle Type <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select vehicle type" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="car">Car</SelectItem>
-                          <SelectItem value="motorcycle">Motorcycle</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="carPlateNumber"
-                  render={({ field }) => (
-                    <FormItem className="min-w-0">
-                      <FormLabel>
-                        Plate Number <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ex. ABC 1234" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 md:[&>*]:min-w-0">
-                <FormField
-                  control={form.control}
-                  name="carBrandModel"
-                  render={({ field }) => (
-                    <FormItem className="min-w-0">
-                      <FormLabel>
-                        Brand/Model <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Ex. Toyota Fortuner"
-                          {...field}
-                          onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="carColor"
-                  render={({ field }) => (
-                    <FormItem className="min-w-0">
-                      <FormLabel>
-                        Color <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Ex. White"
-                          {...field}
-                          onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Additional Notes</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Any special parking requests or notes?"
-                        rows={4}
-                        className="resize-none"
-                        {...field}
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={currentStep}
+                  initial={reduceMotion ? false : parkingFlowStep.initial}
+                  animate={parkingFlowStep.animate}
+                  exit={reduceMotion ? undefined : parkingFlowStep.exit}
+                  transition={parkingFlowTransition(reduceMotion, 0.28)}
+                  className="space-y-5"
+                >
+                  {currentStep === 1 && (
+                    <div className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="guestName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>
+                              Guest name <span className="text-destructive">*</span>
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                className="min-h-[44px]"
+                                placeholder={FORM_PLACEHOLDERS.fullName}
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          )}
-        </div>
 
-        <GuestFormStepNavigation
-          bare
-          currentStep={currentStep}
-          stepCount={PARKING_REGISTRATION_STEP_COUNT}
-          isSubmitting={isSubmitting}
-          canProceed={canProceed}
-          submitReady
-          submitLabel="Submit Parking Request"
-          onBack={handleBackStep}
-          onNext={handleNextStep}
-          onSubmit={() => void handleFinalSubmit()}
-        />
+                      <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 sm:[&>*]:min-w-0">
+                        <FormField
+                          control={form.control}
+                          name="email"
+                          render={({ field }) => (
+                            <FormItem className="min-w-0">
+                              <FormLabel>
+                                Email <span className="text-destructive">*</span>
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  className="min-h-[44px]"
+                                  type="email"
+                                  placeholder={FORM_PLACEHOLDERS.email}
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="phone"
+                          render={({ field }) => (
+                            <FormItem className="min-w-0">
+                              <FormLabel>
+                                Phone <span className="text-destructive">*</span>
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  className="min-h-[44px]"
+                                  type="tel"
+                                  inputMode="numeric"
+                                  placeholder={FORM_PLACEHOLDERS.phone}
+                                  {...field}
+                                  value={field.value || ''}
+                                  onChange={(e) => {
+                                    const value = e.target.value.replace(/[^\d]/g, '');
+                                    field.onChange(value.slice(0, 11));
+                                    form.trigger('phone');
+                                  }}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {currentStep === 2 && (
+                    <div className="space-y-4">
+                      <div
+                        className={
+                          towerLabel
+                            ? 'grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 sm:[&>*]:min-w-0'
+                            : undefined
+                        }
+                      >
+                        {towerLabel ? (
+                          <FormItem className="min-w-0">
+                            <FormLabel>Tower</FormLabel>
+                            <FormControl>
+                              <Input
+                                className="min-h-[44px]"
+                                value={towerLabel}
+                                readOnly
+                                disabled
+                              />
+                            </FormControl>
+                          </FormItem>
+                        ) : null}
+
+                        <FormField
+                          control={form.control}
+                          name="unitNumber"
+                          render={({ field }) => (
+                            <FormItem className="min-w-0">
+                              <FormLabel>
+                                Unit <span className="text-destructive">*</span>
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  className="min-h-[44px]"
+                                  placeholder={FORM_PLACEHOLDERS.unitNumber}
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 sm:[&>*]:min-w-0">
+                        <FormField
+                          control={form.control}
+                          name="checkInDate"
+                          render={({ field }) => (
+                            <FormItem className="min-w-0">
+                              <FormLabel>
+                                Check-in <span className="text-destructive">*</span>
+                              </FormLabel>
+                              <FormControl>
+                                <DatePicker
+                                  date={field.value ? stringToDate(field.value) : undefined}
+                                  rangeEnd={
+                                    form.watch('checkOutDate')
+                                      ? stringToDate(form.watch('checkOutDate'))
+                                      : undefined
+                                  }
+                                  onSelect={(date) => {
+                                    if (!date) return;
+                                    const dateStr = dateToString(date);
+                                    field.onChange(dateStr);
+                                    form.setValue('checkOutDate', getNextDay(dateStr));
+                                  }}
+                                  disabled={(date) => {
+                                    const today = new Date();
+                                    today.setHours(0, 0, 0, 0);
+                                    return date < today;
+                                  }}
+                                  minDate={new Date()}
+                                  placeholder={DATE_PICKER_DISPLAY_FORMAT}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="checkOutDate"
+                          render={({ field }) => (
+                            <FormItem className="min-w-0">
+                              <FormLabel>
+                                Check-out <span className="text-destructive">*</span>
+                              </FormLabel>
+                              <FormControl>
+                                <DatePicker
+                                  date={field.value ? stringToDate(field.value) : undefined}
+                                  rangeEnd={
+                                    form.watch('checkInDate')
+                                      ? stringToDate(form.watch('checkInDate'))
+                                      : undefined
+                                  }
+                                  onSelect={(date) => {
+                                    if (date) field.onChange(dateToString(date));
+                                  }}
+                                  disabled={(date) => {
+                                    const checkInDate = form.watch('checkInDate');
+                                    if (checkInDate) {
+                                      return date <= stringToDate(checkInDate);
+                                    }
+                                    const today = new Date();
+                                    today.setHours(0, 0, 0, 0);
+                                    return date < today;
+                                  }}
+                                  minDate={
+                                    form.watch('checkInDate')
+                                      ? stringToDate(getNextDay(form.watch('checkInDate')))
+                                      : new Date()
+                                  }
+                                  placeholder={DATE_PICKER_DISPLAY_FORMAT}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {currentStep === 3 && (
+                    <div className="space-y-4">
+                      <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 sm:[&>*]:min-w-0">
+                        <FormField
+                          control={form.control}
+                          name="vehicleType"
+                          render={({ field }) => (
+                            <FormItem className="min-w-0">
+                              <FormLabel>
+                                Vehicle type <span className="text-destructive">*</span>
+                              </FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger className="min-h-[44px]">
+                                    <SelectValue placeholder="Select type" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="car">Car</SelectItem>
+                                  <SelectItem value="motorcycle">Motorcycle</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="carPlateNumber"
+                          render={({ field }) => (
+                            <FormItem className="min-w-0">
+                              <FormLabel>
+                                Plate <span className="text-destructive">*</span>
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  className="min-h-[44px]"
+                                  placeholder="Ex. ABC 1234"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 sm:[&>*]:min-w-0">
+                        <FormField
+                          control={form.control}
+                          name="carBrandModel"
+                          render={({ field }) => (
+                            <FormItem className="min-w-0">
+                              <FormLabel>
+                                Brand / model <span className="text-destructive">*</span>
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  className="min-h-[44px]"
+                                  placeholder="Ex. Toyota Fortuner"
+                                  {...field}
+                                  onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="carColor"
+                          render={({ field }) => (
+                            <FormItem className="min-w-0">
+                              <FormLabel>
+                                Color <span className="text-destructive">*</span>
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  className="min-h-[44px]"
+                                  placeholder="Ex. White"
+                                  {...field}
+                                  onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <FormField
+                        control={form.control}
+                        name="notes"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Notes</FormLabel>
+                            <FormControl>
+                              <Textarea
+                                placeholder="Optional parking notes"
+                                rows={3}
+                                className="resize-none"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  )}
+                </motion.div>
+              </AnimatePresence>
+
+              <GuestFormStepNavigation
+                bare
+                currentStep={currentStep}
+                stepCount={PARKING_REGISTRATION_STEP_COUNT}
+                isSubmitting={isSubmitting}
+                canProceed={canProceed}
+                submitReady
+                submitLabel="Submit request"
+                onBack={handleBackStep}
+                onNext={handleNextStep}
+                onSubmit={() => void handleFinalSubmit()}
+              />
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
       </form>
     </Form>
   );

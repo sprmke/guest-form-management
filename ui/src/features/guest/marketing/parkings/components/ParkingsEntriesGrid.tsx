@@ -39,9 +39,9 @@ export function ParkingsEntriesGrid({ entries }: ParkingsEntriesGridProps) {
         {entries.map((entry, idx) => (
           <motion.div
             key={entry.slot.id}
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25, delay: idx * 0.04 }}
+            transition={{ duration: 0.22, delay: Math.min(idx, 6) * 0.03 }}
           >
             <ParkingSlotCard
               slot={entry.slot}

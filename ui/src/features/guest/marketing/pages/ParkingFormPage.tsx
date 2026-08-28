@@ -1,15 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 
-import { Navigate, useLocation, useParams, useSearchParams } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import { toast } from 'sonner';
 
 import { useGuestAuth } from '@/features/guest/auth/context/GuestAuthContext';
 import { formatGuestFooterLabel } from '@/features/guest/form/lib/guestFormBranding';
 import { guestParkingRequestStatusPath } from '@/features/guest/lib/guestPublicPaths';
-import { FormSuccess } from '@/features/guest/marketing/forms/components/FormSuccess';
-import { getFormById } from '@/features/guest/marketing/forms/data/mockForms';
 import { ParkingRegistrationForm } from '@/features/guest/marketing/parkings/components/ParkingRegistrationForm';
+import { useLinkableParkingBookings } from '@/features/guest/marketing/parkings/hooks/useLinkableParkingBookings';
 import { usePublicParkingDetail } from '@/features/guest/marketing/parkings/hooks/usePublicParkingDetail';
 import { useSubmitParkingBookingRequest } from '@/features/guest/marketing/parkings/hooks/useSubmitParkingBookingRequest';
 import { formatParkingLocation } from '@/features/guest/marketing/parkings/lib/formatParkingLocation';
@@ -19,8 +18,8 @@ import { GuestFormBrandHeader } from '@/components/branding/GuestFormBrandHeader
 import { ParkingStaySummary } from '@/components/parking/ParkingStaySummary';
 import { GuestFormPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
 import { MainLayout } from '@/layouts/MainLayout';
-
-const PARKING_REGISTRATION_FORM_ID = 'dev-parking-form';
+import { useFavicon } from '@/lib/favicon';
+import { propertyPublicPageTitle, usePageTitle } from '@/lib/pageTitle';
 
 /** Server error codes/messages mapped to guest-facing copy — anything unmapped falls back to a generic message. */
 const GUEST_FACING_SUBMIT_ERRORS: Record<string, string> = {
@@ -34,14 +33,16 @@ export function ParkingFormPage() {
   const { parkingSlug = '' } = useParams<{ parkingSlug: string }>();
   const [searchParams] = useSearchParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const { status: guestAuthStatus, requireGuestAuth } = useGuestAuth();
   const { data, isLoading, isError } = usePublicParkingDetail(parkingSlug);
-  const form = getFormById(PARKING_REGISTRATION_FORM_ID);
   const submitRequest = useSubmitParkingBookingRequest();
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [submissionId, setSubmissionId] = useState<string | undefined>();
+  const linkableBookingsQuery = useLinkableParkingBookings(guestAuthStatus === 'authenticated');
 
   const homeHref = parkingSlug ? `/parkings/${encodeURIComponent(parkingSlug)}` : '/parkings';
+
+  usePageTitle(data ? propertyPublicPageTitle(data.name, 'Request parking') : undefined);
+  useFavicon(data?.coverImage ?? data?.images[0] ?? undefined);
 
   // Same entry gate as property `/messages` and `/form`: require sign-in before the form is usable.
   useEffect(() => {
@@ -72,7 +73,7 @@ export function ParkingFormPage() {
     );
   }
 
-  if (isError || !data || !form) {
+  if (isError || !data) {
     return <Navigate to="/parkings" replace />;
   }
 
@@ -80,8 +81,12 @@ export function ParkingFormPage() {
   const propertyLocation = [data.residenceName, parkingLocation].filter(Boolean).join(' · ');
   const checkInDate = searchParams.get('checkInDate') ?? '';
   const checkOutDate = searchParams.get('checkOutDate') ?? '';
+  const directLinkToken = searchParams.get('dl') ?? '';
 
-  const handleSubmit = async (values: ParkingRegistrationValues) => {
+  const handleSubmit = async (
+    values: ParkingRegistrationValues,
+    linkedPropertyBookingId: string | null
+  ) => {
     const vehicleType =
       values.vehicleType === 'motorcycle' ? ('motorcycle' as const) : ('car' as const);
 
@@ -99,9 +104,11 @@ export function ParkingFormPage() {
         carBrandModel: values.carBrandModel,
         carColor: values.carColor,
         notes: values.notes,
+        linkedPropertyBookingId: linkedPropertyBookingId ?? undefined,
+        directLinkToken: directLinkToken || undefined,
       });
-      setSubmissionId(result.bookingId);
-      setIsSubmitted(true);
+      // Same as Reserve modal: skip the false "done" screen — status page is the real next step.
+      navigate(guestParkingRequestStatusPath(result.bookingId), { replace: true });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Could not submit parking request';
       toast.error(GUEST_FACING_SUBMIT_ERRORS[message] ?? 'Could not submit parking request');
@@ -118,38 +125,30 @@ export function ParkingFormPage() {
       propertyName={data.name}
       contentMaxWidth="max-w-2xl"
     >
-      <div className="relative space-y-6 p-4 sm:p-6 lg:p-8">
+      <div className="relative space-y-5 p-4 sm:p-6 lg:p-8">
         <GuestFormBrandHeader
-          title="Parking Registration"
+          title="Request parking"
           logoSrc={data.coverImage ?? data.images[0] ?? ''}
           logoAlt={data.name}
           eyebrow={propertyLocation || data.orgName}
         />
 
-        {checkInDate && checkOutDate && (
+        {checkInDate && checkOutDate ? (
           <ParkingStaySummary
             checkIn={checkInDate}
             checkOut={checkOutDate}
             organizationName={data.orgName}
+            compact
           />
-        )}
+        ) : null}
 
-        {isSubmitted ? (
-          <FormSuccess
-            message={form.settings.successMessage}
-            formName={form.name}
-            submissionId={submissionId}
-            propertyId={parkingSlug}
-            propertyName={data.name}
-            statusUrl={submissionId ? guestParkingRequestStatusPath(submissionId) : undefined}
-          />
-        ) : (
-          <ParkingRegistrationForm
-            defaultValues={{ checkInDate, checkOutDate }}
-            towerLabel={data.tower}
-            onSubmit={handleSubmit}
-          />
-        )}
+        <ParkingRegistrationForm
+          defaultValues={{ checkInDate, checkOutDate }}
+          towerLabel={data.tower}
+          linkableBookings={linkableBookingsQuery.data ?? []}
+          isLinkableLoading={linkableBookingsQuery.isPending}
+          onSubmit={handleSubmit}
+        />
       </div>
     </MainLayout>
   );

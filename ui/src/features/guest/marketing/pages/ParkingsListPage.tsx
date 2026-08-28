@@ -67,7 +67,7 @@ export function ParkingsListPage() {
   const placeGroups = usePublicPlaceGroups<PublicParkingListItem>('parkings', groupedBrowse);
   const reduceMotion = useReducedMotion();
 
-  const [filtersOpen, setFiltersOpen] = useState(true);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   const patchQuery = useCallback(

@@ -5,20 +5,39 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
 export type ParkingBookingStatusValue =
   | 'PENDING_HOST_ACCEPTANCE'
+  | 'PENDING_PAYMENT'
   | 'PENDING_REVIEW'
   | 'READY_FOR_CHECKIN'
   | 'COMPLETED'
   | 'CANCELLED'
   | 'NO_HOST_AVAILABLE';
 
+export type ParkingHostContact = { name: string; email: string; phone: string | null };
+
 export type ParkingBookingStatus = {
   status: ParkingBookingStatusValue;
   checkInDate: string;
   checkOutDate: string;
   expiresAt: string | null;
+  /** Which ranked-dispatch batch is currently active (1 = first/cheapest). */
+  batchNumber: number;
   parkingLabel: string | null;
+  parkingSlug: string | null;
+  parkingName: string | null;
+  residenceName: string | null;
+  coverImage: string | null;
+  brandColor: string;
+  logoUrl: string | null;
   endorsementNote: string | null;
   organizationName: string | null;
+  /** Phase 5 — set once the auto/manual endorsement email send succeeds. */
+  endorsementSentAt: string | null;
+  endorsementSendError: string | null;
+  /** Exact HTML that was sent, only populated once endorsementSentAt is set. */
+  endorsementEmailSnapshot: string | null;
+  /** Guest-facing host contact reveal — null until endorsementSentAt is set. */
+  hostContact: ParkingHostContact | null;
+  supportEscalationPhone: string | null;
 };
 
 const TERMINAL_STATUSES: ReadonlySet<string> = new Set([

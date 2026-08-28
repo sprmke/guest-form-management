@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Navigate, useParams, useSearchParams } from 'react-router-dom';
 
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 
 import { useGuestAuth } from '@/features/guest/auth/context/GuestAuthContext';
 import { ContactHostSheet } from '@/features/guest/chat/components/ContactHostSheet';
@@ -26,6 +26,7 @@ import { useMarketingBrandColor } from '@/features/guest/marketing/shared/contex
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
+import { parkingFlowTransition } from '@/lib/parking/parkingFlowMotion';
 import { formatDateToYYYYMMDD } from '@/utils/format/dates';
 
 function formatRate(amount: number): string {
@@ -42,6 +43,7 @@ function buildGalleryImages(coverImage: string | null, images: string[]): string
 }
 
 export function ParkingDetailPage() {
+  const reduceMotion = useReducedMotion();
   const { parkingSlug = '' } = useParams<{ parkingSlug: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const { data, isLoading, isError } = usePublicParkingDetail(parkingSlug);
@@ -248,7 +250,12 @@ export function ParkingDetailPage() {
 
         <div className="@xl:px-6 @5xl:px-8 container mx-auto px-4 py-8">
           <div className="@5xl:grid-cols-3 @5xl:gap-12 grid grid-cols-1 gap-8">
-            <div className="@5xl:col-span-2 min-w-0 space-y-10">
+            <motion.div
+              initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={parkingFlowTransition(reduceMotion)}
+              className="@5xl:col-span-2 min-w-0 space-y-8"
+            >
               <ParkingOverview
                 name={data.name}
                 parkingType={data.parkingType}
@@ -291,7 +298,7 @@ export function ParkingDetailPage() {
                   />
                 </>
               ) : null}
-            </div>
+            </motion.div>
 
             <div className="@5xl:block hidden min-w-0">
               <BookingCard
@@ -325,9 +332,10 @@ export function ParkingDetailPage() {
         />
 
         <motion.div
-          initial={{ y: 100 }}
-          animate={{ y: 0 }}
-          className="border-border bg-background/95 @5xl:hidden fixed inset-x-0 bottom-0 z-40 border-t p-4 backdrop-blur-lg"
+          initial={{ y: 24, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          className="border-border bg-background/95 @5xl:hidden fixed inset-x-0 bottom-0 z-40 border-t p-4 backdrop-blur-md"
         >
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">

@@ -1,10 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 
-import { Car } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { useGuestAuth } from '@/features/guest/auth/context/GuestAuthContext';
 import { guestParkingRequestStatusPath } from '@/features/guest/lib/guestPublicPaths';
 import { ParkingRegistrationForm } from '@/features/guest/marketing/parkings/components/ParkingRegistrationForm';
+import { useLinkableParkingBookings } from '@/features/guest/marketing/parkings/hooks/useLinkableParkingBookings';
 import { useSubmitParkingBookingRequest } from '@/features/guest/marketing/parkings/hooks/useSubmitParkingBookingRequest';
 import type { ParkingRegistrationValues } from '@/features/guest/marketing/parkings/lib/parkingRegistrationSchema';
 import { GuestDialogShell } from '@/features/guest/marketing/shared/components/GuestDialogShell';
@@ -40,12 +41,18 @@ export function ParkingBookingFormModal({
 }: ParkingBookingFormModalProps) {
   const navigate = useNavigate();
   const submitRequest = useSubmitParkingBookingRequest();
+  const { status: guestAuthStatus } = useGuestAuth();
+  const isAuthenticated = guestAuthStatus === 'authenticated';
+  const linkableBookingsQuery = useLinkableParkingBookings(open && isAuthenticated);
 
   const checkInDate = checkIn ? dateToString(checkIn) : '';
   const checkOutDate = checkOut ? dateToString(checkOut) : '';
   const formKey = `${parkingId}:${checkInDate}:${checkOutDate}`;
 
-  const handleSubmit = async (values: ParkingRegistrationValues) => {
+  const handleSubmit = async (
+    values: ParkingRegistrationValues,
+    linkedPropertyBookingId: string | null
+  ) => {
     const vehicleType =
       values.vehicleType === 'motorcycle' ? ('motorcycle' as const) : ('car' as const);
 
@@ -63,6 +70,7 @@ export function ParkingBookingFormModal({
         carBrandModel: values.carBrandModel,
         carColor: values.carColor,
         notes: values.notes,
+        linkedPropertyBookingId: linkedPropertyBookingId ?? undefined,
       });
       onOpenChange(false);
       navigate(guestParkingRequestStatusPath(result.bookingId));
@@ -77,14 +85,9 @@ export function ParkingBookingFormModal({
       open={open}
       onOpenChange={onOpenChange}
       title={
-        <div className="flex items-center gap-3">
-          <div className="bg-primary/10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full">
-            <Car className="text-primary h-3.5 w-3.5" />
-          </div>
-          <DialogTitle className="text-foreground text-base font-semibold">
-            Parking Registration
-          </DialogTitle>
-        </div>
+        <DialogTitle className="text-foreground text-base font-semibold">
+          Request parking
+        </DialogTitle>
       }
       sizeClassName="max-w-[min(calc(100vw-1.5rem),36rem)] sm:max-w-[min(90vw,40rem)]"
       heightClassName="max-h-[min(92dvh,48rem)]"
@@ -95,6 +98,8 @@ export function ParkingBookingFormModal({
           key={formKey}
           defaultValues={{ checkInDate, checkOutDate }}
           towerLabel={towerLabel}
+          linkableBookings={linkableBookingsQuery.data ?? []}
+          isLinkableLoading={isAuthenticated && linkableBookingsQuery.isPending}
           onSubmit={handleSubmit}
         />
       ) : null}

@@ -1,7 +1,8 @@
 import { useMutation } from '@tanstack/react-query';
 
+import { guestEdgeAuthHeaders } from '@/features/guest/auth/lib/guestEdgeAuthHeaders';
+
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
 export type SubmitParkingBookingRequestInput = {
   parkingId: string;
@@ -16,6 +17,10 @@ export type SubmitParkingBookingRequestInput = {
   carBrandModel: string;
   carColor: string;
   notes?: string;
+  /** Phase 7 — links this marketplace booking back to the property stay it's for. */
+  linkedPropertyBookingId?: string;
+  /** Phase 8 — the ?dl= token from a host's shared direct-booking link, if any. */
+  directLinkToken?: string;
 };
 
 export type SubmitParkingBookingRequestResult = {
@@ -27,13 +32,10 @@ export type SubmitParkingBookingRequestResult = {
 async function submitParkingBookingRequest(
   input: SubmitParkingBookingRequestInput
 ): Promise<SubmitParkingBookingRequestResult> {
+  const authHeaders = await guestEdgeAuthHeaders();
   const res = await fetch(`${FUNCTIONS_URL}/submit-parking-booking-request`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-    },
+    headers: { 'Content-Type': 'application/json', ...authHeaders },
     body: JSON.stringify(input),
   });
   const json = (await res.json()) as {
