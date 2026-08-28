@@ -4,6 +4,20 @@
 -- ============================================================================
 -- 1. Global settings: feature allowlist, default quotas, safer default state
 -- ============================================================================
+-- Fresh `db reset` runs this file (20260814) before ai_platform_usage (20261009).
+-- Bootstrap the singleton table here so ALTER/INSERT below succeed; later migration no-ops via IF NOT EXISTS.
+
+CREATE TABLE IF NOT EXISTS public.ai_platform_global_settings (
+  id INT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  enforce_quotas BOOLEAN NOT NULL DEFAULT TRUE,
+  allowed_features TEXT[] NOT NULL DEFAULT '{}',
+  default_daily_call_limit INT NOT NULL DEFAULT 200,
+  default_monthly_call_limit INT NOT NULL DEFAULT 5000,
+  default_daily_cost_usd_limit NUMERIC(12, 6) NOT NULL DEFAULT 10,
+  updated_by UUID REFERENCES auth.users (id) ON DELETE SET NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
 ALTER TABLE public.ai_platform_global_settings
   ADD COLUMN IF NOT EXISTS allowed_features TEXT[] NOT NULL DEFAULT '{}',
@@ -238,6 +252,10 @@ DO $$
 DECLARE
   v_old_enabled BOOLEAN;
 BEGIN
+  IF to_regclass('public.voice_receptionist_global_settings') IS NULL THEN
+    RETURN;
+  END IF;
+
   SELECT enabled INTO v_old_enabled
   FROM public.voice_receptionist_global_settings
   WHERE id = 1;
