@@ -1,13 +1,23 @@
 /**
- * Custom Pages — per-property template selection (v1: stay_guide only).
+ * Custom Pages — per-property template selection (stay_guide + property_showcase).
  * Rows are lazily created on first read, mirroring property_template_contents's default-fallback pattern.
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-export type CustomPageType = 'stay_guide';
+export type CustomPageType = 'stay_guide' | 'property_showcase';
 
 export const STAY_GUIDE_DEFAULT_TEMPLATE_KEY = 'stay-guide-warm-arrival';
+
+export const SHOWCASE_TEMPLATE_KEYS = [
+  'showcase-aurora',
+  'showcase-monolith',
+  'showcase-editorial',
+] as const;
+
+export type ShowcaseTemplateKey = (typeof SHOWCASE_TEMPLATE_KEYS)[number];
+
+export const SHOWCASE_DEFAULT_TEMPLATE_KEY: ShowcaseTemplateKey = 'showcase-aurora';
 
 export type CustomPageRow = {
   id: string;
@@ -18,11 +28,24 @@ export type CustomPageRow = {
   updatedAt: string;
 };
 
+export function isShowcaseTemplateKey(value: unknown): value is ShowcaseTemplateKey {
+  return typeof value === 'string' && (SHOWCASE_TEMPLATE_KEYS as readonly string[]).includes(value);
+}
+
 function defaultTemplateKeyFor(pageType: CustomPageType): string {
   switch (pageType) {
     case 'stay_guide':
       return STAY_GUIDE_DEFAULT_TEMPLATE_KEY;
+    case 'property_showcase':
+      return SHOWCASE_DEFAULT_TEMPLATE_KEY;
   }
+}
+
+function normalizeTemplateKey(pageType: CustomPageType, templateKey: string): string {
+  if (pageType === 'property_showcase') {
+    return isShowcaseTemplateKey(templateKey) ? templateKey : SHOWCASE_DEFAULT_TEMPLATE_KEY;
+  }
+  return templateKey.trim() || STAY_GUIDE_DEFAULT_TEMPLATE_KEY;
 }
 
 function supabaseAdmin() {
@@ -48,6 +71,11 @@ function toCustomPageRow(row: {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+export function parseCustomPageType(value: unknown): CustomPageType | null {
+  if (value === 'stay_guide' || value === 'property_showcase') return value;
+  return null;
 }
 
 /** Get the property's custom_pages row for a page type, creating it with the default template on first read. */
@@ -82,7 +110,6 @@ export async function getOrCreateCustomPage(
     .single();
 
   if (insertError) {
-    // Concurrent lazy-create — re-read instead of failing.
     const { data: retried, error: retryError } = await supabase
       .from('custom_pages')
       .select('*')
@@ -98,6 +125,55 @@ export async function getOrCreateCustomPage(
   }
 
   return toCustomPageRow(created);
+}
+
+export async function updateCustomPageTemplate(
+  propertyId: string,
+  pageType: CustomPageType,
+  templateKey: string
+): Promise<CustomPageRow> {
+  const normalized = normalizeTemplateKey(pageType, templateKey);
+  const supabase = supabaseAdmin();
+  const now = new Date().toISOString();
+
+  await getOrCreateCustomPage(propertyId, pageType);
+
+  const { data, error } = await supabase
+    .from('custom_pages')
+    .update({ template_key: normalized, updated_at: now })
+    .eq('property_id', propertyId)
+    .eq('page_type', pageType)
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    console.error('[customPages] updateCustomPageTemplate:', error);
+    throw new Error('Failed to update custom page template');
+  }
+
+  return toCustomPageRow(data);
+}
+
+/** Guest read — never inserts. Missing row → default template key. */
+export async function getCustomPageTemplateOrDefault(
+  propertyId: string,
+  pageType: CustomPageType
+): Promise<string> {
+  const supabase = supabaseAdmin();
+  const { data, error } = await supabase
+    .from('custom_pages')
+    .select('template_key')
+    .eq('property_id', propertyId)
+    .eq('page_type', pageType)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[customPages] getCustomPageTemplateOrDefault:', error);
+    return defaultTemplateKeyFor(pageType);
+  }
+
+  if (!data?.template_key) return defaultTemplateKeyFor(pageType);
+  return normalizeTemplateKey(pageType, data.template_key);
 }
 
 /** Thin wrapper for the stay guide render path — just the template key. */

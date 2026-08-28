@@ -5,7 +5,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-export type PublicPageType = 'stay_guide' | 'property_landing';
+export type PublicPageType = 'stay_guide' | 'property_landing' | 'property_showcase';
 
 export type StayGuideChapterId = 'getting-in' | 'make-yourself-at-home' | 'before-you-go';
 
@@ -42,11 +42,56 @@ export type PropertyLandingConfig = {
   sections: PropertyLandingSectionConfig[];
 };
 
+export type PropertyShowcaseSectionId =
+  | 'hero'
+  | 'gallery'
+  | 'about'
+  | 'amenities'
+  | 'location'
+  | 'testimonials'
+  | 'highlights'
+  | 'host'
+  | 'cta';
+
+export type PropertyShowcaseSectionConfig = {
+  id: PropertyShowcaseSectionId;
+  visible: boolean;
+  order: number;
+  columns?: number;
+  copy?: { heading?: string; subheading?: string; body?: string };
+  imageSlots?: string[];
+  ctaLabel?: string;
+  ctaTarget?: string;
+};
+
+export type PropertyShowcaseConfig = {
+  version: 1;
+  published: boolean;
+  palette: {
+    mode: 'light' | 'dark' | 'warm';
+    accent: 'brand' | 'custom';
+    customAccent: string | null;
+    overlay: 'none' | 'soft' | 'strong';
+  };
+  typography: {
+    displayFont: 'jakarta' | 'outfit' | 'instrument' | 'cormorant' | 'fraunces';
+    scale: 'sm' | 'md' | 'lg';
+  };
+  motion: {
+    intensity: 'subtle' | 'standard' | 'bold';
+    parallax: boolean;
+    canvas: boolean;
+  };
+  sections: PropertyShowcaseSectionConfig[];
+};
+
+export type PublicPageConfig = StayGuideConfig | PropertyLandingConfig | PropertyShowcaseConfig;
+
 export type PublicPageConfigRow = {
   id: string;
   propertyId: string;
   pageType: PublicPageType;
-  config: StayGuideConfig | PropertyLandingConfig;
+  config: PublicPageConfig;
   createdAt: string;
   updatedAt: string;
 };
@@ -65,6 +110,20 @@ const PROPERTY_LANDING_SECTION_IDS: PropertyLandingSectionId[] = [
   'rules',
   'reviews',
 ];
+
+const PROPERTY_SHOWCASE_SECTION_IDS: PropertyShowcaseSectionId[] = [
+  'hero',
+  'gallery',
+  'about',
+  'amenities',
+  'highlights',
+  'location',
+  'testimonials',
+  'host',
+  'cta',
+];
+
+const SHOWCASE_REQUIRED_VISIBLE: ReadonlySet<PropertyShowcaseSectionId> = new Set(['hero', 'cta']);
 
 function supabaseAdmin() {
   return createClient(
@@ -102,8 +161,37 @@ export function defaultPropertyLandingConfig(): PropertyLandingConfig {
   };
 }
 
-function defaultConfigFor(pageType: PublicPageType): StayGuideConfig | PropertyLandingConfig {
-  return pageType === 'stay_guide' ? defaultStayGuideConfig() : defaultPropertyLandingConfig();
+export function defaultPropertyShowcaseConfig(): PropertyShowcaseConfig {
+  return {
+    version: 1,
+    published: false,
+    palette: {
+      mode: 'light',
+      accent: 'brand',
+      customAccent: null,
+      overlay: 'soft',
+    },
+    typography: {
+      displayFont: 'jakarta',
+      scale: 'md',
+    },
+    motion: {
+      intensity: 'standard',
+      parallax: true,
+      canvas: true,
+    },
+    sections: PROPERTY_SHOWCASE_SECTION_IDS.map((id, order) => ({
+      id,
+      visible: true,
+      order,
+    })),
+  };
+}
+
+function defaultConfigFor(pageType: PublicPageType): PublicPageConfig {
+  if (pageType === 'stay_guide') return defaultStayGuideConfig();
+  if (pageType === 'property_landing') return defaultPropertyLandingConfig();
+  return defaultPropertyShowcaseConfig();
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -224,17 +312,157 @@ export function normalizePropertyLandingConfig(raw: unknown): PropertyLandingCon
   return { version: 1, sections };
 }
 
+function readOptionalString(value: unknown, maxLen = 500): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  return trimmed.slice(0, maxLen);
+}
+
+function normalizeShowcaseCopy(raw: unknown): PropertyShowcaseSectionConfig['copy'] | undefined {
+  if (!isRecord(raw)) return undefined;
+  const heading = readOptionalString(raw.heading, 120);
+  const subheading = readOptionalString(raw.subheading, 200);
+  const body = readOptionalString(raw.body, 2000);
+  if (!heading && !subheading && !body) return undefined;
+  return { heading, subheading, body };
+}
+
+function normalizeShowcaseImageSlots(raw: unknown): string[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const slots = raw
+    .filter((entry): entry is string => typeof entry === 'string')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .slice(0, 12);
+  return slots.length > 0 ? slots : undefined;
+}
+
+export function normalizePropertyShowcaseConfig(raw: unknown): PropertyShowcaseConfig {
+  const base = defaultPropertyShowcaseConfig();
+  if (!isRecord(raw)) return base;
+
+  const sectionById = new Map<PropertyShowcaseSectionId, PropertyShowcaseSectionConfig>();
+  for (const section of base.sections) {
+    sectionById.set(section.id, { ...section });
+  }
+
+  if (Array.isArray(raw.sections)) {
+    for (const entry of raw.sections) {
+      if (!isRecord(entry)) continue;
+      const rawId = entry.id;
+      const id = rawId === 'houseRules' ? 'host' : rawId;
+      if (
+        typeof id !== 'string' ||
+        !PROPERTY_SHOWCASE_SECTION_IDS.includes(id as PropertyShowcaseSectionId)
+      ) {
+        continue;
+      }
+      const sectionId = id as PropertyShowcaseSectionId;
+      const existing = sectionById.get(sectionId)!;
+      const columns =
+        typeof entry.columns === 'number' && Number.isFinite(entry.columns)
+          ? Math.min(4, Math.max(1, Math.round(entry.columns)))
+          : existing.columns;
+      sectionById.set(sectionId, {
+        id: sectionId,
+        visible: typeof entry.visible === 'boolean' ? entry.visible : existing.visible,
+        order:
+          typeof entry.order === 'number' && Number.isFinite(entry.order)
+            ? entry.order
+            : existing.order,
+        columns,
+        copy: normalizeShowcaseCopy(entry.copy) ?? existing.copy,
+        imageSlots: normalizeShowcaseImageSlots(entry.imageSlots) ?? existing.imageSlots,
+        ctaLabel: readOptionalString(entry.ctaLabel, 60) ?? existing.ctaLabel,
+        ctaTarget: readOptionalString(entry.ctaTarget, 200) ?? existing.ctaTarget,
+      });
+    }
+  }
+
+  const ordered = [...sectionById.values()].sort(
+    (a, b) =>
+      a.order - b.order ||
+      PROPERTY_SHOWCASE_SECTION_IDS.indexOf(a.id) - PROPERTY_SHOWCASE_SECTION_IDS.indexOf(b.id)
+  );
+  ordered.forEach((section, index) => {
+    section.order = index;
+    if (SHOWCASE_REQUIRED_VISIBLE.has(section.id)) {
+      section.visible = true;
+    }
+  });
+
+  const paletteRaw = isRecord(raw.palette) ? raw.palette : {};
+  const typographyRaw = isRecord(raw.typography) ? raw.typography : {};
+  const motionRaw = isRecord(raw.motion) ? raw.motion : {};
+
+  const mode =
+    paletteRaw.mode === 'dark' || paletteRaw.mode === 'warm' || paletteRaw.mode === 'light'
+      ? paletteRaw.mode
+      : base.palette.mode;
+  const accent =
+    paletteRaw.accent === 'custom' || paletteRaw.accent === 'brand'
+      ? paletteRaw.accent
+      : base.palette.accent;
+  const overlay =
+    paletteRaw.overlay === 'none' ||
+    paletteRaw.overlay === 'soft' ||
+    paletteRaw.overlay === 'strong'
+      ? paletteRaw.overlay
+      : base.palette.overlay;
+
+  const displayFont =
+    typographyRaw.displayFont === 'outfit' ||
+    typographyRaw.displayFont === 'instrument' ||
+    typographyRaw.displayFont === 'cormorant' ||
+    typographyRaw.displayFont === 'fraunces' ||
+    typographyRaw.displayFont === 'jakarta'
+      ? typographyRaw.displayFont
+      : base.typography.displayFont;
+  const scale =
+    typographyRaw.scale === 'sm' || typographyRaw.scale === 'md' || typographyRaw.scale === 'lg'
+      ? typographyRaw.scale
+      : base.typography.scale;
+
+  const intensity =
+    motionRaw.intensity === 'subtle' ||
+    motionRaw.intensity === 'standard' ||
+    motionRaw.intensity === 'bold'
+      ? motionRaw.intensity
+      : base.motion.intensity;
+
+  return {
+    version: 1,
+    published: typeof raw.published === 'boolean' ? raw.published : base.published,
+    palette: {
+      mode,
+      accent,
+      customAccent: normalizeAccentColor(paletteRaw.customAccent),
+      overlay,
+    },
+    typography: { displayFont, scale },
+    motion: {
+      intensity,
+      parallax: typeof motionRaw.parallax === 'boolean' ? motionRaw.parallax : base.motion.parallax,
+      canvas: typeof motionRaw.canvas === 'boolean' ? motionRaw.canvas : base.motion.canvas,
+    },
+    sections: ordered,
+  };
+}
+
 export function normalizePublicPageConfig(
   pageType: PublicPageType,
   raw: unknown
-): StayGuideConfig | PropertyLandingConfig {
-  return pageType === 'stay_guide'
-    ? normalizeStayGuideConfig(raw)
-    : normalizePropertyLandingConfig(raw);
+): PublicPageConfig {
+  if (pageType === 'stay_guide') return normalizeStayGuideConfig(raw);
+  if (pageType === 'property_landing') return normalizePropertyLandingConfig(raw);
+  return normalizePropertyShowcaseConfig(raw);
 }
 
 export function parsePublicPageType(value: unknown): PublicPageType | null {
-  if (value === 'stay_guide' || value === 'property_landing') return value;
+  if (value === 'stay_guide' || value === 'property_landing' || value === 'property_showcase') {
+    return value;
+  }
   return null;
 }
 
@@ -263,7 +491,7 @@ function toRow(
 export async function getPublicPageConfigOrDefault(
   propertyId: string,
   pageType: PublicPageType
-): Promise<StayGuideConfig | PropertyLandingConfig> {
+): Promise<PublicPageConfig> {
   const supabase = supabaseAdmin();
   const { data, error } = await supabase
     .from('public_page_configs')
