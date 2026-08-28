@@ -33,10 +33,16 @@ function formatTicketDate(iso: string): string {
   });
 }
 
-export function TicketsWorkspacePage() {
+type TicketsWorkspacePageProps = {
+  /** When set (e.g. `/account`), skip admin Help & Support base-path resolution. */
+  basePathOverride?: string;
+};
+
+export function TicketsWorkspacePage({ basePathOverride }: TicketsWorkspacePageProps = {}) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const basePath = useHelpSupportBasePath();
+  const adminBasePath = useHelpSupportBasePath();
+  const basePath = basePathOverride ?? adminBasePath;
   const isMobile = useIsBelowLg();
   const splat = useParams()['*'] ?? '';
   const isNew = splat === 'new';

@@ -83,6 +83,7 @@ import { useOrgSettings } from '@/features/dashboard/org/hooks/useOrgSettings';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
+import { useMarketingPermissions } from '@/features/dashboard/marketing/hooks/useMarketingPermissions';
 
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -568,11 +569,13 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
     };
   }, [selectedId, format]);
 
+  const { canEditContent, canPublish } = useMarketingPermissions();
   const { canUse: canUseMarketingStudio, isLoading: marketingStudioLoading } =
     useFeatureGate('marketingStudio');
   const { open: openUpgradeModal } = useUpgradeModal();
 
   const handleDownload = useCallback(async () => {
+    if (!canEditContent) return;
     if (!canUseMarketingStudio) {
       if (!marketingStudioLoading) openUpgradeModal('marketingStudio');
       return;
@@ -599,6 +602,7 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
       setExporting(false);
     }
   }, [
+    canEditContent,
     property.slug,
     selectedTemplate,
     canUseMarketingStudio,
@@ -607,6 +611,7 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
   ]);
 
   const handlePublish = useCallback(async () => {
+    if (!canPublish) return;
     if (!canUseMarketingStudio) {
       if (!marketingStudioLoading) openUpgradeModal('marketingStudio');
       return;
@@ -628,6 +633,7 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
     format,
     onPublish,
     selectedTemplate,
+    canPublish,
     canUseMarketingStudio,
     marketingStudioLoading,
     openUpgradeModal,
@@ -642,20 +648,22 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
     () => (
       <>
         <MarketingAutoSaveStatus status={autoSaveStatus} errorMessage={autoSaveError} />
-        <Button
-          variant="outline"
-          className="min-h-[44px] gap-2"
-          disabled={!storeReady || exporting || loadingTemplate}
-          onClick={() => void handleDownload()}
-        >
-          {exporting ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden />
-          ) : (
-            <Download className="size-4" aria-hidden />
-          )}
-          Download PNG
-        </Button>
-        {onPublish ? (
+        {canEditContent ? (
+          <Button
+            variant="outline"
+            className="min-h-[44px] gap-2"
+            disabled={!storeReady || exporting || loadingTemplate}
+            onClick={() => void handleDownload()}
+          >
+            {exporting ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+            ) : (
+              <Download className="size-4" aria-hidden />
+            )}
+            Download PNG
+          </Button>
+        ) : null}
+        {onPublish && canPublish ? (
           <Button
             className="min-h-[44px] gap-2"
             disabled={!storeReady || exporting || loadingTemplate}
@@ -678,6 +686,8 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
       exporting,
       loadingTemplate,
       onPublish,
+      canEditContent,
+      canPublish,
       handleDownload,
       handlePublish,
     ]

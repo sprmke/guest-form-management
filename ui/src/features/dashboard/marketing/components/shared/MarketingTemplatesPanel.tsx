@@ -40,6 +40,7 @@ import {
 import type { VideoFormat } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { TierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
+import { useMarketingPermissions } from '@/features/dashboard/marketing/hooks/useMarketingPermissions';
 
 import {
   AlertDialog,
@@ -148,6 +149,7 @@ export function MarketingTemplatesPanel({
   isThumbnailLoading: isThumbnailLoadingProp,
 }: Props) {
   const catalog = useMarketingCatalog(tab);
+  const { canGenerate } = useMarketingPermissions();
   const propertyId = usePropertyIdParam();
   const queryClient = useQueryClient();
   const saveTemplate = useSaveMarketingTemplate();
@@ -500,7 +502,7 @@ export function MarketingTemplatesPanel({
   return (
     <>
       <div className="space-y-4">
-        {onOpenAiGenerate ? (
+        {onOpenAiGenerate && canGenerate ? (
           <TierBadgeAnchor feature="aiMarketingGeneration" className="w-full">
             <Button
               type="button"

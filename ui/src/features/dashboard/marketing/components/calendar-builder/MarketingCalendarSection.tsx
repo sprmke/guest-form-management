@@ -4,6 +4,7 @@ import { CalendarBuilder } from '@/features/dashboard/marketing/components/calen
 import { useCalendarExport } from '@/features/dashboard/marketing/components/calendar-builder/hooks/useCalendarExport';
 import { useCalendarBuilderStore } from '@/features/dashboard/marketing/components/calendar-builder/stores/calendarBuilderStore';
 import { useMarketingBookedDates } from '@/features/dashboard/marketing/hooks/useMarketingBookedDates';
+import { useMarketingPermissions } from '@/features/dashboard/marketing/hooks/useMarketingPermissions';
 import { bookedDatesToPreviewBookings } from '@/features/dashboard/marketing/lib/marketingBookedDates';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
@@ -20,6 +21,7 @@ export function MarketingCalendarSection({ onPublish }: Props) {
   const previewRef = useRef<HTMLDivElement>(null);
   const previewMonth = useCalendarBuilderStore((s) => s.previewMonth);
   const { data: bookedDates, isLoading } = useMarketingBookedDates();
+  const { canEditContent, canPublish } = useMarketingPermissions();
   const { canUse: canUseMarketingStudio, isLoading: marketingStudioLoading } =
     useFeatureGate('marketingStudio');
   const { open: openUpgradeModal } = useUpgradeModal();
@@ -36,6 +38,7 @@ export function MarketingCalendarSection({ onPublish }: Props) {
   } = useCalendarExport(previewRef, property.name);
 
   const handleDownload = async () => {
+    if (!canEditContent) return;
     if (!canUseMarketingStudio) {
       if (!marketingStudioLoading) openUpgradeModal('marketingStudio');
       return;
@@ -44,6 +47,7 @@ export function MarketingCalendarSection({ onPublish }: Props) {
   };
 
   const handlePublish = async () => {
+    if (!canPublish) return;
     if (!canUseMarketingStudio) {
       if (!marketingStudioLoading) openUpgradeModal('marketingStudio');
       return;
@@ -65,8 +69,8 @@ export function MarketingCalendarSection({ onPublish }: Props) {
         propertySlug={property.slug}
         bookings={bookings}
         exportContainerRef={previewRef}
-        onExport={() => void handleDownload()}
-        onPublish={onPublish ? () => void handlePublish() : undefined}
+        onExport={canEditContent ? () => void handleDownload() : undefined}
+        onPublish={canPublish && onPublish ? () => void handlePublish() : undefined}
         isExporting={isExporting}
       />
     </div>

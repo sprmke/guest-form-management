@@ -237,7 +237,7 @@ export const CalendarPreview = forwardRef<HTMLDivElement, CalendarPreviewProps>(
       const weeksWithCells = weeks.map((week) => ({
         weekIndex: week.weekIndex,
         cells: week.days.map((day): DayCell => {
-          if (!day) {
+          if (day.getMonth() !== month || day.getFullYear() !== year) {
             return { day: null, isBooked: false, isBlocked: false, isToday: false };
           }
           const dayNum = day.getDate();

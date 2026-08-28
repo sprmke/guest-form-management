@@ -82,6 +82,7 @@ import { useOrgBrandColor } from '@/features/dashboard/org/hooks/useOrgBrandColo
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { PlanGateWatermarkOverlay } from '@/features/dashboard/plans/components/PlanGateWatermarkOverlay';
 import { TierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
+import { useMarketingPermissions } from '@/features/dashboard/marketing/hooks/useMarketingPermissions';
 
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -169,6 +170,7 @@ export function CalendarBuilder({
   onPublish,
   isExporting = false,
 }: CalendarBuilderProps) {
+  const { canGenerate } = useMarketingPermissions();
   const { data: appSettings } = useAppSettings();
   const { data: publicProperty } = usePublicPropertyDetail(propertySlug);
   const orgBrandColor = useOrgBrandColor();
@@ -1069,20 +1071,22 @@ export function CalendarBuilder({
                 </div>
               ) : (
                 <div className="space-y-4 pb-4">
-                  <TierBadgeAnchor feature="aiMarketingGeneration" className="w-full">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="min-h-[44px] w-full gap-2"
-                      disabled={aiGenerateBusy || generateTemplate.isPending}
-                      onClick={() => setAiGenerateOpen(true)}
-                    >
-                      <Sparkles className="size-4" aria-hidden />
-                      {aiGenerateBusy || generateTemplate.isPending
-                        ? 'Generating…'
-                        : 'Generate with AI'}
-                    </Button>
-                  </TierBadgeAnchor>
+                  {canGenerate ? (
+                    <TierBadgeAnchor feature="aiMarketingGeneration" className="w-full">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="min-h-[44px] w-full gap-2"
+                        disabled={aiGenerateBusy || generateTemplate.isPending}
+                        onClick={() => setAiGenerateOpen(true)}
+                      >
+                        <Sparkles className="size-4" aria-hidden />
+                        {aiGenerateBusy || generateTemplate.isPending
+                          ? 'Generating…'
+                          : 'Generate with AI'}
+                      </Button>
+                    </TierBadgeAnchor>
+                  ) : null}
                   <CalendarFormatPicker
                     brandColor={brandColor}
                     onFormatChange={handleCanvasFormatChange}

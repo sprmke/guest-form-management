@@ -207,13 +207,7 @@ export function BookingsCalendarView({ bookings, propertySlug }: BookingsCalenda
             {weeks.map((week) => (
               <div key={week.weekIndex}>
                 <div className="grid grid-cols-7 gap-1">
-                  {week.days.map((day, colIdx) => {
-                    if (!day) {
-                      return (
-                        <div key={`pad-${week.weekIndex}-${colIdx}`} className="aspect-square" />
-                      );
-                    }
-
+                  {week.days.map((day) => {
                     const key = format(day, 'yyyy-MM-dd');
                     const isSelected = selectedDay && isSameDay(day, selectedDay);
                     const isCurrentMonth = isSameMonth(day, currentMonth);

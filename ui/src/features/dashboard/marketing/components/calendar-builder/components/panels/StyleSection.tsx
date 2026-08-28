@@ -67,11 +67,11 @@ export function StyleSection({
       </div>
 
       {keepChildrenMounted ? (
-        <div className={cn('min-w-0 max-w-full overflow-x-hidden pb-4', !isOpen && 'hidden')}>
+        <div className={cn('min-w-0 max-w-full overflow-x-hidden px-4 pb-4', !isOpen && 'hidden')}>
           {children}
         </div>
       ) : isOpen ? (
-        <div className="min-w-0 max-w-full overflow-x-hidden pb-4">{children}</div>
+        <div className="min-w-0 max-w-full overflow-x-hidden px-4 pb-4">{children}</div>
       ) : null}
     </div>
   );

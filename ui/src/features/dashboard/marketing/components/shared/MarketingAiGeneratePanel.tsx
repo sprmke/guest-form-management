@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
-import { ChevronDown, Loader2, Sparkles } from 'lucide-react';
+import { ChevronLeft, Loader2, Sparkles } from 'lucide-react';
 
 import {
   BackgroundOptionPreview,
@@ -56,12 +56,17 @@ import {
   type VideoAiGeneratePreferences,
   type VideoAiSuggestion,
 } from '@/features/dashboard/marketing/lib/videoAiGenerateOptions';
+import {
+  MarketingAiGenerateStepper,
+  marketingAiGenerateStepCopy,
+  type MarketingAiGenerateStepIndex,
+} from '@/features/dashboard/marketing/components/shared/MarketingAiGenerateStepper';
 import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
+import { useMarketingPermissions } from '@/features/dashboard/marketing/hooks/useMarketingPermissions';
 
 import { Button } from '@/components/ui/button';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Label } from '@/components/ui/label';
 import {
   ResponsiveModal,
@@ -73,6 +78,7 @@ import {
 } from '@/components/ui/responsive-modal';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { WizardStepHeading } from '@/components/wizard/WizardStepHeading';
 import { cn } from '@/lib/utils';
 
 export type MarketingAiContextKey =
@@ -153,15 +159,8 @@ function contextUnavailableHint(key: MarketingAiContextKey): string {
   return 'Not available yet';
 }
 
-function GenerateFieldGroup({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="bg-muted/40 space-y-3.5 rounded-2xl p-4 sm:p-5">
-      <h3 className="text-foreground text-[15px] font-semibold leading-none tracking-tight">
-        {title}
-      </h3>
-      <div className="space-y-4">{children}</div>
-    </section>
-  );
+function GenerateFieldGroup({ children }: { children: ReactNode }) {
+  return <div className="space-y-4">{children}</div>;
 }
 
 function CountedTextarea({
@@ -209,6 +208,190 @@ function CountedTextarea({
   );
 }
 
+const MARKETING_AI_STEP_COUNT = 3;
+
+function canAdvanceFromStep(
+  stepIndex: MarketingAiGenerateStepIndex,
+  {
+    isCalendar,
+    isDesign,
+    isVideo,
+    designContent,
+    videoContent,
+    prompt,
+  }: {
+    isCalendar: boolean;
+    isDesign: boolean;
+    isVideo: boolean;
+    designContent: string;
+    videoContent: string;
+    prompt: string;
+  }
+): boolean {
+  if (stepIndex === 0) {
+    if (isDesign) return designContent.trim().length > 0;
+    if (isVideo) return videoContent.trim().length > 0;
+    return isCalendar;
+  }
+  if (stepIndex === 1) {
+    return prompt.trim().length > 0;
+  }
+  return true;
+}
+
+/** Bordered card list — avoids muted-on-muted switch tracks in the modal body. */
+const marketingAiToggleListClassName =
+  'border-border/80 divide-border/80 overflow-hidden rounded-xl border bg-card divide-y shadow-sm';
+
+function marketingAiSwitchClassName(checked: boolean) {
+  return checked ? undefined : 'bg-border';
+}
+
+function IncludeContextSection({
+  contextRows,
+  includeContext,
+  generating,
+  idPrefix,
+  onChange,
+}: {
+  contextRows: Array<{
+    key: MarketingAiContextKey;
+    label: string;
+    available: boolean;
+  }>;
+  includeContext: Record<MarketingAiContextKey, boolean>;
+  generating: boolean;
+  idPrefix: string;
+  onChange: (key: MarketingAiContextKey, value: boolean) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label className="text-muted-foreground text-xs font-medium">Include</Label>
+      <div className={marketingAiToggleListClassName} role="group" aria-label="Include">
+        {contextRows.map((option) => {
+          const checked = option.available && includeContext[option.key];
+          const switchId = `${idPrefix}-${option.key}`;
+          const unavailableHint = contextUnavailableHint(option.key);
+          return (
+            <div
+              key={option.key}
+              className={cn(
+                'flex min-h-[52px] items-center justify-between gap-3 px-3 py-2.5',
+                !option.available && 'opacity-55'
+              )}
+            >
+              <label
+                htmlFor={switchId}
+                className={cn(
+                  'min-w-0 flex-1',
+                  option.available ? 'cursor-pointer' : 'cursor-not-allowed'
+                )}
+                title={option.available ? undefined : unavailableHint}
+              >
+                <span className="text-foreground block text-sm font-medium leading-tight">
+                  {option.label}
+                </span>
+                {!option.available ? (
+                  <span className="text-muted-foreground block text-[11px] leading-tight">
+                    {unavailableHint}
+                  </span>
+                ) : null}
+              </label>
+              <Switch
+                id={switchId}
+                checked={checked}
+                disabled={generating || !option.available}
+                onCheckedChange={(value) => onChange(option.key, value)}
+                aria-label={option.label}
+                className={marketingAiSwitchClassName(checked)}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function SuggestionsSection({
+  suggestions,
+  visibleSuggestions,
+  canToggleSuggestions,
+  suggestionsExpanded,
+  generating,
+  selectedSuggestionId,
+  onToggleExpanded,
+  onSelect,
+  renderPreview,
+}: {
+  suggestions: CalendarAiSuggestion[] | DesignAiSuggestion[] | VideoAiSuggestion[];
+  visibleSuggestions: CalendarAiSuggestion[] | DesignAiSuggestion[] | VideoAiSuggestion[];
+  canToggleSuggestions: boolean;
+  suggestionsExpanded: boolean;
+  generating: boolean;
+  selectedSuggestionId: string | null;
+  onToggleExpanded: () => void;
+  onSelect: (suggestion: CalendarAiSuggestion | DesignAiSuggestion | VideoAiSuggestion) => void;
+  renderPreview: (
+    suggestion: CalendarAiSuggestion | DesignAiSuggestion | VideoAiSuggestion
+  ) => ReactNode;
+}) {
+  if (suggestions.length === 0) return null;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <Label className="text-muted-foreground text-xs font-medium">Templates</Label>
+        {canToggleSuggestions ? (
+          <button
+            type="button"
+            disabled={generating}
+            onClick={onToggleExpanded}
+            className="text-primary hover:text-primary/80 focus-visible:ring-ring min-h-[44px] cursor-pointer px-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50"
+          >
+            {suggestionsExpanded ? 'Show less' : 'View more'}
+          </button>
+        ) : null}
+      </div>
+      <div
+        className="grid grid-cols-1 gap-2.5 sm:grid-cols-2"
+        role="group"
+        aria-label="Look templates"
+      >
+        {visibleSuggestions.map((suggestion) => {
+          const active = selectedSuggestionId === suggestion.id;
+          return (
+            <button
+              key={suggestion.id}
+              type="button"
+              disabled={generating}
+              aria-pressed={active}
+              aria-label={`${suggestion.title}. ${suggestion.summary}`}
+              onClick={() => onSelect(suggestion)}
+              className={cn(
+                'focus-visible:ring-ring flex min-h-[44px] cursor-pointer flex-col gap-2.5 rounded-xl border p-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50',
+                active
+                  ? 'border-primary/50 bg-primary/10'
+                  : 'border-border/70 bg-background hover:bg-background/80'
+              )}
+            >
+              {renderPreview(suggestion)}
+              <span className="px-0.5 pb-0.5">
+                <span className="text-foreground block text-sm font-semibold leading-tight">
+                  {suggestion.title}
+                </span>
+                <span className="text-muted-foreground mt-0.5 block text-xs leading-snug">
+                  {suggestion.summary}
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /**
  * Shared Marketing Studio AI generate modal.
  * Split chrome: sticky header/footer, scrollable body only.
@@ -246,8 +429,10 @@ export function MarketingAiGeneratePanel({
   const [videoPreferences, setVideoPreferences] = useState<VideoAiGeneratePreferences>(
     DEFAULT_VIDEO_AI_PREFERENCES
   );
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [suggestionsExpanded, setSuggestionsExpanded] = useState(false);
+  const [stepIndex, setStepIndex] = useState<MarketingAiGenerateStepIndex>(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const stepHeadingRef = useRef<HTMLHeadingElement>(null);
 
   const isCalendar = contentType === 'calendar';
   const isDesign = contentType === 'design';
@@ -261,10 +446,15 @@ export function MarketingAiGeneratePanel({
       setCalendarPreferences(DEFAULT_CALENDAR_AI_PREFERENCES);
       setDesignPreferences(DEFAULT_DESIGN_AI_PREFERENCES);
       setVideoPreferences(DEFAULT_VIDEO_AI_PREFERENCES);
-      setAdvancedOpen(false);
       setSuggestionsExpanded(false);
+      setStepIndex(0);
     }
   }, [open, contentType]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    stepHeadingRef.current?.focus({ preventScroll: true });
+  }, [stepIndex]);
 
   // When the design/video category changes, repopulate content with the category default unless
   // the user has already typed custom content (only overwrite on the initial open / explicit change).
@@ -308,11 +498,74 @@ export function MarketingAiGeneratePanel({
     }));
   };
 
+  const { canGenerate: canGeneratePermission } = useMarketingPermissions();
   const { canUse: canUseAiGeneration, isLoading: aiGenerationLoading } =
     useFeatureGate('aiMarketingGeneration');
   const { open: openUpgradeModal } = useUpgradeModal();
 
-  const canGenerate = prompt.trim().length > 0 && !generating;
+  const stepCopy = useMemo(
+    () => marketingAiGenerateStepCopy(stepIndex, contentType),
+    [stepIndex, contentType]
+  );
+
+  const canAdvanceFromCurrentStep = useMemo(
+    () =>
+      canAdvanceFromStep(stepIndex, {
+        isCalendar,
+        isDesign,
+        isVideo,
+        designContent: designPreferences.content,
+        videoContent: videoPreferences.content,
+        prompt,
+      }),
+    [
+      stepIndex,
+      isCalendar,
+      isDesign,
+      isVideo,
+      designPreferences.content,
+      videoPreferences.content,
+      prompt,
+    ]
+  );
+
+  const canGenerate =
+    canGeneratePermission &&
+    canAdvanceFromStep(1, {
+      isCalendar,
+      isDesign,
+      isVideo,
+      designContent: designPreferences.content,
+      videoContent: videoPreferences.content,
+      prompt,
+    }) &&
+    !generating;
+  const isFirstStep = stepIndex === 0;
+  const isLastStep = stepIndex === MARKETING_AI_STEP_COUNT - 1;
+
+  const goNext = () => {
+    if (isLastStep || generating || !canAdvanceFromCurrentStep) return;
+    setStepIndex(
+      (prev) => Math.min(MARKETING_AI_STEP_COUNT - 1, prev + 1) as MarketingAiGenerateStepIndex
+    );
+  };
+
+  const goBack = () => {
+    if (isFirstStep || generating) return;
+    setStepIndex((prev) => Math.max(0, prev - 1) as MarketingAiGenerateStepIndex);
+  };
+
+  const renderSuggestionPreview = (
+    suggestion: CalendarAiSuggestion | DesignAiSuggestion | VideoAiSuggestion
+  ) => {
+    if (isVideoSuggestion(suggestion)) {
+      return <VideoSuggestionPreview mood={suggestion.mood} sceneHint={suggestion.sceneHint} />;
+    }
+    if (isCalendarSuggestion(suggestion)) {
+      return <SuggestionThemePreview palette={suggestion.palette} />;
+    }
+    return <DesignSuggestionPreview palette={suggestion.palette} />;
+  };
 
   // Suggestions are Look vibes: fill the prompt, and for video also stamp mood
   // colors + soft Look locks. Never touch Category/Content.
@@ -338,6 +591,7 @@ export function MarketingAiGeneratePanel({
   const handleGenerate = async () => {
     const trimmed = prompt.trim();
     if (!trimmed || generating) return;
+    if (!canGeneratePermission) return;
     if (!canUseAiGeneration) {
       if (!aiGenerationLoading) openUpgradeModal('aiMarketingGeneration');
       return;
@@ -383,10 +637,6 @@ export function MarketingAiGeneratePanel({
     : isDesign
       ? 'Creates beautiful AI generated designs you can configure and edit.'
       : 'Creates beautiful AI generated video clips you can configure and edit.';
-
-  const showCalendarControls = isCalendar;
-  const showDesignControls = isDesign;
-  const showVideoControls = isVideo;
 
   const contextRows = useMemo(() => {
     const order: MarketingAiContextKey[] =
@@ -447,580 +697,131 @@ export function MarketingAiGeneratePanel({
           <ResponsiveModalDescription className="text-left">
             {outcomeHint}
           </ResponsiveModalDescription>
+          <div className="mt-4">
+            <MarketingAiGenerateStepper activeStep={stepIndex} disabled={generating} />
+          </div>
         </ResponsiveModalHeader>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 [-webkit-overflow-scrolling:touch] sm:px-6">
-          <div className="space-y-7">
-            {showDesignControls ? (
-              <div className="space-y-4">
-                <GenerateFieldGroup title="Content">
-                  <div className="space-y-2">
-                    <Label className="text-muted-foreground text-xs font-medium">Category</Label>
-                    <DesignCategoryChips
-                      value={designPreferences.category}
+        <div
+          ref={scrollRef}
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 [-webkit-overflow-scrolling:touch] sm:px-6"
+        >
+          <p className="sr-only" aria-live="polite">
+            {stepCopy.title}. {stepCopy.description}
+          </p>
+          <WizardStepHeading
+            title={stepCopy.title}
+            description={stepCopy.description}
+            headingRef={stepHeadingRef}
+            className="mb-4"
+          />
+          <GenerateFieldGroup>
+            {stepIndex === 0 ? (
+              <>
+                {isDesign ? (
+                  <>
+                    <div className="space-y-2">
+                      <Label className="text-muted-foreground text-xs font-medium">Category</Label>
+                      <DesignCategoryChips
+                        value={designPreferences.category}
+                        disabled={generating}
+                        onChange={(category) =>
+                          setDesignPreferences((prev) => ({ ...prev, category }))
+                        }
+                      />
+                    </div>
+                    <CountedTextarea
+                      id="marketing-ai-content"
+                      label="Content"
+                      value={designPreferences.content}
+                      onChange={(content) => setDesignPreferences((prev) => ({ ...prev, content }))}
+                      rows={4}
+                      className="min-h-[112px]"
+                      placeholder="Describe what the design should say…"
                       disabled={generating}
-                      onChange={(category) =>
-                        setDesignPreferences((prev) => ({ ...prev, category }))
-                      }
                     />
-                  </div>
+                  </>
+                ) : null}
 
-                  <CountedTextarea
-                    id="marketing-ai-content"
-                    label="Content"
-                    value={designPreferences.content}
-                    onChange={(content) => setDesignPreferences((prev) => ({ ...prev, content }))}
-                    rows={3}
-                    className="min-h-[88px]"
-                    placeholder="Describe what the design should say…"
-                    disabled={generating}
-                  />
-
-                  <div className="space-y-2">
-                    <Label className="text-muted-foreground text-xs font-medium">Include</Label>
-                    <div
-                      className="bg-background divide-border/70 divide-y overflow-hidden rounded-xl"
-                      role="group"
-                      aria-label="Context to include"
-                    >
-                      {contextRows.map((option) => {
-                        const checked = option.available && includeContext[option.key];
-                        const switchId = `marketing-ai-context-${option.key}`;
-                        const unavailableHint = contextUnavailableHint(option.key);
-                        return (
-                          <div
-                            key={option.key}
-                            className={cn(
-                              'flex min-h-[52px] items-center justify-between gap-3 px-3 py-2.5',
-                              !option.available && 'opacity-55'
-                            )}
-                          >
-                            <label
-                              htmlFor={switchId}
-                              className={cn(
-                                'min-w-0 flex-1',
-                                option.available ? 'cursor-pointer' : 'cursor-not-allowed'
-                              )}
-                              title={option.available ? undefined : unavailableHint}
-                            >
-                              <span className="text-foreground block text-sm font-medium leading-tight">
-                                {option.label}
-                              </span>
-                              {!option.available ? (
-                                <span className="text-muted-foreground block text-[11px] leading-tight">
-                                  {unavailableHint}
-                                </span>
-                              ) : null}
-                            </label>
-                            <Switch
-                              id={switchId}
-                              checked={checked}
-                              disabled={generating || !option.available}
-                              onCheckedChange={(value) =>
-                                setIncludeContext((prev) => ({
-                                  ...prev,
-                                  [option.key]: value,
-                                }))
-                              }
-                              aria-label={option.label}
-                            />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </GenerateFieldGroup>
-
-                <GenerateFieldGroup title="Look">
-                  {suggestions.length > 0 ? (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <Label className="text-muted-foreground text-xs font-medium">
-                          Suggestions
-                        </Label>
-                        {canToggleSuggestions ? (
-                          <button
-                            type="button"
-                            disabled={generating}
-                            onClick={() => setSuggestionsExpanded((prev) => !prev)}
-                            className="text-primary hover:text-primary/80 focus-visible:ring-ring min-h-[44px] cursor-pointer px-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50"
-                          >
-                            {suggestionsExpanded ? 'Show less' : 'View more'}
-                          </button>
-                        ) : null}
-                      </div>
-                      <div
-                        className="grid grid-cols-1 gap-2.5 sm:grid-cols-2"
-                        role="group"
-                        aria-label="Look suggestions"
-                      >
-                        {visibleSuggestions.map((suggestion) => {
-                          const active = selectedSuggestionId === suggestion.id;
-                          return (
-                            <button
-                              key={suggestion.id}
-                              type="button"
-                              disabled={generating}
-                              aria-pressed={active}
-                              aria-label={`${suggestion.title}. ${suggestion.summary}`}
-                              onClick={() => handleSuggestion(suggestion)}
-                              className={cn(
-                                'focus-visible:ring-ring flex min-h-[44px] cursor-pointer flex-col gap-2.5 rounded-xl border p-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50',
-                                active
-                                  ? 'border-primary/50 bg-primary/10'
-                                  : 'border-border/70 bg-background hover:bg-background/80'
-                              )}
-                            >
-                              {isVideoSuggestion(suggestion) ? (
-                                <VideoSuggestionPreview
-                                  mood={suggestion.mood}
-                                  sceneHint={suggestion.sceneHint}
-                                />
-                              ) : isCalendarSuggestion(suggestion) ? (
-                                <SuggestionThemePreview palette={suggestion.palette} />
-                              ) : (
-                                <DesignSuggestionPreview palette={suggestion.palette} />
-                              )}
-                              <span className="px-0.5 pb-0.5">
-                                <span className="text-foreground block text-sm font-semibold leading-tight">
-                                  {suggestion.title}
-                                </span>
-                                <span className="text-muted-foreground mt-0.5 block text-xs leading-snug">
-                                  {suggestion.summary}
-                                </span>
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ) : null}
-
-                  <CountedTextarea
-                    id="marketing-ai-prompt"
-                    label="Look"
-                    value={prompt}
-                    onChange={(next) => {
-                      setSelectedSuggestionId(null);
-                      setPrompt(next);
-                    }}
-                    rows={4}
-                    className="min-h-[112px]"
-                    placeholder="Pick a suggestion or describe the look…"
-                    disabled={generating}
-                  />
-
-                  <div className="space-y-4">
+                {isVideo ? (
+                  <>
                     <div className="space-y-2">
-                      <span className="text-muted-foreground text-xs font-medium">Layout</span>
-                      <div
-                        className="grid grid-cols-1 gap-2 sm:grid-cols-2"
-                        role="group"
-                        aria-label="Layout"
-                      >
-                        {DESIGN_AI_LAYOUT_OPTIONS.map((option) => (
-                          <VisualChoiceButton
-                            key={option.value}
-                            active={designPreferences.layoutArchetype === option.value}
-                            disabled={generating}
-                            title={option.label}
-                            hint={option.hint}
-                            preview={<DesignLayoutOptionPreview option={option} />}
-                            onClick={() =>
-                              setDesignPreferences((prev) => ({
-                                ...prev,
-                                layoutArchetype: option.value,
-                              }))
-                            }
-                          />
-                        ))}
-                      </div>
+                      <Label className="text-muted-foreground text-xs font-medium">Category</Label>
+                      <VideoCategoryChips
+                        value={videoPreferences.category}
+                        labels={VIDEO_AI_CATEGORY_LABELS}
+                        disabled={generating}
+                        onChange={(category) =>
+                          setVideoPreferences((prev) => ({
+                            ...prev,
+                            category: category as VideoAiGeneratePreferences['category'],
+                          }))
+                        }
+                      />
                     </div>
-
-                    <div className="space-y-2">
-                      <span className="text-muted-foreground text-xs font-medium">Type</span>
-                      <div
-                        className="grid grid-cols-1 gap-2 sm:grid-cols-2"
-                        role="group"
-                        aria-label="Type"
-                      >
-                        {DESIGN_AI_FONT_OPTIONS.map((option) => (
-                          <VisualChoiceButton
-                            key={option.value}
-                            active={designPreferences.fontPairing === option.value}
-                            disabled={generating}
-                            title={option.label}
-                            hint={option.hint}
-                            preview={<DesignFontOptionPreview option={option} />}
-                            onClick={() =>
-                              setDesignPreferences((prev) => ({
-                                ...prev,
-                                fontPairing: option.value,
-                              }))
-                            }
-                          />
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <span className="text-muted-foreground text-xs font-medium">Background</span>
-                      <div
-                        className="grid grid-cols-1 gap-2 sm:grid-cols-2"
-                        role="group"
-                        aria-label="Background"
-                      >
-                        {DESIGN_AI_BACKGROUND_OPTIONS.map((option) => (
-                          <VisualChoiceButton
-                            key={option.value}
-                            active={designPreferences.backgroundMood === option.value}
-                            disabled={generating}
-                            title={option.label}
-                            hint={option.hint}
-                            preview={<DesignBackgroundOptionPreview option={option} />}
-                            onClick={() =>
-                              setDesignPreferences((prev) => ({
-                                ...prev,
-                                backgroundMood: option.value,
-                              }))
-                            }
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </GenerateFieldGroup>
-              </div>
-            ) : showVideoControls ? (
-              <div className="space-y-4">
-                <GenerateFieldGroup title="Content">
-                  <div className="space-y-2">
-                    <Label className="text-muted-foreground text-xs font-medium">Category</Label>
-                    <VideoCategoryChips
-                      value={videoPreferences.category}
-                      labels={VIDEO_AI_CATEGORY_LABELS}
+                    <CountedTextarea
+                      id="marketing-ai-content"
+                      label="Content"
+                      value={videoPreferences.content}
+                      onChange={(content) => setVideoPreferences((prev) => ({ ...prev, content }))}
+                      rows={4}
+                      className="min-h-[112px]"
+                      placeholder="Describe what the video should say…"
                       disabled={generating}
-                      onChange={(category) =>
-                        setVideoPreferences((prev) => ({
-                          ...prev,
-                          category: category as VideoAiGeneratePreferences['category'],
-                        }))
-                      }
                     />
-                  </div>
+                  </>
+                ) : null}
 
-                  <CountedTextarea
-                    id="marketing-ai-content"
-                    label="Content"
-                    value={videoPreferences.content}
-                    onChange={(content) => setVideoPreferences((prev) => ({ ...prev, content }))}
-                    rows={3}
-                    className="min-h-[88px]"
-                    placeholder="Describe what the video should say…"
-                    disabled={generating}
-                  />
+                <IncludeContextSection
+                  contextRows={contextRows}
+                  includeContext={includeContext}
+                  generating={generating}
+                  idPrefix="marketing-ai-context"
+                  onChange={(key, value) =>
+                    setIncludeContext((prev) => ({ ...prev, [key]: value }))
+                  }
+                />
+              </>
+            ) : null}
 
-                  <div className="space-y-2">
-                    <Label className="text-muted-foreground text-xs font-medium">Include</Label>
-                    <div
-                      className="bg-background divide-border/70 divide-y overflow-hidden rounded-xl"
-                      role="group"
-                      aria-label="Context to include"
-                    >
-                      {contextRows.map((option) => {
-                        const checked = option.available && includeContext[option.key];
-                        const switchId = `marketing-ai-context-${option.key}`;
-                        const unavailableHint = contextUnavailableHint(option.key);
-                        return (
-                          <div
-                            key={option.key}
-                            className={cn(
-                              'flex min-h-[52px] items-center justify-between gap-3 px-3 py-2.5',
-                              !option.available && 'opacity-55'
-                            )}
-                          >
-                            <label
-                              htmlFor={switchId}
-                              className={cn(
-                                'min-w-0 flex-1',
-                                option.available ? 'cursor-pointer' : 'cursor-not-allowed'
-                              )}
-                              title={option.available ? undefined : unavailableHint}
-                            >
-                              <span className="text-foreground block text-sm font-medium leading-tight">
-                                {option.label}
-                              </span>
-                              {!option.available ? (
-                                <span className="text-muted-foreground block text-[11px] leading-tight">
-                                  {unavailableHint}
-                                </span>
-                              ) : null}
-                            </label>
-                            <Switch
-                              id={switchId}
-                              checked={checked}
-                              disabled={generating || !option.available}
-                              onCheckedChange={(value) =>
-                                setIncludeContext((prev) => ({
-                                  ...prev,
-                                  [option.key]: value,
-                                }))
-                              }
-                              aria-label={option.label}
-                            />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </GenerateFieldGroup>
-
-                <GenerateFieldGroup title="Look">
-                  {suggestions.length > 0 ? (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <Label className="text-muted-foreground text-xs font-medium">
-                          Suggestions
-                        </Label>
-                        {canToggleSuggestions ? (
-                          <button
-                            type="button"
-                            disabled={generating}
-                            onClick={() => setSuggestionsExpanded((prev) => !prev)}
-                            className="text-primary hover:text-primary/80 focus-visible:ring-ring min-h-[44px] cursor-pointer px-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50"
-                          >
-                            {suggestionsExpanded ? 'Show less' : 'View more'}
-                          </button>
-                        ) : null}
-                      </div>
-                      <div
-                        className="grid grid-cols-1 gap-2.5 sm:grid-cols-2"
-                        role="group"
-                        aria-label="Look suggestions"
-                      >
-                        {visibleSuggestions.map((suggestion) => {
-                          const active = selectedSuggestionId === suggestion.id;
-                          return (
-                            <button
-                              key={suggestion.id}
-                              type="button"
-                              disabled={generating}
-                              aria-pressed={active}
-                              aria-label={`${suggestion.title}. ${suggestion.summary}`}
-                              onClick={() => handleSuggestion(suggestion)}
-                              className={cn(
-                                'focus-visible:ring-ring flex min-h-[44px] cursor-pointer flex-col gap-2.5 rounded-xl border p-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50',
-                                active
-                                  ? 'border-primary/50 bg-primary/10'
-                                  : 'border-border/70 bg-background hover:bg-background/80'
-                              )}
-                            >
-                              {isVideoSuggestion(suggestion) ? (
-                                <VideoSuggestionPreview
-                                  mood={suggestion.mood}
-                                  sceneHint={suggestion.sceneHint}
-                                />
-                              ) : null}
-                              <span className="px-0.5 pb-0.5">
-                                <span className="text-foreground block text-sm font-semibold leading-tight">
-                                  {suggestion.title}
-                                </span>
-                                <span className="text-muted-foreground mt-0.5 block text-xs leading-snug">
-                                  {suggestion.summary}
-                                </span>
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ) : null}
-
-                  <CountedTextarea
-                    id="marketing-ai-prompt"
-                    label="Look"
-                    value={prompt}
-                    onChange={(next) => {
-                      setSelectedSuggestionId(null);
-                      setPrompt(next);
+            {stepIndex === 1 ? (
+              <>
+                <SuggestionsSection
+                  suggestions={suggestions}
+                  visibleSuggestions={visibleSuggestions}
+                  canToggleSuggestions={canToggleSuggestions}
+                  suggestionsExpanded={suggestionsExpanded}
+                  generating={generating}
+                  selectedSuggestionId={selectedSuggestionId}
+                  onToggleExpanded={() => setSuggestionsExpanded((prev) => !prev)}
+                  onSelect={handleSuggestion}
+                  renderPreview={renderSuggestionPreview}
+                />
+                <CountedTextarea
+                  id="marketing-ai-prompt"
+                  label="Look"
+                  value={prompt}
+                  onChange={(next) => {
+                    setSelectedSuggestionId(null);
+                    setPrompt(next);
+                    if (isVideo) {
                       setVideoPreferences((prev) =>
                         prev.lookMood ? { ...prev, lookMood: undefined } : prev
                       );
-                    }}
-                    rows={4}
-                    className="min-h-[112px]"
-                    placeholder="Pick a suggestion or describe the look…"
-                    disabled={generating}
-                  />
+                    }
+                  }}
+                  rows={4}
+                  className="min-h-[112px]"
+                  placeholder="Pick a template or describe the look…"
+                  disabled={generating}
+                />
+              </>
+            ) : null}
 
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <span className="text-muted-foreground text-xs font-medium">Duration</span>
-                      <div
-                        className="grid grid-cols-2 gap-2 sm:grid-cols-3"
-                        role="group"
-                        aria-label="Duration"
-                      >
-                        {VIDEO_AI_DURATION_OPTIONS.map((option) => (
-                          <VisualChoiceButton
-                            key={option.value}
-                            active={videoPreferences.duration === option.value}
-                            disabled={generating}
-                            title={option.label}
-                            hint={option.hint}
-                            preview={<VideoDurationOptionPreview option={option} />}
-                            onClick={() =>
-                              setVideoPreferences((prev) => ({ ...prev, duration: option.value }))
-                            }
-                          />
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <span className="text-muted-foreground text-xs font-medium">Type</span>
-                      <div
-                        className="grid grid-cols-1 gap-2 sm:grid-cols-2"
-                        role="group"
-                        aria-label="Type"
-                      >
-                        {VIDEO_AI_FONT_OPTIONS.map((option) => (
-                          <VisualChoiceButton
-                            key={option.value}
-                            active={videoPreferences.fontPairing === option.value}
-                            disabled={generating}
-                            title={option.label}
-                            hint={option.hint}
-                            preview={<VideoFontOptionPreview option={option} />}
-                            onClick={() =>
-                              setVideoPreferences((prev) => ({
-                                ...prev,
-                                fontPairing: option.value,
-                              }))
-                            }
-                          />
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <span className="text-muted-foreground text-xs font-medium">Motion</span>
-                      <div
-                        className="grid grid-cols-1 gap-2 sm:grid-cols-2"
-                        role="group"
-                        aria-label="Motion"
-                      >
-                        {VIDEO_AI_MOTION_OPTIONS.map((option) => (
-                          <VisualChoiceButton
-                            key={option.value}
-                            active={videoPreferences.motionMood === option.value}
-                            disabled={generating}
-                            title={option.label}
-                            hint={option.hint}
-                            preview={<VideoMotionOptionPreview option={option} />}
-                            onClick={() =>
-                              setVideoPreferences((prev) => ({
-                                ...prev,
-                                motionMood: option.value,
-                              }))
-                            }
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </GenerateFieldGroup>
-              </div>
-            ) : (
+            {stepIndex === 2 ? (
               <>
-                {suggestions.length > 0 ? (
-                  <section className="space-y-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <Label>Suggestions</Label>
-                      {canToggleSuggestions ? (
-                        <button
-                          type="button"
-                          disabled={generating}
-                          onClick={() => setSuggestionsExpanded((prev) => !prev)}
-                          className="text-primary hover:text-primary/80 focus-visible:ring-ring min-h-[44px] cursor-pointer px-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50"
-                        >
-                          {suggestionsExpanded ? 'Show less' : 'View more'}
-                        </button>
-                      ) : null}
-                    </div>
-                    <div
-                      className="grid grid-cols-1 gap-2.5 sm:grid-cols-2"
-                      role="group"
-                      aria-label="Look suggestions"
-                    >
-                      {visibleSuggestions.map((suggestion) => {
-                        const active = selectedSuggestionId === suggestion.id;
-                        return (
-                          <button
-                            key={suggestion.id}
-                            type="button"
-                            disabled={generating}
-                            aria-pressed={active}
-                            aria-label={`${suggestion.title}. ${suggestion.summary}`}
-                            onClick={() => handleSuggestion(suggestion)}
-                            className={cn(
-                              'focus-visible:ring-ring flex min-h-[44px] cursor-pointer flex-col gap-2.5 rounded-xl border p-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50',
-                              active
-                                ? 'border-primary/50 bg-primary/10'
-                                : 'border-border bg-background hover:bg-muted/50'
-                            )}
-                          >
-                            {isVideoSuggestion(suggestion) ? (
-                              <VideoSuggestionPreview
-                                mood={suggestion.mood}
-                                sceneHint={suggestion.sceneHint}
-                              />
-                            ) : isCalendarSuggestion(suggestion) ? (
-                              <SuggestionThemePreview palette={suggestion.palette} />
-                            ) : (
-                              <DesignSuggestionPreview palette={suggestion.palette} />
-                            )}
-                            <span className="px-0.5 pb-0.5">
-                              <span className="text-foreground block text-sm font-semibold leading-tight">
-                                {suggestion.title}
-                              </span>
-                              <span className="text-muted-foreground mt-0.5 block text-xs leading-snug">
-                                {suggestion.summary}
-                              </span>
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </section>
-                ) : null}
-
-                <section className="space-y-2.5">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <Label htmlFor="marketing-ai-prompt">Look</Label>
-                    <span className="text-muted-foreground text-xs tabular-nums">
-                      {prompt.trim().length}/500
-                    </span>
-                  </div>
-                  <Textarea
-                    id="marketing-ai-prompt"
-                    value={prompt}
-                    onChange={(event) => {
-                      setSelectedSuggestionId(null);
-                      setPrompt(event.target.value);
-                    }}
-                    rows={4}
-                    className="min-h-[112px] resize-y text-[15px] leading-relaxed"
-                    placeholder="Pick a suggestion or describe the look…"
-                    disabled={generating}
-                    maxLength={500}
-                  />
-                </section>
-
-                {showCalendarControls ? (
-                  <section className="space-y-4">
-                    <Label>Style</Label>
-
+                {isCalendar ? (
+                  <>
                     <div className="space-y-2">
                       <span className="text-muted-foreground text-xs font-medium">Layout</span>
                       <div
@@ -1046,7 +847,6 @@ export function MarketingAiGeneratePanel({
                         ))}
                       </div>
                     </div>
-
                     <div className="space-y-2">
                       <span className="text-muted-foreground text-xs font-medium">Type</span>
                       <div
@@ -1072,7 +872,6 @@ export function MarketingAiGeneratePanel({
                         ))}
                       </div>
                     </div>
-
                     <div className="space-y-2">
                       <span className="text-muted-foreground text-xs font-medium">Background</span>
                       <div
@@ -1098,198 +897,213 @@ export function MarketingAiGeneratePanel({
                         ))}
                       </div>
                     </div>
-                  </section>
+                    <div className="space-y-2">
+                      <Label className="text-muted-foreground text-xs font-medium">
+                        Show on calendar
+                      </Label>
+                      <div
+                        className={marketingAiToggleListClassName}
+                        role="group"
+                        aria-label="Show on calendar"
+                      >
+                        {CALENDAR_AI_ELEMENT_OPTIONS.map((option) => {
+                          const checked = calendarPreferences.elements[option.key];
+                          const switchId = `calendar-ai-element-${option.key}`;
+                          return (
+                            <div
+                              key={option.key}
+                              className="flex min-h-[52px] items-center justify-between gap-3 px-3 py-2.5"
+                            >
+                              <label htmlFor={switchId} className="min-w-0 flex-1 cursor-pointer">
+                                <span className="text-foreground block text-sm font-medium leading-tight">
+                                  {option.label}
+                                </span>
+                                <span className="text-muted-foreground block text-[11px] leading-tight">
+                                  {option.hint}
+                                </span>
+                              </label>
+                              <Switch
+                                id={switchId}
+                                checked={checked}
+                                disabled={generating}
+                                onCheckedChange={(value) => setCalendarElement(option.key, value)}
+                                aria-label={option.label}
+                                className={marketingAiSwitchClassName(checked)}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
                 ) : null}
 
-                {showCalendarControls ? (
-                  <Collapsible
-                    open={advancedOpen}
-                    onOpenChange={setAdvancedOpen}
-                    className="border-border/70 rounded-xl border"
-                  >
-                    <CollapsibleTrigger
-                      disabled={generating}
-                      className="text-foreground hover:bg-muted/40 focus-visible:ring-ring flex min-h-[48px] w-full cursor-pointer items-center justify-between gap-3 px-3.5 py-3 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50"
-                    >
-                      <span>
-                        {advancedOpen ? 'Hide advanced settings' : 'Show advanced settings'}
-                      </span>
-                      <ChevronDown
-                        className={cn(
-                          'text-muted-foreground size-4 shrink-0 transition-transform duration-200',
-                          advancedOpen && 'rotate-180'
-                        )}
-                        aria-hidden
-                      />
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <div className="border-border/60 space-y-5 border-t px-3.5 pb-4 pt-3.5">
-                        <div className="space-y-2">
-                          <p className="text-muted-foreground text-xs font-medium">
-                            Show on calendar
-                          </p>
-                          <div
-                            className="divide-border/70 border-border/70 divide-y rounded-xl border"
-                            role="group"
-                            aria-label="Show on calendar"
-                          >
-                            {CALENDAR_AI_ELEMENT_OPTIONS.map((option) => {
-                              const checked = calendarPreferences.elements[option.key];
-                              const switchId = `calendar-ai-element-${option.key}`;
-                              return (
-                                <div
-                                  key={option.key}
-                                  className="flex min-h-[52px] items-center justify-between gap-3 px-3 py-2.5"
-                                >
-                                  <label
-                                    htmlFor={switchId}
-                                    className="min-w-0 flex-1 cursor-pointer"
-                                  >
-                                    <span className="text-foreground block text-sm font-medium leading-tight">
-                                      {option.label}
-                                    </span>
-                                    <span className="text-muted-foreground block text-[11px] leading-tight">
-                                      {option.hint}
-                                    </span>
-                                  </label>
-                                  <Switch
-                                    id={switchId}
-                                    checked={checked}
-                                    disabled={generating}
-                                    onCheckedChange={(value) =>
-                                      setCalendarElement(option.key, value)
-                                    }
-                                    aria-label={option.label}
-                                  />
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <p className="text-muted-foreground text-xs font-medium">
-                            Use when generating
-                          </p>
-                          <div
-                            className="divide-border/70 border-border/70 divide-y rounded-xl border"
-                            role="group"
-                            aria-label="Use when generating"
-                          >
-                            {contextRows.map((option) => {
-                              const checked = option.available && includeContext[option.key];
-                              const switchId = `calendar-ai-context-${option.key}`;
-                              const unavailableHint = contextUnavailableHint(option.key);
-                              return (
-                                <div
-                                  key={option.key}
-                                  className={cn(
-                                    'flex min-h-[52px] items-center justify-between gap-3 px-3 py-2.5',
-                                    !option.available && 'opacity-55'
-                                  )}
-                                >
-                                  <label
-                                    htmlFor={switchId}
-                                    className={cn(
-                                      'min-w-0 flex-1',
-                                      option.available ? 'cursor-pointer' : 'cursor-not-allowed'
-                                    )}
-                                    title={option.available ? undefined : unavailableHint}
-                                  >
-                                    <span className="text-foreground block text-sm font-medium leading-tight">
-                                      {option.label}
-                                    </span>
-                                    {!option.available ? (
-                                      <span className="text-muted-foreground block text-[11px] leading-tight">
-                                        {unavailableHint}
-                                      </span>
-                                    ) : null}
-                                  </label>
-                                  <Switch
-                                    id={switchId}
-                                    checked={checked}
-                                    disabled={generating || !option.available}
-                                    onCheckedChange={(value) =>
-                                      setIncludeContext((prev) => ({
-                                        ...prev,
-                                        [option.key]: value,
-                                      }))
-                                    }
-                                    aria-label={option.label}
-                                  />
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
+                {isDesign ? (
+                  <>
+                    <div className="space-y-2">
+                      <span className="text-muted-foreground text-xs font-medium">Layout</span>
+                      <div
+                        className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+                        role="group"
+                        aria-label="Layout"
+                      >
+                        {DESIGN_AI_LAYOUT_OPTIONS.map((option) => (
+                          <VisualChoiceButton
+                            key={option.value}
+                            active={designPreferences.layoutArchetype === option.value}
+                            disabled={generating}
+                            title={option.label}
+                            hint={option.hint}
+                            preview={<DesignLayoutOptionPreview option={option} />}
+                            onClick={() =>
+                              setDesignPreferences((prev) => ({
+                                ...prev,
+                                layoutArchetype: option.value,
+                              }))
+                            }
+                          />
+                        ))}
                       </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                ) : (
-                  <section className="space-y-3">
-                    <Label>Include</Label>
-                    <div
-                      className="divide-border/70 border-border/70 divide-y rounded-xl border"
-                      role="group"
-                      aria-label="Context to include"
-                    >
-                      {contextRows.map((option) => {
-                        const checked = option.available && includeContext[option.key];
-                        const switchId = `marketing-ai-context-${option.key}`;
-                        const unavailableHint = contextUnavailableHint(option.key);
-                        return (
-                          <div
-                            key={option.key}
-                            className={cn(
-                              'flex min-h-[52px] items-center justify-between gap-3 px-3 py-2.5',
-                              !option.available && 'opacity-55'
-                            )}
-                          >
-                            <label
-                              htmlFor={switchId}
-                              className={cn(
-                                'min-w-0 flex-1',
-                                option.available ? 'cursor-pointer' : 'cursor-not-allowed'
-                              )}
-                              title={option.available ? undefined : unavailableHint}
-                            >
-                              <span className="text-foreground block text-sm font-medium leading-tight">
-                                {option.label}
-                              </span>
-                              {!option.available ? (
-                                <span className="text-muted-foreground block text-[11px] leading-tight">
-                                  {unavailableHint}
-                                </span>
-                              ) : null}
-                            </label>
-                            <Switch
-                              id={switchId}
-                              checked={checked}
-                              disabled={generating || !option.available}
-                              onCheckedChange={(value) =>
-                                setIncludeContext((prev) => ({
-                                  ...prev,
-                                  [option.key]: value,
-                                }))
-                              }
-                              aria-label={option.label}
-                            />
-                          </div>
-                        );
-                      })}
                     </div>
-                  </section>
-                )}
-              </>
-            )}
+                    <div className="space-y-2">
+                      <span className="text-muted-foreground text-xs font-medium">Type</span>
+                      <div
+                        className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+                        role="group"
+                        aria-label="Type"
+                      >
+                        {DESIGN_AI_FONT_OPTIONS.map((option) => (
+                          <VisualChoiceButton
+                            key={option.value}
+                            active={designPreferences.fontPairing === option.value}
+                            disabled={generating}
+                            title={option.label}
+                            hint={option.hint}
+                            preview={<DesignFontOptionPreview option={option} />}
+                            onClick={() =>
+                              setDesignPreferences((prev) => ({
+                                ...prev,
+                                fontPairing: option.value,
+                              }))
+                            }
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <span className="text-muted-foreground text-xs font-medium">Background</span>
+                      <div
+                        className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+                        role="group"
+                        aria-label="Background"
+                      >
+                        {DESIGN_AI_BACKGROUND_OPTIONS.map((option) => (
+                          <VisualChoiceButton
+                            key={option.value}
+                            active={designPreferences.backgroundMood === option.value}
+                            disabled={generating}
+                            title={option.label}
+                            hint={option.hint}
+                            preview={<DesignBackgroundOptionPreview option={option} />}
+                            onClick={() =>
+                              setDesignPreferences((prev) => ({
+                                ...prev,
+                                backgroundMood: option.value,
+                              }))
+                            }
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                ) : null}
 
-            <p className="sr-only" aria-live="polite">
-              {generating ? 'Generating templates. Please wait.' : ''}
-            </p>
-          </div>
+                {isVideo ? (
+                  <>
+                    <div className="space-y-2">
+                      <span className="text-muted-foreground text-xs font-medium">Duration</span>
+                      <div
+                        className="grid grid-cols-2 gap-2 sm:grid-cols-3"
+                        role="group"
+                        aria-label="Duration"
+                      >
+                        {VIDEO_AI_DURATION_OPTIONS.map((option) => (
+                          <VisualChoiceButton
+                            key={option.value}
+                            active={videoPreferences.duration === option.value}
+                            disabled={generating}
+                            title={option.label}
+                            hint={option.hint}
+                            preview={<VideoDurationOptionPreview option={option} />}
+                            onClick={() =>
+                              setVideoPreferences((prev) => ({ ...prev, duration: option.value }))
+                            }
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <span className="text-muted-foreground text-xs font-medium">Type</span>
+                      <div
+                        className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+                        role="group"
+                        aria-label="Type"
+                      >
+                        {VIDEO_AI_FONT_OPTIONS.map((option) => (
+                          <VisualChoiceButton
+                            key={option.value}
+                            active={videoPreferences.fontPairing === option.value}
+                            disabled={generating}
+                            title={option.label}
+                            hint={option.hint}
+                            preview={<VideoFontOptionPreview option={option} />}
+                            onClick={() =>
+                              setVideoPreferences((prev) => ({
+                                ...prev,
+                                fontPairing: option.value,
+                              }))
+                            }
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <span className="text-muted-foreground text-xs font-medium">Motion</span>
+                      <div
+                        className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+                        role="group"
+                        aria-label="Motion"
+                      >
+                        {VIDEO_AI_MOTION_OPTIONS.map((option) => (
+                          <VisualChoiceButton
+                            key={option.value}
+                            active={videoPreferences.motionMood === option.value}
+                            disabled={generating}
+                            title={option.label}
+                            hint={option.hint}
+                            preview={<VideoMotionOptionPreview option={option} />}
+                            onClick={() =>
+                              setVideoPreferences((prev) => ({
+                                ...prev,
+                                motionMood: option.value,
+                              }))
+                            }
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                ) : null}
+              </>
+            ) : null}
+          </GenerateFieldGroup>
+
+          <p className="sr-only" aria-live="polite">
+            {generating ? 'Generating templates. Please wait.' : ''}
+          </p>
         </div>
 
-        <ResponsiveModalFooter className="border-border/60 shrink-0 gap-2 border-t px-5 py-3.5 sm:flex-row sm:justify-end sm:px-6">
+        <ResponsiveModalFooter className="border-border/60 shrink-0 gap-2 border-t px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <Button
             type="button"
             variant="outline"
@@ -1299,19 +1113,44 @@ export function MarketingAiGeneratePanel({
           >
             Cancel
           </Button>
-          <Button
-            type="button"
-            className="min-h-[44px] gap-2"
-            disabled={!canGenerate}
-            onClick={() => void handleGenerate()}
-          >
-            {generating ? (
-              <Loader2 className="size-4 animate-spin" aria-hidden />
+          <div className="flex w-full gap-2 sm:w-auto sm:justify-end">
+            {!isFirstStep ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-[44px] gap-1.5"
+                disabled={generating}
+                onClick={goBack}
+              >
+                <ChevronLeft className="size-4" aria-hidden />
+                Back
+              </Button>
+            ) : null}
+            {!isLastStep ? (
+              <Button
+                type="button"
+                className="min-h-[44px] flex-1 sm:flex-none"
+                disabled={generating || !canAdvanceFromCurrentStep}
+                onClick={goNext}
+              >
+                Next
+              </Button>
             ) : (
-              <Sparkles className="size-4" aria-hidden />
+              <Button
+                type="button"
+                className="min-h-[44px] flex-1 gap-2 sm:flex-none"
+                disabled={!canGenerate}
+                onClick={() => void handleGenerate()}
+              >
+                {generating ? (
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                ) : (
+                  <Sparkles className="size-4" aria-hidden />
+                )}
+                {generating ? 'Generating…' : 'Generate'}
+              </Button>
             )}
-            {generating ? 'Generating…' : 'Generate'}
-          </Button>
+          </div>
         </ResponsiveModalFooter>
       </ResponsiveModalContent>
     </ResponsiveModal>

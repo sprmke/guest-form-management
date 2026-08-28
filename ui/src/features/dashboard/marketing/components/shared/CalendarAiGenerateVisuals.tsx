@@ -11,6 +11,11 @@ import type {
 
 import { cn } from '@/lib/utils';
 
+/** Shared frame for Look suggestion cards — square reads closer to IG post/story output. */
+export const marketingAiSuggestionPreviewFrameClass =
+  'relative aspect-square w-full overflow-hidden rounded-lg';
+
+/** Mini availability calendar — mirrors bubble-style AI calendar templates. */
 export function SuggestionThemePreview({
   palette,
   className,
@@ -18,39 +23,118 @@ export function SuggestionThemePreview({
   palette: CalendarAiSuggestion['palette'];
   className?: string;
 }) {
+  const weekdays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  // Three weeks of day chips — uses the taller square frame.
+  const days: Array<{ n: number; kind: 'muted' | 'available' | 'today' }> = [
+    { n: 1, kind: 'muted' },
+    { n: 2, kind: 'available' },
+    { n: 3, kind: 'available' },
+    { n: 4, kind: 'muted' },
+    { n: 5, kind: 'available' },
+    { n: 6, kind: 'available' },
+    { n: 7, kind: 'muted' },
+    { n: 8, kind: 'muted' },
+    { n: 9, kind: 'available' },
+    { n: 10, kind: 'available' },
+    { n: 11, kind: 'muted' },
+    { n: 12, kind: 'available' },
+    { n: 13, kind: 'today' },
+    { n: 14, kind: 'muted' },
+    { n: 15, kind: 'available' },
+    { n: 16, kind: 'available' },
+    { n: 17, kind: 'muted' },
+    { n: 18, kind: 'available' },
+    { n: 19, kind: 'available' },
+    { n: 20, kind: 'muted' },
+    { n: 21, kind: 'available' },
+  ];
+
   return (
     <div
-      className={cn('relative h-14 w-full overflow-hidden rounded-lg', className)}
-      style={{ background: palette.canvas }}
+      className={cn(
+        marketingAiSuggestionPreviewFrameClass,
+        'flex flex-col px-3 pb-3 pt-2.5',
+        className
+      )}
+      style={{
+        background: `linear-gradient(165deg, ${palette.canvas} 0%, ${palette.available}22 100%)`,
+      }}
       aria-hidden
     >
-      <div className="absolute inset-x-2 bottom-2 flex items-end justify-center gap-1.5">
-        {[0, 1, 2, 3, 4].map((index) => {
-          const isToday = index === 3;
-          const isAvailable = index === 1 || index === 2 || index === 4;
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <span
+            className="block truncate text-[9px] font-semibold uppercase tracking-[0.14em]"
+            style={{ color: `${palette.ink}99` }}
+          >
+            August · Open dates
+          </span>
+          <span
+            className="mt-0.5 block text-[11px] font-bold leading-tight"
+            style={{ color: palette.ink }}
+          >
+            Your stay
+          </span>
+        </div>
+        <span
+          className="shrink-0 rounded-full px-2 py-0.5 text-[8px] font-bold"
+          style={{ background: palette.today, color: palette.canvas }}
+        >
+          Open
+        </span>
+      </div>
+      <div className="mb-1 grid grid-cols-7 gap-0.5">
+        {weekdays.map((label, index) => (
+          <span
+            key={`${label}-${index}`}
+            className="text-center text-[7px] font-semibold uppercase"
+            style={{ color: `${palette.ink}66` }}
+          >
+            {label}
+          </span>
+        ))}
+      </div>
+      <div className="grid flex-1 grid-cols-7 gap-1">
+        {days.map((day) => {
+          const isToday = day.kind === 'today';
+          const isAvailable = day.kind === 'available';
           return (
             <span
-              key={index}
-              className="flex size-5 items-center justify-center rounded-full text-[9px] font-semibold"
+              key={day.n}
+              className="flex aspect-square items-center justify-center rounded-full text-[9px] font-semibold leading-none"
               style={{
                 background: isToday
                   ? palette.today
                   : isAvailable
                     ? palette.available
                     : 'transparent',
-                color: isToday || isAvailable ? palette.ink : `${palette.ink}66`,
-                boxShadow: isToday ? `0 0 0 1.5px ${palette.today}` : undefined,
+                color: isToday ? palette.canvas : isAvailable ? palette.ink : `${palette.ink}55`,
+                boxShadow: isToday ? `0 0 0 2px ${palette.today}88` : undefined,
               }}
             >
-              {index + 5}
+              {day.n}
             </span>
           );
         })}
       </div>
-      <div className="absolute right-2 top-2 flex gap-1">
-        <span className="size-2 rounded-full" style={{ background: palette.available }} />
-        <span className="size-2 rounded-full" style={{ background: palette.today }} />
-        <span className="size-2 rounded-full" style={{ background: palette.ink }} />
+      <div className="mt-2 flex items-center justify-center gap-3">
+        <span
+          className="flex items-center gap-1 text-[7px] font-medium"
+          style={{ color: palette.ink }}
+        >
+          <span className="size-2 rounded-full" style={{ background: palette.available }} />
+          Open
+        </span>
+        <span
+          className="flex items-center gap-1 text-[7px] font-medium"
+          style={{ color: palette.ink }}
+        >
+          <span
+            className="size-2 rounded-full ring-2"
+            style={{ background: palette.today, boxShadow: `0 0 0 1px ${palette.today}` }}
+          />
+          Today
+        </span>
       </div>
     </div>
   );

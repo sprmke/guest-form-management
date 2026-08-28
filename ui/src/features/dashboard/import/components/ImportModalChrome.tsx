@@ -8,6 +8,8 @@ import { AlertTriangle, FileSpreadsheet, Info, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { ResponsiveModalTitle } from '@/components/ui/responsive-modal';
+import { SegmentedStepProgress } from '@/components/wizard/SegmentedStepProgress';
+import { WizardStepHeading } from '@/components/wizard/WizardStepHeading';
 import { cn } from '@/lib/utils';
 
 /** Matches the app's other split modals (GetVerifiedModal) so this reads as one system. */
@@ -76,34 +78,7 @@ type StepperProps = {
  * names where you are, so the header only has to say how far along you are.
  */
 export function ImportStepper({ labels, currentIndex }: StepperProps) {
-  const current = labels[currentIndex] ?? '';
-
-  return (
-    <div className="flex items-center gap-2">
-      <div
-        className="flex flex-1 items-center gap-1"
-        role="progressbar"
-        aria-valuemin={1}
-        aria-valuemax={labels.length}
-        aria-valuenow={currentIndex + 1}
-        aria-valuetext={`Step ${currentIndex + 1} of ${labels.length}: ${current}`}
-      >
-        {labels.map((label, index) => (
-          <span
-            key={label}
-            className={cn(
-              'h-1.5 flex-1 rounded-full transition-colors',
-              index <= currentIndex ? 'bg-primary' : 'bg-muted'
-            )}
-            aria-hidden
-          />
-        ))}
-      </div>
-      <span className="text-muted-foreground shrink-0 text-xs font-medium tabular-nums" aria-hidden>
-        {currentIndex + 1}/{labels.length}
-      </span>
-    </div>
-  );
+  return <SegmentedStepProgress labels={labels} currentIndex={currentIndex} />;
 }
 
 // ── Body ──────────────────────────────────────────────────────────────────────
@@ -138,16 +113,12 @@ export function ImportStepHeading({
   className?: string;
 }) {
   return (
-    <div className={cn('space-y-1', className)}>
-      <h2
-        ref={headingRef}
-        tabIndex={-1}
-        className="text-foreground text-[15px] font-semibold leading-snug outline-none"
-      >
-        {title}
-      </h2>
-      <p className="text-muted-foreground text-sm leading-relaxed">{description}</p>
-    </div>
+    <WizardStepHeading
+      title={title}
+      description={description}
+      headingRef={headingRef}
+      className={className}
+    />
   );
 }
 

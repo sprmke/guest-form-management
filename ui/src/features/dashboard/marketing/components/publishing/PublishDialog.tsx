@@ -27,6 +27,7 @@ import { isAiQuotaError } from '@/features/dashboard/org/lib/aiQuotaToast';
 import { propertyInboxPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
+import { useMarketingPermissions } from '@/features/dashboard/marketing/hooks/useMarketingPermissions';
 
 import { ListRowsSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
@@ -98,6 +99,7 @@ export function PublishDialog({ open, onOpenChange, media }: Props) {
   const generateCaption = useGenerateMarketingCaption();
   const { data: publicProperty } = usePublicPropertyDetail(property.slug);
   const { data: bookedDates } = useMarketingBookedDates();
+  const { canPublish: canPublishPermission } = useMarketingPermissions();
   const { canUse: canPublishMarketing, isLoading: entitlementsLoading } =
     useFeatureGate('marketingStudio');
   const { open: openUpgradeModal } = useUpgradeModal();
@@ -147,6 +149,7 @@ export function PublishDialog({ open, onOpenChange, media }: Props) {
 
   const handlePublish = async () => {
     if (!media || connectionIds.length === 0) return;
+    if (!canPublishPermission) return;
 
     if (!canPublishMarketing) {
       if (!entitlementsLoading) openUpgradeModal('marketingStudio');

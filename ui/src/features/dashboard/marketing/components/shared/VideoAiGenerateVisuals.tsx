@@ -9,8 +9,14 @@ import type {
 
 import { cn } from '@/lib/utils';
 
-export { VisualChoiceButton } from '@/features/dashboard/marketing/components/shared/CalendarAiGenerateVisuals';
+import {
+  VisualChoiceButton,
+  marketingAiSuggestionPreviewFrameClass,
+} from '@/features/dashboard/marketing/components/shared/CalendarAiGenerateVisuals';
 
+export { VisualChoiceButton, marketingAiSuggestionPreviewFrameClass };
+
+/** Mini video frame — photo wash, bottom scrim, headline, scene filmstrip (Quiet Coast Motion). */
 export function VideoSuggestionPreview({
   mood,
   sceneHint,
@@ -20,22 +26,64 @@ export function VideoSuggestionPreview({
   sceneHint: number;
   className?: string;
 }) {
-  const bars = Math.max(3, Math.min(5, sceneHint));
+  const scenes = Math.max(3, Math.min(5, sceneHint));
   return (
     <div
-      className={cn('relative h-16 w-full overflow-hidden rounded-lg', className)}
-      style={{ background: `linear-gradient(135deg, ${mood.from}, ${mood.to})` }}
+      className={cn(marketingAiSuggestionPreviewFrameClass, className)}
+      style={{ background: `linear-gradient(145deg, ${mood.from} 0%, ${mood.to} 100%)` }}
       aria-hidden
     >
-      <Film className="absolute right-2 top-2 size-3.5 text-white/80" aria-hidden />
-      <div className="absolute inset-x-2 bottom-2 flex items-end gap-1">
-        {Array.from({ length: bars }).map((_, index) => (
-          <span
-            key={index}
-            className="flex-1 rounded-sm bg-white/70"
-            style={{ height: `${9 + ((index * 5) % 12)}px` }}
-          />
-        ))}
+      {/* Soft “property photo” blobs so it reads as a clip, not a flat swatch */}
+      <div
+        className="absolute inset-0 opacity-40"
+        style={{
+          background: `
+            radial-gradient(ellipse at 25% 35%, rgba(255,255,255,0.35), transparent 45%),
+            radial-gradient(ellipse at 78% 60%, rgba(0,0,0,0.22), transparent 40%)
+          `,
+        }}
+      />
+      {/* Bottom scrim — same device as live video overlays */}
+      <div
+        className="absolute inset-x-0 bottom-0 h-[58%]"
+        style={{
+          background: `linear-gradient(180deg, transparent 0%, ${mood.to}99 42%, ${mood.to}ee 100%)`,
+        }}
+      />
+      <div className="absolute left-1/2 top-[38%] flex size-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/20 ring-1 ring-white/30 backdrop-blur-[1px]">
+        <span className="ml-0.5 size-0 border-y-[5px] border-l-[8px] border-y-transparent border-l-white/90" />
+      </div>
+      <div className="absolute right-2.5 top-2.5 flex items-center gap-1 rounded-full bg-black/25 px-2 py-0.5 backdrop-blur-[2px]">
+        <Film className="size-3 text-white/90" aria-hidden />
+        <span className="text-[8px] font-semibold tracking-wide text-white/90">Clip</span>
+      </div>
+      <div className="absolute inset-x-3 bottom-3 flex flex-col gap-2">
+        <span className="font-serif text-[17px] font-semibold leading-tight tracking-tight text-white drop-shadow-sm">
+          Soft stay
+        </span>
+        <span className="text-[8px] font-medium uppercase tracking-[0.16em] text-white/75">
+          This weekend · 3 scenes
+        </span>
+        <div className="mt-1 flex items-center gap-1">
+          {Array.from({ length: scenes }).map((_, index) => {
+            const isHook = index === 0;
+            const isCta = index === scenes - 1;
+            return (
+              <span
+                key={index}
+                className="h-1.5 rounded-full"
+                style={{
+                  flex: isHook || isCta ? 1.35 : 1,
+                  background: isCta
+                    ? 'rgba(255,255,255,0.95)'
+                    : isHook
+                      ? 'rgba(255,255,255,0.8)'
+                      : 'rgba(255,255,255,0.45)',
+                }}
+              />
+            );
+          })}
+        </div>
       </div>
     </div>
   );

@@ -134,6 +134,7 @@ import { useOrgSettings } from '@/features/dashboard/org/hooks/useOrgSettings';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
+import { useMarketingPermissions } from '@/features/dashboard/marketing/hooks/useMarketingPermissions';
 
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -657,11 +658,13 @@ export function VideoEditor({ onPublish }: Props) {
     setProject,
   ]);
 
+  const { canEditContent, canPublish } = useMarketingPermissions();
   const { canUse: canUseMarketingStudio, isLoading: marketingStudioLoading } =
     useFeatureGate('marketingStudio');
   const { open: openUpgradeModal } = useUpgradeModal();
 
   const handleDownload = useCallback(async () => {
+    if (!canEditContent) return;
     if (!canUseMarketingStudio) {
       if (!marketingStudioLoading) openUpgradeModal('marketingStudio');
       return;
@@ -687,12 +690,14 @@ export function VideoEditor({ onPublish }: Props) {
     property.slug,
     selected?.id,
     savedTemplateId,
+    canEditContent,
     canUseMarketingStudio,
     marketingStudioLoading,
     openUpgradeModal,
   ]);
 
   const handlePublish = useCallback(async () => {
+    if (!canPublish) return;
     if (!canUseMarketingStudio) {
       if (!marketingStudioLoading) openUpgradeModal('marketingStudio');
       return;
@@ -719,6 +724,7 @@ export function VideoEditor({ onPublish }: Props) {
     handleExportVideo,
     selected?.id,
     selectedId,
+    canPublish,
     canUseMarketingStudio,
     marketingStudioLoading,
     openUpgradeModal,
@@ -979,20 +985,22 @@ export function VideoEditor({ onPublish }: Props) {
     () => (
       <>
         <MarketingAutoSaveStatus status={autoSaveStatus} errorMessage={autoSaveError} />
-        <Button
-          variant="outline"
-          className="min-h-[44px] gap-2"
-          disabled={exporting || !hasProject}
-          onClick={() => void handleDownload()}
-        >
-          {exporting ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden />
-          ) : (
-            <Download className="size-4" aria-hidden />
-          )}
-          Download MP4
-        </Button>
-        {onPublish ? (
+        {canEditContent ? (
+          <Button
+            variant="outline"
+            className="min-h-[44px] gap-2"
+            disabled={exporting || !hasProject}
+            onClick={() => void handleDownload()}
+          >
+            {exporting ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+            ) : (
+              <Download className="size-4" aria-hidden />
+            )}
+            Download MP4
+          </Button>
+        ) : null}
+        {onPublish && canPublish ? (
           <Button
             className="min-h-[44px] gap-2"
             disabled={exporting || !hasProject}
@@ -1008,7 +1016,17 @@ export function VideoEditor({ onPublish }: Props) {
         ) : null}
       </>
     ),
-    [autoSaveStatus, autoSaveError, exporting, hasProject, onPublish, handleDownload, handlePublish]
+    [
+      autoSaveStatus,
+      autoSaveError,
+      exporting,
+      hasProject,
+      onPublish,
+      canEditContent,
+      canPublish,
+      handleDownload,
+      handlePublish,
+    ]
   );
 
   useMarketingStudioHeaderActions(builderActions);

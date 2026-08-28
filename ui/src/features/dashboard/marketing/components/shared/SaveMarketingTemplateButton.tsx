@@ -10,6 +10,7 @@ import {
 import { TierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
+import { useMarketingPermissions } from '@/features/dashboard/marketing/hooks/useMarketingPermissions';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,9 +51,14 @@ export function SaveMarketingTemplateButton({
   const update = useUpdateMarketingTemplate();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(defaultName);
+  const { canAddTemplate, canEditTemplate } = useMarketingPermissions();
   const { canUse: canUseCustomTemplates, isLoading: customTemplatesLoading } =
     useFeatureGate('customTemplates');
   const { open: openUpgradeModal } = useUpgradeModal();
+
+  if (!canAddTemplate && !(existingTemplateId && canEditTemplate)) {
+    return null;
+  }
 
   const handleSave = async () => {
     const trimmed = name.trim();
