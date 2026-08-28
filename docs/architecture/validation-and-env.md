@@ -2,7 +2,7 @@
 title: 'Form validation and environment variables'
 status: active
 tags: [architecture]
-updated: 2026-08-19
+updated: 2026-08-27
 ---
 
 # Form validation and environment variables
@@ -26,109 +26,179 @@ Part of the [`docs/PROJECT.md`](../PROJECT.md) architecture split.
 
 ## 11. Environment variables
 
-### Secrets hygiene (what belongs in git)
+### Files (templates vs secrets)
 
-| Safe in git (`*.example`, docs)                                                         | Never commit                                                                    |
-| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Placeholder names and fake values (`replace-with-…`, `you@example.com`)                 | `*.local`, `.env.development`, `.env.production` (real values)                  |
-| Supabase **project ref** in operator docs _(semi-public — visible in browser API URLs)_ | **Service role** key, **anon** key (real JWT), DB passwords, pooler URIs        |
-| Local Supabase demo anon JWT in `supabase/snippets/` _(public Supabase CLI default)_    | `SUPABASE_ACCESS_TOKEN` (PAT), Resend/Meta/Google secrets, OAuth client secrets |
-| GitHub **secret names** in workflow docs                                                | GitHub secret **values**                                                        |
+| File                                                              | Purpose                               |
+| ----------------------------------------------------------------- | ------------------------------------- |
+| `ui/.env.example`                                                 | UI var inventory (placeholders)       |
+| `ui/.env.development.local.example`                               | Local-stack UI-only template          |
+| `ui/.env.development.dev.example`                                 | Hosted-dev UI template                |
+| `supabase/.env.example`                                           | Edge secrets inventory (placeholders) |
+| `supabase/.env.dev.example`                                       | Dev project deploy + `dev:remote-api` |
+| `supabase/.env.prod.example`                                      | Multi-tenant prod bootstrap template  |
+| Gitignored `*.local`, `.env.development`, `.env.production`, etc. | Real values — never commit            |
 
-**Templates:** `ui/.env.example`, `supabase/.env.example`, `supabase/.env.dev.example`, `supabase/.env.prod.example` — placeholders only. Copy to gitignored targets (`ui/.env.development`, `supabase/.env.dev.local`, `supabase/.env.prod.local`). Root + `supabase/.gitignore` block `*.local`.
+**Backups:** `.env-backups/<date>/` (gitignored). Re-format after edits: `bun scripts/dev/reorganize-env-files.mjs`.
 
-**Production:** Hosted secrets (Supabase Dashboard), dual Google OAuth clients (GoTrue vs Gmail API), UI host **`VITE_*`**, and **`pg_cron`** setup are stepped in **[[migration-runbook|Migration Runbook — New Booking Flow]] §11**.
+**Format:** Short `# Section` headers; optional vars commented in `*.example` only. Operator settings (email, payment, Telegram) live in DB — not env.
 
-### UI (`ui/.env` / Vite)
+### Secrets hygiene
 
-- `VITE_API_URL` — Supabase functions base URL (local: `http://127.0.0.1:54321/functions/v1` pattern; production: project functions URL).
-- `VITE_SUPABASE_URL` — same functions base URL used by the Supabase JS client; project URL is derived by stripping `/functions/v1`.
-- `VITE_SUPABASE_ANON_KEY` — public anon key (sent with function requests and used by the Supabase JS client).
-- `VITE_NODE_ENV` — `production` toggles production-only behavior in the form.
-- `VITE_SUPER_ADMIN_EMAILS` _(optional)_ — comma-separated emails for platform super-admin UX (`/admin/*`, Admin tab in mode switcher). Server enforces `SUPER_ADMIN_EMAILS` on edge functions.
-- `VITE_GOOGLE_MAPS_API_KEY` _(optional)_ — Browser API key for **Property → Settings → Location & Access** (`PropertyLocationPicker`: Maps JavaScript API + Places API). Restrict by HTTP referrer in Google Cloud. When unset, address can still be typed manually; map picker is hidden.
-- `VITE_SUPABASE_PROJECT_URL` _(optional, Phase 1)_ — override for the Supabase project URL when the auto-derivation from `VITE_SUPABASE_URL` is unwanted.
-- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` _(local Supabase Auth only)_ — **not** `VITE_*`; not exposed to the browser. Used when `supabase/config.toml` enables `[auth.external.google]`: `dev.sh` (both `supabase start` and `supabase functions serve`) and `npm run start:supabase` load `ui/.env.development` before the CLI runs so it can substitute `env(...)`. Do **not** use the `SUPABASE_` prefix (CLI may ignore those names). In Google Cloud, add redirect URIs `http://127.0.0.1:54321/auth/v1/callback` and `http://localhost:54321/auth/v1/callback`. Keep `redirect_uri` under `[auth.external.google]` in `supabase/config.toml` (see comment there); after changing that block or these env vars, run **`npm run stop:supabase`** then **`npm run start:supabase`** so the auth container is recreated with `GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI` — otherwise GoTrue can return `validation_failed` / “missing redirect URI” on `/auth/v1/authorize`. If the SPA shows `Unable to exchange external code`, check **`docker logs supabase_auth_<project>`**: Google often returns `invalid_client` / “The provided client secret is invalid” when the secret does not belong to the same Web client as `GOOGLE_CLIENT_ID`, the value has stray whitespace or quotes, or the stack was not restarted after updating `ui/.env.development`.
+| Safe in git (`*.example`, docs)                    | Never commit                                                   |
+| -------------------------------------------------- | -------------------------------------------------------------- |
+| Placeholder names and fake values                  | `*.local`, real `.env.development` / `.env.production`         |
+| Project ref in operator docs (semi-public in URLs) | Service role key, anon JWT (real), DB pooler URIs, API secrets |
+| GitHub secret **names** in workflow docs           | GitHub secret **values**                                       |
 
-### Edge (`supabase/.env.local` / hosted secrets)
+Production hosted secrets: Supabase Dashboard → Edge Functions → Secrets. UI `VITE_*`: Vercel project env. Checklist: **`docs/archive/operations/migration-runbook.md`** §11.
 
-**Operator config (non-secrets):** **`org_settings`** (one row per organization — social links, team logo; **Org → Settings**) and **`app_settings`** (one row per property — payment, GAF, **email routing**, automation toggles, **workflow document requirements** (`document_requirements_override`); **Property → Settings**). Edge code merges org branding + property operational fields via **`resolveAppSettings(propertyId)`** (`_shared/appSettings.ts` + `_shared/orgSettings.ts`). Document requirement lists resolve via **`documentRequirements.ts#resolveDocumentRequirements`** (override → `developments.settings.workflowDefaults` → defaults). Secrets **never** go in these tables.
+---
 
-| Settings UI                                                                                 | Table              | Scope        |
-| ------------------------------------------------------------------------------------------- | ------------------ | ------------ |
-| Org → Settings → Socials                                                                    | **`org_settings`** | organization |
-| Property → Settings → Payment / GAF / Email automations / Workflow documents / Integrations | **`app_settings`** | property     |
+### 11.1 UI (`ui/.env` / Vercel)
 
-| Org settings (`org_settings`)                           | Property settings (`app_settings`)                  | Env fallback (legacy)                                                                                   |
-| ------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Facebook page URL (`/sd-form` review CTA)               | `facebook_reviews_url`                              | **`FACEBOOK_REVIEWS_URL`** when DB column empty                                                         |
-| Airbnb listing URL                                      | `airbnb_url`                                        | **`AIRBNB_URL`** when DB column empty _(optional)_                                                      |
-| Instagram profile URL                                   | `instagram_url`                                     | **`INSTAGRAM_URL`** when DB column empty _(optional)_                                                   |
-| TikTok profile URL                                      | `tiktok_url`                                        | **`TIKTOK_URL`** when DB column empty _(optional)_                                                      |
-| Email / team logo (emails, admin chrome, guest pages)   | —                                                   | `EMAIL_LOGO_URL`                                                                                        |
-| Guest app origin (email links, default payment QR base) | —                                                   | **`PUBLIC_GUEST_APP_ORIGIN`** (not per-org; legacy `org_settings.public_guest_app_origin` if env unset) |
-| —                                                       | GAF/pet **To** (PMO) + inbound sender allow-list    | `developments.settings.pmoEmail` → legacy `email_to` → Azure default                                    | `EMAIL_TO` (last resort)                                                                                   |
-| —                                                       | **Reply-To** + new booking notify + GAF/pet **CC**  | `email_reply_to`                                                                                        | `EMAIL_REPLY_TO`                                                                                           |
-| —                                                       | Parking broadcast BCC                               | `parking_owner_emails`                                                                                  | `PARKING_OWNER_EMAILS`                                                                                     |
-| —                                                       | SD cron email lead (hours in UI; stored as minutes) | `sd_refund_cron_email_lead_minutes`                                                                     | `SD_REFUND_CRON_EMAIL_LEAD_MINUTES`                                                                        |
-| —                                                       | SD cron max checkout age (days)                     | `sd_refund_cron_max_checkout_age_days`                                                                  | `SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS`                                                                     |
-| —                                                       | Default guest parking rate                          | `default_parking_rate_guest`                                                                            | ₱400 — edit on **Pricing** page only (`property-pricing`)                                                  |
-| —                                                       | Weekday nightly rate                                | `weekday_nightly_rate`                                                                                  | ₱2,799 — **Pricing** / `ReviewPricingForm`                                                                 |
-| —                                                       | Weekend nightly rate (Fri–Sun)                      | `weekend_nightly_rate`                                                                                  | ₱2,999                                                                                                     |
-| —                                                       | Default down payment                                | `default_down_payment`                                                                                  | ₱1,500                                                                                                     |
-| —                                                       | Default security deposit                            | `default_security_deposit`                                                                              | ₱1,500                                                                                                     |
-| —                                                       | Default pet fee                                     | `default_pet_fee`                                                                                       | ₱300                                                                                                       |
-| —                                                       | Default extra guest fee                             | `default_guest_additional_fee`                                                                          | ₱0                                                                                                         |
-| —                                                       | Per-date nightly overrides                          | `property_pricing_date_overrides`                                                                       | `(property_id, pricing_date)` → `nightly_rate`                                                             |
-| —                                                       | Holiday / peak premiums                             | `pricing_holiday_rules` (JSONB on `app_settings`)                                                       | Seeded PH 2026 rules; used by calendar + `ReviewPricingForm`                                               |
-| —                                                       | Owner date blocks                                   | `property_blocked_dates`                                                                                | `(property_id, start_date, end_date)` nights `[start, end)`; edge helper `_shared/propertyBlockedDates.ts` |
-| —                                                       | Email automation master toggles                     | `automation_toggles`                                                                                    | —                                                                                                          |
-| —                                                       | Payment provider (`payment_provider`)               | —                                                                                                       |
-| —                                                       | Account name (`gcash_name`)                         | `GCASH_NAME`                                                                                            |
-| —                                                       | Account number (`gcash_number`)                     | `GCASH_NUMBER`                                                                                          |
-| —                                                       | Payment QR image (`gcash_qr_image_url`)             | `GCASH_QR_IMAGE_URL`                                                                                    |
-| —                                                       | GAF unit owner / tower / contact / signature        | _(built-in defaults if unset)_                                                                          |
+| Variable                    | Required   | Notes                                                                  |
+| --------------------------- | ---------- | ---------------------------------------------------------------------- |
+| `VITE_SUPABASE_URL`         | Yes        | Edge Functions base URL **with** `/functions/v1`                       |
+| `VITE_API_URL`              | Yes        | Same as `VITE_SUPABASE_URL` (guest form fetchers)                      |
+| `VITE_SUPABASE_ANON_KEY`    | Yes        | Public anon key                                                        |
+| `VITE_NODE_ENV`             | Yes        | `production` toggles guest-form prod behavior                          |
+| `VITE_SUPABASE_PROJECT_URL` | No         | Override Supabase JS project URL (hybrid `dev:remote-api`)             |
+| `VITE_SUPER_ADMIN_EMAILS`   | No         | Comma-separated — `/admin/*` UX only; server uses `SUPER_ADMIN_EMAILS` |
+| `VITE_GOOGLE_MAPS_API_KEY`  | No         | Property Settings location picker                                      |
+| `VITE_INBOX_MOCK_DATA`      | No         | `true` → inbox mock mode                                               |
+| `GOOGLE_CLIENT_ID`          | Local only | GoTrue Google OAuth — **not** `VITE_*`; loaded before `supabase start` |
+| `GOOGLE_CLIENT_SECRET`      | Local only | Pair with `GOOGLE_CLIENT_ID`                                           |
 
-**Secrets / infra — env only (Supabase Dashboard secrets; Vercel for `VITE_*`):**
+**Removed / unused:** `VITE_SUPABASE_DB_PASSWORD` — not read by the app.
 
-- `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
-- `RESEND_API_KEY`
-- `RESEND_INBOUND_WEBHOOK_SECRET` _(optional until Phase 2 cutover)_ — Svix signing secret for **`approval-email-webhook`** (`email.received`).
-- `RESEND_APPROVAL_INBOUND_DOMAIN` _(optional)_ — inbound host for plus-address Reply-To, e.g. `inbound.kamehomes.space` → `approvals+{slug}@…`. See **[[approval-email-inbound]]**.
-- `RESEND_FROM_EMAIL` _(optional)_ — Verified Resend **From** address for workflow emails (e.g. `mail@yourdomain.com`). When unset, falls back to property **`emailReplyTo`** from **`app_settings`**. Display name is built from unit + org/property labels (`propertyEmailBranding.ts`).
-- `ADMIN_ALLOWED_EMAILS` — comma-separated allow list for `verifyAdminJwt` / `isPlatformAdmin` (org owners bypass `verifyAdminJwt`)
-- `SUPER_ADMIN_EMAILS` — platform super-admin (`/admin/*`, `serveSuperAdmin`)
-- `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY` _(optional)_ — 32-byte key as **64 hex** chars or base64; encrypts per-property Telegram bot tokens at rest (`propertySecretCrypto.ts`). Legacy name retained from Gmail OAuth era.
-- **`TELEGRAM_BOT_TOKEN`**, **`TELEGRAM_CHAT_ID`** _(optional)_ — Telegram Bot API: group or channel id for marketing sends (`telegram-marketing-cron`, `submit-form` new row, `cancel-booking`). When either is unset, sends are skipped (logged).
-- **`TELEGRAM_CRON_SECRET`** _(optional)_ — When set, `telegram-marketing-cron` requires request header **`X-Telegram-Cron-Secret`** with the same value (use in `pg_net` from Vault; see **[[telegram-marketing-reminders|Telegram marketing reminders]]**).
-- **`CONTRACT_EXPIRY_CRON_SECRET`** _(optional)_ — When set, `contract-expiry-cron` requires header **`X-Contract-Expiry-Cron-Secret`** (see `supabase/snippets/contract-expiry-cron.sql`).
-- **`TELEGRAM_STAFF_BOT_TOKEN`** _(optional)_ — Bot token for the staff/cleaner Telegram group. Falls back to `TELEGRAM_BOT_TOKEN` if unset (same bot, different group).
-- **`TELEGRAM_STAFF_CHAT_ID`** — Numeric Telegram chat id for the staff/cleaner group (often negative for supergroups). Required for staff notifications.
-- **`TELEGRAM_STAFF_CRON_SECRET`** _(optional)_ — When set, `telegram-staff-cron` requires header `X-Telegram-Cron-Secret` with the same value.
-- **`TELEGRAM_FINANCE_BOT_TOKEN`** _(optional)_ — Bot token for finance due-date reminders. Falls back to `TELEGRAM_BOT_TOKEN` if unset.
-- **`TELEGRAM_FINANCE_CHAT_ID`** — Numeric Telegram chat id for finance reminder alerts (often negative for supergroups).
-- **`TELEGRAM_FINANCE_CRON_SECRET`** _(optional)_ — When set, `telegram-finance-cron` requires header `X-Telegram-Cron-Secret` with the same value.
-- **`TELEGRAM_MAINTENANCE_BOT_TOKEN`** _(optional)_ — Bot token for maintenance due-date reminders. Falls back to `TELEGRAM_BOT_TOKEN` if unset.
-- **`TELEGRAM_MAINTENANCE_CHAT_ID`** — Numeric Telegram chat id for the **Kame Home - Maintenance** group.
-- **`TELEGRAM_MAINTENANCE_CRON_SECRET`** _(optional)_ — When set, `telegram-maintenance-cron` requires header `X-Telegram-Cron-Secret` with the same value.
-- **`TELEGRAM_ADMIN_BOT_TOKEN`** _(optional)_ — Bot token for the admin operations Telegram group. Falls back to `TELEGRAM_BOT_TOKEN` if unset.
-- **`TELEGRAM_ADMIN_CHAT_ID`** — Numeric Telegram chat id for the admin ops group (often negative for supergroups). Required for operations alerts.
-- **`TELEGRAM_ADMIN_CRON_SECRET`** _(optional)_ — When set, `telegram-admin-cron` requires header `X-Telegram-Cron-Secret` with the same value.
-- **`PARKING_BROADCAST_EXPIRE_CRON_SECRET`** _(optional)_ — When set, **`expire-parking-broadcasts`** requires header **`X-Parking-Broadcast-Expire-Cron-Secret`**. Hosted schedule is created by migration **`20261018120000_parking_broadcast_expire_cron.sql`** via `sync_parking_broadcast_expire_cron_job()`; see `docs/archive/operations/scheduled-jobs-and-testing.md`.
-- **`GEMINI_API_KEYS`** _(optional, local/dev)_ — Comma-separated Google AI Studio API keys for rate-limit rotation across **different** Google Cloud projects. **Production:** use one paid **`GEMINI_API_KEY`** instead — see **`docs/archive/operations/ai-platform-billing.md`**. Platform usage is metered per org (`ai_platform_usage_*` tables; `ai-platform-settings` / `ai-platform-usage` edge functions).
-- **`GEMINI_API_KEY`** _(optional)_ — Single Gemini key. **Required for production** (paid billing project). When `GEMINI_API_KEYS` is unset, all AI services use this key via `_shared/aiGeminiKeys.ts` + `_shared/aiModelRouter.ts`.
-- **`GROQ_API_KEY`** _(optional)_ — Groq API key (Llama 4 Scout). **Fallback only** when Gemini fails — not primary capacity for real users. Sign up at `https://console.groq.com`.
-- **`JAMENDO_CLIENT_ID`** _(optional, Marketing Studio video)_ — Free Jamendo API client id ([dev portal](https://devportal.jamendo.com/)). Powers **Trending** / **Search** music in the video editor (`marketing-music`). When unset, browse tabs return empty and **Upload** / **Link** still work. Jamendo tracks are cached to **`property-media`** on select for stable Remotion export URLs. Operators are responsible for license fit on published Meta posts.
-- **`META_APP_ID`**, **`META_APP_SECRET`** _(Guest Inbox)_ — Meta developer app credentials for Facebook Page + Instagram messaging OAuth and webhook signature verification.
-- **`META_INBOX_TOKEN_ENCRYPTION_KEY`** _(Guest Inbox)_ — 32-byte AES key (64 hex or base64); encrypts Page access tokens in **`social_channel_connections`**.
-- **`META_WEBHOOK_VERIFY_TOKEN`** _(Guest Inbox)_ — Shared secret for Meta webhook GET verification (`meta-inbox-webhook`).
-- **`META_INBOX_WEBHOOK_HEALTHCHECK_CRON_SECRET`** _(optional, Guest Inbox)_ — When set, `meta-inbox-webhook-healthcheck` requires header **`X-Meta-Inbox-Webhook-Healthcheck-Cron-Secret`**. Hosted schedule: migration `20261101120000_meta_inbox_webhook_health.sql` (`sync_meta_inbox_webhook_healthcheck_cron_job()`, every 10 minutes).
-- **`META_OAUTH_ALLOWED_RETURN_ORIGINS`** _(optional, Guest Inbox)_ — Comma-separated SPA origins for Meta OAuth return (defaults include local Vite). Local/staging E2E checklist: **[[inbox-e2e-runbook|Guest Inbox — E2E runbook (local + staging)]]**.
-- **`META_OAUTH_EXCLUDE_PUBLISHING_SCOPES`** _(optional)_ — Set to `1` to omit `pages_manage_posts`, `instagram_content_publish`, and `instagram_basic` from OAuth (inbox-only connect). Default: **all scopes included**. Setup guide: **[[meta-app-review|Meta app setup — Guest Inbox + Marketing Content Studio]]**.
-- **`META_OAUTH_EXTRA_SCOPES`** _(optional)_ — Comma-separated additional OAuth scopes appended to the default set.
-- **`PAYMONGO_SECRET_KEY`** _(org subscription billing)_ — PayMongo secret API key (`sk_test_…` / `sk_live_…`). Used by **`create-org-subscription-checkout`** to create Payment Links. Setup: **`docs/archive/operations/paymongo-billing-setup.md`**.
-- **`PAYMONGO_WEBHOOK_SECRET`** _(org subscription billing)_ — Per-endpoint webhook signing secret for HMAC verification in **`paymongo-webhook`**.
-- **`PLATFORM_BILLING_CRON_SECRET`** _(optional)_ — When set, **`platform-billing-cron`** requires header **`X-Platform-Billing-Cron-Secret`**. Hosted schedule: migration **`20261024140000_platform_billing_cron.sql`** (`sync_platform_billing_cron_job()`, daily 06:00 UTC).
-- Optional: `ENVIRONMENT` / `DENO_ENV` for `isDevelopment()` in shared utils
+**Local GoTrue:** After changing `GOOGLE_*` or `supabase/config.toml` `[auth.external.google]`, run `bun run stop:supabase` then `./dev.sh` so the auth container picks up `GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI`.
 
-**UI (`ui/.env` / Vercel):** `VITE_SUPABASE_URL`, `VITE_API_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_NODE_ENV`, `VITE_SUPER_ADMIN_EMAILS` (super-admin UX only), `VITE_GOOGLE_MAPS_API_KEY` (property location picker). Local only: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` for GoTrue sign-in.
+---
+
+### 11.2 Edge secrets (`supabase/.env.local` / Dashboard)
+
+#### Platform-injected (hosted)
+
+- `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` — set by Supabase on deploy.
+- `DENO_DEPLOYMENT_ID` — production signal (auto).
+
+#### Local `functions serve` aliases
+
+When invoking `supabase functions serve` manually, `./dev.sh` / `bun run dev:api` merge `API_URL` + `SERVICE_ROLE_KEY` from `supabase status` via `scripts/dev/build-local-functions-env.sh` (CLI skips `SUPABASE_*` in `--env-file`).
+
+#### Core
+
+| Variable                                 | Notes                                                                          |
+| ---------------------------------------- | ------------------------------------------------------------------------------ |
+| `ENVIRONMENT` / `DENO_ENV`               | `development` → `isDevelopment()` in `_shared/utils.ts`                        |
+| `ADMIN_ALLOWED_EMAILS`                   | Legacy platform admin allow list (`verifyAdminJwt`)                            |
+| `SUPER_ADMIN_EMAILS`                     | `/admin/*`, `serveSuperAdmin`                                                  |
+| `PUBLIC_GUEST_APP_ORIGIN`                | Guest email/deep links; legacy `org_settings.public_guest_app_origin` fallback |
+| `PUBLIC_API_URL` / `SUPABASE_PUBLIC_URL` | Public API base for Meta OAuth/webhooks; ngrok local dev                       |
+
+#### Email (Resend)
+
+| Variable                         | Notes                                                  |
+| -------------------------------- | ------------------------------------------------------ |
+| `RESEND_API_KEY`                 | Outbound + inbound attachment fetch                    |
+| `RESEND_FROM_EMAIL`              | Optional verified From; else property `email_reply_to` |
+| `RESEND_INBOUND_WEBHOOK_SECRET`  | Svix secret for `approval-email-webhook`               |
+| `RESEND_APPROVAL_INBOUND_DOMAIN` | Plus-address domain, e.g. `inbound.kamehomes.space`    |
+| `SUPPORT_TEAM_EMAIL`             | Help & Support ticket notify inbox                     |
+
+**Email routing (`EMAIL_TO`, `EMAIL_REPLY_TO`, parking BCC):** **`app_settings`** / **`org_settings`** — not env.
+
+#### Encryption
+
+| Variable                           | Notes                                                                         |
+| ---------------------------------- | ----------------------------------------------------------------------------- |
+| `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY` | 32-byte hex/base64 — encrypts Telegram tokens at rest (legacy name)           |
+| `SETTINGS_VERIFICATION_SECRET`     | HMAC for settings OTP tokens; falls back to encryption key, then service role |
+
+#### AI
+
+| Variable          | Notes                                    |
+| ----------------- | ---------------------------------------- |
+| `GEMINI_API_KEYS` | Comma-separated (local/dev rotation)     |
+| `GEMINI_API_KEY`  | Single key — **required for production** |
+| `GROQ_API_KEY`    | Fallback when Gemini fails               |
+
+#### Meta (Guest Inbox + Marketing publish)
+
+| Variable                               | Notes                   |
+| -------------------------------------- | ----------------------- |
+| `META_APP_ID`, `META_APP_SECRET`       | Developer app           |
+| `META_INBOX_TOKEN_ENCRYPTION_KEY`      | Page token encryption   |
+| `META_WEBHOOK_VERIFY_TOKEN`            | Webhook GET verify      |
+| `META_OAUTH_ALLOWED_RETURN_ORIGINS`    | SPA origins after OAuth |
+| `META_OAUTH_EXCLUDE_PUBLISHING_SCOPES` | `1` = inbox-only OAuth  |
+| `META_OAUTH_EXTRA_SCOPES`              | Comma-separated extras  |
+
+#### PayMongo
+
+| Variable                  | Notes                                |
+| ------------------------- | ------------------------------------ |
+| `PAYMONGO_SECRET_KEY`     | Org subscriptions + parking checkout |
+| `PAYMONGO_WEBHOOK_SECRET` | HMAC in `paymongo-webhook`           |
+
+#### Integrations (optional)
+
+| Variable            | Notes                               |
+| ------------------- | ----------------------------------- |
+| `JAMENDO_CLIENT_ID` | Marketing Studio video music browse |
+
+#### Legacy env fallbacks (prefer DB)
+
+| Variable                                                            | Replaced by                                    |
+| ------------------------------------------------------------------- | ---------------------------------------------- |
+| `FACEBOOK_REVIEWS_URL`, `AIRBNB_URL`, `INSTAGRAM_URL`, `TIKTOK_URL` | `org_settings` / `app_settings` social columns |
+
+#### Cron webhook secrets (optional)
+
+When set, matching cron endpoints require the corresponding header. See **`docs/archive/operations/scheduled-jobs-and-testing.md`**.
+
+| Variable                                     | Header                                         |
+| -------------------------------------------- | ---------------------------------------------- |
+| `TELEGRAM_CRON_SECRET`                       | `X-Telegram-Cron-Secret`                       |
+| `TELEGRAM_STAFF_CRON_SECRET`                 | `X-Telegram-Cron-Secret`                       |
+| `TELEGRAM_ADMIN_CRON_SECRET`                 | `X-Telegram-Cron-Secret`                       |
+| `TELEGRAM_FINANCE_CRON_SECRET`               | `X-Telegram-Cron-Secret`                       |
+| `TELEGRAM_MAINTENANCE_CRON_SECRET`           | `X-Telegram-Cron-Secret`                       |
+| `PARKING_BROADCAST_EXPIRE_CRON_SECRET`       | `X-Parking-Broadcast-Expire-Cron-Secret`       |
+| `PARKING_REMINDER_CRON_SECRET`               | `X-Parking-Reminder-Cron-Secret`               |
+| `CONTRACT_EXPIRY_CRON_SECRET`                | `X-Contract-Expiry-Cron-Secret`                |
+| `DASHBOARD_ASSISTANT_EXPIRE_CRON_SECRET`     | (dashboard assistant expire cron)              |
+| `META_INBOX_WEBHOOK_HEALTHCHECK_CRON_SECRET` | `X-Meta-Inbox-Webhook-Healthcheck-Cron-Secret` |
+| `PLATFORM_BILLING_CRON_SECRET`               | `X-Platform-Billing-Cron-Secret`               |
+
+**Telegram bot tokens + chat IDs:** per-property/parking DB tables — **not** env. Only `*_CRON_SECRET` vars remain env-only.
+
+#### Deploy / script-only (not edge runtime)
+
+| Variable                                                      | File                       | Notes                                   |
+| ------------------------------------------------------------- | -------------------------- | --------------------------------------- |
+| `DEV_PROJECT_REF`, `DEV_SUPABASE_URL`, `DEV_SERVICE_ROLE_KEY` | `supabase/.env.dev.local`  | `deploy:supabase:dev`, `dev:remote-api` |
+| `PROD_PROJECT_REF`                                            | `supabase/.env.dev.local`  | Safety deny-list vs dev ref             |
+| `DEV_DB_URL`                                                  | `supabase/.env.dev.local`  | Rollback script                         |
+| `MT_PROD_*`, `LEGACY_PROD_PROJECT_REF`                        | `supabase/.env.prod.local` | Mt-prod bootstrap                       |
+| `PROD_DB_URL`                                                 | `supabase/.env.local`      | `sync-prod-public-data-to-local.sh`     |
+
+#### Removed (do not add back)
+
+Google Calendar/Sheets/Gmail OAuth listener env (`GOOGLE_SERVICE_ACCOUNT`, `GOOGLE_CALENDAR_ID`, `GOOGLE_SPREADSHEET_ID`, `GMAIL_OAUTH_*` except encryption key), global Telegram bot env (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, …), `EMAIL_TO` / `EMAIL_REPLY_TO` / `PARKING_OWNER_EMAILS` / `GCASH_*` / `SD_REFUND_CRON_*` / `EMAIL_LOGO_URL` / `PERMIT_APPROVER_EMAIL` — all migrated to **`app_settings`** / **`org_settings`** or per-property Telegram settings.
+
+---
+
+### 11.3 DB operator settings vs env (quick reference)
+
+| Concern                             | DB location                       | Env fallback                            |
+| ----------------------------------- | --------------------------------- | --------------------------------------- |
+| GAF/pet To + Reply-To + parking BCC | `app_settings`                    | —                                       |
+| Payment account + QR                | `app_settings`                    | —                                       |
+| SD cron lead / max checkout age     | `app_settings`                    | —                                       |
+| Org logo (email chrome)             | `org_settings`                    | default URL in code                     |
+| Guest app origin                    | `org_settings`                    | `PUBLIC_GUEST_APP_ORIGIN`               |
+| Social review URLs                  | org + property columns            | legacy `FACEBOOK_REVIEWS_URL`, etc.     |
+| Telegram bots                       | `telegram_*_settings` (encrypted) | `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY` only |
+
+Settings UI map unchanged — see prior **`resolveAppSettings`** / Property → Settings guides under `docs/guides/routes/`.

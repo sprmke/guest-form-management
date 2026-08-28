@@ -439,7 +439,7 @@ Backlog for codebase quality, agent tooling, and local dev speed.
 - [x] Guest **stay guide** — token-gated `/properties/:slug/stay-guide` from standard property templates + RFCI email CTA; link auto-issued on **READY_FOR_CHECKIN** transition, admin copy on booking detail; date-change window refresh (`get-guest-stay-guide`, `issue-guest-stay-guide-token`, migration `20260916120000_guest_stay_guide_token.sql`). Guide: **[[stay-guide|Guest stay guide (token-gated brochure)]]**.
 - [ ] Wire `BookingCard` Reserve → operational `/form`
 - [ ] Property marketing calendar → `get-booked-dates`
-- [ ] `PublicFormRenderer` → real submission endpoint
+- [x] ~~`PublicFormRenderer` → real submission endpoint~~ — **Retired:** mock form routes removed; operational booking uses `/properties/:slug/form` (`submit-form`); parking uses `/parkings/:slug/form` (`submit-parking-booking-request`)
 - [x] Guest auth routes — host Google OAuth + onboarding routing; `/sign-in` legacy redirect
 - [x] Removed legacy **`SignInPage`**
 - [ ] Wire guest email/password + Facebook (guest audience only)

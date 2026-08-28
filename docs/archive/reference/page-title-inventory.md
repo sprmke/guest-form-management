@@ -17,34 +17,32 @@ Canonical formats live in `.cursor/rules/page-titles.mdc`. This sheet lists ever
 
 ## Public marketing pages
 
-| Route                                     | Page name                   | Status                      |
-| ----------------------------------------- | --------------------------- | --------------------------- |
-| `/`                                       | Home                        | Set                         |
-| `/search`                                 | Search                      | Set                         |
-| `/for-hosts`                              | For Hosts                   | Set                         |
-| `/for-hosts/pricing`                      | Pricing                     | Set                         |
-| `/services`                               | Services                    | Set                         |
-| `/hosts/:orgSlug`                         | `${host.name}`              | Set                         |
-| `/properties`                             | Properties                  | Set                         |
-| `/properties/in/:location`                | Properties in ${location}   | Set (inherits Properties)   |
-| `/properties/:propertySlug`               | `${property.name}`          | Set                         |
-| `/properties/:propertySlug/forms/:formId` | Book                        | Set (property layout)       |
-| `/parkings`                               | Parkings                    | Set                         |
-| `/parkings/in/:location`                  | Parkings in ${location}     | Set (inherits Parkings)     |
-| `/parkings/:parkingSlug`                  | `${parking.name}`           | Set                         |
-| `/parkings/:parkingSlug/form`             | Book                        | Set (property layout)       |
-| `/developments`                           | Developments                | Set                         |
-| `/developments/in/:location`              | Developments in ${location} | Set (inherits Developments) |
-| `/developments/:slug`                     | `${development.name}`       | Set                         |
-| `/developments/:slug/properties`          | Properties                  | Set (property layout)       |
-| `/developments/:slug/parking`             | Parking                     | Set (property layout)       |
-| `/developments/:slug/forms/:formId`       | Book                        | Set (property layout)       |
-| `/about`                                  | About                       | Set                         |
-| `/contact`                                | Contact                     | Set                         |
-| `/support`                                | Support                     | Set                         |
-| `/terms`                                  | Terms                       | Set                         |
-| `/privacy`                                | Privacy                     | Set                         |
-| `/cookies`                                | Cookies                     | Set                         |
+| Route                            | Page name                   | Status                      |
+| -------------------------------- | --------------------------- | --------------------------- |
+| `/`                              | Home                        | Set                         |
+| `/search`                        | Search                      | Set                         |
+| `/for-hosts`                     | For Hosts                   | Set                         |
+| `/for-hosts/pricing`             | Pricing                     | Set                         |
+| `/services`                      | Services                    | Set                         |
+| `/hosts/:orgSlug`                | `${host.name}`              | Set                         |
+| `/properties`                    | Properties                  | Set                         |
+| `/properties/in/:location`       | Properties in ${location}   | Set (inherits Properties)   |
+| `/properties/:propertySlug`      | `${property.name}`          | Set                         |
+| `/parkings`                      | Parkings                    | Set                         |
+| `/parkings/in/:location`         | Parkings in ${location}     | Set (inherits Parkings)     |
+| `/parkings/:parkingSlug`         | `${parking.name}`           | Set                         |
+| `/parkings/:parkingSlug/form`    | Book                        | Set (property layout)       |
+| `/developments`                  | Developments                | Set                         |
+| `/developments/in/:location`     | Developments in ${location} | Set (inherits Developments) |
+| `/developments/:slug`            | `${development.name}`       | Set                         |
+| `/developments/:slug/properties` | Properties                  | Set (property layout)       |
+| `/developments/:slug/parking`    | Parking                     | Set (property layout)       |
+| `/about`                         | About                       | Set                         |
+| `/contact`                       | Contact                     | Set                         |
+| `/support`                       | Support                     | Set                         |
+| `/terms`                         | Terms                       | Set                         |
+| `/privacy`                       | Privacy                     | Set                         |
+| `/cookies`                       | Cookies                     | Set                         |
 
 ## Public property-scoped operational pages
 

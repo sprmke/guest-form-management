@@ -115,7 +115,7 @@ Use this when planning admin fields or deciding what to keep as marketing-only m
 | Cancellation policy block                         | `PropertyRules` + `CancellationPolicyDisplay`   | `settings.cancellationPolicy` | Resolved on API; presets + custom in property settings     |
 | Free cancellation / marketing feature bullets     | `PropertyOverview`, `BookingCard`               | Same                          | `showListingHighlight` + `shortLabel` from resolved policy |
 | Similar properties                                | `mockProperties`                                | No                            | Future public list API                                     |
-| Parking registration CTA                          | `mockForms`                                     | Partial (building forms)      | Wire building forms when public forms ship                 |
+| Parking registration CTA                          | `/parkings/:slug/form` (live)                   | Live                          | `submit-parking-booking-request`                           |
 | Development / residence link                      | Mock `developmentSlug`                          | Partial (`residence_name`)    | Public development catalog                                 |
 | Save / wishlist heart on cards                    | `PropertySaveButton` + `guest_saved_properties` | Authenticated guest           | Auth modal when anonymous; shared cache across pages       |
 | `isNew` badge on cards                            | Mock only                                       | No                            | `created_at` threshold                                     |

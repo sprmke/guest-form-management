@@ -76,15 +76,16 @@ When you change seed migrations, super-admin plan edits, or `PLAN_TIER_CARD_GAIN
 
 Client/server gating for these keys shipped in Phase 3/4, and comparison-table/card copy in Phase 9. This section reflects what's actually in `pricing_plans.features` and the `PlanFeatures` type on both sides.
 
-| New key                | Decision                                                                   | free | starter | growth | pro | managed | commission |
-| ---------------------- | -------------------------------------------------------------------------- | ---- | ------- | ------ | --- | ------- | ---------- |
-| `financeReporting`     | Starter+                                                                   | —    | ✅      | ✅     | ✅  | ✅      | ✅         |
-| `maintenanceReporting` | Starter+                                                                   | —    | ✅      | ✅     | ✅  | ✅      | ✅         |
-| `metaChatChannel`      | Business+ (`pro`+)                                                         | —    | —       | —      | ✅  | ✅      | —          |
-| `quickReplies`         | Starter+                                                                   | —    | ✅      | ✅     | ✅  | ✅      | ✅         |
-| `customTemplates`      | Starter+ (advanced template management; standard template management free) | —    | ✅      | ✅     | ✅  | ✅      | ✅         |
-| `publicPagesAutosave`  | Starter+                                                                   | —    | ✅      | ✅     | ✅  | ✅      | ✅         |
-| `bookingImport`        | Starter+                                                                   | —    | ✅      | ✅     | ✅  | ✅      | ✅         |
+| New key                | Decision                                                                     | free | starter | growth | pro | managed | commission |
+| ---------------------- | ---------------------------------------------------------------------------- | ---- | ------- | ------ | --- | ------- | ---------- |
+| `financeReporting`     | Starter+                                                                     | —    | ✅      | ✅     | ✅  | ✅      | ✅         |
+| `maintenanceReporting` | Starter+                                                                     | —    | ✅      | ✅     | ✅  | ✅      | ✅         |
+| `metaChatChannel`      | Business+ (`pro`+)                                                           | —    | —       | —      | ✅  | ✅      | —          |
+| `quickReplies`         | Starter+                                                                     | —    | ✅      | ✅     | ✅  | ✅      | ✅         |
+| `customTemplates`      | Starter+ (advanced template management; standard template management free)   | —    | ✅      | ✅     | ✅  | ✅      | ✅         |
+| `publicPagesAutosave`  | Starter+                                                                     | —    | ✅      | ✅     | ✅  | ✅      | ✅         |
+| `bookingImport`        | Starter+                                                                     | —    | ✅      | ✅     | ✅  | ✅      | ✅         |
+| `propertyShowcase`     | Growth+ (publish + template select; PATCH still needs `publicPagesAutosave`) | —    | —       | ✅     | ✅  | ✅      | —          |
 
 `commission`'s row for each is a Phase 2 open question (not explicitly decided by the host) — its existing features place it between `growth` and `pro`; recommend treating it like `growth` (Starter+ tier) for all six new keys unless the host says otherwise.
 
@@ -153,7 +154,7 @@ Confirmed exports in `_shared/planEntitlements.ts`: `PlanFeatureRequiredError`, 
 
 **`customPages` gate removed** (client + server) after confirming with the host: Phase 2's "Public pages — editing stays Free" decision meant the whole page-editor route, contradicting the existing Starter+ `customPages` route gate that made Phase 3's autosave work unreachable for Free hosts. `custom-pages-settings` (GET-only) lost its check entirely; `public-page-configs` GET is now open, only its PATCH is gated (by `publicPagesAutosave`, not `customPages`). The `customPages` key stays in the schema (still surfaced by `property-entitlements`/super-admin editor/comparison table) but no longer gates anything — its label ("Public pages access & editor") is now stale, flagged for Phase 9.
 
-**Known residual gap — `publicPagesAutosave` is only fully closed for the section-config PATCH above.** Three other Phase 3 autosave instances (property brand color/description/amenities/house-rules/cancellation-policy via `update-property`; social links via `update-app-settings`; stay-guide template content via `property-templates`) persist through shared, multi-purpose endpoints also serving legitimately-free actions on every tier — blanket-gating them would incorrectly block Free-tier hosts from unrelated free settings those same endpoints handle. Closing this needs field-level discrimination inside those shared handlers, which is bigger/riskier than this phase's scope and wasn't in the original "confirmed real gaps" list. Lower severity than the items above (edit-your-own-free-eligible-settings-early, not a data leak or third-party cost) but real — left for a follow-up, not silently dropped.
+**Known residual gap — `publicPagesAutosave` shared-endpoint bypass:** Page Editor autosaves now pass `publicPagesAutosaveGate: true` on `update-property`, `app-settings`, and `property-templates-settings` so the server requires `publicPagesAutosave` for those paths. Settings-page saves omit the flag and stay free where they were free. Crafted API calls without the flag can still hit shared endpoints for free-tier listing fields from outside the Page Editor (same as editing Settings).
 
 ### Confirmed _not_ gaps (checked and ruled out — don't re-flag these in later phases)
 

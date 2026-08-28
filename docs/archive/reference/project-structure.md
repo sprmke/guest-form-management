@@ -72,29 +72,31 @@ utils/
 
 ## Guest features (`features/guest/`)
 
-| Module         | Routes                                                                                   | Purpose                                       |
-| -------------- | ---------------------------------------------------------------------------------------- | --------------------------------------------- |
-| `marketing/`   | `/`, `/for-hosts`, `/services`, `/properties/*`, `/developments/*`, `/terms`, `/privacy` | PMA guest marketing site (Phase 1: mock data) |
-| `calendar/`    | `/calendar`                                                                              | Operational date picker → `/form`             |
-| `form/`        | `/form`, `/success`                                                                      | Guest booking form                            |
-| `sd-form/`     | `/sd-form`                                                                               | Security deposit refund                       |
-| `pay-parking/` | `/bookings/:id/parking`                                                                  | Parking payment form                          |
-| `auth/`        | `/for-guests/*`, `/for-hosts/*` login/register/…                                         | PMA auth UI (Phase 1 mock submit)             |
+| Module         | Routes                                                                                   | Purpose                                                                                         |
+| -------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `marketing/`   | `/`, `/for-hosts`, `/services`, `/properties/*`, `/developments/*`, `/terms`, `/privacy` | Marketing site + **`showcase/`** animated property landing pages (`/properties/:slug/showcase`) |
+| `calendar/`    | `/calendar`                                                                              | Operational date picker → `/form`                                                               |
+| `form/`        | `/form`, `/success`                                                                      | Guest booking form                                                                              |
+| `sd-form/`     | `/sd-form`                                                                               | Security deposit refund                                                                         |
+| `pay-parking/` | `/bookings/:id/parking`                                                                  | Parking payment form                                                                            |
+| `auth/`        | `/for-guests/*`, `/for-hosts/*` login/register/…                                         | PMA auth UI (Phase 1 mock submit)                                                               |
 
 Entry: `features/guest/routes/index.tsx` (marketing routes first, then calendar/form/sd-form/pay-parking)
 
 ## Dashboard features (`features/dashboard/`)
 
-| Module         | Scope          | Purpose                                                                                                   |
-| -------------- | -------------- | --------------------------------------------------------------------------------------------------------- |
-| `bookings/`    | Property       | Booking list, detail, workflow, templates editor, Telegram, settings pages (legacy hub — split over time) |
-| `org/`         | Org            | Selector, onboarding, org/property settings, guards                                                       |
-| `property/`    | Property       | Property dashboard home, stats cards                                                                      |
-| `finance/`     | Property       | Finance ledger                                                                                            |
-| `maintenance/` | Property       | Maintenance reminders                                                                                     |
-| `pricing/`     | Property       | Rate calendar                                                                                             |
-| `inbox/`       | Org            | Meta guest inbox                                                                                          |
-| `team/`        | Org + property | Team invites, permissions                                                                                 |
+| Module          | Scope          | Purpose                                                                                                   |
+| --------------- | -------------- | --------------------------------------------------------------------------------------------------------- |
+| `bookings/`     | Property       | Booking list, detail, workflow, templates editor, Telegram, settings pages (legacy hub — split over time) |
+| `org/`          | Org            | Selector, onboarding, org/property settings, guards                                                       |
+| `property/`     | Property       | Property dashboard home, stats cards                                                                      |
+| `finance/`      | Property       | Finance ledger                                                                                            |
+| `maintenance/`  | Property       | Maintenance reminders                                                                                     |
+| `pricing/`      | Property       | Rate calendar                                                                                             |
+| `inbox/`        | Org            | Meta guest inbox                                                                                          |
+| `team/`         | Org + property | Team invites, permissions                                                                                 |
+| `custom-pages/` | Property       | Public Pages gallery                                                                                      |
+| `page-editor/`  | Property       | Stay Guide / listing / Showcase editors + `components/shared/` controls                                   |
 
 Entry: `features/dashboard/routes/index.tsx`
 

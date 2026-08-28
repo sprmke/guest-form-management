@@ -2,17 +2,18 @@
 title: 'Shipped history'
 status: archived
 tags: [todos, shipped]
-updated: 2026-08-02
+updated: 2026-08-28
 ---
 
 # Shipped history
 
 Completed work archived from GitHub Issues and legacy backlogs.
 
-| File                                                           | Contents                                    |
-| -------------------------------------------------------------- | ------------------------------------------- |
-| [`booking-flow-phases.md`](./booking-flow-phases.md)           | New booking flow phase tracker (Phases 0–5) |
-| [`legacy-product-checklist.md`](./legacy-product-checklist.md) | Pre-GitHub checkbox backlog (historical)    |
+| File                                                             | Contents                                       |
+| ---------------------------------------------------------------- | ---------------------------------------------- |
+| [`booking-flow-phases.md`](./booking-flow-phases.md)             | New booking flow phase tracker (Phases 0–5)    |
+| [`legacy-product-checklist.md`](./legacy-product-checklist.md)   | Pre-GitHub checkbox backlog (historical)       |
+| [`granular-team-permissions.md`](./granular-team-permissions.md) | Property granular RBAC Phases 0–8 (2026-08-28) |
 
 **Active pending work:** [GitHub Issues](https://github.com/sprmke/kame-homes/issues) — see [`../README.md`](../README.md).
 

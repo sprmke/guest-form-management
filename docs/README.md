@@ -54,6 +54,7 @@ See epics #101–#119 in historical [`archive/todos/BACKLOG_DRAFT.md`](./archive
 | [`guides/testing/custom-pages-module-manual.md`](./guides/testing/custom-pages-module-manual.md)             | Public Pages module + stay-guide redesign manual E2E                   |
 | [`guides/testing/ai-dashboard-assistant-manual.md`](./guides/testing/ai-dashboard-assistant-manual.md)       | AI dashboard assistant manual E2E — read/actions/guardrails            |
 | [`guides/testing/parking-playwright.md`](./guides/testing/parking-playwright.md)                             | Parking Playwright harness — mocked guest/host E2E + side-by-side demo |
+| [`guides/testing/property-team-rbac-playwright.md`](./guides/testing/property-team-rbac-playwright.md)       | Property team RBAC Playwright smoke — seeded template nav + redirects  |
 
 ## Archive
 
