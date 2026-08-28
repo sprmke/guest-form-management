@@ -21,6 +21,8 @@ type Props = {
   resendPending?: boolean;
   cancelPending?: boolean;
   canInvite?: boolean;
+  canResend?: boolean;
+  canCancel?: boolean;
 };
 
 export function TeamInvitationsTab({
@@ -33,7 +35,11 @@ export function TeamInvitationsTab({
   resendPending = false,
   cancelPending = false,
   canInvite = false,
+  canResend,
+  canCancel,
 }: Props) {
+  const allowResend = canResend ?? canInvite;
+  const allowCancel = canCancel ?? canInvite;
   return (
     <Card>
       <CardHeader className="flex flex-col gap-3 pb-3 sm:flex-row sm:items-center sm:justify-between">
@@ -63,26 +69,30 @@ export function TeamInvitationsTab({
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <RoleBadge scope={scope} roleId={invitation.role} customRoles={customRoles} />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="min-h-[44px]"
-                    disabled={resendPending}
-                    onClick={() => onResend(invitation.id)}
-                  >
-                    <Mail className="mr-2 size-4" aria-hidden />
-                    Resend
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-destructive hover:text-destructive min-h-[44px]"
-                    disabled={cancelPending}
-                    onClick={() => onCancel(invitation.id)}
-                  >
-                    <X className="mr-2 size-4" aria-hidden />
-                    Cancel
-                  </Button>
+                  {allowResend ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="min-h-[44px]"
+                      disabled={resendPending}
+                      onClick={() => onResend(invitation.id)}
+                    >
+                      <Mail className="mr-2 size-4" aria-hidden />
+                      Resend
+                    </Button>
+                  ) : null}
+                  {allowCancel ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive hover:text-destructive min-h-[44px]"
+                      disabled={cancelPending}
+                      onClick={() => onCancel(invitation.id)}
+                    >
+                      <X className="mr-2 size-4" aria-hidden />
+                      Cancel
+                    </Button>
+                  ) : null}
                 </div>
               </div>
             ))}

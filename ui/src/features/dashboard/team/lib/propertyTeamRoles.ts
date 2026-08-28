@@ -1,36 +1,41 @@
 import {
-  PROPERTY_ROLES,
-  ROLE_PERMISSIONS,
-  roleConfig,
+  isPropertyAdminRoleId,
+  PROPERTY_ADMIN_ROLE_ID,
+  TEAM_PERMISSIONS,
 } from '@/features/dashboard/team/lib/propertyTeamConstants';
+import {
+  isSeededTemplateName,
+  sortTemplatesForDisplay,
+} from '@/features/dashboard/team/lib/propertyTeamTemplates';
 import type {
-  BuiltinPropertyRole,
   CustomPropertyRole,
   PropertyRoleId,
 } from '@/features/dashboard/team/types/propertyTeam';
 
 export const CUSTOM_ROLE_COLOR = 'bg-violet-500';
+export const SEEDED_TEMPLATE_COLOR = 'bg-sky-500';
 
-export const BUILTIN_ROLE_IDS: BuiltinPropertyRole[] = ['MANAGER', 'STAFF', 'VIEWER'];
-
-export function isBuiltinRoleId(roleId: PropertyRoleId): roleId is BuiltinPropertyRole {
-  return BUILTIN_ROLE_IDS.includes(roleId as BuiltinPropertyRole);
-}
-
-export function createCustomRoleId() {
-  return `custom-${Date.now()}`;
+export function isTemplateRoleId(
+  roleId: PropertyRoleId,
+  customRoles: CustomPropertyRole[]
+): boolean {
+  return customRoles.some((role) => role.id === roleId);
 }
 
 export function getRoleLabel(roleId: PropertyRoleId, customRoles: CustomPropertyRole[]): string {
-  if (isBuiltinRoleId(roleId)) {
-    return roleConfig(roleId)?.label ?? roleId;
+  if (isPropertyAdminRoleId(roleId)) {
+    return 'Admin (full access)';
   }
-  return customRoles.find((r) => r.id === roleId)?.name ?? 'Custom';
+  return customRoles.find((role) => role.id === roleId)?.name ?? 'Custom';
 }
 
-export function getRoleColor(roleId: PropertyRoleId, _customRoles: CustomPropertyRole[]): string {
-  if (isBuiltinRoleId(roleId)) {
-    return roleConfig(roleId)?.color ?? CUSTOM_ROLE_COLOR;
+export function getRoleColor(roleId: PropertyRoleId, customRoles: CustomPropertyRole[]): string {
+  if (isPropertyAdminRoleId(roleId)) {
+    return 'bg-slate-500';
+  }
+  const custom = customRoles.find((role) => role.id === roleId);
+  if (custom && isSeededTemplateName(custom.name)) {
+    return SEEDED_TEMPLATE_COLOR;
   }
   return CUSTOM_ROLE_COLOR;
 }
@@ -39,11 +44,14 @@ export function getRolePermissions(
   roleId: PropertyRoleId,
   customRoles: CustomPropertyRole[]
 ): string[] {
-  if (isBuiltinRoleId(roleId)) {
-    return [...ROLE_PERMISSIONS[roleId]];
+  if (isPropertyAdminRoleId(roleId)) {
+    return TEAM_PERMISSIONS.map((permission) => permission.id);
   }
-  const custom = customRoles.find((r) => r.id === roleId);
-  return custom ? [...custom.permissions] : [];
+  const custom = customRoles.find((role) => role.id === roleId);
+  if (custom) {
+    return [...custom.permissions];
+  }
+  return [];
 }
 
 export type RoleMatrixColumn = {
@@ -55,23 +63,13 @@ export type RoleMatrixColumn = {
 };
 
 export function buildRoleMatrixColumns(customRoles: CustomPropertyRole[]): RoleMatrixColumn[] {
-  const builtIn = PROPERTY_ROLES.map((role) => ({
-    id: role.value,
-    label: role.label,
-    color: role.color,
-    permissions: ROLE_PERMISSIONS[role.value],
-    isCustom: false,
-  }));
-
-  const custom = customRoles.map((role) => ({
+  return sortTemplatesForDisplay(customRoles).map((role) => ({
     id: role.id,
     label: role.name,
-    color: CUSTOM_ROLE_COLOR,
+    color: isSeededTemplateName(role.name) ? SEEDED_TEMPLATE_COLOR : CUSTOM_ROLE_COLOR,
     permissions: role.permissions,
-    isCustom: true,
+    isCustom: !isSeededTemplateName(role.name),
   }));
-
-  return [...builtIn, ...custom];
 }
 
 export function countMembersWithRole(
@@ -80,7 +78,15 @@ export function countMembersWithRole(
   invitations: { role: PropertyRoleId }[]
 ): number {
   return (
-    members.filter((m) => m.role === roleId).length +
-    invitations.filter((i) => i.role === roleId).length
+    members.filter((member) => member.role === roleId).length +
+    invitations.filter((invitation) => invitation.role === roleId).length
   );
+}
+
+export function defaultInviteTemplateId(customRoles: CustomPropertyRole[]): PropertyRoleId {
+  const operations = customRoles.find((role) => role.name.trim().toLowerCase() === 'operations');
+  if (operations?.id) {
+    return operations.id;
+  }
+  return customRoles[0]?.id ?? PROPERTY_ADMIN_ROLE_ID;
 }

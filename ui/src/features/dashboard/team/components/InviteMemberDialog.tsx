@@ -13,10 +13,10 @@ import {
 import { getRoleLabelForScope } from '@/features/dashboard/team/lib/teamRoleHelpers';
 import { getTeamScopeConfig, type TeamScope } from '@/features/dashboard/team/lib/teamScopeConfig';
 import type {
-  BuiltinPropertyRole,
   CustomPropertyRole,
   PropertyRoleId,
 } from '@/features/dashboard/team/types/propertyTeam';
+import { defaultInviteTemplateId } from '@/features/dashboard/team/lib/propertyTeamRoles';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -136,6 +136,7 @@ export function InviteMemberDialog({
                   customRoles={customRoles}
                   builtinRoles={builtinRoles}
                   showAddCustomRole={showAddCustomRole}
+                  templatesOnly={scope === 'property'}
                 />
               </SelectContent>
             </Select>
@@ -155,6 +156,9 @@ export function InviteMemberDialog({
   );
 }
 
-export function defaultInviteRoleId(): BuiltinPropertyRole {
-  return 'STAFF';
+export function defaultInviteRoleId(customRoles: CustomPropertyRole[] = []): PropertyRoleId {
+  if (customRoles.length === 0) {
+    return 'ADMIN';
+  }
+  return defaultInviteTemplateId(customRoles);
 }

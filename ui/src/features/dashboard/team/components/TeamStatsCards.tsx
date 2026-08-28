@@ -1,6 +1,7 @@
 import { Building2, Mail, ShieldCheck, Users } from 'lucide-react';
 
 import { AdminMetricCard } from '@/features/dashboard/bookings/components/AdminMetricCard';
+import { expandLegacyPropertyPermissionIds } from '@/features/dashboard/team/lib/legacyPermissionExpansion';
 import type { TeamInvitation, TeamMember } from '@/features/dashboard/team/types/propertyTeam';
 
 import { cn } from '@/lib/utils';
@@ -10,8 +11,22 @@ type Props = {
   invitations: TeamInvitation[];
 };
 
+function memberHasTeamManageAccess(permissions: readonly string[]): boolean {
+  const expanded = expandLegacyPropertyPermissionIds(permissions);
+  return (
+    expanded.includes('team.members:edit') ||
+    expanded.includes('team.members:delete') ||
+    expanded.includes('team.customRoles:add') ||
+    expanded.includes('team.customRoles:edit') ||
+    expanded.includes('team.customRoles:delete') ||
+    expanded.includes('team:manage')
+  );
+}
+
 export function TeamStatsCards({ members, invitations }: Props) {
-  const managerCount = members.filter((m) => m.role === 'MANAGER').length;
+  const adminCount = members.filter(
+    (m) => memberHasTeamManageAccess(m.permissions) || m.fromOrg
+  ).length;
   const fromOrgCount = members.filter((m) => m.fromOrg).length;
   const pendingInvites = invitations.length;
 
@@ -25,8 +40,8 @@ export function TeamStatsCards({ members, invitations }: Props) {
         iconBgClassName="bg-sky-100 dark:bg-sky-900/30"
       />
       <AdminMetricCard
-        title="Managers"
-        value={String(managerCount)}
+        title="Admins"
+        value={String(adminCount)}
         icon={ShieldCheck}
         iconClassName="text-violet-600 dark:text-violet-400"
         iconBgClassName="bg-violet-100 dark:bg-violet-900/30"

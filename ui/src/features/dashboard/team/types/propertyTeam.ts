@@ -1,18 +1,15 @@
 import type { LucideIcon } from 'lucide-react';
 
-export type BuiltinPropertyRole = 'MANAGER' | 'STAFF' | 'VIEWER';
-
-/** @deprecated Use BuiltinPropertyRole — kept for built-in presets */
-export type PropertyRole = BuiltinPropertyRole;
-
-/** Built-in (`MANAGER` | `STAFF` | `VIEWER`) or `custom-*` id */
-export type PropertyRoleId = string;
+export const PROPERTY_ADMIN_ROLE_ID = 'ADMIN' as const;
 
 export interface CustomPropertyRole {
   id: string;
   name: string;
   permissions: string[];
 }
+
+/** Stored member role: ADMIN (custom permissions) or a template UUID. */
+export type PropertyRoleId = typeof PROPERTY_ADMIN_ROLE_ID | string;
 
 export type TeamMemberStatus = 'active' | 'pending' | 'inactive';
 

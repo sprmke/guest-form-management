@@ -13,6 +13,7 @@ import { SuperAdminHostPropertiesPage } from '@/features/dashboard/super-admin/p
 import { SuperAdminHostsPage } from '@/features/dashboard/super-admin/pages/SuperAdminHostsPage';
 import { SuperAdminOrgSubscriptionsPage } from '@/features/dashboard/super-admin/pages/SuperAdminOrgSubscriptionsPage';
 import { SuperAdminOverviewPage } from '@/features/dashboard/super-admin/pages/SuperAdminOverviewPage';
+import { SuperAdminParkingPayoutsPage } from '@/features/dashboard/super-admin/pages/SuperAdminParkingPayoutsPage';
 import { SuperAdminPaymentSettingsPage } from '@/features/dashboard/super-admin/pages/SuperAdminPaymentSettingsPage';
 import { SuperAdminPlatformPropertiesPage } from '@/features/dashboard/super-admin/pages/SuperAdminPlatformPropertiesPage';
 import { SuperAdminPricingPlansPage } from '@/features/dashboard/super-admin/pages/SuperAdminPricingPlansPage';
@@ -33,6 +34,7 @@ export const superAdminRoutes: ReactNode = (
     <Route path="pricing/plans" element={<SuperAdminPricingPlansPage />} />
     <Route path="pricing/payment-settings" element={<SuperAdminPaymentSettingsPage />} />
     <Route path="pricing/subscriptions" element={<SuperAdminOrgSubscriptionsPage />} />
+    <Route path="parking/payouts" element={<SuperAdminParkingPayoutsPage />} />
     <Route path="properties" element={<SuperAdminPlatformPropertiesPage />} />
     <Route path="hosts/:hostId" element={<SuperAdminHostShell />}>
       <Route index element={<Navigate to="orgs" replace />} />

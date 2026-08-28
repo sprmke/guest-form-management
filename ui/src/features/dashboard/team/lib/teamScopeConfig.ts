@@ -6,8 +6,6 @@ import {
 } from '@/features/dashboard/team/lib/parkingTeamConstants';
 import {
   PERMISSION_CATEGORIES,
-  PROPERTY_ROLES,
-  ROLE_PERMISSIONS,
   TEAM_PERMISSIONS,
 } from '@/features/dashboard/team/lib/propertyTeamConstants';
 import type { TeamPermission } from '@/features/dashboard/team/types/propertyTeam';
@@ -48,8 +46,8 @@ export function getTeamScopeConfig(scope: TeamScope): TeamScopeConfig {
     scope: 'property',
     permissions: TEAM_PERMISSIONS,
     categories: PERMISSION_CATEGORIES,
-    builtinRoles: PROPERTY_ROLES,
-    rolePermissions: ROLE_PERMISSIONS,
+    builtinRoles: [],
+    rolePermissions: {},
     removeFromLabel: 'Remove from Property',
     subtitle: "Manage your property's team members and permissions.",
   };

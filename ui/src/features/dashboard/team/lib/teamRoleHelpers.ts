@@ -1,4 +1,13 @@
 import {
+  buildRoleMatrixColumns,
+  getRoleColor,
+  getRoleLabel,
+  getRolePermissions,
+  SEEDED_TEMPLATE_COLOR,
+} from '@/features/dashboard/team/lib/propertyTeamRoles';
+import { isPropertyAdminRoleId } from '@/features/dashboard/team/lib/propertyTeamConstants';
+import { isSeededTemplateName } from '@/features/dashboard/team/lib/propertyTeamTemplates';
+import {
   getTeamScopeConfig,
   type TeamScope,
   type TeamScopeConfig,
@@ -23,6 +32,9 @@ function configFor(scope: TeamScope): TeamScopeConfig {
 }
 
 export function isBuiltinRoleIdForScope(scope: TeamScope, roleId: PropertyRoleId): boolean {
+  if (scope === 'property') {
+    return isPropertyAdminRoleId(roleId);
+  }
   return configFor(scope).builtinRoles.some((role) => role.value === roleId);
 }
 
@@ -31,6 +43,9 @@ export function getRoleLabelForScope(
   roleId: PropertyRoleId,
   customRoles: CustomPropertyRole[]
 ): string {
+  if (scope === 'property') {
+    return getRoleLabel(roleId, customRoles);
+  }
   const config = configFor(scope);
   const builtin = config.builtinRoles.find((role) => role.value === roleId);
   if (builtin) return builtin.label;
@@ -42,6 +57,9 @@ export function getRoleColorForScope(
   roleId: PropertyRoleId,
   customRoles: CustomPropertyRole[]
 ): string {
+  if (scope === 'property') {
+    return getRoleColor(roleId, customRoles);
+  }
   const config = configFor(scope);
   const builtin = config.builtinRoles.find((role) => role.value === roleId);
   if (builtin) return builtin.color;
@@ -54,6 +72,9 @@ export function getRolePermissionsForScope(
   roleId: PropertyRoleId,
   customRoles: CustomPropertyRole[]
 ): string[] {
+  if (scope === 'property') {
+    return getRolePermissions(roleId, customRoles);
+  }
   const config = configFor(scope);
   const preset = config.rolePermissions[roleId];
   if (preset) return [...preset];
@@ -65,6 +86,10 @@ export function buildRoleMatrixColumnsForScope(
   scope: TeamScope,
   customRoles: CustomPropertyRole[]
 ): RoleMatrixColumn[] {
+  if (scope === 'property') {
+    return buildRoleMatrixColumns(customRoles);
+  }
+
   const config = configFor(scope);
   const builtIn = config.builtinRoles.map((role) => ({
     id: role.value as PropertyRoleId,
@@ -95,3 +120,5 @@ export function countMembersWithRole(
     invitations.filter((invitation) => invitation.role === roleId).length
   );
 }
+
+export { SEEDED_TEMPLATE_COLOR, isSeededTemplateName };

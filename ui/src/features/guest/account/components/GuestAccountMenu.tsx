@@ -92,11 +92,17 @@ export function GuestAccountMenu() {
           </>
         ) : null}
         <DropdownMenuGroup>
-          {GUEST_ACCOUNT_NAV_ITEMS.map((item) => (
-            <DropdownMenuItem key={item.href} asChild>
-              <Link to={item.href}>{item.label}</Link>
-            </DropdownMenuItem>
-          ))}
+          {GUEST_ACCOUNT_NAV_ITEMS.map((item) => {
+            const Icon = item.Icon;
+            return (
+              <DropdownMenuItem key={item.href} asChild>
+                <Link to={item.href}>
+                  <Icon aria-hidden />
+                  {item.label}
+                </Link>
+              </DropdownMenuItem>
+            );
+          })}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => void handleSignOut()}>

@@ -16,6 +16,7 @@ import {
   defaultInviteRoleId,
   InviteMemberDialog,
 } from '@/features/dashboard/team/components/InviteMemberDialog';
+import { defaultInviteTemplateId } from '@/features/dashboard/team/lib/propertyTeamRoles';
 import { RemoveMemberDialog } from '@/features/dashboard/team/components/RemoveMemberDialog';
 import { TeamInvitationsTab } from '@/features/dashboard/team/components/TeamInvitationsTab';
 import { TeamMembersTab } from '@/features/dashboard/team/components/TeamMembersTab';
@@ -26,8 +27,11 @@ import {
   usePropertyTeam,
   usePropertyTeamMutations,
 } from '@/features/dashboard/team/hooks/usePropertyTeam';
+import {
+  countMembersWithRole,
+  getRolePermissions,
+} from '@/features/dashboard/team/lib/propertyTeamRoles';
 import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
-import { countMembersWithRole } from '@/features/dashboard/team/lib/propertyTeamRoles';
 import { isTeamMemberActive } from '@/features/dashboard/team/lib/teamMemberAccess';
 import { canEditPropertyMemberContact } from '@/features/dashboard/team/lib/teamMemberContact';
 import type {
@@ -52,8 +56,15 @@ export function PropertyTeamPage() {
   const { data, isLoading, error } = usePropertyTeam();
   const { data: access } = usePropertyPermissions();
   const canViewTeam = hasPropertyPermission(access?.permissions, 'team:view');
-  const canInvite = hasPropertyPermission(access?.permissions, 'team:invite');
-  const canManage = hasPropertyPermission(access?.permissions, 'team:manage');
+  const canInvite = hasPropertyPermission(access?.permissions, 'team.invitations:add');
+  const canResendInvite = hasPropertyPermission(access?.permissions, 'team.invitations:edit');
+  const canCancelInvite = hasPropertyPermission(access?.permissions, 'team.invitations:delete');
+  const canEditMembers = hasPropertyPermission(access?.permissions, 'team.members:edit');
+  const canDeleteMembers = hasPropertyPermission(access?.permissions, 'team.members:delete');
+  const canManageCustomRoles =
+    hasPropertyPermission(access?.permissions, 'team.customRoles:add') ||
+    hasPropertyPermission(access?.permissions, 'team.customRoles:edit') ||
+    hasPropertyPermission(access?.permissions, 'team.customRoles:delete');
   const {
     inviteMember,
     resendInvitation,
@@ -89,7 +100,7 @@ export function PropertyTeamPage() {
   const [customRoleName, setCustomRoleName] = useState('');
   const [customRolePermissions, setCustomRolePermissions] = useState<string[]>([]);
 
-  const defaultRoleId = defaultInviteRoleId();
+  const defaultRoleId = defaultInviteTemplateId(customRoles);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteContactPhone, setInviteContactPhone] = useState('');
   const [inviteRoleId, setInviteRoleId] = useState<PropertyRoleId>(defaultRoleId);
@@ -107,7 +118,7 @@ export function PropertyTeamPage() {
       openUpgradeModal('teamManagement');
       return;
     }
-    const roleId = defaultInviteRoleId();
+    const roleId = defaultInviteRoleId(customRoles);
     setInviteEmail('');
     setInviteContactPhone('');
     setInviteRoleId(roleId);
@@ -128,6 +139,7 @@ export function PropertyTeamPage() {
         email,
         contactPhone: inviteContactPhone,
         roleId: inviteRoleId,
+        permissions: getRolePermissions(inviteRoleId, customRoles),
       });
       setShowInviteDialog(false);
     } catch {
@@ -137,7 +149,11 @@ export function PropertyTeamPage() {
 
   const handleUpdateRole = async (memberId: string, newRoleId: PropertyRoleId) => {
     try {
-      await updateMember.mutateAsync({ memberId, roleId: newRoleId });
+      await updateMember.mutateAsync({
+        memberId,
+        roleId: newRoleId,
+        permissions: getRolePermissions(newRoleId, customRoles),
+      });
       toast.success('Role updated');
     } catch {
       /* toast handled in mutation */
@@ -168,7 +184,7 @@ export function PropertyTeamPage() {
 
   const handleSaveContact = async (input: EditMemberContactSaveInput) => {
     if (!selectedMember) return;
-    if (!canEditPropertyMemberContact(selectedMember, canManage)) return;
+    if (!canEditPropertyMemberContact(selectedMember, canEditMembers)) return;
 
     try {
       await updateMember.mutateAsync({
@@ -247,6 +263,14 @@ export function PropertyTeamPage() {
     setCustomRoleFormMode('edit');
     setEditingCustomRoleId(role.id);
     setCustomRoleName(role.name);
+    setCustomRolePermissions([...role.permissions]);
+    setShowCustomRoleDialog(true);
+  };
+
+  const openDuplicateCustomRole = (role: CustomPropertyRole) => {
+    setCustomRoleFormMode('create');
+    setEditingCustomRoleId(null);
+    setCustomRoleName(`${role.name} copy`);
     setCustomRolePermissions([...role.permissions]);
     setShowCustomRoleDialog(true);
   };
@@ -376,7 +400,7 @@ export function PropertyTeamPage() {
                       {members.length}
                     </Badge>
                   </SlidingTabsTrigger>
-                  {canInvite ? (
+                  {canInvite || canResendInvite || canCancelInvite || invitations.length > 0 ? (
                     <SlidingTabsTrigger value="invitations">
                       <Mail className="size-4" aria-hidden />
                       <span className="hidden sm:inline">Invitations</span>
@@ -419,8 +443,9 @@ export function PropertyTeamPage() {
                   }}
                   onInvite={openInviteDialog}
                   canInvite={canInvite}
-                  canManage={canManage}
-                  onAddCustomRole={canManage ? openCreateCustomRole : undefined}
+                  canEditMembers={canEditMembers}
+                  canDeleteMembers={canDeleteMembers}
+                  onAddCustomRole={canManageCustomRoles ? openCreateCustomRole : undefined}
                 />
               ) : null}
 
@@ -434,6 +459,8 @@ export function PropertyTeamPage() {
                   cancelPending={cancelInvitation.isPending}
                   onInvite={openInviteDialog}
                   canInvite={canInvite}
+                  canResend={canResendInvite}
+                  canCancel={canCancelInvite}
                 />
               ) : null}
 
@@ -444,7 +471,8 @@ export function PropertyTeamPage() {
                   onCreateCustomRole={openCreateCustomRole}
                   onEditCustomRole={openEditCustomRole}
                   onDeleteCustomRole={handleDeleteCustomRole}
-                  canManage={canManage}
+                  onDuplicateCustomRole={openDuplicateCustomRole}
+                  canManage={canManageCustomRoles}
                 />
               ) : null}
             </div>
@@ -461,8 +489,8 @@ export function PropertyTeamPage() {
           onEmailChange={setInviteEmail}
           onContactPhoneChange={setInviteContactPhone}
           onRoleChange={setInviteRoleId}
-          onAddCustomRole={canManage ? openCreateCustomRole : undefined}
-          showAddCustomRole={canManage}
+          onAddCustomRole={canManageCustomRoles ? openCreateCustomRole : undefined}
+          showAddCustomRole={canManageCustomRoles}
           onSubmit={handleInvite}
           submitPending={inviteMember.isPending}
         />
@@ -476,8 +504,8 @@ export function PropertyTeamPage() {
                   scope: 'property',
                   roleId: selectedMember.role,
                   customRoles,
-                  editable: canManage,
-                  onAddCustomRole: canManage ? openCreateCustomRole : undefined,
+                  editable: canEditMembers,
+                  onAddCustomRole: canManageCustomRoles ? openCreateCustomRole : undefined,
                 }
               : null
           }
@@ -497,11 +525,13 @@ export function PropertyTeamPage() {
             setEditRoleId(roleId);
             setEditPermissions(permissionsForRole('property', roleId, customRoles));
           }}
+          onPermissionsChange={setEditPermissions}
           onTogglePermission={toggleEditPermission}
           onSave={handleSavePermissions}
-          onAddCustomRole={canManage ? openCreateCustomRole : undefined}
-          showAddCustomRole={canManage}
+          onAddCustomRole={canManageCustomRoles ? openCreateCustomRole : undefined}
+          showAddCustomRole={canManageCustomRoles}
           savePending={updateMember.isPending}
+          readOnly={Boolean(selectedMember?.fromOrg) || !canEditMembers}
         />
 
         <RemoveMemberDialog
@@ -517,9 +547,11 @@ export function PropertyTeamPage() {
           mode={customRoleFormMode}
           name={customRoleName}
           permissions={customRolePermissions}
+          roles={customRoles}
           onOpenChange={setShowCustomRoleDialog}
           onNameChange={setCustomRoleName}
           onTogglePermission={toggleCustomRolePermission}
+          onPermissionsChange={setCustomRolePermissions}
           onSubmit={handleSaveCustomRole}
           submitPending={createCustomRole.isPending || updateCustomRole.isPending}
         />
