@@ -236,7 +236,9 @@ export function WorkflowActionsBar({
     <div
       className={cn(
         'flex flex-col gap-2',
-        isModal ? 'border-border mt-auto shrink-0 border-t pt-5' : 'px-4 py-4'
+        isModal
+          ? 'border-separator mt-auto shrink-0 border-t px-4 pb-[max(env(safe-area-inset-bottom,0px),1rem)] pt-3 sm:px-5 sm:pb-4'
+          : 'px-4 py-4'
       )}
     >
       {showProgressSave && onProgressSave ? (

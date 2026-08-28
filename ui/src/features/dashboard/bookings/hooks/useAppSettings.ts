@@ -23,7 +23,7 @@ import {
 import type { AppSettingsPatchBody } from '@/features/dashboard/org/lib/propertySettingsSave';
 
 import { supabase } from '@/lib/supabase/client';
-import { propertyBrandColorFormValue } from '@/lib/theme/brandColor';
+import { propertyBrandColorFormValue, propertyBrandColorsEquivalent } from '@/lib/theme/brandColor';
 
 export type AppSettingsFieldSource = 'db' | 'default';
 
@@ -278,9 +278,10 @@ export function useUpdateAppSettings() {
 export function operationalFormIsDirty(
   draft: AppSettingsFormValues,
   baseline: AppSettingsFormValues,
-  _inheritedBrandColor: string
+  inheritedBrandColor: string
 ): boolean {
   return (
+    !propertyBrandColorsEquivalent(draft.brandColor, baseline.brandColor, inheritedBrandColor) ||
     draft.emailReplyTo.trim() !== baseline.emailReplyTo.trim() ||
     draft.parkingOwnerEmails.trim() !== baseline.parkingOwnerEmails.trim() ||
     draft.sdRefundCronEmailLeadHours !== baseline.sdRefundCronEmailLeadHours ||

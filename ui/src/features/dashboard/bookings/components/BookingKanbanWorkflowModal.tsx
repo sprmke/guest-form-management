@@ -1,14 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
+
+import { X } from 'lucide-react';
 
 import { BookingDetailAssetPreviewModal } from '@/features/dashboard/bookings/components/booking-detail/BookingDetailAssetPreviewModal';
 import { WorkflowPanel } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowPanel';
 import { useBooking } from '@/features/dashboard/bookings/hooks/useBooking';
 import { useBookingAssetPreview } from '@/features/dashboard/bookings/hooks/useBookingAssetPreview';
-import type { BookingStatus } from '@/features/dashboard/bookings/lib/bookingStatus';
+import { statusLabel, type BookingStatus } from '@/features/dashboard/bookings/lib/bookingStatus';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
 import { SectionContentSkeleton } from '@/components/skeletons/AdminSkeletons';
-import { ResponsiveModal, ResponsiveModalContent } from '@/components/ui/responsive-modal';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -19,25 +20,29 @@ type Props = {
   targetStatus?: BookingStatus | null;
   /** Optional list row for instant header while detail loads. */
   previewRow?: BookingRow | null;
+  /** When false, Progress actions are read-only (`bookings.detail.workflow:edit`). */
+  canMutate?: boolean;
 };
 
-function KanbanWorkflowLoadingOverlay() {
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-3 backdrop-blur-[2px] sm:p-4">
-      <div className="bg-card w-full max-w-[min(calc(100vw-1.5rem),32rem)] rounded-xl p-4">
-        <SectionContentSkeleton rows={6} />
-      </div>
-    </div>
-  );
+function modalGuestName(row: BookingRow | null): string {
+  if (!row) return 'Booking';
+  return row.primary_guest_name || row.guest_facebook_name || row.guest_email || 'Guest';
 }
 
+/**
+ * Single custom shell for click + drop (no nested Radix dialog chrome).
+ * Drop confirm-only hides the shell via CSS so `WorkflowPanel` never remounts
+ * (pricing / balance drafts stay intact) while `WorkflowConfirmModal` portals cleanly.
+ */
 export function BookingKanbanWorkflowModal({
   bookingId,
   open,
   onOpenChange,
   targetStatus = null,
   previewRow,
+  canMutate = true,
 }: Props) {
+  const titleId = useId();
   const [dropShellHidden, setDropShellHidden] = useState(false);
   const {
     data: booking,
@@ -47,12 +52,31 @@ export function BookingKanbanWorkflowModal({
   const { previewAsset, previewLoading, handlePreview, closePreview } = useBookingAssetPreview();
   const displayRow = booking ?? previewRow ?? null;
   const isDropTransition = !!targetStatus;
+  const shellVisible = open && !(isDropTransition && dropShellHidden);
 
   useEffect(() => {
     if (!open) setDropShellHidden(false);
   }, [open]);
 
+  useEffect(() => {
+    if (!shellVisible) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onOpenChange(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [shellVisible, onOpenChange]);
+
   const handleClose = () => onOpenChange(false);
+
+  if (!open) return null;
+
+  const title = modalGuestName(displayRow);
+  const subtitle = targetStatus
+    ? statusLabel(targetStatus)
+    : displayRow?.status
+      ? statusLabel(displayRow.status as BookingStatus)
+      : null;
 
   const workflowPanel =
     booking && displayRow ? (
@@ -63,93 +87,97 @@ export function BookingKanbanWorkflowModal({
         onKanbanFlowClose={handleClose}
         onKanbanShellHidden={isDropTransition ? setDropShellHidden : undefined}
         onPreview={handlePreview}
+        canMutate={canMutate}
       />
     ) : null;
 
-  const assetPreview = (
-    <BookingDetailAssetPreviewModal
-      asset={previewAsset}
-      booking={booking ?? null}
-      isReceiptAiBackfilling={false}
-      loading={previewLoading}
-      onClose={closePreview}
-    />
-  );
+  return (
+    <>
+      {shellVisible ? (
+        <button
+          type="button"
+          aria-label="Close"
+          className="modal-scrim fixed inset-0 z-[100]"
+          onClick={handleClose}
+        />
+      ) : null}
 
-  if (!open) return null;
+      <div
+        className={cn(
+          'fixed z-[101] flex justify-center',
+          shellVisible
+            ? 'inset-0 items-end p-0 sm:items-center sm:p-4'
+            : 'pointer-events-none left-0 top-0 size-0 overflow-hidden opacity-0'
+        )}
+        aria-hidden={!shellVisible}
+      >
+        <div
+          role="dialog"
+          aria-modal={shellVisible || undefined}
+          aria-labelledby={titleId}
+          className={cn(
+            'bg-card flex w-full flex-col overflow-hidden border',
+            shellVisible
+              ? 'shadow-elevated-lg max-h-[min(92dvh,40rem)] max-w-[min(calc(100vw-1.5rem),32rem)] rounded-t-2xl sm:max-w-lg sm:rounded-xl'
+              : 'max-h-0 max-w-0 border-0 shadow-none'
+          )}
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
+          {shellVisible ? (
+            <header className="border-separator flex shrink-0 items-start gap-3 border-b px-4 py-3.5 sm:px-5">
+              <div className="min-w-0 flex-1 pt-0.5">
+                <h2
+                  id={titleId}
+                  className="text-foreground truncate text-lg font-bold tracking-tight sm:text-xl"
+                >
+                  {title}
+                </h2>
+                {subtitle ? (
+                  <p className="text-muted-foreground mt-0.5 truncate text-sm">{subtitle}</p>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                aria-label="Close"
+                onClick={handleClose}
+                className="text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring inline-flex size-11 shrink-0 items-center justify-center rounded-xl outline-none focus-visible:ring-2"
+              >
+                <X className="size-5" aria-hidden />
+              </button>
+            </header>
+          ) : null}
 
-  if (isDropTransition && dropShellHidden) {
-    return (
-      <>
-        {isLoading && !displayRow ? <KanbanWorkflowLoadingOverlay /> : null}
-        {error && !booking ? (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-3 backdrop-blur-[2px] sm:p-4">
-            <p className="text-destructive bg-card rounded-xl border px-4 py-3 text-sm shadow-lg">
-              Could not load booking.
-            </p>
-          </div>
-        ) : null}
-        {workflowPanel}
-        {assetPreview}
-      </>
-    );
-  }
-
-  if (isDropTransition) {
-    return (
-      <>
-        <ResponsiveModal open={open} onOpenChange={onOpenChange}>
-          <ResponsiveModalContent
-            sheetLayout="split"
+          <div
             className={cn(
-              'flex max-h-[min(92dvh,36rem)] w-full max-w-[min(calc(100vw-1.5rem),32rem)] flex-col gap-0 overflow-hidden p-0',
-              'sm:max-w-lg'
+              'flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-hidden',
+              !shellVisible && 'sr-only'
             )}
           >
             {isLoading && !displayRow ? (
-              <div className="flex-1 p-4">
+              <div className="flex-1 p-4 sm:p-5">
                 <SectionContentSkeleton rows={6} />
               </div>
             ) : null}
 
             {error && !booking ? (
-              <div className="text-destructive flex flex-1 items-center justify-center px-4 py-8 text-center text-sm">
+              <div className="text-destructive flex flex-1 items-center justify-center px-4 py-8 text-center text-sm sm:px-5">
                 Could not load booking.
               </div>
             ) : null}
 
             {workflowPanel}
-          </ResponsiveModalContent>
-        </ResponsiveModal>
-        {assetPreview}
-      </>
-    );
-  }
-
-  return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
-      <ResponsiveModalContent
-        sheetLayout="split"
-        className={cn(
-          'flex max-h-[min(92dvh,36rem)] w-full max-w-[min(calc(100vw-1.5rem),32rem)] flex-col gap-0 overflow-hidden p-0',
-          'sm:max-w-lg'
-        )}
-      >
-        {isLoading && !displayRow ? (
-          <div className="flex-1 p-4">
-            <SectionContentSkeleton rows={6} />
           </div>
-        ) : null}
+        </div>
+      </div>
 
-        {error && !booking ? (
-          <div className="text-destructive flex flex-1 items-center justify-center px-4 py-8 text-center text-sm">
-            Could not load booking.
-          </div>
-        ) : null}
-
-        {workflowPanel}
-      </ResponsiveModalContent>
-      {assetPreview}
-    </ResponsiveModal>
+      <BookingDetailAssetPreviewModal
+        asset={previewAsset}
+        booking={booking ?? null}
+        isReceiptAiBackfilling={false}
+        loading={previewLoading}
+        onClose={closePreview}
+      />
+    </>
   );
 }

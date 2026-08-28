@@ -11,7 +11,6 @@ import { CalendarDayDetailPanel } from '@/features/dashboard/bookings/components
 import { CalendarMonthGrid } from '@/features/dashboard/bookings/components/calendar/CalendarMonthGrid';
 import { CalendarYearGrid } from '@/features/dashboard/bookings/components/calendar/CalendarYearGrid';
 import { statusToneStyle } from '@/features/dashboard/bookings/components/StatusBadge';
-import { statusLabel } from '@/features/dashboard/bookings/lib/bookingStatus';
 
 import { BookingsCalendarSkeleton } from '@/components/skeletons/AdminSkeletons';
 import type { DatePreset } from '@/lib/date/navigation';
@@ -197,6 +196,22 @@ export function OccupancyCalendarView<T extends OccupancyRow>({
 }
 
 /** Status-colored occupancy pill with a custom label (guest first name or stay total). */
+export function occupancySpanRoundedClass(
+  spanPosition: import('@/features/dashboard/bookings/components/calendar/calendarDateUtils').CalendarOccupancySpanPosition,
+  compact = false
+): string {
+  if (compact) {
+    if (spanPosition === 'start') return 'rounded-l-full rounded-r-sm';
+    if (spanPosition === 'end') return 'rounded-r-full rounded-l-sm';
+    if (spanPosition === 'middle') return 'rounded-sm';
+    return 'rounded-full';
+  }
+  if (spanPosition === 'start') return 'rounded-l-md rounded-r-sm';
+  if (spanPosition === 'end') return 'rounded-r-md rounded-l-sm';
+  if (spanPosition === 'middle') return 'rounded-sm';
+  return 'rounded-md';
+}
+
 export function CalendarOccupancyPill({
   status,
   label,
@@ -205,6 +220,7 @@ export function CalendarOccupancyPill({
   spanPosition = 'single',
   showLabel = true,
   compact = false,
+  className,
 }: {
   status: string;
   label: string;
@@ -214,36 +230,27 @@ export function CalendarOccupancyPill({
   showLabel?: boolean;
   /** Dashboard mini calendar — denser stay band under the date strip. */
   compact?: boolean;
+  className?: string;
 }) {
   const tone = statusToneStyle(status);
-  const roundedClass = compact
-    ? spanPosition === 'start'
-      ? 'rounded-l-full rounded-r-sm'
-      : spanPosition === 'end'
-        ? 'rounded-r-full rounded-l-sm'
-        : spanPosition === 'middle'
-          ? 'rounded-sm'
-          : 'rounded-full'
-    : spanPosition === 'start'
-      ? 'rounded-l-md rounded-r-none'
-      : spanPosition === 'end'
-        ? 'rounded-r-md rounded-l-none'
-        : spanPosition === 'middle'
-          ? 'rounded-none'
-          : 'rounded-md';
+  const roundedClass = occupancySpanRoundedClass(spanPosition, compact);
 
   return (
     <div
       className={cn(
-        'flex h-full min-w-0 items-center truncate',
+        'flex min-w-0 items-center truncate border shadow-sm',
         compact
-          ? 'gap-1 border-0 px-1.5 text-[10px] font-semibold leading-none tracking-tight'
-          : 'gap-1 border px-1.5 py-0.5 text-[10px] font-semibold leading-tight',
+          ? 'h-[14px] gap-1 px-1.5 text-[10px] font-semibold leading-none tracking-tight'
+          : 'h-full gap-1 px-1.5 py-0.5 text-[10px] font-semibold leading-tight',
         roundedClass,
         tone.badge,
-        compact && 'border-transparent shadow-none'
+        /* Multi-week fragments: keep status border on outer edges only (no join seams) */
+        spanPosition === 'middle' && 'border-x-0 shadow-none',
+        spanPosition === 'start' && 'border-r-0',
+        spanPosition === 'end' && 'border-l-0',
+        className
       )}
-      title={title ?? `${label} · ${statusLabel(status)}`}
+      title={title}
     >
       {showLabel ? (
         <>

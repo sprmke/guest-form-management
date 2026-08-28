@@ -57,7 +57,7 @@ export const PROPERTY_TEMPLATE_PLACEHOLDERS_REFERENCE: readonly string[] = [
   '{{booking_link_cta}} — admin “View Booking Details” button',
   '{{document_reminders_section}} — GAF/parking/pet reminder card (ready for check-in)',
   '{{payment_breakdown_section}} — payment table (empty when total balance is 0)',
-  '{{gcash_payment_section}} — payment QR + account (empty when total balance is 0)',
+  '{{gcash_payment_section}} — payment accounts (+ QR when uploaded; empty when total balance is 0)',
   '{{sd_refund_checklist_section}} — check-out checklist table (SD refund email)',
   '{{sd_refund_details_section}} — SD refund amount + form CTA (SD refund email)',
 ];

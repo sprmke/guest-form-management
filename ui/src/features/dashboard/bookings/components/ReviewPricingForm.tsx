@@ -188,7 +188,7 @@ export function ReviewPricingForm({
 
   return (
     <WorkflowFormShell title={cardTitle} variant={variant} advanceMode="manual">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Booking Rate" required error={shownErrors.booking_rate?.message}>
           <input
             type="number"
@@ -347,7 +347,7 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-1">
+    <div className="min-w-0 space-y-1">
       <label className="text-muted-foreground block text-xs">
         {label}
         {required ? (

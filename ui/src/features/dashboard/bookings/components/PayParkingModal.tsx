@@ -170,7 +170,7 @@ export function PayParkingModal({ booking, open, onOpenChange }: Props) {
         <ResponsiveModalHeader>
           <ResponsiveModalTitle className="flex items-center gap-2">
             <Car className="text-primary size-4 h-8 w-7 shrink-0" aria-hidden />
-            {viewMode ? 'View pay parking' : 'Add pay parking'}
+            {viewMode ? 'Parking link' : 'Set up parking'}
           </ResponsiveModalTitle>
         </ResponsiveModalHeader>
 
@@ -191,7 +191,7 @@ export function PayParkingModal({ booking, open, onOpenChange }: Props) {
                 className="mt-0.5"
               />
               <span className="text-foreground flex flex-col text-sm leading-snug">
-                Same with booking duration
+                Same dates as stay
                 {sameAsBookingDuration && (
                   <span className="text-base font-semibold">
                     {formatBookingDate(booking.check_in_date)} –{' '}
@@ -249,7 +249,7 @@ export function PayParkingModal({ booking, open, onOpenChange }: Props) {
 
           <div className="space-y-1.5">
             <Label htmlFor="pay-parking-rate" className="text-sm font-medium">
-              Parking Rate (per night)
+              Rate per night
             </Label>
             <input
               id="pay-parking-rate"
@@ -321,7 +321,7 @@ export function PayParkingHeaderButton({
       className="border-border bg-card text-muted-foreground hover:border-border hover:bg-muted/50 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border px-4 text-xs font-medium shadow-sm transition-colors sm:inline-flex sm:w-auto sm:min-w-[44px] sm:flex-initial sm:justify-center sm:gap-1.5"
     >
       <Car className="size-3.5 shrink-0" aria-hidden />
-      <span className="min-w-0 text-left">{viewMode ? 'View pay parking' : 'Add pay parking'}</span>
+      <span className="min-w-0 text-left">{viewMode ? 'Open parking link' : 'Set up parking'}</span>
     </button>
   );
 }

@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
 
-import { LogOut } from 'lucide-react';
+import { LogOut, User } from 'lucide-react';
 
+import { AccountAvatar } from '@/features/guest/account/components/AccountAvatar';
 import { ModeSwitcher } from '@/features/guest/marketing/shared/components/ModeSwitcher';
 
 import type { SidebarNavItem } from '@/features/dashboard/bookings/lib/adminSidebarNav';
@@ -35,9 +36,11 @@ type Props = {
   parkingSettingsHasIssues: boolean;
   orgSettingsHasIssues: boolean;
   displayName: string;
-  initial: string;
+  avatarUrl: string | null;
+  initials: string;
   email: string | null;
   signOut: () => Promise<void>;
+  onOpenProfile: () => void;
   onSignOutNavigate: () => void;
   superAdmin?: boolean;
 };
@@ -52,9 +55,11 @@ export function AdminMoreSheet({
   parkingSettingsHasIssues,
   orgSettingsHasIssues,
   displayName,
-  initial,
+  avatarUrl,
+  initials,
   email,
   signOut,
+  onOpenProfile,
   onSignOutNavigate,
   superAdmin = false,
 }: Props) {
@@ -128,11 +133,14 @@ export function AdminMoreSheet({
 
         <div className="border-border/60 space-y-3 border-t pt-3">
           <div className="flex items-center gap-3 px-1">
-            <div className="gradient-primary text-primary-foreground ring-background flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold shadow-sm ring-2">
-              {initial}
-            </div>
+            <AccountAvatar
+              avatarUrl={avatarUrl}
+              initials={initials}
+              className="ring-background h-10 w-10 shadow-sm ring-2"
+              fallbackClassName="text-sm"
+            />
             <div className="min-w-0 flex-1">
-              <p className="text-foreground truncate text-sm font-semibold capitalize leading-tight">
+              <p className="text-foreground truncate text-sm font-semibold leading-tight">
                 {displayName}
               </p>
               {email ? (
@@ -149,6 +157,22 @@ export function AdminMoreSheet({
               )
             ) : null}
           </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              onOpenChange(false);
+              onOpenProfile();
+            }}
+            className={cn(
+              'border-border/60 bg-muted/40 text-foreground',
+              'hover:bg-muted/70 active:bg-muted/80',
+              'flex min-h-[40px] w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-[13px] font-medium transition-colors'
+            )}
+          >
+            <User className="size-3.5 shrink-0" aria-hidden />
+            Profile
+          </button>
 
           <button
             type="button"

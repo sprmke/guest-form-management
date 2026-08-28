@@ -20,10 +20,11 @@ import {
   STANDARD_TEMPLATE_SECTIONS,
 } from '@/features/dashboard/bookings/lib/propertyTemplateSections';
 import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
+import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
+import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
 
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
-import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
@@ -95,6 +96,18 @@ export function TemplatesPage() {
   const templates = data?.templates;
   const { saveTemplate, resetTemplate, createCustomTemplate, deleteCustomTemplate } =
     usePropertyTemplateMutations();
+  const { data: propertyAccess } = usePropertyPermissions();
+  const canEditStandard = hasPropertyPermission(
+    propertyAccess?.permissions,
+    'templates.standard:edit'
+  );
+  const canEditEmail = hasPropertyPermission(propertyAccess?.permissions, 'templates.email:edit');
+  const canAddCustom = hasPropertyPermission(propertyAccess?.permissions, 'templates.custom:add');
+  const canEditCustom = hasPropertyPermission(propertyAccess?.permissions, 'templates.custom:edit');
+  const canDeleteCustom = hasPropertyPermission(
+    propertyAccess?.permissions,
+    'templates.custom:delete'
+  );
   const customTemplates = React.useMemo(
     () => (templates ?? []).filter((t) => t.category === 'custom'),
     [templates]
@@ -155,21 +168,25 @@ export function TemplatesPage() {
       subtitle="Manage your property's house rules, instructions, and email templates."
       titleId="templates-heading"
       heroTrailing={
-        <AddCustomTemplateDialog
-          busy={createCustomTemplate.isPending}
-          trigger={addTemplateTrigger}
-          onAdd={async (name, content) => {
-            await createCustomTemplate.mutateAsync({ name, content });
-          }}
-        />
+        canAddCustom ? (
+          <AddCustomTemplateDialog
+            busy={createCustomTemplate.isPending}
+            trigger={addTemplateTrigger}
+            onAdd={async (name, content) => {
+              await createCustomTemplate.mutateAsync({ name, content });
+            }}
+          />
+        ) : null
       }
       desktopActions={
-        <AddCustomTemplateDialog
-          busy={createCustomTemplate.isPending}
-          onAdd={async (name, content) => {
-            await createCustomTemplate.mutateAsync({ name, content });
-          }}
-        />
+        canAddCustom ? (
+          <AddCustomTemplateDialog
+            busy={createCustomTemplate.isPending}
+            onAdd={async (name, content) => {
+              await createCustomTemplate.mutateAsync({ name, content });
+            }}
+          />
+        ) : null
       }
     >
       <AdminSectionNavLayout className="min-h-0 flex-1" sectionGroups={sectionGroups}>
@@ -193,8 +210,9 @@ export function TemplatesPage() {
                     icon={section.icon}
                     saving={saveTemplate.isPending || resetTemplate.isPending}
                     showSectionImage={false}
+                    canEdit={canEditStandard}
                     onSave={(input) => handleSave(template.templateKey, input)}
-                    onReset={() => void handleReset(template)}
+                    onReset={canEditStandard ? () => void handleReset(template) : undefined}
                   />
                 );
               })}
@@ -215,8 +233,9 @@ export function TemplatesPage() {
                     template={template}
                     icon={section.icon}
                     saving={saveTemplate.isPending || resetTemplate.isPending}
+                    canEdit={canEditEmail}
                     onSave={(input) => handleSave(template.templateKey, input)}
-                    onReset={() => void handleReset(template)}
+                    onReset={canEditEmail ? () => void handleReset(template) : undefined}
                   />
                 );
               })}
@@ -235,23 +254,17 @@ export function TemplatesPage() {
                     template={template}
                     icon={iconForTemplateKey(template.templateKey)}
                     saving={saveTemplate.isPending}
+                    canEdit={canEditCustom}
                     onSave={(input) => handleSave(template.templateKey, input)}
-                    onDelete={() => void deleteCustomTemplate.mutateAsync(template.templateKey)}
+                    onDelete={
+                      canDeleteCustom
+                        ? () => void deleteCustomTemplate.mutateAsync(template.templateKey)
+                        : undefined
+                    }
                   />
                 ))}
               </div>
             ) : null}
-
-            <Card className="border-dashed">
-              <CardContent className="flex flex-col items-center justify-center gap-3 py-10 text-center">
-                <AddCustomTemplateDialog
-                  busy={createCustomTemplate.isPending}
-                  onAdd={async (name, content) => {
-                    await createCustomTemplate.mutateAsync({ name, content });
-                  }}
-                />
-              </CardContent>
-            </Card>
           </div>
         ) : null}
       </AdminSectionNavLayout>

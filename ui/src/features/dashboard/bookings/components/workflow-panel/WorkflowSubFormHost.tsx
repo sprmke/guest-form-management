@@ -47,6 +47,8 @@ type Props = {
   booking: BookingRow;
   viewedContent: WorkflowViewContent | null;
   contentReadOnly: boolean;
+  /** Pricing leaf — independent of other progress forms. */
+  pricingReadOnly?: boolean;
   /** When true, drafts emit even if incomplete (rail Save without Proceed). */
   persistPartialDrafts: boolean;
   activePendingDocSubStatus: PendingDocNestedKey;
@@ -88,6 +90,7 @@ export function WorkflowSubFormHost({
   booking,
   viewedContent,
   contentReadOnly,
+  pricingReadOnly,
   persistPartialDrafts,
   activePendingDocSubStatus,
   documentRequirements,
@@ -139,14 +142,14 @@ export function WorkflowSubFormHost({
     <div
       className={cn(
         isModal
-          ? 'min-h-0 flex-1 space-y-3 overflow-y-auto py-3'
+          ? 'min-h-0 min-w-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-5'
           : 'border-separator space-y-6 border-b px-4 py-4'
       )}
     >
       {showSdGuestInfoCard && (
         <WorkflowSubFormCard title="Guest SD refund form" plain={isModal} advanceMode="auto">
-          <div className="flex min-h-11 items-center justify-between gap-3">
-            <p className="text-muted-foreground min-w-0 text-xs leading-snug">
+          <div className="flex min-h-11 items-start justify-between gap-3">
+            <p className="text-muted-foreground min-w-0 flex-1 text-xs leading-snug">
               Guest hasn’t submitted the SD refund form yet
             </p>
             <button
@@ -210,7 +213,7 @@ export function WorkflowSubFormHost({
             booking={booking}
             initialDraft={pricingValues}
             onChange={onPricingChange}
-            readOnly={contentReadOnly}
+            readOnly={pricingReadOnly ?? contentReadOnly}
             editMode={editMode}
             propertyDefaults={propertyPricingDefaults}
             dateOverrides={propertyPricingDateOverrides}

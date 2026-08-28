@@ -25,6 +25,14 @@ type Args = {
   onOpenAiSummary?: () => void;
   stayGuide: BookingStayGuideLink;
   parkingShareLink: BookingParkingShareLink;
+  /** When false, hide AI Summary (needs `bookings.detail.stay:edit`). */
+  canRunAiSummary?: boolean;
+  /** When false, hide Add/Edit parking. */
+  canEditParking?: boolean;
+  /** When false, hide Add/Edit pets. */
+  canEditPets?: boolean;
+  /** When false, hide Set up / Open parking link. */
+  canManagePayParking?: boolean;
 };
 
 /**
@@ -39,9 +47,13 @@ export function buildBookingDetailActions({
   onOpenAiSummary,
   stayGuide,
   parkingShareLink,
+  canRunAiSummary = true,
+  canEditParking = true,
+  canEditPets = true,
+  canManagePayParking = true,
 }: Args): BookingDetailAction[] {
   const actions: BookingDetailAction[] = [
-    ...(onOpenAiSummary
+    ...(onOpenAiSummary && canRunAiSummary
       ? [
           {
             key: 'ai-summary',
@@ -52,27 +64,39 @@ export function buildBookingDetailActions({
           },
         ]
       : []),
-    {
-      key: 'parking',
-      label: booking.need_parking === true ? 'Edit parking' : 'Add parking',
-      Icon: Car,
-      onSelect: () => onEdit('parking'),
-      group: 'edit',
-    },
-    {
-      key: 'pets',
-      label: booking.has_pets === true ? 'Edit pets' : 'Add pets',
-      Icon: PawPrint,
-      onSelect: () => onEdit('pets'),
-      group: 'edit',
-    },
-    {
-      key: 'pay-parking',
-      label: hasPayParkingAvailed(booking) ? 'Open pay parking' : 'Add pay parking',
-      Icon: CreditCard,
-      onSelect: onPayParking,
-      group: 'edit',
-    },
+    ...(canEditParking
+      ? [
+          {
+            key: 'parking',
+            label: booking.need_parking === true ? 'Edit parking' : 'Add parking',
+            Icon: Car,
+            onSelect: () => onEdit('parking'),
+            group: 'edit' as const,
+          },
+        ]
+      : []),
+    ...(canEditPets
+      ? [
+          {
+            key: 'pets',
+            label: booking.has_pets === true ? 'Edit pets' : 'Add pets',
+            Icon: PawPrint,
+            onSelect: () => onEdit('pets'),
+            group: 'edit' as const,
+          },
+        ]
+      : []),
+    ...(canManagePayParking
+      ? [
+          {
+            key: 'pay-parking',
+            label: hasPayParkingAvailed(booking) ? 'Open parking link' : 'Set up parking',
+            Icon: CreditCard,
+            onSelect: onPayParking,
+            group: 'edit' as const,
+          },
+        ]
+      : []),
   ];
 
   // Only once the token exists — a menu row that silently does nothing while the

@@ -80,7 +80,9 @@ export function WorkflowPendingReviewAck({
   const showAckCheckbox = method === 'manual' || !showAiPath || hasAiRun;
 
   return (
-    <div className={cn(isModal ? 'min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5' : 'px-4 py-4')}>
+    <div
+      className={cn(isModal ? 'min-h-0 flex-1 overflow-x-hidden px-4 py-4 sm:px-5' : 'px-4 py-4')}
+    >
       <div className="border-border/80 bg-card overflow-hidden rounded-xl border shadow-sm">
         {showAiPath ? (
           <div className="border-border/60 border-b px-3 py-3">

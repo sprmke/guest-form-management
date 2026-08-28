@@ -76,6 +76,11 @@ import {
 } from '@/features/dashboard/org/lib/propertyExternalReviews';
 import { type PropertySettingsSectionId } from '@/features/dashboard/org/lib/propertySettingsCompletion';
 import { resolvePropertySettingsFieldError } from '@/features/dashboard/org/lib/propertySettingsFieldError';
+import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
+import {
+  hasPropertyPermission,
+  SETTINGS_SECTION_EDIT_PERMISSION,
+} from '@/features/dashboard/team/lib/propertyPermissions';
 import {
   gafTowerUnitFromProfile,
   propertyProfileDraftFromProperty,
@@ -139,6 +144,30 @@ function mergeProfileDraftAfterSave(
 export function PropertySettingsCard() {
   const navigate = useNavigate();
   const { property, orgSlug, propertySlug } = useOrgContext();
+  const { data: propertyAccess } = usePropertyPermissions();
+  const canEditSettingsSection = useCallback(
+    (sectionId: PropertySettingsSectionId) => {
+      const perm = SETTINGS_SECTION_EDIT_PERMISSION[sectionId];
+      if (!perm) return false;
+      return hasPropertyPermission(propertyAccess?.permissions, perm);
+    },
+    [propertyAccess?.permissions]
+  );
+  const sectionEditLocked = useMemo(() => {
+    const locked: Partial<Record<PropertySettingsSectionId, boolean>> = {};
+    for (const section of SETTINGS_SECTIONS) {
+      const id = section.id as PropertySettingsSectionId;
+      if (id === 'integrations') {
+        locked[id] = true;
+        continue;
+      }
+      locked[id] = !canEditSettingsSection(id);
+    }
+    return locked;
+  }, [canEditSettingsSection]);
+  const canEditDangerZone = canEditSettingsSection('danger');
+  const canDeleteProperty =
+    propertyAccess?.accessKind === 'owner' || propertyAccess?.accessKind === 'platform_admin';
   const {
     data: appSettings,
     isLoading: appSettingsLoading,
@@ -486,7 +515,6 @@ export function PropertySettingsCard() {
     try {
       const result = await updateProperty.mutateAsync({
         propertyId: property.id,
-        status: profileDraft.status,
         settings: { media },
       });
       const savedProfile = propertyProfileDraftFromProperty(result.property);
@@ -585,8 +613,21 @@ export function PropertySettingsCard() {
 
     try {
       let savedSomething = false;
-      const savedProfileSections = plan.profileSections;
-      const savedOperationalSections = plan.operationalSections;
+      const savedProfileSections = plan.profileSections.filter((sectionId) =>
+        canEditSettingsSection(sectionId)
+      );
+      const savedOperationalSections = plan.operationalSections.filter((sectionId) =>
+        canEditSettingsSection(sectionId)
+      );
+      if (
+        (plan.profileSections.length > 0 || plan.operationalSections.length > 0) &&
+        savedProfileSections.length === 0 &&
+        savedOperationalSections.length === 0 &&
+        !voiceDirty
+      ) {
+        toast.error('You do not have permission to save these settings');
+        return;
+      }
 
       const profilePayload = buildProfilePatchForSections(
         profileDraft,
@@ -835,6 +876,7 @@ export function PropertySettingsCard() {
             draft={profileDraft}
             onChange={setProfileField}
             disabled={busy}
+            sectionEditLocked={sectionEditLocked}
             propertySlugPrefix={propertySlugPrefix}
             slugPreview={slugPreview}
             towerConflict={towerConflict}
@@ -871,7 +913,7 @@ export function PropertySettingsCard() {
             draft={operationalDraft}
             externalReviewsBaseline={operationalBaseline?.externalReviews ?? []}
             orgSocialLinks={orgSocialLinks}
-            disabled={busy}
+            disabled={busy || Boolean(sectionEditLocked.branding)}
             resolveFieldError={resolveFieldError}
             markFieldInteracted={markFieldInteracted}
             onChange={setOperationalField}
@@ -886,6 +928,7 @@ export function PropertySettingsCard() {
             residenceName={profileDraft.residenceName}
             towerUnitLabel={gafTowerUnit}
             disabled={busy}
+            sectionEditLocked={sectionEditLocked}
             onChange={setOperationalField}
             onAutomationToggleChange={setAutomationToggle}
             resolveFieldError={resolveFieldError}
@@ -908,13 +951,14 @@ export function PropertySettingsCard() {
           <PropertyDangerZoneSection
             propertyName={profileDraft.name.trim() || property.name}
             isArchived={profileDraft.status === 'INACTIVE'}
-            disabled={busy}
+            disabled={busy || !canEditDangerZone}
+            showDelete={canDeleteProperty}
             archivePending={updateProperty.isPending}
             restorePending={updateProperty.isPending}
             deletePending={deleteProperty.isPending}
             onArchive={handleArchiveProperty}
             onRestore={handleRestoreProperty}
-            onDelete={handleDeleteProperty}
+            onDelete={canDeleteProperty ? handleDeleteProperty : async () => undefined}
           />
         </AdminSectionNavLayout>
       ) : null}

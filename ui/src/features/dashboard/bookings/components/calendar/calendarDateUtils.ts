@@ -1,4 +1,5 @@
 import {
+  addDays,
   differenceInCalendarMonths,
   eachDayOfInterval,
   format,
@@ -72,8 +73,8 @@ export const CALENDAR_WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat
 
 export type CalendarWeekRow = {
   weekIndex: number;
-  /** Seven slots; null = padding cell outside the visible month/range. */
-  days: (Date | null)[];
+  /** Seven calendar days (includes adjacent-month dates so weeks are never empty pads). */
+  days: Date[];
 };
 
 export type OccupancySegment<T> = {
@@ -100,18 +101,26 @@ export function calendarOccupancySpanPosition(segment: {
   return 'middle';
 }
 
-/** Week rows for a month/range grid (Sunday-first, 7 columns). */
+/**
+ * Week rows for a month/range grid (Sunday-first, 7 columns).
+ * Leading/trailing slots are real adjacent-month dates — never null grey pads.
+ */
 export function buildCalendarWeekRows(days: Date[], paddingStart: number): CalendarWeekRow[] {
-  const slots: (Date | null)[] = [...Array.from({ length: paddingStart }, () => null), ...days];
-  while (slots.length % 7 !== 0) {
-    slots.push(null);
-  }
+  if (days.length === 0) return [];
+
+  const first = days[0];
+  const last = days[days.length - 1];
+  const rangeStart = subDays(first, paddingStart);
+  const totalWithoutTrailing = paddingStart + days.length;
+  const paddingEnd = (7 - (totalWithoutTrailing % 7)) % 7;
+  const rangeEnd = addDays(last, paddingEnd);
+  const allDays = eachDayOfInterval({ start: rangeStart, end: rangeEnd });
 
   const weeks: CalendarWeekRow[] = [];
-  for (let index = 0; index < slots.length; index += 7) {
+  for (let index = 0; index < allDays.length; index += 7) {
     weeks.push({
       weekIndex: weeks.length,
-      days: slots.slice(index, index + 7),
+      days: allDays.slice(index, index + 7),
     });
   }
   return weeks;

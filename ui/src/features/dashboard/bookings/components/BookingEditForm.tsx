@@ -74,6 +74,8 @@ type Props = {
   onPreview: (label: string, rawUrl: string) => void | Promise<void>;
   /** Open edit mode on a specific tab (Add parking / Add pets). */
   initialTab?: BookingEditTabId;
+  /** Tabs the member may edit (`bookings.detail.*:edit`). Defaults to all four. */
+  allowedTabs?: BookingEditTabId[];
 };
 
 export type BookingEditFormValues = FormValues;
@@ -288,7 +290,14 @@ function bookingToEditFormValues(booking: BookingRow): FormValues {
   };
 }
 
-export function BookingEditForm({ booking, onClose, onSaved, onPreview, initialTab }: Props) {
+export function BookingEditForm({
+  booking,
+  onClose,
+  onSaved,
+  onPreview,
+  initialTab,
+  allowedTabs = ['stay', 'guest', 'parking', 'pets'],
+}: Props) {
   const guestEditRevertPipeline = shouldRevertGuestFieldEditsToPendingReview(booking.status);
   const updateMut = useUpdateBooking();
   const apiUrl = import.meta.env.VITE_API_URL;
@@ -564,6 +573,7 @@ export function BookingEditForm({ booking, onClose, onSaved, onPreview, initialT
         <BookingEditTabs
           ref={editTabsRef}
           booking={booking}
+          allowedTabs={allowedTabs}
           actions={{
             onCancel: onClose,
             cancelDisabled: updateMut.isPending,
@@ -576,46 +586,66 @@ export function BookingEditForm({ booking, onClose, onSaved, onPreview, initialT
           sensitiveNoticeVisible={showSensitiveRevertHint}
           initialTab={initialTab}
           tabs={{
-            guest: (
-              <GuestIdentityTab
-                booking={booking}
-                register={register}
-                errors={errors}
-                setValue={setValue}
-                onPreview={onPreview}
-                formSnapshot={formSnapshot}
-                adminPartySize={adminPartySize}
-                visibleAdditionalGuestCount={visibleAdditionalGuestCount}
-                visibleAdditionalGuestSlots={visibleAdditionalGuestSlots}
-                onAddAdditionalGuest={handleAddAdditionalGuest}
-                onRemoveAdditionalGuest={handleRemoveAdditionalGuest}
-                surpriseDecorChangedFromSaved={surpriseDecorChangedFromSaved}
-              />
-            ),
-            stay: (
-              <StayDetailsTab
-                booking={booking}
-                register={register}
-                errors={errors}
-                setValue={setValue}
-                formSnapshot={formSnapshot}
-                bookedDates={bookedDates}
-                onPreview={onPreview}
-              />
-            ),
-            parking: (
-              <ParkingTab register={register} setValue={setValue} watchParking={watchParking} />
-            ),
-            pets: (
-              <PetsTab
-                booking={booking}
-                register={register}
-                setValue={setValue}
-                watchPets={watchPets}
-                petVaccinationDate={formSnapshot?.pet_vaccination_date ?? ''}
-                onPreview={onPreview}
-              />
-            ),
+            ...(allowedTabs.includes('guest')
+              ? {
+                  guest: (
+                    <GuestIdentityTab
+                      booking={booking}
+                      register={register}
+                      errors={errors}
+                      setValue={setValue}
+                      onPreview={onPreview}
+                      formSnapshot={formSnapshot}
+                      adminPartySize={adminPartySize}
+                      visibleAdditionalGuestCount={visibleAdditionalGuestCount}
+                      visibleAdditionalGuestSlots={visibleAdditionalGuestSlots}
+                      onAddAdditionalGuest={handleAddAdditionalGuest}
+                      onRemoveAdditionalGuest={handleRemoveAdditionalGuest}
+                      surpriseDecorChangedFromSaved={surpriseDecorChangedFromSaved}
+                    />
+                  ),
+                }
+              : {}),
+            ...(allowedTabs.includes('stay')
+              ? {
+                  stay: (
+                    <StayDetailsTab
+                      booking={booking}
+                      register={register}
+                      errors={errors}
+                      setValue={setValue}
+                      formSnapshot={formSnapshot}
+                      bookedDates={bookedDates}
+                      onPreview={onPreview}
+                    />
+                  ),
+                }
+              : {}),
+            ...(allowedTabs.includes('parking')
+              ? {
+                  parking: (
+                    <ParkingTab
+                      register={register}
+                      setValue={setValue}
+                      watchParking={watchParking}
+                    />
+                  ),
+                }
+              : {}),
+            ...(allowedTabs.includes('pets')
+              ? {
+                  pets: (
+                    <PetsTab
+                      booking={booking}
+                      register={register}
+                      setValue={setValue}
+                      watchPets={watchPets}
+                      petVaccinationDate={formSnapshot?.pet_vaccination_date ?? ''}
+                      onPreview={onPreview}
+                    />
+                  ),
+                }
+              : {}),
           }}
           footer={
             <BookingEditStickyBar

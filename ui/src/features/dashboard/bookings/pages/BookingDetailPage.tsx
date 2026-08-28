@@ -61,6 +61,12 @@ import { buildBookingDetailActions } from '@/features/dashboard/bookings/lib/boo
 import { resolveBookingViewTab } from '@/features/dashboard/bookings/lib/resolveBookingViewTab';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
+import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
+import {
+  bookingEditableTabs,
+  BOOKING_EDIT_TAB_PERMISSION,
+  hasPropertyPermission,
+} from '@/features/dashboard/team/lib/propertyPermissions';
 
 import { BookingDetailPageSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
@@ -92,6 +98,25 @@ export function BookingDetailPage() {
           guestName ? `Booking: ${guestName}` : `Booking ${booking.id.slice(0, 8)}`
         )
       : undefined
+  );
+  const { data: propertyAccess } = usePropertyPermissions();
+  const editableTabs = bookingEditableTabs(propertyAccess?.permissions);
+  const canEditBooking = editableTabs.length > 0;
+  const canMutateWorkflow = hasPropertyPermission(
+    propertyAccess?.permissions,
+    'bookings.detail.workflow:edit'
+  );
+  const canEditStay = hasPropertyPermission(
+    propertyAccess?.permissions,
+    BOOKING_EDIT_TAB_PERMISSION.stay
+  );
+  const canEditParking = hasPropertyPermission(
+    propertyAccess?.permissions,
+    BOOKING_EDIT_TAB_PERMISSION.parking
+  );
+  const canEditPets = hasPropertyPermission(
+    propertyAccess?.permissions,
+    BOOKING_EDIT_TAB_PERMISSION.pets
   );
   const [editMode, setEditMode] = useState(false);
   const [editInitialTab, setEditInitialTab] = useState<BookingEditTabId | undefined>(undefined);
@@ -168,10 +193,15 @@ export function BookingDetailPage() {
     setDetailsExpanded((was) => !was);
   }, []);
 
-  const handleStartEdit = useCallback((tab?: BookingEditTabId) => {
-    setEditInitialTab(tab);
-    setEditMode(true);
-  }, []);
+  const handleStartEdit = useCallback(
+    (tab?: BookingEditTabId) => {
+      if (!canEditBooking) return;
+      if (tab && !editableTabs.includes(tab)) return;
+      setEditInitialTab(tab ?? editableTabs[0]);
+      setEditMode(true);
+    },
+    [canEditBooking, editableTabs]
+  );
 
   const handleCloseEdit = useCallback(() => {
     setEditMode(false);
@@ -202,6 +232,10 @@ export function BookingDetailPage() {
             onOpenAiSummary: handleOpenAiSummary,
             stayGuide,
             parkingShareLink,
+            canRunAiSummary: canEditStay,
+            canEditParking,
+            canEditPets,
+            canManagePayParking: canEditParking,
           })
         : [],
     [
@@ -211,6 +245,9 @@ export function BookingDetailPage() {
       handleOpenAiSummary,
       stayGuide,
       parkingShareLink,
+      canEditStay,
+      canEditParking,
+      canEditPets,
     ]
   );
 
@@ -252,7 +289,7 @@ export function BookingDetailPage() {
                 detailsExpanded={detailsExpanded}
                 onToggleDetails={handleToggleDetails}
                 editMode={editMode}
-                onEdit={() => handleStartEdit()}
+                onEdit={canEditBooking ? () => handleStartEdit() : undefined}
                 onCancelEdit={handleCloseEdit}
                 actions={hostActions}
               />
@@ -286,6 +323,7 @@ export function BookingDetailPage() {
                     key={`${booking.id}-${editInitialTab ?? 'guest'}`}
                     booking={booking}
                     initialTab={editInitialTab}
+                    allowedTabs={editableTabs}
                     onClose={handleCloseEdit}
                     onSaved={handleCloseEdit}
                     onPreview={handlePreview}
@@ -295,6 +333,7 @@ export function BookingDetailPage() {
                     <BookingDetailHeader
                       booking={booking}
                       onEdit={() => handleStartEdit()}
+                      canEdit={canEditBooking}
                       actions={hostActions}
                       className={cn(isMobileWorkflowFirst && 'hidden md:block')}
                     />
@@ -351,6 +390,7 @@ export function BookingDetailPage() {
                 onPreview={handlePreview}
                 aiSummaryOpen={aiSummaryOpen}
                 onOpenAiSummary={setAiSummaryOpen}
+                canMutate={canMutateWorkflow}
               />
             </div>
           </div>

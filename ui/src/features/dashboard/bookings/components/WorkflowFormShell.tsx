@@ -34,7 +34,15 @@ export function WorkflowFormShell({
   }
 
   if (variant === 'modal') {
-    return <div className={cn('space-y-3', bodyClassName)}>{children}</div>;
+    return (
+      <div className={cn('min-w-0 space-y-3', bodyClassName)}>
+        <h3 className="text-foreground text-sm font-semibold leading-snug">{title}</h3>
+        {description ? (
+          <p className="text-muted-foreground text-xs leading-snug">{description}</p>
+        ) : null}
+        {children}
+      </div>
+    );
   }
 
   return (

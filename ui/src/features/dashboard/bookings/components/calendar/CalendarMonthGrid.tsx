@@ -22,7 +22,10 @@ import {
   type CalendarVisibleRange,
   type OccupancySegment,
 } from '@/features/dashboard/bookings/components/calendar/calendarDateUtils';
-import { CalendarOccupancySpanTrack } from '@/features/dashboard/bookings/components/calendar/CalendarOccupancySpanTrack';
+import {
+  CalendarOccupancySpanTrack,
+  occupancyOverflowByCol,
+} from '@/features/dashboard/bookings/components/calendar/CalendarOccupancySpanTrack';
 import { statusToneStyle } from '@/features/dashboard/bookings/components/StatusBadge';
 
 import { cn } from '@/lib/utils';
@@ -125,24 +128,26 @@ export function CalendarMonthGrid<T>({
 
   const dayCount = calendarGrid.days.length;
   const dense = compact && dayCount > 31;
-  /** Mini embed: short date strip (pills sit in the week track below). */
-  const cellMinHeight = dense
-    ? 'min-h-7'
+  /**
+   * Full month: square day cells. Mini (compact): fixed short height so the dashboard
+   * embed does not grow with card width and leave empty space beside Needs attention.
+   * Dense year-style compact ranges stay short strips. `self-start` keeps grid stretch
+   * from overriding cell sizing.
+   */
+  const cellSizeClass = dense
+    ? 'min-h-7 w-full'
     : compact
-      ? 'min-h-8'
-      : 'aspect-square sm:aspect-auto sm:min-h-[88px]';
-  const padCellMinHeight = dense
-    ? 'min-h-7'
-    : compact
-      ? 'min-h-8'
-      : 'aspect-square sm:aspect-auto sm:min-h-[88px]';
+      ? 'h-[3rem] w-full self-start'
+      : 'aspect-square h-auto w-full min-h-[4.75rem] self-start';
   /** Full calendar: pills on sm+; compact embed: pills unless range is dense (year-style). */
   const showPillLabels = !compact || !dense;
   const showWeekdayHeaders = true;
   const spanLaneCap = maxSpanLanes ?? (compact ? 1 : 2);
-  const spanLaneHeightPx = dense ? 12 : compact ? 18 : 18;
+  const spanLaneHeightPx = dense ? 12 : compact ? 16 : 20;
+  /** Overlay spanning pills inside cells — same UX for full month and mini (non-dense). */
+  const useSpanOverlay = spanMode && !dense;
 
-  const renderDayCell = (day: Date) => {
+  const renderDayCell = (day: Date, options?: { gridCell?: boolean; overflowCount?: number }) => {
     const key = format(day, 'yyyy-MM-dd');
     const dayItems = itemsByDay.get(key) ?? [];
     const isSelected = !onDayClick && selectedDay && isSameDay(day, selectedDay);
@@ -150,6 +155,8 @@ export function CalendarMonthGrid<T>({
     const hasItems = dayItems.length > 0;
     const todayFlag = isToday(day);
     const navigable = Boolean(onDayClick && hasItems);
+    const gridCell = options?.gridCell ?? false;
+    const overflowCount = options?.overflowCount ?? 0;
 
     return (
       <button
@@ -168,25 +175,38 @@ export function CalendarMonthGrid<T>({
             ? `${dayItems.length} ${entityLabel}${dayItems.length === 1 ? '' : 's'}`
             : `no ${entityLabel}s`
         }`}
+        aria-pressed={!onDayClick ? Boolean(isSelected) : undefined}
         className={cn(
-          'relative flex flex-col justify-start outline-none transition-colors duration-150',
-          compact ? 'items-center rounded-md px-0.5 py-0.5' : 'items-stretch rounded-lg p-1.5',
-          cellMinHeight,
-          compact && hasItems && !todayFlag && !isSelected && 'bg-muted/35',
+          'relative flex flex-col outline-none transition-colors duration-150',
+          gridCell
+            ? cn(
+                'items-stretch self-start rounded-none border-0',
+                compact ? 'px-0.5 pb-0 pt-0.5' : 'px-1.5 py-1.5',
+                'bg-card',
+                isSelected && 'bg-sidebar-accent/50',
+                !isSelected && isCurrentMonth && 'hover:bg-muted/40',
+                !isCurrentMonth && 'bg-muted/20'
+              )
+            : cn(
+                compact
+                  ? 'items-center rounded-md px-0.5 py-0.5'
+                  : 'items-stretch rounded-lg p-1.5',
+                compact && hasItems && !todayFlag && !isSelected && 'bg-muted/35',
+                isSelected && 'ring-sidebar-primary/60 bg-sidebar-accent/30 ring-2'
+              ),
+          cellSizeClass,
           navigable &&
-            'hover:bg-muted/55 focus-visible:ring-sidebar-primary/40 cursor-pointer focus-visible:ring-2',
+            'hover:bg-muted/55 focus-visible:ring-sidebar-primary/40 cursor-pointer focus-visible:ring-2 focus-visible:ring-inset',
           !navigable &&
             !onDayClick &&
-            'hover:bg-muted/50 focus-visible:ring-sidebar-primary/40 focus-visible:ring-2',
-          onDayClick && !hasItems && 'cursor-default',
-          isSelected && 'ring-sidebar-primary/60 bg-sidebar-accent/30 ring-2',
-          !isCurrentMonth && 'opacity-35'
+            'focus-visible:ring-sidebar-primary/40 focus-visible:ring-2 focus-visible:ring-inset',
+          onDayClick && !hasItems && 'cursor-default'
         )}
       >
         <div
           className={cn(
-            'relative flex w-full items-center justify-center',
-            compact ? 'min-h-6' : 'min-h-[20px]'
+            'relative z-[1] flex w-full items-center justify-start gap-1',
+            compact ? 'min-h-5' : 'min-h-[22px]'
           )}
         >
           <span
@@ -196,16 +216,38 @@ export function CalendarMonthGrid<T>({
               todayFlag
                 ? cn(
                     'gradient-primary text-primary-foreground inline-flex items-center justify-center rounded-full',
-                    compact ? 'size-6 text-[11px]' : 'size-5'
+                    compact ? 'size-5 text-[10px]' : 'size-6 text-[12px]'
                   )
-                : 'text-foreground'
+                : isSelected && gridCell
+                  ? 'text-sidebar-accent-foreground'
+                  : isCurrentMonth
+                    ? 'text-foreground'
+                    : 'text-muted-foreground/70'
             )}
           >
             {format(day, 'd')}
           </span>
-          {hasItems && !compact ? (
-            <span className="text-muted-foreground absolute right-0 top-1/2 -translate-y-1/2 text-[9px] font-black tabular-nums">
+          {hasItems && !compact && !spanMode ? (
+            <span
+              className={cn(
+                'bg-muted text-muted-foreground ml-auto inline-flex min-w-[14px] items-center justify-center',
+                'rounded-full px-1 text-[9px] font-bold tabular-nums'
+              )}
+            >
               {dayItems.length}
+            </span>
+          ) : null}
+          {overflowCount > 0 ? (
+            <span
+              className={cn(
+                'bg-card text-muted-foreground ring-border ml-auto inline-flex h-5 min-w-5 items-center justify-center',
+                'rounded-full px-1 text-[10px] font-bold tabular-nums ring-1',
+                !hasItems && !compact && !spanMode && 'ml-auto'
+              )}
+              title={`${overflowCount} more ${entityLabel}${overflowCount === 1 ? '' : 's'}`}
+              aria-label={`${overflowCount} more ${entityLabel}${overflowCount === 1 ? '' : 's'}`}
+            >
+              +{overflowCount}
             </span>
           ) : null}
         </div>
@@ -258,7 +300,8 @@ export function CalendarMonthGrid<T>({
           <div
             className={cn(
               'mt-auto flex justify-center gap-0.5 pb-0.5',
-              spanMode && !compact && 'sm:hidden',
+              spanMode && useSpanOverlay && 'hidden',
+              spanMode && !useSpanOverlay && !compact && 'sm:hidden',
               !spanMode && !compact && 'sm:hidden',
               !spanMode && compact && !dense && 'hidden'
             )}
@@ -278,6 +321,24 @@ export function CalendarMonthGrid<T>({
       </button>
     );
   };
+
+  const weekdayHeader = (
+    <div className="border-border/60 bg-muted/40 grid grid-cols-7 gap-px border-b">
+      {CALENDAR_WEEKDAYS.map((day) => (
+        <div
+          key={day}
+          className={cn(
+            'bg-muted/30 text-muted-foreground text-center font-semibold uppercase',
+            compact
+              ? 'py-1 text-[9px] tracking-[0.08em]'
+              : 'py-2 text-[10px] font-bold tracking-wider'
+          )}
+        >
+          {day}
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <div
@@ -343,85 +404,88 @@ export function CalendarMonthGrid<T>({
       ) : null}
 
       {spanMode ? (
-        <div
-          className={cn(
-            'flex flex-col',
-            compact ? 'gap-0.5 px-1.5 pb-1.5 pt-1 sm:px-2' : 'gap-1 px-2 pb-3 pt-3 sm:px-3'
-          )}
-        >
-          {showWeekdayHeaders ? (
-            <div className={cn('grid grid-cols-7 gap-1', compact ? 'pb-0.5' : 'pb-1')}>
-              {CALENDAR_WEEKDAYS.map((day) => (
+        <div className={cn(compact ? 'p-1.5 sm:p-2' : 'p-2 sm:p-3')}>
+          <div
+            className={cn(
+              'border-border/50 overflow-hidden rounded-lg border',
+              compact && 'rounded-md'
+            )}
+          >
+            {showWeekdayHeaders ? weekdayHeader : null}
+            {weeks.map((week, weekIdx) => {
+              const weekSegments = segmentsByWeek?.get(week.weekIndex) ?? [];
+              const hasSpans = weekSegments.length > 0;
+              const overflowByCol =
+                hasSpans && useSpanOverlay
+                  ? occupancyOverflowByCol(weekSegments, spanLaneCap)
+                  : null;
+
+              return (
                 <div
-                  key={day}
-                  className={cn(
-                    'text-muted-foreground text-center font-semibold uppercase',
-                    compact
-                      ? 'py-0.5 text-[9px] tracking-[0.08em]'
-                      : 'py-1 text-[10px] font-bold tracking-wider'
-                  )}
+                  key={week.weekIndex}
+                  className={cn('border-border/60 relative', weekIdx > 0 && 'border-t')}
                 >
-                  {day}
+                  <div className="bg-border/60 relative z-0 grid grid-cols-7 items-start gap-px">
+                    {week.days.map((day, col) =>
+                      renderDayCell(day, {
+                        gridCell: true,
+                        overflowCount: overflowByCol?.[col] ?? 0,
+                      })
+                    )}
+                  </div>
+                  {renderOccupancySegment && hasSpans ? (
+                    useSpanOverlay ? (
+                      <CalendarOccupancySpanTrack
+                        segments={weekSegments}
+                        getSegmentKey={(segment) =>
+                          `${week.weekIndex}-${getItemKey(segment.item)}-${segment.startCol}-${segment.endCol}`
+                        }
+                        renderSegment={renderOccupancySegment}
+                        maxLanes={spanLaneCap}
+                        laneHeightPx={spanLaneHeightPx}
+                        variant="overlay"
+                        gapClassName="gap-px"
+                        className={compact ? 'top-[1.125rem] pb-3 sm:top-5 sm:pb-3.5' : undefined}
+                        hiddenClassName={compact ? undefined : 'hidden sm:flex'}
+                      />
+                    ) : (
+                      <div className="border-border/60 bg-muted/25 dark:bg-muted/15 border-t">
+                        <CalendarOccupancySpanTrack
+                          segments={weekSegments}
+                          getSegmentKey={(segment) =>
+                            `${week.weekIndex}-${getItemKey(segment.item)}-${segment.startCol}-${segment.endCol}`
+                          }
+                          renderSegment={renderOccupancySegment}
+                          maxLanes={spanLaneCap}
+                          laneHeightPx={spanLaneHeightPx}
+                          variant="stack"
+                          gapClassName="gap-px"
+                          className={cn(compact ? 'py-0.5' : 'py-1')}
+                          hiddenClassName={cn(compact && dense && 'hidden')}
+                        />
+                      </div>
+                    )
+                  ) : null}
                 </div>
-              ))}
-            </div>
-          ) : null}
-          {weeks.map((week) => (
-            <div
-              key={week.weekIndex}
-              className={cn(compact && 'even:bg-muted/20 rounded-lg px-0.5 py-0.5')}
-            >
-              <div className={cn('grid grid-cols-7', compact ? 'gap-0.5' : 'gap-1')}>
-                {week.days.map((day, colIdx) =>
-                  day ? (
-                    renderDayCell(day)
-                  ) : (
-                    <div key={`pad-${week.weekIndex}-${colIdx}`} className={padCellMinHeight} />
-                  )
-                )}
-              </div>
-              {renderOccupancySegment ? (
-                <CalendarOccupancySpanTrack
-                  segments={segmentsByWeek?.get(week.weekIndex) ?? []}
-                  getSegmentKey={(segment) =>
-                    `${week.weekIndex}-${getItemKey(segment.item)}-${segment.startCol}-${segment.endCol}`
-                  }
-                  renderSegment={renderOccupancySegment}
-                  maxLanes={spanLaneCap}
-                  laneHeightPx={spanLaneHeightPx}
-                  className={cn(compact && 'mt-0')}
-                  hiddenClassName={cn(!compact && 'hidden sm:grid', compact && dense && 'hidden')}
-                />
-              ) : null}
-            </div>
-          ))}
+              );
+            })}
+          </div>
         </div>
       ) : (
-        <div
-          className={cn(
-            'grid grid-cols-7',
-            compact ? 'gap-1 px-1.5 pb-2 pt-2 sm:px-2' : 'gap-1 px-2 pb-3 pt-3 sm:px-3'
-          )}
-        >
-          {showWeekdayHeaders
-            ? CALENDAR_WEEKDAYS.map((day) => (
-                <div
-                  key={day}
-                  className={cn(
-                    'text-muted-foreground text-center font-bold uppercase',
-                    compact ? 'py-1 text-[9px] tracking-wide' : 'py-1 text-[10px] tracking-wider'
-                  )}
-                >
-                  {day}
-                </div>
-              ))
-            : null}
-
-          {Array.from({ length: calendarGrid.paddingStart }).map((_, idx) => (
-            <div key={`pad-${idx}`} className={padCellMinHeight} />
-          ))}
-
-          {calendarGrid.days.map((day) => renderDayCell(day))}
+        <div className={cn(compact ? 'p-1.5 sm:p-2' : 'p-2 sm:p-3')}>
+          <div
+            className={cn(
+              'border-border/50 overflow-hidden rounded-lg border',
+              compact && 'rounded-md'
+            )}
+          >
+            {showWeekdayHeaders ? weekdayHeader : null}
+            <div className="bg-border/60 grid grid-cols-7 items-start gap-px">
+              {weeks.flatMap((week) =>
+                week.days.map((day) => renderDayCell(day, { gridCell: true }))
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

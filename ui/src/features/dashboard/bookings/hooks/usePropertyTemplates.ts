@@ -88,6 +88,7 @@ export function usePropertyTemplateMutations() {
       name?: string;
       sectionImageUrl?: string | null;
       silent?: boolean;
+      publicPagesAutosaveGate?: boolean;
     }) => {
       const headers = await authHeaders();
       const res = await fetch(scopedFunctionsUrl('/property-templates-settings', propertyId), {
@@ -98,6 +99,7 @@ export function usePropertyTemplateMutations() {
           content: input.content,
           name: input.name,
           sectionImageUrl: input.sectionImageUrl,
+          ...(input.publicPagesAutosaveGate ? { publicPagesAutosaveGate: true } : {}),
         }),
       });
       if (!res.ok) {

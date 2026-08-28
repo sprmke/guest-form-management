@@ -29,11 +29,12 @@ import {
 } from '@/features/dashboard/bookings/lib/documentRequirements';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import {
-  applicableTransitions,
   canTransition,
+  getPendingDocumentsNestedCompletion,
   isSubStatusCompleted,
   isSubStatusRequired,
-  transitionDirection,
+  nextStep,
+  previousStep,
   type PendingDocumentSubStatus,
 } from '@/features/dashboard/bookings/lib/workflow';
 
@@ -89,13 +90,15 @@ export const STAGE_META: Record<Exclude<BookingStage, 'all'>, StageMeta> = {
 
 /** Statuses included when a stage summary card is active. */
 export const STAGE_STATUS_MAP: Record<Exclude<BookingStage, 'all'>, readonly string[]> = {
-  // PENDING_HOST_ACCEPTANCE is parking-only (see parkingStatusMachine.ts) — not part
-  // of the property BookingStatus enum, so this map is typed as string[] not BookingStatus[].
+  // PENDING_HOST_ACCEPTANCE / PENDING_PAYMENT are parking-only (see parkingStatusMachine.ts)
+  // — not part of the property BookingStatus enum, so this map is typed as string[] not
+  // BookingStatus[].
   action_required: [
     'PENDING_REVIEW',
     'READY_FOR_CHECKOUT',
     'PENDING_SD_REFUND',
     'PENDING_HOST_ACCEPTANCE',
+    'PENDING_PAYMENT',
   ],
   pending_docs: [
     'PENDING_DOCUMENTS',
@@ -344,7 +347,72 @@ function kanbanDocStepsBeforeTargetComplete(
   return true;
 }
 
+function kanbanColumnForPipelineTarget(
+  pipelineStatus: BookingStatus,
+  requirements: DocumentRequirement[]
+): BookingStatus | null {
+  if (pipelineStatus === 'PENDING_DOCUMENTS') {
+    if (requirements.length === 0) return null;
+    return 'PENDING_GAF';
+  }
+  if ((KANBAN_COLUMNS as readonly string[]).includes(pipelineStatus)) {
+    return pipelineStatus;
+  }
+  return null;
+}
+
+function kanbanPipelineAdjacentDrop(
+  booking: BookingRow,
+  targetStatus: BookingStatus,
+  requirements: DocumentRequirement[]
+): { toStatus: BookingStatus; direction: 'forward' | 'back' } | null {
+  const from = String(booking.status) as BookingStatus;
+  const ctx = { manual: true as const };
+
+  const next = nextStep(booking, from, requirements);
+  if (next) {
+    const nextCol = kanbanColumnForPipelineTarget(next, requirements);
+    if (nextCol === targetStatus) {
+      if (from === 'PENDING_REVIEW' && next === 'READY_FOR_CHECKIN') {
+        if (requirements.length !== 0) return null;
+        if (!canTransition(from, next, ctx)) return null;
+        return { toStatus: next, direction: 'forward' };
+      }
+      if (from === 'PENDING_REVIEW' && next === 'PENDING_DOCUMENTS') {
+        if (!canTransition(from, 'PENDING_DOCUMENTS', ctx)) return null;
+        return { toStatus: 'PENDING_DOCUMENTS', direction: 'forward' };
+      }
+      if (from === 'PENDING_DOCUMENTS' && next === 'READY_FOR_CHECKIN') {
+        const { allConfigurableDocsDone, parkingDone } = getPendingDocumentsNestedCompletion(
+          booking,
+          requirements
+        );
+        if (!allConfigurableDocsDone || !parkingDone) return null;
+        if (!canTransition(from, next, ctx)) return null;
+        return { toStatus: next, direction: 'forward' };
+      }
+      if (!canTransition(from, next, ctx)) return null;
+      return { toStatus: next, direction: 'forward' };
+    }
+  }
+
+  const prev = previousStep(booking, from, requirements);
+  if (prev) {
+    const prevCol = kanbanColumnForPipelineTarget(prev, requirements);
+    if (prevCol === targetStatus) {
+      if (!canTransition(from, prev, ctx)) return null;
+      return { toStatus: prev, direction: 'back' };
+    }
+  }
+
+  return null;
+}
+
 /**
+ * Same gates as the detail Progress rail: pipeline next/prev only (plus nested
+ * doc mark-complete drops). No manual-override skip-ahead (e.g. Ready for
+ * Check-in → Pending SD Refund).
+ *
  * `requirements` defaults to `DEFAULT_DOCUMENT_REQUIREMENTS` (Azure parity) —
  * pass the property's resolved list when available (see `kanbanColumnForBooking`).
  */
@@ -356,49 +424,31 @@ export function canKanbanDropTo(
   const from = String(booking.status);
   const currentColumn = kanbanColumnForBooking(booking, requirements);
   if (currentColumn === targetStatus) return false;
+  if (from === 'CANCELLED' || from === 'COMPLETED' || from === 'IMPORTED') return false;
 
-  if (applicableTransitions(from, { manual: true }, booking).includes(targetStatus)) {
-    return true;
-  }
-  if (canTransition(from, targetStatus, { manual: true })) {
-    return true;
-  }
+  if (kanbanPipelineAdjacentDrop(booking, targetStatus, requirements)) return true;
 
-  // No PENDING_DOCUMENTS column — map doc sub-columns to workflow paths.
-  if (!isKanbanDocSubColumn(targetStatus)) {
-    return false;
-  }
+  // Nested docs: forward to a later incomplete required sub-column (Mark complete).
+  if (!isKanbanDocSubColumn(targetStatus)) return false;
+  if (!isInKanbanDocPipeline(from)) return false;
+  if (!kanbanDocStepsBeforeTargetComplete(booking, targetStatus, requirements)) return false;
 
-  if (!kanbanDocStepsBeforeTargetComplete(booking, targetStatus, requirements)) {
-    return false;
-  }
+  const currentIdx =
+    currentColumn != null && isKanbanDocSubColumn(currentColumn)
+      ? kanbanDocSubColumnIndex(currentColumn)
+      : -1;
+  const targetIdx = kanbanDocSubColumnIndex(targetStatus);
+  if (currentIdx < 0 || targetIdx <= currentIdx) return false;
+  if (!isSubStatusRequired(targetStatus, booking, requirements)) return false;
+  return !isSubStatusCompleted(targetStatus, booking, requirements);
+}
 
-  // Pending Review → first doc column after Proceed to Pending Documents.
-  if (from === 'PENDING_REVIEW') {
-    if (!canTransition(from, 'PENDING_DOCUMENTS', { manual: true })) return false;
-    const landing = kanbanColumnForBooking(
-      {
-        ...booking,
-        status: 'PENDING_DOCUMENTS',
-      },
-      requirements
-    );
-    return landing === targetStatus;
-  }
-
-  // Within the doc pipeline: forward to a later sub-column (opens workflow modal).
-  if (isInKanbanDocPipeline(from)) {
-    const currentIdx =
-      currentColumn != null && isKanbanDocSubColumn(currentColumn)
-        ? kanbanDocSubColumnIndex(currentColumn)
-        : -1;
-    const targetIdx = kanbanDocSubColumnIndex(targetStatus);
-    if (currentIdx < 0 || targetIdx <= currentIdx) return false;
-    if (!isSubStatusRequired(targetStatus, booking, requirements)) return false;
-    return !isSubStatusCompleted(targetStatus, booking, requirements);
-  }
-
-  return false;
+/** Valid kanban column destinations for the dragged booking (for quick-jump chips). */
+export function kanbanValidDropTargets(
+  booking: BookingRow,
+  requirements: DocumentRequirement[] = DEFAULT_DOCUMENT_REQUIREMENTS
+): BookingStatus[] {
+  return KANBAN_COLUMNS.filter((status) => canKanbanDropTo(booking, status, requirements));
 }
 
 export type KanbanDropTransition = {
@@ -419,31 +469,10 @@ export function resolveKanbanDropTransition(
 ): KanbanDropTransition | null {
   if (!canKanbanDropTo(booking, targetColumn, requirements)) return null;
 
-  const from = String(booking.status) as BookingStatus;
-  const ctx = { manual: true as const };
+  const adjacent = kanbanPipelineAdjacentDrop(booking, targetColumn, requirements);
+  if (!adjacent) return null;
 
-  let toStatus: BookingStatus | null = null;
-
-  if (applicableTransitions(from, ctx, booking).includes(targetColumn)) {
-    toStatus = targetColumn;
-  } else if (canTransition(from, targetColumn, ctx)) {
-    toStatus = targetColumn;
-  } else if (from === 'PENDING_REVIEW' && isKanbanDocSubColumn(targetColumn)) {
-    if (!canTransition(from, 'PENDING_DOCUMENTS', ctx)) return null;
-    const landing = kanbanColumnForBooking(
-      { ...booking, status: 'PENDING_DOCUMENTS' },
-      requirements
-    );
-    if (landing !== targetColumn) return null;
-    toStatus = 'PENDING_DOCUMENTS';
-  } else if (isInKanbanDocPipeline(from) && isKanbanDocSubColumn(targetColumn)) {
-    return null;
-  }
-
-  if (!toStatus) return null;
-
-  const direction =
-    transitionDirection(from, toStatus, booking, requirements) === 'backward' ? 'back' : 'forward';
+  const { toStatus, direction } = adjacent;
   const label =
     direction === 'back'
       ? `Return to ${statusLabel(toStatus)}`

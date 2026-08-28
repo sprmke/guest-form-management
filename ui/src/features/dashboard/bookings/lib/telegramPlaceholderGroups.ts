@@ -221,8 +221,8 @@ const PLACEHOLDER_META: Record<string, PlaceholderMeta> = {
   },
   gcash_payment_section: {
     group: 'Sections',
-    description: 'Payment QR + account details',
-    example: 'QR + GCash account',
+    description: 'Payment accounts (+ QR when uploaded)',
+    example: 'Account details (± QR)',
   },
   sd_refund_checklist_section: {
     group: 'Sections',

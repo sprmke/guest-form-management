@@ -269,19 +269,25 @@ export function bookingsStatusFilterRows(
 }
 
 /** Parking-only statuses — see PARKING_ONLY_STATUS_LABELS below. */
-export const PARKING_ONLY_STATUSES = ['PENDING_HOST_ACCEPTANCE', 'NO_HOST_AVAILABLE'] as const;
+export const PARKING_ONLY_STATUSES = [
+  'PENDING_HOST_ACCEPTANCE',
+  'PENDING_PAYMENT',
+  'NO_HOST_AVAILABLE',
+] as const;
 
 /**
  * Parking-only statuses (see `_shared/parkingStatusMachine.ts`) share this badge/label
  * rendering but are not part of the property `BookingStatus` enum above.
  */
 const PARKING_ONLY_STATUS_LABELS: Record<string, string> = {
-  PENDING_HOST_ACCEPTANCE: 'Awaiting Host',
-  NO_HOST_AVAILABLE: 'No Host Available',
+  PENDING_HOST_ACCEPTANCE: 'Finding host',
+  PENDING_PAYMENT: 'Awaiting payment',
+  NO_HOST_AVAILABLE: 'No host',
 };
 
 const PARKING_ONLY_STATUS_TONE: Record<string, StatusTone> = {
   PENDING_HOST_ACCEPTANCE: 'amber',
+  PENDING_PAYMENT: 'amber',
   NO_HOST_AVAILABLE: 'neutral',
 };
 

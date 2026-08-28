@@ -13,8 +13,11 @@ import type { ReactNode } from 'react';
 
 import { Link, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 
-import { ChevronUp, ChevronLeft, ChevronRight, LogOut } from 'lucide-react';
+import { ChevronUp, ChevronLeft, ChevronRight, LogOut, User } from 'lucide-react';
 
+import { AccountAvatar } from '@/features/guest/account/components/AccountAvatar';
+import { GuestProfileModal } from '@/features/guest/account/components/GuestProfileModal';
+import { useAccountIdentity } from '@/features/guest/account/hooks/useAccountIdentity';
 import { hostLoginPath } from '@/features/guest/auth/lib/hostAuthPaths';
 import { ModeSwitcher } from '@/features/guest/marketing/shared/components/ModeSwitcher';
 
@@ -269,7 +272,9 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
   const orgSlugForLists = tenant?.orgSlug ?? parkingTenant?.orgSlug ?? routeOrgSlug;
   const { data: propertiesData } = useProperties(orgSlugForLists);
   const { data: parkingsData } = useParkings(orgSlugForLists);
-  const { email, name, signOut } = useAdminSession();
+  const { email, signOut } = useAdminSession();
+  const { displayName, avatarUrl, initials } = useAccountIdentity();
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
   const propertyPermissionsQuery = usePropertyPermissions();
   const parkingPermissionsQuery = useParkingPermissions();
   const orgPermissionsQuery = useOrgPermissions();
@@ -466,9 +471,10 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
   ]);
   useFavicon(faviconUrl);
 
-  const displayName = name ?? email?.split('@')[0] ?? 'Admin';
-  const initial = displayName[0]?.toUpperCase() ?? 'A';
   const superAdmin = isSuperAdminPath(location.pathname);
+  const openProfileModal = useCallback(() => {
+    setProfileModalOpen(true);
+  }, []);
 
   const openMoreSheet = useCallback(() => {
     setAssistantOpen(false);
@@ -579,9 +585,11 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
                   parkingSettingsHasIssues={parkingSettingsHasIssues}
                   orgSettingsHasIssues={orgSettingsHasIssues}
                   displayName={displayName}
-                  initial={initial}
+                  avatarUrl={avatarUrl}
+                  initials={initials}
                   email={email}
                   signOut={signOut}
+                  onOpenProfile={openProfileModal}
                   collapsed={sidebarCollapsed}
                   superAdmin={superAdmin}
                 />
@@ -637,12 +645,19 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
             parkingSettingsHasIssues={parkingSettingsHasIssues}
             orgSettingsHasIssues={orgSettingsHasIssues}
             displayName={displayName}
-            initial={initial}
+            avatarUrl={avatarUrl}
+            initials={initials}
             email={email}
             signOut={signOut}
+            onOpenProfile={() => {
+              setMoreSheetOpen(false);
+              openProfileModal();
+            }}
             onSignOutNavigate={() => navigate(hostLoginPath(), { replace: true })}
             superAdmin={superAdmin}
           />
+
+          <GuestProfileModal open={profileModalOpen} onOpenChange={setProfileModalOpen} />
 
           {!superAdmin ? (
             <NotificationBell
@@ -747,9 +762,11 @@ type AdminSidebarContentProps = {
   parkingSettingsHasIssues: boolean;
   orgSettingsHasIssues: boolean;
   displayName: string;
-  initial: string;
+  avatarUrl: string | null;
+  initials: string;
   email: string | null;
   signOut: () => Promise<void>;
+  onOpenProfile: () => void;
   onClose?: () => void;
   collapsed?: boolean;
   /** When false (mobile drawer closed), collapse the account menu. */
@@ -767,9 +784,11 @@ function AdminSidebarContent({
   parkingSettingsHasIssues,
   orgSettingsHasIssues,
   displayName,
-  initial,
+  avatarUrl,
+  initials,
   email,
   signOut,
+  onOpenProfile,
   onClose,
   collapsed = false,
   menuOpen,
@@ -896,9 +915,11 @@ function AdminSidebarContent({
         collapsed={collapsed}
         showThemeToggle={!onClose}
         displayName={displayName}
-        initial={initial}
+        avatarUrl={avatarUrl}
+        initials={initials}
         email={email}
         signOut={signOut}
+        onOpenProfile={onOpenProfile}
         menuOpen={menuOpen}
       />
     </div>
@@ -909,9 +930,11 @@ type AdminProfileFooterProps = {
   collapsed: boolean;
   showThemeToggle: boolean;
   displayName: string;
-  initial: string;
+  avatarUrl: string | null;
+  initials: string;
   email: string | null;
   signOut: () => Promise<void>;
+  onOpenProfile: () => void;
   menuOpen?: boolean;
 };
 
@@ -924,9 +947,11 @@ function AdminProfileFooter({
   collapsed,
   showThemeToggle,
   displayName,
-  initial,
+  avatarUrl,
+  initials,
   email,
   signOut,
+  onOpenProfile,
   menuOpen,
 }: AdminProfileFooterProps) {
   const navigate = useNavigate();
@@ -951,6 +976,23 @@ function AdminProfileFooter({
   useEffect(() => {
     if (menuOpen === false) setProfileOpen(false);
   }, [menuOpen]);
+
+  useEffect(() => {
+    if (!profileOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [profileOpen]);
+
+  const handleOpenProfile = () => {
+    setProfileOpen(false);
+    onOpenProfile();
+  };
 
   const handleSignOut = async () => {
     setProfileOpen(false);
@@ -985,24 +1027,30 @@ function AdminProfileFooter({
                 : 'bottom-full left-0 right-0 mb-2'
             )}
             role="menu"
+            aria-label="Account menu"
           >
-            <div className="flex items-center gap-3 px-3.5 py-3">
-              <div className="gradient-primary text-primary-foreground ring-background flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold shadow-sm ring-2">
-                {initial}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-foreground truncate text-sm font-semibold capitalize leading-tight">
-                  {displayName}
-                </p>
-                {email ? (
-                  <p className="text-muted-foreground mt-0.5 truncate text-xs leading-tight">
-                    {email}
+            {collapsed ? (
+              <div className="flex min-w-0 items-center gap-3 px-3.5 py-3">
+                <AccountAvatar
+                  avatarUrl={avatarUrl}
+                  initials={initials}
+                  className="ring-background h-10 w-10 shadow-sm ring-2"
+                  fallbackClassName="text-sm"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-foreground truncate text-sm font-semibold leading-tight">
+                    {displayName}
                   </p>
-                ) : null}
+                  {email ? (
+                    <p className="text-muted-foreground mt-0.5 truncate text-xs leading-tight">
+                      {email}
+                    </p>
+                  ) : null}
+                </div>
               </div>
-            </div>
+            ) : null}
 
-            <div className="border-border/50 border-t px-3 py-3">
+            <div className={cn('px-3 py-3', collapsed && 'border-border/50 border-t')}>
               <ModeSwitcher className="w-full" />
             </div>
 
@@ -1010,8 +1058,17 @@ function AdminProfileFooter({
               <button
                 type="button"
                 role="menuitem"
+                onClick={handleOpenProfile}
+                className="text-ui text-foreground hover:bg-muted/60 focus-visible:ring-ring flex min-h-[44px] w-full items-center gap-2.5 rounded-xl px-3 py-2 font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2"
+              >
+                <User className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                Profile
+              </button>
+              <button
+                type="button"
+                role="menuitem"
                 onClick={() => void handleSignOut()}
-                className="text-ui text-destructive hover:bg-destructive/10 flex min-h-[44px] w-full items-center gap-2.5 rounded-xl px-3 py-2 font-semibold transition-colors"
+                className="text-ui text-destructive hover:bg-destructive/10 focus-visible:ring-ring flex min-h-[44px] w-full items-center gap-2.5 rounded-xl px-3 py-2 font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2"
               >
                 <LogOut className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 Sign out
@@ -1025,27 +1082,26 @@ function AdminProfileFooter({
           onClick={() => setProfileOpen((o) => !o)}
           aria-haspopup="menu"
           aria-expanded={profileOpen}
-          aria-label={collapsed ? `Account menu, ${displayName}` : 'Account menu'}
+          aria-label={`Account menu, ${displayName}`}
           className={cn(
-            'relative z-10 flex min-h-[44px] w-full items-center rounded-xl border transition-all duration-150',
+            'relative z-10 flex min-h-[44px] w-full min-w-0 items-center rounded-xl border transition-all duration-150',
+            'focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
             collapsed ? 'justify-center border-transparent px-2 py-2' : 'gap-3 px-2.5 py-2',
             profileOpen
               ? 'border-border bg-muted/60 shadow-sm'
               : 'hover:border-border/50 hover:bg-muted/40 border-transparent'
           )}
         >
-          <div
-            className={cn(
-              'gradient-primary text-primary-foreground ring-background flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-bold shadow-sm ring-2',
-              collapsed ? 'text-xs' : 'text-sm'
-            )}
-          >
-            {initial}
-          </div>
+          <AccountAvatar
+            avatarUrl={avatarUrl}
+            initials={initials}
+            className="ring-background h-8 w-8 shadow-sm ring-2"
+            fallbackClassName="text-xs"
+          />
           {!collapsed && (
             <>
               <div className="min-w-0 flex-1 text-left">
-                <p className="text-foreground truncate text-sm font-semibold capitalize leading-tight">
+                <p className="text-foreground truncate text-sm font-semibold leading-tight">
                   {displayName}
                 </p>
                 {email ? (

@@ -140,15 +140,17 @@ export function BookingDetailMobileSummary({
         ) : (
           detailsExpanded && (
             <div className="flex items-stretch gap-2">
-              <Button
-                type="button"
-                onClick={onEdit}
-                size="sm"
-                className="min-h-[44px] flex-1 gap-1.5 rounded-lg text-[13px] font-semibold"
-              >
-                <Edit2 className="size-4 shrink-0" aria-hidden />
-                Edit booking
-              </Button>
+              {onEdit ? (
+                <Button
+                  type="button"
+                  onClick={onEdit}
+                  size="sm"
+                  className="min-h-[44px] flex-1 gap-1.5 rounded-lg text-[13px] font-semibold"
+                >
+                  <Edit2 className="size-4 shrink-0" aria-hidden />
+                  Edit booking
+                </Button>
+              ) : null}
               <BookingDetailActionsMenu actions={actions} />
             </div>
           )

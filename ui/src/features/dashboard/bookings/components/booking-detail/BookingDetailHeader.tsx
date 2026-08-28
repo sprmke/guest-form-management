@@ -18,10 +18,17 @@ type Props = {
   /** Secondary actions (parking / pets / pay parking) behind one overflow trigger. */
   actions: BookingDetailAction[];
   className?: string;
+  canEdit?: boolean;
 };
 
 /** View-mode header — booking identity plus the page's single primary action. */
-export function BookingDetailHeader({ booking, onEdit, actions, className }: Props) {
+export function BookingDetailHeader({
+  booking,
+  onEdit,
+  actions,
+  className,
+  canEdit = true,
+}: Props) {
   const pax = (booking.number_of_adults ?? 0) + (booking.number_of_children ?? 0);
   const nights = occupiedNightsFromStay(
     booking.check_in_date,
@@ -79,15 +86,17 @@ export function BookingDetailHeader({ booking, onEdit, actions, className }: Pro
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          <Button
-            type="button"
-            size="sm"
-            onClick={onEdit}
-            className="h-11 min-h-[44px] flex-1 gap-1.5 text-[13px] sm:flex-none lg:h-9 lg:min-h-0"
-          >
-            <Edit2 className="size-4 shrink-0" aria-hidden />
-            Edit booking
-          </Button>
+          {canEdit ? (
+            <Button
+              type="button"
+              size="sm"
+              onClick={onEdit}
+              className="h-11 min-h-[44px] flex-1 gap-1.5 text-[13px] sm:flex-none lg:h-9 lg:min-h-0"
+            >
+              <Edit2 className="size-4 shrink-0" aria-hidden />
+              Edit booking
+            </Button>
+          ) : null}
           <BookingDetailActionsMenu actions={actions} />
         </div>
       </div>

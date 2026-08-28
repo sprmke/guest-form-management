@@ -28,9 +28,16 @@ import {
 } from '@/features/dashboard/notifications/lib/notificationsPaths';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
+import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
+import {
+  hasAnyNotificationModuleEditPermission,
+  hasPropertyPermission,
+  NOTIFICATION_MODULE_EDIT_PERMISSION,
+} from '@/features/dashboard/team/lib/propertyPermissions';
 
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { propertyDashboardPageTitle, usePageTitle } from '@/lib/pageTitle';
+import { cn } from '@/lib/utils';
 
 const telegramNotificationsBadge = <TierBadge feature="telegramNotifications" />;
 
@@ -82,6 +89,10 @@ const MODULE_DESCRIPTIONS: Record<PropertyNotificationModule, string> = {
 
 export function NotificationsPage() {
   const tenant = useOptionalOrgContext();
+  const { data: access } = usePropertyPermissions();
+  const canEditGlobalBot = hasAnyNotificationModuleEditPermission(access?.permissions);
+  const canEditModule = (module: PropertyNotificationModule) =>
+    hasPropertyPermission(access?.permissions, NOTIFICATION_MODULE_EDIT_PERMISSION[module]);
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const moduleParam = searchParams.get('module');
@@ -128,7 +139,12 @@ export function NotificationsPage() {
               action={<TelegramHelpDialog defaultTab="bot-token" triggerLabel="Get Help" />}
             />
 
-            <TelegramGlobalBotTokenCard />
+            <div
+              className={cn(!canEditGlobalBot && 'pointer-events-none opacity-60')}
+              aria-disabled={!canEditGlobalBot || undefined}
+            >
+              <TelegramGlobalBotTokenCard />
+            </div>
 
             <AdminSection
               id="chat"
@@ -137,7 +153,12 @@ export function NotificationsPage() {
               description={MODULE_DESCRIPTIONS.chat}
               badge={telegramNotificationsBadge}
             >
-              <TelegramChatSettingsCard embedded />
+              <div
+                className={cn(!canEditModule('chat') && 'pointer-events-none opacity-60')}
+                aria-disabled={!canEditModule('chat') || undefined}
+              >
+                <TelegramChatSettingsCard embedded />
+              </div>
             </AdminSection>
 
             <AdminSection
@@ -147,7 +168,12 @@ export function NotificationsPage() {
               description={MODULE_DESCRIPTIONS.marketing}
               badge={telegramNotificationsBadge}
             >
-              <TelegramMarketingSettingsCard embedded />
+              <div
+                className={cn(!canEditModule('marketing') && 'pointer-events-none opacity-60')}
+                aria-disabled={!canEditModule('marketing') || undefined}
+              >
+                <TelegramMarketingSettingsCard embedded />
+              </div>
             </AdminSection>
 
             <AdminSection
@@ -157,7 +183,12 @@ export function NotificationsPage() {
               description={MODULE_DESCRIPTIONS.staff}
               badge={telegramNotificationsBadge}
             >
-              <TelegramStaffSettingsCard embedded />
+              <div
+                className={cn(!canEditModule('staff') && 'pointer-events-none opacity-60')}
+                aria-disabled={!canEditModule('staff') || undefined}
+              >
+                <TelegramStaffSettingsCard embedded />
+              </div>
             </AdminSection>
 
             <AdminSection
@@ -167,7 +198,12 @@ export function NotificationsPage() {
               description={MODULE_DESCRIPTIONS.operations}
               badge={telegramNotificationsBadge}
             >
-              <TelegramAdminSettingsCard embedded />
+              <div
+                className={cn(!canEditModule('operations') && 'pointer-events-none opacity-60')}
+                aria-disabled={!canEditModule('operations') || undefined}
+              >
+                <TelegramAdminSettingsCard embedded />
+              </div>
             </AdminSection>
 
             <AdminSection
@@ -177,7 +213,12 @@ export function NotificationsPage() {
               description={MODULE_DESCRIPTIONS.finance}
               badge={telegramNotificationsBadge}
             >
-              <TelegramFinanceSettingsCard embedded />
+              <div
+                className={cn(!canEditModule('finance') && 'pointer-events-none opacity-60')}
+                aria-disabled={!canEditModule('finance') || undefined}
+              >
+                <TelegramFinanceSettingsCard embedded />
+              </div>
             </AdminSection>
 
             <AdminSection
@@ -187,7 +228,12 @@ export function NotificationsPage() {
               description={MODULE_DESCRIPTIONS.maintenance}
               badge={telegramNotificationsBadge}
             >
-              <TelegramMaintenanceSettingsCard embedded />
+              <div
+                className={cn(!canEditModule('maintenance') && 'pointer-events-none opacity-60')}
+                aria-disabled={!canEditModule('maintenance') || undefined}
+              >
+                <TelegramMaintenanceSettingsCard embedded />
+              </div>
             </AdminSection>
           </div>
         </AdminSectionNavLayout>

@@ -6,7 +6,6 @@ import {
   parkingBroadcastCountdownA11yLabel,
 } from '@/utils/format/parkingStayDisplay';
 
-
 const WARN_THRESHOLD_MS = 2 * 60_000;
 
 function useRemainingMs(expiresAt: string): number {
@@ -48,7 +47,7 @@ export function ParkingBroadcastCountdown({ expiresAt, className, prominent = fa
         className
       )}
     >
-      Expires in {formatParkingBroadcastCountdown(remainingMs)}
+      Expires {formatParkingBroadcastCountdown(remainingMs)}
       <span className="sr-only" aria-live="polite">
         {minutesLabel}
       </span>

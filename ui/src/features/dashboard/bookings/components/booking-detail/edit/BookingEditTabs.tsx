@@ -129,17 +129,41 @@ type Props = {
   footer: ReactNode;
   /** Open on a specific tab (e.g. Add parking → parking). */
   initialTab?: BookingEditTabId;
+  /** Subset of tabs the member may edit (permission-gated). */
+  allowedTabs?: BookingEditTabId[];
 };
 
 export const BookingEditTabs = forwardRef<BookingEditTabsHandle, Props>(function BookingEditTabs(
-  { booking, actions, errors, sensitiveNoticeVisible, tabs, footer, initialTab = 'stay' },
+  {
+    booking,
+    actions,
+    errors,
+    sensitiveNoticeVisible,
+    tabs,
+    footer,
+    initialTab = 'stay',
+    allowedTabs,
+  },
   ref
 ) {
-  const orderedTabs = TAB_ORDER;
+  const orderedTabs = useMemo(
+    () =>
+      allowedTabs?.length
+        ? TAB_ORDER.filter((id) => allowedTabs.includes(id) && tabs[id] != null)
+        : TAB_ORDER.filter((id) => tabs[id] != null),
+    [allowedTabs, tabs]
+  );
   const [activeTab, setActiveTab] = useState<BookingEditTabId>(() =>
-    orderedTabs.includes(initialTab) ? initialTab : 'stay'
+    orderedTabs.includes(initialTab) ? initialTab : (orderedTabs[0] ?? 'stay')
   );
   const pendingScrollErrorsRef = useRef<FieldErrors<BookingEditFormValues> | null>(null);
+
+  useEffect(() => {
+    if (orderedTabs.length === 0) return;
+    if (!orderedTabs.includes(activeTab)) {
+      setActiveTab(orderedTabs[0]!);
+    }
+  }, [orderedTabs, activeTab]);
 
   useImperativeHandle(
     ref,

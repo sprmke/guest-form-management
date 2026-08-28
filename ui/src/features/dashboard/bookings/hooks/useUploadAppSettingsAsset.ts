@@ -80,15 +80,9 @@ export function useUploadAppSettingsAsset() {
         qc.setQueryData(['app-settings', propertyId], (current: AppSettingsDto | undefined) => {
           if (!current) return current;
 
+          // Payment QR is staging-only until OTP save — do not mutate cached settings.
           if (variables.assetType === 'gcash_qr') {
-            return {
-              ...current,
-              gcashQrImageUrl: data.url,
-              fieldSources: {
-                ...current.fieldSources,
-                gcashQrImageUrl: 'db',
-              },
-            };
+            return current;
           }
 
           if (
@@ -108,6 +102,7 @@ export function useUploadAppSettingsAsset() {
           return current;
         });
       }
+      if (variables.assetType === 'gcash_qr') return;
       void qc.invalidateQueries({ queryKey: ['app-settings', propertyId] });
       void qc.invalidateQueries({ queryKey: ['guest-payment-info'] });
     },

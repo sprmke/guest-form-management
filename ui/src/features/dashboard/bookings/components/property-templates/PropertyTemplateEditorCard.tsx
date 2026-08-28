@@ -39,6 +39,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -62,6 +63,8 @@ type Props = {
   saving?: boolean;
   /** When false, hides the section image uploader (Stay Guide images live in Page Editor). */
   showSectionImage?: boolean;
+  /** When false, content is preview-only (no edit/save/reset/delete). */
+  canEdit?: boolean;
 };
 
 export function PropertyTemplateEditorCard({
@@ -72,13 +75,14 @@ export function PropertyTemplateEditorCard({
   onDelete,
   saving,
   showSectionImage = true,
+  canEdit = true,
 }: Props) {
   const [content, setContent] = React.useState(template.content);
   const [sectionImageUrl, setSectionImageUrl] = React.useState(template.sectionImageUrl);
   const [sectionImagePreviewBust, setSectionImagePreviewBust] = React.useState(() =>
     template.updatedAt ? Date.parse(template.updatedAt) || 0 : 0
   );
-  const [activeTab, setActiveTab] = React.useState<EditorTab>('edit');
+  const [activeTab, setActiveTab] = React.useState<EditorTab>(canEdit ? 'edit' : 'preview');
   const [previewHtml, setPreviewHtml] = React.useState<string | null>(null);
   const [resetOpen, setResetOpen] = React.useState(false);
   const [deleteOpen, setDeleteOpen] = React.useState(false);
@@ -89,6 +93,10 @@ export function PropertyTemplateEditorCard({
   const { canUse: canUseCustomTemplates, isLoading: customTemplatesLoading } =
     useFeatureGate('customTemplates');
   const { open: openUpgradeModal } = useUpgradeModal();
+
+  React.useEffect(() => {
+    if (!canEdit) setActiveTab('preview');
+  }, [canEdit]);
 
   React.useEffect(() => {
     let next = normalizeBlockLevelPlaceholdersInHtml(template.content);
@@ -271,54 +279,58 @@ export function PropertyTemplateEditorCard({
             aria-label={`${template.name} view`}
           />
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="min-h-[44px] gap-1.5 sm:min-h-9"
-              onClick={() => setPlaceholdersOpen(true)}
-            >
-              <Braces className="size-4 shrink-0" aria-hidden />
-              Placeholders
-            </Button>
-            {!isCustom && onReset ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="min-h-[44px] gap-1.5 sm:min-h-9"
-                onClick={() => setResetOpen(true)}
-              >
-                <RotateCcw className="size-4 shrink-0" aria-hidden />
-                Reset
-              </Button>
-            ) : null}
-            {isCustom && onDelete ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="border-destructive/40 text-destructive hover:bg-destructive/10 min-h-[44px] gap-1.5 sm:min-h-9"
-                onClick={() => setDeleteOpen(true)}
-              >
-                <Trash2 className="size-4 shrink-0" aria-hidden />
-                Delete
-              </Button>
-            ) : null}
-            {hasChanges ? (
-              <Button
-                type="button"
-                size="sm"
-                className="min-h-[44px] sm:min-h-9"
-                disabled={saving}
-                onClick={() => {
-                  if (openStarterUpgradeIfNeeded()) return;
-                  void onSave({ content, sectionImageUrl });
-                }}
-              >
-                <Save className="mr-1.5 h-3.5 w-3.5" />
-                {saving ? 'Saving…' : 'Save'}
-              </Button>
+            {canEdit ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="min-h-[44px] gap-1.5 sm:min-h-9"
+                  onClick={() => setPlaceholdersOpen(true)}
+                >
+                  <Braces className="size-4 shrink-0" aria-hidden />
+                  Placeholders
+                </Button>
+                {!isCustom && onReset ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="min-h-[44px] gap-1.5 sm:min-h-9"
+                    onClick={() => setResetOpen(true)}
+                  >
+                    <RotateCcw className="size-4 shrink-0" aria-hidden />
+                    Reset
+                  </Button>
+                ) : null}
+                {isCustom && onDelete ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="border-destructive/40 text-destructive hover:bg-destructive/10 min-h-[44px] gap-1.5 sm:min-h-9"
+                    onClick={() => setDeleteOpen(true)}
+                  >
+                    <Trash2 className="size-4 shrink-0" aria-hidden />
+                    Delete
+                  </Button>
+                ) : null}
+                {hasChanges ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="min-h-[44px] sm:min-h-9"
+                    disabled={saving}
+                    onClick={() => {
+                      if (openStarterUpgradeIfNeeded()) return;
+                      void onSave({ content, sectionImageUrl });
+                    }}
+                  >
+                    <Save className="mr-1.5 h-3.5 w-3.5" />
+                    {saving ? 'Saving…' : 'Save'}
+                  </Button>
+                ) : null}
+              </>
             ) : null}
           </div>
         </div>
@@ -422,7 +434,10 @@ export function PropertyTemplateEditorCard({
       >
         <DialogContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
           <DialogHeader>
-            <DialogTitle>Reset template content to default?</DialogTitle>
+            <DialogTitle>Reset to default?</DialogTitle>
+            <DialogDescription>
+              Your saved copy will be replaced with the original default text.
+            </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-1">
             <Button type="button" variant="outline" onClick={() => setResetOpen(false)}>

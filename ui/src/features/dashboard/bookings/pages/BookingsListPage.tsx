@@ -52,7 +52,7 @@ import { FloatingPanel, FloatingToolbar } from '@/components/mobile/FloatingPane
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
 import { Button } from '@/components/ui/button';
-import { useIsBelowLg } from '@/hooks/useMediaQuery';
+import { useIsBelowLg, useIsBelowMd } from '@/hooks/useMediaQuery';
 import { fromIsoDate } from '@/lib/date/navigation';
 import { buildPageItems, normalizeAdminPageLimit } from '@/lib/table/pagination';
 
@@ -106,11 +106,11 @@ function parseQueryFromParams(sp: URLSearchParams): BookingsQuery {
 function parseViewFromParams(
   sp: URLSearchParams,
   isMobileLayout: boolean,
-  hideKanban: boolean
+  kanbanUnavailable: boolean
 ): BookingView {
   const v = sp.get('view') as BookingView | null;
   if (v && VIEWS.includes(v)) {
-    if (hideKanban && v === 'kanban') return isMobileLayout ? 'card' : 'table';
+    if (kanbanUnavailable && v === 'kanban') return isMobileLayout ? 'card' : 'table';
     if (isMobileLayout && v === 'table') return 'card';
     return v;
   }
@@ -154,13 +154,21 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
   const [newBookingOpen, setNewBookingOpen] = useState(false);
   const { data: propertyAccess } = usePropertyPermissions();
   const canImport =
-    scope !== 'org' && hasPropertyPermission(propertyAccess?.permissions, 'import:manage');
+    scope !== 'org' && hasPropertyPermission(propertyAccess?.permissions, 'bookings.import:add');
+  const canCreateBooking =
+    scope !== 'org' && hasPropertyPermission(propertyAccess?.permissions, 'bookings.create:add');
+  const canMutateWorkflow =
+    scope !== 'org' &&
+    hasPropertyPermission(propertyAccess?.permissions, 'bookings.detail.workflow:edit');
 
   const isMobileLayout = useIsBelowLg();
+  const isBelowMd = useIsBelowMd();
+  /** Org scope + phone (`max-md`) — kanban needs drag + wide board. */
+  const kanbanUnavailable = hideKanban || isBelowMd;
   const query = useMemo(() => parseQueryFromParams(searchParams), [searchParams]);
   const view = useMemo(
-    () => parseViewFromParams(searchParams, isMobileLayout, hideKanban),
-    [searchParams, isMobileLayout, hideKanban]
+    () => parseViewFromParams(searchParams, isMobileLayout, kanbanUnavailable),
+    [searchParams, isMobileLayout, kanbanUnavailable]
   );
 
   const stage = useMemo(() => parseBookingStage(searchParams.get('stage')), [searchParams]);
@@ -205,18 +213,22 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
     [query.from, query.to, query.hasPets, query.needParking, query.bookingKind, query.sort]
   );
 
-  // Org: drop legacy kanban URL when present.
+  // Org scope or phone: leave kanban URL / view.
   useEffect(() => {
-    if (!hideKanban || view !== 'kanban') return;
+    if (!kanbanUnavailable || view !== 'kanban') return;
     setSearchParams(
       (prev) => {
         const sp = new URLSearchParams(prev);
-        sp.delete('view');
+        if (hideKanban) {
+          sp.delete('view');
+        } else {
+          sp.set('view', 'card');
+        }
         return sp;
       },
       { replace: true }
     );
-  }, [hideKanban, view, setSearchParams]);
+  }, [kanbanUnavailable, hideKanban, view, setSearchParams]);
 
   // Table is desktop-only; switch away live when the viewport narrows.
   useEffect(() => {
@@ -403,15 +415,17 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
             </Button>
           </TierBadgeAnchor>
         ) : null}
-        <button
-          type="button"
-          className="native-cta sm:w-auto sm:px-3.5"
-          onClick={() => setNewBookingOpen(true)}
-        >
-          <CalendarPlus className="size-4" aria-hidden />
-          <span className="sm:hidden">New</span>
-          <span className="hidden sm:inline">New booking</span>
-        </button>
+        {canCreateBooking ? (
+          <button
+            type="button"
+            className="native-cta sm:w-auto sm:px-3.5"
+            onClick={() => setNewBookingOpen(true)}
+          >
+            <CalendarPlus className="size-4" aria-hidden />
+            <span className="sm:hidden">New</span>
+            <span className="hidden sm:inline">New booking</span>
+          </button>
+        ) : null}
       </div>
     );
 
@@ -433,9 +447,11 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
             <TierBadge feature="bookingImport" placement="corner" />
           </span>
         ) : null}
-        <MobileHeroActionButton aria-label="New booking" onClick={() => setNewBookingOpen(true)}>
-          <CalendarPlus className="size-5" aria-hidden />
-        </MobileHeroActionButton>
+        {canCreateBooking ? (
+          <MobileHeroActionButton aria-label="New booking" onClick={() => setNewBookingOpen(true)}>
+            <CalendarPlus className="size-5" aria-hidden />
+          </MobileHeroActionButton>
+        ) : null}
       </>
     );
 
@@ -476,7 +492,7 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
             view={view}
             onViewChange={setView}
             hideTableView={isMobileLayout}
-            hideKanbanView={hideKanban}
+            hideKanbanView={kanbanUnavailable}
             showBookingKindFilter={scope === 'org'}
             showPerPage={view !== 'calendar' && view !== 'kanban'}
           />
@@ -505,7 +521,7 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
             resolveBookingHref={resolveBookingHref}
           />
         )}
-        {view === 'kanban' && !hideKanban ? (
+        {view === 'kanban' && !kanbanUnavailable ? (
           <BookingKanban
             rows={rows}
             isLoading={isLoading}
@@ -513,6 +529,7 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
             isRefreshing={isFetching}
             showProperty={showProperty}
             documentRequirements={documentRequirements}
+            canMutateWorkflow={canMutateWorkflow}
           />
         ) : null}
         {view === 'calendar' ? (

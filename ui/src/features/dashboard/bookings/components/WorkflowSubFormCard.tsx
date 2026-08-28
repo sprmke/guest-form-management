@@ -31,7 +31,20 @@ export function WorkflowSubFormCard({
   advanceMode,
 }: Props) {
   if (plain) {
-    return <div className={cn('space-y-3', bodyClassName)}>{children}</div>;
+    return (
+      <div className={cn('min-w-0 space-y-3', bodyClassName)}>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-foreground min-w-0 truncate text-sm font-semibold leading-snug">
+            {title}
+          </h3>
+          {advanceMode ? <WorkflowAdvanceModeBadge mode={advanceMode} /> : null}
+        </div>
+        {description ? (
+          <p className="text-muted-foreground text-xs leading-snug">{description}</p>
+        ) : null}
+        {children}
+      </div>
+    );
   }
 
   return (
