@@ -34,10 +34,22 @@ export type WorkflowTransitionEffectsInput = {
   >;
   documentRequirements: DocumentRequirement[];
   automationToggles?: PropertyAutomationToggles;
+  /** When false, treat plan-gated email toggles as off for preview/confirm copy. */
+  automatedBookingFlow?: boolean;
 };
 
 function automation(input: WorkflowTransitionEffectsInput): PropertyAutomationToggles {
-  return input.automationToggles ?? DEFAULT_PROPERTY_AUTOMATION_TOGGLES;
+  const base = input.automationToggles ?? DEFAULT_PROPERTY_AUTOMATION_TOGGLES;
+  if (input.automatedBookingFlow !== false) return base;
+  return {
+    ...base,
+    emailGafRequest: false,
+    emailBookingAcknowledgement: false,
+    emailPetRequest: false,
+    emailParkingBroadcast: false,
+    emailReadyForCheckin: false,
+    emailSdRefundCheckout: false,
+  };
 }
 
 function applicableRequirements(

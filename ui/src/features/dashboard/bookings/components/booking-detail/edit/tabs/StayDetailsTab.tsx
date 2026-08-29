@@ -11,8 +11,8 @@ import {
   Section,
 } from '@/features/dashboard/bookings/components/booking-detail/edit/BookingEditFields';
 import { BookingDetailCard } from '@/features/dashboard/bookings/components/booking-detail/primitives/BookingDetailCard';
-import type { BookingEditFormValues } from '@/features/dashboard/bookings/components/BookingEditForm';
-import { bookingEditDatePickerClass } from '@/features/dashboard/bookings/components/BookingEditForm';
+import type { BookingEditFormValues } from '@/features/dashboard/bookings/components/bookingEditFormShared';
+import { bookingEditDatePickerClass } from '@/features/dashboard/bookings/components/bookingEditFormShared';
 import { BookingGuestDocReplacer } from '@/features/dashboard/bookings/components/BookingGuestDocReplacer';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 

@@ -33,7 +33,7 @@ import {
   BookingDetailShellBody,
   BookingDetailShellHeader,
 } from '@/features/dashboard/bookings/components/booking-detail/primitives/BookingDetailShell';
-import type { BookingEditFormValues } from '@/features/dashboard/bookings/components/BookingEditForm';
+import type { BookingEditFormValues } from '@/features/dashboard/bookings/components/bookingEditFormShared';
 import { ReadyForCheckinSensitiveFieldsNotice } from '@/features/dashboard/bookings/components/ReadyForCheckinSensitiveFieldsNotice';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 

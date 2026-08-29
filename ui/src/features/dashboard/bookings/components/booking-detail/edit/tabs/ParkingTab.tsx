@@ -7,7 +7,7 @@ import {
   Row3,
 } from '@/features/dashboard/bookings/components/booking-detail/edit/BookingEditFields';
 import { BookingDetailCard } from '@/features/dashboard/bookings/components/booking-detail/primitives/BookingDetailCard';
-import type { BookingEditFormValues } from '@/features/dashboard/bookings/components/BookingEditForm';
+import type { BookingEditFormValues } from '@/features/dashboard/bookings/components/bookingEditFormShared';
 
 import type { UseFormRegister, UseFormSetValue } from 'react-hook-form';
 

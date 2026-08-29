@@ -44,6 +44,8 @@ type BookingStepperProps = {
   /** All-steps map: Auto/Manual pill + host guide on every row. */
   showAdvanceGuide?: boolean;
   sdRefundEmailLeadMinutes?: number;
+  /** When false, guide copy avoids promising automated workflow emails. */
+  automatedBookingFlow?: boolean;
 };
 
 function isPipelineStepSelected(step: BookingStatus, viewedStep: ViewedWorkflowStep): boolean {
@@ -84,10 +86,11 @@ export function BookingStepper({
   size = 'default',
   showAdvanceGuide = false,
   sdRefundEmailLeadMinutes,
+  automatedBookingFlow,
 }: BookingStepperProps) {
   const pipeline = bookingPipeline(booking, currentStatus, documentRequirements);
   const sdIsZero = Number(booking.security_deposit ?? 0) === 0;
-  const advanceOpts = { sdIsZero, sdRefundEmailLeadMinutes };
+  const advanceOpts = { sdIsZero, sdRefundEmailLeadMinutes, automatedBookingFlow };
   const currentIdx = pipeline.indexOf(currentStatus);
   const pendingDocsIdx = pipeline.indexOf('PENDING_DOCUMENTS');
   const pendingDocsBrowsable =

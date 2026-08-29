@@ -76,11 +76,6 @@ import {
 } from '@/features/dashboard/org/lib/propertyExternalReviews';
 import { type PropertySettingsSectionId } from '@/features/dashboard/org/lib/propertySettingsCompletion';
 import { resolvePropertySettingsFieldError } from '@/features/dashboard/org/lib/propertySettingsFieldError';
-import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
-import {
-  hasPropertyPermission,
-  SETTINGS_SECTION_EDIT_PERMISSION,
-} from '@/features/dashboard/team/lib/propertyPermissions';
 import {
   gafTowerUnitFromProfile,
   propertyProfileDraftFromProperty,
@@ -101,7 +96,12 @@ import { computePaymentSettingsFingerprint } from '@/features/dashboard/org/lib/
 import { orgPropertiesPath, propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
+import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
 import { usePropertyTeam } from '@/features/dashboard/team/hooks/usePropertyTeam';
+import {
+  hasPropertyPermission,
+  SETTINGS_SECTION_EDIT_PERMISSION,
+} from '@/features/dashboard/team/lib/propertyPermissions';
 
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';

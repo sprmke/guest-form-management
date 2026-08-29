@@ -9,6 +9,7 @@ import {
 } from '@/features/dashboard/bookings/hooks/useBooking';
 import { BOOKINGS_QUERY_KEY } from '@/features/dashboard/bookings/hooks/useBookings';
 import type { BookingStatus } from '@/features/dashboard/bookings/lib/bookingStatus';
+import type { BookingWorkflowEmailKind } from '@/features/dashboard/bookings/lib/bookingWorkflowEmail';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { openUpgradeModalFromBridge } from '@/features/dashboard/plans/lib/upgradeModalBridge';
@@ -25,16 +26,27 @@ const AUTOMATION_SKIP_LABELS: Record<string, string> = {
   sd_refund_form_request: 'Check-out & SD refund email',
 };
 
-function notifyAutomationSkippedByPlan(skipped: string[]): void {
+/** Session hint so the workflow rail can expand Automation Triggers after a plan skip. */
+export const AUTOMATION_SKIP_SESSION_KEY = 'kh-automation-skipped-by-plan';
+
+function notifyAutomationSkippedByPlan(skipped: string[], bookingId: string): void {
   if (skipped.length === 0) return;
+  try {
+    sessionStorage.setItem(
+      AUTOMATION_SKIP_SESSION_KEY,
+      JSON.stringify({ bookingId, kinds: skipped, at: Date.now() })
+    );
+  } catch {
+    /* ignore quota / private mode */
+  }
   const labels = skipped.map((key) => AUTOMATION_SKIP_LABELS[key] ?? key);
   toast.warning(`Not sent automatically on your plan: ${labels.join(', ')}`, {
-    description: 'Send these manually for now, or upgrade to automate them.',
+    description: 'Open Automation Triggers to send them, or upgrade to automate.',
     action: {
       label: 'Upgrade',
       onClick: () => openUpgradeModalFromBridge('automatedBookingFlow'),
     },
-    duration: 8000,
+    duration: 10000,
   });
 }
 
@@ -152,7 +164,10 @@ export function useTransitionBooking() {
       }
       await qc.invalidateQueries({ queryKey: BOOKING_QUERY_KEY(variables.bookingId) });
       await qc.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY });
-      notifyAutomationSkippedByPlan(data?.sideEffects?.automationSkippedByPlan ?? []);
+      notifyAutomationSkippedByPlan(
+        data?.sideEffects?.automationSkippedByPlan ?? [],
+        variables.bookingId
+      );
     },
   });
 }
@@ -278,6 +293,46 @@ export function useResendSdRefundFormEmail(bookingId?: string) {
         throw new Error(json.error ?? `HTTP ${res.status}`);
       }
       return json;
+    },
+    onSuccess: async () => {
+      if (!bookingId) return;
+      await qc.invalidateQueries({ queryKey: BOOKING_QUERY_KEY(bookingId) });
+      await qc.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY });
+    },
+  });
+}
+
+/**
+ * Manual (re-)send of a plan-gated workflow email via `send-booking-workflow-email`.
+ */
+export function useSendBookingWorkflowEmail(bookingId?: string) {
+  const qc = useQueryClient();
+  const propertyId = usePropertyIdParam();
+
+  return useMutation({
+    mutationFn: async (
+      kind: BookingWorkflowEmailKind
+    ): Promise<{
+      success: boolean;
+      kind: BookingWorkflowEmailKind;
+    }> => {
+      if (!bookingId) throw new Error('bookingId is required');
+      const jwt = await getAdminJwt();
+
+      const res = await fetch(scopedFunctionsUrl('/send-booking-workflow-email', propertyId), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify({ bookingId, kind }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error ?? `HTTP ${res.status}`);
+      }
+      return json as { success: boolean; kind: BookingWorkflowEmailKind };
     },
     onSuccess: async () => {
       if (!bookingId) return;

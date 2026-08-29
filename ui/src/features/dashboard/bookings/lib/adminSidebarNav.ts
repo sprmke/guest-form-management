@@ -184,7 +184,7 @@ export function buildPropertyNavSections(
         },
         {
           label: 'Plans & Billing',
-          href: orgPlansPath(orgSlug),
+          href: propertySectionPath(orgSlug, propertySlug, 'plans'),
           Icon: CreditCard,
         },
         {

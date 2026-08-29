@@ -37,7 +37,7 @@ const ADMIN_SAMPLES: Record<string, string> = {
   dp_receipt_ai_verdict: 'Likely valid',
   dp_receipt_ai_summary: 'Amount ₱1,500 matches down payment; sender name matches guest.',
   balance_receipt_ai_verdict: 'Valid',
-  balance_receipt_ai_summary: 'Balance receipt shows ₱3,599 paid to Kame Home GCash.',
+  balance_receipt_ai_summary: 'Balance receipt shows ₱3,599 paid to host GCash.',
   booking_link: 'https://kamehomes.space/bookings/00000000-0000-4000-8000-000000000001',
 };
 
@@ -100,7 +100,7 @@ const PARKING_SAMPLES: Record<string, string> = {
 
 const CHAT_SAMPLES: Record<string, string> = {
   guest_name: 'Juan Dela Cruz',
-  property_name: 'Azure North',
+  property_name: 'Sample Property',
   chat_source: 'Web chat',
   chat_content: 'Hi! Is June 18–20 still available for 2 guests?',
   attachment_summary: '1 image',

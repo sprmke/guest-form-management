@@ -19,7 +19,6 @@ import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate'
 
 import { friendlyToastError, showTelegramVerifyToast } from '@/lib/feedback/toastMessages';
 
-
 type TelegramSettingsDtoBase = {
   enabled: boolean;
   credentials?: PropertyTelegramCredentialsStatus;

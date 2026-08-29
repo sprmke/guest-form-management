@@ -10,6 +10,7 @@ export type LinkedParkingBooking =
   | { linked: false }
   | {
       linked: true;
+      parkingBookingId: string;
       status: string;
       endorsementSentAt: string | null;
       endorsementSendError: string | null;

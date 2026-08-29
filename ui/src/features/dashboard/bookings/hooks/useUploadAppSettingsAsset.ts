@@ -7,6 +7,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { AppSettingsDto } from '@/features/dashboard/bookings/hooks/useAppSettings';
 import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 
+import type { OptimizePreset } from '@/lib/media/imageOptimizationPlan';
+import { prepareUpload } from '@/lib/media/prepareUpload';
 import { supabase } from '@/lib/supabase/client';
 
 export type AppSettingsAssetType =
@@ -37,6 +39,16 @@ type UploadArgs = {
   photoIndex?: number;
 };
 
+const ASSET_PRESET: Record<AppSettingsAssetType, OptimizePreset> = {
+  // QR + signature + proof screenshots must stay legible → near-lossless.
+  gcash_qr: 'DOCUMENT',
+  gaf_unit_owner_signature: 'DOCUMENT',
+  superhost_proof: 'DOCUMENT',
+  // Review imagery is photographic content.
+  external_review_image: 'CONTENT',
+  external_review_stay_photo: 'CONTENT',
+};
+
 export function useUploadAppSettingsAsset() {
   const qc = useQueryClient();
   const propertyId = usePropertyIdParam();
@@ -44,10 +56,17 @@ export function useUploadAppSettingsAsset() {
   return useMutation({
     mutationFn: async ({
       assetType,
-      file,
+      file: rawFile,
       reviewId,
       photoIndex,
     }: UploadArgs): Promise<UploadAppSettingsAssetResult> => {
+      const prepared = await prepareUpload(rawFile, {
+        imagePreset: ASSET_PRESET[assetType],
+        surface: `app-settings-${assetType}`,
+      });
+      if (prepared.error) throw new Error(prepared.error);
+      const file = prepared.file;
+
       const jwt = await getAdminJwt();
       const ext = file.name.includes('.') ? `.${file.name.split('.').pop()}` : '';
       const storageName = `${assetType}${ext}`;

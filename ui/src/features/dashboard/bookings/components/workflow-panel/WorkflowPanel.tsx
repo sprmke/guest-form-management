@@ -67,19 +67,25 @@ import {
   useCancelBooking,
   useRunSdRefundCron,
   useResendSdRefundFormEmail,
+  useSendBookingWorkflowEmail,
+  AUTOMATION_SKIP_SESSION_KEY,
   type TransitionPayload,
 } from '@/features/dashboard/bookings/hooks/useTransitionBooking';
 import { useUpdateBooking } from '@/features/dashboard/bookings/hooks/useUpdateBooking';
 import { useWorkflowActions } from '@/features/dashboard/bookings/hooks/useWorkflowActions';
-import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
-import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
 import { useWorkflowSubFormDrafts } from '@/features/dashboard/bookings/hooks/useWorkflowSubFormDrafts';
 import { resolveBookingPropertySlug } from '@/features/dashboard/bookings/lib/bookingListNavigation';
 import { shouldWarnPastBookingStayForProceed } from '@/features/dashboard/bookings/lib/bookingPastPipelineManila';
 import {
+  BOOKING_WORKFLOW_EMAIL_LABELS,
+  eligibleManualWorkflowEmailKinds,
+  type BookingWorkflowEmailKind,
+} from '@/features/dashboard/bookings/lib/bookingWorkflowEmail';
+import {
   isEditableWorkflowProgressContent,
   progressSavePayloadForView,
 } from '@/features/dashboard/bookings/lib/bookingProgressEditPayload';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 import {
   kanbanDropIntentNestedKey,
   resolveKanbanDropTransition,
@@ -119,6 +125,8 @@ import {
 } from '@/features/dashboard/bookings/lib/workflowTransitionEmailControls';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { usePropertyPricingDefaults } from '@/features/dashboard/pricing/hooks/usePropertyPricing';
+import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
+import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
 
 import { friendlyToastError, sdRefundCronSuccessMessage } from '@/lib/feedback/toastMessages';
 import { cn } from '@/lib/utils';
@@ -199,6 +207,8 @@ function WorkflowPanelInner({
     appSettings?.resolvedDocumentRequirements ?? DEFAULT_DOCUMENT_REQUIREMENTS;
 
   const [automationHelpOpen, setAutomationHelpOpen] = useState(false);
+  const { allowed: automatedBookingFlow } = useFeatureGate('automatedBookingFlow');
+  const planSkipHint = !automatedBookingFlow;
   const [progressMapOpen, setProgressMapOpen] = useState(false);
 
   const kanbanDropTransition: KanbanDropTransition | null =
@@ -414,11 +424,30 @@ function WorkflowPanelInner({
   }, [booking.id, workflowActions.viewedContent, workflowActions.isLiveView]);
   const sdCronMut = useRunSdRefundCron(booking.id);
   const resendSdFormMut = useResendSdRefundFormEmail(booking.id);
+  const sendWorkflowEmailMut = useSendBookingWorkflowEmail(booking.id);
 
   // Which automation triggers are relevant — only on the live, non-terminal step.
   const automationTriggersForLiveStep = workflowActions.isLiveView && !workflowActions.isTerminal;
   const showSdCron = automationTriggersForLiveStep && status === 'READY_FOR_CHECKIN';
   const showSdFormResend = automationTriggersForLiveStep && status === 'READY_FOR_CHECKOUT';
+  const manualEmailKinds = automationTriggersForLiveStep
+    ? eligibleManualWorkflowEmailKinds(booking)
+    : [];
+
+  useEffect(() => {
+    if (!automationTriggersForLiveStep || manualEmailKinds.length === 0) return;
+    try {
+      const raw = sessionStorage.getItem(AUTOMATION_SKIP_SESSION_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { bookingId?: string };
+      if (parsed.bookingId !== booking.id) return;
+      setAutomationHelpOpen(true);
+      sessionStorage.removeItem(AUTOMATION_SKIP_SESSION_KEY);
+    } catch {
+      /* ignore */
+    }
+  }, [automationTriggersForLiveStep, booking.id, manualEmailKinds.length]);
+
   const sdGuestFormUrl = `${window.location.origin}${guestSdFormPath(propertySlug, booking.id)}`;
 
   const [recheckSdGuestSubmitPending, setRecheckSdGuestSubmitPending] = useState(false);
@@ -480,6 +509,17 @@ function WorkflowPanelInner({
     }
   }
 
+  async function handleSendWorkflowEmail(kind: BookingWorkflowEmailKind) {
+    try {
+      await sendWorkflowEmailMut.mutateAsync(kind);
+      toast.success(`${BOOKING_WORKFLOW_EMAIL_LABELS[kind]} email sent`);
+    } catch (err: unknown) {
+      toast.error(
+        friendlyToastError(err, `Could not send ${BOOKING_WORKFLOW_EMAIL_LABELS[kind]} email`)
+      );
+    }
+  }
+
   const dismissKanbanFlow = useCallback(() => {
     onKanbanFlowClose?.();
   }, [onKanbanFlowClose]);
@@ -502,6 +542,7 @@ function WorkflowPanelInner({
       booking,
       documentRequirements,
       automationToggles: appSettings?.automationToggles,
+      automatedBookingFlow,
     };
     if (shouldOfferWorkflowEmailChoices(effectsInput)) {
       setEmailChoices(
@@ -526,7 +567,14 @@ function WorkflowPanelInner({
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [status, booking, documentRequirements, appSettings?.automationToggles, validateForTransition]
+    [
+      status,
+      booking,
+      documentRequirements,
+      appSettings?.automationToggles,
+      automatedBookingFlow,
+      validateForTransition,
+    ]
   );
 
   /** Same form gate as detail Proceed — pricing / guest balance / SD refund / parking. */
@@ -762,7 +810,7 @@ function WorkflowPanelInner({
               booking={booking}
               viewedContent={workflowActions.viewedContent}
               contentReadOnly={workflowActions.contentReadOnly}
-          pricingReadOnly={workflowActions.contentReadOnly || !canEditPricing}
+              pricingReadOnly={workflowActions.contentReadOnly || !canEditPricing}
               persistPartialDrafts={persistPartialDrafts}
               activePendingDocSubStatus={workflowActions.activePendingDocSubStatus}
               documentRequirements={documentRequirements}
@@ -798,13 +846,19 @@ function WorkflowPanelInner({
             isModal={isModal}
             showSdCron={showSdCron}
             showSdFormResend={showSdFormResend}
+            manualEmailKinds={manualEmailKinds}
+            planSkipHint={planSkipHint && manualEmailKinds.length > 0}
             sdRefundEmailLeadMinutes={appSettings?.sdRefundCronEmailLeadMinutes}
             automationHelpOpen={automationHelpOpen}
             onToggleAutomationHelp={() => setAutomationHelpOpen((o) => !o)}
             sdCronPending={sdCronMut.isPending}
             resendSdFormPending={resendSdFormMut.isPending}
+            sendingKind={
+              sendWorkflowEmailMut.isPending ? (sendWorkflowEmailMut.variables ?? null) : null
+            }
             onRunSdCron={handleSdCron}
             onResendSdFormEmail={handleResendSdFormEmail}
+            onSendWorkflowEmail={handleSendWorkflowEmail}
           />
 
           {/* ── Transition actions ──────────────────────────────────────── */}
@@ -892,6 +946,7 @@ function WorkflowPanelInner({
           onSelectStep={selectPipelineStep}
           onSelectSubStep={focusPendingDocSubView}
           sdRefundEmailLeadMinutes={appSettings?.sdRefundCronEmailLeadMinutes}
+          automatedBookingFlow={automatedBookingFlow}
         />
       ) : null}
 
@@ -905,6 +960,7 @@ function WorkflowPanelInner({
               booking,
               documentRequirements,
               automationToggles: appSettings?.automationToggles,
+              automatedBookingFlow,
             };
             const confirmEmailEffects =
               confirm.direction === 'forward'

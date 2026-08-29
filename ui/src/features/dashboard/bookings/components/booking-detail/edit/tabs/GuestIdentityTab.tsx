@@ -33,7 +33,7 @@ import { BookingDetailCard } from '@/features/dashboard/bookings/components/book
 import type {
   AdditionalGuestSlotConfig,
   BookingEditFormValues,
-} from '@/features/dashboard/bookings/components/BookingEditForm';
+} from '@/features/dashboard/bookings/components/bookingEditFormShared';
 import { BookingGuestDocReplacer } from '@/features/dashboard/bookings/components/BookingGuestDocReplacer';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 

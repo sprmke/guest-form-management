@@ -14,14 +14,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
-
-import { buildPayParkingPath } from '@/features/guest/pay-parking/lib/api';
-import { hasPayParkingAvailed } from '@/features/guest/pay-parking/lib/payParkingHelpers';
 
 import { BookingAiAssistantAuditCard } from '@/features/dashboard/ai-assistant/components/BookingAiAssistantAuditCard';
 import { BookingDetailAssetPreviewModal } from '@/features/dashboard/bookings/components/booking-detail/BookingDetailAssetPreviewModal';
@@ -46,7 +43,7 @@ import {
 import { BookingDetailMobileSummary } from '@/features/dashboard/bookings/components/BookingDetailMobileSummary';
 import { BookingEditForm } from '@/features/dashboard/bookings/components/BookingEditForm';
 import { BookingMetaCard } from '@/features/dashboard/bookings/components/BookingMetaCard';
-import { PayParkingModal } from '@/features/dashboard/bookings/components/PayParkingModal';
+import { OwnerParkingConfirmSheet } from '@/features/dashboard/bookings/components/OwnerParkingConfirmSheet';
 import { WorkflowPanel } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowPanel';
 import { bookingDetailQueryKey, useBooking } from '@/features/dashboard/bookings/hooks/useBooking';
 import {
@@ -56,9 +53,19 @@ import {
 import { useBookingAssetPreview } from '@/features/dashboard/bookings/hooks/useBookingAssetPreview';
 import { useBookingParkingShareLink } from '@/features/dashboard/bookings/hooks/useBookingParkingShareLink';
 import { useBookingStayGuideLink } from '@/features/dashboard/bookings/hooks/useBookingStayGuideLink';
+import { useEnsureNeedParking } from '@/features/dashboard/bookings/hooks/useEnsureNeedParking';
+import { useLinkedParkingBooking } from '@/features/dashboard/bookings/hooks/useLinkedParkingBooking';
+import { useOwnerDefaultParking } from '@/features/dashboard/bookings/hooks/useOwnerDefaultParking';
+import type { OwnerDefaultParkingSlot } from '@/features/dashboard/bookings/hooks/useOwnerDefaultParking';
 import { hasBookingAiReviewRun } from '@/features/dashboard/bookings/lib/bookingAiReviewProgress';
 import { buildBookingDetailActions } from '@/features/dashboard/bookings/lib/bookingDetailActions';
+import {
+  absoluteBookingParkingFindUrl,
+  absoluteBookingParkingOwnDefaultUrl,
+  propertyCityLocationSlug,
+} from '@/features/dashboard/bookings/lib/parkingFindPathFromBooking';
 import { resolveBookingViewTab } from '@/features/dashboard/bookings/lib/resolveBookingViewTab';
+import { guestParkingRequestStatusPath } from '@/features/guest/lib/guestPublicPaths';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
@@ -79,9 +86,8 @@ const AUTO_REFRESH_INTERVAL_MS = 60_000;
 
 export function BookingDetailPage() {
   const { bookingId } = useParams<{ bookingId: string }>();
-  const { property, propertySlug } = useOrgContext();
+  const { property } = useOrgContext();
   const propertyId = usePropertyIdParam();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: booking, isLoading, error } = useBooking(bookingId);
   const {
@@ -120,13 +126,21 @@ export function BookingDetailPage() {
   );
   const [editMode, setEditMode] = useState(false);
   const [editInitialTab, setEditInitialTab] = useState<BookingEditTabId | undefined>(undefined);
-  const [payParkingModalOpen, setPayParkingModalOpen] = useState(false);
   const { previewAsset, previewLoading, handlePreview, closePreview } = useBookingAssetPreview();
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const [viewTab, setViewTab] = useState<BookingViewTab>('overview');
   const [aiSummaryOpen, setAiSummaryOpen] = useState(false);
   const defaultTabAppliedFor = useRef<string | null>(null);
   const isBelowMd = useIsBelowMd();
+  const ensureNeedParking = useEnsureNeedParking();
+  const locationSlug = useMemo(
+    () => propertyCityLocationSlug(property.settings),
+    [property.settings]
+  );
+  const linkedParkingQuery = useLinkedParkingBooking(booking?.id, booking?.need_parking === true);
+  const ownerDefaultQuery = useOwnerDefaultParking(booking?.id, true);
+  const hasOwnDefaultParking = Boolean(ownerDefaultQuery.data?.defaultParking?.slug);
+  const [ownerParkingSheetOpen, setOwnerParkingSheetOpen] = useState(false);
 
   const copyBookingIdToClipboard = useCallback(async () => {
     const id = bookingId?.trim();
@@ -208,17 +222,118 @@ export function BookingDetailPage() {
     setEditInitialTab(undefined);
   }, []);
 
-  const handleOpenPayParking = useCallback(() => {
+  const openOwnParkingSlot = useCallback(
+    (slot: OwnerDefaultParkingSlot) => {
+      if (!booking) return;
+      const url = absoluteBookingParkingOwnDefaultUrl(booking, slot.slug);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      setOwnerParkingSheetOpen(false);
+    },
+    [booking]
+  );
+
+  const copyOwnParkingSlot = useCallback(
+    (slot: OwnerDefaultParkingSlot) => {
+      if (!booking) return;
+      const url = absoluteBookingParkingOwnDefaultUrl(booking, slot.slug);
+      void navigator.clipboard
+        .writeText(url)
+        .then(() => toast.success('Parking link copied'))
+        .catch(() => toast.error('Could not copy link'));
+    },
+    [booking]
+  );
+
+  const handleFindParking = useCallback(async () => {
     if (!booking) return;
-    if (hasPayParkingAvailed(booking)) {
-      navigate(buildPayParkingPath(propertySlug, booking.id, { admin: true }));
+
+    const linked = linkedParkingQuery.data;
+    if (linked?.linked === true && linked.parkingBookingId) {
+      window.open(
+        `${window.location.origin}${guestParkingRequestStatusPath(linked.parkingBookingId)}`,
+        '_blank',
+        'noopener,noreferrer'
+      );
       return;
     }
-    setPayParkingModalOpen(true);
-  }, [booking, navigate, propertySlug]);
+
+    try {
+      await ensureNeedParking.mutateAsync({
+        bookingId: booking.id,
+        bookingStatus: booking.status,
+        parkingCompletedAt: booking.parking_completed_at,
+        alreadyNeedParking: booking.need_parking,
+      });
+      if (booking.status === 'PENDING_REVIEW') {
+        toast.message('Guest can reserve after this booking moves past review');
+      }
+
+      const available = ownerDefaultQuery.data?.available ?? [];
+      const ownSlug = ownerDefaultQuery.data?.defaultParking?.slug?.trim();
+      if (available.length > 1) {
+        setOwnerParkingSheetOpen(true);
+        return;
+      }
+      if (ownSlug && available[0]) {
+        openOwnParkingSlot(available[0]);
+        return;
+      }
+      if (ownSlug) {
+        const url = absoluteBookingParkingOwnDefaultUrl(booking, ownSlug);
+        window.open(url, '_blank', 'noopener,noreferrer');
+        return;
+      }
+
+      if (ownerDefaultQuery.data?.hasOrgParkings && !ownSlug) {
+        toast.message('Your parking is booked for these dates — searching others');
+      }
+
+      const url = absoluteBookingParkingFindUrl(booking, locationSlug);
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not open parking search');
+    }
+  }, [
+    booking,
+    ensureNeedParking,
+    linkedParkingQuery.data,
+    locationSlug,
+    openOwnParkingSlot,
+    ownerDefaultQuery.data,
+  ]);
+
+  const handleSearchOtherParkings = useCallback(async () => {
+    if (!booking) return;
+
+    const linked = linkedParkingQuery.data;
+    if (linked?.linked === true && linked.parkingBookingId) {
+      window.open(
+        `${window.location.origin}${guestParkingRequestStatusPath(linked.parkingBookingId)}`,
+        '_blank',
+        'noopener,noreferrer'
+      );
+      return;
+    }
+
+    try {
+      await ensureNeedParking.mutateAsync({
+        bookingId: booking.id,
+        bookingStatus: booking.status,
+        parkingCompletedAt: booking.parking_completed_at,
+        alreadyNeedParking: booking.need_parking,
+      });
+      if (booking.status === 'PENDING_REVIEW') {
+        toast.message('Guest can reserve after this booking moves past review');
+      }
+      const url = absoluteBookingParkingFindUrl(booking, locationSlug);
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not open parking search');
+    }
+  }, [booking, ensureNeedParking, linkedParkingQuery.data, locationSlug]);
 
   const stayGuide = useBookingStayGuideLink(booking);
-  const parkingShareLink = useBookingParkingShareLink(booking);
+  const parkingShareLink = useBookingParkingShareLink(booking, ownerDefaultQuery.data);
 
   const handleOpenAiSummary = useCallback(() => setAiSummaryOpen(true), []);
 
@@ -228,7 +343,12 @@ export function BookingDetailPage() {
         ? buildBookingDetailActions({
             booking,
             onEdit: handleStartEdit,
-            onPayParking: handleOpenPayParking,
+            onFindParking: () => {
+              void handleFindParking();
+            },
+            onSearchOtherParkings: () => {
+              void handleSearchOtherParkings();
+            },
             onOpenAiSummary: handleOpenAiSummary,
             stayGuide,
             parkingShareLink,
@@ -236,18 +356,21 @@ export function BookingDetailPage() {
             canEditParking,
             canEditPets,
             canManagePayParking: canEditParking,
+            hasOwnDefaultParking,
           })
         : [],
     [
       booking,
       handleStartEdit,
-      handleOpenPayParking,
+      handleFindParking,
+      handleSearchOtherParkings,
       handleOpenAiSummary,
       stayGuide,
       parkingShareLink,
       canEditStay,
       canEditParking,
       canEditPets,
+      hasOwnDefaultParking,
     ]
   );
 
@@ -402,13 +525,20 @@ export function BookingDetailPage() {
         loading={previewLoading}
         onClose={closePreview}
       />
-      {booking && (
-        <PayParkingModal
-          booking={booking}
-          open={payParkingModalOpen}
-          onOpenChange={setPayParkingModalOpen}
-        />
-      )}
+      <OwnerParkingConfirmSheet
+        open={ownerParkingSheetOpen}
+        onOpenChange={setOwnerParkingSheetOpen}
+        slots={ownerDefaultQuery.data?.available ?? []}
+        defaultSlotId={ownerDefaultQuery.data?.defaultParking?.id ?? null}
+        checkInDate={ownerDefaultQuery.data?.checkInDate ?? ''}
+        checkOutDate={ownerDefaultQuery.data?.checkOutDate ?? ''}
+        onOpen={openOwnParkingSlot}
+        onCopy={copyOwnParkingSlot}
+        onSearchOthers={() => {
+          setOwnerParkingSheetOpen(false);
+          void handleSearchOtherParkings();
+        }}
+      />
     </>
   );
 }

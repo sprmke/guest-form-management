@@ -136,6 +136,7 @@ export function NotificationsPage() {
             <AdminSectionGroupHeading
               title="Telegram notifications"
               count={MODULE_SECTIONS.length}
+              badge={telegramNotificationsBadge}
               action={<TelegramHelpDialog defaultTab="bot-token" triggerLabel="Get Help" />}
             />
 
@@ -151,7 +152,6 @@ export function NotificationsPage() {
               title="Chat"
               icon={MessageCircle}
               description={MODULE_DESCRIPTIONS.chat}
-              badge={telegramNotificationsBadge}
             >
               <div
                 className={cn(!canEditModule('chat') && 'pointer-events-none opacity-60')}
@@ -166,7 +166,6 @@ export function NotificationsPage() {
               title="Marketing"
               icon={Megaphone}
               description={MODULE_DESCRIPTIONS.marketing}
-              badge={telegramNotificationsBadge}
             >
               <div
                 className={cn(!canEditModule('marketing') && 'pointer-events-none opacity-60')}
@@ -181,7 +180,6 @@ export function NotificationsPage() {
               title="Staff"
               icon={HardHat}
               description={MODULE_DESCRIPTIONS.staff}
-              badge={telegramNotificationsBadge}
             >
               <div
                 className={cn(!canEditModule('staff') && 'pointer-events-none opacity-60')}
@@ -196,7 +194,6 @@ export function NotificationsPage() {
               title="Operations"
               icon={Bell}
               description={MODULE_DESCRIPTIONS.operations}
-              badge={telegramNotificationsBadge}
             >
               <div
                 className={cn(!canEditModule('operations') && 'pointer-events-none opacity-60')}
@@ -211,7 +208,6 @@ export function NotificationsPage() {
               title="Finance"
               icon={DollarSign}
               description={MODULE_DESCRIPTIONS.finance}
-              badge={telegramNotificationsBadge}
             >
               <div
                 className={cn(!canEditModule('finance') && 'pointer-events-none opacity-60')}
@@ -226,7 +222,6 @@ export function NotificationsPage() {
               title="Maintenance"
               icon={Wrench}
               description={MODULE_DESCRIPTIONS.maintenance}
-              badge={telegramNotificationsBadge}
             >
               <div
                 className={cn(!canEditModule('maintenance') && 'pointer-events-none opacity-60')}

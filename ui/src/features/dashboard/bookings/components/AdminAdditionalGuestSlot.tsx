@@ -6,7 +6,7 @@ import {
   Field,
   Input,
 } from '@/features/dashboard/bookings/components/booking-detail/edit/BookingEditFields';
-import type { BookingEditFormValues } from '@/features/dashboard/bookings/components/BookingEditForm';
+import type { BookingEditFormValues } from '@/features/dashboard/bookings/components/bookingEditFormShared';
 import { BookingGuestDocReplacer } from '@/features/dashboard/bookings/components/BookingGuestDocReplacer';
 import type { GuestDocAssetType } from '@/features/dashboard/bookings/hooks/useUploadBookingAsset';
 

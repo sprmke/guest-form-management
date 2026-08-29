@@ -1,3 +1,8 @@
+/**
+ * @deprecated Host entry retired — use Find parking / stay-scoped marketplace links.
+ * Kept for reference; BookingDetailPage no longer mounts this modal. Legacy public
+ * pay-parking URLs redirect via PayParkingPage.
+ */
 import { useEffect, useMemo, useState } from 'react';
 
 import { useNavigate } from 'react-router-dom';

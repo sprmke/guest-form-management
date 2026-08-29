@@ -1,12 +1,15 @@
 /**
  * Automation-triggers collapsible — rail only.
  *
- * Ready for Check-in: run this booking’s check-out automation (email + settle).
- * Ready for Check-out: resend the Check-out Instructions email.
+ * Manual workflow email sends (Free escape hatch / paid resend) + SD check-out automation.
  */
 
 import { ChevronDown, ChevronRight, Loader2, Mail, RefreshCw, Timer } from 'lucide-react';
 
+import {
+  BOOKING_WORKFLOW_EMAIL_LABELS,
+  type BookingWorkflowEmailKind,
+} from '@/features/dashboard/bookings/lib/bookingWorkflowEmail';
 import { workflowNeutralActionClass } from '@/features/dashboard/bookings/lib/workflowActionButtonStyles';
 import { formatSdRefundLeadPhrase } from '@/features/dashboard/bookings/lib/workflowAdvanceMode';
 
@@ -16,29 +19,45 @@ type Props = {
   isModal: boolean;
   showSdCron: boolean;
   showSdFormResend: boolean;
+  /** Manual send kinds eligible for this booking (excluding kinds handled only via legacy SD buttons when preferred). */
+  manualEmailKinds: BookingWorkflowEmailKind[];
+  /** Highlight that auto-send was skipped by plan. */
+  planSkipHint: boolean;
   /** Property setting `sd_refund_cron_email_lead_minutes`. */
   sdRefundEmailLeadMinutes?: number;
   automationHelpOpen: boolean;
   onToggleAutomationHelp: () => void;
   sdCronPending: boolean;
   resendSdFormPending: boolean;
+  sendingKind: BookingWorkflowEmailKind | null;
   onRunSdCron: () => void;
   onResendSdFormEmail: () => void;
+  onSendWorkflowEmail: (kind: BookingWorkflowEmailKind) => void;
 };
 
 export function WorkflowAutomationTriggers({
   isModal,
   showSdCron,
   showSdFormResend,
+  manualEmailKinds,
+  planSkipHint,
   sdRefundEmailLeadMinutes = DEFAULT_LEAD_MINUTES,
   automationHelpOpen,
   onToggleAutomationHelp,
   sdCronPending,
   resendSdFormPending,
+  sendingKind,
   onRunSdCron,
   onResendSdFormEmail,
+  onSendWorkflowEmail,
 }: Props) {
-  if (isModal || !(showSdCron || showSdFormResend)) return null;
+  const kindsForButtons = manualEmailKinds.filter((kind) => {
+    if (kind === 'sd_refund_form_request' && showSdFormResend) return false;
+    return true;
+  });
+
+  const hasContent = showSdCron || showSdFormResend || kindsForButtons.length > 0;
+  if (isModal || !hasContent) return null;
 
   const leadPhrase = formatSdRefundLeadPhrase(sdRefundEmailLeadMinutes);
 
@@ -55,6 +74,11 @@ export function WorkflowAutomationTriggers({
           <span className="text-overline text-muted-foreground font-semibold">
             Automation Triggers
           </span>
+          {planSkipHint ? (
+            <span className="bg-warning/15 text-warning rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+              Send manually
+            </span>
+          ) : null}
         </span>
         {automationHelpOpen ? (
           <ChevronDown className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
@@ -65,6 +89,11 @@ export function WorkflowAutomationTriggers({
 
       {automationHelpOpen && (
         <div className="text-muted-foreground space-y-2 px-4 pb-3 text-[11.5px] leading-relaxed">
+          {planSkipHint ? (
+            <p>
+              Automated workflow emails are not included on your plan. Send them below, or upgrade.
+            </p>
+          ) : null}
           {showSdCron ? (
             <>
               <p>
@@ -81,8 +110,30 @@ export function WorkflowAutomationTriggers({
               step.
             </p>
           ) : null}
+          {kindsForButtons.length > 0 && !planSkipHint ? (
+            <p>Resend a workflow email without changing status.</p>
+          ) : null}
 
           <div className="border-separator flex flex-col gap-1.5 border-t pt-3">
+            {kindsForButtons.map((kind) => {
+              const pending = sendingKind === kind;
+              return (
+                <button
+                  key={kind}
+                  type="button"
+                  disabled={sendingKind != null}
+                  onClick={() => onSendWorkflowEmail(kind)}
+                  className={workflowNeutralActionClass()}
+                >
+                  <span>Send {BOOKING_WORKFLOW_EMAIL_LABELS[kind]}</span>
+                  {pending ? (
+                    <Loader2 className="size-3.5 shrink-0 animate-spin" />
+                  ) : (
+                    <Mail className="size-3.5 shrink-0" aria-hidden />
+                  )}
+                </button>
+              );
+            })}
             {showSdCron ? (
               <button
                 type="button"

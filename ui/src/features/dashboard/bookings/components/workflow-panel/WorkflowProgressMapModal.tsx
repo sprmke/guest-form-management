@@ -35,6 +35,7 @@ type Props = {
   onSelectStep: (step: BookingStatus) => void;
   onSelectSubStep: (sub: PendingDocNestedKey) => void;
   sdRefundEmailLeadMinutes?: number;
+  automatedBookingFlow?: boolean;
 };
 
 export function WorkflowProgressMapModal({
@@ -48,6 +49,7 @@ export function WorkflowProgressMapModal({
   onSelectStep,
   onSelectSubStep,
   sdRefundEmailLeadMinutes,
+  automatedBookingFlow,
 }: Props) {
   return (
     <ResponsiveModal open={open} onOpenChange={onOpenChange}>
@@ -69,6 +71,7 @@ export function WorkflowProgressMapModal({
             disabled={disabled}
             showAdvanceGuide
             sdRefundEmailLeadMinutes={sdRefundEmailLeadMinutes}
+            automatedBookingFlow={automatedBookingFlow}
             onSelectStep={(step) => {
               onSelectStep(step);
               onOpenChange(false);

@@ -32,6 +32,11 @@ type PipelineAdvanceOpts = {
   sdIsZero?: boolean;
   /** Property setting — used in the Ready for Check-in guide. */
   sdRefundEmailLeadMinutes?: number;
+  /**
+   * When false (Free / no `automatedBookingFlow`), guide copy must not promise
+   * auto-sent GAF / ack / ready emails — host sends via Automation Triggers.
+   */
+  automatedBookingFlow?: boolean;
 };
 
 /** Host-facing phrase for the property’s check-out email lead. */
@@ -83,18 +88,29 @@ export function pipelineAdvanceGuide(status: BookingStatus, opts?: PipelineAdvan
   const leadPhrase = formatSdRefundLeadPhrase(
     opts?.sdRefundEmailLeadMinutes ?? DEFAULT_LEAD_MINUTES
   );
+  const automated = opts?.automatedBookingFlow !== false;
 
   switch (status) {
     case 'PENDING_REVIEW':
-      return [
-        'Confirm booking details, pricing, and uploaded IDs & downpayment receipts.',
-        'Proceed when everything looks correct. This will send the guest acknowledgement email to the guest and send applicable email requests (GAF, pet, or parking) to building management.',
-      ];
+      return automated
+        ? [
+            'Confirm booking details, pricing, and uploaded IDs & downpayment receipts.',
+            'Proceed when everything looks correct. This will send the guest acknowledgement email to the guest and send applicable email requests (GAF, pet, or parking) to building management.',
+          ]
+        : [
+            'Confirm booking details, pricing, and uploaded IDs & downpayment receipts.',
+            'Proceed when everything looks correct. Automated emails are not on your plan — use Automation Triggers to send GAF, pet, acknowledgement, or parking emails after you proceed.',
+          ];
     case 'PENDING_DOCUMENTS':
-      return [
-        'These are the building paperwork required for this stay. All documents below must be completed.',
-        'Once everything is done, this will move to the next step automatically and the guest will receive the ready-for-check-in email.',
-      ];
+      return automated
+        ? [
+            'These are the building paperwork required for this stay. All documents below must be completed.',
+            'Once everything is done, this will move to the next step automatically and the guest will receive the ready-for-check-in email.',
+          ]
+        : [
+            'These are the building paperwork required for this stay. All documents below must be completed.',
+            'Once everything is done, this will move to the next step automatically. Send the ready-for-check-in email from Automation Triggers if the guest needs it.',
+          ];
     case 'PENDING_GAF':
       return nestedAdvanceGuide('gaf', 'email-listener');
     case 'PENDING_PET_REQUEST':
@@ -102,11 +118,17 @@ export function pipelineAdvanceGuide(status: BookingStatus, opts?: PipelineAdvan
     case 'PENDING_PARKING_REQUEST':
       return nestedAdvanceGuide('PENDING_PARKING_REQUEST', null);
     case 'READY_FOR_CHECKIN':
-      return [
-        'The guest is checked in. To move to the next step, the remaining balance must be settled with a receipt uploaded.',
-        `Once you did that, ${leadPhrase.toLowerCase()}, the guest gets the Check-out Instructions email automatically, even if the balance is unpaid. If the balance is already settled, the booking also moves automatically to Ready for Check-out at that time.`,
-        'You can Proceed sooner once settlement is done. If the email or move did not happen, open Automation Triggers and run the check-out automation.',
-      ];
+      return automated
+        ? [
+            'The guest is checked in. To move to the next step, the remaining balance must be settled with a receipt uploaded.',
+            `Once you did that, ${leadPhrase.toLowerCase()}, the guest gets the Check-out Instructions email automatically, even if the balance is unpaid. If the balance is already settled, the booking also moves automatically to Ready for Check-out at that time.`,
+            'You can Proceed sooner once settlement is done. If the email or move did not happen, open Automation Triggers and run the check-out automation.',
+          ]
+        : [
+            'The guest is checked in. To move to the next step, the remaining balance must be settled with a receipt uploaded.',
+            'Automated Check-out Instructions email is not on your plan. Use Automation Triggers to send it (and to run the check-out move when settlement is done).',
+            'You can Proceed sooner once settlement is done.',
+          ];
     case 'READY_FOR_CHECKOUT':
       return opts?.sdIsZero
         ? [

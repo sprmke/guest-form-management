@@ -1,6 +1,4 @@
-import { Car, Copy, CreditCard, ExternalLink, PawPrint, Sparkles } from 'lucide-react';
-
-import { hasPayParkingAvailed } from '@/features/guest/pay-parking/lib/payParkingHelpers';
+import { Car, Copy, ExternalLink, PawPrint, Search, Sparkles } from 'lucide-react';
 
 import type { BookingEditTabId } from '@/features/dashboard/bookings/components/booking-detail/edit/BookingEditTabs';
 import type { BookingParkingShareLink } from '@/features/dashboard/bookings/hooks/useBookingParkingShareLink';
@@ -21,7 +19,10 @@ export type BookingDetailAction = {
 type Args = {
   booking: BookingRow;
   onEdit: (tab?: BookingEditTabId) => void;
-  onPayParking: () => void;
+  /** Opens own-default or marketplace find (sets need_parking if needed). */
+  onFindParking: () => void;
+  /** Opens marketplace search even when an own default exists. */
+  onSearchOtherParkings?: () => void;
   onOpenAiSummary?: () => void;
   stayGuide: BookingStayGuideLink;
   parkingShareLink: BookingParkingShareLink;
@@ -31,8 +32,10 @@ type Args = {
   canEditParking?: boolean;
   /** When false, hide Add/Edit pets. */
   canEditPets?: boolean;
-  /** When false, hide Set up / Open parking link. */
+  /** When false, hide Find parking / guest parking link actions. */
   canManagePayParking?: boolean;
+  /** Prefer "Use your parking" label when org owns an available default. */
+  hasOwnDefaultParking?: boolean;
 };
 
 /**
@@ -43,7 +46,8 @@ type Args = {
 export function buildBookingDetailActions({
   booking,
   onEdit,
-  onPayParking,
+  onFindParking,
+  onSearchOtherParkings,
   onOpenAiSummary,
   stayGuide,
   parkingShareLink,
@@ -51,6 +55,7 @@ export function buildBookingDetailActions({
   canEditParking = true,
   canEditPets = true,
   canManagePayParking = true,
+  hasOwnDefaultParking = false,
 }: Args): BookingDetailAction[] {
   const actions: BookingDetailAction[] = [
     ...(onOpenAiSummary && canRunAiSummary
@@ -89,12 +94,23 @@ export function buildBookingDetailActions({
     ...(canManagePayParking
       ? [
           {
-            key: 'pay-parking',
-            label: hasPayParkingAvailed(booking) ? 'Open parking link' : 'Set up parking',
-            Icon: CreditCard,
-            onSelect: onPayParking,
+            key: 'find-parking',
+            label: hasOwnDefaultParking ? 'Use your parking' : 'Find parking',
+            Icon: ExternalLink,
+            onSelect: onFindParking,
             group: 'edit' as const,
           },
+          ...(hasOwnDefaultParking && onSearchOtherParkings
+            ? [
+                {
+                  key: 'search-other-parkings',
+                  label: 'Search other parkings',
+                  Icon: Search,
+                  onSelect: onSearchOtherParkings,
+                  group: 'edit' as const,
+                },
+              ]
+            : []),
         ]
       : []),
   ];
@@ -124,16 +140,35 @@ export function buildBookingDetailActions({
     actions.push(
       {
         key: 'parking-share-open',
-        label: 'Open parking link',
+        label: parkingShareLink.isOwnDefault ? 'Open your parking page' : 'Open guest parking page',
         Icon: ExternalLink,
         onSelect: parkingShareLink.open,
         group: 'guest-links',
       },
       {
         key: 'parking-share-copy',
-        label: 'Copy parking link',
+        label: parkingShareLink.isOwnDefault ? 'Copy your parking link' : 'Copy guest parking link',
         Icon: Copy,
         onSelect: parkingShareLink.copy,
+        group: 'guest-links',
+      }
+    );
+  }
+
+  if (parkingShareLink.isOwnDefault && parkingShareLink.searchUrl) {
+    actions.push(
+      {
+        key: 'parking-search-open',
+        label: 'Open parking search',
+        Icon: Search,
+        onSelect: parkingShareLink.openSearch,
+        group: 'guest-links',
+      },
+      {
+        key: 'parking-search-copy',
+        label: 'Copy parking search link',
+        Icon: Copy,
+        onSelect: parkingShareLink.copySearch,
         group: 'guest-links',
       }
     );
