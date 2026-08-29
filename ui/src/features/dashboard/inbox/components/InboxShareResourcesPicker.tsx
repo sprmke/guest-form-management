@@ -5,7 +5,6 @@ import { CalendarDays, Home, Loader2, MessageCircle, Search, Share2 } from 'luci
 import {
   guestCalendarPath,
   guestMessagesPreviewPath,
-  guestPayParkingPath,
   guestPropertyPath,
   guestReviewPath,
   guestSdFormPath,
@@ -13,8 +12,10 @@ import {
 
 import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
 import { useBookingDocumentShareLink } from '@/features/dashboard/bookings/hooks/useBookingDocumentShareLink';
+import { useBookingParkingShareLink } from '@/features/dashboard/bookings/hooks/useBookingParkingShareLink';
 import { useBookings } from '@/features/dashboard/bookings/hooks/useBookings';
 import { useBookingStayGuideLink } from '@/features/dashboard/bookings/hooks/useBookingStayGuideLink';
+import { useOwnerDefaultParking } from '@/features/dashboard/bookings/hooks/useOwnerDefaultParking';
 import { isStayGuideEligibleStatus } from '@/features/dashboard/bookings/lib/bookingStatus';
 import { DEFAULT_BOOKINGS_QUERY, type BookingRow } from '@/features/dashboard/bookings/lib/types';
 import {
@@ -125,6 +126,8 @@ export function InboxShareResourcesPicker({ propertySlug, disabled, onInsert }: 
   const stayGuideLink = useBookingStayGuideLink(selectedBooking);
   const gafLink = useBookingDocumentShareLink(selectedBooking, 'gaf');
   const petLink = useBookingDocumentShareLink(selectedBooking, 'pet');
+  const ownerDefaultQuery = useOwnerDefaultParking(selectedBooking?.id);
+  const parkingShare = useBookingParkingShareLink(selectedBooking, ownerDefaultQuery.data);
 
   const propertyRows: ShareRow[] = useMemo(
     () => [
@@ -187,9 +190,10 @@ export function InboxShareResourcesPicker({ propertySlug, disabled, onInsert }: 
     }
     if (selectedBooking.need_parking && !(Number(selectedBooking.parking_rate_paid) > 0)) {
       rows.push({
-        key: 'pay-parking',
-        label: 'Pay Parking',
-        url: `${window.location.origin}${guestPayParkingPath(propertySlug, selectedBooking.id)}`,
+        key: 'find-parking',
+        label: parkingShare.isOwnDefault ? 'Use your parking' : 'Find parking',
+        url: parkingShare.url,
+        pending: ownerDefaultQuery.isLoading,
       });
     }
     if (SD_FORM_ELIGIBLE_STATUSES.has(String(selectedBooking.status))) {
@@ -208,7 +212,15 @@ export function InboxShareResourcesPicker({ propertySlug, disabled, onInsert }: 
     }
 
     return rows;
-  }, [selectedBooking, stayGuideLink, gafLink, petLink, propertySlug]);
+  }, [
+    selectedBooking,
+    stayGuideLink,
+    gafLink,
+    petLink,
+    propertySlug,
+    parkingShare,
+    ownerDefaultQuery.isLoading,
+  ]);
 
   const selectUrl = (url: string) => {
     onInsert(url);

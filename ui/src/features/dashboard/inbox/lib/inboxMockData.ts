@@ -26,7 +26,7 @@ export const MOCK_CONNECTIONS: InboxConnection[] = [
   {
     id: 'conn-fb',
     platform: 'facebook',
-    displayName: 'Kame Home Azure North',
+    displayName: 'Sample Property Page',
     profileImageUrl: null,
     status: 'connected',
     connectedAt: hoursAgo(720),
@@ -294,7 +294,7 @@ export const MOCK_AUTOMATION: InboxAutomationSettings = {
   autoReplyEnabled: false,
   autoReplyMode: 'draft',
   aiSystemPrompt:
-    'You are a friendly Kame Home host assistant. Reply in 1–3 sentences. Ask for dates and guest count when checking availability.',
+    'You are a friendly Kame Homes host assistant. Reply in 1–3 sentences. Ask for dates and guest count when checking availability.',
   platformToggles: {
     facebook: true,
     instagram: true,
