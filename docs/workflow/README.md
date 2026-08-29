@@ -15,6 +15,7 @@ kind: reference
 | In progress | [`in-progress/`](./in-progress/) | plan + `-design.md` spec         | **Work started** — plan not fully complete (partial phases / v1 slices stay here until plan closed)                                    |
 | Done        | [`done/`](./done/)               | plan + `-design.md` spec         | Plan **fully complete** — `/workflow-done`                                                                                             |
 | Won't do    | [`wont-do/`](./wont-do/)         | plan + `-design.md` spec         | Cancelled / rejected — move via `/workflow-wont-do`                                                                                    |
+| QA findings | [`qa/`](./qa/)                   | per-surface folders              | Live/deep QA writeups (e.g. [`qa/property-dashboard/`](./qa/property-dashboard/)) — not a workflow stage; keep until triage            |
 
 **Scratchpad emojis:** ✅ done · 🚧 in progress · 📋 planned · 🔵 open · ❌ cancelled — [`.agent/skills/workflow-intake-scratchpads/SKILL.md`](../../.agent/skills/workflow-intake-scratchpads/SKILL.md). Validated by `scripts/dev/check-workflow-scratchpads.sh` on commit when scratchpads are staged.
 

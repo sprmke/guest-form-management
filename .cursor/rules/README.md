@@ -99,17 +99,18 @@ Run **`bun run check:ai-tooling-sync`** after changing hooks, commands, agents, 
 
 ### Product domains
 
-| Skill                             | Use for                          |
-| --------------------------------- | -------------------------------- |
-| `booking-workflow`                | Status transitions, orchestrator |
-| `admin-dashboard`                 | Bookings list / detail           |
-| `bookings-table`                  | Bookings table UI                |
-| `gmail-listener`                  | Gmail approvals                  |
-| `social-inbox` / `meta-messaging` | Guest Inbox                      |
-| `notifications`                   | In-app Notification Center       |
-| `integrations`                    | Google, Telegram, Meta, Resend   |
-| `emails`                          | HTML templates + Resend          |
-| `forms`                           | Guest + admin forms              |
+| Skill                             | Use for                                            |
+| --------------------------------- | -------------------------------------------------- |
+| `booking-workflow`                | Status transitions, orchestrator                   |
+| `admin-dashboard`                 | Bookings list / detail                             |
+| `property-dashboard-qa`           | Deep QA all property dashboard modules + plan/RBAC |
+| `bookings-table`                  | Bookings table UI                                  |
+| `gmail-listener`                  | Gmail approvals                                    |
+| `social-inbox` / `meta-messaging` | Guest Inbox                                        |
+| `notifications`                   | In-app Notification Center                         |
+| `integrations`                    | Google, Telegram, Meta, Resend                     |
+| `emails`                          | HTML templates + Resend                            |
+| `forms`                           | Guest + admin forms                                |
 
 ### UI & quality
 

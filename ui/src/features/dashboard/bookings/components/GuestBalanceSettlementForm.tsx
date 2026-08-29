@@ -323,6 +323,8 @@ export function GuestBalanceSettlementForm({
       return null;
     })();
     if (nextPaidError || nextReceiptError) {
+      const hint = nextPaidError || nextReceiptError;
+      if (hint) toast.error(hint);
       queueMicrotask(() => focusFirstWorkflowFieldError());
       return false;
     }
