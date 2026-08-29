@@ -2,11 +2,11 @@
  * Org hub permission catalog for PermissionsTreeView (UI hierarchy only).
  */
 
+import { ORG_TEAM_PERMISSIONS } from '@/features/dashboard/team/lib/orgTeamConstants';
 import type {
   PermissionAction,
   PermissionCatalogNode,
 } from '@/features/dashboard/team/lib/propertyPermissionCatalog';
-import { ORG_TEAM_PERMISSIONS } from '@/features/dashboard/team/lib/orgTeamConstants';
 
 export type OrgPermissionCatalog = readonly PermissionCatalogNode[];
 

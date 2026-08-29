@@ -1,5 +1,5 @@
 import { expandLegacyOrgPermissionIds } from '@/features/dashboard/team/lib/orgLegacyPermissionExpansion';
-import { ORG_ROLE_PERMISSIONS } from '@/features/dashboard/team/lib/orgTeamConstants';
+import { type ORG_ROLE_PERMISSIONS } from '@/features/dashboard/team/lib/orgTeamConstants';
 
 export type OrgAccessKind = 'owner' | 'platform_admin' | 'org_admin' | 'property_member';
 

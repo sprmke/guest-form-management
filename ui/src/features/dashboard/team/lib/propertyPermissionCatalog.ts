@@ -83,6 +83,9 @@ const COARSE_PLAN_FEATURES: Partial<Record<string, PlanFeatureKey>> = {
   'inbox.quickReplies:edit': 'quickReplies',
   'inbox.automation:edit': 'aiChatAutoReply',
   'team.invitations:add': 'teamManagement',
+  'team.customRoles:add': 'customRoles',
+  'team.customRoles:edit': 'customRoles',
+  'team.customRoles:delete': 'customRoles',
   'templates.custom:add': 'customTemplates',
   'templates.email:edit': 'customTemplates',
   'marketing:view': 'marketingStudio',
@@ -91,10 +94,12 @@ const COARSE_PLAN_FEATURES: Partial<Record<string, PlanFeatureKey>> = {
   'marketing.templates:add': 'customTemplates',
   'marketing.templates:edit': 'customTemplates',
   'marketing.generate:add': 'aiMarketingGeneration',
-  'marketing.publish:add': 'marketingStudio',
+  'marketing.publish:add': 'marketingPublishLimitPerGroup',
   'publicPages.property:edit': 'publicPagesAutosave',
   'publicPages.stayGuide:edit': 'publicPagesAutosave',
   'publicPages.showcase:edit': 'propertyShowcase',
+  'pricing.channels:view': 'calendarSync',
+  'pricing.channels:edit': 'calendarSync',
   'settings.voiceReceptionist:edit': 'aiReceptionist',
   'settings.aiOverrides:edit': 'aiMonthlyCreditAllowance',
 };
@@ -123,82 +128,92 @@ function toSentenceCase(value: string): string {
 }
 
 function chipLabelFromPermission(name: string, id: string): string {
-  if (id === 'bookings:view') return 'Open page';
-  if (id === 'bookings.create:add') return 'Create';
-  if (id === 'bookings.import:add') return 'Import';
-  if (id === 'bookings.detail.stay:edit') return 'Stay';
-  if (id === 'bookings.detail.guests:edit') return 'Guests';
-  if (id === 'bookings.detail.parking:edit') return 'Parking';
-  if (id === 'bookings.detail.pets:edit') return 'Pets';
-  if (id === 'bookings.detail.pricing:edit') return 'Pricing';
-  if (id === 'bookings.detail.workflow:edit') return 'Workflow';
-  if (id === 'finance:view') return 'Open page';
-  if (id === 'finance.transactions:add') return 'Add';
-  if (id === 'finance.transactions:edit') return 'Edit';
-  if (id === 'finance.transactions:delete') return 'Delete';
-  if (id === 'finance.export:view') return 'Export';
-  if (id === 'maintenance:view') return 'Open page';
-  if (id === 'maintenance.reminders:add') return 'Add';
-  if (id === 'maintenance.reminders:edit') return 'Edit';
-  if (id === 'maintenance.reminders:delete') return 'Delete';
-  if (id === 'maintenance.export:view') return 'Export';
-  if (id === 'marketing:view') return 'Open page';
-  if (id === 'marketing.content:add') return 'Add';
-  if (id === 'marketing.content:edit') return 'Edit';
-  if (id === 'marketing.templates:add') return 'Add';
-  if (id === 'marketing.templates:edit') return 'Edit';
-  if (id === 'marketing.templates:delete') return 'Delete';
-  if (id === 'marketing.generate:add') return 'Generate';
-  if (id === 'marketing.publish:add') return 'Publish';
-  if (id === 'pricing:view') return 'Open page';
-  if (id === 'pricing.rates:edit') return 'Rates';
-  if (id === 'pricing.blocks:add') return 'Block';
-  if (id === 'pricing.blocks:delete') return 'Unblock';
-  if (id === 'templates:view') return 'Open page';
-  if (id === 'templates.standard:edit') return 'Standard';
-  if (id === 'templates.email:edit') return 'Email';
-  if (id === 'templates.custom:add') return 'Add';
-  if (id === 'templates.custom:edit') return 'Edit';
-  if (id === 'templates.custom:delete') return 'Delete';
-  if (id === 'publicPages:view') return 'Open page';
-  if (id === 'publicPages.property:edit') return 'Property page';
-  if (id === 'publicPages.stayGuide:edit') return 'Stay guide';
-  if (id === 'publicPages.showcase:edit') return 'Showcase';
-  if (id === 'settings:view') return 'Open page';
-  if (id === 'settings.integrations:view') return 'Integrations';
+  const exactLabels: Record<string, string> = {
+    'bookings:view': 'Open page',
+    'bookings.create:add': 'Create',
+    'bookings.import:add': 'Import',
+    'bookings.detail.stay:edit': 'Stay',
+    'bookings.detail.guests:edit': 'Guests',
+    'bookings.detail.parking:edit': 'Parking',
+    'bookings.detail.pets:edit': 'Pets',
+    'bookings.detail.pricing:edit': 'Pricing',
+    'bookings.detail.workflow:edit': 'Workflow',
+    'finance:view': 'Open page',
+    'finance.transactions:add': 'Add',
+    'finance.transactions:edit': 'Edit',
+    'finance.transactions:delete': 'Delete',
+    'finance.export:view': 'Export',
+    'maintenance:view': 'Open page',
+    'maintenance.reminders:add': 'Add',
+    'maintenance.reminders:edit': 'Edit',
+    'maintenance.reminders:delete': 'Delete',
+    'maintenance.export:view': 'Export',
+    'marketing:view': 'Open page',
+    'marketing.content:add': 'Add',
+    'marketing.content:edit': 'Edit',
+    'marketing.templates:add': 'Add',
+    'marketing.templates:edit': 'Edit',
+    'marketing.templates:delete': 'Delete',
+    'marketing.generate:add': 'Generate',
+    'marketing.publish:add': 'Publish',
+    'pricing:view': 'Open page',
+    'pricing.rates:edit': 'Rates',
+    'pricing.blocks:add': 'Block',
+    'pricing.blocks:delete': 'Unblock',
+    'pricing.channels:view': 'View',
+    'pricing.channels:edit': 'Manage',
+    'templates:view': 'Open page',
+    'templates.standard:edit': 'Standard',
+    'templates.email:edit': 'Email',
+    'templates.custom:add': 'Add',
+    'templates.custom:edit': 'Edit',
+    'templates.custom:delete': 'Delete',
+    'publicPages:view': 'Open page',
+    'publicPages.property:edit': 'Property page',
+    'publicPages.stayGuide:edit': 'Stay guide',
+    'publicPages.showcase:edit': 'Showcase',
+    'settings:view': 'Open page',
+    'settings.integrations:view': 'Integrations',
+    'notifications:view': 'Open page',
+    'notifications.chat:edit': 'Chat',
+    'notifications.marketing:edit': 'Marketing',
+    'notifications.staff:edit': 'Staff',
+    'notifications.operations:edit': 'Operations',
+    'notifications.finance:edit': 'Finance',
+    'notifications.maintenance:edit': 'Maintenance',
+    'team:view': 'Open page',
+    'team.invitations:add': 'Invite',
+    'team.invitations:edit': 'Resend',
+    'team.invitations:delete': 'Cancel',
+    'team.members:edit': 'Edit',
+    'team.members:delete': 'Remove',
+    'team.customRoles:add': 'Add',
+    'team.customRoles:edit': 'Edit',
+    'team.customRoles:delete': 'Delete',
+    'inbox:view': 'Open page',
+    'inbox.messages:edit': 'Reply',
+    'inbox.channels:add': 'Connect',
+    'inbox.channels:delete': 'Disconnect',
+    'inbox.quickReplies:add': 'Add',
+    'inbox.quickReplies:edit': 'Edit',
+    'inbox.quickReplies:delete': 'Delete',
+    'inbox.automation:edit': 'Automation',
+  };
+
+  const exact = exactLabels[id];
+  if (exact) return exact;
   if (id.startsWith('settings.') && id.endsWith(':edit')) {
     return toSentenceCase(name.replace(/^Edit\s+/i, ''));
   }
-  if (id === 'notifications:view') return 'Open page';
-  if (id === 'notifications.chat:edit') return 'Chat';
-  if (id === 'notifications.marketing:edit') return 'Marketing';
-  if (id === 'notifications.staff:edit') return 'Staff';
-  if (id === 'notifications.operations:edit') return 'Operations';
-  if (id === 'notifications.finance:edit') return 'Finance';
-  if (id === 'notifications.maintenance:edit') return 'Maintenance';
-  if (id === 'team:view') return 'Open page';
-  if (id === 'team.invitations:add') return 'Invite';
-  if (id === 'team.invitations:edit') return 'Resend';
-  if (id === 'team.invitations:delete') return 'Cancel';
-  if (id === 'team.members:edit') return 'Edit';
-  if (id === 'team.members:delete') return 'Remove';
-  if (id === 'team.customRoles:add') return 'Add';
-  if (id === 'team.customRoles:edit') return 'Edit';
-  if (id === 'team.customRoles:delete') return 'Delete';
-  if (id === 'inbox:view') return 'Open page';
-  if (id === 'inbox.messages:edit') return 'Reply';
-  if (id === 'inbox.channels:add') return 'Connect';
-  if (id === 'inbox.channels:delete') return 'Disconnect';
-  if (id === 'inbox.quickReplies:add') return 'Add';
-  if (id === 'inbox.quickReplies:edit') return 'Edit';
-  if (id === 'inbox.quickReplies:delete') return 'Delete';
-  if (id === 'inbox.automation:edit') return 'Automation';
   const suffix = id.split(':')[1] ?? '';
-  if (suffix === 'view') return 'Open page';
-  if (suffix === 'edit') return 'Edit';
-  if (suffix === 'invite') return 'Invite';
-  if (suffix === 'manage') return 'Manage';
-  if (suffix === 'reply') return 'Reply';
+  const suffixLabels: Record<string, string> = {
+    view: 'Open page',
+    edit: 'Edit',
+    invite: 'Invite',
+    manage: 'Manage',
+    reply: 'Reply',
+  };
+  if (suffixLabels[suffix]) return suffixLabels[suffix]!;
   return toSentenceCase(name.replace(/^(View|Edit|Run|Manage|Invite|Reply)\s+/i, '') || name);
 }
 
@@ -304,6 +319,14 @@ function buildCatalog(): PermissionCatalogNode[] {
       module: 'pricing',
       label: 'Calendar',
       order: 0,
+    },
+    {
+      id: null,
+      key: 'pricing.channels',
+      parentKey: 'pricing',
+      module: 'pricing',
+      label: 'Channel sync',
+      order: 1,
     },
     {
       id: null,
@@ -419,6 +442,8 @@ function buildCatalog(): PermissionCatalogNode[] {
     'pricing.rates:edit': 'pricing.calendar',
     'pricing.blocks:add': 'pricing.calendar',
     'pricing.blocks:delete': 'pricing.calendar',
+    'pricing.channels:view': 'pricing.channels',
+    'pricing.channels:edit': 'pricing.channels',
     'templates:view': 'templates',
     'templates.standard:edit': 'templates.standard',
     'templates.email:edit': 'templates.email',

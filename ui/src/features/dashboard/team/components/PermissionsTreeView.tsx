@@ -4,6 +4,12 @@ import { ChevronDown, ChevronRight, Search } from 'lucide-react';
 
 import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
 import {
+  catalogHasAnyVisible,
+  filterCatalogBySearch,
+  parentTriState,
+  type TriState,
+} from '@/features/dashboard/team/lib/permissionTreeState';
+import {
   getCatalogChildren,
   getCatalogPageNodes,
   getDescendantLeafIds,
@@ -11,12 +17,6 @@ import {
   type PermissionCatalog,
   type PermissionCatalogNode,
 } from '@/features/dashboard/team/lib/propertyPermissionCatalog';
-import {
-  catalogHasAnyVisible,
-  filterCatalogBySearch,
-  parentTriState,
-  type TriState,
-} from '@/features/dashboard/team/lib/permissionTreeState';
 
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
