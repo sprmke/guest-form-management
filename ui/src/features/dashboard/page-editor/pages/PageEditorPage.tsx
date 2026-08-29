@@ -8,10 +8,6 @@ import { PreviewOverrideProvider } from '@/features/guest/lib/previewOverrideCon
 import { PropertyDetailPage } from '@/features/guest/marketing/pages/PropertyDetailPage';
 import { usePublicPropertyDetail } from '@/features/guest/marketing/properties/hooks/usePublicPropertyDetail';
 import type { PropertyLandingSectionConfig } from '@/features/guest/marketing/properties/types/publicProperty';
-import { useGuestStayGuidePreview } from '@/features/guest/stay-guide/hooks/useGuestStayGuide';
-import type { StayGuideSectionConfig } from '@/features/guest/stay-guide/lib/api';
-import { extractLeadingSectionHeading } from '@/features/guest/stay-guide/lib/stayGuideContent';
-import { StayGuidePage } from '@/features/guest/stay-guide/pages/StayGuidePage';
 
 import {
   appSettingsToFormValues,
@@ -19,17 +15,8 @@ import {
   useUpdateAppSettings,
   type AppSettingsFormValues,
 } from '@/features/dashboard/bookings/hooks/useAppSettings';
-import {
-  usePropertyTemplateMutations,
-  usePropertyTemplates,
-  type PropertyTemplateDto,
-} from '@/features/dashboard/bookings/hooks/usePropertyTemplates';
-import { normalizeBlockLevelPlaceholdersInHtml } from '@/features/dashboard/bookings/lib/normalizeBlockLevelPlaceholders';
-import { applyPropertyTemplatePlaceholders } from '@/features/dashboard/bookings/lib/propertyTemplatePlaceholders';
 import { PropertySettingsBrandColorPreview } from '@/features/dashboard/org/components/property-settings/PropertySettingsBrandColorPreview';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
-import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
-import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
 import { useOrgBrandColor } from '@/features/dashboard/org/hooks/useOrgBrandColor';
 import {
   orgSettingsToFormValues,
@@ -66,12 +53,7 @@ import {
   type LandingProfileContent,
 } from '@/features/dashboard/page-editor/components/property-landing/PropertyLandingEditorPanel';
 import { PropertyShowcasePageEditor } from '@/features/dashboard/page-editor/components/property-showcase/PropertyShowcasePageEditor';
-import { StayGuideEditorPanel } from '@/features/dashboard/page-editor/components/stay-guide/StayGuideEditorPanel';
-import {
-  draftFromTemplate,
-  isStayGuideSectionDraftDirty,
-  type StayGuideSectionDraft,
-} from '@/features/dashboard/page-editor/components/stay-guide/StayGuideSectionContentCard';
+import { StayGuidePageEditor } from '@/features/dashboard/page-editor/components/stay-guide/StayGuidePageEditor';
 import {
   firstPageEditorAutoSaveError,
   mergePageEditorAutoSaveStatuses,
@@ -81,12 +63,13 @@ import {
   usePublicPageConfig,
   useSavePublicPageConfig,
 } from '@/features/dashboard/page-editor/hooks/usePublicPageConfig';
-import { STAY_GUIDE_STANDARD_TEMPLATE_KEYS } from '@/features/dashboard/page-editor/lib/stayGuideChapterSections';
 import { resolvePageEditorPublicLinks } from '@/features/dashboard/page-editor/lib/pageEditorPublicLinks';
 import { usePropertyLandingEditorStore } from '@/features/dashboard/page-editor/stores/propertyLandingEditorStore';
-import { useStayGuideEditorStore } from '@/features/dashboard/page-editor/stores/stayGuideEditorStore';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
-import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
+import { usePropertyEntitlements } from '@/features/dashboard/plans/hooks/usePropertyEntitlements';
+import { isFeatureEnabled } from '@/features/dashboard/plans/lib/planFeatures';
+import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
+import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
 
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { SectionContentSkeleton } from '@/components/skeletons/AdminSkeletons';
@@ -189,307 +172,6 @@ export function PageEditorPage() {
   );
 }
 
-function StayGuidePageEditor({
-  orgSlug,
-  propertySlug,
-  propertyId,
-}: {
-  orgSlug: string;
-  propertySlug: string;
-  propertyId: string | null;
-}) {
-  const navigate = useNavigate();
-  const configQuery = usePublicPageConfig('stay_guide');
-  const saveMutation = useSavePublicPageConfig('stay_guide');
-  const previewQuery = useGuestStayGuidePreview(propertySlug, propertyId ?? '');
-  const templatesQuery = usePropertyTemplates();
-  const { saveTemplate } = usePropertyTemplateMutations();
-
-  const config = useStayGuideEditorStore((s) => s.config);
-  const hydrated = useStayGuideEditorStore((s) => s.hydrated);
-  const historyIndex = useStayGuideEditorStore((s) => s.historyIndex);
-  const historyLength = useStayGuideEditorStore((s) => s.history.length);
-  const hydrate = useStayGuideEditorStore((s) => s.hydrate);
-  const reset = useStayGuideEditorStore((s) => s.reset);
-  const undo = useStayGuideEditorStore((s) => s.undo);
-  const redo = useStayGuideEditorStore((s) => s.redo);
-  const markClean = useStayGuideEditorStore((s) => s.markClean);
-
-  const [contentDrafts, setContentDrafts] = useState<Record<string, StayGuideSectionDraft>>({});
-  const [contentHydrated, setContentHydrated] = useState(false);
-  const { canUse: canUseAutosave } = useFeatureGate('publicPagesAutosave');
-  const { open: openUpgradeModal } = useUpgradeModal();
-  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
-  const [isSavingBeforeLeave, setIsSavingBeforeLeave] = useState(false);
-
-  useEffect(() => {
-    return () => reset();
-  }, [reset]);
-
-  useEffect(() => {
-    if (!configQuery.data || hydrated) return;
-    hydrate(configQuery.data.config as StayGuideSectionConfig);
-  }, [configQuery.data, hydrate, hydrated]);
-
-  const templatesByKey = useMemo(() => {
-    const map: Record<string, PropertyTemplateDto> = {};
-    for (const template of templatesQuery.data?.templates ?? []) {
-      if (template.category === 'standard') {
-        map[template.templateKey] = template;
-      }
-    }
-    return map;
-  }, [templatesQuery.data?.templates]);
-
-  useEffect(() => {
-    if (!templatesQuery.data || contentHydrated) return;
-    const next: Record<string, StayGuideSectionDraft> = {};
-    for (const key of STAY_GUIDE_STANDARD_TEMPLATE_KEYS) {
-      const template = templatesByKey[key];
-      if (template) next[key] = draftFromTemplate(template);
-    }
-    if (Object.keys(next).length === 0) return;
-    setContentDrafts(next);
-    setContentHydrated(true);
-  }, [templatesQuery.data, templatesByKey, contentHydrated]);
-
-  const fingerprint = useMemo(() => (hydrated ? JSON.stringify(config) : null), [config, hydrated]);
-
-  const configSave = usePageEditorAutoSave({
-    enabled: hydrated && Boolean(propertyId),
-    suspended: configQuery.isLoading || !hydrated,
-    persist: canUseAutosave,
-    contentFingerprint: fingerprint,
-    debounceMs: 1000,
-    save: async () => {
-      await saveMutation.mutateAsync(config);
-      markClean();
-    },
-  });
-
-  const contentFingerprint = useMemo(() => {
-    if (!contentHydrated) return null;
-    return JSON.stringify(
-      STAY_GUIDE_STANDARD_TEMPLATE_KEYS.map((key) => {
-        const draft = contentDrafts[key];
-        return draft
-          ? { key, content: draft.content, sectionImageUrl: draft.sectionImageUrl }
-          : { key };
-      })
-    );
-  }, [contentDrafts, contentHydrated]);
-
-  const contentSave = usePageEditorAutoSave({
-    enabled: contentHydrated && Boolean(propertyId),
-    suspended: !contentHydrated || templatesQuery.isLoading,
-    persist: canUseAutosave,
-    contentFingerprint,
-    debounceMs: 1200,
-    save: async () => {
-      const dirtyKeys = STAY_GUIDE_STANDARD_TEMPLATE_KEYS.filter((key) => {
-        const draft = contentDrafts[key];
-        const template = templatesByKey[key];
-        return draft && template && isStayGuideSectionDraftDirty(draft, template);
-      });
-      for (const key of dirtyKeys) {
-        const draft = contentDrafts[key];
-        if (!draft) continue;
-        await saveTemplate.mutateAsync({
-          templateKey: key,
-          content: draft.content,
-          sectionImageUrl: draft.sectionImageUrl,
-          silent: true,
-          publicPagesAutosaveGate: true,
-        });
-      }
-    },
-  });
-
-  const status = mergePageEditorAutoSaveStatuses([configSave.status, contentSave.status]);
-  const errorMessage = firstPageEditorAutoSaveError([configSave, contentSave]);
-  const isDirty = status === 'pending';
-
-  useEffect(() => {
-    const handler = (event: BeforeUnloadEvent) => {
-      if (!isDirty) return;
-      event.preventDefault();
-      event.returnValue = '';
-    };
-    window.addEventListener('beforeunload', handler);
-    return () => window.removeEventListener('beforeunload', handler);
-  }, [isDirty]);
-
-  const mergedPreview = useMemo(() => {
-    if (!previewQuery.data) return null;
-    const sections = previewQuery.data.sections.map((section) => {
-      const draft = contentDrafts[section.key];
-      if (!draft) return section;
-      const filled = applyPropertyTemplatePlaceholders(draft.content);
-      const { heading, bodyHtml } = extractLeadingSectionHeading(filled);
-      return {
-        ...section,
-        displayHeading: heading || section.label,
-        html: heading ? bodyHtml : filled,
-        imageUrl: draft.sectionImageUrl,
-        imageUpdatedAt: draft.imageBust
-          ? new Date(draft.imageBust).toISOString()
-          : section.imageUpdatedAt,
-      };
-    });
-    return {
-      kind: 'stay-guide' as const,
-      data: { ...previewQuery.data, sectionConfig: config, sections },
-    };
-  }, [previewQuery.data, config, contentDrafts]);
-
-  const backHref = propertySectionPath(orgSlug, propertySlug, 'public-pages');
-  const pageMeta = PAGE_EDITOR_META['stay-guide'];
-  const publicLinks = useMemo(
-    () =>
-      propertyId ? resolvePageEditorPublicLinks('stay-guide', propertySlug, propertyId) : null,
-    [propertyId, propertySlug]
-  );
-
-  const saveAllPending = () => Promise.all([configSave.saveNow(), contentSave.saveNow()]);
-
-  const handleManualSaveClick = async () => {
-    if (!canUseAutosave) {
-      openUpgradeModal('publicPagesAutosave');
-      return;
-    }
-    try {
-      await saveAllPending();
-      toast.success('Saved');
-    } catch (error) {
-      toast.error(friendlyToastError(error, 'Could not save changes'));
-    }
-  };
-
-  const handleBack = () => {
-    if (isDirty) {
-      setShowLeaveConfirm(true);
-      return;
-    }
-    navigate(backHref);
-  };
-
-  const handleSaveAndLeave = async () => {
-    if (!canUseAutosave) {
-      setShowLeaveConfirm(false);
-      openUpgradeModal('publicPagesAutosave');
-      return;
-    }
-    setIsSavingBeforeLeave(true);
-    try {
-      await saveAllPending();
-      navigate(backHref);
-    } catch (error) {
-      toast.error(friendlyToastError(error, 'Could not save changes'));
-    } finally {
-      setIsSavingBeforeLeave(false);
-      setShowLeaveConfirm(false);
-    }
-  };
-
-  const handleDiscardAndLeave = () => {
-    setShowLeaveConfirm(false);
-    navigate(backHref);
-  };
-
-  const handleDraftChange = (templateKey: string, draft: StayGuideSectionDraft) => {
-    setContentDrafts((current) => ({ ...current, [templateKey]: draft }));
-  };
-
-  const handleResetSection = (templateKey: string) => {
-    const template = templatesByKey[templateKey];
-    if (!template) return;
-    setContentDrafts((current) => ({
-      ...current,
-      [templateKey]: {
-        content: normalizeBlockLevelPlaceholdersInHtml(template.defaultContent),
-        sectionImageUrl: null,
-        imageBust: 0,
-      },
-    }));
-  };
-
-  const isBootstrapping =
-    (configQuery.isLoading && !configQuery.data) ||
-    (previewQuery.isLoading && !previewQuery.data) ||
-    (templatesQuery.isLoading && !templatesQuery.data) ||
-    !hydrated ||
-    !contentHydrated;
-
-  if (isBootstrapping) {
-    return (
-      <PageEditorChrome>
-        <SectionContentSkeleton rows={5} className="min-h-[50vh]" />
-      </PageEditorChrome>
-    );
-  }
-
-  if (configQuery.isError || previewQuery.isError || templatesQuery.isError || !mergedPreview) {
-    return (
-      <PageEditorChrome>
-        <div className="text-muted-foreground flex min-h-[40vh] items-center justify-center px-4 text-center text-sm">
-          Could not load the Stay Guide editor.
-        </div>
-      </PageEditorChrome>
-    );
-  }
-
-  return (
-    <PageEditorChrome>
-      <PageEditorShell
-        header={
-          <PageEditorHeader
-            pageLabel={pageMeta.label}
-            onBack={handleBack}
-            autoSaveStatus={status}
-            autoSaveError={errorMessage}
-            openHref={publicLinks?.openHref}
-            copyHref={publicLinks?.copyHref}
-            publicPageLabel={publicLinks?.pageLabel}
-            manualSave={{
-              visible: !canUseAutosave && status === 'pending',
-              onClick: () => void handleManualSaveClick(),
-              isSaving: status === 'saving',
-            }}
-          />
-        }
-        controls={
-          <StayGuideEditorPanel
-            templatesByKey={templatesByKey}
-            drafts={contentDrafts}
-            onDraftChange={handleDraftChange}
-            onResetSection={handleResetSection}
-            contentBusy={saveTemplate.isPending}
-          />
-        }
-        preview={
-          <PageEditorPreviewPane
-            canUndo={historyIndex > 0}
-            canRedo={historyIndex < historyLength - 1}
-            onUndo={undo}
-            onRedo={redo}
-          >
-            <PreviewOverrideProvider value={mergedPreview}>
-              <StayGuidePage />
-            </PreviewOverrideProvider>
-          </PageEditorPreviewPane>
-        }
-      />
-      <PageEditorLeaveConfirmDialog
-        open={showLeaveConfirm}
-        onOpenChange={setShowLeaveConfirm}
-        onSaveAndLeave={() => void handleSaveAndLeave()}
-        onDiscardAndLeave={handleDiscardAndLeave}
-        isSaving={isSavingBeforeLeave}
-      />
-    </PageEditorChrome>
-  );
-}
-
 function contentFromProperty(
   property: Parameters<typeof propertyProfileDraftFromProperty>[0]
 ): LandingProfileContent {
@@ -536,6 +218,7 @@ function PropertyLandingPageEditor({
 
   const config = usePropertyLandingEditorStore((s) => s.config);
   const hydrated = usePropertyLandingEditorStore((s) => s.hydrated);
+  const storeDirty = usePropertyLandingEditorStore((s) => s.isDirty);
   const historyIndex = usePropertyLandingEditorStore((s) => s.historyIndex);
   const historyLength = usePropertyLandingEditorStore((s) => s.history.length);
   const hydrate = usePropertyLandingEditorStore((s) => s.hydrate);
@@ -554,11 +237,15 @@ function PropertyLandingPageEditor({
     contentFromProperty(property)
   );
   const [contentHydrated, setContentHydrated] = useState(false);
+  const [contentBaselineFp, setContentBaselineFp] = useState<string | null>(null);
   const [socialDraft, setSocialDraft] = useState<AppSettingsFormValues | null>(null);
   const [socialBaseline, setSocialBaseline] = useState<AppSettingsFormValues | null>(null);
   const [interactedFields, setInteractedFields] = useState<Record<string, boolean>>({});
   const [savingReviewId, setSavingReviewId] = useState<string | null>(null);
-  const { canUse: canUseAutosave } = useFeatureGate('publicPagesAutosave');
+  const entitlements = usePropertyEntitlements(propertyId);
+  const canAutosave = entitlements.data
+    ? isFeatureEnabled(entitlements.data, 'publicPagesAutosave')
+    : false;
   const { open: openUpgradeModal } = useUpgradeModal();
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [isSavingBeforeLeave, setIsSavingBeforeLeave] = useState(false);
@@ -575,7 +262,9 @@ function PropertyLandingPageEditor({
   useEffect(() => {
     setMedia(propertyMediaFromProperty(property));
     if (!contentHydrated) {
-      setContent(contentFromProperty(property));
+      const next = contentFromProperty(property);
+      setContent(next);
+      setContentBaselineFp(JSON.stringify(next));
       setContentHydrated(true);
     }
   }, [property, contentHydrated]);
@@ -592,9 +281,8 @@ function PropertyLandingPageEditor({
   const fingerprint = useMemo(() => (hydrated ? JSON.stringify(config) : null), [config, hydrated]);
 
   const configSave = usePageEditorAutoSave({
-    enabled: hydrated && Boolean(propertyId),
-    suspended: configQuery.isLoading || !hydrated,
-    persist: canUseAutosave,
+    enabled: canAutosave && hydrated && Boolean(propertyId),
+    suspended: !hydrated,
     contentFingerprint: fingerprint,
     debounceMs: 1000,
     save: async () => {
@@ -610,9 +298,8 @@ function PropertyLandingPageEditor({
   const brandColorError = brandHydrated ? validateOrgBrandColor(brandColor) : null;
 
   const brandSave = usePageEditorAutoSave({
-    enabled: brandHydrated && Boolean(propertyId) && !brandColorError,
+    enabled: canAutosave && brandHydrated && Boolean(propertyId) && !brandColorError,
     suspended: !appSettings || !brandHydrated,
-    persist: canUseAutosave,
     contentFingerprint: brandFingerprint,
     debounceMs: 800,
     save: async () => {
@@ -633,9 +320,8 @@ function PropertyLandingPageEditor({
   );
 
   const contentSave = usePageEditorAutoSave({
-    enabled: contentHydrated && Boolean(propertyId) && !cancellationError,
+    enabled: canAutosave && contentHydrated && Boolean(propertyId) && !cancellationError,
     suspended: !contentHydrated,
-    persist: canUseAutosave,
     contentFingerprint,
     debounceMs: 1000,
     save: async () => {
@@ -652,6 +338,7 @@ function PropertyLandingPageEditor({
           cancellationPolicy: content.cancellationPolicy,
         },
       });
+      setContentBaselineFp(JSON.stringify(content));
     },
   });
 
@@ -668,10 +355,22 @@ function PropertyLandingPageEditor({
     });
   }, [socialDraft]);
 
+  const socialBaselineFingerprint = useMemo(() => {
+    if (!socialBaseline) return null;
+    return JSON.stringify({
+      facebookPageUrl: socialBaseline.facebookPageUrl,
+      airbnbUrl: socialBaseline.airbnbUrl,
+      instagramUrl: socialBaseline.instagramUrl,
+      tiktokUrl: socialBaseline.tiktokUrl,
+      mainSocialPlatform: socialBaseline.mainSocialPlatform,
+      externalReviews: socialBaseline.externalReviews,
+      superhostVerificationUrl: socialBaseline.superhostVerificationUrl,
+    });
+  }, [socialBaseline]);
+
   const socialSave = usePageEditorAutoSave({
-    enabled: Boolean(socialDraft && propertyId),
+    enabled: canAutosave && Boolean(socialDraft && propertyId),
     suspended: !socialDraft || !appSettings,
-    persist: canUseAutosave,
     contentFingerprint: socialFingerprint,
     debounceMs: 1000,
     save: async () => {
@@ -719,7 +418,17 @@ function PropertyLandingPageEditor({
     contentSave,
     socialSave,
   ]);
-  const isDirty = status === 'pending';
+  const profileDirty =
+    Boolean(contentFingerprint && contentBaselineFp && contentFingerprint !== contentBaselineFp) ||
+    Boolean(socialBaseline && brandHydrated && brandColor !== socialBaseline.brandColor) ||
+    Boolean(
+      socialFingerprint &&
+      socialBaselineFingerprint &&
+      socialFingerprint !== socialBaselineFingerprint
+    );
+  const isDirty = canAutosave
+    ? status === 'pending' || status === 'error'
+    : storeDirty || profileDirty;
 
   useEffect(() => {
     const handler = (event: BeforeUnloadEvent) => {
@@ -885,7 +594,7 @@ function PropertyLandingPageEditor({
   );
 
   const handleManualSaveClick = async () => {
-    if (!canUseAutosave) {
+    if (!canAutosave) {
       openUpgradeModal('publicPagesAutosave');
       return;
     }
@@ -906,7 +615,7 @@ function PropertyLandingPageEditor({
   };
 
   const handleSaveAndLeave = async () => {
-    if (!canUseAutosave) {
+    if (!canAutosave) {
       setShowLeaveConfirm(false);
       openUpgradeModal('publicPagesAutosave');
       return;
@@ -972,7 +681,7 @@ function PropertyLandingPageEditor({
             copyHref={publicLinks?.copyHref}
             publicPageLabel={publicLinks?.pageLabel}
             manualSave={{
-              visible: !canUseAutosave && status === 'pending',
+              visible: !canAutosave && isDirty,
               onClick: () => void handleManualSaveClick(),
               isSaving: status === 'saving',
             }}

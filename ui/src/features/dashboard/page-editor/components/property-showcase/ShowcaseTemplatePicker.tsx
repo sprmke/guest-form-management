@@ -1,13 +1,15 @@
-import { Check } from 'lucide-react';
 import { useDeferredValue, type KeyboardEvent } from 'react';
 
-import { ShowcaseTemplatePreviewThumb } from '@/features/dashboard/page-editor/components/property-showcase/ShowcaseTemplatePreviewThumb';
-import { SHOWCASE_TEMPLATE_PRESENTATION } from '@/features/dashboard/page-editor/lib/showcaseTemplatePresentation';
+import { Check } from 'lucide-react';
+
 import type { ResolvedPropertyDetail } from '@/features/guest/marketing/properties/types/publicProperty';
 import type {
   PropertyShowcaseConfig,
   ShowcaseTemplateKey,
 } from '@/features/guest/marketing/showcase/types/showcase';
+
+import { ShowcaseTemplatePreviewThumb } from '@/features/dashboard/page-editor/components/property-showcase/ShowcaseTemplatePreviewThumb';
+import { SHOWCASE_TEMPLATE_PRESENTATION } from '@/features/dashboard/page-editor/lib/showcaseTemplatePresentation';
 
 import { cn } from '@/lib/utils';
 

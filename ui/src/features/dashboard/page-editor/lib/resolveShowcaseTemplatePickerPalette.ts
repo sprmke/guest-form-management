@@ -1,11 +1,12 @@
+import type { ShowcaseMediaPalette } from '@/features/guest/marketing/showcase/lib/showcaseMediaPalette';
+import { resolveAccentOptionPreview } from '@/features/guest/marketing/showcase/lib/showcasePalettePreview';
 import {
   resolveShowcasePaletteAccent,
   resolveShowcasePaletteSurface,
 } from '@/features/guest/marketing/showcase/lib/showcasePaletteSurfaces';
-import type { ShowcaseMediaPalette } from '@/features/guest/marketing/showcase/lib/showcaseMediaPalette';
 import type { ShowcaseVariant } from '@/features/guest/marketing/showcase/lib/showcaseThemeTokens';
 import type { PropertyShowcaseConfig } from '@/features/guest/marketing/showcase/types/showcase';
-import { resolveAccentOptionPreview } from '@/features/guest/marketing/showcase/lib/showcasePalettePreview';
+
 import { resolveOrgBrandHex } from '@/lib/theme/brandColor';
 
 export type ShowcaseTemplatePickerPalette = {

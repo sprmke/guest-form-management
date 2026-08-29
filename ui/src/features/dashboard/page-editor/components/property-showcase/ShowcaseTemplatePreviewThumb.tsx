@@ -2,18 +2,19 @@ import { Suspense, memo, useEffect, useMemo, useRef, useState } from 'react';
 
 import { PreviewOverrideProvider } from '@/features/guest/lib/previewOverrideContext';
 import { PreviewViewportProvider } from '@/features/guest/lib/previewViewportContext';
-import {
-  SHOWCASE_TEMPLATE_THUMB_CLIP_HEIGHT,
-  SHOWCASE_TEMPLATE_THUMB_FRAME_WIDTH,
-  buildShowcaseTemplateThumbData,
-} from '@/features/dashboard/page-editor/lib/showcaseTemplateThumbData';
-import { ShowcaseTemplateThumbSurface } from '@/features/guest/marketing/showcase/lib/showcaseTemplateThumbSurface';
 import type { ResolvedPropertyDetail } from '@/features/guest/marketing/properties/types/publicProperty';
+import { ShowcaseTemplateThumbSurface } from '@/features/guest/marketing/showcase/lib/showcaseTemplateThumbSurface';
 import { getShowcaseTemplate } from '@/features/guest/marketing/showcase/templates/registry';
 import type {
   PropertyShowcaseConfig,
   ShowcaseTemplateKey,
 } from '@/features/guest/marketing/showcase/types/showcase';
+
+import {
+  SHOWCASE_TEMPLATE_THUMB_CLIP_HEIGHT,
+  SHOWCASE_TEMPLATE_THUMB_FRAME_WIDTH,
+  buildShowcaseTemplateThumbData,
+} from '@/features/dashboard/page-editor/lib/showcaseTemplateThumbData';
 
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';

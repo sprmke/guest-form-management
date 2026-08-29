@@ -1,6 +1,6 @@
+import type { ShowcaseVariant } from '@/features/guest/marketing/showcase/lib/showcaseThemeTokens';
 import { SHOWCASE_TEMPLATE_REGISTRY } from '@/features/guest/marketing/showcase/templates/registry';
 import type { ShowcaseTemplateKey } from '@/features/guest/marketing/showcase/types/showcase';
-import type { ShowcaseVariant } from '@/features/guest/marketing/showcase/lib/showcaseThemeTokens';
 
 export type ShowcaseTemplatePresentation = {
   key: ShowcaseTemplateKey;

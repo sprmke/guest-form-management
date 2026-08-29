@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import type { PropertyShowcaseConfig } from '@/features/guest/marketing/showcase/types/showcase';
 import type { PropertyLandingSectionConfig } from '@/features/guest/marketing/properties/types/publicProperty';
-import type { StayGuideSectionConfig } from '@/features/guest/stay-guide/lib/api';
+import type { PropertyShowcaseConfig } from '@/features/guest/marketing/showcase/types/showcase';
+import type { StayGuideConfigV2 } from '@/features/guest/stay-guide/lib/stayGuideConfig';
 
 import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { getSessionJwt } from '@/features/dashboard/org/lib/edgeClient';
@@ -11,7 +11,7 @@ export type PublicPageType = 'stay_guide' | 'property_landing' | 'property_showc
 
 export type PublicPageConfigDto = {
   pageType: PublicPageType;
-  config: StayGuideSectionConfig | PropertyLandingSectionConfig | PropertyShowcaseConfig;
+  config: StayGuideConfigV2 | PropertyLandingSectionConfig | PropertyShowcaseConfig;
   updatedAt: string;
 };
 
@@ -41,7 +41,7 @@ async function fetchPublicPageConfig(
 async function patchPublicPageConfig(
   propertyId: string,
   pageType: PublicPageType,
-  config: StayGuideSectionConfig | PropertyLandingSectionConfig | PropertyShowcaseConfig
+  config: StayGuideConfigV2 | PropertyLandingSectionConfig | PropertyShowcaseConfig
 ): Promise<PublicPageConfigDto> {
   const jwt = await getSessionJwt();
   const res = await fetch(scopedFunctionsUrl('/public-page-configs', propertyId), {
@@ -78,7 +78,7 @@ export function useSavePublicPageConfig(pageType: PublicPageType) {
 
   return useMutation({
     mutationFn: (
-      config: StayGuideSectionConfig | PropertyLandingSectionConfig | PropertyShowcaseConfig
+      config: StayGuideConfigV2 | PropertyLandingSectionConfig | PropertyShowcaseConfig
     ) => {
       if (!propertyId) throw new Error('Missing property');
       return patchPublicPageConfig(propertyId, pageType, config);

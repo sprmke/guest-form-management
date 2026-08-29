@@ -49,6 +49,7 @@ export function usePageEditorAutoSave({
   const lastSavedFingerprintRef = useRef<string | null>(null);
   const saveGenerationRef = useRef(0);
   const wasSuspendedRef = useRef(false);
+  const pendingBaselineRef = useRef(false);
   const savedFlashTimerRef = useRef<number | null>(null);
   const saveRef = useRef(save);
   saveRef.current = save;
@@ -60,12 +61,23 @@ export function usePageEditorAutoSave({
     }
     if (wasSuspendedRef.current) {
       wasSuspendedRef.current = false;
-      if (contentFingerprint) {
-        lastSavedFingerprintRef.current = contentFingerprint;
-        setStatus('idle');
-        setErrorMessage(null);
-      }
+      pendingBaselineRef.current = true;
     }
+    if (!pendingBaselineRef.current || !contentFingerprint) return;
+    // Only adopt a hydrate baseline. If the fingerprint already diverged from an
+    // earlier baseline (user edited while suspended), keep lastSaved so the save
+    // effect can persist those edits.
+    if (
+      lastSavedFingerprintRef.current !== null &&
+      contentFingerprint !== lastSavedFingerprintRef.current
+    ) {
+      pendingBaselineRef.current = false;
+      return;
+    }
+    pendingBaselineRef.current = false;
+    lastSavedFingerprintRef.current = contentFingerprint;
+    setStatus('idle');
+    setErrorMessage(null);
   }, [suspended, contentFingerprint]);
 
   useEffect(() => {
@@ -78,6 +90,7 @@ export function usePageEditorAutoSave({
     if (!persist) return;
 
     const generation = ++saveGenerationRef.current;
+    const fingerprintAtSchedule = contentFingerprint;
     const timer = window.setTimeout(() => {
       void (async () => {
         if (generation !== saveGenerationRef.current) return;
@@ -85,7 +98,7 @@ export function usePageEditorAutoSave({
         try {
           await saveRef.current();
           if (generation !== saveGenerationRef.current) return;
-          lastSavedFingerprintRef.current = contentFingerprint;
+          lastSavedFingerprintRef.current = fingerprintAtSchedule;
           setStatus('saved');
           setErrorMessage(null);
           if (savedFlashTimerRef.current) window.clearTimeout(savedFlashTimerRef.current);

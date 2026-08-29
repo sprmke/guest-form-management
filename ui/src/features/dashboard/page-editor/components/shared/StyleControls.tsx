@@ -1,3 +1,18 @@
+import type { ShowcaseMediaPalette } from '@/features/guest/marketing/showcase/lib/showcaseMediaPalette';
+import { resolvePaletteModeSwatchColors } from '@/features/guest/marketing/showcase/lib/showcasePalettePreview';
+import {
+  getShowcasePresetPalette,
+  isShowcasePresetPaletteId,
+  SHOWCASE_PRESET_PALETTE_LIST,
+} from '@/features/guest/marketing/showcase/lib/showcasePresetPalettes';
+import type { ShowcasePaletteMode } from '@/features/guest/marketing/showcase/types/showcase';
+
+import {
+  PaletteOptionLabel,
+  PaletteSwatchDots,
+} from '@/features/dashboard/page-editor/components/shared/PalettePreviewChip';
+import { ShowcaseCustomPalettePicker } from '@/features/dashboard/page-editor/components/shared/ShowcaseCustomPalettePicker';
+
 import { FieldLabel } from '@/components/forms/FieldLabel';
 import {
   Select,
@@ -10,19 +25,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { ShowcaseCustomPalettePicker } from '@/features/dashboard/page-editor/components/shared/ShowcaseCustomPalettePicker';
-import {
-  PaletteOptionLabel,
-  PaletteSwatchDots,
-} from '@/features/dashboard/page-editor/components/shared/PalettePreviewChip';
-import type { ShowcaseMediaPalette } from '@/features/guest/marketing/showcase/lib/showcaseMediaPalette';
-import {
-  getShowcasePresetPalette,
-  isShowcasePresetPaletteId,
-  SHOWCASE_PRESET_PALETTE_LIST,
-} from '@/features/guest/marketing/showcase/lib/showcasePresetPalettes';
-import { resolvePaletteModeSwatchColors } from '@/features/guest/marketing/showcase/lib/showcasePalettePreview';
-import type { ShowcasePaletteMode } from '@/features/guest/marketing/showcase/types/showcase';
 import { DEFAULT_ORG_BRAND_COLOR, resolveOrgBrandHex } from '@/lib/theme/brandColor';
 import { cn } from '@/lib/utils';
 

@@ -2,7 +2,19 @@ import { useCallback, useMemo, useState } from 'react';
 
 import { ChevronDown } from 'lucide-react';
 
+import type { ResolvedPropertyDetail } from '@/features/guest/marketing/properties/types/publicProperty';
+import { useShowcaseMediaPalette } from '@/features/guest/marketing/showcase/hooks/useShowcaseMediaPalette';
+import { resolveShowcaseEditorStyleFields } from '@/features/guest/marketing/showcase/lib/showcaseEditorStyleFields';
+import { showcasePropertyHasDevelopment } from '@/features/guest/marketing/showcase/lib/showcaseHeroEyebrow';
+import { scrollShowcaseToTop } from '@/features/guest/marketing/showcase/lib/showcaseScroll';
+import {
+  SHOWCASE_SECTION_IDS,
+  type ShowcaseSectionId,
+  type ShowcaseTemplateKey,
+} from '@/features/guest/marketing/showcase/types/showcase';
+
 import { StyleSection } from '@/features/dashboard/marketing/components/calendar-builder/components/panels/StyleSection';
+import { ShowcaseTemplatePicker } from '@/features/dashboard/page-editor/components/property-showcase/ShowcaseTemplatePicker';
 import { CopyOverrideField } from '@/features/dashboard/page-editor/components/shared/CopyOverrideField';
 import { CtaOverrideField } from '@/features/dashboard/page-editor/components/shared/CtaOverrideField';
 import { HeroEyebrowField } from '@/features/dashboard/page-editor/components/shared/HeroEyebrowField';
@@ -18,7 +30,6 @@ import {
   PageEditorRevealTarget,
   usePageEditorPreviewScroll,
 } from '@/features/dashboard/page-editor/lib/pageEditorPreviewScroll';
-import { ShowcaseTemplatePicker } from '@/features/dashboard/page-editor/components/property-showcase/ShowcaseTemplatePicker';
 import {
   buildShowcaseSectionCopyOverride,
   buildShowcaseSectionCtaOverride,
@@ -29,16 +40,6 @@ import {
 } from '@/features/dashboard/page-editor/lib/showcaseSectionEditorCopy';
 import { resolveShowcaseSectionEditorFields } from '@/features/dashboard/page-editor/lib/showcaseSectionEditorFields';
 import { usePropertyShowcaseEditorStore } from '@/features/dashboard/page-editor/stores/propertyShowcaseEditorStore';
-import type { ResolvedPropertyDetail } from '@/features/guest/marketing/properties/types/publicProperty';
-import { resolveShowcaseEditorStyleFields } from '@/features/guest/marketing/showcase/lib/showcaseEditorStyleFields';
-import { showcasePropertyHasDevelopment } from '@/features/guest/marketing/showcase/lib/showcaseHeroEyebrow';
-import { useShowcaseMediaPalette } from '@/features/guest/marketing/showcase/hooks/useShowcaseMediaPalette';
-import { scrollShowcaseToTop } from '@/features/guest/marketing/showcase/lib/showcaseScroll';
-import {
-  SHOWCASE_SECTION_IDS,
-  type ShowcaseSectionId,
-  type ShowcaseTemplateKey,
-} from '@/features/guest/marketing/showcase/types/showcase';
 
 import { cn } from '@/lib/utils';
 

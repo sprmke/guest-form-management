@@ -1,6 +1,8 @@
 import { useEffect, useMemo } from 'react';
+import { useState } from 'react';
 
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+
 import { toast } from 'sonner';
 
 import { PreviewOverrideProvider } from '@/features/guest/lib/previewOverrideContext';
@@ -14,6 +16,9 @@ import {
   type ShowcaseTemplateKey,
 } from '@/features/guest/marketing/showcase/types/showcase';
 
+import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
+import { getSessionJwt } from '@/features/dashboard/org/lib/edgeClient';
+import { propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { PageEditorHeader } from '@/features/dashboard/page-editor/components/PageEditorHeader';
 import { PageEditorLeaveConfirmDialog } from '@/features/dashboard/page-editor/components/PageEditorLeaveConfirmDialog';
 import { PageEditorPreviewPane } from '@/features/dashboard/page-editor/components/PageEditorPreviewPane';
@@ -23,24 +28,19 @@ import {
   mergePageEditorAutoSaveStatuses,
   usePageEditorAutoSave,
 } from '@/features/dashboard/page-editor/hooks/usePageEditorAutoSave';
-import { resolvePageEditorPublicLinks } from '@/features/dashboard/page-editor/lib/pageEditorPublicLinks';
 import {
   usePublicPageConfig,
   useSavePublicPageConfig,
 } from '@/features/dashboard/page-editor/hooks/usePublicPageConfig';
+import { resolvePageEditorPublicLinks } from '@/features/dashboard/page-editor/lib/pageEditorPublicLinks';
 import { usePropertyShowcaseEditorStore } from '@/features/dashboard/page-editor/stores/propertyShowcaseEditorStore';
-import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
-import { getSessionJwt } from '@/features/dashboard/org/lib/edgeClient';
-import { propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { usePropertyEntitlements } from '@/features/dashboard/plans/hooks/usePropertyEntitlements';
 import { isFeatureEnabled } from '@/features/dashboard/plans/lib/planFeatures';
 
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
-import { Button } from '@/components/ui/button';
 import { SectionContentSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
-import { useState } from 'react';
 
 async function patchShowcaseTemplate(propertyId: string, templateKey: ShowcaseTemplateKey) {
   const jwt = await getSessionJwt();
@@ -70,9 +70,6 @@ export function PropertyShowcasePageEditor({
   const propertyId = usePropertyIdParam();
   const { open } = useUpgradeModal();
   const entitlements = usePropertyEntitlements();
-  const canShowcase = entitlements.data
-    ? isFeatureEnabled(entitlements.data, 'propertyShowcase')
-    : false;
   const canAutosave = entitlements.data
     ? isFeatureEnabled(entitlements.data, 'publicPagesAutosave')
     : false;
@@ -150,7 +147,7 @@ export function PropertyShowcasePageEditor({
   });
 
   const templateSave = usePageEditorAutoSave({
-    enabled: canShowcase && hydrated && templateLoaded,
+    enabled: canAutosave && hydrated && templateLoaded,
     contentFingerprint: hydrated ? templateKey : null,
     save: async () => {
       if (!propertyId) return;
@@ -193,22 +190,6 @@ export function PropertyShowcasePageEditor({
     }
     navigate(backHref);
   };
-
-  if (!canShowcase) {
-    return (
-      <AdminMobilePage title="Showcase" titleId="showcase-editor-heading">
-        <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 px-4">
-          <p className="text-muted-foreground text-sm">Available on Growth and above.</p>
-          <Button type="button" onClick={() => open('propertyShowcase')}>
-            View plans
-          </Button>
-          <Button type="button" variant="ghost" asChild>
-            <Link to={backHref}>Back</Link>
-          </Button>
-        </div>
-      </AdminMobilePage>
-    );
-  }
 
   if (configQuery.isLoading || previewQuery.isLoading || !hydrated || !previewQuery.data) {
     return (

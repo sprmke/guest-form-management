@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { PaletteSwatchDots } from '@/features/dashboard/page-editor/components/shared/PalettePreviewChip';
 import { buildShowcaseBrandPalette } from '@/features/guest/marketing/showcase/lib/showcaseBrandPalette';
+
+import { PaletteSwatchDots } from '@/features/dashboard/page-editor/components/shared/PalettePreviewChip';
+
 import { Input } from '@/components/ui/input';
 import { hexToHsv, hsvToHex, normalizePickerHex, type Hsv } from '@/lib/theme/hsvColor';
 import { cn } from '@/lib/utils';

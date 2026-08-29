@@ -1,5 +1,5 @@
-import { mapShowcaseData } from '@/features/guest/marketing/showcase/lib/mapShowcaseData';
 import type { ResolvedPropertyDetail } from '@/features/guest/marketing/properties/types/publicProperty';
+import { mapShowcaseData } from '@/features/guest/marketing/showcase/lib/mapShowcaseData';
 import type {
   PropertyShowcaseConfig,
   ShowcaseData,

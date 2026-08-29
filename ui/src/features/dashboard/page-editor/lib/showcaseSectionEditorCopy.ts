@@ -1,9 +1,9 @@
+import type { ResolvedPropertyDetail } from '@/features/guest/marketing/properties/types/publicProperty';
 import { mapShowcaseData } from '@/features/guest/marketing/showcase/lib/mapShowcaseData';
 import {
   CTA_TARGET_CUSTOM_DRAFT,
   CTA_TARGET_FORM,
 } from '@/features/guest/marketing/showcase/lib/showcaseSectionLayout';
-import type { ResolvedPropertyDetail } from '@/features/guest/marketing/properties/types/publicProperty';
 import type {
   PropertyShowcaseConfig,
   PropertyShowcaseSectionConfig,
@@ -43,7 +43,7 @@ export function resolveShowcaseSectionEditorBaselines(
 
   return new Map(
     data.sections.map((section) => [
-      section.id,
+      section.id as ShowcaseSectionId,
       {
         heading: resolveHeroHeadingForEditor(section.heading, data.propertyName),
         subheading: section.subheading,
