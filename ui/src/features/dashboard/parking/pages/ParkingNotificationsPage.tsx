@@ -122,6 +122,7 @@ export function ParkingNotificationsPage() {
             <AdminSectionGroupHeading
               title="Telegram notifications"
               count={MODULE_SECTIONS.length}
+              badge={telegramNotificationsBadge}
               action={<TelegramHelpDialog defaultTab="bot-token" triggerLabel="Get Help" />}
             />
 
@@ -132,7 +133,6 @@ export function ParkingNotificationsPage() {
               title="Chat"
               icon={MessageCircle}
               description={MODULE_DESCRIPTIONS.chat}
-              badge={telegramNotificationsBadge}
             >
               <TelegramChatSettingsCard embedded />
             </AdminSection>
@@ -142,7 +142,6 @@ export function ParkingNotificationsPage() {
               title="Parking"
               icon={Car}
               description={MODULE_DESCRIPTIONS.parking}
-              badge={telegramNotificationsBadge}
             >
               <TelegramParkingSettingsCard />
             </AdminSection>
@@ -152,7 +151,6 @@ export function ParkingNotificationsPage() {
               title="Finance"
               icon={DollarSign}
               description={MODULE_DESCRIPTIONS.finance}
-              badge={telegramNotificationsBadge}
             >
               <TelegramFinanceSettingsCard embedded />
             </AdminSection>

@@ -28,9 +28,9 @@ import { ParkingStaySummary } from '@/components/parking/ParkingStaySummary';
 import { ParkingBookingDetailPageSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { parkingDashboardPageTitle, usePageTitle } from '@/lib/pageTitle';
 import { PARKING_HOST_STATUS_NOTE } from '@/lib/parking/parkingFlowCopy';
 import { parkingFlowFadeUp, parkingFlowTransition } from '@/lib/parking/parkingFlowMotion';
-import { parkingDashboardPageTitle, usePageTitle } from '@/lib/pageTitle';
 import { cn } from '@/lib/utils';
 
 const NEXT_STATUS: Record<string, { label: string; to: string } | undefined> = {

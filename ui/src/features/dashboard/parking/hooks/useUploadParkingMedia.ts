@@ -6,6 +6,7 @@ import {
   useParkingIdParam,
 } from '@/features/dashboard/org/lib/adminParkingScope';
 
+import { prepareUpload } from '@/lib/media/prepareUpload';
 import { supabase } from '@/lib/supabase/client';
 
 type ParkingCoverResult = {
@@ -25,7 +26,14 @@ export function useUploadParkingMedia() {
   const parkingId = useParkingIdParam();
 
   const upload = useMutation({
-    mutationFn: async (file: File): Promise<ParkingCoverResult> => {
+    mutationFn: async (rawFile: File): Promise<ParkingCoverResult> => {
+      const prepared = await prepareUpload(rawFile, {
+        imagePreset: 'PHOTO_MASTER',
+        surface: 'parking-media',
+      });
+      if (prepared.error) throw new Error(prepared.error);
+      const file = prepared.file;
+
       const jwt = await getAdminJwt();
       const body = new FormData();
       body.append('file', file);
