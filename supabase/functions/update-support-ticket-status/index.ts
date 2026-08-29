@@ -32,7 +32,10 @@ serveSuperAdmin('update-support-ticket-status', async (req) => {
   }
 
   if (body.priority !== undefined) {
-    if (body.priority !== null && (typeof body.priority !== 'string' || !PRIORITIES.includes(body.priority))) {
+    if (
+      body.priority !== null &&
+      (typeof body.priority !== 'string' || !PRIORITIES.includes(body.priority))
+    ) {
       return jsonError(req, 'priority must be low, medium, high, or null');
     }
     updates.priority = body.priority;

@@ -5,7 +5,7 @@
  */
 
 import { createServiceClient } from '../_shared/orgAuth.ts';
-import { jsonSuccess, requireHttpMethod } from '../_shared/httpResponse.ts';
+import { jsonSuccess, parsePageLimit, requireHttpMethod } from '../_shared/httpResponse.ts';
 import { postgrestOrIlikeValue } from '../_shared/publicSearch.ts';
 import { serveSuperAdmin } from '../_shared/serveEdge.ts';
 
@@ -17,8 +17,7 @@ serveSuperAdmin('list-support-tickets-admin', async (req) => {
   const category = p.get('category');
   const status = p.get('status');
   const orgId = p.get('org_id');
-  const page = Math.max(1, parseInt(p.get('page') ?? '1', 10));
-  const limit = Math.min(500, Math.max(1, parseInt(p.get('limit') ?? '31', 10)));
+  const { page, limit } = parsePageLimit(p, { maxLimit: 500 });
 
   const sb = createServiceClient();
   let query = sb

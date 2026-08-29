@@ -8,6 +8,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { jsonError, jsonSuccess } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 import { resolveSupportTicketScope } from '../_shared/supportTicketScope.ts';
+import { assertWithinUploadLimit } from '../_shared/uploadLimits.ts';
 
 const BUCKET = 'support-ticket-attachments';
 const ALLOWED_MIME = new Set([
@@ -17,7 +18,6 @@ const ALLOWED_MIME = new Set([
   'video/mp4',
   'video/quicktime',
 ]);
-const MAX_BYTES = 20 * 1024 * 1024;
 
 serveAuthenticated('upload-support-ticket-attachment', async (req) => {
   if (req.method !== 'POST') {
@@ -34,9 +34,7 @@ serveAuthenticated('upload-support-ticket-attachment', async (req) => {
   if (!ALLOWED_MIME.has(mime)) {
     return jsonError(req, 'File must be JPEG, PNG, WebP, MP4, or MOV', 400);
   }
-  if (file.size > MAX_BYTES) {
-    return jsonError(req, 'File must be 20 MB or smaller', 400);
-  }
+  assertWithinUploadLimit(file, mime.startsWith('video/') ? 'video' : 'image');
 
   const scope = await resolveSupportTicketScope(req, {
     orgSlug: formData.get('orgSlug') ? String(formData.get('orgSlug')) : null,
