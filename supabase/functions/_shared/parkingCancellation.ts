@@ -5,6 +5,10 @@
  */
 
 import { createServiceClient } from './orgAuth.ts';
+import {
+  assertParkingGuestOwnership,
+  ParkingGuestOwnershipError,
+} from './parkingGuestOwnership.ts';
 import { releaseParkingClaim } from './parkingPaymentOrchestrator.ts';
 
 export class ParkingCancellationError extends Error {
@@ -17,19 +21,25 @@ export class ParkingCancellationError extends Error {
 
 export async function cancelParkingBooking(
   bookingId: string,
-  userId: string
+  userId: string,
+  userEmail?: string | null
 ): Promise<{ cancelled: boolean }> {
   const supabase = createServiceClient();
 
   const { data: booking } = await supabase
     .from('guest_submissions')
-    .select('id, status, guest_auth_user_id, parking_broadcast_batch_number')
+    .select('id, status, guest_auth_user_id, parking_broadcast_batch_number, guest_email')
     .eq('id', bookingId)
     .maybeSingle();
 
   if (!booking) throw new ParkingCancellationError('Booking not found', 404);
-  if (String(booking.guest_auth_user_id ?? '') !== userId) {
-    throw new ParkingCancellationError('Not your booking', 403);
+  try {
+    await assertParkingGuestOwnership(supabase, booking, { id: userId, email: userEmail });
+  } catch (err) {
+    if (err instanceof ParkingGuestOwnershipError) {
+      throw new ParkingCancellationError(err.message, err.status);
+    }
+    throw err;
   }
 
   const nowIso = new Date().toISOString();

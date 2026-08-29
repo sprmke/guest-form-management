@@ -14,6 +14,7 @@ import {
   normalizeBookingDateToYmd,
 } from './calendarAvailabilityManila.ts';
 import { createServiceClient } from './orgAuth.ts';
+import { resolveGuestParkingCtaAbsoluteUrl } from './ownerDefaultParking.ts';
 import { isParkingLinkableStatus } from './parkingPropertyLink.ts';
 import { renderPropertyTemplateSendEmail } from './propertyTemplateEmail.ts';
 import { resolveAppSettings } from './appSettings.ts';
@@ -90,7 +91,10 @@ async function sendReminderEmail(row: ReminderCandidateRow): Promise<void> {
   const guestEmail = String(row.guest_email ?? '').trim();
   if (!guestEmail) throw new Error('Booking has no guest email');
 
-  const parkingUrl = `${settings.publicGuestAppOrigin.replace(/\/+$/, '')}/parkings`;
+  const parkingUrl = await resolveGuestParkingCtaAbsoluteUrl({
+    propertyBookingId: row.id,
+    publicGuestAppOrigin: settings.publicGuestAppOrigin,
+  });
 
   const html = await renderPropertyTemplateSendEmail({
     propertyId: row.property_id,

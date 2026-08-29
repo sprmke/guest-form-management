@@ -13,6 +13,10 @@ import {
   resolveParkingEmailBranding,
   sendResendEmail,
 } from './parkingBroadcastEmail.ts';
+import {
+  assertParkingGuestOwnership,
+  ParkingGuestOwnershipError,
+} from './parkingGuestOwnership.ts';
 import { formatEmailDateRange } from './propertyEmailBranding.ts';
 import { renderPropertyTemplateSendEmail } from './propertyTemplateEmail.ts';
 import { escapeHtml } from './renderEmailHtml.ts';
@@ -122,7 +126,8 @@ const POST_PAYMENT_STATUSES = ['PENDING_REVIEW', 'READY_FOR_CHECKIN', 'COMPLETED
 /** Guest-triggered resend — mirrors the ownership-check pattern in `parkingCancellation.ts`. */
 export async function requestParkingEndorsementResend(
   bookingId: string,
-  userId: string
+  userId: string,
+  userEmail?: string | null
 ): Promise<{ sent: boolean }> {
   const supabase = createServiceClient();
 
@@ -135,8 +140,13 @@ export async function requestParkingEndorsementResend(
     .maybeSingle();
 
   if (!booking) throw new ParkingEndorsementRequestError('Booking not found', 404);
-  if (String(booking.guest_auth_user_id ?? '') !== userId) {
-    throw new ParkingEndorsementRequestError('Not your booking', 403);
+  try {
+    await assertParkingGuestOwnership(supabase, booking, { id: userId, email: userEmail });
+  } catch (err) {
+    if (err instanceof ParkingGuestOwnershipError) {
+      throw new ParkingEndorsementRequestError(err.message, err.status);
+    }
+    throw err;
   }
   if (!POST_PAYMENT_STATUSES.includes(String(booking.status))) {
     throw new ParkingEndorsementRequestError('Payment has not been confirmed yet', 409);

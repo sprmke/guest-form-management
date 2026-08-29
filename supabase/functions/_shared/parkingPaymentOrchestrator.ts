@@ -16,7 +16,12 @@ import { resolveParkingPlatformSettings } from './parkingPlatformSettings.ts';
 import type { ParkingBookingChannel } from './parkingDirectLink.ts';
 import { sendParkingConfirmedEmail } from './parkingBroadcastEmail.ts';
 import { sendParkingEndorsementEmail } from './parkingEndorsementEmail.ts';
+import {
+  assertParkingGuestOwnership,
+  ParkingGuestOwnershipError,
+} from './parkingGuestOwnership.ts';
 import { parkingAutomationEnabled } from './parkingAutomationToggles.ts';
+import { isSameOrgOwnerOwnedPin, readComplimentaryOwnerParking } from './ownerDefaultParking.ts';
 import { isBookingStatus, type BookingStatus } from './statusMachine.ts';
 import { extractWebhookInner, readMetadataString } from './paymongoWebhookMetadata.ts';
 import { WorkflowOrchestrator } from './workflowOrchestrator.ts';
@@ -135,21 +140,27 @@ export async function computeParkingPaymentAmounts(
  */
 export async function createParkingPaymentTransaction(
   bookingId: string,
-  userId: string
+  userId: string,
+  userEmail?: string | null
 ): Promise<{ checkoutUrl: string }> {
   const supabase = createServiceClient();
 
   const { data: booking } = await supabase
     .from('guest_submissions')
     .select(
-      'id, status, guest_auth_user_id, parking_id, parking_check_in_date, parking_check_out_date, check_in_date, check_out_date, parking_booking_channel'
+      'id, status, guest_auth_user_id, guest_email, parking_id, parking_check_in_date, parking_check_out_date, check_in_date, check_out_date, parking_booking_channel'
     )
     .eq('id', bookingId)
     .maybeSingle();
 
   if (!booking) throw new ParkingPaymentError('Booking not found', 404);
-  if (String(booking.guest_auth_user_id ?? '') !== userId) {
-    throw new ParkingPaymentError('Not your booking', 403);
+  try {
+    await assertParkingGuestOwnership(supabase, booking, { id: userId, email: userEmail });
+  } catch (err) {
+    if (err instanceof ParkingGuestOwnershipError) {
+      throw new ParkingPaymentError(err.message, err.status);
+    }
+    throw err;
   }
   if (booking.status !== 'PENDING_PAYMENT') {
     throw new ParkingPaymentError('This request is not awaiting payment', 409);
@@ -230,6 +241,119 @@ export async function createParkingPaymentTransaction(
       .eq('id', inserted.id);
     throw new ParkingPaymentError('Failed to create payment link', 500);
   }
+}
+
+/**
+ * Same-org owner-owned pin with property `complimentaryOwnerParking`: insert a ₱0 paid
+ * ledger row and run the normal fulfill path (confirm booking, endorsement, property gate).
+ * No PayMongo. Idempotent if already past PENDING_PAYMENT.
+ */
+export async function fulfillComplimentaryOwnerParking(bookingId: string): Promise<void> {
+  const supabase = createServiceClient();
+  const { data: booking } = await supabase
+    .from('guest_submissions')
+    .select(
+      'id, status, parking_id, linked_property_booking_id, parking_booking_channel, parking_check_in_date, parking_check_out_date, check_in_date, check_out_date'
+    )
+    .eq('id', bookingId)
+    .maybeSingle();
+
+  if (!booking) throw new ParkingPaymentError('Booking not found', 404);
+  if (booking.status !== 'PENDING_PAYMENT') return;
+
+  const parkingId = String(booking.parking_id ?? '');
+  const linkedId = String(booking.linked_property_booking_id ?? '').trim();
+  if (!parkingId || !linkedId) {
+    throw new ParkingPaymentError(
+      'Complimentary parking requires a claimed same-org linked stay',
+      409
+    );
+  }
+
+  if (
+    !(await isSameOrgOwnerOwnedPin({
+      pinnedParkingId: parkingId,
+      linkedPropertyBookingId: linkedId,
+    }))
+  ) {
+    throw new ParkingPaymentError('Complimentary parking is only for own-org stays', 403);
+  }
+
+  const { data: propertyBooking } = await supabase
+    .from('guest_submissions')
+    .select('property_id')
+    .eq('id', linkedId)
+    .maybeSingle();
+  if (!propertyBooking?.property_id) {
+    throw new ParkingPaymentError('Linked property booking not found', 404);
+  }
+  const { data: property } = await supabase
+    .from('properties')
+    .select('settings')
+    .eq('id', propertyBooking.property_id)
+    .maybeSingle();
+  if (!readComplimentaryOwnerParking(property?.settings)) {
+    throw new ParkingPaymentError('Complimentary parking is not enabled for this property', 409);
+  }
+
+  const { data: parking } = await supabase
+    .from('parkings')
+    .select('organization_id')
+    .eq('id', parkingId)
+    .maybeSingle();
+  if (!parking?.organization_id) throw new ParkingPaymentError('Parking slot not found', 404);
+
+  const bookingChannel =
+    (booking.parking_booking_channel as 'standard' | 'direct_link' | null) ?? 'standard';
+  const checkInDate = String(booking.parking_check_in_date ?? booking.check_in_date ?? '');
+  const checkOutDate = String(booking.parking_check_out_date ?? booking.check_out_date ?? '');
+  const amounts = await computeParkingPaymentAmounts(
+    parkingId,
+    checkInDate,
+    checkOutDate,
+    bookingChannel
+  );
+
+  const { data: existingPaid } = await supabase
+    .from('parking_payment_transactions')
+    .select('id')
+    .eq('booking_id', bookingId)
+    .eq('status', 'paid')
+    .maybeSingle();
+  if (existingPaid) {
+    await fulfillParkingPayment({
+      transactionId: String(existingPaid.id),
+      paymentMethodType: 'complimentary',
+    });
+    return;
+  }
+
+  const { data: inserted, error: insertError } = await supabase
+    .from('parking_payment_transactions')
+    .insert({
+      booking_id: bookingId,
+      parking_id: parkingId,
+      organization_id: parking.organization_id,
+      guest_charge_total: 0,
+      host_gross_total: 0,
+      commission_pct: amounts.commissionPct,
+      host_net_total: 0,
+      nights: amounts.nights,
+      booking_channel: bookingChannel,
+      provider: 'complimentary',
+      status: 'pending',
+    })
+    .select('id')
+    .single();
+  if (insertError || !inserted) {
+    throw new ParkingPaymentError('Failed to record complimentary payment', 500);
+  }
+
+  await fulfillParkingPayment({
+    transactionId: String(inserted.id),
+    paymentMethodType: 'complimentary',
+    providerReference: `complimentary:${bookingId}`,
+  });
 }
 
 type ParkingPaymentTransactionRow = {
