@@ -1,10 +1,11 @@
 import { buildShowcaseBrandPalette } from '@/features/guest/marketing/showcase/lib/showcaseBrandPalette';
+import type { ShowcaseMediaPalette } from '@/features/guest/marketing/showcase/lib/showcaseMediaPalette';
 import {
   getShowcasePresetPalette,
   isShowcasePresetPaletteId,
 } from '@/features/guest/marketing/showcase/lib/showcasePresetPalettes';
-import type { ShowcaseMediaPalette } from '@/features/guest/marketing/showcase/lib/showcaseMediaPalette';
 import type { ShowcasePaletteMode } from '@/features/guest/marketing/showcase/types/showcase';
+
 import { DEFAULT_ORG_BRAND_COLOR, resolveOrgBrandHex } from '@/lib/theme/brandColor';
 
 const MEDIA_PLACEHOLDER_SWATCH = [

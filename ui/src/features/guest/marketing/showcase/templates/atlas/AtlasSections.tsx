@@ -48,6 +48,7 @@ import {
   TiltCard,
   WordReveal,
 } from '@/features/guest/marketing/showcase/templates/shared/showcaseKinetic';
+import { StayGuideTemplatedSection } from '@/features/guest/marketing/showcase/templates/shared/StayGuideSections';
 import type {
   ShowcaseData,
   ShowcaseResolvedSection,
@@ -539,6 +540,19 @@ export function AtlasSections({ data }: { data: ShowcaseData }) {
       {rest.map((sec, index) => {
         const label = sec.heading;
         const alt = index % 2 === 1;
+
+        if (data.pageKind === 'stay-guide' && sec.kind !== 'gallery') {
+          return (
+            <StayGuideTemplatedSection
+              key={sec.id}
+              data={data}
+              section={sec}
+              alt={alt}
+              headingClassName={DISPLAY}
+              containerClassName={CONTAINER}
+            />
+          );
+        }
 
         if (sec.id === 'gallery') {
           return <AtlasGallery key={sec.id} data={data} section={sec} index={index} />;

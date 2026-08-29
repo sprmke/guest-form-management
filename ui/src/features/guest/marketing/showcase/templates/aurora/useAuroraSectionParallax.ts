@@ -1,8 +1,9 @@
 import { type RefObject } from 'react';
+
 import { useTransform } from 'framer-motion';
 
-import type { PropertyShowcaseConfig } from '@/features/guest/marketing/showcase/types/showcase';
 import { useShowcaseScrollProgress } from '@/features/guest/marketing/showcase/templates/aurora/useShowcaseScrollProgress';
+import type { PropertyShowcaseConfig } from '@/features/guest/marketing/showcase/types/showcase';
 
 type MotionIntensity = PropertyShowcaseConfig['motion']['intensity'];
 export type AuroraSectionParallaxLayer = 'intro' | 'content' | 'accent';

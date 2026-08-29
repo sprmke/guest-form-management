@@ -103,11 +103,36 @@ export type ShowcaseTestimonial = {
   rating?: number | null;
 };
 
-export type ShowcaseResolvedSection = PropertyShowcaseSectionConfig & {
+/**
+ * Section renderer discriminator. Showcase templates historically switched on
+ * `section.id`; Stay Guide reuses the same 6 template shells with its own section
+ * kinds, so templates now switch on `section.kind` (defaults to `id` for Showcase).
+ */
+export type TemplateSectionKind =
+  ShowcaseSectionId | 'passCard' | 'checkInDocuments' | 'quickNav' | 'chapter';
+
+/** One rich-text sub-block inside a Stay Guide chapter (e.g. house rules, parking). */
+export type StayGuideChapterBlock = {
+  key: string;
+  heading: string;
+  html: string;
+  imageUrl: string | null;
+};
+
+export type ShowcaseResolvedSection = Omit<PropertyShowcaseSectionConfig, 'id'> & {
+  /** Anchor id — a Showcase section id, or a Stay Guide section id (e.g. `getting-in`). */
+  id: string;
+  kind: TemplateSectionKind;
   heading: string;
   subheading?: string;
   body?: string;
+  /** Sanitized rich HTML body — Stay Guide chapters (single-block). */
+  bodyHtml?: string;
+  /** Multi-block rich content — Stay Guide chapters with >1 template section. */
+  blocks?: StayGuideChapterBlock[];
   images: string[];
+  /** Per-section accent — Stay Guide chapters. */
+  accentColor?: string | null;
   /** True when copy/media was filled with preview placeholders. */
   usesPreviewMock?: boolean;
 };
@@ -136,7 +161,40 @@ export type ShowcaseHostInfo = {
   isSuperhost: boolean;
 };
 
+/** Booking-scoped facts the Stay Guide Stay Pass + hero surface. */
+export type StayGuidePassInfo = {
+  guestName: string;
+  checkInDate: string;
+  checkOutDate: string;
+  checkInTime: string;
+  checkOutTime: string;
+  needParking: boolean;
+  hasPets: boolean;
+  towerAndUnit: string | null;
+  validUntil: string;
+  todayManila: string;
+};
+
+export type StayGuideDocItem = {
+  id: string;
+  label: string;
+  kind: 'gaf' | 'pet' | 'parking' | 'other';
+  status: 'ready' | 'pending';
+  url: string | null;
+  isPreviewSample?: boolean;
+};
+
+/** Extra payload present only when `pageKind === 'stay-guide'`. */
+export type ShowcaseStayGuideExtras = {
+  pass: StayGuidePassInfo;
+  checkInDocuments: StayGuideDocItem[];
+};
+
 export type ShowcaseData = {
+  /** Which product renders through the template engine. Defaults to `showcase`. */
+  pageKind: 'showcase' | 'stay-guide';
+  /** Present only when `pageKind === 'stay-guide'`. */
+  stayGuide?: ShowcaseStayGuideExtras;
   templateKey: ShowcaseTemplateKey;
   published: boolean;
   propertyId: string;

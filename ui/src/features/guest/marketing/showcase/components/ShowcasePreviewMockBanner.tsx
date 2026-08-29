@@ -1,6 +1,7 @@
+import { SHOWCASE_PREVIEW_MOCK_MESSAGE } from '@/features/guest/marketing/showcase/lib/showcaseSectionMock';
+
 import { cn } from '@/lib/utils';
 
-import { SHOWCASE_PREVIEW_MOCK_MESSAGE } from '@/features/guest/marketing/showcase/lib/showcaseSectionMock';
 
 type Props = {
   className?: string;

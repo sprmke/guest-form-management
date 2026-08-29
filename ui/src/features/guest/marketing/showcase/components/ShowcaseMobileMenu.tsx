@@ -1,5 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useEffect, useLayoutEffect, useState, type CSSProperties } from 'react';
 
 import {
   AnimatePresence,
@@ -9,25 +8,27 @@ import {
   type Variants,
 } from 'framer-motion';
 import { X } from 'lucide-react';
+import { createPortal, flushSync } from 'react-dom';
 
-import { useSmoothScroll } from '@/features/guest/marketing/showcase/components/SmoothScrollProvider';
-import { useShowcaseTheme } from '@/features/guest/marketing/showcase/components/ShowcaseThemeProvider';
 import { usePreviewForcesMobile } from '@/features/guest/lib/previewViewportContext';
+import { useShowcaseTheme } from '@/features/guest/marketing/showcase/components/ShowcaseThemeProvider';
+import { useSmoothScroll } from '@/features/guest/marketing/showcase/components/SmoothScrollProvider';
+import {
+  SHOWCASE_MOBILE_MENU,
+  type ShowcaseMobileMenuMotion,
+} from '@/features/guest/marketing/showcase/lib/showcaseMobileMenuConfig';
 import {
   readShowcaseScopeTheme,
   resolveShowcaseScrollRoot,
   type ShowcaseScopeThemeSnapshot,
 } from '@/features/guest/marketing/showcase/lib/showcaseScroll';
-import {
-  SHOWCASE_MOBILE_MENU,
-  type ShowcaseMobileMenuMotion,
-} from '@/features/guest/marketing/showcase/lib/showcaseMobileMenuConfig';
 import type { ShowcaseData } from '@/features/guest/marketing/showcase/types/showcase';
 
 import { cn } from '@/lib/utils';
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 const MENU_Z = 200;
+const SCROLL_LOCK_ATTR = 'data-showcase-scroll-lock';
 
 type Props = {
   open: boolean;
@@ -125,23 +126,38 @@ const itemVariants: Variants = {
   },
 };
 
-/** Portal target = visible scrollport so bottom sheets anchor to the viewport, not page bottom. */
-function useMenuMountNode(
+function lockScrollRoot(root: HTMLElement | null) {
+  if (!root) return () => undefined;
+  root.setAttribute(SCROLL_LOCK_ATTR, '');
+  return () => {
+    root.removeAttribute(SCROLL_LOCK_ATTR);
+  };
+}
+
+/**
+ * Page Editor / embed: pin the overlay to the *visible* preview frame with
+ * `position: fixed` + getBoundingClientRect. `absolute inset-0` inside the
+ * scrollport is anchored to the content top — after scrolling to a section the
+ * menu paints off-screen while the sticky header stays faded.
+ */
+function useContainedOverlayStyle(
+  _open: boolean,
   containedChrome: boolean,
   embed: boolean
-): { node: HTMLElement | null; portaled: boolean; needsPortal: boolean } {
-  const needsPortal = containedChrome || embed;
-  const [node, setNode] = useState<HTMLElement | null>(null);
+): { style: CSSProperties | null; scrollRoot: HTMLElement | null } {
+  const needsFrame = containedChrome || embed;
+  const [scrollRoot, setScrollRoot] = useState<HTMLElement | null>(null);
+  const [frame, setFrame] = useState<CSSProperties | null>(null);
 
   useLayoutEffect(() => {
-    if (!needsPortal) {
-      setNode(null);
+    if (!needsFrame) {
+      setScrollRoot(null);
+      setFrame(null);
       return;
     }
 
     let cancelled = false;
     let rafId = 0;
-    let cleanedPosition: (() => void) | null = null;
 
     const bind = () => {
       if (cancelled) return;
@@ -150,44 +166,68 @@ function useMenuMountNode(
         rafId = requestAnimationFrame(bind);
         return;
       }
-
-      const prevPosition = root.style.position;
-      if (getComputedStyle(root).position === 'static') {
-        root.style.position = 'relative';
-      }
-      cleanedPosition = () => {
-        root.style.position = prevPosition;
-      };
-      setNode(root);
+      setScrollRoot(root);
     };
 
     bind();
-
     return () => {
       cancelled = true;
       cancelAnimationFrame(rafId);
-      cleanedPosition?.();
-      setNode(null);
     };
-  }, [containedChrome, embed, needsPortal]);
+  }, [needsFrame, containedChrome, embed]);
 
-  return { node, portaled: Boolean(node), needsPortal };
+  /**
+   * Keep the frame rect through close so AnimatePresence can finish panel
+   * exit inside the clipped preview bounds (clearing the frame on `open=false`
+   * unmounted the clip root and let the slide escape onto the dashboard).
+   */
+  useLayoutEffect(() => {
+    if (!needsFrame || !scrollRoot) {
+      setFrame(null);
+      return;
+    }
+
+    const sync = () => {
+      const rect = scrollRoot.getBoundingClientRect();
+      setFrame({
+        position: 'fixed',
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+        zIndex: MENU_Z,
+        overflow: 'hidden',
+      });
+    };
+
+    sync();
+    window.addEventListener('resize', sync);
+    window.visualViewport?.addEventListener('resize', sync);
+    window.visualViewport?.addEventListener('scroll', sync);
+
+    return () => {
+      window.removeEventListener('resize', sync);
+      window.visualViewport?.removeEventListener('resize', sync);
+      window.visualViewport?.removeEventListener('scroll', sync);
+    };
+  }, [needsFrame, scrollRoot]);
+
+  return { style: needsFrame ? frame : null, scrollRoot };
 }
 
-/** When the menu portals outside `.showcase-scope`, re-apply palette CSS vars. */
 function usePortaledShowcaseTheme(
   open: boolean,
-  portaled: boolean
+  enabled: boolean
 ): ShowcaseScopeThemeSnapshot | null {
   const [theme, setTheme] = useState<ShowcaseScopeThemeSnapshot | null>(null);
 
   useLayoutEffect(() => {
-    if (!open || !portaled) {
+    if (!open || !enabled) {
       setTheme(null);
       return;
     }
     setTheme(readShowcaseScopeTheme());
-  }, [open, portaled]);
+  }, [open, enabled]);
 
   return theme;
 }
@@ -206,11 +246,14 @@ export function ShowcaseMobileMenu({
   const config = SHOWCASE_MOBILE_MENU[variant];
   const reduced = data.reducedMotion || data.embed;
   const motionProps = panelMotion(config.motion, reduced);
-  const { node: mountNode, portaled, needsPortal } = useMenuMountNode(containedChrome, data.embed);
-  const portaledTheme = usePortaledShowcaseTheme(open, portaled);
-  /** Wait for scrollport portal before painting — otherwise absolute inset covers the
-   * full page height and the panel sits off-screen after scrolling to a section. */
-  const canShow = open && (!needsPortal || portaled);
+  const needsContainedOverlay = containedChrome || data.embed;
+  const { style: frameStyle, scrollRoot } = useContainedOverlayStyle(
+    open,
+    containedChrome,
+    data.embed
+  );
+  const portaledTheme = usePortaledShowcaseTheme(open, needsContainedOverlay);
+  const canShow = open && (!needsContainedOverlay || frameStyle != null);
 
   useEffect(() => {
     if (!open) return;
@@ -221,79 +264,55 @@ export function ShowcaseMobileMenu({
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
-  /**
-   * Lock vertical scroll on the real scrollport while the menu is open.
-   * Important for Page Editor: do NOT set the `overflow` shorthand — that
-   * overrides Tailwind `overflow-y-auto` / `overflow-x-clip` and restoring
-   * `style.overflow = ''` can leave the preview frame unscrollable. Also prefer
-   * the known portal mount node so we don't re-resolve while overflow is
-   * already `hidden` (ancestor walk would skip the preview frame).
-   */
   useEffect(() => {
     if (!open) return;
-    // Wait for the portal scrollport — resolving while another lock is active
-    // can pick a dashboard ancestor instead of the preview frame.
-    if (needsPortal && !mountNode) return;
 
-    const scrollRoot =
-      (needsPortal ? mountNode : null) ??
-      resolveShowcaseScrollRoot({
-        embed: data.embed,
-        containedChrome,
-      });
-
-    if (scrollRoot) {
-      scrollRoot.style.removeProperty('overflow');
-      scrollRoot.style.overflowY = 'hidden';
-      return () => {
-        scrollRoot.style.removeProperty('overflow');
-        scrollRoot.style.removeProperty('overflow-y');
-      };
+    if (needsContainedOverlay) {
+      if (!scrollRoot) return;
+      return lockScrollRoot(scrollRoot);
     }
 
-    if (!containedChrome && !data.embed) {
-      const prev = document.body.style.overflow;
-      document.body.style.overflow = 'hidden';
-      return () => {
-        if (prev) document.body.style.overflow = prev;
-        else document.body.style.removeProperty('overflow');
-      };
-    }
-
-    return undefined;
-  }, [open, needsPortal, mountNode, containedChrome, data.embed]);
+    return lockScrollRoot(document.body);
+  }, [open, needsContainedOverlay, scrollRoot]);
 
   function goTo(id: string) {
-    onClose();
-    // Let the scroll-lock effect cleanup restore overflow-y before scrolling
-    // (otherwise scrollIntoView is a no-op on a still-locked preview frame).
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        scrollToAnchor(id);
-      });
+    flushSync(() => {
+      onClose();
     });
+    scrollToAnchor(id);
   }
 
-  const positionClass = cn(
-    portaled || needsPortal ? 'absolute inset-0' : 'fixed inset-0',
+  const frameClassName = cn(
+    // Clip root: panel slide/curtain % translates must stay inside the preview.
+    'overflow-hidden',
+    needsContainedOverlay ? null : 'fixed inset-0',
     !forceMobile && '@lg:hidden'
   );
+
+  const frameMotionStyle: CSSProperties = {
+    zIndex: MENU_Z,
+    ...(needsContainedOverlay && frameStyle ? frameStyle : null),
+    ...(needsContainedOverlay && portaledTheme ? portaledTheme.style : null),
+    overflow: 'hidden',
+  };
 
   const overlay = (
     <AnimatePresence>
       {canShow ? (
-        <div
-          className={positionClass}
-          style={{
-            zIndex: MENU_Z,
-            ...(portaled && portaledTheme ? portaledTheme.style : null),
-          }}
+        <motion.div
+          key="showcase-mobile-menu"
+          className={frameClassName}
+          style={frameMotionStyle}
           data-showcase-surface={
-            portaled && portaledTheme?.surface ? portaledTheme.surface : undefined
+            needsContainedOverlay && portaledTheme?.surface ? portaledTheme.surface : undefined
           }
           role="dialog"
           aria-modal="true"
           aria-label="Page sections"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: reduced ? 0.1 : 0.2, ease: EASE }}
         >
           <motion.button
             type="button"
@@ -372,17 +391,15 @@ export function ShowcaseMobileMenu({
               })}
             </motion.nav>
           </motion.div>
-        </div>
+        </motion.div>
       ) : null}
     </AnimatePresence>
   );
 
-  if (needsPortal && mountNode) {
-    return createPortal(overlay, mountNode);
-  }
-
-  if (needsPortal) {
-    return null;
+  // Fixed-to-frame overlay must live on document.body so it is not clipped /
+  // scrolled with the preview scrollport content.
+  if (needsContainedOverlay) {
+    return createPortal(overlay, document.body);
   }
 
   return overlay;

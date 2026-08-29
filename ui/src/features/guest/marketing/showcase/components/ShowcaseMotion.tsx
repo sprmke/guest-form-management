@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState, useContext, type ReactNode } from 'react';
+
 import { motion } from 'framer-motion';
 
-import { cn } from '@/lib/utils';
 import { ShowcaseStyleContext } from '@/features/guest/marketing/showcase/components/ShowcaseStyleProvider';
 import { useShowcaseTheme } from '@/features/guest/marketing/showcase/components/ShowcaseThemeProvider';
 import { monolithStatValueClass } from '@/features/guest/marketing/showcase/templates/monolith/monolithTypography';
+
+import { cn } from '@/lib/utils';
 
 export function ShowcaseReveal({
   children,

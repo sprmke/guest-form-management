@@ -25,6 +25,7 @@ export const PUBLIC_SHOWCASE_QUERY_KEY = ['public-showcase'] as const;
 
 type ShowcaseApiPayload = {
   published: boolean;
+  planAccessDenied?: boolean;
   templateKey?: string;
   config?: unknown;
   property?: PublicPropertyDetailDto;
@@ -38,6 +39,9 @@ type ShowcaseApiPayload = {
     tiktokUrl?: string | null;
   };
 };
+
+export type FetchedShowcase =
+  { status: 'ok'; data: ShowcaseData } | { status: 'planAccessDenied' } | { status: 'unavailable' };
 
 function resolveMockProperty(slug: string): ResolvedPropertyDetail | null {
   const detail = getPropertyDetail(slug);
@@ -66,7 +70,7 @@ function isPreviewMode(): boolean {
   return params.get('embed') === '1' || params.get('preview') === '1';
 }
 
-async function fetchShowcase(slug: string, preview: boolean): Promise<ShowcaseData | null> {
+async function fetchShowcase(slug: string, preview: boolean): Promise<FetchedShowcase> {
   const params = new URLSearchParams({ property: slug });
   if (preview) params.set('preview', '1');
   const res = await fetch(`${FUNCTIONS_URL}/get-public-showcase?${params}`, {
@@ -77,7 +81,8 @@ async function fetchShowcase(slug: string, preview: boolean): Promise<ShowcaseDa
   });
 
   if (res.status === 404) {
-    return mockShowcase(slug);
+    const mock = mockShowcase(slug);
+    return mock ? { status: 'ok', data: mock } : { status: 'unavailable' };
   }
 
   const json = (await res.json()) as {
@@ -91,14 +96,19 @@ async function fetchShowcase(slug: string, preview: boolean): Promise<ShowcaseDa
   }
 
   const payload = json.data;
+  if (payload.planAccessDenied) {
+    return { status: 'planAccessDenied' };
+  }
+
   if (!payload.published && !preview) {
     const unpublished = mockShowcase(slug, false);
-    if (unpublished) return { ...unpublished, published: false };
-    return null;
+    if (unpublished) return { status: 'ok', data: { ...unpublished, published: false } };
+    return { status: 'unavailable' };
   }
 
   if (!payload.property) {
-    return mockShowcase(slug, payload.published);
+    const mock = mockShowcase(slug, payload.published);
+    return mock ? { status: 'ok', data: mock } : { status: 'unavailable' };
   }
 
   const property = mapApiPropertyToResolved(payload.property);
@@ -115,13 +125,17 @@ async function fetchShowcase(slug: string, preview: boolean): Promise<ShowcaseDa
         },
       }
     : undefined;
-  return mapShowcaseData({
-    property,
-    config: payload.config ?? defaultPropertyShowcaseConfig(),
-    templateKey: payload.templateKey ?? 'showcase-aurora',
-    guestContact,
-    ...(preview || !payload.published ? { previewPlaceholders: true as const } : {}),
-  });
+
+  return {
+    status: 'ok',
+    data: mapShowcaseData({
+      property,
+      config: payload.config ?? defaultPropertyShowcaseConfig(),
+      templateKey: payload.templateKey ?? 'showcase-aurora',
+      guestContact,
+      ...(preview || !payload.published ? { previewPlaceholders: true as const } : {}),
+    }),
+  };
 }
 
 export function useShowcaseData(propertySlug: string) {
@@ -148,6 +162,7 @@ export function useShowcaseData(propertySlug: string) {
   if (showcaseOverride) {
     return {
       data: showcaseOverride,
+      planAccessDenied: false,
       isLoading: false,
       isError: false,
       error: null,
@@ -155,5 +170,13 @@ export function useShowcaseData(propertySlug: string) {
     };
   }
 
-  return query;
+  const fetched = query.data;
+  return {
+    data: fetched?.status === 'ok' ? fetched.data : undefined,
+    planAccessDenied: fetched?.status === 'planAccessDenied',
+    isLoading: query.isLoading,
+    isError: query.isError || fetched?.status === 'unavailable',
+    error: query.error,
+    isSuccess: query.isSuccess,
+  };
 }

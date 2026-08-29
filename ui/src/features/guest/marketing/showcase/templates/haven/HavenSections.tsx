@@ -6,8 +6,8 @@ import { Sparkles } from 'lucide-react';
 
 import { ShowcaseGalleryCarousel } from '@/features/guest/marketing/showcase/components/ShowcaseGalleryCarousel';
 import { ShowcaseReveal } from '@/features/guest/marketing/showcase/components/ShowcaseMotion';
-import { ShowcaseSectionHeading } from '@/features/guest/marketing/showcase/components/ShowcaseSectionHeading';
 import { ShowcasePreviewMockBanner } from '@/features/guest/marketing/showcase/components/ShowcasePreviewMockBanner';
+import { ShowcaseSectionHeading } from '@/features/guest/marketing/showcase/components/ShowcaseSectionHeading';
 import { useShowcaseTheme } from '@/features/guest/marketing/showcase/components/ShowcaseThemeProvider';
 import { useShowcaseContainedChrome } from '@/features/guest/marketing/showcase/lib/showcaseChrome';
 import {
@@ -26,6 +26,7 @@ import {
 import { resolveShowcaseMotionReduced } from '@/features/guest/marketing/showcase/lib/showcaseStyleConfig';
 import { HavenHostSection } from '@/features/guest/marketing/showcase/templates/shared/ShowcaseHostSections';
 import { ShowcaseLocationPanel } from '@/features/guest/marketing/showcase/templates/shared/ShowcaseInfoPanels';
+import { StayGuideTemplatedSection } from '@/features/guest/marketing/showcase/templates/shared/StayGuideSections';
 import type {
   ShowcaseData,
   ShowcaseResolvedSection,
@@ -198,6 +199,19 @@ export function HavenSections({ data }: { data: ShowcaseData }) {
 
       {rest.map((sec, index) => {
         const alt = index % 2 === 1;
+
+        if (data.pageKind === 'stay-guide' && sec.kind !== 'gallery') {
+          return (
+            <StayGuideTemplatedSection
+              key={sec.id}
+              data={data}
+              section={sec}
+              alt={alt}
+              headingClassName={DISPLAY}
+              containerClassName={CONTAINER}
+            />
+          );
+        }
 
         if (sec.id === 'location') {
           return (

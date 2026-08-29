@@ -3,6 +3,8 @@ import {
   guestFormPath,
   guestHostPath,
 } from '@/features/guest/lib/guestPublicPaths';
+import { publicContactPath } from '@/features/guest/marketing/contact/lib/publicContactParams';
+import type { ResolvedPropertyDetail } from '@/features/guest/marketing/properties/types/publicProperty';
 import {
   resolveShowcaseHeroEyebrow,
   resolveShowcaseLocationLead,
@@ -15,8 +17,6 @@ import {
   applyShowcasePreviewMocks,
   SHOWCASE_SECTION_HEADING,
 } from '@/features/guest/marketing/showcase/lib/showcaseSectionMock';
-import { publicContactPath } from '@/features/guest/marketing/contact/lib/publicContactParams';
-import type { ResolvedPropertyDetail } from '@/features/guest/marketing/properties/types/publicProperty';
 import {
   defaultPropertyShowcaseConfig,
   isShowcaseTemplateKey,
@@ -212,6 +212,7 @@ export function mapShowcaseData(input: {
           : rawHeading || defaults.heading;
       return {
         ...section,
+        kind: section.id,
         heading,
         subheading: section.copy?.subheading?.trim() || defaults.subheading,
         body,
@@ -230,6 +231,7 @@ export function mapShowcaseData(input: {
       : (input.previewPlaceholders ?? (embed || !config.published));
 
   const result: ShowcaseData = {
+    pageKind: 'showcase',
     templateKey,
     published: config.published,
     propertyId: property.id,

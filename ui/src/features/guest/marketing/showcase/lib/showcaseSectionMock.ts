@@ -1,11 +1,11 @@
+import { hasShowcaseHostContent } from '@/features/guest/marketing/showcase/lib/showcaseHostContent';
+import { hasShowcaseLocationContent } from '@/features/guest/marketing/showcase/lib/showcaseLocation';
 import type {
   ShowcaseData,
   ShowcaseResolvedSection,
   ShowcaseSectionId,
   ShowcaseTestimonial,
 } from '@/features/guest/marketing/showcase/types/showcase';
-import { hasShowcaseHostContent } from '@/features/guest/marketing/showcase/lib/showcaseHostContent';
-import { hasShowcaseLocationContent } from '@/features/guest/marketing/showcase/lib/showcaseLocation';
 
 export const SHOWCASE_PREVIEW_MOCK_MESSAGE = 'Renders test data';
 
@@ -99,7 +99,7 @@ function applyCopyMock(
   section: ShowcaseResolvedSection,
   markWhenFilled: boolean
 ): ShowcaseResolvedSection {
-  const mock = MOCK_COPY[section.id];
+  const mock = MOCK_COPY[section.id as keyof typeof MOCK_COPY];
   if (!mock) return section;
 
   let next = { ...section };

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+
 import useEmblaCarousel from 'embla-carousel-react';
 import { ChevronLeft, ChevronRight, Quote, Star } from 'lucide-react';
 

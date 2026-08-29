@@ -1,9 +1,10 @@
+import { parseBrandColorHsl } from '@/features/guest/marketing/showcase/lib/showcaseBrandPalette';
 import {
   getShowcasePresetPalette,
   isShowcasePresetPaletteId,
 } from '@/features/guest/marketing/showcase/lib/showcasePresetPalettes';
-import { parseBrandColorHsl } from '@/features/guest/marketing/showcase/lib/showcaseBrandPalette';
 import type { PropertyShowcaseConfig } from '@/features/guest/marketing/showcase/types/showcase';
+
 import { hexToHslComponents } from '@/lib/theme/brandColor';
 
 type DisplayFont = PropertyShowcaseConfig['typography']['displayFont'];

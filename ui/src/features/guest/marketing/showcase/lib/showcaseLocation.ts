@@ -75,7 +75,7 @@ export function resolveShowcaseLocationFields(
   input: ShowcaseLocationInput & { location?: string }
 ) {
   const location = input.location?.trim() || input.locationLabel?.trim() || '';
-  let address = input.address?.trim() || '';
+  const address = input.address?.trim() || '';
   let city = input.city?.trim() || '';
   let state = input.state?.trim() || '';
   let country = input.country?.trim() || 'Philippines';

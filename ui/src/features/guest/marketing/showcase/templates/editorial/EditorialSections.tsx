@@ -1,14 +1,21 @@
 import { Link } from 'react-router-dom';
+
 import { motion } from 'framer-motion';
 
 import { ShowcaseCanvas } from '@/features/guest/marketing/showcase/components/ShowcaseCanvas';
+import {
+  ShowcaseCtaActions,
+  primaryButtonClass,
+  secondaryButtonClass,
+  showcaseCtaBaseClass,
+} from '@/features/guest/marketing/showcase/components/ShowcaseCtaActions';
 import { ShowcaseGalleryCarousel } from '@/features/guest/marketing/showcase/components/ShowcaseGalleryCarousel';
-import { ShowcaseReviewsCarousel } from '@/features/guest/marketing/showcase/components/ShowcaseReviewsCarousel';
-import { EditorialHostSection } from '@/features/guest/marketing/showcase/templates/shared/ShowcaseHostSections';
 import { ShowcaseLocationSection } from '@/features/guest/marketing/showcase/components/ShowcaseLocationSection';
 import { ShowcaseReveal } from '@/features/guest/marketing/showcase/components/ShowcaseMotion';
-import { useShowcaseTheme } from '@/features/guest/marketing/showcase/components/ShowcaseThemeProvider';
+import { ShowcaseReviewsCarousel } from '@/features/guest/marketing/showcase/components/ShowcaseReviewsCarousel';
+import { ShowcaseSectionIntro } from '@/features/guest/marketing/showcase/components/ShowcaseSectionIntro';
 import { useShowcaseStyle } from '@/features/guest/marketing/showcase/components/ShowcaseStyleProvider';
+import { useShowcaseTheme } from '@/features/guest/marketing/showcase/components/ShowcaseThemeProvider';
 import { useShowcaseContainedChrome } from '@/features/guest/marketing/showcase/lib/showcaseChrome';
 import {
   resolveShowcaseCssColumnsClass,
@@ -28,13 +35,8 @@ import {
   showcaseEditorialSectionHeadingClass,
   showcaseScaledClampClass,
 } from '@/features/guest/marketing/showcase/lib/showcaseTypographyScale';
-import { ShowcaseSectionIntro } from '@/features/guest/marketing/showcase/components/ShowcaseSectionIntro';
-import {
-  ShowcaseCtaActions,
-  primaryButtonClass,
-  secondaryButtonClass,
-  showcaseCtaBaseClass,
-} from '@/features/guest/marketing/showcase/components/ShowcaseCtaActions';
+import { EditorialHostSection } from '@/features/guest/marketing/showcase/templates/shared/ShowcaseHostSections';
+import { StayGuideTemplatedSection } from '@/features/guest/marketing/showcase/templates/shared/StayGuideSections';
 import type {
   ShowcaseData,
   ShowcaseResolvedSection,
@@ -158,6 +160,17 @@ export function EditorialSections({ data }: { data: ShowcaseData }) {
       {data.sections
         .filter((s) => s.id !== 'hero' && shouldRenderShowcaseSection(s, data))
         .map((section) => {
+          if (data.pageKind === 'stay-guide' && section.kind !== 'gallery') {
+            return (
+              <StayGuideTemplatedSection
+                key={section.id}
+                data={data}
+                section={section}
+                headingClassName="font-cormorant"
+                containerClassName="@sm:px-6 @lg:px-8 mx-auto max-w-6xl px-4"
+              />
+            );
+          }
           if (section.id === 'gallery') {
             return (
               <section

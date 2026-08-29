@@ -1,8 +1,12 @@
 import type { ShowcaseData } from '@/features/guest/marketing/showcase/types/showcase';
 
-type Rgb = { r: number; g: number; b: number };
-
-type Hsl = { h: number; s: number; l: number };
+import {
+  clampChannel,
+  hslToHex,
+  rgbToHsl as rgbChannelsToHsl,
+  type Hsl,
+  type Rgb,
+} from '@/lib/theme/colorConvert';
 
 type ColorBucket = { h: number; s: number; l: number; weight: number };
 
@@ -26,7 +30,7 @@ export type ShowcaseMediaPalette = {
 };
 
 function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
+  return clampChannel(value, min, max);
 }
 
 function relativeLuminance({ r, g, b }: Rgb): number {
@@ -38,51 +42,7 @@ function relativeLuminance({ r, g, b }: Rgb): number {
 }
 
 function rgbToHsl({ r, g, b }: Rgb): Hsl {
-  const rn = r / 255;
-  const gn = g / 255;
-  const bn = b / 255;
-  const max = Math.max(rn, gn, bn);
-  const min = Math.min(rn, gn, bn);
-  const delta = max - min;
-
-  let h = 0;
-  if (delta !== 0) {
-    if (max === rn) h = ((gn - bn) / delta) % 6;
-    else if (max === gn) h = (bn - rn) / delta + 2;
-    else h = (rn - gn) / delta + 4;
-    h *= 60;
-    if (h < 0) h += 360;
-  }
-
-  const l = (max + min) / 2;
-  const s = delta === 0 ? 0 : delta / (1 - Math.abs(2 * l - 1));
-
-  return { h, s: s * 100, l: l * 100 };
-}
-
-function hslToHex(h: number, s: number, l: number): string {
-  const sn = clamp(s, 0, 100) / 100;
-  const ln = clamp(l, 0, 100) / 100;
-  const c = (1 - Math.abs(2 * ln - 1)) * sn;
-  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-  const m = ln - c / 2;
-
-  let r = 0;
-  let g = 0;
-  let b = 0;
-  if (h < 60) [r, g, b] = [c, x, 0];
-  else if (h < 120) [r, g, b] = [x, c, 0];
-  else if (h < 180) [r, g, b] = [0, c, x];
-  else if (h < 240) [r, g, b] = [0, x, c];
-  else if (h < 300) [r, g, b] = [x, 0, c];
-  else [r, g, b] = [c, 0, x];
-
-  const toHex = (n: number) =>
-    Math.round((n + m) * 255)
-      .toString(16)
-      .padStart(2, '0');
-
-  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  return rgbChannelsToHsl(r, g, b);
 }
 
 function chromaRatio(r: number, g: number, b: number): number {

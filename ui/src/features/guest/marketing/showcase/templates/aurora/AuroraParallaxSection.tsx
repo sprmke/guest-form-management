@@ -1,4 +1,5 @@
 import { createContext, useContext, useRef, type ReactNode, type RefObject } from 'react';
+
 import { motion } from 'framer-motion';
 
 import { ShowcaseReveal } from '@/features/guest/marketing/showcase/components/ShowcaseMotion';

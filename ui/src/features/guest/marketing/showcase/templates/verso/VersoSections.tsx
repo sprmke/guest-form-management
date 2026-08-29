@@ -40,6 +40,7 @@ import {
   MaskText,
   WordReveal,
 } from '@/features/guest/marketing/showcase/templates/shared/showcaseKinetic';
+import { StayGuideTemplatedSection } from '@/features/guest/marketing/showcase/templates/shared/StayGuideSections';
 import {
   versoAboutStatementClass,
   versoAmenityItemClass,
@@ -524,6 +525,19 @@ export function VersoSections({ data }: { data: ShowcaseData }) {
 
       {rest.map((section, index) => {
         const label = section.heading;
+
+        if (data.pageKind === 'stay-guide' && section.kind !== 'gallery') {
+          return (
+            <StayGuideTemplatedSection
+              key={section.id}
+              data={data}
+              section={section}
+              alt={index % 2 === 1}
+              headingClassName={DISPLAY}
+              containerClassName={CONTAINER}
+            />
+          );
+        }
 
         if (section.id === 'gallery') {
           return <VersoGallery key={section.id} data={data} section={section} index={index} />;

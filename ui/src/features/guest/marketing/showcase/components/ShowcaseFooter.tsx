@@ -1,5 +1,6 @@
 import { Mail, MapPin, Phone } from 'lucide-react';
 
+import { isLegacyKameHomeBrand } from '@/features/guest/form/lib/guestFormBranding';
 import { HostPublicSocialLinks } from '@/features/guest/marketing/hosts/components/HostPublicSocialLinks';
 import { useShowcaseTheme } from '@/features/guest/marketing/showcase/components/ShowcaseThemeProvider';
 import {
@@ -23,8 +24,9 @@ export function ShowcaseFooter({ data }: { data: ShowcaseData }) {
   const phone = guestContact.contactPhone.trim();
   const email = guestContact.contactEmail.trim();
   const hostLabel = guestContact.contactName || host.ownerName;
-  const orgLabel = host.organizationName.trim();
-  const showOrgLabel = Boolean(orgLabel && orgLabel !== 'Host');
+  const rawOrg = host.organizationName.trim();
+  const orgLabel = !rawOrg || rawOrg === 'Host' || isLegacyKameHomeBrand(rawOrg) ? '' : rawOrg;
+  const showOrgLabel = Boolean(orgLabel);
 
   return (
     <footer className={cn('@sm:py-16 border-t py-14', tokens.footer, 'font-sans antialiased')}>

@@ -94,6 +94,12 @@ export function shouldRenderShowcaseSection(
   section: ShowcaseResolvedSection,
   data: ShowcaseData
 ): boolean {
+  if (data.pageKind === 'stay-guide') {
+    // The Stay Guide mapper already drops empty chapters / docs on live pages.
+    if (section.kind === 'quickNav') return false;
+    if (section.kind === 'gallery') return section.images.length > 0;
+    return true;
+  }
   if (section.usesPreviewMock) return true;
   switch (section.id) {
     case 'hero':

@@ -473,7 +473,8 @@ const ATLAS: Record<ShowcaseColorMode, ShowcaseThemeTokens> = {
     headerSheet: 'border-white/10 bg-[#080c0d]/95',
     footer: 'border-border bg-[#05090a] text-foreground',
     navActive: 'bg-white/[0.1] text-white',
-    navInactive: 'text-muted-foreground hover:bg-[hsl(var(--showcase-border)/0.12)] hover:text-foreground',
+    navInactive:
+      'text-muted-foreground hover:bg-[hsl(var(--showcase-border)/0.12)] hover:text-foreground',
     navMonolithActive: '',
     navHover: 'hover:bg-white/10',
     menuItemActive: 'bg-white/[0.08] text-white',
@@ -573,7 +574,8 @@ const HAVEN: Record<ShowcaseColorMode, ShowcaseThemeTokens> = {
     headerSheet: 'border-white/8 bg-[#1c1a17]',
     footer: 'border-border bg-[#181513] text-foreground',
     navActive: 'bg-white/[0.1] text-[#f2ede4]',
-    navInactive: 'text-muted-foreground hover:bg-[hsl(var(--showcase-border)/0.12)] hover:text-foreground',
+    navInactive:
+      'text-muted-foreground hover:bg-[hsl(var(--showcase-border)/0.12)] hover:text-foreground',
     navMonolithActive: '',
     navHover: 'hover:bg-white/10',
     menuItemActive: 'bg-white/[0.08] text-[#f2ede4]',

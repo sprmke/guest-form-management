@@ -1,4 +1,5 @@
 import { useLayoutEffect, type RefObject } from 'react';
+
 import { useMotionValue, useSpring, type MotionValue, type SpringOptions } from 'framer-motion';
 
 import { resolveShowcaseScrollRoot } from '@/features/guest/marketing/showcase/lib/showcaseScroll';

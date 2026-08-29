@@ -6,11 +6,11 @@ import {
   showcasePaletteToneCssVars,
   type ShowcasePaletteTones,
 } from '@/features/guest/marketing/showcase/lib/showcaseBrandPalette';
+import type { ShowcaseMediaPalette } from '@/features/guest/marketing/showcase/lib/showcaseMediaPalette';
 import {
   getShowcasePresetPalette,
   isShowcasePresetPaletteId,
 } from '@/features/guest/marketing/showcase/lib/showcasePresetPalettes';
-import type { ShowcaseMediaPalette } from '@/features/guest/marketing/showcase/lib/showcaseMediaPalette';
 import type { ShowcaseColorMode } from '@/features/guest/marketing/showcase/lib/showcaseThemeTokens';
 import type { ShowcasePaletteMode } from '@/features/guest/marketing/showcase/types/showcase';
 

@@ -18,19 +18,13 @@ import {
   useSmoothScroll,
 } from '@/features/guest/marketing/showcase/components/SmoothScrollProvider';
 import { useScrollSpy } from '@/features/guest/marketing/showcase/hooks/useScrollSpy';
+import { useShowcaseMediaPalette } from '@/features/guest/marketing/showcase/hooks/useShowcaseMediaPalette';
 import {
   useShowcaseConfigControlled,
   useShowcaseContainedChrome,
 } from '@/features/guest/marketing/showcase/lib/showcaseChrome';
-import { useShowcaseMediaPalette } from '@/features/guest/marketing/showcase/hooks/useShowcaseMediaPalette';
+import { resolveShowcaseHeaderChrome } from '@/features/guest/marketing/showcase/lib/showcaseHeaderChrome';
 import { collectShowcaseMediaUrls } from '@/features/guest/marketing/showcase/lib/showcaseMediaPalette';
-import {
-  findPrimaryShowcaseHero,
-  isShowcaseHeaderSolid,
-  resolveShowcaseScrollRoot,
-  scrollShowcaseToTop,
-  SHOWCASE_HEADER_SOLID_THRESHOLD_PX,
-} from '@/features/guest/marketing/showcase/lib/showcaseScroll';
 import type { ShowcaseMediaPalette } from '@/features/guest/marketing/showcase/lib/showcaseMediaPalette';
 import {
   resolveShowcasePaletteAccent,
@@ -38,11 +32,18 @@ import {
   resolveShowcasePaletteTones,
 } from '@/features/guest/marketing/showcase/lib/showcasePaletteSurfaces';
 import {
+  findPrimaryShowcaseHero,
+  isShowcaseHeaderSolid,
+  resolveShowcaseScrollRoot,
+  scrollShowcaseToTop,
+  SHOWCASE_HEADER_SOLID_THRESHOLD_PX,
+} from '@/features/guest/marketing/showcase/lib/showcaseScroll';
+import {
   resolveShowcaseCustomPaletteClass,
   resolveShowcaseWarmTintClass,
   showcasePrimaryCssVar,
 } from '@/features/guest/marketing/showcase/lib/showcaseStyleConfig';
-import { resolveShowcaseHeaderChrome } from '@/features/guest/marketing/showcase/lib/showcaseHeaderChrome';
+import { useShowcaseTemplateThumbSurface } from '@/features/guest/marketing/showcase/lib/showcaseTemplateThumbSurface';
 import type { ShowcaseVariant } from '@/features/guest/marketing/showcase/lib/showcaseThemeTokens';
 import {
   auroraBrandTitleClass,
@@ -53,7 +54,6 @@ import {
   monolithHeaderChromeClass,
 } from '@/features/guest/marketing/showcase/templates/monolith/monolithTypography';
 import type { ShowcaseData } from '@/features/guest/marketing/showcase/types/showcase';
-import { useShowcaseTemplateThumbSurface } from '@/features/guest/marketing/showcase/lib/showcaseTemplateThumbSurface';
 
 import { useFavicon } from '@/lib/favicon';
 import { usePageTitle } from '@/lib/pageTitle';
@@ -225,7 +225,9 @@ function ShowcaseNav({
   const { scrollToAnchor } = useSmoothScroll();
   const { tokens, variant } = useShowcaseTheme();
   const forceMobile = usePreviewForcesMobile();
-  const navSections = data.sections.filter((s) => s.id !== 'hero').slice(0, 6);
+  const navSections = data.sections
+    .filter((s) => s.id !== 'hero' && s.kind !== 'quickNav' && Boolean(s.heading))
+    .slice(0, 6);
   const ids = data.sections.map((s) => s.id);
   const active = useScrollSpy(interactive ? ids : []);
   const pastHero = useShowcasePastHero(data, variant, containedChrome);
@@ -248,9 +250,9 @@ function ShowcaseNav({
         chrome.shell,
         overlayHeader && 'border-transparent',
         !floatingPanel && surface,
-        // Fade behind the overlay, but keep the toggle clickable so reopen/close
-        // still works if the portaled panel is delayed or missed.
-        menuOpen && 'opacity-0'
+        // Dim behind the open menu without removing the sticky chrome (opacity-0
+        // looked like a “missing header” when the overlay failed to cover the frame).
+        menuOpen && 'opacity-40'
       )}
     >
       <div className={cn(chrome.inner, floatingPanel && surface)}>
@@ -301,12 +303,11 @@ function ShowcaseNav({
             <button
               type="button"
               className={cn(
-                'flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center',
+                'relative z-[210] flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center',
                 !forceMobile && '@lg:hidden',
                 chrome.iconButton,
                 tokens.themeToggleHover,
-                headerOnHero && 'text-inherit hover:bg-white/10',
-                menuOpen && 'pointer-events-auto relative z-[210]'
+                headerOnHero && 'text-inherit hover:bg-white/10'
               )}
               aria-label={menuOpen ? 'Close menu' : 'Open menu'}
               aria-expanded={menuOpen}
@@ -387,7 +388,11 @@ function ShowcaseShellInner({
     !data.reducedMotion && data.config.motion.intensity !== 'subtle' && !isTemplateThumb;
   const scopeDisplayFont = variant === 'monolith' ? 'font-sans' : displayFontClass;
   const [menuOpen, setMenuOpen] = useState(false);
-  const navSections = data.sections.filter((section) => section.id !== 'hero').slice(0, 6);
+  const navSections = data.sections
+    .filter(
+      (section) => section.id !== 'hero' && section.kind !== 'quickNav' && Boolean(section.heading)
+    )
+    .slice(0, 6);
   const activeSectionId = useScrollSpy(
     isTemplateThumb ? [] : data.sections.map((section) => section.id)
   );
@@ -494,7 +499,11 @@ export function ShowcaseShell({
   className?: string;
 }) {
   const isTemplateThumb = useShowcaseTemplateThumbSurface();
-  usePageTitle(isTemplateThumb ? undefined : `${data.propertyName} - Showcase`);
+  usePageTitle(
+    isTemplateThumb
+      ? undefined
+      : `${data.propertyName} - ${data.pageKind === 'stay-guide' ? 'Stay Guide' : 'Showcase'}`
+  );
   useFavicon(isTemplateThumb ? undefined : (data.logoUrl ?? undefined));
 
   return (

@@ -1,17 +1,31 @@
 import { useRef } from 'react';
+
 import { Link } from 'react-router-dom';
+
 import { motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 
 import { ShowcaseCanvas } from '@/features/guest/marketing/showcase/components/ShowcaseCanvas';
+import {
+  ShowcaseCtaActions,
+  primaryButtonClass,
+  showcaseCtaBaseClass,
+} from '@/features/guest/marketing/showcase/components/ShowcaseCtaActions';
 import { ShowcaseGalleryCarousel } from '@/features/guest/marketing/showcase/components/ShowcaseGalleryCarousel';
-import { ShowcaseReviewsCarousel } from '@/features/guest/marketing/showcase/components/ShowcaseReviewsCarousel';
-import { AuroraHostSection } from '@/features/guest/marketing/showcase/templates/shared/ShowcaseHostSections';
 import { ShowcaseLocationSection } from '@/features/guest/marketing/showcase/components/ShowcaseLocationSection';
-import { useSmoothScroll } from '@/features/guest/marketing/showcase/components/SmoothScrollProvider';
-import { useShowcaseTheme } from '@/features/guest/marketing/showcase/components/ShowcaseThemeProvider';
+import { ShowcasePreviewMockBanner } from '@/features/guest/marketing/showcase/components/ShowcasePreviewMockBanner';
+import { ShowcaseReviewsCarousel } from '@/features/guest/marketing/showcase/components/ShowcaseReviewsCarousel';
+import { ShowcaseSectionHeading } from '@/features/guest/marketing/showcase/components/ShowcaseSectionHeading';
+import { ShowcaseSectionIntro } from '@/features/guest/marketing/showcase/components/ShowcaseSectionIntro';
 import { useShowcaseStyle } from '@/features/guest/marketing/showcase/components/ShowcaseStyleProvider';
+import { useShowcaseTheme } from '@/features/guest/marketing/showcase/components/ShowcaseThemeProvider';
+import { useSmoothScroll } from '@/features/guest/marketing/showcase/components/SmoothScrollProvider';
+import { useScrollSpy } from '@/features/guest/marketing/showcase/hooks/useScrollSpy';
 import { useShowcaseContainedChrome } from '@/features/guest/marketing/showcase/lib/showcaseChrome';
+import {
+  showcaseHeroContentTopClass,
+  showcaseHeroSectionClass,
+} from '@/features/guest/marketing/showcase/lib/showcaseHeroLayout';
 import {
   resolveShowcaseGridColsClass,
   resolveShowcasePrimaryCtaHref,
@@ -27,24 +41,6 @@ import {
   resolveShowcaseParallaxEnabled,
   resolveShowcaseMotionReduced,
 } from '@/features/guest/marketing/showcase/lib/showcaseStyleConfig';
-import { ShowcaseSectionIntro } from '@/features/guest/marketing/showcase/components/ShowcaseSectionIntro';
-import { ShowcaseSectionHeading } from '@/features/guest/marketing/showcase/components/ShowcaseSectionHeading';
-import { ShowcasePreviewMockBanner } from '@/features/guest/marketing/showcase/components/ShowcasePreviewMockBanner';
-import {
-  ShowcaseCtaActions,
-  primaryButtonClass,
-  showcaseCtaBaseClass,
-} from '@/features/guest/marketing/showcase/components/ShowcaseCtaActions';
-import { useScrollSpy } from '@/features/guest/marketing/showcase/hooks/useScrollSpy';
-import type {
-  ShowcaseData,
-  ShowcaseResolvedSection,
-} from '@/features/guest/marketing/showcase/types/showcase';
-import {
-  useAuroraHeroParallax,
-  AURORA_HERO_IMAGE_OVERSCALE,
-  AURORA_HERO_MESH_OVERSCALE,
-} from '@/features/guest/marketing/showcase/templates/aurora/useAuroraHeroParallax';
 import {
   AuroraParallaxContainer,
   AuroraParallaxLayer,
@@ -52,9 +48,17 @@ import {
   AuroraParallaxSection,
 } from '@/features/guest/marketing/showcase/templates/aurora/AuroraParallaxSection';
 import {
-  showcaseHeroContentTopClass,
-  showcaseHeroSectionClass,
-} from '@/features/guest/marketing/showcase/lib/showcaseHeroLayout';
+  useAuroraHeroParallax,
+  AURORA_HERO_IMAGE_OVERSCALE,
+  AURORA_HERO_MESH_OVERSCALE,
+} from '@/features/guest/marketing/showcase/templates/aurora/useAuroraHeroParallax';
+import { AuroraHostSection } from '@/features/guest/marketing/showcase/templates/shared/ShowcaseHostSections';
+import { StayGuideTemplatedSection } from '@/features/guest/marketing/showcase/templates/shared/StayGuideSections';
+import type {
+  ShowcaseData,
+  ShowcaseResolvedSection,
+} from '@/features/guest/marketing/showcase/types/showcase';
+
 import { cn } from '@/lib/utils';
 
 function ProgressRail({ data }: { data: ShowcaseData }) {
@@ -348,6 +352,16 @@ export function AuroraSections({ data }: { data: ShowcaseData }) {
       {data.sections
         .filter((s) => s.id !== 'hero' && shouldRenderShowcaseSection(s, data))
         .map((section) => {
+          if (data.pageKind === 'stay-guide' && section.kind !== 'gallery') {
+            return (
+              <StayGuideTemplatedSection
+                key={section.id}
+                data={data}
+                section={section}
+                containerClassName="@sm:px-6 @lg:px-8 mx-auto max-w-6xl px-4"
+              />
+            );
+          }
           if (section.id === 'gallery') {
             return (
               <AuroraParallaxSection

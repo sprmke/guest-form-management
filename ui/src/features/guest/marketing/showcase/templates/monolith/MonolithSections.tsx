@@ -1,30 +1,34 @@
 import { useMemo } from 'react';
+
 import { Link } from 'react-router-dom';
+
 import { motion } from 'framer-motion';
 
 import { ShowcaseCanvas } from '@/features/guest/marketing/showcase/components/ShowcaseCanvas';
-import { ShowcaseGalleryCarousel } from '@/features/guest/marketing/showcase/components/ShowcaseGalleryCarousel';
-import { ShowcaseReviewsCarousel } from '@/features/guest/marketing/showcase/components/ShowcaseReviewsCarousel';
-import { MonolithHostSection } from '@/features/guest/marketing/showcase/templates/shared/ShowcaseHostSections';
-import { ShowcaseSectionIntro } from '@/features/guest/marketing/showcase/components/ShowcaseSectionIntro';
-import { ShowcaseLocationSection } from '@/features/guest/marketing/showcase/components/ShowcaseLocationSection';
-import {
-  AmenityMarquee,
-  AnimatedStat,
-  ShowcaseReveal,
-} from '@/features/guest/marketing/showcase/components/ShowcaseMotion';
-import { useShowcaseTheme } from '@/features/guest/marketing/showcase/components/ShowcaseThemeProvider';
-import { useShowcaseContainedChrome } from '@/features/guest/marketing/showcase/lib/showcaseChrome';
-import { useShowcaseMediaPalette } from '@/features/guest/marketing/showcase/hooks/useShowcaseMediaPalette';
-import { collectShowcaseMediaUrls } from '@/features/guest/marketing/showcase/lib/showcaseMediaPalette';
-import { resolveShowcasePaletteAccent } from '@/features/guest/marketing/showcase/lib/showcasePaletteSurfaces';
-import { resolveShowcaseSpotlightEnabled } from '@/features/guest/marketing/showcase/lib/showcaseSpotlight';
 import {
   ShowcaseCtaActions,
   primaryButtonClass,
   secondaryButtonClass,
   showcaseCtaBaseClass,
 } from '@/features/guest/marketing/showcase/components/ShowcaseCtaActions';
+import { ShowcaseGalleryCarousel } from '@/features/guest/marketing/showcase/components/ShowcaseGalleryCarousel';
+import { ShowcaseLocationSection } from '@/features/guest/marketing/showcase/components/ShowcaseLocationSection';
+import {
+  AmenityMarquee,
+  AnimatedStat,
+  ShowcaseReveal,
+} from '@/features/guest/marketing/showcase/components/ShowcaseMotion';
+import { ShowcaseReviewsCarousel } from '@/features/guest/marketing/showcase/components/ShowcaseReviewsCarousel';
+import { ShowcaseSectionIntro } from '@/features/guest/marketing/showcase/components/ShowcaseSectionIntro';
+import { useShowcaseTheme } from '@/features/guest/marketing/showcase/components/ShowcaseThemeProvider';
+import { useShowcaseMediaPalette } from '@/features/guest/marketing/showcase/hooks/useShowcaseMediaPalette';
+import { useShowcaseContainedChrome } from '@/features/guest/marketing/showcase/lib/showcaseChrome';
+import {
+  showcaseHeroContentTopClass,
+  showcaseHeroSectionClass,
+} from '@/features/guest/marketing/showcase/lib/showcaseHeroLayout';
+import { collectShowcaseMediaUrls } from '@/features/guest/marketing/showcase/lib/showcaseMediaPalette';
+import { resolveShowcasePaletteAccent } from '@/features/guest/marketing/showcase/lib/showcasePaletteSurfaces';
 import {
   parseShowcaseHighlight,
   resolveShowcaseGridColsClass,
@@ -34,20 +38,19 @@ import {
   showcaseSectionPyClass,
   shouldRenderShowcaseSection,
 } from '@/features/guest/marketing/showcase/lib/showcaseSectionLayout';
+import { resolveShowcaseSpotlightEnabled } from '@/features/guest/marketing/showcase/lib/showcaseSpotlight';
 import {
   resolveShowcaseCanvasPaused,
   resolveShowcaseHeroOverlayClass,
 } from '@/features/guest/marketing/showcase/lib/showcaseStyleConfig';
-import {
-  showcaseHeroContentTopClass,
-  showcaseHeroSectionClass,
-} from '@/features/guest/marketing/showcase/lib/showcaseHeroLayout';
 import {
   monolithDisplayFontClass,
   monolithHeroTitleClass,
   monolithSectionTitleClass,
 } from '@/features/guest/marketing/showcase/templates/monolith/monolithTypography';
 import { useMonolithHeroSpotlight } from '@/features/guest/marketing/showcase/templates/monolith/useMonolithHeroSpotlight';
+import { MonolithHostSection } from '@/features/guest/marketing/showcase/templates/shared/ShowcaseHostSections';
+import { StayGuideTemplatedSection } from '@/features/guest/marketing/showcase/templates/shared/StayGuideSections';
 import type {
   ShowcaseData,
   ShowcaseResolvedSection,
@@ -194,6 +197,18 @@ export function MonolithSections({ data }: { data: ShowcaseData }) {
       {data.sections
         .filter((s) => s.id !== 'hero' && shouldRenderShowcaseSection(s, data))
         .map((section, index) => {
+          if (data.pageKind === 'stay-guide' && section.kind !== 'gallery') {
+            return (
+              <StayGuideTemplatedSection
+                key={section.id}
+                data={data}
+                section={section}
+                alt={index % 2 === 1}
+                headingClassName="font-instrument"
+                containerClassName="@sm:px-6 @lg:px-8 mx-auto max-w-6xl px-4"
+              />
+            );
+          }
           if (section.id === 'gallery') {
             return (
               <section

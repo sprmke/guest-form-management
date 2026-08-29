@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
+
 import useEmblaCarousel from 'embla-carousel-react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { GalleryLightbox } from '@/features/guest/marketing/shared/components/GalleryLightbox';
 import { useShowcaseTheme } from '@/features/guest/marketing/showcase/components/ShowcaseThemeProvider';
 import type { ShowcaseVariant } from '@/features/guest/marketing/showcase/lib/showcaseThemeTokens';
+
 import { cn } from '@/lib/utils';
 
 type GalleryChrome = 'full' | 'overlay';

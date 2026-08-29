@@ -1,12 +1,12 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 
-import type { PropertyShowcaseConfig } from '@/features/guest/marketing/showcase/types/showcase';
 import {
   resolveShowcaseBodyScaleClass,
   resolveShowcaseDisplayFontClass,
   resolveShowcaseHeadingScaleClass,
   resolveShowcaseRevealDuration,
 } from '@/features/guest/marketing/showcase/lib/showcaseStyleConfig';
+import type { PropertyShowcaseConfig } from '@/features/guest/marketing/showcase/types/showcase';
 
 type ShowcaseStyleContextValue = {
   displayFontClass: string;
