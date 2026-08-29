@@ -26,7 +26,7 @@ serveAuthenticated('request-parking-endorsement', async (req, user) => {
   }
 
   try {
-    const result = await requestParkingEndorsementResend(bookingId, user.id);
+    const result = await requestParkingEndorsementResend(bookingId, user.id, user.email);
     return jsonSuccess(req, result);
   } catch (err) {
     if (err instanceof ParkingEndorsementRequestError) {
