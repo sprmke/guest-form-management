@@ -68,6 +68,7 @@ export async function installPropertyBookingParkingMocks(
       success: true,
       data: {
         linked: true,
+        parkingBookingId: 'e2e-linked-parking-booking',
         status: propertyState.linkedStatus,
         endorsementSentAt: propertyState.endorsementSentAt,
         endorsementSendError: null,

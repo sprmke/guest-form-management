@@ -244,6 +244,7 @@ function entitlementsPayload() {
     customTemplates: true,
     publicPagesAutosave: true,
     bookingImport: true,
+    customRoles: true,
     planId: 'plan-team-e2e-001',
     planCode: 'business',
     planName: 'Business',

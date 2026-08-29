@@ -1,12 +1,12 @@
 import { expect, test } from '@playwright/test';
 
+import { setParkingScreenSuite } from '../shared/parkingScreenCapture';
 import {
   createPayParkingFlowState,
   installPayParkingFlowMocks,
   submitPayParkingAsAdminBroadcast,
   submitPayParkingAsGuest,
 } from '../shared/payParkingFlowHarness';
-import { setParkingScreenSuite } from '../shared/parkingScreenCapture';
 
 test.describe('legacy property pay-parking flow', () => {
   test('guest can submit vehicle details on the pay-parking form', async ({ page }) => {

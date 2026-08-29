@@ -1,12 +1,12 @@
 import { expect, test } from '@playwright/test';
 
 import { createParkingFlowState } from '../shared/parkingFlowHarness';
+import { setParkingScreenSuite } from '../shared/parkingScreenCapture';
 import {
   createPropertyBookingParkingState,
   installPropertyBookingParkingMocks,
   propertyBookingParkingPaths,
 } from '../shared/propertyBookingParkingHarness';
-import { setParkingScreenSuite } from '../shared/parkingScreenCapture';
 
 test.describe('property booking parking panel', () => {
   test('shows linked marketplace match instead of legacy owner fields', async ({ page }) => {

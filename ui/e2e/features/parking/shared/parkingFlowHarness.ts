@@ -435,6 +435,7 @@ function e2ePropertyEntitlementsPayload() {
     customTemplates: false,
     publicPagesAutosave: false,
     bookingImport: false,
+    customRoles: true,
     planId: 'plan-e2e-001',
     planCode: 'starter',
     planName: 'Starter',

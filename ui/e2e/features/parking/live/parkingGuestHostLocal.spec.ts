@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 
+import { parkingGuestStatusLabels, parkingHostStatusLabels } from '../shared/parkingFlowHarness';
 import {
   buildLiveParkingHostBookingsPath,
   cleanupLiveParkingBookings,
@@ -9,7 +10,6 @@ import {
   signInLocalParkingHost,
   submitLiveGuestParkingRequest,
 } from '../shared/parkingLiveLocalHarness';
-import { parkingGuestStatusLabels, parkingHostStatusLabels } from '../shared/parkingFlowHarness';
 import { captureParkingScreen, setParkingScreenSuite } from '../shared/parkingScreenCapture';
 
 test.describe('parking live local flow', () => {
