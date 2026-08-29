@@ -10,6 +10,7 @@ import { resolvePublicDevelopment } from '@/features/guest/marketing/development
 import { ParkingBookingFormModal } from '@/features/guest/marketing/parkings/components/ParkingBookingFormModal';
 import { ParkingOverview } from '@/features/guest/marketing/parkings/components/ParkingOverview';
 import { ParkingPublicBrandShell } from '@/features/guest/marketing/parkings/components/ParkingPublicBrandShell';
+import { useCaptureParkingLinkStay } from '@/features/guest/marketing/parkings/hooks/useCaptureParkingLinkStay';
 import { useParkingReserve } from '@/features/guest/marketing/parkings/hooks/useParkingReserve';
 import { usePublicParkingDetail } from '@/features/guest/marketing/parkings/hooks/usePublicParkingDetail';
 import {
@@ -43,6 +44,7 @@ function buildGalleryImages(coverImage: string | null, images: string[]): string
 }
 
 export function ParkingDetailPage() {
+  useCaptureParkingLinkStay();
   const reduceMotion = useReducedMotion();
   const { parkingSlug = '' } = useParams<{ parkingSlug: string }>();
   const [searchParams, setSearchParams] = useSearchParams();

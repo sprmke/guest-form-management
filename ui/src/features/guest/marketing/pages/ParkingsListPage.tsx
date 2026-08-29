@@ -9,6 +9,7 @@ import { ParkingFilters, ParkingToolbar } from '@/features/guest/marketing/devel
 import type { ParkingSortKey } from '@/features/guest/marketing/developments/lib/parkingSlotFilters';
 import { DEFAULT_PARKING_FILTERS } from '@/features/guest/marketing/developments/lib/parkingSlotFilters';
 import { ParkingsByLocation, ParkingsHero } from '@/features/guest/marketing/parkings/components';
+import { useCaptureParkingLinkStay } from '@/features/guest/marketing/parkings/hooks/useCaptureParkingLinkStay';
 import { usePublicParkings } from '@/features/guest/marketing/parkings/hooks/usePublicParkings';
 import {
   EMPTY_PARKINGS_FACETS,
@@ -56,8 +57,10 @@ function isDefaultGroupedBrowse(query: ParkingsListingQuery): boolean {
 
 export function ParkingsListPage() {
   usePageTitle(publicPageTitle('Parkings'));
+  useCaptureParkingLinkStay();
   const [searchParams, setSearchParams] = useSearchParams();
   const query = useMemo(() => parseParkingsQuery(searchParams), [searchParams]);
+
   const groupedBrowse = isDefaultGroupedBrowse(query);
   const facetQuery = useMemo(
     () => (groupedBrowse ? { ...query, pageSize: 1 } : query),

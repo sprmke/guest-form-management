@@ -1,4 +1,6 @@
-import { useNavigate } from 'react-router-dom';
+import { useMemo } from 'react';
+
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { toast } from 'sonner';
 
@@ -7,6 +9,10 @@ import { guestParkingRequestStatusPath } from '@/features/guest/lib/guestPublicP
 import { ParkingRegistrationForm } from '@/features/guest/marketing/parkings/components/ParkingRegistrationForm';
 import { useLinkableParkingBookings } from '@/features/guest/marketing/parkings/hooks/useLinkableParkingBookings';
 import { useSubmitParkingBookingRequest } from '@/features/guest/marketing/parkings/hooks/useSubmitParkingBookingRequest';
+import {
+  clearParkingLinkStayId,
+  getParkingLinkStayId,
+} from '@/features/guest/marketing/parkings/lib/parkingLinkStay';
 import type { ParkingRegistrationValues } from '@/features/guest/marketing/parkings/lib/parkingRegistrationSchema';
 import { GuestDialogShell } from '@/features/guest/marketing/shared/components/GuestDialogShell';
 
@@ -40,6 +46,8 @@ export function ParkingBookingFormModal({
   checkOut,
 }: ParkingBookingFormModalProps) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const preferredLinkStayId = useMemo(() => getParkingLinkStayId(searchParams), [searchParams]);
   const submitRequest = useSubmitParkingBookingRequest();
   const { status: guestAuthStatus } = useGuestAuth();
   const isAuthenticated = guestAuthStatus === 'authenticated';
@@ -47,7 +55,7 @@ export function ParkingBookingFormModal({
 
   const checkInDate = checkIn ? dateToString(checkIn) : '';
   const checkOutDate = checkOut ? dateToString(checkOut) : '';
-  const formKey = `${parkingId}:${checkInDate}:${checkOutDate}`;
+  const formKey = `${parkingId}:${checkInDate}:${checkOutDate}:${preferredLinkStayId ?? ''}`;
 
   const handleSubmit = async (
     values: ParkingRegistrationValues,
@@ -72,6 +80,7 @@ export function ParkingBookingFormModal({
         notes: values.notes,
         linkedPropertyBookingId: linkedPropertyBookingId ?? undefined,
       });
+      clearParkingLinkStayId();
       onOpenChange(false);
       navigate(guestParkingRequestStatusPath(result.bookingId));
     } catch (error) {
@@ -100,6 +109,7 @@ export function ParkingBookingFormModal({
           towerLabel={towerLabel}
           linkableBookings={linkableBookingsQuery.data ?? []}
           isLinkableLoading={isAuthenticated && linkableBookingsQuery.isPending}
+          preferredLinkStayId={preferredLinkStayId}
           onSubmit={handleSubmit}
         />
       ) : null}

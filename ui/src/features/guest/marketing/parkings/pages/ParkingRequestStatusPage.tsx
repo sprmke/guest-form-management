@@ -16,9 +16,9 @@ import { ParkingRequestStatusPageSkeleton } from '@/components/skeletons/GuestPa
 import { Button } from '@/components/ui/button';
 import { MainLayout } from '@/layouts/MainLayout';
 import { useFavicon } from '@/lib/favicon';
+import { propertyPublicPageTitle, usePageTitle } from '@/lib/pageTitle';
 import { parkingStatusGuest } from '@/lib/parking/parkingFlowCopy';
 import { parkingFlowTransition } from '@/lib/parking/parkingFlowMotion';
-import { propertyPublicPageTitle, usePageTitle } from '@/lib/pageTitle';
 
 function resolveParkingShellTitle(data: {
   parkingName: string | null;

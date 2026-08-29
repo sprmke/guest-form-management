@@ -1,10 +1,9 @@
-import type { UseFormReturn } from 'react-hook-form';
 
 import { Pencil } from 'lucide-react';
 
 import type { LinkableParkingBooking } from '@/features/guest/marketing/parkings/hooks/useLinkableParkingBookings';
-import { PARKING_LINKED_CONFIRM_TITLE } from '@/features/guest/marketing/parkings/lib/parkingRequestEntryCopy';
 import type { ParkingRegistrationValues } from '@/features/guest/marketing/parkings/lib/parkingRegistrationSchema';
+import { PARKING_LINKED_CONFIRM_TITLE } from '@/features/guest/marketing/parkings/lib/parkingRequestEntryCopy';
 
 import { Button } from '@/components/ui/button';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -16,6 +15,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { formatParkingStayRange } from '@/utils/format/parkingStayDisplay';
+
+import type { UseFormReturn } from 'react-hook-form';
 
 type Props = {
   booking: LinkableParkingBooking;

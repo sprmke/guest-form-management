@@ -61,6 +61,11 @@ interface ParkingRegistrationFormProps {
   linkableBookings?: LinkableParkingBooking[];
   /** While true, delay stay-chooser vs manual so we don't flash the stepper. */
   isLinkableLoading?: boolean;
+  /**
+   * When set (from `?linkStay=` / session), auto-select that property stay once it
+   * appears in linkableBookings — skips the chooser for host-shared deep links.
+   */
+  preferredLinkStayId?: string | null;
   onSubmit: (
     data: ParkingRegistrationValues,
     linkedPropertyBookingId: string | null
@@ -102,6 +107,7 @@ export function ParkingRegistrationForm({
   towerLabel,
   linkableBookings = [],
   isLinkableLoading = false,
+  preferredLinkStayId = null,
   onSubmit,
 }: ParkingRegistrationFormProps) {
   const reduceMotion = useReducedMotion();
@@ -111,6 +117,7 @@ export function ParkingRegistrationForm({
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [linkedBookingId, setLinkedBookingId] = useState<string | null>(null);
+  const [autoLinkAttempted, setAutoLinkAttempted] = useState(false);
 
   const form = useForm<ParkingRegistrationValues>({
     resolver: zodResolver(parkingRegistrationSchema),
@@ -178,6 +185,23 @@ export function ParkingRegistrationForm({
 
     setPhase('confirm');
   };
+
+  // Host-shared deep link: once linkable stays load, auto-select preferred stay once.
+  useEffect(() => {
+    if (autoLinkAttempted || isLinkableLoading) return;
+    const preferred = preferredLinkStayId?.trim() ?? '';
+    if (!preferred) {
+      setAutoLinkAttempted(true);
+      return;
+    }
+    const match = linkableBookings.find((booking) => booking.id === preferred);
+    setAutoLinkAttempted(true);
+    if (match) {
+      handleSelectStay(match.id);
+    }
+    // handleSelectStay closes over linkableBookings/form — intentional one-shot after load.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot after linkable load
+  }, [autoLinkAttempted, isLinkableLoading, preferredLinkStayId, linkableBookings]);
 
   const handleSelectManual = () => {
     setLinkedBookingId(null);

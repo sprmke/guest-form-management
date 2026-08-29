@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
@@ -12,6 +12,11 @@ import { useLinkableParkingBookings } from '@/features/guest/marketing/parkings/
 import { usePublicParkingDetail } from '@/features/guest/marketing/parkings/hooks/usePublicParkingDetail';
 import { useSubmitParkingBookingRequest } from '@/features/guest/marketing/parkings/hooks/useSubmitParkingBookingRequest';
 import { formatParkingLocation } from '@/features/guest/marketing/parkings/lib/formatParkingLocation';
+import {
+  captureParkingLinkStayFromSearch,
+  clearParkingLinkStayId,
+  getParkingLinkStayId,
+} from '@/features/guest/marketing/parkings/lib/parkingLinkStay';
 import type { ParkingRegistrationValues } from '@/features/guest/marketing/parkings/lib/parkingRegistrationSchema';
 
 import { GuestFormBrandHeader } from '@/components/branding/GuestFormBrandHeader';
@@ -38,6 +43,10 @@ export function ParkingFormPage() {
   const { data, isLoading, isError } = usePublicParkingDetail(parkingSlug);
   const submitRequest = useSubmitParkingBookingRequest();
   const linkableBookingsQuery = useLinkableParkingBookings(guestAuthStatus === 'authenticated');
+  const preferredLinkStayId = useMemo(() => {
+    captureParkingLinkStayFromSearch(searchParams);
+    return getParkingLinkStayId(searchParams);
+  }, [searchParams]);
 
   const homeHref = parkingSlug ? `/parkings/${encodeURIComponent(parkingSlug)}` : '/parkings';
 
@@ -107,6 +116,7 @@ export function ParkingFormPage() {
         linkedPropertyBookingId: linkedPropertyBookingId ?? undefined,
         directLinkToken: directLinkToken || undefined,
       });
+      clearParkingLinkStayId();
       // Same as Reserve modal: skip the false "done" screen — status page is the real next step.
       navigate(guestParkingRequestStatusPath(result.bookingId), { replace: true });
     } catch (error) {
@@ -147,6 +157,7 @@ export function ParkingFormPage() {
           towerLabel={data.tower}
           linkableBookings={linkableBookingsQuery.data ?? []}
           isLinkableLoading={linkableBookingsQuery.isPending}
+          preferredLinkStayId={preferredLinkStayId}
           onSubmit={handleSubmit}
         />
       </div>

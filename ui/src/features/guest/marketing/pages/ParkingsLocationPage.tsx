@@ -15,6 +15,7 @@ import {
   type ParkingSortKey,
 } from '@/features/guest/marketing/developments/lib/parkingSlotFilters';
 import { ParkingsEntriesGrid, ParkingsHero } from '@/features/guest/marketing/parkings/components';
+import { useCaptureParkingLinkStay } from '@/features/guest/marketing/parkings/hooks/useCaptureParkingLinkStay';
 import { usePublicParkings } from '@/features/guest/marketing/parkings/hooks/usePublicParkings';
 import { parkingSlotsFromEntries } from '@/features/guest/marketing/parkings/lib/parkingListEntries';
 import {
@@ -27,6 +28,7 @@ import { ListingGridSkeleton } from '@/components/skeletons/ListingGridSkeleton'
 import { Button } from '@/components/ui/button';
 
 export function ParkingsLocationPage() {
+  useCaptureParkingLinkStay();
   const { location = '' } = useParams<{ location: string }>();
   const locationSlug = location.trim().toLowerCase();
   const reduceMotion = useReducedMotion();
