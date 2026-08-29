@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Search, Star, ThumbsUp, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Star, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
 import { GuestDialogShell } from '@/features/guest/marketing/shared/components/GuestDialogShell';
@@ -10,131 +10,26 @@ import { guestReviewFeedbackTagLabel } from '@/features/guest/sd-form/lib/guestR
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-interface Review {
+export interface PropertyReviewItem {
   id: string;
   author: string;
-  avatar?: string;
   date: string;
   rating: number;
   comment: string;
-  helpful: number;
   source?: 'kame' | 'facebook' | 'airbnb';
   feedbackTags?: string[];
   media?: Array<{ url: string; type: 'image' | 'video' }>;
-  categories?: {
-    cleanliness?: number;
-    accuracy?: number;
-    communication?: number;
-    location?: number;
-    checkin?: number;
-    value?: number;
-  };
+  /** ISO timestamp for newest-first sort when present. */
+  createdAt?: string | null;
 }
 
 interface PropertyReviewsProps {
   rating: number;
   totalReviews: number;
-  reviews?: Review[];
+  reviews?: PropertyReviewItem[];
 }
 
-const ratingCategories = [
-  { key: 'cleanliness', label: 'Cleanliness' },
-  { key: 'accuracy', label: 'Accuracy' },
-  { key: 'communication', label: 'Communication' },
-  { key: 'location', label: 'Location' },
-  { key: 'checkin', label: 'Check-in' },
-  { key: 'value', label: 'Value' },
-];
-
-// Mock reviews data
-const mockReviews: Review[] = [
-  {
-    id: '1',
-    author: 'Maria Santos',
-    date: 'January 2026',
-    rating: 5,
-    comment:
-      'Amazing place! The view was breathtaking and the host was incredibly responsive. Everything was clean and exactly as described. Would definitely stay again!',
-    helpful: 12,
-    categories: {
-      cleanliness: 5,
-      accuracy: 5,
-      communication: 5,
-      location: 5,
-      checkin: 5,
-      value: 5,
-    },
-  },
-  {
-    id: '2',
-    author: 'John Reyes',
-    date: 'January 2026',
-    rating: 5,
-    comment:
-      "Perfect getaway spot! The amenities were top-notch and the location couldn't be better. Highly recommend for families.",
-    helpful: 8,
-    categories: {
-      cleanliness: 5,
-      accuracy: 5,
-      communication: 5,
-      location: 5,
-      checkin: 4,
-      value: 5,
-    },
-  },
-  {
-    id: '3',
-    author: 'Sarah Chen',
-    date: 'December 2025',
-    rating: 4,
-    comment:
-      'Great property with beautiful surroundings. Minor issue with hot water but was resolved quickly. Overall a wonderful experience.',
-    helpful: 5,
-    categories: {
-      cleanliness: 4,
-      accuracy: 4,
-      communication: 5,
-      location: 5,
-      checkin: 5,
-      value: 4,
-    },
-  },
-  {
-    id: '4',
-    author: 'Michael Torres',
-    date: 'December 2025',
-    rating: 5,
-    comment: "Exceeded all expectations! The photos don't do it justice. Will definitely be back!",
-    helpful: 15,
-    categories: {
-      cleanliness: 5,
-      accuracy: 5,
-      communication: 5,
-      location: 5,
-      checkin: 5,
-      value: 5,
-    },
-  },
-  {
-    id: '5',
-    author: 'Lisa Garcia',
-    date: 'November 2025',
-    rating: 5,
-    comment:
-      "One of the best stays we've ever had. Everything was perfect from check-in to check-out. The host thought of every detail.",
-    helpful: 20,
-    categories: {
-      cleanliness: 5,
-      accuracy: 5,
-      communication: 5,
-      location: 4,
-      checkin: 5,
-      value: 5,
-    },
-  },
-];
-
-const reviewSourceLabel = (source?: Review['source']) => {
+const reviewSourceLabel = (source?: PropertyReviewItem['source']) => {
   switch (source) {
     case 'airbnb':
       return 'Airbnb';
@@ -147,13 +42,26 @@ const reviewSourceLabel = (source?: Review['source']) => {
   }
 };
 
-function reviewImageUrls(review: Review): string[] {
+function reviewImageUrls(review: PropertyReviewItem): string[] {
   return (review.media ?? [])
     .filter((item) => item.type === 'image' && item.url.trim())
     .map((item) => item.url.trim());
 }
 
-function ReviewAuthorHeader({ review }: { review: Review }) {
+function sortReviewsNewestFirst(reviews: PropertyReviewItem[]): PropertyReviewItem[] {
+  return [...reviews].sort((a, b) => {
+    const aMs = a.createdAt ? Date.parse(a.createdAt) : Number.NaN;
+    const bMs = b.createdAt ? Date.parse(b.createdAt) : Number.NaN;
+    const aOk = Number.isFinite(aMs);
+    const bOk = Number.isFinite(bMs);
+    if (aOk && bOk) return bMs - aMs;
+    if (aOk) return -1;
+    if (bOk) return 1;
+    return 0;
+  });
+}
+
+function ReviewAuthorHeader({ review }: { review: PropertyReviewItem }) {
   return (
     <div className="flex items-start justify-between gap-3">
       <div className="flex min-w-0 items-center gap-3">
@@ -172,7 +80,7 @@ function ReviewAuthorHeader({ review }: { review: Review }) {
           <p className="text-muted-foreground text-sm">{review.date}</p>
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-1">
+      <div className="flex shrink-0 items-center gap-1" aria-label={`${review.rating} of 5 stars`}>
         {[...Array(5)].map((_, i) => (
           <Star
             key={i}
@@ -180,6 +88,7 @@ function ReviewAuthorHeader({ review }: { review: Review }) {
               'h-4 w-4',
               i < review.rating ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/30'
             )}
+            aria-hidden
           />
         ))}
       </div>
@@ -187,7 +96,7 @@ function ReviewAuthorHeader({ review }: { review: Review }) {
   );
 }
 
-function ReviewFeedbackTags({ review }: { review: Review }) {
+function ReviewFeedbackTags({ review }: { review: PropertyReviewItem }) {
   if (!review.feedbackTags?.length) return null;
   return (
     <div className="flex flex-wrap gap-2">
@@ -273,7 +182,7 @@ function ReviewDetailDialog({
   onPhotoClick,
   dismissLocked,
 }: {
-  review: Review | null;
+  review: PropertyReviewItem | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onPhotoClick: (urls: string[], index: number) => void;
@@ -416,29 +325,20 @@ function ReviewPhotoLightbox({
   );
 }
 
-export function PropertyReviews({ rating = 4.9, totalReviews = 0, reviews }: PropertyReviewsProps) {
-  const resolvedReviews = reviews ?? (totalReviews > 0 ? mockReviews : []);
+export function PropertyReviews({ rating, totalReviews, reviews = [] }: PropertyReviewsProps) {
+  const resolvedReviews = sortReviewsNewestFirst(reviews);
   const [showAll, setShowAll] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [photoLightbox, setPhotoLightbox] = useState<{ urls: string[]; index: number } | null>(
     null
   );
-  const [detailReview, setDetailReview] = useState<Review | null>(null);
+  const [detailReview, setDetailReview] = useState<PropertyReviewItem | null>(null);
 
   const displayedReviews = showAll ? resolvedReviews : resolvedReviews.slice(0, 4);
+  const countLabel = totalReviews > 0 ? totalReviews : resolvedReviews.length;
 
-  // Calculate category averages
-  const categoryAverages = ratingCategories.map((cat) => {
-    const validReviews = resolvedReviews.filter(
-      (r) => r.categories?.[cat.key as keyof typeof r.categories]
-    );
-    const avg =
-      validReviews.reduce(
-        (sum, r) => sum + (r.categories?.[cat.key as keyof typeof r.categories] || 0),
-        0
-      ) / (validReviews.length || 1);
-    return { ...cat, avg: Number(avg.toFixed(1)) };
-  });
+  if (resolvedReviews.length === 0) {
+    return null;
+  }
 
   return (
     <motion.section
@@ -446,49 +346,21 @@ export function PropertyReviews({ rating = 4.9, totalReviews = 0, reviews }: Pro
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.7 }}
       className="space-y-6"
+      aria-labelledby="property-reviews-heading"
     >
-      {/* Rating Summary */}
-      <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:gap-8">
-        <div className="flex items-center gap-3">
-          <Star className="h-8 w-8 fill-amber-400 text-amber-400" />
-          <div>
-            <span className="text-foreground text-4xl font-bold">{rating}</span>
-            <p className="text-muted-foreground">{totalReviews} reviews</p>
-          </div>
-        </div>
-
-        {/* Rating Breakdown */}
-        <div className="grid flex-1 grid-cols-2 gap-x-8 gap-y-2 sm:grid-cols-3">
-          {categoryAverages.map((cat) => (
-            <div key={cat.key} className="flex items-center justify-between gap-2">
-              <span className="text-muted-foreground text-sm">{cat.label}</span>
-              <div className="flex items-center gap-2">
-                <div className="bg-muted h-1.5 w-20 overflow-hidden rounded-full">
-                  <div
-                    className="bg-foreground h-full rounded-full"
-                    style={{ width: `${(cat.avg / 5) * 100}%` }}
-                  />
-                </div>
-                <span className="text-foreground text-sm font-medium">{cat.avg}</span>
-              </div>
-            </div>
-          ))}
+      <div className="flex items-center gap-3">
+        <Star className="h-8 w-8 fill-amber-400 text-amber-400" aria-hidden />
+        <div>
+          <h2 id="property-reviews-heading" className="sr-only">
+            Reviews
+          </h2>
+          <span className="text-foreground text-4xl font-bold tabular-nums">{rating}</span>
+          <p className="text-muted-foreground">
+            {countLabel} review{countLabel === 1 ? '' : 's'}
+          </p>
         </div>
       </div>
 
-      {/* Search Reviews */}
-      <div className="relative">
-        <Search className="text-muted-foreground absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2" />
-        <input
-          type="text"
-          placeholder="Search reviews..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/20 w-full rounded-xl border py-3 pl-10 pr-4 focus:outline-none focus:ring-2"
-        />
-      </div>
-
-      {/* Reviews List */}
       <div className="space-y-6">
         {displayedReviews.map((review, index) => {
           const photos = reviewImageUrls(review);
@@ -521,35 +393,29 @@ export function PropertyReviews({ rating = 4.9, totalReviews = 0, reviews }: Pro
               ) : null}
 
               {photos.length > 0 ? (
-                <div className="mb-3">
-                  <ReviewPhotoGrid
-                    urls={photos}
-                    reviewId={review.id}
-                    onPhotoClick={(index) => setPhotoLightbox({ urls: photos, index })}
-                  />
-                </div>
+                <ReviewPhotoGrid
+                  urls={photos}
+                  reviewId={review.id}
+                  onPhotoClick={(photoIndex) =>
+                    setPhotoLightbox({ urls: photos, index: photoIndex })
+                  }
+                />
               ) : null}
-
-              <button className="text-muted-foreground hover:text-foreground flex items-center gap-2 text-sm transition-colors">
-                <ThumbsUp className="h-4 w-4" />
-                Helpful ({review.helpful})
-              </button>
             </motion.div>
           );
         })}
       </div>
 
-      {/* Show All Button */}
-      {resolvedReviews.length > 4 && (
+      {resolvedReviews.length > 4 ? (
         <Button
           variant="outline"
           onClick={() => setShowAll(!showAll)}
           className="w-full gap-2 rounded-xl sm:w-auto"
         >
-          {showAll ? 'Show less' : `Show all ${totalReviews} reviews`}
+          {showAll ? 'Show less' : `Show all ${countLabel} reviews`}
           <ChevronRight className={cn('h-4 w-4 transition-transform', showAll && 'rotate-90')} />
         </Button>
-      )}
+      ) : null}
 
       <ReviewDetailDialog
         review={detailReview}
@@ -558,7 +424,7 @@ export function PropertyReviews({ rating = 4.9, totalReviews = 0, reviews }: Pro
         onOpenChange={(open) => {
           if (!open) setDetailReview(null);
         }}
-        onPhotoClick={(urls, index) => setPhotoLightbox({ urls, index })}
+        onPhotoClick={(urls, photoIndex) => setPhotoLightbox({ urls, index: photoIndex })}
       />
 
       <AnimatePresence>
@@ -567,8 +433,8 @@ export function PropertyReviews({ rating = 4.9, totalReviews = 0, reviews }: Pro
             urls={photoLightbox.urls}
             index={photoLightbox.index}
             onClose={() => setPhotoLightbox(null)}
-            onIndexChange={(index) =>
-              setPhotoLightbox((current) => (current ? { ...current, index } : current))
+            onIndexChange={(photoIndex) =>
+              setPhotoLightbox((current) => (current ? { ...current, index: photoIndex } : current))
             }
           />
         ) : null}

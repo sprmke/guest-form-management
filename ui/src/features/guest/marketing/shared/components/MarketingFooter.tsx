@@ -155,7 +155,7 @@ export function MarketingFooter() {
         <div className="container mx-auto px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
             <p className="text-muted-foreground text-sm">
-              © {new Date().getFullYear()} KameHomes. All rights reserved.
+              © {new Date().getFullYear()} Kame Homes. All rights reserved.
             </p>
             <div className="flex items-center gap-4">
               {socialLinks.map((social) => (

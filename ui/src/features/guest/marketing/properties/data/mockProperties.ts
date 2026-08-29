@@ -242,7 +242,7 @@ export const mockProperties: Property[] = [
   {
     id: 'property-kame-home',
     slug: 'kame-home',
-    name: 'Kame Home',
+    name: 'Monaco 2604',
     location: 'San Fernando City, Pampanga',
     price: 4500,
     rating: 4.96,

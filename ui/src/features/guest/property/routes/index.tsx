@@ -23,12 +23,12 @@ import {
   guestReviewPath,
   guestSuccessPath,
 } from '@/features/guest/lib/guestPublicPaths';
+import { PropertyShowcasePage } from '@/features/guest/marketing/showcase/pages/PropertyShowcasePage';
 import { fetchPayParking } from '@/features/guest/pay-parking/lib/api';
 import { PayParkingPage } from '@/features/guest/pay-parking/pages/PayParkingPage';
 import { GuestReviewPage } from '@/features/guest/sd-form/pages/GuestReviewPage';
 import { SdFormPage } from '@/features/guest/sd-form/pages/SdFormPage';
 import { StayGuidePage } from '@/features/guest/stay-guide/pages/StayGuidePage';
-import { PropertyShowcasePage } from '@/features/guest/marketing/showcase/pages/PropertyShowcasePage';
 
 import { MainLayout } from '@/layouts/MainLayout';
 import { useFavicon } from '@/lib/favicon';

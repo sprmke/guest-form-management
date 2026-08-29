@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 
 import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 
+import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { Users, User, PawPrint, Mail, Phone, Info, Car } from 'lucide-react';
 
@@ -16,7 +17,12 @@ import {
   pickGuestBrandHeaderProps,
 } from '@/features/guest/form/lib/guestFormBranding';
 import { useGuestPropertySlug } from '@/features/guest/hooks/useGuestPropertySlug';
-import { guestCalendarPath } from '@/features/guest/lib/guestPublicPaths';
+import {
+  guestCalendarPath,
+  guestParkingFindPath,
+  guestParkingOwnDefaultPath,
+} from '@/features/guest/lib/guestPublicPaths';
+import { fetchPayParking } from '@/features/guest/pay-parking/lib/api';
 import { GuestStayDateRangeDisplay } from '@/features/guest/property/components/GuestStayDateRangeDisplay';
 
 import { GuestFormBrandHeader } from '@/components/branding/GuestFormBrandHeader';
@@ -56,6 +62,32 @@ export function GuestFormSuccess() {
   const isAirbnb = bookingSource === 'Airbnb';
   const isFacebook = bookingSource === 'Facebook';
   const messengerReturn = formatGuestMessengerReturn(isAirbnb, isFacebook);
+
+  const parkingFindQuery = useQuery({
+    queryKey: ['guest-success-parking-find', bookingId],
+    queryFn: () => fetchPayParking(bookingId as string),
+    enabled: Boolean(bookingId && bookingData?.needParking),
+    staleTime: 60_000,
+    retry: false,
+  });
+
+  const parkingFindPath = useMemo(() => {
+    if (!bookingId) return '/parkings';
+    const data = parkingFindQuery.data;
+    const ownSlug = data?.owner_default_parking_slug?.trim();
+    if (ownSlug) {
+      return guestParkingOwnDefaultPath({
+        parkingSlug: ownSlug,
+        bookingId,
+        checkInDate: data?.owner_default_check_in,
+        checkOutDate: data?.owner_default_check_out,
+      });
+    }
+    return guestParkingFindPath({
+      bookingId,
+      locationSlug: data?.city_location_slug,
+    });
+  }, [bookingId, parkingFindQuery.data]);
 
   // Redirect to root if no booking ID
   useEffect(() => {
@@ -210,7 +242,7 @@ export function GuestFormSuccess() {
                             Reserve and pay for a spot separately, once you're signed in as a guest.
                           </p>
                           <Link
-                            to="/parkings"
+                            to={parkingFindPath}
                             className="text-primary mt-2 inline-block text-sm font-semibold underline underline-offset-2"
                           >
                             Find parking near your stay

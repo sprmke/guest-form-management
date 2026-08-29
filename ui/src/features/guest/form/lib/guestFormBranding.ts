@@ -41,15 +41,30 @@ export function formatGafEmailHint(residenceName: string | null): string {
   return `Use an email you can access. Your GAF will be sent there for ${place} check-in.`;
 }
 
+/** Platform brand for guest chrome when org name is missing or still the legacy single-property label. */
+export const PLATFORM_BRAND_NAME = 'Kame Homes';
+
+/** True when a label is the old single-tenant brand (optionally with Azure North). */
+export function isLegacyKameHomeBrand(label: string | null | undefined): boolean {
+  const value = label?.trim() ?? '';
+  if (!value) return false;
+  // "Kame Home", "KameHome", "Kame Home — Azure North", "Kame Home - Azure North Residences"
+  return /^kame\s*home(?:\s*[—\-–]\s*azure\s*north(?:\s+residences?)?)?$/i.test(value);
+}
+
+function resolveGuestFooterOrgName(organizationName: string | null | undefined): string {
+  const org = organizationName?.trim();
+  if (!org || isLegacyKameHomeBrand(org)) return PLATFORM_BRAND_NAME;
+  return org;
+}
+
+/** Copyright line for operational guest pages — host org, or platform brand. No residence. */
 export function formatGuestFooterLabel(
   organizationName: string | null | undefined,
-  residenceName: string | null | undefined
+  _residenceName?: string | null | undefined
 ): string {
   const year = new Date().getFullYear();
-  const org = organizationName?.trim() || 'Kame Home';
-  const residence = formatResidenceShortName(residenceName);
-  const suffix = residence ? ` — ${residence}` : '';
-  return `© ${year} ${org}${suffix}. All rights reserved.`;
+  return `© ${year} ${resolveGuestFooterOrgName(organizationName)}. All rights reserved.`;
 }
 
 export function formatParkingStepHint(residenceName: string | null): string {

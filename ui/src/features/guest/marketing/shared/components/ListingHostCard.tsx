@@ -4,6 +4,10 @@ import { motion } from 'framer-motion';
 import { Award } from 'lucide-react';
 
 import { guestHostPath } from '@/features/guest/lib/guestPublicPaths';
+import {
+  PLATFORM_BRAND_NAME,
+  isLegacyKameHomeBrand,
+} from '@/features/guest/form/lib/guestFormBranding';
 import { ListingRecommendedBadge } from '@/features/guest/marketing/shared/components/ListingRecommendedBadge';
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
 
@@ -27,7 +31,8 @@ type Props = {
 
 export function ListingHostCard({ host, motionDelay = 0.2, className, onContactHost }: Props) {
   const hostLabel = host.ownerName.trim() || 'Host';
-  const orgLabel = host.organizationName.trim() || 'Kame Homes';
+  const rawOrg = host.organizationName.trim();
+  const orgLabel = !rawOrg || isLegacyKameHomeBrand(rawOrg) ? PLATFORM_BRAND_NAME : rawOrg;
   const hostAvatar = host.ownerAvatarUrl || host.organizationLogoUrl || null;
   const orgHref = host.organizationSlug ? guestHostPath(host.organizationSlug) : null;
 

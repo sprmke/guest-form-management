@@ -14,8 +14,8 @@ import {
 } from '@/features/guest/auth/config/auth-navigation';
 import { useGuestSession } from '@/features/guest/auth/hooks/useGuestSession';
 import { scrollToSection } from '@/features/guest/marketing/for-hosts/lib/scrollToSection';
-import { MarketingBrandLogo } from '@/features/guest/marketing/shared/components/MarketingBrandLogo';
 import { HostAccountMenu } from '@/features/guest/marketing/shared/components/HostAccountMenu';
+import { MarketingBrandLogo } from '@/features/guest/marketing/shared/components/MarketingBrandLogo';
 import {
   useListingNavMorph,
   useListingScrollSearch,

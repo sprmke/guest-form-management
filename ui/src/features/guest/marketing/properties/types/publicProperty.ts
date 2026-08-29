@@ -103,6 +103,7 @@ export type PublicGuestReview = {
   feedbackTags: string[];
   media: Array<{ url: string; type: 'image' | 'video' }>;
   source?: 'kame' | 'facebook' | 'airbnb';
+  createdAt?: string | null;
 };
 
 export type PublicHouseRule = PublicPropertyDetailDto['houseRules'][number];
