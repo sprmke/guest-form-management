@@ -9,6 +9,11 @@
 import { DatabaseService } from '../_shared/databaseService.ts';
 import { countStayNights } from '../_shared/utils.ts';
 import { resolveAppSettings } from '../_shared/appSettings.ts';
+import { createServiceClient } from '../_shared/orgAuth.ts';
+import {
+  resolveOwnerDefaultParking,
+  readPreferredOwnerParkingId,
+} from '../_shared/ownerDefaultParking.ts';
 import { resolvePropertySlugById } from '../_shared/propertyScope.ts';
 import { jsonResponse, jsonSuccess } from '../_shared/httpResponse.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
@@ -71,6 +76,69 @@ servePublic('get-pay-parking', async (req) => {
   const propertyId = (row.property_id as string | null | undefined) ?? '';
   const property_slug = propertyId ? await resolvePropertySlugById(propertyId) : null;
 
+  // Marketplace link (Phase pay-parking connect) — public redirect target when already matched.
+  const supabase = createServiceClient();
+  const { data: linkedParking } = await supabase
+    .from('guest_submissions')
+    .select('id')
+    .eq('linked_property_booking_id', bookingId)
+    .maybeSingle();
+
+  let city_location_slug: string | null = null;
+  let owner_default_parking_slug: string | null = null;
+  let owner_default_check_in: string | null = null;
+  let owner_default_check_out: string | null = null;
+  if (propertyId) {
+    const { data: property } = await supabase
+      .from('properties')
+      .select('organization_id, residence_name, settings')
+      .eq('id', propertyId)
+      .maybeSingle();
+    const cityRaw =
+      property?.settings &&
+      typeof property.settings === 'object' &&
+      property.settings !== null &&
+      'city' in (property.settings as Record<string, unknown>)
+        ? (property.settings as Record<string, unknown>).city
+        : null;
+    if (typeof cityRaw === 'string' && cityRaw.trim()) {
+      // Mirror ui `toLocationSlug(normalizeCityPlace(city))` for redirect consistency.
+      const place = cityRaw
+        .trim()
+        .replace(/\s+City$/i, '')
+        .trim();
+      city_location_slug = place
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      if (!city_location_slug || city_location_slug === 'other') city_location_slug = null;
+    }
+
+    if (property?.organization_id) {
+      try {
+        const ownerDefault = await resolveOwnerDefaultParking({
+          organizationId: String(property.organization_id),
+          propertyResidenceName: (property.residence_name as string | null) ?? null,
+          checkInDate: String(row.check_in_date ?? ''),
+          checkOutDate: String(row.check_out_date ?? ''),
+          preferredParkingId: readPreferredOwnerParkingId(property.settings),
+        });
+        if (ownerDefault.defaultParking?.slug) {
+          owner_default_parking_slug = ownerDefault.defaultParking.slug;
+          owner_default_check_in = ownerDefault.checkInDate;
+          owner_default_check_out = ownerDefault.checkOutDate;
+        }
+      } catch (err) {
+        console.error(
+          '[get-pay-parking] owner default resolve failed:',
+          err instanceof Error ? err.message : err
+        );
+      }
+    }
+  }
+
   return jsonSuccess(req, {
     bookingId: row.id,
     property_slug,
@@ -98,5 +166,10 @@ servePublic('get-pay-parking', async (req) => {
     status: row.status,
     email_logo_url: settings.emailLogoUrl,
     brand_color: settings.brandColor,
+    linked_parking_booking_id: linkedParking?.id ? String(linkedParking.id) : null,
+    city_location_slug,
+    owner_default_parking_slug,
+    owner_default_check_in,
+    owner_default_check_out,
   });
 });

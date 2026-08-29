@@ -7,10 +7,11 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { patchGuestProfile } from '../_shared/guestProfileService.ts';
 import { jsonError, jsonSuccess } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+import { assertWithinUploadLimit } from '../_shared/uploadLimits.ts';
 import { formatPublicUrl } from '../_shared/utils.ts';
 
 const BUCKET = 'guest-profile-assets';
-const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']);
 
 serveAuthenticated('upload-guest-profile-asset', async (req, user) => {
   if (req.method !== 'POST') {
@@ -27,11 +28,16 @@ serveAuthenticated('upload-guest-profile-asset', async (req, user) => {
   if (!ALLOWED_MIME.has(mime)) {
     return jsonError(req, 'File must be JPEG, PNG, or WebP', 400);
   }
-  if (file.size > 5 * 1024 * 1024) {
-    return jsonError(req, 'File must be 5 MB or smaller', 400);
-  }
+  assertWithinUploadLimit(file, 'avatar');
 
-  const ext = mime === 'image/png' ? '.png' : mime === 'image/webp' ? '.webp' : '.jpg';
+  const ext =
+    mime === 'image/png'
+      ? '.png'
+      : mime === 'image/webp'
+        ? '.webp'
+        : mime === 'image/heic' || mime === 'image/heif'
+          ? '.heic'
+          : '.jpg';
   const storagePath = `${user.id}/avatar${ext}`;
 
   const supabase = createClient(

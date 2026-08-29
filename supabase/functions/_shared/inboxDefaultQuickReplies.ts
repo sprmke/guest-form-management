@@ -3,7 +3,7 @@
  * Seeded once per org when the template list is empty.
  */
 
-import { socialInboxDb } from './socialInboxService.ts';
+import { socialInboxDb } from './socialInboxDb.ts';
 
 export type DefaultQuickReplySeed = {
   title: string;

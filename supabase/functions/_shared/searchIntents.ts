@@ -202,7 +202,7 @@ export function findConceptFallback(raw: string): ResolvedSearchIntent | null {
 
 /**
  * Resolve guest "where" text into a search intent.
- * Specific names (Kame Home, Makati, Azure…) stay `literal`.
+ * Specific names (listing titles, Makati, Azure…) stay `literal`.
  */
 export function resolveSearchIntent(raw: string): ResolvedSearchIntent {
   const trimmed = raw.trim();

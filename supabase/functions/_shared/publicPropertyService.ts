@@ -20,6 +20,7 @@ import { resolvePropertyIdBySlug } from './propertyScope.ts';
 import {
   averageGuestReviewRating,
   listPublicGuestReviews,
+  sortPublicGuestReviewsNewestFirst,
   type PublicGuestReviewDto,
 } from './guestReviewService.ts';
 import {
@@ -351,7 +352,7 @@ export async function loadPublicPropertyById(
   const externalReviews = listApprovedPublicExternalReviews(
     appSettingsRowResult.data?.external_reviews
   );
-  const mergedReviews = [...guestReviews, ...externalReviews];
+  const mergedReviews = sortPublicGuestReviewsNewestFirst([...guestReviews, ...externalReviews]);
   const reviewRating = averageGuestReviewRating(mergedReviews);
   const isSuperhost =
     normalizeSuperhostStatus(appSettingsRowResult.data?.superhost_status) === 'approved';

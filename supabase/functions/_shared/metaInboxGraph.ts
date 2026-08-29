@@ -2,7 +2,7 @@
  * Meta Graph API client for inbox OAuth, webhooks, send, and backfill.
  */
 
-import { decryptMetaInboxToken, encryptMetaInboxToken } from './metaInboxCrypto.ts';
+import { encryptMetaInboxToken } from './metaInboxCrypto.ts';
 import {
   META_GRAPH_BASE,
   getMetaOAuthScopes,
@@ -10,23 +10,15 @@ import {
   getMetaAppCredentials,
   metaInboxOAuthRedirectUri,
 } from './metaInboxConfig.ts';
-import { reconcileMetaConnectionWebhook } from './metaInboxWebhookHealth.ts';
 import type { SocialChannelConnectionRow, SocialPlatform } from './socialInboxTypes.ts';
-import { upsertChannelConnection } from './socialInboxService.ts';
+import { upsertChannelConnection } from './socialInboxDb.ts';
+import {
+  getPageAccessToken,
+  parseMetaGraphJson,
+  subscribeMetaPageWebhooks,
+} from './metaInboxGraphHttp.ts';
 
-/** Parse Meta Graph responses; empty bodies become `{}` instead of throwing. */
-export async function parseMetaGraphJson(res: Response): Promise<Record<string, unknown>> {
-  const text = await res.text();
-  if (!text.trim()) {
-    if (!res.ok) throw new Error(`Meta API error (${res.status})`);
-    return {};
-  }
-  try {
-    return JSON.parse(text) as Record<string, unknown>;
-  } catch {
-    throw new Error(`Meta API returned invalid JSON (${res.status})`);
-  }
-}
+export { getPageAccessToken, parseMetaGraphJson, subscribeMetaPageWebhooks };
 
 export type MetaPageAccount = {
   id: string;
@@ -103,23 +95,6 @@ export async function fetchMetaIgProfile(
   return json as { username?: string; profile_picture_url?: string };
 }
 
-export async function subscribeMetaPageWebhooks(
-  pageId: string,
-  pageAccessToken: string
-): Promise<void> {
-  const url = new URL(`${META_GRAPH_BASE}/${pageId}/subscribed_apps`);
-  url.searchParams.set('subscribed_fields', META_WEBHOOK_SUBSCRIBED_FIELDS);
-  url.searchParams.set('access_token', pageAccessToken);
-  const res = await fetch(url.toString(), { method: 'POST' });
-  const json = await parseMetaGraphJson(res);
-  if (!res.ok || json.success !== true) {
-    throw new Error(
-      (json.error as { message?: string } | undefined)?.message ??
-        'Failed to subscribe Meta webhooks'
-    );
-  }
-}
-
 export async function unsubscribeMetaPageWebhooks(
   pageId: string,
   pageAccessToken: string
@@ -127,12 +102,6 @@ export async function unsubscribeMetaPageWebhooks(
   const url = new URL(`${META_GRAPH_BASE}/${pageId}/subscribed_apps`);
   url.searchParams.set('access_token', pageAccessToken);
   await fetch(url.toString(), { method: 'DELETE' });
-}
-
-export async function getPageAccessToken(connection: SocialChannelConnectionRow): Promise<string> {
-  const enc = connection.encrypted_access_token;
-  if (!enc) throw new Error('Channel not connected');
-  return decryptMetaInboxToken(enc);
 }
 
 /** Display label from Graph user fields — IG often has `username` and no `name`. */
@@ -218,7 +187,7 @@ async function assertMetaPageAvailable(
   pageId: string,
   opts: { orgId: string; propertyId?: string | null; parkingId?: string | null }
 ): Promise<void> {
-  const sb = (await import('./socialInboxService.ts')).socialInboxDb();
+  const sb = (await import('./socialInboxDb.ts')).socialInboxDb();
   const { data, error } = await sb
     .from('social_channel_connections')
     .select('id, organization_id, property_id, parking_id')
@@ -296,6 +265,7 @@ export async function persistMetaPageConnection(
     });
   }
 
+  const { reconcileMetaConnectionWebhook } = await import('./metaInboxWebhookHealth.ts');
   await reconcileMetaConnectionWebhook(facebook);
 
   return { facebook, instagram };

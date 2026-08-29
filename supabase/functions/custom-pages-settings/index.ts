@@ -1,11 +1,14 @@
 /**
  * custom-pages-settings — Admin GET/PATCH for a property's Custom Pages rows.
- * Auth: publicPages:view | publicPages.showcase:edit (PATCH showcase template)
- * Plan gate: PATCH property_showcase template → `propertyShowcase` (Growth+)
+ * Auth: publicPages:view | publicPages.stayGuide:edit / publicPages.showcase:edit (PATCH template)
+ * Plan gate: PATCH stay_guide / property_showcase template → `publicPagesAutosave` (Pro+).
+ * Guest live Showcase URL still requires `propertyShowcase` (see get-public-showcase).
+ * Both page types select from the same 6 `showcase-*` template keys.
  */
 
 import { catchPlanFeatureError, requirePropertyFeature } from '../_shared/planEntitlements.ts';
 import {
+  type CustomPageType,
   getOrCreateCustomPage,
   isShowcaseTemplateKey,
   parseCustomPageType,
@@ -14,7 +17,16 @@ import {
 } from '../_shared/customPages.ts';
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
 import { resolveScopedPropertyAccess } from '../_shared/propertyScope.ts';
+import type { TeamPermissionId } from '../_shared/propertyTeamPermissions.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+
+function templateEditPermission(pageType: CustomPageType): TeamPermissionId {
+  return pageType === 'stay_guide' ? 'publicPages.stayGuide:edit' : 'publicPages.showcase:edit';
+}
+
+function templatePlanFeature(): 'publicPagesAutosave' {
+  return 'publicPagesAutosave';
+}
 
 serveAuthenticated('custom-pages-settings', async (req) => {
   if (req.method === 'GET') {
@@ -45,9 +57,6 @@ serveAuthenticated('custom-pages-settings', async (req) => {
     if (!pageType) {
       return jsonError(req, 'pageType must be stay_guide or property_showcase', 400);
     }
-    if (pageType !== 'property_showcase') {
-      return jsonError(req, 'Only property_showcase template_key can be updated', 400);
-    }
 
     const templateKey =
       typeof body.templateKey === 'string'
@@ -63,9 +72,9 @@ serveAuthenticated('custom-pages-settings', async (req) => {
       );
     }
 
-    const { property } = await resolveScopedPropertyAccess(req, 'publicPages.showcase:edit');
+    const { property } = await resolveScopedPropertyAccess(req, templateEditPermission(pageType));
     try {
-      await requirePropertyFeature(property.id, 'propertyShowcase');
+      await requirePropertyFeature(property.id, templatePlanFeature());
     } catch (err) {
       const planErr = catchPlanFeatureError(req, err);
       if (planErr) return planErr;

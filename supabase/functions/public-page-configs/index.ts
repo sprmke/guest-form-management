@@ -1,7 +1,8 @@
 /**
  * public-page-configs — Admin GET/PATCH for public page section configs.
  * Auth: publicPages:view | publicPages.property:edit | publicPages.stayGuide:edit | publicPages.showcase:edit
- * Plan gate: PATCH → `publicPagesAutosave` (Starter+); property_showcase publish/template also needs `propertyShowcase`
+ * Plan gate: PATCH → `publicPagesAutosave` (Pro+ as of 20261210120000); property_showcase publish/template also needs `propertyShowcase`
+ * Config shapes: stay_guide → StayGuideConfig v2 (v1 rows upgraded on normalize); property_landing / property_showcase unchanged.
  */
 
 import { catchPlanFeatureError, requirePropertyFeature } from '../_shared/planEntitlements.ts';

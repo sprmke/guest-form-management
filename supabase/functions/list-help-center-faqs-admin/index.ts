@@ -4,7 +4,7 @@
  */
 
 import { createServiceClient } from '../_shared/orgAuth.ts';
-import { jsonSuccess, requireHttpMethod } from '../_shared/httpResponse.ts';
+import { jsonSuccess, requireHttpMethod, parsePageLimit } from '../_shared/httpResponse.ts';
 import { serveSuperAdmin } from '../_shared/serveEdge.ts';
 
 serveSuperAdmin('list-help-center-faqs-admin', async (req) => {
@@ -12,8 +12,7 @@ serveSuperAdmin('list-help-center-faqs-admin', async (req) => {
 
   const url = new URL(req.url);
   const p = url.searchParams;
-  const page = Math.max(1, parseInt(p.get('page') ?? '1', 10));
-  const limit = Math.min(100, Math.max(1, parseInt(p.get('limit') ?? '31', 10)));
+  const { page, limit } = parsePageLimit(p);
 
   const supabase = createServiceClient();
   const fromIdx = (page - 1) * limit;

@@ -11,8 +11,8 @@ import {
   getPageAccessToken,
   parseMetaGraphJson,
   subscribeMetaPageWebhooks,
-} from './metaInboxGraph.ts';
-import { socialInboxDb } from './socialInboxService.ts';
+} from './metaInboxGraphHttp.ts';
+import { socialInboxDb } from './socialInboxDb.ts';
 import type { SocialChannelConnectionRow } from './socialInboxTypes.ts';
 
 const EXPECTED_WEBHOOK_FIELDS = META_WEBHOOK_SUBSCRIBED_FIELDS.split(',')

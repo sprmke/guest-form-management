@@ -103,6 +103,8 @@ export type PublicGuestReviewDto = {
   feedbackTags: string[];
   media: GuestReviewMediaItem[];
   source?: 'kame' | 'facebook' | 'airbnb';
+  /** ISO timestamp for newest-first merge sort. */
+  createdAt: string | null;
 };
 
 export async function listPublicGuestReviews(
@@ -155,6 +157,7 @@ export async function listPublicGuestReviews(
       feedbackTags,
       media,
       source: 'kame',
+      createdAt: created || null,
     };
   });
 }
@@ -163,4 +166,20 @@ export function averageGuestReviewRating(reviews: PublicGuestReviewDto[]): numbe
   if (reviews.length === 0) return null;
   const sum = reviews.reduce((acc, r) => acc + r.rating, 0);
   return Math.round((sum / reviews.length) * 10) / 10;
+}
+
+/** Newest-first merge of Kame + approved external reviews. */
+export function sortPublicGuestReviewsNewestFirst(
+  reviews: PublicGuestReviewDto[]
+): PublicGuestReviewDto[] {
+  return [...reviews].sort((a, b) => {
+    const aMs = a.createdAt ? Date.parse(a.createdAt) : Number.NaN;
+    const bMs = b.createdAt ? Date.parse(b.createdAt) : Number.NaN;
+    const aOk = Number.isFinite(aMs);
+    const bOk = Number.isFinite(bMs);
+    if (aOk && bOk) return bMs - aMs;
+    if (aOk) return -1;
+    if (bOk) return 1;
+    return 0;
+  });
 }

@@ -50,22 +50,27 @@ skip_nonce_check = false
 enabled = true
 file_size_limit = "50MiB"
 
+# Media buckets: allow-lists + `file_size_limit` mirror the unified ceilings in
+# `supabase/functions/_shared/uploadLimits.ts` and the migration
+# `20261213120600_media_optimization_bucket_limits.sql`. WebP is emitted by the
+# client optimizer; HEIC is accepted for the "could not decode → pass through
+# original" path.
 [storage.buckets.payment-receipts]
 public = true
-file_size_limit = "5MiB"
-allowed_mime_types = ["image/png", "image/jpeg"]
+file_size_limit = "12MiB"
+allowed_mime_types = ["image/png", "image/jpeg", "image/webp", "image/heic", "image/heif"]
 
 [storage.buckets.pet-vaccinations]
 public = true
-file_size_limit = "5MiB"
-allowed_mime_types = ["image/png", "image/jpeg"]
+file_size_limit = "12MiB"
+allowed_mime_types = ["image/png", "image/jpeg", "image/webp", "image/heic", "image/heif"]
 
 # --- New-flow buckets (Phase 0, see docs/planning/NEW_FLOW_PLAN.md §2) ---
 
 [storage.buckets.parking-endorsements]
 public = true
-file_size_limit = "5MiB"
-allowed_mime_types = ["image/png", "image/jpeg", "image/webp", "application/pdf"]
+file_size_limit = "12MiB"
+allowed_mime_types = ["image/png", "image/jpeg", "image/webp", "image/heic", "image/heif", "application/pdf"]
 
 [storage.buckets.approved-gafs]
 public = false
@@ -79,8 +84,8 @@ allowed_mime_types = ["application/pdf"]
 
 [storage.buckets.sd-refund-receipts]
 public = false
-file_size_limit = "5MiB"
-allowed_mime_types = ["image/png", "image/jpeg", "image/webp", "application/pdf"]
+file_size_limit = "12MiB"
+allowed_mime_types = ["image/png", "image/jpeg", "image/webp", "image/heic", "image/heif", "application/pdf"]
 
 [storage.buckets.ai-assistant-attachments]
 public = false
@@ -89,7 +94,7 @@ allowed_mime_types = ["image/jpeg", "image/png", "image/webp", "application/pdf"
 
 [storage.buckets.property-media]
 public = true
-file_size_limit = "25MiB"
+file_size_limit = "50MiB"
 allowed_mime_types = [
   "image/jpeg", "image/png", "image/webp", "image/gif",
   "image/heic", "image/heif", "image/bmp", "image/tiff", "image/avif", "image/svg+xml",
@@ -218,6 +223,33 @@ static_files = [
   "./functions/_shared/email-templates/fragments/*.html",
 ]
 
+# Airbnb / OTA calendar sync. ical-export + get-form-completion are public (token-guarded in the
+# handler). calendar-sync-cron: global sweep (optional X-Calendar-Sync-Cron-Secret) + scoped
+# "Sync now" (resolveScopedPropertyAccess in the handler). Cloud-only schedule via pg_cron —
+# migration 20261213120500_calendar_sync_cron.sql (job calendar-sync-every-30m).
+[functions.ical-export]
+verify_jwt = false
+
+[functions.calendar-sync-cron]
+verify_jwt = false
+
+[functions.calendar-sync-settings]
+verify_jwt = false
+
+[functions.get-form-completion]
+verify_jwt = false
+
+[functions.submit-form-completion]
+verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+  "./functions/_shared/email-assets/kame-home-gcash-qr-payment.jpg",
+]
+
+[functions.issue-guest-form-completion-token]
+verify_jwt = false
+
 [functions.transition-booking]
 verify_jwt = false
 static_files = [
@@ -258,6 +290,14 @@ static_files = [
 ]
 
 [functions.send-sd-refund-form-email]
+verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+  "./functions/_shared/email-assets/kame-home-gcash-qr-payment.jpg",
+]
+
+[functions.send-booking-workflow-email]
 verify_jwt = false
 static_files = [
   "./functions/_shared/email-templates/*.html",
@@ -847,6 +887,9 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.get-linked-parking-booking]
+verify_jwt = false
+
+[functions.resolve-owner-default-parking]
 verify_jwt = false
 
 [functions.request-parking-endorsement]

@@ -11,7 +11,7 @@ import { ensureTelegramChatSettings } from './telegramChat.ts';
 import {
   TELEGRAM_ANY_MODULE_EDIT_IDS,
   telegramModuleEditPermission,
-} from './telegramSettingsHttp.ts';
+} from './telegramModulePermissions.ts';
 import { hasPropertyPermission, type TeamPermissionId } from './propertyTeamPermissions.ts';
 import type { TelegramChannel } from './propertyTelegramCredentials.ts';
 

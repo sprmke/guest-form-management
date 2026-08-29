@@ -2,7 +2,7 @@
  * Postgres helpers for org-scoped social inbox data.
  */
 
-import { createServiceClient } from './orgAuth.ts';
+import { socialInboxDb, upsertChannelConnection } from './socialInboxDb.ts';
 import type {
   ConversationType,
   InboxThreadFilter,
@@ -13,9 +13,7 @@ import type {
   SocialPlatform,
 } from './socialInboxTypes.ts';
 
-export function socialInboxDb() {
-  return createServiceClient();
-}
+export { socialInboxDb, upsertChannelConnection };
 
 export async function ensureSocialInboxSettings(
   orgId: string,
@@ -105,26 +103,6 @@ export async function getConnectionForMetaWebhook(
     .maybeSingle();
   if (error) throw new Error(error.message);
   return (data as SocialChannelConnectionRow | null) ?? null;
-}
-
-export async function upsertChannelConnection(
-  fields: Partial<SocialChannelConnectionRow> & {
-    organization_id: string;
-    platform: SocialPlatform;
-    external_account_id: string;
-  }
-): Promise<SocialChannelConnectionRow> {
-  const sb = socialInboxDb();
-  const { data, error } = await sb
-    .from('social_channel_connections')
-    .upsert(
-      { ...fields, updated_at: new Date().toISOString() },
-      { onConflict: 'organization_id,platform,external_account_id' }
-    )
-    .select('*')
-    .single();
-  if (error || !data) throw new Error(error?.message ?? 'Failed to upsert connection');
-  return data as SocialChannelConnectionRow;
 }
 
 function applyInboxScopeFilters(

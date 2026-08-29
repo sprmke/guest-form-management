@@ -2,7 +2,7 @@
  * Org-default vs property/parking Meta connection resolution for Guest Inbox.
  */
 
-import { socialInboxDb } from './socialInboxService.ts';
+import { socialInboxDb } from './socialInboxDb.ts';
 import type {
   InboxScopeFilter,
   MetaInboxScopeSource,

@@ -5,13 +5,21 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { corsHeaders } from '../_shared/cors.ts';
+import { handleEdgeError } from '../_shared/httpResponse.ts';
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import { resolveScopedParkingAccess } from '../_shared/parkingScope.ts';
 import { PROPERTY_MEDIA_BUCKET } from '../_shared/propertyMedia.ts';
+import { assertWithinUploadLimit } from '../_shared/uploadLimits.ts';
 import { formatPublicUrl } from '../_shared/utils.ts';
 
-const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
-const MAX_BYTES = 5 * 1024 * 1024;
+const ALLOWED_MIME = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'image/heic',
+  'image/heif',
+]);
 
 function extensionForMime(mime: string, fileName: string): string {
   const fromName = fileName.includes('.') ? `.${fileName.split('.').pop()?.toLowerCase()}` : '';
@@ -115,9 +123,7 @@ serve(async (req) => {
     if (!ALLOWED_MIME.has(mime)) {
       throw new Error('File must be JPEG, PNG, WebP, or GIF');
     }
-    if (file.size > MAX_BYTES) {
-      throw new Error('File must be 5 MB or smaller');
-    }
+    assertWithinUploadLimit(file, 'image');
 
     const current = await readParkingSettings(parkingId);
     const previousPath =
@@ -160,20 +166,6 @@ serve(async (req) => {
       headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('[upload-parking-media]', error);
-    const status = error instanceof Response ? error.status : 400;
-    const message =
-      error instanceof Response
-        ? await error
-            .clone()
-            .json()
-            .then((b: { error?: string }) => b.error)
-            .catch(() => 'Unauthorized')
-        : (error as Error).message;
-
-    return new Response(JSON.stringify({ success: false, error: message }), {
-      status,
-      headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-    });
+    return await handleEdgeError(req, error, '[upload-parking-media]');
   }
 });

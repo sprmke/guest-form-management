@@ -4,6 +4,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { resolveAppSettings } from './appSettings.ts';
+import { resolvePublicBrandName } from './platformBrand.ts';
 import { getDefaultPropertyId } from './propertyScope.ts';
 
 export type PropertyEmailBranding = {
@@ -96,7 +97,7 @@ export async function loadPropertyEmailBranding(
   }
 
   const branding: PropertyEmailBranding = {
-    organizationName: orgName || propertyName || 'Property',
+    organizationName: resolvePublicBrandName(orgName) || propertyName || 'Property',
     propertyName: propertyName || orgName || 'Property',
     unitLabel,
     fromEmail,

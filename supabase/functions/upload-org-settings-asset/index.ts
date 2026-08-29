@@ -5,11 +5,13 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { corsHeaders } from '../_shared/cors.ts';
+import { handleEdgeError } from '../_shared/httpResponse.ts';
 import { verifyAdminJwt } from '../_shared/auth.ts';
 import { DatabaseService } from '../_shared/databaseService.ts';
 import { invalidateAppSettingsCache } from '../_shared/appSettings.ts';
 import { ensureOrgSettingsRow, invalidateOrgSettingsCache } from '../_shared/orgSettings.ts';
 import { resolveOrgAccessContext } from '../_shared/propertyScope.ts';
+import { assertWithinUploadLimit } from '../_shared/uploadLimits.ts';
 import { formatPublicUrl } from '../_shared/utils.ts';
 
 const BUCKET = 'app-settings-assets';
@@ -45,9 +47,7 @@ serve(async (req) => {
     if (!ALLOWED_MIME.has(mime)) {
       throw new Error('File must be JPEG, PNG, or WebP');
     }
-    if (file.size > 5 * 1024 * 1024) {
-      throw new Error('File must be 5 MB or smaller');
-    }
+    assertWithinUploadLimit(file, 'image');
 
     const ext = fileName.includes('.')
       ? `.${fileName.split('.').pop()?.toLowerCase()}`
@@ -109,20 +109,6 @@ serve(async (req) => {
 
     throw new Error(`Invalid assetType: "${assetType}"`);
   } catch (error) {
-    console.error('[upload-org-settings-asset]', error);
-    const status = error instanceof Response ? error.status : 400;
-    const message =
-      error instanceof Response
-        ? await error
-            .clone()
-            .json()
-            .then((b: { error?: string }) => b.error)
-            .catch(() => 'Unauthorized')
-        : (error as Error).message;
-
-    return new Response(JSON.stringify({ success: false, error: message }), {
-      status,
-      headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-    });
+    return await handleEdgeError(req, error, '[upload-org-settings-asset]');
   }
 });

@@ -27,7 +27,10 @@ import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('validate-booking-receipts', async (req) => {
   requireHttpMethod(req, 'POST');
-  const { user, property, org } = await resolveScopedPropertyAccess(req, 'bookings.detail.pricing:edit');
+  const { user, property, org } = await resolveScopedPropertyAccess(
+    req,
+    'bookings.detail.pricing:edit'
+  );
   const propertyId = property.id;
 
   try {

@@ -1,6 +1,7 @@
 /**
  * property-team-custom-roles — CRUD custom roles for a property.
  * Auth: JWT + verifyPropertyAccess (team:view | team:manage).
+ * Mutations require plan feature `customRoles` (Starter+).
  */
 
 import {
@@ -9,6 +10,7 @@ import {
   readJsonBody,
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
+import { catchPlanFeatureError, requirePropertyFeature } from '../_shared/planEntitlements.ts';
 import { TEAM_API_PERMISSIONS } from '../_shared/propertyTeamPermissions.ts';
 import {
   createPropertyCustomRole,
@@ -43,9 +45,12 @@ serveAuthenticated('property-team-custom-roles', async (req) => {
       TEAM_API_PERMISSIONS.createCustomRole
     );
     try {
+      await requirePropertyFeature(ctx.property.id, 'customRoles');
       const customRole = await createPropertyCustomRole(ctx, body);
       return jsonSuccess(req, { customRole });
     } catch (e) {
+      const planErr = catchPlanFeatureError(req, e);
+      if (planErr) return planErr;
       const msg = e instanceof Error ? e.message : 'Create failed';
       const status = msg.includes('already exists') ? 409 : 400;
       return jsonError(req, msg, status);
@@ -60,9 +65,12 @@ serveAuthenticated('property-team-custom-roles', async (req) => {
       TEAM_API_PERMISSIONS.updateCustomRole
     );
     try {
+      await requirePropertyFeature(ctx.property.id, 'customRoles');
       const customRole = await updatePropertyCustomRole(ctx, body);
       return jsonSuccess(req, { customRole });
     } catch (e) {
+      const planErr = catchPlanFeatureError(req, e);
+      if (planErr) return planErr;
       const msg = e instanceof Error ? e.message : 'Update failed';
       const status = msg.includes('already exists') ? 409 : 400;
       return jsonError(req, msg, status);
@@ -84,9 +92,12 @@ serveAuthenticated('property-team-custom-roles', async (req) => {
       return jsonError(req, 'roleId is required');
     }
     try {
+      await requirePropertyFeature(ctx.property.id, 'customRoles');
       await deletePropertyCustomRole(ctx, roleId);
       return jsonSuccess(req, { deleted: true });
     } catch (e) {
+      const planErr = catchPlanFeatureError(req, e);
+      if (planErr) return planErr;
       const msg = e instanceof Error ? e.message : 'Delete failed';
       return jsonError(req, msg, 400);
     }

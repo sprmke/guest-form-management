@@ -14,12 +14,7 @@ import {
   normalizeVolumeRampAtCount,
   normalizeVolumeRampFloorPhp,
 } from '../_shared/planPricing.ts';
-import {
-  jsonError,
-  jsonSuccess,
-  readJsonBody,
-  requireHttpMethod,
-} from '../_shared/httpResponse.ts';
+import { jsonError, jsonSuccess, readJsonBody, requireHttpMethod, parsePageLimit } from '../_shared/httpResponse.ts';
 import { postgrestOrIlikeValue } from '../_shared/publicSearch.ts';
 import { serveSuperAdmin } from '../_shared/serveEdge.ts';
 
@@ -85,8 +80,7 @@ serveSuperAdmin('pricing-plans', async (req) => {
 
     const search = url.searchParams.get('search')?.trim() || '';
     const status = url.searchParams.get('status')?.trim() || '';
-    const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10));
-    const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit') ?? '31', 10)));
+    const { page, limit } = parsePageLimit(url.searchParams);
     const fromIdx = (page - 1) * limit;
     const toIdx = fromIdx + limit - 1;
 

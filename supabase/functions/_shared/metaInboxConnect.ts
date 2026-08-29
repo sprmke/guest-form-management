@@ -14,7 +14,8 @@ import {
   type MetaPageAccount,
 } from './metaInboxGraph.ts';
 import { getOrgDefaultFacebookConnection } from './metaInboxScope.ts';
-import { ensureSocialInboxSettings, socialInboxDb } from './socialInboxService.ts';
+import { socialInboxDb } from './socialInboxDb.ts';
+import { ensureSocialInboxSettings } from './socialInboxService.ts';
 import { seedDefaultInboxQuickRepliesIfEmpty } from './inboxDefaultQuickReplies.ts';
 
 export type MetaPagePickerOption = {

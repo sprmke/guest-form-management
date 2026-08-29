@@ -3,7 +3,7 @@
  */
 
 import { createServiceClient, serializeOrganization, type OrgRow } from '../_shared/orgAuth.ts';
-import { jsonError, jsonSuccess, requireHttpMethod } from '../_shared/httpResponse.ts';
+import { jsonError, jsonSuccess, requireHttpMethod, parsePageLimit } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 import { verifySuperAdminJwt } from '../_shared/superAdminAuth.ts';
 
@@ -17,8 +17,7 @@ serveAuthenticated('list-host-organizations', async (req) => {
   if (!hostId) {
     return jsonError(req, 'hostId is required');
   }
-  const page = Math.max(1, parseInt(p.get('page') ?? '1', 10));
-  const limit = Math.min(100, Math.max(1, parseInt(p.get('limit') ?? '31', 10)));
+  const { page, limit } = parsePageLimit(p);
 
   const supabase = createServiceClient();
 

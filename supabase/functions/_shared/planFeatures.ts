@@ -35,6 +35,9 @@ export type PlanFeatures = {
   customTemplates: boolean;
   publicPagesAutosave: boolean;
   bookingImport: boolean;
+  /** Connect external OTA calendars (Airbnb / Booking.com / VRBO) for two-way iCal sync. */
+  calendarSync: boolean;
+  customRoles: boolean;
 };
 
 export const DEFAULT_PLAN_FEATURES: PlanFeatures = {
@@ -62,6 +65,8 @@ export const DEFAULT_PLAN_FEATURES: PlanFeatures = {
   customTemplates: false,
   publicPagesAutosave: false,
   bookingImport: false,
+  calendarSync: false,
+  customRoles: false,
 };
 
 function asBool(value: unknown, fallback: boolean): boolean {
@@ -128,6 +133,8 @@ export function parsePlanFeatures(raw: unknown): PlanFeatures {
     customTemplates: asBool(obj.customTemplates, base.customTemplates),
     publicPagesAutosave: asBool(obj.publicPagesAutosave, base.publicPagesAutosave),
     bookingImport: asBool(obj.bookingImport, base.bookingImport),
+    calendarSync: asBool(obj.calendarSync, base.calendarSync),
+    customRoles: asBool(obj.customRoles, base.customRoles),
   };
 }
 

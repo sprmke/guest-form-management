@@ -12,7 +12,6 @@ import { invalidateAppSettingsCache, validateOptionalUrl } from '../_shared/appS
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
 import { resolveOrgAccessContext } from '../_shared/propertyScope.ts';
 import { serveAdmin } from '../_shared/serveEdge.ts';
-import { createServiceClient } from '../_shared/orgAuth.ts';
 
 serveAdmin('org-settings', async (req) => {
   if (req.method === 'GET') {
@@ -92,7 +91,7 @@ serveAdmin('org-settings', async (req) => {
       if (trimmed) {
         return jsonError(req, 'Team logo can only be updated via upload-org-settings-asset');
       }
-      patch.email_logo_url = null;
+      return jsonError(req, 'Organization logo is required');
     }
 
     if (Object.keys(patch).length === 0) {
@@ -101,12 +100,6 @@ serveAdmin('org-settings', async (req) => {
 
     await ensureOrgSettingsRow(organizationId);
     await DatabaseService.updateOrgSettings(patch, organizationId);
-    if (patch.email_logo_url === null) {
-      await createServiceClient()
-        .from('organizations')
-        .update({ logo_url: null })
-        .eq('id', organizationId);
-    }
     invalidateOrgSettingsCache(organizationId);
     invalidateAppSettingsCache();
     const data = await serializeOrgSettingsForAdmin(organizationId);

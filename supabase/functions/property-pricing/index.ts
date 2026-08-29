@@ -105,11 +105,7 @@ serveAuthenticated('property-pricing', async (req) => {
       return jsonError(req, 'blockRange requires startDate and endDate', 400);
     }
     if (!isValidCalendarDateKey(range.startDate) || !isValidCalendarDateKey(range.endDate)) {
-      return jsonError(
-        req,
-        'blockRange startDate and endDate must be valid YYYY-MM-DD dates',
-        400
-      );
+      return jsonError(req, 'blockRange startDate and endDate must be valid YYYY-MM-DD dates', 400);
     }
     patch.blockRange = {
       startDate: range.startDate,

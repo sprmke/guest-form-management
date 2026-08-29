@@ -2,14 +2,19 @@
  * Property gallery media — validation shared by upload + update-property.
  */
 
+import { UPLOAD_MAX_BYTES } from './uploadLimits.ts';
+
 export const PROPERTY_MEDIA_BUCKET = 'property-media';
 
 export const MAX_PROPERTY_IMAGES = 9;
 export const MAX_PROPERTY_VIDEOS = 1;
 
-/** Budget-friendly limits for small operators (bytes). */
-export const MAX_PROPERTY_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
-export const MAX_PROPERTY_VIDEO_BYTES = 25 * 1024 * 1024; // 25 MB
+/**
+ * Unified upload ceilings (see `_shared/uploadLimits.ts`). Images are shrunk
+ * client-side well below this; the ceiling only catches bypass / pass-through.
+ */
+export const MAX_PROPERTY_IMAGE_BYTES = UPLOAD_MAX_BYTES.image; // 10 MB
+export const MAX_PROPERTY_VIDEO_BYTES = UPLOAD_MAX_BYTES.video; // 50 MB
 
 export const ALLOWED_PROPERTY_IMAGE_MIME = new Set([
   'image/jpeg',

@@ -121,6 +121,8 @@ export type PropertyPricingDto = {
   dateOverrides: Record<string, number>;
   bookedDateKeys: string[];
   blockedDateKeys: string[];
+  /** Subset of blockedDateKeys that came from an OTA calendar feed — not editable in the UI. */
+  importedBlockedDateKeys: string[];
   holidayRules: PricingHolidayRuleDto[];
   calendarBookings: PropertyPricingCalendarBooking[];
 };
@@ -201,7 +203,12 @@ function rowToDefaults(
   row: AppSettingsPricingRow | null
 ): Omit<
   PropertyPricingDto,
-  'dateOverrides' | 'bookedDateKeys' | 'blockedDateKeys' | 'holidayRules'
+  | 'dateOverrides'
+  | 'bookedDateKeys'
+  | 'blockedDateKeys'
+  | 'importedBlockedDateKeys'
+  | 'holidayRules'
+  | 'calendarBookings'
 > {
   return {
     weekdayNightlyRate: pickMoney(row?.weekday_nightly_rate, DEFAULT_WEEKDAY),
@@ -426,10 +433,17 @@ export async function loadPropertyPricing(
     throw new Error(`Failed to load property pricing: ${error.message}`);
   }
 
-  const [dateOverrides, bookedDateKeys, blockedDateKeys, calendarBookings] = await Promise.all([
+  const [
+    dateOverrides,
+    bookedDateKeys,
+    blockedDateKeys,
+    importedBlockedDateKeys,
+    calendarBookings,
+  ] = await Promise.all([
     loadDateOverrides(propertyId),
     loadBookedDateKeys(propertyId, options?.monthStart, options?.monthEnd),
     loadBlockedDateKeys(propertyId, options?.monthStart, options?.monthEnd),
+    loadBlockedDateKeys(propertyId, options?.monthStart, options?.monthEnd, 'ical_import'),
     options?.monthStart && options?.monthEnd
       ? loadCalendarBookings(propertyId, options.monthStart, options.monthEnd)
       : Promise.resolve([] as PropertyPricingCalendarBooking[]),
@@ -440,6 +454,7 @@ export async function loadPropertyPricing(
     dateOverrides,
     bookedDateKeys,
     blockedDateKeys,
+    importedBlockedDateKeys,
     holidayRules: parseHolidayRules((row as AppSettingsPricingRow | null)?.pricing_holiday_rules),
     calendarBookings,
   };

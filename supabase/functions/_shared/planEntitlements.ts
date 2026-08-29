@@ -1580,14 +1580,21 @@ export async function countMarketingPublications(propertyId: string): Promise<nu
   );
 }
 
-/** Blocks publish when Marketing Studio is off or the pool's publish cap is reached. */
+/** Blocks publish when Meta publishing is not on the plan or the pool's publish cap is reached. */
 export async function requireMarketingPublishAllowed(
   propertyId: string
 ): Promise<ResolvedPropertyEntitlements> {
-  const entitlements = await requirePropertyFeature(propertyId, 'marketingStudio');
+  const entitlements = await requirePropertyFeature(propertyId, 'marketingPublishLimitPerGroup');
   const limit = entitlements.marketingPublishLimitPerGroup;
 
-  if (limit !== null && limit >= 0) {
+  if (limit === 0) {
+    throw new PlanFeatureRequiredError(
+      'marketingPublishLimitPerGroup',
+      'Publishing to Meta platforms requires Business plan or above'
+    );
+  }
+
+  if (limit !== null && limit > 0) {
     const count = await countMarketingPublications(propertyId);
     if (count >= limit) {
       throw new PlanFeatureRequiredError(

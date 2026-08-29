@@ -8,10 +8,18 @@ import { assertGuestOwnsWebConversation } from '../_shared/webGuestChatService.t
 import type { NormalizedInboxAttachment } from '../_shared/inboxAttachments.ts';
 import { jsonError, jsonSuccess } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+import { assertWithinUploadLimit } from '../_shared/uploadLimits.ts';
 import { formatPublicUrl } from '../_shared/utils.ts';
 
 const BUCKET = 'guest-chat-attachments';
-const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
+const ALLOWED_MIME = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+  'application/pdf',
+]);
 
 serveAuthenticated('upload-guest-chat-asset', async (req, user) => {
   if (req.method !== 'POST') {
@@ -35,9 +43,7 @@ serveAuthenticated('upload-guest-chat-asset', async (req, user) => {
   if (!ALLOWED_MIME.has(mime)) {
     return jsonError(req, 'File must be JPEG, PNG, WebP, or PDF', 400);
   }
-  if (file.size > 10 * 1024 * 1024) {
-    return jsonError(req, 'File must be 10 MB or smaller', 400);
-  }
+  assertWithinUploadLimit(file, mime === 'application/pdf' ? 'pdf' : 'image');
 
   let conv;
   try {

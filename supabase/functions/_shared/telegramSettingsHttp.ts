@@ -21,31 +21,17 @@ import {
   telegramCredentialsDto,
 } from './telegramCredentialsPatch.ts';
 import type { TelegramChannel } from './propertyTelegramCredentials.ts';
-import { NOTIFICATION_MODULE_EDIT_IDS } from './accessPermissionExpansion.ts';
 import type { TeamPermissionId } from './propertyTeamPermissions.ts';
+import {
+  TELEGRAM_ANY_MODULE_EDIT_IDS,
+  telegramModuleEditPermission,
+} from './telegramModulePermissions.ts';
+
+export { TELEGRAM_ANY_MODULE_EDIT_IDS, telegramModuleEditPermission };
 
 export type ManilaTimeSlot = { hour: number; minute: number };
 
 /** Property Telegram module → Phase 6 leaf (`admin` channel = Operations UI). */
-export function telegramModuleEditPermission(channel: TelegramChannel): TeamPermissionId | null {
-  switch (channel) {
-    case 'chat':
-      return 'notifications.chat:edit';
-    case 'marketing':
-      return 'notifications.marketing:edit';
-    case 'staff':
-      return 'notifications.staff:edit';
-    case 'admin':
-      return 'notifications.operations:edit';
-    case 'finance':
-      return 'notifications.finance:edit';
-    case 'maintenance':
-      return 'notifications.maintenance:edit';
-    case 'parking':
-      return null;
-  }
-}
-
 export function telegramSettingsPermission(
   req: Request,
   channel?: TelegramChannel
@@ -60,11 +46,6 @@ export function telegramSettingsPermission(
   if (!leaf) return 'notifications:view';
   return leaf;
 }
-
-export const TELEGRAM_ANY_MODULE_EDIT_IDS: readonly TeamPermissionId[] = [
-  ...NOTIFICATION_MODULE_EDIT_IDS,
-];
-
 /** Gate PATCH when enabling Telegram notifications (plan tier). */
 export async function gateTelegramEnabledPatch(
   req: Request,

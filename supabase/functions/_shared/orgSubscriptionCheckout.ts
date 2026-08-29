@@ -13,7 +13,7 @@ import {
   normalizeVolumeDiscountTiers,
 } from './planPricing.ts';
 import { computeMidCycleProration, type ProrationQuote } from './subscriptionProration.ts';
-import { getPlatformPaymentSettings } from './subscriptionOrchestrator.ts';
+import { getPlatformPaymentSettings } from './platformPaymentSettings.ts';
 import { selectInIdChunks } from './postgrestInChunks.ts';
 
 export type OrgCheckoutPurpose = 'initial' | 'renewal' | 'retry' | 'change';

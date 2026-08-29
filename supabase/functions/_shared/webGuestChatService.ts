@@ -6,13 +6,8 @@ import { loadAuthUserProfile } from './authUserProfile.ts';
 import { loadPublicParkingBySlug } from './parkingScope.ts';
 import { loadPublicPropertyBySlug } from './publicPropertyService.ts';
 import { createServiceClient } from './orgAuth.ts';
-import {
-  insertMessageIfNew,
-  socialInboxDb,
-  updateConversationAfterMessage,
-  upsertChannelConnection,
-  upsertConversation,
-} from './socialInboxService.ts';
+import { socialInboxDb, upsertChannelConnection } from './socialInboxDb.ts';
+import { insertMessageIfNew, updateConversationAfterMessage, upsertConversation } from './socialInboxService.ts';
 import { maybeAutoReplyToWebInbound } from './webInboxAutoReply.ts';
 import {
   createOrCoalesceNotification,

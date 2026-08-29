@@ -24,6 +24,7 @@ import {
   rankAndDedupeParkingCandidates,
   type RankedParkingCandidate,
 } from './parkingBroadcastRanking.ts';
+import { selectInIdChunks } from './postgrestInChunks.ts';
 
 /**
  * Non-terminal (or effectively-still-occupying) statuses for date-overlap purposes.
@@ -33,6 +34,7 @@ import {
  */
 const OCCUPYING_STATUSES = [
   'PENDING_HOST_ACCEPTANCE',
+  'PENDING_PAYMENT',
   'PENDING_REVIEW',
   'READY_FOR_CHECKIN',
   'COMPLETED',
@@ -105,20 +107,32 @@ export async function findParkingBroadcastCandidates(input: {
   const candidatesById = new Map(candidates.map((c) => [c.id, c]));
 
   const parkingIds = candidates.map((c) => c.id);
-  const { data: occupying, error: occupyingError } = await supabase
-    .from('guest_submissions')
-    .select(
-      'parking_id, parking_check_in_date, parking_check_out_date, check_in_date, check_out_date'
-    )
-    .in('parking_id', parkingIds)
-    .in('status', OCCUPYING_STATUSES);
-
-  if (occupyingError) {
-    throw new Error(`findParkingBroadcastCandidates (occupancy): ${occupyingError.message}`);
+  // Large orgs (100+ slots) blow PostgREST URI limits on a single `.in()` — chunk.
+  let occupying: Array<{
+    parking_id: string | null;
+    parking_check_in_date: string | null;
+    parking_check_out_date: string | null;
+    check_in_date: string | null;
+    check_out_date: string | null;
+  }>;
+  try {
+    occupying = await selectInIdChunks(parkingIds, (chunk) =>
+      supabase
+        .from('guest_submissions')
+        .select(
+          'parking_id, parking_check_in_date, parking_check_out_date, check_in_date, check_out_date'
+        )
+        .in('parking_id', chunk)
+        .in('status', OCCUPYING_STATUSES)
+    );
+  } catch (err) {
+    throw new Error(
+      `findParkingBroadcastCandidates (occupancy): ${err instanceof Error ? err.message : err}`
+    );
   }
 
   const conflictedParkingIds = new Set<string>();
-  for (const row of occupying ?? []) {
+  for (const row of occupying) {
     const parkingId = row.parking_id as string | null;
     if (!parkingId) continue;
     const existingCheckIn = String(row.parking_check_in_date ?? row.check_in_date ?? '');
@@ -297,10 +311,12 @@ export type ParkingBroadcastBookingInput = {
 export async function fanOutParkingBroadcast(
   booking: ParkingBroadcastBookingInput,
   ranked: RankedParkingCandidate[],
-  batchNumber = 1
+  batchNumber = 1,
+  options?: { skipNotify?: boolean }
 ): Promise<void> {
   if (ranked.length === 0) return;
   const supabase = createServiceClient();
+  const skipNotify = options?.skipNotify === true;
 
   const { error: insertError } = await supabase.from('parking_booking_broadcasts').insert(
     ranked.map(({ candidate, hostGross }) => ({
@@ -314,6 +330,8 @@ export async function fanOutParkingBroadcast(
   if (insertError) {
     throw new Error(`fanOutParkingBroadcast insert: ${insertError.message}`);
   }
+
+  if (skipNotify) return;
 
   await Promise.all(
     ranked.map(async ({ candidate }) => {

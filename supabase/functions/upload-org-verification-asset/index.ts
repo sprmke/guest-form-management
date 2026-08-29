@@ -14,9 +14,17 @@ import {
 } from '../_shared/orgVerification.ts';
 import { jsonError, jsonSuccess, requireHttpMethod } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+import { assertWithinUploadLimit } from '../_shared/uploadLimits.ts';
 import { formatPublicUrl } from '../_shared/utils.ts';
 
-const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
+const ALLOWED_MIME = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+  'application/pdf',
+]);
 
 /** Upload-only proofs for contract consideration (not stored on verification.assets). */
 const CONSIDERATION_PROOF_ASSET_TYPES = [
@@ -53,9 +61,7 @@ serveAuthenticated('upload-org-verification-asset', async (req) => {
   if (!ALLOWED_MIME.has(mime)) {
     return jsonError(req, 'File must be JPEG, PNG, WebP, or PDF');
   }
-  if (file.size > 5 * 1024 * 1024) {
-    return jsonError(req, 'File must be 5 MB or smaller');
-  }
+  assertWithinUploadLimit(file, mime === 'application/pdf' ? 'pdf' : 'document');
 
   await verifyOrgOwner(req, orgId);
 

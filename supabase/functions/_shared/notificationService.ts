@@ -13,7 +13,9 @@ export type NotificationType =
   | 'booking_gaf_auto_approved'
   | 'booking_pet_auto_approved'
   | 'booking_parking_matched'
-  | 'inbox_new_message';
+  | 'inbox_new_message'
+  | 'calendar_sync_failing'
+  | 'calendar_conflict';
 
 /** Legacy inbox rows stored this generic title before participant names shipped. */
 export const LEGACY_INBOX_NOTIFICATION_TITLE = 'New guest message';

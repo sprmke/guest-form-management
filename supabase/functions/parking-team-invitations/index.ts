@@ -5,8 +5,10 @@
 
 import {
   jsonError,
+  jsonErrorFromCatch,
   jsonSuccess,
   parseAction,
+  readInvitationId,
   readJsonBody,
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
@@ -46,7 +48,7 @@ serveAuthenticated('parking-team-invitations', async (req) => {
         parkingId,
         PARKING_TEAM_API_PERMISSIONS.resendInvitation
       );
-      const invitationId = typeof body.invitationId === 'string' ? body.invitationId.trim() : '';
+      const invitationId = readInvitationId(body);
       if (!invitationId) {
         return jsonError(req, 'invitationId is required');
       }
@@ -54,8 +56,7 @@ serveAuthenticated('parking-team-invitations', async (req) => {
         const invitation = await resendParkingInvitation(ctx, invitationId);
         return jsonSuccess(req, { invitation });
       } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Resend failed';
-        return jsonError(req, msg, 400);
+        return jsonErrorFromCatch(req, e, 'Resend failed');
       }
     }
 
@@ -68,9 +69,7 @@ serveAuthenticated('parking-team-invitations', async (req) => {
       const invitation = await createParkingInvitation(ctx, body);
       return jsonSuccess(req, { invitation });
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Invite failed';
-      const status = msg.includes('already') ? 409 : 400;
-      return jsonError(req, msg, status);
+      return jsonErrorFromCatch(req, e, 'Invite failed', { conflictOnAlready: true });
     }
   }
 
@@ -81,10 +80,7 @@ serveAuthenticated('parking-team-invitations', async (req) => {
       parkingId,
       PARKING_TEAM_API_PERMISSIONS.cancelInvitation
     );
-    const invitationId =
-      typeof body.invitationId === 'string'
-        ? body.invitationId.trim()
-        : (url.searchParams.get('invitationId')?.trim() ?? '');
+    const invitationId = readInvitationId(body, url);
     if (!invitationId) {
       return jsonError(req, 'invitationId is required');
     }
@@ -92,8 +88,7 @@ serveAuthenticated('parking-team-invitations', async (req) => {
       await cancelParkingInvitation(ctx.parking.id, invitationId);
       return jsonSuccess(req, { cancelled: true });
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Cancel failed';
-      return jsonError(req, msg, 400);
+      return jsonErrorFromCatch(req, e, 'Cancel failed');
     }
   }
 

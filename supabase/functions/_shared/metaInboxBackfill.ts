@@ -10,20 +10,8 @@ import {
   type MetaConversationItem,
 } from './metaInboxGraph.ts';
 import { metaMessagingWindowExpiry } from './metaTimestamp.ts';
-import {
-  buildDmThreadId,
-  clearMetaBackfillState,
-  getFacebookConnectionForOrg,
-  getMetaBackfillState,
-  insertMessageIfNew,
-  markMetaBackfillFullyComplete,
-  markMetaInitialSyncComplete,
-  migrateLegacyDmThreadId,
-  metaBackfillHasMore,
-  setMetaBackfillState,
-  socialInboxDb,
-  upsertConversation,
-} from './socialInboxService.ts';
+import { socialInboxDb } from './socialInboxDb.ts';
+import { buildDmThreadId, clearMetaBackfillState, getFacebookConnectionForOrg, getMetaBackfillState, insertMessageIfNew, markMetaBackfillFullyComplete, markMetaInitialSyncComplete, migrateLegacyDmThreadId, metaBackfillHasMore, setMetaBackfillState, upsertConversation } from './socialInboxService.ts';
 import type {
   ConversationType,
   ReplyStatus,

@@ -65,13 +65,17 @@ function addDays(date: Date, days: number): Date {
 export async function loadBlockedDateKeys(
   propertyId: string,
   monthStart?: string,
-  monthEnd?: string
+  monthEnd?: string,
+  /** Restrict to `manual` (owner) or `ical_import` (OTA-synced) rows. */
+  source?: 'manual' | 'ical_import'
 ): Promise<string[]> {
   const supabase = createServiceClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from('property_blocked_dates')
     .select('start_date, end_date')
     .eq('property_id', propertyId);
+  if (source) query = query.eq('source', source);
+  const { data, error } = await query;
 
   if (error) {
     throw new Error(`Failed to load blocked dates: ${error.message}`);

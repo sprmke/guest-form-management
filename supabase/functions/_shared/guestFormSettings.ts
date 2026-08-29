@@ -5,6 +5,7 @@
 
 import { DEFAULT_CLEANING_BUFFER_MINUTES, isValidCleaningBufferMinutes } from './cleaningBuffer.ts';
 import { createServiceClient } from './orgAuth.ts';
+import { resolvePublicBrandName } from './platformBrand.ts';
 import { normalizePropertyMediaItems } from './propertyMedia.ts';
 import {
   DEFAULT_RESIDENCE_NAME,
@@ -146,6 +147,6 @@ export async function resolveGuestFormSettings(propertyId: string): Promise<Gues
     propertyEyebrow: buildPropertyEyebrow(propertyName, residenceName || null, towerAndUnit),
     propertyCoverImageUrl: primaryImage?.url?.trim() || null,
     residenceName: residenceName || null,
-    organizationName: organizationName || propertyName || 'Host',
+    organizationName: resolvePublicBrandName(organizationName) || propertyName || 'Host',
   };
 }

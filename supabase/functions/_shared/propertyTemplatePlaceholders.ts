@@ -76,7 +76,7 @@ export const PROPERTY_TEMPLATE_SAMPLE_VARS: Record<string, string> = {
   pax: '2',
   tower_and_unit_number: 'Monaco 2604',
   unit_number: 'Monaco 2604',
-  property_name: 'Kame Home',
+  property_name: 'Sample Property',
   booking_source: 'Airbnb',
   booking_link: 'https://kamehomes.space/bookings/00000000-0000-4000-8000-000000000001',
   decor_status: 'No',

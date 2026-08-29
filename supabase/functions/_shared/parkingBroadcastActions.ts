@@ -37,7 +37,8 @@ export async function claimParkingBooking(
   parkingId: string,
   bookingId: string,
   endorsementNote: string,
-  parkingRow: ParkingRow
+  parkingRow: ParkingRow,
+  options?: { skipAwaitingPaymentEmail?: boolean }
 ): Promise<Record<string, unknown>> {
   if (endorsementNote.length > 2000) {
     throw new ParkingBroadcastActionError('endorsementNote must be 2000 characters or fewer');
@@ -108,7 +109,7 @@ export async function claimParkingBooking(
     .eq('response', 'pending');
 
   const guestEmail = String(claimed.guest_email ?? '').trim();
-  if (guestEmail) {
+  if (guestEmail && options?.skipAwaitingPaymentEmail !== true) {
     const checkInDate = String(claimed.parking_check_in_date ?? claimed.check_in_date ?? '');
     const checkOutDate = String(claimed.parking_check_out_date ?? claimed.check_out_date ?? '');
     try {

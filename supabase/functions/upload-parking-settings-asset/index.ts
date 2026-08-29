@@ -5,7 +5,9 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { corsHeaders } from '../_shared/cors.ts';
+import { handleEdgeError } from '../_shared/httpResponse.ts';
 import { resolveScopedParkingAccess } from '../_shared/parkingScope.ts';
+import { assertWithinUploadLimit } from '../_shared/uploadLimits.ts';
 import { formatPublicUrl } from '../_shared/utils.ts';
 
 const BUCKET = 'app-settings-assets';
@@ -47,9 +49,7 @@ serve(async (req) => {
     if (!ALLOWED_MIME.has(mime)) {
       throw new Error('File must be JPEG, PNG, or WebP');
     }
-    if (file.size > 5 * 1024 * 1024) {
-      throw new Error('File must be 5 MB or smaller');
-    }
+    assertWithinUploadLimit(file, 'image');
 
     const ext = fileName.includes('.')
       ? `.${fileName.split('.').pop()?.toLowerCase()}`
@@ -94,20 +94,6 @@ serve(async (req) => {
       { headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('[upload-parking-settings-asset]', error);
-    const status = error instanceof Response ? error.status : 400;
-    const message =
-      error instanceof Response
-        ? await error
-            .clone()
-            .json()
-            .then((b: { error?: string }) => b.error)
-            .catch(() => 'Unauthorized')
-        : (error as Error).message;
-
-    return new Response(JSON.stringify({ success: false, error: message }), {
-      status,
-      headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-    });
+    return await handleEdgeError(req, error, '[upload-parking-settings-asset]');
   }
 });

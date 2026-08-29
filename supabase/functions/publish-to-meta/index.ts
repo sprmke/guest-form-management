@@ -114,7 +114,7 @@ serveAuthenticated('publish-to-meta', async (req) => {
         req,
         propertyId,
         'marketing.publish:add',
-        'marketingStudio'
+        'marketingPublishLimitPerGroup'
       );
       actorUserId = access.user.id;
       await requireMarketingPublishAllowed(propertyId);

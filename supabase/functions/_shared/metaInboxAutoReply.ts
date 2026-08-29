@@ -6,13 +6,8 @@ import { getPageAccessToken, sendMetaMessage } from './metaInboxGraph.ts';
 import { isFeatureEnabled } from './planFeatures.ts';
 import { orgHasPropertyWithFeature, resolvePropertyEntitlements } from './planEntitlements.ts';
 import { isWithinMessagingWindowFromInbound, suggestInboxReply } from './socialInboxAiService.ts';
-import {
-  getConversationByExternalThread,
-  insertMessageIfNew,
-  listMessages,
-  socialInboxDb,
-  updateConversationAfterMessage,
-} from './socialInboxService.ts';
+import { socialInboxDb } from './socialInboxDb.ts';
+import { getConversationByExternalThread, insertMessageIfNew, listMessages, updateConversationAfterMessage } from './socialInboxService.ts';
 import type { SocialPlatform } from './socialInboxTypes.ts';
 
 const AUTO_REPLY_COOLDOWN_MS = 90_000;

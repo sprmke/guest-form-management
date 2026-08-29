@@ -1,6 +1,7 @@
 /**
  * org-team-custom-roles — CRUD org hub permission templates.
  * Auth: JWT + verifyOrgAccess (org.team:* leaves).
+ * Mutations require plan feature `customRoles` (Starter+).
  */
 
 import { verifyOrgAccess } from '../_shared/orgAuth.ts';
@@ -10,6 +11,7 @@ import {
   readJsonBody,
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
+import { catchPlanFeatureError, requireOrgPropertyFeature } from '../_shared/planEntitlements.ts';
 import { ORG_TEAM_API_PERMISSIONS } from '../_shared/orgTeamPermissions.ts';
 import {
   createOrgCustomRole,
@@ -48,9 +50,12 @@ serveAuthenticated('org-team-custom-roles', async (req) => {
     );
     const ctx = await requireOrgTeamContext(req, orgId, orgSlug);
     try {
+      await requireOrgPropertyFeature(ctx.org.id, 'customRoles');
       const customRole = await createOrgCustomRole(ctx, body);
       return jsonSuccess(req, { customRole });
     } catch (e) {
+      const planErr = catchPlanFeatureError(req, e);
+      if (planErr) return planErr;
       const msg = e instanceof Error ? e.message : 'Create failed';
       const status = msg.includes('already exists') ? 409 : 400;
       return jsonError(req, msg, status);
@@ -66,9 +71,12 @@ serveAuthenticated('org-team-custom-roles', async (req) => {
     );
     const ctx = await requireOrgTeamContext(req, orgId, orgSlug);
     try {
+      await requireOrgPropertyFeature(ctx.org.id, 'customRoles');
       const customRole = await updateOrgCustomRole(ctx, body);
       return jsonSuccess(req, { customRole });
     } catch (e) {
+      const planErr = catchPlanFeatureError(req, e);
+      if (planErr) return planErr;
       const msg = e instanceof Error ? e.message : 'Update failed';
       const status = msg.includes('already exists') ? 409 : 400;
       return jsonError(req, msg, status);
@@ -91,9 +99,12 @@ serveAuthenticated('org-team-custom-roles', async (req) => {
       return jsonError(req, 'roleId is required');
     }
     try {
+      await requireOrgPropertyFeature(ctx.org.id, 'customRoles');
       await deleteOrgCustomRole(ctx, roleId);
       return jsonSuccess(req, { deleted: true });
     } catch (e) {
+      const planErr = catchPlanFeatureError(req, e);
+      if (planErr) return planErr;
       const msg = e instanceof Error ? e.message : 'Delete failed';
       return jsonError(req, msg, 400);
     }

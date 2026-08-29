@@ -5,12 +5,8 @@
 import { suggestInboxReply } from './socialInboxAiService.ts';
 import { isFeatureEnabled } from './planFeatures.ts';
 import { orgHasPropertyWithFeature, resolvePropertyEntitlements } from './planEntitlements.ts';
-import {
-  insertMessageIfNew,
-  listMessages,
-  socialInboxDb,
-  updateConversationAfterMessage,
-} from './socialInboxService.ts';
+import { socialInboxDb } from './socialInboxDb.ts';
+import { insertMessageIfNew, listMessages, updateConversationAfterMessage } from './socialInboxService.ts';
 import { maybeNotifyGuestOfHostWebReply } from './guestChatEmail.ts';
 import { buildWebMessageExternalId } from './webGuestChatIds.ts';
 

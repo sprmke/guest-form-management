@@ -1,6 +1,7 @@
 /**
  * parking-team-custom-roles — CRUD custom roles for a parking slot.
  * Auth: JWT + verifyParkingTeamAccess (team:view | team:manage).
+ * Mutations require plan feature `customRoles` (Starter+).
  */
 
 import {
@@ -9,6 +10,11 @@ import {
   readJsonBody,
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
+import {
+  catchPlanFeatureError,
+  requirePropertyFeature,
+  resolveListingEntitlementPropertyId,
+} from '../_shared/planEntitlements.ts';
 import { PARKING_TEAM_API_PERMISSIONS } from '../_shared/parkingTeamPermissions.ts';
 import {
   createParkingCustomRole,
@@ -43,9 +49,16 @@ serveAuthenticated('parking-team-custom-roles', async (req) => {
       PARKING_TEAM_API_PERMISSIONS.createCustomRole
     );
     try {
+      const entitlementPropertyId = await resolveListingEntitlementPropertyId(
+        'parking',
+        ctx.parking.id
+      );
+      await requirePropertyFeature(entitlementPropertyId, 'customRoles');
       const customRole = await createParkingCustomRole(ctx, body);
       return jsonSuccess(req, { customRole });
     } catch (e) {
+      const planErr = catchPlanFeatureError(req, e);
+      if (planErr) return planErr;
       const msg = e instanceof Error ? e.message : 'Create failed';
       const status = msg.includes('already exists') ? 409 : 400;
       return jsonError(req, msg, status);
@@ -60,9 +73,16 @@ serveAuthenticated('parking-team-custom-roles', async (req) => {
       PARKING_TEAM_API_PERMISSIONS.updateCustomRole
     );
     try {
+      const entitlementPropertyId = await resolveListingEntitlementPropertyId(
+        'parking',
+        ctx.parking.id
+      );
+      await requirePropertyFeature(entitlementPropertyId, 'customRoles');
       const customRole = await updateParkingCustomRole(ctx, body);
       return jsonSuccess(req, { customRole });
     } catch (e) {
+      const planErr = catchPlanFeatureError(req, e);
+      if (planErr) return planErr;
       const msg = e instanceof Error ? e.message : 'Update failed';
       const status = msg.includes('already exists') ? 409 : 400;
       return jsonError(req, msg, status);
@@ -84,9 +104,16 @@ serveAuthenticated('parking-team-custom-roles', async (req) => {
       return jsonError(req, 'roleId is required');
     }
     try {
+      const entitlementPropertyId = await resolveListingEntitlementPropertyId(
+        'parking',
+        ctx.parking.id
+      );
+      await requirePropertyFeature(entitlementPropertyId, 'customRoles');
       await deleteParkingCustomRole(ctx, roleId);
       return jsonSuccess(req, { deleted: true });
     } catch (e) {
+      const planErr = catchPlanFeatureError(req, e);
+      if (planErr) return planErr;
       const msg = e instanceof Error ? e.message : 'Delete failed';
       return jsonError(req, msg, 400);
     }

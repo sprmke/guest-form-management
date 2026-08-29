@@ -94,3 +94,40 @@ export function parseDraftText(body: Record<string, unknown>, maxLength = 8000):
 export function parseDraftScenario(body: Record<string, unknown>, defaultScenario = ''): string {
   return typeof body.scenario === 'string' ? body.scenario : defaultScenario;
 }
+
+/** Shared list pagination from URL search params (super-admin + bookings lists). */
+export function parsePageLimit(
+  searchParams: URLSearchParams,
+  defaults: { page?: number; limit?: number; maxLimit?: number } = {}
+): { page: number; limit: number } {
+  const defaultPage = defaults.page ?? 1;
+  const defaultLimit = defaults.limit ?? 31;
+  const maxLimit = defaults.maxLimit ?? 100;
+  const page = Math.max(
+    1,
+    parseInt(searchParams.get('page') ?? String(defaultPage), 10) || defaultPage
+  );
+  const limit = Math.min(
+    maxLimit,
+    Math.max(1, parseInt(searchParams.get('limit') ?? String(defaultLimit), 10) || defaultLimit)
+  );
+  return { page, limit };
+}
+
+export function readInvitationId(body: Record<string, unknown>, url?: URL): string {
+  if (typeof body.invitationId === 'string' && body.invitationId.trim()) {
+    return body.invitationId.trim();
+  }
+  return url?.searchParams.get('invitationId')?.trim() ?? '';
+}
+
+export function jsonErrorFromCatch(
+  req: Request,
+  error: unknown,
+  fallback: string,
+  options?: { conflictOnAlready?: boolean }
+): Response {
+  const message = error instanceof Error ? error.message : fallback;
+  const status = options?.conflictOnAlready && message.includes('already') ? 409 : 400;
+  return jsonError(req, message, status);
+}

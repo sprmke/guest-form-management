@@ -9,6 +9,7 @@ import {
   shouldRevertGuestFieldEditsToPendingReview,
 } from './statusMachine.ts';
 import { UploadService } from './uploadService.ts';
+import { assertWithinUploadLimit } from './uploadLimits.ts';
 import { assertPropertyGuestPartyRules, guestPartySlotsFromFormData } from './guestCounts.ts';
 import { resolveGuestFormSettings } from './guestFormSettings.ts';
 import { createNotification } from './notificationService.ts';
@@ -261,6 +262,15 @@ export class DatabaseService {
       const petImage = formData.get('petImage') as File;
       const hasPets = formData.get('hasPets') === 'true';
 
+      // Server-side ceiling (client already compresses; this catches bypass /
+      // pass-through). Unified limits: `_shared/uploadLimits.ts`.
+      if (petVaccination instanceof File && petVaccination.size > 0) {
+        assertWithinUploadLimit(petVaccination, 'document');
+      }
+      if (petImage instanceof File && petImage.size > 0) {
+        assertWithinUploadLimit(petImage, 'image');
+      }
+
       if (hasPets) {
         // Handle pet vaccination upload
         if (petVaccination) {
@@ -311,6 +321,9 @@ export class DatabaseService {
       // Airbnb bookings skip the payment step — receipt is not required.
       const isAirbnbSource = (formData.get('bookingSource') as string)?.trim() === 'Airbnb';
       const paymentReceipt = formData.get('paymentReceipt') as File;
+      if (paymentReceipt instanceof File && paymentReceipt.size > 0) {
+        assertWithinUploadLimit(paymentReceipt, 'document');
+      }
       if (paymentReceipt) {
         const paymentReceiptFileName = formData.get('paymentReceiptFileName') as string;
         const prefixedFileName = paymentReceiptFileName;
@@ -364,6 +377,7 @@ export class DatabaseService {
       ): Promise<string | undefined> => {
         const file = formData.get(field) as File;
         if (file && file.size > 0) {
+          assertWithinUploadLimit(file, 'document');
           const prefixedFileName = formData.get(fileNameField) as string;
           if (saveImagesToStorage) {
             return await UploadService.uploadValidId(file, prefixedFileName, propertyId);

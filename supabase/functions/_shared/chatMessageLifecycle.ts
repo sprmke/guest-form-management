@@ -2,7 +2,7 @@
  * Read receipts, edit rules, reply threading for social inbox + web guest chat.
  */
 
-import { socialInboxDb } from './socialInboxService.ts';
+import { socialInboxDb } from './socialInboxDb.ts';
 import type { SocialMessageRow } from './socialInboxTypes.ts';
 
 export const REPLY_PREVIEW_MAX = 200;

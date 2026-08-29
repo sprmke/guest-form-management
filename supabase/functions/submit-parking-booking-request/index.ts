@@ -24,6 +24,15 @@ import { parkingAutomationEnabled } from '../_shared/parkingAutomationToggles.ts
 import { assertParkingSubmitAllowed, ParkingAntiSpamError } from '../_shared/parkingAntiSpam.ts';
 import { resolveParkingBookingChannel } from '../_shared/parkingDirectLink.ts';
 import { ParkingLinkError, verifyLinkablePropertyBooking } from '../_shared/parkingPropertyLink.ts';
+import { resolveParkingSubmitGuestAuthUserId } from '../_shared/parkingGuestOwnership.ts';
+import {
+  isSameOrgOwnerOwnedPin,
+  readComplimentaryOwnerParking,
+} from '../_shared/ownerDefaultParking.ts';
+import {
+  fulfillComplimentaryOwnerParking,
+  ParkingPaymentError,
+} from '../_shared/parkingPaymentOrchestrator.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 import { countStayNights } from '../_shared/utils.ts';
 
@@ -165,6 +174,18 @@ serveAuthenticated('submit-parking-booking-request', async (req, user) => {
   const expiresAtIso = new Date(Date.now() + ttlMs).toISOString();
   const guestName = primaryGuestName;
 
+  const guestAuthUserId = resolveParkingSubmitGuestAuthUserId(user.id, isSelfServiceGuestSubmit);
+
+  // Same-org owner-owned pin (property stay linked to the org's own listing): skip host
+  // notify spam and auto-claim to PENDING_PAYMENT after fan-out inserts the broadcast row.
+  const ownerOwnedSameOrg =
+    Boolean(parkingId) &&
+    Boolean(linkedPropertyBookingId) &&
+    (await isSameOrgOwnerOwnedPin({
+      pinnedParkingId: parkingId,
+      linkedPropertyBookingId,
+    }));
+
   const { data: inserted, error: insertError } = await supabase
     .from('guest_submissions')
     .insert({
@@ -174,7 +195,7 @@ serveAuthenticated('submit-parking-booking-request', async (req, user) => {
       parking_pinned_id: parkingId || null,
       parking_booking_channel: bookingChannel,
       linked_property_booking_id: linkedPropertyBookingId || null,
-      guest_auth_user_id: user.id,
+      guest_auth_user_id: guestAuthUserId,
       requested_vehicle_type: vehicleType,
       status: 'PENDING_HOST_ACCEPTANCE',
       status_updated_at: new Date().toISOString(),
@@ -224,7 +245,8 @@ serveAuthenticated('submit-parking-booking-request', async (req, user) => {
         expiresAtIso,
       },
       batch,
-      1
+      1,
+      ownerOwnedSameOrg ? { skipNotify: true } : undefined
     );
   } catch (err) {
     // Broadcast insert itself failed (not just a per-candidate notify failure, which
@@ -240,25 +262,58 @@ serveAuthenticated('submit-parking-booking-request', async (req, user) => {
     return jsonError(req, 'Failed to notify hosts, please try again', 500);
   }
 
-  // Phase 5 auto-accept — only checked against the initial batch's top candidate; a re-batch
-  // after a decline/timeout still waits for a manual accept (v1 scope, not a hard requirement).
-  // Isolated so a claim failure never fails the submit itself — the guest's request is already
-  // live either way, just waiting on a manual accept instead.
+  // Same-org owner-owned default: auto-claim immediately (no Accept self-notify).
+  // Falls through to Phase 5 listing autoAcceptTopMatch when that toggle is on.
   try {
     const topCandidate = batch[0]?.candidate;
-    if (topCandidate && (await parkingAutomationEnabled(topCandidate.id, 'autoAcceptTopMatch'))) {
+    const shouldAutoClaim =
+      ownerOwnedSameOrg ||
+      (topCandidate && (await parkingAutomationEnabled(topCandidate.id, 'autoAcceptTopMatch')));
+    if (topCandidate && shouldAutoClaim) {
       const { data: parkingRow } = await supabase
         .from('parkings')
         .select('*')
         .eq('id', topCandidate.id)
         .maybeSingle();
       if (parkingRow) {
+        let skipAwaitingPaymentEmail = false;
+        if (ownerOwnedSameOrg && linkedPropertyBookingId) {
+          const { data: propertyBooking } = await supabase
+            .from('guest_submissions')
+            .select('property_id')
+            .eq('id', linkedPropertyBookingId)
+            .maybeSingle();
+          if (propertyBooking?.property_id) {
+            const { data: propRow } = await supabase
+              .from('properties')
+              .select('settings')
+              .eq('id', propertyBooking.property_id)
+              .maybeSingle();
+            skipAwaitingPaymentEmail = readComplimentaryOwnerParking(
+              (propRow as { settings?: unknown } | null)?.settings
+            );
+          }
+        }
         await claimParkingBooking(
           topCandidate.id,
           String(inserted.id),
           '',
-          parkingRow as ParkingRow
+          parkingRow as ParkingRow,
+          { skipAwaitingPaymentEmail }
         );
+        if (ownerOwnedSameOrg) {
+          try {
+            await fulfillComplimentaryOwnerParking(String(inserted.id));
+          } catch (compErr) {
+            // Not enabled / not eligible — leave PENDING_PAYMENT for PayMongo.
+            if (!(compErr instanceof ParkingPaymentError && [403, 409].includes(compErr.status))) {
+              console.error(
+                '[submit-parking-booking-request] complimentary fulfill failed:',
+                compErr instanceof Error ? compErr.message : compErr
+              );
+            }
+          }
+        }
       }
     }
   } catch (err) {
@@ -268,9 +323,18 @@ serveAuthenticated('submit-parking-booking-request', async (req, user) => {
     );
   }
 
+  const { data: refreshed } = await supabase
+    .from('guest_submissions')
+    .select('id, status, parking_broadcast_expires_at, parking_payment_expires_at')
+    .eq('id', inserted.id)
+    .maybeSingle();
+
   return jsonSuccess(req, {
     bookingId: inserted.id,
-    status: inserted.status,
-    expiresAt: inserted.parking_broadcast_expires_at,
+    status: refreshed?.status ?? inserted.status,
+    expiresAt:
+      refreshed?.parking_payment_expires_at ??
+      refreshed?.parking_broadcast_expires_at ??
+      inserted.parking_broadcast_expires_at,
   });
 });

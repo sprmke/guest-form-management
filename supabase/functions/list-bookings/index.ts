@@ -6,7 +6,7 @@
  */
 
 import { DatabaseService } from '../_shared/databaseService.ts';
-import { jsonResponse } from '../_shared/httpResponse.ts';
+import { jsonResponse, parsePageLimit } from '../_shared/httpResponse.ts';
 import { verifyParkingTeamAccess } from '../_shared/orgAuth.ts';
 import {
   readOrgIdFromUrl,
@@ -89,8 +89,7 @@ serveAuthenticated('list-bookings', async (req) => {
     | 'check_in_date:desc'
     | 'created_at:asc'
     | 'created_at:desc';
-  const page = Math.max(1, parseInt(p.get('page') ?? '1', 10));
-  const limit = Math.min(100, Math.max(1, parseInt(p.get('limit') ?? '31', 10)));
+  const { page, limit } = parsePageLimit(p);
 
   const { rows, total } = await DatabaseService.listBookings({
     propertyId,

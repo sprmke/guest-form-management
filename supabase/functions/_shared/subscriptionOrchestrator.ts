@@ -13,6 +13,10 @@ import {
 import { isPaymongoTestMode } from './paymongoClient.ts';
 import { createOrgSubscriptionCheckoutLink } from './orgSubscriptionCheckout.ts';
 import {
+  getPlatformPaymentSettings,
+  type PlatformPaymentSettings,
+} from './platformPaymentSettings.ts';
+import {
   sendOrgSubscriptionPastDueEmail,
   sendOrgSubscriptionPaymentFailedEmail,
   sendOrgSubscriptionReceiptEmail,
@@ -27,42 +31,12 @@ import {
 } from './paymongoWebhookMetadata.ts';
 import { handleParkingPaymentWebhookEvent } from './parkingPaymentOrchestrator.ts';
 
-export type PlatformPaymentSettings = {
-  enabledPaymentMethods: string[];
-  enabledBanks: string[];
-  renewalLinkLeadDays: number;
-  gracePeriodDays: number;
-};
-
+export { getPlatformPaymentSettings, type PlatformPaymentSettings };
 function db() {
   const url = Deno.env.get('SUPABASE_URL');
   const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   if (!url || !key) throw new Error('Supabase env not configured');
   return createClient(url, key);
-}
-
-export async function getPlatformPaymentSettings(): Promise<PlatformPaymentSettings> {
-  const sb = db();
-  const { data, error } = await sb
-    .from('platform_payment_settings')
-    .select('*')
-    .eq('id', 1)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-
-  const methods = data?.enabled_payment_methods;
-  const banks = data?.enabled_banks;
-
-  return {
-    enabledPaymentMethods: Array.isArray(methods)
-      ? methods.filter((m): m is string => typeof m === 'string')
-      : ['qrph', 'paymaya', 'dob'],
-    enabledBanks: Array.isArray(banks)
-      ? banks.filter((b): b is string => typeof b === 'string')
-      : [],
-    renewalLinkLeadDays: Number(data?.renewal_link_lead_days ?? 5),
-    gracePeriodDays: Number(data?.grace_period_days ?? 5),
-  };
 }
 
 function addOneMonth(from: Date): Date {

@@ -8,7 +8,7 @@ import { resolveEmailPrimaryHex } from './emailBrandColor.ts';
 import { parseInboxAttachmentPreviews } from './inboxAttachments.ts';
 import { resolvePublicGuestAppOrigin } from './publicAppOrigin.ts';
 import { escapeHtml, loadEmailTemplate, replacePlaceholders } from './renderEmailHtml.ts';
-import { socialInboxDb } from './socialInboxService.ts';
+import { socialInboxDb } from './socialInboxDb.ts';
 
 const RESEND_API = 'https://api.resend.com/emails';
 

@@ -11,7 +11,7 @@ import {
 } from '../_shared/propertyExternalReviews.ts';
 import { listListingVerificationApprovalRows } from '../_shared/superAdminListingVerifications.ts';
 import { listOrgVerificationApprovalRows } from '../_shared/superAdminOrgVerifications.ts';
-import { jsonSuccess, requireHttpMethod } from '../_shared/httpResponse.ts';
+import { jsonSuccess, parsePageLimit, requireHttpMethod } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 import { verifySuperAdminJwt } from '../_shared/superAdminAuth.ts';
 
@@ -28,6 +28,7 @@ export type ExternalReviewApprovalRow = {
   reviewText: string;
   reviewerName: string;
   starRating: number | null;
+  feedbackTags: string[];
   moderationStatus: ExternalReviewModerationStatus;
   submittedAt: string | null;
   imageUrl: string | null;
@@ -157,6 +158,7 @@ async function listExternalReviewApprovalRows(): Promise<ExternalReviewApprovalR
         reviewText: review.reviewText,
         reviewerName: review.reviewerName,
         starRating: review.starRating,
+        feedbackTags: review.feedbackTags,
         moderationStatus: review.moderationStatus,
         submittedAt: review.createdAt,
         imageUrl: review.imageUrl,
@@ -183,8 +185,7 @@ serveAuthenticated('list-super-admin-approvals', async (req) => {
 
   const url = new URL(req.url);
   const p = url.searchParams;
-  const page = Math.max(1, parseInt(p.get('page') ?? '1', 10));
-  const limit = Math.min(500, Math.max(1, parseInt(p.get('limit') ?? '31', 10)));
+  const { page, limit } = parsePageLimit(p, { maxLimit: 500 });
   const type = (p.get('type') ?? 'all') as ApprovalTypeFilter;
   const status = (p.get('status') ?? 'all') as ApprovalStatusFilter;
   const search = (p.get('search') ?? '').trim().toLowerCase();

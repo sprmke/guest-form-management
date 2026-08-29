@@ -66,6 +66,7 @@ serveAuthenticated('get-linked-parking-booking', async (req) => {
 
   return jsonSuccess(req, {
     linked: true,
+    parkingBookingId: parkingBooking.id,
     status: parkingBooking.status,
     endorsementSentAt: parkingBooking.endorsement_sent_at,
     endorsementSendError: parkingBooking.endorsement_send_error,

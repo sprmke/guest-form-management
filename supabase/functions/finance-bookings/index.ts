@@ -4,7 +4,7 @@
 
 import { listFinanceBookings } from '../_shared/financeService.ts';
 import { parseFinanceBookingsSort, parseFinanceListQueryParams } from '../_shared/financeHttp.ts';
-import { jsonError, jsonResponse } from '../_shared/httpResponse.ts';
+import { jsonError, jsonResponse, parsePageLimit } from '../_shared/httpResponse.ts';
 import { resolveScopedPropertyAccess } from '../_shared/propertyScope.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
@@ -17,8 +17,7 @@ serveAuthenticated('finance-bookings', async (req) => {
   const propertyId = property.id;
   const url = new URL(req.url);
   const p = url.searchParams;
-  const page = Math.max(1, parseInt(p.get('page') ?? '1', 10));
-  const limit = Math.min(100, Math.max(1, parseInt(p.get('limit') ?? '31', 10)));
+  const { page, limit } = parsePageLimit(p);
   const query = parseFinanceListQueryParams(url);
 
   const { rows, total } = await listFinanceBookings({

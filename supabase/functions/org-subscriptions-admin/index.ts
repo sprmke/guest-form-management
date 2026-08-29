@@ -13,12 +13,7 @@ import {
   adminExtendOrgSubscription,
   runPlatformBillingCycle,
 } from '../_shared/subscriptionOrchestrator.ts';
-import {
-  jsonError,
-  jsonSuccess,
-  readJsonBody,
-  requireHttpMethod,
-} from '../_shared/httpResponse.ts';
+import { jsonError, jsonSuccess, readJsonBody, requireHttpMethod, parsePageLimit } from '../_shared/httpResponse.ts';
 import { postgrestOrIlikeValue } from '../_shared/publicSearch.ts';
 import { serveSuperAdmin } from '../_shared/serveEdge.ts';
 
@@ -108,8 +103,7 @@ serveSuperAdmin('org-subscriptions-admin', async (req, admin) => {
     const search = url.searchParams.get('search')?.trim() || '';
     const planCode = url.searchParams.get('planCode')?.trim() || '';
     const hasPlanCodeFilter = Boolean(planCode) && planCode !== 'all';
-    const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10));
-    const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit') ?? '31', 10)));
+    const { page, limit } = parsePageLimit(url.searchParams);
     const fromIdx = (page - 1) * limit;
     const toIdx = fromIdx + limit - 1;
 

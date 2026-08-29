@@ -5,8 +5,10 @@
 
 import {
   jsonError,
+  jsonErrorFromCatch,
   jsonSuccess,
   parseAction,
+  readInvitationId,
   readJsonBody,
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
@@ -42,7 +44,7 @@ serveAuthenticated('org-team-invitations', async (req) => {
       const ctx = await requireOrgTeamContext(req, orgId, orgSlug, {
         requireManage: true,
       });
-      const invitationId = typeof body.invitationId === 'string' ? body.invitationId.trim() : '';
+      const invitationId = readInvitationId(body);
       if (!invitationId) {
         return jsonError(req, 'invitationId is required');
       }
@@ -50,8 +52,7 @@ serveAuthenticated('org-team-invitations', async (req) => {
         const invitation = await resendOrgInvitation(ctx, invitationId);
         return jsonSuccess(req, { invitation });
       } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Resend failed';
-        return jsonError(req, msg, 400);
+        return jsonErrorFromCatch(req, e, 'Resend failed');
       }
     }
 
@@ -64,9 +65,7 @@ serveAuthenticated('org-team-invitations', async (req) => {
     } catch (e) {
       const planErr = catchPlanFeatureError(req, e);
       if (planErr) return planErr;
-      const msg = e instanceof Error ? e.message : 'Invite failed';
-      const status = msg.includes('already') ? 409 : 400;
-      return jsonError(req, msg, status);
+      return jsonErrorFromCatch(req, e, 'Invite failed', { conflictOnAlready: true });
     }
   }
 
@@ -75,10 +74,7 @@ serveAuthenticated('org-team-invitations', async (req) => {
     const ctx = await requireOrgTeamContext(req, orgId, orgSlug, {
       requireManage: true,
     });
-    const invitationId =
-      typeof body.invitationId === 'string'
-        ? body.invitationId.trim()
-        : (url.searchParams.get('invitationId')?.trim() ?? '');
+    const invitationId = readInvitationId(body, url);
     if (!invitationId) {
       return jsonError(req, 'invitationId is required');
     }
@@ -86,8 +82,7 @@ serveAuthenticated('org-team-invitations', async (req) => {
       await cancelOrgInvitation(ctx.org.id, invitationId);
       return jsonSuccess(req, { cancelled: true });
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Cancel failed';
-      return jsonError(req, msg, 400);
+      return jsonErrorFromCatch(req, e, 'Cancel failed');
     }
   }
 

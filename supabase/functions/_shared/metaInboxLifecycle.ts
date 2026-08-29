@@ -10,7 +10,8 @@ import {
   listParkingOverrideMetaConnections,
   listPropertyOverrideMetaConnections,
 } from './metaInboxScope.ts';
-import { deleteConversationsForConnections, socialInboxDb } from './socialInboxService.ts';
+import { socialInboxDb } from './socialInboxDb.ts';
+import { deleteConversationsForConnections } from './socialInboxService.ts';
 import type { SocialChannelConnectionRow } from './socialInboxTypes.ts';
 
 const META_PLATFORMS = ['facebook', 'instagram'] as const;

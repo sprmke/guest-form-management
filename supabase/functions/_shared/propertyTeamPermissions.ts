@@ -37,6 +37,8 @@ export const TEAM_PERMISSION_IDS = [
   'pricing.rates:edit',
   'pricing.blocks:add',
   'pricing.blocks:delete',
+  'pricing.channels:view',
+  'pricing.channels:edit',
   'maintenance:view',
   'maintenance.reminders:add',
   'maintenance.reminders:edit',

@@ -19,14 +19,23 @@ import {
 } from '../_shared/listingAuthorizationService.ts';
 import { jsonError, jsonSuccess, requireHttpMethod } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+import { assertWithinUploadLimit } from '../_shared/uploadLimits.ts';
 import { formatPublicUrl } from '../_shared/utils.ts';
 
-const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
+const ALLOWED_MIME = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+  'application/pdf',
+]);
 
 function extensionFor(mime: string): string {
   if (mime === 'application/pdf') return '.pdf';
   if (mime === 'image/png') return '.png';
   if (mime === 'image/webp') return '.webp';
+  if (mime === 'image/heic' || mime === 'image/heif') return '.heic';
   return '.jpg';
 }
 
@@ -51,7 +60,7 @@ serveAuthenticated('upload-listing-authorization-asset', async (req) => {
 
   const mime = (file.type || '').toLowerCase();
   if (!ALLOWED_MIME.has(mime)) return jsonError(req, 'File must be JPEG, PNG, WebP, or PDF');
-  if (file.size > 5 * 1024 * 1024) return jsonError(req, 'File must be 5 MB or smaller');
+  assertWithinUploadLimit(file, mime === 'application/pdf' ? 'pdf' : 'document');
 
   const assetType = assetTypeRaw as ListingAuthorizationAssetType;
   const context = await verifyListingOwner(req, listingKind, listingId);
