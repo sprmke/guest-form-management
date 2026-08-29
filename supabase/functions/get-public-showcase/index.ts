@@ -2,6 +2,9 @@
  * get-public-showcase — Public GET for property showcase landing page.
  * Trigger: guest SPA `/properties/:propertySlug/showcase`. Auth: anon (verify_jwt = false).
  * Query: ?property=<slug> or ?property_id=<uuid>
+ * Without `propertyShowcase` entitlement → 200 with { planAccessDenied: true }
+ * (including preview/embed — host dashboard iframes and Open links must show the lock).
+ * Page Editor live canvas uses PreviewOverrideProvider and never hits this endpoint.
  * Unpublished → 200 with { published: false } and no property payload (no data leak).
  */
 
@@ -16,6 +19,8 @@ import {
 } from '../_shared/publicPageConfigs.ts';
 import { resolveAppSettings } from '../_shared/appSettings.ts';
 import { loadGuestFacingContactInfo } from '../_shared/guestContactInfo.ts';
+import { isFeatureEnabled } from '../_shared/planFeatures.ts';
+import { resolvePropertyEntitlements } from '../_shared/planEntitlements.ts';
 import {
   loadPublicPropertyById,
   loadPublicPropertyBySlug,
@@ -46,6 +51,16 @@ servePublic('get-public-showcase', async (req) => {
   }
 
   const propertyId = detail.id;
+  const entitlements = await resolvePropertyEntitlements(propertyId);
+  if (!isFeatureEnabled(entitlements, 'propertyShowcase')) {
+    return jsonSuccess(req, {
+      planAccessDenied: true,
+      published: false,
+      templateKey: SHOWCASE_DEFAULT_TEMPLATE_KEY,
+      config: { version: 1, published: false },
+    });
+  }
+
   const config = (await getPublicPageConfigOrDefault(
     propertyId,
     'property_showcase'

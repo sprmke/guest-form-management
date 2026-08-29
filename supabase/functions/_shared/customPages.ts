@@ -7,8 +7,6 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 export type CustomPageType = 'stay_guide' | 'property_showcase';
 
-export const STAY_GUIDE_DEFAULT_TEMPLATE_KEY = 'stay-guide-warm-arrival';
-
 export const SHOWCASE_TEMPLATE_KEYS = [
   'showcase-aurora',
   'showcase-monolith',
@@ -21,6 +19,13 @@ export const SHOWCASE_TEMPLATE_KEYS = [
 export type ShowcaseTemplateKey = (typeof SHOWCASE_TEMPLATE_KEYS)[number];
 
 export const SHOWCASE_DEFAULT_TEMPLATE_KEY: ShowcaseTemplateKey = 'showcase-aurora';
+
+/**
+ * Stay Guide now reuses the same 6 animated templates as Property Showcase.
+ * The pre-v2 default was `stay-guide-warm-arrival`; legacy rows normalize to Aurora on read
+ * (and are backfilled by `20261210120300_stay_guide_template_keys.sql`).
+ */
+export const STAY_GUIDE_DEFAULT_TEMPLATE_KEY: ShowcaseTemplateKey = SHOWCASE_DEFAULT_TEMPLATE_KEY;
 
 export type CustomPageRow = {
   id: string;
@@ -44,11 +49,9 @@ function defaultTemplateKeyFor(pageType: CustomPageType): string {
   }
 }
 
-function normalizeTemplateKey(pageType: CustomPageType, templateKey: string): string {
-  if (pageType === 'property_showcase') {
-    return isShowcaseTemplateKey(templateKey) ? templateKey : SHOWCASE_DEFAULT_TEMPLATE_KEY;
-  }
-  return templateKey.trim() || STAY_GUIDE_DEFAULT_TEMPLATE_KEY;
+function normalizeTemplateKey(_pageType: CustomPageType, templateKey: string): string {
+  // Stay Guide + Showcase share the same 6 animated template keys.
+  return isShowcaseTemplateKey(templateKey) ? templateKey : SHOWCASE_DEFAULT_TEMPLATE_KEY;
 }
 
 function supabaseAdmin() {
@@ -179,8 +182,10 @@ export async function getCustomPageTemplateOrDefault(
   return normalizeTemplateKey(pageType, data.template_key);
 }
 
-/** Thin wrapper for the stay guide render path — just the template key. */
-export async function resolveStayGuideTemplateKey(propertyId: string): Promise<string> {
+/** Thin wrapper for the stay guide render path — the (normalized) template key. */
+export async function resolveStayGuideTemplateKey(
+  propertyId: string
+): Promise<ShowcaseTemplateKey> {
   const row = await getOrCreateCustomPage(propertyId, 'stay_guide');
-  return row.templateKey;
+  return normalizeTemplateKey('stay_guide', row.templateKey) as ShowcaseTemplateKey;
 }

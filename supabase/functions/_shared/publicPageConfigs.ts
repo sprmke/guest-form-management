@@ -23,7 +23,8 @@ export type StayGuideChapterConfig = {
   accentColor: string | null;
 };
 
-export type StayGuideConfig = {
+/** Legacy v1 Stay Guide config — read-tolerated + upgraded to v2 on normalize. */
+export type StayGuideConfigV1 = {
   version: 1;
   hero: { visible: boolean };
   stayPassCard: { visible: boolean };
@@ -33,6 +34,61 @@ export type StayGuideConfig = {
   chapters: StayGuideChapterConfig[];
   helpSection: { visible: boolean };
 };
+
+/** Chapter section ids keep their v1 identifiers so accent colors / order carry over. */
+export const STAY_GUIDE_CHAPTER_SECTION_IDS = [
+  'getting-in',
+  'make-yourself-at-home',
+  'before-you-go',
+] as const;
+export type StayGuideChapterSectionId = (typeof STAY_GUIDE_CHAPTER_SECTION_IDS)[number];
+
+export const STAY_GUIDE_SECTION_IDS = [
+  'hero',
+  'passCard',
+  'checkInDocuments',
+  'gallery',
+  'quickNav',
+  'getting-in',
+  'make-yourself-at-home',
+  'before-you-go',
+  'host',
+] as const;
+export type StayGuideSectionId = (typeof STAY_GUIDE_SECTION_IDS)[number];
+
+const STAY_GUIDE_REQUIRED_VISIBLE: ReadonlySet<StayGuideSectionId> = new Set(['hero']);
+
+function isStayGuideChapterSectionId(id: string): id is StayGuideChapterSectionId {
+  return (STAY_GUIDE_CHAPTER_SECTION_IDS as readonly string[]).includes(id);
+}
+
+export type StayGuideTextSource = {
+  source: 'location' | 'development' | 'custom';
+  customText?: string;
+};
+
+export type StayGuideSectionConfigEntry = {
+  id: StayGuideSectionId;
+  visible: boolean;
+  order: number;
+  copy?: { heading?: string; subheading?: string; body?: string };
+  imageSlots?: string[];
+  heroEyebrow?: StayGuideTextSource;
+  accentColor?: string | null;
+};
+
+/** v2 — mirrors PropertyShowcaseConfig's palette/typography/motion + a flat sections[]. */
+export type StayGuideConfigV2 = {
+  version: 2;
+  published: boolean;
+  palette: PropertyShowcaseConfig['palette'];
+  typography: PropertyShowcaseConfig['typography'];
+  motion: PropertyShowcaseConfig['motion'];
+  sections: StayGuideSectionConfigEntry[];
+};
+
+/** Current Stay Guide config shape. */
+export type StayGuideConfig = StayGuideConfigV2;
 
 export type PropertyLandingSectionId =
   'gallery' | 'overview' | 'amenities' | 'location' | 'rules' | 'reviews';
@@ -111,12 +167,6 @@ export type PublicPageConfigRow = {
   updatedAt: string;
 };
 
-const STAY_GUIDE_CHAPTER_IDS: StayGuideChapterId[] = [
-  'getting-in',
-  'make-yourself-at-home',
-  'before-you-go',
-];
-
 const PROPERTY_LANDING_SECTION_IDS: PropertyLandingSectionId[] = [
   'gallery',
   'overview',
@@ -148,20 +198,19 @@ function supabaseAdmin() {
 }
 
 export function defaultStayGuideConfig(): StayGuideConfig {
+  const showcase = defaultPropertyShowcaseConfig();
   return {
-    version: 1,
-    hero: { visible: true },
-    stayPassCard: { visible: true },
-    checkInDocuments: { visible: true },
-    galleryCarousel: { visible: true },
-    quickNavTabs: { visible: true },
-    chapters: STAY_GUIDE_CHAPTER_IDS.map((id, order) => ({
+    version: 2,
+    published: true,
+    palette: showcase.palette,
+    typography: showcase.typography,
+    motion: showcase.motion,
+    sections: STAY_GUIDE_SECTION_IDS.map((id, order) => ({
       id,
       visible: true,
       order,
-      accentColor: null,
+      accentColor: isStayGuideChapterSectionId(id) ? null : undefined,
     })),
-    helpSection: { visible: true },
   };
 }
 
@@ -226,55 +275,168 @@ function normalizeAccentColor(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-export function normalizeStayGuideConfig(raw: unknown): StayGuideConfig {
+function stayGuideConfigIsV1(raw: Record<string, unknown>): boolean {
+  return raw.version === 1 || Array.isArray(raw.chapters);
+}
+
+function normalizeStayGuideCopy(
+  raw: unknown
+): { heading?: string; subheading?: string; body?: string } | undefined {
+  if (!isRecord(raw)) return undefined;
+  const heading = readOptionalString(raw.heading, 120);
+  const subheading = readOptionalString(raw.subheading, 200);
+  const body = readOptionalString(raw.body, 4000);
+  if (!heading && !subheading && !body) return undefined;
+  return { heading, subheading, body };
+}
+
+function normalizeStayGuideImageSlots(raw: unknown): string[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const slots = raw
+    .filter((entry): entry is string => typeof entry === 'string')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .slice(0, 24);
+  return slots.length > 0 ? slots : undefined;
+}
+
+function normalizeStayGuideTextSource(raw: unknown): StayGuideTextSource | undefined {
+  if (!isRecord(raw)) return undefined;
+  const source = raw.source;
+  if (source !== 'location' && source !== 'development' && source !== 'custom') return undefined;
+  const customText = readOptionalString(raw.customText, 120);
+  if (source === 'custom') return { source: 'custom', customText };
+  if (source === 'development') return { source: 'development' };
+  return { source: 'location' };
+}
+
+/** Map a legacy v1 Stay Guide config onto the v2 shape (visibility, order, chapter accents). */
+export function upgradeStayGuideConfigV1toV2(raw: Record<string, unknown>): StayGuideConfigV2 {
   const base = defaultStayGuideConfig();
-  if (!isRecord(raw)) return base;
 
-  const chapterById = new Map<StayGuideChapterId, StayGuideChapterConfig>();
-  for (const chapter of base.chapters) {
-    chapterById.set(chapter.id, { ...chapter });
-  }
-
+  const chapterOrder = new Map<StayGuideChapterSectionId, number>();
+  const chapterVisible = new Map<StayGuideChapterSectionId, boolean>();
+  const chapterAccent = new Map<StayGuideChapterSectionId, string | null>();
   if (Array.isArray(raw.chapters)) {
-    for (const entry of raw.chapters) {
-      if (!isRecord(entry)) continue;
+    raw.chapters.forEach((entry, index) => {
+      if (!isRecord(entry)) return;
       const id = entry.id;
-      if (id !== 'getting-in' && id !== 'make-yourself-at-home' && id !== 'before-you-go') continue;
-      const existing = chapterById.get(id)!;
-      chapterById.set(id, {
+      if (typeof id !== 'string' || !isStayGuideChapterSectionId(id)) return;
+      chapterOrder.set(
         id,
-        visible: typeof entry.visible === 'boolean' ? entry.visible : existing.visible,
-        order:
-          typeof entry.order === 'number' && Number.isFinite(entry.order)
-            ? entry.order
-            : existing.order,
-        accentColor: normalizeAccentColor(entry.accentColor),
-      });
-    }
+        typeof entry.order === 'number' && Number.isFinite(entry.order) ? entry.order : index
+      );
+      chapterVisible.set(id, typeof entry.visible === 'boolean' ? entry.visible : true);
+      chapterAccent.set(id, normalizeAccentColor(entry.accentColor));
+    });
   }
 
-  const chapters = STAY_GUIDE_CHAPTER_IDS.map((id) => chapterById.get(id)!).sort(
+  const nonChapterVisible: Record<
+    Exclude<StayGuideSectionId, StayGuideChapterSectionId>,
+    boolean
+  > = {
+    hero: readVisibleFlag(raw.hero, true),
+    passCard: readVisibleFlag(raw.stayPassCard, true),
+    checkInDocuments: readVisibleFlag(raw.checkInDocuments, true),
+    gallery: readVisibleFlag(raw.galleryCarousel, true),
+    quickNav: readVisibleFlag(raw.quickNavTabs, true),
+    host: readVisibleFlag(raw.helpSection, true),
+  };
+
+  const sortedChapters = [...STAY_GUIDE_CHAPTER_SECTION_IDS].sort(
     (a, b) =>
-      a.order - b.order ||
-      STAY_GUIDE_CHAPTER_IDS.indexOf(a.id) - STAY_GUIDE_CHAPTER_IDS.indexOf(b.id)
+      (chapterOrder.get(a) ?? STAY_GUIDE_CHAPTER_SECTION_IDS.indexOf(a)) -
+      (chapterOrder.get(b) ?? STAY_GUIDE_CHAPTER_SECTION_IDS.indexOf(b))
   );
-  chapters.forEach((chapter, index) => {
-    chapter.order = index;
+
+  const orderedIds: StayGuideSectionId[] = [...STAY_GUIDE_SECTION_IDS];
+  const firstChapterSlot = orderedIds.indexOf('getting-in');
+  sortedChapters.forEach((id, index) => {
+    orderedIds[firstChapterSlot + index] = id;
   });
 
   return {
+    ...base,
+    sections: orderedIds.map((id, order) =>
+      isStayGuideChapterSectionId(id)
+        ? {
+            id,
+            visible: chapterVisible.get(id) ?? true,
+            order,
+            accentColor: chapterAccent.get(id) ?? null,
+          }
+        : {
+            id,
+            visible: nonChapterVisible[id],
+            order,
+          }
+    ),
+  };
+}
+
+export function normalizeStayGuideConfig(raw: unknown): StayGuideConfig {
+  const base = defaultStayGuideConfig();
+  if (!isRecord(raw)) return base;
+  if (stayGuideConfigIsV1(raw)) return upgradeStayGuideConfigV1toV2(raw);
+
+  const showcaseShaped = normalizePropertyShowcaseConfig({
     version: 1,
-    hero: { visible: readVisibleFlag(raw.hero, base.hero.visible) },
-    stayPassCard: { visible: readVisibleFlag(raw.stayPassCard, base.stayPassCard.visible) },
-    checkInDocuments: {
-      visible: readVisibleFlag(raw.checkInDocuments, base.checkInDocuments.visible),
-    },
-    galleryCarousel: {
-      visible: readVisibleFlag(raw.galleryCarousel, base.galleryCarousel.visible),
-    },
-    quickNavTabs: { visible: readVisibleFlag(raw.quickNavTabs, base.quickNavTabs.visible) },
-    chapters,
-    helpSection: { visible: readVisibleFlag(raw.helpSection, base.helpSection.visible) },
+    published: raw.published,
+    palette: raw.palette,
+    typography: raw.typography,
+    motion: raw.motion,
+    sections: [],
+  });
+
+  const byId = new Map<StayGuideSectionId, StayGuideSectionConfigEntry>();
+  for (const entry of base.sections) byId.set(entry.id, { ...entry });
+
+  if (Array.isArray(raw.sections)) {
+    raw.sections.forEach((entry, index) => {
+      if (!isRecord(entry)) return;
+      const id = entry.id;
+      if (typeof id !== 'string' || !(STAY_GUIDE_SECTION_IDS as readonly string[]).includes(id)) {
+        return;
+      }
+      const sectionId = id as StayGuideSectionId;
+      const existing = byId.get(sectionId)!;
+      byId.set(sectionId, {
+        id: sectionId,
+        visible: STAY_GUIDE_REQUIRED_VISIBLE.has(sectionId)
+          ? true
+          : typeof entry.visible === 'boolean'
+            ? entry.visible
+            : existing.visible,
+        order:
+          typeof entry.order === 'number' && Number.isFinite(entry.order)
+            ? entry.order
+            : (existing.order ?? index),
+        copy: normalizeStayGuideCopy(entry.copy),
+        imageSlots:
+          sectionId === 'hero' || sectionId === 'gallery'
+            ? normalizeStayGuideImageSlots(entry.imageSlots)
+            : undefined,
+        heroEyebrow:
+          sectionId === 'hero' ? normalizeStayGuideTextSource(entry.heroEyebrow) : undefined,
+        accentColor: isStayGuideChapterSectionId(sectionId)
+          ? normalizeAccentColor(entry.accentColor)
+          : undefined,
+      });
+    });
+  }
+
+  const sections = [...byId.values()].sort((a, b) => a.order - b.order);
+  sections.forEach((section, order) => {
+    section.order = order;
+  });
+
+  return {
+    version: 2,
+    published: typeof raw.published === 'boolean' ? raw.published : true,
+    palette: showcaseShaped.palette,
+    typography: showcaseShaped.typography,
+    motion: showcaseShaped.motion,
+    sections,
   };
 }
 
