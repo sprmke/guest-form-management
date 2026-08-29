@@ -29,6 +29,8 @@ const PROFILE_SETTINGS_KEYS: Record<string, TeamPermissionId> = {
   allowParking: 'settings.guestForm:edit',
   allowSurpriseDecor: 'settings.guestForm:edit',
   cleaningBufferMinutes: 'settings.guestForm:edit',
+  preferredOwnerParkingId: 'settings.guestForm:edit',
+  complimentaryOwnerParking: 'settings.guestForm:edit',
   cancellationPolicy: 'settings.cancellationPolicy:edit',
   city: 'settings.location:edit',
   province: 'settings.location:edit',
