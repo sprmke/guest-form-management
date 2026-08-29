@@ -1,7 +1,8 @@
-import { SupportTicketScopeProvider } from '@/features/dashboard/help-support/context/SupportTicketScopeContext';
-import { TicketsWorkspacePage } from '@/features/dashboard/help-support/pages/TicketsWorkspacePage';
 import { GuestAccountContentCard } from '@/features/guest/account/components/GuestAccountContentCard';
 import { GUEST_ACCOUNT_TICKETS_PATH } from '@/features/guest/account/lib/guestAccountPaths';
+
+import { SupportTicketScopeProvider } from '@/features/dashboard/help-support/context/SupportTicketScopeContext';
+import { TicketsWorkspacePage } from '@/features/dashboard/help-support/pages/TicketsWorkspacePage';
 
 import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
 
