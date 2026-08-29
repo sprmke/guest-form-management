@@ -1,4 +1,5 @@
 import { guestSdFormPath } from './publicGuestPaths.ts';
+import { resolveGuestParkingCtaAbsoluteUrl } from './ownerDefaultParking.ts';
 import { buildGuestStayGuideUrl } from './guestStayGuide.ts';
 import { buildApprovalInboundAddress } from './approvalInboundAddress.ts';
 import { resolvePropertySlugById } from './propertyScope.ts';
@@ -772,6 +773,13 @@ export async function sendBookingAcknowledgement(booking: GuestSubmission) {
 
   const guestContact = await loadGuestFacingContactInfo(propertyId, settings);
 
+  const parkingUrl = booking.need_parking
+    ? await resolveGuestParkingCtaAbsoluteUrl({
+        propertyBookingId: String(booking.id ?? ''),
+        publicGuestAppOrigin: settings.publicGuestAppOrigin,
+      })
+    : null;
+
   const html = await renderPropertyTemplateSendEmail({
     propertyId,
     templateKey: 'email-booking-acknowledgement',
@@ -787,9 +795,7 @@ export async function sendBookingAcknowledgement(booking: GuestSubmission) {
           checkOut: displayCheckOutDate,
           brandColor: settings.brandColor,
           contact: guestContact,
-          parkingUrl: booking.need_parking
-            ? `${settings.publicGuestAppOrigin.replace(/\/+$/, '')}/parkings`
-            : null,
+          parkingUrl,
         }),
         email_signature_section: buildEmailSignatureSectionHtml(settings.gafUnitOwner, unitLabel),
       },

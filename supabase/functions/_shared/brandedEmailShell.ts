@@ -10,6 +10,7 @@ import {
   replacePlaceholders,
   withEmailShellStyleVars,
 } from './renderEmailHtml.ts';
+import { PLATFORM_BRAND_NAME, resolvePublicBrandName } from './platformBrand.ts';
 
 async function emailHeaderLogoHtml(propertyId?: string | null, logoAlt?: string): Promise<string> {
   const settings = await resolveAppSettings(propertyId);
@@ -47,7 +48,7 @@ export async function renderBrandedEmailShell(input: {
   propertyId?: string | null;
   dateLineBlock?: string;
 }): Promise<string> {
-  const brandName = input.brandName.trim() || 'Kame Homes';
+  const brandName = resolvePublicBrandName(input.brandName) || PLATFORM_BRAND_NAME;
   const emailHeaderLogo = await emailHeaderLogoHtml(input.propertyId, brandName);
   const shell = await loadEmailTemplate('fragments/configurable-template-send');
   const legalFooter = `© ${brandName}. All rights reserved.`;
