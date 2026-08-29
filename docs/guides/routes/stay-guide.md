@@ -2,39 +2,54 @@
 title: 'Guest stay guide (token-gated brochure)'
 status: active
 tags: [guides, routes]
-updated: 2026-08-26
+updated: 2026-08-29
 ---
 
 # Guest stay guide (token-gated brochure)
 
 Route: `/properties/:propertySlug/stay-guide?token=<opaque>`
 
-> **Status:** Documented
+> **Status:** Documented — v2 renders through the **Property Showcase template engine**.
 
 **Manual testing:** [`custom-pages-module-manual.md`](../testing/custom-pages-module-manual.md)
 
 ## Purpose
 
-Mobile-first **"digital pamphlet"** page for booked guests: a warm-neutral, chaptered brochure with house rules, check-in/out instructions, and parking reminders from **Property Templates** (standard keys), interleaved with property photos. Linked from the **ready-for-checkin** email (`{{stay_guide_cta_section}}`). This is the **v1 template** of the **[[public-pages|Public Pages]]** module — see that doc for the `custom_pages` table and `template_key` plumbing.
+Mobile-first page for booked guests: check-in / house-rules / parking / check-out content
+from **Property Templates** (standard keys), a booking **Stay Pass**, approved check-in
+**documents**, a photo **gallery**, and a **Need anything?** host block — rendered through the
+**same 6 animated templates as [[property-showcase|Property Showcase]]** (Aurora, Monolith,
+Editorial, Verso, Atlas, Haven). Hosts pick a template, reorder/toggle sections, and set
+palette / typography / motion in **Public Pages → Stay Guide → Edit**; the guest link is still
+per-booking and token-gated. Linked from the **ready-for-checkin** email
+(`{{stay_guide_cta_section}}`).
 
-Hosts configure **which sections show, chapter order, and chapter accent colors** via **Public Pages → Stay Guide → Edit** (`public_page_configs` / `sectionConfig`). Body copy still edits under **[[templates|Property templates]]**.
+**What changed vs. v1:** the bespoke chapter/tabs "digital pamphlet" design is gone. Stay Guide
+now feeds `mapStayGuideData` → `ShowcaseData` (`pageKind: 'stay-guide'`) and renders via
+`getShowcaseTemplate(templateKey).component`, exactly like Showcase. Only the **section set**
+and **content source** differ.
 
 ---
 
 ## Host-facing knowledge
 
-After you approve a guest for check-in, they receive a private link to a mobile-friendly stay guide with your rules, check-in steps, parking notes, and contact details, all pulled from your property templates.
+After you approve a guest for check-in, they get a private link to a stay guide with your
+rules, check-in steps, parking notes, and contact details. You choose how it looks in
+**Public Pages → Stay Guide → Edit**: pick one of 6 templates, drag sections to reorder,
+hide the ones you don't need, and set colours / fonts / motion — the same controls as Showcase.
 
 **Common host questions**
 
-- Q: When does the guest get the stay guide link?
-  A: When the booking reaches ready-for-check-in. It's included in that email, and it's also available from the booking in your dashboard.
-- Q: Can anyone open the link if they guess the URL?
-  A: No, each link uses a unique token tied to that booking, and it only works during the stay window.
-- Q: How do I change the wording in the guide?
-  A: Edit the standard templates under **Templates**; the guide updates from that content (hosts can preview it before sending).
-- Q: How do I hide a section or change chapter order / accent colors?
-  A: **Public Pages → Stay Guide → Edit**. Toggle sections, drag to reorder chapters, and set accents. Guests see the same layout as your preview.
+- Q: When does the guest get the link? A: When the booking reaches ready-for-check-in
+  (in that email, and from the booking in your dashboard).
+- Q: Can anyone open it? A: No — each link uses a unique token tied to that booking and only
+  works during the stay window.
+- Q: How do I change the wording? A: **Public Pages → Stay Guide → Edit → Section details** —
+  expand a chapter to edit its text and section image (also editable under **Templates**).
+- Q: How do I change how it looks? A: Same editor — **Template**, **Sections** (reorder /
+  hide), and **Style** (palette / type / motion).
+- Q: Which plan? A: Editing is available on every plan; **saving** needs Pro
+  (`publicPagesAutosave`) — same as Showcase and the listing editor.
 
 ---
 
@@ -48,103 +63,115 @@ After you approve a guest for check-in, they receive a private link to a mobile-
 | **Slug**   | API accepts optional `?property=`; must match booking property when provided                                  |
 
 Expired or invalid token → generic unavailable message (no leak of booking existence).
+`?preview=1&property_id=<uuid>` (signed-in host, `templates:view`) and `?embed=1` bypass the
+token and inject sample booking data + lorem/stock placeholders for empty sections.
 
-## Content sections
+## Sections (v2)
 
-Rendered from **`property_template_contents`** (fallback: `propertyTemplates.ts` defaults):
+`StayGuideConfigV2.sections[]` — a flat, reorderable list (mirrors `PropertyShowcaseConfig`):
 
-| Key                      | Shown when     |
-| ------------------------ | -------------- |
-| `check-in-instructions`  | always         |
-| `house-rules`            | always         |
-| `parking-reminders`      | `need_parking` |
-| `check-out-instructions` | always         |
+| Section id                                               | Kind               | Content source                                                                                                                                                                |
+| -------------------------------------------------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `hero`                                                   | `hero`             | Property name / logo / photo (per-template hero); eyebrow = location / custom                                                                                                 |
+| `passCard`                                               | `passCard`         | Booking: guest name, check-in/out date + time, parking / pet pills                                                                                                            |
+| `checkInDocuments`                                       | `checkInDocuments` | Approved GAF / pet / parking-endorsement doc chips (`isPreviewSample` in preview)                                                                                             |
+| `gallery`                                                | `gallery`          | Property photos (`ShowcaseGalleryCarousel`); host can curate slots                                                                                                            |
+| `quickNav`                                               | `quickNav`         | Renders nothing in the body — the template shell's sticky header nav covers it                                                                                                |
+| `getting-in` / `make-yourself-at-home` / `before-you-go` | `chapter`          | Rich HTML from property templates (`check-in-instructions`, `house-rules` + `parking-reminders`, `check-out-instructions`), one block per template; per-chapter `accentColor` |
+| `host`                                                   | `host`             | Host avatar / name + phone / email / Facebook ("Message host" / "Email host")                                                                                                 |
 
-Template HTML is filled with the same booking placeholders as workflow emails (`buildBookingPlaceholderVars`).
+**Hero is always visible** (`STAY_GUIDE_REQUIRED_VISIBLE`). Chapters + check-in docs that have
+no real content are dropped on a live (non-preview) page.
 
-### Layout config (`sectionConfig`)
+Chapter template HTML is filled with the same booking placeholders as workflow emails
+(`buildBookingPlaceholderVars`). The Stay-Guide-only kinds (`passCard`, `checkInDocuments`,
+`chapter`, `host`, `quickNav`) render via one shared, palette-skinned component
+(`templates/shared/StayGuideSections.tsx#StayGuideTemplatedSection`) that every template's
+`*Sections.tsx` delegates to; `hero` / `gallery` keep each template's bespoke renderer.
 
-From **`public_page_configs`** (`page_type = stay_guide`), included on guest/preview DTOs. Missing row → in-memory all-visible defaults (same as pre-editor layout).
+### Config (`StayGuideConfigV2`)
 
-| Control                                                                      | Effect                                                                                                                                   |
-| ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `hero` / `stayPassCard` / `galleryCarousel` / `quickNavTabs` / `helpSection` | `visible` toggles each chrome block. Hiding **hero** keeps a compact logo + theme bar and drops stay-pass overlap so layout stays inset. |
-| `chapters[]`                                                                 | `id`, `visible`, `order`, `accentColor` (`null` = inherit brand color)                                                                   |
+From **`public_page_configs`** (`page_type = stay_guide`). v1 rows (`version: 1`,
+`chapters[]`) are upgraded on read (`normalizeStayGuideConfig` client + server) and by the
+one-shot backfill `20261210120100_stay_guide_config_v2.sql`.
 
-`applyStayGuideSectionConfig` filters/reorders built chapters; `StayGuideChapter` accepts optional `accentColor`.
+```ts
+{
+  version: 2;
+  published: boolean;                    // token pages ignore it
+  palette / typography / motion;         // identical to PropertyShowcaseConfig
+  sections: { id; visible; order;
+              copy?: { heading?; subheading? };
+              imageSlots?;               // hero (1) + gallery (multi)
+              heroEyebrow?;              // hero only
+              accentColor? }[];          // chapter sections only
+}
+```
+
+`templateKey` is one of the 6 `showcase-*` keys, stored in **`custom_pages`**
+(`page_type = stay_guide`) — `resolveStayGuideTemplateKey` normalizes legacy
+`stay-guide-warm-arrival` rows to `showcase-aurora`
+(`20261210120300_stay_guide_template_keys.sql`).
 
 ## API
 
-| Function                   | Method | Auth                   | Query                                                            |
-| -------------------------- | ------ | ---------------------- | ---------------------------------------------------------------- |
-| `get-guest-stay-guide`     | GET    | anon                   | `?token=` required; `?property=<slug>` optional                  |
-| `preview-guest-stay-guide` | GET    | JWT + `templates:view` | `?property_id=` required; `?property=<slug>` optional slug guard |
+| Function                   | Method | Auth                                                 | Query                                                            |
+| -------------------------- | ------ | ---------------------------------------------------- | ---------------------------------------------------------------- |
+| `get-guest-stay-guide`     | GET    | anon                                                 | `?token=` required; `?property=<slug>` optional                  |
+| `preview-guest-stay-guide` | GET    | JWT + `templates:view`                               | `?property_id=` required; `?property=<slug>` optional slug guard |
+| `public-page-configs`      | PATCH  | `publicPages.stayGuide:edit` + `publicPagesAutosave` | `{ pageType: 'stay_guide', config }` (v2)                        |
+| `custom-pages-settings`    | PATCH  | `publicPages.stayGuide:edit` + `publicPagesAutosave` | `{ pageType: 'stay_guide', templateKey }` (a `showcase-*` key)   |
 
-Both responses include **`sectionConfig`**. Host layout saves via **`public-page-configs`** (see **[[public-pages|Public Pages]]**).
+Both GET responses include **`sectionConfig`** (v2) and **`templateKey`**.
 
-## Admin preview
+## Email / Admin
 
-**Public Pages → Stay Guide → Edit** shows a live preview. Hosts can also open **`/properties/:slug/stay-guide?preview=1&property_id=`** (no guest token) from the Stay Guide card on Public Pages. Requires the same signed-in host session (`templates:view`). Payload from **`preview-guest-stay-guide`** uses **mock booking data** (sample guest name, Manila-relative check-in/out, parking + pets enabled) so operators can review all standard sections without a live booking token. A **Preview** banner appears at the top of the page. Templates edits standard body copy only — no separate **Preview stay guide** button there.
-
-## Email
-
-On **`READY_FOR_CHECKIN`** transition, orchestrator calls **`ensureGuestStayGuideToken`** before **`sendReadyForCheckin`**. Email includes **`{{stay_guide_cta_section}}`** when token + property slug resolve.
-
-## Admin (booking detail)
-
-On **`READY_FOR_CHECKIN`** and later, **WorkflowPanel** shows **Stay guide** with **Open stay guide** + copy. The link is **issued automatically** on transition to **`READY_FOR_CHECKIN`**.
+Unchanged: on **`READY_FOR_CHECKIN`** the orchestrator calls **`ensureGuestStayGuideToken`**
+before **`sendReadyForCheckin`** (`{{stay_guide_cta_section}}` when token + slug resolve);
+**WorkflowPanel** shows the **Stay guide** row with **Open** + copy from
+`READY_FOR_CHECKIN` onward.
 
 ## Page Editor
 
-**Public Pages → Stay Guide → Edit** — `ui/src/features/dashboard/page-editor/` (`StayGuideEditorPanel`, `StayGuideSectionContentCard`, `stayGuideEditorStore`, live preview via `previewOverrideContext`). Layout autosave PATCHes **`public-page-configs`**. Chapter **content** + **section images** autosave via **`property-templates-settings`** (same rows as Templates). Requires **`customPages`** (Starter+).
+**Public Pages → Stay Guide → Edit** — `page-editor/components/stay-guide/StayGuidePageEditor.tsx`
 
-**Content chrome:** accordion cards under **Content**, grouped by chapter (Getting In / At home / Before You Go). Each card: section image uploader + WYSIWYG + placeholders + reset. Edits update the live preview immediately (client-side placeholder fill).
+- `StayGuideEditorPanel.tsx` + `stores/stayGuideEditorStore.ts`, live preview via
+  `previewOverrideContext` (`kind: 'stay-guide'`, the DTO carries the v2 config + templateKey).
+  Mirrors `PropertyShowcasePageEditor`. Three autosave tracks:
 
-## Standard template section images
+1. **Config** → `public-page-configs` (`stay_guide`)
+2. **Template key** → `custom-pages-settings` (`stay_guide`)
+3. **Chapter content + section images** → `property-templates-settings` (same rows as Templates)
 
-Section images are managed in the **Stay Guide Page Editor** (not Templates). Stored as **`section_image_url`** on **`property_template_contents`**; shown at the top of that section’s card on the stay guide **only when set** (no property-gallery fallback). Storage uses a **fixed path** per template key, so replace upserts overwrite the same public URL — preview appends a cache-bust query (`?v=`). Inline images inserted in the editor are uploaded via **`upload-property-template-asset`** and rendered in the public body HTML.
+**Panel** (mirrors `PropertyShowcaseEditorPanel` 1:1 — only the section set + fields differ):
 
-**Templates → Standard templates** still edits body copy, but **does not** show the section image uploader (avoids a second upload surface).
+- **Template** — 3×2 grid of **live scaled mobile previews** (`StayGuideTemplatePicker` /
+  `StayGuideTemplatePreviewThumb`, same pipeline as `ShowcaseTemplatePicker`: inert, motion
+  toned down, `useDeferredValue`). Clicking a template scrolls the main preview to the hero.
+- **Sections** — `SectionReorderList` (drag reorder + visibility; hero locked visible).
+- **Style** — `PaletteControl` / `TypographyControl` / `MotionControl`, template-aware via
+  `resolveShowcaseEditorStyleFields(templateKey)`; `useShowcaseMediaPalette` for "from photos".
+- **Section details** — per-section accordion; copy fields prefill with the resolved default
+  (clearing to the default stores no override). Hero: eyebrow + heading/sub + single photo.
+  Gallery: heading/sub + multi photo. Pass / docs / host: heading/sub. Chapters: heading
+  override + accent colour + nested `StayGuideSectionContentCard` rich-text editors per
+  property-template key.
 
-## Content rendering
-
-- The **first h1–h3** in template body becomes the section card title (`displayHeading`; duplicate heading stripped from body HTML). That title is **always** shown on the stay guide for every template section (including single-section chapters like Getting In). If the body has no leading heading, the template registry label is used.
-- **`ul` / `ol`** render as proper lists with bullets/numbers.
-
-## UI (v1 template: `stay-guide-warm-arrival`)
-
-Warm-neutral "digital pamphlet" redesign — page-scoped palette (Paper/Ink/Sand/Umber, both light + dark variants) and `Fraunces` display type layered on the existing brand teal accent. Content is capped to a centered ~720px column at every breakpoint (mobile-first, no separate desktop layout).
-
-**Container queries, not viewport breakpoints** — the page root (`StayGuidePage.tsx`, both the skeleton and the loaded view) carries `@container`, and every responsive class across the stay-guide components is a container-query variant (`@2xl:` ≈ old `sm:`/640px, `@5xl:` ≈ old `lg:`/1024px) instead of plain `sm:`/`lg:`. This matches the pattern in `PropertyDetailPage.tsx` (`@xl:`/`@3xl:`) and exists because the Page Editor's mobile preview (`PageEditorPreviewPane.tsx`) is a `max-w-[420px]` div in the same document, not a real narrow viewport — plain viewport breakpoints evaluate against the actual (desktop) browser width and fire anyway, squeezing the desktop layout into the 420px box. See `previewViewportContext.tsx`. Don't reintroduce bare `sm:`/`lg:` in this route's components.
-
-- **Hero** — full-bleed static hero photo (`property.heroImageUrl`, primary gallery image) with bottom gradient scrim + `Fraunces` title overlay (property/unit name); property logo in the top bar is a **1:1 square** (`size-9` / `@2xl:size-10`, `object-cover`, `rounded-md`) so portrait logo files do not render as a tall pill; one-time scale-settle + fade-up on load (`framer-motion`, `useReducedMotion`-gated); both the hero logo and the host avatar (`StayGuideHelpSection.tsx`) fall back to their initial-letter badge on image load failure (`onError`)
-- **Hero off** — when `hero.visible` is false, `StayGuideCompactHeader` replaces the hero chrome (logo + theme toggle + safe-area inset) so the page is not flush to the top; stay pass uses normal top spacing instead of the hero-overlap negative margin (`overlapHero={false}`)
-- **Stay pass card** (`StayPassCard.tsx`) — boarding-pass-styled summary (guest name, property, check-in/out date + time); when the hero is on it overlaps the hero's bottom edge; when the hero is off it sits below the compact header with normal inset — the signature "wow" element, surfacing practical booking facts immediately per competitive UX research
-- **Gallery film strip** (`StayGuideGalleryCarousel.tsx`) — editorial horizontal scroll-snap strip of gallery images, placed after the hero/pass (not a full-bleed carousel at the top); tapping a thumbnail opens the shared fullscreen `GalleryLightbox` (prev/next, filmstrip thumbnails, counter) at the tapped index — same lightbox used by the property-detail listing gallery
-- **Quick-nav** (`StayGuideTabs.tsx`) — sticky pill bar under the gallery; jump-scrolls to chapter anchors, scrollspy-highlights the chapter in view (`IntersectionObserver`)
-- **Chapters** (`StayGuideChapter.tsx`, grouped by `lib/stayGuideChapters.ts`) — standard sections regrouped into "Getting In" (check-in), "Make Yourself at Home" (house rules + parking when applicable), "Before You Go" (check-out); each chapter: eyebrow + `Fraunces` heading + Sand-surfaced body, quiet scroll-reveal on enter; **Check-in** chapter appends the full-bleed map card below its content
-- **Need Anything?** — restyled `StayGuideHelpSection.tsx` (same host/contact data), now a chapter target (`id="need-anything"`) for quick-nav
-- Brand color from property/org via CSS variables (interactive accent only — buttons, active nav pill, links)
-
-Chrome blocks honor `sectionConfig` visibility. **Preview parity** — `preview-guest-stay-guide` and the Page Editor preview render the identical template; hosts see exactly what guests see.
+The preview shares `useShowcaseContainedChrome` / `useShowcaseConfigControlled` with Showcase
+(both accept the `stay-guide` preview-override kind) so the template chrome stays inside the
+editor frame and palette/motion follow the config live.
 
 ## Implementation map
 
-| Layer            | Path                                                                                                                                                                                                                          |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Page             | `ui/src/features/guest/stay-guide/pages/StayGuidePage.tsx`                                                                                                                                                                    |
-| Components       | `ui/src/features/guest/stay-guide/components/*` (`StayPassCard`, `StayGuideCompactHeader`, `StayGuideChapter`, `StayGuideHero`, `StayGuideTabs` (quick-nav), `StayGuideGalleryCarousel` (film strip), `StayGuideHelpSection`) |
-| Gallery lightbox | `ui/src/features/guest/marketing/shared/components/GalleryLightbox.tsx` — shared fullscreen viewer, also used by `ListingGallery.tsx` (property-detail listing gallery)                                                       |
-| Chapter grouping | `ui/src/features/guest/stay-guide/lib/stayGuideChapters.ts` (`applyStayGuideSectionConfig`, defaults)                                                                                                                         |
-| Hook             | `ui/src/features/guest/stay-guide/hooks/useGuestStayGuide.ts` (`useGuestStayGuidePreview`; respects preview override)                                                                                                         |
-| Preview client   | `ui/src/features/guest/stay-guide/lib/previewApi.ts`                                                                                                                                                                          |
-| Page Editor      | `ui/src/features/dashboard/page-editor/` (Stay Guide panel + store + autosave)                                                                                                                                                |
-| Edge             | `supabase/functions/get-guest-stay-guide/index.ts`                                                                                                                                                                            |
-| Preview edge     | `supabase/functions/preview-guest-stay-guide/index.ts`                                                                                                                                                                        |
-| Config API       | `supabase/functions/public-page-configs/index.ts` + `_shared/publicPageConfigs.ts`                                                                                                                                            |
-| Issue link API   | `supabase/functions/issue-guest-stay-guide-token/index.ts`                                                                                                                                                                    |
-| Token + payload  | `supabase/functions/_shared/guestStayGuide.ts` (`loadGuestStayGuidePreview`, mock booking; `templateKey` + `sectionConfig`)                                                                                                   |
-| Admin UI         | `WorkflowPanel.tsx` (Stay guide row); **`TemplatesPage.tsx`**; **[[public-pages\|Public Pages]]** (Edit + preview)                                                                                                            |
-| Orchestrator     | `workflowOrchestrator.ts` — token on `READY_FOR_CHECKIN`                                                                                                                                                                      |
-| Email CTA        | `propertyTemplateEmailSections.ts#buildStayGuideCtaHtml`, `emailService.ts#sendReadyForCheckin`                                                                                                                               |
-| Migration        | `supabase/migrations/20260916120000_guest_stay_guide_token.sql`, `20261018130000_custom_pages.sql`, `20261102120000_public_page_configs.sql`                                                                                  |
+| Layer           | Path                                                                                                                                                                                                                                                                 |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Guest page      | `ui/src/features/guest/stay-guide/pages/StayGuidePage.tsx` (resolves data → `mapStayGuideData` → registry)                                                                                                                                                           |
+| Data mapper     | `ui/src/features/guest/stay-guide/lib/mapStayGuideData.ts`                                                                                                                                                                                                           |
+| Config model    | `ui/src/features/guest/stay-guide/lib/stayGuideConfig.ts` (v2 types, normalize, v1→v2 upgrade)                                                                                                                                                                       |
+| Template engine | `ui/src/features/guest/marketing/showcase/templates/*` + `registry.ts`; Stay-Guide section renderers in `templates/shared/StayGuideSections.tsx`; shell / style / motion in `showcase/components/*` + `showcase/lib/*`                                               |
+| Shared types    | `ui/src/features/guest/marketing/showcase/types/showcase.ts` (`TemplateSectionKind`, `pageKind`, `ShowcaseStayGuideExtras`, `ShowcaseResolvedSection.blocks/bodyHtml/accentColor`)                                                                                   |
+| Editor          | `ui/src/features/dashboard/page-editor/components/stay-guide/{StayGuidePageEditor,StayGuideEditorPanel,StayGuideTemplatePicker,StayGuideTemplatePreviewThumb}.tsx`, `stores/stayGuideEditorStore.ts`, `lib/{stayGuideChapterSections,stayGuideTemplateThumbData}.ts` |
+| Hook            | `ui/src/features/guest/stay-guide/hooks/useGuestStayGuide.ts` (+ `previewApi.ts`)                                                                                                                                                                                    |
+| Edge            | `get-guest-stay-guide/`, `preview-guest-stay-guide/`, `public-page-configs/`, `custom-pages-settings/`                                                                                                                                                               |
+| Shared server   | `_shared/guestStayGuide.ts`, `_shared/publicPageConfigs.ts` (v2 + v1 upgrade), `_shared/customPages.ts`                                                                                                                                                              |
+| Migrations      | `20261210120100_stay_guide_config_v2.sql`, `20261210120300_stay_guide_template_keys.sql` (+ token / custom_pages / public_page_configs base migrations)                                                                                                              |

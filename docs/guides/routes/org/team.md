@@ -40,7 +40,7 @@ The **org owner** appears virtually (`isOwner: true`). Invited members get:
 
 Org **delete** and **Plans checkout/downgrade** remain **owner-only** (not grantable).
 
-**Plan gating:** Viewing the team is always free. **Invite Member** at the pooled cap opens the inline upgrade modal (`teamManagement`); **Continue to payment** goes to org Plans. Server enforces via `requireOrgTeamInviteAllowed`. Loading the members list runs seat reconciliation — excess org admins and property members are auto-deactivated with a **Plan limit** badge.
+**Plan gating:** Viewing the team is always free. **Invite Member** at the pooled cap opens the inline upgrade modal (`teamManagement`); **Continue to payment** goes to org Plans. Server enforces via `requireOrgTeamInviteAllowed`. Loading the members list runs seat reconciliation — excess org admins and property members are auto-deactivated with a **Plan limit** badge. **Invite Member** shows a corner plan pill on the page header and empty states when at seat cap. **Creating, duplicating, or editing org permission templates** requires **`customRoles`** (Starter+) — client upgrade modal plus `org-team-custom-roles` POST/PATCH/DELETE.
 
 ---
 

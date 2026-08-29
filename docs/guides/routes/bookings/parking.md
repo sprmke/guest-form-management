@@ -2,109 +2,83 @@
 title: 'Pay Parking — operator guide'
 status: active
 tags: [guides, routes, parking]
-updated: 2026-08-17
+updated: 2026-08-29
 ---
 
 # Pay Parking — operator guide
 
 Route: `/properties/:propertySlug/parking/:bookingId` (legacy `/bookings/:bookingId/parking` redirects here)
 
-> **Status:** Documented.
+> **Status:** Documented — **redirects into marketplace** (pay-parking → marketplace connect).
 
 ## Progress overview
 
-| Section         | E2E save | Validation | Docs       | Notes                                                                   |
-| --------------- | -------- | ---------- | ---------- | ----------------------------------------------------------------------- |
-| Brand shell     | ✅       | —          | Documented | `MainLayout` band + `GuestFormBrandHeader` via `get-guest-payment-info` |
-| Vehicle form    | ✅       | ✅ Zod     | Documented | plate / brand-model / color                                             |
-| Owner broadcast | ✅       | Server     | Documented | BCC list or single owner email                                          |
-| Admin mode      | ✅       | —          | Documented | `?admin=true` — extra broadcast choice dialogs                          |
+| Section              | E2E save | Validation | Docs       | Notes                                                                                |
+| -------------------- | -------- | ---------- | ---------- | ------------------------------------------------------------------------------------ |
+| Marketplace redirect | ✅       | —          | Documented | Linked → request status; own-default form when available; else `/parkings?linkStay=` |
+| Host Find parking    | ✅       | —          | Documented | Use your parking (+ multi-slot sheet) / Search other parkings / marketplace fallback |
+| Legacy vehicle form  | Soft     | —          | Deprecated | No longer the guest/default entry; historical columns retained                       |
 
 ---
 
 ## Overview
 
-Public, no-login form guests use to submit (or update) their parking vehicle details for a booking that requested paid parking. Scoped to the property slug in the URL. Renders inside **`MainLayout`**: org **brand-color band**, **`GuestOperationalHeader`**, overlapping **`GuestFormBrandHeader`** (logo, dynamic eyebrow, title), then the vehicle form. Instructional copy (last-minute warning, contact hints) is residence-aware via **`guestFormBranding.ts`** + **`get-guest-payment-info`**. Admin **View pay parking** / copy-link uses `guestPayParkingPath(propertySlug, bookingId)`, optionally with **`?admin=true`** when an admin is filling it in on the guest's behalf.
+Opening the old **pay parking** URL no longer shows the plate/brand/color form. It **redirects** into the parking marketplace e2e flow:
 
-Legacy **`/bookings/:bookingId/parking`** resolves the booking's `property_slug` via `get-pay-parking` and redirects to the scoped route.
+1. If this property stay already has a linked marketplace parking booking → `/parkings/requests/:parkingBookingId`
+2. Else if the property’s org has an **available** own parking for the stay dates → `/parkings/:slug/form?linkStay=…&checkInDate=…&checkOutDate=…`
+3. Otherwise → `/parkings?linkStay=<propertyBookingId>` (or `/parkings/in/:city?linkStay=…` when the property city is known)
+
+Guests then use the normal Reserve → registration → pay flow. After sign-in, `linkStay` auto-selects the property stay when linkable. Same-org pinned submits auto-claim to `PENDING_PAYMENT` (no Accept self-notify).
+
+Legacy `/bookings/:bookingId/parking` still resolves `property_slug` and redirects to the scoped URL (then marketplace).
 
 ---
 
 ## Host-facing knowledge
 
-Guests who requested paid parking get a simple link where they enter their car's plate number, brand/model, and color. Submitting it saves the vehicle details to the booking and emails parking owners with the guest's info so a slot can be arranged. If a host fills this in on a guest's behalf (admin mode), they get an extra choice of whether to notify parking owners, and if so, whether to notify all of them or just one specific owner by email.
+When a guest needs parking, use **Use your parking** if you list your own slot (or **Find parking** when you don’t). If you have several free slots, pick one in the sheet, then Open or Copy. Share that link so the guest can reserve and pay (or skip pay when complimentary own parking is on). **Search other parkings** opens the public marketplace if your slot is busy or you want another listing. Once they pay (or complimentary confirms), this booking’s Parking tab shows the match and the Progress parking step completes automatically.
 
 **Common host questions**
 
-- Q: Does submitting this form change the booking's status?
-  A: No, it only saves the vehicle details and (optionally) emails parking owners. It doesn't move the booking forward in its workflow.
-- Q: What if a guest submits this very close to their check-in date?
-  A: They see a heads-up that parking arrangements this close to arrival may not be guaranteed, since owners need lead time to confirm a slot.
-- Q: Can I update a guest's parking details myself after they've already submitted?
-  A: Yes, opening the same link in admin mode lets you edit the saved vehicle details and choose whether to re-notify owners (all of them, one specific owner, or no email at all).
+- Q: Where did the old vehicle form go?
+  A: Parking is arranged through Find parking / the marketplace now. Vehicle details are collected when the guest reserves a slot.
+- Q: Does Find parking change the booking status?
+  A: It marks that the stay needs parking. Matching and payment happen on the parking side; this booking’s parking step completes after a successful linked payment.
 
 ---
 
-## Vehicle form
+## Redirect matrix
 
-### Fields
+| Condition                                   | Destination                                           |
+| ------------------------------------------- | ----------------------------------------------------- |
+| Preview embed (`bookingId=preview` + embed) | `PayParkingEmbedPreview` (static)                     |
+| Linked marketplace booking exists           | `/parkings/requests/:id`                              |
+| Org-owned parking available for stay dates  | `guestParkingOwnDefaultPath` (pinned form + linkStay) |
+| Unlinked / eligible stay                    | `guestParkingFindPath({ bookingId, locationSlug })`   |
+| Missing / cancelled / not found             | Error + **Find parking** → `/parkings`                |
 
-| Field             | Storage                              | Validation                 |
-| ----------------- | ------------------------------------ | -------------------------- |
-| Car plate number  | `guest_submissions.car_plate_number` | Required; stored uppercase |
-| Car brand & model | `guest_submissions.car_brand_model`  | Required                   |
-| Car color         | `guest_submissions.car_color`        | Required                   |
-
-Read-only context shown above the form: guest name, stay dates/pax, parking rate and parking date range (falls back to the stay's own dates when no separate parking dates were set), and whether this is a first submission or an update.
-
-### Save path
-
-1. Guest (or admin) fills the three vehicle fields → **Submit parking request** / **Update parking details**.
-2. Guest mode: submits immediately → **`submit-pay-parking`** POST `{ bookingId, carPlateNumber, carBrandModel, carColor }` (broadcast defaults on).
-3. Admin mode (`?admin=true`): opens the **Update & Broadcast** dialog first, offering:
-   - **Save & broadcast to all** — sends to every address in the parking-owner BCC list.
-   - **Save & email specific owner** — opens a second dialog to enter one owner's email; sends only to that address (no BCC).
-   - **Save only** — persists the vehicle fields with no email sent.
-4. `submit-pay-parking` sets `need_parking = true` and the vehicle fields; if the parking sub-step had already been marked complete (or the booking is past `PENDING_DOCUMENTS`), it clears `parking_completed_at` so the admin stepper shows it as needing another look.
-
-### Behavior / edge cases
-
-- **Last-minute warning:** if the parking check-in date is very close, the page shows a caution banner (before and after submit) that on-site arrangements this close to arrival aren't guaranteed.
-- **Cancelled bookings:** `get-pay-parking` and `submit-pay-parking` both reject once a booking's status is `CANCELLED`.
-- **Org automation toggle:** the owner broadcast email is skipped entirely if the property's org has parking-broadcast automation turned off — vehicle details still save.
-- **Parking rate:** always read from the database (set by an admin before sharing the link) — the guest never chooses or edits the rate here.
-- This form never changes booking `status` — it only touches parking-specific fields.
-
----
-
-## API reference
-
-| Action                              | Endpoint                  |
-| ----------------------------------- | ------------------------- |
-| Load pay-parking bootstrap          | `GET get-pay-parking`     |
-| Submit / update vehicle + broadcast | `POST submit-pay-parking` |
+Bootstrap: `GET get-pay-parking` (also returns `linked_parking_booking_id`, `city_location_slug`, `owner_default_parking_slug` + stay dates).
 
 ---
 
 ## Implementation map
 
-| Concern            | Path                                                                                                                   |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------- |
-| Page               | `ui/src/features/guest/pay-parking/pages/PayParkingPage.tsx`                                                           |
-| Sections           | `ui/src/features/guest/pay-parking/components/PayParkingSections.tsx`                                                  |
-| Broadcast dialog   | `ui/src/features/guest/pay-parking/components/PayParkingUpdateBroadcastDialog.tsx`                                     |
-| Owner-email dialog | `ui/src/features/guest/pay-parking/components/PayParkingOwnerEmailDialog.tsx`                                          |
-| API client         | `ui/src/features/guest/pay-parking/lib/api.ts`                                                                         |
-| Schema             | `ui/src/features/guest/pay-parking/lib/payParkingSchema.ts`                                                            |
-| Routes (wired)     | `ui/src/features/guest/property/routes/index.tsx` (`propertyGuestRoutes`; `LegacyPayParkingRedirect`)                  |
-| Paths              | `ui/src/features/guest/lib/guestPublicPaths.ts`                                                                        |
-| Edge               | `supabase/functions/get-pay-parking/index.ts`, `supabase/functions/submit-pay-parking/index.ts`                        |
-| Shared services    | `supabase/functions/_shared/{databaseService,emailService,calendarService,sheetsService,propertyAutomationToggles}.ts` |
+| Concern            | Path                                                                                                   |
+| ------------------ | ------------------------------------------------------------------------------------------------------ |
+| Redirect page      | `ui/src/features/guest/pay-parking/pages/PayParkingPage.tsx`                                           |
+| Find URL helper    | `ui/src/features/guest/lib/guestPublicPaths.ts` (`guestParkingFindPath`, `guestParkingOwnDefaultPath`) |
+| `linkStay` persist | `ui/src/features/guest/marketing/parkings/lib/parkingLinkStay.ts`                                      |
+| Host Find parking  | `BookingDetailPage` + `useEnsureNeedParking` + `useOwnerDefaultParking` + `useBookingParkingShareLink` |
+| Owner default API  | `supabase/functions/resolve-owner-default-parking/index.ts`                                            |
+| Edge bootstrap     | `supabase/functions/get-pay-parking/index.ts`                                                          |
 
 ---
 
 ## Related docs
 
 - [Route index](../README.md)
-- [`docs/PROJECT.md`](../../PROJECT.md)
-- `.cursor/rules/booking-workflow.mdc` — parking nested-completion rules
+- [`parkings.md`](../parkings.md) — `linkStay` behavior
+- [`org/property/bookings-detail.md`](../org/property/bookings-detail.md) — Find parking actions
+- [`docs/workflow/in-progress/parking-owner-owned-default.md`](../../workflow/in-progress/parking-owner-owned-default.md)
+- [`docs/workflow/done/parking-pay-parking-marketplace-connect.md`](../../workflow/done/parking-pay-parking-marketplace-connect.md)

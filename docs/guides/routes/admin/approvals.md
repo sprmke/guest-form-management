@@ -13,12 +13,12 @@ Route: `/admin/approvals`
 
 ## Progress overview
 
-| Section                     | E2E save | Validation | Docs | Notes                                                                  |
-| --------------------------- | -------- | ---------- | ---- | ---------------------------------------------------------------------- |
-| Approvals queue             | Done     | Done       | Done | Host + listing verification; external reviews; Type filter; Succession |
-| Org review dialog           | Done     | Done       | Done | Host docs only; read-only listing rollup                               |
-| Listing verification dialog | Done     | Done       | Done | Approve / Request changes / Reject per listing tier                    |
-| External review dialog      | Done     | Done       | Done | Approve / Reject pending property external reviews                     |
+| Section                     | E2E save | Validation | Docs | Notes                                                                                 |
+| --------------------------- | -------- | ---------- | ---- | ------------------------------------------------------------------------------------- |
+| Approvals queue             | Done     | Done       | Done | Host + listing verification; external reviews; Type filter; Succession                |
+| Org review dialog           | Done     | Done       | Done | Host docs only; read-only listing rollup                                              |
+| Listing verification dialog | Done     | Done       | Done | Approve / Request changes / Reject per listing tier                                   |
+| External review dialog      | Done     | Done       | Done | Approve / Reject pending property external reviews; shows feedback tags + stay photos |
 
 ---
 

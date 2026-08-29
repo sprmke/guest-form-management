@@ -60,7 +60,7 @@ Save **one** BotFather token at the top. It pre-fills each module’s bot token 
 
 1. **Enable notifications** — master toggle (**off by default**; opt-in per module). When off, only this toggle is shown.
 
-**Plan gating:** Editing templates, credentials, and previews stay free. Turning **Enable notifications** on requires plan feature **`telegramNotifications`** per module — client pre-flight on the toggle; all `telegram-*-settings` PATCH handlers call **`gateTelegramEnabledPatch`** (429 + `upgradeHook`). Each Telegram module card title shows a solid `TierBadge` when not entitled.
+**Plan gating:** Editing templates, credentials, and previews stay free. Turning **Enable notifications** on requires plan feature **`telegramNotifications`** per module — client pre-flight on the toggle; all `telegram-*-settings` PATCH handlers call **`gateTelegramEnabledPatch`** (429 + `upgradeHook`). The **Telegram notifications** group heading shows a solid `TierBadge` when not entitled (not repeated on each module card).
 
 2. **Telegram connection** — bot token row, chat ID row (inline **?** help on each label), and **Connect** beside chat ID. While setup is incomplete, Chat ID shows **Scan for chats** in the field; after scan, a **group dropdown** replaces the empty state. After **Connected**, chat ID shows the group name with **Reveal** for the raw id. Editing bot token or chat ID resets to **Connect**. Failed verify shows **Connection failed** beside the section title and an outline-destructive **Connect** to retry. Bot token shows the raw value by default (**Hide** masks characters; the field stays editable); chat ID shows **group name** by default.
 

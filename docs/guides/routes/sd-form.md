@@ -13,14 +13,14 @@ Route: `/properties/:propertySlug/sd-form?bookingId=` (legacy `/sd-form?property
 
 ## Progress overview
 
-| Section        | E2E save | Validation | Docs       | Notes                                                              |
-| -------------- | -------- | ---------- | ---------- | ------------------------------------------------------------------ |
-| Brand shell    | ✅       | —          | Documented | `MainLayout` + `GuestFormBrandHeader` via `get-guest-payment-info` |
-| Step 1 Review  | ✅       | ✅ Zod     | Documented | `submit-guest-review`                                              |
-| Step 2 Voucher | ✅       | Server     | Documented | `claim-sd-voucher`; idempotent                                     |
-| Step 3 Refund  | ✅       | ✅ Zod     | Documented | `submit-sd-form` → workflow transition                             |
-| Balance gate   | ✅       | Server     | Documented | `awaiting_balance_settlement` polling                              |
-| Airbnb variant | ✅       | —          | Documented | Standalone `/guest-review` route                                   |
+| Section        | E2E save | Validation | Docs       | Notes                                                                                                         |
+| -------------- | -------- | ---------- | ---------- | ------------------------------------------------------------------------------------------------------------- |
+| Brand shell    | ✅       | —          | Documented | `MainLayout` + `GuestFormBrandHeader` via `get-guest-payment-info`                                            |
+| Step 1 Review  | ✅       | ✅ Zod     | Documented | Shared `GuestReviewStarRating` + `GuestReviewFeedbackPills` via `SdFormReviewSection` → `submit-guest-review` |
+| Step 2 Voucher | ✅       | Server     | Documented | `claim-sd-voucher`; idempotent                                                                                |
+| Step 3 Refund  | ✅       | ✅ Zod     | Documented | `submit-sd-form` → workflow transition                                                                        |
+| Balance gate   | ✅       | Server     | Documented | `awaiting_balance_settlement` polling                                                                         |
+| Airbnb variant | ✅       | —          | Documented | Standalone `/guest-review` route                                                                              |
 
 ---
 
@@ -135,6 +135,8 @@ A standalone **`/properties/:propertySlug/guest-review?bookingId=`** route (`Gue
 | Page (SD stepper)    | `ui/src/features/guest/sd-form/pages/SdFormPage.tsx`                                                                   |
 | Page (Airbnb review) | `ui/src/features/guest/sd-form/pages/GuestReviewPage.tsx`                                                              |
 | Review section       | `ui/src/features/guest/sd-form/components/SdFormReviewSection.tsx`                                                     |
+| Shared star rating   | `ui/src/features/guest/sd-form/components/GuestReviewStarRating.tsx`                                                   |
+| Feedback pills       | `ui/src/features/guest/sd-form/components/GuestReviewFeedbackPills.tsx`                                                |
 | Voucher UI           | `ui/src/features/guest/sd-form/components/VoucherReveal.tsx`                                                           |
 | API client           | `ui/src/features/guest/sd-form/lib/api.ts`                                                                             |
 | Schema               | `ui/src/features/guest/sd-form/lib/sdFormSchema.ts`                                                                    |

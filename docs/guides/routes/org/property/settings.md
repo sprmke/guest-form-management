@@ -13,19 +13,19 @@ Route: `/org/:orgSlug/property/:propertySlug/settings`
 
 ## Progress overview
 
-| Section            | E2E save | Validation | Docs | Notes                                                                    |
-| ------------------ | -------- | ---------- | ---- | ------------------------------------------------------------------------ |
-| Basic Information  | Done     | Done       | Done | Required fields marked with *; save blocked until complete               |
-| Property Details   | Done     | Done       | Done | Azure North residence defaults + limits                                  |
-| Guest Form         | Done     | Done       | Done | Pet / parking / decor toggles + required Cleaning Time                   |
-| Location           | Done     | Done       | Done | Address + map pin required                                               |
-| Payment            | Done     | Done       | Done | Server-enforced; QR via upload only                                      |
-| Building Forms     | Done     | Done       | Done | Shared GAF + pet PDF fields                                              |
-| Email automations  | Done     | Done       | Done | Recipients, timing, toggles per property                                 |
-| Integrations       | Done     | Done       | Done | Telegram + AI optional; GAF/pet via Resend inbound                       |
-| Voice Receptionist | Done     | Done       | Done | Hidden unless `aiReceptionist` (Business+); saves with page Save Changes |
-| AI Overrides       | Done     | Done       | Done | Hidden unless plan has AI credits (`aiMonthlyCreditAllowance` > 0)       |
-| Danger Zone        | Done     | Done       | Done | Archive + delete with confirmations                                      |
+| Section            | E2E save | Validation | Docs | Notes                                                                                 |
+| ------------------ | -------- | ---------- | ---- | ------------------------------------------------------------------------------------- |
+| Basic Information  | Done     | Done       | Done | Required fields marked with *; save blocked until complete                            |
+| Property Details   | Done     | Done       | Done | Azure North residence defaults + limits                                               |
+| Guest Form         | Done     | Done       | Done | Pet / parking / decor + preferred parking + complimentary own parking + Cleaning Time |
+| Location           | Done     | Done       | Done | Address + map pin required                                                            |
+| Payment            | Done     | Done       | Done | Server-enforced; QR via upload only                                                   |
+| Building Forms     | Done     | Done       | Done | Shared GAF + pet PDF fields                                                           |
+| Email automations  | Done     | Done       | Done | Recipients, timing, toggles per property                                              |
+| Integrations       | Done     | Done       | Done | Telegram + AI optional; GAF/pet via Resend inbound                                    |
+| Voice Receptionist | Done     | Done       | Done | Hidden unless `aiReceptionist` (Business+); saves with page Save Changes              |
+| AI Overrides       | Done     | Done       | Done | Hidden unless plan has AI credits (`aiMonthlyCreditAllowance` > 0)                    |
+| Danger Zone        | Done     | Done       | Done | Archive + delete with confirmations                                                   |
 
 > **Also editable in Page Editor:** Photos & Videos, Brand color, Description, Amenities, House Rules, Cancellation, and Socials — same fields, same storage (`properties.settings` / `app_settings`). Edit in **Settings** or **Public Pages → Property → Edit** (live preview). Do not treat them as separate copies.
 
@@ -201,11 +201,17 @@ Preset + custom house rules (`enabledHouseRules` / `customHouseRules`). Also edi
 
 Per-property toggles for which sections appear on the public booking form (`/form?property=<slug>`). Stored in **`properties.settings`** (profile save — not `app_settings`).
 
-| Toggle               | Key                  | Default | Effect when off                                                                  |
-| -------------------- | -------------------- | ------- | -------------------------------------------------------------------------------- |
-| Allow Pets           | `allowPets`          | `true`  | Pets step hidden; `has_pets` forced `false` on submit (server + client clamp)    |
-| Allow Parking        | `allowParking`       | `true`  | Parking step hidden; `need_parking` forced `false` on submit                     |
-| Allow Surprise Decor | `allowSurpriseDecor` | `true`  | Decor checkbox hidden on Stay step; `guest_requests_surprise_decor` forced false |
+| Toggle                    | Key                         | Default  | Effect when off                                                                  |
+| ------------------------- | --------------------------- | -------- | -------------------------------------------------------------------------------- |
+| Allow Pets                | `allowPets`                 | `true`   | Pets step hidden; `has_pets` forced `false` on submit (server + client clamp)    |
+| Allow Parking             | `allowParking`              | `true`   | Parking step hidden; `need_parking` forced `false` on submit                     |
+| Allow Surprise Decor      | `allowSurpriseDecor`        | `true`   | Decor checkbox hidden on Stay step; `guest_requests_surprise_decor` forced false |
+| Complimentary own parking | `complimentaryOwnerParking` | `false`  | Same-org own-slot linked pins still require PayMongo                             |
+| Preferred parking         | `preferredOwnerParkingId`   | _(none)_ | Ranking falls back to residence match + earliest `created_at`                    |
+
+**Preferred parking** — optional org listing UUID. When still available for the stay window, `resolve-owner-default-parking` / `get-pay-parking` rank it first. Select of ACTIVE org parkings in Guest Form (`useParkings`).
+
+**Complimentary own parking** — when on, a same-org pinned submit with `linkedPropertyBookingId` auto-claims (skips awaiting-payment email) then `fulfillComplimentaryOwnerParking` (₱0 ledger, `provider: complimentary`) → `PENDING_REVIEW` + endorsement + property parking gate, without PayMongo.
 
 Section nav: **Guest Form** (after Property Details). UI: `PropertyGuestFormSettingsSection.tsx`.
 
@@ -246,6 +252,10 @@ Stored in `properties.settings.cancellationPolicy`. Also editable in the listing
 ## Socials
 
 Social URLs, external reviews, and superhost fields in `app_settings`. Also editable in the listing Page Editor (same storage).
+
+### External reviews
+
+Hosts can seed up to **5** Airbnb/Facebook reviews (screenshot and/or proof URL required). Each review uses the same **star rating** + **feedback tag pills** as the guest SD / `/guest-review` form (`GuestReviewStarRating`, `GuestReviewFeedbackPills`). Optional stay photos (up to 3) show on the public property page. Saves force `moderationStatus = pending`; only **approved** rows appear on the listing via `get-public-property`. Super-admins moderate on **`/admin/approvals`** (Type = Reviews).
 
 ---
 

@@ -56,18 +56,19 @@ Production hosted secrets: Supabase Dashboard → Edge Functions → Secrets. UI
 
 ### 11.1 UI (`ui/.env` / Vercel)
 
-| Variable                    | Required   | Notes                                                                  |
-| --------------------------- | ---------- | ---------------------------------------------------------------------- |
-| `VITE_SUPABASE_URL`         | Yes        | Edge Functions base URL **with** `/functions/v1`                       |
-| `VITE_API_URL`              | Yes        | Same as `VITE_SUPABASE_URL` (guest form fetchers)                      |
-| `VITE_SUPABASE_ANON_KEY`    | Yes        | Public anon key                                                        |
-| `VITE_NODE_ENV`             | Yes        | `production` toggles guest-form prod behavior                          |
-| `VITE_SUPABASE_PROJECT_URL` | No         | Override Supabase JS project URL (hybrid `dev:remote-api`)             |
-| `VITE_SUPER_ADMIN_EMAILS`   | No         | Comma-separated — `/admin/*` UX only; server uses `SUPER_ADMIN_EMAILS` |
-| `VITE_GOOGLE_MAPS_API_KEY`  | No         | Property Settings location picker                                      |
-| `VITE_INBOX_MOCK_DATA`      | No         | `true` → inbox mock mode                                               |
-| `GOOGLE_CLIENT_ID`          | Local only | GoTrue Google OAuth — **not** `VITE_*`; loaded before `supabase start` |
-| `GOOGLE_CLIENT_SECRET`      | Local only | Pair with `GOOGLE_CLIENT_ID`                                           |
+| Variable                          | Required   | Notes                                                                                               |
+| --------------------------------- | ---------- | --------------------------------------------------------------------------------------------------- |
+| `VITE_SUPABASE_URL`               | Yes        | Edge Functions base URL **with** `/functions/v1`                                                    |
+| `VITE_API_URL`                    | Yes        | Same as `VITE_SUPABASE_URL` (guest form fetchers)                                                   |
+| `VITE_SUPABASE_ANON_KEY`          | Yes        | Public anon key                                                                                     |
+| `VITE_NODE_ENV`                   | Yes        | `production` toggles guest-form prod behavior                                                       |
+| `VITE_SUPABASE_PROJECT_URL`       | No         | Override Supabase JS project URL (hybrid `dev:remote-api`)                                          |
+| `VITE_SUPER_ADMIN_EMAILS`         | No         | Comma-separated — `/admin/*` UX only; server uses `SUPER_ADMIN_EMAILS`                              |
+| `VITE_GOOGLE_MAPS_API_KEY`        | No         | Property Settings location picker                                                                   |
+| `VITE_INBOX_MOCK_DATA`            | No         | `true` → inbox mock mode                                                                            |
+| `VITE_DISABLE_IMAGE_OPTIMIZATION` | No         | `1` → client image compression becomes a no-op (kill switch). See [`storage.md`](./storage.md) §7.1 |
+| `GOOGLE_CLIENT_ID`                | Local only | GoTrue Google OAuth — **not** `VITE_*`; loaded before `supabase start`                              |
+| `GOOGLE_CLIENT_SECRET`            | Local only | Pair with `GOOGLE_CLIENT_ID`                                                                        |
 
 **Removed / unused:** `VITE_SUPABASE_DB_PASSWORD` — not read by the app.
 

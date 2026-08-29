@@ -430,6 +430,24 @@ Notes:
 
 ---
 
+## 11a. Additive: Public Pages → Pro + Stay Guide config v2 (August 2026)
+
+Stay Guide ↔ Showcase template-engine parity — see [`docs/workflow/in-progress/stay-guide-showcase-templates.md`](../../workflow/in-progress/stay-guide-showcase-templates.md).
+
+| File                                           | Purpose                                                                                                                                                                                                                                                                               | Reversible?                                                                                                                                                    |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `20261210120000_public_pages_pro_tier.sql`     | `pricing_plans.features` — `customPages` + `publicPagesAutosave` flipped to `false` for `free` / `starter` / `commission`, `true` for `growth` (Pro) / `pro` (Business) / `managed`. (Route block later reverted — see `20261212120000`.)                                             | Yes — re-run the inverse `UPDATE`. No data loss; only a feature-flag flip.                                                                                     |
+| `20261212120000_public_pages_explore_open.sql` | Restores `customPages: true` on Free/Starter/Commission so gallery + Page Editor stay explore-open; `publicPagesAutosave` remains Pro+.                                                                                                                                               | Yes — set `customPages` false again on those codes.                                                                                                            |
+| `20261210120100_stay_guide_config_v2.sql`      | One-shot backfill of every `public_page_configs` row with `page_type = 'stay_guide'` from config **v1** (per-section `{visible}` + `chapters[]`) to **v2** (`palette`/`typography`/`motion` + flat `sections[]`). Chapter order + `accentColor` + all visibility flags are preserved. | Effectively — the runtime `normalizeStayGuideConfig` still upgrades any v1 row on read, so a stale row self-heals; there is no automatic v2→v1 down-migration. |
+
+Notes:
+
+- **Backfill is belt-and-suspenders.** `normalizeStayGuideConfig` (client + `_shared/publicPageConfigs.ts`) upgrades v1→v2 in memory on every read and on the next host PATCH, so a missed row is still rendered correctly.
+- Verify after applying: `SELECT config->>'version' FROM public_page_configs WHERE page_type = 'stay_guide'` returns `2` for every row; spot-check that a row with reordered/hidden chapters kept its order, `accentColor`, and `visible` flags in the new `sections[]`.
+- Verify the tier flip: `SELECT code, features->>'customPages', features->>'publicPagesAutosave' FROM pricing_plans ORDER BY code` — only `growth` / `pro` / `managed` are `true`.
+
+---
+
 ## 11. Production configuration & secrets (Supabase, Google, hosting)
 
 Use this **after** migrations (**§5**) and Edge Function deploys. Canonical env templates: **[`supabase/.env.example`](../../supabase/.env.example)** (Edge secrets — mirror into Dashboard) and **[`ui/.env.example`](../../ui/.env.example)** (Vite / SPA). Full narrative also lives in **[`docs/architecture/validation-and-env.md`](../architecture/validation-and-env.md)** and **[`docs/architecture/deployment.md`](../architecture/deployment.md)**.

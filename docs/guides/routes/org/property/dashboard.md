@@ -46,6 +46,8 @@ Layout order:
 - **Canvas** — denser KPI cards first (no icon tiles / “vs last period” text), then the six board cards stack full-width in the same reading order. Chart/calendar headers use a compact icon + centered title (`AdminSurfaceCardHeader`; descriptions `lg+` only). Section/card gaps stay comfortable (`gap-2.5`–`3.5`, `p-3`+), not cramped.
 - **Desktop (`lg+`)** — standard `AdminPageHeader` with inline date filter and **View Property**; board is `lg:grid-cols-2`.
 
+**Deep links:** KPI “Total Bookings”, Needs attention / Recent bookings “View”, Finance chart “View”, Maintenance “View”, and Transactions “View” / “Add” must target **`propertySectionPath`** (`/org/:orgSlug/property/:propertySlug/…`), never bare `/bookings`, `/finance`, or `/maintenance`.
+
 ---
 
 ## Date range
