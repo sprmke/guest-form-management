@@ -1,6 +1,7 @@
 /** Design tokens mirrored from `ui/src/index.css` (`:root` light theme). Print-first. */
 
 import { DEFAULT_ORG_BRAND_COLOR, resolveOrgBrandHex } from '@/lib/theme/brandColor';
+import { parseHexRgb, rgbToHsl } from '@/lib/theme/colorConvert';
 
 function hslToRgb(h: number, sPct: number, lPct: number): [number, number, number] {
   const s = sPct / 100;
@@ -38,34 +39,7 @@ function rgbFromHsl(h: number, s: number, l: number): [number, number, number] {
 }
 
 function parseHex(hex: string): { r: number; g: number; b: number } | null {
-  const match = /^#([0-9A-Fa-f]{6})$/.exec(hex.trim());
-  if (!match) return null;
-  const raw = match[1];
-  return {
-    r: parseInt(raw.slice(0, 2), 16),
-    g: parseInt(raw.slice(2, 4), 16),
-    b: parseInt(raw.slice(4, 6), 16),
-  };
-}
-
-function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } {
-  const rn = r / 255;
-  const gn = g / 255;
-  const bn = b / 255;
-  const max = Math.max(rn, gn, bn);
-  const min = Math.min(rn, gn, bn);
-  const delta = max - min;
-  let h = 0;
-  if (delta !== 0) {
-    if (max === rn) h = ((gn - bn) / delta) % 6;
-    else if (max === gn) h = (bn - rn) / delta + 2;
-    else h = (rn - gn) / delta + 4;
-    h *= 60;
-    if (h < 0) h += 360;
-  }
-  const l = (max + min) / 2;
-  const s = delta === 0 ? 0 : delta / (1 - Math.abs(2 * l - 1));
-  return { h, s: s * 100, l: l * 100 };
+  return parseHexRgb(hex);
 }
 
 export const PDF_FONT = 'PJS';

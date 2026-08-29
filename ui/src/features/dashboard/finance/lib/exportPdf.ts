@@ -11,8 +11,6 @@ import type {
   FinanceSummary,
 } from '@/features/dashboard/finance/lib/types';
 
-import { registerPdfFonts } from '@/lib/pdf/pdfFonts';
-import { pdfBookingDate, pdfIsoDate, pdfMoney } from '@/lib/pdf/pdfFormatters';
 import {
   computeStayTableTotals,
   formatStayHostNetCell,
@@ -21,6 +19,8 @@ import {
   stayHostNetFootTotal,
   stayRowDisplayNet,
 } from '@/lib/pdf/pdfFinanceTotals';
+import { registerPdfFonts } from '@/lib/pdf/pdfFonts';
+import { pdfBookingDate, pdfIsoDate, pdfMoney } from '@/lib/pdf/pdfFormatters';
 import {
   PDF_TABLE_MONEY_COLUMN,
   addPageFooter,
