@@ -5,6 +5,7 @@ import { publicContactPath } from '@/features/guest/marketing/contact/lib/public
 
 import type { SupportTicketCategory } from '@/features/dashboard/help-support/lib/supportTicketSchema';
 
+import { Button } from '@/components/ui/button';
 import {
   ResponsiveModal,
   ResponsiveModalContent,
@@ -13,7 +14,6 @@ import {
   ResponsiveModalHeader,
   ResponsiveModalTitle,
 } from '@/components/ui/responsive-modal';
-import { Button } from '@/components/ui/button';
 
 type Props = {
   open: boolean;
