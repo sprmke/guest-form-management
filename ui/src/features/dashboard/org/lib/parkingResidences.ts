@@ -57,4 +57,3 @@ export function getParkingResidenceNames(): string[] {
   return [DEFAULT_PARKING_RESIDENCE_NAME];
 }
 
-export { formatParkingLocation } from '@/features/dashboard/org/lib/formatParkingLocation';

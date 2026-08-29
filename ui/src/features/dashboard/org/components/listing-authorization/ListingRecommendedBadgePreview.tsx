@@ -7,7 +7,6 @@ import {
   LISTING_VERIFICATION_PREVIEW_FALLBACK,
 } from '@/features/dashboard/org/lib/listingVerificationCopy';
 
-
 import { cn } from '@/lib/utils';
 
 type Props = {

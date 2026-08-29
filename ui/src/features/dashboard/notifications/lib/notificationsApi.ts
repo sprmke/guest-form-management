@@ -9,7 +9,9 @@ export type NotificationType =
   | 'booking_gaf_auto_approved'
   | 'booking_pet_auto_approved'
   | 'booking_parking_matched'
-  | 'inbox_new_message';
+  | 'inbox_new_message'
+  | 'calendar_sync_failing'
+  | 'calendar_conflict';
 
 export type NotificationRecord = {
   id: string;

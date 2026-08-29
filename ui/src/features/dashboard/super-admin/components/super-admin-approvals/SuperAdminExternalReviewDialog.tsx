@@ -29,6 +29,7 @@ import {
   useModerateExternalReview,
 } from '@/features/dashboard/super-admin/hooks/useApprovals';
 import type { ExternalReviewApprovalSummary } from '@/features/dashboard/super-admin/types/approval';
+import { guestReviewFeedbackTagLabel } from '@/features/guest/sd-form/lib/guestReviewFeedbackTags';
 
 import { ListRowsSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
@@ -176,6 +177,18 @@ export function SuperAdminExternalReviewDialog({ approval, onOpenChange }: Props
 
                 <section className="space-y-3">
                   <p className={superAdminApprovalSectionTitleClass}>Review</p>
+                  {approval.feedbackTags.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {approval.feedbackTags.map((tagId) => (
+                        <span
+                          key={tagId}
+                          className="border-border bg-muted/50 text-foreground rounded-full border px-3 py-1 text-xs font-medium"
+                        >
+                          {guestReviewFeedbackTagLabel(tagId)}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                   <p className="text-foreground whitespace-pre-wrap text-sm leading-relaxed">
                     {approval.reviewText}
                   </p>

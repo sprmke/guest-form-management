@@ -75,6 +75,8 @@ const FIELD_SECTIONS: Record<string, PropertySettingsSectionId> = {
   'guest-form-allow-pets': 'guest-form',
   'guest-form-allow-parking': 'guest-form',
   'guest-form-allow-surprise-decor': 'guest-form',
+  'guest-form-preferred-owner-parking': 'guest-form',
+  'guest-form-complimentary-owner-parking': 'guest-form',
   'cancellation-custom-title': 'cancellation',
   'cancellation-custom-description': 'cancellation',
 };
@@ -201,7 +203,10 @@ export function propertySettingsSectionDirty(
       return (
         profileDraft.allowPets !== profileBaseline.allowPets ||
         profileDraft.allowParking !== profileBaseline.allowParking ||
-        profileDraft.allowSurpriseDecor !== profileBaseline.allowSurpriseDecor
+        profileDraft.allowSurpriseDecor !== profileBaseline.allowSurpriseDecor ||
+        profileDraft.preferredOwnerParkingId !== profileBaseline.preferredOwnerParkingId ||
+        profileDraft.complimentaryOwnerParking !== profileBaseline.complimentaryOwnerParking ||
+        profileDraft.cleaningBufferMinutes !== profileBaseline.cleaningBufferMinutes
       );
     case 'cancellation':
       return !cancellationPolicySettingsEqual(
@@ -778,6 +783,11 @@ export function buildProfilePatchForSections(
     settings.allowPets = fullSettings.allowPets;
     settings.allowParking = fullSettings.allowParking;
     settings.allowSurpriseDecor = fullSettings.allowSurpriseDecor;
+    settings.preferredOwnerParkingId =
+      typeof fullSettings.preferredOwnerParkingId === 'string'
+        ? fullSettings.preferredOwnerParkingId.trim() || null
+        : null;
+    settings.complimentaryOwnerParking = fullSettings.complimentaryOwnerParking === true;
     hasSettings = true;
   }
   if (sectionSet.has('cancellation')) {
@@ -939,6 +949,8 @@ export function applySavedProfileSections(
       allowPets: saved.allowPets,
       allowParking: saved.allowParking,
       allowSurpriseDecor: saved.allowSurpriseDecor,
+      preferredOwnerParkingId: saved.preferredOwnerParkingId,
+      complimentaryOwnerParking: saved.complimentaryOwnerParking,
     };
   }
   if (sectionSet.has('cancellation')) {

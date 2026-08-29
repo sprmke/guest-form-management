@@ -8,7 +8,9 @@ import {
   helpSupportNewTicketPath,
   useHelpSupportBasePath,
 } from '@/features/dashboard/help-support/lib/helpSupportPaths';
+import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useOrganizations } from '@/features/dashboard/org/hooks/useOrganizations';
+import { orgPlansPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { CurrentPlanSummary } from '@/features/dashboard/plans/components/CurrentPlanSummary';
 import { PlanBillingPanel } from '@/features/dashboard/plans/components/PlanBillingPanel';
 import { PlanFaqSection } from '@/features/dashboard/plans/components/PlanFaqSection';
@@ -39,24 +41,44 @@ import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { PlansPageSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { usePageTitle } from '@/lib/pageTitle';
+import { orgPageTitle, propertyDashboardPageTitle, usePageTitle } from '@/lib/pageTitle';
 import { cn } from '@/lib/utils';
 
 type PlansTab = 'plans' | 'billing' | 'compare';
+
+export type PlansBillingPaidCheckoutMode = 'checkout' | 'redirect-to-org';
+
+type OrgPlansPageProps = {
+  /**
+   * `checkout` — create PayMongo in place (org `/plans`).
+   * `redirect-to-org` — property mirror: hand off to org Plans on **Continue to payment**.
+   */
+  paidCheckoutMode?: PlansBillingPaidCheckoutMode;
+};
 
 /**
  * Org subscription hub — one plan covers every property in the org, priced per property with
  * volume discounts. Tier changes open PlanReviewDialog for a final review (with proration when
  * it's a genuine mid-cycle change) before charging anything.
+ *
+ * Also rendered at property `/plans` (`paidCheckoutMode="redirect-to-org"`) so hosts stay in
+ * property context until they confirm payment.
  */
-export function OrgPlansPage() {
+export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProps) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { orgSlug } = useParams<{ orgSlug: string }>();
+  const propertyContext = useOptionalOrgContext();
   const { data: orgsData, isLoading: orgsLoading } = useOrganizations();
   const org = orgsData?.organizations.find((entry) => entry.slug === orgSlug);
   const helpSupportBase = useHelpSupportBasePath();
-  usePageTitle(org?.name ? `${org.name} - Plans & Billing` : undefined);
+  const pageTitle =
+    paidCheckoutMode === 'redirect-to-org' && propertyContext?.property.name
+      ? propertyDashboardPageTitle(propertyContext.property.name, 'Plans & Billing')
+      : org?.name
+        ? orgPageTitle(org.name, 'Plans & Billing')
+        : undefined;
+  usePageTitle(pageTitle);
 
   const { data, isLoading, error, refetch } = useOrgPlan(org?.id ?? null);
   const createCheckout = useCreateOrgPlanCheckout(org?.id ?? null);
@@ -286,6 +308,12 @@ export function OrgPlansPage() {
           await applyDowngrade.mutateAsync({ planId });
         }}
         onCheckoutPaid={async (planId) => {
+          if (paidCheckoutMode === 'redirect-to-org') {
+            if (!orgSlug) return;
+            setReviewOpen(false);
+            navigate(`${orgPlansPath(orgSlug)}?reviewPlan=${encodeURIComponent(planId)}`);
+            return;
+          }
           if (!org?.id) return;
           const { checkoutUrl } = await createCheckout.mutateAsync({ planId });
           window.location.assign(checkoutUrl);

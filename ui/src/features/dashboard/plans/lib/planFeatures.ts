@@ -32,6 +32,9 @@ export type PlanFeatures = {
   customTemplates: boolean;
   publicPagesAutosave: boolean;
   bookingImport: boolean;
+  /** Connect external OTA calendars (Airbnb / Booking.com / VRBO) for two-way iCal sync. */
+  calendarSync: boolean;
+  customRoles: boolean;
 };
 
 export const DEFAULT_PLAN_FEATURES: PlanFeatures = {
@@ -59,6 +62,8 @@ export const DEFAULT_PLAN_FEATURES: PlanFeatures = {
   customTemplates: false,
   publicPagesAutosave: false,
   bookingImport: false,
+  calendarSync: false,
+  customRoles: false,
 };
 
 export type PlanFeatureKey = keyof PlanFeatures;
@@ -131,12 +136,12 @@ export const PLAN_FEATURE_LABELS: Record<keyof PlanFeatures, string> = {
   telegramNotifications: 'Telegram alerts',
   teamManagement: 'Team members',
   searchVisibilityTier: 'Search placement',
-  marketingPublishLimitPerGroup: 'Marketing publishes',
+  marketingPublishLimitPerGroup: 'Publish in Meta platforms',
   aiValidations: 'AI receipt and ID validation',
   aiMonthlyCreditAllowance: 'AI credits',
-  marketingStudio: 'Template Management',
-  customPages: 'Public pages access & editor',
-  propertyShowcase: 'Property showcase landing pages',
+  marketingStudio: 'Content Studio',
+  customPages: 'Public pages gallery & editor',
+  propertyShowcase: 'Property showcase & stay guide access',
   aiDashboardAssistant: 'AI dashboard assistant',
   aiReceptionist: 'AI receptionist',
   aiMarketingGeneration: 'AI content generation',
@@ -147,6 +152,8 @@ export const PLAN_FEATURE_LABELS: Record<keyof PlanFeatures, string> = {
   metaChatChannel: 'Meta (Facebook/Instagram) chat channel',
   quickReplies: 'Inbox quick replies',
   customTemplates: 'Advanced template management',
-  publicPagesAutosave: 'Public pages autosave',
+  publicPagesAutosave: 'Public pages editor',
   bookingImport: 'AI booking import',
+  calendarSync: 'Airbnb & OTA calendar sync',
+  customRoles: 'Custom team roles',
 };

@@ -5,7 +5,6 @@ import { BookingDetailCard } from '@/features/dashboard/bookings/components/book
 
 import { formatRelative } from '@/utils/format/bookingDisplay';
 
-
 const TOOL_LABELS: Record<string, string> = {
   propose_transition_booking: 'Moved booking status',
   propose_cancel_booking: 'Cancelled booking',

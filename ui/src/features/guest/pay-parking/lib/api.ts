@@ -40,6 +40,14 @@ export type PayParkingBootstrap = {
   status: string;
   email_logo_url?: string;
   brand_color?: string;
+  /** Marketplace parking booking linked to this property stay (Phase pay-parking connect). */
+  linked_parking_booking_id?: string | null;
+  /** Optional city slug for `/parkings/in/:location?linkStay=…`. */
+  city_location_slug?: string | null;
+  /** Org-owned available parking slug when the property host also lists parking. */
+  owner_default_parking_slug?: string | null;
+  owner_default_check_in?: string | null;
+  owner_default_check_out?: string | null;
 };
 
 export async function fetchPayParking(bookingId: string): Promise<PayParkingBootstrap> {

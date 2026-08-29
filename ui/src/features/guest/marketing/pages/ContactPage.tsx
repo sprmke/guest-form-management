@@ -1,22 +1,28 @@
-import { NewTicketModal } from '@/features/dashboard/help-support/components/NewTicketModal';
-import { SupportTicketScopeProvider } from '@/features/dashboard/help-support/context/SupportTicketScopeContext';
-import type { SupportTicketCategory } from '@/features/dashboard/help-support/lib/supportTicketSchema';
-import { MANAGED_PLAN_INQUIRY_SUBJECT } from '@/features/dashboard/plans/lib/planPresentation';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+
+import { LifeBuoy, Mail } from 'lucide-react';
+
 import { GUEST_ACCOUNT_TICKETS_PATH } from '@/features/guest/account/lib/guestAccountPaths';
+import { useGuestSession } from '@/features/guest/auth/hooks/useGuestSession';
 import { PublicContactCategoryGrid } from '@/features/guest/marketing/contact/components/PublicContactCategoryGrid';
 import { PublicContactSignInDialog } from '@/features/guest/marketing/contact/components/PublicContactSignInDialog';
 import { parsePublicContactCategory } from '@/features/guest/marketing/contact/lib/publicContactParams';
-import { useGuestSession } from '@/features/guest/auth/hooks/useGuestSession';
 import { MarketingPublicPageContent } from '@/features/guest/marketing/shared/components/MarketingPublicPageContent';
 import { MarketingPublicPageHero } from '@/features/guest/marketing/shared/components/MarketingPublicPageHero';
 import { MarketingPublicSectionHeading } from '@/features/guest/marketing/shared/components/MarketingPublicSectionHeading';
 
+import { NewTicketModal } from '@/features/dashboard/help-support/components/NewTicketModal';
+import { SupportTicketScopeProvider } from '@/features/dashboard/help-support/context/SupportTicketScopeContext';
+import type { SupportTicketCategory } from '@/features/dashboard/help-support/lib/supportTicketSchema';
+import { MANAGED_PLAN_INQUIRY_SUBJECT } from '@/features/dashboard/plans/lib/planPresentation';
+
 import { Button } from '@/components/ui/button';
 import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
 
-import { LifeBuoy, Mail } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+
+
 
 const GUEST_TICKET_SCOPE = {
   channel: 'guest' as const,

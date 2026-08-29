@@ -1,5 +1,6 @@
 import { Mail, UserPlus, X } from 'lucide-react';
 
+import { TeamInviteTierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
 import { OrgRoleBadge } from '@/features/dashboard/team/components/OrgRoleBadge';
 import { formatTeamInvitationDate } from '@/features/dashboard/team/lib/formatTeamInvitationDate';
 import type { OrgTeamInvitation } from '@/features/dashboard/team/types/orgTeam';
@@ -15,6 +16,8 @@ type Props = {
   resendPending?: boolean;
   cancelPending?: boolean;
   canInvite?: boolean;
+  /** From `teamInviteCapacity.canInvite` — drives the corner plan pill. */
+  canInviteByPlan?: boolean;
   canManage?: boolean;
 };
 
@@ -26,6 +29,7 @@ export function OrgTeamInvitationsTab({
   resendPending = false,
   cancelPending = false,
   canInvite = true,
+  canInviteByPlan,
   canManage = false,
 }: Props) {
   return (
@@ -89,9 +93,12 @@ export function OrgTeamInvitationsTab({
             <UserPlus className="text-muted-foreground mx-auto size-11" aria-hidden />
             <h3 className="mt-4 text-lg font-semibold">No pending invitations</h3>
             {canInvite ? (
-              <Button className="mt-4 min-h-[44px]" onClick={onInvite}>
-                Invite Member
-              </Button>
+              <TeamInviteTierBadgeAnchor canInvite={canInviteByPlan} className="mt-4">
+                <Button className="min-h-[44px]" onClick={onInvite}>
+                  <UserPlus className="mr-2 size-4" aria-hidden />
+                  Invite Member
+                </Button>
+              </TeamInviteTierBadgeAnchor>
             ) : null}
           </div>
         )}

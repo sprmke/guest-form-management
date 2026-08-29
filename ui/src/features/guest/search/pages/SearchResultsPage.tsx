@@ -11,6 +11,7 @@ import { EMPTY_DEVELOPMENTS_FACETS } from '@/features/guest/marketing/developmen
 import type { DevelopmentsListingQuery } from '@/features/guest/marketing/developments/lib/developmentsQuery';
 import type { PublicDevelopmentListItem } from '@/features/guest/marketing/developments/lib/developmentsQuery';
 import { usePublicParkings } from '@/features/guest/marketing/parkings/hooks/usePublicParkings';
+import { useCaptureParkingLinkStay } from '@/features/guest/marketing/parkings/hooks/useCaptureParkingLinkStay';
 import {
   EMPTY_PARKINGS_FACETS,
   parkingsQueryToFilterState,
@@ -183,6 +184,7 @@ function toParkingSummary(item: PublicParkingListItem): ParkingSearchSummary {
 
 export function SearchResultsPage() {
   usePageTitle(publicPageTitle('Search'));
+  useCaptureParkingLinkStay();
   const [searchParams, setSearchParams] = useSearchParams();
   const [locationRequesting, setLocationRequesting] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(true);

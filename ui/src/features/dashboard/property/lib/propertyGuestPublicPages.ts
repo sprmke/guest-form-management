@@ -14,8 +14,6 @@ import {
   guestCalendarPath,
   guestFormPath,
   guestMessagesPreviewPath,
-  guestPayParkingPreviewPath,
-  guestPayParkingPathPrefix,
   guestPropertyPath,
   guestReviewShellPath,
   guestSdFormShellPath,
@@ -61,7 +59,8 @@ export function buildPropertyGuestPublicPages(
       path: guestShowcasePath(propertySlug),
       icon: Sparkles,
       editable: true,
-      openUsesEmbed: true,
+      // Live public URL (no embed) so Free/Starter hit the plan-lock overlay; gallery iframe still uses embed preview.
+      openUsesEmbed: false,
     },
     {
       id: 'stay-guide',
@@ -123,13 +122,13 @@ export function buildPropertyGuestPublicPages(
     },
     {
       id: 'pay-parking',
-      label: 'Pay Parking',
-      description: 'Vehicle details when a booking includes paid parking.',
-      path: guestPayParkingPreviewPath(propertySlug),
-      copyPath: guestPayParkingPathPrefix(propertySlug),
+      label: 'Find parking',
+      description: 'Stay-scoped marketplace search when a booking needs parking.',
+      path: '/parkings',
+      copyPath: '/parkings?linkStay=',
       icon: Car,
       editable: false,
-      openUsesEmbed: true,
+      openUsesEmbed: false,
     },
   ];
 }

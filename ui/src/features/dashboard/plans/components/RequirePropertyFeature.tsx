@@ -3,7 +3,7 @@ import { useEffect, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
-import { orgPlansPath } from '@/features/dashboard/org/lib/tenantPaths';
+import { propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 import { featureGateCopy } from '@/features/dashboard/plans/lib/featureGateCopy';
@@ -22,8 +22,9 @@ type Props = {
 export function RequirePropertyFeature({ feature, children }: Props) {
   const { allowed, isLoading } = useFeatureGate(feature);
   const { open } = useUpgradeModal();
-  const { orgSlug } = useOrgContext();
+  const { orgSlug, propertySlug } = useOrgContext();
   const copy = featureGateCopy(feature);
+  const plansPath = propertySectionPath(orgSlug, propertySlug, 'plans');
 
   useEffect(() => {
     if (!isLoading && !allowed) {
@@ -41,7 +42,7 @@ export function RequirePropertyFeature({ feature, children }: Props) {
         <p className="text-foreground text-sm font-semibold">{copy.title}</p>
         <p className="text-caption mx-auto mt-1 max-w-sm">{copy.description}</p>
         <Button asChild className="mt-4 min-h-[44px]">
-          <Link to={orgPlansPath(orgSlug)}>{copy.ctaLabel}</Link>
+          <Link to={plansPath}>{copy.ctaLabel}</Link>
         </Button>
       </FloatingPanel>
     );

@@ -24,6 +24,9 @@ export function MarketingCalendarSection({ onPublish }: Props) {
   const { canEditContent, canPublish } = useMarketingPermissions();
   const { canUse: canUseMarketingStudio, isLoading: marketingStudioLoading } =
     useFeatureGate('marketingStudio');
+  const { canUse: canPublishToMeta, isLoading: publishEntitlementsLoading } = useFeatureGate(
+    'marketingPublishLimitPerGroup'
+  );
   const { open: openUpgradeModal } = useUpgradeModal();
 
   const bookings = useMemo(
@@ -48,8 +51,8 @@ export function MarketingCalendarSection({ onPublish }: Props) {
 
   const handlePublish = async () => {
     if (!canPublish) return;
-    if (!canUseMarketingStudio) {
-      if (!marketingStudioLoading) openUpgradeModal('marketingStudio');
+    if (!canPublishToMeta) {
+      if (!publishEntitlementsLoading) openUpgradeModal('marketingPublishLimitPerGroup');
       return;
     }
     if (!onPublish) return;

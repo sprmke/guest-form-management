@@ -12,9 +12,9 @@ import { PermissionsTreeView } from '@/features/dashboard/team/components/Permis
 import { RoleSelectOptions } from '@/features/dashboard/team/components/RoleSelectOptions';
 import { ORG_PERMISSION_CATALOG } from '@/features/dashboard/team/lib/orgPermissionCatalog';
 import { getOrgRolePermissions } from '@/features/dashboard/team/lib/orgTeamRoles';
+import { defaultOrgInviteTemplateId } from '@/features/dashboard/team/lib/orgTeamRoles';
 import { sortOrgTemplatesForDisplay } from '@/features/dashboard/team/lib/orgTeamTemplates';
 import { handleRoleSelectChange } from '@/features/dashboard/team/lib/roleSelectUtils';
-import { getRoleLabelForScope } from '@/features/dashboard/team/lib/teamRoleHelpers';
 import {
   canSubmitTeamInvite,
   teamInvitePhoneError,
@@ -23,8 +23,8 @@ import {
   TEAM_INVITE_GMAIL_ONLY_MESSAGE,
   teamInviteEmailLooksInvalid,
 } from '@/features/dashboard/team/lib/teamInviteEmail';
+import { getRoleLabelForScope } from '@/features/dashboard/team/lib/teamRoleHelpers';
 import type { CustomOrgRole, OrgRoleId } from '@/features/dashboard/team/types/orgTeam';
-import { defaultOrgInviteTemplateId } from '@/features/dashboard/team/lib/orgTeamRoles';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

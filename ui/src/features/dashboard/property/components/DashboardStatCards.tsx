@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 
 import { BedDouble, DollarSign, FileText, Percent } from 'lucide-react';
 
+import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
+import { propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { DashboardTrendStatCard } from '@/features/dashboard/property/components/DashboardTrendStatCard';
 import type { DashboardStats } from '@/features/dashboard/property/lib/types';
 
@@ -24,8 +26,9 @@ function TrendCardLink({ to, children }: { to?: string; children: ReactNode }) {
 }
 
 export function DashboardStatCards({ stats }: Props) {
+  const { orgSlug, propertySlug } = useOrgContext();
   const { trendWindow, kpis } = stats;
-  const bookingsHref = `/bookings?from=${trendWindow.from}&to=${trendWindow.to}`;
+  const bookingsHref = `${propertySectionPath(orgSlug, propertySlug, 'bookings')}?from=${trendWindow.from}&to=${trendWindow.to}`;
 
   return (
     <section aria-label="Key metrics">

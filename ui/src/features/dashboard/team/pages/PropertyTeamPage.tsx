@@ -16,7 +16,6 @@ import {
   defaultInviteRoleId,
   InviteMemberDialog,
 } from '@/features/dashboard/team/components/InviteMemberDialog';
-import { defaultInviteTemplateId } from '@/features/dashboard/team/lib/propertyTeamRoles';
 import { RemoveMemberDialog } from '@/features/dashboard/team/components/RemoveMemberDialog';
 import { TeamInvitationsTab } from '@/features/dashboard/team/components/TeamInvitationsTab';
 import { TeamMembersTab } from '@/features/dashboard/team/components/TeamMembersTab';
@@ -27,11 +26,12 @@ import {
   usePropertyTeam,
   usePropertyTeamMutations,
 } from '@/features/dashboard/team/hooks/usePropertyTeam';
+import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
 import {
   countMembersWithRole,
   getRolePermissions,
 } from '@/features/dashboard/team/lib/propertyTeamRoles';
-import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
+import { defaultInviteTemplateId } from '@/features/dashboard/team/lib/propertyTeamRoles';
 import { isTeamMemberActive } from '@/features/dashboard/team/lib/teamMemberAccess';
 import { canEditPropertyMemberContact } from '@/features/dashboard/team/lib/teamMemberContact';
 import type {
@@ -80,6 +80,8 @@ export function PropertyTeamPage() {
   const invitations = data?.invitations ?? [];
   const customRoles = data?.customRoles ?? [];
   useFeatureGate('teamManagement');
+  const { canUse: canUseCustomRoles, isLoading: customRolesLoading } =
+    useFeatureGate('customRoles');
   const { open: openUpgradeModal } = useUpgradeModal();
   const canInviteByPlan = data?.teamInviteCapacity?.canInvite ?? false;
   const teamInviteCapacityKnown = data?.teamInviteCapacity?.canInvite;
@@ -252,6 +254,10 @@ export function PropertyTeamPage() {
   };
 
   const openCreateCustomRole = () => {
+    if (!canUseCustomRoles) {
+      if (!customRolesLoading) openUpgradeModal('customRoles');
+      return;
+    }
     setCustomRoleFormMode('create');
     setEditingCustomRoleId(null);
     setCustomRoleName('');
@@ -260,6 +266,10 @@ export function PropertyTeamPage() {
   };
 
   const openEditCustomRole = (role: CustomPropertyRole) => {
+    if (!canUseCustomRoles) {
+      if (!customRolesLoading) openUpgradeModal('customRoles');
+      return;
+    }
     setCustomRoleFormMode('edit');
     setEditingCustomRoleId(role.id);
     setCustomRoleName(role.name);
@@ -268,6 +278,10 @@ export function PropertyTeamPage() {
   };
 
   const openDuplicateCustomRole = (role: CustomPropertyRole) => {
+    if (!canUseCustomRoles) {
+      if (!customRolesLoading) openUpgradeModal('customRoles');
+      return;
+    }
     setCustomRoleFormMode('create');
     setEditingCustomRoleId(null);
     setCustomRoleName(`${role.name} copy`);
@@ -299,6 +313,10 @@ export function PropertyTeamPage() {
   };
 
   const handleDeleteCustomRole = async (role: CustomPropertyRole) => {
+    if (!canUseCustomRoles) {
+      if (!customRolesLoading) openUpgradeModal('customRoles');
+      return;
+    }
     if (memberCountByRole(role.id) > 0) {
       toast.error('Remove members from this role before deleting');
       return;
@@ -443,6 +461,7 @@ export function PropertyTeamPage() {
                   }}
                   onInvite={openInviteDialog}
                   canInvite={canInvite}
+                  canInviteByPlan={teamInviteCapacityKnown}
                   canEditMembers={canEditMembers}
                   canDeleteMembers={canDeleteMembers}
                   onAddCustomRole={canManageCustomRoles ? openCreateCustomRole : undefined}
@@ -459,6 +478,7 @@ export function PropertyTeamPage() {
                   cancelPending={cancelInvitation.isPending}
                   onInvite={openInviteDialog}
                   canInvite={canInvite}
+                  canInviteByPlan={teamInviteCapacityKnown}
                   canResend={canResendInvite}
                   canCancel={canCancelInvite}
                 />

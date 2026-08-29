@@ -10,6 +10,7 @@ import {
   type AdminSectionNavItem,
 } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
 import { RequireAdmin } from '@/features/dashboard/bookings/components/RequireAdmin';
+import { storedOrgSettingsMediaUrl } from '@/features/dashboard/lib/storedMediaDisplay';
 import { OrgAiDashboardAssistantSection } from '@/features/dashboard/org/components/org-settings/OrgAiDashboardAssistantSection';
 import { OrgAiPlatformSection } from '@/features/dashboard/org/components/org-settings/OrgAiPlatformSection';
 import { OrgDangerZoneSection } from '@/features/dashboard/org/components/org-settings/OrgDangerZoneSection';
@@ -259,12 +260,18 @@ export function OrgSettingsPage() {
 
   const savedCompletion = useSavedOrgSettingsCompletion();
 
+  const hasOrgLogo = Boolean(
+    operatorData &&
+    storedOrgSettingsMediaUrl(operatorData.emailLogoUrl, operatorData.fieldSources.emailLogoUrl)
+  );
+
   const completionInput =
     profileDraft && operatorDraft
       ? {
           profile: profileDraft,
           operator: operatorDraft,
           nameUnavailable,
+          hasOrgLogo,
         }
       : null;
 

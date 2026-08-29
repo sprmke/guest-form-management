@@ -82,6 +82,9 @@ export function OrgBasicInformationSection({
             previewAlt="Organization logo preview"
             uploadLabel="Upload logo"
             replaceLabel="Replace logo"
+            required
+            error={fieldError('org-logo')}
+            onInteract={() => markFieldInteracted('org-logo')}
           />
         </OrgSettingsFieldSpan>
 

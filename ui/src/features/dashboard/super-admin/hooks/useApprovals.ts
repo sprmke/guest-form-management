@@ -102,6 +102,11 @@ function normalizeExternalReviewApproval(
     reviewText: row.reviewText ?? '',
     reviewerName: row.reviewerName ?? '',
     starRating: row.starRating ?? null,
+    feedbackTags: Array.isArray(row.feedbackTags)
+      ? row.feedbackTags.filter(
+          (tag): tag is string => typeof tag === 'string' && tag.trim().length > 0
+        )
+      : [],
     moderationStatus:
       row.moderationStatus === 'approved' || row.moderationStatus === 'rejected'
         ? row.moderationStatus

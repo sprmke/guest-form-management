@@ -35,14 +35,14 @@ export type PlanFeatureGroup =
   | 'finance'
   | 'maintenance'
   | 'pricing'
-  | 'publicPages'
-  | 'templates'
-  | 'notifications'
-  | 'inbox'
+  | 'team'
   | 'marketing'
+  | 'inbox'
+  | 'notifications'
+  | 'templates'
+  | 'publicPages'
   | 'visibility'
   | 'ai'
-  | 'team'
   | 'managed';
 
 export const PLAN_FEATURE_GROUP_LABELS: Record<PlanFeatureGroup, string> = {
@@ -51,14 +51,14 @@ export const PLAN_FEATURE_GROUP_LABELS: Record<PlanFeatureGroup, string> = {
   finance: 'Finance',
   maintenance: 'Maintenance',
   pricing: 'Pricing',
-  publicPages: 'Public pages',
-  templates: 'Templates',
-  notifications: 'Notifications',
-  inbox: 'Inbox',
+  team: 'Team',
   marketing: 'Marketing',
+  inbox: 'Inbox',
+  notifications: 'Notifications',
+  templates: 'Templates',
+  publicPages: 'Public pages',
   visibility: 'Visibility',
   ai: 'AI',
-  team: 'Team',
   managed: 'Managed hosting',
 };
 
@@ -171,10 +171,10 @@ export const PLAN_TIER_CARD_GAINS: Record<string, string[]> = {
   ],
   starter: [
     'Pricing management',
-    'Public pages access & editor + autosave',
     'Automated booking emails',
     'Verified badge eligible',
     'Up to 3 team members',
+    'Custom team roles',
     'Advanced template management',
     'Telegram alerts',
     'Finance reporting & export',
@@ -184,17 +184,18 @@ export const PLAN_TIER_CARD_GAINS: Record<string, string[]> = {
   ],
   growth: [
     'Up to 5 team members',
-    '30 publishes per channel',
+    'Marketing Content Studio',
     'Top 30 search placement',
     'AI receipt and ID validation',
     'Recommended badge eligible',
-    'Property showcase landing pages',
-    'Template Management',
+    'Public pages editor',
+    'Property showcase & stay guide access',
+    'Airbnb & OTA calendar sync',
     '1,000 AI credits per month',
   ],
   pro: [
     'Up to 10 team members',
-    'Unlimited publishing',
+    'Publish in Meta platforms',
     'Top 15 search placement',
     'AI content generation',
     'AI dashboard assistant',
@@ -265,7 +266,11 @@ function planTierCardGains(planCode: string): PlanFeatureChange[] {
   }));
 }
 
-/** Matrix row order within each module — also drives derived tier-card bullets. */
+/**
+ * Matrix row order within each module — also drives derived tier-card bullets.
+ * Group sequence matches `buildPropertyNavSections` (plus Visibility / AI / Managed,
+ * which are not sidebar items).
+ */
 export const PLAN_FEATURE_ROWS: PlanFeatureRow[] = [
   boolRow('automatedBookingFlow', 'Automated booking emails', 'bookings'),
   boolRow('bookingImport', 'AI booking import', 'bookings'),
@@ -274,23 +279,33 @@ export const PLAN_FEATURE_ROWS: PlanFeatureRow[] = [
   boolRow('financeReporting', 'Finance reporting & export', 'finance'),
   boolRow('maintenanceReporting', 'Maintenance reporting & export', 'maintenance'),
 
-  boolRow('customPages', 'Public pages access & editor', 'publicPages'),
-  boolRow('publicPagesAutosave', 'Public pages autosave', 'publicPages'),
-  boolRow('propertyShowcase', 'Property showcase pages', 'publicPages'),
+  boolRow('calendarSync', 'Airbnb & OTA calendar sync', 'pricing'),
 
-  boolRow('marketingStudio', 'Template management', 'templates'),
-  boolRow('customTemplates', 'Advanced template management', 'templates'),
+  {
+    key: 'teamManagement',
+    label: 'Team members',
+    group: 'team',
+    value: (features) => {
+      if (!features.teamManagement.enabled) return { kind: 'off' };
+      const max = features.teamManagement.maxMembers;
+      return { kind: 'text', text: max === null ? 'Unlimited' : `Up to ${max}` };
+    },
+    rank: (features) => {
+      if (!features.teamManagement.enabled) return 0;
+      return features.teamManagement.maxMembers ?? Number.POSITIVE_INFINITY;
+    },
+    describe: (features) => {
+      const max = features.teamManagement.maxMembers;
+      return max === null ? 'Unlimited team members' : `Up to ${max} team members`;
+    },
+  },
+  boolRow('customRoles', 'Custom team roles', 'team'),
 
-  boolRow('telegramNotifications', 'Telegram alerts', 'notifications'),
-
-  boolRow('quickReplies', 'Inbox quick replies', 'inbox'),
-  boolRow('metaChatChannel', 'Meta (Facebook/Instagram) chat channel', 'inbox'),
-  boolRow('aiChatAutoReply', 'AI chat auto-reply', 'inbox'),
-
+  boolRow('marketingStudio', 'Content Studio', 'marketing'),
   boolRow('aiMarketingGeneration', 'AI content generation', 'marketing'),
   {
     key: 'marketingPublishLimitPerGroup',
-    label: 'Marketing publishes',
+    label: 'Publish in Meta platforms',
     group: 'marketing',
     value: (features) => {
       const limit = features.marketingPublishLimitPerGroup;
@@ -305,9 +320,20 @@ export const PLAN_FEATURE_ROWS: PlanFeatureRow[] = [
     },
     describe: (features) =>
       features.marketingPublishLimitPerGroup === null
-        ? 'Unlimited publishing'
-        : `${features.marketingPublishLimitPerGroup} publishes per channel`,
+        ? 'Unlimited Meta publishing'
+        : `${features.marketingPublishLimitPerGroup} Meta publishes per channel`,
   },
+
+  boolRow('quickReplies', 'Inbox quick replies', 'inbox'),
+  boolRow('metaChatChannel', 'Meta (Facebook/Instagram) chat channel', 'inbox'),
+  boolRow('aiChatAutoReply', 'AI chat auto-reply', 'inbox'),
+
+  boolRow('telegramNotifications', 'Telegram alerts', 'notifications'),
+
+  boolRow('customTemplates', 'Advanced template management', 'templates'),
+
+  boolRow('publicPagesAutosave', 'Public pages editor', 'publicPages'),
+  boolRow('propertyShowcase', 'Property showcase & stay guide access', 'publicPages'),
 
   boolRow('verifiedBadgeEligible', 'Verified badge eligible', 'visibility'),
   boolRow('recommendedBadgeEligible', 'Recommended badge eligible', 'visibility'),
@@ -338,24 +364,6 @@ export const PLAN_FEATURE_ROWS: PlanFeatureRow[] = [
       `${features.aiMonthlyCreditAllowance.toLocaleString()} AI credits per month`,
   },
 
-  {
-    key: 'teamManagement',
-    label: 'Team members',
-    group: 'team',
-    value: (features) => {
-      if (!features.teamManagement.enabled) return { kind: 'off' };
-      const max = features.teamManagement.maxMembers;
-      return { kind: 'text', text: max === null ? 'Unlimited' : `Up to ${max}` };
-    },
-    rank: (features) => {
-      if (!features.teamManagement.enabled) return 0;
-      return features.teamManagement.maxMembers ?? Number.POSITIVE_INFINITY;
-    },
-    describe: (features) => {
-      const max = features.teamManagement.maxMembers;
-      return max === null ? 'Unlimited team members' : `Up to ${max} team members`;
-    },
-  },
   boolRow(
     'fullyManagedByPlatform',
     "We'll manage everything, from bookings to operations, marketing, chat, reminders, etc",
@@ -364,20 +372,21 @@ export const PLAN_FEATURE_ROWS: PlanFeatureRow[] = [
   ),
 ];
 
+/** Same sequence as property sidebar modules, then Visibility / AI / Managed. */
 export const PLAN_FEATURE_GROUP_ORDER: PlanFeatureGroup[] = [
   'dashboard',
   'bookings',
   'finance',
   'maintenance',
   'pricing',
-  'publicPages',
-  'templates',
-  'notifications',
-  'inbox',
+  'team',
   'marketing',
+  'inbox',
+  'notifications',
+  'templates',
+  'publicPages',
   'visibility',
   'ai',
-  'team',
   'managed',
 ];
 

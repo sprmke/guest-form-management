@@ -1,11 +1,4 @@
 import {
-  buildRoleMatrixColumns,
-  getRoleColor,
-  getRoleLabel,
-  getRolePermissions,
-  SEEDED_TEMPLATE_COLOR,
-} from '@/features/dashboard/team/lib/propertyTeamRoles';
-import {
   buildOrgTemplateMatrixColumns,
   getOrgRoleColor,
   getOrgRoleLabel,
@@ -13,9 +6,16 @@ import {
   isOrgAdminRoleId,
   ORG_SEEDED_TEMPLATE_COLOR,
 } from '@/features/dashboard/team/lib/orgTeamRoles';
-import { isSeededTemplateName } from '@/features/dashboard/team/lib/propertyTeamTemplates';
 import { isSeededOrgTemplateName } from '@/features/dashboard/team/lib/orgTeamTemplates';
 import { isPropertyAdminRoleId } from '@/features/dashboard/team/lib/propertyTeamConstants';
+import {
+  buildRoleMatrixColumns,
+  getRoleColor,
+  getRoleLabel,
+  getRolePermissions,
+  SEEDED_TEMPLATE_COLOR,
+} from '@/features/dashboard/team/lib/propertyTeamRoles';
+import { isSeededTemplateName } from '@/features/dashboard/team/lib/propertyTeamTemplates';
 import {
   getTeamScopeConfig,
   type TeamScope,

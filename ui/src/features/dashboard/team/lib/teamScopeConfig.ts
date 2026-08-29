@@ -1,4 +1,10 @@
 import {
+  ORG_PERMISSION_CATEGORIES,
+  ORG_ROLE_PERMISSIONS,
+  ORG_ROLES,
+  ORG_TEAM_PERMISSIONS,
+} from '@/features/dashboard/team/lib/orgTeamConstants';
+import {
   PARKING_PERMISSION_CATEGORIES,
   PARKING_ROLE_PERMISSIONS,
   PARKING_ROLES,
@@ -10,12 +16,6 @@ import {
 } from '@/features/dashboard/team/lib/propertyTeamConstants';
 import type { TeamPermission } from '@/features/dashboard/team/types/propertyTeam';
 
-import {
-  ORG_PERMISSION_CATEGORIES,
-  ORG_ROLE_PERMISSIONS,
-  ORG_ROLES,
-  ORG_TEAM_PERMISSIONS,
-} from '@/features/dashboard/team/lib/orgTeamConstants';
 
 export type TeamScope = 'property' | 'parking' | 'org';
 

@@ -1,4 +1,5 @@
 import { resolveOrgBrandHex } from '@/lib/theme/brandColor';
+import { mixHexToward, parseHexRgb, type Rgb } from '@/lib/theme/colorConvert';
 
 const PRESET_ACCENT = '#e8752a';
 const INK = '#5c3d2e';
@@ -19,36 +20,12 @@ export type ApplyBrandAccentOptions = {
   presetAccent?: string;
 };
 
-type Rgb = { r: number; g: number; b: number };
+function mixHex(base: string, target: Rgb, targetWeight: number): string {
+  return mixHexToward(base, target, targetWeight);
+}
 
 function parseHex(hex: string): Rgb | null {
-  const match = /^#([0-9A-Fa-f]{6})$/.exec(hex.trim());
-  if (!match) return null;
-  const raw = match[1];
-  return {
-    r: parseInt(raw.slice(0, 2), 16),
-    g: parseInt(raw.slice(2, 4), 16),
-    b: parseInt(raw.slice(4, 6), 16),
-  };
-}
-
-function toHex(r: number, g: number, b: number): string {
-  const clamp = (value: number) => Math.max(0, Math.min(255, Math.round(value)));
-  return `#${[clamp(r), clamp(g), clamp(b)]
-    .map((channel) => channel.toString(16).padStart(2, '0'))
-    .join('')}`;
-}
-
-function mixHex(base: string, target: Rgb, targetWeight: number): string {
-  const rgb = parseHex(base);
-  if (!rgb) return base;
-  const weight = Math.max(0, Math.min(1, targetWeight));
-  const keep = 1 - weight;
-  return toHex(
-    rgb.r * keep + target.r * weight,
-    rgb.g * keep + target.g * weight,
-    rgb.b * keep + target.b * weight
-  );
+  return parseHexRgb(hex);
 }
 
 function relativeLuminance({ r, g, b }: Rgb): number {

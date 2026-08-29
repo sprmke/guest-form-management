@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 
 import { useParams } from 'react-router-dom';
 
+import { storedOrgSettingsMediaUrl } from '@/features/dashboard/lib/storedMediaDisplay';
 import { useOrganizations } from '@/features/dashboard/org/hooks/useOrganizations';
 import {
   orgSettingsToFormValues,
@@ -29,13 +30,14 @@ type DraftCompletionInput = {
   profile: OrgSettingsDraft;
   operator: OrgOperatorSettingsFormValues;
   nameUnavailable: boolean;
+  hasOrgLogo: boolean;
 };
 
 export function useOrgSettingsCompletionForDraft(input: DraftCompletionInput | null) {
   const completion = useMemo(() => {
     if (!input) return EMPTY_COMPLETION;
     return computeOrgSettingsCompletion(input);
-  }, [input?.profile, input?.operator, input?.nameUnavailable]);
+  }, [input?.profile, input?.operator, input?.nameUnavailable, input?.hasOrgLogo]);
 
   return { completion };
 }
@@ -58,12 +60,20 @@ export function useSavedOrgSettingsCompletion(): OrgSettingsCompletionResult {
     [operatorData]
   );
 
+  const hasOrgLogo = useMemo(() => {
+    if (!operatorData) return false;
+    return Boolean(
+      storedOrgSettingsMediaUrl(operatorData.emailLogoUrl, operatorData.fieldSources.emailLogoUrl)
+    );
+  }, [operatorData]);
+
   return useMemo(() => {
     if (!profile || !operator) return EMPTY_COMPLETION;
     return computeOrgSettingsCompletion({
       profile,
       operator,
       nameUnavailable: false,
+      hasOrgLogo,
     });
-  }, [profile, operator]);
+  }, [profile, operator, hasOrgLogo]);
 }

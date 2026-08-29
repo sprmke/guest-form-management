@@ -1,45 +1,24 @@
+import {
+  clampChannel,
+  parseHexRgb,
+  rgbToHsl as rgbChannelsToHsl,
+  type Hsl,
+  type Rgb,
+} from '@/lib/theme/colorConvert';
+
 /** Teal green — matches `--sidebar-primary` (`168 65% 40%`) in index.css. */
 export const DEFAULT_ORG_BRAND_COLOR = '#24a88e';
 
-type Hsl = { h: number; s: number; l: number };
-type Rgb = { r: number; g: number; b: number };
-
 function parseHexColor(hex: string): Rgb | null {
-  const match = /^#([0-9A-Fa-f]{6})$/.exec(hex.trim());
-  if (!match) return null;
-  const raw = match[1];
-  return {
-    r: parseInt(raw.slice(0, 2), 16),
-    g: parseInt(raw.slice(2, 4), 16),
-    b: parseInt(raw.slice(4, 6), 16),
-  };
+  return parseHexRgb(hex);
 }
 
 function rgbToHsl({ r, g, b }: Rgb): Hsl {
-  const rn = r / 255;
-  const gn = g / 255;
-  const bn = b / 255;
-  const max = Math.max(rn, gn, bn);
-  const min = Math.min(rn, gn, bn);
-  const delta = max - min;
-
-  let h = 0;
-  if (delta !== 0) {
-    if (max === rn) h = ((gn - bn) / delta) % 6;
-    else if (max === gn) h = (bn - rn) / delta + 2;
-    else h = (rn - gn) / delta + 4;
-    h *= 60;
-    if (h < 0) h += 360;
-  }
-
-  const l = (max + min) / 2;
-  const s = delta === 0 ? 0 : delta / (1 - Math.abs(2 * l - 1));
-
-  return { h, s: s * 100, l: l * 100 };
+  return rgbChannelsToHsl(r, g, b);
 }
 
 function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
+  return clampChannel(value, min, max);
 }
 
 function shiftHue(h: number, delta: number): number {

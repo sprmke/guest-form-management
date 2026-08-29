@@ -2,6 +2,8 @@ import { ClipboardList } from 'lucide-react';
 
 import { AdminSection } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
 import { SettingsField } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
+import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
+import { useParkings } from '@/features/dashboard/org/hooks/useParkings';
 import type { PropertyProfileDraft } from '@/features/dashboard/org/lib/propertySettingsForm';
 
 import {
@@ -84,6 +86,10 @@ export function PropertyGuestFormSettingsSection({
   resolveFieldError: (fieldId: string) => string | null;
 }) {
   const fieldError = resolveFieldError;
+  const orgCtx = useOptionalOrgContext();
+  const orgSlug = orgCtx?.orgSlug;
+  const parkingsQuery = useParkings(orgSlug);
+  const activeParkings = (parkingsQuery.data?.parkings ?? []).filter((p) => p.status === 'ACTIVE');
 
   return (
     <AdminSection
@@ -117,7 +123,48 @@ export function PropertyGuestFormSettingsSection({
           disabled={disabled}
           onCheckedChange={(value) => onChange('allowSurpriseDecor', value)}
         />
+        <GuestFormToggleRow
+          id="guest-form-complimentary-owner-parking"
+          label="Complimentary own parking"
+          description="Skip payment when guests book your org’s parking for this stay."
+          checked={draft.complimentaryOwnerParking}
+          disabled={disabled || !draft.allowParking}
+          onCheckedChange={(value) => onChange('complimentaryOwnerParking', value)}
+        />
       </div>
+
+      {activeParkings.length > 0 ? (
+        <SettingsField
+          id="guest-form-preferred-owner-parking"
+          label="Preferred parking"
+          error={fieldError('guest-form-preferred-owner-parking')}
+          className="mt-4"
+        >
+          <Select
+            value={draft.preferredOwnerParkingId || '__none__'}
+            onValueChange={(value) =>
+              setField(
+                'preferredOwnerParkingId',
+                value === '__none__' ? '' : value,
+                'guest-form-preferred-owner-parking'
+              )
+            }
+            disabled={disabled || !draft.allowParking}
+          >
+            <SelectTrigger id="guest-form-preferred-owner-parking">
+              <SelectValue placeholder="None" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">None</SelectItem>
+              {activeParkings.map((parking) => (
+                <SelectItem key={parking.id} value={parking.id}>
+                  {parking.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SettingsField>
+      ) : null}
 
       <SettingsField
         id="guest-form-cleaning-buffer"

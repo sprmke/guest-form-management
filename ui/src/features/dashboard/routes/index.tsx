@@ -20,7 +20,7 @@ import {
 } from '@/features/dashboard/org/routes';
 import { orgRoute, parkingRoute, propertyRoute } from '@/features/dashboard/org/routes/guards';
 import { parkingAdminRoutes } from '@/features/dashboard/parking/routes';
-import { propertyPlansRedirectRoute } from '@/features/dashboard/plans/routes';
+import { propertyPlansRoute } from '@/features/dashboard/plans/routes';
 import { pricingPropertyRoute } from '@/features/dashboard/pricing/routes';
 import { dashboardPropertyRoute } from '@/features/dashboard/property/routes';
 import { superAdminRoutes } from '@/features/dashboard/super-admin/routes';
@@ -49,7 +49,7 @@ export const dashboardRoutes: ReactNode[] = [
         {propertyTeamRoute(propertyRoute)}
         {propertyInboxRoute(propertyRoute)}
         {helpSupportPropertyRoute(propertyRoute)}
-        {propertyPlansRedirectRoute()}
+        {propertyPlansRoute(propertyRoute)}
       </>
     )}
   </Fragment>,

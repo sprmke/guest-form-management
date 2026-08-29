@@ -1,5 +1,9 @@
 import { Film, Sparkles, Wind, Zap } from 'lucide-react';
 
+import {
+  VisualChoiceButton,
+  marketingAiSuggestionPreviewFrameClass,
+} from '@/features/dashboard/marketing/components/shared/CalendarAiGenerateVisuals';
 import type {
   VideoAiDurationOption,
   VideoAiFontOption,
@@ -9,10 +13,6 @@ import type {
 
 import { cn } from '@/lib/utils';
 
-import {
-  VisualChoiceButton,
-  marketingAiSuggestionPreviewFrameClass,
-} from '@/features/dashboard/marketing/components/shared/CalendarAiGenerateVisuals';
 
 export { VisualChoiceButton, marketingAiSuggestionPreviewFrameClass };
 

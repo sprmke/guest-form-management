@@ -11,6 +11,8 @@ import {
   type MaintenanceItem,
   type MaintenanceQuery,
 } from '@/features/dashboard/maintenance/lib/types';
+import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
+import { propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
 
 import { AdminSurfaceCardHeader } from '@/components/shared/AdminSurfaceCardHeader';
 import { Button } from '@/components/ui/button';
@@ -39,6 +41,7 @@ function buildQuery(from: string, to: string): MaintenanceQuery {
 }
 
 export function DashboardMaintenanceRemindersCard({ from, to, rangeLabel, className }: Props) {
+  const { orgSlug, propertySlug } = useOrgContext();
   const query = useMemo(() => buildQuery(from, to), [from, to]);
   const summaryQuery = useMaintenanceSummary(query);
   const itemsQuery = useMaintenanceItems(query, { includeDueInRange: true });
@@ -57,7 +60,7 @@ export function DashboardMaintenanceRemindersCard({ from, to, rangeLabel, classN
   const isLoading =
     (summaryQuery.isPending && !summary) || (itemsQuery.isPending && !itemsQuery.data);
   const isRefreshing = (summaryQuery.isFetching || itemsQuery.isFetching) && !isLoading;
-  const maintenanceHref = `/maintenance?from=${from}&to=${to}`;
+  const maintenanceHref = `${propertySectionPath(orgSlug, propertySlug, 'maintenance')}?from=${from}&to=${to}`;
   const pending = summary?.pending ?? 0;
   const completed = summary?.completed ?? 0;
 

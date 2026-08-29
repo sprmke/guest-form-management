@@ -1,6 +1,7 @@
 import { Mail } from 'lucide-react';
 
 import { RoleSelectOptions } from '@/features/dashboard/team/components/RoleSelectOptions';
+import { defaultInviteTemplateId } from '@/features/dashboard/team/lib/propertyTeamRoles';
 import { handleRoleSelectChange } from '@/features/dashboard/team/lib/roleSelectUtils';
 import {
   canSubmitTeamInvite,
@@ -16,7 +17,6 @@ import type {
   CustomPropertyRole,
   PropertyRoleId,
 } from '@/features/dashboard/team/types/propertyTeam';
-import { defaultInviteTemplateId } from '@/features/dashboard/team/lib/propertyTeamRoles';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

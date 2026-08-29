@@ -10,7 +10,7 @@ type Props = {
   imageClassName?: string;
 };
 
-export function TeamLogoMark({ src, alt = 'Kame Home', className, imageClassName }: Props) {
+export function TeamLogoMark({ src, alt = 'Kame Homes', className, imageClassName }: Props) {
   const url = src?.trim() || DEFAULT_TEAM_LOGO_URL;
 
   return (

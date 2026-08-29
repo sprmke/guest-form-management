@@ -1,72 +1,20 @@
 import type { CalendarStyles } from '@/features/dashboard/marketing/components/calendar-builder/types';
 import { normalizeCalendarStyles } from '@/features/dashboard/marketing/components/calendar-builder/types';
 import {
+  calendarBrandPalette,
+  type CalendarBrandPalette,
+} from '@/features/dashboard/marketing/lib/calendarBrandTints';
+import {
   canvasFrameBackgroundForFormat,
   normalizeCalendarCanvasFrame,
 } from '@/features/dashboard/marketing/lib/calendarCanvasFormats';
 
-import { resolveOrgBrandHex } from '@/lib/theme/brandColor';
-
-export type CalendarBrandPalette = {
-  brand: string;
-  brandLight: string;
-  brandDark: string;
-};
-
-function parseHex(hex: string): { r: number; g: number; b: number } | null {
-  const match = /^#([0-9A-Fa-f]{6})$/.exec(hex.trim());
-  if (!match) return null;
-  const raw = match[1];
-  return {
-    r: parseInt(raw.slice(0, 2), 16),
-    g: parseInt(raw.slice(2, 4), 16),
-    b: parseInt(raw.slice(4, 6), 16),
-  };
-}
-
-function toHex(r: number, g: number, b: number): string {
-  const clamp = (value: number) => Math.max(0, Math.min(255, Math.round(value)));
-  return `#${[clamp(r), clamp(g), clamp(b)]
-    .map((channel) => channel.toString(16).padStart(2, '0'))
-    .join('')}`;
-}
-
-function mixHex(
-  base: string,
-  target: { r: number; g: number; b: number },
-  targetWeight: number
-): string {
-  const rgb = parseHex(base);
-  if (!rgb) return base;
-  const weight = Math.max(0, Math.min(1, targetWeight));
-  const keep = 1 - weight;
-  return toHex(
-    rgb.r * keep + target.r * weight,
-    rgb.g * keep + target.g * weight,
-    rgb.b * keep + target.b * weight
-  );
-}
-
-/** Light tint for “today” cell background. */
-export function calendarBrandLightTint(brandColor?: string): string {
-  const brand = resolveOrgBrandHex(brandColor);
-  return mixHex(brand, { r: 255, g: 255, b: 255 }, 0.9);
-}
-
-/** Slightly darker brand for secondary status (e.g. checked-in). */
-export function calendarBrandDarkShade(brandColor?: string): string {
-  const brand = resolveOrgBrandHex(brandColor);
-  return mixHex(brand, { r: 0, g: 0, b: 0 }, 0.18);
-}
-
-export function calendarBrandPalette(brandColor?: string): CalendarBrandPalette {
-  const brand = resolveOrgBrandHex(brandColor);
-  return {
-    brand,
-    brandLight: calendarBrandLightTint(brand),
-    brandDark: calendarBrandDarkShade(brand),
-  };
-}
+export type { CalendarBrandPalette };
+export {
+  calendarBrandDarkShade,
+  calendarBrandLightTint,
+  calendarBrandPalette,
+} from '@/features/dashboard/marketing/lib/calendarBrandTints';
 
 export type ApplyBrandAccentOptions = {
   /** Keep preset-authored today, booked, and header colors (designer templates). */

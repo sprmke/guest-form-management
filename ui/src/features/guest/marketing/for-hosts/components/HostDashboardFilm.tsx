@@ -364,7 +364,12 @@ function BookingScene() {
         <div className="space-y-3">
           {[
             { icon: Receipt, label: 'Receipt validated', sub: 'AI confidence 98%', delay: 24 },
-            { icon: FileCheck2, label: 'GAF approved', sub: 'Matched from inbound email', delay: 58 },
+            {
+              icon: FileCheck2,
+              label: 'GAF approved',
+              sub: 'Matched from inbound email',
+              delay: 58,
+            },
             { icon: PawPrint, label: 'Pet request cleared', sub: 'Document saved', delay: 92 },
             { icon: CalendarDays, label: 'Event updated', sub: 'Event updated', delay: 126 },
           ].map((event) => (

@@ -4,7 +4,7 @@ import type {
   VideoSceneKind,
   VideoSceneTextFields,
 } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
-import { mergeSceneTextsForKind } from '@/features/dashboard/marketing/lib/video/videoSceneKindChange';
+import { mergeSceneTextsForKind } from '@/features/dashboard/marketing/lib/video/videoSceneTexts';
 import {
   VIDEO_TEXT_SLOT_LABELS,
   defaultTextLayoutForSceneKind,

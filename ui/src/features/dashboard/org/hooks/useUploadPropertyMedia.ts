@@ -7,6 +7,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import type { PropertyMediaItem } from '@/features/dashboard/org/lib/propertySettingsConstants';
 
+import { prepareUpload } from '@/lib/media/prepareUpload';
 import { supabase } from '@/lib/supabase/client';
 
 type UploadPropertyMediaResult = {
@@ -30,8 +31,15 @@ export function useUploadPropertyMedia() {
   const propertyId = usePropertyIdParam();
 
   const upload = useMutation({
-    mutationFn: async (file: File): Promise<UploadPropertyMediaResult> => {
+    mutationFn: async (rawFile: File): Promise<UploadPropertyMediaResult> => {
       if (!propertyId) throw new Error('Property context is required');
+
+      const prepared = await prepareUpload(rawFile, {
+        imagePreset: 'PHOTO_MASTER',
+        surface: 'property-media',
+      });
+      if (prepared.error) throw new Error(prepared.error);
+      const file = prepared.file;
 
       const jwt = await getAdminJwt();
       const body = new FormData();

@@ -6,6 +6,13 @@ import { CustomPagesPage } from '@/features/dashboard/custom-pages/pages/CustomP
 import type { PropertyRouteFn } from '@/features/dashboard/org/routes/guards';
 import { PageEditorPage } from '@/features/dashboard/page-editor/pages/PageEditorPage';
 
+/**
+ * Public Pages (gallery + Page Editor for listing / Stay Guide / Showcase) is
+ * explore-open on every plan — hosts can open the editor and see the templates.
+ * The paywall is on **save**: `publicPagesAutosave` (Pro+) gates autosave / the Free
+ * Save button, and `propertyShowcase` (Pro+) gates Showcase template select + publish.
+ * (See docs/guides/routes/org/property/public-pages.md.)
+ */
 export function customPagesPropertyRoute(propertyRoute: PropertyRouteFn): ReactNode {
   return (
     <>

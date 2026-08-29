@@ -10,6 +10,8 @@ import { DEFAULT_RESIDENCE_NAME } from '@/features/dashboard/org/lib/propertyDis
 import type { PropertyAutomationToggleKey } from '@/features/dashboard/org/lib/propertyEmailAutomation';
 import { SD_REFUND_CRON_EMAIL_LEAD_MAX_HOURS } from '@/features/dashboard/org/lib/propertyEmailAutomation';
 import { getEmailAutomationDefaults } from '@/features/dashboard/org/lib/propertyEmailAutomationDefaults';
+import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 
 import { Input } from '@/components/ui/input';
 import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
@@ -78,6 +80,7 @@ export function PropertyEmailAutomationsSection({
   const effectiveResidence = residenceName.trim() || DEFAULT_RESIDENCE_NAME;
   const copy = getEmailAutomationDefaults(effectiveResidence);
   const fieldError = resolveFieldError;
+  const { allowed: automatedBookingFlowAllowed } = useFeatureGate('automatedBookingFlow');
 
   const setField = <K extends keyof AppSettingsFormValues>(
     key: K,
@@ -93,6 +96,7 @@ export function PropertyEmailAutomationsSection({
       id="email-automations"
       title="Email automations"
       icon={Mail}
+      badge={<TierBadge feature="automatedBookingFlow" />}
       description="Workflow email recipients and send timing."
     >
       <div className="space-y-6">
@@ -213,6 +217,7 @@ export function PropertyEmailAutomationsSection({
           <PropertyEmailAutomationTogglePanel
             draft={draft}
             disabled={disabled}
+            automatedBookingFlowAllowed={automatedBookingFlowAllowed}
             onToggleChange={onAutomationToggleChange}
           />
         </SettingsSubsection>

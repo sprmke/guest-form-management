@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { ChevronLeft, Loader2, Sparkles } from 'lucide-react';
 
+import { useShowcaseMediaPalette } from '@/features/guest/marketing/showcase/hooks/useShowcaseMediaPalette';
+
 import {
   BackgroundOptionPreview,
   FontOptionPreview,
@@ -17,12 +19,18 @@ import {
   DesignSuggestionPreview,
 } from '@/features/dashboard/marketing/components/shared/DesignAiGenerateVisuals';
 import {
+  MarketingAiGenerateStepper,
+  marketingAiGenerateStepCopy,
+  type MarketingAiGenerateStepIndex,
+} from '@/features/dashboard/marketing/components/shared/MarketingAiGenerateStepper';
+import {
   VideoCategoryChips,
   VideoDurationOptionPreview,
   VideoFontOptionPreview,
   VideoMotionOptionPreview,
   VideoSuggestionPreview,
 } from '@/features/dashboard/marketing/components/shared/VideoAiGenerateVisuals';
+import { useMarketingPermissions } from '@/features/dashboard/marketing/hooks/useMarketingPermissions';
 import {
   CALENDAR_AI_BACKGROUND_OPTIONS,
   CALENDAR_AI_ELEMENT_OPTIONS,
@@ -46,6 +54,11 @@ import {
   type DesignAiSuggestion,
 } from '@/features/dashboard/marketing/lib/designAiGenerateOptions';
 import {
+  isMarketingAiPhotoPaletteSuggestion,
+  MARKETING_AI_PHOTO_PALETTE_SUGGESTION_IDS,
+  resolveMarketingAiLookPresentation,
+} from '@/features/dashboard/marketing/lib/marketingAiPhotoPalette';
+import {
   DEFAULT_VIDEO_AI_PREFERENCES,
   VIDEO_AI_CATEGORY_LABELS,
   VIDEO_AI_DEFAULT_CONTENTS,
@@ -56,21 +69,9 @@ import {
   type VideoAiGeneratePreferences,
   type VideoAiSuggestion,
 } from '@/features/dashboard/marketing/lib/videoAiGenerateOptions';
-import {
-  isMarketingAiPhotoPaletteSuggestion,
-  MARKETING_AI_PHOTO_PALETTE_SUGGESTION_IDS,
-  resolveMarketingAiLookPresentation,
-} from '@/features/dashboard/marketing/lib/marketingAiPhotoPalette';
-import {
-  MarketingAiGenerateStepper,
-  marketingAiGenerateStepCopy,
-  type MarketingAiGenerateStepIndex,
-} from '@/features/dashboard/marketing/components/shared/MarketingAiGenerateStepper';
-import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
+import { TierBadge, TierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
-import { useMarketingPermissions } from '@/features/dashboard/marketing/hooks/useMarketingPermissions';
-import { useShowcaseMediaPalette } from '@/features/guest/marketing/showcase/hooks/useShowcaseMediaPalette';
 
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -1246,19 +1247,21 @@ export function MarketingAiGeneratePanel({
                 Next
               </Button>
             ) : (
-              <Button
-                type="button"
-                className="min-h-[44px] flex-1 gap-2 sm:flex-none"
-                disabled={!canGenerate}
-                onClick={() => void handleGenerate()}
-              >
-                {generating ? (
-                  <Loader2 className="size-4 animate-spin" aria-hidden />
-                ) : (
-                  <Sparkles className="size-4" aria-hidden />
-                )}
-                {generating ? 'Generating…' : 'Generate'}
-              </Button>
+              <TierBadgeAnchor feature="aiMarketingGeneration" className="flex-1 sm:flex-none">
+                <Button
+                  type="button"
+                  className="min-h-[44px] w-full gap-2"
+                  disabled={!canGenerate}
+                  onClick={() => void handleGenerate()}
+                >
+                  {generating ? (
+                    <Loader2 className="size-4 animate-spin" aria-hidden />
+                  ) : (
+                    <Sparkles className="size-4" aria-hidden />
+                  )}
+                  {generating ? 'Generating…' : 'Generate'}
+                </Button>
+              </TierBadgeAnchor>
             )}
           </div>
         </ResponsiveModalFooter>

@@ -2,6 +2,12 @@
  * External review proof — mirrors `supabase/functions/_shared/propertyExternalReviews.ts`.
  */
 
+import {
+  filterGuestReviewTagsForRating,
+  MAX_GUEST_REVIEW_FEEDBACK_TAGS,
+  validateGuestReviewFeedbackTagsClient,
+} from '@/features/guest/sd-form/lib/guestReviewFeedbackTags';
+
 export const MAX_PROPERTY_EXTERNAL_REVIEWS = 5;
 export const MAX_EXTERNAL_REVIEW_STAY_PHOTOS = 3;
 export const MAX_EXTERNAL_REVIEW_TEXT_LENGTH = 2000;
@@ -21,6 +27,7 @@ export type PropertyExternalReview = {
   imageUrl: string | null;
   proofUrl: string | null;
   stayPhotoUrls: string[];
+  feedbackTags: string[];
   moderationStatus: ExternalReviewModerationStatus;
   createdAt: string | null;
 };
@@ -38,6 +45,26 @@ export function stayPhotoUrlsEqual(a: string[], b: string[]): boolean {
   return a.every((url, index) => url === b[index]);
 }
 
+function feedbackTagsEqual(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((id, index) => id === b[index]);
+}
+
+export function normalizeExternalReviewFeedbackTags(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const tags: string[] = [];
+  const seen = new Set<string>();
+  for (const entry of raw) {
+    if (typeof entry !== 'string') continue;
+    const id = entry.trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    tags.push(id);
+    if (tags.length >= MAX_GUEST_REVIEW_FEEDBACK_TAGS) break;
+  }
+  return tags;
+}
+
 export function externalReviewContentEqual(
   a: PropertyExternalReview,
   b: PropertyExternalReview
@@ -49,7 +76,8 @@ export function externalReviewContentEqual(
     a.starRating === b.starRating &&
     (a.imageUrl ?? '') === (b.imageUrl ?? '') &&
     (a.proofUrl ?? '') === (b.proofUrl ?? '') &&
-    stayPhotoUrlsEqual(a.stayPhotoUrls, b.stayPhotoUrls)
+    stayPhotoUrlsEqual(a.stayPhotoUrls, b.stayPhotoUrls) &&
+    feedbackTagsEqual(a.feedbackTags, b.feedbackTags)
   );
 }
 
@@ -79,6 +107,7 @@ export function createEmptyExternalReview(
     imageUrl: null,
     proofUrl: null,
     stayPhotoUrls: [],
+    feedbackTags: [],
     moderationStatus: 'pending',
     createdAt: null,
   };
@@ -87,12 +116,13 @@ export function createEmptyExternalReview(
 export function normalizeExternalReviewsDraft(raw: unknown): PropertyExternalReview[] {
   if (!Array.isArray(raw)) return [];
   return raw.slice(0, MAX_PROPERTY_EXTERNAL_REVIEWS).map((item) => {
-    const row = (item ?? {}) as Partial<PropertyExternalReview>;
+    const row = (item ?? {}) as Partial<PropertyExternalReview> & { feedbackTags?: unknown };
     const source = row.source === 'facebook' || row.source === 'airbnb' ? row.source : 'airbnb';
     const star =
       row.starRating == null
         ? null
         : Math.min(5, Math.max(1, Math.round(Number(row.starRating)) || 5));
+    const ratingForTags = star ?? 5;
     return {
       id: row.id?.trim() || crypto.randomUUID(),
       source,
@@ -102,6 +132,10 @@ export function normalizeExternalReviewsDraft(raw: unknown): PropertyExternalRev
       imageUrl: row.imageUrl?.trim() || null,
       proofUrl: row.proofUrl?.trim() || null,
       stayPhotoUrls: normalizeStayPhotoUrls(row.stayPhotoUrls),
+      feedbackTags: filterGuestReviewTagsForRating(
+        ratingForTags,
+        normalizeExternalReviewFeedbackTags(row.feedbackTags)
+      ),
       moderationStatus:
         row.moderationStatus === 'approved' || row.moderationStatus === 'rejected'
           ? row.moderationStatus
@@ -120,7 +154,8 @@ export function externalReviewEqual(a: PropertyExternalReview, b: PropertyExtern
     a.starRating === b.starRating &&
     (a.imageUrl ?? '') === (b.imageUrl ?? '') &&
     (a.proofUrl ?? '') === (b.proofUrl ?? '') &&
-    stayPhotoUrlsEqual(a.stayPhotoUrls, b.stayPhotoUrls)
+    stayPhotoUrlsEqual(a.stayPhotoUrls, b.stayPhotoUrls) &&
+    feedbackTagsEqual(a.feedbackTags, b.feedbackTags)
   );
 }
 
@@ -237,6 +272,11 @@ export function validateExternalReviewDraft(
       return `${label}: Enter a valid proof URL`;
     }
   }
+  const tagsError = validateGuestReviewFeedbackTagsClient(
+    review.starRating ?? 5,
+    review.feedbackTags
+  );
+  if (tagsError) return `${label}: ${tagsError}`;
   return null;
 }
 

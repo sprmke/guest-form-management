@@ -56,6 +56,7 @@ import {
 } from '@/features/dashboard/marketing/lib/video/videoTemplateTypography';
 import { scaleForVideoFormat } from '@/features/dashboard/marketing/lib/video/videoTextSlotContent';
 
+import { parseHexRgb } from '@/lib/theme/colorConvert';
 export type VideoCompositionProps = {
   project: VideoProject;
   brandColor?: string;
@@ -79,17 +80,6 @@ function overlayOpacityForKind(kind: VideoSceneKind): number {
     default:
       return 0.4;
   }
-}
-
-function parseHexRgb(hex: string): { r: number; g: number; b: number } | null {
-  const match = /^#([0-9A-Fa-f]{6})$/.exec(hex.trim());
-  if (!match) return null;
-  const raw = match[1];
-  return {
-    r: parseInt(raw.slice(0, 2), 16),
-    g: parseInt(raw.slice(2, 4), 16),
-    b: parseInt(raw.slice(4, 6), 16),
-  };
 }
 
 function mixRgb(

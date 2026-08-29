@@ -36,6 +36,8 @@ import { useGenerateMarketingTemplate } from '@/features/dashboard/marketing/hoo
 import { useMarketingAutoSave } from '@/features/dashboard/marketing/hooks/useMarketingAutoSave';
 import { useMarketingAutoSaveSuspension } from '@/features/dashboard/marketing/hooks/useMarketingAutoSaveSuspension';
 import { useMarketingBookedDates } from '@/features/dashboard/marketing/hooks/useMarketingBookedDates';
+import { useMarketingMediaAccent } from '@/features/dashboard/marketing/hooks/useMarketingMediaAccent';
+import { useMarketingPermissions } from '@/features/dashboard/marketing/hooks/useMarketingPermissions';
 import { saveMarketingTemplate } from '@/features/dashboard/marketing/hooks/useMarketingTemplates';
 import {
   applyCalendarAiElementsToStyles,
@@ -73,6 +75,7 @@ import {
 } from '@/features/dashboard/marketing/lib/calendarPresets';
 import { marketingContentFingerprint } from '@/features/dashboard/marketing/lib/marketingContentFingerprint';
 import { marketingEditorWorkspaceClassName } from '@/features/dashboard/marketing/lib/marketingEditorWorkspace';
+import { MARKETING_PUBLISH_META_LABEL } from '@/features/dashboard/marketing/lib/marketingStudioCopy';
 import {
   pickRandomPropertyPhoto,
   propertyGalleryMediaItems,
@@ -82,8 +85,6 @@ import { useOrgBrandColor } from '@/features/dashboard/org/hooks/useOrgBrandColo
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { PlanGateWatermarkOverlay } from '@/features/dashboard/plans/components/PlanGateWatermarkOverlay';
 import { TierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
-import { useMarketingPermissions } from '@/features/dashboard/marketing/hooks/useMarketingPermissions';
-import { useMarketingMediaAccent } from '@/features/dashboard/marketing/hooks/useMarketingMediaAccent';
 
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -997,21 +998,25 @@ export function CalendarBuilder({
           />
         ) : null}
         {onExport ? (
-          <Button
-            variant="outline"
-            className="min-h-[44px] gap-2"
-            onClick={onExport}
-            disabled={isExporting}
-          >
-            <Download className="size-4" aria-hidden />
-            {isExporting ? 'Exporting…' : 'Download PNG'}
-          </Button>
+          <TierBadgeAnchor feature="marketingStudio">
+            <Button
+              variant="outline"
+              className="min-h-[44px] gap-2"
+              onClick={onExport}
+              disabled={isExporting}
+            >
+              <Download className="size-4" aria-hidden />
+              {isExporting ? 'Exporting…' : 'Download PNG'}
+            </Button>
+          </TierBadgeAnchor>
         ) : null}
         {onPublish ? (
-          <Button className="min-h-[44px] gap-2" onClick={onPublish} disabled={isExporting}>
-            <Send className="size-4" aria-hidden />
-            Publish
-          </Button>
+          <TierBadgeAnchor feature="marketingPublishLimitPerGroup">
+            <Button className="min-h-[44px] gap-2" onClick={onPublish} disabled={isExporting}>
+              <Send className="size-4" aria-hidden />
+              {MARKETING_PUBLISH_META_LABEL}
+            </Button>
+          </TierBadgeAnchor>
         ) : null}
       </>
     ),

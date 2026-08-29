@@ -29,6 +29,9 @@ export function OrgSettingsImageField({
   previewAlt,
   uploadLabel = 'Upload image',
   replaceLabel = 'Replace image',
+  required = false,
+  error = null,
+  onInteract,
 }: {
   id: string;
   label: string;
@@ -39,6 +42,9 @@ export function OrgSettingsImageField({
   previewAlt: string;
   uploadLabel?: string;
   replaceLabel?: string;
+  required?: boolean;
+  error?: string | null;
+  onInteract?: () => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const uploadMut = useUploadOrgSettingsAsset();
@@ -46,10 +52,12 @@ export function OrgSettingsImageField({
   const busy = disabled || uploadMut.isPending || clearMut.isPending;
   const hasStoredCustom = source === 'db';
   const hasImage = Boolean(imageUrl?.trim());
+  const allowReset = hasStoredCustom && !required;
 
   async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
+    onInteract?.();
     try {
       await uploadMut.mutateAsync(file);
       toast.success(`${label} updated`);
@@ -71,7 +79,7 @@ export function OrgSettingsImageField({
 
   return (
     <OrgSettingsFieldSpan>
-      <OrgSettingsField id={id} label={label} help={help}>
+      <OrgSettingsField id={id} label={label} help={help} required={required} error={error}>
         <div className="space-y-3">
           {uploadMut.isPending ? (
             <div
@@ -88,8 +96,12 @@ export function OrgSettingsImageField({
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => fileRef.current?.click()}
+                onClick={() => {
+                  onInteract?.();
+                  fileRef.current?.click();
+                }}
                 aria-label={hasStoredCustom ? replaceLabel : uploadLabel}
+                aria-invalid={Boolean(error)}
                 className={cn(
                   'relative size-full overflow-hidden border-0 bg-transparent p-0',
                   'focus-visible:ring-ring focus-visible:ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
@@ -123,11 +135,16 @@ export function OrgSettingsImageField({
             <button
               type="button"
               disabled={busy}
-              onClick={() => fileRef.current?.click()}
+              onClick={() => {
+                onInteract?.();
+                fileRef.current?.click();
+              }}
               aria-label={uploadLabel}
+              aria-invalid={Boolean(error)}
               className={cn(
                 LOGO_FRAME_CLASS,
-                'border-border bg-muted/20 text-muted-foreground flex flex-col items-center justify-center gap-2.5 border-dashed text-sm',
+                'bg-muted/20 text-muted-foreground flex flex-col items-center justify-center gap-2.5 border-dashed text-sm',
+                error ? 'border-destructive' : 'border-border',
                 'focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
                 !busy && 'hover:bg-muted/30 hover:text-foreground cursor-pointer',
                 busy && 'cursor-not-allowed opacity-60'
@@ -147,7 +164,7 @@ export function OrgSettingsImageField({
             disabled={busy}
             onChange={(event) => void handleFileChange(event)}
           />
-          {hasStoredCustom ? (
+          {allowReset ? (
             <Button
               type="button"
               variant="outline"

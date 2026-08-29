@@ -4,9 +4,6 @@ import { PublicPageCard } from '@/features/dashboard/custom-pages/components/Pub
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { orgPropertyCardModel } from '@/features/dashboard/org/lib/orgPropertyCardModel';
-import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
-import { usePropertyEntitlements } from '@/features/dashboard/plans/hooks/usePropertyEntitlements';
-import { isFeatureEnabled } from '@/features/dashboard/plans/lib/planFeatures';
 import { buildPropertyGuestPublicPages } from '@/features/dashboard/property/lib/propertyGuestPublicPages';
 import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
 import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
@@ -24,11 +21,6 @@ export function CustomPagesPage() {
   const propertyName = orgContext?.property.name?.trim() || 'Property';
   const coverUrl = orgContext ? orgPropertyCardModel(orgContext.property).thumbnailUrl : null;
   const { data: access } = usePropertyPermissions();
-  const { open } = useUpgradeModal();
-  const entitlements = usePropertyEntitlements();
-  const canShowcase = entitlements.data
-    ? isFeatureEnabled(entitlements.data, 'propertyShowcase')
-    : false;
   const canEditListing = hasPropertyPermission(access?.permissions, 'publicPages.property:edit');
   const canEditStayGuide = hasPropertyPermission(access?.permissions, 'publicPages.stayGuide:edit');
   const canEditShowcase = hasPropertyPermission(access?.permissions, 'publicPages.showcase:edit');
@@ -72,8 +64,6 @@ export function CustomPagesPage() {
                     coverUrl={coverUrl}
                     variant="editable"
                     canEdit={canEditPage(page.id)}
-                    locked={page.id === 'showcase' && !canShowcase}
-                    onUnlock={() => open('propertyShowcase')}
                   />
                 </li>
               ))}

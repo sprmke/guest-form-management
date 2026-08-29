@@ -5,6 +5,8 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, CalendarClock, CheckCircle2, Receipt, Repeat } from 'lucide-react';
 
 import type { FinanceLineItem } from '@/features/dashboard/finance/lib/types';
+import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
+import { propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
 import {
   buildDashboardTransactionRows,
   countDashboardDueInPeriod,
@@ -52,8 +54,9 @@ export function DashboardTransactionsDueCard({
     () => countDashboardRecurringInPeriod(items, from, to),
     [items, from, to]
   );
+  const { orgSlug, propertySlug } = useOrgContext();
   const visibleRows = rows.slice(0, maxRows);
-  const transactionsHref = `/finance?from=${from}&to=${to}`;
+  const transactionsHref = `${propertySectionPath(orgSlug, propertySlug, 'finance')}?from=${from}&to=${to}`;
 
   return (
     <section

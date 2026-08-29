@@ -11,7 +11,7 @@ import { applyBrandCssVariables } from '@/lib/theme/applyBrandCssVariables';
 import { buildGuestBrandStyle } from '@/lib/theme/brandColor';
 import { cn } from '@/lib/utils';
 
-const DEFAULT_FOOTER_LABEL = `© ${new Date().getFullYear()} Kame Home. All rights reserved.`;
+const DEFAULT_FOOTER_LABEL = `© ${new Date().getFullYear()} Kame Homes. All rights reserved.`;
 
 interface MainLayoutProps {
   children?: ReactNode;
@@ -19,7 +19,7 @@ interface MainLayoutProps {
   animateOnNavigate?: boolean;
   /** Org brand color hex (#RRGGBB) for guest-facing accents. */
   brandColor?: string | null;
-  /** Footer credit line (org + residence). */
+  /** Footer credit line (host org, or platform brand). */
   footerLabel?: string | null;
   /** Property slug for header links. */
   propertySlug?: string | null;

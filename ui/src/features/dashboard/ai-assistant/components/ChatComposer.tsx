@@ -4,8 +4,8 @@ import { FileText, ImagePlus, Paperclip, Send, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { ChatComposerContextHub } from '@/features/dashboard/ai-assistant/components/ChatComposerContextHub';
-import { ChatComposerVoiceButton } from '@/features/dashboard/ai-assistant/components/ChatComposerVoiceButton';
 import { ChatComposerSearchAllProvider } from '@/features/dashboard/ai-assistant/components/ChatComposerSearchAllContext';
+import { ChatComposerVoiceButton } from '@/features/dashboard/ai-assistant/components/ChatComposerVoiceButton';
 import { ChatContextCommandPalette } from '@/features/dashboard/ai-assistant/components/ChatContextCommandPalette';
 import { useSpeechToText } from '@/features/dashboard/ai-assistant/hooks/useSpeechToText';
 import {

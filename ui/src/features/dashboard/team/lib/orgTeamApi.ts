@@ -1,5 +1,8 @@
 import { scopedOrgFunctionsUrl } from '@/features/dashboard/org/lib/adminApiScope';
-import { throwIfUpgradeHookFromJson } from '@/features/dashboard/org/lib/aiQuotaToast';
+import {
+  parseTeamApiData,
+  parseTeamApiMutateData,
+} from '@/features/dashboard/team/lib/teamApiJson';
 
 import { supabase } from '@/lib/supabase/client';
 
@@ -15,12 +18,6 @@ export async function orgTeamAuthHeaders(): Promise<HeadersInit> {
   };
 }
 
-type ApiJson<T> = {
-  success?: boolean;
-  error?: string;
-  data?: T;
-};
-
 export async function orgTeamGet<T>(
   path: string,
   orgSlug: string | null,
@@ -28,14 +25,7 @@ export async function orgTeamGet<T>(
 ): Promise<T> {
   const headers = await orgTeamAuthHeaders();
   const res = await fetch(scopedOrgFunctionsUrl(path, orgSlug, orgId), { headers });
-  const json = (await res.json().catch(() => ({}))) as ApiJson<T>;
-  if (!res.ok || !json.success) {
-    throw new Error(json.error ?? 'Request failed');
-  }
-  if (json.data === undefined) {
-    throw new Error(json.error ?? 'Request failed');
-  }
-  return json.data;
+  return parseTeamApiData<T>(res);
 }
 
 export async function orgTeamMutate<T>(
@@ -52,15 +42,5 @@ export async function orgTeamMutate<T>(
     headers,
     body: JSON.stringify(payload),
   });
-  const json = (await res.json().catch(() => ({}))) as ApiJson<T> & {
-    upgradeHook?: boolean;
-    feature?: string;
-  };
-  if (json.upgradeHook || res.status === 429) {
-    throwIfUpgradeHookFromJson(json, res);
-  }
-  if (!res.ok || !json.success) {
-    throw new Error(json.error ?? 'Request failed');
-  }
-  return (json.data ?? {}) as T;
+  return parseTeamApiMutateData<T>(res);
 }

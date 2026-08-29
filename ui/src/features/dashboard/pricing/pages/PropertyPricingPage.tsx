@@ -15,6 +15,7 @@ import {
   type CalendarBookingCelebrationTrigger,
 } from '@/features/dashboard/bookings/components/calendar/CalendarBookingCelebration';
 import { buildOccupancyByDay } from '@/features/dashboard/bookings/components/calendar/calendarDateUtils';
+import { ChannelSyncCard } from '@/features/dashboard/pricing/components/ChannelSyncCard';
 import { PricingCalendarBookingModal } from '@/features/dashboard/pricing/components/PricingCalendarBookingModal';
 import { PricingCalendarGrid } from '@/features/dashboard/pricing/components/PricingCalendarGrid';
 import { PricingDateModal } from '@/features/dashboard/pricing/components/PricingDateModal';
@@ -564,6 +565,10 @@ export function PropertyPricingPage() {
               onSaveClick={handleSaveClick}
             />
           </div>
+        </div>
+
+        <div className="mt-5">
+          <ChannelSyncCard />
         </div>
       </AdminMobilePage>
 

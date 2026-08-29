@@ -1,6 +1,8 @@
 import {
+  AlertTriangle,
   CalendarCheck,
   CalendarPlus,
+  CalendarX,
   Car,
   FileCheck,
   LogIn,
@@ -41,6 +43,8 @@ const NOTIFICATION_ICONS: Record<NotificationType, LucideIcon> = {
   booking_gaf_auto_approved: FileCheck,
   booking_pet_auto_approved: PawPrint,
   booking_parking_matched: Car,
+  calendar_sync_failing: CalendarX,
+  calendar_conflict: AlertTriangle,
 };
 
 /** Category glyph shared by the bell list, Activity page, and realtime toast. */

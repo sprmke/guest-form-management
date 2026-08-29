@@ -1,5 +1,9 @@
 import { Sparkles } from 'lucide-react';
 
+import {
+  VisualChoiceButton,
+  marketingAiSuggestionPreviewFrameClass,
+} from '@/features/dashboard/marketing/components/shared/CalendarAiGenerateVisuals';
 import type {
   DesignAiBackgroundOption,
   DesignAiFontOption,
@@ -10,10 +14,6 @@ import { CAMPAIGN_CATEGORY_LABELS } from '@/features/dashboard/marketing/lib/des
 
 import { cn } from '@/lib/utils';
 
-import {
-  VisualChoiceButton,
-  marketingAiSuggestionPreviewFrameClass,
-} from '@/features/dashboard/marketing/components/shared/CalendarAiGenerateVisuals';
 
 export { VisualChoiceButton, marketingAiSuggestionPreviewFrameClass };
 

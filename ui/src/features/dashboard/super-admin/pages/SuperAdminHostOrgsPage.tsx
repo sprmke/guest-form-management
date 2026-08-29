@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 
 import {
   AdminListPagination,
@@ -10,57 +10,21 @@ import {
   SuperAdminHostOrgCard,
   SuperAdminHostOrgsEmptyState,
 } from '@/features/dashboard/super-admin/components/super-admin-hosts/SuperAdminHostOrgCard';
+import { useAdminListPaginationParams } from '@/features/dashboard/super-admin/hooks/useAdminListPaginationParams';
 import { useHostOrganizations } from '@/features/dashboard/super-admin/hooks/useHosts';
 
 import { HostOrgCardGridSkeleton } from '@/components/skeletons/AdminSkeletons';
-import {
-  ADMIN_DEFAULT_PAGE_SIZE,
-  buildPageItems,
-  normalizeAdminPageLimit,
-} from '@/lib/table/pagination';
+import { buildPageItems } from '@/lib/table/pagination';
 
 export function SuperAdminHostOrgsPage() {
   const { hostId = '' } = useParams<{ hostId: string }>();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const page = Number(searchParams.get('page') ?? '1');
-  const limit = normalizeAdminPageLimit(
-    Number(searchParams.get('limit') ?? String(ADMIN_DEFAULT_PAGE_SIZE))
-  );
+  const { page, limit, setPage, setLimit } = useAdminListPaginationParams();
 
   const { data, isLoading, isFetching, error } = useHostOrganizations(hostId, page, limit);
   const organizations = data?.rows ?? [];
   const total = data?.total ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / limit));
   const pageItems = buildPageItems(page, pageCount);
-
-  const setPage = useCallback(
-    (nextPage: number) =>
-      setSearchParams(
-        (prev) => {
-          const sp = new URLSearchParams(prev);
-          if (nextPage <= 1) sp.delete('page');
-          else sp.set('page', String(nextPage));
-          return sp;
-        },
-        { replace: true }
-      ),
-    [setSearchParams]
-  );
-
-  const setLimit = useCallback(
-    (nextLimit: number) =>
-      setSearchParams(
-        (prev) => {
-          const sp = new URLSearchParams(prev);
-          if (nextLimit === ADMIN_DEFAULT_PAGE_SIZE) sp.delete('limit');
-          else sp.set('limit', String(nextLimit));
-          sp.delete('page');
-          return sp;
-        },
-        { replace: true }
-      ),
-    [setSearchParams]
-  );
 
   // Reset to page 1 when switching between hosts (route param changes but the
   // page component instance is reused).

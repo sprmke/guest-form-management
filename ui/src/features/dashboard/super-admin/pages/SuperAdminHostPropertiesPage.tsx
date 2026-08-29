@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 
 import {
   AdminListPagination,
@@ -20,23 +20,17 @@ import {
   type OrgPropertiesFilters,
   type OrgPropertiesViewMode,
 } from '@/features/dashboard/org/lib/orgPropertiesFilters';
+import { useAdminListPaginationParams } from '@/features/dashboard/super-admin/hooks/useAdminListPaginationParams';
 import { useHostProperties } from '@/features/dashboard/super-admin/hooks/useHosts';
 import { hostPropertyToProperty } from '@/features/dashboard/super-admin/lib/hostPropertyAdapter';
 
 import { ListingCardGridSkeleton } from '@/components/skeletons/AdminSkeletons';
-import {
-  ADMIN_DEFAULT_PAGE_SIZE,
-  buildPageItems,
-  normalizeAdminPageLimit,
-} from '@/lib/table/pagination';
+import { buildPageItems } from '@/lib/table/pagination';
 
 export function SuperAdminHostPropertiesPage() {
   const { hostId = '' } = useParams<{ hostId: string }>();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const page = Number(searchParams.get('page') ?? '1');
-  const limit = normalizeAdminPageLimit(
-    Number(searchParams.get('limit') ?? String(ADMIN_DEFAULT_PAGE_SIZE))
-  );
+  const { searchParams, setSearchParams, page, limit, setPage, setLimit } =
+    useAdminListPaginationParams();
   const filters: OrgPropertiesFilters = {
     search: searchParams.get('q') ?? '',
     status: (searchParams.get('status') as OrgPropertiesFilters['status']) ?? 'all',
@@ -56,35 +50,6 @@ export function SuperAdminHostPropertiesPage() {
   const pageItems = buildPageItems(page, pageCount);
 
   const [viewMode, setViewMode] = useState<OrgPropertiesViewMode>('grid');
-
-  const setPage = useCallback(
-    (nextPage: number) =>
-      setSearchParams(
-        (prev) => {
-          const sp = new URLSearchParams(prev);
-          if (nextPage <= 1) sp.delete('page');
-          else sp.set('page', String(nextPage));
-          return sp;
-        },
-        { replace: true }
-      ),
-    [setSearchParams]
-  );
-
-  const setLimit = useCallback(
-    (nextLimit: number) =>
-      setSearchParams(
-        (prev) => {
-          const sp = new URLSearchParams(prev);
-          if (nextLimit === ADMIN_DEFAULT_PAGE_SIZE) sp.delete('limit');
-          else sp.set('limit', String(nextLimit));
-          sp.delete('page');
-          return sp;
-        },
-        { replace: true }
-      ),
-    [setSearchParams]
-  );
 
   const updateFilters = (updater: (current: OrgPropertiesFilters) => OrgPropertiesFilters) => {
     const next = updater(filters);

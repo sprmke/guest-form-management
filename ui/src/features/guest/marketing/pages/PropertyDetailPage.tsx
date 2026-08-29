@@ -292,7 +292,7 @@ export function PropertyDetailPage() {
       feedbackTags: review.feedbackTags ?? [],
       media: review.media ?? [],
       source: review.source,
-      helpful: 0,
+      createdAt: review.createdAt ?? null,
     })) ?? [];
 
   const showRatingInBooking =
@@ -404,7 +404,7 @@ export function PropertyDetailPage() {
           <PropertyReviews
             rating={propertyData.rating ?? 5}
             totalReviews={propertyData.reviews ?? listingReviews.length}
-            reviews={propertyData.source === 'api' ? listingReviews : undefined}
+            reviews={listingReviews}
           />
         );
       default:

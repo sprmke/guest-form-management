@@ -2,14 +2,15 @@ import type { ReactNode } from 'react';
 
 import { Copy, Edit3, MoreHorizontal, Plus, Trash2 } from 'lucide-react';
 
-import {
-  isSeededTemplateName,
-  sortTemplatesForDisplay,
-} from '@/features/dashboard/team/lib/propertyTeamTemplates';
+import { TierBadge, TierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
 import {
   isSeededOrgTemplateName,
   sortOrgTemplatesForDisplay,
 } from '@/features/dashboard/team/lib/orgTeamTemplates';
+import {
+  isSeededTemplateName,
+  sortTemplatesForDisplay,
+} from '@/features/dashboard/team/lib/propertyTeamTemplates';
 import { getTeamScopeConfig, type TeamScope } from '@/features/dashboard/team/lib/teamScopeConfig';
 import type { CustomPropertyRole } from '@/features/dashboard/team/types/propertyTeam';
 
@@ -211,7 +212,10 @@ export function CustomRolesSection({
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 pb-3">
-        <CardTitle className="text-base sm:text-lg">Roles</CardTitle>
+        <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+          Roles
+          <TierBadge feature="customRoles" />
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-5 pt-0">
         {usesTemplates ? (
@@ -239,15 +243,17 @@ export function CustomRolesSection({
               count={customOnly.length}
               action={
                 canManage && customOnly.length > 0 ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-muted-foreground min-h-[44px] shrink-0"
-                    onClick={onCreate}
-                  >
-                    <Plus className="mr-1.5 size-4" aria-hidden />
-                    New role
-                  </Button>
+                  <TierBadgeAnchor feature="customRoles">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground min-h-[44px] shrink-0"
+                      onClick={onCreate}
+                    >
+                      <Plus className="mr-1.5 size-4" aria-hidden />
+                      New role
+                    </Button>
+                  </TierBadgeAnchor>
                 ) : undefined
               }
             >
@@ -257,15 +263,17 @@ export function CustomRolesSection({
                     Duplicate a default role, or create your own.
                   </p>
                   {canManage ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="min-h-[44px] shrink-0"
-                      onClick={onCreate}
-                    >
-                      <Plus className="mr-1.5 size-4" aria-hidden />
-                      New role
-                    </Button>
+                    <TierBadgeAnchor feature="customRoles">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="min-h-[44px] shrink-0"
+                        onClick={onCreate}
+                      >
+                        <Plus className="mr-1.5 size-4" aria-hidden />
+                        New role
+                      </Button>
+                    </TierBadgeAnchor>
                   ) : null}
                 </div>
               ) : (

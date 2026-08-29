@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ORGANIZATIONS_QUERY_KEY } from '@/features/dashboard/org/hooks/useOrganizations';
 import { scopedOrgFunctionsUrl, useOrgScopeKey } from '@/features/dashboard/org/lib/adminApiScope';
 
+import { prepareUpload } from '@/lib/media/prepareUpload';
 import { supabase } from '@/lib/supabase/client';
 
 type UploadOrgSettingsAssetResult = {
@@ -24,7 +25,14 @@ export function useUploadOrgSettingsAsset() {
   const { orgSlug, orgId } = useOrgScopeKey();
 
   return useMutation({
-    mutationFn: async (file: File): Promise<UploadOrgSettingsAssetResult> => {
+    mutationFn: async (rawFile: File): Promise<UploadOrgSettingsAssetResult> => {
+      const prepared = await prepareUpload(rawFile, {
+        imagePreset: 'AVATAR',
+        surface: 'org-settings-logo',
+      });
+      if (prepared.error) throw new Error(prepared.error);
+      const file = prepared.file;
+
       const jwt = await getAdminJwt();
       const ext = file.name.includes('.') ? `.${file.name.split('.').pop()}` : '';
       const storageName = `team_logo${ext}`;

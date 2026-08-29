@@ -2263,6 +2263,11 @@ html.guest-embed-preview *::-webkit-scrollbar {
 }
 
 @layer utilities {
+  /** Page Editor / embed scrollport lock while showcase mobile menu is open. */
+  [data-showcase-scroll-lock] {
+    overflow-y: hidden !important;
+  }
+
   .showcase-scope {
     --showcase-display-scale: 1;
     --showcase-body-scale: 1;

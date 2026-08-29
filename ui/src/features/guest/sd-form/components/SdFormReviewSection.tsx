@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { useMutation } from '@tanstack/react-query';
-import { Loader2, Star } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { GuestReviewFeedbackPills } from '@/features/guest/sd-form/components/GuestReviewFeedbackPills';
@@ -10,6 +10,7 @@ import {
   guestReviewMediaFiles,
   type GuestReviewMediaItem,
 } from '@/features/guest/sd-form/components/GuestReviewMediaUpload';
+import { GuestReviewStarRating } from '@/features/guest/sd-form/components/GuestReviewStarRating';
 import { submitGuestReview } from '@/features/guest/sd-form/lib/api';
 import { filterGuestReviewTagsForRating } from '@/features/guest/sd-form/lib/guestReviewFeedbackTags';
 
@@ -17,7 +18,6 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
-import { cn } from '@/lib/utils';
 
 export interface SdFormReviewSectionProps {
   bookingId: string;
@@ -34,7 +34,6 @@ export function SdFormReviewSection({
   const [reviewText, setReviewText] = useState('');
   const [feedbackTagIds, setFeedbackTagIds] = useState<string[]>([]);
   const [mediaItems, setMediaItems] = useState<GuestReviewMediaItem[]>([]);
-  const [hoverRating, setHoverRating] = useState(0);
 
   useEffect(() => {
     setFeedbackTagIds((prev) => filterGuestReviewTagsForRating(starRating, prev));
@@ -59,63 +58,17 @@ export function SdFormReviewSection({
     },
   });
 
-  const displayRating = hoverRating || starRating;
-
   return (
     <section aria-labelledby="sd-review-heading" className="space-y-6">
-      <div className="border-primary/10 from-primary/[0.04] via-card to-muted/15 flex flex-col items-center gap-4 rounded-xl border bg-gradient-to-b px-4 py-6 sm:px-6">
-        <div className="space-y-1 text-center">
-          <p
-            id="sd-review-heading"
-            className="text-muted-foreground text-xs font-bold uppercase tracking-wider"
-          >
-            Rating
-          </p>
-          {starRating > 0 ? (
-            <p className="text-foreground text-sm font-semibold tabular-nums" aria-live="polite">
-              {starRating} of 5
-            </p>
-          ) : null}
-        </div>
+      <h2 id="sd-review-heading" className="sr-only">
+        Leave a review
+      </h2>
 
-        <div
-          className="flex items-center justify-center gap-0.5 sm:gap-1"
-          role="radiogroup"
-          aria-label="Star rating"
-        >
-          {[1, 2, 3, 4, 5].map((value) => {
-            const filled = value <= displayRating;
-            return (
-              <button
-                key={value}
-                type="button"
-                role="radio"
-                aria-checked={starRating === value}
-                className={cn(
-                  'flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl transition-transform duration-150 motion-reduce:transition-none',
-                  'hover:scale-110 active:scale-95 motion-reduce:transform-none',
-                  'focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2'
-                )}
-                aria-label={`${value} star${value === 1 ? '' : 's'}`}
-                onMouseEnter={() => setHoverRating(value)}
-                onMouseLeave={() => setHoverRating(0)}
-                onFocus={() => setHoverRating(value)}
-                onBlur={() => setHoverRating(0)}
-                onClick={() => setStarRating(value)}
-              >
-                <Star
-                  className={cn(
-                    'size-8 transition-colors duration-150 sm:size-9',
-                    filled ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/35'
-                  )}
-                  strokeWidth={filled ? 0 : 1.5}
-                  aria-hidden
-                />
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <GuestReviewStarRating
+        value={starRating}
+        onChange={setStarRating}
+        disabled={submitMut.isPending}
+      />
 
       <GuestReviewFeedbackPills
         starRating={starRating}

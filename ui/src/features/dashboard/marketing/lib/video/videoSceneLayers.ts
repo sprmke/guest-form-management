@@ -7,7 +7,7 @@ import type {
   VideoSceneTextFields,
   VideoTextStyle,
 } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
-import { mergeSceneTextsForKind } from '@/features/dashboard/marketing/lib/video/videoSceneKindChange';
+import { mergeSceneTextsForKind } from '@/features/dashboard/marketing/lib/video/videoSceneTexts';
 import type { VideoTypographyContext } from '@/features/dashboard/marketing/lib/video/videoTemplateTypography';
 import {
   defaultTextLayoutForSceneKind,

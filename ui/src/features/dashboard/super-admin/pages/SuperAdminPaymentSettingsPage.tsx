@@ -7,7 +7,6 @@ import {
   useUpdatePlatformPaymentSettings,
 } from '@/features/dashboard/super-admin/hooks/usePlatformPaymentSettings';
 
-
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

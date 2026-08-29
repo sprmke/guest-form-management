@@ -1,5 +1,6 @@
 import { Mail, UserPlus, X } from 'lucide-react';
 
+import { TeamInviteTierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
 import { RoleBadge } from '@/features/dashboard/team/components/RoleBadge';
 import { formatTeamInvitationDate } from '@/features/dashboard/team/lib/formatTeamInvitationDate';
 import type { TeamScope } from '@/features/dashboard/team/lib/teamScopeConfig';
@@ -21,6 +22,8 @@ type Props = {
   resendPending?: boolean;
   cancelPending?: boolean;
   canInvite?: boolean;
+  /** From `teamInviteCapacity.canInvite` — drives the corner plan pill. */
+  canInviteByPlan?: boolean;
   canResend?: boolean;
   canCancel?: boolean;
 };
@@ -35,6 +38,7 @@ export function TeamInvitationsTab({
   resendPending = false,
   cancelPending = false,
   canInvite = false,
+  canInviteByPlan,
   canResend,
   canCancel,
 }: Props) {
@@ -102,10 +106,12 @@ export function TeamInvitationsTab({
             <Mail className="text-muted-foreground mx-auto size-11" aria-hidden />
             <h3 className="mt-4 text-lg font-semibold">No pending invitations</h3>
             {canInvite ? (
-              <Button className="mt-4 min-h-[44px]" onClick={onInvite}>
-                <UserPlus className="mr-2 size-4" aria-hidden />
-                Invite Member
-              </Button>
+              <TeamInviteTierBadgeAnchor canInvite={canInviteByPlan} className="mt-4">
+                <Button className="min-h-[44px]" onClick={onInvite}>
+                  <UserPlus className="mr-2 size-4" aria-hidden />
+                  Invite Member
+                </Button>
+              </TeamInviteTierBadgeAnchor>
             ) : null}
           </div>
         )}

@@ -7,8 +7,8 @@ import { SettingsField } from '@/features/dashboard/org/components/property-sett
 
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { BRAND_COLOR_PRESETS } from '@/lib/theme/brandColorPresets';
 import { DEFAULT_ORG_BRAND_COLOR } from '@/lib/theme/brandColor';
+import { BRAND_COLOR_PRESETS } from '@/lib/theme/brandColorPresets';
 import { extractBrandAccentFromPhotos } from '@/lib/theme/photoBrandColor';
 import { cn } from '@/lib/utils';
 

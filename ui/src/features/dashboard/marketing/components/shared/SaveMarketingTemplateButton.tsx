@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { Save } from 'lucide-react';
 
+import { useMarketingPermissions } from '@/features/dashboard/marketing/hooks/useMarketingPermissions';
 import {
   useSaveMarketingTemplate,
   useUpdateMarketingTemplate,
@@ -10,7 +11,6 @@ import {
 import { TierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
-import { useMarketingPermissions } from '@/features/dashboard/marketing/hooks/useMarketingPermissions';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

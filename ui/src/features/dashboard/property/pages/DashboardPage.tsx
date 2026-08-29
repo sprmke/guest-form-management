@@ -8,8 +8,6 @@ import {
   useSyncDateRangeWithQuery,
 } from '@/features/dashboard/bookings/hooks/useDateNavigation';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
-import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
-import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
 import { usePropertyRejectedExternalReviewsAttentionItem } from '@/features/dashboard/org/hooks/usePropertyRejectedExternalReviewsAttentionItem';
 import { DashboardFinanceCalendarSection } from '@/features/dashboard/property/components/DashboardFinanceCalendarSection';
 import { DashboardStatCards } from '@/features/dashboard/property/components/DashboardStatCards';
@@ -21,6 +19,8 @@ import {
   writeDashboardPeriodParams,
 } from '@/features/dashboard/property/lib/dashboardPeriod';
 import type { DashboardAttentionItem } from '@/features/dashboard/property/lib/types';
+import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
+import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
 
 import { FloatingPanel, FloatingToolbar } from '@/components/mobile/FloatingPanel';
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';

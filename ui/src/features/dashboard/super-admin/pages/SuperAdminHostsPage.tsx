@@ -1,7 +1,5 @@
 import { useCallback, useState } from 'react';
 
-import { useSearchParams } from 'react-router-dom';
-
 import { AdminListPagination } from '@/features/dashboard/bookings/components/AdminListToolbar';
 import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import { SuperAdminPageLoading } from '@/features/dashboard/super-admin/components/shared/SuperAdminPageLoading';
@@ -15,6 +13,7 @@ import {
   SuperAdminHostsResultsMeta,
   SuperAdminHostsToolbar,
 } from '@/features/dashboard/super-admin/components/super-admin-hosts/SuperAdminHostsToolbar';
+import { useAdminListPaginationParams } from '@/features/dashboard/super-admin/hooks/useAdminListPaginationParams';
 import { useHosts } from '@/features/dashboard/super-admin/hooks/useHosts';
 import {
   superAdminHostsHasActiveFilters,
@@ -24,18 +23,11 @@ import {
 
 import { useAdminMobileGridViewGuard } from '@/hooks/useAdminMobileGridViewGuard';
 import { useIsBelowLg } from '@/hooks/useMediaQuery';
-import {
-  ADMIN_DEFAULT_PAGE_SIZE,
-  buildPageItems,
-  normalizeAdminPageLimit,
-} from '@/lib/table/pagination';
+import { buildPageItems } from '@/lib/table/pagination';
 
 export function SuperAdminHostsPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const page = Number(searchParams.get('page') ?? '1');
-  const limit = normalizeAdminPageLimit(
-    Number(searchParams.get('limit') ?? String(ADMIN_DEFAULT_PAGE_SIZE))
-  );
+  const { searchParams, setSearchParams, page, limit, setPage, setLimit } =
+    useAdminListPaginationParams();
   const filters: SuperAdminHostsFilters = { search: searchParams.get('q') ?? '' };
 
   const { data, isLoading, isFetching, error } = useHosts({ page, limit, q: filters.search });
@@ -52,35 +44,6 @@ export function SuperAdminHostsPage() {
 
   const pageCount = Math.max(1, Math.ceil(total / limit));
   const pageItems = buildPageItems(page, pageCount);
-
-  const setPage = useCallback(
-    (nextPage: number) =>
-      setSearchParams(
-        (prev) => {
-          const sp = new URLSearchParams(prev);
-          if (nextPage <= 1) sp.delete('page');
-          else sp.set('page', String(nextPage));
-          return sp;
-        },
-        { replace: true }
-      ),
-    [setSearchParams]
-  );
-
-  const setLimit = useCallback(
-    (nextLimit: number) =>
-      setSearchParams(
-        (prev) => {
-          const sp = new URLSearchParams(prev);
-          if (nextLimit === ADMIN_DEFAULT_PAGE_SIZE) sp.delete('limit');
-          else sp.set('limit', String(nextLimit));
-          sp.delete('page');
-          return sp;
-        },
-        { replace: true }
-      ),
-    [setSearchParams]
-  );
 
   const handleSearchChange = useCallback(
     (search: string) =>

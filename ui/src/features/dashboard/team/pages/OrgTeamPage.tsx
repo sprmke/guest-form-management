@@ -67,6 +67,8 @@ export function OrgTeamPage() {
   const canManageRoles = hasOrgPermission(orgAccess?.permissions, 'org.team.roles:edit');
   const canInvite = hasOrgPermission(orgAccess?.permissions, 'org.team.invitations:add');
   useFeatureGate('teamManagement');
+  const { canUse: canUseCustomRoles, isLoading: customRolesLoading } =
+    useFeatureGate('customRoles');
   const { open: openUpgradeModal } = useUpgradeModal();
   const canInviteByPlan = data?.teamInviteCapacity?.canInvite ?? false;
   const teamInviteCapacityKnown = data?.teamInviteCapacity?.canInvite;
@@ -175,6 +177,10 @@ export function OrgTeamPage() {
   };
 
   const openCreateCustomRole = () => {
+    if (!canUseCustomRoles) {
+      if (!customRolesLoading) openUpgradeModal('customRoles');
+      return;
+    }
     setCustomRoleFormMode('create');
     setEditingCustomRoleId(null);
     setCustomRoleName('');
@@ -183,6 +189,10 @@ export function OrgTeamPage() {
   };
 
   const openEditCustomRole = (role: CustomOrgRole) => {
+    if (!canUseCustomRoles) {
+      if (!customRolesLoading) openUpgradeModal('customRoles');
+      return;
+    }
     setCustomRoleFormMode('edit');
     setEditingCustomRoleId(role.id);
     setCustomRoleName(role.name);
@@ -191,6 +201,10 @@ export function OrgTeamPage() {
   };
 
   const openDuplicateCustomRole = (role: CustomOrgRole) => {
+    if (!canUseCustomRoles) {
+      if (!customRolesLoading) openUpgradeModal('customRoles');
+      return;
+    }
     setCustomRoleFormMode('create');
     setEditingCustomRoleId(null);
     setCustomRoleName(`${role.name} copy`);
@@ -219,6 +233,10 @@ export function OrgTeamPage() {
   };
 
   const handleDeleteCustomRole = async (role: CustomOrgRole) => {
+    if (!canUseCustomRoles) {
+      if (!customRolesLoading) openUpgradeModal('customRoles');
+      return;
+    }
     if (memberCountByRole(role.id) > 0) {
       toast.error('Remove members from this role before deleting');
       return;
@@ -339,6 +357,7 @@ export function OrgTeamPage() {
                   }}
                   onInvite={openInviteDialog}
                   canInvite={canInvite}
+                  canInviteByPlan={teamInviteCapacityKnown}
                   canManage={canManage}
                 />
               ) : null}
@@ -352,6 +371,7 @@ export function OrgTeamPage() {
                   resendPending={resendInvitation.isPending}
                   cancelPending={cancelInvitation.isPending}
                   canInvite={canInvite}
+                  canInviteByPlan={teamInviteCapacityKnown}
                   canManage={canManage}
                 />
               ) : null}

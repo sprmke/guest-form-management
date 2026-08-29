@@ -1,21 +1,14 @@
 import { resolveOrgBrandHex } from '@/lib/theme/brandColor';
+import { clampChannel, parseHexRgb as parseHexRgbRaw } from '@/lib/theme/colorConvert';
 
 export type Hsv = { h: number; s: number; v: number };
 
 function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
+  return clampChannel(value, min, max);
 }
 
 function parseHexRgb(hex: string): { r: number; g: number; b: number } | null {
-  const normalized = resolveOrgBrandHex(hex);
-  const match = /^#([0-9a-f]{6})$/i.exec(normalized);
-  if (!match) return null;
-  const raw = match[1]!;
-  return {
-    r: Number.parseInt(raw.slice(0, 2), 16),
-    g: Number.parseInt(raw.slice(2, 4), 16),
-    b: Number.parseInt(raw.slice(4, 6), 16),
-  };
+  return parseHexRgbRaw(resolveOrgBrandHex(hex));
 }
 
 export function rgbToHsv(r: number, g: number, b: number): Hsv {

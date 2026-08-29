@@ -8,6 +8,7 @@ import type {
   DashboardAttentionItem,
   DashboardRecentBooking,
 } from '@/features/dashboard/property/lib/types';
+import { resolvePropertyDashboardHref } from '@/features/dashboard/property/lib/resolvePropertyDashboardHref';
 
 import { AdminSurfaceCardHeader } from '@/components/shared/AdminSurfaceCardHeader';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -190,7 +191,7 @@ export function DashboardAttentionCard({
                 return (
                   <li key={item.id}>
                     <Link
-                      to={item.href}
+                      to={resolvePropertyDashboardHref(item.href, orgSlug, propertySlug)}
                       className="hover:bg-muted/35 group flex min-h-11 items-center gap-2.5 px-3 py-2 transition-colors"
                     >
                       <span className={cn('size-2 shrink-0 rounded-full', style.dot)} aria-hidden />

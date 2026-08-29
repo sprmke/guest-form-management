@@ -14,7 +14,6 @@ import { SlidingTabs } from '@/features/dashboard/marketing/components/shared/Ma
 import { MarketingStudioShell } from '@/features/dashboard/marketing/components/shared/MarketingStudioShell';
 import { VideoEditor } from '@/features/dashboard/marketing/components/video-editor/VideoEditor';
 import type { VideoExportPayload } from '@/features/dashboard/marketing/components/video-editor/VideoEditor';
-import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
 
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { SlidingTabsContent } from '@/components/ui/sliding-tabs';
@@ -49,7 +48,6 @@ export function MarketingStudioPage() {
             title="Marketing"
             subtitle="Build calendars, designs, and promo videos."
             titleId="marketing-heading"
-            badge={<TierBadge feature="marketingStudio" />}
           >
             <MarketingStudioShell tabs={<MarketingStudioModeTabs />}>
               <SlidingTabsContent value="calendar" className="mt-0 flex min-h-0 flex-1 flex-col">

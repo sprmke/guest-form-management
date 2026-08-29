@@ -8,13 +8,14 @@ export type FeatureGateCopy = {
 
 export const FEATURE_GATE_COPY: Record<PlanFeatureKey, FeatureGateCopy> = {
   marketingStudio: {
-    title: 'Template Management',
-    description: 'Available on Starter and above.',
+    title: 'Marketing Content Studio',
+    description:
+      'Watermark-free editing, downloads, and publishing are available on Pro and above.',
     ctaLabel: 'View plans',
   },
   marketingPublishLimitPerGroup: {
-    title: 'Publish limit reached',
-    description: 'Upgrade for more Marketing Studio publishes.',
+    title: 'Publish in Meta platforms',
+    description: 'Publishing to Facebook and Instagram is available on Business and above.',
     ctaLabel: 'View plans',
   },
   aiMarketingGeneration: {
@@ -51,7 +52,7 @@ export const FEATURE_GATE_COPY: Record<PlanFeatureKey, FeatureGateCopy> = {
   customPages: {
     title: 'Public pages',
     description:
-      'Editing your listing and stay guide is free on every plan — this key no longer gates anything.',
+      'The Public Pages gallery and Page Editor are available on every plan. Saving changes requires Pro and above.',
     ctaLabel: 'View plans',
   },
   telegramNotifications: {
@@ -118,18 +119,32 @@ export const FEATURE_GATE_COPY: Record<PlanFeatureKey, FeatureGateCopy> = {
     ctaLabel: 'View plans',
   },
   publicPagesAutosave: {
-    title: 'Autosave',
-    description: 'Available on Starter and above.',
+    title: 'Save public pages',
+    description:
+      'Saving Public Pages changes (listing, Stay Guide, Showcase) is available on Pro and above. You can still open the editor on Free.',
     ctaLabel: 'View plans',
   },
   propertyShowcase: {
     title: 'Property showcase',
-    description: 'Animated showcase landing pages are available on Growth and above.',
+    description:
+      'Publishing a live Showcase page for guests is available on Pro and above. You can still open the Showcase editor on Free.',
     ctaLabel: 'View plans',
   },
   bookingImport: {
     title: 'AI booking import',
     description: 'Importing bookings from CSV or Excel is available on Starter and above.',
+    ctaLabel: 'View plans',
+  },
+  calendarSync: {
+    title: 'Airbnb & OTA calendar sync',
+    description:
+      'Two-way calendar sync with Airbnb, Booking.com, and VRBO — import their reservations and export your booked dates — is available on Pro and above.',
+    ctaLabel: 'View plans',
+  },
+  customRoles: {
+    title: 'Custom team roles',
+    description:
+      'Creating and editing custom roles is available on Starter and above. Default roles stay available on every plan.',
     ctaLabel: 'View plans',
   },
 };

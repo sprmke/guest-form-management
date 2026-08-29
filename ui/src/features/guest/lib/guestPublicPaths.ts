@@ -288,6 +288,67 @@ export function guestParkingRequestStatusPath(bookingId: string): string {
   return `/parkings/requests/${encodeURIComponent(id)}`;
 }
 
+/** Query param that pre-binds a property stay for marketplace linking (Phase pay-parking connect). */
+export const GUEST_PARKING_LINK_STAY_PARAM = 'linkStay';
+
+export type GuestParkingFindPathOptions = {
+  /** Property booking id to auto-select as the linked stay after guest auth. */
+  bookingId: string;
+  /** Optional city slug → `/parkings/in/:location` instead of `/parkings`. */
+  locationSlug?: string | null;
+};
+
+/**
+ * Stay-scoped marketplace entry — browse/search with `linkStay` so Reserve/form
+ * can auto-select the property booking. Prefer this over legacy pay-parking URLs.
+ */
+export function guestParkingFindPath(options: GuestParkingFindPathOptions): string {
+  const bookingId = options.bookingId.trim();
+  if (!bookingId) return '/parkings';
+  const params = new URLSearchParams();
+  params.set(GUEST_PARKING_LINK_STAY_PARAM, bookingId);
+  const locationSlug = (options.locationSlug ?? '').trim().toLowerCase();
+  const base =
+    locationSlug && locationSlug !== 'other'
+      ? `/parkings/in/${encodeURIComponent(locationSlug)}`
+      : '/parkings';
+  return withQuery(base, params);
+}
+
+export function absoluteGuestParkingFindUrl(options: GuestParkingFindPathOptions): string {
+  return absoluteGuestPath(guestParkingFindPath(options));
+}
+
+export type GuestParkingOwnDefaultPathOptions = {
+  parkingSlug: string;
+  bookingId: string;
+  /** YYYY-MM-DD preferred. */
+  checkInDate?: string | null;
+  checkOutDate?: string | null;
+};
+
+/** Pinned org-owned slot form with stay link + optional stay dates prefilled. */
+export function guestParkingOwnDefaultPath(options: GuestParkingOwnDefaultPathOptions): string {
+  const slug = options.parkingSlug.trim();
+  const bookingId = options.bookingId.trim();
+  if (!slug) return bookingId ? guestParkingFindPath({ bookingId }) : '/parkings';
+  const params = new URLSearchParams();
+  if (bookingId) params.set(GUEST_PARKING_LINK_STAY_PARAM, bookingId);
+  const inDate = (options.checkInDate ?? '').trim();
+  const outDate = (options.checkOutDate ?? '').trim();
+  if (inDate && outDate) {
+    params.set('checkInDate', inDate);
+    params.set('checkOutDate', outDate);
+  }
+  return guestParkingFormPath(slug, params);
+}
+
+export function absoluteGuestParkingOwnDefaultUrl(
+  options: GuestParkingOwnDefaultPathOptions
+): string {
+  return absoluteGuestPath(guestParkingOwnDefaultPath(options));
+}
+
 export function absoluteGuestFormUrl(propertySlug: string): string {
   return absoluteGuestPath(guestFormPath(propertySlug));
 }

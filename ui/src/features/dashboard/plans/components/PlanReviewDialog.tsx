@@ -214,8 +214,10 @@ export function PlanReviewDialog({
     <ResponsiveModal open={open} onOpenChange={onOpenChange}>
       <ResponsiveModalContent
         sheetLayout="split"
+        /* Above other dialogs (e.g. Generate calendar) so the modal-scrim blurs them too. */
+        overlayClassName="z-[110]"
         className={cn(
-          'flex max-h-[min(90dvh,40rem)] w-[min(calc(100vw-1.5rem),28rem)] max-w-none flex-col gap-0 overflow-hidden p-0',
+          'z-[111] flex max-h-[min(90dvh,40rem)] w-[min(calc(100vw-1.5rem),28rem)] max-w-none flex-col gap-0 overflow-hidden p-0',
           'sm:max-w-[28rem] sm:p-0'
         )}
         aria-describedby="plan-review-description"

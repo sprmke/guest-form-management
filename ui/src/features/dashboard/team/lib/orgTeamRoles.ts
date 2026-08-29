@@ -1,4 +1,3 @@
-import type { CustomPropertyRole } from '@/features/dashboard/team/types/propertyTeam';
 import {
   ORG_ROLE_PERMISSIONS,
   ORG_TEAM_PERMISSIONS,
@@ -9,6 +8,7 @@ import {
   SEEDED_ORG_TEMPLATE_NAMES,
   sortOrgTemplatesForDisplay,
 } from '@/features/dashboard/team/lib/orgTeamTemplates';
+import type { CustomPropertyRole } from '@/features/dashboard/team/types/propertyTeam';
 
 export const ORG_CUSTOM_ROLE_COLOR = 'bg-violet-500';
 export const ORG_SEEDED_TEMPLATE_COLOR = 'bg-sky-500';

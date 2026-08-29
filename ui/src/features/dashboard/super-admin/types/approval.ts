@@ -90,6 +90,7 @@ export type ExternalReviewApprovalSummary = {
   reviewText: string;
   reviewerName: string;
   starRating: number | null;
+  feedbackTags: string[];
   moderationStatus: ExternalReviewModerationStatus;
   submittedAt: string | null;
   imageUrl: string | null;

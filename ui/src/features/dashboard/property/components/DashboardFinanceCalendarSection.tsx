@@ -19,6 +19,7 @@ import { useFinanceLineItems } from '@/features/dashboard/finance/hooks/useFinan
 import { buildFinanceChartData } from '@/features/dashboard/finance/lib/financeChartData';
 import { FINANCE_CHART_BOOKINGS_LIMIT } from '@/features/dashboard/finance/lib/financePeriod';
 import { DEFAULT_FINANCE_QUERY, type FinanceQuery } from '@/features/dashboard/finance/lib/types';
+import { propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { DashboardAttentionCard } from '@/features/dashboard/property/components/DashboardAttentionCard';
 import { DashboardMaintenanceRemindersCard } from '@/features/dashboard/property/components/DashboardMaintenanceRemindersCard';
 import { DashboardTransactionsDueCard } from '@/features/dashboard/property/components/DashboardTransactionsDueCard';
@@ -115,7 +116,8 @@ export function DashboardFinanceCalendarSection({
     [datePreset, rangeFrom, rangeTo]
   );
 
-  const financeHref = `/finance?from=${from}&to=${to}`;
+  const bookingsHref = `${propertySectionPath(orgSlug, propertySlug, 'bookings')}?from=${from}&to=${to}`;
+  const financeHref = `${propertySectionPath(orgSlug, propertySlug, 'finance')}?from=${from}&to=${to}`;
 
   return (
     <div className="grid min-w-0 items-stretch gap-2.5 sm:gap-3 lg:grid-cols-2 lg:gap-4">
@@ -154,7 +156,7 @@ export function DashboardFinanceCalendarSection({
         recentBookings={recentBookings}
         orgSlug={orgSlug}
         propertySlug={propertySlug}
-        viewAllHref={`/bookings?from=${from}&to=${to}`}
+        viewAllHref={bookingsHref}
         rangeLabel={rangeLabel}
         isLoading={attentionLoading}
       />

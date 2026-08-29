@@ -11,12 +11,14 @@ import { usePublicPropertyDetail } from '@/features/guest/marketing/properties/h
 import { fetchInboxConnections } from '@/features/dashboard/inbox/lib/inboxApi';
 import type { InboxConnection } from '@/features/dashboard/inbox/types/inbox';
 import { useMarketingBookedDates } from '@/features/dashboard/marketing/hooks/useMarketingBookedDates';
+import { useMarketingPermissions } from '@/features/dashboard/marketing/hooks/useMarketingPermissions';
 import { availabilityTextForMonth } from '@/features/dashboard/marketing/lib/marketingBookedDates';
 import {
   publishBatchToMeta,
   publishToMetaRequest,
   useGenerateMarketingCaption,
 } from '@/features/dashboard/marketing/lib/marketingPublishApi';
+import { MARKETING_PUBLISH_META_LABEL } from '@/features/dashboard/marketing/lib/marketingStudioCopy';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import {
   useOrgIdParam,
@@ -25,9 +27,9 @@ import {
 } from '@/features/dashboard/org/lib/adminApiScope';
 import { isAiQuotaError } from '@/features/dashboard/org/lib/aiQuotaToast';
 import { propertyInboxPath } from '@/features/dashboard/org/lib/tenantPaths';
+import { TierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
-import { useMarketingPermissions } from '@/features/dashboard/marketing/hooks/useMarketingPermissions';
 
 import { ListRowsSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
@@ -100,8 +102,9 @@ export function PublishDialog({ open, onOpenChange, media }: Props) {
   const { data: publicProperty } = usePublicPropertyDetail(property.slug);
   const { data: bookedDates } = useMarketingBookedDates();
   const { canPublish: canPublishPermission } = useMarketingPermissions();
-  const { canUse: canPublishMarketing, isLoading: entitlementsLoading } =
-    useFeatureGate('marketingStudio');
+  const { canUse: canPublishMarketing, isLoading: entitlementsLoading } = useFeatureGate(
+    'marketingPublishLimitPerGroup'
+  );
   const { open: openUpgradeModal } = useUpgradeModal();
 
   const connectionsQuery = useQuery({
@@ -152,7 +155,7 @@ export function PublishDialog({ open, onOpenChange, media }: Props) {
     if (!canPublishPermission) return;
 
     if (!canPublishMarketing) {
-      if (!entitlementsLoading) openUpgradeModal('marketingStudio');
+      if (!entitlementsLoading) openUpgradeModal('marketingPublishLimitPerGroup');
       return;
     }
 
@@ -196,7 +199,7 @@ export function PublishDialog({ open, onOpenChange, media }: Props) {
       onOpenChange(false);
     } catch (error) {
       if (isAiQuotaError(error)) {
-        openUpgradeModal(error.feature ?? 'marketingStudio');
+        openUpgradeModal(error.feature ?? 'marketingPublishLimitPerGroup');
         return;
       }
       toast.error((error as Error).message || 'Publish failed');
@@ -212,7 +215,7 @@ export function PublishDialog({ open, onOpenChange, media }: Props) {
         className="flex max-h-[min(90dvh,36rem)] max-w-[min(calc(100vw-1.5rem),28rem)] flex-col gap-0 overflow-hidden p-0"
       >
         <ResponsiveModalHeader className="shrink-0 px-6 pt-6">
-          <ResponsiveModalTitle>Publish</ResponsiveModalTitle>
+          <ResponsiveModalTitle>{MARKETING_PUBLISH_META_LABEL}</ResponsiveModalTitle>
         </ResponsiveModalHeader>
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-4">
@@ -356,25 +359,27 @@ export function PublishDialog({ open, onOpenChange, media }: Props) {
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button
-            type="button"
-            className="gap-2"
-            disabled={
-              !media ||
-              connectionIds.length === 0 ||
-              publishing ||
-              channels.length === 0 ||
-              connectionsQuery.isLoading
-            }
-            onClick={() => void handlePublish()}
-          >
-            {publishing ? (
-              <Loader2 className="size-4 animate-spin" aria-hidden />
-            ) : (
-              <Send className="size-4" aria-hidden />
-            )}
-            Publish
-          </Button>
+          <TierBadgeAnchor feature="marketingPublishLimitPerGroup">
+            <Button
+              type="button"
+              className="gap-2"
+              disabled={
+                !media ||
+                connectionIds.length === 0 ||
+                publishing ||
+                channels.length === 0 ||
+                connectionsQuery.isLoading
+              }
+              onClick={() => void handlePublish()}
+            >
+              {publishing ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+              ) : (
+                <Send className="size-4" aria-hidden />
+              )}
+              {MARKETING_PUBLISH_META_LABEL}
+            </Button>
+          </TierBadgeAnchor>
         </ResponsiveModalFooter>
       </ResponsiveModalContent>
     </ResponsiveModal>

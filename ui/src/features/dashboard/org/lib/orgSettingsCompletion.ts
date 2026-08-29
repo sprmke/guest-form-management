@@ -21,6 +21,8 @@ export type OrgSettingsCompletionInput = {
   profile: OrgSettingsDraft;
   operator: OrgOperatorSettingsFormValues;
   nameUnavailable?: boolean;
+  /** Custom org logo uploaded (not platform default). */
+  hasOrgLogo?: boolean;
 };
 
 export type OrgSettingsCompletionResult = {
@@ -34,7 +36,7 @@ export type OrgSettingsCompletionResult = {
 export function computeOrgSettingsCompletion(
   input: OrgSettingsCompletionInput
 ): OrgSettingsCompletionResult {
-  const { profile, operator, nameUnavailable } = input;
+  const { profile, operator, nameUnavailable, hasOrgLogo = false } = input;
   const fieldErrors: Record<string, string> = {};
   const issueSectionIds: OrgSettingsSectionId[] = [];
 
@@ -42,6 +44,10 @@ export function computeOrgSettingsCompletion(
     if (!fieldErrors[fieldId]) fieldErrors[fieldId] = message;
     if (!issueSectionIds.includes(sectionId)) issueSectionIds.push(sectionId);
   };
+
+  if (!hasOrgLogo) {
+    addIssue('org-logo', 'Upload an organization logo', 'basic');
+  }
 
   const name = profile.name.trim();
   if (!name) {

@@ -2,8 +2,8 @@ import { useMemo } from 'react';
 
 import { useNavigate } from 'react-router-dom';
 
-import { usePublicPricingPlans } from '@/features/guest/marketing/for-hosts/hooks/usePublicPricingPlans';
 import { publicContactPath } from '@/features/guest/marketing/contact/lib/publicContactParams';
+import { usePublicPricingPlans } from '@/features/guest/marketing/for-hosts/hooks/usePublicPricingPlans';
 import { MarketingPublicPageContent } from '@/features/guest/marketing/shared/components/MarketingPublicPageContent';
 import { MarketingPublicPageHero } from '@/features/guest/marketing/shared/components/MarketingPublicPageHero';
 

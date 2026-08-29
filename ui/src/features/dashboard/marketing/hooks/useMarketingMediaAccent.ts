@@ -1,8 +1,10 @@
 import { useMemo } from 'react';
 
-import { resolveMarketingAccentHex } from '@/features/dashboard/marketing/lib/marketingAiPhotoPalette';
 import { useShowcaseMediaPalette } from '@/features/guest/marketing/showcase/hooks/useShowcaseMediaPalette';
 import type { ShowcaseMediaPalette } from '@/features/guest/marketing/showcase/lib/showcaseMediaPalette';
+
+import { resolveMarketingAccentHex } from '@/features/dashboard/marketing/lib/marketingAiPhotoPalette';
+
 import { resolveOrgBrandHex } from '@/lib/theme/brandColor';
 
 export type MarketingMediaAccent = {

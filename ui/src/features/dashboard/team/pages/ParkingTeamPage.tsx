@@ -3,6 +3,9 @@ import { useCallback, useMemo, useState } from 'react';
 import { Mail, Shield, UserPlus, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { TeamInviteTierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 import { CustomRoleFormDialog } from '@/features/dashboard/team/components/CustomRoleFormDialog';
 import { EditMemberContactDialog } from '@/features/dashboard/team/components/EditMemberContactDialog';
 import {
@@ -68,6 +71,9 @@ export function ParkingTeamPage() {
   const members = data?.members ?? [];
   const invitations = data?.invitations ?? [];
   const customRoles = data?.customRoles ?? [];
+  const { canUse: canUseCustomRoles, isLoading: customRolesLoading } =
+    useFeatureGate('customRoles');
+  const { open: openUpgradeModal } = useUpgradeModal();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState('all');
@@ -218,6 +224,10 @@ export function ParkingTeamPage() {
   };
 
   const openCreateCustomRole = () => {
+    if (!canUseCustomRoles) {
+      if (!customRolesLoading) openUpgradeModal('customRoles');
+      return;
+    }
     setCustomRoleFormMode('create');
     setEditingCustomRoleId(null);
     setCustomRoleName('');
@@ -226,6 +236,10 @@ export function ParkingTeamPage() {
   };
 
   const openEditCustomRole = (role: CustomPropertyRole) => {
+    if (!canUseCustomRoles) {
+      if (!customRolesLoading) openUpgradeModal('customRoles');
+      return;
+    }
     setCustomRoleFormMode('edit');
     setEditingCustomRoleId(role.id);
     setCustomRoleName(role.name);
@@ -257,6 +271,10 @@ export function ParkingTeamPage() {
   };
 
   const handleDeleteCustomRole = async (role: CustomPropertyRole) => {
+    if (!canUseCustomRoles) {
+      if (!customRolesLoading) openUpgradeModal('customRoles');
+      return;
+    }
     if (memberCountByRole(role.id) > 0) {
       toast.error('Remove members from this role before deleting');
       return;
@@ -287,25 +305,29 @@ export function ParkingTeamPage() {
   const customRoleCount = useMemo(() => customRoles.length, [customRoles]);
 
   const inviteAction = canInvite ? (
-    <Button
-      variant="outline"
-      className="min-h-[44px] w-full sm:w-auto"
-      onClick={openInviteDialog}
-      disabled={isLoading || Boolean(error)}
-    >
-      <UserPlus className="mr-2 size-4" aria-hidden />
-      Invite Member
-    </Button>
+    <TeamInviteTierBadgeAnchor className="w-full sm:w-auto">
+      <Button
+        variant="outline"
+        className="min-h-[44px] w-full sm:w-auto"
+        onClick={openInviteDialog}
+        disabled={isLoading || Boolean(error)}
+      >
+        <UserPlus className="mr-2 size-4" aria-hidden />
+        Invite Member
+      </Button>
+    </TeamInviteTierBadgeAnchor>
   ) : undefined;
 
   const heroInviteAction = canInvite ? (
-    <MobileHeroActionButton
-      aria-label="Invite member"
-      onClick={openInviteDialog}
-      disabled={isLoading || Boolean(error)}
-    >
-      <UserPlus className="size-5" aria-hidden />
-    </MobileHeroActionButton>
+    <TeamInviteTierBadgeAnchor>
+      <MobileHeroActionButton
+        aria-label="Invite member"
+        onClick={openInviteDialog}
+        disabled={isLoading || Boolean(error)}
+      >
+        <UserPlus className="size-5" aria-hidden />
+      </MobileHeroActionButton>
+    </TeamInviteTierBadgeAnchor>
   ) : undefined;
 
   return (

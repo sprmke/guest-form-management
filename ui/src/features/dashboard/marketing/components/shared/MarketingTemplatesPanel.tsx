@@ -19,6 +19,7 @@ import {
   useMarketingCatalog,
   type MarketingCatalogTab,
 } from '@/features/dashboard/marketing/hooks/useMarketingCatalog';
+import { useMarketingPermissions } from '@/features/dashboard/marketing/hooks/useMarketingPermissions';
 import {
   deleteMarketingTemplate,
   updateMarketingTemplate,
@@ -40,7 +41,6 @@ import {
 import type { VideoFormat } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { TierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
-import { useMarketingPermissions } from '@/features/dashboard/marketing/hooks/useMarketingPermissions';
 
 import {
   AlertDialog,

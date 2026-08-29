@@ -6,6 +6,7 @@ import type {
 import type { OrgSettingsDraft } from '@/features/dashboard/org/lib/orgSettingsForm';
 
 const ORG_FIELD_SECTIONS: Record<string, OrgSettingsSectionId> = {
+  'org-logo': 'basic',
   'org-name': 'basic',
   'org-tagline': 'basic',
   'org-description': 'basic',
@@ -103,6 +104,9 @@ function orgSectionHasValidationIssue(
   operatorDraft: OrgOperatorSettingsFormValues,
   operatorBaseline: OrgOperatorSettingsFormValues
 ): boolean {
+  // Logo is upload-immediate (not a draft field) but still required for Basic.
+  if (sectionId === 'basic' && completion.fieldErrors['org-logo']) return true;
+
   const dirtyFieldIds = orgDirtyFieldIdsInSection(
     sectionId,
     profileDraft,

@@ -4,11 +4,15 @@
 
 import type { PropertyMediaItem } from '@/features/dashboard/org/lib/propertySettingsConstants';
 
+import { UPLOAD_MAX_BYTES } from '@/lib/media/uploadLimits';
+
+
 export const MAX_PROPERTY_IMAGES = 9;
 export const MAX_PROPERTY_VIDEOS = 1;
 
-export const MAX_PROPERTY_IMAGE_BYTES = 5 * 1024 * 1024;
-export const MAX_PROPERTY_VIDEO_BYTES = 25 * 1024 * 1024;
+// Unified ceilings — images are compressed client-side well below this.
+export const MAX_PROPERTY_IMAGE_BYTES = UPLOAD_MAX_BYTES.image;
+export const MAX_PROPERTY_VIDEO_BYTES = UPLOAD_MAX_BYTES.video;
 
 export const ACCEPT_PROPERTY_IMAGE_INPUT =
   'image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,image/bmp,image/tiff,image/avif';

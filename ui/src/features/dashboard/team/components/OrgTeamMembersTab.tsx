@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 
 import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
+import { TeamInviteTierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { OrgRoleBadge } from '@/features/dashboard/team/components/OrgRoleBadge';
 import { TeamMemberStatusBadge } from '@/features/dashboard/team/components/TeamMemberStatusBadge';
@@ -63,6 +64,8 @@ type Props = {
   onRemove: (member: OrgTeamMember) => void;
   onInvite: () => void;
   canInvite?: boolean;
+  /** From `teamInviteCapacity.canInvite` — drives the corner plan pill. */
+  canInviteByPlan?: boolean;
   canManage?: boolean;
 };
 
@@ -87,6 +90,7 @@ export function OrgTeamMembersTab({
   onRemove,
   onInvite,
   canInvite = true,
+  canInviteByPlan,
   canManage = true,
 }: Props) {
   const { open: openUpgradeModal } = useUpgradeModal();
@@ -293,9 +297,11 @@ export function OrgTeamMembersTab({
               <Users className="text-muted-foreground mx-auto size-11" aria-hidden />
               <h3 className="mt-4 text-lg font-semibold">No members found</h3>
               {!searchQuery && canInvite ? (
-                <Button className="mt-4 min-h-[44px]" onClick={onInvite}>
-                  Invite Member
-                </Button>
+                <TeamInviteTierBadgeAnchor canInvite={canInviteByPlan} className="mt-4">
+                  <Button className="min-h-[44px]" onClick={onInvite}>
+                    Invite Member
+                  </Button>
+                </TeamInviteTierBadgeAnchor>
               ) : null}
             </div>
           ) : null}

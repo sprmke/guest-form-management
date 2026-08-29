@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { MessageSquare, Plus, Save, Star } from 'lucide-react';
 
+import { GuestReviewFeedbackPills } from '@/features/guest/sd-form/components/GuestReviewFeedbackPills';
+import { GuestReviewStarRating } from '@/features/guest/sd-form/components/GuestReviewStarRating';
+import { filterGuestReviewTagsForRating } from '@/features/guest/sd-form/lib/guestReviewFeedbackTags';
 import { TelegramManageDialog } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramManageDialog';
 import { withStorageUrlCacheBust } from '@/features/dashboard/bookings/lib/storageUrls';
 import { MarketingResetConfirmDialog } from '@/features/dashboard/marketing/components/shared/MarketingResetConfirmDialog';
@@ -94,40 +97,6 @@ function MiniStarRating({ value, compact = false }: { value: number | null; comp
         />
       ))}
     </span>
-  );
-}
-
-function StarRatingPicker({
-  value,
-  disabled,
-  onChange,
-}: {
-  value: number | null;
-  disabled?: boolean;
-  onChange: (rating: number) => void;
-}) {
-  const rating = value ?? 5;
-  return (
-    <div className="flex h-10 items-center" role="group" aria-label="Rating">
-      {[1, 2, 3, 4, 5].map((star) => (
-        <button
-          key={star}
-          type="button"
-          disabled={disabled}
-          aria-label={`${star} stars`}
-          aria-pressed={star <= rating}
-          onClick={() => onChange(star)}
-          className="inline-flex size-10 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg disabled:opacity-50 sm:size-9 sm:min-h-0 sm:min-w-0"
-        >
-          <Star
-            className={cn(
-              'size-[18px]',
-              star <= rating ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/30'
-            )}
-          />
-        </button>
-      ))}
-    </div>
   );
 }
 
@@ -392,12 +361,26 @@ function ReviewEditorPanel({
         </div>
 
         <SettingsField label="Rating">
-          <StarRatingPicker
-            value={review.starRating}
+          <GuestReviewStarRating
+            size="compact"
+            value={review.starRating ?? 5}
             disabled={disabled}
-            onChange={(starRating) => onChange({ ...review, starRating })}
+            onChange={(starRating) =>
+              onChange({
+                ...review,
+                starRating,
+                feedbackTags: filterGuestReviewTagsForRating(starRating, review.feedbackTags),
+              })
+            }
           />
         </SettingsField>
+
+        <GuestReviewFeedbackPills
+          starRating={review.starRating ?? 5}
+          selectedTagIds={review.feedbackTags}
+          onChange={(feedbackTags) => onChange({ ...review, feedbackTags })}
+          disabled={disabled}
+        />
 
         <SettingsField id={`review-text-${review.id}`} label="Review">
           <div className="space-y-3">

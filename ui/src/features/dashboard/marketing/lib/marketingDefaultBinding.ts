@@ -14,7 +14,7 @@ const STOCK_BINDING_MEDIA = MARKETING_THUMB_STOCK_PHOTOS.map((url) => ({
 
 /** Generic binding for preset thumbnail generation — avoids waiting on property API data. */
 export const DEFAULT_MARKETING_THUMB_BINDING: DesignBinding = {
-  propertyName: 'Kame Home',
+  propertyName: 'Sample Property',
   propertyPhoto: MARKETING_THUMB_STOCK_PHOTOS[0],
   propertyMedia: [...STOCK_BINDING_MEDIA],
   nightlyRate: '₱2,799 / night',

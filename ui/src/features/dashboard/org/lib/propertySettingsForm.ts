@@ -76,6 +76,10 @@ export type PropertyProfileDraft = {
   allowPets: boolean;
   allowParking: boolean;
   allowSurpriseDecor: boolean;
+  /** Org parking UUID preferred for owner-default ranking when available. */
+  preferredOwnerParkingId: string;
+  /** Same-org own-slot pins skip PayMongo and auto-fulfill. */
+  complimentaryOwnerParking: boolean;
 };
 
 function readSettingsString(settings: Record<string, unknown>, key: string): string {
@@ -257,6 +261,8 @@ export function propertyProfileDraftFromProperty(property: Property): PropertyPr
     allowPets: readSettingsBoolean(settings, 'allowPets', true),
     allowParking: readSettingsBoolean(settings, 'allowParking', true),
     allowSurpriseDecor: readSettingsBoolean(settings, 'allowSurpriseDecor', true),
+    preferredOwnerParkingId: readSettingsString(settings, 'preferredOwnerParkingId'),
+    complimentaryOwnerParking: readSettingsBoolean(settings, 'complimentaryOwnerParking', false),
   });
 }
 
@@ -312,7 +318,9 @@ export function propertyProfileExtendedDirty(
     JSON.stringify(draft.cancellationPolicy) !== JSON.stringify(baseline.cancellationPolicy) ||
     draft.allowPets !== baseline.allowPets ||
     draft.allowParking !== baseline.allowParking ||
-    draft.allowSurpriseDecor !== baseline.allowSurpriseDecor
+    draft.allowSurpriseDecor !== baseline.allowSurpriseDecor ||
+    draft.preferredOwnerParkingId !== baseline.preferredOwnerParkingId ||
+    draft.complimentaryOwnerParking !== baseline.complimentaryOwnerParking
   );
 }
 
@@ -374,6 +382,8 @@ export function propertyProfileSettingsPatch(draft: PropertyProfileDraft): Recor
     allowPets: draft.allowPets,
     allowParking: draft.allowParking,
     allowSurpriseDecor: draft.allowSurpriseDecor,
+    preferredOwnerParkingId: draft.preferredOwnerParkingId.trim(),
+    complimentaryOwnerParking: draft.complimentaryOwnerParking,
   };
 }
 

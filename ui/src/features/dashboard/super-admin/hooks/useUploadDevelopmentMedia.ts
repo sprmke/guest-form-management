@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import type { PropertyMediaItem } from '@/features/dashboard/org/lib/propertySettingsConstants';
 
+import { prepareUpload } from '@/lib/media/prepareUpload';
 import { supabase } from '@/lib/supabase/client';
 
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
@@ -30,8 +31,15 @@ export function useUploadDevelopmentMedia(developmentId: string | undefined) {
   const qc = useQueryClient();
 
   const upload = useMutation({
-    mutationFn: async (file: File): Promise<UploadDevelopmentMediaResult> => {
+    mutationFn: async (rawFile: File): Promise<UploadDevelopmentMediaResult> => {
       if (!developmentId) throw new Error('Development context is required');
+
+      const prepared = await prepareUpload(rawFile, {
+        imagePreset: 'PHOTO_MASTER',
+        surface: 'development-media',
+      });
+      if (prepared.error) throw new Error(prepared.error);
+      const file = prepared.file;
 
       const jwt = await getAdminJwt();
       const body = new FormData();
