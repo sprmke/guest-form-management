@@ -28,6 +28,7 @@
     "setup:playwright-cli": "bash scripts/dev/setup-playwright-cli.sh",
     "setup:design-md": "bash scripts/dev/setup-design-md.sh",
     "type-check": "cd ui && bun run type-check",
+    "test": "cd ui && bun run test",
     "ci:quality": "./scripts/dev/ci-quality-gate.sh",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,md,json,mdc,css}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,md,json,mdc,css}\"",
@@ -93,7 +94,8 @@
     "husky": "^9.1.7",
     "lint-staged": "^15.5.0",
     "prettier": "^3.5.3",
-    "prettier-plugin-tailwindcss": "^0.6.11"
+    "prettier-plugin-tailwindcss": "^0.6.11",
+    "@commitlint/types": "^19.8.0"
   },
   "dependencies": {}
 }

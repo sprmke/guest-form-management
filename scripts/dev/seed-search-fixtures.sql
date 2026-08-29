@@ -73,7 +73,7 @@ ON CONFLICT (slug) DO UPDATE SET
   updated_at = now();
 
 -- ── Properties (tower ∈ Monaco|Bali|Barbados; unique ACTIVE tower+unit) ──
--- Org: Kame (405ea07f-…) — same as Kame Home / parking.
+-- Org: Kame (405ea07f-…) — same as kame-homes / parking seed org.
 INSERT INTO properties (
   id, organization_id, name, slug, type, status, residence_name,
   max_guests, tower, unit_number, tower_and_unit, city, address, settings

@@ -27,7 +27,7 @@ BEGIN
   DELETE FROM public.maintenance_items WHERE created_by = 'demo_seed';
 
   -- ═══════════════════════════════════════════════════════════════════════════
-  -- Bookings — Kame Home (near-full Jul / Aug / Sep calendars, varied statuses)
+  -- Bookings — Monaco 2604 / kame-homes org (near-full Jul / Aug / Sep calendars, varied statuses)
   -- ═══════════════════════════════════════════════════════════════════════════
   INSERT INTO public.guest_submissions (
     id, property_id, status, booking_source,

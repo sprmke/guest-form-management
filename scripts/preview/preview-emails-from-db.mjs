@@ -5,7 +5,7 @@
  *
  * Env (from supabase/.env.local or process.env):
  *   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
- *   EMAIL_LOGO_URL (optional) — absolute URL for the Kame Home logo in `<img src>`; default `https://kamehomes.space/images/logo.png`
+ *   EMAIL_LOGO_URL (optional) — absolute URL for the Kame Homes logo in `<img src>`; default `https://kamehomes.space/images/logo.png`
  *
  * Run: bun run preview:emails:db
  */
@@ -465,7 +465,7 @@ function wrapHouseRulesStandalonePreview(fragmentHtml, emailHeaderLogo) {
                 <table role="presentation" class="brand-block" width="100%" cellspacing="0" cellpadding="0" border="0">
                   <tr>
                     <td class="brand-line">
-                      <span class="brand-micro">Kame Home</span>
+                      <span class="brand-micro">Kame Homes</span>
                     </td>
                   </tr>
                   <tr>
@@ -479,7 +479,7 @@ function wrapHouseRulesStandalonePreview(fragmentHtml, emailHeaderLogo) {
             </tr>
             <tr>
               <td align="center" class="legal-footer">
-                &copy; 2024 Kame Home - Azure North. All rights reserved.
+                &copy; Kame Homes. All rights reserved.
               </td>
             </tr>
           </table>

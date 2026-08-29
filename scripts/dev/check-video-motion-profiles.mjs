@@ -183,7 +183,7 @@ const defaultsMod = await import(
 );
 const { buildDefaultVideoProject } = defaultsMod;
 const emptyBinding = {
-  propertyName: 'Kame Home',
+  propertyName: 'Sample Property',
   propertyPhoto: 'https://example.com/photo.jpg',
   propertyMedia: [{ url: 'https://example.com/photo.jpg', type: 'image' }],
   monthLabel: 'August',
