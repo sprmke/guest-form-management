@@ -38,12 +38,14 @@ type AppSettingsRow = {
   airbnb_url: string | null;
   instagram_url: string | null;
   tiktok_url: string | null;
-  main_social_platform: string | null;
   payment_methods: unknown;
   external_reviews: unknown;
   superhost_verification_url: string | null;
   superhost_proof_image_url: string | null;
   superhost_status: string | null;
+  vouchers_enabled: boolean | null;
+  voucher_prizes: unknown;
+  voucher_reveal_style: string | null;
   document_requirements_override: unknown;
 };
 
@@ -71,11 +73,6 @@ export type AppSettingsResolved = {
   airbnbUrl: string;
   emailLogoUrl: string;
   brandColor: string;
-  /** Guest review CTA platform (property → org → first filled). */
-  reviewSocialPlatform: SocialPlatform | '';
-  /** Guest review CTA URL for the main platform. */
-  reviewSocialUrl: string;
-  reviewSocialLabel: string;
   defaultParkingRateGuest: number;
   gcashName: string;
   gcashNumber: string;
@@ -133,12 +130,6 @@ import {
   invalidatePropertyBrandColorCache,
 } from './propertyBranding.ts';
 import {
-  parseSocialPlatform,
-  resolveMainSocialUrl,
-  SOCIAL_PLATFORM_LABELS,
-  type SocialPlatform,
-} from './socialPlatform.ts';
-import {
   mergePropertyAutomationToggles,
   type PropertyAutomationToggles,
 } from './propertyAutomationToggles.ts';
@@ -167,6 +158,8 @@ import {
   type PropertyExternalReview,
   type SuperhostStatus,
 } from './propertyExternalReviews.ts';
+import { normalizeVoucherPrizes, type VoucherPrize } from './voucher.ts';
+import { normalizeVoucherRevealStyle, type VoucherRevealStyle } from './voucherRevealStyle.ts';
 
 export type AppSettingsDto = AppSettingsResolved & {
   /** Property-stored brand hex for admin forms (empty when inheriting org default). */
@@ -179,12 +172,14 @@ export type AppSettingsDto = AppSettingsResolved & {
   airbnbUrl: string;
   instagramUrl: string;
   tiktokUrl: string;
-  /** Property-stored main platform (empty = inherit org). */
-  mainSocialPlatformStored: string;
-  inheritedMainSocialPlatform: string;
-  resolvedMainSocialPlatform: SocialPlatform | '';
   automationToggles: PropertyAutomationToggles;
   externalReviews: PropertyExternalReview[];
+  /** When false, SD / guest-review skips the next-stay voucher step. Default true. */
+  vouchersEnabled: boolean;
+  /** Stored host prizes; empty = platform defaults at claim time. */
+  voucherPrizes: VoucherPrize[];
+  /** Guest award animation on SD form / guest-review. */
+  voucherRevealStyle: VoucherRevealStyle;
   superhostVerificationUrl: string;
   superhostProofImageUrl: string;
   superhostStatus: SuperhostStatus;
@@ -201,8 +196,7 @@ export type AppSettingsDto = AppSettingsResolved & {
     | 'facebookPageUrl'
     | 'airbnbUrl'
     | 'instagramUrl'
-    | 'tiktokUrl'
-    | 'mainSocialPlatformStored',
+    | 'tiktokUrl',
     AppSettingsFieldSource
   >;
   propertyIntegrations: PropertyIntegrationStatus;
@@ -364,21 +358,15 @@ type PropertyBrandingPicks = {
   airbnb: ReturnType<typeof pickDbString>;
   instagram: ReturnType<typeof pickDbString>;
   tiktok: ReturnType<typeof pickDbString>;
-  mainSocialPlatform: { value: string; source: AppSettingsFieldSource };
 };
 
 function pickPropertyBrandingFromRow(row: AppSettingsRow | null): PropertyBrandingPicks {
-  const mainParsed = parseSocialPlatform(row?.main_social_platform);
   return {
     brandColor: pickDbString(row?.brand_color),
     facebook: pickDbString(row?.facebook_reviews_url),
     airbnb: pickDbString(row?.airbnb_url),
     instagram: pickDbString(row?.instagram_url),
     tiktok: pickDbString(row?.tiktok_url),
-    mainSocialPlatform: {
-      value: mainParsed ?? '',
-      source: mainParsed ? 'db' : 'default',
-    },
   };
 }
 
@@ -494,35 +482,6 @@ export async function resolveAppSettings(propertyId?: string | null): Promise<Ap
     'AIRBNB_URL'
   );
 
-  const preferredMain =
-    branding.mainSocialPlatform.value.trim() || org.mainSocialPlatform.value || null;
-  const facebookStored =
-    branding.facebook.value.trim() ||
-    (org.facebook.value || '').trim() ||
-    Deno.env.get('FACEBOOK_REVIEWS_URL')?.trim() ||
-    '';
-  const airbnbStored =
-    branding.airbnb.value.trim() ||
-    (org.airbnb.value || '').trim() ||
-    Deno.env.get('AIRBNB_URL')?.trim() ||
-    '';
-  const instagramStored =
-    branding.instagram.value.trim() ||
-    (org.instagram.value || '').trim() ||
-    Deno.env.get('INSTAGRAM_URL')?.trim() ||
-    '';
-  const tiktokStored =
-    branding.tiktok.value.trim() ||
-    (org.tiktok.value || '').trim() ||
-    Deno.env.get('TIKTOK_URL')?.trim() ||
-    '';
-  const reviewResolved = resolveMainSocialUrl(preferredMain, {
-    facebook: facebookStored,
-    airbnb: airbnbStored,
-    instagram: instagramStored,
-    tiktok: tiktokStored,
-  });
-
   return {
     emailTo: property.emailTo.value,
     emailReplyTo: property.emailReplyTo.value,
@@ -530,13 +489,10 @@ export async function resolveAppSettings(propertyId?: string | null): Promise<Ap
     sdRefundCronEmailLeadMinutes: property.lead.value,
     sdRefundCronMaxCheckoutAgeDays: property.maxAge.value,
     publicGuestAppOrigin: originBase,
-    facebookReviewsUrl: reviewResolved?.url || facebookReviewsUrl,
+    facebookReviewsUrl,
     airbnbUrl,
     emailLogoUrl: org.logo.value || DEFAULT_EMAIL_LOGO_URL,
     brandColor,
-    reviewSocialPlatform: reviewResolved?.platform ?? '',
-    reviewSocialUrl: reviewResolved?.url ?? '',
-    reviewSocialLabel: reviewResolved ? SOCIAL_PLATFORM_LABELS[reviewResolved.platform] : '',
     defaultParkingRateGuest: property.parkingRate.value,
     gcashName: property.gcashName.value,
     gcashNumber: formatPaymentAccountNumberDisplay(
@@ -630,11 +586,11 @@ export async function serializeAppSettingsForAdmin(
     airbnbUrl: branding.airbnb.value,
     instagramUrl: branding.instagram.value,
     tiktokUrl: branding.tiktok.value,
-    mainSocialPlatformStored: branding.mainSocialPlatform.value,
-    inheritedMainSocialPlatform: org.mainSocialPlatform.value,
-    resolvedMainSocialPlatform: resolved.reviewSocialPlatform,
     automationToggles: mergePropertyAutomationToggles(row?.automation_toggles),
     externalReviews: normalizeExternalReviewsDraft(row?.external_reviews),
+    vouchersEnabled: row?.vouchers_enabled !== false,
+    voucherPrizes: normalizeVoucherPrizes(row?.voucher_prizes),
+    voucherRevealStyle: normalizeVoucherRevealStyle(row?.voucher_reveal_style),
     superhostVerificationUrl: (row?.superhost_verification_url ?? '').trim(),
     superhostProofImageUrl: (row?.superhost_proof_image_url ?? '').trim(),
     superhostStatus: normalizeSuperhostStatus(row?.superhost_status),
@@ -669,10 +625,6 @@ export async function serializeAppSettingsForAdmin(
       airbnbUrl: branding.airbnb.source,
       instagramUrl: branding.instagram.source,
       tiktokUrl: branding.tiktok.source,
-      mainSocialPlatformStored: branding.mainSocialPlatform.source,
-      reviewSocialPlatform: branding.mainSocialPlatform.source,
-      reviewSocialUrl: branding.mainSocialPlatform.source,
-      reviewSocialLabel: branding.mainSocialPlatform.source,
       defaultParkingRateGuest: property.parkingRate.source,
       gcashName: property.gcashName.source,
       gcashNumber: property.gcashNumber.source,

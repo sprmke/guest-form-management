@@ -1014,7 +1014,16 @@ export class DatabaseService {
     checkInDate: string,
     checkOutDate: string,
     bookingId?: string,
-    propertyId?: string
+    propertyId?: string,
+    options?: {
+      /**
+       * Skip the owner/OTA `property_blocked_dates` check. Used only by the guest-form
+       * completion flow (calendar sync §6.5): the booking being completed already has a
+       * matching `source='ical_import'` block on its own dates, so a normal blocked-nights
+       * check would collide with itself. Dates are locked and were validated at ingestion.
+       */
+      skipOwnerBlockCheck?: boolean;
+    }
   ) {
     console.log('Checking for overlapping bookings...');
     console.log('Check-in:', checkInDate, 'Check-out:', checkOutDate, 'Booking ID:', bookingId);
@@ -1135,9 +1144,10 @@ export class DatabaseService {
       // Owner-managed date blocks (`property_blocked_dates`) are unavailable to guests
       // the same way an existing booking is — checked alongside the overlap query so
       // every caller (submit-form today, future update paths) gets both signals at once.
-      const blockedByOwner = propertyId
-        ? await hasBlockedNightsInRange(propertyId, newCheckIn, newCheckOut)
-        : false;
+      const blockedByOwner =
+        propertyId && !options?.skipOwnerBlockCheck
+          ? await hasBlockedNightsInRange(propertyId, newCheckIn, newCheckOut)
+          : false;
 
       return {
         hasOverlap: overlappingBookings.length > 0,

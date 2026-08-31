@@ -15,7 +15,7 @@ export const INBOX_DEFAULT_QUICK_REPLIES: DefaultQuickReplySeed[] = [
   {
     title: 'Availability',
     body_text:
-      'You can check our available dates here: https://kamehomes.space — let me know your preferred check-in and check-out and I’ll confirm for you.',
+      'You can check our available dates here: {{calendar_link}} — let me know your preferred check-in and check-out and I’ll confirm for you.',
     sort_order: 0,
   },
   {
@@ -45,7 +45,7 @@ export const INBOX_DEFAULT_QUICK_REPLIES: DefaultQuickReplySeed[] = [
   {
     title: 'Location',
     body_text:
-      'We’re in Azure North, San Fernando, Pampanga. I can send the exact unit address and map pin once your dates are confirmed.',
+      'We’re in Azure North, San Fernando, Pampanga. Map pin: {{map_link}} — I can send the exact unit address once your dates are confirmed.',
     sort_order: 5,
   },
   {
@@ -57,7 +57,7 @@ export const INBOX_DEFAULT_QUICK_REPLIES: DefaultQuickReplySeed[] = [
   {
     title: 'How to book',
     body_text:
-      'To book: pick your dates on our calendar, fill out the guest form, and send your down payment receipt. I’ll guide you through each step.',
+      'To book: pick your dates on our calendar ({{calendar_link}}), fill out the guest form ({{form_link}}), and send your down payment receipt. I’ll guide you through each step.',
     sort_order: 7,
   },
   {
@@ -69,7 +69,7 @@ export const INBOX_DEFAULT_QUICK_REPLIES: DefaultQuickReplySeed[] = [
   {
     title: 'Follow-up',
     body_text:
-      'Thanks for reaching out! Let me know if you have any other questions — happy to help with your stay.',
+      'Thanks for reaching out, {{guest_name}}! Let me know if you have any other questions — happy to help with your stay.',
     sort_order: 9,
   },
 ];

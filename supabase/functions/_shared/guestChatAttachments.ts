@@ -45,4 +45,7 @@ export function assertGuestWebMessagePayload(
   if (!text.trim() && attachments.length === 0) {
     throw new Error('Message text or attachment required');
   }
+  if (attachments.length > MAX_ATTACHMENTS) {
+    throw new Error(`Up to ${MAX_ATTACHMENTS} attachments per message`);
+  }
 }
