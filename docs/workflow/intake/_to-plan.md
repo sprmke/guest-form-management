@@ -2,7 +2,7 @@
 title: 'Claude To Plan'
 status: archived
 tags: [planning]
-updated: 2026-08-30
+updated: 2026-08-31
 ---
 
 **Status legend:** ❌ cancelled / won't do · ✅ done · 📋 planned (plan doc written) · 🚧 in progress · 🔵 pending / open
@@ -491,6 +491,13 @@ Pivot from strict per-property billing to org-scoped portfolio caps for Pro/Busi
 → **Done:** [`../done/property-guest-rewards-vouchers.md`](../done/property-guest-rewards-vouchers.md)
 ===
 
+✅ Voucher reveal styles (host-selectable animation)
+
+Spin the wheel, slot scroll/reel (current), flip card — property setting under Reviews & vouchers; guest `/sd-form` + guest-review.
+
+→ **Done:** [`../done/voucher-reveal-styles.md`](../done/voucher-reveal-styles.md)
+===
+
 ✅ Guest Review after booking
 
 Standalone `/properties/:slug/guest-review`, SD form review section, edge functions, feedback tags + photo upload.
@@ -702,7 +709,7 @@ Phases 1–2 shipped (Verified/Recommended modal polish, Tier 2 docs, admin queu
 → **In progress:** Meta scheduling/confirmation gaps — [`../in-progress/marketing-module-refinement.md`](../in-progress/marketing-module-refinement.md)
 ===
 
-🔵 Improve onboarding flow
+✅ Improve onboarding flow
 
 Refine the full host onboarding flow end to end — not just the left showcase panel.
 
@@ -738,7 +745,7 @@ Refine the full host onboarding flow end to end — not just the left showcase p
 🔵 Monitoring for suspicious or unusual activities from super admin
 ===
 
-🔵 Prod readiness checklist
+🚧 Prod readiness checklist
 
 - Frontend
 - Backend & APIs
@@ -813,7 +820,7 @@ Expand `/admin/*` so operators can manage the platform without SQL or ad-hoc sup
 → **Partial today:** approvals, app settings, support tickets, PayMongo config. Full org/property/host CRUD and plan visibility still open.
 ===
 
-🔵 Super admin — manage "Coming soon" surfaces
+✅ Super admin — manage "Coming soon" surfaces
 
 Super-admin UI to configure which product areas show **Coming soon** (or are hidden) app-wide — e.g. public `/services`, gated marketing features, AI credit top-up stubs, Page Editor "other guest pages", and future modules before launch.
 
@@ -824,7 +831,7 @@ Super-admin UI to configure which product areas show **Coming soon** (or are hid
 → **Related:** [`../done/page-editor-public-pages.md`](../done/page-editor-public-pages.md) (optional Coming soon badge on non-editable guest pages); [`services.md`](../../guides/routes/services.md) (UI-only coming soon).
 ===
 
-🔵 Marketing — edit guest review page design
+✅ Marketing — edit guest review page design
 
 Let hosts customize the guest review experience from the **Marketing** module (or Public Pages / Page Editor sibling), similar to Stay Guide and Property Landing:
 

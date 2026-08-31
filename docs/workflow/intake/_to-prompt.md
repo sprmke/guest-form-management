@@ -2,7 +2,7 @@
 title: 'Tasks To Prompt'
 status: archived
 tags: [planning]
-updated: 2026-08-30
+updated: 2026-08-31
 ---
 
 **Status legend:** ❌ cancelled / won't do · ✅ done · 📋 planned (plan doc written) · 🚧 in progress · 🔵 pending / open
@@ -247,7 +247,7 @@ Let's refine, improve and make the exported reports look more professional, neat
 Make sure we apply it to all exported reports and sub reports for all modules that supports reporting
 ===
 
-🔵 Commission-based pricing (pay % of completed bookings)
+✅ Commission-based pricing (pay % of completed bookings)
 
 Foundation schema exists but product was retired from live UI (2026-08-24) until fully shippable: host self-serve, Plans & Billing, public pricing, invoicing/PayMongo collection. Do not re-enable the catalog row without a plan.
 
@@ -279,7 +279,7 @@ EMAIL_TO / EMAIL_REPLY_TO
 🔵 In booking detail page, analyze if same primary guest name is recurring guest
 ===
 
-🔵 Update dashboard AI assistant to support edit public page
+✅ Update dashboard AI assistant to support edit public page
 
 → **Partial:** public-page **context attach** shipped in [`../done/ai-assistant-universal-context-pickers.md`](../done/ai-assistant-universal-context-pickers.md) (`ChatComposerPublicPagePicker`). **Still open:** assistant-driven edits to Stay Guide / property landing content (use Page Editor or new tools).
 ===

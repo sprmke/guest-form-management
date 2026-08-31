@@ -132,3 +132,39 @@ Pure additive `if` branches in the existing function — no signature change, no
 3. Open the inserted GAF/Pet link in an incognito window (simulating the guest) to confirm `GuestBookingDocumentPage` resolves the token and redirects to a working signed PDF URL, and that it still works after the original 30-minute signed-URL window would have expired (proving the token, not a stale signed URL, was what got shared).
 4. Confirm an invalid/tampered token on `/properties/:slug/document` shows the generic "not available" message, not a leak of booking existence (same guard as Stay Guide).
 5. Confirm Facebook/Instagram conversations still send correctly (text-only path unaffected) and that a shared link renders as a tap card there too once delivered.
+
+## Phase A follow-up (2026-08-30)
+
+Messaging Phase A extended the original Share picker:
+
+- **`InboxShareResourcesPicker`** → **`InboxInsertMenu`** (`+` icon): unified insert for property links, public pages, map link, payment methods text, and booking-scoped doc links.
+- **Auto booking match:** when the open web thread has inquiry dates + guest name, the booking section pre-selects a matching row (`inboxMatchBooking.ts`).
+- **Host attachments:** web chat composer paperclip → `upload-inbox-chat-asset` (same bucket/limits as guest upload); Meta UI remains text-only.
+- **Guest FAQ chips:** context-aware phases in `guestChatSuggestions.ts` (pre-booking / inquiry / ongoing) — see `docs/guides/routes/properties/chat.md`.
+
+## Phase B follow-up (2026-08-30)
+
+- **Quick reply merge fields:** `{{guest_name}}`, `{{property_name}}`, `{{check_in_date}}`, `{{check_out_date}}`, `{{inquiry_dates}}` — resolved on insert/send via `inboxQuickReplyMerge.ts` + auto-matched booking.
+- **Check-in pack:** one-tap bundle in Insert → Packs (check-in/out times, stay guide when eligible, map link, calendar) — `inboxCheckInPack.ts`.
+- **Resource card types:** `urlLinkCardMeta()` + `ChatUrlLinkCard` use per-resource icons (stay guide, form, document, showcase, parking, etc.).
+- **Guest Insert menu:** `GuestChatInsertMenu` — share dates, calendar, listing link in guest composer.
+
+## Phase C follow-up (2026-08-30)
+
+- **Link merge fields:** quick replies support `{{calendar_link}}`, `{{property_link}}`, `{{form_link}}`, `{{messages_link}}`, `{{showcase_link}}`, `{{map_link}}`, `{{stay_guide_link}}` — resolved with property slug, thread inquiry dates, map URL, and auto-matched booking stay guide (`inboxQuickReplyLinks.ts`).
+- **Snippets in Insert menu:** top quick replies appear under **Snippets** in `InboxInsertMenu` (merged on insert; same plan gate as Quick reply).
+- **Guest resource hub:** `GuestChatResourceHub` — horizontal self-serve link strip (calendar, listing, guest form, showcase) above the composer when the thread has messages.
+
+## Phase D follow-up (2026-08-30)
+
+- **Guest stay guide deep link:** `guest-web-chat-resume` and `guest-web-chat-start` return `stayGuideUrl` when the signed-in guest has an active stay-guide booking for that property (`resolveGuestStayGuideUrlForProperty` in `guestStayGuide.ts`). The guest resource hub shows **Stay Guide** first when present.
+- **Property pinned snippets:** up to 5 saved messages in `properties.settings.inboxPinnedSnippets` — managed under **Manage → Quick replies → Pinned snippets** (property inbox only); inserted from **Pinned** in the host Insert (`+`) menu (`inboxPinnedSnippets.ts`, `InboxPinnedSnippetsPanel.tsx`).
+- **Quick reply preview:** the quick-reply form shows a live **Preview** when the body contains merge placeholders or URLs (`InboxQuickReplyFormDialog.tsx`).
+
+## Production hardening (2026-08-31)
+
+- Restored `startGuestWebChat` export after accidental strip; stay-guide resolve issues missing tokens before window check.
+- Parking threads no longer pass parking slug as property Insert/resource-hub paths.
+- Stricter booking name match (token-based); match window includes COMPLETED + limit 150.
+- Empty merge tokens are omitted (not blank); HEIC extensions + client max 4 attachments aligned with server.
+- Account **Messages** hub wires `stayGuideUrl` + inquiry dates into `GuestChatThread` (same resource hub / Insert behavior as listing chat).
