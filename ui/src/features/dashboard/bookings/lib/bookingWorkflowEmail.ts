@@ -5,7 +5,6 @@ export const BOOKING_WORKFLOW_EMAIL_KINDS = [
   'pet_request',
   'booking_acknowledgement',
   'ready_for_checkin',
-  'parking_broadcast',
   'sd_refund_form_request',
 ] as const;
 
@@ -16,9 +15,24 @@ export const BOOKING_WORKFLOW_EMAIL_LABELS: Record<BookingWorkflowEmailKind, str
   pet_request: 'Pet request',
   booking_acknowledgement: 'Booking acknowledgement',
   ready_for_checkin: 'Ready for check-in',
-  parking_broadcast: 'Parking broadcast',
   sd_refund_form_request: 'Check-out Instructions',
 };
+
+/** Display order in Automation Triggers (acknowledgement first — guest-facing). */
+export const MANUAL_WORKFLOW_EMAIL_TRIGGER_ORDER: BookingWorkflowEmailKind[] = [
+  'booking_acknowledgement',
+  'gaf_request',
+  'pet_request',
+  'ready_for_checkin',
+  'sd_refund_form_request',
+];
+
+export function sortManualWorkflowEmailTriggerKinds(
+  kinds: BookingWorkflowEmailKind[]
+): BookingWorkflowEmailKind[] {
+  const rank = new Map(MANUAL_WORKFLOW_EMAIL_TRIGGER_ORDER.map((kind, index) => [kind, index]));
+  return [...kinds].sort((a, b) => (rank.get(a) ?? 99) - (rank.get(b) ?? 99));
+}
 
 export type BookingForManualWorkflowEmail = {
   status: string;
@@ -26,6 +40,19 @@ export type BookingForManualWorkflowEmail = {
   need_parking?: boolean | string | null;
   gaf_request_pdf_url?: string | null;
   pet_request_pdf_url?: string | null;
+  valid_id_url?: string | null;
+  guest2_name?: string | null;
+  guest2_valid_id_url?: string | null;
+  guest3_name?: string | null;
+  guest3_valid_id_url?: string | null;
+  guest4_name?: string | null;
+  guest4_valid_id_url?: string | null;
+  guest5_name?: string | null;
+  guest5_valid_id_url?: string | null;
+  pet_vaccination_url?: string | null;
+  pet_image_url?: string | null;
+  workflow_email_manual_sent_at?: Record<string, string> | null;
+  sd_refund_form_emailed_at?: string | null;
 };
 
 function flagTrue(v: unknown): boolean {
@@ -64,7 +91,6 @@ export function eligibleManualWorkflowEmailKinds(
       kinds.push('pet_request');
     }
     kinds.push('booking_acknowledgement');
-    if (flagTrue(booking.need_parking)) kinds.push('parking_broadcast');
   }
 
   if (status === 'READY_FOR_CHECKIN') {
