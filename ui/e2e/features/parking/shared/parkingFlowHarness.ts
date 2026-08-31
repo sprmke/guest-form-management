@@ -6,7 +6,7 @@ const ORG_ID = 'org-e2e-001';
 export { ORG_ID };
 export const E2E_PROPERTY_ID = 'property-e2e-001';
 export const E2E_PROPERTY_SLUG = 'solea-mactan';
-export const E2E_PROPERTY_BOOKING_ID = 'property-booking-e2e-001';
+export const E2E_PROPERTY_BOOKING_ID = 'a1b2c3d4-e5f6-4789-a012-3456789abcde';
 const PARKING_ID = 'parking-e2e-001';
 const BOOKING_ID = 'booking-e2e-001';
 const GUEST_USER_ID = 'user-e2e-guest-001';
@@ -383,13 +383,14 @@ function e2ePropertyList() {
   };
 }
 
-function e2ePropertyAccessPayload() {
+export function e2ePropertyAccessPayload() {
   return {
     accessKind: 'owner' as const,
     permissions: [
       'bookings:view',
       'bookings:edit',
       'bookings:manage',
+      'bookings:workflow',
       'finance:view',
       'maintenance:view',
       'marketing:view',
@@ -410,7 +411,9 @@ function e2ePropertyAccessPayload() {
   };
 }
 
-function e2ePropertyEntitlementsPayload() {
+export function e2ePropertyEntitlementsPayload(
+  overrides: Record<string, unknown> = {}
+): Record<string, unknown> {
   return {
     automatedBookingFlow: true,
     verifiedBadgeEligible: false,
@@ -423,6 +426,7 @@ function e2ePropertyEntitlementsPayload() {
     aiMonthlyCreditAllowance: 0,
     marketingStudio: false,
     customPages: false,
+    propertyShowcase: false,
     aiDashboardAssistant: false,
     aiReceptionist: false,
     aiMarketingGeneration: false,
@@ -435,6 +439,7 @@ function e2ePropertyEntitlementsPayload() {
     customTemplates: false,
     publicPagesAutosave: false,
     bookingImport: false,
+    calendarSync: false,
     customRoles: true,
     planId: 'plan-e2e-001',
     planCode: 'starter',
@@ -442,14 +447,36 @@ function e2ePropertyEntitlementsPayload() {
     pricingModel: 'monthly',
     status: 'active',
     propertySubscriptionId: 'sub-e2e-001',
+    ...overrides,
   };
 }
 
-export function e2ePropertyBookingRow() {
+/** Free plan: automated workflow emails gated; host uses Automation Triggers. */
+export function e2eFreePropertyEntitlementsPayload(
+  overrides: Record<string, unknown> = {}
+): Record<string, unknown> {
+  return e2ePropertyEntitlementsPayload({
+    automatedBookingFlow: false,
+    teamManagement: { enabled: false, maxMembers: null },
+    financeReporting: false,
+    maintenanceReporting: false,
+    customRoles: false,
+    planId: 'plan-e2e-free',
+    planCode: 'free',
+    planName: 'Free',
+    propertySubscriptionId: 'sub-e2e-free',
+    ...overrides,
+  });
+}
+
+export type E2ePropertyBookingRow = ReturnType<typeof e2ePropertyBookingRow>;
+
+export function e2ePropertyBookingRow(overrides: Record<string, unknown> = {}) {
   return {
     id: E2E_PROPERTY_BOOKING_ID,
     created_at: '2026-08-20T10:00:00.000Z',
     updated_at: '2026-08-24T16:00:00.000Z',
+    status_updated_at: '2026-08-24T16:00:00.000Z',
     booking_kind: 'property',
     property_id: E2E_PROPERTY_ID,
     property_name: 'Solea Mactan',
@@ -480,6 +507,9 @@ export function e2ePropertyBookingRow() {
     has_pets: false,
     status: 'PENDING_DOCUMENTS',
     booking_rate: 5000,
+    gaf_request_pdf_url: 'https://example.com/e2e-gaf-request.pdf',
+    pet_request_pdf_url: null,
+    ...overrides,
   };
 }
 
@@ -526,7 +556,7 @@ function linkablePropertyBookings() {
   return {
     bookings: [
       {
-        id: 'property-booking-e2e-001',
+        id: E2E_PROPERTY_BOOKING_ID,
         propertyName: 'Solea Mactan',
         checkInDate: '2026-08-24',
         checkOutDate: '2026-08-28',
