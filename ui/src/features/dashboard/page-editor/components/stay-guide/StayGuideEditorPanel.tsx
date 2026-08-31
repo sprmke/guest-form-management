@@ -17,7 +17,10 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical } from 'lucide-react';
 
-import type { StayGuideChapterConfig } from '@/features/guest/stay-guide/lib/api';
+import {
+  isStayGuideChapterSectionId,
+  type StayGuideChapterSectionId,
+} from '@/features/guest/stay-guide/lib/stayGuideConfig';
 
 import type { PropertyTemplateDto } from '@/features/dashboard/bookings/hooks/usePropertyTemplates';
 import { StyleSection } from '@/features/dashboard/marketing/components/calendar-builder/components/panels/StyleSection';
@@ -32,7 +35,6 @@ import {
   STAY_GUIDE_CHAPTER_SECTIONS,
 } from '@/features/dashboard/page-editor/lib/stayGuideChapterSections';
 import { useStayGuideEditorStore } from '@/features/dashboard/page-editor/stores/stayGuideEditorStore';
-
 
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
@@ -52,7 +54,7 @@ function SortableSectionBlock({
   onVisibilityChange,
   children,
 }: {
-  chapterId: StayGuideChapterConfig['id'];
+  chapterId: StayGuideChapterSectionId;
   label: string;
   visible: boolean;
   onVisibilityChange: (visible: boolean) => void;
@@ -115,7 +117,14 @@ export function StayGuideEditorPanel({
   const reorderChapters = useStayGuideEditorStore((s) => s.reorderChapters);
   const [openSectionKey, setOpenSectionKey] = useState<string | null>(null);
 
-  const orderedChapters = [...config.chapters].sort((a, b) => a.order - b.order);
+  const sectionById = (id: (typeof config.sections)[number]['id']) =>
+    config.sections.find((section) => section.id === id);
+  const orderedChapters = config.sections
+    .filter(
+      (section): section is (typeof config.sections)[number] & { id: StayGuideChapterSectionId } =>
+        isStayGuideChapterSectionId(section.id)
+    )
+    .sort((a, b) => a.order - b.order);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -124,11 +133,7 @@ export function StayGuideEditorPanel({
     const oldIndex = orderedChapters.findIndex((chapter) => chapter.id === active.id);
     const newIndex = orderedChapters.findIndex((chapter) => chapter.id === over.id);
     if (oldIndex < 0 || newIndex < 0) return;
-    reorderChapters(
-      arrayMove(orderedChapters, oldIndex, newIndex).map(
-        (chapter) => chapter.id
-      ) as StayGuideChapterConfig['id'][]
-    );
+    reorderChapters(arrayMove(orderedChapters, oldIndex, newIndex).map((chapter) => chapter.id));
   };
 
   return (
@@ -138,7 +143,7 @@ export function StayGuideEditorPanel({
           <SectionVisibilityToggle
             id="stay-guide-hero"
             label="Hero"
-            checked={config.hero.visible}
+            checked={sectionById('hero')?.visible ?? true}
             onCheckedChange={(visible) => setSectionVisible('hero', visible)}
           />
         </PageEditorRevealTarget>
@@ -146,15 +151,15 @@ export function StayGuideEditorPanel({
           <SectionVisibilityToggle
             id="stay-guide-pass"
             label="Stay Pass card"
-            checked={config.stayPassCard.visible}
-            onCheckedChange={(visible) => setSectionVisible('stayPassCard', visible)}
+            checked={sectionById('passCard')?.visible ?? true}
+            onCheckedChange={(visible) => setSectionVisible('passCard', visible)}
           />
         </PageEditorRevealTarget>
         <PageEditorRevealTarget anchor="check-in-documents">
           <SectionVisibilityToggle
             id="stay-guide-check-in-docs"
             label="Check-in documents"
-            checked={config.checkInDocuments.visible}
+            checked={sectionById('checkInDocuments')?.visible ?? true}
             onCheckedChange={(visible) => setSectionVisible('checkInDocuments', visible)}
           />
         </PageEditorRevealTarget>
@@ -162,24 +167,24 @@ export function StayGuideEditorPanel({
           <SectionVisibilityToggle
             id="stay-guide-gallery"
             label="Gallery"
-            checked={config.galleryCarousel.visible}
-            onCheckedChange={(visible) => setSectionVisible('galleryCarousel', visible)}
+            checked={sectionById('gallery')?.visible ?? true}
+            onCheckedChange={(visible) => setSectionVisible('gallery', visible)}
           />
         </PageEditorRevealTarget>
         <PageEditorRevealTarget anchor="stay-guide-tabs">
           <SectionVisibilityToggle
             id="stay-guide-tabs"
             label="Quick-nav tabs"
-            checked={config.quickNavTabs.visible}
-            onCheckedChange={(visible) => setSectionVisible('quickNavTabs', visible)}
+            checked={sectionById('quickNav')?.visible ?? true}
+            onCheckedChange={(visible) => setSectionVisible('quickNav', visible)}
           />
         </PageEditorRevealTarget>
         <PageEditorRevealTarget anchor="need-anything">
           <SectionVisibilityToggle
             id="stay-guide-help"
             label="Need Anything"
-            checked={config.helpSection.visible}
-            onCheckedChange={(visible) => setSectionVisible('helpSection', visible)}
+            checked={sectionById('host')?.visible ?? true}
+            onCheckedChange={(visible) => setSectionVisible('host', visible)}
           />
         </PageEditorRevealTarget>
       </StyleSection>

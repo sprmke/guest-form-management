@@ -7,6 +7,7 @@ import {
   isStayGuideChapterSectionId,
   normalizeStayGuideConfigV2,
   STAY_GUIDE_REQUIRED_VISIBLE,
+  type StayGuideChapterSectionId,
   type StayGuideConfigV2,
   type StayGuideSectionConfigEntry,
   type StayGuideSectionId,
@@ -30,7 +31,9 @@ type Actions = {
   reset: () => void;
   setTemplateKey: (templateKey: ShowcaseTemplateKey) => void;
   setSectionVisible: (id: StayGuideSectionId, visible: boolean) => void;
+  setChapterVisible: (id: StayGuideChapterSectionId, visible: boolean) => void;
   reorderSections: (orderedIds: StayGuideSectionId[]) => void;
+  reorderChapters: (orderedIds: StayGuideChapterSectionId[]) => void;
   setSectionCopy: (
     id: StayGuideSectionId,
     copy: { heading?: string; subheading?: string; body?: string }
@@ -146,6 +149,15 @@ export const useStayGuideEditorStore = create<State & Actions>()(
         pushHistory(state);
       }),
 
+    setChapterVisible: (id, visible) =>
+      set((state) => {
+        const section = findSection(state, id);
+        if (!section) return;
+        section.visible = visible;
+        state.isDirty = true;
+        pushHistory(state);
+      }),
+
     reorderSections: (orderedIds) =>
       set((state) => {
         const byId = new Map(state.config.sections.map((entry) => [entry.id, entry]));
@@ -155,6 +167,26 @@ export const useStayGuideEditorStore = create<State & Actions>()(
             return existing ? { ...existing, order } : null;
           })
           .filter((entry): entry is StayGuideSectionConfigEntry => Boolean(entry));
+        state.config = normalizeStayGuideConfigV2(state.config);
+        state.isDirty = true;
+        pushHistory(state);
+      }),
+
+    reorderChapters: (orderedIds) =>
+      set((state) => {
+        const byId = new Map(
+          state.config.sections
+            .filter((entry) => isStayGuideChapterSectionId(entry.id))
+            .map((entry) => [entry.id, entry])
+        );
+        const reordered = orderedIds
+          .map((id) => byId.get(id))
+          .filter((entry): entry is StayGuideSectionConfigEntry => Boolean(entry));
+        let chapterIndex = 0;
+        state.config.sections = state.config.sections.map((entry) => {
+          if (!isStayGuideChapterSectionId(entry.id)) return entry;
+          return reordered[chapterIndex++] ?? entry;
+        });
         state.config = normalizeStayGuideConfigV2(state.config);
         state.isDirty = true;
         pushHistory(state);
