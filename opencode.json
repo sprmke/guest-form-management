@@ -10,6 +10,7 @@
     ".cursor/rules/no-prod-deploy.mdc",
     ".cursor/rules/markitdown-mcp.mdc",
     ".cursor/rules/route-guides.mdc",
+    ".cursor/rules/plans-and-permissions.mdc",
     "DESIGN.md"
   ],
   "skills": {

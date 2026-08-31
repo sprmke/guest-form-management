@@ -177,6 +177,7 @@ function collectSessionContext(root: string): string {
       'Route/page UX → docs/guides/routes/* (route-guides skill).',
       'API/env/architecture → docs/PROJECT.md.',
       'Plans/tiers → docs/architecture/plans-feature-matrix.md + Plans guides.',
+      'New host capabilities → decide Plans + Team RBAC (or N/A) via plans-and-permissions skill.',
       'Booking/auth invariants → .cursor/rules/booking-workflow.mdc or admin-auth.mdc.',
       'Invoke documentation-maintenance skill before claiming done.',
       'Canonical: CLAUDE.md § Docs are the source of truth · .cursor/rules/documentation-maintenance.mdc.',

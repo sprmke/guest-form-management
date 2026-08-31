@@ -27,17 +27,18 @@ This skill is the Claude Code / skill-picker equivalent of Cursor’s always-on 
 
 ## What to update
 
-| Change                                                 | Update                                                                                                 |
-| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
-| Architecture, routes, env, API, data model, deployment | **`docs/PROJECT.md`**                                                                                  |
-| Page / section behavior, save flows, validation        | **`docs/guides/routes/*`** — invoke **`route-guides`** skill (no exceptions)                           |
-| Pricing plans / tier catalog / entitlements            | **`/for-hosts/pricing`** (live) + **`docs/architecture/plans-feature-matrix.md`** + Plans route guides |
-| Booking status / transitions / side-effects            | **`.cursor/rules/booking-workflow.mdc`**                                                               |
-| Admin auth / allow list / new admin endpoints          | **`.cursor/rules/admin-auth.mdc`**                                                                     |
-| Edge JWT/CORS / serve conventions                      | **`.cursor/rules/supabase-edge-functions.mdc`**                                                        |
-| Migration / backfill runbooks                          | **`docs/archive/operations/migration-runbook.md`**                                                     |
-| Booking-flow redesign decisions                        | **`docs/archive/planning/NEW_FLOW_PLAN.md`**                                                           |
-| Shipped / cancelled backlog                            | GitHub Issues + **`docs/README.md`** (+ archive under `docs/archive/todos/shipped/`)                   |
+| Change                                                 | Update                                                                                                                |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| Architecture, routes, env, API, data model, deployment | **`docs/PROJECT.md`**                                                                                                 |
+| Page / section behavior, save flows, validation        | **`docs/guides/routes/*`** — invoke **`route-guides`** skill (no exceptions)                                          |
+| Pricing plans / tier catalog / entitlements            | **`/for-hosts/pricing`** (live) + **`docs/architecture/plans-feature-matrix.md`** + Plans route guides                |
+| **New host feature (Plans and/or Team RBAC)**          | **`plans-and-permissions`** skill + always-on **`.cursor/rules/plans-and-permissions.mdc`** — decide both or mark N/A |
+| Booking status / transitions / side-effects            | **`.cursor/rules/booking-workflow.mdc`**                                                                              |
+| Admin auth / allow list / new admin endpoints          | **`.cursor/rules/admin-auth.mdc`**                                                                                    |
+| Edge JWT/CORS / serve conventions                      | **`.cursor/rules/supabase-edge-functions.mdc`**                                                                       |
+| Migration / backfill runbooks                          | **`docs/archive/operations/migration-runbook.md`**                                                                    |
+| Booking-flow redesign decisions                        | **`docs/archive/planning/NEW_FLOW_PLAN.md`**                                                                          |
+| Shipped / cancelled backlog                            | GitHub Issues + **`docs/README.md`** (+ archive under `docs/archive/todos/shipped/`)                                  |
 
 Canonical detail: **`.cursor/rules/documentation-maintenance.mdc`** · route mapping: **`.cursor/rules/route-guides.mdc`** · always-loaded Claude copy: **`CLAUDE.md`** § Docs are the source of truth.
 
@@ -55,6 +56,7 @@ Canonical detail: **`.cursor/rules/documentation-maintenance.mdc`** · route map
 - [ ] **`docs/PROJECT.md`** updated if API / env / architecture / data model changed
 - [ ] Canonical **`.cursor/rules/*.mdc`** updated if booking workflow or admin auth invariants changed
 - [ ] Plans/pricing surfaces updated if entitlements or tier presentation changed
+- [ ] **`plans-and-permissions`** decided (implemented or explicit N/A) for any new host capability
 - [ ] No “docs later” left for the user
 
 ## Related

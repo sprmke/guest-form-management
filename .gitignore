@@ -106,3 +106,4 @@ ui/screen-tmp/*
 .opencode/package-lock.json
 
 cli-develop
+.vercel
