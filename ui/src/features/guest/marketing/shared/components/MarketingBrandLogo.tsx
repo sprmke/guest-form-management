@@ -1,3 +1,4 @@
+import { platformMarkInitial, platformWordmarkParts } from '@/lib/platformBranding';
 import { cn } from '@/lib/utils';
 
 export type MarketingBrandLogoTone = 'default' | 'onPrimary';
@@ -17,6 +18,9 @@ export function MarketingBrandLogo({
   wordmarkClassName,
   markClassName,
 }: MarketingBrandLogoProps) {
+  const wordmark = platformWordmarkParts();
+  const markInitial = platformMarkInitial();
+
   return (
     <span className={cn('flex items-center gap-2', className)}>
       <div
@@ -26,10 +30,14 @@ export function MarketingBrandLogo({
           markClassName
         )}
       >
-        <span className="text-xl font-bold text-white">K</span>
+        {markInitial ? (
+          <span className="text-xl font-bold text-white">{markInitial}</span>
+        ) : (
+          <span className="bg-primary-foreground/90 h-3 w-3 rounded-full" aria-hidden />
+        )}
         <div className="absolute inset-0 rounded-xl bg-white/20 opacity-0 transition-opacity group-hover:opacity-100" />
       </div>
-      {showWordmark ? (
+      {showWordmark && wordmark ? (
         <span
           className={cn(
             'text-xl font-bold tracking-tight',
@@ -39,11 +47,13 @@ export function MarketingBrandLogo({
         >
           {tone === 'onPrimary' ? (
             <>
-              Kame<span className="text-white/85">Homes</span>
+              {wordmark.primary}
+              {wordmark.accent ? <span className="text-white/85">{wordmark.accent}</span> : null}
             </>
           ) : (
             <>
-              Kame<span className="text-primary">Homes</span>
+              {wordmark.primary}
+              {wordmark.accent ? <span className="text-primary">{wordmark.accent}</span> : null}
             </>
           )}
         </span>

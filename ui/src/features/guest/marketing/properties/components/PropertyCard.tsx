@@ -96,7 +96,7 @@ export const PropertyCard = memo(function PropertyCard({
             {(property.isSuperhost || property.isNew) && (
               <div className="absolute left-3 top-3">
                 <span className="rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-slate-900 shadow-sm backdrop-blur-sm">
-                  {property.isSuperhost ? 'Guest favorite' : 'New'}
+                  {property.isSuperhost ? 'Superhost' : 'New'}
                 </span>
               </div>
             )}

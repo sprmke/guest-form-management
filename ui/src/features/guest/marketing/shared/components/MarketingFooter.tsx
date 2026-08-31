@@ -6,7 +6,9 @@ import { Facebook, Instagram, Twitter, Mail, MapPin, Phone } from 'lucide-react'
 
 import { getAppModeFromPath } from '@/features/guest/auth/config/mode-switch';
 import { useModeSwitchTransition } from '@/features/guest/marketing/shared/context/ModeSwitchTransitionContext';
+import { MarketingBrandLogo } from '@/features/guest/marketing/shared/components/MarketingBrandLogo';
 import { marketingGuestNavLinks } from '@/features/guest/marketing/shared/lib/marketingGuestNavLinks';
+import { PLATFORM_CONTACT_EMAIL, platformCopyrightLine } from '@/lib/platformBranding';
 
 const footerLinks = {
   explore: marketingGuestNavLinks,
@@ -59,15 +61,10 @@ export function MarketingFooter() {
             <Link
               to="/"
               onClick={handleExploreHome}
-              className="mb-6 flex items-center gap-2"
+              className="group mb-6 flex items-center gap-2"
               aria-disabled={isTransitioning}
             >
-              <div className="from-primary to-primary/80 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br">
-                <span className="text-xl font-bold text-white">K</span>
-              </div>
-              <span className="text-xl font-bold tracking-tight">
-                Kame<span className="text-primary">Homes</span>
-              </span>
+              <MarketingBrandLogo />
             </Link>
             <p className="text-muted-foreground mb-6 max-w-sm">
               Discover amazing vacation rentals across the Philippines. Book your perfect getaway
@@ -80,8 +77,8 @@ export function MarketingFooter() {
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="text-primary h-4 w-4 shrink-0" aria-hidden />
-                <a href="mailto:hello@kamehomes.com" className={linkClassName}>
-                  hello@kamehomes.com
+                <a href={`mailto:${PLATFORM_CONTACT_EMAIL}`} className={linkClassName}>
+                  {PLATFORM_CONTACT_EMAIL}
                 </a>
               </div>
               <div className="flex items-center gap-2">
@@ -154,9 +151,7 @@ export function MarketingFooter() {
       <div className="border-border border-t">
         <div className="container mx-auto px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
-            <p className="text-muted-foreground text-sm">
-              © {new Date().getFullYear()} Kame Homes. All rights reserved.
-            </p>
+            <p className="text-muted-foreground text-sm">{platformCopyrightLine()}</p>
             <div className="flex items-center gap-4">
               {socialLinks.map((social) => (
                 <a

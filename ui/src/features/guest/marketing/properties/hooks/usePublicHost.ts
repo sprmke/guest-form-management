@@ -21,6 +21,8 @@ export type PublicHostProfile = {
   ownerAvatarUrl: string | null;
   /** Host-wide Recommended badge (org Tier 2). */
   verifiedBadge: boolean;
+  /** Earned Superhost badge (org performance). */
+  isSuperhost: boolean;
   socialLinks: PublicHostSocialLinks;
   properties: Array<{
     slug: string;

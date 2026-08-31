@@ -28,6 +28,7 @@ import {
   GuestFormOptionCard,
 } from '@/features/guest/form/components/GuestFormOptionCard';
 import { GuestFormPaymentStepContent } from '@/features/guest/form/components/GuestFormPaymentStepContent';
+import { GuestVoucherEstimateSummary } from '@/features/guest/account/components/GuestVoucherUi';
 import { GuestFormVoucherPicker } from '@/features/guest/form/components/GuestFormVoucherPicker';
 import { GuestFormStepNavigation } from '@/features/guest/form/components/GuestFormStepNavigation';
 import { GuestFormStepper } from '@/features/guest/form/components/GuestFormStepper';
@@ -99,7 +100,6 @@ import {
   computeDefaultBookingRate,
   FALLBACK_PROPERTY_PRICING_DEFAULTS,
 } from '@/features/dashboard/pricing/lib/pricingCompute';
-import { formatMoney } from '@/utils/format/currency';
 
 import { GuestFormBrandHeader } from '@/components/branding/GuestFormBrandHeader';
 import { GuestFormPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
@@ -2048,37 +2048,15 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
                     />
 
                     {selectedVoucher && estimatedStayPhp != null ? (
-                      <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/60 px-4 py-3 text-sm dark:border-emerald-900/50 dark:bg-emerald-950/20">
-                        <p className="text-foreground font-semibold">
-                          {formatVoucherOfferLabel({
-                            code: selectedVoucher.code,
-                            percentOff: selectedVoucher.percentOff,
-                            legacyAmountPhp: selectedVoucher.legacyAmountPhp,
-                          })}
-                        </p>
-                        <dl className="text-muted-foreground mt-2 space-y-1">
-                          <div className="flex justify-between gap-3">
-                            <dt>Estimated stay</dt>
-                            <dd className="tabular-nums">{formatMoney(estimatedStayPhp)}</dd>
-                          </div>
-                          {estimatedVoucherDiscount > 0 ? (
-                            <div className="flex justify-between gap-3 text-emerald-700 dark:text-emerald-300">
-                              <dt>Voucher</dt>
-                              <dd className="tabular-nums">
-                                −{formatMoney(estimatedVoucherDiscount)}
-                              </dd>
-                            </div>
-                          ) : null}
-                          <div className="text-foreground flex justify-between gap-3 border-t border-emerald-200/60 pt-1 font-semibold dark:border-emerald-800/60">
-                            <dt>After voucher</dt>
-                            <dd className="tabular-nums">
-                              {formatMoney(
-                                Math.max(0, estimatedStayPhp - estimatedVoucherDiscount)
-                              )}
-                            </dd>
-                          </div>
-                        </dl>
-                      </div>
+                      <GuestVoucherEstimateSummary
+                        offerLabel={formatVoucherOfferLabel({
+                          code: selectedVoucher.code,
+                          percentOff: selectedVoucher.percentOff,
+                          legacyAmountPhp: selectedVoucher.legacyAmountPhp,
+                        })}
+                        estimatedStayPhp={estimatedStayPhp}
+                        discountPhp={estimatedVoucherDiscount}
+                      />
                     ) : null}
                   </div>
                 )}

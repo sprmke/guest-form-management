@@ -63,7 +63,7 @@ export function MarketingLayoutShell() {
     };
   }, [pathname, hash, navigate]);
 
-  usePageTitle(APP_TITLE);
+  usePageTitle(APP_TITLE || undefined);
   useFavicon(undefined);
 
   const shell = (
