@@ -13,15 +13,17 @@ Every page must set a `document.title` so the browser tab is meaningful. Use the
 
 ## Title format per scope
 
-| Scope                                                        | Format                                         | Example                               |
-| ------------------------------------------------------------ | ---------------------------------------------- | ------------------------------------- |
-| Public marketing pages                                       | `Kame Homes - ${page name}`                    | `Kame Homes - Search`                 |
-| Public property-scoped pages                                 | `${Property Name} - ${page name}`              | `Solea Mactan - Calendar`             |
-| Guest account pages                                          | `Kame Homes - ${page name}`                    | `Kame Homes - Stays`                  |
-| App-level dashboard pages (sign-in, onboarding, super admin) | `Kame Homes - ${page name}`                    | `Kame Homes - Sign In`                |
-| Org-level dashboard pages                                    | `${Org Name} - ${page name}`                   | `Kame Homes PH - Bookings`            |
-| Property-level dashboard pages                               | `${Property Name} - ${page name}`              | `Solea Mactan - Bookings`             |
-| Parking-level dashboard pages                                | `${Org Name} - ${Parking Name} - ${page name}` | `Kame Homes PH - Slot 12A - Bookings` |
+| Scope                                                        | Format                                                             | Example                               |
+| ------------------------------------------------------------ | ------------------------------------------------------------------ | ------------------------------------- |
+| Public marketing pages                                       | `${platform app name} - ${page name}` or `${page name}` when unset | `Stays - Search` or `Search`          |
+| Public property-scoped pages                                 | `${Property Name} - ${page name}`                                  | `Solea Mactan - Calendar`             |
+| Guest account pages                                          | `${platform app name} - ${page name}` or `${page name}` when unset | `Stays - Profile` or `Profile`        |
+| App-level dashboard pages (sign-in, onboarding, super admin) | `${platform app name} - ${page name}` or `${page name}` when unset | `Sign In`                             |
+| Org-level dashboard pages                                    | `${Org Name} - ${page name}`                                       | `Acme Stays PH - Bookings`            |
+| Property-level dashboard pages                               | `${Property Name} - ${page name}`                                  | `Solea Mactan - Bookings`             |
+| Parking-level dashboard pages                                | `${Org Name} - ${Parking Name} - ${page name}`                     | `Acme Stays PH - Slot 12A - Bookings` |
+
+Platform app name comes from `VITE_PLATFORM_APP_NAME` (`ui/src/lib/platformBranding.ts`). Tenant-scoped pages always use org/property/parking names — never a hardcoded operator brand.
 
 ### Page name rules
 

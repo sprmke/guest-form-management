@@ -1,0 +1,36 @@
+---
+description: >-
+  New product features must decide Plans entitlements and Team role permissions
+  in the same change (or explicitly document N/A). Never ship a gated surface
+  without both controls considered.
+alwaysApply: true
+---
+
+# Plans + team permissions — new features
+
+**Non-negotiable:** every **new product capability** (host dashboard feature, paid module, gated action, new settings surface) must **decide** Plans and Team RBAC in the **same** change — not as a follow-up.
+
+This is the Cursor always-on gate. Full checklist: **`plans-and-permissions`** skill (`.agent/skills/plans-and-permissions/SKILL.md`). Claude Code / OpenCode: invoke that skill before claiming done.
+
+## Mandatory decision (before / during implementation)
+
+Answer both. “Forgot” is not valid.
+
+| Control              | Question                                                       | If **yes**                                                                     | If **no**                                                            |
+| -------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| **Plans**            | Should this be limited by subscription tier?                   | Add `PlanFeatureKey`, seed migration, gates, matrix, compare/tier cards        | Note **N/A** in the route guide or workflow doc (why free / ungated) |
+| **Team permissions** | Should some team roles be blocked from viewing or mutating it? | Add permission leaf(s), catalog, server allow-list, seeded templates, UI gates | Note **N/A** (owner-only / already covered by an existing leaf)      |
+
+Reference implementation: **Airbnb Channel sync** — plan key `calendarSync` (Pro+) + leaves `pricing.channels:view` / `:edit`.
+
+## Do not ship without
+
+When Plans applies: migration on `pricing_plans.features`, typed keys in UI + edge `planFeatures.ts`, `useFeatureGate` / `requirePropertyFeature`, `docs/architecture/plans-feature-matrix.md`, `planPresentation` / public pricing when host-visible.
+
+When Team RBAC applies: UI `propertyTeamConstants` (and parking/org mirrors if needed) + edge `propertyTeamPermissions` (etc.) **in sync**, `propertyPermissionCatalog` (+ `COARSE_PLAN_FEATURES` when plan-linked), seeded templates, `resolveScoped*Access` on writes, route-guide permission table.
+
+## Related
+
+- Skill: **`plans-and-permissions`**
+- Matrix: **`docs/architecture/plans-feature-matrix.md`**
+- Docs rule: **`documentation-maintenance.mdc`** · Multi-tenant scoping: **`multi-tenancy`** skill

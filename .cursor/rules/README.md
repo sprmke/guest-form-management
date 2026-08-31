@@ -17,6 +17,7 @@ Keep this list **small**. Heavy domain specs use globs.
 | `no-prod-deploy.mdc`            | Block prod Supabase/DB deploys (unlock: **kamewave**) |
 | `markitdown-mcp.mdc`            | Convert PDF/Office attachments via MarkItDown MCP     |
 | `route-guides.mdc`              | Page behavior docs must stay in sync                  |
+| `plans-and-permissions.mdc`     | New features must decide Plans + Team RBAC (or N/A)   |
 | `ponytail.mdc`                  | Lazy senior dev mode — minimal diffs, reuse first     |
 
 ## New developer setup (AI tooling)
@@ -91,6 +92,7 @@ Run **`bun run check:ai-tooling-sync`** after changing hooks, commands, agents, 
 | --------------------------- | --------------------------------------------------------------------- |
 | `docs-first`                | Read docs before implementing; then write docs back (same change)     |
 | `documentation-maintenance` | Same-change docs writes — Claude Code equivalent of always-on rule    |
+| `plans-and-permissions`     | New features: Plans entitlements + Team RBAC checklist (or N/A)       |
 | `supabase-stack`            | Postgres, Storage, edge platform                                      |
 | `fix-migration-issues`      | Local `db:migrate` when schema drifts — never default to reset/deploy |
 | `supabase-auth`             | OAuth, JWT, RBAC                                                      |
