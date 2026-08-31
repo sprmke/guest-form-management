@@ -508,6 +508,7 @@ export function e2ePropertyBookingRow(overrides: Record<string, unknown> = {}) {
     status: 'PENDING_DOCUMENTS',
     booking_rate: 5000,
     gaf_request_pdf_url: 'https://example.com/e2e-gaf-request.pdf',
+    valid_id_url: 'https://example.com/e2e-valid-id.pdf',
     pet_request_pdf_url: null,
     ...overrides,
   };

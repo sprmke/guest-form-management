@@ -219,9 +219,9 @@ function propertyAccessPayload(permissions: readonly string[]) {
   };
 }
 
-function entitlementsPayload() {
+function entitlementsPayload(freePlan = false) {
   return {
-    automatedBookingFlow: true,
+    automatedBookingFlow: !freePlan,
     verifiedBadgeEligible: false,
     recommendedBadgeEligible: false,
     telegramNotifications: true,
@@ -385,9 +385,6 @@ function appSettingsPayload() {
     vouchersEnabled: true,
     voucherPrizes: [],
     voucherRevealStyle: 'reel',
-    superhostVerificationUrl: '',
-    superhostProofImageUrl: '',
-    superhostStatus: 'none',
     documentRequirementsOverride: null,
     resolvedDocumentRequirements: [],
     residenceDefaultDocumentRequirements: [],
@@ -423,34 +420,57 @@ function orgAccessPayload() {
   };
 }
 
-export async function installTeamMemberSession(page: Page) {
-  await page.addInitScript(
-    ({ authKey, session, supabaseAuthKey, supabaseAuthSession, orgSlug, propertySlug }) => {
-      window.localStorage.setItem(authKey, JSON.stringify(session));
-      window.localStorage.setItem(supabaseAuthKey, JSON.stringify(supabaseAuthSession));
-      window.localStorage.setItem('kame-last-org-slug', orgSlug);
-      window.localStorage.setItem('kame-last-property-slug', propertySlug);
-      window.localStorage.setItem('kame-last-tenant-kind', 'property');
+function teamMemberSessionStoragePayload() {
+  return {
+    authKey: 'kame:e2e-admin-session',
+    supabaseAuthKey: SUPABASE_AUTH_STORAGE_KEY,
+    supabaseAuthSession: e2eSupabaseAuthSession(),
+    session: {
+      accessToken: 'playwright-team-token',
+      refreshToken: 'playwright-team-refresh',
+      userId: 'user-team-e2e-001',
+      email: 'team-member@example.com',
+      name: 'Team Member',
     },
-    {
-      authKey: 'kame:e2e-admin-session',
-      supabaseAuthKey: SUPABASE_AUTH_STORAGE_KEY,
-      supabaseAuthSession: e2eSupabaseAuthSession(),
-      session: {
-        accessToken: 'playwright-team-token',
-        refreshToken: 'playwright-team-refresh',
-        userId: 'user-team-e2e-001',
-        email: 'team-member@example.com',
-        name: 'Team Member',
-      },
-      orgSlug: TEAM_E2E_ORG_SLUG,
-      propertySlug: TEAM_E2E_PROPERTY_SLUG,
-    }
-  );
+    orgSlug: TEAM_E2E_ORG_SLUG,
+    propertySlug: TEAM_E2E_PROPERTY_SLUG,
+  };
 }
 
-export async function installPropertyTeamRbacMocks(page: Page, template: TeamRbacTemplate) {
+/** Apply host team-member auth on an already-loaded page (e.g. after a guest flow in the same spec). */
+export async function applyTeamMemberSessionStorage(page: Page) {
+  await page.evaluate((payload) => {
+    window.localStorage.setItem(payload.authKey, JSON.stringify(payload.session));
+    window.localStorage.setItem(
+      payload.supabaseAuthKey,
+      JSON.stringify(payload.supabaseAuthSession)
+    );
+    window.localStorage.setItem('kame-last-org-slug', payload.orgSlug);
+    window.localStorage.setItem('kame-last-property-slug', payload.propertySlug);
+    window.localStorage.setItem('kame-last-tenant-kind', 'property');
+  }, teamMemberSessionStoragePayload());
+}
+
+export async function installTeamMemberSession(page: Page) {
+  await page.addInitScript((payload) => {
+    window.localStorage.setItem(payload.authKey, JSON.stringify(payload.session));
+    window.localStorage.setItem(
+      payload.supabaseAuthKey,
+      JSON.stringify(payload.supabaseAuthSession)
+    );
+    window.localStorage.setItem('kame-last-org-slug', payload.orgSlug);
+    window.localStorage.setItem('kame-last-property-slug', payload.propertySlug);
+    window.localStorage.setItem('kame-last-tenant-kind', 'property');
+  }, teamMemberSessionStoragePayload());
+}
+
+export async function installPropertyTeamRbacMocks(
+  page: Page,
+  template: TeamRbacTemplate,
+  opts?: { freePlan?: boolean }
+) {
   const permissions = permissionsForTemplate(template);
+  const freePlan = Boolean(opts?.freePlan);
   await installTeamMemberSession(page);
 
   await page.route('**/functions/v1/**', async (route) => {
@@ -471,7 +491,7 @@ export async function installPropertyTeamRbacMocks(page: Page, template: TeamRba
         await fulfillJson(route, { success: true, data: propertyAccessPayload(permissions) });
         return;
       case 'property-entitlements':
-        await fulfillJson(route, { success: true, data: entitlementsPayload() });
+        await fulfillJson(route, { success: true, data: entitlementsPayload(freePlan) });
         return;
       case 'dashboard-stats':
         await fulfillJson(route, { success: true, data: dashboardStatsPayload() });

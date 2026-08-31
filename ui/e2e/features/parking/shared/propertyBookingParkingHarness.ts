@@ -18,6 +18,7 @@ export const PROPERTY_BOOKING_ID = E2E_PROPERTY_BOOKING_ID;
 
 export const propertyBookingParkingPaths = {
   bookingDetail: `/org/kame-homes-ph/property/${PROPERTY_SLUG}/bookings/${PROPERTY_BOOKING_ID}`,
+  propertySettings: `/org/kame-homes-ph/property/${PROPERTY_SLUG}/settings`,
 } as const;
 
 export type PropertyBookingParkingState = {
@@ -211,9 +212,6 @@ function e2eAppSettingsPayload() {
     vouchersEnabled: true,
     voucherPrizes: [],
     voucherRevealStyle: 'reel',
-    superhostVerificationUrl: '',
-    superhostProofImageUrl: '',
-    superhostStatus: 'none',
     documentRequirementsOverride: null,
     resolvedDocumentRequirements: [
       {
@@ -349,6 +347,22 @@ export async function installPropertyBookingParkingMocks(
     await fulfillJson(route, { success: true, kind });
   });
 
+  await page.route('**/functions/v1/sd-refund-cron**', async (route) => {
+    const transitioned = workflow.booking.status === 'READY_FOR_CHECKIN' ? 1 : 0;
+    if (transitioned) {
+      Object.assign(workflow.booking, {
+        status: 'READY_FOR_CHECKOUT',
+        status_updated_at: new Date().toISOString(),
+      });
+    }
+    await fulfillJson(route, {
+      success: true,
+      transitioned,
+      checkoutEmailsSent: workflow.freePlan ? 0 : transitioned,
+      transitionedSdEmailSuppressed: workflow.freePlan && transitioned ? 1 : 0,
+    });
+  });
+
   await page.route('**/functions/v1/transition-booking**', async (route) => {
     const body = (route.request().postDataJSON?.() as Record<string, unknown> | undefined) ?? {};
     workflow.lastTransition = body;
@@ -365,7 +379,7 @@ export async function installPropertyBookingParkingMocks(
 
     const skipped =
       workflow.freePlan && toStatus === 'PENDING_DOCUMENTS'
-        ? (['gaf_request', 'booking_acknowledgement', 'parking_broadcast'] as const)
+        ? (['gaf_request', 'booking_acknowledgement'] as const)
         : workflow.freePlan && toStatus === 'READY_FOR_CHECKIN'
           ? (['ready_for_checkin', 'sd_refund_form_request'] as const)
           : [];
