@@ -1,103 +1,72 @@
-import { OPTIMIZE_PRESETS, type OptimizePreset } from '@/lib/media/imageOptimizationPlan';
-
-function optimizationDisabled(): boolean {
-  return import.meta.env.VITE_DISABLE_IMAGE_OPTIMIZATION === '1';
-}
-
-function isImageFile(file: File): boolean {
-  const mime = (file.type || '').trim().toLowerCase();
-  if (mime.startsWith('image/')) return true;
-  return /\.(jpe?g|png|webp|gif|bmp|tiff?|avif|heic|heif)$/i.test(file.name);
-}
-
-function isPassThroughImage(file: File): boolean {
-  const mime = (file.type || '').trim().toLowerCase();
-  const name = file.name.toLowerCase();
-  if (mime === 'image/svg+xml' || name.endsWith('.svg')) return true;
-  if (mime === 'image/gif' || name.endsWith('.gif')) return true;
-  if (mime === 'image/heic' || mime === 'image/heif' || /\.(heic|heif)$/.test(name)) return true;
-  return false;
-}
-
-function replaceExtension(name: string, nextExt: string): string {
-  return `${name.replace(/\.[^.]+$/, '')}.${nextExt}`;
-}
-
-function loadImage(file: File): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const image = new Image();
-    image.onload = () => {
-      URL.revokeObjectURL(url);
-      resolve(image);
-    };
-    image.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error('undecodable'));
-    };
-    image.src = url;
-  });
-}
-
-function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality: number): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => (blob ? resolve(blob) : reject(new Error('encode failed'))),
-      type,
-      quality
-    );
-  });
-}
-
 /**
- * Re-encode / downscale an image. Never upscales, never returns a larger file,
- * never throws — failures fall back to the original.
+ * prepareImageForUpload — the one call site every image uploader uses right
+ * before it builds its request body.
+ *
+ *   const { file, error } = await prepareImageForUpload(picked, {
+ *     preset: 'PHOTO_MASTER', surface: 'property-media', kind: 'image',
+ *   });
+ *   if (error) { setError(error); return; }
+ *   // ...upload `file`
+ *
+ * It: rejects absurdly large inputs early (before any decode), runs the
+ * concurrency-limited optimizer, then re-validates the *result* against the hard
+ * ceiling. Never throws — image problems come back as `{ error }` or as an
+ * untouched passthrough `file`.
  */
-export async function prepareImageForUpload(file: File, preset: OptimizePreset): Promise<File> {
-  if (
-    optimizationDisabled() ||
-    preset === 'NONE' ||
-    !isImageFile(file) ||
-    isPassThroughImage(file)
-  ) {
-    return file;
+
+import type { OptimizeResult } from '@/lib/media/imageOptimization';
+import type { OptimizePreset } from '@/lib/media/imageOptimizationPlan';
+import { runOptimize } from '@/lib/media/optimizeQueue';
+import {
+  formatMaxBytesError,
+  UPLOAD_MAX_BYTES,
+  validateUploadFile,
+  type UploadLimitKind,
+} from '@/lib/media/uploadLimits';
+
+/** Anything larger than this is rejected before we attempt to decode it. */
+const PRE_OPTIMIZE_SANITY_BYTES = 75 * 1024 * 1024;
+
+export interface PrepareImageOptions {
+  preset: OptimizePreset;
+  /** Telemetry surface id. */
+  surface: string;
+  /** Hard-ceiling group the *result* must satisfy. */
+  kind: UploadLimitKind;
+  signal?: AbortSignal;
+  onProgress?: (progress: number) => void;
+}
+
+export interface PrepareImageResult {
+  /** The file to upload (optimized, or the untouched original). */
+  file: File;
+  /** `true` when the optimizer produced a new, smaller file. */
+  changed: boolean;
+  /** Set when the file cannot be uploaded — surface this to the user. */
+  error?: string;
+  /** Raw optimizer outcome (telemetry / tests). */
+  result?: OptimizeResult;
+}
+
+export async function prepareImageForUpload(
+  file: File,
+  options: PrepareImageOptions
+): Promise<PrepareImageResult> {
+  if (file.size > PRE_OPTIMIZE_SANITY_BYTES) {
+    return { file, changed: false, error: formatMaxBytesError(UPLOAD_MAX_BYTES[options.kind]) };
   }
 
-  const plan = OPTIMIZE_PRESETS[preset];
-  if (!plan.maxLongEdge) return file;
+  const result = await runOptimize(file, options.preset, {
+    surface: options.surface,
+    signal: options.signal,
+    onProgress: options.onProgress,
+  });
 
-  try {
-    const image = await loadImage(file);
-    const longEdge = Math.max(image.width, image.height);
-    const scale = longEdge > plan.maxLongEdge ? plan.maxLongEdge / longEdge : 1;
-    const width = Math.max(1, Math.round(image.width * scale));
-    const height = Math.max(1, Math.round(image.height * scale));
-
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return file;
-    ctx.drawImage(image, 0, 0, width, height);
-
-    const preferWebp = plan.preferWebp && file.type !== 'image/png';
-    const fileType = preferWebp
-      ? 'image/webp'
-      : plan.preserveAlphaAsPng && file.type === 'image/png'
-        ? 'image/png'
-        : file.type.startsWith('image/')
-          ? file.type
-          : 'image/jpeg';
-
-    const blob = await canvasToBlob(canvas, fileType, plan.quality);
-    if (blob.size >= file.size) return file;
-
-    const nextExt = fileType === 'image/webp' ? 'webp' : fileType === 'image/png' ? 'png' : 'jpg';
-    return new File([blob], replaceExtension(file.name, nextExt), {
-      type: fileType,
-      lastModified: Date.now(),
-    });
-  } catch {
-    return file;
+  const finalFile = result.file;
+  const validation = validateUploadFile(finalFile, options.kind);
+  if (!validation.ok) {
+    return { file: finalFile, changed: result.optimized, error: validation.message, result };
   }
+
+  return { file: finalFile, changed: result.optimized, result };
 }

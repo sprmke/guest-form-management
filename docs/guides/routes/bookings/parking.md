@@ -80,5 +80,5 @@ Bootstrap: `GET get-pay-parking` (also returns `linked_parking_booking_id`, `cit
 - [Route index](../README.md)
 - [`parkings.md`](../parkings.md) — `linkStay` behavior
 - [`org/property/bookings-detail.md`](../org/property/bookings-detail.md) — Find parking actions
-- [`docs/workflow/in-progress/parking-owner-owned-default.md`](../../workflow/in-progress/parking-owner-owned-default.md)
+- [`docs/workflow/done/parking-owner-owned-default.md`](../../workflow/done/parking-owner-owned-default.md)
 - [`docs/workflow/done/parking-pay-parking-marketplace-connect.md`](../../workflow/done/parking-pay-parking-marketplace-connect.md)

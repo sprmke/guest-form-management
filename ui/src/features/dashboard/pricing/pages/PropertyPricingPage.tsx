@@ -8,6 +8,7 @@ import {
   startOfToday,
   getDaysInMonth,
 } from 'date-fns';
+import { CalendarRange } from 'lucide-react';
 import { toast } from 'sonner';
 
 import {
@@ -15,7 +16,7 @@ import {
   type CalendarBookingCelebrationTrigger,
 } from '@/features/dashboard/bookings/components/calendar/CalendarBookingCelebration';
 import { buildOccupancyByDay } from '@/features/dashboard/bookings/components/calendar/calendarDateUtils';
-import { ChannelSyncCard } from '@/features/dashboard/pricing/components/ChannelSyncCard';
+import { ChannelSyncDialog } from '@/features/dashboard/pricing/components/ChannelSyncDialog';
 import { PricingCalendarBookingModal } from '@/features/dashboard/pricing/components/PricingCalendarBookingModal';
 import { PricingCalendarGrid } from '@/features/dashboard/pricing/components/PricingCalendarGrid';
 import { PricingDateModal } from '@/features/dashboard/pricing/components/PricingDateModal';
@@ -65,8 +66,10 @@ import type {
 import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
 import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
 
+import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { BookingsCalendarSkeleton } from '@/components/skeletons/AdminSkeletons';
+import { Button } from '@/components/ui/button';
 
 /** A viewed month at/above this many bookings triggers the busy-month celebration. */
 const BUSY_MONTH_CELEBRATION_THRESHOLD = 20;
@@ -77,7 +80,11 @@ export function PropertyPricingPage() {
   const canEditRates = hasPropertyPermission(permissions, 'pricing.rates:edit');
   const canBlockDates = hasPropertyPermission(permissions, 'pricing.blocks:add');
   const canUnblockDates = hasPropertyPermission(permissions, 'pricing.blocks:delete');
+  const canViewChannels = hasPropertyPermission(permissions, 'pricing.channels:view');
+  const canEditChannels = hasPropertyPermission(permissions, 'pricing.channels:edit');
   const canSelectDates = canEditRates || canBlockDates || canUnblockDates;
+
+  const [channelSyncOpen, setChannelSyncOpen] = useState(false);
 
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const { data: pricingData, isLoading, isError, error } = usePropertyPricing(currentMonth);
@@ -94,6 +101,11 @@ export function PropertyPricingPage() {
   const holidayRuleDtos = pricingData?.holidayRules;
   const [bookedDateKeys, setBookedDateKeys] = useState<Set<string>>(() => new Set());
   const [blockedDateKeys, setBlockedDateKeys] = useState<Set<string>>(() => new Set());
+  // Nights blocked by an OTA calendar feed — shown on the grid but not selectable
+  // or editable here; they clear only when the feed drops them or is removed.
+  const [importedBlockedDateKeys, setImportedBlockedDateKeys] = useState<Set<string>>(
+    () => new Set()
+  );
   const [customDatePrices, setCustomDatePrices] = useState<Map<string, number>>(() => new Map());
   const [fees, setFees] = useState<PropertyFeeConfig[]>(() =>
     INITIAL_PROPERTY_FEES.map((fee) => ({ ...fee }))
@@ -119,6 +131,7 @@ export function PropertyPricingPage() {
 
     setBookedDateKeys(new Set(pricingData.bookedDateKeys));
     setBlockedDateKeys(new Set(pricingData.blockedDateKeys));
+    setImportedBlockedDateKeys(new Set(pricingData.importedBlockedDateKeys));
 
     if (hasChanges || hydratedRef.current) return;
 
@@ -195,7 +208,8 @@ export function PropertyPricingPage() {
       const key = dateKey(date);
       const booking = bookingsByDay.get(key)?.[0];
       const isBooked = bookedDateKeys.has(key);
-      const isBlocked = blockedDateKeys.has(key);
+      const isImported = importedBlockedDateKeys.has(key);
+      const isBlocked = blockedDateKeys.has(key) || isImported;
 
       if (booking) {
         return {
@@ -203,27 +217,29 @@ export function PropertyPricingPage() {
           isCustom: false as const,
           isBooked: true,
           isBlocked,
+          isImported,
         };
       }
 
       const customPrice = customDatePrices.get(key);
       if (customPrice !== undefined) {
-        return { price: customPrice, isCustom: true as const, isBooked, isBlocked };
+        return { price: customPrice, isCustom: true as const, isBooked, isBlocked, isImported };
       }
 
       const rule = findHolidayRuleForDate(date, resolveHolidayRules(holidayRuleDtos));
       const price = resolveNightlyRateForDate(date, pricingDefaults, nightlyRateOptions);
 
       if (rule) {
-        return { price, rule, isCustom: false as const, isBooked, isBlocked };
+        return { price, rule, isCustom: false as const, isBooked, isBlocked, isImported };
       }
 
-      return { price, isCustom: false as const, isBooked, isBlocked };
+      return { price, isCustom: false as const, isBooked, isBlocked, isImported };
     },
     [
       bookingsByDay,
       bookedDateKeys,
       blockedDateKeys,
+      importedBlockedDateKeys,
       customDatePrices,
       holidayRuleDtos,
       pricingDefaults,
@@ -264,7 +280,12 @@ export function PropertyPricingPage() {
   );
 
   const handleDateClick = (date: Date) => {
-    if (isBefore(date, startOfToday()) || !canSelectDates || bookedDateKeys.has(dateKey(date))) {
+    if (
+      isBefore(date, startOfToday()) ||
+      !canSelectDates ||
+      bookedDateKeys.has(dateKey(date)) ||
+      importedBlockedDateKeys.has(dateKey(date))
+    ) {
       return;
     }
     if (justSelectedRef.current) {
@@ -290,7 +311,12 @@ export function PropertyPricingPage() {
   };
 
   const handleDateMouseDown = (date: Date) => {
-    if (isBefore(date, startOfToday()) || !canSelectDates || bookedDateKeys.has(dateKey(date))) {
+    if (
+      isBefore(date, startOfToday()) ||
+      !canSelectDates ||
+      bookedDateKeys.has(dateKey(date)) ||
+      importedBlockedDateKeys.has(dateKey(date))
+    ) {
       return;
     }
     setIsSelecting(true);
@@ -304,7 +330,8 @@ export function PropertyPricingPage() {
       !isSelecting ||
       isBefore(date, startOfToday()) ||
       !canSelectDates ||
-      bookedDateKeys.has(dateKey(date))
+      bookedDateKeys.has(dateKey(date)) ||
+      importedBlockedDateKeys.has(dateKey(date))
     ) {
       return;
     }
@@ -321,7 +348,7 @@ export function PropertyPricingPage() {
     for (const d of ordered) {
       if (isBefore(d, startOfToday())) continue;
       const key = dateKey(d);
-      if (bookedDateKeys.has(key)) break;
+      if (bookedDateKeys.has(key) || importedBlockedDateKeys.has(key)) break;
       if (blockedDateKeys.has(key) !== anchorIsBlocked) break;
       range.push(d);
     }
@@ -516,12 +543,32 @@ export function PropertyPricingPage() {
     );
   }
 
+  const channelSyncHeroAction = canViewChannels ? (
+    <MobileHeroActionButton aria-label="Channel sync" onClick={() => setChannelSyncOpen(true)}>
+      <CalendarRange className="size-5" aria-hidden />
+    </MobileHeroActionButton>
+  ) : undefined;
+
+  const channelSyncDesktopAction = canViewChannels ? (
+    <Button
+      type="button"
+      variant="outline"
+      onClick={() => setChannelSyncOpen(true)}
+      className="min-h-[44px] gap-1.5"
+    >
+      <CalendarRange className="size-4" aria-hidden />
+      Channel sync
+    </Button>
+  ) : undefined;
+
   return (
     <>
       <AdminMobilePage
         title="Pricing"
         subtitle="Manage pricing and availability."
         titleId="pricing-heading"
+        heroTrailing={channelSyncHeroAction}
+        desktopActions={channelSyncDesktopAction}
       >
         <PricingStatsRow
           weekdayRate={weekdayRate}
@@ -566,11 +613,15 @@ export function PropertyPricingPage() {
             />
           </div>
         </div>
-
-        <div className="mt-5">
-          <ChannelSyncCard />
-        </div>
       </AdminMobilePage>
+
+      {canViewChannels ? (
+        <ChannelSyncDialog
+          open={channelSyncOpen}
+          onOpenChange={setChannelSyncOpen}
+          readOnly={!canEditChannels}
+        />
+      ) : null}
 
       <PricingDateModal
         open={dateModalOpen && selectedDates.length > 0 && canSelectDates}

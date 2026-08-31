@@ -82,7 +82,7 @@ export function TrustIndicators() {
           >
             <div className="bg-primary/10 text-primary mb-4 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium">
               <Award className="h-4 w-4" />
-              Why Choose KameHomes
+              Why book with us
             </div>
             <h2 className="text-foreground text-3xl font-bold lg:text-4xl">Book with confidence</h2>
           </motion.div>
@@ -145,8 +145,8 @@ export function TrustIndicators() {
                   Ready to start your adventure?
                 </h3>
                 <p className="text-muted-foreground max-w-md dark:text-slate-300">
-                  Join thousands of happy travelers who have found their perfect vacation rentals
-                  with KameHomes.
+                  Join thousands of happy travelers who have found their perfect vacation rentals on
+                  our platform.
                 </p>
               </div>
               <div className="flex flex-col gap-4 sm:flex-row">

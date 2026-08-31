@@ -2,7 +2,7 @@
 title: 'Guest messages'
 status: active
 tags: [guides, routes]
-updated: 2026-08-17
+updated: 2026-08-30
 ---
 
 # Guest messages
@@ -17,7 +17,7 @@ Route: `/properties/:propertySlug/messages`
 | ------------ | ------- | ---------- | ---- | ------------------------------------------- |
 | Contact host | Partial | Yes        | Yes  | Auth on Contact host; dates in chat modal   |
 | Chat thread  | Partial | Yes        | Yes  | Phase 1 bubble UX shipped; see § UX roadmap |
-| Empty FAQs   | Yes     | Yes        | Yes  | Five starter questions; no Actions          |
+| Empty FAQs   | Yes     | Yes        | Yes  | Phase-aware starter questions (5 shown)     |
 | Host inbox   | Partial | Yes        | Yes  | **Web** tab on Guest Inbox                  |
 
 ## Overview
@@ -41,7 +41,7 @@ Guests message you from a property listing before they book. They start in a cha
 - Q: Can guests talk to the AI receptionist from the listing chat popup?
   A: Yes. When the voice receptionist is enabled for the property, **Talk to receptionist** shows up in the chat ⋮ menu on both the Contact host popup and the full messages page.
 - Q: What are the suggested questions guests see before they message me?
-  A: When a guest opens chat with no messages yet, they see five starter questions about the stay: check-in times, parking, pets, WiFi, payments, and similar. Tapping one sends that question to you like a normal first message. There are no action buttons, only questions. The Stays inbox (existing threads) does not show these starters.
+  A: When a guest opens chat with no messages yet, they see five starter questions tailored to where they are in the conversation: browsing the listing (pre-booking), asking about specific dates (inquiry), or mid-stay follow-ups once messages exist (ongoing). Examples include check-in times, parking, pets, WiFi, pricing for selected dates, WiFi password, or late checkout — depending on phase. Tapping one sends that question like a normal message. There are no action buttons, only questions. The Stays inbox (existing threads) does not show these starters.
 
 ---
 
@@ -50,7 +50,7 @@ Guests message you from a property listing before they book. They start in a cha
 1. **Contact host** on **`ListingHostCard`** → **`GuestAuthModal`** if signed out, then centered **`ContactHostSheet`** chat modal.
 2. **First inquiry:** if no prior messages with this host on this property, **`BookingCalendarModal`** is required before the first send.
 3. **Return visit:** existing thread loads via **`guest-web-chat-resume`** — dates optional; chat history shows immediately.
-4. Guest composes message → **Send** → thread stays in modal. If the thread is empty, five FAQ starter cards appear above the composer (same card UI as the host AI assistant, questions only — no Actions switcher). Tapping a card sends that question. On a first inquiry without dates, tapping a starter fills the message and opens the date picker; after dates are saved the question sends automatically.
+4. Guest composes message → **Send** → thread stays in modal. If the thread is empty, five phase-aware FAQ starter cards appear above the composer (same card UI as the host AI assistant, questions only — no Actions switcher). Phase is **pre_booking** before dates, **inquiry** after dates are set, **ongoing** once any message exists. Tapping a card sends that question. On a first inquiry without dates, tapping a starter fills the message and opens the date picker; after dates are saved the question sends automatically.
 5. **Voice receptionist** (when enabled): header ⋮ **Talk to receptionist** — same in-modal **`VoiceSessionPanel`** as the full messages page. Available on first inquiry (dates not required) and return visits. Escape / overlay do not close the chat modal mid-call; hang-up returns to the text thread.
 
 **Reserve** remains separate: dates → **`requireGuestAuth`** when anonymous → **`GuestBookingFormModal`** (`GuestForm` embed) — never chat.
@@ -71,7 +71,17 @@ Use for deep links, **Open full chat**, and future guest Messages hub — not fi
 
 **UI:** Host header, compact inquiry stay strip (`GuestStayContextBar` `density="compact"`), scrollable messages, composer. Shared horizontal gutter (`px-3`) across header, stay strip, thread, and composer. Guest messages align right; host replies align left. Conversation shell uses **`bg-card`** (pure white in light theme — not canvas `--background`) with `sm:rounded-3xl` so bottom corners match the MainLayout surface card. Height fills remaining viewport on mobile; on `md+` a balanced cap (`min(44–52rem, calc(100dvh − chrome))`, `max-w-3xl`).
 
-**Empty thread:** when there are no messages yet, the thread shows five random FAQ starters from `guestChatSuggestions.ts` (listing questions the inbox AI can already answer from property facts — check-in, parking, pets, WiFi, GCash, house rules, cancellation, security deposit). Same interactive cards as the host assistant (`ChatSuggestionList`); no Questions/Actions toggle. Tapping sends the prompt as the first message. Starters hide as soon as any message exists. `/account/stays` does not show them (`faqSuggestions={false}`).
+**Composer:** paperclip for attachments; **Insert** (`+`) for share dates, calendar link, and listing link when inquiry dates are set. When the thread has messages, a horizontal **Helpful links** strip (stay guide when the guest has an active booking, calendar, listing, guest form, showcase) sits above the composer (`GuestChatResourceHub`). FAQ starters remain phase-aware for empty threads (see § Empty thread).
+
+**Empty thread:** when there are no messages yet, the thread shows five FAQ starters from `guestChatSuggestions.ts`, filtered by conversation phase via `resolveGuestChatFaqPhase()` + `pickGuestChatFaqs()`:
+
+| Phase         | When                          | Example prompts                                               |
+| ------------- | ----------------------------- | ------------------------------------------------------------- |
+| `pre_booking` | No inquiry dates, no messages | How do I book?, amenities, cancellation, GCash                |
+| `inquiry`     | Dates set, no messages yet    | Availability for dates, total for stay, early check-in        |
+| `ongoing`     | Any message in thread         | WiFi password, parking on arrival, unit access, late checkout |
+
+Same interactive cards as the host assistant (`ChatSuggestionList`); no Questions/Actions toggle. Tapping sends the prompt as the first message. Starters hide as soon as any message exists. `/account/stays` does not show them (`faqSuggestions={false}`).
 
 **Realtime:** Supabase channel on **`social_messages`** (guest RLS).
 
@@ -131,14 +141,18 @@ One thread per guest + property pair.
 
 Shared components: `ui/src/components/chat/*`, `ui/src/lib/chat/chatMessageFormat.ts`.
 
-| Phase | Focus                                                                                                   | Status      |
-| ----- | ------------------------------------------------------------------------------------------------------- | ----------- |
-| **1** | Timestamps, date separators, shared bubble, guest optimistic send, sent ✓, AI badge                     | **Shipped** |
-| **2** | Read receipts, mark-read, delivery lifecycle, Realtime UPDATE, guest unread                             | **Shipped** |
-| **3** | Edit until read/reply, “Edited” label; Edit/Unsend hidden in ⋮ when unavailable (no error toast)        | **Shipped** |
-| **4** | Reply-to-message with quote                                                                             | **Shipped** |
-| **5** | Typing, guest attachments, search, offline notify                                                       | **Shipped** |
-| **6** | Awaiting-reply badge when `reply_status=pending`; Chat quick-reply group in inbox composer + management | **Shipped** |
+| Phase  | Focus                                                                                                   | Status      |
+| ------ | ------------------------------------------------------------------------------------------------------- | ----------- |
+| **1**  | Timestamps, date separators, shared bubble, guest optimistic send, sent ✓, AI badge                     | **Shipped** |
+| **2**  | Read receipts, mark-read, delivery lifecycle, Realtime UPDATE, guest unread                             | **Shipped** |
+| **3**  | Edit until read/reply, “Edited” label; Edit/Unsend hidden in ⋮ when unavailable (no error toast)        | **Shipped** |
+| **4**  | Reply-to-message with quote                                                                             | **Shipped** |
+| **5**  | Typing, guest attachments, search, offline notify                                                       | **Shipped** |
+| **6**  | Awaiting-reply badge when `reply_status=pending`; Chat quick-reply group in inbox composer + management | **Shipped** |
+| **7**  | Context-aware FAQ starters by conversation phase (pre-booking / inquiry / ongoing)                      | **Shipped** |
+| **8**  | Guest Insert (`+`) menu — share dates, calendar, listing link                                           | **Shipped** |
+| **9**  | Guest resource hub — self-serve link strip for ongoing threads                                          | **Shipped** |
+| **10** | Stay guide deep link in resource hub when guest has active booking                                      | **Shipped** |
 
 Backlog: [GitHub Issue #110 — Epic 10](https://github.com/sprmke/kame-homes/issues/110) (**Guest ↔ host chat**).
 
@@ -148,7 +162,8 @@ Backlog: [GitHub Issue #110 — Epic 10](https://github.com/sprmke/kame-homes/is
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Sheet (primary) | `ui/src/features/guest/chat/components/ContactHostSheet.tsx`                                                                                                                                      |
 | Full page       | `ui/src/features/guest/chat/pages/PropertyChatPage.tsx`                                                                                                                                           |
-| Thread UI       | `ui/src/features/guest/chat/components/GuestChatThread.tsx`, `GuestChatHeaderBar.tsx`, `GuestChatFaqSuggestions.tsx`                                                                              |
+| Thread UI       | `ui/src/features/guest/chat/components/GuestChatThread.tsx`, `GuestChatHeaderBar.tsx`, `GuestChatFaqSuggestions.tsx`, `GuestChatInsertMenu.tsx`, `GuestChatResourceHub.tsx`                       |
+| Insert / hub    | `ui/src/features/guest/chat/lib/guestChatInsertItems.ts`, `guestChatResourceHubItems.ts`                                                                                                          |
 | Shared bubble   | `ui/src/components/chat/ChatMessageBubble.tsx`, `ChatMessageList.tsx`, `ChatDateSeparator.tsx`, `ChatThreadSearch.tsx`, `ChatHighlightedText.tsx`, `ChatSuggestionList.tsx`                       |
 | Format helpers  | `ui/src/lib/chat/chatMessageFormat.ts`, `useChatTyping.ts`, `useChatThreadSearch.ts`, `chatThreadSearch.ts`, `chatAttachments.ts`                                                                 |
 | Hooks / API     | `ui/src/features/guest/chat/hooks/useGuestChat.ts`, `lib/guestChatApi.ts`, `lib/guestChatSuggestions.ts`                                                                                          |
@@ -160,7 +175,7 @@ Backlog: [GitHub Issue #110 — Epic 10](https://github.com/sprmke/kame-homes/is
 | CTA hook        | `ui/src/features/guest/marketing/properties/hooks/usePropertyContactHost.ts`                                                                                                                      |
 | OAuth resume    | `ui/src/features/guest/auth/lib/guestAuthResume.ts` — `contact_host_sheet` → property `?contactHost=open` + dates; draft `kame_contact_host_draft` in `sessionStorage`                            |
 | Host card       | `ui/src/features/guest/marketing/shared/components/ListingHostCard.tsx`                                                                                                                           |
-| Edge            | `supabase/functions/guest-web-chat-resume/`, `guest-web-chat-start/`, `guest-web-chat-messages/`, `upload-guest-chat-asset/`                                                                      |
+| Edge            | `supabase/functions/guest-web-chat-resume/`, `guest-web-chat-start/`, `guest-web-chat-messages/`, `upload-guest-chat-asset/` — resume/start return `stayGuideUrl` when eligible                   |
 | Lifecycle       | `supabase/functions/_shared/chatMessageLifecycle.ts`, `guestChatAttachments.ts`, `guestChatEmail.ts` — read, edit, reply, attachments, offline notify                                             |
 | Auto-reply      | `supabase/functions/_shared/webInboxAutoReply.ts` — when inbox Automation → Send automatically → Chat is on                                                                                       |
 | Migration       | `20260719153000_web_guest_chat.sql`, `20260927120000_chat_message_lifecycle.sql`, `20260928120000_chat_phase5.sql`                                                                                |

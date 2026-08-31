@@ -73,16 +73,18 @@ After check-out, guests are guided through three quick steps before their securi
 
 ## Step 2 — Voucher reveal
 
+Skipped when the property has **`vouchers_enabled = false`** (guest goes review → refund, or guest-review → done). Already-awarded vouchers still show if present.
+
 ### Save path
 
 1. Guest taps to reveal → **`claim-sd-voucher`** POST `{ bookingId }`.
-2. Server rolls (or returns the already-awarded) `KAME-*` voucher code + discount amount; idempotent — re-claiming an already-awarded booking returns the same code with `alreadyAwarded: true`.
-3. Voucher is looked up client-side against a static catalog (`voucher.ts`) for display copy/art.
+2. Server rolls (or returns the already-awarded) voucher from the property’s `voucher_prizes` percent-off pool (or platform defaults in `_shared/voucher.ts`); idempotent — re-claiming returns the same code with `alreadyAwarded: true`. Requires an existing guest review. Disabled properties reject new claims with `not_available`. Awarded amount field stores **percent off** (1–100); free stay uses `FREE-STAY` / 100. Concurrent claims use a conditional write so only one roll wins. Guest UI uses property `voucher_reveal_style` (`reel` \| `wheel` \| `flip`) from bootstrap — `VoucherReveal` dispatches to slot reel, spin wheel, or flip card (server roll first; animation lands on awarded prize). `prefers-reduced-motion` short-circuits to the won card.
+3. Client displays via `findVoucher(code, amount)` (catalog + custom amount fallback).
 4. **Continue** advances to step 3.
 
 ### Behavior / edge cases
 
-- If `awaiting_balance_settlement` is true when this step is reached, the voucher UI is replaced by a spinner/wait card; `get-sd-form` is polled every 8s (`refetchInterval`) until settlement completes and status advances.
+- If `awaiting_balance_settlement` is true when this step is reached, the voucher UI is replaced by a spinner/wait card; `get-sd-form` is polled every 8s (`refetchInterval`) until settlement completes and status advances (then voucher or refund per `vouchers_enabled`).
 
 ---
 
@@ -137,7 +139,7 @@ A standalone **`/properties/:propertySlug/guest-review?bookingId=`** route (`Gue
 | Review section       | `ui/src/features/guest/sd-form/components/SdFormReviewSection.tsx`                                                     |
 | Shared star rating   | `ui/src/features/guest/sd-form/components/GuestReviewStarRating.tsx`                                                   |
 | Feedback pills       | `ui/src/features/guest/sd-form/components/GuestReviewFeedbackPills.tsx`                                                |
-| Voucher UI           | `ui/src/features/guest/sd-form/components/VoucherReveal.tsx`                                                           |
+| Voucher UI           | `ui/src/features/guest/sd-form/components/VoucherReveal.tsx` + `voucher-reveal/`                                       |
 | API client           | `ui/src/features/guest/sd-form/lib/api.ts`                                                                             |
 | Schema               | `ui/src/features/guest/sd-form/lib/sdFormSchema.ts`                                                                    |
 | Voucher catalog      | `ui/src/features/guest/sd-form/lib/voucher.ts`                                                                         |

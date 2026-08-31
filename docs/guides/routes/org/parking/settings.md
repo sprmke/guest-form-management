@@ -28,7 +28,7 @@ Route: `/org/:orgSlug/parking/:parkingSlug/settings`
 
 ## Overview
 
-Configure one parking slot: cover photo, dimensions and check-in times, amenities, location, payment methods (including GCash QR), integrations status, and delete. Saves update the public listing guests see at `/parkings/:slug` and the admin sidebar for this slot. Aligned with [Property Settings](../property/settings.md): required fields, save-blocking validation, and section red-dot tracking follow the same pattern.
+Configure one parking slot: cover photo, dimensions and check-in times, amenities, location, payment methods (including GCash QR), integrations status, and delete. Saves update the public listing guests see at `/parkings/:slug` and the admin sidebar for this slot. Aligned with [Property Settings](../property/settings.md): required fields, save-blocking validation, and section red-dot tracking follow the same pattern. Field helpers use a **?** beside the label (`FieldLabel` / `SettingsField` `help`) — not muted text under the control.
 
 ---
 

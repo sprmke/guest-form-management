@@ -2,7 +2,7 @@
 title: 'Pricing — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-29
+updated: 2026-08-30
 ---
 
 # Pricing — operator guide
@@ -15,15 +15,15 @@ Legacy `/calendar` redirects here.
 
 ## Progress overview
 
-| Section                  | E2E save | Validation | Docs | Notes                                                                                  |
-| ------------------------ | -------- | ---------- | ---- | -------------------------------------------------------------------------------------- |
-| Pricing rates and fees   | Done     | Done       | Done | Weekday/weekend defaults + fee sidebar                                                 |
-| Per-date rates           | Done     | Done       | Done | Future, available nights only                                                          |
-| Booked stays on calendar | Done     | Done       | Done | Spanning pills; click for guest modal                                                  |
-| Block / unblock dates    | Done     | Done       | Done | Checkout-exclusive ranges                                                              |
-| Channel sync (iCal)      | Card     | Done       | Done | Card + Pro+ `calendarSync` gate; feeds stay local until `calendar-sync-settings` ships |
-| Guest availability       | Done     | Done       | Done | Blocks are returned as unavailable ranges                                              |
-| Permissions              | N/A      | Done       | Done | `pricing:view` / rates + blocks + `pricing.channels:*` leaves                          |
+| Section                  | E2E save | Validation | Docs | Notes                                                         |
+| ------------------------ | -------- | ---------- | ---- | ------------------------------------------------------------- |
+| Pricing rates and fees   | Done     | Done       | Done | Weekday/weekend defaults + fee sidebar                        |
+| Per-date rates           | Done     | Done       | Done | Future, available nights only                                 |
+| Booked stays on calendar | Done     | Done       | Done | Spanning pills; click for guest modal                         |
+| Block / unblock dates    | Done     | Done       | Done | Checkout-exclusive ranges                                     |
+| Channel sync (iCal)      | Done     | Done       | Done | Airbnb only — Pro+ `calendarSync`                             |
+| Guest availability       | Done     | Done       | Done | Blocks are returned as unavailable ranges                     |
+| Permissions              | N/A      | Done       | Done | `pricing:view` / rates + blocks + `pricing.channels:*` leaves |
 
 ---
 
@@ -67,8 +67,8 @@ dates that should not be available to guests.
   A: No. Bookings with saved pricing keep their amounts. Updated defaults apply to future
   pricing reviews that do not already have saved amounts.
 - Q: Where do I connect Airbnb or other OTA calendars?
-  A: On this Pricing page, use the **Channel sync** card (Pro and above). Paste each
-  platform’s iCal link and copy your Kame export link back into the OTA.
+  A: Pricing → **Channel sync** (Airbnb only for now). Use **From Airbnb** to paste
+  Airbnb’s export link, and **To Airbnb** to copy your Kame link back into Airbnb.
 
 ---
 
@@ -80,30 +80,56 @@ dates that should not be available to guests.
 | Edit rates / fees / overrides | `pricing.rates:edit`    |
 | Block dates                   | `pricing.blocks:add`    |
 | Unblock dates                 | `pricing.blocks:delete` |
-| View Channel Sync card        | `pricing.channels:view` |
+| View Channel Sync             | `pricing.channels:view` |
 | Connect / edit / sync feeds   | `pricing.channels:edit` |
 
 - Without rate/block leaves, the calendar and fee sidebar stay read-only for that action.
-- Server: GET → `pricing:view`; PATCH checks the leaves present in the body (`pricing.rates:edit`, `pricing.blocks:add`, and/or `pricing.blocks:delete`). Legacy stored `pricing:edit` still expands to all three leaves.
+- Server: GET → `pricing.channels:view` + `calendarSync` plan; PATCH → `pricing.channels:edit` + `calendarSync`. Legacy stored `pricing:edit` still expands to all three rate/block leaves.
 - Channel Sync also requires plan feature **`calendarSync`** (Pro / `growth` and above) — see below.
+- The **Channel sync** header button is hidden without `pricing.channels:view`. View-only members see feeds and can copy the export link; connect/remove/sync/reset require `pricing.channels:edit`.
 
 ---
 
-## Channel Sync (Airbnb / OTA iCal)
+## Channel Sync (Airbnb iCal)
 
-Card on the Pricing page (`ChannelSyncCard`) for **calendar sync**:
+**Channel sync** button in the Pricing page header (desktop outline button aligned with the title; mobile hero icon). Opens a **`ResponsiveModal`** (`ChannelSyncDialog`) with two tabs — **From Airbnb** and **To Airbnb**. Product scope is **Airbnb only** (Booking.com / VRBO / Other remain in the DB schema for future work; `calendar-sync-settings` `addFeed` rejects non-Airbnb providers). Plan feature **`calendarSync`** (Pro / `growth` and above) — below Pro the modal shows a locked upgrade prompt (`openUpgradeModal('calendarSync')`); the server (`calendar-sync-settings`, `calendar-sync-cron`) enforces the same feature.
 
-- **Import feeds** — paste Airbnb / Booking.com / VRBO `.ics` URLs. The card lists them locally; persist + cron polling wait on `calendar-sync-settings` / `calendar-sync-cron` (handlers not in this tree yet — those `config.toml` entries stay commented so local `functions serve` can start).
-- **Export feed** — copyable `ical-export?property_id=` URL for OTAs. Token-guarded live export waits on the same backend.
-- **Plan gate:** `calendarSync` (Pro+). Below Pro: watermark / upgrade modal on the card.
-- **Permissions:** `pricing.channels:view` to see the card; `pricing.channels:edit` to add or remove feeds.
+### From Airbnb (import)
+
+- **Empty state:** short prompt + **Connect Airbnb** — the add form is hidden until the host starts connecting.
+- **Add a feed:** Airbnb calendar URL (+ optional label) → **Connect**. Accepts `https://` or `webcal://` (normalized server-side). URL must be on an Airbnb host; stored **encrypted**.
+- **First sync:** runs immediately after connect (no 30-min cron wait); toast reflects import count or first-sync failure.
+- **Connected list:** name, health badge, last sync time; icon actions for **Sync now** and **Remove**.
+- **Polling:** `calendar-sync-cron` every 30 min imports busy nights as **synced blocks** (`source='ical_import'`).
+- **Create real bookings (Phase 2):** when `create_bookings` is on for a feed, Airbnb reservations become **Pending review** bookings (no guest emails until details exist). Host forwards **Copy guest form link** from the booking.
+- **Health:** Synced / Retrying / Needs fix (4+ failures → `calendar_sync_failing` notification).
+- **Remove:** confirm dialog; optional **Also delete dates this calendar added**.
+- **Recent activity:** collapsed under From Airbnb when events exist (last ~8 shown).
+
+### To Airbnb (export)
+
+- **Share with Airbnb** switch enables the token-guarded iCal URL (`?as=airbnb`) so Kame bookings + manual blocks appear on Airbnb without echoing Airbnb’s own imports.
+- One URL + **Copy** — paste into Airbnb’s import calendar field.
+- **Reset link:** confirmation dialog, then rotate token — old URL stops working; host must re-paste into Airbnb.
+
+### Conflicts
+
+If Airbnb reports a night that already has a live Kame booking or manual block, the sync records a `conflict_detected` event and raises a `calendar_conflict` notification — it never overwrites the existing Kame reservation.
 
 **Host Q&A**
 
 - Q: Where do I connect my Airbnb calendar?
-  A: Pricing → **Channel sync**. You need Pro or higher; Free/Starter see an upgrade prompt on that card.
+  A: Pricing → **Channel sync** → **From Airbnb** → Connect Airbnb. You need Pro or higher.
+- Q: How do I block Airbnb when someone books here?
+  A: Channel sync → **To Airbnb** → turn on Share with Airbnb → copy the link into Airbnb’s import calendar field.
 - Q: Does changing a nightly rate here change Airbnb’s price?
-  A: No. Channel Sync shares **availability** (and later reservation rows). List prices on this page are for Kame guest booking / admin pricing review.
+  A: No. Channel Sync shares **availability** only. List prices on this page are for Kame guest booking / admin pricing review.
+- Q: Can I edit or unblock a date that came from Airbnb?
+  A: No. Synced nights are read-only on the calendar. They clear when Airbnb drops the date or you remove the feed.
+- Q: Can I sync Booking.com or VRBO?
+  A: Not yet — Channel sync is Airbnb-only for now.
+- Q: My export link stopped working in Airbnb.
+  A: It was probably reset. Open Channel sync → To Airbnb, copy the current link, and paste it into Airbnb again.
 
 ---
 
@@ -158,6 +184,16 @@ modal with the X or Escape (no Cancel button).
   nights.
 - Blocking rejects past dates and any night that is already booked.
 
+### Synced (Airbnb / OTA) nights
+
+- Nights imported from a connected OTA calendar (Channel Sync) render with a **dashed muted
+  cell and a sync icon** ("Synced from Airbnb / OTA" in the tooltip and legend).
+- They are **fully read-only on the grid** — not selectable, not part of a drag range, and
+  cannot be unblocked here. They still show the list price.
+- They clear only when the OTA feed no longer lists the date (next 30-min sync) or the feed
+  is removed. To turn one into an editable manual block, remove the feed with "keep the
+  dates".
+
 ---
 
 ## Rates and fees sidebar
@@ -169,31 +205,40 @@ extra guest), and save flows for base-rate scope and fee-only updates.
 
 ## API and data
 
-| Concern                               | Path                              |
-| ------------------------------------- | --------------------------------- |
-| Load/save pricing + calendar bookings | `property-pricing` edge function  |
-| Blocked dates table                   | `property_blocked_dates`          |
-| Date overrides                        | `property_pricing_date_overrides` |
-| Defaults                              | `app_settings` per property       |
+| Concern                               | Path                                                                          |
+| ------------------------------------- | ----------------------------------------------------------------------------- |
+| Load/save pricing + calendar bookings | `property-pricing` edge function                                              |
+| Blocked dates table                   | `property_blocked_dates` (`source` = `manual` \| `ical_import`)               |
+| Date overrides                        | `property_pricing_date_overrides`                                             |
+| Defaults                              | `app_settings` per property                                                   |
+| Channel Sync feeds / export / events  | `property_calendar_feeds`, `property_calendar_export`, `calendar_sync_events` |
+| Channel Sync API                      | `calendar-sync-settings` (GET/PATCH), `calendar-sync-cron`, `ical-export`     |
 
 **GET** `property-pricing?month=YYYY-MM` returns defaults, overrides, `bookedDateKeys`,
-`blockedDateKeys`, and `calendarBookings` (stays overlapping that month, including cancelled).
+`blockedDateKeys` (all sources), `importedBlockedDateKeys` (the `ical_import` subset — read-only
+on the grid), and `calendarBookings` (stays overlapping that month, including cancelled).
 
-**PATCH** accepts rate/fee fields, `dateOverrides`, `blockRange`, and `unblockDateKeys`.
+**PATCH** accepts rate/fee fields, `dateOverrides`, `blockRange`, and `unblockDateKeys`
+(`unblockDateKeys` only frees `source='manual'` rows — synced nights are untouched).
 
 Guest availability (`get-booked-dates`, `submit-form`) treats blocked nights as
-unavailable alongside existing bookings.
+unavailable alongside existing bookings, **regardless of source** — so an OTA-held date is
+double-booking-safe the moment it syncs in.
 
 ---
 
 ## Implementation map
 
-| UI                                                                             | Server                                               |
-| ------------------------------------------------------------------------------ | ---------------------------------------------------- |
-| `ui/src/features/dashboard/pricing/pages/PropertyPricingPage.tsx`              | `supabase/functions/property-pricing/index.ts`       |
-| `ui/src/features/dashboard/pricing/components/PricingCalendarGrid.tsx`         | `supabase/functions/_shared/propertyPricing.ts`      |
-| `ui/src/features/dashboard/pricing/components/PricingCalendarBookingModal.tsx` | —                                                    |
-| `ui/src/features/dashboard/pricing/routes/index.tsx`                           | `supabase/functions/_shared/propertyBlockedDates.ts` |
+| UI                                                                             | Server                                                                     |
+| ------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| `ui/src/features/dashboard/pricing/pages/PropertyPricingPage.tsx`              | `supabase/functions/property-pricing/index.ts`                             |
+| `ui/src/features/dashboard/pricing/components/PricingCalendarGrid.tsx`         | `supabase/functions/_shared/propertyPricing.ts`                            |
+| `ui/src/features/dashboard/pricing/components/PricingCalendarBookingModal.tsx` | `supabase/functions/_shared/propertyBlockedDates.ts`                       |
+| `ui/src/features/dashboard/pricing/routes/index.tsx`                           | —                                                                          |
+| `ui/src/features/dashboard/pricing/components/ChannelSyncDialog.tsx`           | `supabase/functions/calendar-sync-settings/index.ts`                       |
+| `ui/src/features/dashboard/pricing/hooks/useCalendarSync.ts`                   | `supabase/functions/calendar-sync-cron/index.ts`                           |
+| `ui/src/features/dashboard/pricing/lib/calendarSyncApi.ts`                     | `supabase/functions/ical-export/index.ts`                                  |
+| —                                                                              | `supabase/functions/_shared/calendarSyncService.ts` / `calendarSyncRun.ts` |
 
 Spanning pill layout reuses `calendarDateUtils` and `CalendarOccupancySpanTrack` from the
 bookings calendar module.
@@ -209,3 +254,9 @@ bookings calendar module.
   excluded from booked-night locks.
 - **Month navigation:** refetches pricing + bookings for the visible month via
   `?month=YYYY-MM`.
+- **Synced (OTA) nights:** read-only on the grid — the block/unblock selection skips them
+  entirely. Removing a feed with "keep the dates" converts them to editable manual blocks;
+  otherwise they disappear on the next sync once the OTA feed drops the date.
+- **Feed failures:** after 4 consecutive failed pulls the dialog shows `Error` and a
+  `calendar_sync_failing` notification fires once; syncing resumes automatically when the
+  next pull succeeds.

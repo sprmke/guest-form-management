@@ -1,5 +1,6 @@
 import { useId } from 'react';
 
+import { platformWatermarkLabel } from '@/lib/platformBranding';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -9,11 +10,12 @@ type Props = {
 };
 
 /**
- * Soft diagonal “Kame Homes” tile used by Marketing Studio plan gates.
+ * Soft diagonal platform tile used by Marketing Studio plan gates.
  * Dual ink (dark + light) stays readable on light calendars and dark video frames.
  * Pattern ids are sanitized — React `useId()` colons break `url(#…)` in SVG.
  */
 export function PlanGateWatermarkPattern({ className, compact = false }: Props) {
+  const watermarkText = platformWatermarkLabel();
   const patternId = `plan-wm-${useId().replace(/:/g, '')}`;
   const tileW = compact ? 168 : 260;
   const tileH = compact ? 96 : 148;
@@ -42,7 +44,7 @@ export function PlanGateWatermarkPattern({ className, compact = false }: Props) 
             fontWeight="500"
             letterSpacing="0.3em"
           >
-            KAME HOMES
+            {watermarkText}
           </text>
           <text
             x="13"
@@ -53,7 +55,7 @@ export function PlanGateWatermarkPattern({ className, compact = false }: Props) 
             fontWeight="500"
             letterSpacing="0.3em"
           >
-            KAME HOMES
+            {watermarkText}
           </text>
         </pattern>
       </defs>

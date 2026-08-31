@@ -29,6 +29,8 @@ type SuperAdminOrgSubscriptionsTableProps = {
   plans: PricingPlan[];
   onAssign: (organizationId: string, planId: string) => Promise<void>;
   isAssigning: boolean;
+  onReassessSuperhost?: (organizationId: string) => void;
+  reassessingOrgId?: string | null;
 };
 
 export function SuperAdminOrgSubscriptionsTable({
@@ -36,6 +38,8 @@ export function SuperAdminOrgSubscriptionsTable({
   plans,
   onAssign,
   isAssigning,
+  onReassessSuperhost,
+  reassessingOrgId,
 }: SuperAdminOrgSubscriptionsTableProps) {
   return (
     <AdminDataTable minWidth={760}>
@@ -44,6 +48,11 @@ export function SuperAdminOrgSubscriptionsTable({
         <AdminTableTh className="hidden px-3 md:table-cell md:px-4">Properties</AdminTableTh>
         <AdminTableTh className="px-3 sm:px-4">Current plan</AdminTableTh>
         <AdminTableTh className="pl-2 pr-3 text-right sm:pl-3 sm:pr-4">Assign</AdminTableTh>
+        {onReassessSuperhost ? (
+          <AdminTableTh className="hidden pl-2 pr-4 text-right lg:table-cell">
+            Superhost
+          </AdminTableTh>
+        ) : null}
       </AdminTableHeadRow>
       <tbody>
         {organizations.map((row, index) => (
@@ -53,6 +62,8 @@ export function SuperAdminOrgSubscriptionsTable({
             plans={plans}
             onAssign={onAssign}
             isAssigning={isAssigning}
+            onReassessSuperhost={onReassessSuperhost}
+            reassessingOrgId={reassessingOrgId}
             index={index}
           />
         ))}
@@ -66,12 +77,16 @@ function OrgSubscriptionRow({
   plans,
   onAssign,
   isAssigning,
+  onReassessSuperhost,
+  reassessingOrgId,
   index,
 }: {
   row: OrgSubscriptionSummary;
   plans: PricingPlan[];
   onAssign: (organizationId: string, planId: string) => Promise<void>;
   isAssigning: boolean;
+  onReassessSuperhost?: (organizationId: string) => void;
+  reassessingOrgId?: string | null;
   index: number;
 }) {
   const currentPlanId = row.subscription?.planId ?? plans.find((plan) => plan.isDefault)?.id ?? '';
@@ -135,6 +150,20 @@ function OrgSubscriptionRow({
           </Button>
         </div>
       </td>
+      {onReassessSuperhost ? (
+        <td className={cn(adminTableCell.action, 'hidden text-right lg:table-cell')}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="min-h-[44px]"
+            disabled={reassessingOrgId === row.organizationId}
+            onClick={() => onReassessSuperhost(row.organizationId)}
+          >
+            {reassessingOrgId === row.organizationId ? 'Reassessing…' : 'Reassess'}
+          </Button>
+        </td>
+      ) : null}
     </tr>
   );
 }

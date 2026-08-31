@@ -91,8 +91,15 @@ export function ParkingPricingPage() {
       const isBooked = bookedDateKeys.has(key);
       const isBlocked = blockedDateKeys.has(key);
       const customPrice = customDatePrices.get(key);
+      // Parking has no OTA calendar sync — imported blocks never apply here.
       if (customPrice !== undefined) {
-        return { price: customPrice, isCustom: true as const, isBooked, isBlocked };
+        return {
+          price: customPrice,
+          isCustom: true as const,
+          isBooked,
+          isBlocked,
+          isImported: false,
+        };
       }
 
       const price = resolveParkingNightlyRateForDate(date, {
@@ -100,7 +107,7 @@ export function ParkingPricingPage() {
         weekendNightlyRate: weekendRate,
       });
 
-      return { price, isCustom: false as const, isBooked, isBlocked };
+      return { price, isCustom: false as const, isBooked, isBlocked, isImported: false };
     },
     [bookedDateKeys, blockedDateKeys, customDatePrices, weekdayRate, weekendRate]
   );

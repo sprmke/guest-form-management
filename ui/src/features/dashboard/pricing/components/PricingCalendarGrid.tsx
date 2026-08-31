@@ -14,7 +14,15 @@ import {
   startOfToday,
   getDay,
 } from 'date-fns';
-import { Ban, CalendarDays, ChevronLeft, ChevronRight, PenLine, Sparkles } from 'lucide-react';
+import {
+  Ban,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  PenLine,
+  RefreshCw,
+  Sparkles,
+} from 'lucide-react';
 
 import {
   buildCalendarWeekRows,
@@ -44,6 +52,8 @@ export type PricingDayState = {
   isCustom: boolean;
   isBooked: boolean;
   isBlocked: boolean;
+  /** Blocked by an OTA calendar feed (Airbnb / Booking.com / VRBO) — read-only here. */
+  isImported: boolean;
 };
 
 type Props = {
@@ -314,11 +324,12 @@ function PricingDayCell({
   onDateMouseEnter: (date: Date) => void;
   onBookingClick: (booking: PropertyPricingCalendarBooking) => void;
 }) {
-  const { price, rule, isCustom, isBooked, isBlocked } = getPriceForDate(day);
+  const { price, rule, isCustom, isBooked, isBlocked, isImported } = getPriceForDate(day);
   const isSelected = selectedDates.some((d) => isSameDay(d, day));
   const isPast = isBefore(day, startOfToday());
   const hasHoliday = rule != null;
-  const isLocked = isPast || isBooked;
+  const isLocked = isPast || isBooked || isImported;
+  const isInteractive = !isBooked && !isImported;
   const showPrice = !isBooked;
   const showMarkers = !isBooked && !isBlocked;
   const singleStay = isBooked && dayBookings.length === 1 ? dayBookings[0] : null;
@@ -336,6 +347,7 @@ function PricingDayCell({
         isPast && !isBooked && 'cursor-not-allowed opacity-45',
         isPast && isBooked && 'bg-muted/40',
         !isLocked && isBlocked && 'bg-muted border-muted-foreground/20',
+        isImported && 'bg-muted/60 border-muted-foreground/25 cursor-not-allowed border-dashed',
         (isBooked || (!isLocked && !isBlocked)) &&
           'hover:border-primary/50 cursor-pointer hover:shadow-sm',
         isSelected &&
@@ -344,10 +356,10 @@ function PricingDayCell({
         isToday(day) && !isSelected && !isPast && 'ring-primary/60 ring-1'
       )}
       onMouseDown={() => {
-        if (!isBooked) onDateMouseDown(day);
+        if (isInteractive) onDateMouseDown(day);
       }}
       onMouseEnter={() => {
-        if (!isBooked) onDateMouseEnter(day);
+        if (isInteractive) onDateMouseEnter(day);
       }}
       onClick={() => {
         if (singleStay) {
@@ -355,9 +367,10 @@ function PricingDayCell({
           return;
         }
         if (overlappingStays) return;
-        if (!isBooked) onDateClick(day);
+        if (isInteractive) onDateClick(day);
       }}
       disabled={isPast && !isBooked}
+      aria-disabled={isImported || undefined}
       aria-pressed={isSelected}
       aria-label={
         overlappingStays
@@ -365,8 +378,8 @@ function PricingDayCell({
           : singleStay
             ? `Open booking for ${bookingListDisplayName(singleStay)}${stayRange ? `, ${stayRange}` : ''}`
             : showPrice
-              ? `${format(day, 'MMMM d')}, ${formatMoneyCompact(price)} per night${isBlocked ? ', blocked' : ''}${hasHoliday ? ', holiday' : ''}${isCustom ? ', custom rate' : ''}`
-              : `${format(day, 'MMMM d')}${isPast ? ', past' : ''}${isBlocked ? ', blocked' : ''}`
+              ? `${format(day, 'MMMM d')}, ${formatMoneyCompact(price)} per night${isImported ? ', synced from OTA calendar' : isBlocked ? ', blocked' : ''}${hasHoliday ? ', holiday' : ''}${isCustom ? ', custom rate' : ''}`
+              : `${format(day, 'MMMM d')}${isPast ? ', past' : ''}${isImported ? ', synced from OTA calendar' : isBlocked ? ', blocked' : ''}`
       }
     >
       <span
@@ -401,6 +414,7 @@ function PricingDayCell({
               price={price}
               showPrice={showPrice}
               isBlocked={isBlocked}
+              isImported={isImported}
               isPast={isPast}
               rule={hasHoliday ? rule : undefined}
               isCustom={isCustom}
@@ -435,7 +449,9 @@ function PricingDayCell({
       {hasHoliday && showMarkers ? (
         <Sparkles className="text-primary absolute right-1 top-1 size-3" aria-hidden />
       ) : null}
-      {isBlocked && !isBooked ? (
+      {isImported && !isBooked ? (
+        <RefreshCw className="text-muted-foreground absolute right-1 top-1 size-3" aria-hidden />
+      ) : isBlocked && !isBooked ? (
         <Ban className="text-muted-foreground absolute right-1 top-1 size-3" aria-hidden />
       ) : null}
     </button>
@@ -514,6 +530,7 @@ function PricingDayTooltip({
   price,
   showPrice,
   isBlocked,
+  isImported,
   isPast,
   rule,
   isCustom,
@@ -522,12 +539,14 @@ function PricingDayTooltip({
   price: number;
   showPrice: boolean;
   isBlocked: boolean;
+  isImported: boolean;
   isPast: boolean;
   rule?: PricingHolidayRule;
   isCustom: boolean;
 }) {
   const tags: string[] = [];
-  if (isBlocked) tags.push('Blocked');
+  if (isImported) tags.push('Synced from Airbnb / OTA');
+  else if (isBlocked) tags.push('Blocked');
   else if (isPast) tags.push('Past');
   if (rule) tags.push(rule.name);
   if (isCustom) tags.push('Custom rate');

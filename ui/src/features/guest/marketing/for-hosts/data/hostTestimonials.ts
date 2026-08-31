@@ -28,7 +28,7 @@ export const hostTestimonials = [
     name: 'Paolo Reyes',
     role: 'Host & parking operator · Cebu',
     quote:
-      'Running a property and a parking lot used to mean two different systems. Kame Homes treats parking as its own thing but keeps it one login, one dashboard.',
+      'Running a property and a parking lot used to mean two different systems. Parking is its own thing here but stays one login, one dashboard.',
     rating: 4,
   },
   {

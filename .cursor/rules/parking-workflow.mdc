@@ -49,9 +49,9 @@ alwaysApply: false
 Canonical spec for the **parking broadcast-and-claim lifecycle**. Parking keeps its own status
 machine and its own edge functions — it is **never** routed through the property
 `workflowOrchestrator.ts` / `statusMachine.ts` (see `[[booking-workflow]]`). Design history and
-locked decisions: `docs/workflow/in-progress/parking-e2e-phase1-overview.md` and its companion
-docs (status-workflow, host-broadcast-notifications, guest-request-realtime-status,
-bookings-page-updates, phase0-registration-dimensions).
+locked decisions: `docs/workflow/done/parking-e2e-phase1-overview.md` and its companion
+docs in `docs/workflow/done/` (status-workflow, host-broadcast-notifications, guest-request-realtime-status,
+bookings-page-updates, phase0-registration-dimensions). Later phases: `docs/workflow/planned/parking-e2e-later-phases.md`.
 
 ## Status graph
 

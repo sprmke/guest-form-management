@@ -1,15 +1,10 @@
 import { Sparkles } from 'lucide-react';
 
+import { getAssistantToolAuditLabel } from '@/features/dashboard/ai-assistant/lib/assistantToolLabels';
 import { useBookingAiAssistantAudit } from '@/features/dashboard/ai-assistant/hooks/useBookingAiAssistantAudit';
 import { BookingDetailCard } from '@/features/dashboard/bookings/components/booking-detail/primitives/BookingDetailCard';
 
 import { formatRelative } from '@/utils/format/bookingDisplay';
-
-const TOOL_LABELS: Record<string, string> = {
-  propose_transition_booking: 'Moved booking status',
-  propose_cancel_booking: 'Cancelled booking',
-  run_receipt_validation: 'Re-ran receipt validation',
-};
 
 const RESULT_LABELS: Record<string, string> = {
   success: 'Succeeded',
@@ -31,7 +26,7 @@ export function BookingAiAssistantAuditCard({ bookingId }: { bookingId: string }
           <li key={entry.id} className="space-y-0.5 py-2 text-sm first:pt-0 last:pb-0">
             <div className="flex items-center justify-between gap-2">
               <span className="text-foreground font-medium">
-                {TOOL_LABELS[entry.tool_name] ?? entry.tool_name}
+                {getAssistantToolAuditLabel(entry.tool_name)}
               </span>
               <span className="text-muted-foreground text-xs">
                 {formatRelative(entry.created_at)}

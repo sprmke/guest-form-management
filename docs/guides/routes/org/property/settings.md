@@ -17,23 +17,29 @@ Route: `/org/:orgSlug/property/:propertySlug/settings`
 | ------------------ | -------- | ---------- | ---- | ------------------------------------------------------------------------------------- |
 | Basic Information  | Done     | Done       | Done | Required fields marked with *; save blocked until complete                            |
 | Property Details   | Done     | Done       | Done | Azure North residence defaults + limits                                               |
+| Photos & Videos    | Done     | Done       | Done | Gallery via `upload-property-media` / listing editor                                  |
+| Amenities          | Done     | Done       | Done | Compact card + Manage modal (`PropertyAmenitiesManageDialog`)                         |
+| House Rules        | Done     | Done       | Done | Compact card + Manage modal (`PropertyHouseRulesManageDialog`)                        |
+| Cancellation       | Done     | Done       | Done | Guest preview on card + Manage modal (full policy form)                               |
 | Guest Form         | Done     | Done       | Done | Pet / parking / decor + preferred parking + complimentary own parking + Cleaning Time |
-| Location           | Done     | Done       | Done | Address + map pin required                                                            |
-| Payment            | Done     | Done       | Done | Server-enforced; QR via upload only                                                   |
+| Location           | Done     | Done       | Done | Compact address + Manage modal (picker + Save / discard)                              |
+| Socials            | Done     | Done       | Done | Facebook / Airbnb / Instagram / TikTok (org inherit)                                  |
+| Reviews & vouchers | Done     | Done       | Done | External reviews + next-stay voucher config + Superhost                               |
+| Payment            | Done     | Done       | Done | Compact method rows + Manage modal (account/QR editor)                                |
 | Building Forms     | Done     | Done       | Done | Shared GAF + pet PDF fields                                                           |
-| Email automations  | Done     | Done       | Done | Recipients, timing, toggles per property                                              |
+| Email automations  | Done     | Done       | Done | Recipients + timing inline; Automated sends via Manage modal                          |
 | Integrations       | Done     | Done       | Done | Telegram + AI optional; GAF/pet via Resend inbound                                    |
 | Voice Receptionist | Done     | Done       | Done | Hidden unless `aiReceptionist` (Business+); saves with page Save Changes              |
 | AI Overrides       | Done     | Done       | Done | Hidden unless plan has AI credits (`aiMonthlyCreditAllowance` > 0)                    |
 | Danger Zone        | Done     | Done       | Done | Archive + delete with confirmations                                                   |
 
-> **Also editable in Page Editor:** Photos & Videos, Brand color, Description, Amenities, House Rules, Cancellation, and Socials — same fields, same storage (`properties.settings` / `app_settings`). Edit in **Settings** or **Public Pages → Property → Edit** (live preview). Do not treat them as separate copies.
+> **Also editable in Page Editor:** Photos & Videos, Brand color, Description, Amenities, House Rules, Cancellation, and Socials (URLs only) — same fields, same storage. **External reviews, vouchers, and Superhost** are Settings-only (**Reviews & vouchers**).
 
 ---
 
 ## Overview
 
-Living operator spec for property settings: what each section does, how data is saved, and setup completeness. **Save Changes** persists only dirty sections that pass validation — incomplete required areas still show a red dot for setup tracking.
+Living operator spec for property settings: what each section does, how data is saved, and setup completeness. **Save Changes** persists only dirty sections that pass validation — incomplete required areas still show a red dot for setup tracking. Field helpers use a **?** beside the label (`FieldLabel` `help` / `SettingsField` `help`) — not muted text under the control.
 
 ### Permissions (Phase 5)
 
@@ -58,7 +64,7 @@ Property Settings is where you complete operational setup: basic info, capacity,
 - Q: Where is the PMO / documents-approver email set?
   A: On the development in Super Admin (**Developments → Email automations → PMO email**). Property Settings only holds your property/team ops email (alerts, Reply-To, CC on GAF/pet), not the PMO To address.
 - Q: Where do I edit amenities, house rules, or cancellation?
-  A: In **Property Settings**, or in **Public Pages → Property → Edit** if you want a live preview. Both save the same data.
+  A: In **Property Settings** — Amenities, House Rules, and Cancellation use **Manage** for the full editor — or in **Public Pages → Property → Edit** if you want a live preview. Both save the same data.
 - Q: Where do I upload listing photos?
   A: **Property Settings → Photos & Videos**, or the listing Page Editor gallery. Photos are shared across the listing, property cards, and Marketing.
 - Q: Where is listing verification?
@@ -67,6 +73,8 @@ Property Settings is where you complete operational setup: basic info, capacity,
   A: A renewal reminder may appear when you log in. Tap **Submit renewal contract** or use **Verification** in the sidebar to upload an updated contract before the grace period ends.
 - Q: What does the Cleaning Time setting do?
   A: It's the shortest gap your cleaner needs between one guest checking out and the next guest checking in **on the same day**. Set it under **Guest Form → Cleaning Time** — it's required and always at least 1 hour. Guests can't pick a check-in or check-out time on the booking form that leaves less than that gap.
+- Q: How do next-stay vouchers work?
+  A: Under **Reviews & vouchers**, open **Manage** on Next-stay vouchers. Turn them on, pick a **reveal style** (Reel, Wheel, or Flip), choose which discounts to include (5% through free stay), and set a **Weight** for each — higher weight = more often. **Odds** update automatically; you do not need the weights to add to 100. Use the nightly rate select (weekday / weekend / custom) to see about how much each prize saves. Guests who leave a review can claim one of those discounts. Apply the code manually on their next booking — automatic redemption is not built yet.
 
 ---
 
@@ -149,16 +157,6 @@ Defaults apply when creating a new property with that residence (not when editin
 
 ---
 
-## Photos & Videos
-
-Listing gallery photos/videos. Storage: `properties.settings.media` via `upload-property-media` / `update-property`. Same fields are editable in **Public Pages → Property → Edit** (live preview). Brand color is under **Basic Information** (`app_settings.brand_color`) and also in the listing editor.
-
-## Description
-
-Stored in `properties.settings.description` (max 1000 chars). Also editable in the listing Page Editor.
-
----
-
 ## Property Details
 
 Stored in `properties.settings` (+ `properties.max_guests` derived from adults + children).
@@ -185,15 +183,27 @@ Validated on save against residence limits (see Azure North table above). The **
 
 ---
 
+## Photos & Videos
+
+Listing gallery photos/videos. Storage: `properties.settings.media` via `upload-property-media` / `update-property`. Same fields are editable in **Public Pages → Property → Edit** (live preview). Brand color is under **Basic Information** (`app_settings.brand_color`) and also in the listing editor.
+
+Each picked photo is **downscaled + re-encoded to WebP in the browser** (long edge 3840px, quality-first — no visible loss even full-screen on 4K) before upload via `prepareUpload` / `PHOTO_MASTER` preset; the stored file is typically 50–80% smaller. Ceilings: **image 10 MB, video 50 MB** (client rejects over-ceiling with `File must be N MB or smaller`; videos are not transcoded — trim/compress a longer clip first). Architecture: [`storage.md`](../../../architecture/storage.md) §7.1.
+
+## Description
+
+Stored in `properties.settings.description` (max 1000 chars). Also editable in the listing Page Editor.
+
+---
+
 ## Amenities
 
-Preset + custom amenities in `properties.settings.enabledAmenities` / `customAmenities`. Also editable in the listing Page Editor.
+Compact card on Property Settings: selected count summary with **Manage** in the summary row (replaces the old header/chevron). Opens a large `ResponsiveModal` (`PropertyAmenitiesManageDialog`) with collapsible amenity categories (3-column grid on large screens). Preset + custom amenities still store in `properties.settings.enabledAmenities` / `customAmenities`. Changes update the page draft live; persist with the page **Save**. Also editable in the listing Page Editor.
 
 ---
 
 ## House Rules
 
-Preset + custom house rules (`enabledHouseRules` / `customHouseRules`). Also editable in the listing Page Editor. Preset catalog still mirrors `propertyHouseRulesConstants.ts`; check-in/out presets use property detail times on the public listing. Templates → **House Rules** remains email copy only.
+Compact card on Property Settings: selected count summary with **Manage** in the summary row. Opens a large `ResponsiveModal` (`PropertyHouseRulesManageDialog`) with collapsible rule categories (3-column grid on large screens). Preset + custom house rules (`enabledHouseRules` / `customHouseRules`). Mutually exclusive presets still apply on toggle. Changes update the page draft live; persist with the page **Save**. Also editable in the listing Page Editor. Preset catalog still mirrors `propertyHouseRulesConstants.ts`; check-in/out presets use property detail times on the public listing. Templates → **House Rules** remains email copy only.
 
 ---
 
@@ -201,19 +211,19 @@ Preset + custom house rules (`enabledHouseRules` / `customHouseRules`). Also edi
 
 Per-property toggles for which sections appear on the public booking form (`/form?property=<slug>`). Stored in **`properties.settings`** (profile save — not `app_settings`).
 
-| Toggle                    | Key                         | Default  | Effect when off                                                                  |
-| ------------------------- | --------------------------- | -------- | -------------------------------------------------------------------------------- |
-| Allow Pets                | `allowPets`                 | `true`   | Pets step hidden; `has_pets` forced `false` on submit (server + client clamp)    |
-| Allow Parking             | `allowParking`              | `true`   | Parking step hidden; `need_parking` forced `false` on submit                     |
-| Allow Surprise Decor      | `allowSurpriseDecor`        | `true`   | Decor checkbox hidden on Stay step; `guest_requests_surprise_decor` forced false |
-| Complimentary own parking | `complimentaryOwnerParking` | `false`  | Same-org own-slot linked pins still require PayMongo                             |
-| Preferred parking         | `preferredOwnerParkingId`   | _(none)_ | Ranking falls back to residence match + earliest `created_at`                    |
+| Toggle                    | Key                         | Default                                                                  | Effect when off                                                                  |
+| ------------------------- | --------------------------- | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| Allow Pets                | `allowPets`                 | `true`                                                                   | Pets step hidden; `has_pets` forced `false` on submit (server + client clamp)    |
+| Allow Parking             | `allowParking`              | `true`                                                                   | Parking step hidden; `need_parking` forced `false` on submit                     |
+| Allow Surprise Decor      | `allowSurpriseDecor`        | `true`                                                                   | Decor checkbox hidden on Stay step; `guest_requests_surprise_decor` forced false |
+| Complimentary own parking | `complimentaryOwnerParking` | `false`                                                                  | Same-org own-slot linked pins still require PayMongo                             |
+| Preferred parking         | `preferredOwnerParkingId`   | set on `create-parking` to earliest ACTIVE (`created_at`); else _(none)_ | Ranking falls back to residence match + earliest `created_at`                    |
 
-**Preferred parking** — optional org listing UUID. When still available for the stay window, `resolve-owner-default-parking` / `get-pay-parking` rank it first. Select of ACTIVE org parkings in Guest Form (`useParkings`).
+**Preferred parking** — org listing UUID. When still available for the stay window, `resolve-owner-default-parking` / `get-pay-parking` rank it first. Select of ACTIVE org parkings in Guest Form (`useParkings`). **Default on add:** after `create-parking`, org properties with empty or invalid preferred are set to the earliest ACTIVE listing (`created_at` ASC; `_shared/preferredOwnerParkingDefaults.ts`). Hosts may still choose **None** or another listing; a preferred that points at a removed/inactive listing is healed to the first ACTIVE listing in the settings draft.
 
 **Complimentary own parking** — when on, a same-org pinned submit with `linkedPropertyBookingId` auto-claims (skips awaiting-payment email) then `fulfillComplimentaryOwnerParking` (₱0 ledger, `provider: complimentary`) → `PENDING_REVIEW` + endorsement + property parking gate, without PayMongo.
 
-Section nav: **Guest Form** (after Property Details). UI: `PropertyGuestFormSettingsSection.tsx`.
+Section nav: **Guest Form** (after House Rules). UI: `PropertyGuestFormSettingsSection.tsx`.
 
 Save path: **Save Changes** → dirty `guest-form` section → `update-property` settings merge (`propertyProfileSettingsPatch`).
 
@@ -231,9 +241,11 @@ Public exposure: resolved via **`get-guest-payment-info`** (same request as paym
 
 ## Cancellation policy
 
-Stored in `properties.settings.cancellationPolicy`. Also editable in the listing Page Editor.
+Compact card on Property Settings: guest preview of the resolved policy with **Manage** beside the preview. Opens a `ResponsiveModal` with the full preset picker, option fields, and live guest preview. Stored in `properties.settings.cancellationPolicy`. Changes update the page draft live; persist with the page **Save**. Page Editor (`embedded`) still shows the full form inline. Also editable in the listing Page Editor.
 
 ## Location
+
+Compact summary on Property Settings: address line (or “No address set”) + icon actions (**Open in Google Maps** / **Copy link**, when pinned) + **Manage**. Opens a `ResponsiveModal` with address search and map pin only (no footer Pinned row). Autocomplete requests `name` and stores **`formatPlaceDisplayAddress`** (`Name, formatted_address`) so development names are kept (not Plus Code / city-only). Session edits stay local until **Save**, which **persists immediately** via `update-property` (location section only — draft + baseline updated; no separate page Save required). Closing without **Save** while dirty prompts **Discard unsaved changes?**. UI: `PropertyLocationSettingsBlock.tsx` + `PropertyLocationPicker.tsx`.
 
 | Field                        | Storage                 |
 | ---------------------------- | ----------------------- |
@@ -251,17 +263,54 @@ Stored in `properties.settings.cancellationPolicy`. Also editable in the listing
 
 ## Socials
 
-Social URLs, external reviews, and superhost fields in `app_settings`. Also editable in the listing Page Editor (same storage).
+Social URL fields in `app_settings` (empty = inherit org). Also editable in the listing Page Editor (same storage).
+
+| Field         | Column                 | Notes                 |
+| ------------- | ---------------------- | --------------------- |
+| Facebook page | `facebook_reviews_url` | Optional; inherit org |
+| Airbnb        | `airbnb_url`           | Optional; inherit org |
+| Instagram     | `instagram_url`        | Optional; inherit org |
+| TikTok        | `tiktok_url`           | Optional; inherit org |
+
+**Validation:** at least one effective social URL (property or org).
+
+---
+
+## Reviews & vouchers
+
+External reviews, next-stay voucher configuration, and Superhost proof. Section id `guest-rewards`. RBAC: `settings.socials:edit`.
+
+Summary rows match Amenities / Automated sends: muted compact card (`bg-muted/40`), one-line status, outline **Manage** (modals unchanged).
 
 ### External reviews
 
-Hosts can seed up to **5** Airbnb/Facebook reviews (screenshot and/or proof URL required). Each review uses the same **star rating** + **feedback tag pills** as the guest SD / `/guest-review` form (`GuestReviewStarRating`, `GuestReviewFeedbackPills`). Optional stay photos (up to 3) show on the public property page. Saves force `moderationStatus = pending`; only **approved** rows appear on the listing via `get-public-property`. Super-admins moderate on **`/admin/approvals`** (Type = Reviews).
+Hosts can seed up to **5** Airbnb/Facebook reviews (**Reviewer**, **Review**, and **Proof screenshot** required). Empty Manage state: short line — “Add Airbnb or Facebook reviews to show on your public listing.” — above **Add review**. Star rating uses shared `GuestReviewStarRating` (no **What stood out?** feedback pills — those are Kame guest reviews only). Optional **Review Images** (up to 3 stay photos) show on the public property page. Per-review **Save** stays disabled until required fields are valid; field errors show inline in Manage (no card-level or toast validation). Leaving a dirty review (**Add**, switch sidebar item, or close Manage) prompts **Discard unsaved changes?** (“Make sure you fill up all required fields and save your changes.”) — Discard reverts to the last saved version (or drops an unsaved new draft). Saves force `moderationStatus = pending`; only **approved** rows appear on the listing via `get-public-property`. Super-admins moderate on **`/admin/approvals`** (Type = Reviews). Summary line: `{n} of 5 external reviews · {aggregate}`.
+
+### Next-stay vouchers
+
+| Field  | Column                 | Notes                                                                                           |
+| ------ | ---------------------- | ----------------------------------------------------------------------------------------------- |
+| Enable | `vouchers_enabled`     | Default `true`. When off, SD form / guest-review skip the voucher step                          |
+| Prizes | `voucher_prizes`       | JSONB `[{ code, percentOff, chancePercent }]`. Empty / legacy amount-weight = platform defaults |
+| Style  | `voucher_reveal_style` | `reel` (default), `wheel`, or `flip` — guest award animation on SD form / guest-review          |
+
+`chancePercent` is a **relative weight** (roll = weight ÷ sum of weights). Hosts do **not** need weights to sum to 100 — the Manage UI shows computed **Odds** and a distribution bar.
+
+Platform defaults (all presets on): 5%→25, 10%→34, 15%→20, 20%→12, 25%→5, 50%→3, 100% / free stay→1.
+
+Host UI: compact summary (`Next-stay vouchers · {prize summary|Off}` · optional style label when not Reel) + **Manage** modal — enable toggle, **Style** segmented control (**Reel** / **Wheel** / **Flip**), full preset catalog (checkbox per discount), **Weight** steppers + live **Odds**, rate select, **Reset defaults**. Save with section **Save Changes** → `app-settings` PATCH (`vouchersEnabled`, `voucherPrizes`, `voucherRevealStyle`). Guest `/sd-form` and guest-review animate with the chosen style (reel / wheel / flip). Claim rolls via `claim-sd-voucher`; awarded `next_stay_voucher_amount` stores the **percent** (1–100). Legacy peso `KAME-*` awards still display as ₱.
+
+### Superhost
+
+`superhost_verification_url`, `superhost_proof_image_url`, `superhost_status` — proof upload via `upload-app-settings-asset`; status resets to `pending` when URL/proof change (unless already approved). Summary: `Superhost · {status}` + **Manage**.
 
 ---
 
 ## Payment
 
-Per-property operational settings in `app_settings` (not `properties.settings`).
+Compact card on Property Settings: collapsed rows show each method’s **provider** (+ **Primary** badge) only — no account name, number, or QR. **Manage** sits beside the method list (not in the card header). Opens a `ResponsiveModal` with the full editor (provider, account fields, QR upload, add/remove, set primary). Per-property operational settings in `app_settings` (not `properties.settings`).
+
+**Manage modal (same pattern as External reviews):** opening snapshots payment methods. Footer **Save** is **disabled** until the session is dirty and every method passes required validation (provider, account name, account number; QR optional). **Save** keeps the draft and closes. Closing via **X** / overlay without **Save** while the session is dirty prompts **Discard unsaved changes?** (“Make sure you fill up all required fields and save your changes.”) — **Discard** restores the open-session snapshot (including staged QR URLs on the draft). Unchanged sessions close without a prompt.
 
 | Field           | Column                                                                     | Security notes                                                                                                                                                                                        |
 | --------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -278,7 +327,7 @@ When payment methods change since last save (account fields **or** any method QR
 
 **Account name** uses the same full-name rules as property contact name (first + last, min 2 characters each). **QR code** is optional on every payment method (each method has its own uploader). When **Payment** is dirty, **Save Changes** stays visible but is **disabled** until required payment fields are valid (provider, account name, account number) — QR absence does not block save. Guest payment step and `{{gcash_payment_section}}` (ready-for-check-in) render account details always and QR images only when uploaded.
 
-Choosing a new QR image **stages** the file in Storage and updates the payment draft only — it does **not** write `app_settings` until OTP succeeds and Save completes. Closing the OTP modal without verifying (or a failed verified save) **reverts** the entire Payment section (methods, fields, and QR preview) to the last saved values.
+Choosing a new QR image **stages** the file in Storage and updates the payment draft only — it does **not** write `app_settings` until OTP succeeds and Save completes. Closing the OTP modal without verifying (or a failed verified save) **reverts** the entire Payment section (methods, fields, and QR preview) to the last saved values. Discarding the Manage session likewise restores the draft to the snapshot from when Manage opened.
 
 Payment details are shown on the guest form and ready-for-check-in email for **this property only**.
 
@@ -321,7 +370,7 @@ Per-property operational settings in `app_settings` (below Building Forms in the
 
 ### Automated sends
 
-Master switches in `app_settings.automation_toggles` (JSONB). Missing keys default to **enabled**. Saved via **`app-settings` PATCH** with recipient/timing fields.
+Compact summary row on the Email automations card (`N of M email automations enabled`) with **Manage** in that row. Opens a `ResponsiveModal` with the full Team / Management / Guest toggle list (`PropertyEmailAutomationTogglePanel`). Master switches in `app_settings.automation_toggles` (JSONB). Missing keys default to **enabled**. Saved via **`app-settings` PATCH** with recipient/timing fields.
 
 ---
 

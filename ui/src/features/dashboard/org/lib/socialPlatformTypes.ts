@@ -19,28 +19,3 @@ export function parseSocialPlatform(value: string | null | undefined): SocialPla
 }
 
 export type SocialUrlMap = Record<SocialPlatform, string>;
-
-export function resolveMainSocialPlatform(
-  preferred: string | null | undefined,
-  urls: SocialUrlMap
-): SocialPlatform | null {
-  const preferredParsed = parseSocialPlatform(preferred);
-  if (preferredParsed && urls[preferredParsed].trim()) {
-    return preferredParsed;
-  }
-  for (const platform of SOCIAL_PLATFORMS) {
-    if (urls[platform].trim()) return platform;
-  }
-  return null;
-}
-
-export function resolveMainSocialUrl(
-  preferred: string | null | undefined,
-  urls: SocialUrlMap
-): { platform: SocialPlatform; url: string } | null {
-  const platform = resolveMainSocialPlatform(preferred, urls);
-  if (!platform) return null;
-  const url = urls[platform].trim();
-  if (!url) return null;
-  return { platform, url };
-}

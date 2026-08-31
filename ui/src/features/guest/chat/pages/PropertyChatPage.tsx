@@ -245,6 +245,10 @@ function PropertyChatContent({
           propertyName={propertyName}
           messages={messages}
           isLoading={isLoading}
+          hasInquiryDates
+          inquiryCheckIn={checkInDate}
+          inquiryCheckOut={checkOutDate}
+          stayGuideUrl={startQuery.data?.stayGuideUrl ?? null}
           threadSearch={threadSearch}
           searchInHeader
           sending={send.isPending}

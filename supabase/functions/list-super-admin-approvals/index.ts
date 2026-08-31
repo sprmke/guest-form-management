@@ -28,11 +28,9 @@ export type ExternalReviewApprovalRow = {
   reviewText: string;
   reviewerName: string;
   starRating: number | null;
-  feedbackTags: string[];
   moderationStatus: ExternalReviewModerationStatus;
   submittedAt: string | null;
   imageUrl: string | null;
-  proofUrl: string | null;
   stayPhotoUrls: string[];
   imagePath: string | null;
 };
@@ -158,11 +156,9 @@ async function listExternalReviewApprovalRows(): Promise<ExternalReviewApprovalR
         reviewText: review.reviewText,
         reviewerName: review.reviewerName,
         starRating: review.starRating,
-        feedbackTags: review.feedbackTags,
         moderationStatus: review.moderationStatus,
         submittedAt: review.createdAt,
         imageUrl: review.imageUrl,
-        proofUrl: review.proofUrl,
         stayPhotoUrls: review.stayPhotoUrls,
         imagePath: externalReviewImageStoragePath(review.imageUrl, propertyId, review.id),
       });

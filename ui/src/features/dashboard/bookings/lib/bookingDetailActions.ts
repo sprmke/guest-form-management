@@ -1,6 +1,7 @@
-import { Car, Copy, ExternalLink, PawPrint, Search, Sparkles } from 'lucide-react';
+import { Car, ClipboardCheck, Copy, ExternalLink, PawPrint, Search, Sparkles } from 'lucide-react';
 
 import type { BookingEditTabId } from '@/features/dashboard/bookings/components/booking-detail/edit/BookingEditTabs';
+import type { BookingGuestFormCompletionLink } from '@/features/dashboard/bookings/hooks/useBookingGuestFormCompletionLink';
 import type { BookingParkingShareLink } from '@/features/dashboard/bookings/hooks/useBookingParkingShareLink';
 import type { BookingStayGuideLink } from '@/features/dashboard/bookings/hooks/useBookingStayGuideLink';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
@@ -25,6 +26,8 @@ type Args = {
   onSearchOtherParkings?: () => void;
   onOpenAiSummary?: () => void;
   stayGuide: BookingStayGuideLink;
+  /** OTA-ingested bookings only: copy the "finish the guest form" link for the Airbnb guest. */
+  guestFormCompletion?: BookingGuestFormCompletionLink;
   parkingShareLink: BookingParkingShareLink;
   /** When false, hide AI Summary (needs `bookings.detail.stay:edit`). */
   canRunAiSummary?: boolean;
@@ -50,6 +53,7 @@ export function buildBookingDetailActions({
   onSearchOtherParkings,
   onOpenAiSummary,
   stayGuide,
+  guestFormCompletion,
   parkingShareLink,
   canRunAiSummary = true,
   canEditParking = true,
@@ -134,6 +138,17 @@ export function buildBookingDetailActions({
         group: 'guest-links',
       }
     );
+  }
+
+  // OTA-ingested booking still awaiting review — let the host forward the completion form.
+  if (guestFormCompletion?.eligible) {
+    actions.push({
+      key: 'guest-form-completion-copy',
+      label: guestFormCompletion.pending ? 'Creating guest form link…' : 'Copy guest form link',
+      Icon: ClipboardCheck,
+      onSelect: guestFormCompletion.copy,
+      group: 'guest-links',
+    });
   }
 
   if (parkingShareLink.url) {

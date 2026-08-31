@@ -342,6 +342,7 @@ export async function sendInboxReply(
   opts?: {
     replyToMessageId?: string;
     useHumanAgentTag?: boolean;
+    attachments?: Array<{ kind: 'image' | 'file'; url: string; label?: string }>;
     scope?: InboxApiScope | null;
   }
 ): Promise<void> {
@@ -358,6 +359,7 @@ export async function sendInboxReply(
       text,
       replyToMessageId: opts?.replyToMessageId,
       useHumanAgentTag: opts?.useHumanAgentTag === true,
+      attachments: opts?.attachments,
       ...inboxScopeBody(scope),
     }),
   });

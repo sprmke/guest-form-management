@@ -12,8 +12,7 @@ import {
 import { useGuestStayGuidePreview } from '@/features/guest/stay-guide/hooks/useGuestStayGuide';
 import {
   normalizeStayGuideConfigV2,
-  stayGuideConfigV2ToV1,
-  type StayGuideConfigV2,
+  stayGuideConfigForSave,
 } from '@/features/guest/stay-guide/lib/stayGuideConfig';
 import { extractLeadingSectionHeading } from '@/features/guest/stay-guide/lib/stayGuideContent';
 import { StayGuidePage } from '@/features/guest/stay-guide/pages/StayGuidePage';
@@ -51,26 +50,47 @@ import { resolvePageEditorPublicLinks } from '@/features/dashboard/page-editor/l
 import { STAY_GUIDE_STANDARD_TEMPLATE_KEYS } from '@/features/dashboard/page-editor/lib/stayGuideChapterSections';
 import { useStayGuideEditorStore } from '@/features/dashboard/page-editor/stores/stayGuideEditorStore';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
-import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
+import { usePropertyEntitlements } from '@/features/dashboard/plans/hooks/usePropertyEntitlements';
+import { isFeatureEnabled } from '@/features/dashboard/plans/lib/planFeatures';
 
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { SectionContentSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
 
+function PageChrome({ children }: { children: React.ReactNode }) {
+  return (
+    <AdminMobilePage title="Stay Guide" titleId="stay-guide-editor-heading">
+      {children}
+    </AdminMobilePage>
+  );
+}
+
 async function patchStayGuideTemplate(propertyId: string, templateKey: ShowcaseTemplateKey) {
   const jwt = await getSessionJwt();
   const res = await fetch(scopedFunctionsUrl('/custom-pages-settings', propertyId), {
     method: 'PATCH',
-    headers: {
-      Authorization: `Bearer ${jwt}`,
-      'Content-Type': 'application/json',
-    },
+    headers: { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ pageType: 'stay_guide', templateKey }),
   });
   const json = (await res.json()) as { success?: boolean; error?: string };
-  if (!res.ok || !json.success) {
-    throw new Error(json.error ?? 'Failed to update template');
+  if (!res.ok || !json.success) throw new Error(json.error ?? 'Failed to update template');
+}
+
+async function fetchStayGuideTemplateKey(propertyId: string): Promise<ShowcaseTemplateKey> {
+  try {
+    const jwt = await getSessionJwt();
+    const res = await fetch(scopedFunctionsUrl('/custom-pages-settings', propertyId), {
+      headers: { Authorization: `Bearer ${jwt}` },
+    });
+    const json = (await res.json()) as {
+      data?: { pages?: Array<{ pageType: string; templateKey: string }> };
+    };
+    const row = json.data?.pages?.find((p) => p.pageType === 'stay_guide');
+    if (row && isShowcaseTemplateKey(row.templateKey)) return row.templateKey;
+  } catch {
+    /* default */
   }
+  return 'showcase-aurora';
 }
 
 export function StayGuidePageEditor({
@@ -84,7 +104,7 @@ export function StayGuidePageEditor({
   const navigate = useNavigate();
   const propertyId = usePropertyIdParam();
   const configQuery = usePublicPageConfig('stay_guide');
-  const saveMutation = useSavePublicPageConfig('stay_guide');
+  const saveConfig = useSavePublicPageConfig('stay_guide');
   const previewQuery = useGuestStayGuidePreview(propertySlug, propertyId ?? '');
   const templatesQuery = usePropertyTemplates();
   const { saveTemplate } = usePropertyTemplateMutations();
@@ -92,6 +112,7 @@ export function StayGuidePageEditor({
   const config = useStayGuideEditorStore((s) => s.config);
   const templateKey = useStayGuideEditorStore((s) => s.templateKey);
   const hydrated = useStayGuideEditorStore((s) => s.hydrated);
+  const storeDirty = useStayGuideEditorStore((s) => s.isDirty);
   const historyIndex = useStayGuideEditorStore((s) => s.historyIndex);
   const historyLength = useStayGuideEditorStore((s) => s.history.length);
   const hydrate = useStayGuideEditorStore((s) => s.hydrate);
@@ -103,48 +124,29 @@ export function StayGuidePageEditor({
   const [contentDrafts, setContentDrafts] = useState<Record<string, StayGuideSectionDraft>>({});
   const [contentHydrated, setContentHydrated] = useState(false);
   const [templateLoaded, setTemplateLoaded] = useState(false);
-  const { canUse: canUseAutosave } = useFeatureGate('publicPagesAutosave');
+  const entitlements = usePropertyEntitlements(propertyId);
+  const canAutosave = entitlements.data
+    ? isFeatureEnabled(entitlements.data, 'publicPagesAutosave')
+    : false;
   const { open: openUpgradeModal } = useUpgradeModal();
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [isSavingBeforeLeave, setIsSavingBeforeLeave] = useState(false);
 
-  useEffect(() => {
-    return () => reset();
-  }, [reset]);
+  useEffect(() => () => reset(), [reset]);
 
   useEffect(() => {
     if (!configQuery.data || hydrated) return;
     void (async () => {
-      let key: ShowcaseTemplateKey = 'showcase-aurora';
-      if (propertyId) {
-        try {
-          const jwt = await getSessionJwt();
-          const res = await fetch(scopedFunctionsUrl('/custom-pages-settings', propertyId), {
-            headers: { Authorization: `Bearer ${jwt}` },
-          });
-          const json = (await res.json()) as {
-            success?: boolean;
-            data?: { pages?: Array<{ pageType: string; templateKey: string }> };
-          };
-          const stayGuide = json.data?.pages?.find((page) => page.pageType === 'stay_guide');
-          if (stayGuide && isShowcaseTemplateKey(stayGuide.templateKey)) {
-            key = stayGuide.templateKey;
-          }
-        } catch {
-          /* default */
-        }
-      }
-      hydrate(normalizeStayGuideConfigV2(configQuery.data.config as StayGuideConfigV2), key);
+      const key = propertyId ? await fetchStayGuideTemplateKey(propertyId) : 'showcase-aurora';
+      hydrate(normalizeStayGuideConfigV2(configQuery.data.config), key);
       setTemplateLoaded(true);
     })();
-  }, [configQuery.data, hydrate, hydrated, propertyId]);
+  }, [configQuery.data, hydrated, hydrate, propertyId]);
 
   const templatesByKey = useMemo(() => {
     const map: Record<string, PropertyTemplateDto> = {};
     for (const template of templatesQuery.data?.templates ?? []) {
-      if (template.category === 'standard') {
-        map[template.templateKey] = template;
-      }
+      if (template.category === 'standard') map[template.templateKey] = template;
     }
     return map;
   }, [templatesQuery.data?.templates]);
@@ -161,23 +163,22 @@ export function StayGuidePageEditor({
     setContentHydrated(true);
   }, [templatesQuery.data, templatesByKey, contentHydrated]);
 
-  const fingerprint = useMemo(() => (hydrated ? JSON.stringify(config) : null), [config, hydrated]);
-
   const configSave = usePageEditorAutoSave({
-    enabled: hydrated && Boolean(propertyId),
-    suspended: configQuery.isLoading || !hydrated,
-    persist: canUseAutosave,
-    contentFingerprint: fingerprint,
+    enabled: canAutosave && hydrated && Boolean(propertyId),
+    suspended: !hydrated,
+    contentFingerprint: hydrated ? JSON.stringify(config) : null,
     debounceMs: 1000,
     save: async () => {
-      await saveMutation.mutateAsync(config);
+      await saveConfig.mutateAsync(stayGuideConfigForSave(config));
       markClean();
     },
   });
 
   const templateSave = usePageEditorAutoSave({
-    enabled: canUseAutosave && hydrated && templateLoaded && Boolean(propertyId),
+    enabled: canAutosave && hydrated && templateLoaded && Boolean(propertyId),
+    suspended: !hydrated,
     contentFingerprint: hydrated ? templateKey : null,
+    debounceMs: 800,
     save: async () => {
       if (!propertyId) return;
       await patchStayGuideTemplate(propertyId, templateKey);
@@ -198,9 +199,8 @@ export function StayGuidePageEditor({
   }, [contentDrafts, contentHydrated]);
 
   const contentSave = usePageEditorAutoSave({
-    enabled: contentHydrated && Boolean(propertyId),
-    suspended: !contentHydrated || templatesQuery.isLoading,
-    persist: canUseAutosave,
+    enabled: canAutosave && contentHydrated && Boolean(propertyId),
+    suspended: !contentHydrated,
     contentFingerprint,
     debounceMs: 1200,
     save: async () => {
@@ -229,9 +229,14 @@ export function StayGuidePageEditor({
     contentSave.status,
   ]);
   const errorMessage = firstPageEditorAutoSaveError([configSave, templateSave, contentSave]);
-  const isDirty = canUseAutosave
+  const contentDirty = STAY_GUIDE_STANDARD_TEMPLATE_KEYS.some((key) => {
+    const draft = contentDrafts[key];
+    const template = templatesByKey[key];
+    return Boolean(draft && template && isStayGuideSectionDraftDirty(draft, template));
+  });
+  const isDirty = canAutosave
     ? status === 'pending' || status === 'error'
-    : status === 'pending';
+    : storeDirty || contentDirty;
 
   useEffect(() => {
     const handler = (event: BeforeUnloadEvent) => {
@@ -264,12 +269,12 @@ export function StayGuidePageEditor({
       kind: 'stay-guide' as const,
       data: {
         ...previewQuery.data,
-        sectionConfig: stayGuideConfigV2ToV1(config),
+        sectionConfig: config,
         templateKey,
         sections,
       },
     };
-  }, [previewQuery.data, config, contentDrafts, templateKey]);
+  }, [previewQuery.data, config, templateKey, contentDrafts]);
 
   const backHref = propertySectionPath(orgSlug, propertySlug, 'public-pages');
   const publicLinks = useMemo(
@@ -278,16 +283,20 @@ export function StayGuidePageEditor({
     [propertyId, propertySlug]
   );
 
-  const saveAllPending = () =>
-    Promise.all([configSave.saveNow(), templateSave.saveNow(), contentSave.saveNow()]);
+  const saveAll = async () => {
+    await saveConfig.mutateAsync(stayGuideConfigForSave(config));
+    if (propertyId) await patchStayGuideTemplate(propertyId, templateKey);
+    await Promise.all([contentSave.saveNow()]);
+    markClean();
+  };
 
   const handleManualSaveClick = async () => {
-    if (!canUseAutosave) {
+    if (!canAutosave) {
       openUpgradeModal('publicPagesAutosave');
       return;
     }
     try {
-      await saveAllPending();
+      await saveAll();
       toast.success('Saved');
     } catch (error) {
       toast.error(friendlyToastError(error, 'Could not save changes'));
@@ -303,14 +312,14 @@ export function StayGuidePageEditor({
   };
 
   const handleSaveAndLeave = async () => {
-    if (!canUseAutosave) {
+    if (!canAutosave) {
       setShowLeaveConfirm(false);
       openUpgradeModal('publicPagesAutosave');
       return;
     }
     setIsSavingBeforeLeave(true);
     try {
-      await saveAllPending();
+      await saveAll();
       navigate(backHref);
     } catch (error) {
       toast.error(friendlyToastError(error, 'Could not save changes'));
@@ -320,16 +329,16 @@ export function StayGuidePageEditor({
     }
   };
 
-  const handleDraftChange = (nextTemplateKey: string, draft: StayGuideSectionDraft) => {
-    setContentDrafts((current) => ({ ...current, [nextTemplateKey]: draft }));
+  const handleDraftChange = (key: string, draft: StayGuideSectionDraft) => {
+    setContentDrafts((current) => ({ ...current, [key]: draft }));
   };
 
-  const handleResetSection = (nextTemplateKey: string) => {
-    const template = templatesByKey[nextTemplateKey];
+  const handleResetSection = (key: string) => {
+    const template = templatesByKey[key];
     if (!template) return;
     setContentDrafts((current) => ({
       ...current,
-      [nextTemplateKey]: {
+      [key]: {
         content: normalizeBlockLevelPlaceholdersInHtml(template.defaultContent),
         sectionImageUrl: null,
         imageBust: 0,
@@ -346,24 +355,24 @@ export function StayGuidePageEditor({
 
   if (isBootstrapping) {
     return (
-      <AdminMobilePage title="Stay Guide" titleId="stay-guide-editor-heading">
+      <PageChrome>
         <SectionContentSkeleton rows={5} className="min-h-[50vh]" />
-      </AdminMobilePage>
+      </PageChrome>
     );
   }
 
   if (configQuery.isError || previewQuery.isError || templatesQuery.isError || !mergedPreview) {
     return (
-      <AdminMobilePage title="Stay Guide" titleId="stay-guide-editor-heading">
+      <PageChrome>
         <div className="text-muted-foreground flex min-h-[40vh] items-center justify-center px-4 text-center text-sm">
           Could not load the Stay Guide editor.
         </div>
-      </AdminMobilePage>
+      </PageChrome>
     );
   }
 
   return (
-    <AdminMobilePage title="Stay Guide" titleId="stay-guide-editor-heading">
+    <PageChrome>
       <PageEditorShell
         header={
           <PageEditorHeader
@@ -375,7 +384,7 @@ export function StayGuidePageEditor({
             copyHref={publicLinks?.copyHref}
             publicPageLabel={publicLinks?.pageLabel}
             manualSave={{
-              visible: !canUseAutosave && status === 'pending',
+              visible: !canAutosave && isDirty,
               onClick: () => void handleManualSaveClick(),
               isSaving: status === 'saving',
             }}
@@ -388,6 +397,9 @@ export function StayGuidePageEditor({
             onDraftChange={handleDraftChange}
             onResetSection={handleResetSection}
             contentBusy={saveTemplate.isPending}
+            previewDto={mergedPreview.data}
+            propertyImages={previewQuery.data?.property.galleryImages ?? []}
+            propertyBrandColor={previewQuery.data?.property.brandColor}
           />
         }
         preview={
@@ -406,13 +418,13 @@ export function StayGuidePageEditor({
       <PageEditorLeaveConfirmDialog
         open={showLeaveConfirm}
         onOpenChange={setShowLeaveConfirm}
+        isSaving={isSavingBeforeLeave}
         onSaveAndLeave={() => void handleSaveAndLeave()}
         onDiscardAndLeave={() => {
           setShowLeaveConfirm(false);
           navigate(backHref);
         }}
-        isSaving={isSavingBeforeLeave}
       />
-    </AdminMobilePage>
+    </PageChrome>
   );
 }

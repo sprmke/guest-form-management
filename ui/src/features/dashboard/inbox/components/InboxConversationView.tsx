@@ -1,15 +1,25 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+} from 'react';
 
 import {
   ArrowLeft,
   Loader2,
   MessageSquare,
+  Paperclip,
   Pencil,
   RefreshCw,
   Reply,
   SendHorizontal,
   Sparkles,
   Undo2,
+  X,
   Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -20,7 +30,7 @@ import {
   InboxMediaPreviewDialog,
   InboxMessageMediaTile,
 } from '@/features/dashboard/inbox/components/InboxMediaPreviewDialog';
-import { InboxShareResourcesPicker } from '@/features/dashboard/inbox/components/InboxShareResourcesPicker';
+import { InboxInsertMenu } from '@/features/dashboard/inbox/components/InboxInsertMenu';
 import { PlatformLogo } from '@/features/dashboard/inbox/components/PlatformLogo';
 import {
   isMessagingWindowOpen,
@@ -39,9 +49,20 @@ import {
   canHostEditMessage,
   canHostUnsendMessage,
 } from '@/features/dashboard/inbox/types/inbox';
+import { readPropertyMapsUrl } from '@/features/dashboard/inbox/lib/inboxInsertContent';
+import { readPropertyCheckInTimes } from '@/features/dashboard/inbox/lib/inboxCheckInPack';
+import { useBookingStayGuideLink } from '@/features/dashboard/bookings/hooks/useBookingStayGuideLink';
+import { applyInboxQuickReplyMerge } from '@/features/dashboard/inbox/lib/inboxQuickReplyMerge';
+import { readInboxPinnedSnippets } from '@/features/dashboard/inbox/lib/inboxPinnedSnippets';
+import { useInboxMatchedBooking } from '@/features/dashboard/inbox/hooks/useInboxMatchedBooking';
+import type { InboxChatAttachment } from '@/features/dashboard/inbox/lib/inboxChatAttachment';
+import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
+import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { handleAiMutationError, isAiQuotaError } from '@/features/dashboard/org/lib/aiQuotaToast';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
+
+import { CHAT_ATTACHMENT_ACCEPT, CHAT_MAX_ATTACHMENTS } from '@/lib/chat/chatAttachments';
 
 import { ChatComposerContextBar } from '@/components/chat/ChatComposerContextBar';
 import {
@@ -115,12 +136,18 @@ type Props = {
   onBack?: () => void;
   onSend: (
     text: string,
-    opts?: { replyToMessageId?: string; useHumanAgentTag?: boolean }
+    opts?: {
+      replyToMessageId?: string;
+      useHumanAgentTag?: boolean;
+      attachments?: InboxChatAttachment[];
+    }
   ) => Promise<void>;
+  onUploadAttachment?: (file: File) => Promise<InboxChatAttachment>;
   onEdit?: (messageId: string, text: string) => Promise<void>;
   onUnsend?: (messageId: string) => Promise<void>;
   onSuggest: () => Promise<{ suggestion: string; flagged: boolean }>;
   sending: boolean;
+  uploadingAttachment?: boolean;
   editing?: boolean;
   unsending?: boolean;
   suggesting: boolean;
@@ -139,10 +166,12 @@ export function InboxConversationView({
   templates,
   onBack,
   onSend,
+  onUploadAttachment,
   onEdit,
   onUnsend,
   onSuggest,
   sending,
+  uploadingAttachment = false,
   editing = false,
   unsending = false,
   suggesting,
@@ -153,6 +182,7 @@ export function InboxConversationView({
   onRetryLoad,
 }: Props) {
   const [draft, setDraft] = useState('');
+  const [pendingAttachments, setPendingAttachments] = useState<InboxChatAttachment[]>([]);
   const [composerMode, setComposerMode] = useState<ComposerMode>({ kind: 'compose' });
   const [draftFromAi, setDraftFromAi] = useState(false);
   const [draftAiFlagged, setDraftAiFlagged] = useState(false);
@@ -167,6 +197,7 @@ export function InboxConversationView({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
   const composerInputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingComposerFocusRef = useRef<ComposerFocusMode | null>(null);
   const shouldSmoothScrollRef = useRef(false);
   const prevTailKeyRef = useRef('');
@@ -174,10 +205,34 @@ export function InboxConversationView({
   const loadingOlderRef = useRef(loadingOlder);
   loadingOlderRef.current = loadingOlder;
 
+  const orgContext = useOptionalOrgContext();
+  const propertyIdParam = usePropertyIdParam();
+  const propertyId = orgContext?.property.id ?? propertyIdParam;
+  const mapsUrl = readPropertyMapsUrl(orgContext?.property.settings);
+  const { checkInTime, checkOutTime } = readPropertyCheckInTimes(orgContext?.property.settings);
+  const { booking: matchedBooking } = useInboxMatchedBooking(conversation);
+  const stayGuideLink = useBookingStayGuideLink(matchedBooking);
+
+  const quickReplyMergeContext = useMemo(() => {
+    if (!conversation) return null;
+    return {
+      conversation,
+      booking: matchedBooking,
+      propertySlug: conversation.property_slug,
+      mapsUrl,
+      stayGuideUrl: stayGuideLink.url || undefined,
+    };
+  }, [conversation, matchedBooking, mapsUrl, stayGuideLink.url]);
+
   const visibleTemplates = useMemo(() => {
     if (!conversation) return [];
     return templatesForConversationPlatform(templates, conversation.platform);
   }, [templates, conversation?.platform]);
+
+  const pinnedSnippets = useMemo(
+    () => readInboxPinnedSnippets(orgContext?.property.settings),
+    [orgContext?.property.settings]
+  );
 
   const isWeb = conversation?.platform === 'web';
   const { peerTyping, signalTyping } = useChatTyping(
@@ -195,6 +250,7 @@ export function InboxConversationView({
 
   useEffect(() => {
     setDraft('');
+    setPendingAttachments([]);
     threadSearch.close();
     setComposerMode({ kind: 'compose' });
     setDraftFromAi(false);
@@ -253,6 +309,7 @@ export function InboxConversationView({
   const clearComposerMode = useCallback(() => {
     setComposerMode({ kind: 'compose' });
     setDraft('');
+    setPendingAttachments([]);
     setDraftFromAi(false);
     setDraftAiFlagged(false);
   }, []);
@@ -310,9 +367,9 @@ export function InboxConversationView({
     isMessagingWindowOpen(conversation.messaging_window_expires_at, conversation.last_inbound_at);
   const canUseHumanAgentTag =
     composerMode.kind !== 'edit' && humanAgentWindowOpen && !windowOpen && !channelDisconnected;
-  const isBusy = sending || editing || unsending;
+  const isBusy = sending || editing || unsending || uploadingAttachment;
   const canSend =
-    draft.trim().length > 0 &&
+    (draft.trim().length > 0 || pendingAttachments.length > 0) &&
     !isBusy &&
     !channelDisconnected &&
     (composerMode.kind === 'edit' || windowOpen || useHumanAgentTag);
@@ -339,16 +396,21 @@ export function InboxConversationView({
   };
 
   const handleSend = async () => {
-    const text = draft.trim();
-    if (!text) return;
+    const rawText = draft.trim();
+    if (composerMode.kind !== 'edit' && !rawText && pendingAttachments.length === 0) return;
+    const text =
+      composerMode.kind !== 'edit' && quickReplyMergeContext
+        ? applyInboxQuickReplyMerge(rawText, quickReplyMergeContext)
+        : rawText;
     try {
       if (composerMode.kind === 'edit') {
-        if (!onEdit) return;
+        if (!onEdit || !text) return;
         await onEdit(composerMode.messageId, text);
       } else {
         await onSend(text, {
           replyToMessageId: composerMode.kind === 'reply' ? composerMode.messageId : undefined,
           useHumanAgentTag,
+          attachments: pendingAttachments.length > 0 ? pendingAttachments : undefined,
         });
       }
       clearComposerMode();
@@ -373,6 +435,34 @@ export function InboxConversationView({
         handleAiMutationError(e);
         return;
       }
+      toast.error((e as Error).message);
+    }
+  };
+
+  const appendToDraft = (value: string) => {
+    setDraft((prev) => `${prev}${prev.trim() ? '\n' : ''}${value}`);
+    setDraftFromAi(false);
+    setDraftAiFlagged(false);
+  };
+
+  const handlePickFile = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !onUploadAttachment) return;
+    if (pendingAttachments.length >= CHAT_MAX_ATTACHMENTS) {
+      toast.error(`Up to ${CHAT_MAX_ATTACHMENTS} attachments per message`);
+      return;
+    }
+    try {
+      const attachment = await onUploadAttachment(file);
+      setPendingAttachments((prev) =>
+        prev.length >= CHAT_MAX_ATTACHMENTS ? prev : [...prev, attachment]
+      );
+    } catch (e) {
       toast.error((e as Error).message);
     }
   };
@@ -722,6 +812,32 @@ export function InboxConversationView({
                 {draftAiFlagged ? 'AI declined to answer' : 'Suggested by AI'}
               </div>
             )}
+            {pendingAttachments.length > 0 ? (
+              <div className="border-border/60 flex flex-wrap gap-1.5 border-b px-3.5 py-2">
+                {pendingAttachments.map((att, index) => (
+                  <div
+                    key={`${att.url}-${index}`}
+                    className="bg-muted flex max-w-full items-center gap-1.5 rounded-md px-2 py-1 text-xs"
+                  >
+                    <span className="min-w-0 truncate">
+                      {att.label ?? (att.kind === 'image' ? 'Image' : 'File')}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 min-h-[32px] min-w-[32px] shrink-0"
+                      aria-label="Remove attachment"
+                      onClick={() =>
+                        setPendingAttachments((prev) => prev.filter((_, i) => i !== index))
+                      }
+                    >
+                      <X className="size-3.5" aria-hidden />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
             <Textarea
               ref={composerInputRef}
               value={draft}
@@ -756,6 +872,41 @@ export function InboxConversationView({
             <div className="border-border/60 flex items-center justify-between gap-2 border-t px-2 py-1.5">
               <TooltipProvider delayDuration={300}>
                 <div className="flex min-w-0 flex-1 items-center gap-1">
+                  {isWeb && onUploadAttachment && composerMode.kind !== 'edit' ? (
+                    <>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept={CHAT_ATTACHMENT_ACCEPT}
+                        className="sr-only"
+                        onChange={(e) => void handleFileChange(e)}
+                      />
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-foreground size-10 min-h-[44px] min-w-[44px]"
+                            disabled={
+                              channelDisconnected ||
+                              isBusy ||
+                              pendingAttachments.length >= CHAT_MAX_ATTACHMENTS
+                            }
+                            aria-label="Attach file"
+                            onClick={handlePickFile}
+                          >
+                            {uploadingAttachment ? (
+                              <Loader2 className="size-4 animate-spin" aria-hidden />
+                            ) : (
+                              <Paperclip className="size-4" aria-hidden />
+                            )}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">Attach</TooltipContent>
+                      </Tooltip>
+                    </>
+                  ) : null}
                   {visibleTemplates.length > 0 && (
                     <DropdownMenu>
                       <Tooltip>
@@ -787,7 +938,15 @@ export function InboxConversationView({
                                 if (!quickRepliesLoading) openUpgradeModal('quickReplies');
                                 return;
                               }
-                              setDraft(t.body_text);
+                              setDraft(
+                                applyInboxQuickReplyMerge(
+                                  t.body_text,
+                                  quickReplyMergeContext ?? {
+                                    conversation,
+                                    booking: matchedBooking,
+                                  }
+                                )
+                              );
                               setDraftFromAi(false);
                             }}
                           >
@@ -818,12 +977,23 @@ export function InboxConversationView({
                     <TooltipContent side="top">Suggest</TooltipContent>
                   </Tooltip>
                   {conversation.property_slug ? (
-                    <InboxShareResourcesPicker
+                    <InboxInsertMenu
+                      conversation={conversation}
                       propertySlug={conversation.property_slug}
-                      disabled={channelDisconnected}
-                      onInsert={(url) =>
-                        setDraft((prev) => `${prev}${prev.trim() ? '\n' : ''}${url}`)
+                      propertyId={propertyId}
+                      mapsUrl={mapsUrl}
+                      checkInTime={checkInTime}
+                      checkOutTime={checkOutTime}
+                      templates={visibleTemplates}
+                      pinnedSnippets={pinnedSnippets}
+                      mergeSnippet={
+                        quickReplyMergeContext
+                          ? (text) => applyInboxQuickReplyMerge(text, quickReplyMergeContext)
+                          : undefined
                       }
+                      disabled={channelDisconnected}
+                      onInsertUrl={appendToDraft}
+                      onInsertText={appendToDraft}
                     />
                   ) : null}
                 </div>

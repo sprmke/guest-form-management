@@ -89,7 +89,7 @@ serveAuthenticated('list-bookings', async (req) => {
     | 'check_in_date:desc'
     | 'created_at:asc'
     | 'created_at:desc';
-  const { page, limit } = parsePageLimit(p);
+  const { page, limit } = parsePageLimit(p, { maxLimit: 200 });
 
   const { rows, total } = await DatabaseService.listBookings({
     propertyId,

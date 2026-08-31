@@ -85,5 +85,24 @@ export function validatePropertySettingsPatch(
     if (policyErr) return policyErr;
   }
 
+  if (incoming.inboxPinnedSnippets !== undefined) {
+    if (!Array.isArray(incoming.inboxPinnedSnippets)) {
+      return 'Pinned snippets must be an array';
+    }
+    if (incoming.inboxPinnedSnippets.length > 5) {
+      return 'Max 5 pinned snippets';
+    }
+    for (const entry of incoming.inboxPinnedSnippets) {
+      if (!entry || typeof entry !== 'object') return 'Invalid pinned snippet';
+      const row = entry as Record<string, unknown>;
+      const title = String(row.title ?? '').trim();
+      const bodyText = String(row.bodyText ?? row.body_text ?? '').trim();
+      const id = String(row.id ?? '').trim();
+      if (!id || !title || !bodyText) return 'Each pinned snippet needs id, title, and message';
+      if (title.length > 80) return 'Pinned snippet title is too long';
+      if (bodyText.length > 2000) return 'Pinned snippet message is too long';
+    }
+  }
+
   return null;
 }

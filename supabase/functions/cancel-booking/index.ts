@@ -11,11 +11,13 @@ import {
   readJsonBody,
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
+import { createServiceClient } from '../_shared/orgAuth.ts';
 import {
   resolveScopedPropertyAccess,
   verifyBookingBelongsToProperty,
 } from '../_shared/propertyScope.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+import { releaseAppliedVoucherOnCancel } from '../_shared/voucherRedemption.ts';
 
 serveAuthenticated('cancel-booking', async (req) => {
   requireHttpMethod(req, 'POST');
@@ -55,6 +57,16 @@ serveAuthenticated('cancel-booking', async (req) => {
     devControls,
     true
   );
+
+  try {
+    await releaseAppliedVoucherOnCancel(createServiceClient(), {
+      id: String(bookingId),
+      applied_voucher_source_booking_id:
+        (booking.applied_voucher_source_booking_id as string | null | undefined) ?? null,
+    });
+  } catch (voucherErr) {
+    console.error('[cancel-booking] voucher release failed (non-fatal):', voucherErr);
+  }
 
   try {
     await notifyTelegramCancellation(

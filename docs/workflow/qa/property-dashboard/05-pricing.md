@@ -12,7 +12,7 @@ Route: `/org/:orgSlug/property/:propertySlug/pricing`
 
 - Unified rates + booked pills + block/unblock matches product intent.
 - Permissions: `pricing:view` / `pricing.rates:edit` / blocks add/delete / `pricing.channels:*`.
-- **Channel Sync** card ships (`ChannelSyncCard` + `calendarSync` Pro+) — Pricing no longer 404s on the missing module. Import/export UI is local until `calendar-sync-settings` ships.
+- **Channel Sync** modal ships (`ChannelSyncDialog` + `calendarSync` Pro+) — verified after local migrations + Pro plan bump (Airbnb / iCal / export copy visible; no load error).
 
 ## Issues
 
@@ -34,4 +34,4 @@ Route: `/org/:orgSlug/property/:propertySlug/pricing`
 
 ## Evidence
 
-Live Pro session after migrate; `ChannelSyncCard.tsx`; plans matrix § calendarSync.
+Live Pro session after migrate; `ChannelSyncDialog.tsx`; plans matrix § calendarSync.

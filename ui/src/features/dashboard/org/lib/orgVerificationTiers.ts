@@ -332,7 +332,7 @@ export function buildVerificationTiers(
       id: 'host',
       level: 1,
       title: 'Verified',
-      benefit: 'Required to host on Kame Homes',
+      benefit: 'Required to host',
       status: detail.baseStatus,
     },
     {

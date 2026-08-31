@@ -7,7 +7,7 @@ const SRK =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU';
 const BASE = 'http://localhost:5173/org/kame-home/property/monaco-2612';
 
-async function cliEval(js: string) {
+async function cliEval(js) {
   const out = await $`bun x playwright-cli eval ${js}`.nothrow().text();
   const m = out.match(/### Result\n([\s\S]*?)\n### Ran/);
   if (!m) return { error: 'no_result', snippet: out.slice(-500) };
@@ -18,7 +18,7 @@ async function cliEval(js: string) {
   }
 }
 
-async function injectEmail(email: string) {
+async function injectEmail(email) {
   const resp = await fetch('http://127.0.0.1:54321/auth/v1/admin/generate_link', {
     method: 'POST',
     headers: {
@@ -28,7 +28,7 @@ async function injectEmail(email: string) {
     },
     body: JSON.stringify({ type: 'magiclink', email }),
   }).then((r) => r.json());
-  const token = resp.hashed_token as string;
+  const token = resp.hashed_token;
   const verify = await fetch(
     `http://127.0.0.1:54321/auth/v1/verify?token=${token}&type=magiclink`,
     { headers: { apikey: ANON }, redirect: 'manual' }
@@ -58,7 +58,7 @@ async function injectEmail(email: string) {
   return emailOut;
 }
 
-async function probe(label: string) {
+async function probe(label) {
   await $`bun x playwright-cli goto ${`${BASE}/bookings`}`.nothrow().quiet();
   await Bun.sleep(2500);
   const nav = await cliEval(`(() => {
@@ -69,7 +69,7 @@ async function probe(label: string) {
   })()`);
   console.log(JSON.stringify(nav));
 
-  const routes: Record<string, unknown> = {};
+  const routes = {};
   for (const path of ['finance', 'settings', 'team', 'marketing', 'bookings']) {
     await $`bun x playwright-cli goto ${`${BASE}/${path}`}`.nothrow().quiet();
     await Bun.sleep(1800);

@@ -1,3 +1,4 @@
+import { useState, type ReactNode } from 'react';
 import { Check, Shield } from 'lucide-react';
 
 import { AdminSection } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
@@ -18,8 +19,16 @@ import {
   type CancellationPolicyType,
 } from '@/features/dashboard/org/lib/propertyCancellationPolicy';
 
+import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import {
   Select,
   SelectContent,
@@ -45,7 +54,13 @@ function graceLabel(hours: number): string {
   return `${hours} hours`;
 }
 
-function CancellationPolicyPreview({ policy }: { policy: CancellationPolicySettings }) {
+function CancellationPolicyPreview({
+  policy,
+  action,
+}: {
+  policy: CancellationPolicySettings;
+  action?: ReactNode;
+}) {
   const display = resolveCancellationPolicyDisplay(policy);
   const toneClasses =
     display.tone === 'positive'
@@ -72,10 +87,11 @@ function CancellationPolicyPreview({ policy }: { policy: CancellationPolicySetti
     <div className={cn('rounded-lg border p-4', toneClasses)}>
       <div className="flex items-start gap-3">
         <Check className={cn('mt-0.5 h-5 w-5 shrink-0', subtextClasses)} aria-hidden />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className={cn('font-medium', textClasses)}>{display.title}</p>
           <p className={cn('mt-1 text-sm', subtextClasses)}>{display.description}</p>
         </div>
+        {action ? <div className="shrink-0 self-center">{action}</div> : null}
       </div>
     </div>
   );
@@ -89,6 +105,7 @@ export function PropertyCancellationPolicySection({
   onChange,
   embedded = false,
 }: Props) {
+  const [manageOpen, setManageOpen] = useState(false);
   const normalized = normalizeCancellationPolicySettings(policy);
 
   const setType = (type: CancellationPolicyType) => {
@@ -120,7 +137,7 @@ export function PropertyCancellationPolicySection({
   const customTitleError = resolveFieldError('cancellation-custom-title');
   const customDescriptionError = resolveFieldError('cancellation-custom-description');
 
-  const body = (
+  const formFields = (
     <>
       <RadioGroup
         value={normalized.type}
@@ -269,16 +286,23 @@ export function PropertyCancellationPolicySection({
           </SettingsField>
         </div>
       ) : null}
-
-      <div className="space-y-2">
-        <Label className="text-sm font-medium">Guest preview</Label>
-        <CancellationPolicyPreview policy={normalized} />
-      </div>
     </>
   );
 
+  const guestPreviewBlock = (
+    <div className="space-y-2">
+      <Label className="text-sm font-medium">Guest preview</Label>
+      <CancellationPolicyPreview policy={normalized} />
+    </div>
+  );
+
   if (embedded) {
-    return <div className="space-y-4 px-4 py-3">{body}</div>;
+    return (
+      <div className="space-y-4 px-4 py-3">
+        {formFields}
+        {guestPreviewBlock}
+      </div>
+    );
   }
 
   return (
@@ -288,7 +312,49 @@ export function PropertyCancellationPolicySection({
       icon={Shield}
       description="Refund rules when a guest cancels."
     >
-      {body}
+      <CancellationPolicyPreview
+        policy={normalized}
+        action={
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-[44px]"
+            onClick={() => setManageOpen(true)}
+          >
+            Manage
+          </Button>
+        }
+      />
+
+      <ResponsiveModal open={manageOpen} onOpenChange={setManageOpen}>
+        <ResponsiveModalContent
+          sheetLayout="split"
+          className={cn(
+            'flex max-h-[min(92dvh,52rem)] w-[min(calc(100vw-1.5rem),40rem)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(95vw,40rem)] sm:p-0'
+          )}
+        >
+          <ResponsiveModalHeader className="border-border/60 shrink-0 space-y-0 border-b px-4 py-3 sm:px-5 sm:py-4">
+            <ResponsiveModalTitle className="pr-8 text-base sm:text-lg">
+              Cancellation policy
+            </ResponsiveModalTitle>
+          </ResponsiveModalHeader>
+
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4 [-webkit-overflow-scrolling:touch] sm:px-5">
+            {formFields}
+            {guestPreviewBlock}
+          </div>
+
+          <ResponsiveModalFooter className="border-border/60 shrink-0 border-t px-4 py-3 sm:px-5">
+            <Button
+              type="button"
+              className="min-h-[44px] w-full sm:ml-auto sm:w-auto"
+              onClick={() => setManageOpen(false)}
+            >
+              Save
+            </Button>
+          </ResponsiveModalFooter>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
     </AdminSection>
   );
 }

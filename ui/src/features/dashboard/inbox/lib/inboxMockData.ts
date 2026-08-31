@@ -294,7 +294,7 @@ export const MOCK_AUTOMATION: InboxAutomationSettings = {
   autoReplyEnabled: false,
   autoReplyMode: 'draft',
   aiSystemPrompt:
-    'You are a friendly Kame Homes host assistant. Reply in 1–3 sentences. Ask for dates and guest count when checking availability.',
+    'You are a friendly host assistant. Reply in 1–3 sentences. Ask for dates and guest count when checking availability.',
   platformToggles: {
     facebook: true,
     instagram: true,

@@ -2,11 +2,11 @@ import { expect, test } from '@playwright/test';
 
 import {
   createParkingFlowState,
+  E2E_PROPERTY_BOOKING_ID,
   fillGuestParkingRegistrationForm,
   installParkingFlowMocks,
   parkingFlowPaths,
   parkingGuestStatusLabels,
-  submitGuestParkingRequest,
 } from '../shared/parkingFlowHarness';
 import { setParkingScreenSuite } from '../shared/parkingScreenCapture';
 
@@ -46,7 +46,30 @@ test.describe('parking marketplace edge cases', () => {
     await page.getByRole('button', { name: 'Submit request' }).click();
 
     await expect(page).toHaveURL(new RegExp(`/parkings/requests/`));
-    expect(state.linkedPropertyBookingId).toBe('property-booking-e2e-001');
+    expect(state.linkedPropertyBookingId).toBe(E2E_PROPERTY_BOOKING_ID);
+    await expect(
+      page.getByRole('heading', { name: parkingGuestStatusLabels.findingHost })
+    ).toBeVisible();
+  });
+
+  test('auto-selects the property stay when arriving with linkStay', async ({ page }) => {
+    setParkingScreenSuite('linkStay-auto-select');
+    const state = createParkingFlowState();
+    await installParkingFlowMocks(page, state);
+
+    await page.goto(`${parkingFlowPaths.guestForm}&linkStay=${E2E_PROPERTY_BOOKING_ID}`);
+
+    // Preferred stay is selected without tapping the stay card.
+    await expect(page.getByText(parkingGuestStatusLabels.confirmRequest)).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.getByText('Jamie Park')).toBeVisible();
+    await expect(page.getByText(/ABC-1234/)).toBeVisible();
+
+    await page.getByRole('button', { name: 'Submit request' }).click();
+
+    await expect(page).toHaveURL(new RegExp(`/parkings/requests/`));
+    expect(state.linkedPropertyBookingId).toBe(E2E_PROPERTY_BOOKING_ID);
     await expect(
       page.getByRole('heading', { name: parkingGuestStatusLabels.findingHost })
     ).toBeVisible();

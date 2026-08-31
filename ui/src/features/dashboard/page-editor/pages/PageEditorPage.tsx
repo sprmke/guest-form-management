@@ -29,10 +29,6 @@ import {
   resolveCancellationPolicyDisplay,
   validateCancellationPolicySettings,
 } from '@/features/dashboard/org/lib/propertyCancellationPolicy';
-import {
-  mergeExternalReviewsForSingleReviewSave,
-  validateExternalReviewDraft,
-} from '@/features/dashboard/org/lib/propertyExternalReviews';
 import { resolveHouseRulesForDisplay } from '@/features/dashboard/org/lib/propertyHouseRulesConstants';
 import {
   resolveAmenityLabels,
@@ -213,7 +209,6 @@ function PropertyLandingPageEditor({
         airbnbUrl: '',
         instagramUrl: '',
         tiktokUrl: '',
-        mainSocialPlatform: '',
       };
 
   const config = usePropertyLandingEditorStore((s) => s.config);
@@ -241,7 +236,6 @@ function PropertyLandingPageEditor({
   const [socialDraft, setSocialDraft] = useState<AppSettingsFormValues | null>(null);
   const [socialBaseline, setSocialBaseline] = useState<AppSettingsFormValues | null>(null);
   const [interactedFields, setInteractedFields] = useState<Record<string, boolean>>({});
-  const [savingReviewId, setSavingReviewId] = useState<string | null>(null);
   const entitlements = usePropertyEntitlements(propertyId);
   const canAutosave = entitlements.data
     ? isFeatureEnabled(entitlements.data, 'publicPagesAutosave')
@@ -349,9 +343,6 @@ function PropertyLandingPageEditor({
       airbnbUrl: socialDraft.airbnbUrl,
       instagramUrl: socialDraft.instagramUrl,
       tiktokUrl: socialDraft.tiktokUrl,
-      mainSocialPlatform: socialDraft.mainSocialPlatform,
-      externalReviews: socialDraft.externalReviews,
-      superhostVerificationUrl: socialDraft.superhostVerificationUrl,
     });
   }, [socialDraft]);
 
@@ -362,9 +353,6 @@ function PropertyLandingPageEditor({
       airbnbUrl: socialBaseline.airbnbUrl,
       instagramUrl: socialBaseline.instagramUrl,
       tiktokUrl: socialBaseline.tiktokUrl,
-      mainSocialPlatform: socialBaseline.mainSocialPlatform,
-      externalReviews: socialBaseline.externalReviews,
-      superhostVerificationUrl: socialBaseline.superhostVerificationUrl,
     });
   }, [socialBaseline]);
 
@@ -381,9 +369,6 @@ function PropertyLandingPageEditor({
         airbnbUrl: normalized.airbnbUrl,
         instagramUrl: normalized.instagramUrl,
         tiktokUrl: normalized.tiktokUrl,
-        mainSocialPlatform: normalized.mainSocialPlatform,
-        externalReviews: socialDraft.externalReviews,
-        superhostVerificationUrl: socialDraft.superhostVerificationUrl,
         publicPagesAutosaveGate: true,
       });
       const values = appSettingsToFormValues(saved);
@@ -395,9 +380,6 @@ function PropertyLandingPageEditor({
               airbnbUrl: values.airbnbUrl,
               instagramUrl: values.instagramUrl,
               tiktokUrl: values.tiktokUrl,
-              mainSocialPlatform: values.mainSocialPlatform,
-              externalReviews: values.externalReviews,
-              superhostVerificationUrl: values.superhostVerificationUrl,
               brandColor: current.brandColor,
             }
           : values
@@ -490,51 +472,6 @@ function PropertyLandingPageEditor({
       if (fieldId === 'cancellation-custom-title') return cancellationError;
     }
     return null;
-  };
-
-  const handleSaveExternalReview = async (reviewId: string) => {
-    if (!socialDraft || !socialBaseline) return;
-    const draftReviews = socialDraft.externalReviews;
-    const baselineReviews = socialBaseline.externalReviews;
-    const reviewIndex = draftReviews.findIndex((review) => review.id === reviewId);
-    const draftReview = draftReviews[reviewIndex];
-    if (!draftReview) return;
-
-    const validationError = validateExternalReviewDraft(draftReview, `Review ${reviewIndex + 1}`);
-    if (validationError) {
-      markFieldInteracted('property-external-reviews');
-      toast.error(validationError);
-      return;
-    }
-
-    const mergedReviews = mergeExternalReviewsForSingleReviewSave(
-      reviewId,
-      draftReviews,
-      baselineReviews
-    );
-    if (!mergedReviews) return;
-
-    setSavingReviewId(reviewId);
-    try {
-      const saved = await updateAppSettings.mutateAsync({ externalReviews: mergedReviews });
-      const values = appSettingsToFormValues(saved);
-      const savedReview = values.externalReviews.find((review) => review.id === reviewId);
-      setSocialBaseline(values);
-      setSocialDraft((current) => {
-        if (!current || !savedReview) return current;
-        return {
-          ...current,
-          externalReviews: current.externalReviews.map((review) =>
-            review.id === reviewId ? savedReview : review
-          ),
-        };
-      });
-      toast.success('Review saved');
-    } catch (error) {
-      toast.error(friendlyToastError(error, 'Could not save review'));
-    } finally {
-      setSavingReviewId(null);
-    }
   };
 
   const onContentChange = <K extends keyof LandingProfileContent>(
@@ -701,14 +638,11 @@ function PropertyLandingPageEditor({
             content={content}
             onContentChange={onContentChange}
             socialDraft={socialDraft}
-            socialBaselineReviews={socialBaseline?.externalReviews ?? []}
             appSettings={appSettings}
             orgSocialLinks={orgSocialLinks}
             onSocialChange={onSocialChange}
             resolveFieldError={resolveFieldError}
             markFieldInteracted={markFieldInteracted}
-            onSaveReview={(reviewId) => void handleSaveExternalReview(reviewId)}
-            savingReviewId={savingReviewId}
           />
         }
         preview={

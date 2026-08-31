@@ -1,3 +1,4 @@
+import { prepareUpload } from '@/lib/media/prepareUpload';
 import { supabase } from '@/lib/supabase/client';
 
 const FUNCTIONS_URL = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/$/, '');
@@ -96,6 +97,36 @@ export type GuestMessageThreadDto = {
 
 export const GUEST_PROFILE_QUERY_KEY = ['guest-profile'] as const;
 export const GUEST_MESSAGES_QUERY_KEY = ['guest-messages'] as const;
+export const GUEST_VOUCHERS_QUERY_KEY = ['guest-vouchers'] as const;
+
+export type GuestVoucherDto = {
+  sourceBookingId: string;
+  code: string;
+  percentOff: number;
+  legacyAmountPhp: number | null;
+  awardedAt: string | null;
+  checkInDate: string;
+  checkOutDate: string;
+  propertyId: string | null;
+  propertySlug: string | null;
+  propertyName: string | null;
+  propertyImageUrl: string | null;
+  redeemedAt: string | null;
+  redeemedBookingId: string | null;
+};
+
+export async function fetchGuestVouchers(opts?: {
+  propertyId?: string;
+  propertySlug?: string;
+  includeRedeemed?: boolean;
+}): Promise<GuestVoucherDto[]> {
+  const search = new URLSearchParams();
+  if (opts?.propertyId) search.set('propertyId', opts.propertyId);
+  else if (opts?.propertySlug) search.set('property', opts.propertySlug);
+  if (opts?.includeRedeemed) search.set('includeRedeemed', '1');
+  const payload = await guestEdgeGet('list-guest-vouchers', search);
+  return (payload.vouchers as GuestVoucherDto[] | undefined) ?? [];
+}
 
 export async function fetchGuestProfile(): Promise<GuestProfileDto> {
   const payload = await guestEdgeGet('guest-profile');
@@ -116,9 +147,15 @@ export async function patchGuestProfile(patch: GuestProfilePatch): Promise<Guest
 }
 
 export async function uploadGuestProfileAvatar(file: File): Promise<{ avatarUrl: string }> {
+  const prepared = await prepareUpload(file, {
+    imagePreset: 'AVATAR',
+    surface: 'guest-profile-avatar',
+  });
+  if (prepared.error) throw new Error(prepared.error);
+
   const formData = new FormData();
-  formData.append('file', file);
-  formData.append('fileName', file.name);
+  formData.append('file', prepared.file);
+  formData.append('fileName', prepared.file.name);
   const payload = await guestEdgePostForm('upload-guest-profile-asset', formData);
   return { avatarUrl: String(payload.avatarUrl ?? '') };
 }

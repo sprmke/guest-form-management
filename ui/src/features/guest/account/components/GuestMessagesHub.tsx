@@ -9,7 +9,7 @@ import {
   GuestChatSearchPanelRow,
 } from '@/features/guest/chat/components/GuestChatHeaderBar';
 import { GuestChatThread } from '@/features/guest/chat/components/GuestChatThread';
-import { useGuestChatMessages } from '@/features/guest/chat/hooks/useGuestChat';
+import { useGuestChatMessages, useGuestChatResume } from '@/features/guest/chat/hooks/useGuestChat';
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
 
 import { Button } from '@/components/ui/button';
@@ -55,6 +55,12 @@ export function GuestMessagesHub({ threads }: Props) {
     hasNextPage,
     isFetchingNextPage,
   } = useGuestChatMessages(selectedId);
+
+  const propertySlug = selectedThread?.propertySlug?.trim() || '';
+  const resumeQuery = useGuestChatResume({
+    propertySlug: propertySlug || undefined,
+    enabled: Boolean(propertySlug),
+  });
 
   const threadSearch = useChatThreadSearch(selectedThread ? messages : []);
   const headerReplyStatus = liveReplyStatus ?? selectedThread?.replyStatus ?? null;
@@ -155,15 +161,19 @@ export function GuestMessagesHub({ threads }: Props) {
 
               <GuestChatThread
                 conversationId={selectedId}
-                propertySlug={
-                  selectedThread.propertySlug ?? selectedThread.parkingSlug ?? undefined
-                }
+                propertySlug={propertySlug || undefined}
                 propertyName={selectedThread.propertyName ?? ''}
                 messages={messages}
                 isLoading={messagesLoading && !!selectedId}
                 threadSearch={threadSearch}
                 searchInHeader
                 faqSuggestions={false}
+                hasInquiryDates={Boolean(
+                  selectedThread.inquiryCheckIn && selectedThread.inquiryCheckOut
+                )}
+                inquiryCheckIn={selectedThread.inquiryCheckIn}
+                inquiryCheckOut={selectedThread.inquiryCheckOut}
+                stayGuideUrl={resumeQuery.data?.stayGuideUrl ?? null}
                 onSend={async (text, opts) => {
                   await send.mutateAsync({
                     text,

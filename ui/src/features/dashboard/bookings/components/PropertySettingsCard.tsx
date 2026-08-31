@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   ClipboardList,
   FormInput,
+  Gift,
   Globe,
   Home,
   Image as ImageIcon,
@@ -54,7 +55,8 @@ import {
   PropertyProfileMainSections,
 } from '@/features/dashboard/org/components/property-settings/PropertyProfileSettingsSections';
 import { PropertySettingsBrandColorPreview } from '@/features/dashboard/org/components/property-settings/PropertySettingsBrandColorPreview';
-import { PropertySocialsBrandingSection } from '@/features/dashboard/org/components/property-settings/PropertySocialsBrandingSection';
+import { PropertyGuestRewardsSection } from '@/features/dashboard/org/components/property-settings/PropertyGuestRewardsSection';
+import { PropertySocialsSection } from '@/features/dashboard/org/components/property-settings/PropertySocialsBrandingSection';
 import { SensitiveSettingsOtpDialog } from '@/features/dashboard/org/components/property-settings/SensitiveSettingsOtpDialog';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useCheckPropertyName } from '@/features/dashboard/org/hooks/useCheckPropertyName';
@@ -74,6 +76,7 @@ import {
   mergeExternalReviewsForSingleReviewSave,
   validateExternalReviewDraft,
 } from '@/features/dashboard/org/lib/propertyExternalReviews';
+import type { PropertyLocationFields } from '@/features/dashboard/org/lib/propertyLocation';
 import { type PropertySettingsSectionId } from '@/features/dashboard/org/lib/propertySettingsCompletion';
 import { resolvePropertySettingsFieldError } from '@/features/dashboard/org/lib/propertySettingsFieldError';
 import {
@@ -114,14 +117,15 @@ import { propertyBrandColorStoredValue } from '@/lib/theme/brandColor';
 
 const SETTINGS_SECTIONS: AdminSectionNavItem[] = [
   { id: 'basic', label: 'Basic Information', icon: Info },
-  { id: 'media', label: 'Photos & Videos', icon: ImageIcon },
   { id: 'details', label: 'Property Details', icon: Home },
+  { id: 'media', label: 'Photos & Videos', icon: ImageIcon },
   { id: 'amenities', label: 'Amenities', icon: Sparkles },
   { id: 'house-rules', label: 'House Rules', icon: ListChecks },
   { id: 'guest-form', label: 'Guest Form', icon: FormInput },
   { id: 'cancellation', label: 'Cancellation', icon: Shield },
   { id: 'location', label: 'Location', icon: MapPin },
   { id: 'branding', label: 'Socials', icon: Share2 },
+  { id: 'guest-rewards', label: 'Reviews & vouchers', icon: Gift },
   { id: 'payment', label: 'Payment', icon: Wallet },
   { id: 'building-forms', label: 'Building Forms', icon: ClipboardList },
   { id: 'email-automations', label: 'Email Automations', icon: Mail },
@@ -201,7 +205,6 @@ export function PropertySettingsCard() {
             airbnbUrl: '',
             instagramUrl: '',
             tiktokUrl: '',
-            mainSocialPlatform: '',
           },
     [orgSettings]
   );
@@ -362,7 +365,6 @@ export function PropertySettingsCard() {
     if (validationError) {
       setShowValidationErrors(true);
       markFieldInteracted('property-external-reviews');
-      toast.error(validationError);
       return;
     }
 
@@ -521,6 +523,48 @@ export function PropertySettingsCard() {
       handleMediaPersisted(savedProfile.media);
     } finally {
       setMediaGalleryBusy(false);
+    }
+  };
+
+  const [locationPersistPending, setLocationPersistPending] = useState(false);
+
+  const persistLocation = async (fields: PropertyLocationFields) => {
+    if (!canEditSettingsSection('location')) {
+      toast.error('You do not have permission to save location');
+      throw new Error('location permission denied');
+    }
+    skipProfileSyncRef.current = true;
+    setLocationPersistPending(true);
+    try {
+      const nextDraft: PropertyProfileDraft = {
+        ...profileDraft,
+        address: fields.address,
+        city: fields.city,
+        province: fields.province,
+        country: fields.country,
+        zipCode: fields.zipCode,
+        latitude: fields.latitude,
+        longitude: fields.longitude,
+        mapsUrl: fields.mapsUrl,
+        placeId: fields.placeId,
+      };
+      const payload = buildProfilePatchForSections(nextDraft, property.id, ['location']);
+      if (!payload) {
+        toast.error('Could not save location');
+        throw new Error('empty location payload');
+      }
+      const result = await updateProperty.mutateAsync(payload);
+      const savedProfile = propertyProfileDraftFromProperty(result.property);
+      setProfileDraft((current) => applySavedProfileSections(current, savedProfile, ['location']));
+      setProfileBaseline((current) =>
+        applySavedProfileSections(current, savedProfile, ['location'])
+      );
+      toast.success('Location saved');
+    } catch (error) {
+      toast.error(friendlyToastError(error, 'Could not save location'));
+      throw error;
+    } finally {
+      setLocationPersistPending(false);
     }
   };
 
@@ -906,14 +950,26 @@ export function PropertySettingsCard() {
             brandColor={operationalDraft.brandColor}
             inheritedBrandColor={inheritedBrandColor}
             onBrandColorChange={(value) => setOperationalField('brandColor', value)}
+            onPersistLocation={persistLocation}
+            locationPersistPending={locationPersistPending}
           />
 
-          <PropertySocialsBrandingSection
+          <PropertySocialsSection
+            data={appSettings}
+            draft={operationalDraft}
+            orgSocialLinks={orgSocialLinks}
+            disabled={busy || Boolean(sectionEditLocked.branding)}
+            resolveFieldError={resolveFieldError}
+            markFieldInteracted={markFieldInteracted}
+            onChange={setOperationalField}
+            sectionMessages={settingsCompletion.sectionMessages}
+          />
+
+          <PropertyGuestRewardsSection
             data={appSettings}
             draft={operationalDraft}
             externalReviewsBaseline={operationalBaseline?.externalReviews ?? []}
-            orgSocialLinks={orgSocialLinks}
-            disabled={busy || Boolean(sectionEditLocked.branding)}
+            disabled={busy || Boolean(sectionEditLocked['guest-rewards'])}
             resolveFieldError={resolveFieldError}
             markFieldInteracted={markFieldInteracted}
             onChange={setOperationalField}

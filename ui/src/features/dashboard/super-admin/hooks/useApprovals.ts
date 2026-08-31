@@ -102,18 +102,12 @@ function normalizeExternalReviewApproval(
     reviewText: row.reviewText ?? '',
     reviewerName: row.reviewerName ?? '',
     starRating: row.starRating ?? null,
-    feedbackTags: Array.isArray(row.feedbackTags)
-      ? row.feedbackTags.filter(
-          (tag): tag is string => typeof tag === 'string' && tag.trim().length > 0
-        )
-      : [],
     moderationStatus:
       row.moderationStatus === 'approved' || row.moderationStatus === 'rejected'
         ? row.moderationStatus
         : 'pending',
     submittedAt: row.submittedAt ?? null,
     imageUrl: row.imageUrl ?? null,
-    proofUrl: row.proofUrl ?? null,
     stayPhotoUrls: Array.isArray(row.stayPhotoUrls)
       ? row.stayPhotoUrls.filter(
           (url): url is string => typeof url === 'string' && url.trim().length > 0
@@ -236,7 +230,6 @@ export function useExternalReviewAssets(propertyId: string | null, reviewId: str
       callEdgeFunction<{
         imageUrl: string | null;
         stayPhotoUrls: string[];
-        proofUrl: string | null;
       }>(
         `get-external-review-assets?propertyId=${encodeURIComponent(propertyId!)}&reviewId=${encodeURIComponent(reviewId!)}`
       ),

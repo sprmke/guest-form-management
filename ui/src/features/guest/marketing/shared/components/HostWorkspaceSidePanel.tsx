@@ -22,12 +22,12 @@ const HOST_WORKSPACE_SIDE_PANEL_CONTENT: Record<
   auth: {
     title: 'Property management made simple',
     description: 'All the tools you need to manage your property in one workspace.',
-    tourRegionLabel: 'Interactive preview of Kame Homes host features',
+    tourRegionLabel: 'Interactive preview of host features',
   },
   onboarding: {
     title: 'See workspace in action',
     description: 'Watch all the features available to you as a host',
-    tourRegionLabel: 'Interactive preview of Kame Homes host features',
+    tourRegionLabel: 'Interactive preview of host features',
   },
 };
 
@@ -42,7 +42,7 @@ export function HostWorkspaceSidePanel({ variant, className }: HostWorkspaceSide
   return (
     <aside
       className={cn('bg-primary relative hidden min-h-screen flex-col lg:flex', className)}
-      aria-label="Kame Homes host workspace preview"
+      aria-label="Host workspace preview"
     >
       <Link
         to="/for-hosts"

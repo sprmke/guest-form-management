@@ -9,8 +9,10 @@
  */
 
 import { DatabaseService } from '../_shared/databaseService.ts';
-import { resolveAppSettings } from '../_shared/appSettings.ts';
+import { loadAppSettingsRow, resolveAppSettings } from '../_shared/appSettings.ts';
 import { guestReviewExistsForBooking } from '../_shared/guestReviewService.ts';
+import { resolveVoucherPrizes } from '../_shared/voucher.ts';
+import { normalizeVoucherRevealStyle } from '../_shared/voucherRevealStyle.ts';
 import { jsonResponse, jsonSuccess } from '../_shared/httpResponse.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
 
@@ -48,10 +50,12 @@ servePublic('get-sd-form', async (req) => {
   const settings = await resolveAppSettings(
     (row.property_id as string | null | undefined) ?? undefined
   );
-  const facebookReviewsUrl = settings.facebookReviewsUrl;
-  const reviewSocialUrl = settings.reviewSocialUrl || facebookReviewsUrl;
-  const reviewSocialPlatform = settings.reviewSocialPlatform || '';
-  const reviewSocialLabel = settings.reviewSocialLabel || '';
+  const settingsRow = await loadAppSettingsRow(
+    (row.property_id as string | null | undefined) ?? undefined
+  );
+  const vouchersEnabled = settingsRow?.vouchers_enabled !== false;
+  const voucherPrizes = resolveVoucherPrizes(settingsRow?.voucher_prizes);
+  const voucherRevealStyle = normalizeVoucherRevealStyle(settingsRow?.voucher_reveal_style);
   const sd = row.security_deposit != null ? Number(row.security_deposit) : 1500;
   const guestReviewSubmitted = await guestReviewExistsForBooking(bookingId);
 
@@ -62,10 +66,6 @@ servePublic('get-sd-form', async (req) => {
     security_deposit: sd,
     check_in_date: row.check_in_date,
     check_out_date: row.check_out_date,
-    facebook_reviews_url: reviewSocialUrl,
-    review_social_url: reviewSocialUrl,
-    review_social_platform: reviewSocialPlatform,
-    review_social_label: reviewSocialLabel,
     guest_review_submitted: guestReviewSubmitted,
     email_logo_url: settings.emailLogoUrl,
     brand_color: settings.brandColor,
@@ -73,5 +73,8 @@ servePublic('get-sd-form', async (req) => {
     next_stay_voucher_amount:
       row.next_stay_voucher_amount != null ? Number(row.next_stay_voucher_amount) : null,
     awaiting_balance_settlement: awaitingBalanceSettlement,
+    vouchers_enabled: vouchersEnabled,
+    voucher_prizes: voucherPrizes,
+    voucher_reveal_style: voucherRevealStyle,
   });
 });

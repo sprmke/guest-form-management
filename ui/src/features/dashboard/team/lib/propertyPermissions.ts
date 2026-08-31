@@ -60,6 +60,7 @@ export const SETTINGS_SECTION_EDIT_PERMISSION = {
   cancellation: 'settings.cancellationPolicy:edit',
   location: 'settings.location:edit',
   branding: 'settings.socials:edit',
+  'guest-rewards': 'settings.socials:edit',
   payment: 'settings.payment:edit',
   'building-forms': 'settings.buildingForms:edit',
   'email-automations': 'settings.emailAutomations:edit',

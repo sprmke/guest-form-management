@@ -142,6 +142,27 @@ export type ChatBlock =
     }
   | { type: 'image'; title: string; url: string; alt: string }
   | { type: 'stepper'; title: string; steps: StepperStep[] }
+  | {
+      type: 'activity_timeline';
+      entries: Array<{
+        id: string;
+        phase: 'understanding' | 'tool' | 'synthesizing' | 'safety';
+        label: string;
+        toolName?: string;
+        status: 'done' | 'failed';
+        durationMs?: number;
+      }>;
+    }
+  | {
+      type: 'task_plan';
+      title: string;
+      steps: Array<{
+        id: string;
+        label: string;
+        status: 'pending' | 'running' | 'done' | 'failed';
+        toolName?: string;
+      }>;
+    }
   | { type: 'quick_actions'; actions: Array<{ label: string; prompt: string }> }
   | ActionConfirmationBlock;
 
@@ -154,6 +175,8 @@ const KNOWN_BLOCK_TYPES = new Set<ChatBlock['type']>([
   'file_list',
   'image',
   'stepper',
+  'activity_timeline',
+  'task_plan',
   'quick_actions',
   'action_confirmation',
 ]);
@@ -222,7 +245,12 @@ export function assertBlocksGrounded(
       return;
     }
 
-    if (block.type === 'stepper' || block.type === 'quick_actions') {
+    if (
+      block.type === 'stepper' ||
+      block.type === 'quick_actions' ||
+      block.type === 'activity_timeline' ||
+      block.type === 'task_plan'
+    ) {
       return;
     }
 

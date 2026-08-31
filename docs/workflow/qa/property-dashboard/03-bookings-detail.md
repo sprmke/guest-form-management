@@ -1,7 +1,7 @@
 ---
 title: 'QA — Property Booking detail'
 status: active
-updated: 2026-08-29
+updated: 2026-08-30
 ---
 
 # 03 — Bookings detail
@@ -14,6 +14,7 @@ Route: `/org/:orgSlug/property/:propertySlug/bookings/:bookingId`
 - Permission leaves for stay/guests/parking/pets/pricing/workflow are wired (`BookingDetailPage`).
 - AI summary panel: results visible after run; run gated by `aiValidations` (Pro+) — correct downgrade-safety pattern.
 - Free / `automatedBookingFlow`: Automation Triggers exposes Send for GAF / pet / ack / ready / parking / SD; toast expands Triggers after plan skip; advance guide copy is plan-aware; Email Automations locks plan-gated toggles with TierBadge.
+- **Phase 2/3:** PENDING_REVIEW→PENDING_DOCUMENTS; RFCI→READY_FOR_CHECKOUT after receipt; GAF PDF upload → Mark complete (Jane …017; status stays PENDING_DOCUMENTS while other docs open).
 
 ## Issues
 
@@ -32,4 +33,4 @@ Route: `/org/:orgSlug/property/:propertySlug/bookings/:bookingId`
 
 ## Evidence
 
-Code + route guide + plans matrix; Free manual-send suite shipped in `free-tier-manual-booking-workflow` (2026-08-29). Live list→detail not fully exercised every status in this pass (sample statuses present on list) — re-run Free E2E checklist in the plan when verifying locally with Resend.
+Code + route guide + plans matrix; Free manual-send suite shipped in `free-tier-manual-booking-workflow` (2026-08-29). Phase 2/3 live workflow + GAF complete on monaco-2612 samples — see `17-` / `18-` phase files.

@@ -3,8 +3,6 @@ import {
   SOCIAL_PLATFORM_LABELS,
   isSocialPlatform,
   parseSocialPlatform,
-  resolveMainSocialPlatform,
-  resolveMainSocialUrl,
   type SocialPlatform,
   type SocialUrlMap,
 } from '@/features/dashboard/org/lib/socialPlatformTypes';
@@ -14,8 +12,6 @@ export {
   SOCIAL_PLATFORM_LABELS,
   isSocialPlatform,
   parseSocialPlatform,
-  resolveMainSocialPlatform,
-  resolveMainSocialUrl,
   type SocialPlatform,
   type SocialUrlMap,
 };
@@ -28,9 +24,7 @@ export function socialLinkModeFromStored(stored: string): SocialLinkMode {
   return stored.trim() === '' ? 'inherit' : 'custom';
 }
 
-export type OrgSocialLinks = Record<SocialLinkKey, string> & {
-  mainSocialPlatform: string;
-};
+export type OrgSocialLinks = Record<SocialLinkKey, string>;
 
 export const SOCIAL_LINK_KEYS: SocialLinkKey[] = [
   'facebookPageUrl',
@@ -142,31 +136,10 @@ export function effectiveSocialUrlMapWithModes(
   }, {} as SocialUrlMap);
 }
 
-/** Empty main platform on property = inherit org. */
-export function propertyMainSocialInherits(stored: string): boolean {
-  return stored.trim() === '';
-}
-
-export function effectiveMainSocialPlatform(
-  propertyStored: string,
-  orgStored: string,
-  urls: SocialUrlMap
-): SocialPlatform | null {
-  const preferred = propertyMainSocialInherits(propertyStored) ? orgStored : propertyStored;
-  return resolveMainSocialPlatform(preferred, urls);
-}
-
-export function propertyMainSocialStoredValue(stored: string, orgStored: string): string {
-  const trimmed = stored.trim();
-  if (!trimmed) return '';
-  if (trimmed === orgStored.trim()) return '';
-  return trimmed;
-}
-
 export function normalizePropertySocialLinksForSave(
-  draft: Record<SocialLinkKey, string> & { mainSocialPlatform: string },
+  draft: Record<SocialLinkKey, string>,
   orgSocialLinks: OrgSocialLinks
-): Record<SocialLinkKey, string> & { mainSocialPlatform: string } {
+): Record<SocialLinkKey, string> {
   return {
     facebookPageUrl: propertySocialLinkStoredValue(
       draft.facebookPageUrl,
@@ -175,10 +148,6 @@ export function normalizePropertySocialLinksForSave(
     airbnbUrl: propertySocialLinkStoredValue(draft.airbnbUrl, orgSocialLinks.airbnbUrl),
     instagramUrl: propertySocialLinkStoredValue(draft.instagramUrl, orgSocialLinks.instagramUrl),
     tiktokUrl: propertySocialLinkStoredValue(draft.tiktokUrl, orgSocialLinks.tiktokUrl),
-    mainSocialPlatform: propertyMainSocialStoredValue(
-      draft.mainSocialPlatform,
-      orgSocialLinks.mainSocialPlatform
-    ),
   };
 }
 

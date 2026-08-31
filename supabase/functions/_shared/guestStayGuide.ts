@@ -6,6 +6,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 import { resolveAppSettings } from './appSettings.ts';
 import { loadAuthUserProfile } from './authUserProfile.ts';
+import { linkGuestBookingsByEmail } from './guestProfileService.ts';
+import type { AuthenticatedUser } from './orgAuth.ts';
 import { manilaTodayYmd, normalizeBookingDateToYmd } from './calendarAvailabilityManila.ts';
 import { resolveStayGuideTemplateKey } from './customPages.ts';
 import { loadGuestFacingContactInfo } from './guestContactInfo.ts';
@@ -192,6 +194,69 @@ export async function issueGuestStayGuideAccess(booking: GuestSubmission): Promi
     url,
     validUntil: window?.validUntil ?? '',
   };
+}
+
+/** Signed-in guest: active stay-guide URL for a property booking, if any. */
+export async function resolveGuestStayGuideUrlForProperty(
+  user: AuthenticatedUser,
+  propertyId: string
+): Promise<string | null> {
+  const trimmedPropertyId = propertyId.trim();
+  if (!trimmedPropertyId) return null;
+
+  const sb = supabaseAdmin();
+  await linkGuestBookingsByEmail(sb, user);
+
+  const email = user.email.trim().toLowerCase();
+  const { data: rows, error } = await sb
+    .from('guest_submissions')
+    .select(
+      'id, property_id, status, check_in_date, check_out_date, stay_guide_token, stay_guide_valid_from, stay_guide_valid_until'
+    )
+    .eq('property_id', trimmedPropertyId)
+    .or(`guest_user_id.eq.${user.id},and(guest_user_id.is.null,guest_email.eq.${email})`)
+    .order('check_in_date', { ascending: false })
+    .limit(20);
+
+  if (error) {
+    console.warn('[guestStayGuide] resolveGuestStayGuideUrlForProperty:', error.message);
+    return null;
+  }
+
+  for (const row of rows ?? []) {
+    if (!isStayGuideEligibleStatus(row.status as string)) continue;
+
+    const booking = row as GuestSubmission;
+    const existingToken = readExistingStayGuideToken(booking);
+    let token = existingToken;
+
+    // Eligible but missing token/window (e.g. RFCI before token issuance) — issue, then re-check window.
+    if (!isStayGuideAccessActive(booking)) {
+      token = (await ensureGuestStayGuideToken(booking)) ?? existingToken;
+      if (!token) continue;
+      const window = computeStayGuideValidityWindow(
+        String(booking.check_in_date ?? ''),
+        String(booking.check_out_date ?? '')
+      );
+      if (!window) continue;
+      const withWindow = {
+        ...booking,
+        stay_guide_token: token,
+        stay_guide_valid_from: window.validFrom,
+        stay_guide_valid_until: window.validUntil,
+        status: booking.status,
+      };
+      if (!isStayGuideAccessActive(withWindow)) continue;
+    } else if (!token) {
+      token = await ensureGuestStayGuideToken(booking);
+      if (!token) continue;
+    }
+
+    const url = await buildGuestStayGuideUrl(booking, token);
+    if (url) return url;
+  }
+
+  return null;
 }
 
 export async function buildGuestStayGuideUrl(

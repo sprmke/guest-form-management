@@ -140,6 +140,7 @@ Auth: property-team RBAC (`serveAuthenticated` + `verifyPropertyAccess`) — **`
 Or use **`platform`** + **`postType`** (`post` | `story`) instead of **`publishType`**.
 
 - Data URLs are uploaded to **`property-media`** before Meta publish.
+- **Design export is a bounded JPEG** (`exportPolotnoStoreImage`, q0.92, 2× → 1× fallback if still over the image ceiling) rather than a raw 2× PNG data URL — visually identical for full-bleed artwork, ~4–8× smaller payload. The Design **Download** file is `.jpg`. The publish dialog rejects a still-oversized image (`File must be 10 MB or smaller — export as JPEG to publish this design.`) before it reaches the Meta Graph API. See [`storage.md`](../../../architecture/storage.md) §7.1.
 - **GET** `publish-to-meta?limit=40` returns recent **`marketing_publications`**.
 
 **AI captions:** `generate-marketing-caption` POST — `{ platform, postType, contentHint?, nightlyRate?, availabilityText? }`.

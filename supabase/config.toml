@@ -223,16 +223,18 @@ static_files = [
   "./functions/_shared/email-templates/fragments/*.html",
 ]
 
-# Airbnb / OTA calendar sync — handlers not in this tree yet (Channel Sync card is
-# presentational). Keep these commented so `functions serve` can start.
-# [functions.ical-export]
-# verify_jwt = false
-#
-# [functions.calendar-sync-cron]
-# verify_jwt = false
-#
-# [functions.calendar-sync-settings]
-# verify_jwt = false
+# Airbnb / OTA calendar sync. ical-export + get-form-completion are public (token-guarded in the
+# handler). calendar-sync-cron: global sweep (optional X-Calendar-Sync-Cron-Secret) + scoped
+# "Sync now" (resolveScopedPropertyAccess in the handler). Cloud-only schedule via pg_cron —
+# migration 20261213120500_calendar_sync_cron.sql (job calendar-sync-every-30m).
+[functions.ical-export]
+verify_jwt = false
+
+[functions.calendar-sync-cron]
+verify_jwt = false
+
+[functions.calendar-sync-settings]
+verify_jwt = false
 
 [functions.get-form-completion]
 verify_jwt = false
@@ -760,6 +762,9 @@ verify_jwt = false
 [functions.guest-trips]
 verify_jwt = false
 
+[functions.list-guest-vouchers]
+verify_jwt = false
+
 [functions.guest-messages]
 verify_jwt = false
 
@@ -767,6 +772,9 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.upload-guest-chat-asset]
+verify_jwt = false
+
+[functions.upload-inbox-chat-asset]
 verify_jwt = false
 
 [functions.marketing-templates]

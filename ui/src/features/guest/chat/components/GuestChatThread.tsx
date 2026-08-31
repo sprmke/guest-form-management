@@ -4,6 +4,8 @@ import { Loader2, Paperclip, Pencil, Reply, SendHorizontal, Undo2, X } from 'luc
 import { toast } from 'sonner';
 
 import { GuestChatFaqSuggestions } from '@/features/guest/chat/components/GuestChatFaqSuggestions';
+import { GuestChatInsertMenu } from '@/features/guest/chat/components/GuestChatInsertMenu';
+import { GuestChatResourceHub } from '@/features/guest/chat/components/GuestChatResourceHub';
 import {
   canGuestEditMessage,
   canGuestUnsendMessage,
@@ -29,7 +31,11 @@ import { ChatThreadSearchPanel } from '@/components/chat/ChatThreadSearch';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
-import { chatAttachmentPreviews } from '@/lib/chat/chatAttachments';
+import {
+  CHAT_ATTACHMENT_ACCEPT,
+  CHAT_MAX_ATTACHMENTS,
+  chatAttachmentPreviews,
+} from '@/lib/chat/chatAttachments';
 import { isChatActionEligibilityError } from '@/lib/chat/chatMessageActions';
 import {
   formatChatBubbleTime,
@@ -80,10 +86,15 @@ type Props = {
   searchInHeader?: boolean;
   /** FAQ starters when the thread has no messages yet. Default true. */
   faqSuggestions?: boolean;
+  hasInquiryDates?: boolean;
+  inquiryCheckIn?: string | null;
+  inquiryCheckOut?: string | null;
+  /** Self-serve link strip when the thread has messages. Default true. */
+  resourceHub?: boolean;
+  stayGuideUrl?: string | null;
 };
 
-const ACCEPTED_FILE_TYPES =
-  'image/jpeg,image/png,image/webp,application/pdf,.jpg,.jpeg,.png,.webp,.pdf';
+const ACCEPTED_FILE_TYPES = CHAT_ATTACHMENT_ACCEPT;
 
 export function GuestChatThread({
   className,
@@ -107,6 +118,11 @@ export function GuestChatThread({
   threadSearch: threadSearchProp,
   searchInHeader = false,
   faqSuggestions = true,
+  hasInquiryDates = false,
+  inquiryCheckIn = null,
+  inquiryCheckOut = null,
+  resourceHub = true,
+  stayGuideUrl = null,
 }: Props) {
   const [draft, setDraft] = useState('');
   const [pickingFaq, setPickingFaq] = useState(false);
@@ -255,13 +271,23 @@ export function GuestChatThread({
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file || !onUploadAttachment) return;
+    if (pendingAttachments.length >= CHAT_MAX_ATTACHMENTS) {
+      toast.error(`Up to ${CHAT_MAX_ATTACHMENTS} attachments per message`);
+      return;
+    }
 
     try {
       const attachment = await onUploadAttachment(file);
-      setPendingAttachments((prev) => [...prev, attachment]);
+      setPendingAttachments((prev) =>
+        prev.length >= CHAT_MAX_ATTACHMENTS ? prev : [...prev, attachment]
+      );
     } catch (e) {
       toast.error((e as Error).message);
     }
+  };
+
+  const appendToDraft = (value: string) => {
+    setDraft((prev) => `${prev}${prev.trim() ? '\n' : ''}${value}`);
   };
 
   const handleSend = async () => {
@@ -383,7 +409,12 @@ export function GuestChatThread({
             ))}
           </div>
         ) : faqSuggestions && messages.length === 0 ? (
-          <GuestChatFaqSuggestions onPick={handlePickFaq} disabled={isBusy} />
+          <GuestChatFaqSuggestions
+            onPick={handlePickFaq}
+            disabled={isBusy}
+            hasInquiryDates={hasInquiryDates}
+            hasMessages={messages.length > 0}
+          />
         ) : (
           <>
             <div ref={topSentinelRef} className="h-px w-full shrink-0" aria-hidden />
@@ -549,6 +580,14 @@ export function GuestChatThread({
         )}
       </div>
 
+      {resourceHub && propertySlug && messages.length > 0 && composerMode.kind !== 'edit' ? (
+        <GuestChatResourceHub
+          propertySlug={propertySlug}
+          stayGuideUrl={stayGuideUrl}
+          onCalendarLinkClick={() => setCalendarModalOpen(true)}
+        />
+      ) : null}
+
       <div className="border-border bg-card shrink-0 space-y-1.5 border-t px-3 py-2.5 pb-[max(env(safe-area-inset-bottom,0px),0.625rem)]">
         {peerTyping ? (
           <p className="text-muted-foreground text-xs" aria-live="polite">
@@ -583,6 +622,15 @@ export function GuestChatThread({
           </div>
         ) : null}
         <div className="flex items-end gap-1.5">
+          {propertySlug && composerMode.kind !== 'edit' ? (
+            <GuestChatInsertMenu
+              propertySlug={propertySlug}
+              inquiryCheckIn={inquiryCheckIn}
+              inquiryCheckOut={inquiryCheckOut}
+              disabled={isBusy}
+              onInsert={appendToDraft}
+            />
+          ) : null}
           {onUploadAttachment && composerMode.kind !== 'edit' ? (
             <>
               <input
@@ -597,7 +645,7 @@ export function GuestChatThread({
                 variant="ghost"
                 size="icon"
                 className="min-h-[44px] min-w-[44px] shrink-0"
-                disabled={isBusy}
+                disabled={isBusy || pendingAttachments.length >= CHAT_MAX_ATTACHMENTS}
                 aria-label="Attach file"
                 onClick={handlePickFile}
               >

@@ -51,6 +51,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { UPLOAD_MAX_BYTES, formatMaxBytesError } from '@/lib/media/uploadLimits';
 import { formatMoneyCompact } from '@/utils/format/currency';
 
 export type PublishMedia = {
@@ -82,6 +83,17 @@ async function blobToDataUrl(blob: Blob): Promise<string> {
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
+}
+
+/** Decoded byte size of a `data:` URL without materialising the bytes. */
+function dataUrlByteLength(dataUrl: string): number {
+  const comma = dataUrl.indexOf(',');
+  if (comma === -1) return 0;
+  const meta = dataUrl.slice(0, comma);
+  const body = dataUrl.slice(comma + 1);
+  if (!meta.includes('base64')) return body.length;
+  const padding = body.endsWith('==') ? 2 : body.endsWith('=') ? 1 : 0;
+  return Math.floor((body.length * 3) / 4) - padding;
 }
 
 export function PublishDialog({ open, onOpenChange, media }: Props) {
@@ -164,6 +176,19 @@ export function PublishDialog({ open, onOpenChange, media }: Props) {
       mediaUrl = await blobToDataUrl(media.blob);
     }
     if (!mediaUrl) return;
+
+    // Bound the image payload (plan §16 Phase 3). Designs export as bounded JPEG;
+    // this catches a still-oversized calendar export (e.g. PNG at 2×) before it
+    // hits Meta with a friendly message instead of a generic Graph API failure.
+    if (media.mediaType === 'image') {
+      const bytes = media.blob?.size ?? dataUrlByteLength(mediaUrl);
+      if (bytes > UPLOAD_MAX_BYTES.image) {
+        toast.error(
+          `${formatMaxBytesError(UPLOAD_MAX_BYTES.image)} — export as JPEG to publish this design.`
+        );
+        return;
+      }
+    }
 
     if (media.mediaType === 'video' && platform === 'facebook') {
       toast.error('Facebook video publishing is not supported yet');

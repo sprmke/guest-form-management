@@ -1,10 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { MessageSquare, Plus, Save, Star } from 'lucide-react';
 
-import { GuestReviewFeedbackPills } from '@/features/guest/sd-form/components/GuestReviewFeedbackPills';
 import { GuestReviewStarRating } from '@/features/guest/sd-form/components/GuestReviewStarRating';
-import { filterGuestReviewTagsForRating } from '@/features/guest/sd-form/lib/guestReviewFeedbackTags';
 import { TelegramManageDialog } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramManageDialog';
 import { withStorageUrlCacheBust } from '@/features/dashboard/bookings/lib/storageUrls';
 import { MarketingResetConfirmDialog } from '@/features/dashboard/marketing/components/shared/MarketingResetConfirmDialog';
@@ -18,6 +16,8 @@ import {
   externalReviewModerationLabel,
   externalReviewSourceLabel,
   externalReviewsAggregateLabel,
+  getExternalReviewFieldErrors,
+  isExternalReviewDraftValid,
   MAX_EXTERNAL_REVIEW_TEXT_LENGTH,
   MAX_PROPERTY_EXTERNAL_REVIEWS,
   type ExternalReviewSource,
@@ -61,6 +61,20 @@ function moderationDotClass(status: PropertyExternalReview['moderationStatus']) 
       return 'bg-amber-500';
   }
 }
+
+/** New draft with only defaults — leave without prompting. */
+function isPristineNewExternalReview(review: PropertyExternalReview): boolean {
+  return (
+    review.source === 'airbnb' &&
+    !review.reviewerName.trim() &&
+    !review.reviewText.trim() &&
+    !review.imageUrl?.trim() &&
+    review.stayPhotoUrls.length === 0 &&
+    (review.starRating ?? 5) === 5
+  );
+}
+
+type LeaveManageAction = { type: 'close' } | { type: 'select'; reviewId: string } | { type: 'add' };
 
 function moderationBadgeVariant(
   status: ExternalReviewModerationStatus
@@ -274,6 +288,7 @@ function ReviewEditorPanel({
   saveDisabled,
   saveBusy,
   reviewDirty,
+  isNewReview,
 }: {
   review: PropertyExternalReview;
   index: number;
@@ -285,7 +300,17 @@ function ReviewEditorPanel({
   saveDisabled?: boolean;
   saveBusy?: boolean;
   reviewDirty?: boolean;
+  isNewReview?: boolean;
 }) {
+  const fieldErrors = getExternalReviewFieldErrors(review);
+  const hasStarted =
+    Boolean(review.reviewerName.trim()) ||
+    Boolean(review.reviewText.trim()) ||
+    Boolean(review.imageUrl?.trim()) ||
+    review.stayPhotoUrls.length > 0;
+  const showFieldErrors = Boolean(reviewDirty) && (!isNewReview || hasStarted);
+  const canSave = Boolean(reviewDirty) && isExternalReviewDraftValid(review);
+
   return (
     <div className="min-w-0 flex-1 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
@@ -316,7 +341,7 @@ function ReviewEditorPanel({
                 type="button"
                 variant="outline-success"
                 size="sm"
-                disabled={saveDisabled || !reviewDirty}
+                disabled={saveDisabled || !canSave}
                 className="h-8 gap-1 px-2.5 text-xs"
                 onClick={onSaveRequest}
               >
@@ -330,7 +355,7 @@ function ReviewEditorPanel({
 
       <div className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          <SettingsField id={`review-source-${review.id}`} label="Source">
+          <SettingsField id={`review-source-${review.id}`} label="Source" required>
             <Select
               value={review.source}
               disabled={disabled}
@@ -348,7 +373,12 @@ function ReviewEditorPanel({
             </Select>
           </SettingsField>
 
-          <SettingsField id={`review-reviewer-${review.id}`} label="Reviewer">
+          <SettingsField
+            id={`review-reviewer-${review.id}`}
+            label="Reviewer"
+            required
+            error={showFieldErrors ? fieldErrors.reviewerName : null}
+          >
             <Input
               id={`review-reviewer-${review.id}`}
               disabled={disabled}
@@ -356,33 +386,26 @@ function ReviewEditorPanel({
               onChange={(event) => onChange({ ...review, reviewerName: event.target.value })}
               className="h-10"
               autoComplete="off"
+              aria-invalid={showFieldErrors && Boolean(fieldErrors.reviewerName)}
             />
           </SettingsField>
         </div>
 
-        <SettingsField label="Rating">
+        <SettingsField label="Rating" required>
           <GuestReviewStarRating
             size="compact"
             value={review.starRating ?? 5}
             disabled={disabled}
-            onChange={(starRating) =>
-              onChange({
-                ...review,
-                starRating,
-                feedbackTags: filterGuestReviewTagsForRating(starRating, review.feedbackTags),
-              })
-            }
+            onChange={(starRating) => onChange({ ...review, starRating })}
           />
         </SettingsField>
 
-        <GuestReviewFeedbackPills
-          starRating={review.starRating ?? 5}
-          selectedTagIds={review.feedbackTags}
-          onChange={(feedbackTags) => onChange({ ...review, feedbackTags })}
-          disabled={disabled}
-        />
-
-        <SettingsField id={`review-text-${review.id}`} label="Review">
+        <SettingsField
+          id={`review-text-${review.id}`}
+          label="Review"
+          required
+          error={showFieldErrors ? fieldErrors.reviewText : null}
+        >
           <div className="space-y-3">
             <Textarea
               id={`review-text-${review.id}`}
@@ -392,43 +415,38 @@ function ReviewEditorPanel({
               rows={4}
               maxLength={MAX_EXTERNAL_REVIEW_TEXT_LENGTH}
               className="min-h-[112px] resize-y"
+              aria-invalid={showFieldErrors && Boolean(fieldErrors.reviewText)}
             />
             <p className="text-muted-foreground text-xs tabular-nums">
               {review.reviewText.length}/{MAX_EXTERNAL_REVIEW_TEXT_LENGTH}
             </p>
-            <PropertyExternalReviewStayPhotosField
-              reviewId={review.id}
-              stayPhotoUrls={review.stayPhotoUrls}
-              disabled={disabled}
-              onStayPhotoUrlsChange={(stayPhotoUrls) => onChange({ ...review, stayPhotoUrls })}
-            />
           </div>
+        </SettingsField>
+
+        <SettingsField
+          label="Review Images (optional)"
+          error={showFieldErrors ? fieldErrors.stayPhotoUrls : null}
+        >
+          <PropertyExternalReviewStayPhotosField
+            reviewId={review.id}
+            stayPhotoUrls={review.stayPhotoUrls}
+            disabled={disabled}
+            onStayPhotoUrlsChange={(stayPhotoUrls) => onChange({ ...review, stayPhotoUrls })}
+          />
         </SettingsField>
 
         <Separator className="bg-border/60" />
 
-        <SettingsField label="Screenshot">
+        <SettingsField
+          label="Proof screenshot"
+          required
+          error={showFieldErrors ? fieldErrors.imageUrl : null}
+        >
           <PropertyExternalReviewImageField
             reviewId={review.id}
             imageUrl={review.imageUrl}
             disabled={disabled}
             onImageUrlChange={(imageUrl) => onChange({ ...review, imageUrl })}
-          />
-        </SettingsField>
-
-        <SettingsField id={`review-proof-${review.id}`} label="Proof URL">
-          <Input
-            id={`review-proof-${review.id}`}
-            type="url"
-            disabled={disabled}
-            value={review.proofUrl ?? ''}
-            onChange={(event) =>
-              onChange({ ...review, proofUrl: event.target.value.trim() || null })
-            }
-            className="h-10"
-            placeholder="https://"
-            autoComplete="off"
-            spellCheck={false}
           />
         </SettingsField>
       </div>
@@ -440,7 +458,6 @@ export function PropertyExternalReviewsBlock({
   reviews,
   baselineReviews,
   disabled,
-  error,
   onReviewsChange,
   onInteract,
   onSaveReview,
@@ -449,7 +466,6 @@ export function PropertyExternalReviewsBlock({
   reviews: PropertyExternalReview[];
   baselineReviews?: PropertyExternalReview[];
   disabled?: boolean;
-  error?: string | null;
   onReviewsChange: (reviews: PropertyExternalReview[]) => void;
   onInteract: () => void;
   onSaveReview?: (reviewId: string) => void;
@@ -459,6 +475,19 @@ export function PropertyExternalReviewsBlock({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
+  const [pendingLeave, setPendingLeave] = useState<LeaveManageAction | null>(null);
+  /** Blocks parent dismiss while nested alert is closing (Radix outside-click race). */
+  const suppressManageCloseRef = useRef(false);
+
+  const armSuppressManageClose = () => {
+    suppressManageCloseRef.current = true;
+    window.setTimeout(() => {
+      suppressManageCloseRef.current = false;
+    }, 0);
+  };
+
+  const nestedOverlayOpen = deleteConfirmOpen || discardConfirmOpen;
 
   const visibleReviews = useMemo(() => reviews.slice(0, MAX_PROPERTY_EXTERNAL_REVIEWS), [reviews]);
   const reviewCount = visibleReviews.length;
@@ -475,6 +504,10 @@ export function PropertyExternalReviewsBlock({
     ? externalReviewDirty(activeReview, activeReviewBaseline)
     : false;
   const activeReviewSaving = activeReview != null && savingReviewId === activeReview.id;
+  const activeHasUnsavedWork = Boolean(
+    activeReview &&
+    (activeReviewBaseline ? activeReviewDirty : !isPristineNewExternalReview(activeReview))
+  );
 
   useEffect(() => {
     if (!manageOpen) return;
@@ -503,64 +536,98 @@ export function PropertyExternalReviewsBlock({
     setSelectedId(fallback);
   }
 
+  /** Drop / revert the active draft, then navigate (Add / switch / close). */
+  function executeLeave(action: LeaveManageAction, revertDirty: boolean) {
+    let nextReviews = visibleReviews;
+
+    if (activeReview) {
+      if (!activeReviewBaseline) {
+        nextReviews = visibleReviews.filter((review) => review.id !== activeReview.id);
+      } else if (revertDirty && externalReviewDirty(activeReview, activeReviewBaseline)) {
+        nextReviews = visibleReviews.map((review) =>
+          review.id === activeReview.id ? activeReviewBaseline : review
+        );
+      }
+    }
+
+    if (action.type === 'add') {
+      if (nextReviews.length >= MAX_PROPERTY_EXTERNAL_REVIEWS) {
+        if (nextReviews !== visibleReviews) {
+          onInteract();
+          onReviewsChange(nextReviews);
+        }
+        setSelectedId(nextReviews[nextReviews.length - 1]?.id ?? null);
+        return;
+      }
+      const created = createEmptyExternalReview();
+      onInteract();
+      onReviewsChange([...nextReviews, created]);
+      setSelectedId(created.id);
+      return;
+    }
+
+    if (nextReviews !== visibleReviews) {
+      onInteract();
+      onReviewsChange(nextReviews);
+    }
+
+    if (action.type === 'select') {
+      setSelectedId(action.reviewId);
+      return;
+    }
+
+    setManageOpen(false);
+  }
+
+  function requestLeave(action: LeaveManageAction) {
+    if (action.type === 'select' && action.reviewId === activeReview?.id) return;
+
+    if (activeHasUnsavedWork) {
+      setPendingLeave(action);
+      setDiscardConfirmOpen(true);
+      return;
+    }
+
+    executeLeave(action, false);
+  }
+
   function addReview() {
-    onInteract();
-    if (atLimit) return;
-    const next = createEmptyExternalReview();
-    onReviewsChange([...visibleReviews, next]);
-    setSelectedId(next.id);
+    requestLeave({ type: 'add' });
   }
 
   return (
     <>
-      <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
-        <div className="p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 items-start gap-3">
-              <div className="border-border bg-background flex size-10 shrink-0 items-center justify-center rounded-lg border sm:size-11">
-                <MessageSquare className="text-primary size-5 sm:size-[22px]" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-sidebar-foreground text-sm font-bold sm:text-[13px]">
-                    External reviews
-                  </h3>
-                  <Badge variant="outline" className="text-[11px] font-medium">
-                    {reviewCount}/{MAX_PROPERTY_EXTERNAL_REVIEWS}
-                  </Badge>
-                </div>
-                <p
-                  className={cn(
-                    'mt-1.5 text-xs sm:text-[11px]',
-                    aggregateToneClass(aggregate.tone)
-                  )}
-                >
-                  {aggregate.label}
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setManageOpen(true)}
-              className={cn(
-                'inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg px-4',
-                'border-primary/30 bg-primary/5 text-primary border text-sm font-semibold sm:w-auto sm:text-[13px]',
-                'hover:border-primary/40 hover:bg-primary/10 transition-colors'
-              )}
-            >
-              Manage
-            </button>
-          </div>
-          {error ? <p className="text-destructive mt-3 text-xs">{error}</p> : null}
-        </div>
+      <div className="bg-muted/40 flex min-h-[44px] w-full items-center justify-between gap-3 rounded-lg border px-4 py-3">
+        <p className="min-w-0 text-sm font-medium">
+          {reviewCount} of {MAX_PROPERTY_EXTERNAL_REVIEWS} external reviews
+          <span className={cn('font-normal', aggregateToneClass(aggregate.tone))}>
+            {' '}
+            · {aggregate.label}
+          </span>
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-[44px] shrink-0"
+          onClick={() => setManageOpen(true)}
+        >
+          Manage
+        </Button>
       </div>
 
       <TelegramManageDialog
         open={manageOpen}
-        onOpenChange={setManageOpen}
+        onOpenChange={(open) => {
+          if (open) {
+            setManageOpen(true);
+            return;
+          }
+          if (nestedOverlayOpen || suppressManageCloseRef.current) return;
+          requestLeave({ type: 'close' });
+        }}
         title="External reviews"
         size="sidebar"
+        nestedOverlayOpen={nestedOverlayOpen}
         bodyClassName="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto py-4 md:max-h-[min(calc(92dvh-7rem),680px)] md:overflow-hidden md:py-5"
       >
         {reviewCount === 0 ? (
@@ -568,6 +635,9 @@ export function PropertyExternalReviewsBlock({
             <div className="border-border bg-background mb-4 flex size-12 items-center justify-center rounded-xl border shadow-sm">
               <MessageSquare className="text-primary size-5" aria-hidden />
             </div>
+            <p className="text-muted-foreground mb-4 max-w-xs text-center text-sm leading-snug">
+              Add Airbnb or Facebook reviews to show on your public listing.
+            </p>
             <Button
               type="button"
               disabled={disabled}
@@ -601,7 +671,7 @@ export function PropertyExternalReviewsBlock({
                     index={index}
                     selected={review.id === activeReview?.id}
                     disabled={disabled}
-                    onSelect={() => setSelectedId(review.id)}
+                    onSelect={() => requestLeave({ type: 'select', reviewId: review.id })}
                   />
                 ))}
               </div>
@@ -614,7 +684,7 @@ export function PropertyExternalReviewsBlock({
                     index={index}
                     selected={review.id === activeReview?.id}
                     disabled={disabled}
-                    onSelect={() => setSelectedId(review.id)}
+                    onSelect={() => requestLeave({ type: 'select', reviewId: review.id })}
                   />
                 ))}
               </div>
@@ -637,6 +707,7 @@ export function PropertyExternalReviewsBlock({
                   saveDisabled={disabled || Boolean(savingReviewId)}
                   saveBusy={activeReviewSaving}
                   reviewDirty={activeReviewDirty}
+                  isNewReview={!activeReviewBaseline}
                 />
               </div>
             ) : null}
@@ -647,6 +718,7 @@ export function PropertyExternalReviewsBlock({
       <MarketingResetConfirmDialog
         open={deleteConfirmOpen}
         onOpenChange={(open) => {
+          if (!open) armSuppressManageClose();
           setDeleteConfirmOpen(open);
           if (!open) setPendingDeleteId(null);
         }}
@@ -656,9 +728,31 @@ export function PropertyExternalReviewsBlock({
         overlayClassName="z-[110]"
         contentClassName="z-[111]"
         onConfirm={() => {
+          armSuppressManageClose();
           if (pendingDeleteId) removeReview(pendingDeleteId);
           setPendingDeleteId(null);
           setDeleteConfirmOpen(false);
+        }}
+      />
+
+      <MarketingResetConfirmDialog
+        open={discardConfirmOpen}
+        onOpenChange={(open) => {
+          if (!open) armSuppressManageClose();
+          setDiscardConfirmOpen(open);
+          if (!open) setPendingLeave(null);
+        }}
+        title="Discard unsaved changes?"
+        description="Make sure you fill up all required fields and save your changes."
+        confirmLabel="Discard"
+        overlayClassName="z-[110]"
+        contentClassName="z-[111]"
+        onConfirm={() => {
+          armSuppressManageClose();
+          const action = pendingLeave;
+          setPendingLeave(null);
+          setDiscardConfirmOpen(false);
+          if (action) executeLeave(action, true);
         }}
       />
     </>

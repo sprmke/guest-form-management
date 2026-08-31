@@ -131,14 +131,57 @@ export function validatePaymentMethods(methods: PropertyPaymentMethod[]): string
     const label = `Payment method ${i + 1}`;
     const providerErr = validatePaymentProvider(m.provider);
     if (providerErr) return `${label}: ${providerErr}`;
-    if (!m.accountName.trim()) return `${label}: Enter account name`;
+    if (!m.accountName.trim()) return `${label}: Enter the account name`;
     const nameErr = validatePaymentAccountName(m.accountName);
     if (nameErr) return `${label}: ${nameErr}`;
-    if (!m.accountNumber.trim()) return `${label}: Enter account number`;
+    if (!m.accountNumber.trim()) return `${label}: Enter the account number`;
     const numberErr = validatePaymentAccountNumber(m.provider, m.accountNumber);
     if (numberErr) return `${label}: ${numberErr}`;
   }
   return null;
+}
+
+/** Per-field errors for Manage modal / settings completion (QR is optional). */
+export function resolvePaymentMethodFieldError(
+  methods: PropertyPaymentMethod[],
+  fieldId: string
+): string | null {
+  if (fieldId === 'payment-methods') {
+    return validatePaymentMethods(methods);
+  }
+
+  const match = /^payment-method-(.+)-(provider|name|number|qr)$/.exec(fieldId);
+  if (!match) return null;
+  const method = methods.find((row) => row.id === match[1]);
+  if (!method) return null;
+
+  const kind = match[2];
+  if (kind === 'provider') return validatePaymentProvider(method.provider);
+  if (kind === 'name') {
+    if (!method.accountName.trim()) return 'Enter the account name';
+    return validatePaymentAccountName(method.accountName);
+  }
+  if (kind === 'number') {
+    if (!method.accountNumber.trim()) return 'Enter the account number';
+    return validatePaymentAccountNumber(method.provider, method.accountNumber);
+  }
+  return null;
+}
+
+export function paymentMethodEditorFieldIds(methods: PropertyPaymentMethod[]): string[] {
+  const ids: string[] = ['payment-methods'];
+  for (const method of methods) {
+    ids.push(
+      `payment-method-${method.id}-provider`,
+      `payment-method-${method.id}-name`,
+      `payment-method-${method.id}-number`
+    );
+  }
+  return ids;
+}
+
+export function clonePaymentMethods(methods: PropertyPaymentMethod[]): PropertyPaymentMethod[] {
+  return methods.map((method) => ({ ...method }));
 }
 
 export function syncLegacyPaymentFieldsFromMethods(methods: PropertyPaymentMethod[]): {

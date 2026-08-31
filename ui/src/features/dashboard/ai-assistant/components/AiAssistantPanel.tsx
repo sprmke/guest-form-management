@@ -9,6 +9,7 @@ import { ChatComposer } from '@/features/dashboard/ai-assistant/components/ChatC
 import { ChatThread } from '@/features/dashboard/ai-assistant/components/ChatThread';
 import { ConversationHistoryList } from '@/features/dashboard/ai-assistant/components/ConversationHistoryList';
 import { useAiAssistantChat } from '@/features/dashboard/ai-assistant/hooks/useAiAssistantChat';
+import { useAiDashboardAssistantSettings } from '@/features/dashboard/ai-assistant/hooks/useAiDashboardAssistantSettings';
 import type {
   ChatBlock,
   ConfirmActionResponse,
@@ -87,13 +88,24 @@ export function AiAssistantPanel({ open, onOpenChange, readOnly = false }: Props
     messages,
     pending,
     sending,
+    sendStartedAtMs,
+    turnProgress,
+    streamingText,
     error,
     upgradeHook,
+    canRegenerate,
     sendMessage,
+    cancelTurn,
+    regenerateLastTurn,
     resolveAction,
     loadConversation,
     startNewConversation,
   } = useAiAssistantChat(pageContext);
+  const { data: assistantSettings } = useAiDashboardAssistantSettings({ includeUsage: true });
+  const usageLabel =
+    assistantSettings?.usage != null
+      ? `${assistantSettings.usage.todayMessageCount}/${assistantSettings.dailyMessageLimit}`
+      : null;
 
   const handleResolveAction = useCallback(
     async (actionId: string, confirm: boolean): Promise<ConfirmActionResponse | null> => {
@@ -148,6 +160,14 @@ export function AiAssistantPanel({ open, onOpenChange, readOnly = false }: Props
           <div className="flex min-w-0 items-center gap-2">
             <SheetTitle className="text-base">AI Assistant</SheetTitle>
             <TierBadge feature="aiDashboardAssistant" />
+            {usageLabel ? (
+              <span
+                className="text-muted-foreground bg-muted/60 rounded-full px-2 py-0.5 text-xs tabular-nums"
+                title="Messages today"
+              >
+                {usageLabel}
+              </span>
+            ) : null}
           </div>
           <div className="flex items-center gap-1">
             <Button
@@ -234,6 +254,17 @@ export function AiAssistantPanel({ open, onOpenChange, readOnly = false }: Props
                   messages={messages}
                   pending={pending}
                   sending={sending}
+                  sendStartedAtMs={sendStartedAtMs}
+                  turnProgress={turnProgress}
+                  streamingText={streamingText}
+                  canRegenerate={canRegenerate}
+                  onRegenerate={() => {
+                    if (readOnly) {
+                      openUpgradeModal('aiDashboardAssistant');
+                      return;
+                    }
+                    void regenerateLastTurn();
+                  }}
                   onResolveAction={handleResolveAction}
                   onFillComposer={setFillText}
                   onOpenCanvas={setCanvasBlock}
@@ -264,6 +295,8 @@ export function AiAssistantPanel({ open, onOpenChange, readOnly = false }: Props
                     }
                     void sendMessage(input);
                   }}
+                  sending={sending}
+                  onCancel={cancelTurn}
                   pageBookingId={bookingId}
                   disabled={pending}
                   overlayContainer={overlayRoot}

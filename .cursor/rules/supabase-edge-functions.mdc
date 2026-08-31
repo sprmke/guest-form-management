@@ -97,6 +97,16 @@ Per `booking-workflow.mdc`, **never put fan-out logic inside handler functions**
 - Calendar + sheet + email behavior is consistent regardless of caller.
 - New transitions require one patch, not four.
 
+## File uploads — size ceiling + MIME allow-list
+
+Any handler that reads a `File` from `req.formData()` (or `databaseService` processing a form file):
+
+- Call **`assertWithinUploadLimit(file, kind)`** from `_shared/uploadLimits.ts` (`kind`: `'image' | 'avatar' | 'document' | 'pdf' | 'video'`) — it throws `File must be N MB or smaller`. Never hardcode a `file.size > N` check; the ceilings live in one place and are mirrored (with a parity unit test) by `ui/src/lib/media/uploadLimits.ts`.
+- The MIME allow-list **must accept `image/webp`** (the client optimizer's default output) and `image/heic` / `image/heif` (undecodable-source pass-through). PDF-capable surfaces also accept `application/pdf`.
+- Ceilings are a **bypass safety net**, not the primary limit — the client (`prepareUpload`) already downscales/re-encodes and validates. Set bucket `file_size_limit` `>=` the ceiling in the migration.
+
+See `docs/architecture/storage.md` §7.1.
+
 ## Adding a new function — checklist
 
 1. Create `supabase/functions/<name>/index.ts` using the skeleton above.

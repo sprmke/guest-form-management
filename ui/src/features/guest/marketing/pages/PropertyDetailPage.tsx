@@ -304,7 +304,7 @@ export function PropertyDetailPage() {
       (propertyData.reviews ?? 0) > 0);
 
   const contactSheetHost: ListingHostInfo = {
-    organizationName: propertyData.host?.organizationName ?? 'Kame Homes',
+    organizationName: propertyData.host?.organizationName ?? 'Host',
     organizationSlug: propertyData.host?.organizationSlug ?? '',
     ownerName: propertyData.host?.ownerName ?? 'Host',
     ownerAvatarUrl: propertyData.host?.ownerAvatarUrl ?? null,

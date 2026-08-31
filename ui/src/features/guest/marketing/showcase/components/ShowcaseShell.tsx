@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { Menu, Moon, Sun, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
 
 import { usePreviewForcesMobile } from '@/features/guest/lib/previewViewportContext';
 import { ShowcaseFooter } from '@/features/guest/marketing/showcase/components/ShowcaseFooter';
@@ -18,6 +19,8 @@ import {
   useSmoothScroll,
 } from '@/features/guest/marketing/showcase/components/SmoothScrollProvider';
 import { useScrollSpy } from '@/features/guest/marketing/showcase/hooks/useScrollSpy';
+import { useShowcaseCompactHeaderNav } from '@/features/guest/marketing/showcase/hooks/useShowcaseCompactHeaderNav';
+import { useShowcaseHeaderPin } from '@/features/guest/marketing/showcase/hooks/useShowcaseHeaderPin';
 import { useShowcaseMediaPalette } from '@/features/guest/marketing/showcase/hooks/useShowcaseMediaPalette';
 import {
   useShowcaseConfigControlled,
@@ -102,7 +105,16 @@ function ShowcaseThemeToggle({ hidden, className }: { hidden?: boolean; classNam
   );
 }
 
-function ShowcaseBrand({ data, onHeroHeader }: { data: ShowcaseData; onHeroHeader?: boolean }) {
+function ShowcaseBrand({
+  data,
+  onHeroHeader,
+  allowTruncate,
+}: {
+  data: ShowcaseData;
+  onHeroHeader?: boolean;
+  /** When false (inline nav), keep the full name — fit is gated by compact-nav measure. */
+  allowTruncate: boolean;
+}) {
   const { tokens, variant } = useShowcaseTheme();
   const chrome = resolveShowcaseHeaderChrome(variant);
   const [logoFailed, setLogoFailed] = useState(false);
@@ -112,7 +124,10 @@ function ShowcaseBrand({ data, onHeroHeader }: { data: ShowcaseData; onHeroHeade
     <button
       type="button"
       onClick={() => scrollShowcaseToTop()}
-      className="@lg:max-w-[40%] flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-left"
+      className={cn(
+        'flex min-h-11 cursor-pointer items-center gap-2.5 text-left',
+        allowTruncate ? 'w-full min-w-0' : 'w-auto max-w-none shrink-0'
+      )}
       aria-label="Back to top"
     >
       {showLogo ? (
@@ -142,7 +157,14 @@ function ShowcaseBrand({ data, onHeroHeader }: { data: ShowcaseData; onHeroHeade
           {data.propertyName.charAt(0).toUpperCase()}
         </span>
       )}
-      <p className={cn('min-w-0 truncate', brandTitleClass(variant))}>{data.propertyName}</p>
+      <p
+        className={cn(
+          brandTitleClass(variant),
+          allowTruncate ? 'min-w-0 truncate' : 'whitespace-nowrap'
+        )}
+      >
+        {data.propertyName}
+      </p>
     </button>
   );
 }
@@ -214,6 +236,7 @@ function ShowcaseNav({
   menuOpen,
   onMenuOpenChange,
   interactive,
+  onCompactNavChange,
 }: {
   data: ShowcaseData;
   containedChrome: boolean;
@@ -221,6 +244,7 @@ function ShowcaseNav({
   onMenuOpenChange: (open: boolean) => void;
   /** False inside template-picker thumbs — chrome is decorative only. */
   interactive: boolean;
+  onCompactNavChange: (compact: boolean) => void;
 }) {
   const { scrollToAnchor } = useSmoothScroll();
   const { tokens, variant } = useShowcaseTheme();
@@ -228,6 +252,16 @@ function ShowcaseNav({
   const navSections = data.sections
     .filter((s) => s.id !== 'hero' && s.kind !== 'quickNav' && Boolean(s.heading))
     .slice(0, 6);
+  const navKey = `${data.propertyName}|${variant}|${navSections.map((s) => s.heading).join('\0')}`;
+  const { compact, rowRef, brandRef, probeRef } = useShowcaseCompactHeaderNav({
+    forceMobile: forceMobile || !interactive,
+    navKey,
+  });
+  const pin = useShowcaseHeaderPin({
+    enabled: interactive,
+    containedChrome,
+    embed: data.embed,
+  });
   const ids = data.sections.map((s) => s.id);
   const active = useScrollSpy(interactive ? ids : []);
   const pastHero = useShowcasePastHero(data, variant, containedChrome);
@@ -240,100 +274,146 @@ function ShowcaseNav({
   const floatingPanel = variant === 'haven';
   const overlayHeader = overlayOnHero;
 
-  return (
+  useEffect(() => {
+    onCompactNavChange(compact);
+  }, [compact, onCompactNavChange]);
+
+  useEffect(() => {
+    if (!compact && menuOpen) onMenuOpenChange(false);
+  }, [compact, menuOpen, onMenuOpenChange]);
+
+  const navLinkClass = (sectionId: string) => {
+    const isActive = active === sectionId;
+    const navTone = headerOnHero
+      ? isActive
+        ? chrome.navOnHeroActive
+        : chrome.navOnHeroInactive
+      : isActive
+        ? variant === 'monolith'
+          ? tokens.navMonolithActive
+          : tokens.navActive
+        : tokens.navInactive;
+
+    return cn(
+      'min-h-11 cursor-pointer font-medium transition-colors duration-200',
+      chrome.navItem,
+      variant === 'aurora' ? auroraNavLinkClass : 'text-sm',
+      navTone
+    );
+  };
+
+  const header = (
     <header
       data-showcase-header=""
+      data-showcase-surface={pin?.theme?.surface ?? undefined}
+      style={
+        pin
+          ? {
+              ...pin.style,
+              ...(pin.theme?.style ?? null),
+            }
+          : undefined
+      }
       className={cn(
         variant === 'monolith' && monolithHeaderChromeClass,
-        'inset-x-0 top-0 z-[90] transition-[background-color,border-color,box-shadow,color,backdrop-filter,opacity] duration-300',
-        containedChrome ? 'sticky' : 'fixed',
+        // Interactive: portaled `position:fixed` (pin style). Thumbs: in-flow static.
+        !interactive && 'relative',
+        'transition-[background-color,border-color,box-shadow,color,backdrop-filter,opacity] duration-300',
         chrome.shell,
         overlayHeader && 'border-transparent',
         !floatingPanel && surface,
-        // Dim behind the open menu without removing the sticky chrome (opacity-0
-        // looked like a “missing header” when the overlay failed to cover the frame).
         menuOpen && 'opacity-40'
       )}
     >
-      <div className={cn(chrome.inner, floatingPanel && surface)}>
-        <ShowcaseBrand data={data} onHeroHeader={headerOnHero} />
-
-        {interactive ? (
-          <nav
+      <div className="@container w-full min-w-0">
+        <div ref={rowRef} className={cn(chrome.inner, 'relative', floatingPanel && surface)}>
+          <div
+            ref={brandRef}
             className={cn(
-              'ml-auto hidden shrink-0 items-center gap-0.5',
-              !forceMobile && '@lg:flex'
+              'min-w-0',
+              // Compact: use remaining row for the full name. Expanded: natural width only
+              // when measure says name + nav fit (no 40% cap that forced ellipsis).
+              compact ? 'max-w-[calc(100%-5.5rem)] flex-1' : 'shrink-0'
             )}
-            aria-label="Showcase sections"
           >
-            {navSections.map((section) => {
-              const isActive = active === section.id;
-              const navTone = headerOnHero
-                ? isActive
-                  ? chrome.navOnHeroActive
-                  : chrome.navOnHeroInactive
-                : isActive
-                  ? variant === 'monolith'
-                    ? tokens.navMonolithActive
-                    : tokens.navActive
-                  : tokens.navInactive;
+            <ShowcaseBrand data={data} onHeroHeader={headerOnHero} allowTruncate={compact} />
+          </div>
 
-              return (
-                <button
-                  key={section.id}
-                  type="button"
-                  onClick={() => scrollToAnchor(section.id)}
-                  className={cn(
-                    'min-h-11 cursor-pointer font-medium transition-colors duration-200',
-                    chrome.navItem,
-                    variant === 'aurora' ? auroraNavLinkClass : 'text-sm',
-                    navTone
-                  )}
+          {interactive && navSections.length > 0 ? (
+            <>
+              <nav
+                ref={probeRef}
+                className="pointer-events-none absolute left-0 top-0 -z-10 flex items-center gap-1.5 opacity-0"
+                aria-hidden
+              >
+                {navSections.map((section) => (
+                  <span key={section.id} className={navLinkClass(section.id)}>
+                    {section.heading}
+                  </span>
+                ))}
+              </nav>
+              {!compact ? (
+                <nav
+                  className="ml-auto flex shrink-0 items-center gap-1.5"
+                  aria-label="Showcase sections"
                 >
-                  {section.heading}
-                </button>
-              );
-            })}
-          </nav>
-        ) : null}
+                  {navSections.map((section) => (
+                    <button
+                      key={section.id}
+                      type="button"
+                      onClick={() => scrollToAnchor(section.id)}
+                      className={navLinkClass(section.id)}
+                    >
+                      {section.heading}
+                    </button>
+                  ))}
+                </nav>
+              ) : null}
+            </>
+          ) : null}
 
-        <div className="@lg:ml-0 ml-auto flex items-center gap-0.5">
-          {interactive ? <ShowcaseThemeToggle className={chrome.iconButton} /> : null}
-          {interactive ? (
-            <button
-              type="button"
-              className={cn(
-                'relative z-[210] flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center',
-                !forceMobile && '@lg:hidden',
-                chrome.iconButton,
-                tokens.themeToggleHover,
-                headerOnHero && 'text-inherit hover:bg-white/10'
-              )}
-              aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-              aria-expanded={menuOpen}
-              onClick={() => onMenuOpenChange(!menuOpen)}
-            >
-              {menuOpen ? (
-                <X className="size-5" aria-hidden />
-              ) : (
-                <Menu className="size-5" aria-hidden />
-              )}
-            </button>
-          ) : (
-            <span
-              className={cn(
-                'flex min-h-11 min-w-11 shrink-0 items-center justify-center',
-                chrome.iconButton
-              )}
-              aria-hidden
-            >
-              <Menu className="size-5" />
-            </span>
-          )}
+          <div className="ml-auto flex shrink-0 items-center gap-1">
+            {interactive ? <ShowcaseThemeToggle className={chrome.iconButton} /> : null}
+            {interactive && compact ? (
+              <button
+                type="button"
+                className={cn(
+                  'relative z-[210] flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center',
+                  chrome.iconButton,
+                  tokens.themeToggleHover,
+                  headerOnHero && 'text-inherit hover:bg-white/10'
+                )}
+                aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+                aria-expanded={menuOpen}
+                onClick={() => onMenuOpenChange(!menuOpen)}
+              >
+                {menuOpen ? (
+                  <X className="size-5" aria-hidden />
+                ) : (
+                  <Menu className="size-5" aria-hidden />
+                )}
+              </button>
+            ) : null}
+            {!interactive ? (
+              <span
+                className={cn(
+                  'flex min-h-11 min-w-11 shrink-0 items-center justify-center',
+                  chrome.iconButton
+                )}
+                aria-hidden
+              >
+                <Menu className="size-5" />
+              </span>
+            ) : null}
+          </div>
         </div>
       </div>
     </header>
   );
+
+  if (!interactive) return header;
+  if (!pin || typeof document === 'undefined') return null;
+  return createPortal(header, document.body);
 }
 
 function DeepLinkScroll({ enabled }: { enabled: boolean }) {
@@ -388,6 +468,7 @@ function ShowcaseShellInner({
     !data.reducedMotion && data.config.motion.intensity !== 'subtle' && !isTemplateThumb;
   const scopeDisplayFont = variant === 'monolith' ? 'font-sans' : displayFontClass;
   const [menuOpen, setMenuOpen] = useState(false);
+  const [compactNav, setCompactNav] = useState(true);
   const navSections = data.sections
     .filter(
       (section) => section.id !== 'hero' && section.kind !== 'quickNav' && Boolean(section.heading)
@@ -401,15 +482,12 @@ function ShowcaseShellInner({
     <SmoothScrollProvider enabled={smooth}>
       <div
         className={cn(
-          'showcase-scope @container relative isolate w-full min-w-0',
+          // No `@container` / warm-tint `filter` here — both create a containing
+          // block that traps `position: sticky|fixed` so the header scrolls away.
+          'showcase-scope relative isolate w-full min-w-0',
           scopeDisplayFont,
           headingScaleClass,
           bodyScaleClass,
-          resolveShowcaseWarmTintClass(
-            data.config.palette.mode,
-            mediaPalette?.warmHue,
-            data.config.palette.customPaletteBase
-          ),
           resolveShowcaseCustomPaletteClass(data.config.palette.mode),
           data.embed && !isTemplateThumb
             ? 'h-[100dvh] overflow-y-auto overflow-x-hidden overscroll-y-contain'
@@ -435,6 +513,7 @@ function ShowcaseShellInner({
           menuOpen={menuOpen}
           onMenuOpenChange={setMenuOpen}
           interactive={!isTemplateThumb}
+          onCompactNavChange={setCompactNav}
         />
         {!isTemplateThumb ? (
           <ShowcaseMobileMenu
@@ -442,13 +521,25 @@ function ShowcaseShellInner({
             onClose={() => setMenuOpen(false)}
             data={data}
             containedChrome={containedChrome}
+            compactNav={compactNav}
             activeSectionId={activeSectionId}
             navSections={navSections}
           />
         ) : null}
         <DeepLinkScroll enabled={!data.embed && !containedChrome && !isTemplateThumb} />
-        <main>{children}</main>
-        <ShowcaseFooter data={data} />
+        <div
+          className={cn(
+            '@container w-full min-w-0',
+            resolveShowcaseWarmTintClass(
+              data.config.palette.mode,
+              mediaPalette?.warmHue,
+              data.config.palette.customPaletteBase
+            )
+          )}
+        >
+          <main>{children}</main>
+          <ShowcaseFooter data={data} />
+        </div>
       </div>
     </SmoothScrollProvider>
   );

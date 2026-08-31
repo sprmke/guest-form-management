@@ -107,7 +107,7 @@ const PLACEHOLDER_META: Record<string, PlaceholderMeta> = {
   property_name: {
     group: 'Booking',
     description: 'Property name',
-    example: 'Kame Homes',
+    example: 'Property alerts',
   },
   booking_link: {
     group: 'Booking',

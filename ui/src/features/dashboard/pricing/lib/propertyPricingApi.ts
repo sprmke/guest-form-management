@@ -25,6 +25,8 @@ export type PropertyPricingDto = PropertyPricingDefaults & {
   dateOverrides: Record<string, number>;
   bookedDateKeys: string[];
   blockedDateKeys: string[];
+  /** Subset of blockedDateKeys synced from an OTA calendar feed — read-only in the UI. */
+  importedBlockedDateKeys: string[];
   holidayRules: PricingHolidayRuleDto[];
   calendarBookings: PropertyPricingCalendarBooking[];
 };
@@ -64,7 +66,12 @@ export async function fetchPropertyPricing(
   if (!res.ok) {
     throw new Error(json?.error ?? json?.message ?? 'Failed to load pricing');
   }
-  return { blockedDateKeys: [], calendarBookings: [], ...json.data } as PropertyPricingDto;
+  return {
+    blockedDateKeys: [],
+    importedBlockedDateKeys: [],
+    calendarBookings: [],
+    ...json.data,
+  } as PropertyPricingDto;
 }
 
 export async function savePropertyPricing(

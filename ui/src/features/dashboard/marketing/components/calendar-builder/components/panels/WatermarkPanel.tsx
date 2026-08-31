@@ -74,7 +74,7 @@ export function WatermarkPanel() {
                   value={watermark.text || ''}
                   onChange={(e) => handleChange('text', e.target.value)}
                   onBlur={saveToHistory}
-                  placeholder="Kame Homes"
+                  placeholder="Your brand"
                   className="h-9"
                 />
               </div>

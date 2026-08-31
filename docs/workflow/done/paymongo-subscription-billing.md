@@ -37,7 +37,7 @@ Let organizations (hosts) pay **GFM** a recurring subscription fee to use the pl
 - Proration, mid-cycle upgrades/downgrades, coupons/discounts — v1 is subscribe → renew → cancel only.
 - Multi-currency — PHP only, matching the rest of the app.
 - Automated card-on-file recurring charges — PayMongo doesn't offer native Stripe-style subscription billing; this plan's cron generates a fresh Payment Link each cycle instead (see Approach).
-- The separate, already-deferred **Phase 4** of [`ai-usage-metering-credits-foundation.md`](../in-progress/ai-usage-metering-credits-foundation.md) (buying AI credit top-ups). That plan explicitly names PayMongo as the future provider for credit purchases and says Phases 1–3's schema doesn't need to change when it lands. This plan should build the **shared PayMongo plumbing** (`_shared/paymongoClient.ts`, webhook verification, secrets, checkout-link helper) in a way that AI-credit-purchase can reuse later without re-deriving it — but wiring that specific flow is still deferred, not part of this plan.
+- The separate, already-deferred **Phase 4** of [`ai-usage-metering-credits-foundation.md`](../done/ai-usage-metering-credits-foundation.md) (buying AI credit top-ups). That plan explicitly names PayMongo as the future provider for credit purchases and says Phases 1–3's schema doesn't need to change when it lands. This plan should build the **shared PayMongo plumbing** (`_shared/paymongoClient.ts`, webhook verification, secrets, checkout-link helper) in a way that AI-credit-purchase can reuse later without re-deriving it — but wiring that specific flow is still deferred, not part of this plan.
 
 ## Approach
 

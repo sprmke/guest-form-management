@@ -6,6 +6,8 @@ import type {
 } from '@/features/dashboard/org/lib/listingAuthorization';
 import type { OrgVerificationRights } from '@/features/dashboard/org/lib/orgVerification';
 
+import { prepareUpload } from '@/lib/media/prepareUpload';
+
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
 export type ListingAuthorizationAssetUrls = {
@@ -47,13 +49,20 @@ export async function uploadListingAuthorizationAsset(params: {
   assetType: ListingAuthorizationAssetType;
   file: File;
 }): Promise<{ path: string; previewUrl: string | null; assetType: ListingAuthorizationAssetType }> {
+  const prepared = await prepareUpload(params.file, {
+    imagePreset: 'DOCUMENT',
+    surface: `listing-authorization-${params.assetType}`,
+  });
+  if (prepared.error) throw new Error(prepared.error);
+  const file = prepared.file;
+
   const jwt = await getSessionJwt();
   const body = new FormData();
   body.append('listingKind', params.listingKind);
   body.append('listingId', params.listingId);
   body.append('assetType', params.assetType);
-  body.append('file', params.file);
-  body.append('fileName', params.file.name);
+  body.append('file', file);
+  body.append('fileName', file.name);
 
   const res = await fetch(`${FUNCTIONS_URL}/upload-listing-authorization-asset`, {
     method: 'POST',

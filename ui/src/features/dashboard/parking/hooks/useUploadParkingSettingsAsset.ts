@@ -6,6 +6,7 @@ import {
 } from '@/features/dashboard/org/lib/adminParkingScope';
 import { PARKING_SETTINGS_QUERY_KEY } from '@/features/dashboard/parking/hooks/useParkingSettings';
 
+import { prepareUpload } from '@/lib/media/prepareUpload';
 import { supabase } from '@/lib/supabase/client';
 
 type UploadParkingSettingsAssetResult = {
@@ -27,7 +28,14 @@ export function useUploadParkingSettingsAsset() {
   const parkingId = useParkingIdParam();
 
   return useMutation({
-    mutationFn: async (file: File): Promise<UploadParkingSettingsAssetResult> => {
+    mutationFn: async (rawFile: File): Promise<UploadParkingSettingsAssetResult> => {
+      const prepared = await prepareUpload(rawFile, {
+        imagePreset: 'DOCUMENT',
+        surface: 'parking-settings-gcash-qr',
+      });
+      if (prepared.error) throw new Error(prepared.error);
+      const file = prepared.file;
+
       const jwt = await getAdminJwt();
       const ext = file.name.includes('.') ? `.${file.name.split('.').pop()}` : '';
       const body = new FormData();

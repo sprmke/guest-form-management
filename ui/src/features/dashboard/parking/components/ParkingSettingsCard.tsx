@@ -706,7 +706,7 @@ export function ParkingSettingsCard() {
                 label="Parking type"
                 required
                 error={resolveFieldError('settings-parking-type')}
-                hintBelow="Set at creation and can't be changed."
+                help="Set at creation and can't be changed."
               >
                 <Input
                   id="settings-parking-type"
@@ -724,7 +724,7 @@ export function ParkingSettingsCard() {
                 label="Residence"
                 required
                 error={resolveFieldError('settings-residence')}
-                hintBelow="Set at creation and can't be changed."
+                help="Set at creation and can't be changed."
               >
                 <Input
                   id="settings-residence"
@@ -742,7 +742,7 @@ export function ParkingSettingsCard() {
                 label="Tower"
                 required
                 error={resolveFieldError('settings-tower')}
-                hintBelow="Set at creation and can't be changed."
+                help="Set at creation and can't be changed."
               >
                 <Input
                   id="settings-tower"
@@ -760,7 +760,7 @@ export function ParkingSettingsCard() {
                 label="Level"
                 required
                 error={resolveFieldError('settings-level')}
-                hintBelow="Set at creation and can't be changed."
+                help="Set at creation and can't be changed."
               >
                 <Input
                   id="settings-level"
@@ -779,7 +779,7 @@ export function ParkingSettingsCard() {
               label="Slot number"
               required
               error={resolveFieldError('settings-slot')}
-              hintBelow="Set at creation and can't be changed."
+              help="Set at creation and can't be changed."
             >
               <Input
                 id="settings-slot"

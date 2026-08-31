@@ -1,8 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import {
+  applyInboxQuickReplyMerge,
+  buildSampleQuickReplyMergeContext,
+  INBOX_QUICK_REPLY_MERGE_FIELDS,
+} from '@/features/dashboard/inbox/lib/inboxQuickReplyMerge';
 import {
   platformFromQuickReplyGroup,
   quickReplyGroupFromPlatform,
@@ -62,6 +67,15 @@ export function InboxQuickReplyFormDialog({
     useFeatureGate('quickReplies');
   const { open: openUpgradeModal } = useUpgradeModal();
 
+  const previewText = useMemo(() => {
+    const trimmed = body.trim();
+    if (!trimmed) return '';
+    const hasMergeField = INBOX_QUICK_REPLY_MERGE_FIELDS.some((field) => trimmed.includes(field));
+    const hasUrl = /https?:\/\//i.test(trimmed);
+    if (!hasMergeField && !hasUrl) return '';
+    return applyInboxQuickReplyMerge(trimmed, buildSampleQuickReplyMergeContext());
+  }, [body]);
+
   const handleSubmit = async () => {
     if (!title.trim() || !body.trim()) {
       toast.error('Title and message required');
@@ -116,6 +130,17 @@ export function InboxQuickReplyFormDialog({
               placeholder="Thanks for reaching out! Please share your dates…"
               className="min-h-[140px] resize-none font-normal"
             />
+            <p className="text-muted-foreground text-xs">
+              Placeholders: {INBOX_QUICK_REPLY_MERGE_FIELDS.join(', ')}
+            </p>
+            {previewText ? (
+              <div className="bg-muted/40 border-border rounded-lg border px-3 py-2">
+                <p className="text-muted-foreground mb-1 text-[11px] font-medium uppercase tracking-wide">
+                  Preview
+                </p>
+                <p className="text-foreground whitespace-pre-wrap text-sm">{previewText}</p>
+              </div>
+            ) : null}
           </div>
           <div className="space-y-1.5">
             <Label>Group</Label>

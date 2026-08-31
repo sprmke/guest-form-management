@@ -31,8 +31,14 @@ jobs:
       - name: Filename conventions
         run: bun run check:filenames
 
+      - name: Unit tests (Vitest)
+        run: bun run test
+
       - name: Build UI
         env:
           # Vite chunk rendering exceeds default ~2GB Node heap on ubuntu-latest.
           NODE_OPTIONS: --max-old-space-size=6144
         run: bun run build
+
+      - name: Assert image optimizer stays lazy (plan §10.6)
+        run: node scripts/media/assert-lazy-optimizer.mjs

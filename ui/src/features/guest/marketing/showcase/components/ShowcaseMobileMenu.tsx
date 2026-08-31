@@ -10,7 +10,6 @@ import {
 import { X } from 'lucide-react';
 import { createPortal, flushSync } from 'react-dom';
 
-import { usePreviewForcesMobile } from '@/features/guest/lib/previewViewportContext';
 import { useShowcaseTheme } from '@/features/guest/marketing/showcase/components/ShowcaseThemeProvider';
 import { useSmoothScroll } from '@/features/guest/marketing/showcase/components/SmoothScrollProvider';
 import {
@@ -35,6 +34,8 @@ type Props = {
   onClose: () => void;
   data: ShowcaseData;
   containedChrome: boolean;
+  /** When false, inline desktop nav is showing — do not paint the overlay. */
+  compactNav: boolean;
   activeSectionId: string | null;
   navSections: ShowcaseData['sections'];
 };
@@ -237,12 +238,12 @@ export function ShowcaseMobileMenu({
   onClose,
   data,
   containedChrome,
+  compactNav,
   activeSectionId,
   navSections,
 }: Props) {
   const { scrollToAnchor } = useSmoothScroll();
   const { variant } = useShowcaseTheme();
-  const forceMobile = usePreviewForcesMobile();
   const config = SHOWCASE_MOBILE_MENU[variant];
   const reduced = data.reducedMotion || data.embed;
   const motionProps = panelMotion(config.motion, reduced);
@@ -253,7 +254,7 @@ export function ShowcaseMobileMenu({
     data.embed
   );
   const portaledTheme = usePortaledShowcaseTheme(open, needsContainedOverlay);
-  const canShow = open && (!needsContainedOverlay || frameStyle != null);
+  const canShow = open && compactNav && (!needsContainedOverlay || frameStyle != null);
 
   useEffect(() => {
     if (!open) return;
@@ -285,8 +286,7 @@ export function ShowcaseMobileMenu({
   const frameClassName = cn(
     // Clip root: panel slide/curtain % translates must stay inside the preview.
     'overflow-hidden',
-    needsContainedOverlay ? null : 'fixed inset-0',
-    !forceMobile && '@lg:hidden'
+    needsContainedOverlay ? null : 'fixed inset-0'
   );
 
   const frameMotionStyle: CSSProperties = {
