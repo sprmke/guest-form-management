@@ -122,13 +122,21 @@ function PaymentMethodCard({ method }: { method: GuestPaymentMethod }) {
 
 type Props = {
   form: UseFormReturn<GuestFormData>;
+  estimatedStayPhp?: number | null;
+  voucherDiscountPhp?: number;
+  voucherLabel?: string | null;
 };
 
 function nightLabel(count: number): string {
   return `${count} night${count !== 1 ? 's' : ''}`;
 }
 
-export function GuestFormPaymentStepContent({ form }: Props) {
+export function GuestFormPaymentStepContent({
+  form,
+  estimatedStayPhp,
+  voucherDiscountPhp = 0,
+  voucherLabel,
+}: Props) {
   const { data: paymentInfo } = useGuestPaymentInfo();
   const checkInDate = form.watch('checkInDate');
   const checkOutDate = form.watch('checkOutDate');
@@ -177,6 +185,18 @@ export function GuestFormPaymentStepContent({ form }: Props) {
               {formatMoney(breakdown.staySubtotal)}
             </dd>
           </div>
+          {estimatedStayPhp != null && voucherLabel && voucherDiscountPhp > 0 ? (
+            <div className="border-primary/15 space-y-1 border-t pt-2">
+              <div className="flex justify-between gap-3">
+                <dt>Estimated stay</dt>
+                <dd className="tabular-nums">{formatMoney(estimatedStayPhp)}</dd>
+              </div>
+              <div className="flex justify-between gap-3 text-emerald-700 dark:text-emerald-300">
+                <dt>{voucherLabel}</dt>
+                <dd className="tabular-nums">−{formatMoney(voucherDiscountPhp)}</dd>
+              </div>
+            </div>
+          ) : null}
           <div className="border-primary/15 flex items-center justify-between gap-3 border-t pt-2">
             <dt className="text-foreground font-semibold">Total due now</dt>
             <dd className="text-primary text-lg font-bold tabular-nums tracking-tight">

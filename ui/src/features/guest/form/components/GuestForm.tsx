@@ -28,6 +28,7 @@ import {
   GuestFormOptionCard,
 } from '@/features/guest/form/components/GuestFormOptionCard';
 import { GuestFormPaymentStepContent } from '@/features/guest/form/components/GuestFormPaymentStepContent';
+import { GuestFormVoucherPicker } from '@/features/guest/form/components/GuestFormVoucherPicker';
 import { GuestFormStepNavigation } from '@/features/guest/form/components/GuestFormStepNavigation';
 import { GuestFormStepper } from '@/features/guest/form/components/GuestFormStepper';
 import {
@@ -86,7 +87,19 @@ import {
   guestFormPath,
   guestSuccessPath,
 } from '@/features/guest/lib/guestPublicPaths';
+import { useGuestVouchersQuery } from '@/features/guest/account/hooks/useGuestVouchersQuery';
+import {
+  computePercentDiscountPhp,
+  formatVoucherOfferLabel,
+} from '@/features/guest/account/lib/voucherDiscount';
+import { usePublicPropertyDetail } from '@/features/guest/marketing/properties/hooks/usePublicPropertyDetail';
 import { GuestStayContextBar } from '@/features/guest/property/components/GuestStayContextBar';
+
+import {
+  computeDefaultBookingRate,
+  FALLBACK_PROPERTY_PRICING_DEFAULTS,
+} from '@/features/dashboard/pricing/lib/pricingCompute';
+import { formatMoney } from '@/utils/format/currency';
 
 import { GuestFormBrandHeader } from '@/components/branding/GuestFormBrandHeader';
 import { GuestFormPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
@@ -113,10 +126,12 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { TimePicker } from '@/components/ui/time-picker';
 import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
+import { prepareUpload } from '@/lib/media/prepareUpload';
 import { cn } from '@/lib/utils';
 import { generateRandomData, setDummyFile } from '@/utils/dev/mockData';
 import {
   formatTimeToAMPM,
+  formatStayDateRange,
   getNextDay,
   createDisabledDateMatcher,
   createDisabledCheckoutDateMatcher,
@@ -253,7 +268,21 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
   const location = useLocation();
   const propertySlug = useGuestPropertySlug();
   const scopedSearchParams = useGuestPropertySearchParams();
+  const { data: publicProperty } = usePublicPropertyDetail(propertySlug ?? '');
+  const { data: propertyVouchers = [], isLoading: propertyVouchersLoading } = useGuestVouchersQuery(
+    {
+      propertySlug: propertySlug ?? undefined,
+      enabled: Boolean(propertySlug),
+    }
+  );
   const bookingId = searchParams.get('bookingId');
+  // Calendar-sync Phase 2 (§6.5): host-forwarded link to complete an already-ingested
+  // Airbnb/OTA booking. Dates come locked from the reservation; submit goes to a dedicated
+  // update-only endpoint.
+  const completionToken = searchParams.get('complete');
+  const isCompletionMode = Boolean(completionToken);
+  const [completionError, setCompletionError] = useState<string | null>(null);
+  const [completionReady, setCompletionReady] = useState(!isCompletionMode);
   const navigate = useNavigate();
   const skipAuthGate = Boolean(embed?.skipAuthGate);
   const { status: guestAuthStatus, requireGuestAuth, formSubmitResumeTick } = useGuestAuth();
@@ -272,8 +301,11 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
     isPlaceholderData: guestPaymentInfoPlaceholder,
   } = useGuestPaymentInfo();
 
-  // `?source=airbnb` → Airbnb labels + DB `booking_source`
-  const bookingSource = bookingSourceFromUrlSearchParams(searchParams);
+  // `?source=airbnb` → Airbnb labels + DB `booking_source`. The completion link (§6.5) is
+  // always for an Airbnb/OTA booking → same visibility (no payment step, no receipt).
+  const bookingSource = isCompletionMode
+    ? 'Airbnb'
+    : bookingSourceFromUrlSearchParams(searchParams);
   const isAirbnb = bookingSource === 'Airbnb';
   const isFacebook = bookingSource === 'Facebook';
 
@@ -378,6 +410,42 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
     mode: 'all',
   });
 
+  const checkInWatched = useWatch({ control: form.control, name: 'checkInDate' });
+  const checkOutWatched = useWatch({ control: form.control, name: 'checkOutDate' });
+  const appliedVoucherSourceBookingId = useWatch({
+    control: form.control,
+    name: 'appliedVoucherSourceBookingId',
+  });
+  const estimatedStayPhp = useMemo(() => {
+    if (!checkInWatched || !checkOutWatched) return null;
+    const base =
+      publicProperty?.pricing?.baseRate ?? FALLBACK_PROPERTY_PRICING_DEFAULTS.weekdayNightlyRate;
+    const defaults = {
+      ...FALLBACK_PROPERTY_PRICING_DEFAULTS,
+      weekdayNightlyRate: base,
+      weekendNightlyRate: base,
+    };
+    return computeDefaultBookingRate(
+      {
+        check_in_date: checkInWatched,
+        check_out_date: checkOutWatched,
+        number_of_nights: null,
+      },
+      defaults
+    );
+  }, [checkInWatched, checkOutWatched, publicProperty?.pricing?.baseRate]);
+  const selectedVoucher = propertyVouchers.find(
+    (v) => v.sourceBookingId === appliedVoucherSourceBookingId
+  );
+  const estimatedVoucherDiscount =
+    selectedVoucher && estimatedStayPhp != null
+      ? selectedVoucher.percentOff > 0
+        ? computePercentDiscountPhp(estimatedStayPhp, selectedVoucher.percentOff)
+        : selectedVoucher.legacyAmountPhp
+          ? Math.min(estimatedStayPhp, selectedVoucher.legacyAmountPhp)
+          : 0
+      : 0;
+
   // Generate a new booking ID for new submissions
   useEffect(() => {
     if (!bookingId) {
@@ -440,8 +508,60 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
     fetchBookedDates();
   }, []);
 
+  // Calendar-sync completion link: resolve the token → lock the stay onto the form.
+  useEffect(() => {
+    if (!completionToken) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `${apiUrl}/get-form-completion?complete=${encodeURIComponent(completionToken)}`,
+          {
+            headers: {
+              apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            },
+          }
+        );
+        const json = await res.json();
+        if (cancelled) return;
+        if (!res.ok || !json?.data) {
+          setCompletionError(
+            res.status === 410
+              ? 'This link has expired — the stay has already ended. Contact your host if you still need to complete it.'
+              : 'This link is not valid. Ask your host to send you a fresh guest-form link.'
+          );
+          setCompletionReady(true);
+          return;
+        }
+        const stay = json.data.stay ?? {};
+        const prefill = json.data.prefill ?? {};
+        if (stay.checkInDate) form.setValue('checkInDate', normalizeDateString(stay.checkInDate));
+        if (stay.checkOutDate)
+          form.setValue('checkOutDate', normalizeDateString(stay.checkOutDate));
+        if (stay.checkInTime) form.setValue('checkInTime', stay.checkInTime);
+        if (stay.checkOutTime) form.setValue('checkOutTime', stay.checkOutTime);
+        if (typeof stay.numberOfNights === 'number' && stay.numberOfNights > 0) {
+          form.setValue('numberOfNights', stay.numberOfNights);
+        }
+        if (prefill.primaryGuestName && !form.getValues('primaryGuestName')) {
+          form.setValue('primaryGuestName', prefill.primaryGuestName);
+        }
+        setCompletionReady(true);
+      } catch {
+        if (cancelled) return;
+        setCompletionError('Could not load your booking. Please try again in a moment.');
+        setCompletionReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [completionToken, form]);
+
   // Set dates from URL params (from calendar page)
   useEffect(() => {
+    if (isCompletionMode) return; // dates are locked from the reservation
     if (urlCheckInDate && urlCheckOutDate && !bookingId) {
       // Normalize and set the dates from URL
       const normalizedCheckIn = normalizeDateString(urlCheckInDate);
@@ -452,7 +572,7 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
         form.setValue('checkOutDate', normalizedCheckOut);
       }
     }
-  }, [urlCheckInDate, urlCheckOutDate, bookingId, form]);
+  }, [urlCheckInDate, urlCheckOutDate, bookingId, isCompletionMode, form]);
 
   useEffect(() => {
     if (bookingId || !guestPaymentInfoFetched || guestPaymentInfoPlaceholder) return;
@@ -888,17 +1008,29 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
         },
       ];
 
-      guestFileUploads.forEach(({ prefix, file, guestName, required }) => {
+      for (const { prefix, file, guestName, required } of guestFileUploads) {
+        let uploadFile = file;
+        if (file) {
+          // Pet photos are decorative (CONTENT); every ID / receipt / vaccination
+          // record must stay legible for AI + manual review (DOCUMENT, near-lossless).
+          const prepared = await prepareUpload(file, {
+            imagePreset: prefix === 'petImage' ? 'CONTENT' : 'DOCUMENT',
+            surface: `guest-form-${prefix}`,
+          });
+          if (prepared.error) throw new Error(prepared.error);
+          uploadFile = prepared.file;
+        }
         handleFileUpload(
           formData,
-          file,
+          uploadFile,
           prefix,
           guestName,
           values.checkInDate,
           values.checkOutDate,
-          required
+          required,
+          12
         );
-      });
+      }
 
       // Property scope stays on the URL; side-effect flags go in FormData (never browser/share URLs).
       const queryParams = new URLSearchParams();
@@ -913,8 +1045,14 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
         formData.append('sendEmail', devApiControls.sendEmail ? 'true' : 'false');
       }
 
+      // Completion link (§6.5): dedicated update-only endpoint; server re-reads the locked
+      // dates from the stored row and ignores any dates in this payload.
+      if (isCompletionMode && completionToken) {
+        formData.append('complete', completionToken);
+      }
+      const submitFnName = isCompletionMode ? 'submit-form-completion' : 'submit-form';
       const queryParamsString = queryParams.toString() ? `?${queryParams.toString()}` : '';
-      const apiUrlWithParams = `${apiUrl}/submit-form${queryParamsString}`;
+      const apiUrlWithParams = `${apiUrl}/${submitFnName}${queryParamsString}`;
 
       const authHeaders = await guestEdgeAuthHeaders();
       const response = await fetch(apiUrlWithParams, {
@@ -938,6 +1076,13 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
           result.error || result.details?.message || 'Failed to submit the guest form';
         console.error('Failed to submit the guest form:', result);
         throw new Error(errorMessage);
+      }
+
+      if (typeof result.voucherWarning === 'string' && result.voucherWarning) {
+        toast.warning('Booking submitted without the voucher', {
+          description: result.voucherWarning.replace(/^VOUCHER_[A-Z_]+:\s*/, ''),
+          duration: 7000,
+        });
       }
 
       // Check if submission was skipped due to no changes
@@ -1052,6 +1197,31 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
           duration: 7000,
         });
         setGuestCanUpdate(false);
+      } else if (errorMessage.includes('VOUCHER_AUTH')) {
+        toast.error('Sign in to use a voucher', { id: 'voucher-error', duration: 7000 });
+      } else if (errorMessage.includes('VOUCHER_USED')) {
+        toast.error('That voucher was already used', { id: 'voucher-error', duration: 7000 });
+      } else if (errorMessage.includes('VOUCHER_PROPERTY')) {
+        toast.error('Voucher is for a different property', {
+          id: 'voucher-error',
+          duration: 7000,
+        });
+      } else if (errorMessage.includes('VOUCHER_FORBIDDEN')) {
+        toast.error('This voucher belongs to another guest', {
+          id: 'voucher-error',
+          duration: 7000,
+        });
+      } else if (errorMessage.includes('VOUCHER_LOCKED')) {
+        toast.error('A voucher is already on this booking', {
+          id: 'voucher-error',
+          duration: 7000,
+        });
+      } else if (errorMessage.includes('VOUCHER_')) {
+        toast.error('Could not apply voucher', {
+          id: 'voucher-error',
+          description: errorMessage.replace(/^.*VOUCHER_[A-Z_]+:\s*/, ''),
+          duration: 7000,
+        });
       } else {
         // Show regular error toast for other errors
         const cleanedMessage = errorMessage.replace('Error: ', '').replace('BOOKING_OVERLAP: ', '');
@@ -1239,6 +1409,23 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
   const StepIcon = activeStepConfig?.icon ?? User;
 
   if (!skipAuthGate && (guestAuthStatus === 'loading' || guestAuthStatus === 'anonymous')) {
+    return (
+      <div className={cn(embed?.compactChrome ? 'p-0 sm:p-1' : 'p-4 sm:p-6 lg:p-8')}>
+        <GuestFormPageSkeleton embed={Boolean(embed?.compactChrome)} />
+      </div>
+    );
+  }
+
+  if (isCompletionMode && completionError) {
+    return (
+      <div className="flex flex-col items-center justify-center space-y-3 px-4 py-20 text-center">
+        <h2 className="text-destructive text-2xl font-bold">Link unavailable</h2>
+        <p className="text-muted-foreground max-w-md text-sm">{completionError}</p>
+      </div>
+    );
+  }
+
+  if (isCompletionMode && !completionReady) {
     return (
       <div className={cn(embed?.compactChrome ? 'p-0 sm:p-1' : 'p-4 sm:p-6 lg:p-8')}>
         <GuestFormPageSkeleton embed={Boolean(embed?.compactChrome)} />
@@ -1499,198 +1686,221 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
 
                 {activeStepConfig?.id === 2 && (
                   <div className="space-y-4">
-                    <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 md:[&>*]:min-w-0">
-                      <FormField
-                        control={form.control}
-                        name="checkInDate"
-                        render={({ field }) => (
-                          <FormItem className="min-w-0">
-                            <FormLabel>
-                              Check-in Date <span className="text-destructive">*</span>
-                            </FormLabel>
-                            <FormControl>
-                              <DatePicker
-                                date={field.value ? stringToDate(field.value) : undefined}
-                                rangeEnd={
-                                  form.watch('checkOutDate')
-                                    ? stringToDate(form.watch('checkOutDate'))
-                                    : undefined
-                                }
-                                onSelect={(date) => {
-                                  if (date) {
-                                    const dateStr = dateToString(date);
-                                    field.onChange(dateStr);
-                                    // Always auto-set checkout to next day when check-in changes
-                                    form.setValue('checkOutDate', getNextDay(dateStr));
-                                  }
-                                }}
-                                disabled={(date) => {
-                                  // Disable past dates
-                                  const today = new Date();
-                                  today.setHours(0, 0, 0, 0);
-                                  if (date < today) {
-                                    return true;
-                                  }
-
-                                  // Disable booked dates
-                                  return createDisabledDateMatcher(
-                                    bookedDates,
-                                    currentBookingId
-                                  )(date);
-                                }}
-                                minDate={new Date()}
-                                placeholder={DATE_PICKER_DISPLAY_FORMAT}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="checkInTime"
-                        render={({ field }) => {
-                          const checkInDate = form.watch('checkInDate');
-                          const minCheckInTime = checkInDate
-                            ? minAllowedCheckInTime(
-                                bookedDates,
-                                stringToDate(checkInDate),
-                                guestPaymentInfo.cleaningBufferMinutes,
-                                currentBookingId
-                              )
-                            : null;
-                          return (
-                            <FormItem className="min-w-0">
-                              <FormLabel>Check-in Time</FormLabel>
-                              <FormControl>
-                                <TimePicker
-                                  value={field.value}
-                                  onChange={field.onChange}
-                                  disabledTime={
-                                    minCheckInTime ? (time) => time < minCheckInTime : undefined
-                                  }
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          );
-                        }}
-                      />
-                    </div>
-
-                    {form.watch('checkInTime') &&
-                      form.watch('checkInTime') < propertyCheckInTime && (
-                        <div
-                          className="border-primary/25 bg-primary/5 dark:border-primary/30 dark:bg-primary/10 rounded-lg border-2 px-4 py-3"
-                          role="alert"
-                        >
-                          <p className="text-sm font-medium">
-                            Check-in is {propertyCheckInLabel}. Early arrival needs approval and may
-                            cost extra. {guestEarlyLateContactLabel(isAirbnb, isFacebook)}
-                          </p>
-                        </div>
-                      )}
-
-                    <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 md:[&>*]:min-w-0">
-                      <FormField
-                        control={form.control}
-                        name="checkOutDate"
-                        render={({ field }) => (
-                          <FormItem className="min-w-0">
-                            <FormLabel>
-                              Check-out Date <span className="text-destructive">*</span>
-                            </FormLabel>
-                            <FormControl>
-                              <DatePicker
-                                date={field.value ? stringToDate(field.value) : undefined}
-                                rangeEnd={
-                                  form.watch('checkInDate')
-                                    ? stringToDate(form.watch('checkInDate'))
-                                    : undefined
-                                }
-                                onSelect={(date) => {
-                                  if (date) {
-                                    const dateStr = dateToString(date);
-                                    field.onChange(dateStr);
-                                    form.trigger('checkOutTime');
-                                  }
-                                }}
-                                disabled={(date) => {
-                                  // Use checkout-specific matcher that allows checkout on check-in dates
-                                  const isBooked = createDisabledCheckoutDateMatcher(
-                                    bookedDates,
-                                    currentBookingId
-                                  )(date);
-
-                                  // Disable dates before or equal to check-in date
-                                  const checkInDate = form.watch('checkInDate');
-                                  if (checkInDate) {
-                                    const checkIn = stringToDate(checkInDate);
-                                    if (date <= checkIn) {
-                                      return true;
+                    {isCompletionMode ? (
+                      <div className="border-primary/25 bg-primary/5 dark:border-primary/30 dark:bg-primary/10 space-y-1 rounded-lg border-2 px-4 py-3">
+                        <p className="text-sm font-semibold">Your Airbnb stay</p>
+                        <p className="text-sm">
+                          {formatStayDateRange(
+                            form.watch('checkInDate'),
+                            form.watch('checkOutDate')
+                          ) || '—'}{' '}
+                          · check-in {formatTimeToAMPM(form.watch('checkInTime') || '', true)},
+                          check-out {formatTimeToAMPM(form.watch('checkOutTime') || '', true)}
+                        </p>
+                        <p className="text-muted-foreground text-xs">
+                          These dates come from your reservation and can’t be changed here. Contact
+                          your host if they’re wrong.
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 md:[&>*]:min-w-0">
+                          <FormField
+                            control={form.control}
+                            name="checkInDate"
+                            render={({ field }) => (
+                              <FormItem className="min-w-0">
+                                <FormLabel>
+                                  Check-in Date <span className="text-destructive">*</span>
+                                </FormLabel>
+                                <FormControl>
+                                  <DatePicker
+                                    date={field.value ? stringToDate(field.value) : undefined}
+                                    rangeEnd={
+                                      form.watch('checkOutDate')
+                                        ? stringToDate(form.watch('checkOutDate'))
+                                        : undefined
                                     }
-                                  }
+                                    onSelect={(date) => {
+                                      if (date) {
+                                        const dateStr = dateToString(date);
+                                        field.onChange(dateStr);
+                                        // Always auto-set checkout to next day when check-in changes
+                                        form.setValue('checkOutDate', getNextDay(dateStr));
+                                      }
+                                    }}
+                                    disabled={(date) => {
+                                      // Disable past dates
+                                      const today = new Date();
+                                      today.setHours(0, 0, 0, 0);
+                                      if (date < today) {
+                                        return true;
+                                      }
 
-                                  return isBooked;
-                                }}
-                                minDate={
-                                  form.watch('checkInDate')
-                                    ? stringToDate(getNextDay(form.watch('checkInDate')))
-                                    : new Date()
-                                }
-                                placeholder={DATE_PICKER_DISPLAY_FORMAT}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                                      // Disable booked dates
+                                      return createDisabledDateMatcher(
+                                        bookedDates,
+                                        currentBookingId
+                                      )(date);
+                                    }}
+                                    minDate={new Date()}
+                                    placeholder={DATE_PICKER_DISPLAY_FORMAT}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
 
-                      <FormField
-                        control={form.control}
-                        name="checkOutTime"
-                        render={({ field }) => {
-                          const checkOutDate = form.watch('checkOutDate');
-                          const maxCheckOutTime = checkOutDate
-                            ? maxAllowedCheckOutTime(
-                                bookedDates,
-                                stringToDate(checkOutDate),
-                                guestPaymentInfo.cleaningBufferMinutes,
-                                currentBookingId
-                              )
-                            : null;
-                          return (
-                            <FormItem className="min-w-0">
-                              <FormLabel>Check-out Time</FormLabel>
-                              <FormControl>
-                                <TimePicker
-                                  value={field.value}
-                                  onChange={field.onChange}
-                                  disabledTime={
-                                    maxCheckOutTime ? (time) => time > maxCheckOutTime : undefined
-                                  }
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          );
-                        }}
-                      />
-                    </div>
-
-                    {form.watch('checkOutTime') &&
-                      form.watch('checkOutTime') > propertyCheckOutTime && (
-                        <div
-                          className="border-primary/25 bg-primary/5 dark:border-primary/30 dark:bg-primary/10 rounded-lg border-2 px-4 py-3"
-                          role="alert"
-                        >
-                          <p className="text-sm font-medium">
-                            Check-out is {propertyCheckOutLabel}. Late departure needs approval and
-                            may cost extra. {guestEarlyLateContactLabel(isAirbnb, isFacebook)}
-                          </p>
+                          <FormField
+                            control={form.control}
+                            name="checkInTime"
+                            render={({ field }) => {
+                              const checkInDate = form.watch('checkInDate');
+                              const minCheckInTime = checkInDate
+                                ? minAllowedCheckInTime(
+                                    bookedDates,
+                                    stringToDate(checkInDate),
+                                    guestPaymentInfo.cleaningBufferMinutes,
+                                    currentBookingId
+                                  )
+                                : null;
+                              return (
+                                <FormItem className="min-w-0">
+                                  <FormLabel>Check-in Time</FormLabel>
+                                  <FormControl>
+                                    <TimePicker
+                                      value={field.value}
+                                      onChange={field.onChange}
+                                      disabledTime={
+                                        minCheckInTime ? (time) => time < minCheckInTime : undefined
+                                      }
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              );
+                            }}
+                          />
                         </div>
-                      )}
+
+                        {form.watch('checkInTime') &&
+                          form.watch('checkInTime') < propertyCheckInTime && (
+                            <div
+                              className="border-primary/25 bg-primary/5 dark:border-primary/30 dark:bg-primary/10 rounded-lg border-2 px-4 py-3"
+                              role="alert"
+                            >
+                              <p className="text-sm font-medium">
+                                Check-in is {propertyCheckInLabel}. Early arrival needs approval and
+                                may cost extra. {guestEarlyLateContactLabel(isAirbnb, isFacebook)}
+                              </p>
+                            </div>
+                          )}
+
+                        <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 md:[&>*]:min-w-0">
+                          <FormField
+                            control={form.control}
+                            name="checkOutDate"
+                            render={({ field }) => (
+                              <FormItem className="min-w-0">
+                                <FormLabel>
+                                  Check-out Date <span className="text-destructive">*</span>
+                                </FormLabel>
+                                <FormControl>
+                                  <DatePicker
+                                    date={field.value ? stringToDate(field.value) : undefined}
+                                    rangeEnd={
+                                      form.watch('checkInDate')
+                                        ? stringToDate(form.watch('checkInDate'))
+                                        : undefined
+                                    }
+                                    onSelect={(date) => {
+                                      if (date) {
+                                        const dateStr = dateToString(date);
+                                        field.onChange(dateStr);
+                                        form.trigger('checkOutTime');
+                                      }
+                                    }}
+                                    disabled={(date) => {
+                                      // Use checkout-specific matcher that allows checkout on check-in dates
+                                      const isBooked = createDisabledCheckoutDateMatcher(
+                                        bookedDates,
+                                        currentBookingId
+                                      )(date);
+
+                                      // Disable dates before or equal to check-in date
+                                      const checkInDate = form.watch('checkInDate');
+                                      if (checkInDate) {
+                                        const checkIn = stringToDate(checkInDate);
+                                        if (date <= checkIn) {
+                                          return true;
+                                        }
+                                      }
+
+                                      return isBooked;
+                                    }}
+                                    minDate={
+                                      form.watch('checkInDate')
+                                        ? stringToDate(getNextDay(form.watch('checkInDate')))
+                                        : new Date()
+                                    }
+                                    placeholder={DATE_PICKER_DISPLAY_FORMAT}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="checkOutTime"
+                            render={({ field }) => {
+                              const checkOutDate = form.watch('checkOutDate');
+                              const maxCheckOutTime = checkOutDate
+                                ? maxAllowedCheckOutTime(
+                                    bookedDates,
+                                    stringToDate(checkOutDate),
+                                    guestPaymentInfo.cleaningBufferMinutes,
+                                    currentBookingId
+                                  )
+                                : null;
+                              return (
+                                <FormItem className="min-w-0">
+                                  <FormLabel>Check-out Time</FormLabel>
+                                  <FormControl>
+                                    <TimePicker
+                                      value={field.value}
+                                      onChange={field.onChange}
+                                      disabledTime={
+                                        maxCheckOutTime
+                                          ? (time) => time > maxCheckOutTime
+                                          : undefined
+                                      }
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              );
+                            }}
+                          />
+                        </div>
+
+                        {form.watch('checkOutTime') &&
+                          form.watch('checkOutTime') > propertyCheckOutTime && (
+                            <div
+                              className="border-primary/25 bg-primary/5 dark:border-primary/30 dark:bg-primary/10 rounded-lg border-2 px-4 py-3"
+                              role="alert"
+                            >
+                              <p className="text-sm font-medium">
+                                Check-out is {propertyCheckOutLabel}. Late departure needs approval
+                                and may cost extra.{' '}
+                                {guestEarlyLateContactLabel(isAirbnb, isFacebook)}
+                              </p>
+                            </div>
+                          )}
+                      </>
+                    )}
 
                     <FormField
                       control={form.control}
@@ -1822,6 +2032,53 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
                           </FormItem>
                         )}
                       />
+                    ) : null}
+
+                    <GuestFormVoucherPicker
+                      propertySlug={propertySlug}
+                      selectedSourceBookingId={appliedVoucherSourceBookingId || null}
+                      vouchers={propertyVouchers}
+                      isLoading={propertyVouchersLoading}
+                      estimatedStayPhp={estimatedStayPhp}
+                      onSelect={(id) =>
+                        form.setValue('appliedVoucherSourceBookingId', id ?? '', {
+                          shouldDirty: true,
+                        })
+                      }
+                    />
+
+                    {selectedVoucher && estimatedStayPhp != null ? (
+                      <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/60 px-4 py-3 text-sm dark:border-emerald-900/50 dark:bg-emerald-950/20">
+                        <p className="text-foreground font-semibold">
+                          {formatVoucherOfferLabel({
+                            code: selectedVoucher.code,
+                            percentOff: selectedVoucher.percentOff,
+                            legacyAmountPhp: selectedVoucher.legacyAmountPhp,
+                          })}
+                        </p>
+                        <dl className="text-muted-foreground mt-2 space-y-1">
+                          <div className="flex justify-between gap-3">
+                            <dt>Estimated stay</dt>
+                            <dd className="tabular-nums">{formatMoney(estimatedStayPhp)}</dd>
+                          </div>
+                          {estimatedVoucherDiscount > 0 ? (
+                            <div className="flex justify-between gap-3 text-emerald-700 dark:text-emerald-300">
+                              <dt>Voucher</dt>
+                              <dd className="tabular-nums">
+                                −{formatMoney(estimatedVoucherDiscount)}
+                              </dd>
+                            </div>
+                          ) : null}
+                          <div className="text-foreground flex justify-between gap-3 border-t border-emerald-200/60 pt-1 font-semibold dark:border-emerald-800/60">
+                            <dt>After voucher</dt>
+                            <dd className="tabular-nums">
+                              {formatMoney(
+                                Math.max(0, estimatedStayPhp - estimatedVoucherDiscount)
+                              )}
+                            </dd>
+                          </div>
+                        </dl>
+                      </div>
                     ) : null}
                   </div>
                 )}
@@ -2047,7 +2304,7 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
                                           Replace Image
                                           <input
                                             type="file"
-                                            accept="image/jpeg,image/jpg,image/png,image/heic"
+                                            accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif"
                                             className="hidden"
                                             {...field}
                                             onChange={(e) => {
@@ -2073,7 +2330,7 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
                                         Upload Image
                                         <input
                                           type="file"
-                                          accept="image/jpeg,image/jpg,image/png,image/heic"
+                                          accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif"
                                           className="hidden"
                                           {...field}
                                           onChange={(e) => {
@@ -2126,7 +2383,7 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
                                           Replace Image
                                           <input
                                             type="file"
-                                            accept="image/jpeg,image/jpg,image/png,image/heic"
+                                            accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif"
                                             className="hidden"
                                             {...field}
                                             onChange={(e) => {
@@ -2152,7 +2409,7 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
                                         Upload Image
                                         <input
                                           type="file"
-                                          accept="image/jpeg,image/jpg,image/png,image/heic"
+                                          accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif"
                                           className="hidden"
                                           {...field}
                                           onChange={(e) => {
@@ -2184,7 +2441,20 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
 
                 {activeStepConfig?.id === 5 && (
                   <div className="space-y-4">
-                    <GuestFormPaymentStepContent form={form} />
+                    <GuestFormPaymentStepContent
+                      form={form}
+                      estimatedStayPhp={estimatedStayPhp}
+                      voucherDiscountPhp={estimatedVoucherDiscount}
+                      voucherLabel={
+                        selectedVoucher
+                          ? formatVoucherOfferLabel({
+                              code: selectedVoucher.code,
+                              percentOff: selectedVoucher.percentOff,
+                              legacyAmountPhp: selectedVoucher.legacyAmountPhp,
+                            })
+                          : null
+                      }
+                    />
 
                     <FormField
                       control={form.control}
@@ -2211,7 +2481,7 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
                                       Replace Image
                                       <input
                                         type="file"
-                                        accept="image/jpeg,image/jpg,image/png,image/heic"
+                                        accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif"
                                         className="hidden"
                                         {...field}
                                         onChange={(e) => {
@@ -2237,7 +2507,7 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
                                     Upload Image
                                     <input
                                       type="file"
-                                      accept="image/jpeg,image/jpg,image/png,image/heic"
+                                      accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif"
                                       className="hidden"
                                       {...field}
                                       onChange={(e) => {

@@ -166,6 +166,8 @@ function buildGuestFormSchema(options: GuestFormSchemaOptions) {
       guestRequestsSurpriseDecor: z.boolean().default(false),
       findUsDetails: z.string().optional(),
       numberOfNights: z.number().optional(),
+      /** Prior booking id awarding the voucher applied to this stay (optional). */
+      appliedVoucherSourceBookingId: z.string().optional(),
 
       // Parking related fields
       needParking: z.boolean().default(false),
