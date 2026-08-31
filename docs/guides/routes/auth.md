@@ -2,7 +2,7 @@
 title: 'Guest & host auth — operator guide'
 status: active
 tags: [guides, routes, auth]
-updated: 2026-08-26
+updated: 2026-08-30
 ---
 
 # Guest & host auth — operator guide
@@ -66,7 +66,7 @@ Resume after OAuth (guest): `sessionStorage` (`guestAuthResume.ts`) restores nav
 
 1. User enters their email (OTP) or clicks **Continue with Google** on `/for-hosts/login` or `/for-hosts/register`.
 2. Either path lands a normal Supabase Auth session — `useAdminSession` treats any session as signed-in regardless of which method was used.
-3. On success, **`useHostGoogleAuth`** (name unchanged, now also drives OTP) + **`resolvePostSignInPath`** routes to onboarding or the org dashboard.
+3. On success, **`useHostGoogleAuth`** (name unchanged, now also drives OTP) + **`resolvePostSignInPath`** routes to onboarding **only when the email has no usable org**. Login, register, and a `?redirect=/onboarding` deep link all call `list-organizations` first: existing owners/members go to their workspace; hard-rejected hosts go to **`/verification-rejected`**. One email = one Auth user = at most one usable owned organization.
 
 Guards send unauthenticated hosts to **`hostLoginPath(currentPath)`**.
 
@@ -90,6 +90,8 @@ Hosts and guests can both sign in with a one-time code sent to their email, or w
   A: A one-time code sent to their email, or Google. Facebook is not offered.
 - Q: Can I edit my profile from the dashboard?
   A: Yes — open the account menu at the bottom of the sidebar and choose **Profile**. It is the same info as the guest account profile on explore.
+- Q: I already set up a host account with this email. Why am I not sent through setup again?
+  A: Each email is one host account. Sign-in opens your existing workspace. You cannot create a second organization with the same email.
 
 ---
 

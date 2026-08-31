@@ -60,6 +60,9 @@ serveAuthenticated('submit-listing-authorization', async (req) => {
   if (state.baseStatus === 'approved' && !isRenew) {
     return jsonError(req, 'This listing is already approved');
   }
+  if (context.authorization.baseStatus === 'pending' && !isRenew) {
+    return jsonSuccess(req, serializeListingAuthorization(context, context.authorization));
+  }
   if (isListingAuthorizationHardRejected(context.authorization)) {
     return jsonError(req, 'This listing was declined. Please start a new application.');
   }
@@ -91,7 +94,9 @@ serveAuthenticated('submit-listing-authorization', async (req) => {
     }
   } else if (!canSubmitBaseListingAuthorization(state)) {
     const missing: string[] = [];
-    if (!state.relationship) missing.push('user role');
+    if (!state.relationship) {
+      missing.push(listingKind === 'parking' ? 'parking rights' : 'property rights');
+    }
     if (listingRightsNeedContractEnd(state) && !state.contractEndDate) {
       missing.push('contract end date');
     }

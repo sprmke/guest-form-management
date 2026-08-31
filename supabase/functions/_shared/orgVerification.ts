@@ -101,7 +101,7 @@ export type OrgVerificationAssetType = (typeof ORG_VERIFICATION_ASSET_TYPES)[num
 export type OrgVerificationAssets = {
   /** Tier 1 — government-issued ID. */
   validIdPath: string | null;
-  /** Tier 1 — Facebook Page screenshot (platform is pinned to Facebook). */
+  /** Tier 2 — Facebook Page screenshot (platform is pinned to Facebook). */
   socialProofPath: string | null;
   /** Tier 2 — selfie holding the valid ID. */
   selfieWithIdPath: string | null;
