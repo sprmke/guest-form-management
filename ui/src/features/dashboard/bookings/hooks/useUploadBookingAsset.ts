@@ -15,6 +15,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 
+import type { OptimizePreset } from '@/lib/media/imageOptimizationPlan';
+import { prepareUpload } from '@/lib/media/prepareUpload';
 import { supabase } from '@/lib/supabase/client';
 
 import { BOOKING_QUERY_KEY } from './useBooking';
@@ -64,6 +66,16 @@ async function getAdminJwt(): Promise<string> {
   return token;
 }
 
+/**
+ * Only the pet photo is decorative. Every other booking asset (valid IDs,
+ * receipts, GAF, vaccination records) must stay pixel-faithful for AI receipt
+ * validation and manual approval, so it goes through the near-lossless
+ * DOCUMENT preset.
+ */
+function presetForAsset(assetType: AssetType): OptimizePreset {
+  return assetType === 'pet_image' ? 'CONTENT' : 'DOCUMENT';
+}
+
 type UploadArgs = {
   bookingId: string;
   assetType: AssetType;
@@ -75,7 +87,18 @@ export function useUploadBookingAsset() {
   const propertyId = usePropertyIdParam();
 
   return useMutation({
-    mutationFn: async ({ bookingId, assetType, file }: UploadArgs): Promise<UploadAssetResult> => {
+    mutationFn: async ({
+      bookingId,
+      assetType,
+      file: rawFile,
+    }: UploadArgs): Promise<UploadAssetResult> => {
+      const prepared = await prepareUpload(rawFile, {
+        imagePreset: presetForAsset(assetType),
+        surface: `booking-asset-${assetType}`,
+      });
+      if (prepared.error) throw new Error(prepared.error);
+      const file = prepared.file;
+
       const jwt = await getAdminJwt();
 
       // Build a predictable, collision-free storage key:

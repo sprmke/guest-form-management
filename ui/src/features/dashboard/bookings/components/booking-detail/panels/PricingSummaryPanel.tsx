@@ -1,6 +1,10 @@
 import { Receipt, Sparkles, Ticket } from 'lucide-react';
 
-import { isStaycationVoucher } from '@/features/guest/sd-form/lib/voucher';
+import {
+  formatVoucherOfferLabel,
+  resolveVoucherPercentOff,
+} from '@/features/guest/account/lib/voucherDiscount';
+import { isStaycationVoucher, isPercentOffVoucher } from '@/features/guest/sd-form/lib/voucher';
 
 import { DocPreview } from '@/features/dashboard/bookings/components/booking-detail/BookingDocPreview';
 import { BookingDetailCard } from '@/features/dashboard/bookings/components/booking-detail/primitives/BookingDetailCard';
@@ -14,6 +18,62 @@ import { formatMoney } from '@/utils/format/currency';
 
 type PreviewHandler = (label: string, rawUrl: string) => void;
 
+function formatAwardedVoucherLine(code: string, amount: number | null): string {
+  if (isStaycationVoucher({ code, amount: amount ?? undefined })) {
+    return 'Free stay on the next booking';
+  }
+  if (isPercentOffVoucher({ code }) && amount != null) {
+    return `${amount}% off the next booking`;
+  }
+  if (amount != null) {
+    return `${formatMoney(amount)} off the next booking`;
+  }
+  return '—';
+}
+
+function AppliedVoucherBlock({ booking }: { booking: BookingRow }) {
+  const code = booking.applied_voucher_code?.trim();
+  if (!code) return null;
+  const percent = resolveVoucherPercentOff(
+    code,
+    booking.applied_voucher_percent != null ? Number(booking.applied_voucher_percent) : null
+  );
+  const discountRaw = booking.applied_voucher_discount_php;
+  const discount =
+    discountRaw == null
+      ? null
+      : typeof discountRaw === 'string'
+        ? Number(discountRaw)
+        : discountRaw;
+
+  return (
+    <BookingDetailRowBlock className="border-border/60 border-t">
+      <p className="text-overline mb-2">Guest voucher</p>
+      <div className="dark:via-background relative overflow-hidden rounded-xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50 via-white to-emerald-50/60 px-4 py-3 ring-1 ring-emerald-100/80 dark:border-emerald-900/50 dark:from-emerald-950/40 dark:to-emerald-950/20 dark:ring-emerald-900/40">
+        <Ticket className="absolute right-3 top-3 size-4 text-emerald-500/70" aria-hidden />
+        <div className="flex items-center gap-3">
+          <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
+            <Ticket className="size-4" aria-hidden />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-mono text-sm font-bold tracking-[0.18em] text-emerald-950 sm:text-base dark:text-emerald-100">
+              {code}
+            </p>
+            <p className="text-caption mt-0.5 text-emerald-900/70 dark:text-emerald-200/70">
+              {formatVoucherOfferLabel({ code, percentOff: percent })}
+              {discount != null && Number.isFinite(discount) && discount > 0 ? (
+                <>
+                  {' · '}−{formatMoney(discount)} on booking rate
+                </>
+              ) : null}
+            </p>
+          </div>
+        </div>
+      </div>
+    </BookingDetailRowBlock>
+  );
+}
+
 function NextStayVoucherBlock({ booking }: { booking: BookingRow }) {
   const code = booking.next_stay_voucher_code;
   if (!code) return null;
@@ -21,6 +81,7 @@ function NextStayVoucherBlock({ booking }: { booking: BookingRow }) {
   const amount =
     amountRaw == null ? null : typeof amountRaw === 'string' ? Number(amountRaw) : amountRaw;
   const awardedAt = booking.next_stay_voucher_awarded_at;
+  const redeemedAt = booking.next_stay_voucher_redeemed_at;
 
   return (
     <BookingDetailRowBlock className="border-border/60 border-t">
@@ -36,11 +97,7 @@ function NextStayVoucherBlock({ booking }: { booking: BookingRow }) {
               {code}
             </p>
             <p className="text-caption mt-0.5 text-emerald-900/70">
-              {isStaycationVoucher({ code })
-                ? 'Free staycation on the next booking'
-                : amount != null
-                  ? `${formatMoney(amount)} off the next booking`
-                  : '—'}
+              {redeemedAt ? 'Redeemed on a later booking' : formatAwardedVoucherLine(code, amount)}
               {awardedAt ? (
                 <>
                   {' · '}
@@ -75,6 +132,8 @@ export function PricingSummaryPanel({
       <BookingDetailRowBlock className="py-0 pb-3.5">
         <BookingPricingSummary booking={booking} layout="page" />
       </BookingDetailRowBlock>
+
+      {booking.applied_voucher_code ? <AppliedVoucherBlock booking={booking} /> : null}
 
       {(hasPaymentReceipt || hasBalanceReceipt) && (
         <BookingDetailRowBlock className="border-border/60 border-t">

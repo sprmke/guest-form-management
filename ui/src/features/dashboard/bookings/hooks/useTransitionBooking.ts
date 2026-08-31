@@ -57,6 +57,7 @@ export type TransitionPayload = {
   pet_fee?: number | null;
   parking_rate_guest?: number | null;
   guest_additional_fee?: number | null;
+  applied_voucher_discount_php?: number | null;
   surprise_decor_staff_acknowledged?: boolean;
   parking_rate_paid?: number | null;
   parking_owner_email?: string | null;
@@ -159,15 +160,17 @@ export function useTransitionBooking() {
   return useMutation({
     mutationFn: (input: TransitionInput) => callTransitionBooking(input, propertyId),
     onSuccess: async (data, variables) => {
+      // Write session hint before cache updates so Automation Triggers can expand
+      // when Free-plan skips land and eligible Send kinds appear on the new status.
+      notifyAutomationSkippedByPlan(
+        data?.sideEffects?.automationSkippedByPlan ?? [],
+        variables.bookingId
+      );
       if (data?.booking) {
         qc.setQueryData(bookingDetailQueryKey(variables.bookingId, propertyId), data.booking);
       }
       await qc.invalidateQueries({ queryKey: BOOKING_QUERY_KEY(variables.bookingId) });
       await qc.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY });
-      notifyAutomationSkippedByPlan(
-        data?.sideEffects?.automationSkippedByPlan ?? [],
-        variables.bookingId
-      );
     },
   });
 }
@@ -389,6 +392,45 @@ export function useIssueGuestStayGuideToken(bookingId?: string) {
       );
       await qc.invalidateQueries({ queryKey: BOOKING_QUERY_KEY(bookingId) });
       await qc.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY });
+    },
+  });
+}
+
+/**
+ * Mint (or rotate) the guest-form completion link for an OTA-ingested booking
+ * (calendar sync Phase 2, §6.5). Returns `{ completionUrl, guestFormToken }`.
+ */
+export function useIssueGuestFormCompletionToken(bookingId?: string) {
+  const qc = useQueryClient();
+  const propertyId = usePropertyIdParam();
+
+  return useMutation({
+    mutationFn: async (): Promise<{
+      success: boolean;
+      data?: { completionUrl: string; guestFormToken: string };
+    }> => {
+      if (!bookingId) throw new Error('bookingId is required');
+      const jwt = await getAdminJwt();
+      const res = await fetch(
+        scopedFunctionsUrl('/issue-guest-form-completion-token', propertyId),
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
+          body: JSON.stringify({ bookingId }),
+        }
+      );
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error ?? `HTTP ${res.status}`);
+      return json;
+    },
+    onSuccess: async (result) => {
+      if (!bookingId || !result.data) return;
+      qc.setQueryData(
+        bookingDetailQueryKey(bookingId, propertyId),
+        (prev: BookingRow | null | undefined) =>
+          prev ? { ...prev, guest_form_token: result.data!.guestFormToken } : prev
+      );
+      await qc.invalidateQueries({ queryKey: BOOKING_QUERY_KEY(bookingId) });
     },
   });
 }

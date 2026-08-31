@@ -20,6 +20,13 @@ import {
   type PropertyExternalReview,
   type SuperhostStatus,
 } from '@/features/dashboard/org/lib/propertyExternalReviews';
+import type { PropertyVoucherPrize } from '@/features/dashboard/org/lib/propertyVoucherSettings';
+import {
+  voucherPrizesEqual,
+  voucherPrizesForEditor,
+} from '@/features/dashboard/org/lib/propertyVoucherSettings';
+import type { VoucherRevealStyle } from '@/features/dashboard/org/lib/voucherRevealStyle';
+import { normalizeVoucherRevealStyle } from '@/features/dashboard/org/lib/voucherRevealStyle';
 import type { AppSettingsPatchBody } from '@/features/dashboard/org/lib/propertySettingsSave';
 
 import { supabase } from '@/lib/supabase/client';
@@ -79,9 +86,6 @@ export type AppSettingsDto = {
   airbnbUrl: string;
   instagramUrl: string;
   tiktokUrl: string;
-  mainSocialPlatformStored?: string;
-  inheritedMainSocialPlatform?: string;
-  resolvedMainSocialPlatform?: string;
   defaultParkingRateGuest: number;
   gcashName: string;
   gcashNumber: string;
@@ -124,6 +128,9 @@ export type AppSettingsDto = {
   propertyIntegrations: PropertyIntegrationStatus;
   platformSecrets: PlatformSecretsStatus;
   externalReviews: PropertyExternalReview[];
+  vouchersEnabled: boolean;
+  voucherPrizes: PropertyVoucherPrize[];
+  voucherRevealStyle: VoucherRevealStyle;
   superhostVerificationUrl: string;
   superhostProofImageUrl: string;
   superhostStatus: SuperhostStatus;
@@ -156,8 +163,10 @@ export type AppSettingsFormValues = {
   airbnbUrl: string;
   instagramUrl: string;
   tiktokUrl: string;
-  mainSocialPlatform: string;
   externalReviews: PropertyExternalReview[];
+  vouchersEnabled: boolean;
+  voucherPrizes: PropertyVoucherPrize[];
+  voucherRevealStyle: VoucherRevealStyle;
   superhostVerificationUrl: string;
   /** `null` inherits the residence default; `[]` is a valid explicit empty override. */
   documentRequirementsOverride: DocumentRequirement[] | null;
@@ -203,8 +212,10 @@ export function appSettingsToFormValues(data: AppSettingsDto): AppSettingsFormVa
     airbnbUrl: data.airbnbUrl,
     instagramUrl: data.instagramUrl,
     tiktokUrl: data.tiktokUrl,
-    mainSocialPlatform: data.mainSocialPlatformStored ?? '',
     externalReviews: normalizeExternalReviewsDraft(data.externalReviews),
+    vouchersEnabled: data.vouchersEnabled !== false,
+    voucherPrizes: voucherPrizesForEditor(data.voucherPrizes),
+    voucherRevealStyle: normalizeVoucherRevealStyle(data.voucherRevealStyle),
     superhostVerificationUrl: data.superhostVerificationUrl,
     documentRequirementsOverride: data.documentRequirementsOverride,
   };
@@ -296,8 +307,10 @@ export function operationalFormIsDirty(
     draft.airbnbUrl.trim() !== baseline.airbnbUrl.trim() ||
     draft.instagramUrl.trim() !== baseline.instagramUrl.trim() ||
     draft.tiktokUrl.trim() !== baseline.tiktokUrl.trim() ||
-    draft.mainSocialPlatform.trim() !== baseline.mainSocialPlatform.trim() ||
     !externalReviewsEqual(draft.externalReviews, baseline.externalReviews) ||
+    draft.vouchersEnabled !== baseline.vouchersEnabled ||
+    !voucherPrizesEqual(draft.voucherPrizes, baseline.voucherPrizes) ||
+    draft.voucherRevealStyle !== baseline.voucherRevealStyle ||
     draft.superhostVerificationUrl.trim() !== baseline.superhostVerificationUrl.trim()
   );
 }

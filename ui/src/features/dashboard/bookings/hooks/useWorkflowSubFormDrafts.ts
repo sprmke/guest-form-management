@@ -121,6 +121,9 @@ export function useWorkflowSubFormDrafts(
           pet_fee: booking.has_pets === true ? pricingValues.pet_fee : 0,
           parking_rate_guest: booking.need_parking === true ? pricingValues.parking_rate_guest : 0,
           guest_additional_fee: pricingValues.guest_additional_fee,
+          ...(pricingValues.applied_voucher_discount_php != null
+            ? { applied_voucher_discount_php: pricingValues.applied_voucher_discount_php }
+            : {}),
         };
         if (booking.guest_requests_surprise_decor && surpriseDecorStaffAck) {
           return {
