@@ -1,6 +1,15 @@
 import type { GuestPaymentInfo } from '@/features/guest/form/hooks/useGuestPaymentInfo';
 import { DEFAULT_GUEST_PAYMENT_INFO } from '@/features/guest/form/hooks/useGuestPaymentInfo';
 import { DEFAULT_ORG_LOGO_URL } from '@/features/guest/marketing/properties/lib/mapPublicPropertyDetail';
+import { PLATFORM_APP_NAME, resolveOrgDisplayName } from '@/lib/platformBranding';
+
+export {
+  isLegacyPlatformOrgBrand as isLegacyKameHomeBrand,
+  resolveOrgDisplayName,
+} from '@/lib/platformBranding';
+
+/** @deprecated Prefer `resolveOrgDisplayName` / `PLATFORM_APP_NAME`. */
+export const PLATFORM_BRAND_NAME = PLATFORM_APP_NAME || 'Host';
 
 export function formatResidenceShortName(name: string | null | undefined): string | null {
   const trimmed = name?.trim();
@@ -41,21 +50,8 @@ export function formatGafEmailHint(residenceName: string | null): string {
   return `Use an email you can access. Your GAF will be sent there for ${place} check-in.`;
 }
 
-/** Platform brand for guest chrome when org name is missing or still the legacy single-property label. */
-export const PLATFORM_BRAND_NAME = 'Kame Homes';
-
-/** True when a label is the old single-tenant brand (optionally with Azure North). */
-export function isLegacyKameHomeBrand(label: string | null | undefined): boolean {
-  const value = label?.trim() ?? '';
-  if (!value) return false;
-  // "Kame Home", "KameHome", "Kame Home — Azure North", "Kame Home - Azure North Residences"
-  return /^kame\s*home(?:\s*[—\-–]\s*azure\s*north(?:\s+residences?)?)?$/i.test(value);
-}
-
 function resolveGuestFooterOrgName(organizationName: string | null | undefined): string {
-  const org = organizationName?.trim();
-  if (!org || isLegacyKameHomeBrand(org)) return PLATFORM_BRAND_NAME;
-  return org;
+  return resolveOrgDisplayName(organizationName, 'Host');
 }
 
 /** Copyright line for operational guest pages — host org, or platform brand. No residence. */
