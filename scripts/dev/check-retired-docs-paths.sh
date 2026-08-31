@@ -16,11 +16,11 @@ if [[ "$VIOLATIONS" -gt 0 ]]; then
   exit 1
 fi
 
-# Workflow docs must not use YYYY-MM-DD- filename prefixes
+# Workflow docs must not use YYYY-MM-DD- filename prefixes (not QA nums like 20-superhost.md)
 while IFS= read -r -d '' f; do
   echo "DATE PREFIX: $(basename "$f") — use <slug>.md only (see .cursor/rules/plan-mode.mdc)."
   VIOLATIONS=$((VIOLATIONS + 1))
-done < <(find "$ROOT/docs/workflow" -name '20*.md' -print0 2>/dev/null)
+done < <(find "$ROOT/docs/workflow" -name '2[0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-*.md' -print0 2>/dev/null)
 
 if [[ "$VIOLATIONS" -gt 0 ]]; then
   exit 1

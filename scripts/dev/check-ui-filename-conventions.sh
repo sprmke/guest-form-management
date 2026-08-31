@@ -55,6 +55,11 @@ while IFS= read -r -d '' f; do
   fi
 
   if [[ "$ext" == "ts" ]]; then
+    # Vitest co-located specs (e.g. voucherRevealWheel.test.ts)
+    if [[ "$base" == *.test.ts ]]; then
+      continue
+    fi
+
     if [[ "$rel" == */hooks/* ]]; then
       if ! is_use_hook "$name"; then
         fail "$rel (expected usePascalCase.ts)"
