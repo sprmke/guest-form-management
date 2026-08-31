@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 
-import { Check, Copy, ExternalLink, MapPin } from 'lucide-react';
-import { toast } from 'sonner';
+import { MapPin } from 'lucide-react';
 
 import { RequiredMark } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import { useGoogleMapsLoader } from '@/features/dashboard/org/hooks/useGoogleMapsLoader';
@@ -13,7 +12,6 @@ import {
   type PropertyLocationFields,
 } from '@/features/dashboard/org/lib/propertyLocation';
 
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
@@ -25,24 +23,6 @@ type PropertyLocationPickerProps = {
   mapError?: string | null;
   onFieldInteract?: (fieldId: string) => void;
 };
-
-function locationMetaLine(value: PropertyLocationFields): string | null {
-  const parts = [value.city, value.province, value.country].filter(
-    (part) => part.trim().length > 0
-  );
-  if (parts.length === 0) return null;
-  return parts.join(', ');
-}
-
-function resolvedMapsUrl(value: PropertyLocationFields): string | null {
-  if (value.mapsUrl.trim()) return value.mapsUrl.trim();
-  if (value.latitude == null || value.longitude == null) return null;
-  return buildGoogleMapsUrl(value.latitude, value.longitude, value.placeId);
-}
-
-function hasPinnedLocation(value: PropertyLocationFields): boolean {
-  return value.latitude != null && value.longitude != null;
-}
 
 export function PropertyLocationPicker({
   value,
@@ -60,6 +40,8 @@ export function PropertyLocationPicker({
   const geocoderRef = useRef<google.maps.Geocoder | null>(null);
   const initialGeocodeDoneRef = useRef(false);
   const skipInputSyncRef = useRef(false);
+  const valueRef = useRef(value);
+  valueRef.current = value;
 
   const applyLocation = useCallback(
     (patch: Partial<PropertyLocationFields>) => {
@@ -130,12 +112,13 @@ export function PropertyLocationPicker({
   useEffect(() => {
     if (!ready || !mapContainerRef.current || mapRef.current) return;
 
-    const latitude = value.latitude ?? DEFAULT_PROPERTY_MAP_CENTER.lat;
-    const longitude = value.longitude ?? DEFAULT_PROPERTY_MAP_CENTER.lng;
+    const current = valueRef.current;
+    const latitude = current.latitude ?? DEFAULT_PROPERTY_MAP_CENTER.lat;
+    const longitude = current.longitude ?? DEFAULT_PROPERTY_MAP_CENTER.lng;
 
     const map = new google.maps.Map(mapContainerRef.current, {
       center: { lat: latitude, lng: longitude },
-      zoom: value.latitude != null ? 16 : 11,
+      zoom: current.latitude != null ? 16 : 11,
       mapTypeControl: false,
       streetViewControl: false,
       fullscreenControl: true,
@@ -163,7 +146,17 @@ export function PropertyLocationPicker({
 
     mapRef.current = map;
     markerRef.current = marker;
-  }, [disabled, ready, reverseGeocode, value.latitude, value.longitude]);
+
+    return () => {
+      google.maps.event.clearInstanceListeners(marker);
+      google.maps.event.clearInstanceListeners(map);
+      marker.setMap(null);
+      mapRef.current = null;
+      markerRef.current = null;
+      geocoderRef.current = null;
+      initialGeocodeDoneRef.current = false;
+    };
+  }, [disabled, ready, reverseGeocode]);
 
   useEffect(() => {
     if (!ready || !mapRef.current || !markerRef.current) return;
@@ -178,7 +171,7 @@ export function PropertyLocationPicker({
     if (!ready || !inputRef.current || disabled) return;
 
     const autocomplete = new google.maps.places.Autocomplete(inputRef.current, {
-      fields: ['formatted_address', 'geometry', 'place_id', 'address_components'],
+      fields: ['name', 'formatted_address', 'geometry', 'place_id', 'address_components'],
       componentRestrictions: { country: 'ph' },
     });
 
@@ -233,22 +226,7 @@ export function PropertyLocationPicker({
     }
   };
 
-  const handleCopyMapsLink = async () => {
-    const link = resolvedMapsUrl(value);
-    if (!link) return;
-    try {
-      await navigator.clipboard.writeText(link);
-      toast.success('Maps link copied');
-    } catch {
-      toast.error('Could not copy link');
-    }
-  };
-
   const mapsUnavailable = !apiKeyConfigured || Boolean(error);
-  const mapsUrl = resolvedMapsUrl(value);
-  const pinned = hasPinnedLocation(value);
-  const metaLine = locationMetaLine(value);
-  const displayAddress = value.address.trim() || 'Pinned location';
 
   return (
     <div className="space-y-4">
@@ -300,50 +278,6 @@ export function PropertyLocationPicker({
             ) : null}
           </div>
           {mapError ? <p className="text-destructive text-xs">{mapError}</p> : null}
-        </div>
-      ) : null}
-
-      {pinned && mapsUrl ? (
-        <div className="bg-card rounded-xl border p-3 sm:p-4">
-          <div className="flex gap-3">
-            <div
-              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-              aria-hidden
-            >
-              <Check className="size-5" />
-            </div>
-            <div className="min-w-0 flex-1 space-y-0.5">
-              <p className="text-sm font-medium leading-snug">{displayAddress}</p>
-              {metaLine && metaLine !== displayAddress ? (
-                <p className="text-muted-foreground text-xs">{metaLine}</p>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={disabled}
-              className="min-h-[44px] w-full justify-center gap-2"
-              asChild
-            >
-              <a href={mapsUrl} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="size-4 shrink-0" aria-hidden />
-                Open in Google Maps
-              </a>
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={disabled}
-              className="min-h-[44px] w-full justify-center gap-2"
-              onClick={() => void handleCopyMapsLink()}
-            >
-              <Copy className="size-4 shrink-0" aria-hidden />
-              Copy link
-            </Button>
-          </div>
         </div>
       ) : null}
     </div>

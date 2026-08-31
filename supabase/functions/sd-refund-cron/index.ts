@@ -144,7 +144,7 @@ function supabaseAdmin() {
 }
 
 const SELECT_COLUMNS =
-  'id, property_id, check_in_date, check_out_date, check_out_time, guest_facebook_name, booking_rate, down_payment, security_deposit, pet_fee, parking_rate_guest, guest_additional_fee, guest_balance_paid_amount, guest_balance_payment_receipt_url, sd_refund_form_emailed_at';
+  'id, property_id, check_in_date, check_out_date, check_out_time, guest_facebook_name, guest_email, booking_rate, down_payment, security_deposit, pet_fee, parking_rate_guest, guest_additional_fee, guest_balance_paid_amount, guest_balance_payment_receipt_url, sd_refund_form_emailed_at';
 
 type CronResultRow = {
   bookingId: string;
@@ -301,8 +301,14 @@ serve(async (req) => {
       const sdAmount = Number(booking.security_deposit ?? 0);
       const sdIsZero = sdAmount === 0;
 
+      // OTA-ingested bookings (calendar sync Phase 2): a blank guest_email means the guest
+      // has not completed the forwarded form yet — never send the check-out / SD email to
+      // nobody. Once the form is completed guest_email is populated and this clears (same
+      // rule as the workflowOrchestrator guard).
+      const noGuestContact = !String(booking.guest_email ?? '').trim();
+
       const checkoutAgeMs = nowMs - checkoutDt.getTime();
-      const suppressStaleEmail = checkoutAgeMs > maxAgeMs || sdIsZero;
+      const suppressStaleEmail = checkoutAgeMs > maxAgeMs || sdIsZero || noGuestContact;
 
       const emailedAtRaw = (booking as Record<string, unknown>).sd_refund_form_emailed_at;
       const hadCheckoutEmailInDb = typeof emailedAtRaw === 'string' && emailedAtRaw.trim() !== '';

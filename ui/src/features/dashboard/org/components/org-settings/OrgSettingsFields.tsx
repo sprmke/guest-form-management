@@ -7,7 +7,6 @@ export function OrgSettingsField({
   id,
   label,
   help,
-  hint,
   required = false,
   error,
   children,
@@ -15,9 +14,8 @@ export function OrgSettingsField({
 }: {
   id: string;
   label: string;
-  /** Tooltip on a ? next to the label. Prefer this over `hint` for explanatory copy. */
+  /** Tooltip on a ? next to the label. */
   help?: string;
-  hint?: string;
   required?: boolean;
   error?: string | null;
   children: ReactNode;
@@ -26,7 +24,6 @@ export function OrgSettingsField({
   return (
     <div className={cn('space-y-1.5', className)}>
       <FieldLabel htmlFor={id} label={label} required={required} help={help} />
-      {hint ? <p className="text-muted-foreground text-xs leading-snug">{hint}</p> : null}
       {children}
       {error ? <p className="text-destructive text-xs">{error}</p> : null}
     </div>

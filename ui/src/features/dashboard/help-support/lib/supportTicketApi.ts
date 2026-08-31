@@ -5,6 +5,8 @@ import {
 } from '@/features/dashboard/org/lib/adminApiScope';
 import { callEdgeFunction, getSessionJwt } from '@/features/dashboard/org/lib/edgeClient';
 
+import { prepareUpload } from '@/lib/media/prepareUpload';
+
 import type { SupportTicketAttachmentDraft, SupportTicketCategory } from './supportTicketSchema';
 
 export type SupportTicketScopeParams = {
@@ -107,9 +109,15 @@ export async function uploadSupportTicketAttachment(
   scope: SupportTicketScopeParams,
   file: File
 ): Promise<SupportTicketAttachmentDraft> {
+  const prepared = await prepareUpload(file, {
+    imagePreset: 'CONTENT',
+    surface: 'support-ticket-attachment',
+  });
+  if (prepared.error) throw new Error(prepared.error);
+
   const jwt = await getSessionJwt();
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('file', prepared.file);
   if (scope.orgSlug) formData.append('orgSlug', scope.orgSlug);
   if (scope.orgId) formData.append('orgId', scope.orgId);
   if (scope.channel !== 'guest') {

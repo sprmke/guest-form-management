@@ -32,7 +32,7 @@ export type PlanFeatures = {
   customTemplates: boolean;
   publicPagesAutosave: boolean;
   bookingImport: boolean;
-  /** Connect external OTA calendars (Airbnb / Booking.com / VRBO) for two-way iCal sync. */
+  /** Connect Airbnb calendar for two-way iCal sync. */
   calendarSync: boolean;
   customRoles: boolean;
 };
@@ -154,6 +154,6 @@ export const PLAN_FEATURE_LABELS: Record<keyof PlanFeatures, string> = {
   customTemplates: 'Advanced template management',
   publicPagesAutosave: 'Public pages editor',
   bookingImport: 'AI booking import',
-  calendarSync: 'Airbnb & OTA calendar sync',
+  calendarSync: 'Airbnb calendar sync',
   customRoles: 'Custom team roles',
 };

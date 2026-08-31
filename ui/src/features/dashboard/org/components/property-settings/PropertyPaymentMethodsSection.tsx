@@ -40,6 +40,66 @@ function providerInitial(provider: string): string {
   return label.charAt(0).toUpperCase() || 'P';
 }
 
+/** Compact rows for the settings card — provider + primary only (no account/QR). */
+export function PropertyPaymentMethodsSummary({
+  methods,
+  onManage,
+}: {
+  methods: PropertyPaymentMethod[];
+  onManage: () => void;
+}) {
+  const ordered = [...methods].sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary));
+
+  return (
+    <div className="space-y-2">
+      {ordered.map((method) => (
+        <div
+          key={method.id}
+          className={cn(
+            'flex min-h-[44px] items-center gap-3 rounded-xl border px-3 py-3',
+            method.isPrimary
+              ? 'border-primary/30 from-primary/[0.06] via-card to-card ring-primary/15 bg-gradient-to-br shadow-sm ring-1'
+              : 'border-border/60 bg-card'
+          )}
+        >
+          <div
+            className={cn(
+              'flex size-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold',
+              method.isPrimary
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'bg-muted text-foreground'
+            )}
+            aria-hidden
+          >
+            {providerInitial(method.provider)}
+          </div>
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+            <p className="text-foreground truncate text-sm font-semibold">
+              {paymentProviderLabel(method.provider)}
+            </p>
+            {method.isPrimary ? (
+              <Badge className="bg-primary/15 text-primary hover:bg-primary/15 gap-1 border-0 text-[10px] font-bold uppercase tracking-wide">
+                <Star className="size-3 fill-current" aria-hidden />
+                Primary
+              </Badge>
+            ) : null}
+          </div>
+          {method.isPrimary ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-[44px] shrink-0"
+              onClick={onManage}
+            >
+              Manage
+            </Button>
+          ) : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function PaymentQrUpload({
   fieldId,
   provider,

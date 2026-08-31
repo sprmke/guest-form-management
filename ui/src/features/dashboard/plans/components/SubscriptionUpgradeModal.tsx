@@ -11,7 +11,7 @@ import {
 } from '@/features/dashboard/org/lib/adminApiScope';
 import { orgPlansPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { PlanReviewDialog } from '@/features/dashboard/plans/components/PlanReviewDialog';
-import { useOrgPlan } from '@/features/dashboard/plans/hooks/useOrgPlan';
+import { useCreateOrgPlanCheckout, useOrgPlan } from '@/features/dashboard/plans/hooks/useOrgPlan';
 import { usePropertyEntitlements } from '@/features/dashboard/plans/hooks/usePropertyEntitlements';
 import { isFeatureEnabled, type PlanFeatureKey } from '@/features/dashboard/plans/lib/planFeatures';
 import {
@@ -28,7 +28,7 @@ type Props = {
 
 /**
  * Feature-gate entry — resolves the minimum plan for `feature`, shows PlanReviewDialog in place,
- * and only navigates to org Plans & Billing when the host confirms **Continue to payment**.
+ * then starts checkout and opens org **Billing** (no second review modal).
  */
 export function SubscriptionUpgradeModal({ open, onOpenChange, feature }: Props) {
   const navigate = useNavigate();
@@ -36,6 +36,7 @@ export function SubscriptionUpgradeModal({ open, onOpenChange, feature }: Props)
   const orgId = useResolvedOrgId();
   const propertyId = usePropertyIdParam();
   const { data } = useOrgPlan(orgId);
+  const createCheckout = useCreateOrgPlanCheckout(orgId);
   const { data: propertyEntitlements } = usePropertyEntitlements();
 
   const plans = useMemo(() => data?.plans ?? [], [data?.plans]);
@@ -73,9 +74,10 @@ export function SubscriptionUpgradeModal({ open, onOpenChange, feature }: Props)
   }, [open, feature, targetPlan, onOpenChange]);
 
   const handleContinueToPayment = async (planId: string) => {
+    if (!orgSlug || !orgId) return;
+    await createCheckout.mutateAsync({ planId });
     onOpenChange(false);
-    if (!orgSlug) return;
-    navigate(`${orgPlansPath(orgSlug)}?reviewPlan=${encodeURIComponent(planId)}`);
+    navigate(`${orgPlansPath(orgSlug)}?tab=billing`);
   };
 
   return (
@@ -90,7 +92,7 @@ export function SubscriptionUpgradeModal({ open, onOpenChange, feature }: Props)
         onOpenChange(false);
       }}
       onCheckoutPaid={handleContinueToPayment}
-      isSubmitting={false}
+      isSubmitting={createCheckout.isPending}
     />
   );
 }

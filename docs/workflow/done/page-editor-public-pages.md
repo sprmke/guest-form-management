@@ -104,7 +104,7 @@ type PropertyLandingConfig = {
 Concretely, unchanged storage locations:
 
 - `properties.settings.description`, `.media` (photos/videos array), `.enabledAmenities`/`.customAmenities`, `.enabledHouseRules`/`.customHouseRules`, `.cancellationPolicy`
-- `app_settings.brand_color`, `.facebook_reviews_url`/`.airbnb_url`/`.instagram_url`/`.tiktok_url`/`.main_social_platform`, `.external_reviews` (JSONB)
+- `app_settings.brand_color`, `.facebook_reviews_url`/`.airbnb_url`/`.instagram_url`/`.tiktok_url`, `.external_reviews` (JSONB)
 
 This avoids a backfill/migration script, avoids any window where two storage locations could disagree, and keeps every existing read path (`get-public-property`, emails, etc.) untouched. "Single source of truth" here means **one editable UI surface**, not a storage relocation — moving data would be unjustified complexity for zero functional gain.
 

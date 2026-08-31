@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { PROPERTY_TEMPLATES_QUERY_KEY } from '@/features/dashboard/bookings/hooks/usePropertyTemplates';
 import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 
+import { prepareUpload } from '@/lib/media/prepareUpload';
 import { supabase } from '@/lib/supabase/client';
 
 type UploadResult = {
@@ -36,8 +37,15 @@ export function useUploadPropertyTemplateAsset() {
 
   return useMutation({
     mutationFn: async (input: SectionUploadArgs | InlineUploadArgs): Promise<UploadResult> => {
+      const prepared = await prepareUpload(input.file, {
+        imagePreset: 'CONTENT',
+        surface: `property-template-${input.assetType}`,
+      });
+      if (prepared.error) throw new Error(prepared.error);
+      const file = prepared.file;
+
       const jwt = await getAdminJwt();
-      const ext = input.file.name.includes('.') ? `.${input.file.name.split('.').pop()}` : '';
+      const ext = file.name.includes('.') ? `.${file.name.split('.').pop()}` : '';
       const storageName =
         input.assetType === 'section_image'
           ? `${input.templateKey}${ext}`
@@ -45,7 +53,7 @@ export function useUploadPropertyTemplateAsset() {
 
       const body = new FormData();
       body.append('assetType', input.assetType);
-      body.append('file', input.file);
+      body.append('file', file);
       body.append('fileName', storageName);
       if (input.assetType === 'section_image') {
         body.append('templateKey', input.templateKey);

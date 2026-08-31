@@ -11,6 +11,7 @@ import { GuestAccountIndexPage } from '@/features/guest/account/pages/GuestAccou
 import { GuestMessagesPage } from '@/features/guest/account/pages/GuestMessagesPage';
 import { GuestProfilePage } from '@/features/guest/account/pages/GuestProfilePage';
 import { GuestTicketsPage } from '@/features/guest/account/pages/GuestTicketsPage';
+import { GuestVouchersPage } from '@/features/guest/account/pages/GuestVouchersPage';
 import { GuestWishlistPage } from '@/features/guest/account/pages/GuestWishlistPage';
 
 export const guestAccountRoutes = [
@@ -26,6 +27,7 @@ export const guestAccountRoutes = [
     <Route index element={<GuestAccountIndexPage />} />
     <Route path="profile" element={<GuestProfilePage />} />
     <Route path="stays" element={<GuestMessagesPage />} />
+    <Route path="vouchers" element={<GuestVouchersPage />} />
     <Route path="favorites" element={<GuestWishlistPage />} />
     <Route path="tickets/*" element={<GuestTicketsPage />} />
     <Route path="trips" element={<Navigate to={GUEST_ACCOUNT_STAYS_PATH} replace />} />

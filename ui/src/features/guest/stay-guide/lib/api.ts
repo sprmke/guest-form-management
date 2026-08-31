@@ -1,16 +1,14 @@
+import type { StayGuideConfigV2 } from '@/features/guest/stay-guide/lib/stayGuideConfig';
+
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
-export type StayGuideSectionDto = {
-  key: string;
-  label: string;
-  displayHeading: string;
-  html: string;
-  imageUrl: string | null;
-  /** Template row `updated_at` — cache-busts fixed storage paths after replace. */
-  imageUpdatedAt?: string | null;
-};
-
+/**
+ * v1 stay-guide section config — still consumed by `stayGuideChapters.ts` and the chapter
+ * renderer (`StayGuideChapter` / `StayGuideTabs`). Kept alongside the v2 `StayGuideConfigV2`
+ * during the Stay Guide → page-template-engine migration; remove once the chapter renderer
+ * is ported to v2.
+ */
 export type StayGuideChapterConfig = {
   id: 'getting-in' | 'make-yourself-at-home' | 'before-you-go';
   visible: boolean;
@@ -27,6 +25,16 @@ export type StayGuideSectionConfig = {
   quickNavTabs: { visible: boolean };
   chapters: StayGuideChapterConfig[];
   helpSection: { visible: boolean };
+};
+
+export type StayGuideSectionDto = {
+  key: string;
+  label: string;
+  displayHeading: string;
+  html: string;
+  imageUrl: string | null;
+  /** Template row `updated_at` — cache-busts fixed storage paths after replace. */
+  imageUpdatedAt?: string | null;
 };
 
 export type StayGuideCheckInDocumentDto = {
@@ -87,9 +95,10 @@ export type GuestStayGuideDto = {
   checkInDocuments?: StayGuideCheckInDocumentDto[];
   validUntil: string;
   todayManila: string;
+  /** One of the 6 `showcase-*` template keys (Stay Guide shares the Showcase engine). */
   templateKey: string;
-  /** Present once public-page-configs ships; optional for older responses. */
-  sectionConfig?: StayGuideSectionConfig;
+  /** v2 page config (palette / typography / motion + flat sections[]). v1 rows upgrade on read. */
+  sectionConfig?: StayGuideConfigV2;
 };
 
 type ApiSuccess<T> = { success: true; data: T };

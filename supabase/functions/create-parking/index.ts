@@ -22,6 +22,7 @@ import {
 } from '../_shared/parkingSlotUnit.ts';
 import { parseAcceptedVehicleTypes } from '../_shared/parkingDimensionDefaults.ts';
 import { seedParkingSettings } from '../_shared/parkingSettingsSeed.ts';
+import { syncPreferredOwnerParkingDefaults } from '../_shared/preferredOwnerParkingDefaults.ts';
 import {
   azureNorthLocationSeed,
   isAzureNorthResidence,
@@ -126,6 +127,13 @@ serveAuthenticated('create-parking', async (req) => {
   } catch (e) {
     console.error('[create-parking] seed:', e);
     return jsonError(req, 'Parking created but settings seed failed', 500);
+  }
+
+  // Properties with no (valid) preferred listing get the earliest ACTIVE parking.
+  try {
+    await syncPreferredOwnerParkingDefaults(supabase, orgId);
+  } catch (e) {
+    console.error('[create-parking] preferred parking defaults:', e);
   }
 
   return jsonSuccess(req, { parking: serializeParking(data) });

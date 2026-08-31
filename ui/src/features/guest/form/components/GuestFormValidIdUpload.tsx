@@ -54,7 +54,7 @@ export function GuestFormValidIdUpload({
                 Re-upload Image
                 <input
                   type="file"
-                  accept="image/jpeg,image/jpg,image/png,image/heic"
+                  accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif"
                   className="hidden"
                   {...fieldProps}
                   onChange={(event) => handleFileSelect(event.target.files?.[0])}
@@ -78,7 +78,7 @@ export function GuestFormValidIdUpload({
                   Replace Image
                   <input
                     type="file"
-                    accept="image/jpeg,image/jpg,image/png,image/heic"
+                    accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif"
                     className="hidden"
                     {...fieldProps}
                     onChange={(event) => handleFileSelect(event.target.files?.[0])}
@@ -93,7 +93,7 @@ export function GuestFormValidIdUpload({
                 Upload Image
                 <input
                   type="file"
-                  accept="image/jpeg,image/jpg,image/png,image/heic"
+                  accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif"
                   className="hidden"
                   {...fieldProps}
                   onChange={(event) => handleFileSelect(event.target.files?.[0])}

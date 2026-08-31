@@ -300,7 +300,7 @@ Multi-users/multi-tenant todos:
 
 ### Vouchers
 
-- [ ] **Property settings — voucher configuration.** Admin UI to configure voucher **prices**, **rewards**, **winning percentages**, and related knobs (today: env/`VOUCHER_WIN_WEIGHTS` + SD form slot machine only).
+- [x] **Property settings — voucher configuration.** Admin UI on **Reviews & vouchers** (`vouchers_enabled` + `voucher_prizes`); guest SD / guest-review respect enable; claim rolls property prizes.
 
 ### Property & org settings
 

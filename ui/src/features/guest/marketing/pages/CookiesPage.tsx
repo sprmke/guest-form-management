@@ -1,5 +1,6 @@
 import { LegalSimplePage } from '@/features/guest/marketing/legal/components/LegalSimplePage';
 
+import { PLATFORM_APP_NAME, PLATFORM_CONTACT_EMAIL } from '@/lib/platformBranding';
 import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
 
 export function CookiesPage() {
@@ -7,13 +8,19 @@ export function CookiesPage() {
   return (
     <LegalSimplePage
       title="Cookie Policy"
-      description="How Kame Homes uses cookies and similar browser storage on the marketing site, guest flows, and dashboards."
+      description={
+        PLATFORM_APP_NAME
+          ? `How ${PLATFORM_APP_NAME} uses cookies and similar browser storage on the marketing site, guest flows, and dashboards.`
+          : 'How we use cookies and similar browser storage on the marketing site, guest flows, and dashboards.'
+      }
       sections={[
         {
           title: 'Overview',
           paragraphs: [
-            'Kame Homes uses a small amount of browser storage to keep you signed in and to remember basic preferences. We do not load separate analytics or advertising cookie scripts on the marketing or guest booking surfaces as of this policy.',
-            'Contact: hello@kamehomes.com. See also our Privacy Policy and Terms of Service.',
+            PLATFORM_APP_NAME
+              ? `${PLATFORM_APP_NAME} uses a small amount of browser storage to keep you signed in and to remember basic preferences. We do not load separate analytics or advertising cookie scripts on the marketing or guest booking surfaces as of this policy.`
+              : 'We use a small amount of browser storage to keep you signed in and to remember basic preferences. We do not load separate analytics or advertising cookie scripts on the marketing or guest booking surfaces as of this policy.',
+            `Contact: ${PLATFORM_CONTACT_EMAIL}. See also our Privacy Policy and Terms of Service.`,
           ],
         },
         {
@@ -40,7 +47,7 @@ export function CookiesPage() {
           title: 'Your controls',
           paragraphs: [
             'You can clear site data or block cookies in your browser settings. Blocking authentication storage will prevent sign-in and signed-in features from working.',
-            'For privacy questions beyond cookies, see the Privacy Policy or email hello@kamehomes.com.',
+            `For privacy questions beyond cookies, see the Privacy Policy or email ${PLATFORM_CONTACT_EMAIL}.`,
           ],
         },
       ]}

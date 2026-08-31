@@ -77,6 +77,7 @@ export function ChatRichBody({
               title={block.title}
               subtitle={block.subtitle}
               variant={block.variant}
+              resourceKind={block.resourceKind}
               outbound={outbound}
               onActivate={
                 block.variant === 'calendar' && onCalendarLinkClick

@@ -762,6 +762,9 @@ verify_jwt = false
 [functions.guest-trips]
 verify_jwt = false
 
+[functions.list-guest-vouchers]
+verify_jwt = false
+
 [functions.guest-messages]
 verify_jwt = false
 
@@ -769,6 +772,9 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.upload-guest-chat-asset]
+verify_jwt = false
+
+[functions.upload-inbox-chat-asset]
 verify_jwt = false
 
 [functions.marketing-templates]

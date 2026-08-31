@@ -79,6 +79,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { PLATFORM_APP_NAME, platformProductLabel } from '@/lib/platformBranding';
+import { prepareUpload } from '@/lib/media/prepareUpload';
 import { cn } from '@/lib/utils';
 
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
@@ -112,12 +114,19 @@ async function uploadVerificationAsset(
   assetType: string,
   file: File
 ): Promise<{ path: string; previewUrl: string | null }> {
+  const prepared = await prepareUpload(file, {
+    imagePreset: 'DOCUMENT',
+    surface: `org-verification-${assetType}`,
+  });
+  if (prepared.error) throw new Error(prepared.error);
+  const preparedFile = prepared.file;
+
   const jwt = await getSessionJwt();
   const body = new FormData();
   body.append('orgId', orgId);
   body.append('assetType', assetType);
-  body.append('file', file);
-  body.append('fileName', file.name);
+  body.append('file', preparedFile);
+  body.append('fileName', preparedFile.name);
 
   const res = await fetch(`${FUNCTIONS_URL}/upload-org-verification-asset`, {
     method: 'POST',
@@ -325,7 +334,11 @@ function VerifiedTierStepPanel({
       )}
 
       {approved ? (
-        <p className="text-muted-foreground text-xs leading-relaxed">You can host on Kame Homes.</p>
+        <p className="text-muted-foreground text-xs leading-relaxed">
+          {PLATFORM_APP_NAME
+            ? `You can host on ${platformProductLabel()}.`
+            : 'You can start hosting.'}
+        </p>
       ) : null}
 
       {rejected && rejectionReason ? (

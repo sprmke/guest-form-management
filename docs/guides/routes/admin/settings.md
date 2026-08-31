@@ -125,7 +125,7 @@ Independent of Platform AI. Org-level opt-in still lives on organization Setting
 - [Super Admin Overview](./overview.md)
 - [`docs/architecture/edge-functions.md`](../../../architecture/edge-functions.md) — AI edge function inventory
 - [`docs/archive/operations/ai-platform-billing.md`](../../../archive/operations/ai-platform-billing.md)
-- [`docs/workflow/in-progress/ai-usage-metering-credits-foundation.md`](../../../workflow/in-progress/ai-usage-metering-credits-foundation.md) — credit conversion formula, wallet/ledger design, Phase 1–3 status
+- [`docs/workflow/done/ai-usage-metering-credits-foundation.md`](../../../workflow/done/ai-usage-metering-credits-foundation.md) — credit conversion formula, wallet/ledger design, Phase 1–3 status
 
 ---
 

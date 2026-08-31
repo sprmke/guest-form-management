@@ -6,9 +6,11 @@
  */
 
 import { DatabaseService } from '../_shared/databaseService.ts';
-import { resolveAppSettings } from '../_shared/appSettings.ts';
+import { loadAppSettingsRow, resolveAppSettings } from '../_shared/appSettings.ts';
 import { canAccessGuestReview, resolveGuestReviewPath } from '../_shared/guestReviewEligibility.ts';
 import { guestReviewExistsForBooking } from '../_shared/guestReviewService.ts';
+import { resolveVoucherPrizes } from '../_shared/voucher.ts';
+import { normalizeVoucherRevealStyle } from '../_shared/voucherRevealStyle.ts';
 import { jsonResponse, jsonSuccess } from '../_shared/httpResponse.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
 
@@ -43,6 +45,12 @@ servePublic('get-guest-review', async (req) => {
   const settings = await resolveAppSettings(
     (row.property_id as string | null | undefined) ?? undefined
   );
+  const settingsRow = await loadAppSettingsRow(
+    (row.property_id as string | null | undefined) ?? undefined
+  );
+  const vouchersEnabled = settingsRow?.vouchers_enabled !== false;
+  const voucherPrizes = resolveVoucherPrizes(settingsRow?.voucher_prizes);
+  const voucherRevealStyle = normalizeVoucherRevealStyle(settingsRow?.voucher_reveal_style);
   const guestReviewSubmitted = await guestReviewExistsForBooking(bookingId);
 
   return jsonSuccess(req, {
@@ -50,10 +58,6 @@ servePublic('get-guest-review', async (req) => {
     primary_guest_name: row.primary_guest_name ?? row.guest_facebook_name ?? '',
     check_in_date: row.check_in_date,
     check_out_date: row.check_out_date,
-    facebook_reviews_url: settings.reviewSocialUrl || settings.facebookReviewsUrl,
-    review_social_url: settings.reviewSocialUrl || settings.facebookReviewsUrl,
-    review_social_platform: settings.reviewSocialPlatform || '',
-    review_social_label: settings.reviewSocialLabel || '',
     guest_review_submitted: guestReviewSubmitted,
     email_logo_url: settings.emailLogoUrl,
     brand_color: settings.brandColor,
@@ -61,5 +65,8 @@ servePublic('get-guest-review', async (req) => {
     next_stay_voucher_amount:
       row.next_stay_voucher_amount != null ? Number(row.next_stay_voucher_amount) : null,
     review_path: reviewPath,
+    vouchers_enabled: vouchersEnabled,
+    voucher_prizes: voucherPrizes,
+    voucher_reveal_style: voucherRevealStyle,
   });
 });

@@ -38,6 +38,9 @@ export function useCreateParking() {
       void queryClient.invalidateQueries({ queryKey: PARKINGS_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: [...PARKINGS_QUERY_KEY, variables.orgSlug] });
       void queryClient.invalidateQueries({ queryKey: ['organizations'] });
+      // Preferred parking may have been backfilled on properties.settings
+      void queryClient.invalidateQueries({ queryKey: ['app-settings'] });
+      void queryClient.invalidateQueries({ queryKey: ['properties'] });
     },
   });
 }

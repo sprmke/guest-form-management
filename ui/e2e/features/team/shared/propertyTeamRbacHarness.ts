@@ -319,7 +319,6 @@ function appSettingsPayload() {
     airbnbUrl: '',
     instagramUrl: '',
     tiktokUrl: '',
-    mainSocialPlatformStored: '',
     defaultParkingRateGuest: 0,
     gcashName: '',
     gcashNumber: '',
@@ -383,6 +382,9 @@ function appSettingsPayload() {
       groqApiKeyConfigured: false,
     },
     externalReviews: [],
+    vouchersEnabled: true,
+    voucherPrizes: [],
+    voucherRevealStyle: 'reel',
     superhostVerificationUrl: '',
     superhostProofImageUrl: '',
     superhostStatus: 'none',
@@ -399,7 +401,6 @@ function orgSettingsPayload() {
     airbnbUrl: '',
     instagramUrl: '',
     tiktokUrl: '',
-    mainSocialPlatform: '',
     emailLogoUrl: '',
     updatedAt: null,
     fieldSources: {
@@ -407,7 +408,6 @@ function orgSettingsPayload() {
       airbnbUrl: fieldDefault,
       instagramUrl: fieldDefault,
       tiktokUrl: fieldDefault,
-      mainSocialPlatform: fieldDefault,
       emailLogoUrl: fieldDefault,
     },
   };

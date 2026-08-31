@@ -1,0 +1,181 @@
+/**
+ * Records server-side turn activity for the dashboard assistant activity_timeline block.
+ * Application-hydrated only — never model-authored.
+ */
+
+import { getAssistantToolActivityLabel } from './assistantToolLabels.ts';
+import type { ChatBlock } from './dashboardAssistantSafetyGuard.ts';
+import type {
+  AssistantStreamEmitter,
+  AssistantStreamTaskPlanStep,
+  TaskPlanStepStatus,
+} from './dashboardAssistantStreamEvents.ts';
+
+export type ActivityPhase = 'understanding' | 'tool' | 'synthesizing' | 'safety';
+
+export type ActivityTimelineEntry = {
+  id: string;
+  phase: ActivityPhase;
+  label: string;
+  toolName?: string;
+  status: 'done' | 'failed';
+  durationMs?: number;
+};
+
+export type TaskPlanStep = {
+  id: string;
+  label: string;
+  status: TaskPlanStepStatus;
+  toolName?: string;
+};
+
+const PHASE_STREAM_MAP: Record<
+  ActivityPhase,
+  'understanding' | 'executing' | 'synthesizing' | 'safety'
+> = {
+  understanding: 'understanding',
+  tool: 'executing',
+  synthesizing: 'synthesizing',
+  safety: 'safety',
+};
+
+export class TurnActivityRecorder {
+  private entries: ActivityTimelineEntry[] = [];
+
+  constructor(private emit?: AssistantStreamEmitter) {}
+
+  recordPhase(phase: ActivityPhase, label: string, status: 'done' | 'failed' = 'done'): void {
+    this.entries.push({
+      id: crypto.randomUUID(),
+      phase,
+      label,
+      status,
+    });
+    this.emit?.({ type: 'phase', phase: PHASE_STREAM_MAP[phase], label });
+  }
+
+  recordToolStart(toolName: string, stepId?: string): void {
+    this.emit?.({
+      type: 'tool_start',
+      toolName,
+      label: getAssistantToolActivityLabel(toolName, 'progress'),
+      stepId,
+    });
+  }
+
+  recordToolComplete(toolName: string, ok: boolean, startedAtMs: number, stepId?: string): void {
+    const durationMs = Math.max(0, Date.now() - startedAtMs);
+    this.entries.push({
+      id: crypto.randomUUID(),
+      phase: 'tool',
+      label: getAssistantToolActivityLabel(toolName, ok ? 'done' : 'failed'),
+      toolName,
+      status: ok ? 'done' : 'failed',
+      durationMs,
+    });
+    this.emit?.({ type: 'tool_done', toolName, ok, durationMs, stepId });
+    if (stepId) {
+      this.emit?.({ type: 'plan_update', stepId, status: ok ? 'done' : 'failed' });
+    }
+  }
+
+  get entryCount(): number {
+    return this.entries.length;
+  }
+
+  hasToolActivity(): boolean {
+    return this.entries.some((e) => e.phase === 'tool');
+  }
+
+  buildBlock(): ChatBlock | null {
+    if (this.entries.length === 0) return null;
+    return {
+      type: 'activity_timeline',
+      entries: this.entries,
+    };
+  }
+}
+
+/** Live + final task checklist for multi-step tool batches (2+ tools in one round). */
+export class TurnTaskPlanRecorder {
+  private steps: TaskPlanStep[] = [];
+  private title = 'Working on your request';
+  private active = false;
+
+  constructor(private emit?: AssistantStreamEmitter) {}
+
+  initFromToolCalls(toolCalls: Array<{ name: string }>, roundIndex: number): void {
+    if (toolCalls.length < 2) return;
+    this.active = true;
+    // Drop prior synth placeholder so multi-round batches accumulate tool steps.
+    this.steps = this.steps.filter((step) => !step.id.endsWith('-synth'));
+    const nextTools = toolCalls.map((call, index) => ({
+      id: `r${roundIndex}-t${index}`,
+      label: getAssistantToolActivityLabel(call.name, 'progress').replace(/…$/, ''),
+      status: 'pending' as const,
+      toolName: call.name,
+    }));
+    this.steps.push(...nextTools, {
+      id: `r${roundIndex}-synth`,
+      label: 'Prepare your answer',
+      status: 'pending',
+    });
+    const streamSteps: AssistantStreamTaskPlanStep[] = this.steps.map((step) => ({ ...step }));
+    this.emit?.({ type: 'plan', title: this.title, steps: streamSteps });
+  }
+
+  markRunning(stepId: string): void {
+    if (!this.active) return;
+    this.updateStep(stepId, 'running');
+    this.emit?.({ type: 'plan_update', stepId, status: 'running' });
+  }
+
+  markDone(stepId: string, ok: boolean): void {
+    if (!this.active) return;
+    this.updateStep(stepId, ok ? 'done' : 'failed');
+  }
+
+  markSynthRunning(): void {
+    const synth = this.steps.find((s) => s.id.endsWith('-synth'));
+    if (synth) this.markRunning(synth.id);
+  }
+
+  markSynthDone(): void {
+    const synth = this.steps.find((s) => s.id.endsWith('-synth'));
+    if (synth) {
+      this.updateStep(synth.id, 'done');
+      this.emit?.({ type: 'plan_update', stepId: synth.id, status: 'done' });
+    }
+  }
+
+  buildBlock(): ChatBlock | null {
+    if (!this.active || this.steps.length < 2) return null;
+    return {
+      type: 'task_plan',
+      title: this.title,
+      steps: this.steps,
+    };
+  }
+
+  private updateStep(stepId: string, status: TaskPlanStepStatus): void {
+    const step = this.steps.find((s) => s.id === stepId);
+    if (step) step.status = status;
+  }
+}
+
+/** Prepend activity timeline when the turn did meaningful work beyond a plain reply. */
+export function prependActivityTimeline(
+  blocks: ChatBlock[],
+  recorder: TurnActivityRecorder
+): ChatBlock[] {
+  const timeline = recorder.buildBlock();
+  if (!timeline) return blocks;
+  if (!recorder.hasToolActivity() && recorder.entryCount <= 1) return blocks;
+  return [timeline, ...blocks];
+}
+
+export function prependTaskPlan(blocks: ChatBlock[], recorder: TurnTaskPlanRecorder): ChatBlock[] {
+  const plan = recorder.buildBlock();
+  if (!plan) return blocks;
+  return [plan, ...blocks];
+}

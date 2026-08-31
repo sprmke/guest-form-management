@@ -4,6 +4,7 @@ import {
   canGuestUnsendMessage as canGuestUnsendMessageInThread,
 } from '@/lib/chat/chatMessageActions';
 import type { ChatReplyStatus } from '@/lib/chat/chatReplyStatus';
+import { prepareUpload } from '@/lib/media/prepareUpload';
 import { supabase } from '@/lib/supabase/client';
 
 const FUNCTIONS_URL = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/$/, '');
@@ -80,6 +81,7 @@ export type GuestChatStartResult = {
   inquiryCheckOut: string;
   replyStatus: ChatReplyStatus;
   voiceReceptionistEnabled: boolean;
+  stayGuideUrl: string | null;
 };
 
 export type GuestChatResumeResult = {
@@ -104,6 +106,7 @@ export type GuestChatResumeResult = {
     ownerAvatarUrl: string | null;
   } | null;
   voiceReceptionistEnabled: boolean;
+  stayGuideUrl: string | null;
 };
 
 async function guestEdgePatch(path: string, body: Record<string, unknown>) {
@@ -213,9 +216,15 @@ export async function uploadGuestChatAttachment(
   conversationId: string,
   file: File
 ): Promise<GuestChatAttachment> {
+  const prepared = await prepareUpload(file, {
+    imagePreset: 'CONTENT',
+    surface: 'guest-chat-attachment',
+  });
+  if (prepared.error) throw new Error(prepared.error);
+
   const formData = new FormData();
-  formData.append('file', file);
-  formData.append('fileName', file.name);
+  formData.append('file', prepared.file);
+  formData.append('fileName', prepared.file.name);
   formData.append('conversationId', conversationId);
   const payload = await guestEdgePostForm('upload-guest-chat-asset', formData);
   return payload.attachment as GuestChatAttachment;

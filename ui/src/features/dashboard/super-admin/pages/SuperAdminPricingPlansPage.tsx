@@ -33,7 +33,7 @@ import type { PricingPlan } from '@/features/dashboard/super-admin/types/pricing
 
 import { useAdminMobileGridViewGuard } from '@/hooks/useAdminMobileGridViewGuard';
 import { useIsBelowLg } from '@/hooks/useMediaQuery';
-import { usePageTitle } from '@/lib/pageTitle';
+import { appPageTitle, usePageTitle } from '@/lib/pageTitle';
 import {
   ADMIN_DEFAULT_PAGE_SIZE,
   buildPageItems,
@@ -41,7 +41,7 @@ import {
 } from '@/lib/table/pagination';
 
 export function SuperAdminPricingPlansPage() {
-  usePageTitle('Kame Homes - Pricing plans');
+  usePageTitle(appPageTitle('Pricing plans'));
   const [searchParams, setSearchParams] = useSearchParams();
   const page = Number(searchParams.get('page') ?? '1');
   const limit = normalizeAdminPageLimit(

@@ -1,4 +1,5 @@
 import { ActionConfirmationBlock } from '@/features/dashboard/ai-assistant/components/blocks/ActionConfirmationBlock';
+import { ActivityTimelineBlock } from '@/features/dashboard/ai-assistant/components/blocks/ActivityTimelineBlock';
 import { BookingCardBlock } from '@/features/dashboard/ai-assistant/components/blocks/BookingCardBlock';
 import { ChatCanvasCompactCard } from '@/features/dashboard/ai-assistant/components/blocks/ChatCanvasCompactCard';
 import { DataTableBlock } from '@/features/dashboard/ai-assistant/components/blocks/DataTableBlock';
@@ -8,6 +9,7 @@ import { LinkListBlock } from '@/features/dashboard/ai-assistant/components/bloc
 import { QuickActionsBlock } from '@/features/dashboard/ai-assistant/components/blocks/QuickActionsBlock';
 import { StatListBlock } from '@/features/dashboard/ai-assistant/components/blocks/StatListBlock';
 import { StepperBlock } from '@/features/dashboard/ai-assistant/components/blocks/StepperBlock';
+import { TaskPlanBlock } from '@/features/dashboard/ai-assistant/components/blocks/TaskPlanBlock';
 import { TextBlock } from '@/features/dashboard/ai-assistant/components/blocks/TextBlock';
 import type {
   ChatBlock,
@@ -54,6 +56,10 @@ export function ChatBlockRenderer({
             return <ImageBlock key={i} {...block} />;
           case 'stepper':
             return <StepperBlock key={i} {...block} onResolveAction={onResolveAction} />;
+          case 'activity_timeline':
+            return <ActivityTimelineBlock key={i} entries={block.entries} />;
+          case 'task_plan':
+            return <TaskPlanBlock key={i} title={block.title} steps={block.steps} />;
           case 'quick_actions':
             return (
               <QuickActionsBlock key={i} actions={block.actions} onFillComposer={onFillComposer} />

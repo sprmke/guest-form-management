@@ -75,7 +75,23 @@ export function useGuestStayGuidePreview(propertySlug: string, propertyId: strin
   });
 
   if (hasOverride) {
-    return stayGuideOverrideResult(override.data);
+    return {
+      data: override.data as GuestStayGuideDto | undefined,
+      planAccessDenied: false,
+      isLoading: false,
+      isError: false,
+      error: null as Error | null,
+      isSuccess: true,
+    };
   }
-  return query;
+
+  const fetched = query.data;
+  return {
+    data: fetched?.status === 'ok' ? fetched.data : undefined,
+    planAccessDenied: fetched?.status === 'planAccessDenied',
+    isLoading: query.isLoading,
+    isError: query.isError,
+    error: query.error,
+    isSuccess: query.isSuccess,
+  };
 }

@@ -171,11 +171,26 @@ export type BookingRow = {
   document_share_token?: string | null;
   settled_at?: string | null;
 
+  // Calendar sync — OTA-ingested reservation provenance + guest-form completion link (Phase 2)
+  external_source?: 'airbnb' | 'booking_com' | 'vrbo' | 'other' | null;
+  external_uid?: string | null;
+  external_feed_id?: string | null;
+  guest_form_token?: string | null;
+  guest_form_token_issued_at?: string | null;
+  guest_form_completed_at?: string | null;
+
   // Next-stay Facebook-review voucher (awarded on /sd-form). Visible to admin
   // on the Pricing card once status = COMPLETED so it can be honoured later.
   next_stay_voucher_code?: string | null;
   next_stay_voucher_amount?: number | string | null;
   next_stay_voucher_awarded_at?: string | null;
+  next_stay_voucher_redeemed_at?: string | null;
+  next_stay_voucher_redeemed_booking_id?: string | null;
+  /** Voucher applied to this booking (from a prior stay). */
+  applied_voucher_source_booking_id?: string | null;
+  applied_voucher_code?: string | null;
+  applied_voucher_percent?: number | string | null;
+  applied_voucher_discount_php?: number | string | null;
 };
 
 export type BookingsSort =

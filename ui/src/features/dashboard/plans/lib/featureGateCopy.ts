@@ -136,9 +136,9 @@ export const FEATURE_GATE_COPY: Record<PlanFeatureKey, FeatureGateCopy> = {
     ctaLabel: 'View plans',
   },
   calendarSync: {
-    title: 'Airbnb & OTA calendar sync',
+    title: 'Airbnb calendar sync',
     description:
-      'Two-way calendar sync with Airbnb, Booking.com, and VRBO — import their reservations and export your booked dates — is available on Pro and above.',
+      'Two-way Airbnb calendar sync — import their reservations and export your booked dates — is available on Pro and above.',
     ctaLabel: 'View plans',
   },
   customRoles: {

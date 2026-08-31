@@ -20,6 +20,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { guestParkingRequestStatusPath } from '@/features/guest/lib/guestPublicPaths';
+
 import { BookingAiAssistantAuditCard } from '@/features/dashboard/ai-assistant/components/BookingAiAssistantAuditCard';
 import { BookingDetailAssetPreviewModal } from '@/features/dashboard/bookings/components/booking-detail/BookingDetailAssetPreviewModal';
 import { BookingDetailHeader } from '@/features/dashboard/bookings/components/booking-detail/BookingDetailHeader';
@@ -51,6 +53,7 @@ import {
   useBookingAiReview,
 } from '@/features/dashboard/bookings/hooks/useBookingAiReview';
 import { useBookingAssetPreview } from '@/features/dashboard/bookings/hooks/useBookingAssetPreview';
+import { useBookingGuestFormCompletionLink } from '@/features/dashboard/bookings/hooks/useBookingGuestFormCompletionLink';
 import { useBookingParkingShareLink } from '@/features/dashboard/bookings/hooks/useBookingParkingShareLink';
 import { useBookingStayGuideLink } from '@/features/dashboard/bookings/hooks/useBookingStayGuideLink';
 import { useEnsureNeedParking } from '@/features/dashboard/bookings/hooks/useEnsureNeedParking';
@@ -65,7 +68,6 @@ import {
   propertyCityLocationSlug,
 } from '@/features/dashboard/bookings/lib/parkingFindPathFromBooking';
 import { resolveBookingViewTab } from '@/features/dashboard/bookings/lib/resolveBookingViewTab';
-import { guestParkingRequestStatusPath } from '@/features/guest/lib/guestPublicPaths';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
@@ -333,6 +335,7 @@ export function BookingDetailPage() {
   }, [booking, ensureNeedParking, linkedParkingQuery.data, locationSlug]);
 
   const stayGuide = useBookingStayGuideLink(booking);
+  const guestFormCompletion = useBookingGuestFormCompletionLink(booking);
   const parkingShareLink = useBookingParkingShareLink(booking, ownerDefaultQuery.data);
 
   const handleOpenAiSummary = useCallback(() => setAiSummaryOpen(true), []);
@@ -351,6 +354,7 @@ export function BookingDetailPage() {
             },
             onOpenAiSummary: handleOpenAiSummary,
             stayGuide,
+            guestFormCompletion,
             parkingShareLink,
             canRunAiSummary: canEditStay,
             canEditParking,
@@ -366,6 +370,7 @@ export function BookingDetailPage() {
       handleSearchOtherParkings,
       handleOpenAiSummary,
       stayGuide,
+      guestFormCompletion,
       parkingShareLink,
       canEditStay,
       canEditParking,

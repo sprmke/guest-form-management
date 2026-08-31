@@ -70,7 +70,7 @@ import {
 import { buildPolotnoCampaignDocument } from '@/features/dashboard/marketing/lib/polotno/polotnoCampaignDocuments';
 import {
   createPolotnoStore,
-  exportPolotnoStorePng,
+  exportPolotnoStoreImage,
   type PolotnoStore,
 } from '@/features/dashboard/marketing/lib/polotno/polotnoStore';
 import { pickRandomPropertyPhoto } from '@/features/dashboard/marketing/lib/polotno/propertyMedia';
@@ -620,12 +620,12 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
     if (!activeStore || !template) return;
     setExporting(true);
     try {
-      const blob = await exportPolotnoStorePng(activeStore);
+      const blob = await exportPolotnoStoreImage(activeStore);
       if (!blob) return;
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `design-${property.slug}-${template.id}.png`;
+      link.download = `design-${property.slug}-${template.id}.jpg`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -656,7 +656,7 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
     if (!onPublish || !activeStore || !template) return;
     setExporting(true);
     try {
-      const blob = await exportPolotnoStorePng(activeStore);
+      const blob = await exportPolotnoStoreImage(activeStore);
       if (!blob) return;
       onPublish({ blob, format, templateId: template.id });
     } catch {

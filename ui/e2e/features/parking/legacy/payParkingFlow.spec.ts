@@ -3,30 +3,36 @@ import { expect, test } from '@playwright/test';
 import { setParkingScreenSuite } from '../shared/parkingScreenCapture';
 import {
   createPayParkingFlowState,
+  expectLegacyPayParkingRedirectsToFind,
+  expectLegacyPayParkingRedirectsToLinkedRequest,
   installPayParkingFlowMocks,
-  submitPayParkingAsAdminBroadcast,
-  submitPayParkingAsGuest,
+  PAY_PARKING_LINKED_REQUEST_ID,
 } from '../shared/payParkingFlowHarness';
 
-test.describe('legacy property pay-parking flow', () => {
-  test('guest can submit vehicle details on the pay-parking form', async ({ page }) => {
-    setParkingScreenSuite('pay-parking-guest');
+test.describe('legacy property pay-parking → marketplace redirect', () => {
+  test('unlinked stay redirects to find parking with linkStay', async ({ page }) => {
+    setParkingScreenSuite('pay-parking-find-redirect');
     const state = createPayParkingFlowState();
     await installPayParkingFlowMocks(page, state);
 
-    await submitPayParkingAsGuest(page, state);
-    await expect(page.getByRole('heading', { name: 'Parking request sent' })).toBeVisible();
-    await expect(page.getByText('Maria Santos')).toBeVisible();
-    expect(state.lastSubmitBroadcast).toBe(true);
+    await expectLegacyPayParkingRedirectsToFind(page, state);
   });
 
-  test('host can add pay parking from admin mode with broadcast email', async ({ page }) => {
-    setParkingScreenSuite('pay-parking-admin');
-    const state = createPayParkingFlowState();
+  test('unlinked stay with city redirects to /parkings/in/:city?linkStay=', async ({ page }) => {
+    setParkingScreenSuite('pay-parking-city-redirect');
+    const state = createPayParkingFlowState({ cityLocationSlug: 'cebu-city' });
     await installPayParkingFlowMocks(page, state);
 
-    await submitPayParkingAsAdminBroadcast(page, state);
-    await expect(page.getByRole('heading', { name: 'Parking request sent' })).toBeVisible();
-    expect(state.lastSubmitBroadcast).toBe(true);
+    await expectLegacyPayParkingRedirectsToFind(page, state);
+  });
+
+  test('linked stay redirects to marketplace request status', async ({ page }) => {
+    setParkingScreenSuite('pay-parking-linked-redirect');
+    const state = createPayParkingFlowState({
+      linkedParkingBookingId: PAY_PARKING_LINKED_REQUEST_ID,
+    });
+    await installPayParkingFlowMocks(page, state);
+
+    await expectLegacyPayParkingRedirectsToLinkedRequest(page, state);
   });
 });

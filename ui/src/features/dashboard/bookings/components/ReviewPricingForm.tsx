@@ -39,6 +39,11 @@ import {
   type PropertyPricingDefaults,
 } from '@/features/dashboard/pricing/lib/pricingCompute';
 
+import {
+  computePercentDiscountPhp,
+  formatVoucherOfferLabel,
+  resolveVoucherPercentOff,
+} from '@/features/guest/account/lib/voucherDiscount';
 import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
 import { formatMoney } from '@/utils/format/currency';
 
@@ -62,6 +67,8 @@ function createReviewPricingSchema(surpriseDecorRequested: boolean) {
     pet_fee: optionalNonNegativeMoney(),
     parking_rate_guest: optionalNonNegativeMoney(),
     guest_additional_fee: guestAdditionalFeeSchema,
+    /** Locked peso discount from guest voucher (not an editable input). */
+    applied_voucher_discount_php: z.number().nonnegative().optional().nullable(),
   });
 }
 
@@ -114,6 +121,7 @@ export function ReviewPricingForm({
   const {
     register,
     watch,
+    setValue,
     formState: { errors, isValid },
     getValues,
     trigger,
@@ -128,6 +136,33 @@ export function ReviewPricingForm({
     ),
     mode: 'onChange',
   });
+
+  const voucherCode = booking.applied_voucher_code?.trim() || null;
+  const voucherPercent = voucherCode
+    ? resolveVoucherPercentOff(
+        voucherCode,
+        booking.applied_voucher_percent != null ? Number(booking.applied_voucher_percent) : null
+      )
+    : 0;
+  const voucherGross = computedDefaultRate;
+  const voucherDiscount = (() => {
+    if (!voucherCode) return 0;
+    if (voucherPercent > 0 && voucherGross != null) {
+      return computePercentDiscountPhp(voucherGross, voucherPercent);
+    }
+    const stored =
+      booking.applied_voucher_discount_php != null
+        ? Number(booking.applied_voucher_discount_php)
+        : 0;
+    return Number.isFinite(stored) && stored > 0 ? stored : 0;
+  })();
+
+  useEffect(() => {
+    if (!voucherCode) return;
+    setValue('applied_voucher_discount_php', voucherDiscount > 0 ? voucherDiscount : null, {
+      shouldValidate: false,
+    });
+  }, [voucherCode, voucherDiscount, setValue]);
 
   const [revealErrors, setRevealErrors] = useState(false);
   const shownErrors = revealErrors ? errors : {};
@@ -188,6 +223,38 @@ export function ReviewPricingForm({
 
   return (
     <WorkflowFormShell title={cardTitle} variant={variant} advanceMode="manual">
+      {voucherCode ? (
+        <div className="mb-3 rounded-lg border border-emerald-200/80 bg-emerald-50/70 px-3.5 py-2.5 dark:border-emerald-900/50 dark:bg-emerald-950/30">
+          <p className="text-xs font-semibold text-emerald-900 dark:text-emerald-200">
+            {formatVoucherOfferLabel({
+              code: voucherCode,
+              percentOff: voucherPercent,
+            })}{' '}
+            <span className="font-mono font-normal opacity-80">({voucherCode})</span>
+          </p>
+          {voucherGross != null ? (
+            <dl className="text-muted-foreground mt-1.5 space-y-0.5 text-[11px]">
+              <div className="flex justify-between gap-2">
+                <dt>Stay rate</dt>
+                <dd className="tabular-nums">{formatMoney(voucherGross)}</dd>
+              </div>
+              {voucherDiscount > 0 ? (
+                <div className="flex justify-between gap-2 text-emerald-700 dark:text-emerald-300">
+                  <dt>Voucher</dt>
+                  <dd className="tabular-nums">−{formatMoney(voucherDiscount)}</dd>
+                </div>
+              ) : null}
+              <div className="text-foreground flex justify-between gap-2 font-medium">
+                <dt>Booking rate (pre-filled)</dt>
+                <dd className="tabular-nums">
+                  {formatMoney(Math.max(0, voucherGross - voucherDiscount))}
+                </dd>
+              </div>
+            </dl>
+          ) : null}
+        </div>
+      ) : null}
+
       <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Booking Rate" required error={shownErrors.booking_rate?.message}>
           <input
@@ -378,8 +445,24 @@ function buildPricingDefaultValues(
   const defaultAdditional = surpriseDecorRequested
     ? (storedAdditional ?? undefined)
     : (storedAdditional ?? propertyDefaults.guestAdditionalFee);
+
+  const voucherCode = booking.applied_voucher_code?.trim();
+  const voucherPercent = voucherCode
+    ? resolveVoucherPercentOff(
+        voucherCode,
+        booking.applied_voucher_percent != null ? Number(booking.applied_voucher_percent) : null
+      )
+    : 0;
+  const voucherDiscount =
+    voucherCode && computedDefaultRate != null && voucherPercent > 0
+      ? computePercentDiscountPhp(computedDefaultRate, voucherPercent)
+      : (toNullableNumber(booking.applied_voucher_discount_php) ?? 0);
+  const netDefault =
+    computedDefaultRate != null ? Math.max(0, computedDefaultRate - (voucherDiscount || 0)) : null;
+
   const fromBooking: DefaultValues<ReviewPricingFormValues> = {
-    booking_rate: toNullableNumber(booking.booking_rate) ?? computedDefaultRate ?? undefined,
+    booking_rate:
+      toNullableNumber(booking.booking_rate) ?? netDefault ?? computedDefaultRate ?? undefined,
     down_payment: isAirbnb
       ? 0
       : (toNullableNumber(booking.down_payment) ?? propertyDefaults.downPayment),
@@ -391,6 +474,7 @@ function buildPricingDefaultValues(
       ? (toNullableNumber(booking.parking_rate_guest) ?? propertyDefaults.parkingRateGuest)
       : 0,
     guest_additional_fee: defaultAdditional,
+    applied_voucher_discount_php: voucherDiscount > 0 ? voucherDiscount : null,
   };
   if (!initialDraft) return fromBooking;
   return {

@@ -5,10 +5,13 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { LifeBuoy, Mail } from 'lucide-react';
 
 import { GUEST_ACCOUNT_TICKETS_PATH } from '@/features/guest/account/lib/guestAccountPaths';
+import { useGuestAuth } from '@/features/guest/auth/context/GuestAuthContext';
 import { useGuestSession } from '@/features/guest/auth/hooks/useGuestSession';
 import { PublicContactCategoryGrid } from '@/features/guest/marketing/contact/components/PublicContactCategoryGrid';
-import { PublicContactSignInDialog } from '@/features/guest/marketing/contact/components/PublicContactSignInDialog';
-import { parsePublicContactCategory } from '@/features/guest/marketing/contact/lib/publicContactParams';
+import {
+  parsePublicContactCategory,
+  publicContactPath,
+} from '@/features/guest/marketing/contact/lib/publicContactParams';
 import { MarketingPublicPageContent } from '@/features/guest/marketing/shared/components/MarketingPublicPageContent';
 import { MarketingPublicPageHero } from '@/features/guest/marketing/shared/components/MarketingPublicPageHero';
 import { MarketingPublicSectionHeading } from '@/features/guest/marketing/shared/components/MarketingPublicSectionHeading';
@@ -19,10 +22,8 @@ import type { SupportTicketCategory } from '@/features/dashboard/help-support/li
 import { MANAGED_PLAN_INQUIRY_SUBJECT } from '@/features/dashboard/plans/lib/planPresentation';
 
 import { Button } from '@/components/ui/button';
+import { PLATFORM_CONTACT_EMAIL } from '@/lib/platformBranding';
 import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
-
-
-
 
 const GUEST_TICKET_SCOPE = {
   channel: 'guest' as const,
@@ -46,11 +47,11 @@ export function ContactPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { status } = useGuestSession();
+  const { requireGuestAuth } = useGuestAuth();
   const ready = status !== 'loading';
   const isAuthenticated = status === 'authenticated';
 
   const [ticketModalOpen, setTicketModalOpen] = useState(false);
-  const [signInOpen, setSignInOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<SupportTicketCategory | undefined>();
   const [defaultSubject, setDefaultSubject] = useState<string | undefined>();
   const autoOpenedRef = useRef(false);
@@ -74,9 +75,12 @@ export function ContactPage() {
         return;
       }
 
-      setSignInOpen(true);
+      const contactPath = publicContactPath({ category, subject });
+      requireGuestAuth(() => setTicketModalOpen(true), {
+        resume: { type: 'navigate', to: contactPath },
+      });
     },
-    [isAuthenticated, ready]
+    [isAuthenticated, ready, requireGuestAuth]
   );
 
   const handleCategorySelect = (category: SupportTicketCategory) => {
@@ -135,21 +139,14 @@ export function ContactPage() {
               </Link>
             </Button>
             <Button variant="outline" className="min-h-[44px] rounded-full" asChild>
-              <a href="mailto:hello@kamehomes.com?subject=Guest%20support">
+              <a href={`mailto:${PLATFORM_CONTACT_EMAIL}?subject=Guest%20support`}>
                 <Mail className="mr-2 h-4 w-4" aria-hidden />
-                hello@kamehomes.com
+                {PLATFORM_CONTACT_EMAIL}
               </a>
             </Button>
           </div>
         </div>
       </MarketingPublicPageContent>
-
-      <PublicContactSignInDialog
-        open={signInOpen}
-        onOpenChange={setSignInOpen}
-        category={selectedCategory}
-        subject={defaultSubject}
-      />
 
       <SupportTicketScopeProvider scope={GUEST_TICKET_SCOPE}>
         <NewTicketModal

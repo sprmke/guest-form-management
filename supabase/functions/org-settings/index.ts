@@ -56,16 +56,6 @@ serveAdmin('org-settings', async (req) => {
         patch.facebook_reviews_url = null;
       }
     }
-    if (typeof body.mainSocialPlatform === 'string') {
-      const trimmed = body.mainSocialPlatform.trim();
-      if (!trimmed) {
-        patch.main_social_platform = null;
-      } else if (['facebook', 'airbnb', 'instagram', 'tiktok'].includes(trimmed)) {
-        patch.main_social_platform = trimmed;
-      } else {
-        return jsonError(req, 'Invalid main social platform');
-      }
-    }
     if (typeof body.instagramUrl === 'string') {
       const trimmed = body.instagramUrl.trim();
       if (trimmed) {

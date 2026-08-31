@@ -1,26 +1,43 @@
 #!/usr/bin/env node
 /**
- * Split committable files into 25 logical batches (~16+ files each).
- * Run from repo root: node scripts/dev/batch-commit-plan-25.mjs
+ * Split committable files into N logical batches (~5–20 files each).
+ * Run from repo root: node scripts/dev/batch-commit-plan-25.mjs [maxCommits]
  */
 import { execSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+
+const MAX_COMMITS = Number(process.argv[2] || 30);
 
 const EXCLUDE = [
   /^\.claude\/settings\.local\.json$/,
   /^docs\/\.obsidian\//,
   /^docs\/workflow\/intake\//,
-  /^docs\/workflow\/in-progress\/parking-e2e-phase/,
-  /^docs\/workflow\/in-progress\/marketing-module-refinement\.md$/,
-  /^docs\/workflow\/in-progress\/org-granular-team-permissions\.md$/,
-  /^ui\/vite\.config\.ts\.timestamp-/,
-  /^docs\/workflow\/planned\/parking-e2e-phase6/,
+  /^docs\/workflow\/in-progress\//,
+  /^docs\/workflow\/planned\/parking-e2e-phase/,
   /^docs\/workflow\/planned\/parking-e2e-production-readiness/,
-  /^docs\/workflow\/planned\/org-granular-team-permissions\.md$/,
+  /^docs\/workflow\/planned\/image-video-upload-optimization/,
+  /^ui\/vite\.config\.ts\.timestamp-/,
   /^ui\/screen-tmp\//,
   /^no-facebook-login\.png$/,
   /^scripts\/dev\/seed-monaco/,
   /^scripts\/dev\/batch-commit-/,
+  /^scripts\/media\//,
+  /^deno\.lock$/,
+  /^ui\/vitest\.config\.ts$/,
+  /^ui\/src\/lib\/media\//,
+  /^supabase\/functions\/calendar-sync/,
+  /^supabase\/functions\/ical-export/,
+  /calendarSync/,
+  /^supabase\/migrations\/202612131/,
+  /ChannelSyncCard/,
+  /useCalendarSync/,
+  /calendarSyncApi/,
+  /^supabase\/migrations\/20261210120100/,
+  /^supabase\/migrations\/20261210120300/,
+  /page-editor\/components\/stay-guide\//,
+  /page-editor\/lib\/stayGuideTemplate/,
+  /showcase\/templates\/shared\/StayGuideSections/,
+  /preview-guest-stay-guide/,
+  /features\/guest\/stay-guide\//,
 ];
 
 const raw = execSync('git status --porcelain=v1 -uall', { encoding: 'utf8' }).trim();
@@ -40,6 +57,18 @@ function bucket(path) {
   if (path.startsWith('supabase/migrations/20261204120000_guest') ||
       path.startsWith('supabase/migrations/20261204120100')) return 'db-support-tickets';
   if (path.startsWith('supabase/migrations/202612091')) return 'db-showcase';
+  if (path.startsWith('supabase/migrations/202612101') ||
+      path.startsWith('supabase/migrations/202612111') ||
+      path.startsWith('supabase/migrations/202612121')) return 'db-plan-tiers';
+  if (path.startsWith('supabase/functions/_shared/ownerDefaultParking') ||
+      path.startsWith('supabase/functions/_shared/parkingGuestOwnership') ||
+      path.startsWith('supabase/functions/resolve-owner-default-parking')) return 'api-owner-parking';
+  if (path.startsWith('supabase/functions/get-form-completion') ||
+      path.startsWith('supabase/functions/submit-form-completion') ||
+      path.startsWith('supabase/functions/issue-guest-form-completion-token')) return 'api-form-completion';
+  if (path.includes('sendBookingWorkflowEmail') ||
+      path.startsWith('supabase/functions/send-booking-workflow-email')) return 'api-booking-email';
+  if (path.includes('metaInboxGraphHttp') || path.includes('socialInboxDb')) return 'api-inbox-shared';
   if (path.startsWith('supabase/migrations/20261128') ||
       path.startsWith('supabase/migrations/20261129') ||
       path.startsWith('supabase/migrations/20261130') ||
@@ -80,7 +109,19 @@ function bucket(path) {
   if (path.startsWith('supabase/')) return 'api-supabase-misc';
   if (path.includes('features/dashboard/team/') && (
       path.includes('Permission') || path.includes('permission') || path.includes('Template'))) return 'ui-team-rbac';
+  if (path.includes('PropertyPlansPage') ||
+      path.includes('PublicPagePlanAccessOverlay') ||
+      path.includes('ShowcasePlanAccessOverlay')) return 'ui-plans-gates';
   if (path.includes('page-editor') || path.includes('property-showcase')) return 'ui-showcase-editor';
+  if (path.includes('OwnerParkingConfirmSheet') ||
+      path.includes('useOwnerDefaultParking') ||
+      path.includes('useEnsureNeedParking') ||
+      path.includes('parkingFindPathFromBooking') ||
+      path.includes('useGuestParkingSuccessHref') ||
+      path.includes('parkingLinkStay') ||
+      path.includes('useCaptureParkingLinkStay')) return 'ui-owner-parking';
+  if (path.includes('GuestReviewStarRating') || path.includes('guestReview')) return 'ui-guest-review';
+  if (path.includes('bookingWorkflowEmail') || path.includes('sendBookingWorkflowEmail')) return 'ui-booking-email';
   if (path.includes('features/guest/marketing/showcase')) return 'ui-showcase-guest';
   if (path.includes('GuestTickets') || path.includes('account/tickets') || path.includes('guides/routes/account/tickets')) return 'ui-guest-tickets';
   if (path.includes('features/guest/marketing/parkings') ||
@@ -127,6 +168,7 @@ for (const file of files) {
 }
 
 const ORDER = [
+  ['db-plan-tiers', 'database(supabase): add plan tier and public pages migrations'],
   ['db-team-rbac', 'database(supabase): add property team granular permission migrations'],
   ['db-support-tickets', 'database(supabase): add guest support tickets schema'],
   ['db-showcase', 'database(supabase): add property showcase page migrations'],
@@ -139,6 +181,10 @@ const ORDER = [
   ['api-email', 'api(supabase): unify branded email shell and template rendering'],
   ['api-support-tickets', 'api(supabase): extend guest support ticket endpoints'],
   ['api-billing', 'api(supabase): add org plan downgrade handler'],
+  ['api-owner-parking', 'api(supabase): add owner default parking resolution'],
+  ['api-form-completion', 'api(supabase): add guest form completion token flow'],
+  ['api-booking-email', 'api(supabase): add booking workflow email sender'],
+  ['api-inbox-shared', 'api(supabase): extend meta inbox graph helpers'],
   ['api-supabase-misc', 'api(supabase): sync shared services and edge function updates'],
   ['ui-team-rbac', 'ui(org): add granular property team permissions ui'],
   ['ui-showcase-editor', 'ui(ui): add property showcase page editor'],
@@ -146,6 +192,10 @@ const ORDER = [
   ['ui-guest-tickets', 'ui(guest-form): add guest support tickets hub'],
   ['ui-parking-guest', 'ui(guest-form): extend parking marketplace guest flows'],
   ['ui-parking-admin', 'ui(org): add parking payouts and direct booking admin ui'],
+  ['ui-owner-parking', 'ui(bookings): add owner default parking booking flows'],
+  ['ui-plans-gates', 'ui(org): add plan tier access overlays and property plans'],
+  ['ui-guest-review', 'ui(guest-form): add guest review star rating component'],
+  ['ui-booking-email', 'ui(bookings): wire booking workflow email actions'],
   ['ui-calendar-grid', 'ui(bookings): add calendar time grid and period toggle'],
   ['ui-bookings', 'ui(bookings): sync booking workflow and calendar updates'],
   ['ui-inbox', 'ui(inbox): polish inbox thread and conversation views'],
@@ -165,14 +215,14 @@ const ORDER = [
 const batches = ORDER.filter(([key]) => groups.has(key) && groups.get(key).length > 0)
   .map(([key, message]) => ({ message, files: groups.get(key) }));
 
-// Merge small trailing batches into docs/misc if we exceed 25
-while (batches.length > 25) {
+// Merge small trailing batches if we exceed MAX_COMMITS
+while (batches.length > MAX_COMMITS) {
   const last = batches.pop();
   batches[batches.length - 1].files.push(...last.files);
 }
 
-// If fewer than 25, split large docs/api batches
-while (batches.length < 25) {
+// Split large batches until we reach target commit count
+while (batches.length < MAX_COMMITS) {
   const idx = batches.findIndex((b) => b.files.length > 30);
   if (idx === -1) break;
   const batch = batches[idx];

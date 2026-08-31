@@ -6,10 +6,7 @@ import {
 } from '@/features/dashboard/bookings/hooks/useAppSettings';
 import type { AppSettingsFormValues } from '@/features/dashboard/bookings/hooks/useAppSettings';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
-import {
-  orgSettingsToFormValues,
-  useOrgSettings,
-} from '@/features/dashboard/org/hooks/useOrgSettings';
+import { useOrgSettings } from '@/features/dashboard/org/hooks/useOrgSettings';
 import { DEFAULT_RESIDENCE_NAME } from '@/features/dashboard/org/lib/propertyDisplay';
 import { isCondoPropertyType } from '@/features/dashboard/org/lib/propertyResidences';
 import { computePropertySettingsCompletion } from '@/features/dashboard/org/lib/propertySettingsCompletion';
@@ -43,7 +40,15 @@ export function usePropertySettingsCompletionForDraft({
   const { data: orgSettings } = useOrgSettings();
 
   const orgSocialLinks = useMemo(
-    () => (orgSettings ? orgSettingsToFormValues(orgSettings) : null),
+    () =>
+      orgSettings
+        ? {
+            facebookPageUrl: orgSettings.facebookPageUrl,
+            airbnbUrl: orgSettings.airbnbUrl,
+            instagramUrl: orgSettings.instagramUrl,
+            tiktokUrl: orgSettings.tiktokUrl,
+          }
+        : null,
     [orgSettings]
   );
 

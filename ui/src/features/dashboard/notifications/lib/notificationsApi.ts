@@ -11,7 +11,9 @@ export type NotificationType =
   | 'booking_parking_matched'
   | 'inbox_new_message'
   | 'calendar_sync_failing'
-  | 'calendar_conflict';
+  | 'calendar_conflict'
+  | 'booking_external_imported'
+  | 'booking_guest_form_completed';
 
 export type NotificationRecord = {
   id: string;

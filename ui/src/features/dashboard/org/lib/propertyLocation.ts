@@ -91,6 +91,22 @@ export function buildGoogleMapsUrl(latitude: number, longitude: number, placeId?
   return base;
 }
 
+/**
+ * Prefer establishment / development name + formatted address so Autocomplete
+ * selections keep "AZURE NORTH by Century" instead of only a Plus Code / city line.
+ */
+export function formatPlaceDisplayAddress(place: {
+  name?: string | null;
+  formatted_address?: string | null;
+}): string {
+  const name = place.name?.trim() ?? '';
+  const formatted = place.formatted_address?.trim() ?? '';
+  if (!name) return formatted;
+  if (!formatted) return name;
+  if (formatted.toLowerCase().startsWith(name.toLowerCase())) return formatted;
+  return `${name}, ${formatted}`;
+}
+
 export function parseGoogleAddressComponents(
   components: google.maps.GeocoderAddressComponent[] | undefined
 ): ParsedAddressParts {
@@ -120,7 +136,7 @@ export function locationFromPlace(
   const latitude = location.lat();
   const longitude = location.lng();
   const parts = parseGoogleAddressComponents(place.address_components);
-  const address = place.formatted_address?.trim() || '';
+  const address = formatPlaceDisplayAddress(place);
   const placeId = place.place_id?.trim() || '';
 
   return {
@@ -164,3 +180,42 @@ export function readNullableLongitude(settings: Record<string, unknown>): number
   const value = settings.longitude;
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
+
+export function clonePropertyLocationFields(
+  fields: PropertyLocationFields
+): PropertyLocationFields {
+  return { ...fields };
+}
+
+export function propertyLocationFieldsEqual(
+  a: PropertyLocationFields,
+  b: PropertyLocationFields
+): boolean {
+  return (
+    a.address.trim() === b.address.trim() &&
+    a.city.trim() === b.city.trim() &&
+    a.province.trim() === b.province.trim() &&
+    a.country.trim() === b.country.trim() &&
+    a.zipCode.trim() === b.zipCode.trim() &&
+    a.latitude === b.latitude &&
+    a.longitude === b.longitude &&
+    a.placeId.trim() === b.placeId.trim() &&
+    a.mapsUrl.trim() === b.mapsUrl.trim()
+  );
+}
+
+/** Required for Manage Save — address + map pin (city/province/country filled by geocode). */
+export function isPropertyLocationManageValid(fields: PropertyLocationFields): boolean {
+  return (
+    fields.address.trim().length > 0 &&
+    fields.latitude != null &&
+    Number.isFinite(fields.latitude) &&
+    fields.longitude != null &&
+    Number.isFinite(fields.longitude)
+  );
+}
+
+export const PROPERTY_LOCATION_MANAGE_FIELD_IDS = [
+  'property-address',
+  'property-location-map',
+] as const;

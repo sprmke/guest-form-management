@@ -39,6 +39,8 @@ updated: 2026-08-29
 
 **Verify (local evidence 2026-08-29):** `ui` `type-check` clean; `eligibleManualWorkflowEmailKinds` unit cases OK. Live Mailpit/Resend walk left as optional operator check.
 
+**E2E (2026-08-30):** `ui/e2e/features/parking/property/propertyBookingFreeManualWorkflow.spec.ts` — Free Automation Triggers Send (GAF / ack / parking + RFCI ready/SD), plan-skip Proceed toast + auto-expand, Find parking still wired. Run: `bun run test:e2e:parking` (or `:headed` / `PLAYWRIGHT_CAPTURE_SCREENS=1`).
+
 Canonical companions:
 
 - [`.cursor/rules/booking-workflow.mdc`](../../../.cursor/rules/booking-workflow.mdc) §3 (plan gating + known gap)

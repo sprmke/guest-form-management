@@ -990,7 +990,7 @@ export function createDefaultStyles(brandColor?: string): CalendarStyles {
     watermark: {
       show: false,
       type: 'text',
-      text: 'Kame Homes',
+      text: 'Your brand',
       color: '#94a3b8',
       opacity: 0.3,
       position: 'bottom-right',

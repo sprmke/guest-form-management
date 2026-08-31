@@ -17,9 +17,9 @@ Buckets and MIME types are declared in `supabase/config.toml` (e.g. `payment-rec
 
 ### 7.1 Media optimization (images + upload ceilings)
 
-Plan: [`docs/workflow/planned/image-video-upload-optimization.md`](../workflow/planned/image-video-upload-optimization.md).
+Plan: [`docs/workflow/done/image-video-upload-optimization.md`](../workflow/done/image-video-upload-optimization.md).
 
-**Client-side compression.** Every image uploader routes the picked file through `prepareImageForUpload` (`ui/src/lib/media/`) before building its request body: it re-encodes/downscales in a Web Worker (`browser-image-compression`, self-hosted worker), then re-validates the result against the ceiling. Quality-first presets (`ui/src/lib/media/imageOptimizationPlan.ts`):
+**Client-side compression.** Every image uploader routes the picked file through `prepareUpload` (`ui/src/lib/media/prepareUpload.ts`) before building its request body. `prepareUpload` validates video / PDF against the ceiling untouched, and sends images through `prepareImageForUpload` → `optimizeImage`: re-encode/downscale in a Web Worker (`browser-image-compression`), then re-validate the result against the ceiling. The library is **dynamically `import()`-ed** (only once a re-encode is actually needed) so it never lands in the initial/vendor bundle — CI enforces this via `scripts/media/assert-lazy-optimizer.mjs` (wired into `.github/workflows/ci.yml` + `scripts/dev/ci-quality-gate.sh`). The worker loads a self-hosted copy of the lib (`?url` asset), never a CDN. Per-optimization telemetry (surface, preset, path, byte ratio, duration) flows through `ui/src/lib/media/mediaTelemetry.ts`. Quality-first presets (`ui/src/lib/media/imageOptimizationPlan.ts`):
 
 | Preset         | Long edge  | Output                                                                      | Used for                                                                          |
 | -------------- | ---------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
@@ -29,7 +29,9 @@ Plan: [`docs/workflow/planned/image-video-upload-optimization.md`](../workflow/p
 | `DOCUMENT`     | 3000px cap | keep source format, near-lossless; pass through untouched under the ceiling | valid ID, receipts, vaccination, signatures, QR, verification/authorization proof |
 | `NONE`         | —          | pass through                                                                | PDF, SVG, animated, undecodable (e.g. HEIC on Chrome)                             |
 
-The optimizer **never upscales, never returns a larger file, bakes EXIF orientation, and preserves alpha.** It never throws — any failure falls back to the untouched original. Kill switch: build with `VITE_DISABLE_IMAGE_OPTIMIZATION=1` to make it a no-op everywhere.
+The optimizer **never upscales, never returns a larger file, bakes EXIF orientation, and preserves alpha.** It never throws — any failure falls back to the untouched original.
+
+**Rollout controls.** Global kill switch: build with `VITE_DISABLE_IMAGE_OPTIMIZATION=1` → no-op everywhere. Per-surface staged rollout (`ui/src/lib/media/optimizationSurfaces.ts`): `VITE_IMAGE_OPT_SURFACES` — **unset** enables every group **except `guest-documents`** (guest booking-form IDs/receipts + guest review media), which stays a ceiling-only pass-through until the §9.7 OCR-regression gate is run; `all` enables everything; `none` disables all re-encoding; a CSV of rollout groups (`settings` → `galleries` → `marketing` → `guest-profile` → `guest-documents`, lowest blast radius first) / surface ids enables just those. A gated-off surface still runs the ceiling check — only the re-encode is skipped. Widen to `all` (or add `guest-documents`) once that gate and the §9.4 blind-A/B pass — see [`../guides/testing/image-upload-optimization-manual.md`](../guides/testing/image-upload-optimization-manual.md).
 
 **Unified server ceilings** — `supabase/functions/_shared/uploadLimits.ts` (`assertWithinUploadLimit`), mirrored by `ui/src/lib/media/uploadLimits.ts` (parity unit test). These replace ~7 per-function hardcoded limits:
 
@@ -41,6 +43,8 @@ The optimizer **never upscales, never returns a larger file, bakes EXIF orientat
 | video                           | 50 MB   |
 
 Ceilings are a **bypass safety net**, not the mechanism — set generously so a legitimate photo is never rejected. Every `upload-*` / `submit-*` function calls `assertWithinUploadLimit`; every media bucket's `allowed_mime_types` includes `image/webp` (client output) + `image/heic`/`heif` (pass-through), and `file_size_limit` is `>=` the matching ceiling. Bucket updates: migration `20261213120600_media_optimization_bucket_limits.sql` + `supabase/config.toml`.
+
+**Marketing Studio exports** (Polotno / calendar builder) render as a **bounded JPEG q0.92** (`exportPolotnoStoreImage`, `ui/.../lib/polotno/polotnoStore.ts`) instead of a raw 2× PNG data URL, and `PublishDialog` rejects a still-oversized image payload with a friendly message before it reaches the Meta Graph API.
 
 Backfill of already-stored images is **out of scope** (originals are not retained; the pre-rollout quality gate is the safeguard). Delivery-time variants (Supabase Image Transformation) are deferred — see the plan §16 Phase 4.
 

@@ -89,7 +89,12 @@ export function OrgBasicInformationSection({
         </OrgSettingsFieldSpan>
 
         <OrgSettingsFieldSpan>
-          <OrgSettingsField id="org-name" label="Organization name" required>
+          <OrgSettingsField
+            id="org-name"
+            label="Organization name"
+            required
+            help="This is the name displayed to your team and in reports."
+          >
             <AvailabilityCheckInput
               id="org-name"
               value={draft.name}
@@ -111,11 +116,7 @@ export function OrgBasicInformationSection({
               <p className="text-destructive text-xs">
                 {nameConflictMessage ?? 'An organization with this name already exists.'}
               </p>
-            ) : (
-              <p className="text-muted-foreground text-xs">
-                This is the name displayed to your team and in reports.
-              </p>
-            )}
+            ) : null}
           </OrgSettingsField>
         </OrgSettingsFieldSpan>
 
@@ -240,7 +241,6 @@ export function OrgSocialsSection({
     airbnbUrl: string;
     instagramUrl: string;
     tiktokUrl: string;
-    mainSocialPlatform: string;
   };
   disabled?: boolean;
   resolveFieldError: (fieldId: string) => string | null;

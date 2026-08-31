@@ -18,10 +18,7 @@ import { ListingPlaceMeta } from '@/features/guest/marketing/shared/components/L
 import { ListingRecommendedBadge } from '@/features/guest/marketing/shared/components/ListingRecommendedBadge';
 import { ListingStatItem } from '@/features/guest/marketing/shared/components/ListingStatItem';
 import { buildPropertyPlacementLabels } from '@/features/guest/marketing/shared/lib/listingPlacement';
-import {
-  PLATFORM_BRAND_NAME,
-  isLegacyKameHomeBrand,
-} from '@/features/guest/form/lib/guestFormBranding';
+import { resolveOrgDisplayName } from '@/features/guest/form/lib/guestFormBranding';
 
 import type { ResolvedCancellationPolicyDisplay } from '@/features/dashboard/org/lib/propertyCancellationPolicy';
 
@@ -108,7 +105,7 @@ export function PropertyOverview({
 
   const hostLabel = host?.ownerName || 'Host';
   const rawOrg = host?.organizationName?.trim() || '';
-  const orgLabel = !rawOrg || isLegacyKameHomeBrand(rawOrg) ? PLATFORM_BRAND_NAME : rawOrg;
+  const orgLabel = resolveOrgDisplayName(rawOrg, 'Host');
   const hostAvatar = host?.ownerAvatarUrl || host?.organizationLogoUrl || null;
 
   const listingHost: ListingHostInfo | null = host

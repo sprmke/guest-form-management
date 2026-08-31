@@ -217,6 +217,133 @@ function firstPropertyImage(settings: Record<string, unknown>): string | null {
   return image?.url?.trim() || null;
 }
 
+export type GuestVoucherDto = {
+  sourceBookingId: string;
+  code: string;
+  /** Percent off (1–100) for OFF-* / FREE-STAY; 0 for legacy peso awards. */
+  percentOff: number;
+  /** Legacy peso amount when percentOff is 0. */
+  legacyAmountPhp: number | null;
+  awardedAt: string | null;
+  checkInDate: string;
+  checkOutDate: string;
+  propertyId: string | null;
+  propertySlug: string | null;
+  propertyName: string | null;
+  propertyImageUrl: string | null;
+  redeemedAt: string | null;
+  redeemedBookingId: string | null;
+};
+
+type VoucherAwardRow = {
+  id: string;
+  property_id: string | null;
+  check_in_date: string;
+  check_out_date: string;
+  next_stay_voucher_code: string | null;
+  next_stay_voucher_amount: number | string | null;
+  next_stay_voucher_awarded_at: string | null;
+  next_stay_voucher_redeemed_at: string | null;
+  next_stay_voucher_redeemed_booking_id: string | null;
+};
+
+function mapVoucherAmount(
+  code: string,
+  amount: unknown
+): {
+  percentOff: number;
+  legacyAmountPhp: number | null;
+} {
+  const c = code.trim().toUpperCase();
+  if (c === 'FREE-STAY' || c === 'KAME-STAY' || c === 'OFF-100') {
+    return { percentOff: 100, legacyAmountPhp: null };
+  }
+  if (/^OFF-\d+/i.test(c)) {
+    const fromAmount = typeof amount === 'number' ? amount : Number(amount);
+    if (Number.isFinite(fromAmount) && fromAmount >= 1 && fromAmount <= 100) {
+      return { percentOff: Math.round(fromAmount), legacyAmountPhp: null };
+    }
+    const m = /^OFF-(\d+)/i.exec(c);
+    return { percentOff: m ? Number(m[1]) : 0, legacyAmountPhp: null };
+  }
+  const peso = typeof amount === 'number' ? amount : Number(amount);
+  return {
+    percentOff: 0,
+    legacyAmountPhp: Number.isFinite(peso) && peso > 0 ? peso : null,
+  };
+}
+
+export async function listGuestVouchers(
+  user: AuthenticatedUser,
+  opts?: { propertyId?: string; includeRedeemed?: boolean }
+): Promise<GuestVoucherDto[]> {
+  const supabase = createServiceClient();
+  await linkGuestBookingsByEmail(supabase, user);
+
+  let query = supabase
+    .from('guest_submissions')
+    .select(
+      'id, property_id, check_in_date, check_out_date, next_stay_voucher_code, next_stay_voucher_amount, next_stay_voucher_awarded_at, next_stay_voucher_redeemed_at, next_stay_voucher_redeemed_booking_id'
+    )
+    .eq('guest_user_id', user.id)
+    .not('next_stay_voucher_code', 'is', null)
+    .order('next_stay_voucher_awarded_at', { ascending: false })
+    .limit(100);
+
+  if (opts?.propertyId) {
+    query = query.eq('property_id', opts.propertyId);
+  }
+  if (!opts?.includeRedeemed) {
+    query = query.is('next_stay_voucher_redeemed_at', null);
+  }
+
+  const { data: bookings, error } = await query;
+  if (error) {
+    console.error('[guestProfileService] list vouchers failed:', error.message);
+    throw new Error('Failed to load vouchers');
+  }
+
+  const rows = (bookings ?? []) as VoucherAwardRow[];
+  const propertyIds = [
+    ...new Set(rows.map((row) => row.property_id).filter((id): id is string => Boolean(id))),
+  ];
+
+  const propertyMap = new Map<string, PropertyRow>();
+  if (propertyIds.length > 0) {
+    const { data: properties } = await supabase
+      .from('properties')
+      .select('id, slug, name, settings')
+      .in('id', propertyIds);
+
+    for (const property of (properties ?? []) as PropertyRow[]) {
+      propertyMap.set(property.id, property);
+    }
+  }
+
+  return rows
+    .filter((row) => row.next_stay_voucher_code)
+    .map((row) => {
+      const code = String(row.next_stay_voucher_code).trim().toUpperCase();
+      const { percentOff, legacyAmountPhp } = mapVoucherAmount(code, row.next_stay_voucher_amount);
+      const property = row.property_id ? propertyMap.get(row.property_id) : undefined;
+      return {
+        sourceBookingId: row.id,
+        code: code === 'KAME-STAY' ? 'FREE-STAY' : code,
+        percentOff,
+        legacyAmountPhp,
+        awardedAt: row.next_stay_voucher_awarded_at,
+        checkInDate: row.check_in_date,
+        checkOutDate: row.check_out_date,
+        propertyId: row.property_id,
+        propertySlug: property?.slug ?? null,
+        propertyName: property?.name ?? null,
+        propertyImageUrl: property ? firstPropertyImage(property.settings ?? {}) : null,
+        redeemedAt: row.next_stay_voucher_redeemed_at,
+        redeemedBookingId: row.next_stay_voucher_redeemed_booking_id,
+      } satisfies GuestVoucherDto;
+    });
+}
+
 export async function listGuestTrips(user: AuthenticatedUser): Promise<GuestTripDto[]> {
   const supabase = createServiceClient();
   await linkGuestBookingsByEmail(supabase, user);

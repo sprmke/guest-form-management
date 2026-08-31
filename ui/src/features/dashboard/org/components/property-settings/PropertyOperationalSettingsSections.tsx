@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { ClipboardList, Globe, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
@@ -14,20 +14,37 @@ import {
 import { useUploadAppSettingsAsset } from '@/features/dashboard/bookings/hooks/useUploadAppSettingsAsset';
 import type { VoiceReceptionistFormValues } from '@/features/dashboard/bookings/hooks/useVoiceReceptionistSettings';
 import { storedAppSettingsMediaUrl } from '@/features/dashboard/lib/storedMediaDisplay';
+import { MarketingResetConfirmDialog } from '@/features/dashboard/marketing/components/shared/MarketingResetConfirmDialog';
 import { PropertyEmailAutomationsSection } from '@/features/dashboard/org/components/property-settings/PropertyEmailAutomationsSection';
-import { PropertyPaymentMethodsSection } from '@/features/dashboard/org/components/property-settings/PropertyPaymentMethodsSection';
+import {
+  PropertyPaymentMethodsSection,
+  PropertyPaymentMethodsSummary,
+} from '@/features/dashboard/org/components/property-settings/PropertyPaymentMethodsSection';
 import { PropertySettingsSectionAlert } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import { PropertyVoiceReceptionistSection } from '@/features/dashboard/org/components/property-settings/PropertyVoiceReceptionistSection';
 import {
+  clonePaymentMethods,
+  paymentMethodEditorFieldIds,
+  paymentMethodsDraftIsDirty,
   setPaymentMethodQrUrl,
   syncLegacyPaymentFieldsFromMethods,
+  validatePaymentMethods,
   type PropertyPaymentMethod,
 } from '@/features/dashboard/org/lib/paymentMethods';
 import type { PropertyAutomationToggleKey } from '@/features/dashboard/org/lib/propertyEmailAutomation';
 import type { PropertySettingsSectionId } from '@/features/dashboard/org/lib/propertySettingsCompletion';
 import { propertySettingsSectionBanner } from '@/features/dashboard/org/lib/propertySettingsFieldError';
 
+import { Button } from '@/components/ui/button';
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
+import { cn } from '@/lib/utils';
 
 type Props = {
   data: AppSettingsDto;
@@ -76,6 +93,21 @@ export function PropertyOperationalSettingsSections({
 }: Props) {
   const uploadMut = useUploadAppSettingsAsset();
   const [qrUploadingMethodId, setQrUploadingMethodId] = useState<string | null>(null);
+  const [paymentManageOpen, setPaymentManageOpen] = useState(false);
+  const [paymentSessionBaseline, setPaymentSessionBaseline] = useState<
+    PropertyPaymentMethod[] | null
+  >(null);
+  const [paymentDiscardConfirmOpen, setPaymentDiscardConfirmOpen] = useState(false);
+  /** Blocks parent dismiss while nested alert is closing (Radix outside-click race). */
+  const suppressPaymentManageCloseRef = useRef(false);
+
+  const armSuppressPaymentManageClose = () => {
+    suppressPaymentManageCloseRef.current = true;
+    window.setTimeout(() => {
+      suppressPaymentManageCloseRef.current = false;
+    }, 0);
+  };
+
   const lock = (sectionId: PropertySettingsSectionId) =>
     disabled || Boolean(sectionEditLocked[sectionId]);
 
@@ -85,6 +117,65 @@ export function PropertyOperationalSettingsSections({
     onChange('paymentProvider', legacy.paymentProvider);
     onChange('gcashName', legacy.gcashName);
     onChange('gcashNumber', legacy.gcashNumber);
+  };
+
+  const openPaymentManage = () => {
+    setPaymentSessionBaseline(clonePaymentMethods(draft.paymentMethods));
+    setPaymentManageOpen(true);
+  };
+
+  const closePaymentManageClean = () => {
+    setPaymentManageOpen(false);
+    setPaymentSessionBaseline(null);
+    setPaymentDiscardConfirmOpen(false);
+  };
+
+  const paymentManageSessionDirty = Boolean(
+    paymentSessionBaseline &&
+    paymentMethodsDraftIsDirty(draft.paymentMethods, paymentSessionBaseline)
+  );
+  const paymentManageValidationError = validatePaymentMethods(draft.paymentMethods);
+  const paymentManageCanSave =
+    paymentManageSessionDirty && paymentManageValidationError === null && !lock('payment');
+
+  // Surface required-field errors while Save is disabled (same idea as dirty review editors).
+  useEffect(() => {
+    if (!paymentManageOpen || !paymentManageSessionDirty || !paymentManageValidationError) return;
+    for (const fieldId of paymentMethodEditorFieldIds(draft.paymentMethods)) {
+      markFieldInteracted(fieldId);
+    }
+  }, [
+    draft.paymentMethods,
+    markFieldInteracted,
+    paymentManageOpen,
+    paymentManageSessionDirty,
+    paymentManageValidationError,
+  ]);
+
+  const requestClosePaymentManage = () => {
+    if (!paymentManageSessionDirty) {
+      closePaymentManageClean();
+      return;
+    }
+    setPaymentDiscardConfirmOpen(true);
+  };
+
+  const discardPaymentManageSession = () => {
+    if (paymentSessionBaseline) {
+      setPaymentMethods(clonePaymentMethods(paymentSessionBaseline));
+    }
+    armSuppressPaymentManageClose();
+    closePaymentManageClean();
+  };
+
+  const handlePaymentManageSave = () => {
+    if (!paymentManageCanSave) {
+      for (const fieldId of paymentMethodEditorFieldIds(draft.paymentMethods)) {
+        markFieldInteracted(fieldId);
+      }
+      return;
+    }
+    closePaymentManageClean();
   };
 
   const handleMethodQrFile = async (methodId: string, file: File) => {
@@ -108,15 +199,71 @@ export function PropertyOperationalSettingsSections({
         icon={Wallet}
         description="How guests pay down payment and balance."
       >
-        <PropertyPaymentMethodsSection
-          data={data}
+        <PropertyPaymentMethodsSummary
           methods={draft.paymentMethods}
-          disabled={lock('payment')}
-          resolveFieldError={resolveFieldError}
-          markFieldInteracted={markFieldInteracted}
-          onChange={setPaymentMethods}
-          onMethodQrFile={(methodId, file) => void handleMethodQrFile(methodId, file)}
-          qrUploadingMethodId={qrUploadingMethodId}
+          onManage={openPaymentManage}
+        />
+        <ResponsiveModal
+          open={paymentManageOpen}
+          onOpenChange={(open) => {
+            if (open) {
+              openPaymentManage();
+              return;
+            }
+            if (suppressPaymentManageCloseRef.current || paymentDiscardConfirmOpen) return;
+            requestClosePaymentManage();
+          }}
+        >
+          <ResponsiveModalContent
+            sheetLayout="split"
+            className={cn(
+              'flex max-h-[min(92dvh,52rem)] w-[min(calc(100vw-1.5rem),40rem)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(95vw,40rem)] sm:p-0'
+            )}
+          >
+            <ResponsiveModalHeader className="border-border/60 shrink-0 space-y-0 border-b px-4 py-3 sm:px-5 sm:py-4">
+              <ResponsiveModalTitle className="pr-8 text-base sm:text-lg">
+                Payment
+              </ResponsiveModalTitle>
+            </ResponsiveModalHeader>
+
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 [-webkit-overflow-scrolling:touch] sm:px-5">
+              <PropertyPaymentMethodsSection
+                data={data}
+                methods={draft.paymentMethods}
+                disabled={lock('payment')}
+                resolveFieldError={resolveFieldError}
+                markFieldInteracted={markFieldInteracted}
+                onChange={setPaymentMethods}
+                onMethodQrFile={(methodId, file) => void handleMethodQrFile(methodId, file)}
+                qrUploadingMethodId={qrUploadingMethodId}
+              />
+            </div>
+
+            <ResponsiveModalFooter className="border-border/60 shrink-0 border-t px-4 py-3 sm:px-5">
+              <Button
+                type="button"
+                className="min-h-[44px] w-full sm:ml-auto sm:w-auto"
+                disabled={!paymentManageCanSave}
+                onClick={handlePaymentManageSave}
+              >
+                Save
+              </Button>
+            </ResponsiveModalFooter>
+          </ResponsiveModalContent>
+        </ResponsiveModal>
+
+        <MarketingResetConfirmDialog
+          open={paymentDiscardConfirmOpen}
+          onOpenChange={(open) => {
+            if (!open) armSuppressPaymentManageClose();
+            setPaymentDiscardConfirmOpen(open);
+          }}
+          title="Discard unsaved changes?"
+          description="Make sure you fill up all required fields and save your changes."
+          confirmLabel="Discard"
+          overlayClassName="z-[110]"
+          contentClassName="z-[111]"
+          onConfirm={discardPaymentManageSession}
         />
       </AdminSection>
 

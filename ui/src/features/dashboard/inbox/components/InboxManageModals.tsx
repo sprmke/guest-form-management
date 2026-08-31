@@ -2,6 +2,7 @@ import { Plug, Sparkles, Zap } from 'lucide-react';
 
 import { InboxAutomationTab } from '@/features/dashboard/inbox/components/InboxAutomationTab';
 import { InboxChannelsTab } from '@/features/dashboard/inbox/components/InboxChannelsTab';
+import { InboxPinnedSnippetsPanel } from '@/features/dashboard/inbox/components/InboxPinnedSnippetsPanel';
 import { InboxQuickRepliesTab } from '@/features/dashboard/inbox/components/InboxQuickRepliesTab';
 import type {
   InboxAutomationSettings,
@@ -33,6 +34,7 @@ type Props = {
   canManageAutomation?: boolean;
   showChannelsTab?: boolean;
   showSettingsManageTabs?: boolean;
+  showPinnedSnippets?: boolean;
   usingOrgMeta?: boolean;
   connections: InboxConnection[];
   connectionsLoading?: boolean;
@@ -162,6 +164,7 @@ export function InboxManageModals({
   canManageAutomation,
   showChannelsTab = true,
   showSettingsManageTabs = true,
+  showPinnedSnippets = false,
   usingOrgMeta = false,
   connections,
   connectionsLoading = false,
@@ -236,6 +239,7 @@ export function InboxManageModals({
                   <ResponsiveModalTitle>Quick replies</ResponsiveModalTitle>
                 </ResponsiveModalHeader>
                 <div className="flex min-h-0 flex-1 flex-col">
+                  {showPinnedSnippets ? <InboxPinnedSnippetsPanel /> : null}
                   <InboxQuickRepliesTab
                     templates={templates}
                     isLoading={templatesLoading}

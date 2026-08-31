@@ -2,18 +2,10 @@
 title: 'Tasks To Prompt'
 status: archived
 tags: [planning]
-updated: 2026-08-25
+updated: 2026-08-31
 ---
 
 **Status legend:** ❌ cancelled / won't do · ✅ done · 📋 planned (plan doc written) · 🚧 in progress · 🔵 pending / open
-
-===
-
-🔵 Commission-based pricing (pay % of completed bookings)
-
-Foundation schema exists but product was retired from live UI (2026-08-24) until fully shippable: host self-serve, Plans & Billing, public pricing, invoicing/PayMongo collection. Do not re-enable the catalog row without a plan.
-
-→ **Pending:** `docs/architecture/plans-feature-matrix.md` § Pending: commission pricing · partial foundation: [`../done/host-plans-and-pricing-tiers.md`](../done/host-plans-and-pricing-tiers.md)
 
 ===
 
@@ -22,7 +14,6 @@ Foundation schema exists but product was retired from live UI (2026-08-24) until
 Won't do — profile, theme toggle, and Explore/Host mode stay in the sidebar footer (`AdminLayout`); separate top header bar rejected.
 
 → **Won't do:** [`../wont-do/dashboard-top-header-bar.md`](../wont-do/dashboard-top-header-bar.md)
-
 ===
 
 ✅ Expand Inbox module to both org and property levels
@@ -44,7 +35,6 @@ At property level:
 - Facebook/Instagram - we can connect different meta account per property.
 
 Plan: `docs/workflow/done/inbox-org-property-parking.md` (includes parking)
-
 ===
 
 ✅ Support both property and parking bookings in /bookings module at org level.
@@ -56,7 +46,6 @@ Maybe at org level, we can remove the kanban board because we don't have workflo
 
 We should also update the stat cards, filters, and any actions available on bookings module at org level.
 The end goal is that we should support both properties & parking modules in bookings module at org level.
-
 ===
 
 ✅ Refine Notifications module
@@ -78,7 +67,6 @@ Also, on first card, we should have a help button and when we click it, we will 
 Then, for each module, when we will also have a help button for chat id, and with same flow, we will provide detailed guide on how to get tg chat id.
 
 Lastly, let's provide card description for each section, for what each module is for.
-
 ===
 
 ✅ Update pricing menu/page to be "Calendar"
@@ -89,15 +77,12 @@ We will have different tabs or switch view inside our calendar page.
 2. Pricing View - this is the current pricing page to configure pricing per booking. We should also have to support to block booking date
 
 Guide: `docs/guides/routes/org/property/calendar.md`
-
 ===
 
 ✅ Improve dashboard UI at org & property level
-
 ===
 
 ✅ Make sure all media uploader default image is empty (ex. org logo). Please analyze all our dashboard image uploader and make sure we don't have static or default images that's tied to Kame Home (2604)
-
 ===
 
 ✅ Do not allow the following names for org and property name.
@@ -112,7 +97,6 @@ Guide: `docs/guides/routes/org/property/calendar.md`
 Again, our detector should be smart and use detector, adding pre, post and between characters should not also be allowed. PLease be very smart. We are doing this so that hosts cannot register general names or use the any residence name and disguise as the official or main host/org/property
 
 Make sure we apply this validation on onboarding, settings and all other locations
-
 ===
 
 ✅ Redesign property public pages layout/container
@@ -122,19 +106,16 @@ I'd like to redesign our property public layout pages to display a header where 
 Let's also please cleanup our redirect to dashboard icon button and dark toggle mode that we have on existing pages.
 
 Also, another thing that we need to improve is that we should display or redesign the property info, booking info.
-
 ===
 
 ✅ Refine all property public pages
 
 → **Done:** [`../done/public-operational-guest-pages-multi-tenant.md`](../done/public-operational-guest-pages-multi-tenant.md)
-
 ===
 
 ✅ Make google map view mode in search or public page listing
 
 Shipped: [`../done/google-map-listing-view.md`](../done/google-map-listing-view.md). Real Google Maps on `/properties`, `/developments`, and `/search` category tabs. `/parkings` index map toggle still optional follow-up.
-
 ===
 
 ✅ Update each page browser title to be dynamic.
@@ -151,7 +132,6 @@ Update both dashboard and public pages.
 
 I'm sure there are other pages that we need to update to match exactly how we should update their name.
 Please list them down and if you have suggestion to name differently or grouped or scoped
-
 ===
 
 ✅ UI/UX improvements
@@ -160,8 +140,7 @@ Please list them down and if you have suggestion to name differently or grouped 
 - Improve pagination UI/UX
 - Add table column sort
 - Update modal to be scrollable inside modal content;
-
-===
+  \===
 
 ✅ Analyze our AI dashboard assistant and analyze the common questions and actions that host can ask/do.
 
@@ -171,7 +150,6 @@ These would be helpful list of questions and actions that host can do.
 Let's generate 20 common questions and 20 actions, but only list 5 randomized items on our chat.
 
 → **Done:** starter prompts in the AI assistant panel. New chat centers a **Questions / Actions** mode switch (5 randomized prompt cards). Pool: `ui/src/features/dashboard/ai-assistant/lib/assistantSuggestions.ts`.
-
 ===
 
 ✅ Another feature that we need to do in our AI assistant chat is to support uploading images (ex. receipt, approved GAF) & files.
@@ -179,25 +157,21 @@ Beside from this, it's also helpful to add or include context of booked dates, s
 So we will have dropdowns for actions beside the input chat
 
 → **Done:** composer paperclip (Photo / File, JPEG/PNG/WebP/PDF, max 3 × 4 MB) and booking pin beside the input. Files stored in `ai-assistant-attachments`; pin sets `pageContext.bookingId` for that turn. See [`../done/ai-dashboard-assistant-features.md`](../done/ai-dashboard-assistant-features.md).
-
 ===
 
 ✅ Update brand color picker to provide pastel and good looking for different colors and still have an option to choose custom color from color picker
 
 → **Done:** pastel preset swatches + rainbow custom picker in `ui/src/features/dashboard/org/components/settings/BrandColorField.tsx`
-
 ===
 
 ✅ Display animated popup party when hosts open calendar and we have 20+ bookings this month
 
 → **Done:** `CalendarBookingCelebration` on Bookings calendar + property Calendar (`BUSY_MONTH_CELEBRATION_THRESHOLD = 20`); see [`../done/property-calendar-page.md`](../done/property-calendar-page.md)
-
 ===
 
 ✅ Add ability to share calendar?
 
 → **Done:** [`../done/inbox-share-links-and-files.md`](../done/inbox-share-links-and-files.md) — Inbox composer Share icon sends calendar/property/booking links; calendar link opens an in-place availability modal for guest and host.
-
 ===
 
 ✅ Socials at org and property level
@@ -208,7 +182,6 @@ Maybe, we will offer a global button that if click, we will make all social fiel
 Or maybe it's better if we have individual toggle per field? Or support both? Provide the best UI/UX for our scenario.
 
 → **Done:** per-field **Use org** inherit toggles on property settings (`SocialLinkInheritField`, `PropertySocialsBrandingSection`, `propertySocialLinks.ts`); parking settings reuse the same payment/social patterns where applicable.
-
 ===
 
 ✅ Generate more real world mock data
@@ -216,19 +189,25 @@ Or maybe it's better if we have individual toggle per field? Or support both? Pr
 Generate more real world and hundreds of mock data for different properties, developments, parking, and other type of place so that we can fully test and simulate real world test data and fully verify if our search, filters, lazy load, and any app performance optimization implementation are working properly.
 
 → **Done (opt-in local seed):** `bun run seed:mock-listings` → `scripts/dev/generate-mock-listings-seed.mjs` (~320 properties / ~65 developments / ~225 parkings across 30 PH cities). Not wired into `db reset` — run manually when perf QA needs volume.
-
 ===
 
 ✅ Update all payment AI validation to make sure that we achieve the actual minimum amount, date is reasonable, etc
 
 → **Done:** `supabase/functions/_shared/receiptValidationService.ts` — `expectedMinimumAmountForReceiptKind` + `evaluateReceiptSanityWarnings` / `applyReceiptSanityChecks` for downpayment, balance, parking, and SD refund receipts (amount floor + Manila date reasonableness warnings).
-
 ===
 
 ✅ Update all dropdown from using default UI to standard dropdown UI
 
 → **Done:** removed legacy `native-select.tsx`; dashboard uses shadcn `Select` / combobox patterns (no raw `<select>` left in `ui/src`).
+===
 
+✅ Update all app, screen and skeleton loaders
+===
+
+✅ Generate not found page
+===
+
+✅ Make sure auth modal and auth page section is similar or aligned same order for consistency
 ===
 
 🚧 Branch deployment guide + dev/staging environment
@@ -242,7 +221,6 @@ The goal in the end is for us to deploy and see fully working application with o
 Also, another important setup I'd like to have is to point or use supabase deployed dev in our local so that we don't need to run docker from our local to test and work locally. Meaning, when we have any supabase related changes locally, and test our app, I still want to see our changes and fully working on it with our local frontend. Meaning, when we are working locally, we can still work on it without running docker and without deploying our backend/supabase related changes to dev. Then, once good, we can deploy our changes to dev. I'm not sure how is this possible but this is how we do it on other projects and I'd like to implement in our app
 
 → **Runbook shipped; operator bootstrap pending:** [`../in-progress/ci-cd-environments/dev-staging-environment.md`](../in-progress/ci-cd-environments/dev-staging-environment.md) · index [`../in-progress/ci-cd-environments/README.md`](../in-progress/ci-cd-environments/README.md)
-
 ===
 
 🚧 Improve marketing generate modal > suggestions thumbnail is confusing
@@ -250,19 +228,30 @@ Also, another important setup I'd like to have is to point or use supabase deplo
 Update marketing generate design suggestion thumbnail to be more closed to calendar template, design and video clips
 
 → **Related:** [`../in-progress/marketing-module-refinement.md`](../in-progress/marketing-module-refinement.md) (perf/AI-gen shipped; publish UX gaps remain)
-
 ===
 
 🚧 Refine add pay parking and add/edit parking from booking detail page
 
 → **Partial:** `PayParkingModal` + header overflow action on booking detail (`BookingDetailPage`, `PayParkingModal.tsx`). **Still open:** polish edit-form parking tab UX and parking-on-booking flows beyond current modal.
-
 ===
 
 🚧 Support normal auth and add auth pages like login, register, forgot password, profile page, etc. Plan to use easy sign on for modern auth approach?
 
 → **Partial:** guest `/for-guests/login` + `/for-guests/register` (email OTP + Google), host `/for-hosts/login` + `/for-hosts/register` (Google), guest account hub `/account/*` (profile, stays, messages, wishlist, settings). **Still open:** forgot-password / magic-link recovery flow.
+===
 
+🚧 Improve UI/UX of exported reports
+
+Let's refine, improve and make the exported reports look more professional, neat, have proper spacing, does not look like AI generated report, clean and elegant, no broken text or UI, respect theme colors, etc.
+
+Make sure we apply it to all exported reports and sub reports for all modules that supports reporting
+===
+
+✅ Commission-based pricing (pay % of completed bookings)
+
+Foundation schema exists but product was retired from live UI (2026-08-24) until fully shippable: host self-serve, Plans & Billing, public pricing, invoicing/PayMongo collection. Do not re-enable the catalog row without a plan.
+
+→ **Pending:** `docs/architecture/plans-feature-matrix.md` § Pending: commission pricing · partial foundation: [`../done/host-plans-and-pricing-tiers.md`](../done/host-plans-and-pricing-tiers.md)
 ===
 
 🔵 Redesign hosts page to be similar UI with developments page.
@@ -271,59 +260,39 @@ Maybe add org photos/banner from org settings?
 
 - http://localhost:5173/hosts/kame-homes
 - http://localhost:5173/developments/azure-north-residences
-
-===
+  \===
 
 🔵 Update for-hosts landing page animation section with updated features and more refined text/voice
-
 ===
 
 🔵 Improve avatar video animation
-
-===
-
-🚧 Improve UI/UX of exported reports
-
-Let's refine, improve and make the exported reports look more professional, neat, have proper spacing, does not look like AI generated report, clean and elegant, no broken text or UI, respect theme colors, etc.
-
-Make sure we apply it to all exported reports and sub reports for all modules that supports reporting
-
 ===
 
 🔵 Cleanup all env variables and example for both ui and supabase
 
 EMAIL_TO / EMAIL_REPLY_TO
-
-===
-
-✅ Update all app, screen and skeleton loaders
-
 ===
 
 🔵 Make sure the SD refund payments is reflecting based on payment methods available from property settings
-
 ===
 
 🔵 In booking detail page, analyze if same primary guest name is recurring guest
-
 ===
 
-🔵 Update dashboard AI assistant to support edit public page
+✅ Update dashboard AI assistant to support edit public page
 
 → **Partial:** public-page **context attach** shipped in [`../done/ai-assistant-universal-context-pickers.md`](../done/ai-assistant-universal-context-pickers.md) (`ChatComposerPublicPagePicker`). **Still open:** assistant-driven edits to Stay Guide / property landing content (use Page Editor or new tools).
-
-===
-
-✅ Generate not found page
-
-===
-
-✅ Make sure auth modal and auth page section is similar or aligned same order for consistency
-
 ===
 
 🔵 Improve parking details
-
 ===
 
 🔵 Support org pincode for security
+===
+
+🔵 Guest review — add Facebook review step if possible
+
+After guests submit their in-app Kame review (`/sd-form` step 1 or standalone `/properties/:slug/guest-review`), explore adding an optional **Facebook review** prompt or step when the property has a Facebook reviews URL configured (`facebookReviewsUrl` / `facebook_reviews_url`).
+
+Legacy SD flow redirected guests to Facebook before the voucher reveal; the current flow is in-app only. Research whether we can deep-link to the host's Facebook review page, show a clear CTA after Kame review submit, and whether completion can be verified (or should stay honor-system). Implement only if feasible — do not block voucher/refund on Facebook completion unless we have a reliable signal.
+===

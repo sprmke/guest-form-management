@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
 import { Mail } from 'lucide-react';
 
@@ -7,34 +7,50 @@ import type { AppSettingsFormValues } from '@/features/dashboard/bookings/hooks/
 import { PropertyEmailAutomationTogglePanel } from '@/features/dashboard/org/components/property-settings/PropertyEmailAutomationTogglePanel';
 import { SettingsField } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import { DEFAULT_RESIDENCE_NAME } from '@/features/dashboard/org/lib/propertyDisplay';
-import type { PropertyAutomationToggleKey } from '@/features/dashboard/org/lib/propertyEmailAutomation';
-import { SD_REFUND_CRON_EMAIL_LEAD_MAX_HOURS } from '@/features/dashboard/org/lib/propertyEmailAutomation';
+import {
+  PROPERTY_AUTOMATION_TOGGLE_GROUPS,
+  SD_REFUND_CRON_EMAIL_LEAD_MAX_HOURS,
+  type PropertyAutomationToggleKey,
+} from '@/features/dashboard/org/lib/propertyEmailAutomation';
 import { getEmailAutomationDefaults } from '@/features/dashboard/org/lib/propertyEmailAutomationDefaults';
 import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
 import { cn } from '@/lib/utils';
 
 function SettingsSubsection({
   title,
   description,
+  headerAction,
   children,
 }: {
   title: string;
   description?: string;
+  headerAction?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <div className="space-y-4">
-      <div className="space-y-1">
-        <h3 className="text-muted-foreground text-xs font-bold uppercase tracking-wider">
-          {title}
-        </h3>
-        {description ? (
-          <p className="text-muted-foreground text-xs leading-snug">{description}</p>
-        ) : null}
+      <div className={cn(headerAction && 'flex flex-row items-start justify-between gap-3')}>
+        <div className="min-w-0 space-y-1">
+          <h3 className="text-muted-foreground text-xs font-bold uppercase tracking-wider">
+            {title}
+          </h3>
+          {description ? (
+            <p className="text-muted-foreground text-xs leading-snug">{description}</p>
+          ) : null}
+        </div>
+        {headerAction ? <div className="shrink-0">{headerAction}</div> : null}
       </div>
       {children}
     </div>
@@ -57,6 +73,10 @@ function FieldSpan({ children }: { children: React.ReactNode }) {
   return <div className="min-w-0 lg:col-span-2">{children}</div>;
 }
 
+const AUTOMATION_TOGGLE_KEYS = PROPERTY_AUTOMATION_TOGGLE_GROUPS.flatMap((group) =>
+  group.items.map((item) => item.key)
+);
+
 export function PropertyEmailAutomationsSection({
   draft,
   residenceName,
@@ -77,10 +97,16 @@ export function PropertyEmailAutomationsSection({
   ) => void;
   onAutomationToggleChange: (key: PropertyAutomationToggleKey, value: boolean) => void;
 }) {
+  const [automatedSendsOpen, setAutomatedSendsOpen] = useState(false);
   const effectiveResidence = residenceName.trim() || DEFAULT_RESIDENCE_NAME;
   const copy = getEmailAutomationDefaults(effectiveResidence);
   const fieldError = resolveFieldError;
   const { allowed: automatedBookingFlowAllowed } = useFeatureGate('automatedBookingFlow');
+
+  const enabledSendCount = AUTOMATION_TOGGLE_KEYS.filter(
+    (key) => draft.automationToggles[key]
+  ).length;
+  const totalSendCount = AUTOMATION_TOGGLE_KEYS.length;
 
   const setField = <K extends keyof AppSettingsFormValues>(
     key: K,
@@ -108,7 +134,7 @@ export function PropertyEmailAutomationsSection({
             <SettingsField
               id="email-reply-to"
               label={copy.propertyEmailLabel}
-              hintBelow={copy.propertyEmailHint}
+              help={copy.propertyEmailHint}
               required
               error={fieldError('email-reply-to')}
             >
@@ -128,7 +154,7 @@ export function PropertyEmailAutomationsSection({
               <SettingsField
                 id="parking-owner-emails"
                 label="Parking owners"
-                hintBelow="Comma-separated BCC list for parking broadcast emails."
+                help="Comma-separated BCC list for parking broadcast emails."
                 error={fieldError('parking-owner-emails')}
               >
                 <Input
@@ -157,7 +183,7 @@ export function PropertyEmailAutomationsSection({
             <SettingsField
               id="sd-lead-hours"
               label="SD refund email lead (hours)"
-              hintBelow="Hours before checkout the guest receives the check-out and SD refund email."
+              help="Hours before checkout the guest receives the check-out and SD refund email."
               error={fieldError('sd-lead-hours')}
             >
               <Input
@@ -183,7 +209,7 @@ export function PropertyEmailAutomationsSection({
             <SettingsField
               id="sd-max-age"
               label="Days after checkout to stop guest emails"
-              hintBelow="Skips automated check-out emails for stale stays. 0 = no limit."
+              help="Skips automated check-out emails for stale stays. 0 = no limit."
               error={fieldError('sd-max-age')}
             >
               <Input
@@ -214,12 +240,53 @@ export function PropertyEmailAutomationsSection({
           title="Automated sends"
           description="Turn each workflow email on or off."
         >
-          <PropertyEmailAutomationTogglePanel
-            draft={draft}
-            disabled={disabled}
-            automatedBookingFlowAllowed={automatedBookingFlowAllowed}
-            onToggleChange={onAutomationToggleChange}
-          />
+          <div className="bg-muted/40 flex min-h-[44px] w-full items-center justify-between gap-3 rounded-lg border px-4 py-3">
+            <p className="min-w-0 text-sm font-medium">
+              {enabledSendCount} of {totalSendCount} email automations enabled
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-[44px] shrink-0"
+              onClick={() => setAutomatedSendsOpen(true)}
+            >
+              Manage
+            </Button>
+          </div>
+
+          <ResponsiveModal open={automatedSendsOpen} onOpenChange={setAutomatedSendsOpen}>
+            <ResponsiveModalContent
+              sheetLayout="split"
+              className={cn(
+                'flex max-h-[min(92dvh,52rem)] w-[min(calc(100vw-1.5rem),40rem)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(95vw,40rem)] sm:p-0'
+              )}
+            >
+              <ResponsiveModalHeader className="border-border/60 shrink-0 space-y-0 border-b px-4 py-3 sm:px-5 sm:py-4">
+                <ResponsiveModalTitle className="pr-8 text-base sm:text-lg">
+                  Automated sends
+                </ResponsiveModalTitle>
+              </ResponsiveModalHeader>
+
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 [-webkit-overflow-scrolling:touch] sm:px-5">
+                <PropertyEmailAutomationTogglePanel
+                  draft={draft}
+                  disabled={disabled}
+                  automatedBookingFlowAllowed={automatedBookingFlowAllowed}
+                  onToggleChange={onAutomationToggleChange}
+                />
+              </div>
+
+              <ResponsiveModalFooter className="border-border/60 shrink-0 border-t px-4 py-3 sm:px-5">
+                <Button
+                  type="button"
+                  className="min-h-[44px] w-full sm:ml-auto sm:w-auto"
+                  onClick={() => setAutomatedSendsOpen(false)}
+                >
+                  Save
+                </Button>
+              </ResponsiveModalFooter>
+            </ResponsiveModalContent>
+          </ResponsiveModal>
         </SettingsSubsection>
       </div>
     </AdminSection>

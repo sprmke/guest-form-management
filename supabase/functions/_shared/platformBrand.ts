@@ -1,5 +1,12 @@
 /** Platform product brand — not a specific host org or residence. */
-export const PLATFORM_BRAND_NAME = 'Kame Homes';
+const envAppName = Deno.env.get('PLATFORM_APP_NAME')?.trim();
+const envContactEmail = Deno.env.get('PLATFORM_CONTACT_EMAIL')?.trim();
+
+/** Optional operator/product name for email shells and public chrome. */
+export const PLATFORM_BRAND_NAME = envAppName || '';
+
+/** Support / legal contact — falls back to a placeholder when unset. */
+export const PLATFORM_CONTACT_EMAIL = envContactEmail || 'support@example.com';
 
 /** True when a label is the old single-tenant brand (optionally with Azure North). */
 export function isLegacyKameHomeBrand(label: string | null | undefined): boolean {
@@ -11,11 +18,11 @@ export function isLegacyKameHomeBrand(label: string | null | undefined): boolean
 
 /**
  * Host org label for email/public chrome.
- * Maps legacy single-tenant labels to the platform brand; returns null when unset.
+ * Maps legacy single-tenant labels to the configured platform name; returns null when unset.
  */
 export function resolvePublicBrandName(organizationName: string | null | undefined): string | null {
   const org = organizationName?.trim();
   if (!org) return null;
-  if (isLegacyKameHomeBrand(org)) return PLATFORM_BRAND_NAME;
+  if (isLegacyKameHomeBrand(org)) return PLATFORM_BRAND_NAME || null;
   return org;
 }

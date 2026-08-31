@@ -1,79 +1,74 @@
 /**
- * Catalog of next-stay vouchers shown in the slot-machine reveal animation.
- * Server allow-list lives in `supabase/functions/_shared/voucher.ts`; keep
- * the values aligned when you add/remove items.
+ * Next-stay voucher display helpers for SD / guest-review reveal.
+ * Server catalog: `supabase/functions/_shared/voucher.ts`.
  */
 
-export type VoucherCode =
-  | 'KAME-50'
-  | 'KAME-100'
-  | 'KAME-150'
-  | 'KAME-200'
-  | 'KAME-250'
-  | 'KAME-300'
-  | 'KAME-350'
-  | 'KAME-400'
-  | 'KAME-450'
-  | 'KAME-500'
-  | 'KAME-1000'
-  | 'KAME-STAY';
+export type VoucherCode = string;
 
 export interface Voucher {
   code: VoucherCode;
+  /**
+   * For OFF-* / FREE-STAY: percent off (1–100).
+   * For legacy KAME-*: peso discount.
+   */
   amount: number;
 }
 
-const VOUCHER_CATALOG: ReadonlyArray<Voucher> = [
-  { code: 'KAME-50', amount: 50 },
-  { code: 'KAME-100', amount: 100 },
-  { code: 'KAME-150', amount: 150 },
-  { code: 'KAME-200', amount: 200 },
-  { code: 'KAME-250', amount: 250 },
-  { code: 'KAME-300', amount: 300 },
-  { code: 'KAME-350', amount: 350 },
-  { code: 'KAME-400', amount: 400 },
-  { code: 'KAME-450', amount: 450 },
-  { code: 'KAME-500', amount: 500 },
-  { code: 'KAME-1000', amount: 1000 },
-  { code: 'KAME-STAY', amount: 0 },
+const DEFAULT_PERCENT_POOL: ReadonlyArray<Voucher> = [
+  { code: 'OFF-5', amount: 5 },
+  { code: 'OFF-10', amount: 10 },
+  { code: 'OFF-15', amount: 15 },
+  { code: 'OFF-20', amount: 20 },
+  { code: 'OFF-25', amount: 25 },
+  { code: 'OFF-50', amount: 50 },
+  { code: 'FREE-STAY', amount: 100 },
 ];
 
-const VOUCHER_BY_CODE = new Map<VoucherCode, Voucher>(VOUCHER_CATALOG.map((v) => [v.code, v]));
-
-/** Codes the server can award — mirror `supabase/functions/_shared/voucher.ts`. */
-const VOUCHER_WIN_POOL: ReadonlyArray<VoucherCode> = [
-  'KAME-100',
-  'KAME-150',
-  'KAME-200',
-  'KAME-250',
-  'KAME-300',
-  'KAME-350',
-  'KAME-400',
-  'KAME-450',
-  'KAME-500',
-  'KAME-1000',
-  'KAME-STAY',
-];
-
-/** Slot reel decoys — only prizes guests can actually win. */
-export const VOUCHER_REEL_POOL: ReadonlyArray<Voucher> = VOUCHER_WIN_POOL.flatMap((code) => {
-  const v = VOUCHER_BY_CODE.get(code);
-  return v ? [v] : [];
-});
-
-export const VOUCHER_DISCOUNT_MAX = 1000;
-
-export function formatVoucherDiscountMaxLabel(): string {
-  return `up to ₱${VOUCHER_DISCOUNT_MAX.toLocaleString('en-PH')} discount`;
+export function isPercentOffVoucher(v: { code: string }): boolean {
+  const c = v.code.trim().toUpperCase();
+  if (c === 'FREE-STAY' || c === 'KAME-STAY') return true;
+  return /^OFF-\d+(-\d+)?$/.test(c);
 }
 
-export function isStaycationVoucher(v: { code: string }): boolean {
-  return v.code === 'KAME-STAY' || v.code === 'FREE-STAY';
+/** PHP liability for host finance — percent-off awards count as 0 until redeemed. */
+export function voucherLiabilityPhp(code: string | null | undefined, amount: unknown): number {
+  const c = typeof code === 'string' ? code.trim() : '';
+  if (!c) return 0;
+  if (isPercentOffVoucher({ code: c }) || isStaycationVoucher({ code: c })) return 0;
+  const n = typeof amount === 'number' ? amount : Number(amount);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.round(n * 100) / 100;
+}
+
+export function isStaycationVoucher(v: { code: string; amount?: number }): boolean {
+  const c = v.code.trim().toUpperCase();
+  if (c === 'FREE-STAY' || c === 'KAME-STAY' || c === 'OFF-100') return true;
+  return isPercentOffVoucher(v) && v.amount === 100;
 }
 
 export function formatVoucherPrizeLabel(v: Pick<Voucher, 'code' | 'amount'>): string {
-  if (isStaycationVoucher(v)) return 'Free staycation';
+  if (isStaycationVoucher(v)) return 'Free stay';
+  if (isPercentOffVoucher(v)) return `${v.amount}% off`;
   return `₱${v.amount.toLocaleString('en-PH')}`;
+}
+
+export function formatVoucherDiscountMaxLabel(prizes?: ReadonlyArray<Voucher>): string {
+  const pool = prizes?.length ? prizes : DEFAULT_PERCENT_POOL;
+  const paid = pool.filter((v) => !isStaycationVoucher(v)).map((v) => v.amount);
+  const max = paid.length > 0 ? Math.max(...paid) : 50;
+  if (pool.some(isPercentOffVoucher) || !prizes?.length) {
+    return `up to ${max}% off`;
+  }
+  return `up to ₱${max.toLocaleString('en-PH')} discount`;
+}
+
+/** Max paid % in the default pool — for static teaser copy outside the reveal. */
+export const VOUCHER_DISCOUNT_MAX_PERCENT = 50;
+
+/** Slot reel decoys — property prizes when provided, else platform defaults. */
+export function voucherReelPool(prizes?: ReadonlyArray<Voucher>): ReadonlyArray<Voucher> {
+  if (prizes?.length) return prizes;
+  return DEFAULT_PERCENT_POOL;
 }
 
 function voucherPrizeRank(v: Pick<Voucher, 'code' | 'amount'>): number {
@@ -94,14 +89,16 @@ function dedupeVouchersByCode(vouchers: ReadonlyArray<Voucher>): Voucher[] {
 
 /**
  * Three ascending, non-redundant decoys in the slow pin before `winner`.
- * Prefer lower-tier prizes; when fewer than three exist below `winner`
- * (e.g. KAME-100), pad with other distinct win-pool amounts (150, 200, …).
  */
-export function pickPreWinnerTeasers(winner: Voucher): [Voucher, Voucher, Voucher] {
+export function pickPreWinnerTeasers(
+  winner: Voucher,
+  pool?: ReadonlyArray<Voucher>
+): [Voucher, Voucher, Voucher] {
+  const catalog = voucherReelPool(pool);
   const winnerRank = voucherPrizeRank(winner);
 
   const belowWinner = dedupeVouchersByCode(
-    VOUCHER_CATALOG.filter((v) => voucherPrizeRank(v) < winnerRank)
+    catalog.filter((v) => voucherPrizeRank(v) < winnerRank)
   ).sort((a, b) => voucherPrizeRank(a) - voucherPrizeRank(b));
 
   if (belowWinner.length >= 3) {
@@ -117,7 +114,7 @@ export function pickPreWinnerTeasers(winner: Voucher): [Voucher, Voucher, Vouche
     picked.set(v.code, v);
   }
 
-  const fillers = dedupeVouchersByCode([...VOUCHER_REEL_POOL, ...VOUCHER_CATALOG])
+  const fillers = dedupeVouchersByCode(catalog)
     .filter((v) => v.code !== winner.code && !picked.has(v.code))
     .sort((a, b) => voucherPrizeRank(a) - voucherPrizeRank(b));
 
@@ -126,12 +123,14 @@ export function pickPreWinnerTeasers(winner: Voucher): [Voucher, Voucher, Vouche
     picked.set(v.code, v);
   }
 
-  const floor = VOUCHER_BY_CODE.get('KAME-50') ?? {
-    code: 'KAME-50' as const,
-    amount: 50,
-  };
+  const floor = catalog[0] ?? { code: 'OFF-5', amount: 5 };
   if (picked.size < 3 && !picked.has(floor.code)) {
     picked.set(floor.code, floor);
+  }
+
+  while (picked.size < 3) {
+    const padCode = `OFF-PAD-${picked.size}`;
+    picked.set(padCode, { code: padCode, amount: Math.max(1, winner.amount - picked.size) });
   }
 
   const ordered = [...picked.values()].sort((a, b) => voucherPrizeRank(a) - voucherPrizeRank(b));
@@ -139,7 +138,27 @@ export function pickPreWinnerTeasers(winner: Voucher): [Voucher, Voucher, Vouche
   return [ordered[0]!, ordered[1]!, ordered[2]!];
 }
 
-export function findVoucher(code: string): Voucher | null {
-  const normalized = code === 'FREE-STAY' ? 'KAME-STAY' : code;
-  return VOUCHER_BY_CODE.get(normalized as VoucherCode) ?? null;
+export function findVoucher(code: string, amount?: number | null): Voucher | null {
+  const normalized =
+    code === 'FREE-STAY' || code === 'KAME-STAY' ? code : code.trim().toUpperCase();
+  if (typeof amount === 'number' && Number.isFinite(amount)) {
+    return { code: normalized === 'KAME-STAY' ? 'FREE-STAY' : normalized, amount };
+  }
+  if (isStaycationVoucher({ code: normalized })) {
+    return { code: normalized === 'KAME-STAY' ? 'FREE-STAY' : normalized, amount: 100 };
+  }
+  const m = /^OFF-(\d+)/i.exec(normalized);
+  if (m) {
+    return { code: normalized, amount: Number(m[1]) };
+  }
+  return null;
 }
+
+export function prizesToVouchers(
+  prizes: ReadonlyArray<{ code: string; percentOff: number }>
+): Voucher[] {
+  return prizes.map((p) => ({ code: p.code, amount: p.percentOff }));
+}
+
+/** @deprecated Prefer voucherReelPool — kept for any leftover imports. */
+export const VOUCHER_REEL_POOL = DEFAULT_PERCENT_POOL;

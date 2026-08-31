@@ -180,7 +180,7 @@ export function GafOwnerSignatureUploadField({
           ref={fileRef}
           id="gaf-owner-signature"
           type="file"
-          accept="image/jpeg,image/png"
+          accept="image/jpeg,image/png,image/webp"
           className="hidden"
           disabled={busy}
           onChange={(e) => void handleFileChange(e)}

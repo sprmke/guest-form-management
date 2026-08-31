@@ -12,10 +12,11 @@ Routes (authenticated explore mode):
 - `/account` → redirects to `/account/profile`
 - `/account/profile`
 - `/account/stays` (legacy `/account/messages` and `/account/trips` redirect here)
+- `/account/vouchers`
 - `/account/favorites` (legacy `/account/wishlist` redirects here)
 - `/account/tickets` (+ `/new`, `/:ticketId`)
 
-> **Status:** Documented — nav avatar + account shell + profile/stays/favorites/tickets.
+> **Status:** Documented — nav avatar + account shell + profile/stays/vouchers/favorites/tickets.
 
 ## Progress overview
 
@@ -24,6 +25,7 @@ Routes (authenticated explore mode):
 | Nav avatar | —        | —               | Documented | Explore: guest menu (Host + Explore groups when org access); host: Dashboard avatar |
 | Profile    | ✅       | Client + server | Documented | `guest-profile` + avatar upload; PH mobile phone; Google Places location            |
 | Stays      | ✅       | —               | Documented | Cross-property web chat hub (`guest-messages`)                                      |
+| Vouchers   | ✅       | —               | Documented | Next-stay wallet — [vouchers.md](./vouchers.md)                                     |
 | Favorites  | ✅       | —               | Documented | `guest_saved_properties`                                                            |
 | Tickets    | ✅       | Server          | Documented | Explore Contact tickets — [tickets.md](./tickets.md)                                |
 
@@ -31,7 +33,7 @@ Routes (authenticated explore mode):
 
 ## Overview
 
-Signed-in guests see a **rounded avatar** in the marketing nav (explore pages only). The dropdown links to account pages. Guests who also own or belong to a host organization see a **Host** section with **Dashboard** above the **Explore** links (Profile · Stays · Favorites · Tickets). **Dashboard** from explore runs the global mode-switch curtain, then opens the org dashboard; from host marketing (`/for-hosts`) it navigates directly. Anonymous guests still use the **checkout auth modal** — no `/for-guests/login` pages.
+Signed-in guests see a **rounded avatar** in the marketing nav (explore pages only). The dropdown links to account pages. Guests who also own or belong to a host organization see a **Host** section with **Dashboard** above the **Explore** links (Profile · Stays · Vouchers · Favorites · Tickets). **Dashboard** from explore runs the global mode-switch curtain, then opens the org dashboard; from host marketing (`/for-hosts`) it navigates directly. Anonymous guests still use the **checkout auth modal** — no `/for-guests/login` pages.
 
 **Host marketing (`/for-hosts`):** signed-in hosts see the same pill + avatar pattern — **Explore** switches to guest mode; avatar menu opens **Dashboard**. Signed-out hosts see **Explore** + **Sign In**.
 

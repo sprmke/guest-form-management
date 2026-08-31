@@ -5,6 +5,9 @@ import { supabase } from '@/lib/supabase/client';
 type ApiSuccess<T> = { success: true; data: T };
 type ApiError = { success: false; error?: string; message?: string };
 
+export type StayGuidePreviewResult =
+  { status: 'ok'; data: GuestStayGuideDto } | { status: 'planAccessDenied' };
+
 function previewGuestStayGuideUrl(propertySlug: string, propertyId: string): string {
   const base = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/$/, '');
   const params = new URLSearchParams({
@@ -17,7 +20,7 @@ function previewGuestStayGuideUrl(propertySlug: string, propertyId: string): str
 export async function fetchGuestStayGuidePreview(
   propertySlug: string,
   propertyId: string
-): Promise<GuestStayGuideDto> {
+): Promise<StayGuidePreviewResult> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -33,7 +36,8 @@ export async function fetchGuestStayGuidePreview(
     },
   });
 
-  const json = (await res.json()) as ApiSuccess<GuestStayGuideDto> | ApiError;
+  const json = (await res.json()) as
+    ApiSuccess<GuestStayGuideDto & { planAccessDenied?: boolean }> | ApiError;
   if (!res.ok || !json.success) {
     throw new Error(
       ('message' in json && json.message) ||
@@ -41,5 +45,8 @@ export async function fetchGuestStayGuidePreview(
         'Stay guide preview is not available.'
     );
   }
-  return json.data;
+  if (json.data && 'planAccessDenied' in json.data && json.data.planAccessDenied) {
+    return { status: 'planAccessDenied' };
+  }
+  return { status: 'ok', data: json.data };
 }

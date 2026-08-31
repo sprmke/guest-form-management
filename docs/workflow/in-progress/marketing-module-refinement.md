@@ -3,7 +3,7 @@ stage: in-progress
 title: 'Marketing 5: Refine & Finalize Marketing Module'
 status: in-progress
 tags: [planning, marketing, templates, performance, publishing]
-updated: 2026-08-17
+updated: 2026-08-31
 ---
 
 # Marketing 5: Refine & Finalize Marketing Module
@@ -44,6 +44,11 @@ No implementation plan was written before work started (jumped straight to diagn
 
 - **Instagram video publish race.** `media_publish` was called immediately after creating a video container, before Meta finished transcoding it — an intermittent failure for anything but the smallest clips (image posts were unaffected; only video containers are processed asynchronously). Added the missing `status_code` poll (up to ~60s) before calling `media_publish`, matching Meta's documented flow.
   File: `metaPublishing.ts`
+
+### Generate modal UX polish (2026-08-27)
+
+- Shared **`MarketingAiGeneratePanel`** stepper aligned with **Import with AI**: segmented progress bar, step title + description in body, Back/Next/Generate footer.
+- Look suggestion **Templates** use square realistic mini previews; per-step **Next** validation; route guide updated.
 
 ## Remaining gaps
 

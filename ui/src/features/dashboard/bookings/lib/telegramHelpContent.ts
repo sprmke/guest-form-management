@@ -23,7 +23,7 @@ export const TELEGRAM_BOT_TOKEN_HELP: TelegramHelpSection[] = [
       },
       {
         title: 'Create the bot',
-        body: 'Send /newbot. BotFather asks for a display name (e.g. "Kame Homes Alerts") — this is shown in contact lists.',
+        body: 'Send /newbot. BotFather asks for a display name (e.g. "Property alerts") — this is shown in contact lists.',
       },
       {
         title: 'Choose a username',

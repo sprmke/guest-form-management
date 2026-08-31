@@ -41,7 +41,7 @@ serveAuthenticated('upload-guest-chat-asset', async (req, user) => {
 
   const mime = (file.type || '').toLowerCase();
   if (!ALLOWED_MIME.has(mime)) {
-    return jsonError(req, 'File must be JPEG, PNG, WebP, or PDF', 400);
+    return jsonError(req, 'File must be JPEG, PNG, WebP, HEIC, or PDF', 400);
   }
   assertWithinUploadLimit(file, mime === 'application/pdf' ? 'pdf' : 'image');
 
@@ -61,7 +61,11 @@ serveAuthenticated('upload-guest-chat-asset', async (req, user) => {
         ? '.webp'
         : mime === 'application/pdf'
           ? '.pdf'
-          : '.jpg';
+          : mime === 'image/heic'
+            ? '.heic'
+            : mime === 'image/heif'
+              ? '.heif'
+              : '.jpg';
   const fileName = String(formData.get('fileName') ?? file.name ?? `upload${ext}`).trim();
   const safeName = fileName.replace(/[^\w.\-() ]+/g, '_').slice(0, 120) || `upload${ext}`;
   const storagePath = `${conv.organization_id}/${conv.id}/${crypto.randomUUID()}${ext}`;

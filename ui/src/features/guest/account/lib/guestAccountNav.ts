@@ -1,10 +1,11 @@
-import { Heart, MessageSquare, Ticket, User, type LucideIcon } from 'lucide-react';
+import { Gift, Heart, MessageSquare, Ticket, User, type LucideIcon } from 'lucide-react';
 
 import {
   GUEST_ACCOUNT_FAVORITES_PATH,
   GUEST_ACCOUNT_PROFILE_PATH,
   GUEST_ACCOUNT_STAYS_PATH,
   GUEST_ACCOUNT_TICKETS_PATH,
+  GUEST_ACCOUNT_VOUCHERS_PATH,
 } from '@/features/guest/account/lib/guestAccountPaths';
 
 export type GuestAccountNavItem = {
@@ -24,6 +25,11 @@ export const GUEST_ACCOUNT_NAV_ITEMS: GuestAccountNavItem[] = [
     href: GUEST_ACCOUNT_STAYS_PATH,
     label: 'Stays',
     Icon: MessageSquare,
+  },
+  {
+    href: GUEST_ACCOUNT_VOUCHERS_PATH,
+    label: 'Vouchers',
+    Icon: Gift,
   },
   {
     href: GUEST_ACCOUNT_FAVORITES_PATH,

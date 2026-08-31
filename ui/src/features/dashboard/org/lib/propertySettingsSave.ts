@@ -13,6 +13,9 @@ import {
   externalReviewsEqual,
   type PropertyExternalReview,
 } from '@/features/dashboard/org/lib/propertyExternalReviews';
+import type { PropertyVoucherPrize } from '@/features/dashboard/org/lib/propertyVoucherSettings';
+import { voucherPrizesEqual } from '@/features/dashboard/org/lib/propertyVoucherSettings';
+import type { VoucherRevealStyle } from '@/features/dashboard/org/lib/voucherRevealStyle';
 import type {
   PropertySettingsCompletionResult,
   PropertySettingsSectionId,
@@ -42,9 +45,9 @@ const FIELD_SECTIONS: Record<string, PropertySettingsSectionId> = {
   'property-airbnb-url': 'branding',
   'property-instagram-url': 'branding',
   'property-tiktok-url': 'branding',
-  'property-main-social-platform': 'branding',
-  'property-external-reviews': 'branding',
-  'property-superhost-verification-url': 'branding',
+  'property-external-reviews': 'guest-rewards',
+  'property-vouchers': 'guest-rewards',
+  'property-superhost-verification-url': 'guest-rewards',
   'property-bedrooms': 'details',
   'property-bathrooms': 'details',
   'property-floors': 'details',
@@ -83,8 +86,8 @@ const FIELD_SECTIONS: Record<string, PropertySettingsSectionId> = {
 
 const PROFILE_SECTIONS: PropertySettingsSectionId[] = [
   'basic',
-  'media',
   'details',
+  'media',
   'amenities',
   'house-rules',
   'guest-form',
@@ -102,6 +105,7 @@ function fieldSectionId(fieldId: string): PropertySettingsSectionId | undefined 
 const OPERATIONAL_SECTIONS: PropertySettingsSectionId[] = [
   'basic',
   'branding',
+  'guest-rewards',
   'payment',
   'building-forms',
   'email-automations',
@@ -225,13 +229,19 @@ export function propertySettingsSectionDirty(
         (operationalDraft.facebookPageUrl.trim() !== operationalBaseline.facebookPageUrl.trim() ||
           operationalDraft.airbnbUrl.trim() !== operationalBaseline.airbnbUrl.trim() ||
           operationalDraft.instagramUrl.trim() !== operationalBaseline.instagramUrl.trim() ||
-          operationalDraft.tiktokUrl.trim() !== operationalBaseline.tiktokUrl.trim() ||
-          operationalDraft.mainSocialPlatform.trim() !==
-            operationalBaseline.mainSocialPlatform.trim() ||
-          !externalReviewsEqual(
-            operationalDraft.externalReviews,
-            operationalBaseline.externalReviews
-          ) ||
+          operationalDraft.tiktokUrl.trim() !== operationalBaseline.tiktokUrl.trim())
+      );
+    case 'guest-rewards':
+      return Boolean(
+        operationalDraft &&
+        operationalBaseline &&
+        (!externalReviewsEqual(
+          operationalDraft.externalReviews,
+          operationalBaseline.externalReviews
+        ) ||
+          operationalDraft.vouchersEnabled !== operationalBaseline.vouchersEnabled ||
+          !voucherPrizesEqual(operationalDraft.voucherPrizes, operationalBaseline.voucherPrizes) ||
+          operationalDraft.voucherRevealStyle !== operationalBaseline.voucherRevealStyle ||
           operationalDraft.superhostVerificationUrl.trim() !==
             operationalBaseline.superhostVerificationUrl.trim())
       );
@@ -346,19 +356,23 @@ function dirtyFieldIdsInSection(
       ) {
         ids.push('property-tiktok-url');
       }
-      if (
-        operationalDraft &&
-        operationalBaseline &&
-        operationalDraft.mainSocialPlatform.trim() !== operationalBaseline.mainSocialPlatform.trim()
-      ) {
-        ids.push('property-main-social-platform');
-      }
+      break;
+    case 'guest-rewards':
       if (
         operationalDraft &&
         operationalBaseline &&
         !externalReviewsEqual(operationalDraft.externalReviews, operationalBaseline.externalReviews)
       ) {
         ids.push('property-external-reviews');
+      }
+      if (
+        operationalDraft &&
+        operationalBaseline &&
+        (operationalDraft.vouchersEnabled !== operationalBaseline.vouchersEnabled ||
+          !voucherPrizesEqual(operationalDraft.voucherPrizes, operationalBaseline.voucherPrizes) ||
+          operationalDraft.voucherRevealStyle !== operationalBaseline.voucherRevealStyle)
+      ) {
+        ids.push('property-vouchers');
       }
       if (
         operationalDraft &&
@@ -630,8 +644,8 @@ export function planPropertySettingsSave(input: {
   const dirtySections = (
     [
       'basic',
-      'media',
       'details',
+      'media',
       'amenities',
       'house-rules',
       'guest-form',
@@ -838,8 +852,10 @@ export type AppSettingsPatchBody = {
   airbnbUrl?: string;
   instagramUrl?: string;
   tiktokUrl?: string;
-  mainSocialPlatform?: string;
   externalReviews?: PropertyExternalReview[];
+  vouchersEnabled?: boolean;
+  voucherPrizes?: PropertyVoucherPrize[];
+  voucherRevealStyle?: VoucherRevealStyle;
   superhostVerificationUrl?: string;
   superhostProofImageUrl?: string;
   settingsVerificationToken?: string;
@@ -864,8 +880,12 @@ export function buildAppSettingsPatchForSections(
     patch.airbnbUrl = draft.airbnbUrl;
     patch.instagramUrl = draft.instagramUrl;
     patch.tiktokUrl = draft.tiktokUrl;
-    patch.mainSocialPlatform = draft.mainSocialPlatform;
+  }
+  if (sectionSet.has('guest-rewards')) {
     patch.externalReviews = draft.externalReviews;
+    patch.vouchersEnabled = draft.vouchersEnabled;
+    patch.voucherPrizes = draft.voucherPrizes;
+    patch.voucherRevealStyle = draft.voucherRevealStyle;
     patch.superhostVerificationUrl = draft.superhostVerificationUrl;
   }
   if (sectionSet.has('payment')) {
@@ -992,8 +1012,15 @@ export function applySavedOperationalSections(
       airbnbUrl: saved.airbnbUrl,
       instagramUrl: saved.instagramUrl,
       tiktokUrl: saved.tiktokUrl,
-      mainSocialPlatform: saved.mainSocialPlatform,
+    };
+  }
+  if (sectionSet.has('guest-rewards')) {
+    next = {
+      ...next,
       externalReviews: saved.externalReviews,
+      vouchersEnabled: saved.vouchersEnabled,
+      voucherPrizes: saved.voucherPrizes,
+      voucherRevealStyle: saved.voucherRevealStyle,
       superhostVerificationUrl: saved.superhostVerificationUrl,
     };
   }

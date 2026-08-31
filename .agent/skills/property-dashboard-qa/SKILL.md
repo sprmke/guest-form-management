@@ -102,8 +102,29 @@ Severity: `P0` blocks host day-to-day · `P1` wrong gate / broken link · `P2` U
 - `admin-dashboard` / `booking-workflow` — bookings deep dive
 - `multi-tenancy` — property vs org scope
 
+## Deep interaction pass (Phase 3+)
+
+Beyond smoke + plan/RBAC probes, exercise at least once per major surface:
+
+1. **Settings** — save a non-payment section; note payment OTP when payment dirtied
+2. **Marketing** — open Design editor; Download PNG; Publish plan gate
+3. **Bookings detail** — GAF (or equivalent) upload → Mark complete
+4. **Notifications** — Telegram module enable + Save and test (invalid token proves validation; real bot optional)
+5. **Inbox** — Channels → Connect Meta (expect Business upgrade on Pro; OAuth only on Business + credentials)
+
+Write evidence to `docs/workflow/qa/property-dashboard/18-*.md` / `19-*.md` (or bump the latest phase file).
+
+## Phase 4 (Business + live integrations)
+
+1. Temporarily set local org to **Business** (`pricing_plans.code = pro`); restore afterward.
+2. **Telegram** — module **Send preview** (expect live “Preview sent”); shared **Save and test** with a real BotFather token.
+3. **Inbox** — **Connect Meta** must start Facebook OAuth (no upgrade modal). Stop before sharing a human FB session unless the user is present.
+4. **Marketing Publish** — empty-state Inbox link; Publish disabled until a channel exists.
+5. Record findings in `19-phase4-*.md`.
+
 ## Don'ts
 
 - Don't mark complete after reading guides only
 - Don't claim plan-tier coverage without Free **and** at least one paid tier (or explicit code-path + matrix verification when live paid seed is unavailable)
 - Don't skip updating outdated route guides when you prove a mismatch
+- Don't log BotFather tokens, chat IDs, or Meta Page tokens into findings docs or chat

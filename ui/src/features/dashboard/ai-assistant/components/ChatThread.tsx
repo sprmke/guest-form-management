@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react';
 
-import { FileText, ImagePlus } from 'lucide-react';
+import { FileText, ImagePlus, RotateCcw } from 'lucide-react';
 
 import { AssistantSuggestionGroups } from '@/features/dashboard/ai-assistant/components/AssistantSuggestionGroups';
-import { AssistantThinkingIndicator } from '@/features/dashboard/ai-assistant/components/AssistantThinkingIndicator';
+import { AssistantTurnProgress } from '@/features/dashboard/ai-assistant/components/AssistantTurnProgress';
 import { ChatBlockRenderer } from '@/features/dashboard/ai-assistant/components/ChatBlockRenderer';
+import { TextBlock } from '@/features/dashboard/ai-assistant/components/blocks/TextBlock';
 import type { ChatThreadMessage } from '@/features/dashboard/ai-assistant/hooks/useAiAssistantChat';
 import type {
   ChatBlock,
@@ -13,10 +14,19 @@ import type {
 import type { AssistantSuggestion } from '@/features/dashboard/ai-assistant/lib/assistantSuggestions';
 import { isAssistantImageMime } from '@/features/dashboard/ai-assistant/lib/chatAttachments';
 
+import type { TurnProgressLiveState } from '@/features/dashboard/ai-assistant/lib/assistantStream';
+
+import { Button } from '@/components/ui/button';
+
 type Props = {
   messages: ChatThreadMessage[];
   pending: boolean;
   sending?: boolean;
+  sendStartedAtMs?: number | null;
+  turnProgress?: TurnProgressLiveState | null;
+  streamingText?: string;
+  canRegenerate?: boolean;
+  onRegenerate?: () => void;
   onResolveAction: (actionId: string, confirm: boolean) => Promise<ConfirmActionResponse | null>;
   onFillComposer?: (prompt: string) => void;
   onOpenCanvas?: (block: ChatBlock) => void;
@@ -33,6 +43,11 @@ export function ChatThread({
   messages,
   pending,
   sending = false,
+  sendStartedAtMs = null,
+  turnProgress = null,
+  streamingText = '',
+  canRegenerate = false,
+  onRegenerate,
   onResolveAction,
   onFillComposer,
   onOpenCanvas,
@@ -47,7 +62,9 @@ export function ChatThread({
       behavior: prefersReducedMotion() ? 'auto' : 'smooth',
       block: 'end',
     });
-  }, [messages.length, sending]);
+  }, [messages.length, sending, turnProgress?.steps.length, streamingText.length]);
+
+  const lastMessageIndex = messages.length - 1;
 
   if (messages.length === 0 && !sending) {
     return (
@@ -66,7 +83,7 @@ export function ChatThread({
       aria-live="polite"
       aria-busy={sending}
     >
-      {messages.map((msg) => (
+      {messages.map((msg, index) => (
         <div
           key={msg.id}
           className={msg.role === 'user' ? 'flex justify-end' : 'flex justify-start'}
@@ -75,7 +92,7 @@ export function ChatThread({
             className={
               msg.role === 'user'
                 ? 'bg-primary text-primary-foreground max-w-[85%] rounded-2xl rounded-br-md px-3 py-2'
-                : 'min-w-0 max-w-[92%]'
+                : 'group min-w-0 max-w-[92%]'
             }
           >
             {msg.role === 'user' ? (
@@ -105,17 +122,42 @@ export function ChatThread({
                 {msg.text ? <p className="break-words text-sm">{msg.text}</p> : null}
               </div>
             ) : (
-              <ChatBlockRenderer
-                blocks={msg.blocks}
-                onResolveAction={onResolveAction}
-                onFillComposer={onFillComposer}
-                onOpenCanvas={onOpenCanvas}
-              />
+              <>
+                <ChatBlockRenderer
+                  blocks={msg.blocks}
+                  onResolveAction={onResolveAction}
+                  onFillComposer={onFillComposer}
+                  onOpenCanvas={onOpenCanvas}
+                />
+                {canRegenerate && index === lastMessageIndex && onRegenerate ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground mt-1 h-8 px-2 text-xs sm:opacity-0 sm:transition-opacity sm:group-focus-within:opacity-100 sm:group-hover:opacity-100"
+                    onClick={onRegenerate}
+                    aria-label="Regenerate response"
+                  >
+                    <RotateCcw className="mr-1.5 size-3.5" aria-hidden />
+                    Regenerate
+                  </Button>
+                ) : null}
+              </>
             )}
           </div>
         </div>
       ))}
-      {sending ? <AssistantThinkingIndicator /> : null}
+      {sending ? (
+        streamingText ? (
+          <div className="flex justify-start">
+            <div className="min-w-0 max-w-[92%]">
+              <TextBlock text={streamingText} />
+            </div>
+          </div>
+        ) : (
+          <AssistantTurnProgress live={turnProgress} startedAtMs={sendStartedAtMs ?? undefined} />
+        )
+      ) : null}
       <div ref={bottomRef} />
     </div>
   );

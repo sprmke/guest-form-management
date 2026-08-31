@@ -11,7 +11,6 @@ import { PropertyMediaUpload } from '@/features/dashboard/org/components/propert
 import { PropertySocialsSection } from '@/features/dashboard/org/components/property-settings/PropertySocialsBrandingSection';
 import { BrandColorField } from '@/features/dashboard/org/components/settings/BrandColorField';
 import type { CancellationPolicySettings } from '@/features/dashboard/org/lib/propertyCancellationPolicy';
-import type { PropertyExternalReview } from '@/features/dashboard/org/lib/propertyExternalReviews';
 import type { CustomHouseRule } from '@/features/dashboard/org/lib/propertyHouseRulesConstants';
 import type {
   CustomAmenity,
@@ -59,8 +58,7 @@ type Props = {
     value: LandingProfileContent[K]
   ) => void;
   socialDraft: AppSettingsFormValues;
-  socialBaselineReviews: PropertyExternalReview[];
-  appSettings: Pick<AppSettingsDto, 'superhostProofImageUrl' | 'superhostStatus' | 'updatedAt'>;
+  appSettings: Pick<AppSettingsDto, 'updatedAt'>;
   orgSocialLinks: OrgSocialLinks;
   onSocialChange: <K extends keyof AppSettingsFormValues>(
     key: K,
@@ -68,8 +66,6 @@ type Props = {
   ) => void;
   resolveFieldError: (fieldId: string) => string | null;
   markFieldInteracted: (fieldId: string) => void;
-  onSaveReview?: (reviewId: string) => void;
-  savingReviewId?: string | null;
 };
 
 export function PropertyLandingEditorPanel({
@@ -85,14 +81,11 @@ export function PropertyLandingEditorPanel({
   content,
   onContentChange,
   socialDraft,
-  socialBaselineReviews,
   appSettings,
   orgSocialLinks,
   onSocialChange,
   resolveFieldError,
   markFieldInteracted,
-  onSaveReview,
-  savingReviewId,
 }: Props) {
   const config = usePropertyLandingEditorStore((s) => s.config);
   const setSectionVisible = usePropertyLandingEditorStore((s) => s.setSectionVisible);
@@ -204,14 +197,11 @@ export function PropertyLandingEditorPanel({
             embedded
             data={appSettings}
             draft={socialDraft}
-            externalReviewsBaseline={socialBaselineReviews}
             orgSocialLinks={orgSocialLinks}
             resolveFieldError={resolveFieldError}
             markFieldInteracted={markFieldInteracted}
             onChange={onSocialChange}
             sectionMessages={{}}
-            onSaveReview={onSaveReview}
-            savingReviewId={savingReviewId}
           />
         </StyleSection>
       </PageEditorRevealTarget>

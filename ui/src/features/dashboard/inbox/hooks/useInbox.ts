@@ -32,6 +32,7 @@ import {
   type InboxApiScope,
   type InboxThreadsPageParam,
 } from '@/features/dashboard/inbox/lib/inboxApi';
+import { uploadInboxChatAttachment } from '@/features/dashboard/inbox/lib/inboxChatAttachment';
 import { isInboxMockMode } from '@/features/dashboard/inbox/lib/inboxMockMode';
 import {
   mockAiSuggest,
@@ -307,12 +308,14 @@ export function useInboxMutations(
       text: string;
       replyToMessageId?: string;
       useHumanAgentTag?: boolean;
+      attachments?: Array<{ kind: 'image' | 'file'; url: string; label?: string }>;
     }) =>
       mockMode
         ? mockSendReply(opts.conversationId, opts.text).then(() => undefined)
         : sendInboxReply(orgSlug, orgId, opts.conversationId, opts.text, {
             replyToMessageId: opts.replyToMessageId,
             useHumanAgentTag: opts.useHumanAgentTag,
+            attachments: opts.attachments,
             scope,
           }),
     onMutate: async (vars) => {
@@ -336,7 +339,7 @@ export function useInboxMutations(
                   conversation_id: vars.conversationId,
                   direction: 'outbound',
                   body_text: vars.text,
-                  attachments: [],
+                  attachments: vars.attachments ?? [],
                   sent_at: new Date().toISOString(),
                   delivery_status: 'sending',
                   is_ai_generated: false,
@@ -357,6 +360,13 @@ export function useInboxMutations(
       void qc.invalidateQueries({ queryKey: inboxMessagesQueryKey(vars.conversationId, scope) });
       scheduleThreadsInvalidate(qc);
     },
+  });
+
+  const uploadAttachment = useMutation({
+    mutationFn: (opts: { conversationId: string; file: File }) =>
+      mockMode
+        ? Promise.reject(new Error('Upload not available in preview mode'))
+        : uploadInboxChatAttachment(orgSlug, orgId, opts.conversationId, opts.file, scope),
   });
 
   const aiSuggest = useMutation({
@@ -393,6 +403,7 @@ export function useInboxMutations(
     disconnectMeta,
     resubscribeMeta,
     sendReply,
+    uploadAttachment,
     editMessage,
     unsendMessage,
     aiSuggest,

@@ -41,7 +41,7 @@ export function PropertyExternalReviewImageField({
       imageUrl={displaySrc}
       uploading={uploadMut.isPending}
       disabled={busy}
-      emptyLabel="Screenshot"
+      emptyLabel="Proof screenshot"
       onFileSelect={(file) => void handleFileChange(file)}
       onRemove={() => onImageUrlChange(null)}
     />

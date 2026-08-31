@@ -1,5 +1,6 @@
 import { Shield } from 'lucide-react';
 
+import { PLATFORM_APP_NAME } from '@/lib/platformBranding';
 import { cn } from '@/lib/utils';
 
 type SuperAdminSidebarScopeProps = {
@@ -44,7 +45,7 @@ export function SuperAdminSidebarScope({
             onPrimary ? 'text-primary-foreground' : 'text-sidebar-foreground'
           )}
         >
-          Kame Homes
+          {PLATFORM_APP_NAME || 'Platform admin'}
         </span>
         <span
           className={cn(

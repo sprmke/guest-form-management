@@ -4,6 +4,9 @@ const PORT = 4173;
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 
 const recordVideo = process.env.PLAYWRIGHT_RECORD_VIDEO === '1';
+const slowMoRaw = process.env.PLAYWRIGHT_SLOW_MO;
+const slowMoParsed = slowMoRaw ? Number.parseInt(slowMoRaw, 10) : 0;
+const slowMo = Number.isFinite(slowMoParsed) && slowMoParsed > 0 ? slowMoParsed : 0;
 
 export default defineConfig({
   testDir: './ui/e2e',
@@ -18,6 +21,12 @@ export default defineConfig({
     video: recordVideo ? 'on' : 'retain-on-failure',
     screenshot: 'only-on-failure',
     viewport: { width: 1440, height: 960 },
+    ...(slowMo
+      ? {
+          headless: false,
+          launchOptions: { slowMo },
+        }
+      : {}),
   },
   projects: [
     {

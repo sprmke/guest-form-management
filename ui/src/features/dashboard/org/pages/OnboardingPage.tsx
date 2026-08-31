@@ -103,7 +103,8 @@ import {
   resolveNameAvailabilityState,
 } from '@/lib/availabilityCheckState';
 import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
-import { usePageTitle } from '@/lib/pageTitle';
+import { prepareUpload } from '@/lib/media/prepareUpload';
+import { appPageTitle, usePageTitle } from '@/lib/pageTitle';
 import { cn } from '@/lib/utils';
 import {
   validateFullPersonName,
@@ -195,7 +196,7 @@ function HostModeOption({
 }
 
 export function OnboardingPage() {
-  usePageTitle('Kame Homes - Onboarding');
+  usePageTitle(appPageTitle('Onboarding'));
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { email, name, session } = useAdminSession();
@@ -412,12 +413,19 @@ export function OnboardingPage() {
   };
 
   const uploadVerificationAsset = async (orgId: string, assetType: string, file: File) => {
+    const prepared = await prepareUpload(file, {
+      imagePreset: 'DOCUMENT',
+      surface: `onboarding-verification-${assetType}`,
+    });
+    if (prepared.error) throw new Error(prepared.error);
+    const preparedFile = prepared.file;
+
     const jwt = await getSessionJwt();
     const form = new FormData();
     form.append('orgId', orgId);
     form.append('assetType', assetType);
-    form.append('file', file);
-    form.append('fileName', file.name);
+    form.append('file', preparedFile);
+    form.append('fileName', preparedFile.name);
     const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/upload-org-verification-asset`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${jwt}` },

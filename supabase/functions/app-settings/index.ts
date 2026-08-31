@@ -50,6 +50,8 @@ import {
   normalizeSuperhostStatus,
   serializeExternalReviewsForOwnerPatch,
 } from '../_shared/propertyExternalReviews.ts';
+import { normalizeVoucherPrizes } from '../_shared/voucher.ts';
+import { isVoucherRevealStyle } from '../_shared/voucherRevealStyle.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 import { createServiceClient, verifyPropertyAccess } from '../_shared/orgAuth.ts';
 import { appSettingsPatchPermissions } from '../_shared/settingsPatchPermissions.ts';
@@ -299,16 +301,6 @@ serveAuthenticated('app-settings', async (req, user) => {
         patch.facebook_reviews_url = null;
       }
     }
-    if (typeof body.mainSocialPlatform === 'string') {
-      const trimmed = body.mainSocialPlatform.trim();
-      if (!trimmed) {
-        patch.main_social_platform = null;
-      } else if (['facebook', 'airbnb', 'instagram', 'tiktok'].includes(trimmed)) {
-        patch.main_social_platform = trimmed;
-      } else {
-        return jsonError(req, 'Invalid main social platform');
-      }
-    }
     if (typeof body.airbnbUrl === 'string') {
       const trimmed = body.airbnbUrl.trim();
       if (trimmed) {
@@ -351,6 +343,28 @@ serveAuthenticated('app-settings', async (req, user) => {
         const msg = e instanceof Error ? e.message : 'Invalid external reviews';
         return jsonError(req, msg);
       }
+    }
+
+    if (typeof body.vouchersEnabled === 'boolean') {
+      patch.vouchers_enabled = body.vouchersEnabled;
+    }
+    if (Array.isArray(body.voucherPrizes)) {
+      const prizes = normalizeVoucherPrizes(body.voucherPrizes);
+      const willEnable =
+        typeof body.vouchersEnabled === 'boolean'
+          ? body.vouchersEnabled
+          : currentRow?.vouchers_enabled !== false;
+      if (willEnable && prizes.length === 0) {
+        return jsonError(req, 'Add at least one voucher prize');
+      }
+      patch.voucher_prizes = prizes;
+    }
+
+    if (body.voucherRevealStyle !== undefined) {
+      if (!isVoucherRevealStyle(body.voucherRevealStyle)) {
+        return jsonError(req, 'Invalid voucher reveal style');
+      }
+      patch.voucher_reveal_style = body.voucherRevealStyle;
     }
 
     let superhostFieldsTouched = false;

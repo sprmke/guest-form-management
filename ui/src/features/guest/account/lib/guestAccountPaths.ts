@@ -9,6 +9,7 @@ export const GUEST_ACCOUNT_FAVORITES_PATH = '/account/favorites';
 /** Legacy path — redirects to {@link GUEST_ACCOUNT_FAVORITES_PATH}. */
 export const GUEST_ACCOUNT_WISHLIST_PATH = '/account/wishlist';
 export const GUEST_ACCOUNT_TICKETS_PATH = '/account/tickets';
+export const GUEST_ACCOUNT_VOUCHERS_PATH = '/account/vouchers';
 export const GUEST_ACCOUNT_SETTINGS_PATH = '/account/settings';
 /** Hidden from nav for now — route redirects to profile. */
 

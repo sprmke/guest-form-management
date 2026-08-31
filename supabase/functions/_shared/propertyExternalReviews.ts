@@ -1,14 +1,9 @@
 /**
  * External review proof stored on app_settings.external_reviews (JSONB).
  * Keep in sync with `ui/src/features/dashboard/org/lib/propertyExternalReviews.ts`.
+ * Feedback tag pills are Kame guest reviews only — not Airbnb/Facebook externals.
  */
 
-import {
-  GUEST_REVIEW_CONSTRUCTIVE_TAG_IDS,
-  GUEST_REVIEW_POSITIVE_TAG_IDS,
-  MAX_GUEST_REVIEW_FEEDBACK_TAGS,
-  validateGuestReviewFeedbackTags,
-} from './guestReviewFeedbackTags.ts';
 import type { PublicGuestReviewDto } from './guestReviewService.ts';
 
 export const MAX_PROPERTY_EXTERNAL_REVIEWS = 5;
@@ -28,52 +23,15 @@ export type PropertyExternalReview = {
   reviewerName: string;
   starRating: number | null;
   imageUrl: string | null;
-  proofUrl: string | null;
   stayPhotoUrls: string[];
-  feedbackTags: string[];
   moderationStatus: ExternalReviewModerationStatus;
   createdAt: string | null;
 };
 
 const EXTERNAL_REVIEW_SOURCES = new Set<ExternalReviewSource>(['facebook', 'airbnb']);
-const POSITIVE_SET = new Set<string>(GUEST_REVIEW_POSITIVE_TAG_IDS);
-const CONSTRUCTIVE_SET = new Set<string>(GUEST_REVIEW_CONSTRUCTIVE_TAG_IDS);
-const ALL_FEEDBACK_TAG_IDS = new Set<string>([
-  ...GUEST_REVIEW_POSITIVE_TAG_IDS,
-  ...GUEST_REVIEW_CONSTRUCTIVE_TAG_IDS,
-]);
 
 function newReviewId(): string {
   return crypto.randomUUID();
-}
-
-export function normalizeExternalReviewFeedbackTags(raw: unknown): string[] {
-  if (!Array.isArray(raw)) return [];
-  const seen = new Set<string>();
-  const tags: string[] = [];
-  for (const entry of raw) {
-    if (typeof entry !== 'string') continue;
-    const id = entry.trim();
-    if (!id || !ALL_FEEDBACK_TAG_IDS.has(id) || seen.has(id)) continue;
-    seen.add(id);
-    tags.push(id);
-    if (tags.length >= MAX_GUEST_REVIEW_FEEDBACK_TAGS) break;
-  }
-  return tags;
-}
-
-export function filterExternalReviewFeedbackTagsForRating(
-  starRating: number | null,
-  tagIds: string[]
-): string[] {
-  const rating = starRating ?? 5;
-  const allowed = rating >= 4 ? POSITIVE_SET : CONSTRUCTIVE_SET;
-  return tagIds.filter((id) => allowed.has(id)).slice(0, MAX_GUEST_REVIEW_FEEDBACK_TAGS);
-}
-
-function feedbackTagsEqual(a: string[], b: string[]): boolean {
-  if (a.length !== b.length) return false;
-  return a.every((id, index) => id === b[index]);
 }
 
 export function createEmptyExternalReview(
@@ -86,9 +44,7 @@ export function createEmptyExternalReview(
     reviewerName: '',
     starRating: 5,
     imageUrl: null,
-    proofUrl: null,
     stayPhotoUrls: [],
-    feedbackTags: [],
     moderationStatus: 'pending',
     createdAt: null,
   };
@@ -139,9 +95,7 @@ export function externalReviewContentEqual(
     a.reviewerName.trim() === b.reviewerName.trim() &&
     a.starRating === b.starRating &&
     (a.imageUrl ?? '') === (b.imageUrl ?? '') &&
-    (a.proofUrl ?? '') === (b.proofUrl ?? '') &&
-    stayPhotoUrlsEqual(a.stayPhotoUrls, b.stayPhotoUrls) &&
-    feedbackTagsEqual(a.feedbackTags, b.feedbackTags)
+    stayPhotoUrlsEqual(a.stayPhotoUrls, b.stayPhotoUrls)
   );
 }
 
@@ -159,10 +113,7 @@ export function normalizeExternalReviewsDraft(raw: unknown): PropertyExternalRev
       starRating: normalizeStarRating(row.starRating),
       imageUrl:
         typeof row.imageUrl === 'string' && row.imageUrl.trim() ? row.imageUrl.trim() : null,
-      proofUrl:
-        typeof row.proofUrl === 'string' && row.proofUrl.trim() ? row.proofUrl.trim() : null,
       stayPhotoUrls: normalizeStayPhotoUrls(row.stayPhotoUrls),
-      feedbackTags: normalizeExternalReviewFeedbackTags(row.feedbackTags),
       moderationStatus: normalizeModerationStatus(row.moderationStatus),
       createdAt:
         typeof row.createdAt === 'string' && row.createdAt.trim() ? row.createdAt.trim() : null,
@@ -178,30 +129,18 @@ export function validateExternalReviews(reviews: PropertyExternalReview[]): stri
   for (let i = 0; i < reviews.length; i++) {
     const review = reviews[i];
     const label = `Review ${i + 1}`;
+    if (!review.reviewerName.trim()) return `${label}: Enter reviewer name`;
     if (!review.reviewText.trim()) return `${label}: Enter review text`;
     if (review.reviewText.trim().length > MAX_EXTERNAL_REVIEW_TEXT_LENGTH) {
       return `${label}: Review text is too long`;
     }
-    if (review.proofUrl?.trim()) {
-      try {
-        const url = new URL(review.proofUrl.trim());
-        if (!['http:', 'https:'].includes(url.protocol)) {
-          return `${label}: Proof URL must start with http:// or https://`;
-        }
-      } catch {
-        return `${label}: Enter a valid proof URL`;
-      }
-    }
-    if (!review.imageUrl?.trim() && !review.proofUrl?.trim()) {
-      return `${label}: Add a screenshot or proof URL`;
+    if (!review.imageUrl?.trim()) {
+      return `${label}: Add a proof screenshot`;
     }
     const stayCount = review.stayPhotoUrls.length;
     if (stayCount > MAX_EXTERNAL_REVIEW_STAY_PHOTOS) {
       return `${label}: You can add up to ${MAX_EXTERNAL_REVIEW_STAY_PHOTOS} stay photos`;
     }
-    const ratingForTags = review.starRating ?? 5;
-    const tagsError = validateGuestReviewFeedbackTags(ratingForTags, review.feedbackTags);
-    if (tagsError) return `${label}: ${tagsError}`;
   }
   return null;
 }
@@ -231,12 +170,7 @@ export function serializeExternalReviewsForOwnerPatch(
       reviewerName: review.reviewerName.trim(),
       starRating: normalizeStarRating(review.starRating),
       imageUrl: review.imageUrl?.trim() || null,
-      proofUrl: review.proofUrl?.trim() || null,
       stayPhotoUrls: normalizeStayPhotoUrls(review.stayPhotoUrls),
-      feedbackTags: filterExternalReviewFeedbackTagsForRating(
-        normalizeStarRating(review.starRating),
-        normalizeExternalReviewFeedbackTags(review.feedbackTags)
-      ),
       moderationStatus: contentChanged ? 'pending' : (prior?.moderationStatus ?? 'pending'),
       createdAt: resubmitted
         ? new Date().toISOString()
@@ -322,9 +256,7 @@ export function externalReviewsEqual(
       review.reviewerName === other.reviewerName &&
       review.starRating === other.starRating &&
       (review.imageUrl ?? '') === (other.imageUrl ?? '') &&
-      (review.proofUrl ?? '') === (other.proofUrl ?? '') &&
-      stayPhotoUrlsEqual(review.stayPhotoUrls, other.stayPhotoUrls) &&
-      feedbackTagsEqual(review.feedbackTags, other.feedbackTags)
+      stayPhotoUrlsEqual(review.stayPhotoUrls, other.stayPhotoUrls)
     );
   });
 }
@@ -351,7 +283,7 @@ export function listApprovedPublicExternalReviews(raw: unknown): PublicGuestRevi
       date: formatReviewMonthYear(review.createdAt) || 'Verified review',
       rating: review.starRating ?? 5,
       comment: review.reviewText,
-      feedbackTags: review.feedbackTags,
+      feedbackTags: [],
       media: normalizeStayPhotoUrls(review.stayPhotoUrls).map((url) => ({
         url,
         type: 'image' as const,

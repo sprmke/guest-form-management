@@ -13,6 +13,26 @@ export type ActionConfirmationBlock = {
   isExternalSend?: boolean;
 };
 
+export type ActivityPhase = 'understanding' | 'tool' | 'synthesizing' | 'safety';
+
+export type ActivityTimelineEntry = {
+  id: string;
+  phase: ActivityPhase;
+  label: string;
+  toolName?: string;
+  status: 'done' | 'failed';
+  durationMs?: number;
+};
+
+export type TaskPlanStepStatus = 'pending' | 'running' | 'done' | 'failed';
+
+export type TaskPlanStep = {
+  id: string;
+  label: string;
+  status: TaskPlanStepStatus;
+  toolName?: string;
+};
+
 export type StepperStep = {
   label: string;
   status: 'done' | 'current' | 'upcoming';
@@ -47,6 +67,8 @@ export type ChatBlock =
     }
   | { type: 'image'; title: string; url: string; alt: string }
   | { type: 'stepper'; title: string; steps: StepperStep[] }
+  | { type: 'activity_timeline'; entries: ActivityTimelineEntry[] }
+  | { type: 'task_plan'; title: string; steps: TaskPlanStep[] }
   | { type: 'quick_actions'; actions: Array<{ label: string; prompt: string }> }
   | ActionConfirmationBlock;
 

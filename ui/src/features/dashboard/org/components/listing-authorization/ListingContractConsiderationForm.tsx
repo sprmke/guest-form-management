@@ -22,6 +22,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { prepareUpload } from '@/lib/media/prepareUpload';
 
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
@@ -46,6 +47,13 @@ async function uploadConsiderationProof(
   listingKind: ListingKind,
   file: File
 ): Promise<string> {
+  const prepared = await prepareUpload(file, {
+    imagePreset: 'DOCUMENT',
+    surface: 'listing-consideration-proof',
+  });
+  if (prepared.error) throw new Error(prepared.error);
+  const preparedFile = prepared.file;
+
   const jwt = await getSessionJwt();
   const body = new FormData();
   body.append('orgId', orgId);
@@ -53,8 +61,8 @@ async function uploadConsiderationProof(
     'assetType',
     listingKind === 'parking' ? 'parking_consideration_proof' : 'property_consideration_proof'
   );
-  body.append('file', file);
-  body.append('fileName', file.name);
+  body.append('file', preparedFile);
+  body.append('fileName', preparedFile.name);
 
   const res = await fetch(`${FUNCTIONS_URL}/upload-org-verification-asset`, {
     method: 'POST',

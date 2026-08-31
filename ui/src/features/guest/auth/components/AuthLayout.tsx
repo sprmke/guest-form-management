@@ -9,6 +9,7 @@ import { MarketingBrandLogo } from '@/features/guest/marketing/shared/components
 import { useModeSwitchTransition } from '@/features/guest/marketing/shared/context/ModeSwitchTransitionContext';
 
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
+import { platformCopyrightLine } from '@/lib/platformBranding';
 
 const HOST_AUTH_PREFIX = '/for-hosts/';
 
@@ -156,7 +157,7 @@ export function AuthLayout() {
         </div>
 
         <div className="text-muted-foreground p-4 text-center text-sm lg:hidden">
-          <p>© 2026 Kame Homes. All rights reserved.</p>
+          <p>{platformCopyrightLine()}</p>
         </div>
       </div>
     </div>

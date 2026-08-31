@@ -59,9 +59,9 @@ If all three are **no** → omit the text.
   Paste the token from @BotFather. Keep it secret.
 </p>
 
-// ✅ Label + input; errors only on failure
-<Label>Bot token</Label>
-<Input ... />
+// ✅ Prefer no helper; if needed, ? tooltip on the label (`FieldLabel` `help`)
+<FieldLabel htmlFor="bot-token" label="Bot token" help="Paste the token from @BotFather." />
+<Input id="bot-token" ... />
 ```
 
 ```tsx

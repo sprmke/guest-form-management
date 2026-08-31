@@ -37,6 +37,7 @@ export function MarketingResetConfirmDialog({
       <AlertDialogContent
         overlayClassName={overlayClassName}
         className={cn('max-w-[min(calc(100vw-1.5rem),24rem)]', contentClassName)}
+        onCloseAutoFocus={(event) => event.preventDefault()}
       >
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>

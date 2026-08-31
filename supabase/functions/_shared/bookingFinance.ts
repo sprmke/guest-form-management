@@ -3,6 +3,7 @@
  */
 
 import { computeTotalGuestBalanceFromBooking } from './totalGuestBalance.ts';
+import { voucherLiabilityPhp } from './voucher.ts';
 
 type SdSettlementLineItem = { label: string; amount: number };
 
@@ -193,7 +194,8 @@ export function computeBookingFinancials(booking: Record<string, unknown>): Book
   const sdProfitTotal = roundMoney(sumSdLineAmounts(profits));
   const voucherCode =
     typeof booking.next_stay_voucher_code === 'string' ? booking.next_stay_voucher_code.trim() : '';
-  const voucherCost = voucherCode ? roundMoney(num(booking.next_stay_voucher_amount)) : 0;
+  // Percent-off awards (OFF-* / FREE-STAY) have no peso liability until redeemed.
+  const voucherCost = voucherLiabilityPhp(voucherCode, booking.next_stay_voucher_amount);
 
   const stayRevenue = isCompleted ? roundMoney(guestCollected - deposit) : null;
 

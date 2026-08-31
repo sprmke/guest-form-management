@@ -63,7 +63,7 @@ Guests have one **Stays** inbox that lists every conversation they've had with a
 ### Load path
 
 1. Page mount → **`guest-messages`** (GET, guest JWT) — lists **`social_conversations`** rows where `platform = 'web'`, the guest owns the thread (`guest_user_id` or linked participant), and at least one message exists (`subject_preview` set).
-2. Selecting a thread loads its message history via the same web-chat hooks/API used by the property-scoped chat page (`useGuestChatMessages`).
+2. Selecting a thread loads its message history via the same web-chat hooks/API used by the property-scoped chat page (`useGuestChatMessages`). For property threads, `guest-web-chat-resume` also supplies `stayGuideUrl` when the guest has an active stay guide, and inquiry dates are passed into the composer Insert / resource hub.
 3. Empty state ("No messages yet.") links to **Browse properties** (`/properties`).
 
 ### Compose / edit / unsend path

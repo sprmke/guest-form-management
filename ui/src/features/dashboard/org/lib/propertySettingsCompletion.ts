@@ -12,7 +12,6 @@ import {
 import { validateCancellationPolicySettings } from '@/features/dashboard/org/lib/propertyCancellationPolicy';
 import { DEFAULT_RESIDENCE_NAME } from '@/features/dashboard/org/lib/propertyDisplay';
 import { SD_REFUND_CRON_EMAIL_LEAD_MAX_HOURS } from '@/features/dashboard/org/lib/propertyEmailAutomation';
-import { validateExternalReviewsDraft } from '@/features/dashboard/org/lib/propertyExternalReviews';
 import { countPropertyMedia } from '@/features/dashboard/org/lib/propertyMedia';
 import {
   getResidencePropertyDefaults,
@@ -22,7 +21,6 @@ import { isCondoPropertyType } from '@/features/dashboard/org/lib/propertyReside
 import type { PropertyProfileDraft } from '@/features/dashboard/org/lib/propertySettingsForm';
 import {
   countFilledSocialUrls,
-  effectiveMainSocialPlatform,
   effectiveSocialUrlMap,
   propertySocialLinkInherits,
 } from '@/features/dashboard/org/lib/propertySocialLinks';
@@ -88,6 +86,7 @@ export type PropertySettingsSectionId =
   | 'cancellation'
   | 'location'
   | 'branding'
+  | 'guest-rewards'
   | 'payment'
   | 'building-forms'
   | 'email-automations'
@@ -191,7 +190,6 @@ export function computePropertySettingsCompletion(
       airbnbUrl: '',
       instagramUrl: '',
       tiktokUrl: '',
-      mainSocialPlatform: '',
     };
 
     if (!propertySocialLinkInherits(operational.facebookPageUrl)) {
@@ -222,32 +220,13 @@ export function computePropertySettingsCompletion(
     const urls = effectiveSocialUrlMap(operational, orgSocials);
     const filled = countFilledSocialUrls(urls);
     if (filled === 0) {
-      addFieldError('property-main-social-platform', 'Add at least one social link', 'branding');
-    } else {
-      const preferred = propertySocialLinkInherits(operational.mainSocialPlatform)
-        ? orgSocials.mainSocialPlatform
-        : operational.mainSocialPlatform;
-      if (!preferred.trim()) {
-        addFieldError('property-main-social-platform', 'Choose a guest review link', 'branding');
-      } else {
-        const main = effectiveMainSocialPlatform(
-          operational.mainSocialPlatform,
-          orgSocials.mainSocialPlatform,
-          urls
-        );
-        if (!main || main !== preferred.trim()) {
-          addFieldError(
-            'property-main-social-platform',
-            'Choose a platform that has a URL',
-            'branding'
-          );
-        }
-      }
+      addFieldError('property-facebook-page-url', 'Add at least one social link', 'branding');
     }
 
-    const externalReviewsErr = validateExternalReviewsDraft(operational.externalReviews);
-    if (externalReviewsErr) {
-      addFieldError('property-external-reviews', externalReviewsErr, 'branding');
+    // External reviews validate per-row in Manage (inline) — not as a card-level section error.
+
+    if (operational.vouchersEnabled && operational.voucherPrizes.length === 0) {
+      addFieldError('property-vouchers', 'Add at least one prize', 'guest-rewards');
     }
 
     const superhostErr = validateOptionalAdminUrl(
@@ -255,7 +234,7 @@ export function computePropertySettingsCompletion(
       'Superhost verification URL'
     );
     if (superhostErr) {
-      addFieldError('property-superhost-verification-url', superhostErr, 'branding');
+      addFieldError('property-superhost-verification-url', superhostErr, 'guest-rewards');
     }
   }
 

@@ -4,11 +4,13 @@ import {
   CalendarPlus,
   CalendarX,
   Car,
+  ClipboardCheck,
   FileCheck,
   LogIn,
   LogOut,
   MessageCircle,
   PawPrint,
+  RefreshCw,
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
@@ -45,6 +47,8 @@ const NOTIFICATION_ICONS: Record<NotificationType, LucideIcon> = {
   booking_parking_matched: Car,
   calendar_sync_failing: CalendarX,
   calendar_conflict: AlertTriangle,
+  booking_external_imported: RefreshCw,
+  booking_guest_form_completed: ClipboardCheck,
 };
 
 /** Category glyph shared by the bell list, Activity page, and realtime toast. */

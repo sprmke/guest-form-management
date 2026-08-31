@@ -3,6 +3,7 @@
  */
 
 import { createServiceClient } from './orgAuth.ts';
+import { formatMaxBytesError, UPLOAD_MAX_BYTES } from './uploadLimits.ts';
 import { UploadService } from './uploadService.ts';
 
 export type GuestReviewMediaItem = {
@@ -10,7 +11,7 @@ export type GuestReviewMediaItem = {
   type: 'image' | 'video';
 };
 
-const IMAGE_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const IMAGE_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']);
 
 export function validateGuestReviewMedia(files: File[]): string | null {
   if (files.length === 0) return null;
@@ -18,6 +19,9 @@ export function validateGuestReviewMedia(files: File[]): string | null {
 
   for (const file of files) {
     if (!IMAGE_MIME.has(file.type)) return 'Only images are supported';
+    if (file.size > UPLOAD_MAX_BYTES.image) {
+      return formatMaxBytesError(UPLOAD_MAX_BYTES.image);
+    }
   }
 
   return null;

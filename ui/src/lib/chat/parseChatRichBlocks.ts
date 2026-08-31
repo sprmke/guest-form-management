@@ -6,6 +6,19 @@
 export type ChatRichSegment =
   { type: 'text'; text: string } | { type: 'link'; href: string; text: string };
 
+export type ChatUrlLinkResourceKind =
+  | 'calendar'
+  | 'stayGuide'
+  | 'document'
+  | 'form'
+  | 'messages'
+  | 'showcase'
+  | 'property'
+  | 'parking'
+  | 'review'
+  | 'sdForm'
+  | 'generic';
+
 export type ChatRichBlock =
   | { type: 'paragraph'; segments: ChatRichSegment[] }
   | { type: 'list'; ordered: boolean; items: ChatRichSegment[][] }
@@ -22,6 +35,7 @@ export type ChatRichBlock =
       title: string;
       subtitle: string;
       variant: 'calendar' | 'generic';
+      resourceKind: ChatUrlLinkResourceKind;
     };
 
 /** Strip invisible / soft-break chars that break URL detection in transcripts. */
@@ -156,37 +170,79 @@ export function urlLinkCardMeta(href: string): {
   title: string;
   subtitle: string;
   variant: 'calendar' | 'generic';
+  resourceKind: ChatUrlLinkResourceKind;
 } {
   try {
     const u = new URL(href);
     const path = u.pathname.toLowerCase();
     const host = u.hostname.replace(/^www\./, '');
     if (path.includes('/calendar')) {
-      return { title: 'Check availability', subtitle: host, variant: 'calendar' };
+      return {
+        title: 'Check availability',
+        subtitle: host,
+        variant: 'calendar',
+        resourceKind: 'calendar',
+      };
     }
     if (path.includes('/stay-guide')) {
-      return { title: 'Stay Guide', subtitle: host, variant: 'generic' };
+      return {
+        title: 'Stay Guide',
+        subtitle: host,
+        variant: 'generic',
+        resourceKind: 'stayGuide',
+      };
+    }
+    if (path.includes('/showcase')) {
+      return {
+        title: 'Property showcase',
+        subtitle: host,
+        variant: 'generic',
+        resourceKind: 'showcase',
+      };
     }
     if (path.includes('/document')) {
       const doc = u.searchParams.get('doc');
       const title =
         doc === 'pet' ? 'Approved Pet Form' : doc === 'gaf' ? 'Approved GAF' : 'Document';
-      return { title, subtitle: host, variant: 'generic' };
+      return { title, subtitle: host, variant: 'generic', resourceKind: 'document' };
     }
     if (path.includes('/messages')) {
-      return { title: 'Chat with host', subtitle: host, variant: 'generic' };
+      return {
+        title: 'Chat with host',
+        subtitle: host,
+        variant: 'generic',
+        resourceKind: 'messages',
+      };
+    }
+    if (path.includes('/form')) {
+      return { title: 'Guest form', subtitle: host, variant: 'generic', resourceKind: 'form' };
     }
     if (path.includes('/sd-form')) {
-      return { title: 'Security Deposit Refund', subtitle: host, variant: 'generic' };
+      return {
+        title: 'Security Deposit Refund',
+        subtitle: host,
+        variant: 'generic',
+        resourceKind: 'sdForm',
+      };
     }
     if (path.includes('/guest-review')) {
-      return { title: 'Leave a Review', subtitle: host, variant: 'generic' };
+      return {
+        title: 'Leave a Review',
+        subtitle: host,
+        variant: 'generic',
+        resourceKind: 'review',
+      };
     }
     if (path.includes('/parking/')) {
-      return { title: 'Pay Parking', subtitle: host, variant: 'generic' };
+      return { title: 'Pay Parking', subtitle: host, variant: 'generic', resourceKind: 'parking' };
     }
     if (path.includes('/storage/v1/object/public/parking-endorsements/')) {
-      return { title: 'Parking Endorsement', subtitle: host, variant: 'generic' };
+      return {
+        title: 'Parking Endorsement',
+        subtitle: host,
+        variant: 'generic',
+        resourceKind: 'parking',
+      };
     }
     if (/\/properties\/[^/]+\/?$/.test(path) || path.includes('/properties/')) {
       const slug = path.split('/properties/')[1]?.split('/')[0];
@@ -197,11 +253,21 @@ export function urlLinkCardMeta(href: string): {
             .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
             .join(' ')
         : 'Property';
-      return { title: label, subtitle: 'View property', variant: 'generic' };
+      return {
+        title: label,
+        subtitle: 'View property',
+        variant: 'generic',
+        resourceKind: 'property',
+      };
     }
-    return { title: host, subtitle: 'Open link', variant: 'generic' };
+    return { title: host, subtitle: 'Open link', variant: 'generic', resourceKind: 'generic' };
   } catch {
-    return { title: 'Open link', subtitle: displayLinkText(href), variant: 'generic' };
+    return {
+      title: 'Open link',
+      subtitle: displayLinkText(href),
+      variant: 'generic',
+      resourceKind: 'generic',
+    };
   }
 }
 
@@ -267,6 +333,7 @@ function blocksFromProse(text: string): ChatRichBlock[] {
         title: meta.title,
         subtitle: meta.subtitle,
         variant: meta.variant,
+        resourceKind: meta.resourceKind,
       });
     }
 
