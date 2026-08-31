@@ -23,6 +23,8 @@ export type ChatAttachmentMeta = {
 
 export type ChatSendInput = {
   text: string;
+  /** Shown in the chat bubble; defaults to `text`. */
+  displayText?: string;
   attachedContext?: AttachedContextItem[];
   attachments?: ChatAttachmentPayload[];
 };

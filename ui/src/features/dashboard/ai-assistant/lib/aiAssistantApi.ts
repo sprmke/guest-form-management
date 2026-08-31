@@ -11,6 +11,7 @@ export type ActionConfirmationBlock = {
   details: Array<{ label: string; value: string }>;
   status: 'proposed' | 'confirmed' | 'executed' | 'denied' | 'expired';
   isExternalSend?: boolean;
+  errorMessage?: string;
 };
 
 export type ActivityPhase = 'understanding' | 'tool' | 'synthesizing' | 'safety';

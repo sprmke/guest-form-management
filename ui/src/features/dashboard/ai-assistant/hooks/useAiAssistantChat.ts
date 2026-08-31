@@ -4,8 +4,14 @@ import { useQueryClient } from '@tanstack/react-query';
 
 import {
   buildTurnProgressFromStreamEvent,
+  humanizeAssistantStreamError,
   isAbortError,
+  isInterruptedStreamError,
   streamChatMessage,
+  AssistantStreamAbortedError,
+  AssistantStreamInterruptedError,
+  type AssistantAppliedEffect,
+  type AssistantStreamEvent,
   type TurnProgressLiveState,
 } from '@/features/dashboard/ai-assistant/lib/assistantStream';
 import {
@@ -15,9 +21,12 @@ import {
   type ChatBlock,
   type PageContext,
 } from '@/features/dashboard/ai-assistant/lib/aiAssistantApi';
+import {
+  hostFacingUserMessageText,
+  patchActionConfirmationStatus,
+} from '@/features/dashboard/ai-assistant/lib/chatBlockDisplay';
 import type { AttachedContextItem } from '@/features/dashboard/ai-assistant/lib/attachedContext';
 import type { ChatSendInput } from '@/features/dashboard/ai-assistant/lib/chatAttachments';
-import { patchActionConfirmationStatus } from '@/features/dashboard/ai-assistant/lib/chatBlockDisplay';
 import { useOrgScopeKey, useOrgSlugParam } from '@/features/dashboard/org/lib/adminApiScope';
 
 export type ChatThreadMessage = {
@@ -45,6 +54,9 @@ export function useAiAssistantChat(pageContext: PageContext) {
   const [turnProgress, setTurnProgress] = useState<TurnProgressLiveState | null>(null);
   const [streamingText, setStreamingText] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [partialCancelEffects, setPartialCancelEffects] = useState<AssistantAppliedEffect[] | null>(
+    null
+  );
   const [upgradeHook, setUpgradeHook] = useState(false);
 
   const invalidateUsage = useCallback(() => {
@@ -67,7 +79,8 @@ export function useAiAssistantChat(pageContext: PageContext) {
         rows.map((row) => ({
           id: row.id,
           role: row.role,
-          text: row.content_text,
+          text:
+            row.role === 'user' ? hostFacingUserMessageText(row.content_text) : row.content_text,
           blocks: row.blocks,
           attachments: row.attachments,
         }))
@@ -90,6 +103,7 @@ export function useAiAssistantChat(pageContext: PageContext) {
     setSendStartedAtMs(null);
     setTurnProgress(null);
     setStreamingText('');
+    setPartialCancelEffects(null);
     setPending(false);
   }, []);
 
@@ -103,6 +117,7 @@ export function useAiAssistantChat(pageContext: PageContext) {
       options?: { skipUserBubble?: boolean; regenerate?: boolean; localUserId?: string }
     ) => {
       const text = (payload.text ?? '').trim();
+      const displayText = (payload.displayText ?? text).trim();
       const attachments = payload.attachments ?? [];
       if (!orgSlug || (!text && attachments.length === 0)) return;
       if (options?.regenerate && !conversationId) return;
@@ -113,6 +128,7 @@ export function useAiAssistantChat(pageContext: PageContext) {
       setTurnProgress(null);
       setStreamingText('');
       setError(null);
+      setPartialCancelEffects(null);
       setUpgradeHook(false);
 
       const attachedContext = payload.attachedContext ?? [];
@@ -122,8 +138,8 @@ export function useAiAssistantChat(pageContext: PageContext) {
         const userMessage: ChatThreadMessage = {
           id: localUserId,
           role: 'user',
-          text: text || null,
-          blocks: text ? [{ type: 'text', text }] : [],
+          text: displayText || null,
+          blocks: displayText ? [{ type: 'text', text: displayText }] : [],
           attachments: attachments.map(({ name, mimeType }) => ({ name, mimeType })),
           attachedContext: attachedContext.length > 0 ? attachedContext : undefined,
         };
@@ -133,6 +149,39 @@ export function useAiAssistantChat(pageContext: PageContext) {
       const controller = new AbortController();
       abortRef.current = controller;
 
+      const applySuccessfulTurn = (res: {
+        conversationId: string;
+        blocks: ChatBlock[];
+        upgradeHook?: boolean;
+      }) => {
+        setConversationId(res.conversationId);
+        setUpgradeHook(Boolean(res.upgradeHook));
+        setMessages((prev) => [
+          ...prev,
+          { id: `assistant-${Date.now()}`, role: 'assistant', text: null, blocks: res.blocks },
+        ]);
+        invalidateUsage();
+      };
+
+      const streamHandlers = {
+        signal: controller.signal,
+        onEvent: (event: AssistantStreamEvent) => {
+          if (event.type === 'turn_started' && event.conversationId) {
+            setConversationId(event.conversationId);
+            return;
+          }
+          if (event.type === 'text_start') {
+            setStreamingText('');
+            return;
+          }
+          if (event.type === 'text_chunk') {
+            setStreamingText((prev) => prev + event.delta);
+            return;
+          }
+          setTurnProgress((prev) => buildTurnProgressFromStreamEvent(prev, event));
+        },
+      };
+
       try {
         const res = await streamChatMessage(
           {
@@ -141,33 +190,18 @@ export function useAiAssistantChat(pageContext: PageContext) {
             pageContext,
             attachedContext: attachedContext.length > 0 ? attachedContext : undefined,
             message: text,
+            displayMessage: displayText || undefined,
             attachments: attachments.length > 0 ? attachments : undefined,
             regenerate: options?.regenerate === true,
           },
-          {
-            signal: controller.signal,
-            onEvent: (event) => {
-              if (event.type === 'text_start') {
-                setStreamingText('');
-                return;
-              }
-              if (event.type === 'text_chunk') {
-                setStreamingText((prev) => prev + event.delta);
-                return;
-              }
-              setTurnProgress((prev) => buildTurnProgressFromStreamEvent(prev, event));
-            },
-          }
+          streamHandlers
         );
-        setConversationId(res.conversationId);
-        setUpgradeHook(Boolean(res.upgradeHook));
-        setMessages((prev) => [
-          ...prev,
-          { id: `assistant-${Date.now()}`, role: 'assistant', text: null, blocks: res.blocks },
-        ]);
-        invalidateUsage();
+        applySuccessfulTurn(res);
       } catch (err) {
         if (isAbortError(err)) {
+          if (err instanceof AssistantStreamAbortedError && err.appliedEffects?.length) {
+            setPartialCancelEffects(err.appliedEffects);
+          }
           if (conversationId) {
             try {
               const { messages: rows } = await fetchAiAssistantConversationMessages(conversationId);
@@ -175,7 +209,10 @@ export function useAiAssistantChat(pageContext: PageContext) {
                 rows.map((row) => ({
                   id: row.id,
                   role: row.role,
-                  text: row.content_text,
+                  text:
+                    row.role === 'user'
+                      ? hostFacingUserMessageText(row.content_text)
+                      : row.content_text,
                   blocks: row.blocks,
                   attachments: row.attachments,
                 }))
@@ -190,7 +227,50 @@ export function useAiAssistantChat(pageContext: PageContext) {
           }
           return;
         }
-        setError(err instanceof Error ? err.message : 'Something went wrong');
+
+        // Local `functions serve` hot-reload (and similar) cuts SSE mid-flight —
+        // recover once via regenerate so the host doesn't see a raw "network error".
+        const retryConversationId =
+          (err instanceof AssistantStreamInterruptedError ? err.conversationId : null) ||
+          conversationId;
+        const canAutoRetry =
+          isInterruptedStreamError(err) &&
+          Boolean(retryConversationId) &&
+          options?.regenerate !== true &&
+          attachments.length === 0 &&
+          !controller.signal.aborted;
+
+        if (canAutoRetry && retryConversationId) {
+          try {
+            setTurnProgress(null);
+            setStreamingText('');
+            // Brief pause so local functions serve can finish hot-reloading.
+            await new Promise<void>((resolve) => setTimeout(resolve, 1200));
+            if (controller.signal.aborted) return;
+            const retry = await streamChatMessage(
+              {
+                orgSlug,
+                conversationId: retryConversationId,
+                pageContext,
+                attachedContext: attachedContext.length > 0 ? attachedContext : undefined,
+                message: text,
+                regenerate: true,
+              },
+              streamHandlers
+            );
+            applySuccessfulTurn(retry);
+            return;
+          } catch (retryErr) {
+            if (isAbortError(retryErr)) return;
+            setError(humanizeAssistantStreamError(retryErr));
+            if (retryErr instanceof Error && 'upgradeHook' in retryErr && retryErr.upgradeHook) {
+              setUpgradeHook(true);
+            }
+            return;
+          }
+        }
+
+        setError(humanizeAssistantStreamError(err));
         if (err instanceof Error && 'upgradeHook' in err && err.upgradeHook) {
           setUpgradeHook(true);
         }
@@ -253,9 +333,15 @@ export function useAiAssistantChat(pageContext: PageContext) {
           blocks:
             result.status === 'pending'
               ? msg.blocks
-              : patchActionConfirmationStatus(msg.blocks, actionId, result.status),
+              : patchActionConfirmationStatus(
+                  msg.blocks,
+                  actionId,
+                  result.status,
+                  result.ok === false ? result.error : undefined
+                ),
         }))
       );
+      setError(null);
       return result;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to resolve action');
@@ -285,6 +371,7 @@ export function useAiAssistantChat(pageContext: PageContext) {
     turnProgress,
     streamingText,
     error,
+    partialCancelEffects,
     upgradeHook,
     canRegenerate,
     sendMessage,

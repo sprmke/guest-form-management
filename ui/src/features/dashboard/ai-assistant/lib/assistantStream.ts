@@ -4,6 +4,7 @@
  */
 
 import type { ChatBlock } from '@/features/dashboard/ai-assistant/lib/aiAssistantApi';
+import { getAssistantToolActivityLabel } from '@/features/dashboard/ai-assistant/lib/assistantToolLabels';
 import type { AttachedContextItem } from '@/features/dashboard/ai-assistant/lib/attachedContext';
 import type { PageContext } from '@/features/dashboard/ai-assistant/lib/aiAssistantApi';
 import { getSessionJwt } from '@/features/dashboard/org/lib/edgeClient';
@@ -21,6 +22,7 @@ export type AssistantStreamTaskPlanStep = {
 };
 
 export type AssistantStreamEvent =
+  | { type: 'turn_started'; conversationId: string }
   | { type: 'phase'; phase: AssistantStreamPhase; label?: string }
   | { type: 'tool_start'; toolName: string; label: string; stepId?: string }
   | { type: 'tool_done'; toolName: string; ok: boolean; durationMs: number; stepId?: string }
@@ -34,7 +36,19 @@ export type AssistantStreamEvent =
       blocks: ChatBlock[];
       upgradeHook?: boolean;
     }
-  | { type: 'error'; message: string; upgradeHook?: boolean; aborted?: boolean };
+  | {
+      type: 'error';
+      message: string;
+      upgradeHook?: boolean;
+      aborted?: boolean;
+      appliedEffects?: AssistantAppliedEffect[];
+    };
+
+export type AssistantAppliedEffect = {
+  toolName: string;
+  label: string;
+  ok: boolean;
+};
 
 export type StreamChatMessageInput = {
   orgSlug: string;
@@ -42,6 +56,8 @@ export type StreamChatMessageInput = {
   pageContext: PageContext;
   attachedContext?: AttachedContextItem[];
   message: string;
+  /** Host-facing text persisted/shown in the thread (defaults to message). */
+  displayMessage?: string;
   attachments?: Array<{ name: string; mimeType: string; dataBase64: string }>;
   /** Re-run the last user turn without inserting a duplicate user message. */
   regenerate?: boolean;
@@ -54,8 +70,23 @@ export type StreamChatMessageHandlers = {
 
 export class AssistantStreamAbortedError extends Error {
   override readonly name = 'AssistantStreamAbortedError';
-  constructor(message = 'Turn cancelled') {
+  readonly appliedEffects?: AssistantAppliedEffect[];
+  constructor(message = 'Turn cancelled', appliedEffects?: AssistantAppliedEffect[]) {
     super(message);
+    this.appliedEffects = appliedEffects;
+  }
+}
+
+/** Stream cut mid-flight (hot-reload, proxy kill, ERR_INCOMPLETE_CHUNKED_ENCODING). */
+export class AssistantStreamInterruptedError extends Error {
+  override readonly name = 'AssistantStreamInterruptedError';
+  readonly conversationId: string | null;
+  constructor(
+    conversationId: string | null = null,
+    message = 'Connection interrupted. Try again.'
+  ) {
+    super(message);
+    this.conversationId = conversationId;
   }
 }
 
@@ -90,6 +121,29 @@ export function isAbortError(err: unknown): boolean {
     name === 'AssistantStreamAbortedError' ||
     err instanceof AssistantStreamAbortedError
   );
+}
+
+export function isInterruptedStreamError(err: unknown): boolean {
+  if (err instanceof AssistantStreamInterruptedError) return true;
+  if (!(err instanceof Error)) return false;
+  const msg = err.message.toLowerCase();
+  return (
+    msg === 'network error' ||
+    msg.includes('failed to fetch') ||
+    msg.includes('networkerror') ||
+    msg.includes('incomplete_chunked') ||
+    msg.includes('incomplete chunked') ||
+    msg.includes('stream ended without a response') ||
+    (err.name === 'TypeError' && msg.includes('network'))
+  );
+}
+
+export function humanizeAssistantStreamError(err: unknown): string {
+  if (isInterruptedStreamError(err)) {
+    return 'Connection interrupted. Try again.';
+  }
+  if (err instanceof Error && err.message.trim()) return err.message;
+  return 'Something went wrong';
 }
 
 export async function streamChatMessage(
@@ -144,19 +198,34 @@ export async function streamChatMessage(
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
+  let seenConversationId: string | null = input.conversationId ?? null;
   let finalResult: { conversationId: string; blocks: ChatBlock[]; upgradeHook?: boolean } | null =
     null;
 
   try {
     let streamDone = false;
     while (!streamDone) {
-      const { done, value } = await reader.read();
+      let chunk: ReadableStreamReadResult<Uint8Array>;
+      try {
+        chunk = await reader.read();
+      } catch (readErr) {
+        if (handlers.signal?.aborted || isAbortError(readErr)) {
+          throw readErr instanceof AssistantStreamAbortedError
+            ? readErr
+            : new AssistantStreamAbortedError();
+        }
+        throw new AssistantStreamInterruptedError(seenConversationId);
+      }
+      const { done, value } = chunk;
       streamDone = done;
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
       const parsed = parseSseChunk(buffer);
       buffer = parsed.rest;
       for (const event of parsed.events) {
+        if (event.type === 'turn_started' && event.conversationId) {
+          seenConversationId = event.conversationId;
+        }
         handlers.onEvent?.(event);
         if (event.type === 'blocks') {
           finalResult = {
@@ -167,7 +236,7 @@ export async function streamChatMessage(
         }
         if (event.type === 'error') {
           if (event.aborted) {
-            throw new AssistantStreamAbortedError(event.message);
+            throw new AssistantStreamAbortedError(event.message, event.appliedEffects);
           }
           const err = new Error(event.message) as Error & { upgradeHook?: boolean };
           err.upgradeHook = event.upgradeHook;
@@ -180,6 +249,11 @@ export async function streamChatMessage(
       if (finalResult) return finalResult;
       throw err instanceof AssistantStreamAbortedError ? err : new AssistantStreamAbortedError();
     }
+    if (isInterruptedStreamError(err)) {
+      throw err instanceof AssistantStreamInterruptedError
+        ? err
+        : new AssistantStreamInterruptedError(seenConversationId);
+    }
     throw err;
   } finally {
     try {
@@ -190,23 +264,57 @@ export async function streamChatMessage(
   }
 
   if (!finalResult) {
-    throw new Error('Stream ended without a response');
+    throw new AssistantStreamInterruptedError(seenConversationId);
   }
   return finalResult;
 }
 
 export type TurnProgressLiveState = {
-  steps: Array<{ id: string; label: string; status: 'pending' | 'active' | 'done' | 'failed' }>;
+  steps: Array<{
+    id: string;
+    label: string;
+    status: 'pending' | 'active' | 'done' | 'failed';
+    toolName?: string;
+  }>;
   planTitle?: string;
 };
 
-function phaseLabel(phase: AssistantStreamPhase, explicit?: string): string {
-  if (explicit) return explicit;
+function phaseProgressLabel(phase: AssistantStreamPhase, explicit?: string): string {
+  if (explicit && !/^(Understood|Prepared|Checked|Applying|Gathered)/.test(explicit)) {
+    return explicit;
+  }
   if (phase === 'understanding') return 'Understanding your question';
-  if (phase === 'executing') return 'Gathering data from your account';
-  if (phase === 'synthesizing') return 'Preparing your answer';
+  if (phase === 'planning') return 'Planning next steps';
+  if (phase === 'executing') return explicit ?? 'Gathering data from your account';
+  if (phase === 'synthesizing') {
+    if (explicit?.includes('action')) return 'Preparing action for your review';
+    return 'Preparing your answer';
+  }
   if (phase === 'safety') return 'Checking response safety';
   return 'Working on your request';
+}
+
+function labelForStepStatus(step: {
+  label: string;
+  toolName?: string;
+  status: 'pending' | 'active' | 'done' | 'failed';
+}): string {
+  if (step.status === 'pending') return step.label;
+  if (step.toolName) {
+    if (step.status === 'active') return getAssistantToolActivityLabel(step.toolName, 'progress');
+    if (step.status === 'failed') return getAssistantToolActivityLabel(step.toolName, 'failed');
+    if (step.status === 'done') return getAssistantToolActivityLabel(step.toolName, 'done');
+  }
+  return step.label;
+}
+
+type LiveStepStatus = TurnProgressLiveState['steps'][number]['status'];
+
+function mapPlanStepStatus(status: TaskPlanStepStatus): LiveStepStatus {
+  if (status === 'running') return 'active';
+  if (status === 'pending') return 'pending';
+  if (status === 'failed') return 'failed';
+  return 'done';
 }
 
 export function buildTurnProgressFromStreamEvent(
@@ -216,38 +324,27 @@ export function buildTurnProgressFromStreamEvent(
   if (event.type === 'plan') {
     return {
       planTitle: event.title,
-      steps: event.steps.map((step) => ({
-        id: step.id,
-        label: step.label,
-        status:
-          step.status === 'running'
-            ? 'active'
-            : step.status === 'pending'
-              ? 'pending'
-              : step.status === 'failed'
-                ? 'failed'
-                : 'done',
-      })),
+      steps: event.steps.map((step) => {
+        const status = mapPlanStepStatus(step.status);
+        const base = {
+          id: step.id,
+          label: step.label,
+          toolName: step.toolName,
+          status,
+        };
+        return { ...base, label: labelForStepStatus(base) };
+      }),
     };
   }
   if (event.type === 'plan_update' && prev) {
     return {
       ...prev,
-      steps: prev.steps.map((step) =>
-        step.id === event.stepId
-          ? {
-              ...step,
-              status:
-                event.status === 'running'
-                  ? 'active'
-                  : event.status === 'pending'
-                    ? 'pending'
-                    : event.status === 'failed'
-                      ? 'failed'
-                      : 'done',
-            }
-          : step
-      ),
+      steps: prev.steps.map((step) => {
+        if (step.id !== event.stepId) return step;
+        const status = mapPlanStepStatus(event.status);
+        const next = { ...step, status };
+        return { ...next, label: labelForStepStatus(next) };
+      }),
     };
   }
   if (event.type === 'tool_start') {
@@ -259,50 +356,106 @@ export function buildTurnProgressFromStreamEvent(
         status: 'running',
       });
     }
+
+    const withoutPhases = steps.filter((s) => !s.id.startsWith('phase-'));
+    let existingIdx = -1;
+    for (let i = withoutPhases.length - 1; i >= 0; i -= 1) {
+      if (withoutPhases[i]?.toolName === event.toolName) {
+        existingIdx = i;
+        break;
+      }
+    }
+
+    // Same tool called again in a later round — reuse the row instead of stacking duplicates.
+    if (existingIdx >= 0) {
+      const nextSteps = withoutPhases.map((step, index) => {
+        if (index === existingIdx) {
+          const active = {
+            ...step,
+            id: event.stepId ?? step.id,
+            toolName: event.toolName,
+            status: 'active' as const,
+            label: event.label,
+          };
+          return { ...active, label: labelForStepStatus(active) };
+        }
+        if (step.status !== 'active') return step;
+        return {
+          ...step,
+          status: 'done' as const,
+          label: labelForStepStatus({ ...step, status: 'done' }),
+        };
+      });
+      return { planTitle: prev?.planTitle, steps: nextSteps };
+    }
+
     const nextSteps = [
-      ...steps
-        .filter((s) => !s.id.startsWith('phase-'))
-        .map((s) => (s.status === 'active' ? { ...s, status: 'done' as const } : s)),
-      { id: event.stepId ?? event.toolName, label: event.label, status: 'active' as const },
+      ...withoutPhases.map((s) => {
+        if (s.status !== 'active') return s;
+        return {
+          ...s,
+          status: 'done' as const,
+          label: labelForStepStatus({ ...s, status: 'done' }),
+        };
+      }),
+      {
+        id: event.stepId ?? event.toolName,
+        label: event.label,
+        toolName: event.toolName,
+        status: 'active' as const,
+      },
     ];
+    const last = nextSteps[nextSteps.length - 1];
+    if (last) {
+      nextSteps[nextSteps.length - 1] = { ...last, label: labelForStepStatus(last) };
+    }
     return { planTitle: prev?.planTitle, steps: nextSteps };
   }
   if (event.type === 'tool_done') {
     const steps = prev?.steps ?? [];
     const targetId = event.stepId ?? event.toolName;
     if (steps.length === 0) {
-      return {
-        steps: [
-          {
-            id: targetId,
-            label: event.ok ? 'Done' : 'Failed',
-            status: event.ok ? 'done' : 'failed',
-          },
-        ],
+      const status = event.ok ? ('done' as const) : ('failed' as const);
+      const base = {
+        id: targetId,
+        label: getAssistantToolActivityLabel(event.toolName, event.ok ? 'done' : 'failed'),
+        toolName: event.toolName,
+        status,
       };
+      return { steps: [base] };
     }
     return {
       planTitle: prev?.planTitle,
-      steps: steps.map((step) =>
-        step.id === targetId ? { ...step, status: event.ok ? 'done' : 'failed' } : step
-      ),
+      steps: steps.map((step) => {
+        if (step.id !== targetId) return step;
+        const status = event.ok ? ('done' as const) : ('failed' as const);
+        const next = { ...step, toolName: step.toolName ?? event.toolName, status };
+        return { ...next, label: labelForStepStatus(next) };
+      }),
     };
   }
   if (event.type === 'phase') {
-    const label = phaseLabel(event.phase, event.label);
+    const activeLabel = phaseProgressLabel(event.phase, event.label);
     if (!prev?.steps.length) {
       return {
-        steps: [{ id: `phase-${event.phase}`, label, status: 'active' }],
+        steps: [{ id: `phase-${event.phase}`, label: activeLabel, status: 'active' }],
       };
     }
-    if (event.phase === 'synthesizing' || event.phase === 'safety') {
+    if (event.phase === 'synthesizing' || event.phase === 'safety' || event.phase === 'executing') {
       return {
         planTitle: prev.planTitle,
         steps: [
           ...prev.steps
             .filter((s) => !s.id.startsWith('phase-'))
-            .map((s) => (s.status === 'active' ? { ...s, status: 'done' as const } : s)),
-          { id: `phase-${event.phase}`, label, status: 'active' },
+            .map((s) => {
+              if (s.status !== 'active') return s;
+              return {
+                ...s,
+                status: 'done' as const,
+                label: labelForStepStatus({ ...s, status: 'done' }),
+              };
+            }),
+          { id: `phase-${event.phase}`, label: activeLabel, status: 'active' },
         ],
       };
     }
