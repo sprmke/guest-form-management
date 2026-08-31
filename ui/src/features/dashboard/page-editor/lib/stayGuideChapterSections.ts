@@ -32,6 +32,12 @@ export const STAY_GUIDE_STANDARD_TEMPLATE_KEYS = Object.values(STAY_GUIDE_CHAPTE
   .flat()
   .map((s) => s.templateKey);
 
+export const CHAPTER_LABELS: Record<StayGuideChapterSectionId, string> = {
+  'getting-in': 'Getting In',
+  'make-yourself-at-home': 'Make Yourself at Home',
+  'before-you-go': 'Before You Go',
+};
+
 export const STAY_GUIDE_SECTION_LABELS: Record<string, string> = {
   hero: 'Hero',
   passCard: 'Stay Pass card',

@@ -55,7 +55,7 @@ serveAuthenticated('submit-listing-recommended', async (req) => {
   if (!canSubmitRecommendedListingAuthorization(current)) {
     return jsonError(
       req,
-      'Additional proof of ownership or authorization and Azure PMO confirmation are required'
+      'Proof of ownership or authorization, additional proof, and Azure PMO confirmation are required'
     );
   }
 

@@ -101,7 +101,7 @@ export type OrgVerificationAssetType = (typeof ORG_VERIFICATION_ASSET_TYPES)[num
 export type OrgVerificationAssets = {
   /** Tier 1 — government-issued ID. */
   validIdPath: string | null;
-  /** Tier 1 — Facebook Page screenshot (platform is pinned to Facebook). */
+  /** Tier 1 — Facebook Page screenshot (platform is pinned to Facebook). Also required on Tier 2. */
   socialProofPath: string | null;
   /** Tier 2 — selfie holding the valid ID. */
   selfieWithIdPath: string | null;
@@ -369,21 +369,21 @@ export function isOrgVerifiedBadge(state: OrgVerificationState): boolean {
 }
 
 /**
- * Tier 1 (host identity) — valid ID plus the Facebook Page screenshot.
- * Listing authority moved to _shared/listingAuthorization.ts, so `hostModes` no longer
- * changes what Tier 1 requires.
+ * Tier 1 (host identity) — Valid ID and Facebook Page screenshot.
+ * Listing authority is not part of host base.
  */
 export function canSubmitBaseVerification(state: OrgVerificationState): boolean {
   return Boolean(state.assets.validIdPath && state.assets.socialProofPath);
 }
 
 /**
- * Tier 2 (host Recommended) — selfie with ID plus a second-platform admin screenshot and
- * its platform. The legitimacy proof and business permit / BIR are optional and must never
- * block submit.
+ * Tier 2 (host Recommended) — Facebook Page screenshot, selfie with ID, and a
+ * second-platform admin screenshot plus its platform. Legitimacy proof and
+ * business permit / BIR are optional and must never block submit.
  */
 export function canSubmitEnhancedVerification(state: OrgVerificationState): boolean {
   return Boolean(
+    state.assets.socialProofPath &&
     state.assets.selfieWithIdPath &&
     state.assets.platformAdminProofPath &&
     state.platformAdminPlatform

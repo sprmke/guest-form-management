@@ -49,7 +49,6 @@ import {
   readOrgVerificationDetail,
   resolveHostModes,
   verificationSidebarLabel,
-  type OrgVerificationChangeDocId,
   type VerificationTierDefinition,
 } from '@/features/dashboard/org/lib/orgVerificationTiers';
 import {
@@ -62,7 +61,6 @@ import {
 } from '@/features/dashboard/org/lib/verificationCopy';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
-import { resolveHostChangesRequestedDocs } from '@/features/dashboard/super-admin/lib/requestChangesMessage';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -417,12 +415,14 @@ function RecommendedTierStepPanel({
   enhancedStatus,
   enhancedRejectionKind,
   enhancedRejectionReason,
+  socialProof,
   selfie,
   platformAdmin,
   platformAdminPlatform,
   legitimacyCheck,
   businessPermit,
   verifiedTouched,
+  onSocialProofChange,
   onSelfieChange,
   onPlatformAdminChange,
   onPlatformAdminPlatformChange,
@@ -441,12 +441,14 @@ function RecommendedTierStepPanel({
   enhancedStatus: OrgVerificationStatus;
   enhancedRejectionKind: 'changes' | 'rejected' | null;
   enhancedRejectionReason: string | null;
+  socialProof: ProofSlot;
   selfie: ProofSlot;
   platformAdmin: ProofSlot;
   platformAdminPlatform: OrgSocialProofPlatform | '';
   legitimacyCheck: ProofSlot;
   businessPermit: ProofSlot;
   verifiedTouched: boolean;
+  onSocialProofChange: (file: File | null, previewUrl: string | null) => void;
   onSelfieChange: (file: File | null, previewUrl: string | null) => void;
   onPlatformAdminChange: (file: File | null, previewUrl: string | null) => void;
   onPlatformAdminPlatformChange: (value: OrgSocialProofPlatform) => void;
@@ -562,6 +564,15 @@ function RecommendedTierStepPanel({
         </div>
         <div className="space-y-4 p-4">
           <OnboardingProofUpload
+            id="enhanced-facebook-page"
+            label="Facebook Page screenshot"
+            help={propertyAccessScreenshotHelp('facebook')}
+            file={socialProof.file}
+            previewUrl={socialProof.previewUrl}
+            error={verifiedTouched && !slotReady(socialProof) ? 'Required' : null}
+            onFileChange={onSocialProofChange}
+          />
+          <OnboardingProofUpload
             id="enhanced-selfie"
             label={VERIFICATION_TIER2_DOC_LABELS.selfie}
             help={VERIFICATION_TIER2_DOC_HELP.selfie}
@@ -614,8 +625,6 @@ function RecommendedTierStepPanel({
 export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) {
   const queryClient = useQueryClient();
   const org = useCurrentOrganization();
-  const { canUse: canSubmitVerifiedBadge, isLoading: verifiedEntitlementsLoading } =
-    useFeatureGate('verifiedBadgeEligible');
   const { canUse: canSubmitRecommendedBadge, isLoading: recommendedEntitlementsLoading } =
     useFeatureGate('recommendedBadgeEligible');
   const { open: openUpgradeModal } = useUpgradeModal();
@@ -629,21 +638,7 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
   const hostChangesRequested = isHostVerificationChangesRequestedFromDetail(detail);
   const hostHardRejected = isHostVerificationHardRejectedFromDetail(detail);
   const blockDismiss = forced || hostChangesRequested;
-  const rawChangesDocs = hostChangesRequested
-    ? resolveHostChangesRequestedDocs({
-        stored: detail.baseChangesRequestedDocs,
-        reason: detail.baseRejectionReason,
-        hostModes,
-      })
-    : ([] as OrgVerificationChangeDocId[]);
-  const changesDocs = rawChangesDocs.filter(
-    (id): id is OrgVerificationChangeDocId => id === 'validId' || id === 'socialProof'
-  );
-  /** Empty list = legacy full form; otherwise only those docs. */
-  const showAllChangeDocs = hostChangesRequested && changesDocs.length === 0;
-  const fixValidId = hostChangesRequested && (showAllChangeDocs || changesDocs.includes('validId'));
-  const fixSocialProof =
-    hostChangesRequested && (showAllChangeDocs || changesDocs.includes('socialProof'));
+  const fixValidId = hostChangesRequested;
 
   const showTier1SubmittedDocs = detail.baseStatus !== 'none';
   const showTier2SubmittedDocs = detail.enhancedStatus !== 'none';
@@ -672,17 +667,7 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
   useEffect(() => {
     if (!open || !org) return;
     const next = readOrgVerificationDetail(org.settings);
-    const modes = resolveHostModes(org);
-    const docs = isHostVerificationChangesRequestedFromDetail(next)
-      ? resolveHostChangesRequestedDocs({
-          stored: next.baseChangesRequestedDocs,
-          reason: next.baseRejectionReason,
-          hostModes: modes,
-        }).filter((id) => id === 'validId' || id === 'socialProof')
-      : [];
-    const showAll = isHostVerificationChangesRequestedFromDetail(next) && docs.length === 0;
-    const clearValidId = showAll || docs.includes('validId');
-    const clearSocial = showAll || docs.includes('socialProof');
+    const clearValidId = isHostVerificationChangesRequestedFromDetail(next);
 
     setValidId({
       file: null,
@@ -692,7 +677,10 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
     setSocialProof({
       file: null,
       previewUrl: null,
-      path: clearSocial ? null : next.assets.socialProofPath,
+      path:
+        clearValidId && next.baseChangesRequestedDocs.includes('socialProof')
+          ? null
+          : next.assets.socialProofPath,
     });
     setSelfie({ file: null, previewUrl: null, path: next.assets.selfieWithIdPath });
     setPlatformAdmin({
@@ -730,12 +718,11 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
       validId: slotReady(validId),
       socialProof: slotReady(socialProof),
     },
-    hostChangesRequested && changesDocs.length > 0
-      ? { changesRequestedDocs: changesDocs }
-      : undefined
+    hostChangesRequested ? { changesRequestedDocs: detail.baseChangesRequestedDocs } : undefined
   );
 
   const canSubmitVerified = canSubmitVerifiedTier(detail, {
+    socialProof: slotReady(socialProof),
     selfie: slotReady(selfie),
     platformAdmin: slotReady(platformAdmin),
     platformAdminPlatform,
@@ -757,10 +744,6 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
     setHostTouched(true);
     setUploadError(null);
     if (!org || !canSubmitHost) return;
-    if (!canSubmitVerifiedBadge) {
-      if (!verifiedEntitlementsLoading) openUpgradeModal('verifiedBadgeEligible');
-      return;
-    }
     setSubmitting('base');
     try {
       if (validId.file) {
@@ -802,6 +785,10 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
     }
     setSubmitting('enhanced');
     try {
+      if (socialProof.file) {
+        const uploaded = await uploadVerificationAsset(org.id, 'social_proof', socialProof.file);
+        setSocialProof({ file: null, previewUrl: uploaded.previewUrl, path: uploaded.path });
+      }
       if (selfie.file) {
         const uploaded = await uploadVerificationAsset(org.id, 'selfie_with_id', selfie.file);
         setSelfie({ file: null, previewUrl: uploaded.previewUrl, path: uploaded.path });
@@ -939,35 +926,23 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
                             path: file ? null : validId.path,
                           });
                         }}
-                        onUploadError={(message) => {
-                          setUploadError(message);
-                          if (message) toast.error(message);
-                        }}
-                      />
-                    ) : null}
-                    {fixSocialProof ? (
-                      <OnboardingProofUpload
-                        id="host-resubmit-facebook-page"
-                        label="Facebook Page screenshot"
-                        help={propertyAccessScreenshotHelp('facebook')}
-                        file={socialProof.file}
-                        previewUrl={socialProof.previewUrl}
-                        error={slotRequiredError(hostTouched, submitting !== null, socialProof)}
-                        onFileChange={(file, preview) => {
-                          if (file) {
-                            const err = validateVerificationFile(file);
-                            if (err) {
-                              setUploadError(err);
-                              toast.error(err);
-                              return;
-                            }
-                          }
-                          setUploadError(null);
+                        socialProofFile={socialProof.file}
+                        socialProofPreviewUrl={socialProof.previewUrl}
+                        socialProofError={slotRequiredError(
+                          hostTouched,
+                          submitting !== null,
+                          socialProof
+                        )}
+                        onSocialProofChange={(file, preview) => {
                           setSocialProof({
                             file,
                             previewUrl: preview,
                             path: file ? null : socialProof.path,
                           });
+                        }}
+                        onUploadError={(message) => {
+                          setUploadError(message);
+                          if (message) toast.error(message);
                         }}
                       />
                     ) : null}
@@ -1004,6 +979,8 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
                 legitimacyCheck={legitimacyCheck}
                 businessPermit={businessPermit}
                 verifiedTouched={verifiedTouched}
+                socialProof={socialProof}
+                onSocialProofChange={setSlot(setSocialProof)}
                 onSelfieChange={setSlot(setSelfie)}
                 onPlatformAdminChange={setSlot(setPlatformAdmin)}
                 onPlatformAdminPlatformChange={setPlatformAdminPlatform}

@@ -685,6 +685,11 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                     {reviewTier === 'enhanced' ? (
                       <>
                         <VerificationDocPreviewCard
+                          label="Facebook Page screenshot"
+                          url={detail.assetUrls.socialProofUrl}
+                          onFullView={setFullView}
+                        />
+                        <VerificationDocPreviewCard
                           label={VERIFICATION_TIER2_DOC_LABELS.selfie}
                           url={detail.assetUrls.selfieWithIdUrl}
                           onFullView={setFullView}

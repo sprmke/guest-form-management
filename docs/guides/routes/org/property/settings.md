@@ -68,7 +68,7 @@ Property Settings is where you complete operational setup: basic info, capacity,
 - Q: Where do I upload listing photos?
   A: **Property Settings → Photos & Videos**, or the listing Page Editor gallery. Photos are shared across the listing, property cards, and Marketing.
 - Q: Where is listing verification?
-  A: Open **Verification** from the property sidebar (not org **Get Verified**). That flow covers ownership proof, contract dates, and the Recommended badge for this listing. Submitting listing **Recommended** tier requires a paid plan with **`recommendedBadgeEligible`**; the upgrade modal links to **Plans & Billing**.
+  A: Open **Verification** from the property sidebar (not org **Get Verified**). Listing go-live needs your Property Rights (and contract end when you are an Authorized Representative or Sublessee) plus proof of ownership or authorization on listing **Verified**. Additional proof and the Azure Property Management email confirmation are for listing **Recommended**. Submitting listing **Recommended** waits until listing Verified is approved and needs a paid plan that includes the Recommended badge.
 - Q: My contract is ending — what should I do?
   A: A renewal reminder may appear when you log in. Tap **Submit renewal contract** or use **Verification** in the sidebar to upload an updated contract before the grace period ends.
 - Q: What does the Cleaning Time setting do?

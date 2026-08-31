@@ -595,6 +595,13 @@ Example:
 → **Plan / backlog:** [`../planned/ai-opportunities-roadmap.md`](../planned/ai-opportunities-roadmap.md)
 ===
 
+🚧 Onboarding verification simplify
+
+Step 2 Property Rights (Parking Rights when parking-only) from existing verification-rights values. Step 3 Valid ID + Facebook Page screenshot only. Listing Verified: proof of ownership. Listing Recommended: additional proof + Azure PMO. Listing go-live stays on listing base approve.
+
+→ **In progress:** [`../in-progress/onboarding-verification-simplify.md`](../in-progress/onboarding-verification-simplify.md) · spec: [`onboarding-verification-simplify-design.md`](./onboarding-verification-simplify-design.md)
+===
+
 🚧 Refine booking detail page, edit and workflow
 
 - Improve UI/UX of entire booking detail page and edit form

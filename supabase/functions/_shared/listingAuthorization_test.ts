@@ -37,7 +37,7 @@ function ownerWithProof(): ListingAuthorizationState {
   };
 }
 
-Deno.test('Tier 1 needs rights plus primary proof', () => {
+Deno.test('Tier 1 submit needs rights only (proof files upload in listing modal)', () => {
   const empty = emptyListingAuthorizationState();
   assertFalse(canSubmitBaseListingAuthorization(empty));
 
@@ -49,9 +49,7 @@ Deno.test('Tier 1 needs rights plus primary proof', () => {
     })
   );
 
-  // Rights without proof is not enough.
-  assertFalse(canSubmitBaseListingAuthorization({ ...empty, relationship: 'property_owner' }));
-
+  assert(canSubmitBaseListingAuthorization({ ...empty, relationship: 'property_owner' }));
   assert(canSubmitBaseListingAuthorization(ownerWithProof()));
 });
 
@@ -96,7 +94,7 @@ Deno.test('Tier 1 blocked while pending or hard rejected, open on changes reques
   assert(canSubmitBaseListingAuthorization(changes));
 });
 
-Deno.test('Tier 2 requires approved Tier 1 plus both documents', () => {
+Deno.test('Tier 2 requires approved Tier 1 plus additional proof and Azure PMO', () => {
   const withDocs: ListingAuthorizationState = {
     ...ownerWithProof(),
     assets: {
@@ -112,7 +110,15 @@ Deno.test('Tier 2 requires approved Tier 1 plus both documents', () => {
   const approved: ListingAuthorizationState = { ...withDocs, baseStatus: 'approved' };
   assert(canSubmitRecommendedListingAuthorization(approved));
 
-  // Missing either Tier 2 doc blocks submit.
+  // Primary proof is listing Tier 1 — not required to submit Recommended.
+  assert(
+    canSubmitRecommendedListingAuthorization({
+      ...approved,
+      assets: { ...approved.assets, proofPath: null },
+    })
+  );
+
+  // Missing either remaining Tier 2 doc blocks submit.
   assertFalse(
     canSubmitRecommendedListingAuthorization({
       ...approved,
@@ -249,13 +255,9 @@ Deno.test('asset type mapping and apply', () => {
 });
 
 Deno.test('missing docs and table mapping', () => {
-  assertEquals(missingListingDocs(emptyListingAuthorizationState()), [
-    'proof',
-    'rights',
-    'additional_proof',
-    'azure_pmo_confirmation',
-  ]);
-  assertEquals(missingListingDocs(ownerWithProof()), [
+  assertEquals(missingListingDocs(emptyListingAuthorizationState()), ['rights']);
+  assertEquals(missingListingDocs(ownerWithProof()), []);
+  assertEquals(missingListingDocs({ ...ownerWithProof(), recommendedStatus: 'pending' }), [
     'additional_proof',
     'azure_pmo_confirmation',
   ]);
@@ -292,4 +294,10 @@ Deno.test('renew eligible when approved and in pre-expiry, grace, or locked', ()
 
   assertFalse(isListingRenewEligible({ ...approved, baseStatus: 'pending' }, '2099-06-01'));
   assert(canSubmitListingRenewal(approved, '2099-06-01'));
+  assertFalse(
+    canSubmitListingRenewal(
+      { ...approved, assets: { ...approved.assets, proofPath: null } },
+      '2099-06-01'
+    )
+  );
 });

@@ -171,23 +171,34 @@ export function isListingAuthorizationChangesRequested(
   return state.baseStatus === 'rejected' && state.baseRejectionKind === 'changes';
 }
 
-/** Tier 1 — rights (+ contract end when applicable) and the primary proof. */
+/** Primary ownership / authorization proof collected on listing Tier 1 (not onboarding). */
+export function listingAuthorizationHasPrimaryProof(state: ListingAuthorizationSummary): boolean {
+  return Boolean(state.assets.proofPath);
+}
+
+/** Additional proof + Azure PMO collected on listing Tier 2. */
+export function listingAuthorizationHasRecommendedDocs(
+  state: ListingAuthorizationSummary
+): boolean {
+  return Boolean(state.assets.additionalProofPath && state.assets.azurePmoConfirmationPath);
+}
+
+/** Tier 1 submit from onboarding — rights (+ contract end). Primary proof uploads in the listing modal. */
 export function canSubmitBaseListingAuthorization(state: ListingAuthorizationSummary): boolean {
   if (state.baseStatus === 'pending') return false;
   if (isListingAuthorizationHardRejected(state)) return false;
-  if (!state.assets.proofPath) return false;
   if (!state.relationship) return false;
   if (listingRightsNeedContractEnd(state.relationship) && !state.contractEndDate) return false;
   return true;
 }
 
-/** Tier 2 — this listing's Tier 1 must be approved; org tiers are irrelevant. */
+/** Tier 2 — listing Tier 1 approved; additional proof + Azure PMO. */
 export function canSubmitRecommendedListingAuthorization(
   state: ListingAuthorizationSummary
 ): boolean {
   if (state.baseStatus !== 'approved') return false;
   if (state.recommendedStatus === 'approved' || state.recommendedStatus === 'pending') return false;
-  return Boolean(state.assets.additionalProofPath && state.assets.azurePmoConfirmationPath);
+  return listingAuthorizationHasRecommendedDocs(state);
 }
 
 export function isListingAuthorized(state: ListingAuthorizationSummary): boolean {
@@ -212,7 +223,10 @@ export function canSubmitListingRenewal(
   todayYmd: string = todayManilaYmd()
 ): boolean {
   if (!isListingRenewEligible(state, todayYmd)) return false;
-  return canSubmitBaseListingAuthorization(state);
+  if (!state.assets.proofPath) return false;
+  if (!state.relationship) return false;
+  if (listingRightsNeedContractEnd(state.relationship) && !state.contractEndDate) return false;
+  return true;
 }
 
 export { listingHasContractRenewalLifecycle, resolveListingContractRenewalPhase };

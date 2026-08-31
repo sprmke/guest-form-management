@@ -298,24 +298,34 @@ export function listingRightsNeedContractEnd(state: ListingAuthorizationState): 
   return verificationRightsNeedsContractEnd(state.relationship);
 }
 
-/** Tier 1 — rights (+ contract end when applicable) and the primary proof. */
+/** Primary ownership / authorization proof collected on listing Tier 1 (not onboarding). */
+export function listingAuthorizationHasPrimaryProof(state: ListingAuthorizationState): boolean {
+  return Boolean(state.assets.proofPath);
+}
+
+/** Additional proof + Azure PMO collected on listing Tier 2. */
+export function listingAuthorizationHasRecommendedDocs(state: ListingAuthorizationState): boolean {
+  return Boolean(state.assets.additionalProofPath && state.assets.azurePmoConfirmationPath);
+}
+
+/** Tier 1 submit from onboarding — rights (+ contract end). Primary proof uploads in the listing modal. */
 export function canSubmitBaseListingAuthorization(state: ListingAuthorizationState): boolean {
   if (state.baseStatus === 'pending') return false;
   if (isListingAuthorizationHardRejected(state)) return false;
-  if (!state.assets.proofPath) return false;
   return rightsReady(state.relationship, state.contractEndDate);
 }
 
 /**
  * Tier 2 — independent of org tiers, but requires this listing's Tier 1 to be approved
- * so a Recommended badge never outranks unverified authorization.
+ * so a Recommended badge never outranks unverified authorization. Additional proof and
+ * Azure PMO are collected here; primary ownership proof is listing Tier 1.
  */
 export function canSubmitRecommendedListingAuthorization(
   state: ListingAuthorizationState
 ): boolean {
   if (state.baseStatus !== 'approved') return false;
   if (state.recommendedStatus === 'approved' || state.recommendedStatus === 'pending') return false;
-  return Boolean(state.assets.additionalProofPath && state.assets.azurePmoConfirmationPath);
+  return listingAuthorizationHasRecommendedDocs(state);
 }
 
 /** Public per-listing Recommended badge. */
@@ -342,13 +352,14 @@ export function isListingRenewEligible(
   return phase === 'pre_expiry' || phase === 'grace' || phase === 'locked';
 }
 
-/** Renewal submit — same doc requirements as Tier 1 base. */
+/** Renewal submit — rights plus a proof file (proof is not required for first-time base). */
 export function canSubmitListingRenewal(
   state: ListingAuthorizationState,
   todayYmd: string = manilaTodayYmd()
 ): boolean {
   if (!isListingRenewEligible(state, todayYmd)) return false;
-  return canSubmitBaseListingAuthorization(state);
+  if (!state.assets.proofPath) return false;
+  return rightsReady(state.relationship, state.contractEndDate);
 }
 
 export function isListingAuthorizationHardRejected(state: ListingAuthorizationState): boolean {
@@ -386,13 +397,14 @@ export function applyListingAssetPath(
   };
 }
 
-/** Which Tier 2 assets a listing is still missing — powers the org modal rollup. */
+/** Gaps for the org listing rollup — not post-onboarding uploads still ahead of the host. */
 export function missingListingDocs(state: ListingAuthorizationState): string[] {
   const missing: string[] = [];
-  if (!state.assets.proofPath) missing.push('proof');
   if (!rightsReady(state.relationship, state.contractEndDate)) missing.push('rights');
-  if (!state.assets.additionalProofPath) missing.push('additional_proof');
-  if (!state.assets.azurePmoConfirmationPath) missing.push('azure_pmo_confirmation');
+  if (state.recommendedStatus !== 'none') {
+    if (!state.assets.additionalProofPath) missing.push('additional_proof');
+    if (!state.assets.azurePmoConfirmationPath) missing.push('azure_pmo_confirmation');
+  }
   return missing;
 }
 

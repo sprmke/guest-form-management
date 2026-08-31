@@ -694,7 +694,13 @@ export function SuperAdminListingVerificationDialog({ approval, onOpenChange }: 
                 <section className="space-y-3">
                   <p className={superAdminApprovalSectionTitleClass}>Documents</p>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {reviewTier === 'recommended' ? (
+                    {reviewTier === 'base' ? (
+                      <VerificationDocPreviewCard
+                        label={LISTING_VERIFICATION_DOC_LABELS.proof}
+                        url={detail.assetUrls.proofUrl}
+                        onFullView={setFullView}
+                      />
+                    ) : (
                       <>
                         <VerificationDocPreviewCard
                           label={LISTING_VERIFICATION_DOC_LABELS.additionalProof}
@@ -707,12 +713,6 @@ export function SuperAdminListingVerificationDialog({ approval, onOpenChange }: 
                           onFullView={setFullView}
                         />
                       </>
-                    ) : (
-                      <VerificationDocPreviewCard
-                        label={LISTING_VERIFICATION_DOC_LABELS.proof}
-                        url={detail.assetUrls.proofUrl}
-                        onFullView={setFullView}
-                      />
                     )}
                   </div>
                 </section>

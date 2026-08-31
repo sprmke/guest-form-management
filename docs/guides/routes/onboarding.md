@@ -2,7 +2,7 @@
 title: 'Onboarding — operator guide'
 status: active
 tags: [guides, routes, onboarding]
-updated: 2026-08-27
+updated: 2026-08-31
 ---
 
 # Onboarding — operator guide
@@ -13,12 +13,12 @@ Route: `/onboarding`
 
 ## Progress overview
 
-| Section      | E2E save | Validation | Docs       | Notes                                                                     |
-| ------------ | -------- | ---------- | ---------- | ------------------------------------------------------------------------- |
-| Organization | ✅       | ✅         | Documented | Name + contact phone (no role on this step)                               |
-| Hosting      | ✅       | ✅         | Documented | Property and/or Parking toggles + details                                 |
-| Verify       | ✅       | ✅         | Documented | Host: Valid ID + Facebook Page; Listing: rights + proof (save path split) |
-| Get Verified | ✅       | ✅         | Documented | Host CTA on org routes; listing verification CTA on property/parking only |
+| Section      | E2E save | Validation | Docs       | Notes                                                                                                    |
+| ------------ | -------- | ---------- | ---------- | -------------------------------------------------------------------------------------------------------- |
+| Organization | ✅       | ✅         | Documented | Name + contact phone (no rights on this step)                                                            |
+| Hosting      | ✅       | ✅         | Documented | Property and/or Parking + **Property Rights** (Parking Rights if parking-only; contract end when needed) |
+| Verify       | ✅       | ✅         | Documented | Host: Valid ID + Facebook Page only. Listing proof uploads are listing Tier 1.                           |
+| Get Verified | ✅       | ✅         | Documented | Host CTA on org routes; listing verification CTA on property/parking only                                |
 
 ---
 
@@ -28,7 +28,9 @@ New hosts land here after Google sign-in when they have no organization. Creates
 
 **Layout (lg+):** 50/50 split — left **`OnboardingFeatureShowcase`** → **`HostWorkspaceSidePanel`** (`variant="onboarding"`): solid **`bg-primary`**, **`MarketingBrandLogo`**, setup copy + compact tour card. Tour video has an **expand** control (top-right) that opens a larger preview modal; playback and chapter stay in sync when opening or closing. Right column: wizard on subtle muted canvas + theme toggle. Mobile: form only.
 
-If the user already has an **accessible** organization (owned or assigned, and not hard-rejected), the page redirects to **`/org/:slug/dashboard`** (last-used or first) — same rule as the **`/org`** hub. A user may own **at most one usable** organization; **`create-organization`** rejects a second owned org with **409**, but owners whose only org was **hard-rejected** may start a **new application**. Hard-rejected hosts land on **`/verification-rejected`** after sign-in.
+If the user already has an **accessible** organization (owned or assigned, and not hard-rejected), the page redirects to **`/org/:slug/dashboard`** (last-used or first) — same rule as the **`/org`** hub. This is resolved **at host login / register** (`resolvePostSignInPath`) and again when **`/onboarding`** loads — not on Finish setup. A user may own **at most one usable** organization (one Supabase Auth email = one user = one owned org); **`create-organization`** rejects a second owned org with **409**, but owners whose only org was **hard-rejected** may start a **new application**. Hard-rejected hosts land on **`/verification-rejected`** after sign-in.
+
+If Finish setup creates the org and a later verification call fails, retry **resumes** the same org (does not call `create-organization` again). A **409** after a refresh refetches orgs and redirects to the existing workspace.
 
 ---
 
@@ -41,23 +43,29 @@ First-time hosts complete this wizard right after signing in with Google: organi
 - Q: How long does verification take after I finish onboarding?
   A: Review usually takes a few hours up to about three business days before listings can go fully live.
 - Q: Can I host both a rental unit and a parking slot?
-  A: Yes. Select both Property and Parking in the hosting step, then complete the matching verification sections.
+  A: Yes. Select both Property and Parking in the hosting step. You pick one Property Rights option that applies to both.
 - Q: I already have access to another host's organization. Why did onboarding skip the setup steps?
   A: If you already have access to an organization, you're sent to that dashboard instead of creating a second one you own.
+- Q: I signed in with the same email and saw setup again, then an error that I already own an organization.
+  A: That email is already tied to a host workspace. Sign-in should send you to that dashboard. If setup was interrupted after the organization was created, Finish setup continues that same workspace instead of creating another.
 - Q: Why did a contract renewal popup appear when I logged in?
   A: One of your property or parking listings has a hosting contract ending soon, in grace, or past grace. The reminder shows the listing name and how many days you have left.
 - Q: Can I dismiss the renewal reminder and deal with it later?
   A: Before the contract ends, yes — dismiss snoozes it until tomorrow (Manila time). During grace you can dismiss until you refresh the page. Once access is locked for that listing, submit a renewal from inside that listing's dashboard.
 - Q: Where do I upload a renewed hosting contract?
   A: Tap **Submit renewal contract** in the reminder, or open **Verification** from the property or parking sidebar.
+- Q: What Facebook screenshot do I need on setup?
+  A: A screenshot of your Facebook Page while you are logged in as admin or editor.
+- Q: Where do I upload listing ownership documents?
+  A: After setup, open **Verification** on the property or parking sidebar. Upload proof of ownership or authorization on listing **Verified**. Additional proof and the Azure Property Management email confirmation go on listing **Recommended**.
 
 ---
 
 ## Steps
 
 1. **Organization** — organization name, contact **Name**, **Contact number**. Organization name availability is checked after typing pauses (reserved-name rules below).
-2. **Hosting** — choose **Property** and/or **Parking** (multi-select toggles); fill tower/unit and/or parking slot in the same step. **Property name** is required when Property is selected (tower + unit alone do not enable Continue). Property names follow the same reserved-name rules as org names. At least one host type must be selected. Residence is currently Azure-only (field **?** help).
-3. **Verify** — trust notice + **Let's get verified**. **Host:** Valid ID + Facebook Page screenshot. **Per listing (same fields as before):** Property and/or Parking rights (+ contract end when applicable) + ownership/authorization proof. Save path splits host vs listing (see below).
+2. **Hosting** — choose **Property** and/or **Parking** (multi-select toggles); fill tower/unit and/or parking slot in the same step. **Property name** is required when Property is selected (tower + unit alone do not enable Continue). Property names follow the same reserved-name rules as org names. At least one host type must be selected. Residence is currently Azure-only (field **?** help). **Property Rights** (or **Parking Rights** when parking-only) lives in that listing card — same `ORG_VERIFICATION_RIGHTS` options. **Contract end date** appears when the rights option is Authorized Representative or Sublessee.
+3. **Verify** — trust notice + **Let's get verified**. **Valid ID** and **Facebook Page screenshot** only. Listing files are **not** collected here. Proof of ownership belongs on listing **Verified**; additional proof and Azure PMO belong on listing **Recommended**.
 
 Contact name pre-fills from the Google account display name when available.
 
@@ -79,18 +87,16 @@ Enforced on onboarding, org settings, property settings, and **Add property** (`
 
 Pair with lease/contract end + reverification so the previous listing is archived before (or when) the next host goes live.
 
-### Property / Parking Rights
+### Property Rights / Parking Rights
 
-Separate dropdowns when both modes are selected — **Property Rights** on property verification, **Parking Rights** on parking verification. Shared options:
+One rights select on the hosting step — **Property Rights** inside the Property card, or **Parking Rights** inside the Parking card when parking-only. Same value for property and/or parking. Options:
 
 - **Property Owner**
 - **Authorized Representative**
 - **Sublessee**
 - **Property Admin**
 
-**Contract end date** — required when rights are **Authorized Representative** or **Sublessee**; calendar picker (defaults to today, Asia/Manila); stored as **`organizations.settings.verification.propertyContractEndDate`** or **`parkingContractEndDate`** (`YYYY-MM-DD`).
-
-Selected rights are also saved as org **`contactRole`** on **`create-organization`** (property rights when both modes are selected).
+**Contract end date** — required when the rights option is **Authorized Representative** or **Sublessee**; calendar picker (defaults to today, Asia/Manila). Saved as org **`contactRole`** on **`create-organization`** and as listing **`relationship`** on **`submit-listing-authorization`**.
 
 ### Trust copy (Verify step)
 
@@ -98,21 +104,21 @@ Selected rights are also saved as org **`contactRole`** on **`create-organizatio
 - Sensitive details may be redacted if verification-relevant info stays visible
 - Uploads stored securely; never shown on public listings
 - Review: a few hours up to 3 days
-- Access screenshot help is platform-specific (Facebook Page roles, Instagram admin, Airbnb host dashboard)
+- Facebook Page screenshot help: Page name visible and logged in as admin or editor. Other-platform admin screenshots stay on Recommended.
 
 ---
 
 ## Save path
 
-1. **Finish setup** → `POST create-organization` (contact + hostModes + property/parking; **`contactRole`** from verification rights)
-2. `POST upload-org-verification-asset` — Host Tier 1: `valid_id`, `social_proof` (Facebook Page) → bucket **`org-verification-assets`**
-3. `POST submit-org-verification` `{ tier: 'base' }` → `organizations.settings.verification.baseStatus = pending`
-4. Per created listing: `POST upload-listing-authorization-asset` (`proof`) then `POST submit-listing-authorization` (rights + contract end) → `settings.listingAuthorization.baseStatus = pending` (bucket **`listing-authorization-assets`**)
+1. **Finish setup** → `POST create-organization` (contact + hostModes + property/parking; **`contactRole`** from Step 2 Property Rights / Parking Rights). Skipped on retry if this session already created the org. **409** (already own) → refetch `list-organizations` and redirect to the existing workspace.
+2. `POST upload-org-verification-asset` — Host Tier 1: `valid_id` then `social_proof` (Facebook Page screenshot) → bucket **`org-verification-assets`**
+3. `POST submit-org-verification` `{ tier: 'base' }` — **`canSubmitBaseVerification` = Valid ID + Facebook Page** (`validIdPath` + `socialProofPath`). Sets `organizations.settings.verification.baseStatus = pending` (not plan-gated).
+4. Per created listing: `POST submit-listing-authorization` (relationship + contract end, **no proof file**) → `settings.listingAuthorization.baseStatus = pending`. A listing already **pending** returns success (idempotent retry).
 5. Redirect: property settings → parking settings → org dashboard
 
-Host Tier 2 (Get Verified after onboarding): `selfie_with_id`, `platform_admin_proof` + `platformAdminPlatform`; optional `legitimacy_check_proof`, `business_permit_bir`.
+Host Tier 2 (Get Verified after onboarding): Facebook Page (`social_proof`, already uploaded on Step 3) + `selfie_with_id`, `platform_admin_proof` + `platformAdminPlatform`; optional `legitimacy_check_proof`, `business_permit_bir`. Plan-gated with **`recommendedBadgeEligible`**.
 
-Listing Tier 2 (listing verification modal): `additional_proof`, `azure_pmo_confirmation` via `submit-listing-recommended`.
+Listing Tier 2 (listing verification modal): additional proof + Azure PMO. `submit-listing-recommended` still needs listing Verified approved + **`recommendedBadgeEligible`**. Contract **renewal** still requires the primary proof file on the listing Verified tab.
 
 ---
 
@@ -120,14 +126,14 @@ Listing Tier 2 (listing verification modal): `additional_proof`, `azure_pmo_conf
 
 Two-tier model (see **Get Verified** sidebar modal):
 
-| Tier | Name            | Unlock                                  | Documents                                                                  |
-| ---- | --------------- | --------------------------------------- | -------------------------------------------------------------------------- |
-| 1    | **Verified**    | Required to host (onboarding)           | Valid ID + Facebook Page screenshot                                        |
-| 2    | **Recommended** | Org-wide Recommended badge on host page | Selfie with ID; other-platform admin screenshot; optional legitimacy / BIR |
+| Tier | Name            | Unlock                                  | Documents                                                                                                                |
+| ---- | --------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| 1    | **Verified**    | Required to host (onboarding)           | Valid ID; Facebook Page screenshot                                                                                       |
+| 2    | **Recommended** | Org-wide Recommended badge on host page | Facebook Page screenshot (already on Tier 1); selfie with ID; other-platform admin screenshot; optional legitimacy / BIR |
 
-**Listing verification** (separate scope, per property/parking): Tier 1 ownership/authorization proof + rights; Tier 2 additional proof + Azure PMO → listing Recommended badge. Property/parking sidebars show a **Verification** CTA (not the org **Get Verified** modal). See [`verification-scope-split`](../../workflow/in-progress/verification-scope-split.md).
+**Listing verification** (separate scope, per property/parking): Tier 1 = Property Rights / Parking Rights (+ contract end when needed) **and** proof of ownership or authorization. Hosts upload that file in the listing **Verification** modal (not onboarding). After Finish setup the listing modal does **not** mark proof as missing — the upload field is the next step. Go-live still happens when super-admin approves listing Verified (onboarding submit is rights-only so Finish setup can succeed). Tier 2 = additional proof + Azure PMO; **submit** still requires listing Verified **approved** plus **`recommendedBadgeEligible`**. Property/parking sidebars show a **Verification** CTA (not the org **Get Verified** modal). See [`onboarding-verification-simplify`](../../workflow/in-progress/onboarding-verification-simplify.md).
 
-**Plan gating:** Org **Get Verified** (Tier 1 / `base` submit) requires **`verifiedBadgeEligible`**; **Get Recommended** (Tier 2 / `enhanced` submit) requires **`recommendedBadgeEligible`** — client navigates to org **Plans & Billing** with review pre-opened; server enforces on **`submit-org-verification`**. Listing **Recommended** submit requires **`recommendedBadgeEligible`** on **`submit-listing-recommended`**. Viewing flows and uploading drafts stay free; only final submit is gated.
+**Plan gating:** Host **Verified** (`base`) is **not** plan-gated so Free onboarding can Finish setup. **Get Recommended** (host `enhanced` and listing Recommended) requires **`recommendedBadgeEligible`** — client opens the upgrade modal; server enforces on **`submit-org-verification`** `tier: 'enhanced'` and **`submit-listing-recommended`**. Viewing flows and uploading drafts stay free; only Recommended submit is gated.
 
 Tier names are display-only. Server tiers stay **`base`** (Tier 1) and **`enhanced`** (Tier 2), and the public flag stays **`verifiedBadge`**.
 
@@ -146,7 +152,7 @@ When a property or parking listing's hosting contract nears expiry, is in grace,
 
 ---
 
-- Modal persuasion when Tier 2 is editable: benefit bullets + compact **Recommended badge preview** live **inside** the Tier 2 card (above documents), not above Tier 1. Hidden on Tier 1 changes-requested and when Tier 2 is pending/approved.
+- Modal persuasion when Tier 2 is editable: benefit bullets + compact **Recommended badge preview** live **inside** the Tier 2 card, not above Tier 1. Hidden on Tier 1 changes-requested and when Tier 2 is pending/approved.
 - **Tier rank cards** in the modal header: clickable Verified / Recommended cards with status badges; one tier panel visible at a time. Opens on the most relevant step (e.g. Recommended when Tier 1 is approved).
 - Modal title follows the active step: **Get Verified** / **Get Recommended**; **Changes requested** in forced resubmit (stepper hidden).
 - On phone/tablet the modal is a **bottom sheet** (`ResponsiveModal` `sheetLayout="split"`): sticky header + footer, middle section scrolls so long Verified uploads are not clipped.
@@ -156,13 +162,13 @@ When a property or parking listing's hosting contract nears expiry, is in grace,
 
 ### Phase 2–3 roadmap
 
-- **Phase 2 (shipped in branch):** Tier 2 docs — selfie tips; **Additional Proof of Ownership/Authorization**; **Azure Property Management email confirmation** (help toggles with examples). Super-admin reviews Recommended tier at `/admin/approvals`. Asset key: **`azurePmoConfirmationPath`**; upload type **`azure_pmo_confirmation`**.
+- **Phase 2 (shipped in branch):** listing proof docs — **Proof of ownership or authorization** on listing **Verified**; **Additional proof** and **Azure Property Management email confirmation** on listing **Recommended** (help toggles with examples). Super-admin reviews them on the matching listing tab at `/admin/approvals`. Asset key: **`azurePmoConfirmationPath`**; upload type **`azure_pmo_confirmation`**.
 - **Phase 3 (partial):** `/admin/approvals` prioritizes Recommended pending rows. Browse/search rank boost deferred until public property listings API. Trust strip dropped. No skip Tier 1 / instant go-live.
 
 ### Behavior
 
 - Modal shows **Tier 1 status** from onboarding as a document checklist (uploads only — not property/parking rights or contract dates); each row has a **View** button that opens a full preview (signed URLs via `get-org-verification-assets`). **Recommended (Tier 2)** uses the same submitted-docs list + **View** when `enhancedStatus ≠ none`.
-- When **Tier 1 has changes requested**, a **non-dismissible** modal opens on dashboard login (no X / Close / Escape / outside click). Only the documents the admin asked to re-upload are shown; previously submitted files remain visible below the upload fields. The host must replace those and tap **Resubmit**. After resubmit, status returns to pending and the modal closes. Tier 2 persuasion is hidden in this mode.
+- When **Tier 1 has changes requested**, a **non-dismissible** modal opens on dashboard login (no X / Close / Escape / outside click). Resubmit shows **Valid ID** and **Facebook Page screenshot**; previously submitted files remain visible below the upload fields. The host must replace the flagged docs and tap **Resubmit**. After resubmit, status returns to pending and the modal closes. Tier 2 persuasion is hidden in this mode.
 - When **Tier 1 is hard-rejected**, the host is blocked from the dashboard (`/verification-rejected`) and must **Start a new application** (new org). In-app resubmit is not allowed.
 - **Tier 2 can be submitted anytime** — does not require Tier 1 approval first; each tier is reviewed independently.
 - Platform review queue: **`/admin/approvals`** (super admin) — see [admin/approvals.md](./admin/approvals.md).
@@ -178,6 +184,7 @@ When a property or parking listing's hosting contract nears expiry, is in grace,
 | `create-organization`           | POST   | JWT             |
 | `upload-org-verification-asset` | POST   | JWT (org owner) |
 | `submit-org-verification`       | POST   | JWT (org owner) |
+| `submit-listing-authorization`  | POST   | JWT (org owner) |
 
 ---
 
@@ -194,8 +201,7 @@ When a property or parking listing's hosting contract nears expiry, is in grace,
 | Account menu      | `ui/.../components/onboarding/OnboardingProfileHeader.tsx` — Switch account · Sign out                                       |
 | Proof upload UI   | `ui/.../components/onboarding/OnboardingProofUpload.tsx`                                                                     |
 | Host verify       | `ui/.../components/onboarding/OnboardingHostVerificationSection.tsx`                                                         |
-| Property verify   | `ui/.../components/onboarding/OnboardingHostAccessVerificationSection.tsx`                                                   |
-| Parking verify    | `ui/.../components/onboarding/OnboardingParkingVerificationSection.tsx`                                                      |
+| Listing verify    | `ui/.../components/listing-authorization/ListingVerificationModal.tsx` — listing Tier 1 proof uploads (not onboarding)       |
 | Get Verified      | `ui/.../components/verification/GetVerifiedModal.tsx` (`HostVerificationChangesGate` in `AdminLayout`)                       |
 | Badge preview     | `ui/.../components/verification/RecommendedBadgePreview.tsx`                                                                 |
 | Verification copy | `ui/.../lib/verificationCopy.ts`                                                                                             |

@@ -70,11 +70,6 @@ export function buildListingBaseChecklist(
         : `${listingKind === 'parking' ? 'Parking' : 'Property'} rights`,
       complete: Boolean(state.relationship),
     },
-    {
-      id: 'listing-proof',
-      label: LISTING_VERIFICATION_DOC_LABELS.proof,
-      complete: Boolean(state.assets.proofPath),
-    },
   ];
 
   if (listingRightsNeedContractEnd(state.relationship)) {
@@ -86,6 +81,12 @@ export function buildListingBaseChecklist(
       complete: Boolean(state.contractEndDate),
     });
   }
+
+  items.push({
+    id: 'listing-proof',
+    label: LISTING_VERIFICATION_DOC_LABELS.proof,
+    complete: Boolean(state.assets.proofPath),
+  });
 
   return items;
 }
