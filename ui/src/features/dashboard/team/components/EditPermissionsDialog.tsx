@@ -174,6 +174,7 @@ export function EditPermissionsDialog({
                           scope={scope}
                           customRoles={customRoles}
                           showAddCustomRole={showAddCustomRole}
+                          selectedRoleId={roleId}
                         />
                       </SelectContent>
                     </Select>

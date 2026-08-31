@@ -26,7 +26,9 @@ const LEGACY_ORG_EXPANSION: Record<string, readonly string[]> = {
     'org.team.members:edit',
     'org.team.members:delete',
   ],
-  'org:import:manage': ['org.import:manage'],
+  /** Dropped — booking import is property-scoped (`bookings.import:add`) only. */
+  'org:import:manage': [],
+  'org.import:manage': [],
   'org:delete': [],
 };
 

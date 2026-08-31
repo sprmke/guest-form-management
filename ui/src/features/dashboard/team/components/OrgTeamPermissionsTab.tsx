@@ -31,7 +31,9 @@ export function OrgTeamPermissionsTab({
     <TeamPermissionsTab
       scope="org"
       customRoles={customRoles}
-      memberCountByRole={(roleId) => countOrgMembersWithTemplateRole(roleId, members, invitations)}
+      memberCountByRole={(roleId) =>
+        countOrgMembersWithTemplateRole(roleId, members, invitations, customRoles)
+      }
       onCreateCustomRole={onCreateCustomRole}
       onEditCustomRole={onEditCustomRole}
       onDeleteCustomRole={onDeleteCustomRole}

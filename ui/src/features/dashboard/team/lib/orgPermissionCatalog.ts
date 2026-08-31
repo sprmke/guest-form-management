@@ -18,7 +18,6 @@ const MODULE_ORDER = [
   'settings',
   'plans',
   'team',
-  'import',
 ] as const;
 
 const MODULE_LABELS: Record<string, string> = {
@@ -29,7 +28,6 @@ const MODULE_LABELS: Record<string, string> = {
   settings: 'Settings',
   plans: 'Plans & Billing',
   team: 'Team',
-  import: 'Import',
 };
 
 const SENSITIVE_ORG_PERMISSION_IDS = new Set([
@@ -39,6 +37,28 @@ const SENSITIVE_ORG_PERMISSION_IDS = new Set([
   'org.team.roles:edit',
   'org.team.roles:delete',
 ]);
+
+const ORG_CHIP_LABELS: Record<string, string> = {
+  'org.dashboard:view': 'Open page',
+  'org.bookings:view': 'Open page',
+  'org.properties:view': 'Open page',
+  'org.properties:create': 'Add',
+  'org.properties:manage': 'Manage',
+  'org.parkings:view': 'Open page',
+  'org.parkings:create': 'Add',
+  'org.parkings:manage': 'Manage',
+  'org.settings:view': 'Open page',
+  'org.plans:view': 'Open page',
+  'org.team:view': 'Open page',
+  'org.team.invitations:add': 'Invite',
+  'org.team.invitations:edit': 'Resend',
+  'org.team.invitations:delete': 'Cancel',
+  'org.team.members:edit': 'Edit',
+  'org.team.members:delete': 'Remove',
+  'org.team.roles:add': 'Add',
+  'org.team.roles:edit': 'Edit',
+  'org.team.roles:delete': 'Delete',
+};
 
 function actionFromPermissionId(id: string): PermissionAction {
   const action = id.includes(':') ? id.split(':').pop()! : 'edit';
@@ -50,9 +70,18 @@ function actionFromPermissionId(id: string): PermissionAction {
 
 function moduleFromPermissionId(id: string): string {
   const withoutOrg = id.startsWith('org.') ? id.slice(4) : id;
-  const segment = withoutOrg.split('.')[0] ?? withoutOrg.split(':')[0] ?? 'org';
-  if (segment === 'import') return 'import';
+  const beforeColon = withoutOrg.split(':')[0] ?? withoutOrg;
+  const segment = beforeColon.split('.')[0] ?? beforeColon;
   return segment;
+}
+
+function chipLabelFromOrgPermission(name: string, id: string): string {
+  const exact = ORG_CHIP_LABELS[id];
+  if (exact) return exact;
+  if (id.startsWith('org.settings.') && id.endsWith(':edit')) {
+    return name.replace(/^Edit\s+/i, '').trim() || name;
+  }
+  return name.replace(/^(View|Edit|Manage|Add)\s+/i, '').trim() || name;
 }
 
 function parentKeyForPermission(id: string): string {
@@ -60,8 +89,10 @@ function parentKeyForPermission(id: string): string {
   if (id.startsWith('org.team.invitations')) return 'team.invitations';
   if (id.startsWith('org.team.members')) return 'team.members';
   if (id.startsWith('org.team.roles')) return 'team.roles';
+  if (/^org\.\w+:view$/.test(id)) return moduleFromPermissionId(id);
   if (id === 'org.properties:create' || id === 'org.properties:manage') return 'properties';
   if (id === 'org.parkings:create' || id === 'org.parkings:manage') return 'parkings';
+  if (id === 'org.team:view') return 'team';
   return moduleFromPermissionId(id);
 }
 
@@ -121,7 +152,7 @@ function buildOrgCatalog(): PermissionCatalogNode[] {
       key: permission.id.replace(/:/g, '.'),
       parentKey: parentKeyForPermission(permission.id),
       module,
-      label: permission.name.replace(/^(View|Edit|Manage|Add)\s+/i, '').trim() || permission.name,
+      label: chipLabelFromOrgPermission(permission.name, permission.id),
       description: permission.description,
       action: actionFromPermissionId(permission.id),
       order: index,

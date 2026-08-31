@@ -1,9 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
-import {
-  findMatchingTemplate,
-  permissionSetEqual,
-} from '@/features/dashboard/team/lib/permissionTreeState';
+import { findMatchingTemplate } from '@/features/dashboard/team/lib/permissionTreeState';
 import { PROPERTY_ADMIN_ROLE_ID } from '@/features/dashboard/team/lib/propertyTeamConstants';
 import { getRolePermissions } from '@/features/dashboard/team/lib/propertyTeamRoles';
 import { sortTemplatesForDisplay } from '@/features/dashboard/team/lib/propertyTeamTemplates';
@@ -12,15 +9,7 @@ import type {
   PropertyRoleId,
 } from '@/features/dashboard/team/types/propertyTeam';
 
-import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import {
-  ResponsiveModal,
-  ResponsiveModalContent,
-  ResponsiveModalFooter,
-  ResponsiveModalHeader,
-  ResponsiveModalTitle,
-} from '@/components/ui/responsive-modal';
 import {
   Select,
   SelectContent,
@@ -54,14 +43,11 @@ export function ApplyTemplatePicker({
   showManageTemplates = false,
   disabled = false,
 }: Props) {
-  const [pendingValue, setPendingValue] = useState<string | null>(null);
-
   const sorted = useMemo(() => sortTemplatesForDisplay(templates), [templates]);
   const matched = useMemo(
     () => findMatchingTemplate(permissions, templates),
     [permissions, templates]
   );
-  const isCustom = !matched;
   const selectValue = matched?.id ?? CUSTOM_VALUE;
 
   const applyValue = (value: string) => {
@@ -71,34 +57,6 @@ export function ApplyTemplatePicker({
     }
     onApply(value, getRolePermissions(value, templates));
   };
-
-  const tryApply = (value: string) => {
-    if (value === selectValue) return;
-
-    const nextPermissions = value === CUSTOM_VALUE ? [] : getRolePermissions(value, templates);
-    const divergedFromCurrent =
-      Boolean(matched) && !permissionSetEqual(permissions, matched!.permissions);
-    const clearingOrReplacing =
-      divergedFromCurrent ||
-      (isCustom && permissions.length > 0) ||
-      (value === CUSTOM_VALUE && permissions.length > 0) ||
-      (!isCustom && value !== matched?.id && permissions.length > 0);
-
-    if (clearingOrReplacing && !permissionSetEqual(permissions, nextPermissions)) {
-      setPendingValue(value);
-      return;
-    }
-
-    applyValue(value);
-  };
-
-  const confirmApply = () => {
-    if (!pendingValue) return;
-    applyValue(pendingValue);
-    setPendingValue(null);
-  };
-
-  const pendingIsCustom = pendingValue === CUSTOM_VALUE;
 
   return (
     <div className="space-y-2">
@@ -110,7 +68,8 @@ export function ApplyTemplatePicker({
             onManageTemplates?.();
             return;
           }
-          tryApply(value);
+          if (value === selectValue) return;
+          applyValue(value);
         }}
         disabled={disabled || sorted.length === 0}
       >
@@ -129,32 +88,6 @@ export function ApplyTemplatePicker({
           ) : null}
         </SelectContent>
       </Select>
-
-      <ResponsiveModal
-        open={pendingValue != null}
-        onOpenChange={(open) => {
-          if (!open) setPendingValue(null);
-        }}
-      >
-        <ResponsiveModalContent className="max-w-[min(calc(100vw-1.5rem),24rem)]">
-          <ResponsiveModalHeader>
-            <ResponsiveModalTitle>
-              {pendingIsCustom ? 'Start from scratch?' : 'Use this role?'}
-            </ResponsiveModalTitle>
-          </ResponsiveModalHeader>
-          <p className="text-muted-foreground text-sm">
-            {pendingIsCustom
-              ? 'This clears all permission checkboxes.'
-              : 'This replaces the current checkboxes with that role’s permissions.'}
-          </p>
-          <ResponsiveModalFooter className="gap-1">
-            <Button variant="outline" onClick={() => setPendingValue(null)}>
-              Cancel
-            </Button>
-            <Button onClick={confirmApply}>{pendingIsCustom ? 'Clear' : 'Apply'}</Button>
-          </ResponsiveModalFooter>
-        </ResponsiveModalContent>
-      </ResponsiveModal>
     </div>
   );
 }

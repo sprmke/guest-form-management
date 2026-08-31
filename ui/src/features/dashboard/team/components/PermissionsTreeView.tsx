@@ -39,9 +39,18 @@ function moduleOpenPageId(module: string): string {
   return `${module}:view`;
 }
 
-function isAccessLeaf(node: PermissionCatalogNode): boolean {
+function moduleViewPermissionId(module: string, catalog: PermissionCatalog): string | null {
+  const orgScoped = `org.${module}:view`;
+  if (catalog.some((entry) => entry.id === orgScoped)) return orgScoped;
+  const plain = moduleOpenPageId(module);
+  if (catalog.some((entry) => entry.id === plain)) return plain;
+  return null;
+}
+
+function isAccessLeaf(node: PermissionCatalogNode, catalog: PermissionCatalog): boolean {
   if (!node.id) return false;
-  if (node.id === moduleOpenPageId(node.module)) return true;
+  const viewId = moduleViewPermissionId(node.module, catalog);
+  if (viewId && node.id === viewId) return true;
   return node.id.endsWith('export:view');
 }
 
@@ -174,8 +183,8 @@ export function PermissionsTreeView({
   };
 
   const ensureOpenPage = (set: Set<string>, module: string) => {
-    const viewId = moduleOpenPageId(module);
-    if (catalog.some((entry) => entry.id === viewId)) {
+    const viewId = moduleViewPermissionId(module, catalog);
+    if (viewId) {
       set.add(viewId);
     }
   };
@@ -189,7 +198,7 @@ export function PermissionsTreeView({
     const set = new Set(permissions);
     if (nextChecked) {
       set.add(node.id);
-      if (node.id !== moduleOpenPageId(node.module)) {
+      if (node.id !== moduleViewPermissionId(node.module, catalog)) {
         ensureOpenPage(set, node.module);
       }
     } else {
@@ -248,8 +257,8 @@ export function PermissionsTreeView({
 
     const directLeaves = children.filter((node) => node.id);
     const sections = children.filter((node) => !node.id);
-    const accessLeaves = directLeaves.filter(isAccessLeaf);
-    const otherDirectLeaves = directLeaves.filter((node) => !isAccessLeaf(node));
+    const accessLeaves = directLeaves.filter((node) => isAccessLeaf(node, catalog));
+    const otherDirectLeaves = directLeaves.filter((node) => !isAccessLeaf(node, catalog));
 
     return (
       <div className="space-y-1 pb-1 pt-1">
