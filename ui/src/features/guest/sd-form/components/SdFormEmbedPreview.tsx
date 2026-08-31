@@ -7,7 +7,7 @@ import {
 } from '@/features/guest/form/hooks/useGuestPaymentInfo';
 import { pickGuestBrandHeaderProps } from '@/features/guest/form/lib/guestFormBranding';
 import { SD_FORM_STEPS } from '@/features/guest/sd-form/lib/sdFormSteps';
-import { VOUCHER_DISCOUNT_MAX } from '@/features/guest/sd-form/lib/voucher';
+import { formatVoucherDiscountMaxLabel } from '@/features/guest/sd-form/lib/voucher';
 
 import { GuestFormBrandHeader } from '@/components/branding/GuestFormBrandHeader';
 
@@ -30,8 +30,8 @@ export function SdFormEmbedPreview() {
         </p>
         <div className="to-primary/5 dark:to-primary/10 rounded-xl border border-amber-200/80 bg-gradient-to-br from-amber-50/90 via-amber-50/50 px-4 py-3.5 dark:border-amber-500/25 dark:from-amber-500/10 dark:via-amber-500/5">
           <p className="text-sm font-semibold leading-snug text-amber-950 dark:text-amber-100">
-            Review us for a chance to win up to ₱{VOUCHER_DISCOUNT_MAX.toLocaleString('en-PH')} or a
-            FREE stay on your next booking!
+            Review us for a chance to win {formatVoucherDiscountMaxLabel()} or a FREE stay on your
+            next booking!
           </p>
         </div>
       </header>

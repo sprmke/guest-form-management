@@ -1,4 +1,7 @@
+import { prepareUpload } from '@/lib/media/prepareUpload';
+
 import type { SdBank } from './sdFormSchema';
+import type { VoucherRevealStyle } from './voucherRevealStyle';
 
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const ANON = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
@@ -16,16 +19,15 @@ export type GuestReviewBootstrap = {
   primary_guest_name: string;
   check_in_date: string;
   check_out_date: string;
-  facebook_reviews_url: string;
-  review_social_url?: string;
-  review_social_platform?: string;
-  review_social_label?: string;
   guest_review_submitted?: boolean;
   email_logo_url?: string;
   brand_color?: string;
   next_stay_voucher_code: string | null;
   next_stay_voucher_amount: number | null;
   review_path: 'airbnb_post_stay';
+  vouchers_enabled?: boolean;
+  voucher_prizes?: Array<{ code: string; percentOff: number; chancePercent: number }>;
+  voucher_reveal_style?: VoucherRevealStyle;
 };
 
 export async function fetchGuestReview(bookingId: string): Promise<GuestReviewBootstrap> {
@@ -49,10 +51,6 @@ export type SdFormBootstrap = {
   security_deposit: number;
   check_in_date: string;
   check_out_date: string;
-  facebook_reviews_url: string;
-  review_social_url?: string;
-  review_social_platform?: string;
-  review_social_label?: string;
   guest_review_submitted?: boolean;
   email_logo_url?: string;
   brand_color?: string;
@@ -64,6 +62,9 @@ export type SdFormBootstrap = {
    * refund submit stays closed until the stay moves to Ready for check-out.
    */
   awaiting_balance_settlement?: boolean;
+  vouchers_enabled?: boolean;
+  voucher_prizes?: Array<{ code: string; percentOff: number; chancePercent: number }>;
+  voucher_reveal_style?: VoucherRevealStyle;
 };
 
 export type ClaimVoucherResponse = {
@@ -128,7 +129,12 @@ export async function submitGuestReview(input: {
     form.set('feedbackTags', JSON.stringify(input.feedbackTags));
   }
   for (const file of input.media ?? []) {
-    form.append('media', file);
+    const prepared = await prepareUpload(file, {
+      imagePreset: 'CONTENT',
+      surface: 'guest-review-media',
+    });
+    if (prepared.error) throw new Error(prepared.error);
+    form.append('media', prepared.file);
   }
 
   const res = await fetch(`${FUNCTIONS_URL}/submit-guest-review`, {

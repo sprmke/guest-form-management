@@ -22,9 +22,11 @@ import {
 } from '@/features/guest/sd-form/lib/api';
 import {
   findVoucher,
-  VOUCHER_DISCOUNT_MAX,
+  formatVoucherDiscountMaxLabel,
+  prizesToVouchers,
   type Voucher,
 } from '@/features/guest/sd-form/lib/voucher';
+import { normalizeVoucherRevealStyle } from '@/features/guest/sd-form/lib/voucherRevealStyle';
 
 import { GuestFormBrandHeader } from '@/components/branding/GuestFormBrandHeader';
 import { GuestReviewPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
@@ -50,13 +52,13 @@ export function GuestReviewPage() {
   });
 
   const existingVoucher = query.data?.next_stay_voucher_code
-    ? findVoucher(query.data.next_stay_voucher_code)
+    ? findVoucher(query.data.next_stay_voucher_code, query.data.next_stay_voucher_amount)
     : null;
 
   const claimMut = useMutation({
     mutationFn: async (): Promise<Voucher> => {
       const res = await claimSdVoucher(bookingId);
-      const v = findVoucher(res.code);
+      const v = findVoucher(res.code, res.amount);
       if (!v) throw new Error('Received an unknown voucher code from the server.');
       return v;
     },
@@ -66,10 +68,14 @@ export function GuestReviewPage() {
   });
 
   useEffect(() => {
-    if ((existingVoucher || query.data?.guest_review_submitted) && phase === 'review') {
+    if (phase !== 'review' || !query.data) return;
+    if (existingVoucher) {
       setPhase('voucher');
+      return;
     }
-  }, [existingVoucher, query.data?.guest_review_submitted, phase]);
+    if (!query.data.guest_review_submitted) return;
+    setPhase(query.data.vouchers_enabled === false ? 'done' : 'voucher');
+  }, [existingVoucher, query.data, phase]);
 
   if (embedPreview && !bookingId) {
     return <GuestReviewEmbedPreview />;
@@ -107,7 +113,7 @@ export function GuestReviewPage() {
       existingVoucher={existingVoucher}
       isClaiming={claimMut.isPending}
       onClaim={() => claimMut.mutateAsync()}
-      onReviewSubmitted={() => setPhase('voucher')}
+      onReviewSubmitted={() => setPhase(query.data.vouchers_enabled === false ? 'done' : 'voucher')}
       onVoucherDone={() => setPhase('done')}
     />
   );
@@ -142,8 +148,8 @@ function GuestReviewContent({
         <>
           <header className="space-y-3 px-1 text-center sm:px-2">
             <p className="text-muted-foreground text-sm leading-relaxed">
-              Thanks for staying with us! Share a quick review for a chance to win up to ₱
-              {VOUCHER_DISCOUNT_MAX.toLocaleString('en-PH')} or a free stay on your next booking.
+              Thanks for staying with us! Share a quick review for a chance to win{' '}
+              {formatVoucherDiscountMaxLabel()} or a free stay on your next booking.
             </p>
           </header>
           <SdFormReviewSection
@@ -156,8 +162,6 @@ function GuestReviewContent({
 
       {phase === 'voucher' ? (
         <VoucherReveal
-          reviewSocialUrl={data.review_social_url || data.facebook_reviews_url}
-          reviewSocialLabel={data.review_social_label || 'Facebook'}
           existingVoucher={existingVoucher}
           isClaiming={isClaiming}
           onClaim={onClaim}
@@ -165,6 +169,10 @@ function GuestReviewContent({
           primaryGuestName={data.primary_guest_name}
           checkInDate={data.check_in_date}
           checkOutDate={data.check_out_date}
+          prizePool={
+            data.voucher_prizes?.length ? prizesToVouchers(data.voucher_prizes) : undefined
+          }
+          style={normalizeVoucherRevealStyle(data.voucher_reveal_style)}
         />
       ) : null}
 

@@ -37,9 +37,11 @@ import {
 import { SD_FORM_STEPS } from '@/features/guest/sd-form/lib/sdFormSteps';
 import {
   findVoucher,
-  VOUCHER_DISCOUNT_MAX,
+  formatVoucherDiscountMaxLabel,
+  prizesToVouchers,
   type Voucher,
 } from '@/features/guest/sd-form/lib/voucher';
+import { normalizeVoucherRevealStyle } from '@/features/guest/sd-form/lib/voucherRevealStyle';
 
 import { GuestFormBrandHeader } from '@/components/branding/GuestFormBrandHeader';
 import { SdFormPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
@@ -89,21 +91,40 @@ export function SdFormPage() {
   });
 
   const existingVoucher = query.data?.next_stay_voucher_code
-    ? findVoucher(query.data.next_stay_voucher_code)
+    ? findVoucher(query.data.next_stay_voucher_code, query.data.next_stay_voucher_amount)
     : null;
 
   // Returning guests: skip review when already submitted or voucher exists.
   useEffect(() => {
-    if ((existingVoucher || query.data?.guest_review_submitted) && step === 1) {
+    if (step !== 1 || !query.data) return;
+    const vouchersEnabled = query.data.vouchers_enabled !== false;
+    if (existingVoucher) {
       setStep(2);
       setStep2Phase('voucher');
+      return;
     }
-  }, [existingVoucher, query.data?.guest_review_submitted, step]);
+    if (!query.data.guest_review_submitted) return;
+    if (query.data.awaiting_balance_settlement) {
+      setStep(2);
+      setStep2Phase('wait_balance');
+      return;
+    }
+    if (vouchersEnabled) {
+      setStep(2);
+      setStep2Phase('voucher');
+    } else {
+      setStep(3);
+    }
+  }, [existingVoucher, query.data, step]);
 
   useEffect(() => {
     const d = query.data;
     if (!d?.awaiting_balance_settlement && step2Phase === 'wait_balance') {
-      setStep2Phase('voucher');
+      if (d?.vouchers_enabled === false && !d.next_stay_voucher_code) {
+        setStep(3);
+      } else {
+        setStep2Phase('voucher');
+      }
     }
   }, [query.data, step2Phase]);
 
@@ -116,7 +137,7 @@ export function SdFormPage() {
   const claimMut = useMutation({
     mutationFn: async (): Promise<Voucher> => {
       const res = await claimSdVoucher(bookingId);
-      const v = findVoucher(res.code);
+      const v = findVoucher(res.code, res.amount);
       if (!v) {
         throw new Error('Received an unknown voucher code from the server.');
       }
@@ -265,8 +286,8 @@ export function SdFormPage() {
           </div>
           <div className="to-primary/5 dark:to-primary/10 rounded-xl border border-amber-200/80 bg-gradient-to-br from-amber-50/90 via-amber-50/50 px-4 py-3.5 dark:border-amber-500/25 dark:from-amber-500/10 dark:via-amber-500/5">
             <p className="text-sm font-semibold leading-snug text-amber-950 dark:text-amber-100">
-              Review us for a chance to win up to ₱{VOUCHER_DISCOUNT_MAX.toLocaleString('en-PH')} or
-              a FREE stay on your next booking!
+              Review us for a chance to win {formatVoucherDiscountMaxLabel()} or a FREE stay on your
+              next booking!
             </p>
           </div>
         </header>
@@ -278,8 +299,15 @@ export function SdFormPage() {
             bookingId={bookingId}
             awaitingBalanceSettlement={Boolean(data.awaiting_balance_settlement)}
             onReviewSubmitted={() => {
-              setStep(2);
-              setStep2Phase(data.awaiting_balance_settlement ? 'wait_balance' : 'voucher');
+              if (data.awaiting_balance_settlement) {
+                setStep(2);
+                setStep2Phase('wait_balance');
+              } else if (data.vouchers_enabled !== false) {
+                setStep(2);
+                setStep2Phase('voucher');
+              } else {
+                setStep(3);
+              }
             }}
           />
         </div>
@@ -300,8 +328,6 @@ export function SdFormPage() {
 
       {step === 2 && step2Phase === 'voucher' && !data.awaiting_balance_settlement && (
         <VoucherReveal
-          reviewSocialUrl={data.review_social_url || data.facebook_reviews_url}
-          reviewSocialLabel={data.review_social_label || 'Facebook'}
           existingVoucher={existingVoucher}
           isClaiming={claimMut.isPending}
           onClaim={() => claimMut.mutateAsync()}
@@ -309,6 +335,10 @@ export function SdFormPage() {
           primaryGuestName={data.primary_guest_name}
           checkInDate={data.check_in_date}
           checkOutDate={data.check_out_date}
+          prizePool={
+            data.voucher_prizes?.length ? prizesToVouchers(data.voucher_prizes) : undefined
+          }
+          style={normalizeVoucherRevealStyle(data.voucher_reveal_style)}
         />
       )}
 
