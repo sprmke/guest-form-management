@@ -3,6 +3,7 @@ import {
   guestBalancePaidRecorded,
 } from '@/features/dashboard/bookings/lib/totalGuestBalance';
 import type { BookingRow, SdSettlementLineItem } from '@/features/dashboard/bookings/lib/types';
+import { voucherLiabilityPhp } from '@/features/guest/sd-form/lib/voucher';
 
 /** Minimum booking columns for pricing / P&amp;L math (full row or finance snapshot). */
 export type BookingFinanceInput = Pick<
@@ -322,9 +323,10 @@ export function computeBookingFinancials(booking: BookingFinanceInput): BookingF
   const { expenses, profits } = buildSdExpenseProfitRows(booking);
   const sdExpenseTotal = roundMoney(sumSdLineAmounts(expenses));
   const sdProfitTotal = roundMoney(sumSdLineAmounts(profits));
-  const voucherCost = booking.next_stay_voucher_code?.trim()
-    ? roundMoney(toMoneyNumber(booking.next_stay_voucher_amount))
-    : 0;
+  const voucherCost = voucherLiabilityPhp(
+    booking.next_stay_voucher_code,
+    booking.next_stay_voucher_amount
+  );
 
   const stayRevenue = isCompleted ? roundMoney(guestCollected - deposit) : null;
 

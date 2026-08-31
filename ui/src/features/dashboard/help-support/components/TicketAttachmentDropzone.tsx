@@ -6,20 +6,24 @@ import { toast } from 'sonner';
 import { useUploadSupportTicketAttachment } from '@/features/dashboard/help-support/hooks/useSupportTickets';
 import type { SupportTicketAttachmentDraft } from '@/features/dashboard/help-support/lib/supportTicketSchema';
 
+import { formatUploadLimit, validateUploadFile } from '@/lib/media/uploadLimits';
 import { cn } from '@/lib/utils';
 
-const ACCEPT = 'image/jpeg,image/png,image/webp,video/mp4,video/quicktime';
+const ACCEPT = 'image/jpeg,image/png,image/webp,image/heic,image/heif,video/mp4,video/quicktime';
 const ALLOWED_MIME = new Set([
   'image/jpeg',
   'image/png',
   'image/webp',
+  'image/heic',
+  'image/heif',
   'video/mp4',
   'video/quicktime',
 ]);
-const ALLOWED_EXT = /\.(jpe?g|png|webp|mp4|mov)$/i;
+const ALLOWED_EXT = /\.(jpe?g|png|webp|heic|heif|mp4|mov)$/i;
 const MAX_ATTACHMENTS = 3;
-const MAX_BYTES = 20 * 1024 * 1024;
-const EMPTY_HINT = 'JPEG, PNG, WebP, MP4, or MOV · 20 MB · up to 3';
+const EMPTY_HINT = `JPEG, PNG, WebP, MP4, or MOV · image ${formatUploadLimit(
+  'image'
+)}, video ${formatUploadLimit('video')} (trim or compress longer clips first) · up to 3`;
 
 type ComposerSlot = {
   trigger: ReactNode;
@@ -96,8 +100,12 @@ export function TicketAttachmentDropzone({
         toast.error(`${file.name} isn't a supported file type`);
         continue;
       }
-      if (file.size > MAX_BYTES) {
-        toast.error(`${file.name} is larger than 20 MB`);
+      const limitCheck = validateUploadFile(
+        file,
+        file.type.startsWith('video/') ? 'video' : 'image'
+      );
+      if (!limitCheck.ok) {
+        toast.error(`${file.name}: ${limitCheck.message}`);
         continue;
       }
       try {
