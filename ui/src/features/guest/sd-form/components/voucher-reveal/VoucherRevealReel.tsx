@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 
-import { Ticket } from 'lucide-react';
+import { Percent, Ticket } from 'lucide-react';
 
 import {
   formatVoucherDiscountMaxLabel,
@@ -15,26 +15,23 @@ import { cn } from '@/lib/utils';
 const STRIP_LENGTH = 36;
 const WINNING_INDEX = 30;
 /** Viewport + each strip row height — must fit chip padding + text or adjacent rows clip. */
-export const REEL_ROW_HEIGHT_PX = 120;
+export const REEL_ROW_HEIGHT_PX = 112;
+const REEL_CHIP_HEIGHT_PX = 96;
 const REEL_DURATION_MS = 10000;
 /** Brief beat after the reel lands before showing the won card. */
 const REEL_SETTLE_PAUSE_MS = 500;
 
-/** Shell width matches voucher chips so the border does not span full page width. */
+/** Shell width matches voucher chips so the frame does not span full page width. */
 export const REEL_SHELL_WIDTH_CLASS = 'mx-auto w-full max-w-sm';
 
-/** Tailwind palette cycled across reel chips for a colourful slot-machine feel. */
-const CHIP_TONES = [
-  'from-emerald-100 via-emerald-50 to-emerald-100 text-emerald-700 border-emerald-200/90',
-  'from-sky-100 via-sky-50 to-sky-100 text-sky-700 border-sky-200/90',
-  'from-amber-100 via-amber-50 to-amber-100 text-amber-800 border-amber-200/90',
-  'from-rose-100 via-rose-50 to-rose-100 text-rose-700 border-rose-200/90',
-  'from-orange-100 via-orange-50 to-orange-100 text-orange-800 border-orange-200/90',
-  'from-teal-100 via-teal-50 to-teal-100 text-teal-700 border-teal-200/90',
+/** Alternating flat chip surfaces — exported for settings preview. */
+export const VOUCHER_REEL_CHIP_TONES = [
+  'bg-card border-border/70 shadow-sm',
+  'bg-muted/40 border-border/60',
 ] as const;
 
-/** WAAPI keyframes: quick blur, then ~4s crawling through the last few rows. */
-function buildReelKeyframes(offsetPx: number): Keyframe[] {
+/** WAAPI keyframes: quick blur, then crawl through the last few rows. Exported for settings preview. */
+export function buildReelKeyframes(offsetPx: number): Keyframe[] {
   const y = (fraction: number) => `translate3d(0, ${-offsetPx * fraction}px, 0)`;
 
   return [
@@ -71,23 +68,66 @@ export function buildVoucherReelStrip(winner: Voucher, pool: ReadonlyArray<Vouch
   return strip;
 }
 
+function ReelChip({ voucher, index }: { voucher: Voucher; index: number }) {
+  const isFreeStay = voucher.amount >= 100 || voucher.code === 'FREE-STAY';
+
+  return (
+    <div
+      className={cn(
+        'flex w-full items-center gap-3 overflow-hidden rounded-xl border px-3 sm:px-4',
+        VOUCHER_REEL_CHIP_TONES[index % VOUCHER_REEL_CHIP_TONES.length]
+      )}
+      style={{ height: REEL_CHIP_HEIGHT_PX }}
+    >
+      <span
+        className={cn(
+          'inline-flex size-10 shrink-0 items-center justify-center rounded-lg border',
+          isFreeStay
+            ? 'border-primary/25 bg-primary/10 text-primary'
+            : 'border-border/70 bg-muted/50 text-muted-foreground'
+        )}
+        aria-hidden
+      >
+        {isFreeStay ? <Ticket className="size-4" /> : <Percent className="size-4" />}
+      </span>
+      <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
+        <span className="text-muted-foreground min-w-0 truncate font-mono text-xs font-semibold tracking-wide sm:text-sm">
+          {voucher.code}
+        </span>
+        <span className="text-foreground shrink-0 text-sm font-bold tabular-nums sm:text-base">
+          {formatVoucherPrizeLabel(voucher)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export function SlotReelPlaceholder({ prizePool }: { prizePool: ReadonlyArray<Voucher> }) {
   const hasFree = prizePool.some((v) => v.amount >= 100 || v.code === 'FREE-STAY');
   return (
-    <div className="border-primary/30 from-primary/5 via-card to-card relative w-full overflow-hidden rounded-xl border-2 border-dashed bg-gradient-to-br">
-      <div className="flex items-center justify-center px-6" style={{ height: REEL_ROW_HEIGHT_PX }}>
-        <div className="text-primary flex flex-col items-center justify-center gap-1 px-4 text-center sm:px-6">
-          <div className="flex items-center gap-3">
-            <Ticket className="size-6 shrink-0" aria-hidden />
-            <p className="text-sm font-semibold tracking-wide sm:text-base">
-              {formatVoucherDiscountMaxLabel(prizePool)}
-            </p>
+    <div className="bg-muted/25 border-border/80 relative w-full overflow-hidden rounded-2xl border p-3 shadow-md">
+      <div className="relative overflow-hidden rounded-xl" style={{ height: REEL_ROW_HEIGHT_PX }}>
+        <div
+          className="border-primary/25 bg-primary/[0.04] pointer-events-none absolute inset-x-0 top-1/2 z-10 -translate-y-1/2 rounded-lg border"
+          style={{ height: REEL_CHIP_HEIGHT_PX }}
+          aria-hidden
+        />
+        <div className="flex h-full items-center justify-center px-2">
+          <div className="bg-card border-border/70 flex h-[96px] w-full items-center gap-3 rounded-xl border px-4 shadow-sm">
+            <span className="border-border/70 bg-muted/50 text-muted-foreground inline-flex size-10 shrink-0 items-center justify-center rounded-lg border">
+              <Percent className="size-4" aria-hidden />
+            </span>
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <p className="text-foreground text-sm font-semibold sm:text-base">
+                {formatVoucherDiscountMaxLabel(prizePool)}
+              </p>
+              {hasFree ? (
+                <p className="text-primary text-xs font-semibold uppercase tracking-wide sm:text-sm">
+                  or free stay
+                </p>
+              ) : null}
+            </div>
           </div>
-          {hasFree ? (
-            <p className="text-primary/80 text-sm font-bold uppercase tracking-wider sm:text-lg">
-              or free stay
-            </p>
-          ) : null}
         </div>
       </div>
     </div>
@@ -171,45 +211,33 @@ function SlotReel({ strip, onSpinComplete }: { strip: Voucher[]; onSpinComplete:
   return (
     <div
       className={cn(
-        'border-primary/40 bg-card shadow-primary/10 relative overflow-hidden rounded-xl border-2 shadow-lg',
+        'bg-muted/25 border-border/80 relative overflow-hidden rounded-2xl border p-3 shadow-md',
         REEL_SHELL_WIDTH_CLASS
       )}
       role="img"
       aria-label="Spinning voucher reel"
     >
       <div
-        className="border-primary/45 bg-primary/[0.04] pointer-events-none absolute inset-x-2 top-1/2 z-20 -translate-y-1/2 rounded-lg border"
-        style={{ height: REEL_ROW_HEIGHT_PX - 4 }}
+        className="border-primary/25 bg-primary/[0.04] pointer-events-none absolute inset-x-3 top-1/2 z-20 -translate-y-1/2 rounded-lg border"
+        style={{ height: REEL_CHIP_HEIGHT_PX }}
         aria-hidden
       />
       <div
-        className="border-primary/55 pointer-events-none absolute inset-x-0 top-1/2 z-30 -translate-y-1/2 border-y-2"
+        className="border-primary/35 pointer-events-none absolute inset-x-0 top-1/2 z-30 -translate-y-1/2 border-b border-t"
         style={{ height: REEL_ROW_HEIGHT_PX }}
         aria-hidden
       />
-      <div className="from-card pointer-events-none absolute inset-x-0 top-0 z-10 h-12 bg-gradient-to-b to-transparent" />
-      <div className="from-card pointer-events-none absolute inset-x-0 bottom-0 z-10 h-12 bg-gradient-to-t to-transparent" />
-      <div className="relative overflow-hidden" style={{ height: REEL_ROW_HEIGHT_PX }}>
+      <div className="from-muted/25 pointer-events-none absolute inset-x-0 top-0 z-10 h-10 bg-gradient-to-b to-transparent" />
+      <div className="from-muted/25 pointer-events-none absolute inset-x-0 bottom-0 z-10 h-10 bg-gradient-to-t to-transparent" />
+      <div className="relative overflow-hidden rounded-xl" style={{ height: REEL_ROW_HEIGHT_PX }}>
         <div ref={stripRef} className="flex flex-col will-change-transform">
           {strip.map((v, i) => (
             <div
               key={`${v.code}-${i}`}
-              className="box-border flex w-full shrink-0 items-center px-2 py-1"
+              className="box-border flex w-full shrink-0 items-center px-0.5 py-2"
               style={{ height: REEL_ROW_HEIGHT_PX }}
             >
-              <div
-                className={cn(
-                  'flex h-[104px] w-full items-center justify-between gap-2 overflow-hidden rounded-xl border bg-gradient-to-r px-3',
-                  CHIP_TONES[i % CHIP_TONES.length]
-                )}
-              >
-                <span className="min-w-0 truncate font-mono text-xs font-bold tracking-wide sm:text-sm">
-                  {v.code}
-                </span>
-                <span className="shrink-0 text-sm font-bold tabular-nums sm:text-base">
-                  {formatVoucherPrizeLabel(v)}
-                </span>
-              </div>
+              <ReelChip voucher={v} index={i} />
             </div>
           ))}
         </div>

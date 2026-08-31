@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
 
-import { Gift, Ticket } from 'lucide-react';
-
+import {
+  GuestVoucherWalletCard,
+  GuestVoucherWalletIcon,
+} from '@/features/guest/account/components/GuestVoucherUi';
 import { GuestAccountContentCard } from '@/features/guest/account/components/GuestAccountContentCard';
 import { GuestAccountEmptyState } from '@/features/guest/account/components/GuestAccountEmptyState';
 import { useGuestVouchersQuery } from '@/features/guest/account/hooks/useGuestVouchersQuery';
@@ -14,11 +16,79 @@ import { formatRelative } from '@/utils/format/bookingDisplay';
 
 function VoucherCardSkeleton() {
   return (
-    <div className="border-border bg-card animate-pulse rounded-2xl border p-4 shadow-sm">
-      <div className="bg-muted h-4 w-24 rounded" />
-      <div className="bg-muted mt-3 h-6 w-32 rounded" />
-      <div className="bg-muted mt-2 h-3 w-40 rounded" />
+    <div className="border-border bg-card animate-pulse rounded-xl border px-3 py-2.5 shadow-sm">
+      <div className="flex items-center gap-2.5">
+        <div className="bg-muted size-8 shrink-0 rounded-lg" />
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <div className="bg-muted h-3.5 w-24 rounded" />
+          <div className="bg-muted h-3 w-32 rounded" />
+        </div>
+        <div className="bg-muted h-5 w-14 rounded-md" />
+      </div>
     </div>
+  );
+}
+
+function WalletVoucherRow({
+  propertyName,
+  code,
+  offer,
+  meta,
+  metaTitle,
+  bookHref,
+  active,
+}: {
+  propertyName: string;
+  code: string;
+  offer: string;
+  meta?: string | null;
+  metaTitle?: string | null;
+  bookHref?: string;
+  active: boolean;
+}) {
+  return (
+    <GuestVoucherWalletCard active={active}>
+      <div className={cn('flex items-center gap-2.5', active && 'pl-1.5')}>
+        <GuestVoucherWalletIcon active={active} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline justify-between gap-2">
+            <p
+              className={cn(
+                'truncate font-mono text-sm font-bold tracking-wide',
+                active ? 'text-foreground' : 'text-muted-foreground'
+              )}
+            >
+              {code}
+            </p>
+            <p
+              className={cn(
+                'shrink-0 text-xs font-semibold tabular-nums',
+                active ? 'text-primary' : 'text-muted-foreground'
+              )}
+            >
+              {offer}
+            </p>
+          </div>
+          <p className="text-muted-foreground mt-0.5 truncate text-xs">
+            {propertyName}
+            {meta ? (
+              <>
+                <span aria-hidden> · </span>
+                <span title={metaTitle ?? undefined}>{meta}</span>
+              </>
+            ) : null}
+          </p>
+          {bookHref ? (
+            <Link
+              to={bookHref}
+              className="text-primary mt-1.5 inline-flex min-h-[44px] items-center text-xs font-semibold underline-offset-4 hover:underline sm:min-h-0 sm:py-0.5"
+            >
+              Book again
+            </Link>
+          ) : null}
+        </div>
+      </div>
+    </GuestVoucherWalletCard>
   );
 }
 
@@ -32,7 +102,7 @@ export function GuestVouchersPage() {
   if (isLoading) {
     return (
       <GuestAccountContentCard>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {Array.from({ length: 4 }).map((_, i) => (
             <VoucherCardSkeleton key={i} />
           ))}
@@ -53,13 +123,13 @@ export function GuestVouchersPage() {
 
   return (
     <GuestAccountContentCard>
-      <div className="space-y-6">
+      <div className="space-y-5">
         {available.length > 0 ? (
-          <section className="space-y-3">
-            <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+          <section className="space-y-2">
+            <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
               Ready to use
             </p>
-            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {available.map((v) => {
                 const offer = formatVoucherOfferLabel({
                   code: v.code,
@@ -69,43 +139,15 @@ export function GuestVouchersPage() {
                 const bookHref = v.propertySlug ? guestFormPath(v.propertySlug) : '/properties';
                 return (
                   <li key={v.sourceBookingId}>
-                    <div
-                      className={cn(
-                        'border-border bg-card relative overflow-hidden rounded-2xl border p-4 shadow-sm',
-                        'ring-1 ring-emerald-100/80 dark:ring-emerald-900/40'
-                      )}
-                    >
-                      <div className="flex items-start gap-3">
-                        <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
-                          <Ticket className="size-4" aria-hidden />
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-foreground truncate text-sm font-semibold">
-                            {v.propertyName ?? 'Property'}
-                          </p>
-                          <p className="mt-1 font-mono text-base font-bold tracking-wide text-emerald-800 dark:text-emerald-200">
-                            {offer}
-                          </p>
-                          <p className="text-muted-foreground mt-1 text-xs">
-                            {v.code}
-                            {v.awardedAt ? (
-                              <>
-                                {' · '}
-                                <span title={v.awardedAt}>
-                                  awarded {formatRelative(v.awardedAt)}
-                                </span>
-                              </>
-                            ) : null}
-                          </p>
-                          <Link
-                            to={bookHref}
-                            className="text-primary mt-3 inline-flex min-h-[44px] items-center text-sm font-medium"
-                          >
-                            Book again
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
+                    <WalletVoucherRow
+                      active
+                      propertyName={v.propertyName ?? 'Property'}
+                      code={v.code}
+                      offer={offer}
+                      meta={v.awardedAt ? `Awarded ${formatRelative(v.awardedAt)}` : null}
+                      metaTitle={v.awardedAt}
+                      bookHref={bookHref}
+                    />
                   </li>
                 );
               })}
@@ -114,11 +156,11 @@ export function GuestVouchersPage() {
         ) : null}
 
         {used.length > 0 ? (
-          <section className="space-y-3">
-            <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+          <section className="space-y-2">
+            <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
               Used
             </p>
-            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {used.map((v) => {
                 const offer = formatVoucherOfferLabel({
                   code: v.code,
@@ -127,28 +169,14 @@ export function GuestVouchersPage() {
                 });
                 return (
                   <li key={v.sourceBookingId}>
-                    <div className="border-border bg-muted/30 rounded-2xl border p-4 opacity-80">
-                      <div className="flex items-start gap-3">
-                        <span className="bg-muted text-muted-foreground inline-flex size-10 shrink-0 items-center justify-center rounded-xl">
-                          <Gift className="size-4" aria-hidden />
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-foreground truncate text-sm font-semibold">
-                            {v.propertyName ?? 'Property'}
-                          </p>
-                          <p className="text-muted-foreground mt-1 text-sm">{offer}</p>
-                          <p className="text-muted-foreground mt-1 text-xs">
-                            Used
-                            {v.redeemedAt ? (
-                              <>
-                                {' · '}
-                                <span title={v.redeemedAt}>{formatRelative(v.redeemedAt)}</span>
-                              </>
-                            ) : null}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+                    <WalletVoucherRow
+                      active={false}
+                      propertyName={v.propertyName ?? 'Property'}
+                      code={v.code}
+                      offer={offer}
+                      meta={v.redeemedAt ? `Used ${formatRelative(v.redeemedAt)}` : 'Used'}
+                      metaTitle={v.redeemedAt}
+                    />
                   </li>
                 );
               })}

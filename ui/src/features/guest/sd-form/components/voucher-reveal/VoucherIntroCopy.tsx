@@ -26,7 +26,7 @@ export function VoucherIntroCopy({
     <div className="my-8 space-y-3">
       <div className="text-primary flex items-center justify-center gap-2">
         <PartyPopper className="size-5" aria-hidden />
-        <p className="text-xs font-bold uppercase tracking-[0.2em]">Thank you, Ka-Homie!</p>
+        <p className="text-xs font-bold uppercase tracking-[0.2em]">Thank you!</p>
       </div>
       <h2 className="text-foreground text-center text-xl font-bold leading-tight sm:text-2xl">
         {headlineForStyle(style)}

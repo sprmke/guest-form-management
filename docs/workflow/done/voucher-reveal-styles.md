@@ -15,7 +15,7 @@ parent: property-guest-rewards-vouchers
 **Related:**
 
 - [`./property-guest-rewards-vouchers.md`](./property-guest-rewards-vouchers.md) — prize catalog + relative weights
-- [`../in-progress/voucher-redemption.md`](../in-progress/voucher-redemption.md) — wallet + apply on rebook (orthogonal)
+- [`../done/voucher-redemption.md`](../done/voucher-redemption.md) — wallet + apply on rebook (orthogonal)
 - Guest reveal: `ui/src/features/guest/sd-form/components/VoucherReveal.tsx` → `voucher-reveal/*`
 - Roll is **server-authoritative** via `claim-sd-voucher` → `_shared/voucher.ts#rollVoucher` — animations are cosmetic only
 - Manual QA: [`../qa/guest-flows/voucher-reveal-styles.md`](../qa/guest-flows/voucher-reveal-styles.md)

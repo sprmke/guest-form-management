@@ -1,4 +1,4 @@
-import { Sparkles, Ticket } from 'lucide-react';
+import { Ticket } from 'lucide-react';
 
 import { formatVoucherPrizeLabel, type Voucher } from '@/features/guest/sd-form/lib/voucher';
 
@@ -36,56 +36,40 @@ export function RevealedVoucherCard({
   const stayLine = formatVoucherStayLine(checkInDate, checkOutDate);
 
   return (
-    <div className="border-primary/40 via-card to-primary/10 shadow-primary/10 relative overflow-hidden rounded-xl border-2 bg-gradient-to-br from-emerald-200/10 p-5 shadow-xl">
-      <Sparkles
-        className="text-primary/70 absolute right-3 top-3 size-6 animate-pulse"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.04]"
-        style={{
-          backgroundImage: 'radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)',
-          backgroundSize: '14px 14px',
-        }}
-        aria-hidden
-      />
+    <div className="border-primary/25 bg-card shadow-primary/10 relative overflow-hidden rounded-2xl border shadow-md">
+      <span className="bg-primary absolute inset-y-3 left-0 w-1 rounded-r-full" aria-hidden />
 
-      <div className="relative space-y-4">
-        <div className="flex items-center gap-2">
-          <span className="bg-primary/15 text-primary inline-flex size-9 items-center justify-center rounded-full">
-            <Ticket className="size-5" aria-hidden />
+      <div className="space-y-4 px-4 py-4 pl-5 sm:px-5 sm:py-5 sm:pl-6">
+        <div className="flex items-center gap-2.5">
+          <span className="border-primary/20 bg-primary/10 text-primary inline-flex size-8 items-center justify-center rounded-lg border">
+            <Ticket className="size-3.5" aria-hidden />
           </span>
           <p className="text-primary text-xs font-bold uppercase tracking-wider">You won</p>
         </div>
 
-        <div className="space-y-2 text-center">
-          <p className="text-muted-foreground text-xs font-semibold uppercase tracking-[0.2em]">
+        <div className="space-y-1 text-center">
+          <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-[0.18em]">
             Voucher code
           </p>
-          <p className="text-foreground font-mono text-3xl font-extrabold tracking-[0.18em] sm:text-4xl">
+          <p className="text-foreground font-mono text-2xl font-extrabold tracking-[0.14em] sm:text-3xl">
             {voucher.code}
+          </p>
+          <p className="text-primary text-sm font-semibold tabular-nums">
+            {formatVoucherPrizeLabel(voucher)}
           </p>
         </div>
 
-        <div className="divide-primary/15 bg-card/60 ring-primary/20 grid grid-cols-1 divide-y rounded-xl ring-1 backdrop-blur md:grid-cols-3 md:divide-x md:divide-y-0">
-          <div className="min-w-0 space-y-1 px-4 py-3">
-            <p className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
-              Reward
-            </p>
-            <p className="text-foreground text-sm font-bold tabular-nums">
-              {formatVoucherPrizeLabel(voucher)}
-            </p>
-          </div>
-          <div className="min-w-0 space-y-1 px-4 py-3">
-            <p className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
+        <div className="border-border/70 bg-muted/30 grid grid-cols-1 gap-px overflow-hidden rounded-xl border sm:grid-cols-2">
+          <div className="bg-card/80 min-w-0 space-y-0.5 px-3.5 py-2.5">
+            <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-wider">
               Guest
             </p>
             <p className="text-foreground break-words text-sm font-semibold leading-snug">
               {guestDisplay}
             </p>
           </div>
-          <div className="min-w-0 space-y-1 px-4 py-3">
-            <p className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
+          <div className="bg-card/80 min-w-0 space-y-0.5 px-3.5 py-2.5">
+            <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-wider">
               Stay
             </p>
             <p className="text-muted-foreground break-words text-sm leading-snug">{stayLine}</p>

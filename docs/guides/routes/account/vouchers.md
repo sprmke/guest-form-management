@@ -2,7 +2,7 @@
 title: 'Guest Vouchers — operator guide'
 status: active
 tags: [guides, routes, account, vouchers]
-updated: 2026-08-30
+updated: 2026-08-31
 ---
 
 # Guest Vouchers — operator guide
@@ -15,14 +15,14 @@ Route: `/account/vouchers`
 
 | Section    | E2E save | Validation | Docs       | Notes                               |
 | ---------- | -------- | ---------- | ---------- | ----------------------------------- |
-| Wallet     | ✅       | —          | Documented | Ready + used lists                  |
+| Wallet     | ✅       | —          | Documented | Compact ticket rows (Ready + Used)  |
 | Book again | ✅       | —          | Documented | Deep-links to property booking form |
 
 ---
 
 ## Overview
 
-Signed-in guests see next-stay vouchers earned after a completed stay (review + claim). Ready vouchers link to book again at the same property; used vouchers stay listed for history.
+Signed-in guests see next-stay vouchers earned after a completed stay (review + claim). Ready vouchers link to book again at the same property; used vouchers stay listed for history. Wallet cards are compact ticket rows (code + offer + property), not large marketing cards.
 
 ---
 
@@ -68,14 +68,16 @@ Guests keep vouchers they earned from a previous stay in their account under **V
 
 ## Implementation map
 
-| Concern | Path                                                           |
-| ------- | -------------------------------------------------------------- |
-| Page    | `ui/src/features/guest/account/pages/GuestVouchersPage.tsx`    |
-| Hook    | `ui/src/features/guest/account/hooks/useGuestVouchersQuery.ts` |
-| API     | `ui/src/features/guest/account/lib/guestAccountApi.ts`         |
-| Nav     | `ui/src/features/guest/account/lib/guestAccountNav.ts`         |
-| Edge    | `supabase/functions/list-guest-vouchers/`                      |
-| Plan    | `docs/workflow/in-progress/voucher-redemption.md`              |
+| Concern     | Path                                                               |
+| ----------- | ------------------------------------------------------------------ |
+| Page        | `ui/src/features/guest/account/pages/GuestVouchersPage.tsx`        |
+| UI          | `ui/src/features/guest/account/components/GuestVoucherUi.tsx`      |
+| Form picker | `ui/src/features/guest/form/components/GuestFormVoucherPicker.tsx` |
+| Hook        | `ui/src/features/guest/account/hooks/useGuestVouchersQuery.ts`     |
+| API         | `ui/src/features/guest/account/lib/guestAccountApi.ts`             |
+| Nav         | `ui/src/features/guest/account/lib/guestAccountNav.ts`             |
+| Edge        | `supabase/functions/list-guest-vouchers/`                          |
+| Plan        | `docs/workfl../done/voucher-redemption.md`                         |
 
 ---
 

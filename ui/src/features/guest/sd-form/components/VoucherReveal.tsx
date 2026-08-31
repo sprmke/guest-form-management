@@ -40,8 +40,10 @@ interface VoucherRevealProps {
   isClaiming: boolean;
   /** Called when the guest taps "Claim it!". Should resolve with the awarded voucher. */
   onClaim: () => Promise<Voucher>;
-  /** Called when the guest taps "Continue to refund process" after the reveal. */
+  /** Called when the guest taps continue after the reveal. */
   onContinue: () => void;
+  /** Primary action label after the won card (SD form vs guest-review). */
+  continueLabel?: string;
   /** Shown on the revealed voucher card (`guest_submissions` MM-DD-YYYY or legacy ISO). */
   primaryGuestName: string;
   checkInDate: string;
@@ -66,11 +68,11 @@ function claimingLabel(style: VoucherRevealStyle): string {
 function rollingHint(style: VoucherRevealStyle): string {
   switch (style) {
     case 'wheel':
-      return 'The wheel is spinning… hang tight, Ka-Homie!';
+      return 'The wheel is spinning…';
     case 'flip':
-      return 'Flipping your reward… hang tight, Ka-Homie!';
+      return 'Flipping your reward…';
     default:
-      return 'The reels are spinning… hang tight, Ka-Homie!';
+      return 'The reel is spinning…';
   }
 }
 
@@ -119,6 +121,7 @@ export function VoucherReveal({
   isClaiming,
   onClaim,
   onContinue,
+  continueLabel = 'Continue to refund process',
   primaryGuestName,
   checkInDate,
   checkOutDate,
@@ -164,7 +167,7 @@ export function VoucherReveal({
             className="shadow-primary/20 min-h-[48px] w-full shadow-md"
             onClick={onContinue}
           >
-            Continue to refund process
+            {continueLabel}
           </Button>
         </div>
       </div>
@@ -211,9 +214,7 @@ export function VoucherReveal({
             </>
           )}
         </Button>
-        <p className="text-muted-foreground text-center text-xs">
-          One spin per booking only. Good luck Ka-Homie!
-        </p>
+        <p className="text-muted-foreground text-center text-xs">One spin per booking only.</p>
       </div>
     </div>
   );

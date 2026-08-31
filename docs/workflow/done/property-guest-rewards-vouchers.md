@@ -28,7 +28,7 @@ Split **External reviews**, **Vouchers**, and **Superhost** out of the property 
 ### Out
 
 - Org-level voucher defaults
-- Automatic redemption of % off on the next booking → see [`voucher-redemption.md`](../in-progress/voucher-redemption.md)
+- Automatic redemption of % off on the next booking → see [`voucher-redemption.md`](../done/voucher-redemption.md)
 - Restoring `main_social_platform`
 - Host-selectable voucher reveal animation → **Follow-ups** below
 

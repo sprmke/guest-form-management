@@ -13,10 +13,10 @@ import {
 } from '@/features/dashboard/org/lib/propertyVoucherSettings';
 import {
   DEFAULT_VOUCHER_REVEAL_STYLE,
-  VOUCHER_REVEAL_STYLES,
   voucherRevealStyleLabel,
   type VoucherRevealStyle,
 } from '@/features/dashboard/org/lib/voucherRevealStyle';
+import { VoucherRevealStylePicker } from '@/features/dashboard/org/components/property-settings/VoucherRevealStylePicker';
 import { usePropertyPricingDefaults } from '@/features/dashboard/pricing/hooks/usePropertyPricing';
 import {
   DEFAULT_WEEKDAY_NIGHTLY_RATE,
@@ -208,37 +208,12 @@ export function PropertyVoucherSettingsBlock({
 
               {enabled ? (
                 <>
-                  <div
-                    role="radiogroup"
-                    aria-label="Reveal style"
-                    className="border-border/60 grid grid-cols-3 gap-1.5 rounded-xl border p-1.5"
-                  >
-                    {VOUCHER_REVEAL_STYLES.map((option) => {
-                      const selected = revealStyle === option;
-                      return (
-                        <button
-                          key={option}
-                          type="button"
-                          role="radio"
-                          aria-checked={selected}
-                          disabled={disabled}
-                          className={cn(
-                            'min-h-[44px] rounded-lg text-sm font-medium transition-colors',
-                            selected
-                              ? 'bg-primary text-primary-foreground'
-                              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                          )}
-                          onClick={() => {
-                            if (selected) return;
-                            onInteract?.();
-                            onRevealStyleChange(option);
-                          }}
-                        >
-                          {voucherRevealStyleLabel(option)}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <VoucherRevealStylePicker
+                    value={revealStyle}
+                    disabled={disabled}
+                    onInteract={onInteract}
+                    onChange={onRevealStyleChange}
+                  />
 
                   <div className="border-border/60 bg-muted/30 flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2.5">
                     <Select
