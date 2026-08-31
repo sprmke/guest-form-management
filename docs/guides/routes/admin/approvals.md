@@ -2,7 +2,7 @@
 title: 'Super Admin Approvals — operator guide'
 status: active
 tags: [guides, routes, admin]
-updated: 2026-08-30
+updated: 2026-08-31
 ---
 
 # Super Admin Approvals — operator guide
@@ -68,14 +68,14 @@ The platform team uses this page to approve host identity documents, **request c
 - Status filter: All / In review / Approved / Changes requested / Rejected. Default: In review. Review rows use pending / approved / rejected only (no changes-requested).
 - Queue order: orgs with **Recommended in review** (`enhancedStatus === pending`) appear first; within each group, newest submit first (Tier 2 submit time when set, else Tier 1).
 - Dialog title shows tier under review: **Verified** (Tier 1) or **Recommended** (Tier 2). When both tiers were submitted, a **Verified / Recommended** tab switcher shows both statuses; admins can review either tier independently (including Recommended while Verified is still pending).
-- Org dialog documents are **host-only:** Tier 1 = Valid ID; Tier 2 = Facebook Page screenshot, selfie, platform admin screenshot, optional legitimacy/BIR. Listing ownership / Azure PMO docs are **not** shown here — they are reviewed on listing queue rows. A read-only **Listings** rollup at the bottom summarizes per-listing status (`list-org-listing-verifications`).
-- Listing dialog: **Verified** (Tier 1) = rights and contract end (no ownership proof required). **Recommended** (Tier 2) = primary ownership/authorization proof + additional proof + Azure PMO confirmation. Property Tier 1 **Approve** with an ACTIVE tower+unit peer shows succession confirm (same handoff as before, now per listing).
+- Org dialog documents are **host-only:** Tier 1 = Valid ID + Facebook Page screenshot; Tier 2 = Facebook Page screenshot, selfie, platform admin screenshot, optional legitimacy/BIR. Listing ownership / Azure PMO docs are **not** shown here — they are reviewed on listing queue rows. A read-only **Listings** rollup at the bottom summarizes per-listing status (`list-org-listing-verifications`).
+- Listing dialog: **Verified** (Tier 1) = rights, contract end when needed, and proof of ownership or authorization. Hosts upload that file in the listing modal, not onboarding. Go-live on listing Verified approve still does not require the file on the server (onboarding submits listing Verified as pending with rights only). **Recommended** (Tier 2) = additional proof + Azure PMO. Request-changes can flag proof on Verified and the other two files on Recommended. Property Tier 1 **Approve** with an ACTIVE tower+unit peer shows succession confirm (same handoff as before, now per listing).
 - Rows with `hasActiveUnitConflict` show a **Succession** badge (listing property rows; legacy org rows when applicable).
 - Each document has **Full view** (nested lightbox dialog) and **Open in new tab**. Images show inline thumbnails; PDFs show a first-page thumbnail (via pdf.js).
 - Dialog loads signed preview URLs for stored verification assets (1-hour expiry) on the Supabase project origin.
 - Pending actions (order): **Request changes**, **Reject**, **Approve**.
 - **Approve** org Tier 1 runs immediately (no listing succession — that is per listing row).
-- **Request changes** switches the same modal into a focused step (orange header): required **multi-select** reasons (document-quality checklist), optional documents to fix, optional additional notes, preview **Host will see**, then confirm — **Back** returns to review. Host keeps shell access; on next login a **non-dismissible Changes requested** modal (no X/Close) forces **Resubmit** before using the dashboard. Only the docs selected under “Please re-upload” are shown for upload (stored as `baseChangesRequestedDocs`); other submitted docs are kept.
+- **Request changes** switches the same modal into a focused step (orange header): required **multi-select** reasons (document-quality checklist), optional documents to fix, optional additional notes, preview **Host will see**, then confirm — **Back** returns to review. Host keeps shell access; on next login a **non-dismissible Changes requested** modal (no X/Close) forces **Resubmit** before using the dashboard. Resubmit shows **Valid ID** and **Facebook Page screenshot** (stored as `baseChangesRequestedDocs`); other submitted docs are kept.
 - **Reject** switches the same modal into a focused step (destructive header): required reason from a **5-option hard-decline dropdown** (fraud, identity mismatch, ownership, fraud history, duplicate/suspicious account), optional additional notes, **Host will see** preview — **Back** returns to review. Sets `baseRejectionKind: 'rejected'`, **emails the owner**, and **blocks** org/property/parking dashboard access. On next login the host sees `/verification-rejected` and may **Start a new application** (`/onboarding`). In-app resubmit is not allowed for hard reject.
 - Notes/reason are stored in `baseRejectionReason` with `baseRejectionKind` (`changes` \| `rejected`).
 - **Approve** / decide actions only when status is pending; otherwise show badge + Close (and any prior notes/reason).

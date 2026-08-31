@@ -12,14 +12,14 @@ tags: [workflow, in-progress, verification, onboarding]
 
 **Tier naming (2026-08-04):** Tier 1 is **Verified**, Tier 2 is **Recommended**. Two tiers only — a third tier was considered and dropped.
 
-> **Onboarding simplify (2026-08-30):** Host Tier 1 is **Valid ID only**. Facebook Page moved to host Recommended. Listing Tier 1 is **rights only** (go-live). Primary ownership/parking proof moved to listing Recommended. Host base submit is **not** plan-gated. See [`onboarding-verification-simplify.md`](./onboarding-verification-simplify.md).
+> **Onboarding simplify (2026-08-31):** Host Tier 1 is **Valid ID + Facebook Page screenshot**. Listing **Verified** collects proof of ownership or authorization. Listing **Recommended** collects additional proof + Azure PMO. Listing go-live is still listing Verified approve (onboarding submit is rights-only). Host base submit is **not** plan-gated. See [`onboarding-verification-simplify.md`](./onboarding-verification-simplify.md).
 
 ## Current document sets
 
-| Scope      | Tier 1 (base)                                                                                 | Tier 2 (Recommended)                                                                                   |
-| ---------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| Host / org | Valid ID                                                                                      | Facebook Page screenshot + selfie with ID + other-platform admin screenshot; optional legitimacy / BIR |
-| Listing    | Property Rights / Parking Rights (+ contract end when Authorized Representative or Sublessee) | Primary ownership/authorization proof + additional proof + Azure PMO                                   |
+| Scope      | Tier 1 (base)                                                                                                                 | Tier 2 (Recommended)                                                                                   |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Host / org | Valid ID + Facebook Page screenshot                                                                                           | Facebook Page screenshot + selfie with ID + other-platform admin screenshot; optional legitimacy / BIR |
+| Listing    | Property Rights / Parking Rights (+ contract end when Authorized Representative or Sublessee) + ownership/authorization proof | Additional proof + Azure PMO (submit after listing Verified is approved)                               |
 
 Contract **renewal** still requires a proof file.
 

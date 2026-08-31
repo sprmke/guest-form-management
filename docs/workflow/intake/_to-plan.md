@@ -519,7 +519,7 @@ Example:
 
 🚧 Onboarding verification simplify
 
-Step 2 Property Rights (Parking Rights when parking-only) from existing verification-rights values. Step 3 Valid ID only. Facebook Page and listing ownership proof move to Recommended. Listing go-live stays on listing base (rights only).
+Step 2 Property Rights (Parking Rights when parking-only) from existing verification-rights values. Step 3 Valid ID + Facebook Page screenshot only. Listing Verified: proof of ownership. Listing Recommended: additional proof + Azure PMO. Listing go-live stays on listing base approve.
 
 → **In progress:** [`../in-progress/onboarding-verification-simplify.md`](../in-progress/onboarding-verification-simplify.md) · spec: [`onboarding-verification-simplify-design.md`](./onboarding-verification-simplify-design.md)
 
