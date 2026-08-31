@@ -20,7 +20,8 @@ import { isCanvasWorthyBlock } from '@/features/dashboard/ai-assistant/lib/chatB
 type Props = {
   blocks: ChatBlock[];
   onResolveAction: (actionId: string, confirm: boolean) => Promise<ConfirmActionResponse | null>;
-  onFillComposer?: (prompt: string) => void;
+  onRunQuickAction?: (action: { label: string; prompt: string }) => void;
+  quickActionsDisabled?: boolean;
   onOpenCanvas?: (block: ChatBlock) => void;
   variant?: 'inline' | 'canvas';
 };
@@ -29,7 +30,8 @@ type Props = {
 export function ChatBlockRenderer({
   blocks,
   onResolveAction,
-  onFillComposer,
+  onRunQuickAction,
+  quickActionsDisabled,
   onOpenCanvas,
   variant = 'inline',
 }: Props) {
@@ -62,7 +64,12 @@ export function ChatBlockRenderer({
             return <TaskPlanBlock key={i} title={block.title} steps={block.steps} />;
           case 'quick_actions':
             return (
-              <QuickActionsBlock key={i} actions={block.actions} onFillComposer={onFillComposer} />
+              <QuickActionsBlock
+                key={i}
+                actions={block.actions}
+                disabled={quickActionsDisabled}
+                onRunAction={onRunQuickAction}
+              />
             );
           case 'action_confirmation':
             return <ActionConfirmationBlock key={i} {...block} onResolve={onResolveAction} />;

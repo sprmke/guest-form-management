@@ -10,7 +10,31 @@ import {
   documentsRequestedByMessage,
   selectDocumentsForMessage,
 } from './dashboardAssistantBookingDocuments.ts';
-import { isBookingStatus, STATUS_HUMAN_LABEL } from './statusMachine.ts';
+import {
+  buildJourneyIntroText,
+  buildJourneyQuickActions,
+  filterEchoSuggestionChips,
+  isBookingJourneyRecord,
+  sanitizeQuickActionPrompt,
+} from './dashboardAssistantActionDisplay.ts';
+import type { AttachedContextItem } from './dashboardAssistantAttachedContext.ts';
+import {
+  collectHostDisplayRefs,
+  collectHostDisplayRefsFromBlocks,
+  formatBookingHostLabel,
+  formatStayDateShort,
+  formatStayRangeShort,
+  humanizeBlocksForHost,
+  mergeHostDisplayRefs,
+} from './dashboardAssistantHostDisplay.ts';
+import {
+  bookingPipeline,
+  isBookingStatus,
+  nextStep,
+  requiredSubForm,
+  STATUS_HUMAN_LABEL,
+  type BookingStatus,
+} from './statusMachine.ts';
 import type { ChatBlock, ActionConfirmationBlock } from './dashboardAssistantSafetyGuard.ts';
 
 const STATUS_CODE_RE = /\b([A-Z][A-Z0-9]+(?:_[A-Z0-9]+)+)\b/g;
@@ -23,6 +47,25 @@ function asDisplay(value: unknown): string {
   if (value == null) return '';
   if (typeof value === 'number' && Number.isFinite(value)) return String(value);
   return String(value).trim();
+}
+
+/** Chip prompt when the host picks a stay to advance/complete — host-facing only (no tool names). */
+export function buildStayGuidancePrompt(input: {
+  guestName: string;
+  checkIn?: string;
+  checkOut?: string;
+  statusLabel?: string;
+}): string {
+  const guest = input.guestName.trim() || 'this guest';
+  const status = (input.statusLabel ?? '').trim() || 'its current status';
+  const range =
+    input.checkIn && input.checkOut
+      ? ` (${formatStayDateShort(input.checkIn)}–${formatStayDateShort(input.checkOut)})`
+      : '';
+  return (
+    `Help me complete ${guest}'s booking${range}. It is currently at ${status}. ` +
+    `If Completed is not allowed yet, explain why, what is still pending, and the next valid step — do not say the booking is missing.`
+  );
 }
 
 function recordHasContent(record: Record<string, string | number>): boolean {
@@ -77,6 +120,101 @@ export function humanizeStatusCodesInText(text: string): string {
     return code;
   });
 }
+
+const SUB_FORM_HINT: Record<Exclude<ReturnType<typeof requiredSubForm>, null>, string> = {
+  pricing: 'Confirm pricing before proceeding',
+  parking: 'Complete parking endorsement',
+  guest_balance: 'Settle guest balance',
+  sd_refund: 'Process security deposit refund',
+};
+
+/** Read-only booking pipeline snapshot for stepper UI and multi-step guidance. */
+export function buildBookingJourneyData(booking: Record<string, unknown>): Record<string, unknown> {
+  const status = String(booking.status ?? '');
+  if (!isBookingStatus(status)) {
+    return { kind: 'booking_journey', bookingId: String(booking.id ?? ''), steps: [] };
+  }
+
+  const flags = {
+    need_parking: Boolean(booking.need_parking),
+    has_pets: Boolean(booking.has_pets),
+    security_deposit: booking.security_deposit as number | string | null,
+  };
+  const pipeline = bookingPipeline(flags, status);
+  const currentIdx = pipeline.indexOf(status);
+  const pending = pendingTasksForBooking(booking);
+  const steps = pipeline.map((stepStatus, index) => {
+    const next = pipeline[index + 1];
+    const subForm = next ? requiredSubForm(stepStatus, next) : null;
+    let stepState: 'done' | 'current' | 'upcoming' = 'upcoming';
+    if (currentIdx >= 0 && index < currentIdx) stepState = 'done';
+    else if (index === currentIdx) stepState = 'current';
+    const description =
+      index === currentIdx
+        ? pending.join(' ') || undefined
+        : stepState === 'upcoming' && subForm
+          ? SUB_FORM_HINT[subForm]
+          : undefined;
+    return {
+      status: stepStatus,
+      label: STATUS_HUMAN_LABEL[stepStatus],
+      stepStatus: stepState,
+      requiredSubForm: subForm,
+      nextStatus: next ?? null,
+      nextStatusLabel: next ? STATUS_HUMAN_LABEL[next] : null,
+      description,
+    };
+  });
+
+  const next = nextStep(flags, status as BookingStatus);
+  return {
+    kind: 'booking_journey',
+    bookingId: String(booking.id ?? ''),
+    guestName: String(booking.primary_guest_name || booking.guest_facebook_name || 'Guest'),
+    hostLabel: formatBookingHostLabel({
+      guestName: String(booking.primary_guest_name || booking.guest_facebook_name || 'Guest'),
+      checkIn: String(booking.check_in_date ?? ''),
+      checkOut: String(booking.check_out_date ?? ''),
+      statusLabel: STATUS_HUMAN_LABEL[status],
+    }),
+    currentStatus: status,
+    currentStatusLabel: STATUS_HUMAN_LABEL[status],
+    nextStatus: next,
+    nextStatusLabel: next ? STATUS_HUMAN_LABEL[next] : null,
+    steps,
+  };
+}
+
+/** Prepends intro text and appends actionable follow-ups around a booking-journey stepper. */
+export function wrapBlocksWithJourneyGuidance(
+  blocks: ChatBlock[],
+  toolResults: unknown[],
+  options?: { introText?: string | null; userMessage?: string | null }
+): ChatBlock[] {
+  const journey = toolResults.find(isBookingJourneyRecord);
+  if (!journey) return blocks;
+
+  const hasStepper = blocks.some((block) => block.type === 'stepper');
+  if (!hasStepper) return blocks;
+
+  const intro = options?.introText?.trim() || buildJourneyIntroText(journey);
+  const prefix: ChatBlock[] = blocks.some((block) => block.type === 'text' && block.text === intro)
+    ? []
+    : [{ type: 'text', text: humanizeStatusCodesInText(intro) }];
+
+  // Prefer journey follow-ups over stay-picker chips (re-selecting the same guest is useless).
+  const withoutQuickActions = blocks.filter((block) => block.type !== 'quick_actions');
+  const quickActions = filterEchoSuggestionChips(buildJourneyQuickActions(journey), {
+    userMessage: options?.userMessage,
+    echoLabels: [asDisplay(journey?.hostLabel), asDisplay(journey?.guestName)].filter(Boolean),
+  });
+  const suffix: ChatBlock[] =
+    quickActions.length > 0 ? [{ type: 'quick_actions', actions: quickActions }] : [];
+
+  return [...prefix, ...withoutQuickActions, ...suffix];
+}
+
+export { finalizeAssistantBlocksForHost } from './dashboardAssistantHostDisplay.ts';
 
 export function pendingTasksForBooking(booking: Record<string, unknown>): string[] {
   const status = String(booking.status ?? '');
@@ -201,17 +339,24 @@ function sanitizeImage(block: Extract<ChatBlock, { type: 'image' }>): ChatBlock 
 const URL_IN_TEXT_RE = /https?:\/\/|www\./i;
 
 function sanitizeQuickActions(
-  block: Extract<ChatBlock, { type: 'quick_actions' }>
+  block: Extract<ChatBlock, { type: 'quick_actions' }>,
+  hostRefs?: ReturnType<typeof collectHostDisplayRefs>
 ): ChatBlock | null {
-  const actions = (block.actions ?? []).filter((action) => {
-    const label = asDisplay(action.label);
-    const prompt = asDisplay(action.prompt);
-    if (!label || !prompt) return false;
-    if (URL_IN_TEXT_RE.test(label) || URL_IN_TEXT_RE.test(prompt)) return false;
-    return true;
-  });
+  const actions = (block.actions ?? [])
+    .map((action) => {
+      const label = asDisplay(action.label);
+      const prompt = sanitizeQuickActionPrompt(asDisplay(action.prompt));
+      if (!label || !prompt) return null;
+      if (URL_IN_TEXT_RE.test(label) || URL_IN_TEXT_RE.test(prompt)) return null;
+      return { label, prompt };
+    })
+    .filter((action): action is { label: string; prompt: string } => action != null);
   if (actions.length === 0) return null;
-  return { type: 'quick_actions', actions };
+  const humanized = hostRefs?.length
+    ? humanizeBlocksForHost([{ type: 'quick_actions', actions }], hostRefs)[0]
+    : { type: 'quick_actions' as const, actions };
+  if (humanized.type !== 'quick_actions' || humanized.actions.length === 0) return null;
+  return humanized;
 }
 
 function sanitizeStepper(block: Extract<ChatBlock, { type: 'stepper' }>): ChatBlock | null {
@@ -239,7 +384,10 @@ function sanitizeBookingCard(
 }
 
 /** Drop empty cards, align table cells to column headers, and humanize status codes in text. */
-export function sanitizeAssistantChatBlocks(blocks: ChatBlock[]): ChatBlock[] {
+export function sanitizeAssistantChatBlocks(
+  blocks: ChatBlock[],
+  hostRefs?: ReturnType<typeof collectHostDisplayRefs>
+): ChatBlock[] {
   const out: ChatBlock[] = [];
   for (const block of blocks) {
     if (block.type === 'text') {
@@ -274,7 +422,7 @@ export function sanitizeAssistantChatBlocks(blocks: ChatBlock[]): ChatBlock[] {
       continue;
     }
     if (block.type === 'quick_actions') {
-      const next = sanitizeQuickActions(block);
+      const next = sanitizeQuickActions(block, hostRefs);
       if (next) out.push(next);
       continue;
     }
@@ -308,9 +456,14 @@ function blocksMention(blocks: ChatBlock[], snippet: string): boolean {
 export function hydrateAssistantBlocksFromTools(
   blocks: ChatBlock[],
   toolResults: unknown[],
-  userMessage = ''
+  userMessage = '',
+  options?: { attachedContext?: AttachedContextItem[] }
 ): ChatBlock[] {
   const records = toolResultRecords(toolResults);
+  const hostRefs = mergeHostDisplayRefs(
+    collectHostDisplayRefs(toolResults, options?.attachedContext ?? []),
+    collectHostDisplayRefsFromBlocks(blocks)
+  );
   let next = [...blocks];
 
   const askedForFiles = documentsRequestedByMessage(userMessage).asked;
@@ -368,6 +521,119 @@ export function hydrateAssistantBlocksFromTools(
     }
   }
 
+  const listedBookings = records.flatMap((record) =>
+    Array.isArray(record.bookings) ? record.bookings : []
+  ) as Array<Record<string, unknown>>;
+
+  const bookingByGuest = new Map<string, Record<string, unknown>>();
+  for (const row of listedBookings) {
+    const guest = asDisplay(row.guestName).toLowerCase();
+    if (guest) bookingByGuest.set(guest, row);
+  }
+
+  // Ensure booking pickers show Status (and human dates) even when the model omitted them.
+  next = next.map((block) => {
+    if (block.type !== 'data_table') return block;
+    const columns = (block.columns ?? []).map((col) => String(col));
+    const guestCol = columns.find((col) => /^guest$/i.test(col.trim()));
+    if (!guestCol || listedBookings.length === 0) return block;
+
+    const hasStatus = columns.some((col) => /^status$/i.test(col.trim()));
+    const nextColumns = hasStatus ? columns : [...columns, 'Status'];
+    const rows = (block.rows ?? []).map((row) => {
+      const nextRow: Record<string, string | number> = { ...row };
+      const guest = asDisplay(nextRow[guestCol]);
+      const match = bookingByGuest.get(guest.toLowerCase());
+      const statusCode = asDisplay(match?.status);
+      const statusHuman = asDisplay(
+        match?.statusLabel ?? match?.status ?? nextRow.Status ?? nextRow.status
+      );
+      const statusValue = statusCode || statusHuman;
+      if (!hasStatus && statusValue) nextRow.Status = statusValue;
+      else if (hasStatus && statusValue) {
+        const statusCol = columns.find((col) => /^status$/i.test(col.trim()))!;
+        if (!asDisplay(nextRow[statusCol]) || statusCode) nextRow[statusCol] = statusValue;
+      }
+
+      for (const col of nextColumns) {
+        if (/^check[- ]?in$/i.test(col) && match?.checkIn) {
+          nextRow[col] = formatStayDateShort(asDisplay(match.checkIn)) || asDisplay(nextRow[col]);
+        }
+        if (/^check[- ]?out$/i.test(col) && match?.checkOut) {
+          nextRow[col] = formatStayDateShort(asDisplay(match.checkOut)) || asDisplay(nextRow[col]);
+        }
+      }
+      return nextRow;
+    });
+    return { ...block, columns: nextColumns, rows };
+  });
+
+  const hasBookingTable = next.some(
+    (block) => block.type === 'data_table' && Array.isArray(block.rows) && block.rows.length > 0
+  );
+  const hasJourney = records.some((record) => record.kind === 'booking_journey');
+  if (listedBookings.length > 0 && !hasBookingTable && !hasJourney) {
+    next.push({
+      type: 'data_table',
+      title: 'Bookings',
+      columns: ['Guest', 'Stay', 'Status'],
+      rows: listedBookings.map((row) => ({
+        Guest: asDisplay(row.guestName) || 'Guest',
+        Stay: formatStayRangeShort(asDisplay(row.checkIn), asDisplay(row.checkOut)),
+        Status: asDisplay(row.status) || asDisplay(row.statusLabel),
+      })),
+    });
+  }
+
+  // Stay-picker chips only when choosing among bookings — never after a journey is already shown.
+  const existingQuickActions = next.flatMap((block) =>
+    block.type === 'quick_actions' ? (block.actions ?? []) : []
+  );
+  const hasTechnicalChips = existingQuickActions.some((action) =>
+    /^booking\s*#?\s*[\da-f-]+$/i.test(action.label.trim())
+  );
+  const needsStayPicker =
+    !hasJourney &&
+    listedBookings.length > 0 &&
+    (listedBookings.length > 1 || hasTechnicalChips || existingQuickActions.length === 0);
+
+  if (needsStayPicker) {
+    const stayActions = listedBookings.slice(0, 5).map((row) => {
+      const label = formatBookingHostLabel({
+        guestName: asDisplay(row.guestName),
+        checkIn: asDisplay(row.checkIn),
+        checkOut: asDisplay(row.checkOut),
+        statusLabel: asDisplay(row.statusLabel ?? row.status),
+      });
+      return {
+        label,
+        prompt: buildStayGuidancePrompt({
+          guestName: asDisplay(row.guestName),
+          checkIn: asDisplay(row.checkIn),
+          checkOut: asDisplay(row.checkOut),
+          statusLabel: asDisplay(row.statusLabel ?? row.status),
+        }),
+      };
+    });
+    let replaced = false;
+    next = next.map((block) => {
+      if (block.type !== 'quick_actions') return block;
+      replaced = true;
+      return { type: 'quick_actions' as const, actions: stayActions };
+    });
+    if (!replaced) {
+      next.push({ type: 'quick_actions', actions: stayActions });
+    }
+  } else if (hasJourney) {
+    // Drop stay-picker echoes; wrapBlocksWithJourneyGuidance will attach real follow-ups.
+    next = next.filter((block) => {
+      if (block.type !== 'quick_actions') return true;
+      const actions = block.actions ?? [];
+      const allStayPickers = actions.every((action) => / · /.test(action.label));
+      return !allStayPickers;
+    });
+  }
+
   const knownDocs = documentsFromToolResults(toolResults);
   const knownUrls = new Set(knownDocs.map((doc) => doc.url));
   next = next.map((block) => {
@@ -403,7 +669,9 @@ export function hydrateAssistantBlocksFromTools(
   }
 
   next = hydrateStepperFromJourney(next, records);
-  return sanitizeAssistantChatBlocks(next);
+  const finalRefs = mergeHostDisplayRefs(hostRefs, collectHostDisplayRefsFromBlocks(next));
+  next = humanizeBlocksForHost(next, finalRefs);
+  return sanitizeAssistantChatBlocks(next, finalRefs);
 }
 
 /**
@@ -413,10 +681,18 @@ export function hydrateAssistantBlocksFromTools(
  */
 export function nestBookingJourneyStepper(
   blocks: ChatBlock[],
-  toolResults: unknown[]
+  toolResults: unknown[],
+  attachedContext: AttachedContextItem[] = []
 ): ChatBlock[] {
   const records = toolResultRecords(toolResults);
-  return sanitizeAssistantChatBlocks(hydrateStepperFromJourney(blocks, records));
+  const hostRefs = mergeHostDisplayRefs(
+    collectHostDisplayRefs(toolResults, attachedContext),
+    collectHostDisplayRefsFromBlocks(blocks)
+  );
+  return sanitizeAssistantChatBlocks(
+    humanizeBlocksForHost(hydrateStepperFromJourney(blocks, records), hostRefs),
+    hostRefs
+  );
 }
 
 function hydrateStepperFromJourney(

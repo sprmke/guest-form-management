@@ -2,6 +2,10 @@ import { useState } from 'react';
 
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
+import {
+  humanizeAssistantConfirmationCopy,
+  humanizeAssistantStatusText,
+} from '@/features/dashboard/ai-assistant/lib/chatBlockDisplay';
 import type {
   ChatBlock,
   ConfirmActionResponse,
@@ -19,6 +23,7 @@ export function ActionConfirmationBlock({
   details,
   status,
   isExternalSend,
+  errorMessage,
   onResolve,
 }: Props) {
   const [busy, setBusy] = useState<'confirm' | 'deny' | null>(null);
@@ -31,6 +36,11 @@ export function ActionConfirmationBlock({
 
   const externalSendPending = isExternalSend && status === 'proposed';
   const safeDetails = details ?? [];
+  const displaySummary = humanizeAssistantConfirmationCopy(summary);
+  const displayDetails = safeDetails.map((d) => ({
+    label: humanizeAssistantConfirmationCopy(d.label),
+    value: humanizeAssistantConfirmationCopy(d.value),
+  }));
 
   return (
     <div
@@ -55,7 +65,7 @@ export function ActionConfirmationBlock({
             aria-hidden
           />
         )}
-        <p className="text-foreground text-sm font-medium">{summary}</p>
+        <p className="text-foreground text-sm font-medium">{displaySummary}</p>
       </div>
 
       {externalSendPending && (
@@ -64,9 +74,9 @@ export function ActionConfirmationBlock({
         </p>
       )}
 
-      {safeDetails.length > 0 && (
+      {displayDetails.length > 0 && (
         <dl className="space-y-0.5 pl-6">
-          {safeDetails.map((d) => (
+          {displayDetails.map((d) => (
             <div key={d.label} className="flex gap-2 text-xs">
               <dt className="text-muted-foreground">{d.label}:</dt>
               <dd className="text-foreground">{d.value}</dd>
@@ -106,10 +116,13 @@ export function ActionConfirmationBlock({
         </div>
       )}
 
-      {status === 'executed' && (
-        <p className="text-success pl-6 text-xs font-medium">Done automatically.</p>
+      {status === 'executed' && <p className="text-success pl-6 text-xs font-medium">Done.</p>}
+      {status === 'denied' && errorMessage && (
+        <p className="text-destructive pl-6 text-xs leading-snug">
+          {humanizeAssistantStatusText(errorMessage)}
+        </p>
       )}
-      {status === 'denied' && (
+      {status === 'denied' && !errorMessage && (
         <p className="text-muted-foreground pl-6 text-xs">Cancelled — no changes made.</p>
       )}
       {status === 'expired' && (

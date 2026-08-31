@@ -14,7 +14,12 @@
  * `index.ts`). Do not add a fake tool for functionality that doesn't exist.
  */
 
-import { pendingTasksForBooking, sdRefundAmountForBooking } from './dashboardAssistantBlocks.ts';
+import {
+  pendingTasksForBooking,
+  sdRefundAmountForBooking,
+  buildBookingJourneyData,
+} from './dashboardAssistantBlocks.ts';
+import { formatBookingHostLabel } from './dashboardAssistantHostDisplay.ts';
 import {
   collectAssistantBookingDocuments,
   filterDocumentsByKinds,
@@ -123,13 +128,16 @@ import {
 } from './marketingPublishAction.ts';
 import {
   availableTransitions,
-  bookingPipeline,
+  canTransition,
   isBookingStatus,
-  nextStep,
-  requiredSubForm,
   STATUS_HUMAN_LABEL,
   type BookingStatus,
 } from './statusMachine.ts';
+import {
+  buildHostFacingFieldsSummary,
+  buildPricingBaseRateSummary,
+  humanizeTransitionError,
+} from './dashboardAssistantActionDisplay.ts';
 import { WorkflowOrchestrator } from './workflowOrchestrator.ts';
 import {
   classifyActionRisk,
@@ -139,6 +147,7 @@ import {
   type ActionRiskTier,
 } from './dashboardAssistantRiskClassifier.ts';
 import { assertActionSafeToExecute } from './dashboardAssistantSafetyGuard.ts';
+import { queueDeferredTier1Write } from './dashboardAssistantDeferredWrites.ts';
 import {
   firstAttachedId,
   firstAttachedPropertyId,
@@ -154,6 +163,9 @@ export type ToolExecutionContext = {
   attachedContext: AttachedContextItem[];
   /** True when the model requested more than one write tool call this turn — forces Tier 2. */
   isBulk: boolean;
+  /** When true, Tier-1 writes queue until end-of-turn commit (cancel-safe). */
+  deferWritesUntilCommit?: boolean;
+  deferredWrites?: Array<{ toolName: string; args: Record<string, unknown> }>;
 };
 
 export type ToolResult = {
@@ -164,6 +176,8 @@ export type ToolResult = {
   riskTier?: ActionRiskTier;
   /** True when a Tier-2 write tool returned a proposal rather than executing. */
   proposed?: boolean;
+  /** True when a Tier-1 write was queued for end-of-turn commit. */
+  deferred?: boolean;
   auditPropertyId?: string | null;
   auditBookingId?: string | null;
 };
@@ -306,6 +320,12 @@ async function toolGetBooking(
     auditBookingId: bookingId,
     data: {
       bookingId: booking.id,
+      hostLabel: formatBookingHostLabel({
+        guestName: booking.primary_guest_name || booking.guest_facebook_name || '',
+        checkIn: booking.check_in_date,
+        checkOut: booking.check_out_date,
+        statusLabel: isBookingStatus(status) ? STATUS_HUMAN_LABEL[status] : status,
+      }),
       guestName: booking.primary_guest_name || booking.guest_facebook_name || '',
       status,
       statusLabel: isBookingStatus(status) ? STATUS_HUMAN_LABEL[status] : status,
@@ -385,6 +405,7 @@ async function toolListBookings(
     orgId,
     bookingKind: orgId ? 'property' : undefined,
     status,
+    q: str(args, 'q') ?? str(args, 'guestName') ?? undefined,
     from: str(args, 'from') ?? null,
     to: str(args, 'to') ?? null,
     page: 1,
@@ -418,6 +439,12 @@ async function toolListBookings(
         const rowStatus = String(r.status ?? '');
         return {
           bookingId: r.id,
+          hostLabel: formatBookingHostLabel({
+            guestName: r.primary_guest_name || r.guest_facebook_name || '',
+            checkIn: r.check_in_date,
+            checkOut: r.check_out_date,
+            statusLabel: isBookingStatus(rowStatus) ? STATUS_HUMAN_LABEL[rowStatus] : rowStatus,
+          }),
           guestName: r.primary_guest_name || r.guest_facebook_name || '',
           status: rowStatus,
           statusLabel: isBookingStatus(rowStatus) ? STATUS_HUMAN_LABEL[rowStatus] : rowStatus,
@@ -455,13 +482,6 @@ async function toolGetAvailableTransitions(
   };
 }
 
-const SUB_FORM_LABEL: Record<Exclude<ReturnType<typeof requiredSubForm>, null>, string> = {
-  pricing: 'Pricing',
-  parking: 'Parking',
-  guest_balance: 'Guest balance',
-  sd_refund: 'SD refund',
-};
-
 async function toolPlanBookingJourney(
   ctx: ToolExecutionContext,
   args: Record<string, unknown>
@@ -472,51 +492,10 @@ async function toolPlanBookingJourney(
 
   const booking = await DatabaseService.getBookingById(bookingId);
   if (!booking) return { ok: false, error: 'Booking not found' };
-  const status = booking.status as string;
-  if (!isBookingStatus(status)) return { ok: false, error: `Unrecognized status: ${status}` };
-
-  const flags = {
-    need_parking: Boolean(booking.need_parking),
-    has_pets: Boolean(booking.has_pets),
-    security_deposit: booking.security_deposit as number | string | null,
-  };
-  const pipeline = bookingPipeline(flags, status);
-  const currentIdx = pipeline.indexOf(status);
-  const pending = pendingTasksForBooking(booking as Record<string, unknown>);
-  const steps = pipeline.map((stepStatus, index) => {
-    const next = pipeline[index + 1];
-    const subForm = next ? requiredSubForm(stepStatus, next) : null;
-    let stepState: 'done' | 'current' | 'upcoming' = 'upcoming';
-    if (currentIdx >= 0 && index < currentIdx) stepState = 'done';
-    else if (index === currentIdx) stepState = 'current';
-    const description =
-      index === currentIdx
-        ? pending.join(' ') || undefined
-        : stepState === 'upcoming' && subForm
-          ? SUB_FORM_LABEL[subForm]
-          : undefined;
-    return {
-      status: stepStatus,
-      label: STATUS_HUMAN_LABEL[stepStatus],
-      stepStatus: stepState,
-      requiredSubForm: subForm,
-      nextStatus: next ?? null,
-      nextStatusLabel: next ? STATUS_HUMAN_LABEL[next] : null,
-      description,
-    };
-  });
 
   return {
     ok: true,
-    data: {
-      kind: 'booking_journey',
-      bookingId,
-      guestName: String(booking.primary_guest_name || booking.guest_facebook_name || 'Guest'),
-      currentStatus: status,
-      currentStatusLabel: STATUS_HUMAN_LABEL[status],
-      nextStatus: nextStep(flags, status),
-      steps,
-    },
+    data: buildBookingJourneyData(booking as Record<string, unknown>),
   };
 }
 
@@ -600,6 +579,12 @@ async function toolGetAvailableDates(
     const rowStatus = String(booking.status ?? '');
     bookedStays.push({
       bookingId: String(booking.id),
+      hostLabel: formatBookingHostLabel({
+        guestName: String(booking.primary_guest_name || booking.guest_facebook_name || ''),
+        checkIn: formatDateKey(ci),
+        checkOut: formatDateKey(co),
+        statusLabel: isBookingStatus(rowStatus) ? STATUS_HUMAN_LABEL[rowStatus] : rowStatus,
+      }),
       guestName: String(booking.primary_guest_name || booking.guest_facebook_name || ''),
       checkIn: formatDateKey(ci),
       checkOut: formatDateKey(co),
@@ -760,7 +745,26 @@ async function toolListFinanceBookings(
     limit: 10,
     sort: 'check_in_date:desc',
   });
-  return { ok: true, data: { rows, total } };
+  return {
+    ok: true,
+    data: {
+      total,
+      rows: rows.map((r) => {
+        const guestName = r.primary_guest_name || r.guest_facebook_name || '';
+        const statusLabel = isBookingStatus(r.status) ? STATUS_HUMAN_LABEL[r.status] : r.status;
+        return {
+          ...r,
+          hostLabel: formatBookingHostLabel({
+            guestName,
+            checkIn: r.check_in_date,
+            checkOut: r.check_out_date,
+            statusLabel,
+          }),
+          statusLabel,
+        };
+      }),
+    },
+  };
 }
 
 async function toolGetMaintenanceSummary(
@@ -786,7 +790,18 @@ async function toolListMaintenanceItems(
     from: str(args, 'from') ?? null,
     to: str(args, 'to') ?? null,
   });
-  return { ok: true, data: items.slice(0, 10) };
+  return {
+    ok: true,
+    data: items.slice(0, 10).map((item) => ({
+      id: item.id,
+      hostLabel: [item.label, item.completed_at ? 'Done' : 'Open'].filter(Boolean).join(' · '),
+      label: item.label,
+      category: item.category,
+      scheduledOn: item.scheduled_on,
+      completedAt: item.completed_at,
+      notes: item.notes,
+    })),
+  };
 }
 
 async function toolGetOrgProfile(ctx: ToolExecutionContext): Promise<ToolResult> {
@@ -843,6 +858,7 @@ async function toolListTeamMembers(ctx: ToolExecutionContext): Promise<ToolResul
     ok: true,
     data: members.map((m) => ({
       id: m.id,
+      hostLabel: [m.name, m.role].filter(Boolean).join(' · ') || m.email || 'Team member',
       name: m.name,
       email: m.email,
       role: m.role,
@@ -859,7 +875,13 @@ async function toolListPendingInvitations(ctx: ToolExecutionContext): Promise<To
     ok: true,
     data: invitations
       .filter((i) => i.status === 'pending')
-      .map((i) => ({ id: i.id, email: i.email, role: i.role, expiresAt: i.expiresAt })),
+      .map((i) => ({
+        id: i.id,
+        hostLabel: [i.email, i.role].filter(Boolean).join(' · ') || i.email,
+        email: i.email,
+        role: i.role,
+        expiresAt: i.expiresAt,
+      })),
   };
 }
 
@@ -941,6 +963,7 @@ async function toolListPropertyTeamMembers(
     auditPropertyId: propertyId,
     data: members.map((m) => ({
       id: m.id,
+      hostLabel: [m.name, m.role].filter(Boolean).join(' · ') || m.email || 'Team member',
       name: m.name,
       email: m.email,
       role: m.role,
@@ -966,7 +989,13 @@ async function toolListPropertyPendingInvitations(
     auditPropertyId: propertyId,
     data: invitations
       .filter((i) => i.status === 'pending')
-      .map((i) => ({ id: i.id, email: i.email, role: i.role, expiresAt: i.expiresAt })),
+      .map((i) => ({
+        id: i.id,
+        hostLabel: [i.email, i.role].filter(Boolean).join(' · ') || i.email,
+        email: i.email,
+        role: i.role,
+        expiresAt: i.expiresAt,
+      })),
   };
 }
 
@@ -983,6 +1012,7 @@ async function toolListParkings(ctx: ToolExecutionContext): Promise<ToolResult> 
     ok: true,
     data: (data ?? []).map((p) => ({
       id: p.id,
+      hostLabel: p.name || 'Parking',
       name: p.name,
       slug: p.slug,
       status: p.status,
@@ -1008,6 +1038,11 @@ async function toolGetParkingBooking(
     auditBookingId: bookingId,
     data: {
       bookingId: booking.id,
+      hostLabel: formatBookingHostLabel({
+        guestName: booking.primary_guest_name ?? '',
+        checkIn: booking.parking_check_in_date ?? booking.check_in_date,
+        checkOut: booking.parking_check_out_date ?? booking.check_out_date,
+      }),
       guestName: booking.primary_guest_name ?? '',
       status: booking.status,
       checkIn: booking.parking_check_in_date ?? booking.check_in_date,
@@ -1052,7 +1087,27 @@ async function toolListParkingBookings(
     sort: 'check_in_date:asc',
   });
 
-  return { ok: true, data: result };
+  return {
+    ok: true,
+    data: {
+      total: result.total,
+      bookings: result.rows.map((row) => {
+        const r = row as Record<string, unknown>;
+        const rowStatus = String(r.status ?? '');
+        const guestName = String(r.primary_guest_name || r.guest_facebook_name || '');
+        const checkIn = String(r.parking_check_in_date ?? r.check_in_date ?? '');
+        const checkOut = String(r.parking_check_out_date ?? r.check_out_date ?? '');
+        return {
+          bookingId: r.id,
+          hostLabel: formatBookingHostLabel({ guestName, checkIn, checkOut }),
+          guestName,
+          status: rowStatus,
+          checkIn,
+          checkOut,
+        };
+      }),
+    },
+  };
 }
 
 async function toolGetParkingAvailableTransitions(
@@ -1170,7 +1225,8 @@ async function toolListInboxThreads(
   return {
     ok: true,
     data: conversations.map((c) => ({
-      id: c.id,
+      conversationId: c.id,
+      hostLabel: [c.participant_name, c.platform].filter(Boolean).join(' · ') || 'Conversation',
       platform: c.platform,
       participantName: c.participant_name,
       subjectPreview: c.subject_preview,
@@ -1203,6 +1259,8 @@ async function toolGetInboxThread(
     ok: true,
     data: {
       conversationId: conv.id,
+      hostLabel:
+        [conv.participant_name, conv.platform].filter(Boolean).join(' · ') || 'Conversation',
       platform: conv.platform,
       participantName: conv.participant_name,
       replyStatus: conv.reply_status,
@@ -1266,7 +1324,12 @@ async function toolListInboxQuickReplyTemplates(
   if (error) return { ok: false, error: error.message };
   return {
     ok: true,
-    data: (data ?? []).map((t) => ({ id: t.id, title: t.title, bodyText: t.body_text })),
+    data: (data ?? []).map((t) => ({
+      id: t.id,
+      hostLabel: t.title || 'Quick reply',
+      title: t.title,
+      bodyText: t.body_text,
+    })),
   };
 }
 
@@ -1308,6 +1371,7 @@ async function toolListMarketingTemplates(
     auditPropertyId: access.propertyId,
     data: (data ?? []).map((t) => ({
       id: t.id,
+      hostLabel: [t.name, t.platform].filter(Boolean).join(' · ') || t.name || 'Template',
       name: t.name,
       contentType: t.content_type,
       platform: t.platform,
@@ -1590,6 +1654,19 @@ async function toolRunReceiptValidation(
     };
   }
 
+  const deferred = queueDeferredTier1Write(ctx, 'run_receipt_validation', args, {
+    ok: true,
+    riskTier: tier,
+    auditPropertyId: propertyId,
+    auditBookingId: bookingId,
+    data: {
+      bookingId,
+      summary: 'Re-run AI receipt validation for this booking.',
+      pendingCommit: true,
+    },
+  });
+  if (deferred) return deferred;
+
   await assertActionSafeToExecute({
     toolName: 'run_receipt_validation',
     targetBookingId: bookingId,
@@ -1643,6 +1720,23 @@ async function toolProposeTransitionBooking(
   const booking = await DatabaseService.getBookingById(bookingId);
   if (!booking) return { ok: false, error: 'Booking not found' };
   const fromStatus = booking.status as string;
+  if (!isBookingStatus(fromStatus)) {
+    return { ok: false, error: `Unrecognized status: ${fromStatus}` };
+  }
+
+  if (!canTransition(fromStatus, toStatus as BookingStatus, { manual: true })) {
+    const journey = buildBookingJourneyData(booking as Record<string, unknown>);
+    const nextLabel = journey.nextStatusLabel ? String(journey.nextStatusLabel) : null;
+    const fromLabel = STATUS_HUMAN_LABEL[fromStatus];
+    const toLabel = STATUS_HUMAN_LABEL[toStatus as BookingStatus];
+    return {
+      ok: false,
+      error: nextLabel
+        ? `This booking is at ${fromLabel}. Complete each step in order — the next step is ${nextLabel}, not ${toLabel}.`
+        : `This booking is at ${fromLabel}. That move to ${toLabel} is not available from here.`,
+      data: journey,
+    };
+  }
 
   const tier = classifyActionRisk({
     toolName: 'propose_transition_booking',
@@ -1672,6 +1766,21 @@ async function toolProposeTransitionBooking(
     };
   }
 
+  const deferred = queueDeferredTier1Write(ctx, 'propose_transition_booking', args, {
+    ok: true,
+    riskTier: tier,
+    auditPropertyId: propertyId,
+    auditBookingId: bookingId,
+    data: {
+      bookingId,
+      toStatus,
+      payload,
+      summary: `Move booking to ${STATUS_HUMAN_LABEL[toStatus as BookingStatus]}.`,
+      pendingCommit: true,
+    },
+  });
+  if (deferred) return deferred;
+
   await assertActionSafeToExecute({
     toolName: 'propose_transition_booking',
     toStatus,
@@ -1684,15 +1793,21 @@ async function toolProposeTransitionBooking(
     expectedTier: tier,
   });
 
-  const result = await WorkflowOrchestrator.transition(bookingId, toStatus, payload, {}, true);
-
-  return {
-    ok: true,
-    riskTier: tier,
-    auditPropertyId: propertyId,
-    auditBookingId: bookingId,
-    data: result,
-  };
+  try {
+    const result = await WorkflowOrchestrator.transition(bookingId, toStatus, payload, {}, true);
+    return {
+      ok: true,
+      riskTier: tier,
+      auditPropertyId: propertyId,
+      auditBookingId: bookingId,
+      data: result,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      error: humanizeTransitionError(err instanceof Error ? err.message : String(err)),
+    };
+  }
 }
 
 async function toolProposeCancelBooking(
@@ -1759,7 +1874,7 @@ async function toolProposeUpdateOrgProfile(
     isBulk: ctx.isBulk,
   });
 
-  const summary = `Update organization profile: ${built.summaryFields.join(', ')}.`;
+  const summary = buildHostFacingFieldsSummary('Update organization profile', built.summaryFields);
   if (tier === 'tier2_confirmed') {
     return { ok: true, proposed: true, riskTier: tier, data: { ...built.patch, summary } };
   }
@@ -1879,6 +1994,13 @@ async function toolProposeRevokeInvitation(
     };
   }
 
+  const deferred = queueDeferredTier1Write(ctx, 'propose_revoke_invitation', args, {
+    ok: true,
+    riskTier: tier,
+    data: { invitationId, summary: 'Cancel this pending invitation.', pendingCommit: true },
+  });
+  if (deferred) return deferred;
+
   await assertActionSafeToExecute({
     toolName: 'propose_revoke_invitation',
     pageContext: ctx.pageContext,
@@ -1982,7 +2104,7 @@ async function toolProposeUpdatePropertyProfile(
     isBulk: ctx.isBulk,
   });
 
-  const summary = `Update property profile: ${built.summaryFields.join(', ')}.`;
+  const summary = buildHostFacingFieldsSummary('Update property profile', built.summaryFields);
   if (tier === 'tier2_confirmed') {
     return {
       ok: true,
@@ -2084,7 +2206,7 @@ async function toolProposeUpdatePropertySettings(
     data: {
       ...built.patch,
       propertyId,
-      summary: `Update property settings: ${built.summaryFields.join(', ')}.`,
+      summary: buildHostFacingFieldsSummary('Update property settings', built.summaryFields),
     },
   };
 }
@@ -2125,6 +2247,19 @@ async function toolProposeRevokePropertyInvitation(
       },
     };
   }
+
+  const deferred = queueDeferredTier1Write(ctx, 'propose_revoke_property_invitation', args, {
+    ok: true,
+    riskTier: tier,
+    auditPropertyId: teamCtx.property.id,
+    data: {
+      invitationId,
+      propertyId: teamCtx.property.id,
+      summary: 'Cancel this pending invitation.',
+      pendingCommit: true,
+    },
+  });
+  if (deferred) return deferred;
 
   await assertActionSafeToExecute({
     toolName: 'propose_revoke_property_invitation',
@@ -2415,7 +2550,7 @@ async function toolProposeUpdatePropertyBaseRate(
     data: {
       ...patch,
       propertyId,
-      summary: `Update property base rates: ${Object.keys(patch).join(', ')}.`,
+      summary: buildPricingBaseRateSummary('property', patch),
     },
   };
 }
@@ -2613,7 +2748,7 @@ async function toolProposeUpdateParkingBaseRate(
     data: {
       ...patch,
       parkingId,
-      summary: `Update parking base rates: ${Object.keys(patch).join(', ')}.`,
+      summary: buildPricingBaseRateSummary('parking', patch),
     },
   };
 }
@@ -2679,6 +2814,13 @@ async function toolProposeMarkInboxThreadRead(
       data: { conversationId, summary: 'Mark this conversation as read.' },
     };
   }
+
+  const deferred = queueDeferredTier1Write(ctx, 'propose_mark_inbox_thread_read', args, {
+    ok: true,
+    riskTier: tier,
+    data: { conversationId, summary: 'Mark this conversation as read.', pendingCommit: true },
+  });
+  if (deferred) return deferred;
 
   await assertActionSafeToExecute({
     toolName: 'propose_mark_inbox_thread_read',
@@ -2915,14 +3057,21 @@ export async function executeConfirmedAction(
       expectedTier: 'tier2_confirmed',
     });
 
-    const result = await WorkflowOrchestrator.transition(bookingId, toStatus, payload, {}, true);
-    return {
-      ok: true,
-      riskTier: 'tier2_confirmed',
-      auditPropertyId: propertyId,
-      auditBookingId: bookingId,
-      data: result,
-    };
+    try {
+      const result = await WorkflowOrchestrator.transition(bookingId, toStatus, payload, {}, true);
+      return {
+        ok: true,
+        riskTier: 'tier2_confirmed',
+        auditPropertyId: propertyId,
+        auditBookingId: bookingId,
+        data: result,
+      };
+    } catch (err) {
+      return {
+        ok: false,
+        error: humanizeTransitionError(err instanceof Error ? err.message : String(err)),
+      };
+    }
   }
 
   if (toolName === 'run_receipt_validation') {
@@ -4055,7 +4204,7 @@ export const TOOL_DECLARATIONS = [
   {
     name: 'list_bookings',
     description:
-      'List bookings (guest name, human statusLabel, dates). Optionally filter by property, status, or check-in date range. Date-range queries include completed stays.',
+      'List bookings (guest name, human statusLabel, dates, hostLabel). Optionally filter by property, status, check-in date range, or guestName/q (free-text guest search). When the host names a guest, search with guestName/q first — do not claim the booking is missing until that search returns empty. Date-range queries include completed stays.',
     parameters: {
       type: 'object',
       properties: {
@@ -4063,6 +4212,11 @@ export const TOOL_DECLARATIONS = [
         status: { type: 'array', items: { type: 'string' } },
         from: { type: 'string' },
         to: { type: 'string' },
+        guestName: {
+          type: 'string',
+          description: 'Guest name to search (preferred over guessing)',
+        },
+        q: { type: 'string', description: 'Free-text guest search (same as guestName)' },
       },
     },
   },

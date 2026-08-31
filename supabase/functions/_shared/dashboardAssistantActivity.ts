@@ -39,19 +39,42 @@ const PHASE_STREAM_MAP: Record<
   safety: 'safety',
 };
 
+const PHASE_DONE_LABELS: Partial<Record<ActivityPhase, string>> = {
+  understanding: 'Understood your question',
+  synthesizing: 'Prepared your answer',
+  safety: 'Checked response safety',
+};
+
+const PHASE_PROGRESS_LABELS: Partial<Record<ActivityPhase, string>> = {
+  understanding: 'Understanding your question',
+  synthesizing: 'Preparing your answer',
+  safety: 'Checking response safety',
+};
+
+function progressLabelForPhase(phase: ActivityPhase, doneLabel: string): string {
+  if (doneLabel.includes('action for your review')) return 'Preparing action for your review';
+  if (doneLabel.includes('Applying changes')) return 'Applying changes';
+  return PHASE_PROGRESS_LABELS[phase] ?? doneLabel;
+}
+
 export class TurnActivityRecorder {
   private entries: ActivityTimelineEntry[] = [];
 
   constructor(private emit?: AssistantStreamEmitter) {}
 
   recordPhase(phase: ActivityPhase, label: string, status: 'done' | 'failed' = 'done'): void {
+    const doneLabel = label || PHASE_DONE_LABELS[phase] || label;
     this.entries.push({
       id: crypto.randomUUID(),
       phase,
-      label,
+      label: doneLabel,
       status,
     });
-    this.emit?.({ type: 'phase', phase: PHASE_STREAM_MAP[phase], label });
+    this.emit?.({
+      type: 'phase',
+      phase: PHASE_STREAM_MAP[phase],
+      label: progressLabelForPhase(phase, doneLabel),
+    });
   }
 
   recordToolStart(toolName: string, stepId?: string): void {
@@ -65,14 +88,27 @@ export class TurnActivityRecorder {
 
   recordToolComplete(toolName: string, ok: boolean, startedAtMs: number, stepId?: string): void {
     const durationMs = Math.max(0, Date.now() - startedAtMs);
-    this.entries.push({
-      id: crypto.randomUUID(),
-      phase: 'tool',
-      label: getAssistantToolActivityLabel(toolName, ok ? 'done' : 'failed'),
-      toolName,
-      status: ok ? 'done' : 'failed',
-      durationMs,
-    });
+    const label = getAssistantToolActivityLabel(toolName, ok ? 'done' : 'failed');
+    const last = this.entries[this.entries.length - 1];
+    // Collapse consecutive identical tool rows (e.g. list_bookings called in two rounds).
+    if (
+      last &&
+      last.phase === 'tool' &&
+      last.toolName === toolName &&
+      last.label === label &&
+      last.status === (ok ? 'done' : 'failed')
+    ) {
+      last.durationMs = (last.durationMs ?? 0) + durationMs;
+    } else {
+      this.entries.push({
+        id: crypto.randomUUID(),
+        phase: 'tool',
+        label,
+        toolName,
+        status: ok ? 'done' : 'failed',
+        durationMs,
+      });
+    }
     this.emit?.({ type: 'tool_done', toolName, ok, durationMs, stepId });
     if (stepId) {
       this.emit?.({ type: 'plan_update', stepId, status: ok ? 'done' : 'failed' });
@@ -115,7 +151,27 @@ export class TurnTaskPlanRecorder {
       status: 'pending' as const,
       toolName: call.name,
     }));
-    this.steps.push(...nextTools, {
+    for (const tool of nextTools) {
+      let existingIdx = -1;
+      for (let i = this.steps.length - 1; i >= 0; i -= 1) {
+        if (this.steps[i]?.toolName === tool.toolName) {
+          existingIdx = i;
+          break;
+        }
+      }
+      if (existingIdx >= 0) {
+        // Reuse the prior row for a repeated tool instead of listing it twice.
+        this.steps[existingIdx] = {
+          ...this.steps[existingIdx],
+          id: tool.id,
+          label: tool.label,
+          status: 'pending',
+        };
+      } else {
+        this.steps.push(tool);
+      }
+    }
+    this.steps.push({
       id: `r${roundIndex}-synth`,
       label: 'Prepare your answer',
       status: 'pending',

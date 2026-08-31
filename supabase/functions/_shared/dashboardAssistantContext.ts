@@ -153,7 +153,7 @@ export async function buildDashboardAssistantContext(
 }
 
 export function contextToPrompt(context: DashboardAssistantContext): string {
-  return `You are a helpful operations assistant for Kame Homes. Answer only from the facts below and the user's question. Do not invent data. Do not perform actions that modify data; suggest next steps instead.
+  return `You are a helpful operations assistant for property hosts. Answer only from the facts below and the user's question. Do not invent data. Do not perform actions that modify data; suggest next steps instead.
 
 Organization: ${context.org?.name ?? 'Unknown'} (${context.org?.slug ?? ''})
 Properties: ${context.properties.map((p) => `${p.name} (${p.status}, ${p.type})`).join(', ') || 'none'}

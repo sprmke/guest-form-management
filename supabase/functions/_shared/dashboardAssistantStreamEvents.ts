@@ -19,6 +19,7 @@ export type AssistantStreamTaskPlanStep = {
 };
 
 export type AssistantStreamEvent =
+  | { type: 'turn_started'; conversationId: string }
   | { type: 'phase'; phase: AssistantStreamPhase; label?: string }
   | { type: 'tool_start'; toolName: string; label: string; stepId?: string }
   | { type: 'tool_done'; toolName: string; ok: boolean; durationMs: number; stepId?: string }
@@ -32,7 +33,19 @@ export type AssistantStreamEvent =
       blocks: ChatBlock[];
       upgradeHook?: boolean;
     }
-  | { type: 'error'; message: string; upgradeHook?: boolean; aborted?: boolean };
+  | {
+      type: 'error';
+      message: string;
+      upgradeHook?: boolean;
+      aborted?: boolean;
+      appliedEffects?: AssistantAppliedEffect[];
+    };
+
+export type AssistantAppliedEffect = {
+  toolName: string;
+  label: string;
+  ok: boolean;
+};
 
 const TEXT_STREAM_CHUNK_SIZE = 48;
 /** Delay between text chunks so the client can paint progressive prose. */
@@ -102,8 +115,10 @@ export async function streamAssistantTextPreview(
 
 export class AssistantTurnAbortedError extends Error {
   override readonly name = 'AssistantTurnAbortedError';
-  constructor(message = 'Turn aborted') {
+  readonly appliedEffects?: AssistantAppliedEffect[];
+  constructor(message = 'Turn aborted', appliedEffects?: AssistantAppliedEffect[]) {
     super(message);
+    this.appliedEffects = appliedEffects;
   }
 }
 

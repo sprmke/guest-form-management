@@ -51,8 +51,7 @@ type Props = {
   onCancel?: () => void;
   pageBookingId?: string | null;
   overlayContainer?: HTMLElement | null;
-  fillText?: string | null;
-  onFillConsumed?: () => void;
+  onAttachedContextChange?: (items: AttachedContextItem[]) => void;
 };
 
 export function ChatComposer({
@@ -62,8 +61,7 @@ export function ChatComposer({
   onCancel,
   pageBookingId: _pageBookingId,
   overlayContainer,
-  fillText,
-  onFillConsumed,
+  onAttachedContextChange,
 }: Props) {
   const [value, setValue] = useState('');
   const [attachedContext, setAttachedContext] = useState<AttachedContextItem[]>([]);
@@ -117,11 +115,8 @@ export function ChatComposer({
   }, [value]);
 
   useEffect(() => {
-    if (!fillText) return;
-    setValue(fillText);
-    onFillConsumed?.();
-    textareaRef.current?.focus();
-  }, [fillText, onFillConsumed]);
+    onAttachedContextChange?.(attachedContext);
+  }, [attachedContext, onAttachedContextChange]);
 
   const addFiles = async (fileList: FileList | null) => {
     if (!fileList?.length) return;

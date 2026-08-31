@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 import { useParams } from 'react-router-dom';
 
@@ -21,6 +21,7 @@ import {
   pickRandomSuggestions,
 } from '@/features/dashboard/ai-assistant/lib/assistantSuggestions';
 import { patchActionConfirmationStatus } from '@/features/dashboard/ai-assistant/lib/chatBlockDisplay';
+import type { AttachedContextItem } from '@/features/dashboard/ai-assistant/lib/attachedContext';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
@@ -72,7 +73,7 @@ export function AiAssistantPanel({ open, onOpenChange, readOnly = false }: Props
   const [composerKey, setComposerKey] = useState(0);
   const [overlayRoot, setOverlayRoot] = useState<HTMLDivElement | null>(null);
   const [canvasBlock, setCanvasBlock] = useState<ChatBlock | null>(null);
-  const [fillText, setFillText] = useState<string | null>(null);
+  const composerContextRef = useRef<AttachedContextItem[]>([]);
   const canvasOpen = canvasBlock != null;
   const questions = useMemo(
     () => pickRandomSuggestions(ASSISTANT_QUESTIONS, SUGGESTION_VISIBLE_COUNT),
@@ -92,6 +93,7 @@ export function AiAssistantPanel({ open, onOpenChange, readOnly = false }: Props
     turnProgress,
     streamingText,
     error,
+    partialCancelEffects,
     upgradeHook,
     canRegenerate,
     sendMessage,
@@ -114,12 +116,43 @@ export function AiAssistantPanel({ open, onOpenChange, readOnly = false }: Props
         const nextStatus = result.status;
         setCanvasBlock((current) => {
           if (!current) return current;
-          return patchActionConfirmationStatus([current], actionId, nextStatus)[0] ?? current;
+          return (
+            patchActionConfirmationStatus(
+              [current],
+              actionId,
+              nextStatus,
+              result.ok === false ? result.error : undefined
+            )[0] ?? current
+          );
         });
       }
       return result;
     },
     [resolveAction]
+  );
+
+  const handleRunQuickAction = useCallback(
+    (action: { label: string; prompt: string }) => {
+      if (readOnly) {
+        openUpgradeModal('aiDashboardAssistant');
+        return;
+      }
+      if (sending || pending) return;
+
+      const lastUserContext = [...messages]
+        .reverse()
+        .find((message) => message.role === 'user')?.attachedContext;
+      const attachedContext =
+        composerContextRef.current.length > 0 ? composerContextRef.current : lastUserContext;
+
+      void sendMessage({
+        // Model guidance stays host-readable (no tool names). Bubble + History store the chip label.
+        text: action.prompt,
+        displayText: action.label,
+        attachedContext,
+      });
+    },
+    [readOnly, sending, pending, messages, sendMessage, openUpgradeModal]
   );
 
   return (
@@ -220,7 +253,8 @@ export function AiAssistantPanel({ open, onOpenChange, readOnly = false }: Props
               block={canvasBlock}
               onClose={() => setCanvasBlock(null)}
               onResolveAction={handleResolveAction}
-              onFillComposer={setFillText}
+              onRunQuickAction={handleRunQuickAction}
+              quickActionsDisabled={sending || pending}
               className="min-h-0 flex-1 lg:min-w-0"
             />
           ) : null}
@@ -266,7 +300,8 @@ export function AiAssistantPanel({ open, onOpenChange, readOnly = false }: Props
                     void regenerateLastTurn();
                   }}
                   onResolveAction={handleResolveAction}
-                  onFillComposer={setFillText}
+                  onRunQuickAction={handleRunQuickAction}
+                  quickActionsDisabled={sending || pending}
                   onOpenCanvas={setCanvasBlock}
                   questions={questions}
                   actions={actions}
@@ -278,6 +313,20 @@ export function AiAssistantPanel({ open, onOpenChange, readOnly = false }: Props
                     void sendMessage(prompt);
                   }}
                 />
+
+                {partialCancelEffects && partialCancelEffects.length > 0 ? (
+                  <div
+                    className="bg-warning/10 text-warning-foreground mx-3 mb-1 rounded-md px-3 py-2 text-xs"
+                    role="status"
+                  >
+                    <p className="font-medium">Stopped — these changes were already applied:</p>
+                    <ul className="mt-1 list-inside list-disc">
+                      {partialCancelEffects.map((effect) => (
+                        <li key={effect.toolName}>{effect.label}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
 
                 {error && <p className="text-destructive px-3 pb-1 text-xs">{error}</p>}
                 {upgradeHook && (
@@ -300,8 +349,9 @@ export function AiAssistantPanel({ open, onOpenChange, readOnly = false }: Props
                   pageBookingId={bookingId}
                   disabled={pending}
                   overlayContainer={overlayRoot}
-                  fillText={fillText}
-                  onFillConsumed={() => setFillText(null)}
+                  onAttachedContextChange={(items) => {
+                    composerContextRef.current = items;
+                  }}
                 />
               </>
             )}

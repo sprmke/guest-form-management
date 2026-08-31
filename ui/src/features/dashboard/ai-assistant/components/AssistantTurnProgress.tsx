@@ -70,7 +70,7 @@ export function AssistantTurnProgress({ steps, live, startedAtMs }: TurnProgress
   }, [live, steps, elapsedMs]);
 
   const elapsedSec = Math.max(1, Math.round(elapsedMs / 1000));
-  const heading = live?.planTitle ?? 'Working…';
+  const heading = live?.planTitle ?? 'Working on it';
 
   return (
     <div className="flex justify-start">

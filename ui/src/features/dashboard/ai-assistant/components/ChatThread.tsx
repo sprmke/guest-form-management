@@ -2,9 +2,9 @@ import { useEffect, useRef } from 'react';
 
 import { FileText, ImagePlus, RotateCcw } from 'lucide-react';
 
+import { AssistantMessageCard } from '@/features/dashboard/ai-assistant/components/AssistantMessageCard';
 import { AssistantSuggestionGroups } from '@/features/dashboard/ai-assistant/components/AssistantSuggestionGroups';
 import { AssistantTurnProgress } from '@/features/dashboard/ai-assistant/components/AssistantTurnProgress';
-import { ChatBlockRenderer } from '@/features/dashboard/ai-assistant/components/ChatBlockRenderer';
 import { TextBlock } from '@/features/dashboard/ai-assistant/components/blocks/TextBlock';
 import type { ChatThreadMessage } from '@/features/dashboard/ai-assistant/hooks/useAiAssistantChat';
 import type {
@@ -28,7 +28,8 @@ type Props = {
   canRegenerate?: boolean;
   onRegenerate?: () => void;
   onResolveAction: (actionId: string, confirm: boolean) => Promise<ConfirmActionResponse | null>;
-  onFillComposer?: (prompt: string) => void;
+  onRunQuickAction?: (action: { label: string; prompt: string }) => void;
+  quickActionsDisabled?: boolean;
   onOpenCanvas?: (block: ChatBlock) => void;
   questions: AssistantSuggestion[];
   actions: AssistantSuggestion[];
@@ -49,7 +50,8 @@ export function ChatThread({
   canRegenerate = false,
   onRegenerate,
   onResolveAction,
-  onFillComposer,
+  onRunQuickAction,
+  quickActionsDisabled = false,
   onOpenCanvas,
   questions,
   actions,
@@ -123,10 +125,11 @@ export function ChatThread({
               </div>
             ) : (
               <>
-                <ChatBlockRenderer
+                <AssistantMessageCard
                   blocks={msg.blocks}
                   onResolveAction={onResolveAction}
-                  onFillComposer={onFillComposer}
+                  onRunQuickAction={onRunQuickAction}
+                  quickActionsDisabled={quickActionsDisabled}
                   onOpenCanvas={onOpenCanvas}
                 />
                 {canRegenerate && index === lastMessageIndex && onRegenerate ? (
@@ -150,7 +153,7 @@ export function ChatThread({
       {sending ? (
         streamingText ? (
           <div className="flex justify-start">
-            <div className="min-w-0 max-w-[92%]">
+            <div className="border-border/60 bg-card w-full max-w-[92%] rounded-2xl rounded-bl-md border p-3 shadow-sm">
               <TextBlock text={streamingText} />
             </div>
           </div>

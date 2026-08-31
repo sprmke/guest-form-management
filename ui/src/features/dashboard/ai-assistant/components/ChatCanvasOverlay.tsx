@@ -12,7 +12,8 @@ type Props = {
   block: ChatBlock;
   onClose: () => void;
   onResolveAction: (actionId: string, confirm: boolean) => Promise<ConfirmActionResponse | null>;
-  onFillComposer?: (prompt: string) => void;
+  onRunQuickAction?: (action: { label: string; prompt: string }) => void;
+  quickActionsDisabled?: boolean;
   className?: string;
 };
 
@@ -20,7 +21,8 @@ export function ChatCanvasOverlay({
   block,
   onClose,
   onResolveAction,
-  onFillComposer,
+  onRunQuickAction,
+  quickActionsDisabled,
   className,
 }: Props) {
   const title = canvasBlockTitle(block) || 'Assistant';
@@ -45,7 +47,8 @@ export function ChatCanvasOverlay({
         <ChatBlockRenderer
           blocks={[block]}
           onResolveAction={onResolveAction}
-          onFillComposer={onFillComposer}
+          onRunQuickAction={onRunQuickAction}
+          quickActionsDisabled={quickActionsDisabled}
           variant="canvas"
         />
       </div>

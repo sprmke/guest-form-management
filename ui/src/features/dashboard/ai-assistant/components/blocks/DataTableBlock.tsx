@@ -1,4 +1,5 @@
 import type { ChatBlock } from '@/features/dashboard/ai-assistant/lib/aiAssistantApi';
+import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
 import {
   dataTableCell,
   dataTableHasRows,
@@ -15,6 +16,10 @@ import {
 } from '@/components/ui/table';
 
 type Props = Extract<ChatBlock, { type: 'data_table' }>;
+
+function isStatusColumn(col: string): boolean {
+  return /^status$/i.test(col.trim());
+}
 
 export function DataTableBlock({ title, columns, rows }: Props) {
   const safeColumns = columns ?? [];
@@ -41,11 +46,18 @@ export function DataTableBlock({ title, columns, rows }: Props) {
           <TableBody>
             {visibleRows.map((row, i) => (
               <TableRow key={i}>
-                {safeColumns.map((col) => (
-                  <TableCell key={col} className="text-xs">
-                    {dataTableCell(row, col, safeColumns)}
-                  </TableCell>
-                ))}
+                {safeColumns.map((col) => {
+                  const value = dataTableCell(row, col, safeColumns);
+                  return (
+                    <TableCell key={col} className="text-xs">
+                      {isStatusColumn(col) && value.trim() ? (
+                        <StatusBadge status={value} className="max-w-[11rem]" />
+                      ) : (
+                        value
+                      )}
+                    </TableCell>
+                  );
+                })}
               </TableRow>
             ))}
           </TableBody>
