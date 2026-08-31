@@ -1,5 +1,5 @@
 -- Airbnb / OTA two-way calendar sync — Phase 2 (guest-form completion link).
--- Plan: docs/workflow/in-progress/airbnb-calendar-sync.md §5.6 / §6.5
+-- Plan: docs/workflow/done/airbnb-calendar-sync.md §5.6 / §6.5
 --
 -- An ingested booking has dates but no guest details. The host copies
 -- <app-origin>/form?complete=<token> and forwards it to the Airbnb guest, who completes

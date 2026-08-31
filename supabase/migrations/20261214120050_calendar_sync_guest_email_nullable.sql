@@ -1,5 +1,5 @@
 -- Airbnb / OTA two-way calendar sync — Phase 2.
--- Plan: docs/workflow/in-progress/airbnb-calendar-sync.md §6.3
+-- Plan: docs/workflow/done/airbnb-calendar-sync.md §6.3
 --
 -- An OTA-ingested reservation (calendar-sync-cron, feed.create_bookings = true) has no
 -- guest email until the guest completes the host-forwarded guest form. A NULL guest_email

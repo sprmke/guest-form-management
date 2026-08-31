@@ -1,5 +1,5 @@
 -- Airbnb / OTA two-way calendar sync — Phase 1.
--- Plan: docs/workflow/in-progress/airbnb-calendar-sync.md §11
+-- Plan: docs/workflow/done/airbnb-calendar-sync.md §11
 --
 -- Schedules the global feed sweep (`calendar-sync-cron`). Mirrors
 -- sync_parking_reminder_cron_job() (20261201120200) — self-invoking migration, fixed cadence,

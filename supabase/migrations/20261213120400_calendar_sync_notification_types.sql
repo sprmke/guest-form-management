@@ -1,5 +1,5 @@
 -- Airbnb / OTA two-way calendar sync — Phase 1.
--- Plan: docs/workflow/in-progress/airbnb-calendar-sync.md §13
+-- Plan: docs/workflow/done/airbnb-calendar-sync.md §13
 --
 -- calendar_sync_failing  : a feed has failed >= 4 consecutive polls (dedupe feed:<id>:failing)
 -- calendar_conflict      : an imported reservation overlaps a direct booking / manual block / another feed

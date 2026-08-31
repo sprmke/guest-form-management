@@ -1,5 +1,5 @@
 -- Airbnb / OTA two-way calendar sync — Phase 2 (reservation ingestion).
--- Plan: docs/workflow/in-progress/airbnb-calendar-sync.md §5.5 / §6.3
+-- Plan: docs/workflow/done/airbnb-calendar-sync.md §5.5 / §6.3
 --
 -- Provenance columns on guest_submissions for rows created by calendar-sync-cron when a
 -- feed opts in (property_calendar_feeds.create_bookings = true) and the VEVENT classifies

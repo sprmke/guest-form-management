@@ -1,5 +1,5 @@
 -- Airbnb / OTA two-way calendar sync — Phase 1.
--- Plan: docs/workflow/in-progress/airbnb-calendar-sync.md §5.3
+-- Plan: docs/workflow/done/airbnb-calendar-sync.md §5.3
 --
 -- Tag property_blocked_dates rows with their origin so:
 --   1. imported ranges can be removed when the source reservation disappears from the feed

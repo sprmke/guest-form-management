@@ -1,5 +1,5 @@
 -- Airbnb / OTA two-way calendar sync — Phase 2.
--- Plan: docs/workflow/in-progress/airbnb-calendar-sync.md §13
+-- Plan: docs/workflow/done/airbnb-calendar-sync.md §13
 --
 -- booking_external_imported     : calendar-sync-cron created a real guest_submissions row
 --                                 from an OTA reservation (dedupe booking:<id>:external_imported)

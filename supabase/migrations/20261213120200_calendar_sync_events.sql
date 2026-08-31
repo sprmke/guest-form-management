@@ -1,5 +1,5 @@
 -- Airbnb / OTA two-way calendar sync — Phase 1.
--- Plan: docs/workflow/in-progress/airbnb-calendar-sync.md §5.4
+-- Plan: docs/workflow/done/airbnb-calendar-sync.md §5.4
 --
 -- Per-event audit trail for each sync run. One run_id groups one sweep of one feed.
 -- Retention: a follow-on cron prunes rows older than 90 days (not scheduled yet).

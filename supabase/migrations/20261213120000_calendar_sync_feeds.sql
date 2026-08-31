@@ -1,5 +1,5 @@
 -- Airbnb / OTA two-way calendar sync — Phase 1.
--- Plan: docs/workflow/in-progress/airbnb-calendar-sync.md §5.1 / §5.2
+-- Plan: docs/workflow/done/airbnb-calendar-sync.md §5.1 / §5.2
 --
 -- property_calendar_feeds  : external iCal URLs we poll (Airbnb / Booking.com / VRBO / other)
 -- property_calendar_export : per-property token for the outbound text/calendar feed OTAs import
