@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import { Plus, Ticket } from 'lucide-react';
 
@@ -10,9 +10,11 @@ import { SupportTicketStatusBadge } from '@/features/dashboard/help-support/comp
 import { TicketThreadPanel } from '@/features/dashboard/help-support/components/TicketThreadPanel';
 import { useSupportTickets } from '@/features/dashboard/help-support/hooks/useSupportTickets';
 import {
-  helpSupportNewTicketPath,
   helpSupportTicketDetailPath,
   helpSupportTicketsPath,
+  isSupportTicketId,
+  resolveTicketsRouteSegment,
+  ticketsComposeSearchParam,
   useHelpSupportBasePath,
 } from '@/features/dashboard/help-support/lib/helpSupportPaths';
 import type { SupportTicketCategory } from '@/features/dashboard/help-support/lib/supportTicketSchema';
@@ -40,13 +42,16 @@ type TicketsWorkspacePageProps = {
 
 export function TicketsWorkspacePage({ basePathOverride }: TicketsWorkspacePageProps = {}) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const adminBasePath = useHelpSupportBasePath();
   const basePath = basePathOverride ?? adminBasePath;
   const isMobile = useIsBelowLg();
-  const splat = useParams()['*'] ?? '';
-  const isNew = splat === 'new';
-  const ticketId = !isNew && splat ? splat : null;
+  const splatParam = useParams()['*'];
+  const segment = resolveTicketsRouteSegment(basePath, location.pathname, splatParam);
+  const composeOpen = searchParams.get('compose') === '1';
+  const isNew = segment === 'new' || composeOpen;
+  const ticketId = !isNew && segment && isSupportTicketId(segment) ? segment : null;
   const draftSubjectParam = searchParams.get('subject')?.trim() ?? '';
   const newTicketDefaults =
     isNew && draftSubjectParam
@@ -73,6 +78,18 @@ export function TicketsWorkspacePage({ basePathOverride }: TicketsWorkspacePageP
   }, [ticketId]);
 
   useEffect(() => {
+    if (!basePath || !segment || segment === 'new' || isSupportTicketId(segment)) return;
+    navigate(helpSupportTicketsPath(basePath), { replace: true });
+  }, [basePath, segment, navigate]);
+
+  useEffect(() => {
+    if (!basePath || segment !== 'new' || composeOpen) return;
+    navigate(`${helpSupportTicketsPath(basePath)}?${ticketsComposeSearchParam().toString()}`, {
+      replace: true,
+    });
+  }, [basePath, segment, composeOpen, navigate]);
+
+  useEffect(() => {
     if (isMobile || ticketId || !basePath || isPending || !firstTicketId) return;
     if (isNew) {
       setBackgroundTicketId((current) => current ?? firstTicketId);
@@ -86,11 +103,38 @@ export function TicketsWorkspacePage({ basePathOverride }: TicketsWorkspacePageP
   };
 
   const openCompose = () => {
-    if (basePath) navigate(helpSupportNewTicketPath(basePath));
+    if (!basePath) return;
+    const ticketsRoot = helpSupportTicketsPath(basePath);
+    if (location.pathname === ticketsRoot || location.pathname.startsWith(`${ticketsRoot}/`)) {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set('compose', '1');
+          return next;
+        },
+        { replace: false }
+      );
+      return;
+    }
+    navigate(`${ticketsRoot}?${ticketsComposeSearchParam().toString()}`);
   };
 
   const closeCompose = () => {
     if (!basePath) return;
+
+    if (composeOpen) {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete('compose');
+          next.delete('subject');
+          return next;
+        },
+        { replace: true }
+      );
+      return;
+    }
+
     if (searchParams.has('subject')) {
       setSearchParams({}, { replace: true });
     }

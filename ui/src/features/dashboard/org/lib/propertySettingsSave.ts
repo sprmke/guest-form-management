@@ -47,7 +47,6 @@ const FIELD_SECTIONS: Record<string, PropertySettingsSectionId> = {
   'property-tiktok-url': 'branding',
   'property-external-reviews': 'guest-rewards',
   'property-vouchers': 'guest-rewards',
-  'property-superhost-verification-url': 'guest-rewards',
   'property-bedrooms': 'details',
   'property-bathrooms': 'details',
   'property-floors': 'details',
@@ -241,9 +240,7 @@ export function propertySettingsSectionDirty(
         ) ||
           operationalDraft.vouchersEnabled !== operationalBaseline.vouchersEnabled ||
           !voucherPrizesEqual(operationalDraft.voucherPrizes, operationalBaseline.voucherPrizes) ||
-          operationalDraft.voucherRevealStyle !== operationalBaseline.voucherRevealStyle ||
-          operationalDraft.superhostVerificationUrl.trim() !==
-            operationalBaseline.superhostVerificationUrl.trim())
+          operationalDraft.voucherRevealStyle !== operationalBaseline.voucherRevealStyle)
       );
     case 'payment':
       return Boolean(
@@ -373,14 +370,6 @@ function dirtyFieldIdsInSection(
           operationalDraft.voucherRevealStyle !== operationalBaseline.voucherRevealStyle)
       ) {
         ids.push('property-vouchers');
-      }
-      if (
-        operationalDraft &&
-        operationalBaseline &&
-        operationalDraft.superhostVerificationUrl.trim() !==
-          operationalBaseline.superhostVerificationUrl.trim()
-      ) {
-        ids.push('property-superhost-verification-url');
       }
       break;
     case 'details':
@@ -652,6 +641,7 @@ export function planPropertySettingsSave(input: {
       'cancellation',
       'location',
       'branding',
+      'guest-rewards',
       'payment',
       'building-forms',
       'email-automations',
@@ -856,8 +846,6 @@ export type AppSettingsPatchBody = {
   vouchersEnabled?: boolean;
   voucherPrizes?: PropertyVoucherPrize[];
   voucherRevealStyle?: VoucherRevealStyle;
-  superhostVerificationUrl?: string;
-  superhostProofImageUrl?: string;
   settingsVerificationToken?: string;
   /** Page Editor autosave — server requires `publicPagesAutosave` plan feature. */
   publicPagesAutosaveGate?: boolean;
@@ -886,7 +874,6 @@ export function buildAppSettingsPatchForSections(
     patch.vouchersEnabled = draft.vouchersEnabled;
     patch.voucherPrizes = draft.voucherPrizes;
     patch.voucherRevealStyle = draft.voucherRevealStyle;
-    patch.superhostVerificationUrl = draft.superhostVerificationUrl;
   }
   if (sectionSet.has('payment')) {
     patch.paymentMethods = draft.paymentMethods;
@@ -1021,7 +1008,6 @@ export function applySavedOperationalSections(
       vouchersEnabled: saved.vouchersEnabled,
       voucherPrizes: saved.voucherPrizes,
       voucherRevealStyle: saved.voucherRevealStyle,
-      superhostVerificationUrl: saved.superhostVerificationUrl,
     };
   }
   if (sectionSet.has('payment')) {

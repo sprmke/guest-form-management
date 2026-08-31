@@ -149,19 +149,6 @@ export function PropertyTeamPage() {
     }
   };
 
-  const handleUpdateRole = async (memberId: string, newRoleId: PropertyRoleId) => {
-    try {
-      await updateMember.mutateAsync({
-        memberId,
-        roleId: newRoleId,
-        permissions: getRolePermissions(newRoleId, customRoles),
-      });
-      toast.success('Role updated');
-    } catch {
-      /* toast handled in mutation */
-    }
-  };
-
   const handleToggleMemberStatus = async (member: TeamMember) => {
     if (!isTeamMemberActive(member) && member.planLimited && !canInviteByPlan) {
       openUpgradeModal('teamManagement');
@@ -322,7 +309,7 @@ export function PropertyTeamPage() {
       return;
     }
     try {
-      await deleteCustomRole.mutateAsync(role.id);
+      await deleteCustomRole.mutateAsync({ roleId: role.id, name: role.name });
     } catch {
       /* toast handled in mutation */
     }
@@ -451,7 +438,6 @@ export function PropertyTeamPage() {
                   filterRole={filterRole}
                   onSearchChange={setSearchQuery}
                   onFilterRoleChange={setFilterRole}
-                  onRoleChange={handleUpdateRole}
                   onEditPermissions={handleEditPermissions}
                   onEditContact={handleEditContact}
                   onToggleStatus={handleToggleMemberStatus}
@@ -464,7 +450,6 @@ export function PropertyTeamPage() {
                   canInviteByPlan={teamInviteCapacityKnown}
                   canEditMembers={canEditMembers}
                   canDeleteMembers={canDeleteMembers}
-                  onAddCustomRole={canManageCustomRoles ? openCreateCustomRole : undefined}
                 />
               ) : null}
 

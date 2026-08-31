@@ -25,7 +25,7 @@ export const FEATURE_GATE_COPY: Record<PlanFeatureKey, FeatureGateCopy> = {
   },
   aiMonthlyCreditAllowance: {
     title: 'AI credits',
-    description: 'Upgrade for a higher monthly AI allowance.',
+    description: 'Higher monthly AI allowance on paid plans. Upgrade for more credits.',
     ctaLabel: 'View plans',
   },
   aiDashboardAssistant: {
@@ -62,7 +62,7 @@ export const FEATURE_GATE_COPY: Record<PlanFeatureKey, FeatureGateCopy> = {
   },
   teamManagement: {
     title: 'Team members',
-    description: 'Invite more team members on a higher plan.',
+    description: 'Invite more team members on a higher plan. Upgrade to add seats.',
     ctaLabel: 'View plans',
   },
   automatedBookingFlow: {
@@ -83,7 +83,7 @@ export const FEATURE_GATE_COPY: Record<PlanFeatureKey, FeatureGateCopy> = {
   },
   searchVisibilityTier: {
     title: 'Search visibility',
-    description: 'Upgrade for better listing placement.',
+    description: 'Better listing placement on paid plans. Upgrade for higher visibility.',
     ctaLabel: 'View plans',
   },
   fullyManagedByPlatform: {

@@ -39,6 +39,33 @@ export function helpSupportTicketDetailPath(basePath: string, ticketId: string):
   return `${basePath}/tickets/${ticketId}`;
 }
 
+const SUPPORT_TICKET_ID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function isSupportTicketId(value: string): boolean {
+  return SUPPORT_TICKET_ID_RE.test(value);
+}
+
+/** First segment after `{basePath}/tickets/` — prefers router splat, falls back to pathname. */
+export function resolveTicketsRouteSegment(
+  basePath: string | null,
+  pathname: string,
+  splatParam: string | undefined
+): string {
+  const fromParam = splatParam?.replace(/\/$/, '').split('/')[0] ?? '';
+  if (fromParam) return fromParam;
+
+  if (!basePath) return '';
+  const ticketsRoot = helpSupportTicketsPath(basePath);
+  const prefix = `${ticketsRoot}/`;
+  if (!pathname.startsWith(prefix)) return '';
+  return pathname.slice(prefix.length).replace(/\/$/, '').split('/')[0] ?? '';
+}
+
+export function ticketsComposeSearchParam(): URLSearchParams {
+  return new URLSearchParams({ compose: '1' });
+}
+
 export type HelpSupportSection = 'faqs' | 'guides' | 'tickets';
 
 export function helpSupportSectionFromPath(pathname: string): HelpSupportSection {

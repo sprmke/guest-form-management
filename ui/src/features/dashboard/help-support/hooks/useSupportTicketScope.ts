@@ -20,10 +20,7 @@ export function useSupportTicketScope(): SupportTicketScopeParams {
 
   if (!override) return routeScope;
 
-  return {
-    orgSlug: override.orgSlug ?? routeScope.orgSlug,
-    orgId: override.orgId ?? routeScope.orgId,
-    propertyId: override.propertyId ?? routeScope.propertyId,
-    parkingId: override.parkingId ?? routeScope.parkingId,
-  };
+  // Spread override so explicit nulls (guest explore) win over route org context, and
+  // `channel: 'guest'` is preserved — required for scopeEnabled + guest API queries.
+  return { ...routeScope, ...override };
 }

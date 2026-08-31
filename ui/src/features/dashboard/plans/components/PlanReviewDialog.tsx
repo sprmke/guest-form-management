@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { ArrowRight, Check, Loader2, Minus } from 'lucide-react';
 
 import { PlanTierIconWell } from '@/features/dashboard/plans/components/PlanTierIconWell';
@@ -21,6 +22,7 @@ import {
 import { computeMidCycleProration } from '@/features/dashboard/plans/lib/planProration';
 
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   ResponsiveModal,
   ResponsiveModalContent,
@@ -45,6 +47,8 @@ type PlanReviewDialogProps = {
   /** Upgrade / same-plan billing update — starts PayMongo checkout. */
   onCheckoutPaid: (planId: string) => Promise<void>;
   isSubmitting: boolean;
+  /** When set, downgrade confirm is disabled (e.g. past_due must pay first). */
+  downgradeBlockedReason?: string | null;
 };
 
 function orgPlanTotalPhp(plan: OrgBundlePlanDto, propertyCount: number): number {
@@ -163,11 +167,19 @@ export function PlanReviewDialog({
   onConfirmDowngrade,
   onCheckoutPaid,
   isSubmitting,
+  downgradeBlockedReason = null,
 }: PlanReviewDialogProps) {
+  const [freeAcknowledged, setFreeAcknowledged] = useState(false);
+
+  useEffect(() => {
+    if (!open) setFreeAcknowledged(false);
+  }, [open, plan?.id]);
+
   if (!plan) return null;
 
   const isFree = plan.isDefault;
   const isDowngrade = isPlanDowngrade(currentPlan, plan);
+  const needsFreeAck = isFree && isDowngrade && !downgradeBlockedReason;
   const gains = planFeatureGains(currentPlan?.features ?? null, plan.features);
   const losses = currentPlan ? planFeatureLosses(currentPlan.features, plan.features) : [];
   const isDownscale = losses.length > 0 && gains.length === 0;
@@ -190,15 +202,22 @@ export function PlanReviewDialog({
         : `Upgrade to ${planTitle}`;
 
   const description = isFree
-    ? 'Your organization keeps running on the free tier.'
-    : isDowngrade
-      ? 'Takes effect now. Unused time on your current plan is not refunded.'
-      : proration
-        ? "You're changing mid-cycle — credited for the unused time on your current plan."
-        : 'Review what changes before you continue.';
+    ? downgradeBlockedReason && isDowngrade
+      ? downgradeBlockedReason
+      : isDowngrade
+        ? 'Takes effect now. Paid features turn off immediately. Unused time is not refunded.'
+        : 'Your organization keeps running on the free tier.'
+    : isDowngrade && downgradeBlockedReason
+      ? downgradeBlockedReason
+      : isDowngrade
+        ? 'Takes effect now. Unused time on your current plan is not refunded.'
+        : proration
+          ? "You're changing mid-cycle — credited for the unused time on your current plan."
+          : 'Review what changes before you continue.';
 
   const handlePrimaryAction = async () => {
     if (isDowngrade) {
+      if (downgradeBlockedReason || (needsFreeAck && !freeAcknowledged)) return;
       await onConfirmDowngrade(plan.id);
       onOpenChange(false);
       return;
@@ -207,7 +226,11 @@ export function PlanReviewDialog({
     onOpenChange(false);
   };
 
-  const primaryDisabled = isSubmitting || (!isFree && !isDowngrade && propertyCount === 0);
+  const primaryDisabled =
+    isSubmitting ||
+    (!isFree && !isDowngrade && propertyCount === 0) ||
+    (isDowngrade && Boolean(downgradeBlockedReason)) ||
+    (needsFreeAck && !freeAcknowledged);
   const primaryLabel = isDowngrade ? 'Confirm downgrade' : 'Continue to payment';
 
   return (
@@ -287,6 +310,17 @@ export function PlanReviewDialog({
                 <ChangeList title="Removes" items={losses} tone="loss" />
               </div>
             )}
+
+            {needsFreeAck ? (
+              <label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed">
+                <Checkbox
+                  checked={freeAcknowledged}
+                  onCheckedChange={(checked) => setFreeAcknowledged(checked === true)}
+                  className="mt-0.5"
+                />
+                <span>Paid features turn off immediately.</span>
+              </label>
+            ) : null}
           </div>
         </div>
 

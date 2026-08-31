@@ -40,7 +40,7 @@ export function TeamStatsCards({ members, invitations }: Props) {
         iconBgClassName="bg-sky-100 dark:bg-sky-900/30"
       />
       <AdminMetricCard
-        title="Admins"
+        title="Team access"
         value={String(adminCount)}
         icon={ShieldCheck}
         iconClassName="text-violet-600 dark:text-violet-400"

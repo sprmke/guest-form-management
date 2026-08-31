@@ -7,12 +7,14 @@ import {
   isSeededOrgTemplateName,
   sortOrgTemplatesForDisplay,
 } from '@/features/dashboard/team/lib/orgTeamTemplates';
+import { orgListingScopeSummary } from '@/features/dashboard/team/lib/orgRoleListingScope';
 import {
   isSeededTemplateName,
   sortTemplatesForDisplay,
 } from '@/features/dashboard/team/lib/propertyTeamTemplates';
 import { getTeamScopeConfig, type TeamScope } from '@/features/dashboard/team/lib/teamScopeConfig';
 import type { CustomPropertyRole } from '@/features/dashboard/team/types/propertyTeam';
+import type { CustomOrgRole } from '@/features/dashboard/team/types/orgTeam';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -98,6 +100,7 @@ function RoleRow({
   onEdit,
   onDelete,
   onDuplicate,
+  scope = 'property',
 }: {
   role: CustomPropertyRole;
   assignedCount: number;
@@ -106,8 +109,14 @@ function RoleRow({
   onEdit: () => void;
   onDelete: () => void;
   onDuplicate?: () => void;
+  scope?: TeamScope;
 }) {
   const canDelete = !isDefault && assignedCount === 0;
+  const orgRole = scope === 'org' ? (role as CustomOrgRole) : null;
+  const listingLine =
+    orgRole != null
+      ? orgListingScopeSummary(orgRole.allListings ?? false, orgRole.listingAssignments)
+      : null;
 
   return (
     <div className="hover:bg-muted/40 flex items-center gap-3 rounded-lg px-1 py-2.5 sm:px-2">
@@ -123,6 +132,7 @@ function RoleRow({
         <p className="text-muted-foreground text-xs">
           {role.permissions.length} permission
           {role.permissions.length === 1 ? '' : 's'}
+          {listingLine ? ` · ${listingLine}` : null}
         </p>
       </div>
       {canManage ? (
@@ -229,6 +239,7 @@ export function CustomRolesSection({
                       assignedCount={memberCountByRole(role.id)}
                       canManage={canManage}
                       isDefault
+                      scope={scope}
                       onEdit={() => onEdit(role)}
                       onDelete={() => onDelete(role)}
                       onDuplicate={onDuplicate ? () => onDuplicate(role) : undefined}
@@ -285,6 +296,7 @@ export function CustomRolesSection({
                         assignedCount={memberCountByRole(role.id)}
                         canManage={canManage}
                         isDefault={false}
+                        scope={scope}
                         onEdit={() => onEdit(role)}
                         onDelete={() => onDelete(role)}
                         onDuplicate={onDuplicate ? () => onDuplicate(role) : undefined}

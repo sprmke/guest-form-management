@@ -2,7 +2,15 @@ import { useMemo } from 'react';
 
 import { useProperties } from '@/features/dashboard/org/hooks/useOrganizations';
 import { useParkings } from '@/features/dashboard/org/hooks/useParkings';
-import { PARKING_ROLES } from '@/features/dashboard/team/lib/parkingTeamConstants';
+import { useOrgListingPropertyRoles } from '@/features/dashboard/team/hooks/useOrgListingPropertyRoles';
+import {
+  defaultListingPropertyTemplateName,
+  LISTING_PARKING_ROLE_OPTIONS,
+  LISTING_PROPERTY_TEMPLATE_OPTIONS,
+  normalizeLegacyParkingListingRoleId,
+  resolveListingPropertyTemplateName,
+} from '@/features/dashboard/team/lib/listingAssignmentRoles';
+import type { SeededPropertyTemplateName } from '@/features/dashboard/team/lib/propertyTeamTemplates';
 
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -37,15 +45,17 @@ type Props = {
   orgSlug: string;
   allListings: boolean;
   assignments: OrgListingAssignments;
-  defaultPropertyRoleId?: string;
   defaultParkingRoleId?: string;
   onAllListingsChange: (value: boolean) => void;
   onAssignmentsChange: (value: OrgListingAssignments) => void;
   disabled?: boolean;
   className?: string;
+  /** When false, parent controls all-listings mode (role template editor). */
+  showAllListingsToggle?: boolean;
+  /** Nested inside OrgRoleListingAccessSection — tighter panels, no outer toggle. */
+  embedded?: boolean;
 };
 
-const DEFAULT_PROPERTY_ROLE = 'ADMIN';
 const DEFAULT_PARKING_ROLE = 'MANAGER';
 
 export function emptyOrgListingAssignments(): OrgListingAssignments {
@@ -56,18 +66,25 @@ export function OrgListingAssignmentPicker({
   orgSlug,
   allListings,
   assignments,
-  defaultPropertyRoleId = DEFAULT_PROPERTY_ROLE,
   defaultParkingRoleId = DEFAULT_PARKING_ROLE,
   onAllListingsChange,
   onAssignmentsChange,
   disabled = false,
   className,
+  showAllListingsToggle = true,
+  embedded = false,
 }: Props) {
   const { data: propertiesData } = useProperties(orgSlug);
   const { data: parkingsData } = useParkings(orgSlug);
 
   const properties = propertiesData?.properties ?? [];
   const parkings = parkingsData?.parkings ?? [];
+
+  const propertyIds = useMemo(() => properties.map((property) => property.id), [properties]);
+  const { rolesByPropertyId, isLoading: propertyRolesLoading } =
+    useOrgListingPropertyRoles(propertyIds);
+
+  const defaultPropertyTemplateName = defaultListingPropertyTemplateName();
 
   const selectedPropertyIds = useMemo(
     () => new Set(assignments.properties.map((entry) => entry.propertyId)),
@@ -84,7 +101,11 @@ export function OrgListingAssignmentPicker({
         ...assignments,
         properties: [
           ...assignments.properties,
-          { propertyId, roleId: defaultPropertyRoleId, permissions: [] },
+          {
+            propertyId,
+            roleId: defaultPropertyTemplateName,
+            permissions: [],
+          },
         ],
       });
       return;
@@ -101,7 +122,11 @@ export function OrgListingAssignmentPicker({
         ...assignments,
         parkings: [
           ...assignments.parkings,
-          { parkingId, roleId: defaultParkingRoleId, permissions: [] },
+          {
+            parkingId,
+            roleId: normalizeLegacyParkingListingRoleId(defaultParkingRoleId),
+            permissions: [],
+          },
         ],
       });
       return;
@@ -117,7 +142,7 @@ export function OrgListingAssignmentPicker({
       ...assignments,
       properties: properties.map((property) => ({
         propertyId: property.id,
-        roleId: defaultPropertyRoleId,
+        roleId: defaultPropertyTemplateName,
         permissions: [],
       })),
     });
@@ -128,17 +153,23 @@ export function OrgListingAssignmentPicker({
       ...assignments,
       parkings: parkings.map((parking) => ({
         parkingId: parking.id,
-        roleId: defaultParkingRoleId,
+        roleId: normalizeLegacyParkingListingRoleId(defaultParkingRoleId),
         permissions: [],
       })),
     });
   };
 
-  const updatePropertyRole = (propertyId: string, roleId: string) => {
+  const updatePropertyTemplate = (propertyId: string, templateName: SeededPropertyTemplateName) => {
     onAssignmentsChange({
       ...assignments,
       properties: assignments.properties.map((entry) =>
-        entry.propertyId === propertyId ? { ...entry, roleId, permissions: [] } : entry
+        entry.propertyId === propertyId
+          ? {
+              ...entry,
+              roleId: templateName,
+              permissions: [],
+            }
+          : entry
       ),
     });
   };
@@ -147,56 +178,84 @@ export function OrgListingAssignmentPicker({
     onAssignmentsChange({
       ...assignments,
       parkings: assignments.parkings.map((entry) =>
-        entry.parkingId === parkingId ? { ...entry, roleId, permissions: [] } : entry
+        entry.parkingId === parkingId
+          ? { ...entry, roleId: normalizeLegacyParkingListingRoleId(roleId), permissions: [] }
+          : entry
       ),
     });
   };
 
+  const selectionCount = (selected: number, total: number) =>
+    total > 0 ? (
+      <span className="text-muted-foreground ml-1.5 text-xs font-normal">
+        {selected}/{total}
+      </span>
+    ) : null;
+
   return (
-    <div className={cn('space-y-4', className)}>
-      <div className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5">
-        <Label htmlFor="org-all-listings" className="text-sm font-medium">
-          All listings
-        </Label>
-        <Switch
-          id="org-all-listings"
-          checked={allListings}
-          onCheckedChange={onAllListingsChange}
-          disabled={disabled}
-        />
-      </div>
+    <div className={cn(embedded ? 'space-y-3' : 'space-y-4', className)}>
+      {showAllListingsToggle ? (
+        <div className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5">
+          <Label htmlFor="org-all-listings" className="text-sm font-medium">
+            All listings
+          </Label>
+          <Switch
+            id="org-all-listings"
+            checked={allListings}
+            onCheckedChange={onAllListingsChange}
+            disabled={disabled}
+          />
+        </div>
+      ) : null}
 
       {!allListings ? (
-        <div className="space-y-4">
+        <div className={cn(embedded ? 'space-y-3' : 'space-y-4')}>
           {properties.length > 0 ? (
             <section className="space-y-2">
-              <div className="flex items-center justify-between gap-2 px-1">
-                <p className="text-sm font-medium">Properties</p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-medium">
+                  Properties
+                  {embedded ? selectionCount(selectedPropertyIds.size, properties.length) : null}
+                </p>
                 <button
                   type="button"
-                  className="text-primary text-xs font-medium"
+                  className="text-primary min-h-[44px] text-xs font-medium sm:min-h-0"
                   onClick={selectAllProperties}
-                  disabled={disabled}
+                  disabled={disabled || propertyRolesLoading}
                 >
                   Select all
                 </button>
               </div>
-              <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border p-2">
+              <div
+                className={cn(
+                  'max-h-44 space-y-0.5 overflow-y-auto rounded-lg p-1.5',
+                  embedded ? 'bg-muted/40' : 'border p-2'
+                )}
+              >
                 {properties.map((property) => {
                   const checked = selectedPropertyIds.has(property.id);
                   const assignment = assignments.properties.find(
                     (entry) => entry.propertyId === property.id
                   );
+                  const propertyRoles = rolesByPropertyId.get(property.id) ?? [];
+                  const selectedTemplate = assignment
+                    ? resolveListingPropertyTemplateName(assignment.roleId, propertyRoles)
+                    : defaultPropertyTemplateName;
+
                   return (
                     <div
                       key={property.id}
-                      className="flex items-center gap-2 rounded-md px-1 py-1.5"
+                      className={cn(
+                        'flex min-h-[44px] items-center gap-2 rounded-md px-2 py-1.5 sm:min-h-0',
+                        embedded && checked && 'bg-background shadow-sm',
+                        !embedded && 'px-1'
+                      )}
                     >
                       <Checkbox
                         id={`org-listing-property-${property.id}`}
                         checked={checked}
                         onCheckedChange={(value) => toggleProperty(property.id, value === true)}
-                        disabled={disabled}
+                        disabled={disabled || propertyRolesLoading}
                         className="size-5"
                       />
                       <Label
@@ -207,17 +266,21 @@ export function OrgListingAssignmentPicker({
                       </Label>
                       {checked ? (
                         <Select
-                          value={assignment?.roleId ?? defaultPropertyRoleId}
-                          onValueChange={(value) => updatePropertyRole(property.id, value)}
+                          value={selectedTemplate}
+                          onValueChange={(value) =>
+                            updatePropertyTemplate(property.id, value as SeededPropertyTemplateName)
+                          }
                           disabled={disabled}
                         >
-                          <SelectTrigger className="h-8 w-[7.5rem] text-xs">
+                          <SelectTrigger className="h-8 w-[8.5rem] text-xs">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="ADMIN">Admin</SelectItem>
-                            <SelectItem value="STAFF">Staff</SelectItem>
-                            <SelectItem value="VIEWER">Viewer</SelectItem>
+                            {LISTING_PROPERTY_TEMPLATE_OPTIONS.map((option) => (
+                              <SelectItem key={option.name} value={option.name}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       ) : null}
@@ -230,27 +293,43 @@ export function OrgListingAssignmentPicker({
 
           {parkings.length > 0 ? (
             <section className="space-y-2">
-              <div className="flex items-center justify-between gap-2 px-1">
-                <p className="text-sm font-medium">Parkings</p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-medium">
+                  Parkings
+                  {embedded ? selectionCount(selectedParkingIds.size, parkings.length) : null}
+                </p>
                 <button
                   type="button"
-                  className="text-primary text-xs font-medium"
+                  className="text-primary min-h-[44px] text-xs font-medium sm:min-h-0"
                   onClick={selectAllParkings}
                   disabled={disabled}
                 >
                   Select all
                 </button>
               </div>
-              <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border p-2">
+              <div
+                className={cn(
+                  'max-h-44 space-y-0.5 overflow-y-auto rounded-lg p-1.5',
+                  embedded ? 'bg-muted/40' : 'border p-2'
+                )}
+              >
                 {parkings.map((parking) => {
                   const checked = selectedParkingIds.has(parking.id);
                   const assignment = assignments.parkings.find(
                     (entry) => entry.parkingId === parking.id
                   );
+                  const parkingRoleId = normalizeLegacyParkingListingRoleId(
+                    assignment?.roleId ?? defaultParkingRoleId
+                  );
+
                   return (
                     <div
                       key={parking.id}
-                      className="flex items-center gap-2 rounded-md px-1 py-1.5"
+                      className={cn(
+                        'flex min-h-[44px] items-center gap-2 rounded-md px-2 py-1.5 sm:min-h-0',
+                        embedded && checked && 'bg-background shadow-sm',
+                        !embedded && 'px-1'
+                      )}
                     >
                       <Checkbox
                         id={`org-listing-parking-${parking.id}`}
@@ -267,15 +346,15 @@ export function OrgListingAssignmentPicker({
                       </Label>
                       {checked ? (
                         <Select
-                          value={assignment?.roleId ?? defaultParkingRoleId}
+                          value={parkingRoleId}
                           onValueChange={(value) => updateParkingRole(parking.id, value)}
                           disabled={disabled}
                         >
-                          <SelectTrigger className="h-8 w-[7.5rem] text-xs">
+                          <SelectTrigger className="h-8 w-[8.5rem] text-xs">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {PARKING_ROLES.map((role) => (
+                            {LISTING_PARKING_ROLE_OPTIONS.map((role) => (
                               <SelectItem key={role.value} value={role.value}>
                                 {role.label}
                               </SelectItem>

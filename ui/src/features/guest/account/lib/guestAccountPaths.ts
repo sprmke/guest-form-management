@@ -1,3 +1,6 @@
+/** Guest account shell root — use as help-support `basePathOverride` (tickets live under `/tickets`). */
+export const GUEST_ACCOUNT_PATH = '/account';
+
 export const GUEST_ACCOUNT_PROFILE_PATH = '/account/profile';
 /** Cross-property stay messaging hub (formerly `/account/messages`). */
 export const GUEST_ACCOUNT_STAYS_PATH = '/account/stays';

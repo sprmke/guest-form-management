@@ -136,7 +136,6 @@ export function InviteMemberDialog({
                   customRoles={customRoles}
                   builtinRoles={builtinRoles}
                   showAddCustomRole={showAddCustomRole}
-                  templatesOnly={scope === 'property'}
                 />
               </SelectContent>
             </Select>

@@ -13,7 +13,6 @@ const PLAN_GATED_AUTOMATION_TOGGLE_KEYS = new Set<PropertyAutomationToggleKey>([
   'emailGafRequest',
   'emailBookingAcknowledgement',
   'emailPetRequest',
-  'emailParkingBroadcast',
   'emailReadyForCheckin',
   'emailSdRefundCheckout',
 ]);
@@ -123,7 +122,6 @@ function resolveToggleRecipient(
 ): string {
   const propertyEmail = draft.emailReplyTo.trim();
   const pmoEmail = draft.emailTo.trim();
-  const parking = draft.parkingOwnerEmails.trim();
 
   switch (key) {
     case 'emailNewBookingRequest':
@@ -131,8 +129,6 @@ function resolveToggleRecipient(
     case 'emailGafRequest':
     case 'emailPetRequest':
       return pmoEmail || 'Configure in platform development settings';
-    case 'emailParkingBroadcast':
-      return parking || `${fallback} — set in Recipients above`;
     default:
       return fallback;
   }

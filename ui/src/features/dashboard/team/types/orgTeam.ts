@@ -42,7 +42,10 @@ export interface OrgTeamInvitation {
   sentBy: string;
 }
 
-export type CustomOrgRole = CustomPropertyRole;
+export type CustomOrgRole = CustomPropertyRole & {
+  allListings?: boolean;
+  listingAssignments?: OrgListingAssignmentsPayload | null;
+};
 
 export type OrgTeamTab = 'members' | 'invitations' | 'permissions';
 

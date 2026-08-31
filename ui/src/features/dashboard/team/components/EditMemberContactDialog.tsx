@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { RoleSelectOptions } from '@/features/dashboard/team/components/RoleSelectOptions';
+import { getOrgMemberRoleLabel } from '@/features/dashboard/team/lib/orgMemberRoleDisplay';
 import { ORG_ROLES, getOrgRoleLabel } from '@/features/dashboard/team/lib/orgTeamConstants';
 import { getRoleLabel } from '@/features/dashboard/team/lib/propertyTeamRoles';
 import { handleRoleSelectChange } from '@/features/dashboard/team/lib/roleSelectUtils';
@@ -116,7 +117,12 @@ export function EditMemberContactDialog({
               <div className="space-y-2">
                 <Label htmlFor="team-member-role">Role</Label>
                 {roleConfig.scope === 'org' && roleConfig.locked ? (
-                  <Input id="team-member-role" value="Owner" disabled className="h-10" />
+                  <Input
+                    id="team-member-role"
+                    value={getOrgMemberRoleLabel({ role: roleConfig.roleId, isOwner: true }, [])}
+                    disabled
+                    className="h-10"
+                  />
                 ) : roleConfig.editable && roleConfig.scope === 'org' ? (
                   <Select value={roleId} onValueChange={setRoleId}>
                     <SelectTrigger id="team-member-role" className="h-10 min-h-[44px]">
@@ -144,6 +150,7 @@ export function EditMemberContactDialog({
                       <RoleSelectOptions
                         customRoles={roleConfig.customRoles}
                         showAddCustomRole={Boolean(roleConfig.onAddCustomRole)}
+                        selectedRoleId={roleId}
                       />
                     </SelectContent>
                   </Select>
@@ -164,6 +171,7 @@ export function EditMemberContactDialog({
                         scope="parking"
                         customRoles={roleConfig.customRoles}
                         showAddCustomRole={Boolean(roleConfig.onAddCustomRole)}
+                        selectedRoleId={roleId}
                       />
                     </SelectContent>
                   </Select>

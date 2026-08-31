@@ -128,15 +128,6 @@ export function ParkingTeamPage() {
     }
   };
 
-  const handleUpdateRole = async (memberId: string, newRoleId: PropertyRoleId) => {
-    try {
-      await updateMember.mutateAsync({ memberId, roleId: newRoleId });
-      toast.success('Role updated');
-    } catch {
-      /* toast handled in mutation */
-    }
-  };
-
   const handleToggleMemberStatus = async (member: TeamMember) => {
     try {
       await updateMember.mutateAsync({
@@ -280,7 +271,7 @@ export function ParkingTeamPage() {
       return;
     }
     try {
-      await deleteCustomRole.mutateAsync(role.id);
+      await deleteCustomRole.mutateAsync({ roleId: role.id, name: role.name });
     } catch {
       /* toast handled in mutation */
     }
@@ -409,7 +400,6 @@ export function ParkingTeamPage() {
                   filterRole={filterRole}
                   onSearchChange={setSearchQuery}
                   onFilterRoleChange={setFilterRole}
-                  onRoleChange={handleUpdateRole}
                   onEditPermissions={handleEditPermissions}
                   onEditContact={handleEditContact}
                   onToggleStatus={handleToggleMemberStatus}
@@ -420,7 +410,6 @@ export function ParkingTeamPage() {
                   onInvite={openInviteDialog}
                   canInvite={canInvite}
                   canManage={canManage}
-                  onAddCustomRole={canManage ? openCreateCustomRole : undefined}
                 />
               ) : null}
 

@@ -1,9 +1,9 @@
 /** Banner on org/property team when plan_limited inactive members exist. */
 export function planLimitedTeamBannerMessage(count: number): string {
   if (count === 1) {
-    return '1 member is paused because your plan seat limit is full. Upgrade or free a seat to turn them back on. Their role is saved.';
+    return '1 member is paused because your plan seat limit is full. Free a seat or Upgrade your plan.';
   }
-  return `${count} members are paused because your plan seat limit is full. Upgrade or free seats to turn them back on. Their roles are saved.`;
+  return `${count} members are paused because your plan seat limit is full. Free seats or Upgrade your plan.`;
 }
 
 /** Full-page gate when the signed-in user's own seat is paused by plan limits. */

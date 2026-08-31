@@ -3,12 +3,21 @@ import type { ReactNode } from 'react';
 import { Plus } from 'lucide-react';
 
 import { RoleDot } from '@/features/dashboard/team/components/RoleBadge';
-import { sortOrgTemplatesForDisplay } from '@/features/dashboard/team/lib/orgTeamTemplates';
+import {
+  isSeededOrgTemplateName,
+  sortOrgTemplatesForDisplay,
+} from '@/features/dashboard/team/lib/orgTeamTemplates';
 import { PROPERTY_ADMIN_ROLE_ID } from '@/features/dashboard/team/lib/propertyTeamConstants';
-import { sortTemplatesForDisplay } from '@/features/dashboard/team/lib/propertyTeamTemplates';
+import {
+  isSeededTemplateName,
+  sortTemplatesForDisplay,
+} from '@/features/dashboard/team/lib/propertyTeamTemplates';
 import { ADD_CUSTOM_ROLE_VALUE } from '@/features/dashboard/team/lib/roleSelectUtils';
 import { getTeamScopeConfig, type TeamScope } from '@/features/dashboard/team/lib/teamScopeConfig';
-import type { CustomPropertyRole } from '@/features/dashboard/team/types/propertyTeam';
+import type {
+  CustomPropertyRole,
+  PropertyRoleId,
+} from '@/features/dashboard/team/types/propertyTeam';
 
 import { SelectGroup, SelectItem, SelectLabel, SelectSeparator } from '@/components/ui/select';
 
@@ -22,56 +31,88 @@ type Props = {
   customRoles: CustomPropertyRole[];
   builtinRoles?: BuiltinRoleOption[];
   showAddCustomRole?: boolean;
-  /** Invite flow: roles only — Admin/full-access is applied via Permissions edit. */
-  templatesOnly?: boolean;
+  /** When the member uses `ADMIN` for a non-template permission set, keep it selectable. */
+  selectedRoleId?: PropertyRoleId;
 };
+
+function partitionTemplateRoles<T extends { id: string; name: string }>(
+  roles: T[],
+  isSeeded: (name: string) => boolean
+): { seeded: T[]; custom: T[] } {
+  const seeded: T[] = [];
+  const custom: T[] = [];
+  for (const role of roles) {
+    if (isSeeded(role.name)) {
+      seeded.push(role);
+    } else {
+      custom.push(role);
+    }
+  }
+  return { seeded, custom };
+}
+
+function renderRoleItem(
+  scope: TeamScope,
+  role: CustomPropertyRole,
+  customRoles: CustomPropertyRole[]
+) {
+  return (
+    <SelectItem key={role.id} value={role.id}>
+      <div className="flex items-center gap-2">
+        <RoleDot scope={scope} roleId={role.id} customRoles={customRoles} />
+        <span>{role.name}</span>
+      </div>
+    </SelectItem>
+  );
+}
 
 export function RoleSelectOptions({
   scope = 'property',
   customRoles,
   builtinRoles,
   showAddCustomRole = false,
-  templatesOnly = false,
+  selectedRoleId,
 }: Props) {
   const nodes: ReactNode[] = [];
 
   if (scope === 'property' || scope === 'org') {
-    const templates =
+    const sorted =
       scope === 'property'
         ? sortTemplatesForDisplay(customRoles)
         : sortOrgTemplatesForDisplay(customRoles);
-    if (templates.length > 0) {
+    const isSeeded = scope === 'property' ? isSeededTemplateName : isSeededOrgTemplateName;
+    const { seeded, custom } = partitionTemplateRoles(sorted, isSeeded);
+
+    if (seeded.length > 0) {
       nodes.push(
-        <SelectGroup key="templates">
+        <SelectGroup key="seeded-roles">
           <SelectLabel>Roles</SelectLabel>
-          {templates.map((role) => (
-            <SelectItem key={role.id} value={role.id}>
-              <div className="flex items-center gap-2">
-                <RoleDot scope={scope} roleId={role.id} customRoles={customRoles} />
-                <span>{role.name}</span>
-              </div>
-            </SelectItem>
-          ))}
+          {seeded.map((role) => renderRoleItem(scope, role, customRoles))}
         </SelectGroup>
       );
     }
 
-    if (!templatesOnly) {
+    if (custom.length > 0) {
+      nodes.push(<SelectSeparator key="sep-custom-roles" />);
+      nodes.push(
+        <SelectGroup key="custom-roles">
+          <SelectLabel>Custom roles</SelectLabel>
+          {custom.map((role) => renderRoleItem(scope, role, customRoles))}
+        </SelectGroup>
+      );
+    }
+
+    const showCustomPermissionsOption =
+      scope === 'property' && selectedRoleId === PROPERTY_ADMIN_ROLE_ID;
+    if (showCustomPermissionsOption) {
       nodes.push(<SelectSeparator key="sep-custom-perms" />);
       nodes.push(
-        <SelectGroup key="custom-permissions">
-          <SelectLabel>{scope === 'org' ? 'Preset' : 'Full access'}</SelectLabel>
-          <SelectItem value={scope === 'org' ? 'ADMIN' : PROPERTY_ADMIN_ROLE_ID}>
-            <div className="flex items-center gap-2">
-              <RoleDot
-                scope={scope}
-                roleId={scope === 'org' ? 'ADMIN' : PROPERTY_ADMIN_ROLE_ID}
-                customRoles={customRoles}
-              />
-              <span>{scope === 'org' ? 'Admin (preset)' : 'Admin (full access)'}</span>
-            </div>
-          </SelectItem>
-        </SelectGroup>
+        <SelectItem key={PROPERTY_ADMIN_ROLE_ID} value={PROPERTY_ADMIN_ROLE_ID}>
+          <div className="flex items-center gap-2">
+            <RoleDot scope={scope} roleId={PROPERTY_ADMIN_ROLE_ID} customRoles={customRoles} />
+            <span>Custom</span>
+          </div>
+        </SelectItem>
       );
     }
   } else {

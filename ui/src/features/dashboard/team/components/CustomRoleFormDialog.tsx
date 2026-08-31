@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
 
 import { ApplyTemplatePicker } from '@/features/dashboard/team/components/ApplyTemplatePicker';
+import { OrgRoleListingAccessSection } from '@/features/dashboard/team/components/OrgRoleListingAccessSection';
 import { PermissionsTreeView } from '@/features/dashboard/team/components/PermissionsTreeView';
+import type { OrgListingAssignments } from '@/features/dashboard/team/components/OrgListingAssignmentPicker';
 import { ORG_PERMISSION_CATALOG } from '@/features/dashboard/team/lib/orgPermissionCatalog';
 import { PROPERTY_PERMISSION_CATALOG } from '@/features/dashboard/team/lib/propertyPermissionCatalog';
 import { getTeamScopeConfig, type TeamScope } from '@/features/dashboard/team/lib/teamScopeConfig';
@@ -28,6 +30,11 @@ type Props = {
   permissions: string[];
   /** Existing roles to use as a baseline when editing property permissions. */
   roles?: CustomPropertyRole[];
+  orgSlug?: string;
+  allListings?: boolean;
+  listingAssignments?: OrgListingAssignments;
+  onAllListingsChange?: (value: boolean) => void;
+  onListingAssignmentsChange?: (value: OrgListingAssignments) => void;
   onOpenChange: (open: boolean) => void;
   onNameChange: (value: string) => void;
   onTogglePermission: (permissionId: string) => void;
@@ -43,6 +50,11 @@ export function CustomRoleFormDialog({
   name,
   permissions,
   roles = [],
+  orgSlug,
+  allListings = false,
+  listingAssignments,
+  onAllListingsChange,
+  onListingAssignmentsChange,
   onOpenChange,
   onNameChange,
   onTogglePermission,
@@ -132,6 +144,20 @@ export function CustomRoleFormDialog({
 
               {usesTree ? (
                 <>
+                  {isOrg &&
+                  orgSlug &&
+                  onAllListingsChange &&
+                  onListingAssignmentsChange &&
+                  listingAssignments ? (
+                    <OrgRoleListingAccessSection
+                      orgSlug={orgSlug}
+                      allListings={allListings}
+                      assignments={listingAssignments}
+                      onAllListingsChange={onAllListingsChange}
+                      onAssignmentsChange={onListingAssignmentsChange}
+                    />
+                  ) : null}
+
                   {roles.length > 0 && onPermissionsChange ? (
                     <ApplyTemplatePicker
                       permissions={permissions}
@@ -142,6 +168,7 @@ export function CustomRoleFormDialog({
                       }}
                     />
                   ) : null}
+
                   <PermissionsTreeView
                     permissions={permissions}
                     onChange={handleTreeChange}

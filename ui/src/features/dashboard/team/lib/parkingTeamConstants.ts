@@ -5,20 +5,20 @@ import type { TeamPermission } from '@/features/dashboard/team/types/propertyTea
 export const PARKING_ROLES = [
   {
     value: 'MANAGER' as const,
-    label: 'Manager',
-    description: 'Full parking access (Owner, Property Manager, Sublessor)',
+    label: 'Full Access',
+    description: 'Full parking access',
     color: 'bg-red-500',
   },
   {
     value: 'STAFF' as const,
-    label: 'Staff',
+    label: 'Operations',
     description: 'Bookings, pricing, and notifications',
     color: 'bg-amber-500',
   },
   {
     value: 'VIEWER' as const,
-    label: 'Viewer',
-    description: 'Read-only',
+    label: 'Read Only',
+    description: 'Read-only access',
     color: 'bg-blue-500',
   },
 ];

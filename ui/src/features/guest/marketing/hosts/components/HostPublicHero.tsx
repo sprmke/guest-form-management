@@ -1,8 +1,11 @@
+import { Award } from 'lucide-react';
+
 import { HostPublicSocialLinks } from '@/features/guest/marketing/hosts/components/HostPublicSocialLinks';
 import type { PublicHostProfile } from '@/features/guest/marketing/properties/hooks/usePublicHost';
 import { ListingRecommendedBadge } from '@/features/guest/marketing/shared/components/ListingRecommendedBadge';
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
 
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -52,10 +55,18 @@ export function HostPublicHero({ host, className }: Props) {
                 <h1 className="text-foreground text-2xl font-bold tracking-tight sm:text-3xl lg:text-[2rem] lg:leading-tight">
                   {host.name}
                 </h1>
+                {host.isSuperhost ? (
+                  <Badge className="gap-1 bg-amber-500 text-white hover:bg-amber-500">
+                    <Award className="size-3.5" aria-hidden />
+                    Superhost
+                  </Badge>
+                ) : null}
                 {host.verifiedBadge ? <ListingRecommendedBadge size="md" /> : null}
               </div>
 
-              {host.verifiedBadge ? (
+              {host.isSuperhost ? (
+                <p className="text-muted-foreground text-xs sm:text-[13px]">Superhost</p>
+              ) : host.verifiedBadge ? (
                 <p className="text-muted-foreground text-xs sm:text-[13px]">Recommended host</p>
               ) : null}
 

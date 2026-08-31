@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 
 import { useParkingIdParam } from '@/features/dashboard/org/lib/adminParkingScope';
 import { teamGetParking, teamMutateParking } from '@/features/dashboard/team/lib/teamApi';
+import { teamRoleToastMessage } from '@/features/dashboard/team/lib/teamRoleToast';
 import type {
   CustomPropertyRole,
   PropertyRoleId,
@@ -179,12 +180,12 @@ export function useParkingTeamMutations() {
         input
       );
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       invalidate();
-      toast.success('Custom role created');
+      toast.success(teamRoleToastMessage('created', variables.name));
     },
     onError: (error: Error) => {
-      toast.error(friendlyToastError(error, 'Failed to create custom role'));
+      toast.error(friendlyToastError(error, 'Failed to create role'));
     },
   });
 
@@ -198,28 +199,28 @@ export function useParkingTeamMutations() {
         input
       );
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       invalidate();
-      toast.success('Custom role updated');
+      toast.success(teamRoleToastMessage('updated', variables.name ?? data.customRole.name));
     },
     onError: (error: Error) => {
-      toast.error(friendlyToastError(error, 'Failed to update custom role'));
+      toast.error(friendlyToastError(error, 'Failed to update role'));
     },
   });
 
   const deleteCustomRole = useMutation({
-    mutationFn: async (roleId: string) => {
+    mutationFn: async (input: { roleId: string; name?: string }) => {
       const pid = requireParkingId();
       return teamMutateParking<{ deleted: boolean }>('/parking-team-custom-roles', pid, 'DELETE', {
-        roleId,
+        roleId: input.roleId,
       });
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       invalidate();
-      toast.success('Custom role deleted');
+      toast.success(teamRoleToastMessage('deleted', variables.name));
     },
     onError: (error: Error) => {
-      toast.error(friendlyToastError(error, 'Failed to delete custom role'));
+      toast.error(friendlyToastError(error, 'Failed to delete role'));
     },
   });
 

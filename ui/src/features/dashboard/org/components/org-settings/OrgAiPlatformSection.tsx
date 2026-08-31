@@ -9,6 +9,7 @@ import {
   useAiPlatformUsage,
   useUpdateAiPlatformSettings,
 } from '@/features/dashboard/org/hooks/useAiPlatformSettings';
+import { PlanUpgradeLink } from '@/features/dashboard/plans/components/PlanUpgradeLink';
 import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermissions';
 
 import { SectionContentSkeleton } from '@/components/skeletons/AdminSkeletons';
@@ -173,7 +174,9 @@ export function OrgAiPlatformSection() {
 
       {showUpgradeStub ? (
         <p className="text-muted-foreground text-sm">
-          Need more AI capacity? Upgrade for higher limits — billing integration coming soon.
+          Need more AI capacity?{' '}
+          <PlanUpgradeLink feature="aiMonthlyCreditAllowance">Upgrade</PlanUpgradeLink> for higher
+          limits — billing integration coming soon.
         </p>
       ) : null}
 

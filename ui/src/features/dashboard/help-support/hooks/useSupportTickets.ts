@@ -25,6 +25,9 @@ function scopeKey(scope: SupportTicketScopeParams) {
 
 function scopeEnabled(scope: SupportTicketScopeParams): boolean {
   if (scope.channel === 'guest') return true;
+  if (scope.channel === 'host') return Boolean(scope.orgSlug || scope.orgId);
+  // Guest explore (/account/tickets): no org params — matches server guest channel fallback.
+  if (!scope.orgSlug && !scope.orgId && !scope.propertyId && !scope.parkingId) return true;
   return Boolean(scope.orgSlug || scope.orgId);
 }
 

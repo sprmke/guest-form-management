@@ -8,6 +8,11 @@ import {
   SEEDED_ORG_TEMPLATE_NAMES,
   sortOrgTemplatesForDisplay,
 } from '@/features/dashboard/team/lib/orgTeamTemplates';
+import {
+  getOrgMemberRoleColor,
+  getOrgMemberRoleLabel,
+  resolveOrgMemberTemplateRoleId,
+} from '@/features/dashboard/team/lib/orgMemberRoleDisplay';
 import type { CustomPropertyRole } from '@/features/dashboard/team/types/propertyTeam';
 
 export const ORG_CUSTOM_ROLE_COLOR = 'bg-violet-500';
@@ -20,15 +25,11 @@ export function isOrgAdminRoleId(roleId: string): boolean {
 }
 
 export function getOrgRoleLabel(roleId: string, customRoles: CustomOrgRole[]): string {
-  if (isOrgAdminRoleId(roleId)) return 'Admin';
-  return customRoles.find((role) => role.id === roleId)?.name ?? roleId;
+  return getOrgMemberRoleLabel({ role: roleId }, customRoles);
 }
 
 export function getOrgRoleColor(roleId: string, customRoles: CustomOrgRole[]): string {
-  if (isOrgAdminRoleId(roleId)) return 'bg-purple-500';
-  const custom = customRoles.find((role) => role.id === roleId);
-  if (custom && isSeededOrgTemplateName(custom.name)) return ORG_SEEDED_TEMPLATE_COLOR;
-  return ORG_CUSTOM_ROLE_COLOR;
+  return getOrgMemberRoleColor({ role: roleId }, customRoles);
 }
 
 export function getOrgRolePermissions(roleId: string, customRoles: CustomOrgRole[]): string[] {
@@ -58,12 +59,16 @@ export function buildOrgTemplateMatrixColumns(customRoles: CustomOrgRole[]) {
 
 export function countOrgMembersWithTemplateRole(
   roleId: string,
-  members: { role: string; isOwner?: boolean }[],
-  invitations: { role: string }[]
+  members: { role: string; isOwner?: boolean; permissions?: string[] }[],
+  invitations: { role: string; permissions?: string[] }[],
+  customRoles: CustomOrgRole[]
 ): number {
   return (
-    members.filter((member) => !member.isOwner && member.role === roleId).length +
-    invitations.filter((invitation) => invitation.role === roleId).length
+    members.filter((member) => resolveOrgMemberTemplateRoleId(member, customRoles) === roleId)
+      .length +
+    invitations.filter(
+      (invitation) => resolveOrgMemberTemplateRoleId(invitation, customRoles) === roleId
+    ).length
   );
 }
 

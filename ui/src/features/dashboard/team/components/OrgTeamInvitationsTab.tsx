@@ -3,13 +3,14 @@ import { Mail, UserPlus, X } from 'lucide-react';
 import { TeamInviteTierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
 import { OrgRoleBadge } from '@/features/dashboard/team/components/OrgRoleBadge';
 import { formatTeamInvitationDate } from '@/features/dashboard/team/lib/formatTeamInvitationDate';
-import type { OrgTeamInvitation } from '@/features/dashboard/team/types/orgTeam';
+import type { CustomOrgRole, OrgTeamInvitation } from '@/features/dashboard/team/types/orgTeam';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 type Props = {
   invitations: OrgTeamInvitation[];
+  customRoles: CustomOrgRole[];
   onCancel: (invitationId: string) => void;
   onResend: (invitationId: string) => void;
   onInvite: () => void;
@@ -23,6 +24,7 @@ type Props = {
 
 export function OrgTeamInvitationsTab({
   invitations,
+  customRoles,
   onCancel,
   onResend,
   onInvite,
@@ -60,7 +62,11 @@ export function OrgTeamInvitationsTab({
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <OrgRoleBadge roleId={invitation.role} />
+                  <OrgRoleBadge
+                    roleId={invitation.role}
+                    customRoles={customRoles}
+                    permissions={invitation.permissions}
+                  />
                   {canManage ? (
                     <>
                       <Button

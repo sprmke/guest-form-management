@@ -228,14 +228,6 @@ export function computePropertySettingsCompletion(
     if (operational.vouchersEnabled && operational.voucherPrizes.length === 0) {
       addFieldError('property-vouchers', 'Add at least one prize', 'guest-rewards');
     }
-
-    const superhostErr = validateOptionalAdminUrl(
-      operational.superhostVerificationUrl,
-      'Superhost verification URL'
-    );
-    if (superhostErr) {
-      addFieldError('property-superhost-verification-url', superhostErr, 'guest-rewards');
-    }
   }
 
   // ── Media ──

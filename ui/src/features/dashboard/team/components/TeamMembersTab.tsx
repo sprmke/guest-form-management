@@ -2,10 +2,10 @@ import { useMemo } from 'react';
 
 import {
   Building2,
-  Edit3,
+  ChevronDown,
   Filter,
-  MoreHorizontal,
   Search,
+  Shield,
   Sparkles,
   UserCheck,
   UserMinus,
@@ -17,30 +17,23 @@ import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSes
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useOptionalParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
 import { TeamInviteTierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
-import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { PlanGatedText } from '@/features/dashboard/plans/components/PlanUpgradeLink';
 import { OrgManagedMemberLink } from '@/features/dashboard/team/components/OrgManagedMemberLink';
 import { RoleBadge } from '@/features/dashboard/team/components/RoleBadge';
-import { RoleSelectOptions } from '@/features/dashboard/team/components/RoleSelectOptions';
 import { TeamMemberStatusBadge } from '@/features/dashboard/team/components/TeamMemberStatusBadge';
-import { planLimitedTeamBannerMessage } from '@/features/dashboard/team/lib/planLimitedTeamCopy';
-import { handleRoleSelectChange } from '@/features/dashboard/team/lib/roleSelectUtils';
 import {
   currentTeamMemberRowClassName,
   isCurrentTeamMember,
   sortTeamMembersWithCurrentUserFirst,
 } from '@/features/dashboard/team/lib/sortTeamMembersByCurrentUser';
+import { planLimitedTeamBannerMessage } from '@/features/dashboard/team/lib/planLimitedTeamCopy';
 import { isTeamMemberActive } from '@/features/dashboard/team/lib/teamMemberAccess';
 import {
   canEditPropertyMemberContact,
   memberContactLabel,
 } from '@/features/dashboard/team/lib/teamMemberContact';
-import { getRoleLabelForScope } from '@/features/dashboard/team/lib/teamRoleHelpers';
 import { getTeamScopeConfig, type TeamScope } from '@/features/dashboard/team/lib/teamScopeConfig';
-import type {
-  CustomPropertyRole,
-  PropertyRoleId,
-  TeamMember,
-} from '@/features/dashboard/team/types/propertyTeam';
+import type { CustomPropertyRole, TeamMember } from '@/features/dashboard/team/types/propertyTeam';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -72,7 +65,6 @@ type Props = {
   filterRole: string;
   onSearchChange: (value: string) => void;
   onFilterRoleChange: (value: string) => void;
-  onRoleChange: (memberId: string, roleId: PropertyRoleId) => void;
   onEditPermissions: (member: TeamMember) => void;
   onEditContact: (member: TeamMember) => void;
   onToggleStatus: (member: TeamMember) => void;
@@ -85,10 +77,9 @@ type Props = {
   canManage?: boolean;
   canEditMembers?: boolean;
   canDeleteMembers?: boolean;
-  onAddCustomRole?: () => void;
-  /** Built-in roles for filter + role select (defaults to property roles). */
-  builtinRoles?: Array<{ value: string; label: string }>;
   showEditPermissions?: boolean;
+  /** Built-in roles for filter (defaults to property roles). */
+  builtinRoles?: Array<{ value: string; label: string }>;
   removeFromLabel?: string;
 };
 
@@ -109,7 +100,6 @@ export function TeamMembersTab({
   filterRole,
   onSearchChange,
   onFilterRoleChange,
-  onRoleChange,
   onEditPermissions,
   onEditContact,
   onToggleStatus,
@@ -120,10 +110,9 @@ export function TeamMembersTab({
   canManage = true,
   canEditMembers,
   canDeleteMembers,
-  onAddCustomRole,
-  builtinRoles = getTeamScopeConfig(scope).builtinRoles,
   showEditPermissions = true,
   removeFromLabel = getTeamScopeConfig(scope).removeFromLabel,
+  builtinRoles = getTeamScopeConfig(scope).builtinRoles,
 }: Props) {
   const allowEditMembers = canEditMembers ?? canManage;
   const allowDeleteMembers = canDeleteMembers ?? canManage;
@@ -136,7 +125,6 @@ export function TeamMembersTab({
     );
   }
   const { email: currentUserEmail } = useAdminSession();
-  const { open: openUpgradeModal } = useUpgradeModal();
 
   const planLimitedCount = useMemo(
     () => members.filter((member) => member.status === 'inactive' && member.planLimited).length,
@@ -157,19 +145,15 @@ export function TeamMembersTab({
   return (
     <div className="space-y-3 sm:space-y-4">
       {planLimitedCount > 0 ? (
-        <div className="border-warning/30 bg-warning/10 flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3 sm:p-4">
-          <div className="flex items-start gap-2">
-            <Sparkles className="text-warning mt-0.5 size-4 shrink-0" aria-hidden />
-            <p className="text-sm">{planLimitedTeamBannerMessage(planLimitedCount)}</p>
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            className="min-h-[44px] sm:min-h-9"
-            onClick={() => openUpgradeModal('teamManagement')}
-          >
-            Upgrade
-          </Button>
+        <div className="border-warning/30 bg-warning/10 flex items-start gap-2 rounded-lg border p-3 sm:p-4">
+          <Sparkles className="text-warning mt-0.5 size-4 shrink-0" aria-hidden />
+          <p className="text-sm">
+            <PlanGatedText
+              feature="teamManagement"
+              text={planLimitedTeamBannerMessage(planLimitedCount)}
+              linkClassName="text-warning"
+            />
+          </p>
         </div>
       ) : null}
 
@@ -280,121 +264,75 @@ export function TeamMembersTab({
                   <TeamMemberStatusBadge status={member.status} planLimited={member.planLimited} />
                 </div>
 
-                <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:ml-auto sm:w-auto">
+                <div className="flex w-full flex-wrap items-center justify-end sm:ml-auto sm:w-auto">
                   {member.fromOrg ? (
                     <OrgManagedMemberLink orgSlug={orgSlug} />
-                  ) : canEditContact ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="min-h-[44px] sm:min-h-9"
-                      onClick={() => onEditContact(member)}
-                    >
-                      <Edit3 className="mr-1.5 size-3.5" aria-hidden />
-                      Manage
-                    </Button>
-                  ) : null}
-
-                  {member.fromOrg ? null : allowEditMembers || allowDeleteMembers ? (
-                    <>
-                      {allowEditMembers ? (
-                        <Select
-                          value={member.role}
-                          disabled={!isActive}
-                          onValueChange={(value) =>
-                            handleRoleSelectChange(
-                              value,
-                              (roleId) => onRoleChange(member.id, roleId),
-                              onAddCustomRole
-                            )
-                          }
+                  ) : canEditContact || allowEditMembers || allowDeleteMembers ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="min-h-[44px] sm:min-h-9"
+                          aria-label={`Manage ${member.name}`}
                         >
-                          <SelectTrigger
-                            className="h-9 min-h-[44px] w-full min-w-[9.5rem] sm:min-h-9 sm:w-[9.5rem]"
-                            aria-label={`Role for ${member.name}`}
+                          Manage
+                          <ChevronDown className="ml-1.5 size-3.5" aria-hidden />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {canEditContact ? (
+                          <DropdownMenuItem
+                            onSelect={() => {
+                              window.setTimeout(() => onEditContact(member), 0);
+                            }}
                           >
-                            <SelectValue>
-                              {getRoleLabelForScope(scope, member.role, customRoles)}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            <RoleSelectOptions
-                              scope={scope}
-                              customRoles={customRoles}
-                              builtinRoles={builtinRoles}
-                              showAddCustomRole={Boolean(onAddCustomRole)}
-                            />
-                          </SelectContent>
-                        </Select>
-                      ) : null}
-
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="min-h-[44px] min-w-[44px] shrink-0 sm:min-h-9 sm:min-w-9"
-                            aria-label={`Actions for ${member.name}`}
+                            Host details
+                          </DropdownMenuItem>
+                        ) : null}
+                        {allowEditMembers && showEditPermissions ? (
+                          <DropdownMenuItem
+                            disabled={!isActive}
+                            onSelect={() => {
+                              window.setTimeout(() => onEditPermissions(member), 0);
+                            }}
                           >
-                            <MoreHorizontal className="size-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {allowEditMembers ? (
+                            <Shield className="mr-2 size-4" aria-hidden />
+                            Permissions
+                          </DropdownMenuItem>
+                        ) : null}
+                        {allowEditMembers ? (
+                          <DropdownMenuItem onClick={() => onToggleStatus(member)}>
+                            {isActive ? (
+                              <>
+                                <UserX className="mr-2 size-4" aria-hidden />
+                                Deactivate
+                              </>
+                            ) : (
+                              <>
+                                <UserCheck className="mr-2 size-4" aria-hidden />
+                                Activate
+                              </>
+                            )}
+                          </DropdownMenuItem>
+                        ) : null}
+                        {allowDeleteMembers ? (
+                          <>
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem
-                              disabled={!isActive}
+                              className="text-destructive focus:text-destructive"
                               onSelect={() => {
-                                window.setTimeout(() => onEditContact(member), 0);
+                                window.setTimeout(() => onRemove(member), 0);
                               }}
                             >
-                              <Edit3 className="mr-2 size-4" aria-hidden />
-                              Edit contact
+                              <UserMinus className="mr-2 size-4" aria-hidden />
+                              {removeFromLabel}
                             </DropdownMenuItem>
-                          ) : null}
-                          {allowEditMembers && showEditPermissions ? (
-                            <DropdownMenuItem
-                              disabled={!isActive}
-                              onSelect={() => {
-                                window.setTimeout(() => onEditPermissions(member), 0);
-                              }}
-                            >
-                              <Edit3 className="mr-2 size-4" aria-hidden />
-                              Edit Permissions
-                            </DropdownMenuItem>
-                          ) : null}
-                          {allowEditMembers ? (
-                            <DropdownMenuItem onClick={() => onToggleStatus(member)}>
-                              {isActive ? (
-                                <>
-                                  <UserX className="mr-2 size-4" aria-hidden />
-                                  Deactivate
-                                </>
-                              ) : (
-                                <>
-                                  <UserCheck className="mr-2 size-4" aria-hidden />
-                                  Activate
-                                </>
-                              )}
-                            </DropdownMenuItem>
-                          ) : null}
-                          {allowDeleteMembers ? (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onSelect={() => {
-                                  window.setTimeout(() => onRemove(member), 0);
-                                }}
-                              >
-                                <UserMinus className="mr-2 size-4" aria-hidden />
-                                {removeFromLabel}
-                              </DropdownMenuItem>
-                            </>
-                          ) : null}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </>
+                          </>
+                        ) : null}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   ) : null}
                 </div>
               </div>

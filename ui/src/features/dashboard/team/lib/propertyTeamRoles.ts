@@ -24,7 +24,7 @@ export function isTemplateRoleId(
 
 export function getRoleLabel(roleId: PropertyRoleId, customRoles: CustomPropertyRole[]): string {
   if (isPropertyAdminRoleId(roleId)) {
-    return 'Admin (full access)';
+    return 'Custom';
   }
   return customRoles.find((role) => role.id === roleId)?.name ?? 'Custom';
 }

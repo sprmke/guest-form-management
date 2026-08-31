@@ -1,6 +1,9 @@
-import { ORG_ROLES } from '@/features/dashboard/team/lib/orgTeamConstants';
-import { getOrgRoleColor, getOrgRoleLabel } from '@/features/dashboard/team/lib/orgTeamRoles';
-import type { CustomOrgRole, OrgRoleId } from '@/features/dashboard/team/types/orgTeam';
+import {
+  getOrgMemberRoleColor,
+  getOrgMemberRoleLabel,
+  type RoleSubject,
+} from '@/features/dashboard/team/lib/orgMemberRoleDisplay';
+import type { CustomOrgRole } from '@/features/dashboard/team/types/orgTeam';
 
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -9,29 +12,58 @@ type Props = {
   roleId: string;
   customRoles?: CustomOrgRole[];
   muted?: boolean;
+  isOwner?: boolean;
+  permissions?: string[];
 };
 
-export function OrgRoleBadge({ roleId, customRoles = [], muted = false }: Props) {
+function toSubject(props: Props): RoleSubject {
+  return {
+    role: props.roleId,
+    isOwner: props.isOwner,
+    permissions: props.permissions,
+  };
+}
+
+export function OrgRoleBadge({
+  roleId,
+  customRoles = [],
+  muted = false,
+  isOwner,
+  permissions,
+}: Props) {
+  const subject = toSubject({ roleId, customRoles, isOwner, permissions });
+  const label = getOrgMemberRoleLabel(subject, customRoles);
+  const color = getOrgMemberRoleColor(subject, customRoles);
+
   return (
     <Badge
       className={cn(
         muted
           ? 'border-border bg-muted text-muted-foreground font-normal'
-          : cn('border-transparent text-white', getOrgRoleColor(roleId, customRoles))
+          : cn('border-transparent text-white', color)
       )}
     >
-      {getOrgRoleLabel(roleId, customRoles)}
+      {label}
     </Badge>
   );
 }
 
 type DotProps = {
-  roleId: OrgRoleId | string;
+  roleId: string;
+  customRoles?: CustomOrgRole[];
+  isOwner?: boolean;
+  permissions?: string[];
   className?: string;
 };
 
-export function OrgRoleDot({ roleId, className }: DotProps) {
-  const config = ORG_ROLES.find((r) => r.value === roleId);
-  const color = config?.color ?? getOrgRoleColor(roleId, []);
+export function OrgRoleDot({
+  roleId,
+  customRoles = [],
+  isOwner,
+  permissions,
+  className,
+}: DotProps) {
+  const subject = toSubject({ roleId, customRoles, isOwner, permissions });
+  const color = getOrgMemberRoleColor(subject, customRoles);
   return <div className={cn('size-2 shrink-0 rounded-full', color, className)} />;
 }

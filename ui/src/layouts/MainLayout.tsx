@@ -9,9 +9,10 @@ import { useTheme } from '@/components/theme/ThemeProvider';
 import { guestEnterClass, type GuestNavState } from '@/layouts/guest/navState';
 import { applyBrandCssVariables } from '@/lib/theme/applyBrandCssVariables';
 import { buildGuestBrandStyle } from '@/lib/theme/brandColor';
+import { platformCopyrightLine } from '@/lib/platformBranding';
 import { cn } from '@/lib/utils';
 
-const DEFAULT_FOOTER_LABEL = `© ${new Date().getFullYear()} Kame Homes. All rights reserved.`;
+const DEFAULT_FOOTER_LABEL = platformCopyrightLine();
 
 interface MainLayoutProps {
   children?: ReactNode;

@@ -5,7 +5,6 @@ import {
   Crown,
   LayoutDashboard,
   Settings,
-  Upload,
   Users,
 } from 'lucide-react';
 
@@ -21,7 +20,7 @@ export const ORG_ROLES = [
   },
   {
     value: 'ADMIN' as const,
-    label: 'Admin',
+    label: 'Full Access',
     description: 'Org hub permissions and listing access assigned on invite.',
     color: 'bg-purple-500',
     icon: Users,
@@ -193,13 +192,6 @@ export const ORG_TEAM_PERMISSIONS: TeamPermission[] = [
     category: 'Team',
     icon: Users,
   },
-  {
-    id: 'org.import:manage',
-    name: 'Manage Imports',
-    description: 'Upload and commit CSV booking imports',
-    category: 'Organization',
-    icon: Upload,
-  },
 ];
 
 /** Default granular presets per built-in org role. */
@@ -218,7 +210,6 @@ export const ORG_ROLE_PERMISSIONS: Record<BuiltinOrgRole, string[]> = {
     'org.team.invitations:delete',
     'org.team.members:edit',
     'org.team.members:delete',
-    'org.import:manage',
   ],
 };
 

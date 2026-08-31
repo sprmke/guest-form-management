@@ -10,8 +10,6 @@ export type ExternalReviewSource = 'facebook' | 'airbnb';
 
 export type ExternalReviewModerationStatus = 'pending' | 'approved' | 'rejected';
 
-export type SuperhostStatus = 'none' | 'pending' | 'approved' | 'rejected';
-
 export type PropertyExternalReview = {
   id: string;
   source: ExternalReviewSource;
@@ -163,19 +161,6 @@ export function externalReviewsEqual(
 
 export function externalReviewSourceLabel(source: ExternalReviewSource): string {
   return source === 'airbnb' ? 'Airbnb' : 'Facebook';
-}
-
-export function superhostStatusLabel(status: SuperhostStatus): string {
-  switch (status) {
-    case 'approved':
-      return 'Verified Superhost';
-    case 'pending':
-      return 'Pending verification';
-    case 'rejected':
-      return 'Not verified';
-    default:
-      return 'Not submitted';
-  }
 }
 
 export function externalReviewModerationLabel(status: ExternalReviewModerationStatus): string {

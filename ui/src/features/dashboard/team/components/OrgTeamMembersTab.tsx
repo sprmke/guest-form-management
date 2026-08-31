@@ -1,10 +1,8 @@
 import { useMemo } from 'react';
 
 import {
-  Crown,
-  Edit3,
+  ChevronDown,
   Filter,
-  MoreHorizontal,
   Search,
   Sparkles,
   UserCheck,
@@ -15,10 +13,13 @@ import {
 
 import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
 import { TeamInviteTierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
-import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { PlanGatedText } from '@/features/dashboard/plans/components/PlanUpgradeLink';
 import { OrgRoleBadge } from '@/features/dashboard/team/components/OrgRoleBadge';
 import { TeamMemberStatusBadge } from '@/features/dashboard/team/components/TeamMemberStatusBadge';
-import { ORG_ROLES } from '@/features/dashboard/team/lib/orgTeamConstants';
+import {
+  listSeededOrgRoleFilters,
+  resolveOrgMemberTemplateRoleId,
+} from '@/features/dashboard/team/lib/orgMemberRoleDisplay';
 import { planLimitedTeamBannerMessage } from '@/features/dashboard/team/lib/planLimitedTeamCopy';
 import {
   currentTeamMemberRowClassName,
@@ -93,7 +94,6 @@ export function OrgTeamMembersTab({
   canInviteByPlan,
   canManage = true,
 }: Props) {
-  const { open: openUpgradeModal } = useUpgradeModal();
   const { email: currentUserEmail } = useAdminSession();
 
   const planLimitedCount = useMemo(
@@ -101,33 +101,32 @@ export function OrgTeamMembersTab({
     [members]
   );
 
+  const roleFilterOptions = useMemo(() => listSeededOrgRoleFilters(customRoles), [customRoles]);
+
   const filteredMembers = useMemo(() => {
     const filtered = members.filter((member) => {
       const q = searchQuery.toLowerCase();
       const matchesSearch =
         member.name.toLowerCase().includes(q) || member.email.toLowerCase().includes(q);
-      const matchesRole = filterRole === 'all' || member.role === filterRole;
+      const matchesRole =
+        filterRole === 'all' || resolveOrgMemberTemplateRoleId(member, customRoles) === filterRole;
       return matchesSearch && matchesRole;
     });
     return sortTeamMembersWithCurrentUserFirst(filtered, currentUserEmail);
-  }, [members, searchQuery, filterRole, currentUserEmail]);
+  }, [members, searchQuery, filterRole, customRoles, currentUserEmail]);
 
   return (
     <div className="space-y-3 sm:space-y-4">
       {planLimitedCount > 0 ? (
-        <div className="border-warning/30 bg-warning/10 flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3 sm:p-4">
-          <div className="flex items-start gap-2">
-            <Sparkles className="text-warning mt-0.5 size-4 shrink-0" aria-hidden />
-            <p className="text-sm">{planLimitedTeamBannerMessage(planLimitedCount)}</p>
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            className="min-h-[44px] sm:min-h-9"
-            onClick={() => openUpgradeModal('teamManagement')}
-          >
-            Upgrade
-          </Button>
+        <div className="border-warning/30 bg-warning/10 flex items-start gap-2 rounded-lg border p-3 sm:p-4">
+          <Sparkles className="text-warning mt-0.5 size-4 shrink-0" aria-hidden />
+          <p className="text-sm">
+            <PlanGatedText
+              feature="teamManagement"
+              text={planLimitedTeamBannerMessage(planLimitedCount)}
+              linkClassName="text-warning"
+            />
+          </p>
         </div>
       ) : null}
 
@@ -152,9 +151,9 @@ export function OrgTeamMembersTab({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Roles</SelectItem>
-            {ORG_ROLES.map((role) => (
-              <SelectItem key={role.value} value={role.value}>
-                {role.label}
+            {roleFilterOptions.map((role) => (
+              <SelectItem key={role.id} value={role.id}>
+                {role.name}
               </SelectItem>
             ))}
           </SelectContent>
@@ -180,9 +179,6 @@ export function OrgTeamMembersTab({
                 className={cn(
                   'border-border/60 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border p-3 sm:gap-4 sm:p-4',
                   isCurrentUser && currentTeamMemberRowClassName,
-                  !isCurrentUser &&
-                    member.isOwner &&
-                    'border-amber-200/80 bg-amber-50/30 dark:border-amber-900/60 dark:bg-amber-950/20',
                   !isActive && 'opacity-80'
                 )}
                 aria-current={isCurrentUser ? 'true' : undefined}
@@ -199,15 +195,6 @@ export function OrgTeamMembersTab({
                       <p className="text-foreground truncate text-sm font-semibold">
                         {member.name}
                       </p>
-                      {member.isOwner ? (
-                        <Badge
-                          variant="outline"
-                          className="h-5 gap-1 px-1.5 text-[10px] font-medium"
-                        >
-                          <Crown className="size-2.5" aria-hidden />
-                          Owner
-                        </Badge>
-                      ) : null}
                     </div>
                     <p className="text-muted-foreground truncate text-xs">{member.email}</p>
                     {contactLine ? (
@@ -222,6 +209,8 @@ export function OrgTeamMembersTab({
                   <OrgRoleBadge
                     roleId={member.role}
                     customRoles={customRoles}
+                    isOwner={member.isOwner}
+                    permissions={member.permissions}
                     muted={!isActive || member.planLimited}
                   />
                   {!member.isOwner ? (
@@ -233,59 +222,59 @@ export function OrgTeamMembersTab({
                 </div>
 
                 {canEditContact || (!member.isOwner && canManage) ? (
-                  <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:ml-auto sm:w-auto">
-                    {canEditContact ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="min-h-[44px] sm:min-h-9"
-                        onClick={() => onEditContact(member)}
-                      >
-                        <Edit3 className="mr-1.5 size-3.5" aria-hidden />
-                        Manage
-                      </Button>
-                    ) : null}
-
-                    {!member.isOwner && canManage ? (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="min-h-[44px] min-w-[44px] shrink-0 sm:min-h-9 sm:min-w-9"
-                            aria-label={`Actions for ${member.name}`}
-                          >
-                            <MoreHorizontal className="size-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => onToggleStatus(member)}>
-                            {isActive ? (
-                              <>
-                                <UserX className="mr-2 size-4" aria-hidden />
-                                Deactivate
-                              </>
-                            ) : (
-                              <>
-                                <UserCheck className="mr-2 size-4" aria-hidden />
-                                Activate
-                              </>
-                            )}
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
+                  <div className="flex w-full flex-wrap items-center justify-end sm:ml-auto sm:w-auto">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="min-h-[44px] sm:min-h-9"
+                          aria-label={`Manage ${member.name}`}
+                        >
+                          Manage
+                          <ChevronDown className="ml-1.5 size-3.5" aria-hidden />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {canEditContact ? (
                           <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
                             onSelect={() => {
-                              window.setTimeout(() => onRemove(member), 0);
+                              window.setTimeout(() => onEditContact(member), 0);
                             }}
                           >
-                            <UserMinus className="mr-2 size-4" aria-hidden />
-                            Remove from Organization
+                            Member details
                           </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    ) : null}
+                        ) : null}
+                        {!member.isOwner && canManage ? (
+                          <>
+                            <DropdownMenuItem onClick={() => onToggleStatus(member)}>
+                              {isActive ? (
+                                <>
+                                  <UserX className="mr-2 size-4" aria-hidden />
+                                  Deactivate
+                                </>
+                              ) : (
+                                <>
+                                  <UserCheck className="mr-2 size-4" aria-hidden />
+                                  Activate
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onSelect={() => {
+                                window.setTimeout(() => onRemove(member), 0);
+                              }}
+                            >
+                              <UserMinus className="mr-2 size-4" aria-hidden />
+                              Remove from Organization
+                            </DropdownMenuItem>
+                          </>
+                        ) : null}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 ) : null}
               </div>

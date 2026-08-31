@@ -63,13 +63,6 @@ export const PROPERTY_AUTOMATION_TOGGLE_GROUPS: PropertyAutomationToggleGroup[] 
         recipient: 'PMO email',
         trigger: 'Admin proceeds to pending documents status which includes pet request.',
       },
-      {
-        key: 'emailParkingBroadcast',
-        label: 'Parking broadcast',
-        recipient: 'Parking owner emails (BCC)',
-        trigger:
-          'Admin proceeds to documents when parking is needed, or guest/admin updates parking details.',
-      },
     ],
   },
   {

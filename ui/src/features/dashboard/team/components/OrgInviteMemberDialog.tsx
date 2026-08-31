@@ -3,16 +3,17 @@ import { useEffect, useMemo, useState } from 'react';
 import { Mail } from 'lucide-react';
 
 import { ApplyTemplatePicker } from '@/features/dashboard/team/components/ApplyTemplatePicker';
-import {
-  emptyOrgListingAssignments,
-  OrgListingAssignmentPicker,
-  type OrgListingAssignments,
-} from '@/features/dashboard/team/components/OrgListingAssignmentPicker';
+import type { OrgListingAssignments } from '@/features/dashboard/team/components/OrgListingAssignmentPicker';
+import { OrgRoleListingAccessSection } from '@/features/dashboard/team/components/OrgRoleListingAccessSection';
 import { PermissionsTreeView } from '@/features/dashboard/team/components/PermissionsTreeView';
 import { RoleSelectOptions } from '@/features/dashboard/team/components/RoleSelectOptions';
 import { ORG_PERMISSION_CATALOG } from '@/features/dashboard/team/lib/orgPermissionCatalog';
 import { getOrgRolePermissions } from '@/features/dashboard/team/lib/orgTeamRoles';
 import { defaultOrgInviteTemplateId } from '@/features/dashboard/team/lib/orgTeamRoles';
+import {
+  findOrgRoleById,
+  orgRoleListingDefaults,
+} from '@/features/dashboard/team/lib/orgRoleListingScope';
 import { sortOrgTemplatesForDisplay } from '@/features/dashboard/team/lib/orgTeamTemplates';
 import { handleRoleSelectChange } from '@/features/dashboard/team/lib/roleSelectUtils';
 import {
@@ -173,9 +174,13 @@ export function OrgInviteMemberDialog({
                     handleRoleSelectChange(
                       value,
                       (roleId) => {
+                        const role = findOrgRoleById(roleId, customRoles);
+                        const listingDefaults = orgRoleListingDefaults(role);
                         onFormChange({
                           roleId,
                           permissions: getOrgRolePermissions(roleId, customRoles),
+                          allListings: listingDefaults.allListings,
+                          listingAssignments: listingDefaults.listingAssignments,
                         });
                       },
                       onAddCustomRole
@@ -192,11 +197,19 @@ export function OrgInviteMemberDialog({
                       scope="org"
                       customRoles={sortedRoles}
                       showAddCustomRole={showAddCustomRole}
-                      templatesOnly={false}
+                      selectedRoleId={form.roleId}
                     />
                   </SelectContent>
                 </Select>
               </div>
+
+              <OrgRoleListingAccessSection
+                orgSlug={orgSlug}
+                allListings={form.allListings}
+                assignments={form.listingAssignments}
+                onAllListingsChange={(allListings) => onFormChange({ allListings })}
+                onAssignmentsChange={(listingAssignments) => onFormChange({ listingAssignments })}
+              />
 
               <div className="space-y-2">
                 <Label>Org permissions</Label>
@@ -217,14 +230,6 @@ export function OrgInviteMemberDialog({
                   onSensitiveEnable={requestSensitiveEnable}
                 />
               </div>
-
-              <OrgListingAssignmentPicker
-                orgSlug={orgSlug}
-                allListings={form.allListings}
-                assignments={form.listingAssignments}
-                onAllListingsChange={(allListings) => onFormChange({ allListings })}
-                onAssignmentsChange={(listingAssignments) => onFormChange({ listingAssignments })}
-              />
             </div>
           </div>
 
@@ -267,13 +272,15 @@ export function OrgInviteMemberDialog({
 
 export function defaultOrgInviteForm(customRoles: CustomOrgRole[] = []): OrgInviteFormState {
   const roleId = defaultOrgInviteTemplateId(customRoles);
+  const role = findOrgRoleById(roleId, customRoles);
+  const listingDefaults = orgRoleListingDefaults(role);
   return {
     email: '',
     contactPhone: '',
     roleId,
     permissions: getOrgRolePermissions(roleId, customRoles),
-    allListings: false,
-    listingAssignments: emptyOrgListingAssignments(),
+    allListings: listingDefaults.allListings,
+    listingAssignments: listingDefaults.listingAssignments,
   };
 }
 

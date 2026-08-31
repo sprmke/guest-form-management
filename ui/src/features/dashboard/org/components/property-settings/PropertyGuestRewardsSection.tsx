@@ -1,23 +1,15 @@
 import { Gift } from 'lucide-react';
 
 import { AdminSection } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
-import type {
-  AppSettingsDto,
-  AppSettingsFormValues,
-} from '@/features/dashboard/bookings/hooks/useAppSettings';
+import type { AppSettingsFormValues } from '@/features/dashboard/bookings/hooks/useAppSettings';
 import { PropertyExternalReviewsBlock } from '@/features/dashboard/org/components/property-settings/PropertyExternalReviewsBlock';
 import { PropertySettingsSectionAlert } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
-import { PropertySuperhostVerificationBlock } from '@/features/dashboard/org/components/property-settings/PropertySuperhostVerificationBlock';
 import { PropertyVoucherSettingsBlock } from '@/features/dashboard/org/components/property-settings/PropertyVoucherSettingsBlock';
-import type {
-  PropertyExternalReview,
-  SuperhostStatus,
-} from '@/features/dashboard/org/lib/propertyExternalReviews';
+import type { PropertyExternalReview } from '@/features/dashboard/org/lib/propertyExternalReviews';
 import type { PropertySettingsSectionId } from '@/features/dashboard/org/lib/propertySettingsCompletion';
 import { propertySettingsSectionBanner } from '@/features/dashboard/org/lib/propertySettingsFieldError';
 
 export function PropertyGuestRewardsSection({
-  data,
   draft,
   disabled,
   resolveFieldError,
@@ -28,7 +20,6 @@ export function PropertyGuestRewardsSection({
   savingReviewId,
   externalReviewsBaseline,
 }: {
-  data: Pick<AppSettingsDto, 'superhostProofImageUrl' | 'superhostStatus' | 'updatedAt'>;
   draft: AppSettingsFormValues;
   externalReviewsBaseline: PropertyExternalReview[];
   disabled?: boolean;
@@ -42,8 +33,6 @@ export function PropertyGuestRewardsSection({
   onSaveReview?: (reviewId: string) => void;
   savingReviewId?: string | null;
 }) {
-  const superhostError = resolveFieldError('property-superhost-verification-url');
-
   return (
     <AdminSection id="guest-rewards" title="Reviews & vouchers" icon={Gift}>
       {propertySettingsSectionBanner('guest-rewards', sectionMessages) ? (
@@ -78,16 +67,6 @@ export function PropertyGuestRewardsSection({
             <p className="text-destructive text-xs">{resolveFieldError('property-vouchers')}</p>
           ) : null}
         </div>
-
-        <PropertySuperhostVerificationBlock
-          verificationUrl={draft.superhostVerificationUrl}
-          proofImageUrl={data.superhostProofImageUrl}
-          status={data.superhostStatus as SuperhostStatus}
-          disabled={disabled}
-          error={superhostError}
-          onVerificationUrlChange={(url) => onChange('superhostVerificationUrl', url)}
-          onInteract={() => markFieldInteracted('property-superhost-verification-url')}
-        />
       </div>
     </AdminSection>
   );

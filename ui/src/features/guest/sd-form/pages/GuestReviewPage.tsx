@@ -166,6 +166,7 @@ function GuestReviewContent({
           isClaiming={isClaiming}
           onClaim={onClaim}
           onContinue={onVoucherDone}
+          continueLabel="Done"
           primaryGuestName={data.primary_guest_name}
           checkInDate={data.check_in_date}
           checkOutDate={data.check_out_date}

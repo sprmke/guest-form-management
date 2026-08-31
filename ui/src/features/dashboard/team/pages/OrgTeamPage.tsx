@@ -22,6 +22,11 @@ import { OrgTeamMembersTab } from '@/features/dashboard/team/components/OrgTeamM
 import { OrgTeamPermissionsTab } from '@/features/dashboard/team/components/OrgTeamPermissionsTab';
 import { OrgTeamStatsCards } from '@/features/dashboard/team/components/OrgTeamStatsCards';
 import { RemoveMemberDialog } from '@/features/dashboard/team/components/RemoveMemberDialog';
+import {
+  emptyOrgListingAssignments,
+  type OrgListingAssignments,
+} from '@/features/dashboard/team/components/OrgListingAssignmentPicker';
+import { orgListingAssignmentsFromPayload } from '@/features/dashboard/team/lib/orgRoleListingScope';
 import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermissions';
 import { useOrgTeam, useOrgTeamMutations } from '@/features/dashboard/team/hooks/useOrgTeam';
 import { hasOrgPermission } from '@/features/dashboard/team/lib/orgPermissions';
@@ -90,9 +95,12 @@ export function OrgTeamPage() {
   const [editingCustomRoleId, setEditingCustomRoleId] = useState<string | null>(null);
   const [customRoleName, setCustomRoleName] = useState('');
   const [customRolePermissions, setCustomRolePermissions] = useState<string[]>([]);
+  const [customRoleAllListings, setCustomRoleAllListings] = useState(false);
+  const [customRoleListingAssignments, setCustomRoleListingAssignments] =
+    useState<OrgListingAssignments>(emptyOrgListingAssignments());
 
   const memberCountByRole = (roleId: string) =>
-    countOrgMembersWithTemplateRole(roleId, members, invitations);
+    countOrgMembersWithTemplateRole(roleId, members, invitations, customRoles);
 
   const openInviteDialog = () => {
     if (!canInviteByPlan) {
@@ -185,6 +193,8 @@ export function OrgTeamPage() {
     setEditingCustomRoleId(null);
     setCustomRoleName('');
     setCustomRolePermissions([]);
+    setCustomRoleAllListings(false);
+    setCustomRoleListingAssignments(emptyOrgListingAssignments());
     setShowCustomRoleDialog(true);
   };
 
@@ -197,6 +207,8 @@ export function OrgTeamPage() {
     setEditingCustomRoleId(role.id);
     setCustomRoleName(role.name);
     setCustomRolePermissions([...role.permissions]);
+    setCustomRoleAllListings(role.allListings ?? false);
+    setCustomRoleListingAssignments(orgListingAssignmentsFromPayload(role.listingAssignments));
     setShowCustomRoleDialog(true);
   };
 
@@ -209,6 +221,8 @@ export function OrgTeamPage() {
     setEditingCustomRoleId(null);
     setCustomRoleName(`${role.name} copy`);
     setCustomRolePermissions([...role.permissions]);
+    setCustomRoleAllListings(role.allListings ?? false);
+    setCustomRoleListingAssignments(orgListingAssignmentsFromPayload(role.listingAssignments));
     setShowCustomRoleDialog(true);
   };
 
@@ -216,14 +230,26 @@ export function OrgTeamPage() {
     const name = customRoleName.trim();
     if (!name || customRolePermissions.length === 0) return;
 
+    const listingPayload = {
+      allListings: customRoleAllListings,
+      listingAssignments: customRoleAllListings
+        ? emptyOrgListingAssignments()
+        : customRoleListingAssignments,
+    };
+
     try {
       if (customRoleFormMode === 'create') {
-        await createCustomRole.mutateAsync({ name, permissions: customRolePermissions });
+        await createCustomRole.mutateAsync({
+          name,
+          permissions: customRolePermissions,
+          ...listingPayload,
+        });
       } else if (editingCustomRoleId) {
         await updateCustomRole.mutateAsync({
           roleId: editingCustomRoleId,
           name,
           permissions: customRolePermissions,
+          ...listingPayload,
         });
       }
       setShowCustomRoleDialog(false);
@@ -242,7 +268,7 @@ export function OrgTeamPage() {
       return;
     }
     try {
-      await deleteCustomRole.mutateAsync(role.id);
+      await deleteCustomRole.mutateAsync({ roleId: role.id, name: role.name });
     } catch {
       /* toast handled in mutation */
     }
@@ -307,7 +333,11 @@ export function OrgTeamPage() {
 
         {showTeamContent ? (
           <>
-            <OrgTeamStatsCards members={members} invitations={invitations} />
+            <OrgTeamStatsCards
+              members={members}
+              invitations={invitations}
+              customRoles={customRoles}
+            />
 
             <div className="space-y-3 sm:space-y-4">
               <SlidingTabs
@@ -365,6 +395,7 @@ export function OrgTeamPage() {
               {selectedTab === 'invitations' ? (
                 <OrgTeamInvitationsTab
                   invitations={invitations}
+                  customRoles={customRoles}
                   onCancel={(id) => void cancelInvitation.mutateAsync(id)}
                   onResend={(id) => void resendInvitation.mutateAsync(id)}
                   onInvite={openInviteDialog}
@@ -426,6 +457,11 @@ export function OrgTeamPage() {
           name={customRoleName}
           permissions={customRolePermissions}
           roles={customRoles}
+          orgSlug={orgSlug ?? ''}
+          allListings={customRoleAllListings}
+          listingAssignments={customRoleListingAssignments}
+          onAllListingsChange={setCustomRoleAllListings}
+          onListingAssignmentsChange={setCustomRoleListingAssignments}
           onOpenChange={setShowCustomRoleDialog}
           onNameChange={setCustomRoleName}
           onTogglePermission={(permissionId) =>

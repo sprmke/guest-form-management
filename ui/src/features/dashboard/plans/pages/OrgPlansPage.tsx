@@ -10,6 +10,7 @@ import {
 } from '@/features/dashboard/help-support/lib/helpSupportPaths';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useOrganizations } from '@/features/dashboard/org/hooks/useOrganizations';
+import { canManageOrgBilling } from '@/features/dashboard/org/lib/orgAccessKind';
 import { orgPlansPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { CurrentPlanSummary } from '@/features/dashboard/plans/components/CurrentPlanSummary';
 import { PlanBillingPanel } from '@/features/dashboard/plans/components/PlanBillingPanel';
@@ -33,7 +34,9 @@ import {
   planTabSectionTitleClass,
   resolveEffectiveCurrentPlan,
   resolveEffectiveCurrentPlanId,
+  resolveDowngradeBlockedReason,
   resolveMinimumPlanForFeature,
+  isPlanDowngrade,
 } from '@/features/dashboard/plans/lib/planPresentation';
 
 import { FloatingPanel } from '@/components/mobile/FloatingPanel';
@@ -112,6 +115,8 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
     [plans, effectiveCurrentPlanId]
   );
 
+  const canManageBilling = canManageOrgBilling(org?.accessKind);
+
   useEffect(() => {
     setPendingPlanId(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -122,6 +127,15 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
     [plans, pendingPlanId, currentPlan]
   );
 
+  const downgradeBlockedReason = useMemo(() => {
+    if (!selectedPlan || !isPlanDowngrade(currentPlan, selectedPlan)) return null;
+    return resolveDowngradeBlockedReason({
+      subscriptionStatus: subscription?.status,
+      currentPlanCode: currentPlan?.code,
+      targetPlan: selectedPlan,
+    });
+  }, [selectedPlan, currentPlan, subscription?.status]);
+
   const tiers = useMemo(
     () => buildPlanTiers(plans, effectiveCurrentPlanId),
     [plans, effectiveCurrentPlanId]
@@ -129,6 +143,7 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
   const hasPlans = plans.length > 0;
 
   const handleSelectPlan = (plan: OrgBundlePlanDto) => {
+    if (!canManageBilling) return;
     if (isManagedSalesPlan(plan.code) && helpSupportBase) {
       navigate(
         helpSupportNewTicketPath(helpSupportBase, { subject: MANAGED_PLAN_INQUIRY_SUBJECT })
@@ -159,7 +174,12 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
     }
 
     /** Property → org payment handoff uses `?tab=billing` only (no review modal). */
-    if (!isPropertyMirror && targetPlanId && plans.some((plan) => plan.id === targetPlanId)) {
+    if (
+      !isPropertyMirror &&
+      canManageBilling &&
+      targetPlanId &&
+      plans.some((plan) => plan.id === targetPlanId)
+    ) {
       setActiveTab('plans');
       setPendingPlanId(targetPlanId);
       setReviewOpen(true);
@@ -168,7 +188,7 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
     if (tab || reviewPlanId || featureParam) {
       setSearchParams({}, { replace: true });
     }
-  }, [plans, searchParams, setSearchParams, isPropertyMirror]);
+  }, [plans, searchParams, setSearchParams, isPropertyMirror, canManageBilling]);
 
   const isBootstrapping = orgsLoading || (Boolean(org?.id) && isLoading && !data);
 
@@ -221,7 +241,7 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
             <CurrentPlanSummary
               plan={currentPlan}
               subscription={subscription}
-              canManage
+              canManage={canManageBilling}
               pendingCheckoutUrl={data?.pendingCheckoutUrl}
               upgradePlan={upgradeTarget}
               onUpgrade={handleSelectPlan}
@@ -285,7 +305,7 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
                 <PlanTierRail
                   tiers={tiers}
                   hasCurrentPlan={Boolean(effectiveCurrentPlanId)}
-                  canSelect
+                  canSelect={canManageBilling}
                   onSelectPlan={handleSelectPlan}
                 />
               </section>
@@ -300,7 +320,7 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
                 <PlanFeatureMatrix
                   tiers={tiers}
                   hasCurrentPlan={Boolean(effectiveCurrentPlanId)}
-                  canSelect
+                  canSelect={canManageBilling}
                   onSelectPlan={handleSelectPlan}
                   className="border-border/80 shadow-sm"
                 />
@@ -318,6 +338,7 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
         currentPlan={currentPlan}
         propertyCount={propertyCount}
         subscription={subscription}
+        downgradeBlockedReason={downgradeBlockedReason}
         onOpenChange={setReviewOpen}
         onConfirmDowngrade={async (planId) => {
           if (!org?.id) return;

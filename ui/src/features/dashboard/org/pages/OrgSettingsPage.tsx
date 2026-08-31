@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useNavigate, useParams } from 'react-router-dom';
 
-import { AlertTriangle, Info, Save, Share2, Sparkles } from 'lucide-react';
+import { AlertTriangle, Info, Save, Share2, Shield, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 import {
@@ -18,6 +18,7 @@ import {
   OrgBasicInformationSection,
   OrgSocialsBrandingSection,
 } from '@/features/dashboard/org/components/org-settings/OrgProfileSettingsSections';
+import { OrgSuperhostProgressSection } from '@/features/dashboard/org/components/org-settings/OrgSuperhostProgressSection';
 import { OrgSettingsBrandColorPreview } from '@/features/dashboard/org/components/org-settings/OrgSettingsBrandColorPreview';
 import { useCheckOrganizationName } from '@/features/dashboard/org/hooks/useCheckOrganizationName';
 import { useDeleteOrganization } from '@/features/dashboard/org/hooks/useDeleteOrganization';
@@ -53,10 +54,12 @@ import { AppSettingsNavLayoutSkeleton } from '@/components/skeletons/AdminSkelet
 import { Button } from '@/components/ui/button';
 import { resolveNameAvailabilityState } from '@/lib/availabilityCheckState';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
+import { usePageTitle } from '@/lib/pageTitle';
 
 const SETTINGS_SECTIONS: AdminSectionNavItem[] = [
   { id: 'basic', label: 'Basic information', icon: Info },
   { id: 'branding', label: 'Socials', icon: Share2 },
+  { id: 'trust', label: 'Trust', icon: Shield },
   { id: 'ai', label: 'AI usage', icon: Sparkles },
   { id: 'ai-assistant', label: 'AI assistant', icon: Sparkles },
   { id: 'danger', label: 'Danger zone', icon: AlertTriangle },
@@ -78,6 +81,8 @@ export function OrgSettingsPage() {
   const deleteOrganization = useDeleteOrganization();
 
   const org = data?.organizations.find((entry) => entry.slug === orgSlug);
+
+  usePageTitle(org ? `${org.name} - Settings` : undefined);
 
   const [profileBaseline, setProfileBaseline] = useState<OrgSettingsDraft | null>(null);
   const [operatorBaseline, setOperatorBaseline] = useState<OrgOperatorSettingsFormValues | null>(
@@ -401,6 +406,8 @@ export function OrgSettingsPage() {
               markFieldInteracted={markFieldInteracted}
               onOperatorChange={setOperatorField}
             />
+
+            <OrgSuperhostProgressSection />
 
             <OrgAiPlatformSection />
 

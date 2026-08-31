@@ -1,6 +1,11 @@
 import { useEffect } from 'react';
 
-export const APP_TITLE = 'Kame Homes';
+export {
+  APP_TITLE,
+  PLATFORM_APP_NAME,
+  appPageTitle,
+  publicPageTitle,
+} from '@/lib/platformBranding';
 
 /**
  * Sets `document.title` when the page renders.
@@ -14,24 +19,14 @@ export function usePageTitle(title: string | undefined) {
   }, [title]);
 }
 
-/** Build a page title for a public marketing page. */
-export function publicPageTitle(pageName: string): string {
-  return `${APP_TITLE} - ${pageName}`;
+/** Build a page title for an org-level dashboard page. */
+export function orgPageTitle(orgName: string, pageName: string): string {
+  return `${orgName} - ${pageName}`;
 }
 
 /** Build a page title for a public property-scoped page. */
 export function propertyPublicPageTitle(propertyName: string, pageName: string): string {
   return `${propertyName} - ${pageName}`;
-}
-
-/** Build a page title for an app-level dashboard page. */
-export function appPageTitle(pageName: string): string {
-  return `${APP_TITLE} - ${pageName}`;
-}
-
-/** Build a page title for an org-level dashboard page. */
-export function orgPageTitle(orgName: string, pageName: string): string {
-  return `${orgName} - ${pageName}`;
 }
 
 /** Build a page title for a property-level dashboard page. */

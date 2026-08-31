@@ -16,3 +16,8 @@ export function canCreatePropertiesInOrg(accessKind: OrgAccessKind | undefined):
 export function canCreateParkingsInOrg(accessKind: OrgAccessKind | undefined): boolean {
   return accessKind === 'owner' || accessKind === 'platform_admin';
 }
+
+/** Org owner (or platform admin) may start checkout or confirm a downgrade. */
+export function canManageOrgBilling(accessKind: OrgAccessKind | undefined): boolean {
+  return accessKind === 'owner' || accessKind === 'platform_admin';
+}
