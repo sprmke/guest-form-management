@@ -89,10 +89,11 @@ export type VerificationChecklistItem = {
 };
 
 /** Host Tier 1 checklist rows backed by an uploaded file (submitted-docs list + count). */
-const HOST_TIER_DOCUMENT_ITEM_IDS = new Set(['valid-id', 'facebook-page']);
+const HOST_TIER_DOCUMENT_ITEM_IDS = new Set(['valid-id']);
 
 /** Recommended Tier 2 checklist rows backed by an uploaded file. */
 const RECOMMENDED_TIER_DOCUMENT_ITEM_IDS = new Set([
+  'facebook-page',
   'selfie',
   'platform-admin',
   'legitimacy-check',
@@ -281,11 +282,6 @@ export function buildHostTierChecklist(detail: OrgVerificationDetail): Verificat
       label: 'Valid ID',
       complete: Boolean(detail.assets.validIdPath),
     },
-    {
-      id: 'facebook-page',
-      label: 'Facebook Page screenshot',
-      complete: Boolean(detail.assets.socialProofPath),
-    },
   ];
 }
 
@@ -293,6 +289,11 @@ export function buildVerifiedTierChecklist(
   detail: OrgVerificationDetail
 ): VerificationChecklistItem[] {
   return [
+    {
+      id: 'facebook-page',
+      label: 'Facebook Page screenshot',
+      complete: Boolean(detail.assets.socialProofPath),
+    },
     {
       id: 'selfie',
       label: VERIFICATION_TIER2_DOC_LABELS.selfie,
@@ -404,6 +405,7 @@ export function isHostVerificationChangesRequested(
 export function canSubmitVerifiedTier(
   detail: OrgVerificationDetail,
   slots: {
+    socialProof: boolean;
     selfie: boolean;
     platformAdmin: boolean;
     platformAdminPlatform: OrgSocialProofPlatform | '';
@@ -412,16 +414,17 @@ export function canSubmitVerifiedTier(
   if (detail.enhancedStatus === 'approved' || detail.enhancedStatus === 'pending') {
     return false;
   }
-  return slots.selfie && slots.platformAdmin && Boolean(slots.platformAdminPlatform);
+  return (
+    slots.socialProof && slots.selfie && slots.platformAdmin && Boolean(slots.platformAdminPlatform)
+  );
 }
 
-/** Client-side gate for Tier 1 — host identity only (mirrors server `canSubmitBaseVerification`). */
+/** Client-side gate for Tier 1 — Valid ID only (mirrors server `canSubmitBaseVerification`). */
 export function canSubmitHostTier(
   detail: OrgVerificationDetail,
   _hostModes: string[],
   slots: {
     validId: boolean;
-    socialProof: boolean;
   },
   options?: { changesRequestedDocs?: OrgVerificationChangeDocId[] | null }
 ): boolean {
@@ -436,9 +439,8 @@ export function canSubmitHostTier(
 
   if (docs.length > 0) {
     if (docs.includes('validId') && !slots.validId) return false;
-    if (docs.includes('socialProof') && !slots.socialProof) return false;
     return true;
   }
 
-  return Boolean(slots.validId && slots.socialProof);
+  return Boolean(slots.validId);
 }

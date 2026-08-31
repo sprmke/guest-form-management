@@ -91,11 +91,11 @@ serveAuthenticated('submit-listing-authorization', async (req) => {
     }
   } else if (!canSubmitBaseListingAuthorization(state)) {
     const missing: string[] = [];
-    if (!state.assets.proofPath) missing.push('proof of ownership or authorization');
+    if (!state.relationship) missing.push('user role');
     if (listingRightsNeedContractEnd(state) && !state.contractEndDate) {
       missing.push('contract end date');
     }
-    return jsonError(req, `Required: ${missing.join(', ')}`);
+    return jsonError(req, `Required: ${missing.join(', ') || 'listing rights'}`);
   }
 
   state = {

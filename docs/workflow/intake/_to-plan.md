@@ -2,7 +2,7 @@
 title: 'Claude To Plan'
 status: archived
 tags: [planning]
-updated: 2026-08-26
+updated: 2026-08-31
 ---
 
 **Status legend:** ❌ cancelled / won't do · ✅ done · 📋 planned (plan doc written) · 🚧 in progress · 🔵 pending / open
@@ -514,6 +514,14 @@ Example:
 - Use AI to help managing finance, analyze big expenses, how to fix and suggest financial strats, etc
 
 → **Plan / backlog:** [`../planned/ai-opportunities-roadmap.md`](../planned/ai-opportunities-roadmap.md)
+
+===
+
+🚧 Onboarding verification simplify
+
+Step 2 Property Rights (Parking Rights when parking-only) from existing verification-rights values. Step 3 Valid ID only. Facebook Page and listing ownership proof move to Recommended. Listing go-live stays on listing base (rights only).
+
+→ **In progress:** [`../in-progress/onboarding-verification-simplify.md`](../in-progress/onboarding-verification-simplify.md) · spec: [`onboarding-verification-simplify-design.md`](./onboarding-verification-simplify-design.md)
 
 ===
 

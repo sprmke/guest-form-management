@@ -9,6 +9,7 @@ import {
   type VerificationSectionKind,
 } from '@/features/dashboard/org/lib/orgVerification';
 
+import { FieldLabel } from '@/components/forms/FieldLabel';
 import { DatePicker } from '@/components/ui/date-picker';
 import {
   Select,
@@ -34,6 +35,10 @@ type Props = {
   contractEndDate: string;
   onContractEndDateChange: (value: string) => void;
   contractEndDateError: string | null;
+  /** Override the rights field label (defaults to Property Rights / Parking Rights). */
+  roleLabel?: string;
+  rolePlaceholder?: string;
+  hideRoleHelp?: boolean;
 };
 
 export function OnboardingVerificationRightsFields({
@@ -45,22 +50,28 @@ export function OnboardingVerificationRightsFields({
   contractEndDate,
   onContractEndDateChange,
   contractEndDateError,
+  roleLabel,
+  rolePlaceholder,
+  hideRoleHelp = false,
 }: Props) {
   const showContractEnd = verificationRightsNeedsContractEnd(rights);
   const minContractEndDate = stringToDate(getManilaYmdToday());
-  const rightsLabel = verificationRightsFieldLabel(kind);
-  const rightsHelp = verificationRightsFieldHelp(kind);
-  const rightsPlaceholder = verificationRightsSelectPlaceholder(kind);
+  const rightsLabel = roleLabel ?? verificationRightsFieldLabel(kind);
+  const rightsPlaceholder = rolePlaceholder ?? verificationRightsSelectPlaceholder(kind);
 
   return (
     <>
       <div className="space-y-2">
-        <VerificationFieldLabel
-          htmlFor={`${idPrefix}-rights`}
-          label={rightsLabel}
-          help={rightsHelp}
-          required
-        />
+        {hideRoleHelp ? (
+          <FieldLabel htmlFor={`${idPrefix}-rights`} label={rightsLabel} required />
+        ) : (
+          <VerificationFieldLabel
+            htmlFor={`${idPrefix}-rights`}
+            label={rightsLabel}
+            help={verificationRightsFieldHelp(kind)}
+            required
+          />
+        )}
         <Select
           value={rights || undefined}
           onValueChange={(value) => onRightsChange(value as OrgVerificationRights)}

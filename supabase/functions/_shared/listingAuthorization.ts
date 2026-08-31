@@ -298,24 +298,28 @@ export function listingRightsNeedContractEnd(state: ListingAuthorizationState): 
   return verificationRightsNeedsContractEnd(state.relationship);
 }
 
-/** Tier 1 — rights (+ contract end when applicable) and the primary proof. */
+/** Tier 1 — rights (+ contract end when applicable). Primary proof is Recommended. */
 export function canSubmitBaseListingAuthorization(state: ListingAuthorizationState): boolean {
   if (state.baseStatus === 'pending') return false;
   if (isListingAuthorizationHardRejected(state)) return false;
-  if (!state.assets.proofPath) return false;
   return rightsReady(state.relationship, state.contractEndDate);
 }
 
 /**
  * Tier 2 — independent of org tiers, but requires this listing's Tier 1 to be approved
- * so a Recommended badge never outranks unverified authorization.
+ * so a Recommended badge never outranks unverified authorization. Primary ownership /
+ * parking proof lives here with additional proof and Azure PMO.
  */
 export function canSubmitRecommendedListingAuthorization(
   state: ListingAuthorizationState
 ): boolean {
   if (state.baseStatus !== 'approved') return false;
   if (state.recommendedStatus === 'approved' || state.recommendedStatus === 'pending') return false;
-  return Boolean(state.assets.additionalProofPath && state.assets.azurePmoConfirmationPath);
+  return Boolean(
+    state.assets.proofPath &&
+    state.assets.additionalProofPath &&
+    state.assets.azurePmoConfirmationPath
+  );
 }
 
 /** Public per-listing Recommended badge. */
@@ -342,13 +346,14 @@ export function isListingRenewEligible(
   return phase === 'pre_expiry' || phase === 'grace' || phase === 'locked';
 }
 
-/** Renewal submit — same doc requirements as Tier 1 base. */
+/** Renewal submit — rights plus a proof file (proof is not required for first-time base). */
 export function canSubmitListingRenewal(
   state: ListingAuthorizationState,
   todayYmd: string = manilaTodayYmd()
 ): boolean {
   if (!isListingRenewEligible(state, todayYmd)) return false;
-  return canSubmitBaseListingAuthorization(state);
+  if (!state.assets.proofPath) return false;
+  return rightsReady(state.relationship, state.contractEndDate);
 }
 
 export function isListingAuthorizationHardRejected(state: ListingAuthorizationState): boolean {

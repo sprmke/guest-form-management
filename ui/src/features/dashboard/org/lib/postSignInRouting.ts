@@ -98,7 +98,11 @@ export async function resolvePostSignInPath(redirectPath: string): Promise<strin
     return '/onboarding';
   }
 
-  if (redirectPath === '/org' || redirectPath === HOST_VERIFICATION_REJECTED_PATH) {
+  if (
+    redirectPath === '/org' ||
+    redirectPath === '/onboarding' ||
+    redirectPath === HOST_VERIFICATION_REJECTED_PATH
+  ) {
     return resolveOrgLandingPath(organizations);
   }
 

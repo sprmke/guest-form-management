@@ -20,6 +20,7 @@ import {
 } from '@/features/dashboard/org/lib/contractLifecycle';
 import {
   canSubmitBaseListingAuthorization,
+  canSubmitListingRenewal,
   canSubmitRecommendedListingAuthorization,
   isListingAuthorizationChangesRequested,
   isListingAuthorizationHardRejected,
@@ -233,8 +234,9 @@ export function ListingVerificationModal({
     [remoteAuthorization, rights, contractEndDate]
   );
 
-  const canSubmitBase =
-    canSubmitBaseListingAuthorization(draftState) && !contractEndError && Boolean(rights);
+  const canSubmitBase = renewMode
+    ? canSubmitListingRenewal(draftState) && !contractEndError && Boolean(rights)
+    : canSubmitBaseListingAuthorization(draftState) && !contractEndError && Boolean(rights);
   const canSubmitRecommended =
     canSubmitRecommendedListingAuthorization(remoteAuthorization) && baseApproved;
 
@@ -350,18 +352,20 @@ export function ListingVerificationModal({
         onContractEndDateChange={setContractEndDate}
         contractEndDateError={contractEndError}
       />
-      <OnboardingProofUpload
-        id={`${listingKind}-verification-proof`}
-        label={LISTING_VERIFICATION_DOC_LABELS.proof}
-        help={verificationRightsProofHelp(rights || '', sectionKind)}
-        file={null}
-        previewUrl={previewFor('proof', assetUrls?.proofUrl)}
-        uploading={upload.isPending}
-        error={baseTouched && !draftState.assets.proofPath ? 'Required' : null}
-        onFileChange={(file) => {
-          if (file) void handleUpload('proof', file);
-        }}
-      />
+      {renewMode ? (
+        <OnboardingProofUpload
+          id={`${listingKind}-verification-proof`}
+          label={LISTING_VERIFICATION_DOC_LABELS.proof}
+          help={verificationRightsProofHelp(rights || '', sectionKind)}
+          file={null}
+          previewUrl={previewFor('proof', assetUrls?.proofUrl)}
+          uploading={upload.isPending}
+          error={baseTouched && !draftState.assets.proofPath ? 'Required' : null}
+          onFileChange={(file) => {
+            if (file) void handleUpload('proof', file);
+          }}
+        />
+      ) : null}
     </div>
   ) : isListingAuthorizationHardRejected(remoteAuthorization) ? (
     <p className="text-muted-foreground text-sm leading-relaxed">
@@ -444,6 +448,21 @@ export function ListingVerificationModal({
           <h4 className="text-foreground text-xs font-semibold">Docs required</h4>
         </div>
         <div className="space-y-4 p-4">
+          <OnboardingProofUpload
+            id={`${listingKind}-recommended-proof`}
+            label={LISTING_VERIFICATION_DOC_LABELS.proof}
+            help={verificationRightsProofHelp(
+              rights || remoteAuthorization.relationship || '',
+              sectionKind
+            )}
+            file={null}
+            previewUrl={previewFor('proof', assetUrls?.proofUrl)}
+            uploading={upload.isPending}
+            error={recommendedTouched && !remoteAuthorization.assets.proofPath ? 'Required' : null}
+            onFileChange={(file) => {
+              if (file) void handleUpload('proof', file);
+            }}
+          />
           <OnboardingProofUpload
             id={`${listingKind}-recommended-additional-proof`}
             label={LISTING_VERIFICATION_DOC_LABELS.additionalProof}

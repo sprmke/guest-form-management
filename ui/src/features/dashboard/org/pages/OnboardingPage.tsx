@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 
 import { Navigate, useNavigate } from 'react-router-dom';
 
@@ -10,16 +10,14 @@ import { hostLoginPath } from '@/features/guest/auth/lib/hostAuthPaths';
 import { RequireAdmin } from '@/features/dashboard/bookings/components/RequireAdmin';
 import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
 import { OnboardingFeatureShowcase } from '@/features/dashboard/org/components/onboarding/OnboardingFeatureShowcase';
-import { OnboardingHostAccessVerificationSection } from '@/features/dashboard/org/components/onboarding/OnboardingHostAccessVerificationSection';
 import { OnboardingHostVerificationSection } from '@/features/dashboard/org/components/onboarding/OnboardingHostVerificationSection';
-import { OnboardingParkingVerificationSection } from '@/features/dashboard/org/components/onboarding/OnboardingParkingVerificationSection';
 import {
   OnboardingProfileHeader,
   readGoogleAvatarUrl,
 } from '@/features/dashboard/org/components/onboarding/OnboardingProfileHeader';
-import { OnboardingProofUpload } from '@/features/dashboard/org/components/onboarding/OnboardingProofUpload';
 import { OnboardingStepHeader } from '@/features/dashboard/org/components/onboarding/OnboardingStepHeader';
 import { OnboardingTrustNotice } from '@/features/dashboard/org/components/onboarding/OnboardingTrustNotice';
+import { OnboardingVerificationRightsFields } from '@/features/dashboard/org/components/onboarding/OnboardingVerificationRightsFields';
 import { VerificationFieldLabel } from '@/features/dashboard/org/components/onboarding/VerificationFieldLabel';
 import { RequiredMark } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import { TowerUnitConflictAlert } from '@/features/dashboard/org/components/TowerUnitConflictAlert';
@@ -32,19 +30,16 @@ import {
 import { useParkingSlotConflict } from '@/features/dashboard/org/hooks/useParkingSlotConflict';
 import { useTowerUnitConflict } from '@/features/dashboard/org/hooks/useTowerUnitConflict';
 import { callEdgeFunction, getSessionJwt } from '@/features/dashboard/org/lib/edgeClient';
-import {
-  submitListingAuthorization,
-  uploadListingAuthorizationAsset,
-} from '@/features/dashboard/org/lib/listingAuthorizationApi';
+import { submitListingAuthorization } from '@/features/dashboard/org/lib/listingAuthorizationApi';
 import {
   HOST_VERIFICATION_REJECTED_PATH,
   resolveOrgLandingPath,
+  userOwnsOrganization,
 } from '@/features/dashboard/org/lib/orgLanding';
+import type { Organization } from '@/features/dashboard/org/types';
 import { DUPLICATE_ORGANIZATION_NAME_MESSAGE } from '@/features/dashboard/org/lib/orgSettingsValidation';
 import {
-  type OrgSocialProofPlatform,
   type OrgVerificationRights,
-  type VerificationSectionKind,
   verificationRightsNeedsContractEnd,
   validateVerificationContractEndDate,
   validateVerificationFile,
@@ -113,6 +108,16 @@ import { getManilaYmdToday } from '@/utils/format/dates';
 
 type OnboardingStep = 1 | 2 | 3;
 
+type CreatedOnboardingTenant = {
+  organization: { id: string; slug: string };
+  property: { id: string; slug: string } | null;
+  parking: { id: string; slug: string } | null;
+};
+
+function isAlreadyOwnOrganizationError(message: string): boolean {
+  return /already own an organization/i.test(message);
+}
+
 function orgContactNameError(value: string): string | null {
   if (!value.trim()) return 'Enter your full name';
   return validateFullPersonName(value);
@@ -124,16 +129,6 @@ function orgContactPhoneError(value: string): string | null {
 }
 
 export type HostModeChoice = 'property' | 'parking';
-
-function verificationRightsError(
-  value: OrgVerificationRights | '',
-  kind: VerificationSectionKind
-): string | null {
-  if (!value) {
-    return kind === 'parking' ? 'Select parking rights' : 'Select property rights';
-  }
-  return null;
-}
 
 function handleVerificationRightsChange(
   value: OrgVerificationRights,
@@ -213,23 +208,14 @@ export function OnboardingPage() {
   const [hostProperty, setHostProperty] = useState(false);
   const [hostParking, setHostParking] = useState(false);
 
+  const [userRole, setUserRole] = useState<OrgVerificationRights | ''>('');
+  const [userRoleTouched, setUserRoleTouched] = useState(false);
+  const [userContractEndDate, setUserContractEndDate] = useState('');
   const [validIdFile, setValidIdFile] = useState<File | null>(null);
   const [validIdPreview, setValidIdPreview] = useState<string | null>(null);
-  const [socialProofFile, setSocialProofFile] = useState<File | null>(null);
-  const [socialProofPreview, setSocialProofPreview] = useState<string | null>(null);
-  const [propertyOwnershipProofFile, setPropertyOwnershipProofFile] = useState<File | null>(null);
-  const [propertyOwnershipProofPreview, setPropertyOwnershipProofPreview] = useState<string | null>(
-    null
-  );
-  const [socialPlatform, setSocialPlatform] = useState<OrgSocialProofPlatform | ''>('facebook');
-  const [propertyRights, setPropertyRights] = useState<OrgVerificationRights | ''>('');
-  const [propertyContractEndDate, setPropertyContractEndDate] = useState('');
-  const [parkingSocialProofFile, setParkingSocialProofFile] = useState<File | null>(null);
-  const [parkingSocialProofPreview, setParkingSocialProofPreview] = useState<string | null>(null);
-  const [parkingRights, setParkingRights] = useState<OrgVerificationRights | ''>('');
-  const [parkingContractEndDate, setParkingContractEndDate] = useState('');
   const [verificationTouched, setVerificationTouched] = useState(false);
   const [verificationFormOpen, setVerificationFormOpen] = useState(false);
+  const createdTenantRef = useRef<CreatedOnboardingTenant | null>(null);
 
   const [propertyName, setPropertyName] = useState('');
   const [tower, setTower] = useState<PropertyTower>(DEFAULT_PROPERTY_TOWER);
@@ -342,6 +328,10 @@ export function OnboardingPage() {
     hasConflict: parkingSlotDuplicate,
   });
 
+  const userContractEndError = verificationRightsNeedsContractEnd(userRole)
+    ? validateVerificationContractEndDate(userContractEndDate)
+    : null;
+  const userRoleReady = Boolean(userRole) && !userContractEndError;
   const canAdvanceStep2 =
     hostModeReady &&
     propertyReady &&
@@ -349,27 +339,11 @@ export function OnboardingPage() {
     parkingSlotReady &&
     !parkingSlotDuplicate &&
     !propertyNameChecking &&
-    !towerUnitChecking;
+    !towerUnitChecking &&
+    userRoleReady;
 
-  const propertyContractEndError =
-    verificationTouched && verificationRightsNeedsContractEnd(propertyRights)
-      ? validateVerificationContractEndDate(propertyContractEndDate)
-      : null;
-  const propertyListingReady =
-    !showPropertyBlock ||
-    (Boolean(propertyOwnershipProofFile && propertyRights) &&
-      (!verificationRightsNeedsContractEnd(propertyRights) || !propertyContractEndError));
-  const parkingContractEndError =
-    verificationTouched && verificationRightsNeedsContractEnd(parkingRights)
-      ? validateVerificationContractEndDate(parkingContractEndDate)
-      : null;
-  const parkingListingReady =
-    !showParkingBlock ||
-    (Boolean(parkingSocialProofFile && parkingRights) &&
-      (!verificationRightsNeedsContractEnd(parkingRights) || !parkingContractEndError));
-  /** Host Tier 1 always needs Valid ID + Facebook Page screenshot (org scope). */
-  const hostVerificationReady = Boolean(validIdFile && socialProofFile);
-  const verificationReady = hostVerificationReady && propertyListingReady && parkingListingReady;
+  const hostVerificationReady = Boolean(validIdFile);
+  const verificationReady = hostVerificationReady;
 
   const canAdvance =
     (step === 1 && orgNameReady && orgContactReady && !orgNameUnavailable && !orgNameChecking) ||
@@ -397,6 +371,7 @@ export function OnboardingPage() {
       if (!canAdvance) return;
     }
     if (step === 2) {
+      setUserRoleTouched(true);
       if (showPropertyBlock) setUnitTouched(true);
       if (!canAdvanceStep2) return;
     }
@@ -430,30 +405,10 @@ export function OnboardingPage() {
   };
 
   const submitOnboarding = async () => {
-    if (!orgNameReady || !orgContactReady || !hostModeReady || !verificationReady) return;
+    if (!orgNameReady || !orgContactReady || !hostModeReady || !userRoleReady || !verificationReady)
+      return;
     if (validIdFile) {
       const err = validateVerificationFile(validIdFile);
-      if (err) {
-        setError(err);
-        return;
-      }
-    }
-    if (socialProofFile) {
-      const err = validateVerificationFile(socialProofFile);
-      if (err) {
-        setError(err);
-        return;
-      }
-    }
-    if (propertyOwnershipProofFile) {
-      const err = validateVerificationFile(propertyOwnershipProofFile);
-      if (err) {
-        setError(err);
-        return;
-      }
-    }
-    if (parkingSocialProofFile) {
-      const err = validateVerificationFile(parkingSocialProofFile);
       if (err) {
         setError(err);
         return;
@@ -467,12 +422,10 @@ export function OnboardingPage() {
       ...(hostParking ? (['parking'] as const) : []),
     ];
 
-    const contactRole = showPropertyBlock ? propertyRights : parkingRights;
-
     const body: Record<string, unknown> = {
       name: orgName.trim(),
       contactName: contactName.trim(),
-      contactRole,
+      contactRole: userRole,
       contactPhone: contactPhone.trim(),
       hostModes,
       residenceName: DEFAULT_RESIDENCE_NAME,
@@ -496,18 +449,36 @@ export function OnboardingPage() {
     }
 
     try {
-      const data = await callEdgeFunction<{
-        organization: { id: string; slug: string };
-        property: { id: string; slug: string } | null;
-        parking: { id: string; slug: string } | null;
-      }>('create-organization', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      });
+      let data = createdTenantRef.current;
+      if (!data) {
+        try {
+          data = await callEdgeFunction<CreatedOnboardingTenant>('create-organization', {
+            method: 'POST',
+            body: JSON.stringify(body),
+          });
+        } catch (createErr) {
+          const createMessage = createErr instanceof Error ? createErr.message : '';
+          if (isAlreadyOwnOrganizationError(createMessage)) {
+            await queryClient.invalidateQueries({ queryKey: ORGANIZATIONS_QUERY_KEY });
+            const fresh = await queryClient.fetchQuery({
+              queryKey: ORGANIZATIONS_QUERY_KEY,
+              queryFn: () =>
+                callEdgeFunction<{ organizations: Organization[] }>('list-organizations'),
+            });
+            const landing = resolveOrgLandingPath(fresh.organizations ?? []);
+            if (landing !== '/onboarding') {
+              navigate(landing, { replace: true });
+              return;
+            }
+          }
+          throw createErr;
+        }
+        createdTenantRef.current = data;
+        await queryClient.invalidateQueries({ queryKey: ORGANIZATIONS_QUERY_KEY });
+      }
 
       // Host Tier 1 — identity only (org scope).
       await uploadVerificationAsset(data.organization.id, 'valid_id', validIdFile!);
-      await uploadVerificationAsset(data.organization.id, 'social_proof', socialProofFile!);
       await callEdgeFunction('submit-org-verification', {
         method: 'POST',
         body: JSON.stringify({
@@ -516,38 +487,26 @@ export function OnboardingPage() {
         }),
       });
 
-      // Listing Tier 1 — authority per created property/parking (listing scope).
-      if (showPropertyBlock && data.property?.id && propertyOwnershipProofFile && propertyRights) {
-        await uploadListingAuthorizationAsset({
-          listingKind: 'property',
-          listingId: data.property.id,
-          assetType: 'proof',
-          file: propertyOwnershipProofFile,
-        });
+      const listingContractEnd = verificationRightsNeedsContractEnd(userRole)
+        ? { contractEndDate: userContractEndDate }
+        : {};
+
+      // Listing Tier 1 — relationship per created property/parking (no proof file).
+      if (showPropertyBlock && data.property?.id && userRole) {
         await submitListingAuthorization({
           listingKind: 'property',
           listingId: data.property.id,
-          relationship: propertyRights,
-          ...(verificationRightsNeedsContractEnd(propertyRights)
-            ? { contractEndDate: propertyContractEndDate }
-            : {}),
+          relationship: userRole,
+          ...listingContractEnd,
         });
       }
 
-      if (showParkingBlock && data.parking?.id && parkingSocialProofFile && parkingRights) {
-        await uploadListingAuthorizationAsset({
-          listingKind: 'parking',
-          listingId: data.parking.id,
-          assetType: 'proof',
-          file: parkingSocialProofFile,
-        });
+      if (showParkingBlock && data.parking?.id && userRole) {
         await submitListingAuthorization({
           listingKind: 'parking',
           listingId: data.parking.id,
-          relationship: parkingRights,
-          ...(verificationRightsNeedsContractEnd(parkingRights)
-            ? { contractEndDate: parkingContractEndDate }
-            : {}),
+          relationship: userRole,
+          ...listingContractEnd,
         });
       }
 
@@ -579,6 +538,32 @@ export function OnboardingPage() {
   };
 
   const submitLabel = step === 3 ? 'Finish setup' : 'Continue';
+  const rightsKind = showParkingBlock && !showPropertyBlock ? 'parking' : 'property';
+  const rightsFields = (
+    <OnboardingVerificationRightsFields
+      idPrefix={rightsKind === 'parking' ? 'parking-rights' : 'property-rights'}
+      kind={rightsKind}
+      hideRoleHelp
+      rights={userRole}
+      onRightsChange={(value) =>
+        handleVerificationRightsChange(value, setUserRole, setUserContractEndDate)
+      }
+      rightsError={
+        userRoleTouched && !userRole
+          ? rightsKind === 'parking'
+            ? 'Select parking rights'
+            : 'Select property rights'
+          : null
+      }
+      contractEndDate={userContractEndDate}
+      onContractEndDateChange={setUserContractEndDate}
+      contractEndDateError={
+        userRoleTouched && verificationRightsNeedsContractEnd(userRole)
+          ? userContractEndError
+          : null
+      }
+    />
+  );
 
   const existingOrgs = orgsData?.organizations ?? [];
   if (orgsLoading) {
@@ -589,8 +574,12 @@ export function OnboardingPage() {
     );
   }
   // Stay when no usable org (none, plan-limited-only, or hard-rejected-only).
+  // Owned orgs are detected here (and at login) — never wait until Finish setup.
   const landing = resolveOrgLandingPath(existingOrgs);
-  if (landing !== '/onboarding' && landing !== HOST_VERIFICATION_REJECTED_PATH) {
+  if (
+    userOwnsOrganization(existingOrgs) ||
+    (landing !== '/onboarding' && landing !== HOST_VERIFICATION_REJECTED_PATH)
+  ) {
     return (
       <RequireAdmin>
         <Navigate to={landing} replace />
@@ -860,6 +849,7 @@ export function OnboardingPage() {
                               </p>
                             ) : null}
                           </div>
+                          {rightsFields}
                         </div>
                       ) : null}
 
@@ -975,6 +965,7 @@ export function OnboardingPage() {
                               />
                             </div>
                           </div>
+                          {!showPropertyBlock ? rightsFields : null}
                         </div>
                       ) : null}
                     </div>
@@ -1006,110 +997,6 @@ export function OnboardingPage() {
                             }}
                             onUploadError={setError}
                           />
-                          {!showPropertyBlock ? (
-                            <OnboardingProofUpload
-                              id="host-facebook-page"
-                              label="Facebook Page screenshot"
-                              file={socialProofFile}
-                              previewUrl={socialProofPreview}
-                              error={verificationTouched && !socialProofFile ? 'Required' : null}
-                              onFileChange={(file, preview) => {
-                                if (file) {
-                                  const err = validateVerificationFile(file);
-                                  if (err) {
-                                    setError(err);
-                                    setSocialProofFile(null);
-                                    setSocialProofPreview(null);
-                                    return;
-                                  }
-                                }
-                                setError(null);
-                                setSocialProofFile(file);
-                                setSocialProofPreview(preview);
-                              }}
-                            />
-                          ) : null}
-                          {showPropertyBlock ? (
-                            <OnboardingHostAccessVerificationSection
-                              sectionId="property-verification"
-                              title="Property verification"
-                              subtitle="Prove you manage a real property listing."
-                              rights={propertyRights}
-                              onRightsChange={(value) =>
-                                handleVerificationRightsChange(
-                                  value,
-                                  setPropertyRights,
-                                  setPropertyContractEndDate
-                                )
-                              }
-                              rightsError={
-                                verificationTouched
-                                  ? verificationRightsError(propertyRights, 'property')
-                                  : null
-                              }
-                              contractEndDate={propertyContractEndDate}
-                              onContractEndDateChange={setPropertyContractEndDate}
-                              contractEndDateError={propertyContractEndError}
-                              proofFile={propertyOwnershipProofFile}
-                              proofPreview={propertyOwnershipProofPreview}
-                              proofError={
-                                verificationTouched && !propertyOwnershipProofFile
-                                  ? 'Required'
-                                  : null
-                              }
-                              onProofChange={(file, preview) => {
-                                setPropertyOwnershipProofFile(file);
-                                setPropertyOwnershipProofPreview(preview);
-                              }}
-                              platformLabel="Property platform"
-                              platformHelp="Choose where you market your property."
-                              platformValue={socialPlatform}
-                              onPlatformChange={setSocialPlatform}
-                              platformError={
-                                verificationTouched && !socialPlatform ? 'Select a platform' : null
-                              }
-                              screenshotFile={socialProofFile}
-                              screenshotPreview={socialProofPreview}
-                              screenshotError={
-                                verificationTouched && !socialProofFile ? 'Required' : null
-                              }
-                              onScreenshotChange={(file, preview) => {
-                                setSocialProofFile(file);
-                                setSocialProofPreview(preview);
-                              }}
-                              onUploadError={setError}
-                            />
-                          ) : null}
-                          {showParkingBlock ? (
-                            <OnboardingParkingVerificationSection
-                              rights={parkingRights}
-                              onRightsChange={(value) =>
-                                handleVerificationRightsChange(
-                                  value,
-                                  setParkingRights,
-                                  setParkingContractEndDate
-                                )
-                              }
-                              rightsError={
-                                verificationTouched
-                                  ? verificationRightsError(parkingRights, 'parking')
-                                  : null
-                              }
-                              contractEndDate={parkingContractEndDate}
-                              onContractEndDateChange={setParkingContractEndDate}
-                              contractEndDateError={parkingContractEndError}
-                              proofFile={parkingSocialProofFile}
-                              proofPreview={parkingSocialProofPreview}
-                              proofError={
-                                verificationTouched && !parkingSocialProofFile ? 'Required' : null
-                              }
-                              onProofChange={(file, preview) => {
-                                setParkingSocialProofFile(file);
-                                setParkingSocialProofPreview(preview);
-                              }}
-                              onUploadError={setError}
-                            />
-                          ) : null}
                         </>
                       )}
                     </div>

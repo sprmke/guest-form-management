@@ -685,6 +685,11 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                     {reviewTier === 'enhanced' ? (
                       <>
                         <VerificationDocPreviewCard
+                          label="Facebook Page screenshot"
+                          url={detail.assetUrls.socialProofUrl}
+                          onFullView={setFullView}
+                        />
+                        <VerificationDocPreviewCard
                           label={VERIFICATION_TIER2_DOC_LABELS.selfie}
                           url={detail.assetUrls.selfieWithIdUrl}
                           onFullView={setFullView}
@@ -714,18 +719,11 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                         ) : null}
                       </>
                     ) : (
-                      <>
-                        <VerificationDocPreviewCard
-                          label="Valid ID"
-                          url={detail.assetUrls.validIdUrl}
-                          onFullView={setFullView}
-                        />
-                        <VerificationDocPreviewCard
-                          label="Facebook Page screenshot"
-                          url={detail.assetUrls.socialProofUrl}
-                          onFullView={setFullView}
-                        />
-                      </>
+                      <VerificationDocPreviewCard
+                        label="Valid ID"
+                        url={detail.assetUrls.validIdUrl}
+                        onFullView={setFullView}
+                      />
                     )}
                   </div>
                 </section>

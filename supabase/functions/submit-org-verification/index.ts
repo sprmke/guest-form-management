@@ -49,22 +49,8 @@ serveAuthenticated('submit-org-verification', async (req) => {
       return jsonError(req, 'This verification was declined. Please start a new application.');
     }
 
-    // Tier 1 social proof is pinned to Facebook — no platform selector.
-    verification = { ...verification, socialPlatform: 'facebook' };
-
     if (!canSubmitBaseVerification(verification)) {
-      const missing: string[] = [];
-      if (!verification.assets.validIdPath) missing.push('valid ID');
-      if (!verification.assets.socialProofPath) missing.push('Facebook Page screenshot');
-      return jsonError(req, `Required: ${missing.join(', ')}`);
-    }
-
-    try {
-      await requireOrgPropertyFeature(orgId, 'verifiedBadgeEligible');
-    } catch (err) {
-      const planErr = catchPlanFeatureError(req, err);
-      if (planErr) return planErr;
-      throw err;
+      return jsonError(req, 'Required: valid ID');
     }
 
     verification = {
@@ -100,6 +86,7 @@ serveAuthenticated('submit-org-verification', async (req) => {
 
     if (!canSubmitEnhancedVerification(verification)) {
       const missing: string[] = [];
+      if (!verification.assets.socialProofPath) missing.push('Facebook Page screenshot');
       if (!verification.assets.selfieWithIdPath) missing.push('selfie with ID');
       if (!verification.assets.platformAdminProofPath) missing.push('platform admin screenshot');
       return jsonError(req, `Required: ${missing.join(', ')}`);

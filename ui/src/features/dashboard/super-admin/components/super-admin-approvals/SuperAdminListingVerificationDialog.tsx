@@ -691,31 +691,38 @@ export function SuperAdminListingVerificationDialog({ approval, onOpenChange }: 
 
                 {reviewTier === 'base' ? <UnitConflictList conflicts={unitConflicts} /> : null}
 
-                <section className="space-y-3">
-                  <p className={superAdminApprovalSectionTitleClass}>Documents</p>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {reviewTier === 'recommended' ? (
-                      <>
+                {reviewTier === 'recommended' || detail.assetUrls.proofUrl ? (
+                  <section className="space-y-3">
+                    <p className={superAdminApprovalSectionTitleClass}>Documents</p>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      {reviewTier === 'recommended' ? (
+                        <>
+                          <VerificationDocPreviewCard
+                            label={LISTING_VERIFICATION_DOC_LABELS.proof}
+                            url={detail.assetUrls.proofUrl}
+                            onFullView={setFullView}
+                          />
+                          <VerificationDocPreviewCard
+                            label={LISTING_VERIFICATION_DOC_LABELS.additionalProof}
+                            url={detail.assetUrls.additionalProofUrl}
+                            onFullView={setFullView}
+                          />
+                          <VerificationDocPreviewCard
+                            label={LISTING_VERIFICATION_DOC_LABELS.azurePmoConfirmation}
+                            url={detail.assetUrls.azurePmoConfirmationUrl}
+                            onFullView={setFullView}
+                          />
+                        </>
+                      ) : (
                         <VerificationDocPreviewCard
-                          label={LISTING_VERIFICATION_DOC_LABELS.additionalProof}
-                          url={detail.assetUrls.additionalProofUrl}
+                          label={LISTING_VERIFICATION_DOC_LABELS.proof}
+                          url={detail.assetUrls.proofUrl}
                           onFullView={setFullView}
                         />
-                        <VerificationDocPreviewCard
-                          label={LISTING_VERIFICATION_DOC_LABELS.azurePmoConfirmation}
-                          url={detail.assetUrls.azurePmoConfirmationUrl}
-                          onFullView={setFullView}
-                        />
-                      </>
-                    ) : (
-                      <VerificationDocPreviewCard
-                        label={LISTING_VERIFICATION_DOC_LABELS.proof}
-                        url={detail.assetUrls.proofUrl}
-                        onFullView={setFullView}
-                      />
-                    )}
-                  </div>
-                </section>
+                      )}
+                    </div>
+                  </section>
+                ) : null}
 
                 {status === 'rejected' && rejectionReason ? (
                   <div

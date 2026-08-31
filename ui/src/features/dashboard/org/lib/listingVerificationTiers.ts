@@ -26,10 +26,11 @@ import type {
 } from '@/features/dashboard/org/lib/orgVerificationTiers';
 
 /** Listing Tier 1 rows backed by an uploaded file. */
-const LISTING_BASE_DOCUMENT_ITEM_IDS = new Set(['listing-proof']);
+const LISTING_BASE_DOCUMENT_ITEM_IDS = new Set<string>();
 
 /** Listing Tier 2 rows backed by an uploaded file. */
 const LISTING_RECOMMENDED_DOCUMENT_ITEM_IDS = new Set([
+  'listing-proof',
   'listing-additional-proof',
   'listing-azure-pmo-confirmation',
 ]);
@@ -70,11 +71,6 @@ export function buildListingBaseChecklist(
         : `${listingKind === 'parking' ? 'Parking' : 'Property'} rights`,
       complete: Boolean(state.relationship),
     },
-    {
-      id: 'listing-proof',
-      label: LISTING_VERIFICATION_DOC_LABELS.proof,
-      complete: Boolean(state.assets.proofPath),
-    },
   ];
 
   if (listingRightsNeedContractEnd(state.relationship)) {
@@ -94,6 +90,11 @@ export function buildListingRecommendedChecklist(
   state: ListingAuthorizationSummary
 ): VerificationChecklistItem[] {
   return [
+    {
+      id: 'listing-proof',
+      label: LISTING_VERIFICATION_DOC_LABELS.proof,
+      complete: Boolean(state.assets.proofPath),
+    },
     {
       id: 'listing-additional-proof',
       label: LISTING_VERIFICATION_DOC_LABELS.additionalProof,

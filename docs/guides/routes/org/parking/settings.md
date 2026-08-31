@@ -2,7 +2,7 @@
 title: 'Parking settings — operator guide'
 status: active
 tags: [guides, routes, org, parking]
-updated: 2026-08-26
+updated: 2026-08-30
 ---
 
 # Parking settings — operator guide
@@ -47,7 +47,7 @@ Parking **Settings** is where you set up a single slot before guests can book it
 - Q: Where do I connect Telegram for this parking slot?
   A: On **Notifications** for this slot. Settings here only show integration status and shortcuts, not the bot token fields.
 - Q: Where is listing verification for this slot?
-  A: Open **Verification** from the parking sidebar. That covers ownership proof, contract dates, and the Recommended badge for this parking listing.
+  A: Open **Verification** from the parking sidebar. Listing go-live needs your Parking Rights (and contract end when needed). Ownership proof is for the **Recommended** badge on this parking listing.
 - Q: My hosting contract is ending — what should I do?
   A: A renewal reminder may appear when you log in. Tap **Submit renewal contract** or use **Verification** in the sidebar to upload an updated contract before the grace period ends.
 

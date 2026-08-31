@@ -17,6 +17,11 @@ export function buildListingChangeDocOptions(
   if (tier === 'recommended') {
     return [
       {
+        id: 'proof',
+        label: LISTING_VERIFICATION_DOC_LABELS.proof,
+        url: detail.assetUrls.proofUrl,
+      },
+      {
         id: 'additionalProof',
         label: LISTING_VERIFICATION_DOC_LABELS.additionalProof,
         url: detail.assetUrls.additionalProofUrl,
@@ -28,11 +33,5 @@ export function buildListingChangeDocOptions(
       },
     ];
   }
-  return [
-    {
-      id: 'proof',
-      label: LISTING_VERIFICATION_DOC_LABELS.proof,
-      url: detail.assetUrls.proofUrl,
-    },
-  ];
+  return [];
 }

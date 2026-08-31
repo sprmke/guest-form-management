@@ -171,11 +171,10 @@ export function isListingAuthorizationChangesRequested(
   return state.baseStatus === 'rejected' && state.baseRejectionKind === 'changes';
 }
 
-/** Tier 1 — rights (+ contract end when applicable) and the primary proof. */
+/** Tier 1 — rights (+ contract end when applicable). Primary proof is Recommended. */
 export function canSubmitBaseListingAuthorization(state: ListingAuthorizationSummary): boolean {
   if (state.baseStatus === 'pending') return false;
   if (isListingAuthorizationHardRejected(state)) return false;
-  if (!state.assets.proofPath) return false;
   if (!state.relationship) return false;
   if (listingRightsNeedContractEnd(state.relationship) && !state.contractEndDate) return false;
   return true;
@@ -187,7 +186,11 @@ export function canSubmitRecommendedListingAuthorization(
 ): boolean {
   if (state.baseStatus !== 'approved') return false;
   if (state.recommendedStatus === 'approved' || state.recommendedStatus === 'pending') return false;
-  return Boolean(state.assets.additionalProofPath && state.assets.azurePmoConfirmationPath);
+  return Boolean(
+    state.assets.proofPath &&
+    state.assets.additionalProofPath &&
+    state.assets.azurePmoConfirmationPath
+  );
 }
 
 export function isListingAuthorized(state: ListingAuthorizationSummary): boolean {
@@ -212,7 +215,10 @@ export function canSubmitListingRenewal(
   todayYmd: string = todayManilaYmd()
 ): boolean {
   if (!isListingRenewEligible(state, todayYmd)) return false;
-  return canSubmitBaseListingAuthorization(state);
+  if (!state.assets.proofPath) return false;
+  if (!state.relationship) return false;
+  if (listingRightsNeedContractEnd(state.relationship) && !state.contractEndDate) return false;
+  return true;
 }
 
 export { listingHasContractRenewalLifecycle, resolveListingContractRenewalPhase };
