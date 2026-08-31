@@ -31,6 +31,7 @@ import type {
   WorkflowViewContent,
 } from '@/features/dashboard/bookings/lib/workflow';
 import { isProgressEditFormEnabled } from '@/features/dashboard/bookings/lib/workflow';
+import { pipelineAdvanceDisplay } from '@/features/dashboard/bookings/lib/workflowAdvanceMode';
 import type { PricingHolidayRuleDto } from '@/features/dashboard/pricing/lib/phHolidayRules';
 import type { PropertyPricingDefaults } from '@/features/dashboard/pricing/lib/pricingCompute';
 
@@ -45,6 +46,7 @@ const SD_FORM_LINK_ICON =
 type Props = {
   isModal: boolean;
   booking: BookingRow;
+  automatedBookingFlow?: boolean;
   viewedContent: WorkflowViewContent | null;
   contentReadOnly: boolean;
   /** Pricing leaf — independent of other progress forms. */
@@ -88,6 +90,7 @@ type Props = {
 export function WorkflowSubFormHost({
   isModal,
   booking,
+  automatedBookingFlow = true,
   viewedContent,
   contentReadOnly,
   pricingReadOnly,
@@ -131,6 +134,14 @@ export function WorkflowSubFormHost({
     showSdGuestInfoCard ||
     showCompletedSummary;
 
+  const sdIsZero = Number(booking.security_deposit ?? 0) === 0;
+  const sdGuestAdvanceDisplay = pipelineAdvanceDisplay('READY_FOR_CHECKOUT', {
+    sdIsZero,
+    automatedBookingFlow,
+  });
+  const planUpgradeFeature =
+    automatedBookingFlow === false ? ('automatedBookingFlow' as const) : undefined;
+
   if (!showStageContent) return null;
 
   const formVariant = isModal ? 'modal' : 'workflow';
@@ -147,7 +158,12 @@ export function WorkflowSubFormHost({
       )}
     >
       {showSdGuestInfoCard && (
-        <WorkflowSubFormCard title="Guest SD refund form" plain={isModal} advanceMode="auto">
+        <WorkflowSubFormCard
+          title="Guest SD refund form"
+          plain={isModal}
+          advanceDisplay={sdGuestAdvanceDisplay}
+          upgradeFeature={planUpgradeFeature}
+        >
           <div className="flex min-h-11 items-start justify-between gap-3">
             <p className="text-muted-foreground min-w-0 flex-1 text-xs leading-snug">
               Guest hasn’t submitted the SD refund form yet
@@ -203,6 +219,7 @@ export function WorkflowSubFormHost({
           sub={activePendingDocSubStatus}
           requirements={documentRequirements}
           plain={isModal}
+          automatedBookingFlow={automatedBookingFlow}
           onPreview={onPreview}
         />
       )}

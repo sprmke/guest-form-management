@@ -165,6 +165,8 @@ export type BookingRow = {
   sd_refund_account_number?: string | null;
   sd_refund_form_submitted_at?: string | null;
   sd_refund_form_emailed_at?: string | null;
+  /** Kind → last successful manual send ISO — Free-tier resend cooldown. */
+  workflow_email_manual_sent_at?: Record<string, string> | null;
   stay_guide_token?: string | null;
   stay_guide_valid_from?: string | null;
   stay_guide_valid_until?: string | null;

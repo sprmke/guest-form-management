@@ -2,7 +2,11 @@
  * Automation-triggers collapsible — rail only.
  *
  * Manual workflow email sends (Free escape hatch / paid resend) + SD check-out automation.
+ * Buttons stay visible but disabled with tooltips until prerequisites are met.
+ * Free tier: after a successful send, Resend stays locked for 1 hour.
  */
+
+import { useEffect, useState } from 'react';
 
 import { ChevronDown, ChevronRight, Loader2, Mail, RefreshCw, Timer } from 'lucide-react';
 
@@ -10,20 +14,34 @@ import {
   BOOKING_WORKFLOW_EMAIL_LABELS,
   type BookingWorkflowEmailKind,
 } from '@/features/dashboard/bookings/lib/bookingWorkflowEmail';
-import { workflowNeutralActionClass } from '@/features/dashboard/bookings/lib/workflowActionButtonStyles';
+import type { BookingForManualWorkflowEmail } from '@/features/dashboard/bookings/lib/bookingWorkflowEmail';
 import { formatSdRefundLeadPhrase } from '@/features/dashboard/bookings/lib/workflowAdvanceMode';
+import { resolveWorkflowEmailManualSendUi } from '@/features/dashboard/bookings/lib/workflowEmailManualSendCooldown';
+import {
+  resolveWorkflowEmailTriggerAvailability,
+  visibleManualWorkflowEmailKinds,
+} from '@/features/dashboard/bookings/lib/workflowEmailTriggerAvailability';
+import {
+  buildWorkflowEmailTriggerTooltip,
+  resolveWorkflowEmailTriggerBlocker,
+  SD_CHECKOUT_AUTOMATION_TRIGGER_HELP,
+  SD_CHECKOUT_INSTRUCTIONS_RESEND_HELP,
+  workflowEmailTriggerTooltip,
+} from '@/features/dashboard/bookings/lib/workflowEmailTriggerTooltip';
+import { WorkflowTriggerActionButton } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowTriggerActionButton';
+import { PlanGatedText } from '@/features/dashboard/plans/components/PlanUpgradeLink';
+
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const DEFAULT_LEAD_MINUTES = 120;
 
 type Props = {
   isModal: boolean;
+  booking: BookingForManualWorkflowEmail;
   showSdCron: boolean;
   showSdFormResend: boolean;
-  /** Manual send kinds eligible for this booking (excluding kinds handled only via legacy SD buttons when preferred). */
-  manualEmailKinds: BookingWorkflowEmailKind[];
-  /** Highlight that auto-send was skipped by plan. */
+  pendingDocumentsComplete?: boolean;
   planSkipHint: boolean;
-  /** Property setting `sd_refund_cron_email_lead_minutes`. */
   sdRefundEmailLeadMinutes?: number;
   automationHelpOpen: boolean;
   onToggleAutomationHelp: () => void;
@@ -37,9 +55,10 @@ type Props = {
 
 export function WorkflowAutomationTriggers({
   isModal,
+  booking,
   showSdCron,
   showSdFormResend,
-  manualEmailKinds,
+  pendingDocumentsComplete,
   planSkipHint,
   sdRefundEmailLeadMinutes = DEFAULT_LEAD_MINUTES,
   automationHelpOpen,
@@ -51,7 +70,15 @@ export function WorkflowAutomationTriggers({
   onResendSdFormEmail,
   onSendWorkflowEmail,
 }: Props) {
-  const kindsForButtons = manualEmailKinds.filter((kind) => {
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    if (!planSkipHint || !automationHelpOpen) return;
+    const id = window.setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => window.clearInterval(id);
+  }, [planSkipHint, automationHelpOpen]);
+
+  const visibleKinds = visibleManualWorkflowEmailKinds(booking);
+  const kindsForButtons = visibleKinds.filter((kind) => {
     if (kind === 'sd_refund_form_request' && showSdFormResend) return false;
     return true;
   });
@@ -60,6 +87,38 @@ export function WorkflowAutomationTriggers({
   if (isModal || !hasContent) return null;
 
   const leadPhrase = formatSdRefundLeadPhrase(sdRefundEmailLeadMinutes);
+  const sdCronButtonLabel = planSkipHint
+    ? 'Run check-out move (no email on Free)'
+    : 'Run check-out automation';
+
+  const sdResendUi = resolveWorkflowEmailManualSendUi('sd_refund_form_request', {
+    enforceCooldown: planSkipHint,
+    sentAtMap: booking.workflow_email_manual_sent_at,
+    sdRefundFormEmailedAt: booking.sd_refund_form_emailed_at,
+    nowMs,
+    preferResendLabel: true,
+  });
+
+  const sendManuallyBadge = planSkipHint ? (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            aria-label="Automated workflow emails are not on your plan. Send them below when ready, or Upgrade for automatic sends."
+            className="bg-warning/15 text-warning rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+          >
+            Send manually
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-[min(90vw,18rem)] text-xs leading-snug">
+          <PlanGatedText
+            feature="automatedBookingFlow"
+            text="Automated workflow emails are not on your plan. Send them below when ready, or Upgrade for automatic sends."
+          />
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  ) : null;
 
   return (
     <div className="border-separator border-b">
@@ -74,11 +133,7 @@ export function WorkflowAutomationTriggers({
           <span className="text-overline text-muted-foreground font-semibold">
             Automation Triggers
           </span>
-          {planSkipHint ? (
-            <span className="bg-warning/15 text-warning rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
-              Send manually
-            </span>
-          ) : null}
+          {sendManuallyBadge}
         </span>
         {automationHelpOpen ? (
           <ChevronDown className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
@@ -89,20 +144,25 @@ export function WorkflowAutomationTriggers({
 
       {automationHelpOpen && (
         <div className="text-muted-foreground space-y-2 px-4 pb-3 text-[11.5px] leading-relaxed">
-          {planSkipHint ? (
-            <p>
-              Automated workflow emails are not included on your plan. Send them below, or upgrade.
-            </p>
-          ) : null}
           {showSdCron ? (
-            <>
+            planSkipHint ? (
               <p>
-                {leadPhrase}, the guest gets the Check-out Instructions email automatically, even if
-                the balance is unpaid. If the remaining balance is settled with a receipt uploaded,
-                the booking also moves automatically to Ready for Check-out at that time.
+                <PlanGatedText
+                  feature="automatedBookingFlow"
+                  text="After guest balance is settled, run check-out move below when the cron has not run yet. On Free it does not send email — use Send Check-out Instructions when enabled, or Upgrade for automatic emails."
+                />
               </p>
-              <p>If the email or move did not happen, run the check-out automation below.</p>
-            </>
+            ) : (
+              <>
+                <p>
+                  {leadPhrase}, the guest gets the Check-out Instructions email automatically, even
+                  if the balance is unpaid. If the remaining balance is settled with a receipt
+                  uploaded, the booking also moves automatically to Ready for Check-out at that
+                  time.
+                </p>
+                <p>If the email or move did not happen, run the check-out automation below.</p>
+              </>
+            )
           ) : null}
           {showSdFormResend ? (
             <p>
@@ -117,52 +177,90 @@ export function WorkflowAutomationTriggers({
           <div className="border-separator flex flex-col gap-1.5 border-t pt-3">
             {kindsForButtons.map((kind) => {
               const pending = sendingKind === kind;
+              const blockedByAnotherSend = sendingKind != null && !pending;
+              const { enabled, disabledReason } = resolveWorkflowEmailTriggerAvailability(
+                kind,
+                booking,
+                {
+                  pendingDocumentsComplete,
+                }
+              );
+              const sendUi = resolveWorkflowEmailManualSendUi(kind, {
+                enforceCooldown: planSkipHint,
+                sentAtMap: booking.workflow_email_manual_sent_at,
+                sdRefundFormEmailedAt: booking.sd_refund_form_emailed_at,
+                nowMs,
+              });
+              const cooldownBlocks = sendUi.inCooldown;
+              const sendDisabled = !enabled || blockedByAnotherSend || cooldownBlocks;
+              const blocker = resolveWorkflowEmailTriggerBlocker({
+                enabled,
+                disabledReason,
+                blockedByAnotherSend,
+                cooldownBlocks,
+                cooldownReason: sendUi.cooldownReason,
+              });
+              const tooltip = workflowEmailTriggerTooltip(kind, blocker);
+
               return (
-                <button
+                <WorkflowTriggerActionButton
                   key={kind}
-                  type="button"
-                  disabled={sendingKind != null}
+                  disabled={sendDisabled}
+                  tooltip={tooltip}
+                  pending={pending}
                   onClick={() => onSendWorkflowEmail(kind)}
-                  className={workflowNeutralActionClass()}
+                  trailing={
+                    pending ? (
+                      <Loader2 className="size-3.5 shrink-0 animate-spin" />
+                    ) : (
+                      <Mail className="size-3.5 shrink-0" aria-hidden />
+                    )
+                  }
                 >
-                  <span>Send {BOOKING_WORKFLOW_EMAIL_LABELS[kind]}</span>
-                  {pending ? (
-                    <Loader2 className="size-3.5 shrink-0 animate-spin" />
-                  ) : (
-                    <Mail className="size-3.5 shrink-0" aria-hidden />
-                  )}
-                </button>
+                  {sendUi.labelPrefix} {BOOKING_WORKFLOW_EMAIL_LABELS[kind]}
+                </WorkflowTriggerActionButton>
               );
             })}
             {showSdCron ? (
-              <button
-                type="button"
+              <WorkflowTriggerActionButton
                 disabled={sdCronPending}
+                tooltip={
+                  planSkipHint
+                    ? SD_CHECKOUT_AUTOMATION_TRIGGER_HELP.free
+                    : SD_CHECKOUT_AUTOMATION_TRIGGER_HELP.paid
+                }
+                pending={sdCronPending}
                 onClick={onRunSdCron}
-                className={workflowNeutralActionClass()}
+                trailing={
+                  sdCronPending ? (
+                    <Loader2 className="size-3.5 shrink-0 animate-spin" />
+                  ) : (
+                    <RefreshCw className="size-3.5 shrink-0" aria-hidden />
+                  )
+                }
               >
-                <span>Run check-out automation</span>
-                {sdCronPending ? (
-                  <Loader2 className="size-3.5 shrink-0 animate-spin" />
-                ) : (
-                  <RefreshCw className="size-3.5 shrink-0" aria-hidden />
-                )}
-              </button>
+                {sdCronButtonLabel}
+              </WorkflowTriggerActionButton>
             ) : null}
             {showSdFormResend ? (
-              <button
-                type="button"
-                disabled={resendSdFormPending}
-                onClick={onResendSdFormEmail}
-                className={workflowNeutralActionClass()}
-              >
-                <span>Resend Check-out Instructions email</span>
-                {resendSdFormPending ? (
-                  <Loader2 className="size-3.5 shrink-0 animate-spin" />
-                ) : (
-                  <Mail className="size-3.5 shrink-0" aria-hidden />
+              <WorkflowTriggerActionButton
+                disabled={sdResendUi.inCooldown}
+                tooltip={buildWorkflowEmailTriggerTooltip(
+                  SD_CHECKOUT_INSTRUCTIONS_RESEND_HELP,
+                  sdResendUi.inCooldown ? sdResendUi.cooldownReason : null
                 )}
-              </button>
+                pending={resendSdFormPending}
+                onClick={onResendSdFormEmail}
+                trailing={
+                  resendSdFormPending ? (
+                    <Loader2 className="size-3.5 shrink-0 animate-spin" />
+                  ) : (
+                    <Mail className="size-3.5 shrink-0" aria-hidden />
+                  )
+                }
+              >
+                {sdResendUi.labelPrefix} Check-out Instructions email
+              </WorkflowTriggerActionButton>
             ) : null}
           </div>
         </div>

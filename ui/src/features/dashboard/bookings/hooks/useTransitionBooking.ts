@@ -1,5 +1,4 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
 
 import type { SdBank } from '@/features/guest/sd-form/lib/sdFormSchema';
 
@@ -12,43 +11,18 @@ import type { BookingStatus } from '@/features/dashboard/bookings/lib/bookingSta
 import type { BookingWorkflowEmailKind } from '@/features/dashboard/bookings/lib/bookingWorkflowEmail';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
-import { openUpgradeModalFromBridge } from '@/features/dashboard/plans/lib/upgradeModalBridge';
+import {
+  notifyAutomationSkippedByHost,
+  notifyAutomationSkippedByPlan,
+} from '@/features/dashboard/bookings/lib/workflowPlanSkip';
 
 import { supabase } from '@/lib/supabase/client';
 
-/** Human labels for `workflowOrchestrator.ts`'s `automationSkippedByPlan` side-effect names. */
-const AUTOMATION_SKIP_LABELS: Record<string, string> = {
-  gaf_request: 'GAF request email to Azure',
-  pet_request: 'Pet request email to Azure',
-  parking_broadcast: 'Parking broadcast email',
-  booking_acknowledgement: 'Booking acknowledgement email',
-  ready_for_checkin: 'Ready-for-check-in email',
-  sd_refund_form_request: 'Check-out & SD refund email',
-};
-
-/** Session hint so the workflow rail can expand Automation Triggers after a plan skip. */
-export const AUTOMATION_SKIP_SESSION_KEY = 'kh-automation-skipped-by-plan';
-
-function notifyAutomationSkippedByPlan(skipped: string[], bookingId: string): void {
-  if (skipped.length === 0) return;
-  try {
-    sessionStorage.setItem(
-      AUTOMATION_SKIP_SESSION_KEY,
-      JSON.stringify({ bookingId, kinds: skipped, at: Date.now() })
-    );
-  } catch {
-    /* ignore quota / private mode */
-  }
-  const labels = skipped.map((key) => AUTOMATION_SKIP_LABELS[key] ?? key);
-  toast.warning(`Not sent automatically on your plan: ${labels.join(', ')}`, {
-    description: 'Open Automation Triggers to send them, or upgrade to automate.',
-    action: {
-      label: 'Upgrade',
-      onClick: () => openUpgradeModalFromBridge('automatedBookingFlow'),
-    },
-    duration: 10000,
-  });
-}
+export {
+  AUTOMATION_SKIP_LABELS,
+  AUTOMATION_SKIP_SESSION_KEY,
+  notifyAutomationSkippedByPlan,
+} from '@/features/dashboard/bookings/lib/workflowPlanSkip';
 
 export type TransitionPayload = {
   booking_rate?: number | null;
@@ -113,6 +87,7 @@ type TransitionResult = {
   sideEffects?: {
     emails?: string[];
     automationSkippedByPlan?: string[];
+    automationSkippedByHost?: string[];
   };
 };
 
@@ -166,6 +141,7 @@ export function useTransitionBooking() {
         data?.sideEffects?.automationSkippedByPlan ?? [],
         variables.bookingId
       );
+      notifyAutomationSkippedByHost(data?.sideEffects?.automationSkippedByHost ?? []);
       if (data?.booking) {
         qc.setQueryData(bookingDetailQueryKey(variables.bookingId, propertyId), data.booking);
       }

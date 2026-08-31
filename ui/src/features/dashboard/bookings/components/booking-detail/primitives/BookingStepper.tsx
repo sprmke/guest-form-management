@@ -15,10 +15,10 @@ import {
 } from '@/features/dashboard/bookings/lib/workflow';
 import {
   cancelledAdvanceGuide,
+  nestedAdvanceDisplay,
   nestedAdvanceGuide,
-  nestedAdvanceMode,
+  pipelineAdvanceDisplay,
   pipelineAdvanceGuide,
-  pipelineAdvanceMode,
 } from '@/features/dashboard/bookings/lib/workflowAdvanceMode';
 
 import { cn } from '@/lib/utils';
@@ -119,7 +119,9 @@ export function BookingStepper({
                 ? 'text-foreground font-medium'
                 : 'text-muted-foreground font-medium'
           );
-          const advanceMode = showAdvanceGuide ? pipelineAdvanceMode(step, advanceOpts) : null;
+          const advanceDisplay = showAdvanceGuide
+            ? pipelineAdvanceDisplay(step, advanceOpts)
+            : null;
           const advanceGuide = showAdvanceGuide ? pipelineAdvanceGuide(step, advanceOpts) : [];
 
           return (
@@ -187,8 +189,12 @@ export function BookingStepper({
                   ) : (
                     <div className={cn(labelClass, 'min-w-0 flex-1')}>{statusLabel(step)}</div>
                   )}
-                  {advanceMode ? (
-                    <WorkflowAdvanceModeMark mode={advanceMode} className="shrink-0" />
+                  {advanceDisplay ? (
+                    <WorkflowAdvanceModeMark
+                      mode={advanceDisplay.mode}
+                      label={advanceDisplay.label}
+                      className="shrink-0"
+                    />
                   ) : null}
                 </div>
                 {advanceGuide.length > 0 ? <AdvanceGuideLines lines={advanceGuide} /> : null}
@@ -206,6 +212,7 @@ export function BookingStepper({
                     currentIdx={currentIdx}
                     pendingDocsIdx={pendingDocsIdx}
                     showAdvanceGuide={showAdvanceGuide}
+                    automatedBookingFlow={automatedBookingFlow}
                   />
                 )}
               </div>
@@ -280,6 +287,7 @@ function PendingDocumentsSubTree({
   currentIdx,
   pendingDocsIdx,
   showAdvanceGuide = false,
+  automatedBookingFlow,
 }: {
   booking: BookingRow;
   documentRequirements: DocumentRequirement[];
@@ -290,7 +298,9 @@ function PendingDocumentsSubTree({
   currentIdx: number;
   pendingDocsIdx: number;
   showAdvanceGuide?: boolean;
+  automatedBookingFlow?: boolean;
 }) {
+  const nestedOpts = { automatedBookingFlow };
   const items = pendingDocumentsNestedItemsForStepper(booking, documentRequirements);
   const activeKey = viewedStep.kind === 'pending-doc-sub' ? viewedStep.sub : undefined;
   const isLivePendingDocs = currentStatus === 'PENDING_DOCUMENTS';
@@ -318,8 +328,8 @@ function PendingDocumentsSubTree({
       {items.map((item) => {
         const isActive = activeKey === item.key;
         const itemInteractive = isItemInteractive(item.key);
-        const nestedMode = nestedAdvanceMode(item.approvalSource);
-        const nestedGuide = nestedAdvanceGuide(item.key, item.approvalSource);
+        const nestedDisplay = nestedAdvanceDisplay(item.key, item.approvalSource, nestedOpts);
+        const nestedGuide = nestedAdvanceGuide(item.key, item.approvalSource, nestedOpts);
         const iconClass = cn(
           'relative z-[1] box-border flex size-4 shrink-0 items-center justify-center rounded-full',
           item.completed
@@ -385,7 +395,11 @@ function PendingDocumentsSubTree({
                   </div>
                 )}
                 {showAdvanceGuide ? (
-                  <WorkflowAdvanceModeMark mode={nestedMode} className="shrink-0" />
+                  <WorkflowAdvanceModeMark
+                    mode={nestedDisplay.mode}
+                    label={nestedDisplay.label}
+                    className="shrink-0"
+                  />
                 ) : itemInteractive ? (
                   statusWord
                 ) : null}

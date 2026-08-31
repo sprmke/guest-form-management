@@ -6,7 +6,11 @@
 import type { ReactNode } from 'react';
 
 import { WorkflowAdvanceModeBadge } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowAdvanceModeBadge';
-import type { WorkflowAdvanceMode } from '@/features/dashboard/bookings/lib/workflowAdvanceMode';
+import type {
+  WorkflowAdvanceDisplay,
+  WorkflowAdvanceMode,
+} from '@/features/dashboard/bookings/lib/workflowAdvanceMode';
+import type { PlanFeatureKey } from '@/features/dashboard/plans/lib/planFeatures';
 
 import { cn } from '@/lib/utils';
 
@@ -20,6 +24,10 @@ type Props = {
   plain?: boolean;
   /** How this step advances — shown next to the card title on the rail. */
   advanceMode?: WorkflowAdvanceMode | null;
+  /** Plan-aware badge label + tooltip; takes precedence over `advanceMode` alone. */
+  advanceDisplay?: WorkflowAdvanceDisplay | null;
+  /** Links "upgrade" in the advance-mode tooltip when plan-gated. */
+  upgradeFeature?: PlanFeatureKey;
 };
 
 export function WorkflowSubFormCard({
@@ -29,7 +37,12 @@ export function WorkflowSubFormCard({
   bodyClassName,
   plain = false,
   advanceMode,
+  advanceDisplay,
+  upgradeFeature,
 }: Props) {
+  const badge: { mode: WorkflowAdvanceMode; label?: string; hint?: string } | null =
+    advanceDisplay ?? (advanceMode ? { mode: advanceMode } : null);
+
   if (plain) {
     return (
       <div className={cn('min-w-0 space-y-3', bodyClassName)}>
@@ -37,7 +50,14 @@ export function WorkflowSubFormCard({
           <h3 className="text-foreground min-w-0 truncate text-sm font-semibold leading-snug">
             {title}
           </h3>
-          {advanceMode ? <WorkflowAdvanceModeBadge mode={advanceMode} /> : null}
+          {badge ? (
+            <WorkflowAdvanceModeBadge
+              mode={badge.mode}
+              label={badge.label}
+              hint={badge.hint}
+              upgradeFeature={upgradeFeature}
+            />
+          ) : null}
         </div>
         {description ? (
           <p className="text-muted-foreground text-xs leading-snug">{description}</p>
@@ -54,7 +74,14 @@ export function WorkflowSubFormCard({
           <h3 className="text-muted-foreground min-w-0 truncate text-xs font-bold uppercase tracking-wider">
             {title}
           </h3>
-          {advanceMode ? <WorkflowAdvanceModeBadge mode={advanceMode} /> : null}
+          {badge ? (
+            <WorkflowAdvanceModeBadge
+              mode={badge.mode}
+              label={badge.label}
+              hint={badge.hint}
+              upgradeFeature={upgradeFeature}
+            />
+          ) : null}
         </div>
         {description ? (
           <p className="text-muted-foreground mt-1 text-[11px] leading-snug">{description}</p>

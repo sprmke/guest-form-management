@@ -12,11 +12,7 @@ import { prepareUpload } from '@/lib/media/prepareUpload';
 import { supabase } from '@/lib/supabase/client';
 
 export type AppSettingsAssetType =
-  | 'gcash_qr'
-  | 'gaf_unit_owner_signature'
-  | 'external_review_image'
-  | 'external_review_stay_photo'
-  | 'superhost_proof';
+  'gcash_qr' | 'gaf_unit_owner_signature' | 'external_review_image' | 'external_review_stay_photo';
 
 type UploadAppSettingsAssetResult = {
   url: string;
@@ -40,11 +36,8 @@ type UploadArgs = {
 };
 
 const ASSET_PRESET: Record<AppSettingsAssetType, OptimizePreset> = {
-  // QR + signature + proof screenshots must stay legible → near-lossless.
   gcash_qr: 'DOCUMENT',
   gaf_unit_owner_signature: 'DOCUMENT',
-  superhost_proof: 'DOCUMENT',
-  // Review imagery is photographic content.
   external_review_image: 'CONTENT',
   external_review_stay_photo: 'CONTENT',
 };

@@ -18,7 +18,6 @@ import {
   externalReviewsEqual,
   normalizeExternalReviewsDraft,
   type PropertyExternalReview,
-  type SuperhostStatus,
 } from '@/features/dashboard/org/lib/propertyExternalReviews';
 import type { PropertyVoucherPrize } from '@/features/dashboard/org/lib/propertyVoucherSettings';
 import {
@@ -131,9 +130,6 @@ export type AppSettingsDto = {
   vouchersEnabled: boolean;
   voucherPrizes: PropertyVoucherPrize[];
   voucherRevealStyle: VoucherRevealStyle;
-  superhostVerificationUrl: string;
-  superhostProofImageUrl: string;
-  superhostStatus: SuperhostStatus;
   /** Raw stored override — `null` inherits the residence default; `[]` is a valid explicit empty override. */
   documentRequirementsOverride: DocumentRequirement[] | null;
   /** Override → residence-type default → `DEFAULT_DOCUMENT_REQUIREMENTS`, fully resolved for display. */
@@ -167,7 +163,6 @@ export type AppSettingsFormValues = {
   vouchersEnabled: boolean;
   voucherPrizes: PropertyVoucherPrize[];
   voucherRevealStyle: VoucherRevealStyle;
-  superhostVerificationUrl: string;
   /** `null` inherits the residence default; `[]` is a valid explicit empty override. */
   documentRequirementsOverride: DocumentRequirement[] | null;
 };
@@ -216,7 +211,6 @@ export function appSettingsToFormValues(data: AppSettingsDto): AppSettingsFormVa
     vouchersEnabled: data.vouchersEnabled !== false,
     voucherPrizes: voucherPrizesForEditor(data.voucherPrizes),
     voucherRevealStyle: normalizeVoucherRevealStyle(data.voucherRevealStyle),
-    superhostVerificationUrl: data.superhostVerificationUrl,
     documentRequirementsOverride: data.documentRequirementsOverride,
   };
 }
@@ -310,13 +304,11 @@ export function operationalFormIsDirty(
     !externalReviewsEqual(draft.externalReviews, baseline.externalReviews) ||
     draft.vouchersEnabled !== baseline.vouchersEnabled ||
     !voucherPrizesEqual(draft.voucherPrizes, baseline.voucherPrizes) ||
-    draft.voucherRevealStyle !== baseline.voucherRevealStyle ||
-    draft.superhostVerificationUrl.trim() !== baseline.superhostVerificationUrl.trim()
+    draft.voucherRevealStyle !== baseline.voucherRevealStyle
   );
 }
 
-export type AppSettingsImageField =
-  'gcashQrImageUrl' | 'gafUnitOwnerSignatureUrl' | 'superhostProofImageUrl';
+export type AppSettingsImageField = 'gcashQrImageUrl' | 'gafUnitOwnerSignatureUrl';
 
 export function useClearAppSettingsImage() {
   const qc = useQueryClient();

@@ -224,13 +224,13 @@ export function ReviewPricingForm({
   return (
     <WorkflowFormShell title={cardTitle} variant={variant} advanceMode="manual">
       {voucherCode ? (
-        <div className="mb-3 rounded-lg border border-emerald-200/80 bg-emerald-50/70 px-3.5 py-2.5 dark:border-emerald-900/50 dark:bg-emerald-950/30">
-          <p className="text-xs font-semibold text-emerald-900 dark:text-emerald-200">
+        <div className="border-primary/20 bg-primary/[0.04] mb-3 rounded-xl border px-3.5 py-2.5">
+          <p className="text-foreground text-xs font-semibold">
             {formatVoucherOfferLabel({
               code: voucherCode,
               percentOff: voucherPercent,
             })}{' '}
-            <span className="font-mono font-normal opacity-80">({voucherCode})</span>
+            <span className="text-muted-foreground font-mono font-normal">({voucherCode})</span>
           </p>
           {voucherGross != null ? (
             <dl className="text-muted-foreground mt-1.5 space-y-0.5 text-[11px]">
@@ -239,7 +239,7 @@ export function ReviewPricingForm({
                 <dd className="tabular-nums">{formatMoney(voucherGross)}</dd>
               </div>
               {voucherDiscount > 0 ? (
-                <div className="flex justify-between gap-2 text-emerald-700 dark:text-emerald-300">
+                <div className="text-primary flex justify-between gap-2 font-medium">
                   <dt>Voucher</dt>
                   <dd className="tabular-nums">−{formatMoney(voucherDiscount)}</dd>
                 </div>

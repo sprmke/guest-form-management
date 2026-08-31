@@ -1,4 +1,4 @@
-import { Receipt, Sparkles, Ticket } from 'lucide-react';
+import { Receipt, Ticket } from 'lucide-react';
 
 import {
   formatVoucherOfferLabel,
@@ -49,17 +49,14 @@ function AppliedVoucherBlock({ booking }: { booking: BookingRow }) {
   return (
     <BookingDetailRowBlock className="border-border/60 border-t">
       <p className="text-overline mb-2">Guest voucher</p>
-      <div className="dark:via-background relative overflow-hidden rounded-xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50 via-white to-emerald-50/60 px-4 py-3 ring-1 ring-emerald-100/80 dark:border-emerald-900/50 dark:from-emerald-950/40 dark:to-emerald-950/20 dark:ring-emerald-900/40">
-        <Ticket className="absolute right-3 top-3 size-4 text-emerald-500/70" aria-hidden />
-        <div className="flex items-center gap-3">
-          <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
-            <Ticket className="size-4" aria-hidden />
+      <div className="border-primary/25 bg-primary/[0.04] relative overflow-hidden rounded-xl border px-3 py-2.5">
+        <div className="flex items-center gap-2.5">
+          <span className="border-primary/20 bg-primary/10 text-primary inline-flex size-8 shrink-0 items-center justify-center rounded-lg border">
+            <Ticket className="size-3.5" aria-hidden />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="font-mono text-sm font-bold tracking-[0.18em] text-emerald-950 sm:text-base dark:text-emerald-100">
-              {code}
-            </p>
-            <p className="text-caption mt-0.5 text-emerald-900/70 dark:text-emerald-200/70">
+            <p className="text-foreground font-mono text-sm font-bold tracking-wide">{code}</p>
+            <p className="text-muted-foreground text-caption mt-0.5">
               {formatVoucherOfferLabel({ code, percentOff: percent })}
               {discount != null && Number.isFinite(discount) && discount > 0 ? (
                 <>
@@ -86,17 +83,14 @@ function NextStayVoucherBlock({ booking }: { booking: BookingRow }) {
   return (
     <BookingDetailRowBlock className="border-border/60 border-t">
       <p className="text-overline mb-2">Next-stay voucher</p>
-      <div className="relative overflow-hidden rounded-xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50 via-white to-emerald-50/60 px-4 py-3 ring-1 ring-emerald-100/80">
-        <Sparkles className="absolute right-3 top-3 size-4 text-emerald-500/70" aria-hidden />
-        <div className="flex items-center gap-3">
-          <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
-            <Ticket className="size-4" aria-hidden />
+      <div className="border-primary/25 bg-primary/[0.04] relative overflow-hidden rounded-xl border px-3 py-2.5">
+        <div className="flex items-center gap-2.5">
+          <span className="border-primary/20 bg-primary/10 text-primary inline-flex size-8 shrink-0 items-center justify-center rounded-lg border">
+            <Ticket className="size-3.5" aria-hidden />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="font-mono text-sm font-bold tracking-[0.18em] text-emerald-950 sm:text-base">
-              {code}
-            </p>
-            <p className="text-caption mt-0.5 text-emerald-900/70">
+            <p className="text-foreground font-mono text-sm font-bold tracking-wide">{code}</p>
+            <p className="text-muted-foreground text-caption mt-0.5">
               {redeemedAt ? 'Redeemed on a later booking' : formatAwardedVoucherLine(code, amount)}
               {awardedAt ? (
                 <>

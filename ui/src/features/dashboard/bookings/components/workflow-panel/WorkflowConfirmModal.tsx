@@ -22,7 +22,6 @@ const WORKFLOW_EMAIL_ACTION_LABEL: Record<WorkflowEmailDevControlKey, string> = 
   sendGafRequestEmail: 'Email GAF request to building management',
   sendBookingAcknowledgementEmail: 'Email guest acknowledgement to guest',
   sendPetRequestEmail: 'Email pet request to building management',
-  sendParkingBroadcastEmail: 'Email parking request to owners',
   sendReadyForCheckinEmail: 'Email ready-for-check-in email to guest',
   sendSdRefundFormEmail: 'Email Check-out Instructions to guest',
 };

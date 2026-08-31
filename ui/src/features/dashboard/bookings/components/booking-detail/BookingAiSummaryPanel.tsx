@@ -181,7 +181,8 @@ export function BookingAiSummaryPanel({ booking, open, onOpenChange, onPreview }
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[150] flex items-end justify-center bg-black/40 p-3 backdrop-blur-[2px] sm:items-center sm:p-4"
+      /* Same band as Dialog / WorkflowConfirmModal (z-100). Upgrade modal is z-110+ so it stacks on top. */
+      className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 p-3 backdrop-blur-[2px] sm:items-center sm:p-4"
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onOpenChange(false);

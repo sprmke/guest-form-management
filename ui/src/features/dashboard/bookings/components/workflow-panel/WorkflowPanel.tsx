@@ -69,6 +69,7 @@ import {
   useResendSdRefundFormEmail,
   useSendBookingWorkflowEmail,
   AUTOMATION_SKIP_SESSION_KEY,
+  notifyAutomationSkippedByPlan,
   type TransitionPayload,
 } from '@/features/dashboard/bookings/hooks/useTransitionBooking';
 import { useUpdateBooking } from '@/features/dashboard/bookings/hooks/useUpdateBooking';
@@ -78,7 +79,6 @@ import { resolveBookingPropertySlug } from '@/features/dashboard/bookings/lib/bo
 import { shouldWarnPastBookingStayForProceed } from '@/features/dashboard/bookings/lib/bookingPastPipelineManila';
 import {
   BOOKING_WORKFLOW_EMAIL_LABELS,
-  eligibleManualWorkflowEmailKinds,
   type BookingWorkflowEmailKind,
 } from '@/features/dashboard/bookings/lib/bookingWorkflowEmail';
 import {
@@ -86,6 +86,7 @@ import {
   progressSavePayloadForView,
 } from '@/features/dashboard/bookings/lib/bookingProgressEditPayload';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
+import { PlanGatedText } from '@/features/dashboard/plans/components/PlanUpgradeLink';
 import {
   kanbanDropIntentNestedKey,
   resolveKanbanDropTransition,
@@ -116,6 +117,7 @@ import {
   workflowCancelEffectLines,
   workflowTransitionEffectLines,
   workflowTransitionEmailEffects,
+  workflowWouldEmailOnPaidPlan,
 } from '@/features/dashboard/bookings/lib/workflowTransitionEffectsCopy';
 import {
   buildWorkflowEmailDevControls,
@@ -206,7 +208,7 @@ function WorkflowPanelInner({
   const documentRequirements =
     appSettings?.resolvedDocumentRequirements ?? DEFAULT_DOCUMENT_REQUIREMENTS;
 
-  const [automationHelpOpen, setAutomationHelpOpen] = useState(false);
+  const [automationHelpOpen, setAutomationHelpOpen] = useState(true);
   const { allowed: automatedBookingFlow } = useFeatureGate('automatedBookingFlow');
   const planSkipHint = !automatedBookingFlow;
   const [progressMapOpen, setProgressMapOpen] = useState(false);
@@ -426,16 +428,14 @@ function WorkflowPanelInner({
   const resendSdFormMut = useResendSdRefundFormEmail(booking.id);
   const sendWorkflowEmailMut = useSendBookingWorkflowEmail(booking.id);
 
-  // Which automation triggers are relevant — only on the live, non-terminal step.
-  const automationTriggersForLiveStep = workflowActions.isLiveView && !workflowActions.isTerminal;
+  // Automation triggers — live non-terminal step only; hidden on Pending Review (Proceed first).
+  const automationTriggersForLiveStep =
+    workflowActions.isLiveView && !workflowActions.isTerminal && status !== 'PENDING_REVIEW';
   const showSdCron = automationTriggersForLiveStep && status === 'READY_FOR_CHECKIN';
   const showSdFormResend = automationTriggersForLiveStep && status === 'READY_FOR_CHECKOUT';
-  const manualEmailKinds = automationTriggersForLiveStep
-    ? eligibleManualWorkflowEmailKinds(booking)
-    : [];
 
   useEffect(() => {
-    if (!automationTriggersForLiveStep || manualEmailKinds.length === 0) return;
+    if (!automationTriggersForLiveStep) return;
     try {
       const raw = sessionStorage.getItem(AUTOMATION_SKIP_SESSION_KEY);
       if (!raw) return;
@@ -446,7 +446,7 @@ function WorkflowPanelInner({
     } catch {
       /* ignore */
     }
-  }, [automationTriggersForLiveStep, booking.id, manualEmailKinds.length]);
+  }, [automationTriggersForLiveStep, booking.id]);
 
   const sdGuestFormUrl = `${window.location.origin}${guestSdFormPath(propertySlug, booking.id)}`;
 
@@ -490,6 +490,12 @@ function WorkflowPanelInner({
         toast.success(message);
       } else {
         toast.message('Nothing to update right now');
+      }
+      const emailSuppressed =
+        (result.transitionedSdEmailSuppressed ?? 0) > 0 ||
+        ((result.transitioned ?? 0) > 0 && (result.checkoutEmailsSent ?? 0) === 0);
+      if (planSkipHint && emailSuppressed) {
+        notifyAutomationSkippedByPlan(['sd_refund_form_request'], booking.id);
       }
     } catch (err: unknown) {
       toast.error(friendlyToastError(err, 'Check-out automation failed'));
@@ -728,18 +734,20 @@ function WorkflowPanelInner({
           </div>
         </div>
       ) : !isModal ? (
-        <WorkflowStageDeckHeader
-          stages={deck.stages}
-          viewedIndex={deck.viewedIndex}
-          currentIndex={deck.currentIndex}
-          canGoPrev={deck.canGoPrev}
-          canGoNext={deck.canGoNext}
-          disabled={transitionMut.isPending}
-          onPrev={() => goToDeckIndex(deck.viewedIndex - 1)}
-          onNext={() => goToDeckIndex(deck.viewedIndex + 1)}
-          onSelectIndex={goToDeckIndex}
-          onOpenMap={() => setProgressMapOpen(true)}
-        />
+        <>
+          <WorkflowStageDeckHeader
+            stages={deck.stages}
+            viewedIndex={deck.viewedIndex}
+            currentIndex={deck.currentIndex}
+            canGoPrev={deck.canGoPrev}
+            canGoNext={deck.canGoNext}
+            disabled={transitionMut.isPending}
+            onPrev={() => goToDeckIndex(deck.viewedIndex - 1)}
+            onNext={() => goToDeckIndex(deck.viewedIndex + 1)}
+            onSelectIndex={goToDeckIndex}
+            onOpenMap={() => setProgressMapOpen(true)}
+          />
+        </>
       ) : null}
 
       {/* ── Stage-specific sub-form ───────────────────────────────────────── */}
@@ -756,6 +764,7 @@ function WorkflowPanelInner({
         <WorkflowSubFormHost
           isModal
           booking={booking}
+          automatedBookingFlow={automatedBookingFlow}
           viewedContent={
             isModal && kanbanTargetStatus
               ? (kanbanDropRequiredForm ?? workflowActions.viewedContent)
@@ -808,6 +817,7 @@ function WorkflowPanelInner({
             <WorkflowSubFormHost
               isModal={false}
               booking={booking}
+              automatedBookingFlow={automatedBookingFlow}
               viewedContent={workflowActions.viewedContent}
               contentReadOnly={workflowActions.contentReadOnly}
               pricingReadOnly={workflowActions.contentReadOnly || !canEditPricing}
@@ -842,24 +852,27 @@ function WorkflowPanelInner({
       {/* ── Automation triggers (detail rail only) ─────────────────────────── */}
       {!needsReviewAck && !kanbanConfirmOnly ? (
         <div className="shrink-0">
-          <WorkflowAutomationTriggers
-            isModal={isModal}
-            showSdCron={showSdCron}
-            showSdFormResend={showSdFormResend}
-            manualEmailKinds={manualEmailKinds}
-            planSkipHint={planSkipHint && manualEmailKinds.length > 0}
-            sdRefundEmailLeadMinutes={appSettings?.sdRefundCronEmailLeadMinutes}
-            automationHelpOpen={automationHelpOpen}
-            onToggleAutomationHelp={() => setAutomationHelpOpen((o) => !o)}
-            sdCronPending={sdCronMut.isPending}
-            resendSdFormPending={resendSdFormMut.isPending}
-            sendingKind={
-              sendWorkflowEmailMut.isPending ? (sendWorkflowEmailMut.variables ?? null) : null
-            }
-            onRunSdCron={handleSdCron}
-            onResendSdFormEmail={handleResendSdFormEmail}
-            onSendWorkflowEmail={handleSendWorkflowEmail}
-          />
+          {automationTriggersForLiveStep ? (
+            <WorkflowAutomationTriggers
+              isModal={isModal}
+              booking={booking}
+              showSdCron={showSdCron}
+              showSdFormResend={showSdFormResend}
+              pendingDocumentsComplete={workflowActions.pendingDocumentsComplete}
+              planSkipHint={planSkipHint}
+              sdRefundEmailLeadMinutes={appSettings?.sdRefundCronEmailLeadMinutes}
+              automationHelpOpen={automationHelpOpen}
+              onToggleAutomationHelp={() => setAutomationHelpOpen((o) => !o)}
+              sdCronPending={sdCronMut.isPending}
+              resendSdFormPending={resendSdFormMut.isPending}
+              sendingKind={
+                sendWorkflowEmailMut.isPending ? (sendWorkflowEmailMut.variables ?? null) : null
+              }
+              onRunSdCron={handleSdCron}
+              onResendSdFormEmail={handleResendSdFormEmail}
+              onSendWorkflowEmail={handleSendWorkflowEmail}
+            />
+          ) : null}
 
           {/* ── Transition actions ──────────────────────────────────────── */}
           {showKanbanDropFormActions && kanbanDropTransition ? (
@@ -975,13 +988,28 @@ function WorkflowPanelInner({
                 title={confirm.label}
                 secondaryLabel="Cancel"
                 banner={
-                  confirm.pastStayWarning ? (
-                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
-                      <p className="font-semibold">Stay dates are in the past</p>
-                      <p className="mt-1 text-xs leading-relaxed text-amber-900/95 dark:text-amber-200/90">
-                        Check-in or check-out is before today (Asia/Manila). Continue only if you
-                        still want to advance.
-                      </p>
+                  confirm.pastStayWarning ||
+                  (!automatedBookingFlow &&
+                    workflowWouldEmailOnPaidPlan(transitionEffectsInput)) ? (
+                    <div className="space-y-2">
+                      {confirm.pastStayWarning ? (
+                        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
+                          <p className="font-semibold">Stay dates are in the past</p>
+                          <p className="mt-1 text-xs leading-relaxed text-amber-900/95 dark:text-amber-200/90">
+                            Check-in or check-out is before today (Asia/Manila). Continue only if
+                            you still want to advance.
+                          </p>
+                        </div>
+                      ) : null}
+                      {!automatedBookingFlow &&
+                      workflowWouldEmailOnPaidPlan(transitionEffectsInput) ? (
+                        <div className="border-border bg-muted/50 rounded-lg border px-3 py-2.5 text-sm leading-snug">
+                          <PlanGatedText
+                            feature="automatedBookingFlow"
+                            text="Workflow emails will not send automatically on your plan. Use Automation Triggers after you proceed, or Upgrade to send them automatically."
+                          />
+                        </div>
+                      ) : null}
                     </div>
                   ) : null
                 }

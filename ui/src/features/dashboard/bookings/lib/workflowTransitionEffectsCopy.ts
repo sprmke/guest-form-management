@@ -14,7 +14,6 @@ export type WorkflowEmailDevControlKey =
   | 'sendGafRequestEmail'
   | 'sendBookingAcknowledgementEmail'
   | 'sendPetRequestEmail'
-  | 'sendParkingBroadcastEmail'
   | 'sendReadyForCheckinEmail'
   | 'sendSdRefundFormEmail';
 
@@ -110,7 +109,6 @@ export function workflowTransitionEmailEffects(
     (toStatus === 'PENDING_DOCUMENTS' || toStatus === 'PENDING_GAF');
   const gafDoc = hasDocWithTemplate(documentRequirements, booking, 'gaf');
   const petDoc = hasDocWithTemplate(documentRequirements, booking, 'pet');
-  const hasParking = booking.need_parking === true;
   const hasPets = booking.has_pets === true;
 
   if (isReviewProceed) {
@@ -131,12 +129,6 @@ export function workflowTransitionEmailEffects(
       toggles.emailPetRequest && isReviewToDocs && hasPets && petDoc,
       'sendPetRequestEmail',
       'Emails building management the pet request.'
-    );
-    pushEmailIf(
-      effects,
-      toggles.emailParkingBroadcast && hasParking,
-      'sendParkingBroadcastEmail',
-      'Emails parking owners the parking request.'
     );
   }
 
@@ -169,6 +161,17 @@ export function workflowTransitionEmailEffects(
   }
 
   return effects;
+}
+
+/** True when this forward transition would send workflow emails on a paid plan (default toggles on). */
+export function workflowWouldEmailOnPaidPlan(input: WorkflowTransitionEffectsInput): boolean {
+  return (
+    workflowTransitionEmailEffects({
+      ...input,
+      automatedBookingFlow: true,
+      automationToggles: DEFAULT_PROPERTY_AUTOMATION_TOGGLES,
+    }).length > 0
+  );
 }
 
 /** Short, host-facing bullets for what a workflow transition will do. */

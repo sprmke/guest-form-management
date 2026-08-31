@@ -3,12 +3,15 @@
  * Hover or focus opens a tooltip that explains who moves the booking forward.
  */
 
+import type { ReactNode } from 'react';
+
 import {
   WORKFLOW_ADVANCE_MODE_HINT,
   WORKFLOW_ADVANCE_MODE_LABEL,
-  workflowAdvanceModeAria,
   type WorkflowAdvanceMode,
 } from '@/features/dashboard/bookings/lib/workflowAdvanceMode';
+import { PlanGatedText } from '@/features/dashboard/plans/components/PlanUpgradeLink';
+import type { PlanFeatureKey } from '@/features/dashboard/plans/lib/planFeatures';
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -27,19 +30,38 @@ const markClass = (mode: WorkflowAdvanceMode) =>
   );
 
 /** Non-interactive pill — use in the All steps map where the line already explains. */
-export function WorkflowAdvanceModeMark({ mode, className }: MarkProps) {
+export function WorkflowAdvanceModeMark({
+  mode,
+  label,
+  className,
+}: MarkProps & { label?: string }) {
   return (
-    <span className={cn(markClass(mode), className)}>{WORKFLOW_ADVANCE_MODE_LABEL[mode]}</span>
+    <span className={cn(markClass(mode), className)}>
+      {label ?? WORKFLOW_ADVANCE_MODE_LABEL[mode]}
+    </span>
   );
 }
 
 type Props = {
   mode: WorkflowAdvanceMode;
+  /** Override pill text (plan-aware labels). */
+  label?: string;
+  /** Override tooltip body. */
+  hint?: string;
+  /** When set, links "Upgrade" in the hint wherever that word appears. */
+  upgradeFeature?: PlanFeatureKey;
   className?: string;
 };
 
-export function WorkflowAdvanceModeBadge({ mode, className }: Props) {
-  const hint = WORKFLOW_ADVANCE_MODE_HINT[mode];
+export function WorkflowAdvanceModeBadge({ mode, label, hint, upgradeFeature, className }: Props) {
+  const resolvedHint = hint ?? WORKFLOW_ADVANCE_MODE_HINT[mode];
+  const resolvedLabel = label ?? WORKFLOW_ADVANCE_MODE_LABEL[mode];
+  const hintContent: ReactNode =
+    upgradeFeature && typeof resolvedHint === 'string' ? (
+      <PlanGatedText text={resolvedHint} feature={upgradeFeature} />
+    ) : (
+      resolvedHint
+    );
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -48,13 +70,13 @@ export function WorkflowAdvanceModeBadge({ mode, className }: Props) {
           <button
             type="button"
             className="focus-ring -mx-1 -my-1 inline-flex shrink-0 items-center rounded-full p-1"
-            aria-label={workflowAdvanceModeAria(mode)}
+            aria-label={`${resolvedLabel}. ${resolvedHint}`}
           >
-            <WorkflowAdvanceModeMark mode={mode} className={className} />
+            <WorkflowAdvanceModeMark mode={mode} label={resolvedLabel} className={className} />
           </button>
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-[min(90vw,18rem)] text-xs leading-snug">
-          {hint}
+          {hintContent}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

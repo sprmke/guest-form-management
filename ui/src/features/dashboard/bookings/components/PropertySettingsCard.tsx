@@ -966,7 +966,6 @@ export function PropertySettingsCard() {
           />
 
           <PropertyGuestRewardsSection
-            data={appSettings}
             draft={operationalDraft}
             externalReviewsBaseline={operationalBaseline?.externalReviews ?? []}
             disabled={busy || Boolean(sectionEditLocked['guest-rewards'])}
