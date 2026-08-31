@@ -12,7 +12,6 @@ import {
   CALENDAR_SYNC_QUERY_KEY,
   fetchCalendarSyncSettings,
   removeCalendarFeed,
-  rotateExportToken,
   setExportEnabled,
   syncFeedNow,
   updateCalendarFeed,
@@ -126,19 +125,6 @@ export function useRemoveCalendarFeed() {
       toast.success('Calendar removed');
     },
     onError: (error: Error) => handleCalendarSyncError(error, 'Could not remove calendar'),
-  });
-}
-
-export function useRotateExportToken() {
-  const propertyId = usePropertyIdParam();
-  const invalidate = useInvalidateCalendarSync();
-  return useMutation({
-    mutationFn: () => rotateExportToken(propertyId!),
-    onSuccess: () => {
-      invalidate();
-      toast.success('Export link reset — paste the new one into Airbnb');
-    },
-    onError: (error: Error) => handleCalendarSyncError(error, 'Could not rotate link'),
   });
 }
 

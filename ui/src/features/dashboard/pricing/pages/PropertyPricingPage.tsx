@@ -16,6 +16,7 @@ import {
   type CalendarBookingCelebrationTrigger,
 } from '@/features/dashboard/bookings/components/calendar/CalendarBookingCelebration';
 import { buildOccupancyByDay } from '@/features/dashboard/bookings/components/calendar/calendarDateUtils';
+import { TierBadge, TierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
 import { ChannelSyncDialog } from '@/features/dashboard/pricing/components/ChannelSyncDialog';
 import { PricingCalendarBookingModal } from '@/features/dashboard/pricing/components/PricingCalendarBookingModal';
 import { PricingCalendarGrid } from '@/features/dashboard/pricing/components/PricingCalendarGrid';
@@ -544,21 +545,26 @@ export function PropertyPricingPage() {
   }
 
   const channelSyncHeroAction = canViewChannels ? (
-    <MobileHeroActionButton aria-label="Channel sync" onClick={() => setChannelSyncOpen(true)}>
-      <CalendarRange className="size-5" aria-hidden />
-    </MobileHeroActionButton>
+    <span className="relative inline-flex">
+      <MobileHeroActionButton aria-label="Channel sync" onClick={() => setChannelSyncOpen(true)}>
+        <CalendarRange className="size-5" aria-hidden />
+      </MobileHeroActionButton>
+      <TierBadge feature="calendarSync" placement="corner" />
+    </span>
   ) : undefined;
 
   const channelSyncDesktopAction = canViewChannels ? (
-    <Button
-      type="button"
-      variant="outline"
-      onClick={() => setChannelSyncOpen(true)}
-      className="min-h-[44px] gap-1.5"
-    >
-      <CalendarRange className="size-4" aria-hidden />
-      Channel sync
-    </Button>
+    <TierBadgeAnchor feature="calendarSync">
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => setChannelSyncOpen(true)}
+        className="min-h-[44px] gap-1.5"
+      >
+        <CalendarRange className="size-4" aria-hidden />
+        Channel sync
+      </Button>
+    </TierBadgeAnchor>
   ) : undefined;
 
   return (

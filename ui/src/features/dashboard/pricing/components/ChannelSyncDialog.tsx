@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 
 import { CalendarRange, Check, Copy, Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -9,16 +9,17 @@ import {
   useAddCalendarFeed,
   useCalendarSyncSettings,
   useRemoveCalendarFeed,
-  useRotateExportToken,
   useSetExportEnabled,
   useSyncFeedNow,
 } from '@/features/dashboard/pricing/hooks/useCalendarSync';
 import {
   CALENDAR_PROVIDER_LABELS,
+  validateAirbnbCalendarUrl,
   type CalendarSyncEvent,
   type CalendarSyncFeed,
 } from '@/features/dashboard/pricing/lib/calendarSyncApi';
 
+import { FieldLabel } from '@/components/forms/FieldLabel';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,7 +34,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   ResponsiveModal,
   ResponsiveModalContent,
@@ -54,6 +54,15 @@ const HEALTH_TONE: Record<
   warning: { label: 'Retrying', variant: 'outline' },
   error: { label: 'Needs fix', variant: 'destructive' },
 };
+
+const FROM_AIRBNB_URL_HELP =
+  'In Airbnb: open the listing Calendar → Availability → Connect calendars → Export calendar. Copy the link (starts with airbnb.com/calendar/ical/) and paste it here so those booked dates block here.';
+
+const SHARE_WITH_AIRBNB_HELP =
+  'Turns on a private calendar link for this property. Airbnb can then import your booked and blocked dates from our app.';
+
+const PASTE_INTO_AIRBNB_HELP =
+  'In Airbnb: listing Calendar → Availability → Connect calendars → Import calendar. Paste this link, name it, and save. Airbnb refreshes every few hours.';
 
 function CopyButton({ value, label }: { value: string; label: string }) {
   const [copied, setCopied] = useState(false);
@@ -113,54 +122,140 @@ export function ChannelSyncDialog({
 }: ChannelSyncDialogProps) {
   const gate = useFeatureGate('calendarSync');
   const { open: openUpgradeModal } = useUpgradeModal();
-  const showLocked = !gate.isLoading && !gate.allowed;
   const settings = useCalendarSyncSettings({
-    enabled: open && !gate.isLoading && gate.allowed,
+    enabled: open,
   });
 
   const addFeed = useAddCalendarFeed();
   const removeFeed = useRemoveCalendarFeed();
-  const rotateToken = useRotateExportToken();
   const setEnabled = useSetExportEnabled();
   const syncNow = useSyncFeedNow();
 
   const [tab, setTab] = useState<'import' | 'export'>('import');
   const [adding, setAdding] = useState(false);
-  const [label, setLabel] = useState('');
   const [icsUrl, setIcsUrl] = useState('');
+  const [urlTouched, setUrlTouched] = useState(false);
   const [pendingRemove, setPendingRemove] = useState<CalendarSyncFeed | null>(null);
-  const [rotateConfirmOpen, setRotateConfirmOpen] = useState(false);
   const [activityOpen, setActivityOpen] = useState(false);
+  /** Nested AlertDialog dismiss can bubble and close the parent modal — suppress briefly. */
+  const suppressParentCloseRef = useRef(false);
+  const nestedConfirmOpen = !!pendingRemove;
 
   const data = settings.data;
   const feeds = data?.feeds ?? [];
   const exportUrl = data?.export.urls?.airbnb ?? '';
   const exportEnabled = data?.export.enabled ?? false;
   const recentEvents = data?.recentEvents ?? [];
+  const showAddForm = !readOnly && (adding || feeds.length === 0);
+  const validationError = validateAirbnbCalendarUrl(icsUrl);
+  /** Show errors only after the host types/changes the field (not on tab switch / blur). */
+  const urlError = urlTouched ? validationError : null;
+  /** Connect stays disabled until the URL passes Airbnb validation. */
+  const canConnect = !validationError && !addFeed.isPending;
+
+  const requireCalendarSyncPlan = (): boolean => {
+    if (gate.canUse) return true;
+    if (!gate.isLoading) openUpgradeModal('calendarSync');
+    return false;
+  };
 
   const resetAddForm = () => {
-    setLabel('');
     setIcsUrl('');
+    setUrlTouched(false);
     setAdding(false);
+  };
+
+  const closeNestedConfirm = (close: () => void) => {
+    suppressParentCloseRef.current = true;
+    close();
+    window.setTimeout(() => {
+      suppressParentCloseRef.current = false;
+    }, 150);
   };
 
   const handleAdd = (e: FormEvent) => {
     e.preventDefault();
-    if (!icsUrl.trim()) {
-      toast.error('Paste the Airbnb calendar URL');
+    setUrlTouched(true);
+    const error = validateAirbnbCalendarUrl(icsUrl);
+    if (error) {
+      toast.error(error);
       return;
     }
+    if (!requireCalendarSyncPlan()) return;
     addFeed.mutate(
-      { provider: 'airbnb', label: label.trim() || undefined, icsUrl: icsUrl.trim() },
+      { provider: 'airbnb', icsUrl: icsUrl.trim() },
       { onSuccess: () => resetAddForm() }
     );
   };
+
+  const handleExportEnabledChange = (enabled: boolean) => {
+    if (enabled && !requireCalendarSyncPlan()) return;
+    setEnabled.mutate(enabled);
+  };
+
+  const addForm = (
+    <form
+      className={cn('space-y-3', feeds.length > 0 && 'border-border rounded-xl border p-3')}
+      onSubmit={handleAdd}
+      noValidate
+    >
+      <div className="space-y-1.5">
+        <FieldLabel
+          htmlFor="channel-url"
+          label="Airbnb calendar URL"
+          required
+          help={FROM_AIRBNB_URL_HELP}
+        />
+        <Input
+          id="channel-url"
+          value={icsUrl}
+          onChange={(e) => {
+            setIcsUrl(e.target.value);
+            setUrlTouched(true);
+          }}
+          placeholder="https://www.airbnb.com/calendar/ical/…"
+          className="h-11"
+          inputMode="url"
+          autoFocus={showAddForm && tab === 'import'}
+          error={!!urlError}
+          aria-invalid={urlError ? true : undefined}
+          aria-describedby={urlError ? 'channel-url-error' : undefined}
+        />
+        {urlError ? (
+          <p id="channel-url-error" className="text-destructive text-xs">
+            {urlError}
+          </p>
+        ) : null}
+      </div>
+      <div className="flex gap-2 pt-1">
+        {feeds.length > 0 ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-[44px] flex-1"
+            onClick={resetAddForm}
+            disabled={addFeed.isPending}
+          >
+            Cancel
+          </Button>
+        ) : null}
+        <Button
+          type="submit"
+          className={cn('min-h-[44px]', feeds.length > 0 ? 'flex-1' : 'w-full')}
+          disabled={!canConnect}
+        >
+          {addFeed.isPending ? <Loader2 className="size-4 animate-spin" /> : 'Connect'}
+        </Button>
+      </div>
+    </form>
+  );
 
   return (
     <>
       <ResponsiveModal
         open={open}
         onOpenChange={(next) => {
+          if (!next && (suppressParentCloseRef.current || nestedConfirmOpen)) return;
           if (!next) {
             resetAddForm();
             setTab('import');
@@ -172,8 +267,20 @@ export function ChannelSyncDialog({
         <ResponsiveModalContent
           sheetLayout="split"
           className={cn(
-            'flex max-h-[min(92dvh,40rem)] w-[min(calc(100vw-1.5rem),28rem)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(95vw,28rem)] sm:p-0'
+            'flex max-h-[min(92dvh,44rem)] w-[min(calc(100vw-1.5rem),36rem)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(95vw,36rem)] sm:p-0'
           )}
+          onEscapeKeyDown={(event) => {
+            if (nestedConfirmOpen) event.preventDefault();
+          }}
+          onPointerDownOutside={(event) => {
+            if (nestedConfirmOpen) event.preventDefault();
+          }}
+          onInteractOutside={(event) => {
+            if (nestedConfirmOpen) event.preventDefault();
+          }}
+          onFocusOutside={(event) => {
+            if (nestedConfirmOpen) event.preventDefault();
+          }}
         >
           <ResponsiveModalHeader className="border-border/60 shrink-0 space-y-0 border-b px-4 py-3 text-left sm:px-5 sm:py-4">
             <ResponsiveModalTitle className="text-base sm:text-lg">
@@ -185,17 +292,7 @@ export function ChannelSyncDialog({
           </ResponsiveModalHeader>
 
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 [-webkit-overflow-scrolling:touch] sm:px-5">
-            {showLocked ? (
-              <div className="flex flex-col items-center gap-4 py-8 text-center">
-                <div className="bg-muted/80 flex size-12 items-center justify-center rounded-full">
-                  <CalendarRange className="text-muted-foreground size-5" aria-hidden />
-                </div>
-                <p className="text-muted-foreground text-sm">Available on Pro and above.</p>
-                <Button type="button" onClick={() => openUpgradeModal('calendarSync')}>
-                  View plans
-                </Button>
-              </div>
-            ) : gate.isLoading || settings.isLoading ? (
+            {gate.isLoading || settings.isLoading ? (
               <div className="text-muted-foreground flex items-center justify-center gap-2 py-12 text-sm">
                 <Loader2 className="size-4 animate-spin" aria-hidden />
                 Loading…
@@ -212,8 +309,13 @@ export function ChannelSyncDialog({
             ) : (
               <Tabs
                 value={tab}
-                onValueChange={(v) => setTab(v as 'import' | 'export')}
-                className="space-y-4"
+                onValueChange={(v) => {
+                  const next = v as 'import' | 'export';
+                  setTab(next);
+                  // Blur/tab switch must not leave a Required error on an empty field.
+                  if (next !== 'import' && !icsUrl.trim()) setUrlTouched(false);
+                }}
+                className="space-y-5"
               >
                 <TabsList className="grid h-10 w-full grid-cols-2">
                   <TabsTrigger value="import" className="h-8">
@@ -230,27 +332,15 @@ export function ChannelSyncDialog({
                 </TabsList>
 
                 <TabsContent value="import" className="mt-0 space-y-4 focus-visible:ring-0">
-                  {feeds.length === 0 && !adding ? (
+                  {feeds.length === 0 && readOnly ? (
                     <div className="flex flex-col items-center gap-3 py-8 text-center">
                       <div className="bg-muted/80 flex size-12 items-center justify-center rounded-full">
                         <CalendarRange className="text-muted-foreground size-5" aria-hidden />
                       </div>
                       <p className="text-foreground text-sm font-medium">No Airbnb calendar</p>
-                      <p className="text-muted-foreground max-w-[16rem] text-xs">
-                        {readOnly
-                          ? 'No Airbnb calendar is connected for this property.'
-                          : 'Paste Airbnb’s export calendar link to block those dates here.'}
+                      <p className="text-muted-foreground max-w-[18rem] text-xs">
+                        No Airbnb calendar is connected for this property.
                       </p>
-                      {!readOnly ? (
-                        <Button
-                          type="button"
-                          className="mt-1 min-h-[44px] gap-1.5"
-                          onClick={() => setAdding(true)}
-                        >
-                          <Plus className="size-4" aria-hidden />
-                          Connect Airbnb
-                        </Button>
-                      ) : null}
                     </div>
                   ) : (
                     <>
@@ -310,56 +400,8 @@ export function ChannelSyncDialog({
                         </ul>
                       ) : null}
 
-                      {!readOnly && adding ? (
-                        <form
-                          className="border-border space-y-3 rounded-xl border p-3"
-                          onSubmit={handleAdd}
-                        >
-                          <div className="space-y-1.5">
-                            <Label htmlFor="channel-url">Airbnb calendar URL</Label>
-                            <Input
-                              id="channel-url"
-                              value={icsUrl}
-                              onChange={(e) => setIcsUrl(e.target.value)}
-                              placeholder="https://www.airbnb.com/calendar/ical/…"
-                              className="h-11"
-                              inputMode="url"
-                              autoFocus
-                            />
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label htmlFor="channel-label">Label</Label>
-                            <Input
-                              id="channel-label"
-                              value={label}
-                              onChange={(e) => setLabel(e.target.value)}
-                              placeholder="Optional"
-                              className="h-11"
-                            />
-                          </div>
-                          <div className="flex gap-2 pt-1">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="min-h-[44px] flex-1"
-                              onClick={resetAddForm}
-                              disabled={addFeed.isPending}
-                            >
-                              Cancel
-                            </Button>
-                            <Button
-                              type="submit"
-                              className="min-h-[44px] flex-1"
-                              disabled={addFeed.isPending}
-                            >
-                              {addFeed.isPending ? (
-                                <Loader2 className="size-4 animate-spin" />
-                              ) : (
-                                'Connect'
-                              )}
-                            </Button>
-                          </div>
-                        </form>
+                      {showAddForm ? (
+                        addForm
                       ) : !readOnly ? (
                         <Button
                           type="button"
@@ -397,45 +439,38 @@ export function ChannelSyncDialog({
                   ) : null}
                 </TabsContent>
 
-                <TabsContent value="export" className="mt-0 space-y-4 focus-visible:ring-0">
+                <TabsContent value="export" className="mt-0 space-y-5 focus-visible:ring-0">
                   <div className="flex items-center justify-between gap-3">
-                    <Label htmlFor="channel-export-enabled" className="text-sm font-medium">
-                      Share with Airbnb
-                    </Label>
+                    <FieldLabel
+                      htmlFor="channel-export-enabled"
+                      label="Share with Airbnb"
+                      help={SHARE_WITH_AIRBNB_HELP}
+                      className="mb-0"
+                    />
                     <Switch
                       id="channel-export-enabled"
                       checked={exportEnabled}
-                      onCheckedChange={(v) => setEnabled.mutate(v)}
+                      onCheckedChange={handleExportEnabledChange}
                       disabled={readOnly || setEnabled.isPending || !data?.export.urls}
                     />
                   </div>
 
                   {exportEnabled && exportUrl ? (
-                    <div className="space-y-3">
-                      <div className="space-y-1.5">
-                        <Label htmlFor="channel-export-url">Paste into Airbnb</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            id="channel-export-url"
-                            readOnly
-                            value={exportUrl}
-                            className="h-11 min-w-0 flex-1 font-mono text-xs"
-                          />
-                          <CopyButton value={exportUrl} label="Copy Airbnb export link" />
-                        </div>
+                    <div className="space-y-1.5">
+                      <FieldLabel
+                        htmlFor="channel-export-url"
+                        label="Paste into Airbnb"
+                        help={PASTE_INTO_AIRBNB_HELP}
+                      />
+                      <div className="flex gap-2">
+                        <Input
+                          id="channel-export-url"
+                          readOnly
+                          value={exportUrl}
+                          className="h-11 min-w-0 flex-1 font-mono text-xs"
+                        />
+                        <CopyButton value={exportUrl} label="Copy Airbnb export link" />
                       </div>
-                      {!readOnly ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="text-muted-foreground h-9 px-2"
-                          disabled={rotateToken.isPending}
-                          onClick={() => setRotateConfirmOpen(true)}
-                        >
-                          Reset link
-                        </Button>
-                      ) : null}
                     </div>
                   ) : data?.export.urls ? (
                     <p className="text-muted-foreground text-sm">
@@ -451,8 +486,13 @@ export function ChannelSyncDialog({
         </ResponsiveModalContent>
       </ResponsiveModal>
 
-      <AlertDialog open={!!pendingRemove} onOpenChange={(next) => !next && setPendingRemove(null)}>
-        <AlertDialogContent>
+      <AlertDialog
+        open={!!pendingRemove}
+        onOpenChange={(next) => {
+          if (!next) closeNestedConfirm(() => setPendingRemove(null));
+        }}
+      >
+        <AlertDialogContent onCloseAutoFocus={(event) => event.preventDefault()}>
           <AlertDialogHeader>
             <AlertDialogTitle>Remove this calendar?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -465,36 +505,13 @@ export function ChannelSyncDialog({
               if (!pendingRemove) return;
               removeFeed.mutate(
                 { feedId: pendingRemove.id, deleteData },
-                { onSettled: () => setPendingRemove(null) }
+                {
+                  onSettled: () => closeNestedConfirm(() => setPendingRemove(null)),
+                }
               );
             }}
             pending={removeFeed.isPending}
           />
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={rotateConfirmOpen} onOpenChange={setRotateConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Reset export link?</AlertDialogTitle>
-            <AlertDialogDescription>
-              The current link stops working. Paste the new one into Airbnb’s import calendar.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={rotateToken.isPending}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={rotateToken.isPending}
-              onClick={(e) => {
-                e.preventDefault();
-                rotateToken.mutate(undefined, {
-                  onSettled: () => setRotateConfirmOpen(false),
-                });
-              }}
-            >
-              {rotateToken.isPending ? <Loader2 className="size-4 animate-spin" /> : 'Reset link'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>
