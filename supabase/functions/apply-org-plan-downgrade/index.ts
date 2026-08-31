@@ -41,7 +41,12 @@ serveAuthenticated('apply-org-plan-downgrade', async (req, user) => {
       message.includes('Already on the Free') ||
       message.includes('Plan not found') ||
       message.includes('Only subscription') ||
-      message.includes('no enrolled properties');
+      message.includes('Pay the overdue balance') ||
+      message.includes('Pay to restore access') ||
+      message.includes('Contact support to change your Managed') ||
+      message.includes('contact sales for Managed') ||
+      message.includes('Add at least one property') ||
+      message.includes('not eligible for a self-serve downgrade');
     return jsonError(req, message, clientError ? 400 : 502);
   }
 });
