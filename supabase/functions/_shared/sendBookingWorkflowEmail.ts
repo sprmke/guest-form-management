@@ -10,7 +10,6 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import {
   sendBookingAcknowledgement,
   sendEmail,
-  sendParkingBroadcast,
   sendPetEmail,
   sendReadyForCheckin,
   sendSdRefundFormRequest,
@@ -22,13 +21,24 @@ import {
   type PropertyAutomationToggleKey,
 } from './propertyAutomationToggles.ts';
 import type { GuestSubmission } from './types.ts';
+import {
+  gafRequestSendBlockReason,
+  petRequestSendBlockReason,
+} from './workflowEmailSendPrerequisites.ts';
+import {
+  formatWorkflowEmailResendWait,
+  lastWorkflowEmailManualSentAt,
+  mergeWorkflowEmailManualSentAt,
+  parseWorkflowEmailManualSentAt,
+  propertyHasAutomatedBookingFlow,
+  workflowEmailManualCooldownRemainingMs,
+} from './workflowEmailManualSendCooldown.ts';
 
 export const BOOKING_WORKFLOW_EMAIL_KINDS = [
   'gaf_request',
   'pet_request',
   'booking_acknowledgement',
   'ready_for_checkin',
-  'parking_broadcast',
   'sd_refund_form_request',
 ] as const;
 
@@ -39,7 +49,6 @@ const KIND_TO_TOGGLE: Record<BookingWorkflowEmailKind, PropertyAutomationToggleK
   pet_request: 'emailPetRequest',
   booking_acknowledgement: 'emailBookingAcknowledgement',
   ready_for_checkin: 'emailReadyForCheckin',
-  parking_broadcast: 'emailParkingBroadcast',
   sd_refund_form_request: 'emailSdRefundCheckout',
 };
 
@@ -48,7 +57,6 @@ const TOGGLE_DISABLED_MESSAGE: Record<BookingWorkflowEmailKind, string> = {
   pet_request: 'Pet request emails are disabled in property automations',
   booking_acknowledgement: 'Booking acknowledgement emails are disabled in property automations',
   ready_for_checkin: 'Ready-for-check-in emails are disabled in property automations',
-  parking_broadcast: 'Parking broadcast emails are disabled in property automations',
   sd_refund_form_request: 'Check-out & SD refund emails are disabled in property automations',
 };
 
@@ -179,7 +187,24 @@ export async function sendBookingWorkflowEmail(
     throw new SendBookingWorkflowEmailError(TOGGLE_DISABLED_MESSAGE[kind], 409);
   }
 
+  const sentMap = parseWorkflowEmailManualSentAt(
+    (booking as Record<string, unknown>).workflow_email_manual_sent_at
+  );
+  const hasAutomatedFlow = await propertyHasAutomatedBookingFlow(propertyId);
+  if (!hasAutomatedFlow) {
+    const lastSent = lastWorkflowEmailManualSentAt(
+      sentMap,
+      kind,
+      (booking as { sd_refund_form_emailed_at?: string | null }).sd_refund_form_emailed_at
+    );
+    const remainingMs = workflowEmailManualCooldownRemainingMs(lastSent);
+    if (remainingMs > 0) {
+      throw new SendBookingWorkflowEmailError(formatWorkflowEmailResendWait(remainingMs), 429);
+    }
+  }
+
   const status = String(booking.status ?? '');
+  const sentAtIso = new Date().toISOString();
 
   switch (kind) {
     case 'gaf_request': {
@@ -191,6 +216,10 @@ export async function sendBookingWorkflowEmail(
       }
       if (status === 'PENDING_REVIEW' || status === 'CANCELLED') {
         throw new SendBookingWorkflowEmailError(`Cannot send GAF request in status ${status}`);
+      }
+      const gafBlock = gafRequestSendBlockReason(booking);
+      if (gafBlock) {
+        throw new SendBookingWorkflowEmailError(gafBlock, 409);
       }
       const pdfBytes = await downloadPdfBytes(pdfUrl);
       if (!pdfBytes?.length) {
@@ -211,6 +240,10 @@ export async function sendBookingWorkflowEmail(
       }
       if (status === 'PENDING_REVIEW' || status === 'CANCELLED') {
         throw new SendBookingWorkflowEmailError(`Cannot send pet request in status ${status}`);
+      }
+      const petBlock = petRequestSendBlockReason(booking);
+      if (petBlock) {
+        throw new SendBookingWorkflowEmailError(petBlock, 409);
       }
       const pdfBytes = await downloadPdfBytes(pdfUrl);
       if (!pdfBytes?.length) {
@@ -244,26 +277,6 @@ export async function sendBookingWorkflowEmail(
       await sendReadyForCheckin(booking);
       break;
     }
-    case 'parking_broadcast': {
-      if (!bookingFlagTrue(booking.need_parking)) {
-        throw new SendBookingWorkflowEmailError(
-          'Booking does not require parking — broadcast skipped'
-        );
-      }
-      if (status === 'CANCELLED') {
-        throw new SendBookingWorkflowEmailError(
-          'Cannot send parking broadcast for a cancelled booking'
-        );
-      }
-      const result = await sendParkingBroadcast(booking);
-      if (result === null) {
-        throw new SendBookingWorkflowEmailError(
-          'Parking owner emails are not configured for this property',
-          409
-        );
-      }
-      break;
-    }
     case 'sd_refund_form_request': {
       if (status !== 'READY_FOR_CHECKOUT' && status !== 'READY_FOR_CHECKIN') {
         throw new SendBookingWorkflowEmailError(
@@ -271,9 +284,6 @@ export async function sendBookingWorkflowEmail(
         );
       }
       await sendSdRefundFormRequest(booking);
-      await DatabaseService.setWorkflowFields(bookingId, {
-        sd_refund_form_emailed_at: new Date().toISOString(),
-      });
       break;
     }
     default: {
@@ -281,6 +291,18 @@ export async function sendBookingWorkflowEmail(
       throw new SendBookingWorkflowEmailError(`Unknown kind: ${_exhaustive}`);
     }
   }
+
+  const stamp: Record<string, unknown> = {
+    workflow_email_manual_sent_at: mergeWorkflowEmailManualSentAt(
+      (booking as Record<string, unknown>).workflow_email_manual_sent_at,
+      kind,
+      sentAtIso
+    ),
+  };
+  if (kind === 'sd_refund_form_request') {
+    stamp.sd_refund_form_emailed_at = sentAtIso;
+  }
+  await DatabaseService.setWorkflowFields(bookingId, stamp);
 
   return { bookingId, kind };
 }
