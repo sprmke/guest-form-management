@@ -29,7 +29,6 @@ import {
   useModerateExternalReview,
 } from '@/features/dashboard/super-admin/hooks/useApprovals';
 import type { ExternalReviewApprovalSummary } from '@/features/dashboard/super-admin/types/approval';
-import { guestReviewFeedbackTagLabel } from '@/features/guest/sd-form/lib/guestReviewFeedbackTags';
 
 import { ListRowsSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
@@ -177,18 +176,6 @@ export function SuperAdminExternalReviewDialog({ approval, onOpenChange }: Props
 
                 <section className="space-y-3">
                   <p className={superAdminApprovalSectionTitleClass}>Review</p>
-                  {approval.feedbackTags.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {approval.feedbackTags.map((tagId) => (
-                        <span
-                          key={tagId}
-                          className="border-border bg-muted/50 text-foreground rounded-full border px-3 py-1 text-xs font-medium"
-                        >
-                          {guestReviewFeedbackTagLabel(tagId)}
-                        </span>
-                      ))}
-                    </div>
-                  ) : null}
                   <p className="text-foreground whitespace-pre-wrap text-sm leading-relaxed">
                     {approval.reviewText}
                   </p>
@@ -210,24 +197,13 @@ export function SuperAdminExternalReviewDialog({ approval, onOpenChange }: Props
                   <p className={superAdminApprovalSectionTitleClass}>
                     Proof of guest&apos;s review
                   </p>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 sm:max-w-md sm:grid-cols-2">
                     <VerificationDocPreviewCard
-                      label="Screenshot"
+                      label="Proof screenshot"
                       url={screenshotUrl}
                       onFullView={setFullView}
                     />
                   </div>
-                  {approval.proofUrl?.trim() ? (
-                    <a
-                      href={approval.proofUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary inline-flex min-h-[44px] items-center gap-1.5 text-sm font-medium"
-                    >
-                      Proof URL
-                      <ExternalLink className="size-3.5" aria-hidden />
-                    </a>
-                  ) : null}
                 </section>
               </div>
             )}

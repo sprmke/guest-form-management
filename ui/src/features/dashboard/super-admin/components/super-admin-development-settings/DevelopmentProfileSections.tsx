@@ -269,7 +269,7 @@ export function DevelopmentProfileSections({
         <SettingsField
           id="development-pmo-email"
           label="PMO email"
-          hintBelow="Receives GAF and pet approval requests for all properties in this development."
+          help="Receives GAF and pet approval requests for all properties in this development."
           required
         >
           <Input
