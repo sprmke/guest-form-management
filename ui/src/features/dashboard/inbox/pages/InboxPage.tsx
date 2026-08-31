@@ -169,6 +169,7 @@ export function InboxPage({
     disconnectMeta,
     resubscribeMeta,
     sendReply,
+    uploadAttachment,
     editMessage,
     unsendMessage,
     aiSuggest,
@@ -407,8 +408,14 @@ export function InboxPage({
                     text,
                     replyToMessageId: opts?.replyToMessageId,
                     useHumanAgentTag: opts?.useHumanAgentTag,
+                    attachments: opts?.attachments,
                   });
                 }}
+                onUploadAttachment={
+                  selectedId
+                    ? (file) => uploadAttachment.mutateAsync({ conversationId: selectedId, file })
+                    : undefined
+                }
                 onEdit={async (messageId, text) => {
                   if (!selectedId) return;
                   await editMessage.mutateAsync({ conversationId: selectedId, messageId, text });
@@ -422,6 +429,7 @@ export function InboxPage({
                   return aiSuggest.mutateAsync(selectedId);
                 }}
                 sending={sendReply.isPending}
+                uploadingAttachment={uploadAttachment.isPending}
                 editing={editMessage.isPending}
                 unsending={unsendMessage.isPending}
                 suggesting={aiSuggest.isPending}
@@ -445,6 +453,7 @@ export function InboxPage({
           canManageAutomation={allowAutomation}
           showChannelsTab={showChannelsTab}
           showSettingsManageTabs={showSettingsManageTabs}
+          showPinnedSnippets={kind === 'property'}
           usingOrgMeta={connectionsData?.usingOrgMeta}
           connections={connectionsData?.connections ?? []}
           connectionsLoading={connectionsLoading}
