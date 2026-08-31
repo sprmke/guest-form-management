@@ -1,6 +1,6 @@
 /**
  * ical-export — public, token-guarded outbound calendar feed for OTAs to import.
- * Plan: docs/workflow/in-progress/airbnb-calendar-sync.md §8 / §10
+ * Plan: docs/workflow/done/airbnb-calendar-sync.md §8 / §10
  *
  *   GET /functions/v1/ical-export?property=<slug>&token=<t>[&as=<provider>]
  *

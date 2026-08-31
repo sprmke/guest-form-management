@@ -1,6 +1,6 @@
 /**
  * Airbnb / OTA two-way calendar sync — pure engine helpers.
- * Plan: docs/workflow/in-progress/airbnb-calendar-sync.md §6–§9
+ * Plan: docs/workflow/done/airbnb-calendar-sync.md §6–§9
  *
  * This module is intentionally free of DB access so it can be unit-tested in isolation
  * (supabase/functions/_shared/calendarSyncService_test.ts). The `calendar-sync-cron`

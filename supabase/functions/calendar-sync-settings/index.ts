@@ -7,7 +7,6 @@
  *   addFeed         { provider?: 'airbnb', label?, icsUrl }  — Airbnb only for new feeds
  *   updateFeed      { feedId, label?, icsUrl?, isActive? }
  *   removeFeed      { feedId, deleteData?: boolean }
- *   rotateExportToken
  *   setExportEnabled { enabled: boolean }
  *   syncNow         { feedId }
  */
@@ -71,7 +70,7 @@ async function ensureExportRow(
   const token = newToken();
   const { data: created, error } = await supabase
     .from('property_calendar_export')
-    .insert({ property_id: propertyId, token })
+    .insert({ property_id: propertyId, token, is_enabled: false })
     .select('token, is_enabled, rotated_at, last_served_at')
     .single();
   if (error) throw new Error(`create export row: ${error.message}`);
@@ -95,14 +94,7 @@ serveAuthenticated('calendar-sync-settings', async (req) => {
   // ── GET ────────────────────────────────────────────────────────────────
   if (req.method === 'GET') {
     const { property } = await resolveScopedPropertyAccess(req, 'pricing.channels:view');
-    try {
-      await requirePropertyFeature(property.id, 'calendarSync');
-    } catch (err) {
-      const gate = catchPlanFeatureError(req, err);
-      if (gate) return gate;
-      throw err;
-    }
-
+    // Preview-open: hosts below Pro can browse the Channel sync UI; writes stay plan-gated.
     const [{ data: feedRows }, exportRow] = await Promise.all([
       supabase
         .from('property_calendar_feeds')
@@ -168,8 +160,23 @@ serveAuthenticated('calendar-sync-settings', async (req) => {
 
   if (req.method !== 'PATCH') return jsonError(req, 'Method not allowed', 405);
 
-  // ── PATCH (all mutations require the plan + edit permission) ────────────
+  // ── PATCH ───────────────────────────────────────────────────────────────
   const { property, user } = await resolveScopedPropertyAccess(req, 'pricing.channels:edit');
+  const body = await readJsonBody(req);
+  const action = String(body.action ?? '');
+
+  // Opt-out: turning Share with Airbnb off must work without the Pro plan (hosts who
+  // landed on an auto-enabled row need to disable it without hitting the upgrade modal).
+  if (action === 'setExportEnabled' && body.enabled === false) {
+    await ensureExportRow(supabase, property.id);
+    const { error } = await supabase
+      .from('property_calendar_export')
+      .update({ is_enabled: false })
+      .eq('property_id', property.id);
+    if (error) throw new Error(error.message);
+    return jsonSuccess(req, { enabled: false });
+  }
+
   try {
     await requirePropertyFeature(property.id, 'calendarSync');
   } catch (err) {
@@ -177,9 +184,6 @@ serveAuthenticated('calendar-sync-settings', async (req) => {
     if (gate) return gate;
     throw err;
   }
-
-  const body = await readJsonBody(req);
-  const action = String(body.action ?? '');
 
   try {
     switch (action) {
@@ -292,17 +296,6 @@ serveAuthenticated('calendar-sync-settings', async (req) => {
         const { error } = await supabase.from('property_calendar_feeds').delete().eq('id', feedId);
         if (error) throw new Error(error.message);
         return jsonSuccess(req, { removed: feedId, keptImportedBlocks: !deleteData });
-      }
-
-      case 'rotateExportToken': {
-        await ensureExportRow(supabase, property.id);
-        const token = newToken();
-        const { error } = await supabase
-          .from('property_calendar_export')
-          .update({ token, rotated_at: new Date().toISOString() })
-          .eq('property_id', property.id);
-        if (error) throw new Error(error.message);
-        return jsonSuccess(req, { urls: exportUrls(req, property.slug, token) });
       }
 
       case 'setExportEnabled': {

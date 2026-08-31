@@ -1,6 +1,6 @@
 /**
  * calendar-sync-cron — poll external OTA iCal feeds and reconcile availability.
- * Plan: docs/workflow/in-progress/airbnb-calendar-sync.md §7 / §10 / §11
+ * Plan: docs/workflow/done/airbnb-calendar-sync.md §7 / §10 / §11
  *
  * Global sweep (scheduled): POST {} — optional header `X-Calendar-Sync-Cron-Secret` when the
  *   env var CALENDAR_SYNC_CRON_SECRET is set. Iterates active feeds, oldest-attempted first,

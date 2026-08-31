@@ -1,6 +1,6 @@
 /**
  * Airbnb / OTA calendar sync — DB orchestration around the pure engine (`calendarSyncService.ts`).
- * Plan: docs/workflow/in-progress/airbnb-calendar-sync.md §7
+ * Plan: docs/workflow/done/airbnb-calendar-sync.md §7
  *
  * `runFeedSync()` is called by `calendar-sync-cron` for the global sweep and for a scoped
  * "Sync now". It fetches one feed, diffs it against the `ical_import` blocked rows it owns,
