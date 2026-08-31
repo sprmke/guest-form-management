@@ -1,6 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
-import { FileText, ImagePlus, Paperclip, Send, X } from 'lucide-react';
+import { FileText, ImagePlus, Paperclip, Send, Square, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { ChatComposerContextHub } from '@/features/dashboard/ai-assistant/components/ChatComposerContextHub';
@@ -47,6 +47,8 @@ function syncComposerHeight(textarea: HTMLTextAreaElement | null) {
 type Props = {
   onSend: (input: ChatSendInput) => void;
   disabled?: boolean;
+  sending?: boolean;
+  onCancel?: () => void;
   pageBookingId?: string | null;
   overlayContainer?: HTMLElement | null;
   fillText?: string | null;
@@ -56,6 +58,8 @@ type Props = {
 export function ChatComposer({
   onSend,
   disabled,
+  sending = false,
+  onCancel,
   pageBookingId: _pageBookingId,
   overlayContainer,
   fillText,
@@ -330,12 +334,18 @@ export function ChatComposer({
 
             <Button
               size="icon"
-              onClick={submit}
-              disabled={disabled || (!value.trim() && attachments.length === 0)}
-              aria-label="Send message"
+              onClick={sending ? onCancel : submit}
+              disabled={
+                sending ? !onCancel : disabled || (!value.trim() && attachments.length === 0)
+              }
+              aria-label={sending ? 'Stop response' : 'Send message'}
               className="ml-auto min-h-[44px] min-w-[44px] shrink-0"
             >
-              <Send className="h-4 w-4" aria-hidden />
+              {sending ? (
+                <Square className="h-4 w-4 fill-current" aria-hidden />
+              ) : (
+                <Send className="h-4 w-4" aria-hidden />
+              )}
             </Button>
           </div>
         </div>
