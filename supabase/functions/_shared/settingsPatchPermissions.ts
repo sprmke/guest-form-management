@@ -53,7 +53,6 @@ const APP_SETTINGS_BODY_KEYS: Record<string, TeamPermissionId> = {
   vouchersEnabled: 'settings.socials:edit',
   voucherPrizes: 'settings.socials:edit',
   voucherRevealStyle: 'settings.socials:edit',
-  superhostVerificationUrl: 'settings.socials:edit',
   paymentMethods: 'settings.payment:edit',
   paymentProvider: 'settings.payment:edit',
   gcashName: 'settings.payment:edit',
