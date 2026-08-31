@@ -7,7 +7,11 @@ import { loadPublicParkingBySlug } from './parkingScope.ts';
 import { loadPublicPropertyBySlug } from './publicPropertyService.ts';
 import { createServiceClient } from './orgAuth.ts';
 import { socialInboxDb, upsertChannelConnection } from './socialInboxDb.ts';
-import { insertMessageIfNew, updateConversationAfterMessage, upsertConversation } from './socialInboxService.ts';
+import {
+  insertMessageIfNew,
+  updateConversationAfterMessage,
+  upsertConversation,
+} from './socialInboxService.ts';
 import { maybeAutoReplyToWebInbound } from './webInboxAutoReply.ts';
 import {
   createOrCoalesceNotification,
@@ -37,6 +41,7 @@ import {
   buildWebMessageExternalId,
   buildWebThreadId,
 } from './webGuestChatIds.ts';
+import { resolveGuestStayGuideUrlForProperty } from './guestStayGuide.ts';
 import { isVoiceReceptionistAvailableForProperty } from './voiceReceptionistService.ts';
 
 /** YYYY-MM-DD inquiry dates from the guest chat / contact-host flow. */
@@ -101,6 +106,7 @@ export type WebChatStartResult = {
   inquiryCheckOut: string;
   replyStatus: 'pending' | 'replied' | 'none';
   voiceReceptionistEnabled: boolean;
+  stayGuideUrl: string | null;
 };
 
 export type WebChatResumeResult = {
@@ -117,6 +123,7 @@ export type WebChatResumeResult = {
     ownerAvatarUrl: string | null;
   } | null;
   voiceReceptionistEnabled: boolean;
+  stayGuideUrl: string | null;
 };
 
 export type StartGuestWebChatInput = {
@@ -158,6 +165,7 @@ export async function resumeGuestWebChat(
     parking: null,
     host: null,
     voiceReceptionistEnabled: false,
+    stayGuideUrl: null,
   };
 
   const propertySlug = input.propertySlug?.trim() ?? '';
@@ -187,8 +195,9 @@ export async function resumeGuestWebChat(
     }
 
     const voiceReceptionistEnabled = await isVoiceReceptionistAvailableForProperty(property.id);
+    const stayGuideUrl = await resolveGuestStayGuideUrlForProperty(user, property.id);
     if (!conv?.subject_preview?.trim()) {
-      return { ...empty, voiceReceptionistEnabled };
+      return { ...empty, voiceReceptionistEnabled, stayGuideUrl };
     }
 
     return {
@@ -208,6 +217,7 @@ export async function resumeGuestWebChat(
         ownerAvatarUrl: property.host.ownerAvatarUrl,
       },
       voiceReceptionistEnabled,
+      stayGuideUrl,
     };
   }
 
@@ -252,6 +262,7 @@ export async function resumeGuestWebChat(
     },
     host,
     voiceReceptionistEnabled: false,
+    stayGuideUrl: null,
   };
 }
 
@@ -310,6 +321,8 @@ export async function startGuestWebChat(
       last_message_at: new Date().toISOString(),
     });
 
+    const stayGuideUrl = await resolveGuestStayGuideUrlForProperty(user, property.id);
+
     return {
       conversationId: conversation.id,
       property: {
@@ -326,6 +339,7 @@ export async function startGuestWebChat(
       inquiryCheckOut: dates.checkOut,
       replyStatus: (conversation.reply_status as WebChatStartResult['replyStatus']) ?? 'none',
       voiceReceptionistEnabled: await isVoiceReceptionistAvailableForProperty(property.id),
+      stayGuideUrl,
     };
   }
 
@@ -375,6 +389,7 @@ export async function startGuestWebChat(
     inquiryCheckOut: dates.checkOut,
     replyStatus: (conversation.reply_status as WebChatStartResult['replyStatus']) ?? 'none',
     voiceReceptionistEnabled: false,
+    stayGuideUrl: null,
   };
 }
 

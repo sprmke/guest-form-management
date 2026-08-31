@@ -70,6 +70,8 @@ export type TransitionPayload = {
   pet_fee?: number | null;
   parking_rate_guest?: number | null;
   guest_additional_fee?: number | null;
+  /** Peso discount from an applied next-stay voucher (locked on review). */
+  applied_voucher_discount_php?: number | null;
   /** Required on PENDING_REVIEW → initial docs when `guest_requests_surprise_decor` is true. */
   surprise_decor_staff_acknowledged?: boolean;
 
@@ -145,6 +147,12 @@ export type TransitionResult = {
      * these; distinct from a property owner deliberately turning a toggle off (no prompt there).
      */
     automationSkippedByPlan: string[];
+    /**
+     * True when every guest-facing side effect (acknowledgement / ready-for-check-in /
+     * SD-refund-form emails, stay-guide token, guest bell notifications) was skipped because
+     * this is an OTA-ingested booking with no guest contact yet — see calendar sync Phase 2.
+     */
+    externalSuppressed?: boolean;
   };
 };
 
@@ -336,6 +344,15 @@ export class WorkflowOrchestrator {
     const propertyId =
       typeof booking.property_id === 'string' ? booking.property_id.trim() || null : null;
 
+    // ── OTA-ingested bookings (calendar sync Phase 2) ─────────────────────────
+    // A row created by calendar-sync-cron from an Airbnb/OTA reservation has dates but
+    // no guest contact. Suppress every guest-facing side effect until the guest completes
+    // the forwarded guest form (§6.5) — at which point guest_email is populated and the
+    // normal flow resumes. `guest_email` blank is the single source of truth (an ingested
+    // row always has it blank; `external_source` merely records provenance and is *kept*
+    // after completion so emails must not key off it).
+    const suppressGuestSideEffects = !String(booking.guest_email ?? '').trim();
+
     // Notification Center — resolved lazily by the (few) transitions that emit one.
     const resolveNotificationOrgId = async (): Promise<string | null> => {
       if (!propertyId) return null;
@@ -457,6 +474,13 @@ export class WorkflowOrchestrator {
       }
       if (payload.guest_additional_fee != null) {
         workflowFields.guest_additional_fee = payload.guest_additional_fee;
+      }
+      if (
+        booking.applied_voucher_code &&
+        payload.applied_voucher_discount_php != null &&
+        Number.isFinite(Number(payload.applied_voucher_discount_php))
+      ) {
+        workflowFields.applied_voucher_discount_php = Number(payload.applied_voucher_discount_php);
       }
       if (wantsSurpriseDecor && payload.surprise_decor_staff_acknowledged) {
         workflowFields.surprise_decor_staff_acknowledged = true;
@@ -831,6 +855,12 @@ export class WorkflowOrchestrator {
     // 8. Emails — based on side-effect matrix in booking-workflow.mdc §3
     const emailsSent: string[] = [];
     const automationSkippedByPlan: string[] = [];
+    let externalSuppressed = false;
+    if (suppressGuestSideEffects) {
+      console.log(
+        `[orchestrator] Guest-facing side effects suppressed for ${bookingId} (OTA-ingested booking, no guest contact yet)`
+      );
+    }
 
     const propertyEmailAllowed = async (key: PropertyAutomationToggleKey): Promise<boolean> =>
       propertyAutomationEnabled(propertyId, key);
@@ -868,7 +898,12 @@ export class WorkflowOrchestrator {
         recordIfPlanBlocked('emailGafRequest', 'gaf_request');
       }
 
-      if (
+      if (suppressGuestSideEffects && flag(devControls, 'sendBookingAcknowledgementEmail')) {
+        externalSuppressed = true;
+        console.log(
+          '[orchestrator] Booking acknowledgement email skipped (OTA-ingested, no guest)'
+        );
+      } else if (
         flag(devControls, 'sendBookingAcknowledgementEmail') &&
         (await propertyEmailAllowed('emailBookingAcknowledgement'))
       ) {
@@ -920,7 +955,10 @@ export class WorkflowOrchestrator {
     }
 
     // Issue stay-guide token whenever booking reaches READY_FOR_CHECKIN.
-    if (toStatus === 'READY_FOR_CHECKIN') {
+    if (toStatus === 'READY_FOR_CHECKIN' && suppressGuestSideEffects) {
+      externalSuppressed = true;
+      console.log('[orchestrator] Stay-guide token skipped (OTA-ingested, no guest)');
+    } else if (toStatus === 'READY_FOR_CHECKIN') {
       try {
         await ensureGuestStayGuideToken(updatedBooking);
         const refreshed = await DatabaseService.getBookingById(bookingId);
@@ -940,6 +978,14 @@ export class WorkflowOrchestrator {
       fromStatus === 'PENDING_PARKING_REQUEST' ||
       fromStatus === 'PENDING_PET_REQUEST';
     if (
+      toStatus === 'READY_FOR_CHECKIN' &&
+      isForwardToReady &&
+      suppressGuestSideEffects &&
+      flag(devControls, 'sendReadyForCheckinEmail')
+    ) {
+      externalSuppressed = true;
+      console.log('[orchestrator] Ready-for-check-in email skipped (OTA-ingested, no guest)');
+    } else if (
       toStatus === 'READY_FOR_CHECKIN' &&
       isForwardToReady &&
       flag(devControls, 'sendReadyForCheckinEmail') &&
@@ -962,6 +1008,15 @@ export class WorkflowOrchestrator {
 
     const sdAmount = Number(updatedBooking.security_deposit ?? 0);
     if (
+      fromStatus === 'READY_FOR_CHECKIN' &&
+      toStatus === 'READY_FOR_CHECKOUT' &&
+      suppressGuestSideEffects &&
+      flag(devControls, 'sendSdRefundFormEmail') &&
+      sdAmount > 0
+    ) {
+      externalSuppressed = true;
+      console.log('[orchestrator] SD refund form email skipped (OTA-ingested, no guest)');
+    } else if (
       fromStatus === 'READY_FOR_CHECKIN' &&
       toStatus === 'READY_FOR_CHECKOUT' &&
       flag(devControls, 'sendSdRefundFormEmail') &&
@@ -1078,6 +1133,7 @@ export class WorkflowOrchestrator {
       sideEffects: {
         emails: emailsSent,
         automationSkippedByPlan,
+        ...(externalSuppressed ? { externalSuppressed: true } : {}),
       },
     };
   }

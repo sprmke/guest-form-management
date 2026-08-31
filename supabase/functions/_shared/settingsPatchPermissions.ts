@@ -40,6 +40,7 @@ const PROFILE_SETTINGS_KEYS: Record<string, TeamPermissionId> = {
   longitude: 'settings.location:edit',
   mapsUrl: 'settings.location:edit',
   placeId: 'settings.location:edit',
+  inboxPinnedSnippets: 'inbox.quickReplies:edit',
 };
 
 const APP_SETTINGS_BODY_KEYS: Record<string, TeamPermissionId> = {
@@ -48,8 +49,10 @@ const APP_SETTINGS_BODY_KEYS: Record<string, TeamPermissionId> = {
   airbnbUrl: 'settings.socials:edit',
   instagramUrl: 'settings.socials:edit',
   tiktokUrl: 'settings.socials:edit',
-  mainSocialPlatform: 'settings.socials:edit',
   externalReviews: 'settings.socials:edit',
+  vouchersEnabled: 'settings.socials:edit',
+  voucherPrizes: 'settings.socials:edit',
+  voucherRevealStyle: 'settings.socials:edit',
   superhostVerificationUrl: 'settings.socials:edit',
   paymentMethods: 'settings.payment:edit',
   paymentProvider: 'settings.payment:edit',
