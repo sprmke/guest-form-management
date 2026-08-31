@@ -69,11 +69,12 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
   const [searchParams, setSearchParams] = useSearchParams();
   const { orgSlug } = useParams<{ orgSlug: string }>();
   const propertyContext = useOptionalOrgContext();
+  const isPropertyMirror = paidCheckoutMode === 'redirect-to-org';
   const { data: orgsData, isLoading: orgsLoading } = useOrganizations();
   const org = orgsData?.organizations.find((entry) => entry.slug === orgSlug);
   const helpSupportBase = useHelpSupportBasePath();
   const pageTitle =
-    paidCheckoutMode === 'redirect-to-org' && propertyContext?.property.name
+    isPropertyMirror && propertyContext?.property.name
       ? propertyDashboardPageTitle(propertyContext.property.name, 'Plans & Billing')
       : org?.name
         ? orgPageTitle(org.name, 'Plans & Billing')
@@ -84,7 +85,8 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
   const createCheckout = useCreateOrgPlanCheckout(org?.id ?? null);
   const applyDowngrade = useApplyOrgPlanDowngrade(org?.id ?? null);
 
-  const [activeTab, setActiveTab] = useState<PlansTab>('plans');
+  /** Org billing hub defaults to Billing; property mirror only shows Plans + Compare. */
+  const [activeTab, setActiveTab] = useState<PlansTab>(isPropertyMirror ? 'plans' : 'billing');
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
 
@@ -141,8 +143,10 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
     if (!plans.length) return;
 
     const tab = searchParams.get('tab');
-    if (tab === 'billing') {
+    if (tab === 'billing' && !isPropertyMirror) {
       setActiveTab('billing');
+    } else if (tab === 'plans' || tab === 'compare') {
+      setActiveTab(tab);
     }
 
     const reviewPlanId = searchParams.get('reviewPlan');
@@ -154,7 +158,8 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
       targetPlanId = minimumPlan?.id ?? null;
     }
 
-    if (targetPlanId && plans.some((plan) => plan.id === targetPlanId)) {
+    /** Property → org payment handoff uses `?tab=billing` only (no review modal). */
+    if (!isPropertyMirror && targetPlanId && plans.some((plan) => plan.id === targetPlanId)) {
       setActiveTab('plans');
       setPendingPlanId(targetPlanId);
       setReviewOpen(true);
@@ -163,7 +168,7 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
     if (tab || reviewPlanId || featureParam) {
       setSearchParams({}, { replace: true });
     }
-  }, [plans, searchParams, setSearchParams]);
+  }, [plans, searchParams, setSearchParams, isPropertyMirror]);
 
   const isBootstrapping = orgsLoading || (Boolean(org?.id) && isLoading && !data);
 
@@ -226,7 +231,14 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
                   ? () => handleSelectPlan(currentPlan)
                   : undefined
               }
-              onManageBilling={() => setActiveTab('billing')}
+              onManageBilling={
+                isPropertyMirror
+                  ? () => {
+                      if (!orgSlug) return;
+                      navigate(`${orgPlansPath(orgSlug)}?tab=billing`);
+                    }
+                  : () => setActiveTab('billing')
+              }
             />
           ) : null}
 
@@ -236,6 +248,12 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
             className="min-w-0"
           >
             <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto p-1 sm:w-auto">
+              {!isPropertyMirror ? (
+                <TabsTrigger value="billing" className="gap-2 px-3 py-2">
+                  <Receipt className="size-4 shrink-0" aria-hidden />
+                  <span>Billing</span>
+                </TabsTrigger>
+              ) : null}
               <TabsTrigger value="plans" className="gap-2 px-3 py-2">
                 <LayoutGrid className="size-4 shrink-0" aria-hidden />
                 <span>Plans</span>
@@ -244,11 +262,23 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
                 <FileText className="size-4 shrink-0" aria-hidden />
                 <span>Compare</span>
               </TabsTrigger>
-              <TabsTrigger value="billing" className="gap-2 px-3 py-2">
-                <Receipt className="size-4 shrink-0" aria-hidden />
-                <span>Billing</span>
-              </TabsTrigger>
             </TabsList>
+
+            {!isPropertyMirror ? (
+              <TabsContent value="billing" className="mt-5 sm:mt-6">
+                <section aria-labelledby="billing-tab-heading" className="min-w-0">
+                  <h2 id="billing-tab-heading" className={cn(planTabSectionTitleClass, 'mb-4')}>
+                    Billing
+                  </h2>
+
+                  <PlanBillingPanel
+                    plan={currentPlan}
+                    subscription={subscription}
+                    transactions={data?.transactions ?? []}
+                  />
+                </section>
+              </TabsContent>
+            ) : null}
 
             <TabsContent value="plans" className="mt-5 space-y-6 sm:mt-6">
               <section aria-labelledby="choose-plan-heading" className="min-w-0">
@@ -276,20 +306,6 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
                 />
               </section>
             </TabsContent>
-
-            <TabsContent value="billing" className="mt-5 sm:mt-6">
-              <section aria-labelledby="billing-tab-heading" className="min-w-0">
-                <h2 id="billing-tab-heading" className={cn(planTabSectionTitleClass, 'mb-4')}>
-                  Billing
-                </h2>
-
-                <PlanBillingPanel
-                  plan={currentPlan}
-                  subscription={subscription}
-                  transactions={data?.transactions ?? []}
-                />
-              </section>
-            </TabsContent>
           </Tabs>
 
           <PlanFaqSection />
@@ -309,9 +325,10 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
         }}
         onCheckoutPaid={async (planId) => {
           if (paidCheckoutMode === 'redirect-to-org') {
-            if (!orgSlug) return;
+            if (!orgSlug || !org?.id) return;
+            await createCheckout.mutateAsync({ planId });
             setReviewOpen(false);
-            navigate(`${orgPlansPath(orgSlug)}?reviewPlan=${encodeURIComponent(planId)}`);
+            navigate(`${orgPlansPath(orgSlug)}?tab=billing`);
             return;
           }
           if (!org?.id) return;

@@ -190,7 +190,7 @@ export const PLAN_TIER_CARD_GAINS: Record<string, string[]> = {
     'Recommended badge eligible',
     'Public pages editor',
     'Property showcase & stay guide access',
-    'Airbnb & OTA calendar sync',
+    'Airbnb calendar sync',
     '1,000 AI credits per month',
   ],
   pro: [
@@ -279,7 +279,7 @@ export const PLAN_FEATURE_ROWS: PlanFeatureRow[] = [
   boolRow('financeReporting', 'Finance reporting & export', 'finance'),
   boolRow('maintenanceReporting', 'Maintenance reporting & export', 'maintenance'),
 
-  boolRow('calendarSync', 'Airbnb & OTA calendar sync', 'pricing'),
+  boolRow('calendarSync', 'Airbnb calendar sync', 'pricing'),
 
   {
     key: 'teamManagement',
