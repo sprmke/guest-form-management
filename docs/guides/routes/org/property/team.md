@@ -6,7 +6,7 @@ updated: 2026-08-28
 
 Route: `/org/:orgSlug/property/:propertySlug/team`
 
-> **Status:** Documented (live — property team module complete; org-level team deferred)
+> **Status:** Documented (live — property team module complete; org-level team at `/org/:orgSlug/team` assigns listing access via `assigned_via_org`)
 
 ## Progress overview
 
@@ -70,9 +70,9 @@ Team is where you invite people to help run this property and control what they 
 
 Property team members use a single stored role tier:
 
-| Tier  | UI label            | `role_id` literal | Intent                                                                                                                                                                                                |
-| ----- | ------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Admin | Admin (full access) | `ADMIN`           | Property team member with the **full permission catalog** when invited or role-changed without an explicit non-empty override. Empty `permissions: []` is rejected server-side (invite/role footgun). |
+| Tier  | UI label | `role_id` literal | Intent                                                                                                                                                                                                                                                                       |
+| ----- | -------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Admin | Custom   | `ADMIN`           | Property team member with a **custom permission set** (edited via the permissions tree). Not shown as a pickable preset on invite — use **Full Access** / **Operations** / **Read Only** or a custom role template instead. Empty `permissions: []` is rejected server-side. |
 
 **Permission templates** (seeded per property as rows in `property_custom_roles`):
 
@@ -110,7 +110,8 @@ Legacy stored ids still expand on read (Phases 3–6): e.g. `notifications:edit`
 | Permission                                            | Full Access | Operations | Read Only |
 | ----------------------------------------------------- | :---------: | :--------: | :-------: |
 | Bookings — view                                       |      ✓      |     ✓      |     ✓     |
-| Bookings — create / import                            |      ✓      |     —      |     —     |
+| Bookings — create                                     |      ✓      |     ✓      |     —     |
+| Bookings — import                                     |      ✓      |     —      |     —     |
 | Bookings — detail tabs + workflow                     |      ✓      |     ✓      |     —     |
 | Finance — view                                        |      ✓      |     —      |     —     |
 | Finance — transactions + export                       |      ✓      |     —      |     —     |
@@ -188,11 +189,11 @@ When access is revoked (deactivated member, removed from property, or lost org m
 ### Members
 
 - Search by name or email; filter by role (`Full Access`, `Operations`, `Read Only`, custom).
-- Non-org members: change role via select or **Manage** dialog, **Edit Permissions**, **Deactivate** / **Activate**, **Remove from Property**.
-- Deactivated members: **Disabled** badge, role select locked, **permissions cleared** until reactivated. Deactivated by team-seat reconciliation instead of an admin: **Plan limit** badge (tooltip explains why) instead of the plain Disabled one.
+- Non-org members: role badge (read-only) and a single **Manage** dropdown — **Host details**, **Permissions** (role + permission tree), **Deactivate** / **Activate**, **Remove from Property**.
+- Deactivated members: **Disabled** badge; **Permissions** disabled until reactivated. Deactivated by team-seat reconciliation instead of an admin: **Plan limit** badge (tooltip explains why) instead of the plain Disabled one.
 - When 1+ members are currently plan-limited, a banner above the list shows the count with an **Upgrade** button (opens the upgrade modal targeted at `teamManagement`).
 - Org owner and org admins (virtual, `fromOrg: true`): **Org** badge; **Manage in org** link to `/org/:orgSlug/team` when viewer has `org:team:view` (no property-level contact edit).
-- Property members: role dropdown / Edit Permissions when caller has `team.members:edit`; remove when `team.members:delete`; custom-role CRUD when `team.customRoles:*`.
+- Property members: **Manage** dropdown when caller has `team.members:edit` and/or `team.members:delete`; role changes via **Permissions** in that menu (not an inline select). Custom-role CRUD when `team.customRoles:*`.
 - Guest-facing contact resolves from the first active property member with team management leaves (`team.members:*` / `team.customRoles:*`), then org owner team row, then legacy settings.
 - Cannot deactivate/remove yourself or the last active member with team management access (org owner still has implicit access).
 
@@ -209,11 +210,11 @@ When access is revoked (deactivated member, removed from property, or lost org m
 
 ### Invite Member dialog
 
-| Field | Storage                              | Validation                                                                         |
-| ----- | ------------------------------------ | ---------------------------------------------------------------------------------- |
-| Email | `property_invitations.email`         | Required, trimmed; **`@gmail.com`** or **`@googlemail.com`** only (Google sign-in) |
-| Phone | `property_invitations.contact_phone` | Required PH mobile `09XXXXXXXXX`; copied to `property_members` on accept           |
-| Role  | `role_id`                            | Default/custom role UUID (default **Operations**) or **Admin (full access)**       |
+| Field | Storage                              | Validation                                                                                                          |
+| ----- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| Email | `property_invitations.email`         | Required, trimmed; **`@gmail.com`** or **`@googlemail.com`** only (Google sign-in)                                  |
+| Phone | `property_invitations.contact_phone` | Required PH mobile `09XXXXXXXXX`; copied to `property_members` on accept                                            |
+| Role  | `role_id`                            | Default/custom role UUID (default **Operations**) or **Custom** (`ADMIN`) when permissions were edited off-template |
 
 Name comes from the invitee's Google account on accept; edit later via **Host details** on the member row.
 
@@ -221,7 +222,7 @@ Name comes from the invitee's Google account on accept; edit later via **Host de
 
 | Field       | Storage                                 | Validation                                                                                                                                                                                                                                                   |
 | ----------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Based on    | `role_id` (member edit)                 | Pick an existing role as baseline, or **Custom** to clear all checkboxes; confirm before replace/clear                                                                                                                                                       |
+| Based on    | `role_id` (member edit)                 | Pick an existing role as baseline, or **Custom** to clear all checkboxes                                                                                                                                                                                     |
 | Permissions | `permissions` JSONB                     | Module accordion. **Access** = Open page (+ Export where applicable) with short hints; other groups show what they can change, each with a one-line hint. Enabling any edit auto-checks **Open page**. Feature labels use sentence case. Search filter only. |
 | Sensitive   | `team.members:*` / `team.customRoles:*` | Confirm before enabling a sensitive leaf **or** checking a parent that would select sensitive descendants                                                                                                                                                    |
 
@@ -229,7 +230,7 @@ Dialogs use sticky header/footer with content-only scroll (`sheetLayout="split"`
 
 ### New / Edit role dialog
 
-Same permissions tree as member edit. **Based on** loads checkboxes from Full Access / Operations / Read Only / another custom role, or **Custom** to start blank; confirm before replace/clear. Name required; at least one permission required to save.
+Same permissions tree as member edit. **Based on** loads checkboxes from Full Access / Operations / Read Only / another custom role, or **Custom** to start blank. Name required; at least one permission required to save.
 
 ---
 

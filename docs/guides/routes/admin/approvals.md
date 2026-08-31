@@ -137,4 +137,3 @@ Data lives in **`organizations.settings.verification`** JSONB (org tiers) and **
 - [x] Tier 2 (`enhanced`) review UI on this page (approve/reject badge submissions).
 - [x] External review moderation (approve/reject) on this page with Type = Reviews filter.
 - [ ] Optional email/Telegram notify on approve/reject.
-- [ ] Superhost moderation UI (same pending pattern as external reviews).

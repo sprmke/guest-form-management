@@ -450,7 +450,7 @@ Notes:
 
 ## 11b. Additive: Airbnb / OTA calendar sync (Phase 1, December 2026)
 
-Two-way iCal sync — see [`docs/workflow/in-progress/airbnb-calendar-sync.md`](../../workflow/in-progress/airbnb-calendar-sync.md). **All additive; no backfill, no data rewrite.**
+Two-way iCal sync — see [`docs/workflow/done/airbnb-calendar-sync.md`](../../workflow/done/airbnb-calendar-sync.md). **All additive; no backfill, no data rewrite.**
 
 | File                                                    | Purpose                                                                                                                                                                                                                                                                                                                                                 | Reversible?                                                                                                                              |
 | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |

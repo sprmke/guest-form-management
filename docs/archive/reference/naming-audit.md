@@ -36,7 +36,7 @@ Automated scan of **528** `ui/src` `.ts` / `.tsx` files:
 - **Components / pages:** all `PascalCase.tsx`
 - **Hooks:** all `usePascalCase.ts`
 - **Lib / schemas / utils:** all `camelCase.ts` (after `bookingDisplay` rename)
-- **Intentional exceptions:** `main.tsx`, `vite-env.d.ts`, `components/ui/**`, `**/routes/**`
+- **Intentional exceptions:** `main.tsx`, `vite-env.d.ts`, `components/ui/**`, `**/routes/**`, `**/*.test.ts` (Vitest co-located specs)
 
 No remaining drift in `ui/src` as of this audit.
 

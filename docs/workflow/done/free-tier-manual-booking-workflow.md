@@ -39,7 +39,7 @@ updated: 2026-08-29
 
 **Verify (local evidence 2026-08-29):** `ui` `type-check` clean; `eligibleManualWorkflowEmailKinds` unit cases OK. Live Mailpit/Resend walk left as optional operator check.
 
-**E2E (2026-08-30):** `ui/e2e/features/parking/property/propertyBookingFreeManualWorkflow.spec.ts` — Free Automation Triggers Send (GAF / ack / parking + RFCI ready/SD), plan-skip Proceed toast + auto-expand, Find parking still wired. Run: `bun run test:e2e:parking` (or `:headed` / `PLAYWRIGHT_CAPTURE_SCREENS=1`).
+**E2E (2026-08-31):** `propertyBookingFreeManualWorkflow.spec.ts` — **8 tests**: manual sends (GAF/ack/parking/pet), plan-skip Proceed + auto-expand, RFCI sends + Free cron label + cron plan-skip toast, confirm-modal Free hint, plan-aware GAF badge, Starter smoke (no Send manually). Unit: `bookingWorkflowEmail.test.ts` (Vitest), `sendBookingWorkflowEmail.test.ts` (Deno). Run: `bun run test:e2e:parking:free-workflow`.
 
 Canonical companions:
 
@@ -121,7 +121,7 @@ None identified for **status movement** itself. Free hosts can proceed the graph
 | P2.1 | **Email Automations** settings show six toggles with no plan signal                                    | `PropertyEmailAutomationsSection` — no `planBlocked` / TierBadge | Free host sees “on plan: Starter+” or locked toggles so saving ON doesn’t imply auto-send                                                               |
 | P2.2 | **Run check-out automation** (`sd-refund-cron` scoped) uses **plan-gated** `propertyAutomationEnabled` | `sd-refund-cron/index.ts`                                        | Document clearly: on Free, button may move status / skip email; **Resend** is the true email escape hatch. Optionally surface plan-skip in UI after run |
 | P2.3 | Automation Triggers only covers **SD** path today                                                      | `WorkflowAutomationTriggers.tsx`                                 | Expand for all six (or a “Manual sends” panel) keyed by status + applicability                                                                          |
-| P2.4 | No persistent “skipped by plan” banner on booking — toast is easy to miss                              | toast-only                                                       | Sticky rail callout listing skipped emails + Send buttons (minimal copy)                                                                                |
+| P2.4 | No persistent “skipped by plan” banner on booking — toast is easy to miss                              | toast-only                                                       | ✅ `WorkflowManualEmailBanner` + next-step banner (`WorkflowNextStepBanner`)                                                                            |
 | P2.5 | Host Q&A / route guide don’t explain Free manual path                                                  | `bookings-detail.md` Host-facing knowledge                       | Add Free vs paid Q&A                                                                                                                                    |
 | P2.6 | QA never fully exercised every status on Free live                                                     | `03-bookings-detail.md` Evidence                                 | E2E checklist below                                                                                                                                     |
 | P2.7 | `workflowTransitionEffectsCopy` / confirm modals may imply emails fire when plan blocks                | effects copy + confirm checkboxes                                | Align preview text with effective toggles (plan ∩ property)                                                                                             |
@@ -129,21 +129,21 @@ None identified for **status movement** itself. Free hosts can proceed the graph
 
 ### P3 — polish / improvements (nice-to-have, track here so nothing is forgotten)
 
-| #     | Idea                                                                                             | Notes                                                                                                          |
-| ----- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
-| P3.1  | One sticky **Next step** banner on Free (no AI)                                                  | QA improvement; plain language from status                                                                     |
-| P3.2  | After manual Azure send, deep-link to download request PDF                                       | PDF URL already on booking; make one-click download beside Send                                                |
-| P3.3  | Co-host / Operations role: ensure `bookings.detail.workflow:edit` covers new send endpoints      | Mirror `send-sd-refund-form-email` permission                                                                  |
-| P3.4  | Idempotency / “last sent at” timestamps for GAF/ack/ready/pet (like `sd_refund_form_emailed_at`) | Avoid double-send confusion; optional columns or reuse activity log                                            |
-| P3.5  | Downgrade mid-stay: Starter → Free while booking in flight                                       | Next transitions skip emails; ensure toast + manual sends still work; no orphan “expected auto”                |
-| P3.6  | Upgrade mid-stay: Free → Starter                                                                 | Later transitions auto-send; don’t double-send if host already manually sent (idempotency markers help)        |
-| P3.7  | D2 empty `documentRequirements` (direct PENDING_REVIEW → READY_FOR_CHECKIN)                      | Ack + ready emails both skip on Free — two manual sends                                                        |
-| P3.8  | Past-date / re-forward confirm checkboxes vs plan gate                                           | `devControls` + plan block interaction — don’t allow checkbox “send” that still no-ops without explaining plan |
-| P3.9  | In-app notifications still fire when email gated?                                                | Orchestrator notification gates — confirm Free hosts still get bell for RFCI etc.                              |
-| P3.10 | Guest never sees plan tier                                                                       | Guest emails either arrive (manual or auto) or don’t — no plan upsell to guest                                 |
-| P3.11 | Org with mix: some properties Free (unenrolled), some paid                                       | Entitlements are per-property enrollment — verify resolvePropertyEntitlements for unenrolled                   |
-| P3.12 | E2E harness fixtures force `automatedBookingFlow: true`                                          | `propertyTeamRbacHarness` / parking harness — add Free fixture path for regression                             |
-| P3.13 | Competitive UX: Guesty/Hostaway “manual send template” patterns                                  | Run `competitive-ux-research` before designing Manual sends UI                                                 |
+| #     | Idea                                                                                             | Notes                                                                                                                                                    |
+| ----- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P3.1  | One sticky **Next step** banner on Free (no AI)                                                  | ✅ `workflowNextStepHint` + `WorkflowNextStepBanner`                                                                                                     |
+| P3.2  | After manual Azure send, deep-link to download request PDF                                       | ❌ Dropped — request PDFs live in private buckets; raw links 404. Preview via Pending Documents → **Sent Docs → View** (`get-booking-asset-url`) instead |
+| P3.3  | Co-host / Operations role: ensure `bookings.detail.workflow:edit` covers new send endpoints      | ✅ `send-booking-workflow-email` uses same scope as SD resend                                                                                            |
+| P3.4  | Idempotency / “last sent at” timestamps for GAF/ack/ready/pet (like `sd_refund_form_emailed_at`) | Deferred — optional columns or activity log; SD timestamp exists                                                                                         |
+| P3.5  | Downgrade mid-stay: Starter → Free while booking in flight                                       | Next transitions skip emails; ensure toast + manual sends still work; no orphan “expected auto”                                                          |
+| P3.6  | Upgrade mid-stay: Free → Starter                                                                 | Later transitions auto-send; don’t double-send if host already manually sent (idempotency markers help)                                                  |
+| P3.7  | D2 empty `documentRequirements` (direct PENDING_REVIEW → READY_FOR_CHECKIN)                      | Ack + ready emails both skip on Free — two manual sends                                                                                                  |
+| P3.8  | Past-date / re-forward confirm checkboxes vs plan gate                                           | ✅ Confirm modal Free hint when paid plan would email (`workflowWouldEmailOnPaidPlan`)                                                                   |
+| P3.9  | In-app notifications still fire when email gated?                                                | ✅ RFCI/RFCO bell notifications decoupled from email gate in orchestrator (2026-08-31)                                                                   |
+| P3.10 | Guest never sees plan tier                                                                       | Guest emails either arrive (manual or auto) or don’t — no plan upsell to guest                                                                           |
+| P3.11 | Org with mix: some properties Free (unenrolled), some paid                                       | Entitlements are per-property enrollment — verify resolvePropertyEntitlements for unenrolled                                                             |
+| P3.12 | E2E harness fixtures force `automatedBookingFlow: true`                                          | ✅ `propertyTeamRbacHarness` accepts `{ freePlan: true }`; Free workflow spec covers 8 cases                                                             |
+| P3.13 | Competitive UX: Guesty/Hostaway “manual send template” patterns                                  | Run `competitive-ux-research` before designing Manual sends UI                                                                                           |
 
 ---
 
@@ -314,28 +314,27 @@ Same transitions → emails auto-fire; manual sends still work as resend; no fal
 
 ## Related / do not conflate
 
-| Topic                     | Where                                                                |
-| ------------------------- | -------------------------------------------------------------------- |
-| Tier audit Phases 1–9     | `done/tier-feature-alignment-audit.md`                               |
-| Org billing / enrollment  | `done/org-level-billing-migration.md`                                |
-| Calendar sync (Pro+)      | `in-progress/airbnb-calendar-sync.md` — not Free booking manual path |
-| Booking import (Starter+) | matrix `bookingImport` — separate                                    |
-| Parking marketplace Free  | Guest self-serve ungated; broadcast is legacy adjunct                |
+| Topic                     | Where                                                         |
+| ------------------------- | ------------------------------------------------------------- |
+| Tier audit Phases 1–9     | `done/tier-feature-alignment-audit.md`                        |
+| Org billing / enrollment  | `done/org-level-billing-migration.md`                         |
+| Calendar sync (Pro+)      | `done/airbnb-calendar-sync.md` — not Free booking manual path |
+| Booking import (Starter+) | matrix `bookingImport` — separate                             |
+| Parking marketplace Free  | Guest self-serve ungated; broadcast is legacy adjunct         |
 
 ---
 
 ## Status summary
 
-| Area                           | State                   |
-| ------------------------------ | ----------------------- |
-| Status graph on Free           | ✅ Works                |
-| PDF + guest forms on Free      | ✅ Works                |
-| Plan skip signal (toast)       | ✅ Works                |
-| Manual SD email                | ✅ Works                |
-| Manual parking broadcast       | ⚠️ API only             |
-| Manual GAF / pet / ack / ready | ❌ Missing              |
-| Free-accurate host copy        | ❌ Misleading in places |
-| Settings plan honesty          | ❌ Missing              |
-| Full Free E2E verification     | ❌ Not done             |
-
-_*This module is not complete until P1.* close and the Free verification table passes._*
+| Area                            | State                  |
+| ------------------------------- | ---------------------- |
+| Status graph on Free            | ✅ Works               |
+| PDF + guest forms on Free       | ✅ Works               |
+| Plan skip signal (toast + rail) | ✅ Works               |
+| Manual sends (all six)          | ✅ Works               |
+| Free-accurate host copy         | ✅ Works               |
+| Settings plan honesty           | ✅ TierBadge + locks   |
+| Bell notifications on Free      | ✅ Status-based (P3.9) |
+| Host-toggle vs plan toasts      | ✅ Distinct messages   |
+| Automated test coverage         | ✅ 8 e2e + Vitest/Deno |
+| Live Mailpit walk (operator)    | Optional staging pass  |

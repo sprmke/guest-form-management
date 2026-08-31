@@ -283,12 +283,12 @@ Multi-users/multi-tenant todos:
 - [x] **SD refund review step — in-app instead of Facebook redirect.** `/sd-form` step 1: star rating, Airbnb-style feedback pills (positive/constructive by score), optional text, photo upload (up to 3 images). `submit-guest-review` + `guest_reviews.feedback_tags`; public property page shows tags on Kame reviews.
 - [x] **Airbnb bookings — reviews without SD refund.** `/properties/:slug/guest-review?bookingId=` — same in-app review + voucher flow when `security_deposit = 0` (after check-out, Manila). `get-guest-review` + extended `submit-guest-review` / `claim-sd-voucher` eligibility.
 
-### External reviews, Superhost, and moderation
+### External reviews and moderation
 
-- [x] **Property settings — external review proof.** **Socials** → **External reviews** card (up to 5; Facebook/Airbnb; screenshot + proof URL) + **Superhost** card (verification URL + proof upload). Saved via `app-settings` PATCH; screenshots via `upload-app-settings-asset`.
-- [x] **Superhost flag.** `superhost_status = approved` → `isSuperhost` on `get-public-property`; badge on public property UI when API returns it.
-- [x] **Public property page — unified Reviews section.** `get-public-property` merges approved external + Kame reviews; `PropertyReviews` shows source badge (`Kame guest`, `Airbnb`, `Facebook`).
-- [ ] **Super admin — review moderation.** Super admin can **approve**, **reject**, or verify submitted external reviews and Superhost claims before they appear publicly. _(Owner submit + pending status shipped; moderation UI not yet.)_
+- [x] **Property settings — external review proof.** **Reviews & vouchers** → external reviews (up to 5; Facebook/Airbnb; screenshot + proof URL). Saved via `app-settings` PATCH; screenshots via `upload-app-settings-asset`.
+- [x] **Public Superhost badge (display).** `isSuperhost` on public property UI when org has earned Superhost (`organizations.settings.superhost.earned`). _(Earned engine not shipped — badge off until assessment cron lands; see [`docs/workflow/planned/superhost-program.md`](../workflow/planned/superhost-program.md).)_
+- [x] **Removed imported Airbnb Superhost proof** (2026-08-31). Dropped `app_settings.superhost_*` columns and property settings UI — earned-only going forward.
+- [ ] **Super admin — external review moderation.** Approve/reject pending external reviews on `/admin/approvals` (Type = Reviews). _(Shipped for reviews; Superhost import moderation removed with earned-only pivot.)_
 
 ### Super admin & platform governance
 
@@ -488,7 +488,7 @@ Random:
 - Set atleast 3 parking amenities (same validation with property amenities)
 - Save updated base rates pricing should only be applicable for all future unbooked dates
 - ✅ Let's support up to 9 images in property photos
-- Update superhost to have duration or implement our own Superhost logics
+- [ ] **Earned Superhost program** — metrics, quarterly assessment cron, org Trust progress UI ([`superhost-program.md`](../workflow/planned/superhost-program.md))
 - Able to block dates without booking?
 
 - UI to make consistent/improve:

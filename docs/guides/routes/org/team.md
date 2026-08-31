@@ -33,7 +33,7 @@ Organization-scoped **team management** with **granular org hub permissions** an
 
 The **org owner** appears virtually (`isOwner: true`). Invited members get:
 
-1. **Org hub permissions** — leaf IDs on `organization_members.permissions` (dashboard, cross-listing bookings, inventory, team, settings sections, plans view, import).
+1. **Org hub permissions** — leaf IDs on `organization_members.permissions` (dashboard, cross-listing bookings, inventory, team, settings sections, plans view). Booking CSV import is **property-only** (`bookings.import:add`).
 2. **Listing access** — either **All listings** (`all_listings = true`, current + future) or explicit assignments materialized as `property_members` / `parking_members` with `assigned_via_org = true`.
 
 **Seat counting:** Org admin rows count toward org team seats; org-assigned property/parking rows do **not** add property-pool seats.
@@ -50,21 +50,27 @@ Organization **Team** is where the owner invites co-admins who can help run ever
 
 **Common host questions**
 
-- Q: What’s the difference between Owner and Admin?
-  A: Both can work across all properties and manage the team. Only the owner can change organization settings (including delete org) and add new properties. Admins handle day-to-day operations on existing listings.
+- Q: What’s the difference between Owner and Full Access?
+  A: The owner always has full org control (including billing and deleting the org). **Full Access** is an inviteable role with org hub permissions and, by default, access to every listing. **Operations** and **Read Only** usually use **Choose listings** so you pick which properties and parkings they can open.
 - Q: Why does the invite require a Gmail address?
   A: Hosts sign in with Google. The invite email must match the Google account the person will use to accept.
-- Q: Can an admin invite someone else?
-  A: Yes. Org admins with team manage access can invite other admins, resend invites, and remove members, except the owner.
+- Q: Can a teammate invite someone else?
+  A: Yes, if their org Team permissions allow invites. They still cannot remove the owner.
 
 ---
 
 ## Roles
 
-| Role      | Storage                                  | Access                                                                               |
-| --------- | ---------------------------------------- | ------------------------------------------------------------------------------------ |
-| **Owner** | `organizations.owner_id`                 | Full org + all properties; cannot be removed or deactivated from Team                |
-| **Admin** | `organization_members.role_id = 'ADMIN'` | Full org team management + all property modules; org settings PATCH still owner-only |
+Org team uses **three default templates** per organization (**Full Access**, **Operations**, **Read Only**) stored in `organization_custom_roles`, plus optional custom templates (Starter+).
+
+| Person             | Storage                                        | UI label        | Notes                                                                                                                    |
+| ------------------ | ---------------------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| **Org owner**      | `organizations.owner_id` (virtual team row)    | **Full Access** | Cannot change role, permissions, or listings from Team; contact fields only via **Manage**. Cannot deactivate or remove. |
+| **Invited member** | `organization_members.role_id` = template UUID | Template name   | Assign one of the three defaults or a custom template.                                                                   |
+
+Legacy `ADMIN` / `OWNER` role ids are no longer shown in the UI. Migration `20261231140100_org_team_template_role_ids.sql` maps existing `ADMIN` rows to the closest seeded template by permissions.
+
+Org **delete**, **Plans checkout/downgrade**, and org settings PATCH remain **owner-only** (not grantable via templates).
 
 ---
 
@@ -72,9 +78,10 @@ Organization **Team** is where the owner invites co-admins who can help run ever
 
 ### Members
 
-- Virtual owner row (Owner badge) — **Manage** opens host details; **Owner** role is read-only.
-- Org admins: **Manage** (self or `org:team:manage`) includes contact + **Admin** role when caller can manage; deactivate / remove via actions menu.
-- Search + role filter; phone shown under email when set.
+- Owner appears in the list with **Full Access** (no separate Owner badge).
+- Invited members show their template role badge (**Full Access** / **Operations** / **Read Only** / custom).
+- Single **Manage** dropdown per row: **Member details** (opens manage dialog — contact only for owner; contact + role + permissions + listings for others), **Deactivate** / **Activate**, **Remove from Organization** (non-owners with manage access).
+- Org permissions tree: one module per org hub page (**Dashboard**, **Bookings**, **Properties**, etc.) with **Open page** access control plus granular actions; counts show selected/total leaf permissions (no empty 0/0 modules).
 
 ### Invitations
 
@@ -85,35 +92,43 @@ Organization **Team** is where the owner invites co-admins who can help run ever
 
 ### Permissions
 
-- **Roles** card — **Owner** and **Admin** (built-in only; no org custom roles in v1).
-- **Role Permissions** — Organization + Team modules (read-only reference; mirrors v1 server behavior).
+- Seeded templates (**Full Access**, **Operations**, **Read Only**) plus custom templates on Starter+.
+- Default templates are created automatically when an org is created (and backfilled on first team load if missing).
+- Default templates **cannot be deleted** or renamed via API/UI; duplicates create custom copies.
+- Editing a template’s permissions or listing scope updates only members/invites that still match the **previous** template defaults (customized overrides are preserved). Listing scope changes re-sync `assigned_via_org` membership rows for matching members.
+- Each template stores **org hub permissions** and a default **listing scope** (`all_listings` or selected properties/parkings with per-listing property roles).
+- **Full Access** defaults to **All listings**; other templates default to **Choose listings** (empty until configured).
+- **Role Permissions** matrix — org hub modules by template column.
+- Roles list shows permission count and listing scope summary (e.g. `All listings`, `2 properties · 1 parking`).
 
 #### Default org permission presets
 
-| Permission                    | Owner | Admin |
-| ----------------------------- | :---: | :---: |
-| Org dashboard — view          |   ✓   |   ✓   |
-| Properties — view             |   ✓   |   ✓   |
-| Properties — add (create)     |   ✓   |   —   |
-| Properties — manage (edit)    |   ✓   |   ✓   |
-| Org settings — view / edit    |   ✓   |   —   |
-| Delete organization           |   ✓   |   —   |
-| Team — view / invite / manage |   ✓   |   ✓   |
-
-Org admins receive full **property** access on all org properties (implicit; not rows in this matrix).
+| Permission                    | Full Access | Operations | Read Only |
+| ----------------------------- | :---------: | :--------: | :-------: |
+| Org dashboard — view          |      ✓      |     ✓      |     ✓     |
+| Properties — view             |      ✓      |     ✓      |     ✓     |
+| Properties — add (create)     |      ✓      |     —      |     —     |
+| Properties — manage (edit)    |      ✓      |     ✓      |     —     |
+| Org settings — view / edit    |      ✓      |     —      |     —     |
+| Delete organization           | owner only  |     —      |     —     |
+| Team — view / invite / manage |      ✓      |     ✓      |     ✓     |
+| Org plans — view              |      ✓      |     —      |     ✓     |
 
 ---
 
 ## Invite Member dialog
 
-| Field               | Storage                                  | Validation                                                                         |
-| ------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------- |
-| Email               | `organization_invitations.email`         | Gmail / Googlemail only                                                            |
-| Phone               | `organization_invitations.contact_phone` | PH mobile                                                                          |
-| Org role / template | `role_id`                                | Built-in `ADMIN` or `organization_custom_roles.id`                                 |
-| Org permissions     | `permissions` JSONB                      | Granular leaf array; tree UI                                                       |
-| All listings        | `all_listings`                           | Toggle — includes current + future listings                                        |
-| Listing assignments | `listing_assignments`                    | When not all listings: `{ properties: [{ propertyId, roleId }], parkings: [...] }` |
+Dialog order: **Role** → **Listing access** → **Org permissions** (template picker + tree).
+
+| Field               | Storage                                  | Validation                                                                                                                                                                                                          |
+| ------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Email               | `organization_invitations.email`         | Gmail / Googlemail only                                                                                                                                                                                             |
+| Phone               | `organization_invitations.contact_phone` | PH mobile                                                                                                                                                                                                           |
+| Org role / template | `role_id`                                | `organization_custom_roles.id` (Full Access / Operations / Read Only / custom)                                                                                                                                      |
+| Org permissions     | `permissions` JSONB                      | Granular leaf array; tree UI                                                                                                                                                                                        |
+| All listings        | `all_listings`                           | Radio — includes current + future listings                                                                                                                                                                          |
+| Choose listings     | `listing_assignments`                    | Nested picker — Properties and Parkings sections with checkboxes and per-listing role                                                                                                                               |
+| Listing assignments | `listing_assignments`                    | When not all listings: per-property **Full Access** / **Operations** / **Read Only** (resolved to each property's template UUID on sync); parking uses the same labels (stored as MANAGER/STAFF/VIEWER server-side) |
 
 Default invite mode: **Select listings** (empty until host picks). **All listings** opt-in for co-admins.
 
@@ -121,9 +136,17 @@ On accept, `accept-org-invite` upserts `organization_members` and calls **`syncO
 
 ---
 
+## New / Edit role dialog
+
+Dialog order: **Role name** → **Listing access** (org scope only) → **Based on** template picker → **Org permissions** tree.
+
+Same permissions tree as member edit. **Based on** loads checkboxes from an existing template or **Custom**. **Listing access** — card with **All listings** / **Choose listings** radio options; choose mode lists org properties and parkings (with selection counts) and **Full Access** / **Operations** / **Read Only** per listing. Name required; at least one org permission required to save. Listing scope is optional (no listings = org hub only until invite overrides).
+
 ## Manage member dialog
 
-PATCH **`org-team-members`** with `{ memberId, displayName?, contactPhone?, roleId?, permissions?, allListings?, listingAssignments?, status? }`. Listing changes re-sync org-assigned rows. Remove deletes org-assigned property/parking memberships for that user in the org.
+Dialog order matches invite: **Role** → **Listing access** → **Org permissions**.
+
+PATCH **`org-team-members`** with `{ memberId, displayName?, contactPhone?, roleId?, permissions?, allListings?, listingAssignments?, status? }`. Listing changes re-sync org-assigned rows. Remove deletes org-assigned property/parking memberships for that user in the org. Changing org role pre-fills listing scope from the role template (member can override before save).
 
 ---
 
@@ -142,7 +165,7 @@ PATCH **`org-team-members`** with `{ memberId, displayName?, contactPhone?, role
 | List custom roles                 | `org-team-custom-roles?org_slug=` | GET               | `org.team:view`                                                                 |
 | Create / update / delete template | `org-team-custom-roles`           | POST/PATCH/DELETE | `org.team.roles:*`                                                              |
 
-Invite email link: `/accept-invite?token=…&scope=org`. **Accept page:** org logo + org name (via **`get-team-invite-preview`**); signed-in users must tap **Accept** (no auto-accept on load). **Subject:** `{Org name} - Team Invitation`. **Body:** inviter, org name, Admin role, expiry, accept CTA. Branding/from address uses the org’s **first property** (`getFirstPropertyIdForOrg`) — same Resend shell as property invites. If create fails after Resend errors, the pending row is rolled back; use **Resend** on an existing pending invite to retry delivery. Resend API errors surface in the UI toast (not a generic message).
+Invite email link: `/accept-invite?token=…&scope=org`. **Accept page:** org logo + org name (via **`get-team-invite-preview`**); signed-in users must tap **Accept** (no auto-accept on load). **Subject:** `{Org name} - Team Invitation`. **Body:** inviter, org name, template role label (Full Access / Operations / Read Only / custom), expiry, accept CTA. Branding/from address uses the org’s **first property** (`getFirstPropertyIdForOrg`) — same Resend shell as property invites. If create fails after Resend errors, the pending row is rolled back; use **Resend** on an existing pending invite to retry delivery. Resend API errors surface in the UI toast (not a generic message).
 
 Auth: Bearer JWT + `verifyOrgTeamAccess` (`_shared/orgAuth.ts`). Query **`?org_id=`** or **`?org_slug=`** (UI uses `scopedOrgFunctionsUrl`).
 

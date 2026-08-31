@@ -109,15 +109,20 @@ bun run test:e2e:parking:side-by-side:slow
 bun run test:e2e:parking:free-workflow:slow
 ```
 
-`PLAYWRIGHT_SLOW_MO` is applied in `playwright.config.ts` for normal chromium runs (Free workflow, etc.). Side-by-side also sets `PLAYWRIGHT_DEMO_PAUSE_MS` via its own browser launch helper.
+`PLAYWRIGHT_SLOW_MO` is applied in `playwright.config.ts` for normal chromium runs (Free workflow, etc.). `slowMo` only delays Playwright _actions_ — navigations, expects, and newly opened tabs stay instant unless `PLAYWRIGHT_DEMO_PAUSE_MS` holds the screen. Free-workflow `:slow` uses both, and pauses on popup windows (`Find parking`, etc.).
 
-Preset: `PLAYWRIGHT_SLOW_MO=600` (side-by-side also uses `PLAYWRIGHT_DEMO_PAUSE_MS=2000`).
+Presets:
+
+| Script                                | `PLAYWRIGHT_SLOW_MO` | `PLAYWRIGHT_DEMO_PAUSE_MS` |
+| ------------------------------------- | -------------------- | -------------------------- |
+| `test:e2e:parking:side-by-side:slow`  | `600`                | `2000`                     |
+| `test:e2e:parking:free-workflow:slow` | `1200`               | `3000`                     |
 
 Even slower (manual tuning):
 
 ```bash
 PLAYWRIGHT_SLOW_MO=1000 PLAYWRIGHT_DEMO_PAUSE_MS=3000 bun run test:e2e:parking:side-by-side
-PLAYWRIGHT_SLOW_MO=1000 bun run test:e2e:parking:free-workflow:headed
+PLAYWRIGHT_SLOW_MO=2000 PLAYWRIGHT_DEMO_PAUSE_MS=5000 bun run test:e2e:parking:free-workflow:headed
 ```
 
 Record video (saved under `test-results/playwright/` — there is no `--video=on` CLI flag):

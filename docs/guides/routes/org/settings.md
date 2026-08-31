@@ -13,17 +13,20 @@ Route: `/org/:orgSlug/settings`
 
 ## Progress overview
 
-| Section                | E2E save | Validation   | Docs | Notes                                                                                                            |
-| ---------------------- | -------- | ------------ | ---- | ---------------------------------------------------------------------------------------------------------------- |
-| Basic information      | Yes      | Yes          | Done | Logo, name, slug, brand color, tagline, description, contact info                                                |
-| Socials                | Yes      | Yes          | Done | Social URLs (at least one required)                                                                              |
-| AI platform            | Yes      | Server       | Done | Per-org usage quotas and enabled features; read-only when platform AI off                                        |
-| AI dashboard assistant | Yes      | Server       | Done | Opt-in + quotas; chat starters, file attach, per-page pin + Search all modules, canvas Open/Back, history delete |
-| Danger zone            | Partial  | Slug confirm | Done | Delete when no bookings; finance/maintenance can block; see § Danger zone                                        |
+| Section                | E2E save  | Validation   | Docs | Notes                                                                                                            |
+| ---------------------- | --------- | ------------ | ---- | ---------------------------------------------------------------------------------------------------------------- |
+| Basic information      | Yes       | Yes          | Done | Logo, name, slug, brand color, tagline, description, contact info                                                |
+| Socials                | Yes       | Yes          | Done | Social URLs (at least one required)                                                                              |
+| Trust                  | Read-only | Server       | Done | Earned Superhost badge progress (four criteria, next assessment) — no save path                                  |
+| AI platform            | Yes       | Server       | Done | Per-org usage quotas and enabled features; read-only when platform AI off                                        |
+| AI dashboard assistant | Yes       | Server       | Done | Opt-in + quotas; chat starters, file attach, per-page pin + Search all modules, canvas Open/Back, history delete |
+| Danger zone            | Partial   | Slug confirm | Done | Delete when no bookings; finance/maintenance can block; see § Danger zone                                        |
 
 ---
 
 ## Overview
+
+**Browser tab title:** `${Org Name} - Settings` (org-scoped); fallback `Kame Homes` while loading.
 
 Organization settings uses `AdminSectionNavLayout` with **two save paths**. The desktop **Unsaved changes** footer stays in the main content column (aligned to `max-w-4xl`) so the secondary section nav stays fully usable. Field helpers use a **?** beside the label (`FieldLabel` / `OrgSettingsField` `help`) — not muted text under the control.
 
@@ -94,6 +97,24 @@ Guest/operator **contact name, phone, and email** for templates and public surfa
 **Validation:** at least one social URL.
 
 Properties inherit org social URLs when their `app_settings` columns are empty — see **property settings** § Socials.
+
+### Trust (Superhost)
+
+Read-only progress for the **earned** Superhost badge (org-wide; all properties inherit). No save path on this page.
+
+| Surface          | API / storage                                  | Notes                                                                                                                      |
+| ---------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Earned badge     | `organizations.settings.superhost.earned`      | Set by quarterly **`superhost-assessment-cron`** (or super-admin **`reassess-org-superhost`**) when all four criteria pass |
+| Live progress    | `GET get-org-superhost-progress`               | Rolling **365 days**, org-wide metrics; hook `useOrgSuperhostProgress.ts`                                                  |
+| Response rate    | `inbox_thread_metrics`                         | Upserted on first guest inbound + first host reply per inbox thread                                                        |
+| Rating           | `guest_reviews.star_rating`                    | Kame reviews only (≥ 3 reviews, avg ≥ 4.8)                                                                                 |
+| Cancellations    | `guest_submissions` `CANCELLED` vs `COMPLETED` | Host cancel rate **< 1%**, min 10 bookings in window                                                                       |
+| Activity         | `guest_submissions` `COMPLETED`                | ≥ 10 completed stays **or** ≥ 3 stays totaling ≥ 100 nights                                                                |
+| Assessment dates | `settings.superhost.nextAssessmentAt`          | Jan 1, Apr 1, Jul 1, Oct 1 (Asia/Manila)                                                                                   |
+
+Public listings read **`isSuperhost`** from org earned flag via `_shared/orgSuperhost.ts` (`get-public-property`, search cards, showcase). There is **no** Airbnb proof import or super-admin Superhost moderation queue.
+
+**Host-facing:** Superhost is earned automatically from performance — reply to inbox messages within 24h, keep cancellations low, collect strong guest reviews, and complete stays on Kame. Progress and next assessment date appear in **Trust** on this page.
 
 **App origin** (email links, default GCash QR base URL) is **not** per-org — set deployment env **`PUBLIC_GUEST_APP_ORIGIN`**. Legacy `org_settings.public_guest_app_origin` is used only when the env var is unset.
 
@@ -218,6 +239,7 @@ Danger zone: slug confirmation + `delete-organization`; blocked when booking his
 | Basic + socials + email sections    | `ui/src/features/dashboard/org/components/org-settings/OrgProfileSettingsSections.tsx`                                                                                                                                                                                                                                                                                                                                                                                                  |
 | AI platform section                 | `ui/src/features/dashboard/org/components/org-settings/OrgAiPlatformSection.tsx`                                                                                                                                                                                                                                                                                                                                                                                                        |
 | AI dashboard assistant section      | `ui/src/features/dashboard/org/components/org-settings/OrgAiDashboardAssistantSection.tsx`                                                                                                                                                                                                                                                                                                                                                                                              |
+| Trust (Superhost progress)          | `ui/src/features/dashboard/org/components/org-settings/OrgSuperhostProgressSection.tsx`, `useOrgSuperhostProgress.ts`, `GET get-org-superhost-progress`                                                                                                                                                                                                                                                                                                                                 |
 | Assistant chat panel                | `ui/src/features/dashboard/ai-assistant/components/AiAssistantPanel.tsx`, `ChatComposer.tsx`, `ChatComposerContextHub.tsx`, `ChatContextPickerPanel.tsx`, `ChatContextCommandPalette.tsx`, `ChatCanvasOverlay.tsx`, `ChatBlockRenderer.tsx`, `blocks/{ImageBlock,StepperBlock,QuickActionsBlock,ChatCanvasCompactCard}.tsx`, `ConversationHistoryList.tsx`, `lib/assistantSuggestions.ts`, `lib/chatAttachments.ts`, `lib/contextPickerRegistry.ts`, `ui/src/components/ui/command.tsx` |
 | Client validation                   | `ui/src/features/dashboard/org/lib/orgSettingsCompletion.ts`, `ui/src/features/dashboard/org/lib/orgSettingsFieldError.ts`, `ui/src/features/dashboard/org/lib/orgSettingsSave.ts`                                                                                                                                                                                                                                                                                                      |
 | Sidebar issue sync                  | `ui/src/features/dashboard/org/components/OrgSettingsIssuesSync.tsx`, `ui/src/features/dashboard/org/lib/orgSettingsIssuesStore.ts`                                                                                                                                                                                                                                                                                                                                                     |

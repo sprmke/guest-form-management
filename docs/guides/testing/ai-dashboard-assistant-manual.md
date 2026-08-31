@@ -19,29 +19,29 @@ This flow has **never been run through an actual browser** as of 2026-08-15 — 
 
 ## 0. What you are proving
 
-| #   | Capability                 | Pass criteria                                                                                                                                   |
-| --- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Launcher visibility        | Floating button appears only when both kill switches are on for the org (and property, if scoped); hidden on `/admin/*`                         |
-| 2   | Tier-0 read                | A plain question returns a grounded answer with no confirmation UI                                                                              |
-| 3   | Tier-1 auto-execute        | A safe forward status move executes immediately with a "done automatically" card                                                                |
-| 4   | Tier-2 propose → confirm   | A risky action (cancel, refund finalize, price change, override) shows Confirm/Cancel and only runs after Confirm                               |
-| 5   | Tier-2 deny                | Clicking Cancel leaves the booking untouched and marks the card "cancelled"                                                                     |
-| 6   | Tier-2 idempotency         | Confirming an already-resolved action is a clean no-op, never a double-execute                                                                  |
-| 7   | Tier-2 expiry              | A proposal older than 15 minutes can no longer be confirmed                                                                                     |
-| 8   | Permission re-check        | A low-permission (**Read Only** template) property member cannot get a write action to execute, even if the model tries                         |
-| 9   | Cross-scope escalation     | Asking about a _different_ booking/property than the one currently open always requires confirmation                                            |
-| 10  | Bulk escalation            | A request that bundles 2+ write actions in one turn always requires confirmation, regardless of each action's own tier                          |
-| 11  | Booking-detail audit trail | Actions taken on a booking show up in its "Actions taken by AI assistant" card, newest first                                                    |
-| 12  | Org/global kill switch     | Turning either off removes the launcher; turning back on restores it                                                                            |
-| 13  | Per-property opt-out       | Disabling the assistant on one property hides the launcher only there, not org-wide                                                             |
-| 14  | Quota                      | Hitting the daily message limit shows the upgrade message instead of erroring                                                                   |
-| 15  | Mobile 375px               | Launcher + slide-over panel usable at iPhone SE width, 44×44px targets                                                                          |
-| 16  | Starter prompts            | Empty chat shows a Questions / Actions switcher (not page tabs), 5 randomized items for the active side                                         |
-| 17  | Attachments + booking pin  | Paperclip attaches JPEG/PNG/WebP/PDF; calendar pins a stay; send works with files and no text                                                   |
-| 18  | Speech-to-text             | Mic fills the composer on Chrome/Safari/Edge (HTTPS); primary listening state; tap again to stop; send clears listening                         |
-| 19  | Turn progress + streaming  | While waiting: phased/tool checklist (not bare dots); text answer streams in before cards finalize; multi-tool turns show “What I did” timeline |
-| 20  | Cancel + regenerate        | Stop icon aborts in-flight turn; Regenerate on last assistant message re-runs prior text turn (not available after attachment sends)            |
-| 21  | Usage meter                | Panel header shows `today / daily limit` pill; increments after a successful send                                                               |
+| #   | Capability                 | Pass criteria                                                                                                                                                                                                                       |
+| --- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Launcher visibility        | Floating button appears only when both kill switches are on for the org (and property, if scoped); hidden on `/admin/*`                                                                                                             |
+| 2   | Tier-0 read                | A plain question returns a grounded answer with no confirmation UI                                                                                                                                                                  |
+| 3   | Tier-1 auto-execute        | A safe forward status move executes immediately with a "done automatically" card                                                                                                                                                    |
+| 4   | Tier-2 propose → confirm   | A risky action (cancel, refund finalize, price change, override) shows Confirm/Cancel and only runs after Confirm                                                                                                                   |
+| 5   | Tier-2 deny                | Clicking Cancel leaves the booking untouched and marks the card "cancelled"                                                                                                                                                         |
+| 6   | Tier-2 idempotency         | Confirming an already-resolved action is a clean no-op, never a double-execute                                                                                                                                                      |
+| 7   | Tier-2 expiry              | A proposal older than 15 minutes can no longer be confirmed                                                                                                                                                                         |
+| 8   | Permission re-check        | A low-permission (**Read Only** template) property member cannot get a write action to execute, even if the model tries                                                                                                             |
+| 9   | Cross-scope escalation     | Asking about a _different_ booking/property than the one currently open always requires confirmation                                                                                                                                |
+| 10  | Bulk escalation            | A request that bundles 2+ write actions in one turn always requires confirmation, regardless of each action's own tier                                                                                                              |
+| 11  | Booking-detail audit trail | Actions taken on a booking show up in its "Actions taken by AI assistant" card, newest first                                                                                                                                        |
+| 12  | Org/global kill switch     | Turning either off removes the launcher; turning back on restores it                                                                                                                                                                |
+| 13  | Per-property opt-out       | Disabling the assistant on one property hides the launcher only there, not org-wide                                                                                                                                                 |
+| 14  | Quota                      | Hitting the daily message limit shows the upgrade message instead of erroring                                                                                                                                                       |
+| 15  | Mobile 375px               | Launcher + slide-over panel usable at iPhone SE width, 44×44px targets                                                                                                                                                              |
+| 16  | Starter prompts            | Empty chat shows a Questions / Actions switcher (not page tabs), 5 randomized items for the active side                                                                                                                             |
+| 17  | Attachments + booking pin  | Paperclip attaches JPEG/PNG/WebP/PDF; calendar pins a stay; send works with files and no text                                                                                                                                       |
+| 18  | Speech-to-text             | Mic fills the composer on Chrome/Safari/Edge (HTTPS); primary listening state; tap again to stop; send clears listening                                                                                                             |
+| 19  | Turn progress + streaming  | While waiting: phased/tool checklist (not bare dots); text answer streams in before cards finalize; multi-tool turns show “What I did” timeline                                                                                     |
+| 20  | Cancel + regenerate        | Stop icon aborts in-flight turn; cancel before Tier-1 commit leaves no app writes; partial commit shows applied-changes banner; Regenerate on last assistant message re-runs prior text turn (not available after attachment sends) |
+| 21  | Usage meter                | Panel header shows `today / daily limit` pill; increments after a successful send                                                                                                                                                   |
 
 ---
 
@@ -104,11 +104,12 @@ This flow has **never been run through an actual browser** as of 2026-08-15 — 
 1. Send a question that triggers tools (e.g. **"How many bookings are pending review?"**). Expect a **Working…** card with phased steps or live tool labels — not three bouncing dots.
 2. On a text-heavy answer, expect prose to appear incrementally before structured cards finalize.
 3. On a multi-tool turn (e.g. finance + booking lookup), expect a collapsible **What I did** timeline on the finished message and, when 2+ tools ran in one round, a **task plan** checklist.
-4. While a turn is in flight, tap the composer **Stop** (square icon). Expect the wait UI to clear. On an existing thread, the conversation reloads from the server (no orphan user bubble if the turn had not finished; if the reply had already been saved, it appears). Usage should not increment for a cancelled unfinished turn.
-5. After a completed text turn, hover the last assistant message — **Regenerate** appears. Tap it — the assistant reply is replaced with a new one; the user message is **not** duplicated in history. Pending Confirm cards from the prior reply are expired.
-6. Send a message with an attachment, complete the turn — **Regenerate** should not be offered on that reply.
-7. Open **History** while a turn is in flight and select another conversation — the in-flight turn aborts; the loaded thread is not polluted with the other reply.
-8. Panel header shows a **today / daily limit** pill (e.g. `3/50`); count increments after a successful send (not after cancel of an unfinished turn).
+4. While a turn is in flight, tap the composer **Stop** (square icon). Expect the wait UI to clear. On an existing thread, the conversation reloads from the server (no orphan user bubble if the turn had not finished and no Tier-1 writes were committed; if the reply had already been saved, it appears). **Tier-1 auto writes** only commit after synthesis — stopping during tools or synthesis must leave bookings/settings unchanged. Usage should not increment for a cancelled unfinished turn.
+5. _(Optional hard case)_ Trigger a Tier-1 auto write (e.g. safe forward status move), then Stop during the **Applying changes** phase if visible — expect a banner listing changes already applied; booking audit should reflect partial writes.
+6. After a completed text turn, hover the last assistant message — **Regenerate** appears. Tap it — the assistant reply is replaced with a new one; the user message is **not** duplicated in history. Pending Confirm cards from the prior reply are expired.
+7. Send a message with an attachment, complete the turn — **Regenerate** should not be offered on that reply.
+8. Open **History** while a turn is in flight and select another conversation — the in-flight turn aborts; the loaded thread is not polluted with the other reply.
+9. Panel header shows a **today / daily limit** pill (e.g. `3/50`); count increments after a successful send (not after cancel of an unfinished turn).
 
 Per-module pin (open the assistant from that page; icon ≥ 44×44px; chip appears; send a short question that should name the pinned item):
 
@@ -126,7 +127,7 @@ Per-module pin (open the assistant from that page; icon ≥ 44×44px; chip appea
 | Public pages                   | Page icon → Stay guide                                                |
 | Help & Support tickets         | Life-ring icon → tickets; **This page** on a ticket thread            |
 
-9. Open the bookmark pin → module list first, then drill into a module. Item rows show a leading visual (guest initials, platform badge, finance amount, marketing thumb when saved, video play badge + first-scene still when available, etc.) plus a **Load more** control when the list exceeds 12 rows. **Pricing** opens a lite month grid (rates, booked, blocked) from `property-pricing` — tap a date to pin. Use the top search bar or **Cmd/Ctrl+K** for cross-module search.
+10. Open the bookmark pin → module list first, then drill into a module. Item rows show a leading visual (guest initials, platform badge, finance amount, marketing thumb when saved, video play badge + first-scene still when available, etc.) plus a **Load more** control when the list exceeds 12 rows. **Pricing** opens a lite month grid (rates, booked, blocked) from `property-pricing` — tap a date to pin. Use the top search bar or **Cmd/Ctrl+K** for cross-module search.
 
 ---
 

@@ -66,6 +66,8 @@ Production hosted secrets: Supabase Dashboard → Edge Functions → Secrets. UI
 | `VITE_SUPER_ADMIN_EMAILS`         | No         | Comma-separated — `/admin/*` UX only; server uses `SUPER_ADMIN_EMAILS`                                                                                                                                                                                                                                                                                                                                      |
 | `VITE_GOOGLE_MAPS_API_KEY`        | No         | Property Settings location picker                                                                                                                                                                                                                                                                                                                                                                           |
 | `VITE_INBOX_MOCK_DATA`            | No         | `true` → inbox mock mode                                                                                                                                                                                                                                                                                                                                                                                    |
+| `VITE_PLATFORM_APP_NAME`          | No         | Operator/product name for marketing site, legal pages, app-level tab titles, and super-admin chrome. **UI only** — set in `ui/.env*` / Vercel; not read from `supabase/.env.local`. Unset → generic copy (`Stays`, org/property names on tenant surfaces).                                                                                                                                                  |
+| `VITE_PLATFORM_CONTACT_EMAIL`     | No         | Support/legal contact email on marketing and legal pages. **UI only.** Defaults to `support@example.com` when unset.                                                                                                                                                                                                                                                                                        |
 | `VITE_DISABLE_IMAGE_OPTIMIZATION` | No         | `1` → client image compression becomes a no-op (global kill switch). See [`storage.md`](./storage.md) §7.1                                                                                                                                                                                                                                                                                                  |
 | `VITE_IMAGE_OPT_SURFACES`         | No         | Staged rollout. **Unset** → every group optimizes **except `guest-documents`** (held back until the §9.7 OCR gate runs — safe default for dev, staging and prod); `all` → everything incl. guest docs; `none` → nothing; CSV of rollout groups (`settings,galleries,marketing,guest-profile,guest-documents`) or surface ids → only those. Ceiling checks always run. See [`storage.md`](./storage.md) §7.1 |
 | `GOOGLE_CLIENT_ID`                | Local only | GoTrue Google OAuth — **not** `VITE_*`; loaded before `supabase start`                                                                                                                                                                                                                                                                                                                                      |
@@ -148,6 +150,14 @@ When invoking `supabase functions serve` manually, `./dev.sh` / `bun run dev:api
 | Variable            | Notes                               |
 | ------------------- | ----------------------------------- |
 | `JAMENDO_CLIENT_ID` | Marketing Studio video music browse |
+
+#### Platform email branding (optional)
+
+| Variable            | Notes                                                                                                     |
+| ------------------- | --------------------------------------------------------------------------------------------------------- |
+| `PLATFORM_APP_NAME` | Product name in **transactional email** shells (`_shared/platformBrand.ts`). Does not affect the browser. |
+
+Contact email on public/legal pages is **`VITE_PLATFORM_CONTACT_EMAIL`** in `ui/.env*` only.
 
 #### Legacy env fallbacks (prefer DB)
 

@@ -67,7 +67,7 @@ Client-side PDF generation via **Export report** in the header (shared layout in
 | Overview summary | Summary cards + by-category table only           |
 | Reminders list   | Reminder rows for the period                     |
 
-**PDF layout (shared `@/lib/pdf/*`):** Soft page canvas; masthead **`Maintenance Report - {unit}`** + **`Date Range:`** subtitle; Plus Jakarta Sans (ExtraBold titles, Bold sections); bordered KPI cards; white table header/footer rows; status colors match in-app badges; category, count, and notes columns left-aligned. Hero metric uses brand accent rail. Footer: `{tower/unit} · Maintenance`.
+**PDF layout (shared `@/lib/pdf/*`):** Soft page canvas; masthead **`Maintenance Report - {unit}`** + **`Date Range:`** subtitle; Plus Jakarta Sans (ExtraBold titles, Bold sections); bordered KPI cards; white table header/footer rows; reminder **Status** uses `STATUS_TONE` badge colors (Done = green, Pending = amber); category, count, and notes columns left-aligned. Hero metric uses brand accent rail. Footer: `{tower/unit} · Maintenance`.
 
 Filenames: `kame-maintenance-{report|overview|reminders}_{from}_{to}.pdf`.
 

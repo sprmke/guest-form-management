@@ -84,6 +84,7 @@ Skipped when the property has **`vouchers_enabled = false`** (guest goes review 
 
 ### Behavior / edge cases
 
+- Reveal copy and reel chrome are **property-neutral** (no fixed org nicknames). Reel style: muted frame, single center highlight, flat alternating voucher chips (code + prize label).
 - If `awaiting_balance_settlement` is true when this step is reached, the voucher UI is replaced by a spinner/wait card; `get-sd-form` is polled every 8s (`refetchInterval`) until settlement completes and status advances (then voucher or refund per `vouchers_enabled`).
 
 ---

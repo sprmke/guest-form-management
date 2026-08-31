@@ -17,7 +17,7 @@ Public **Contact** category cards require **explore** auth (not host dashboard l
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | **DB**      | `support_tickets.channel` (`host` \| `guest`); `organization_id` nullable for guest; messages `sender_type` includes `guest` |
 | **Edge**    | Guest channel when no org/property/parking scope; admin list/detail left-join orgs                                           |
-| **Contact** | `useGuestSession` + `/for-guests/login`; modal always guest-scoped                                                           |
+| **Contact** | `requireGuestAuth` + `GuestAuthModal`; modal always guest-scoped                                                             |
 | **Account** | Nav **Tickets** + `GuestTicketsPage` wrapping `TicketsWorkspacePage`                                                         |
 
 ## Local

@@ -152,4 +152,4 @@ See **[[stay-guide|Guest stay guide (token-gated brochure)]]** for the `stay-gui
 - A property with no `custom_pages` row gets one lazily on first `custom-pages-settings` or stay-guide read, defaulting to `stay-guide-warm-arrival`.
 - Gallery does not wait on `custom-pages-settings`; it always lists the guest URLs from the registry (including Showcase).
 - Showcase / Stay Guide / Property editors are explore-open on Free; Save opens the Pro upgrade modal when `publicPagesAutosave` is off.
-- Live Showcase URL without Pro shows a non-dismissible blurred plan-lock overlay (no close control).
+- Live Showcase URL without Pro shows a non-dismissible blurred plan-lock overlay (guest copy + **Home** → Explore `/`; no close control).

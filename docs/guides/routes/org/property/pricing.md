@@ -86,31 +86,33 @@ dates that should not be available to guests.
 - Without rate/block leaves, the calendar and fee sidebar stay read-only for that action.
 - Server: GET → `pricing.channels:view` + `calendarSync` plan; PATCH → `pricing.channels:edit` + `calendarSync`. Legacy stored `pricing:edit` still expands to all three rate/block leaves.
 - Channel Sync also requires plan feature **`calendarSync`** (Pro / `growth` and above) — see below.
-- The **Channel sync** header button is hidden without `pricing.channels:view`. View-only members see feeds and can copy the export link; connect/remove/sync/reset require `pricing.channels:edit`.
+- The **Channel sync** header button is hidden without `pricing.channels:view`. View-only members see feeds and can copy the export link; connect/remove/sync require `pricing.channels:edit`.
+- Below Pro, the button shows a **Pro** plan pill (`TierBadge` / `TierBadgeAnchor` on `calendarSync`) — same pattern as Import on Bookings.
 
 ---
 
 ## Channel Sync (Airbnb iCal)
 
-**Channel sync** button in the Pricing page header (desktop outline button aligned with the title; mobile hero icon). Opens a **`ResponsiveModal`** (`ChannelSyncDialog`) with two tabs — **From Airbnb** and **To Airbnb**. Product scope is **Airbnb only** (Booking.com / VRBO / Other remain in the DB schema for future work; `calendar-sync-settings` `addFeed` rejects non-Airbnb providers). Plan feature **`calendarSync`** (Pro / `growth` and above) — below Pro the modal shows a locked upgrade prompt (`openUpgradeModal('calendarSync')`); the server (`calendar-sync-settings`, `calendar-sync-cron`) enforces the same feature.
+**Channel sync** button in the Pricing page header (desktop outline button aligned with the title; mobile hero icon). Below Pro, a corner **Pro** pill signals the plan gate. Opens a **`ResponsiveModal`** (`ChannelSyncDialog`) with two tabs — **From Airbnb** and **To Airbnb**. Product scope is **Airbnb only** (Booking.com / VRBO / Other remain in the DB schema for future work; `calendar-sync-settings` `addFeed` rejects non-Airbnb providers). Plan feature **`calendarSync`** (Pro / `growth` and above) — modal is **preview-open** below Pro (full UI browsable); **Connect** and turning on **Share with Airbnb** open the upgrade modal. Server enforces the feature on writes (`calendar-sync-settings` PATCH, `calendar-sync-cron`).
 
 ### From Airbnb (import)
 
-- **Empty state:** short prompt + **Connect Airbnb** — the add form is hidden until the host starts connecting.
-- **Add a feed:** Airbnb calendar URL (+ optional label) → **Connect**. Accepts `https://` or `webcal://` (normalized server-side). URL must be on an Airbnb host; stored **encrypted**.
-- **First sync:** runs immediately after connect (no 30-min cron wait); toast reflects import count or first-sync failure.
+- **Empty (editable):** connect form is shown immediately (no extra click). URL is **required**; validates on change as an Airbnb export link (`https://` / `webcal://`, Airbnb host, `/calendar/ical/` path). Invalid → inline error; **Connect** stays disabled until valid. Below Pro, a valid URL + Connect opens the upgrade modal.
+- **?** help on the URL label: Airbnb Calendar → Availability → Connect calendars → Export calendar.
+- **Optional label removed** — connected feed displays as **Airbnb** (server still accepts an optional label if sent).
 - **Connected list:** name, health badge, last sync time; icon actions for **Sync now** and **Remove**.
+- **Add another:** outline **Connect Airbnb** expands the same validated form.
 - **Polling:** `calendar-sync-cron` every 30 min imports busy nights as **synced blocks** (`source='ical_import'`).
 - **Create real bookings (Phase 2):** when `create_bookings` is on for a feed, Airbnb reservations become **Pending review** bookings (no guest emails until details exist). Host forwards **Copy guest form link** from the booking.
 - **Health:** Synced / Retrying / Needs fix (4+ failures → `calendar_sync_failing` notification).
 - **Remove:** confirm dialog; optional **Also delete dates this calendar added**.
-- **Recent activity:** collapsed under From Airbnb when events exist (last ~8 shown).
+- **Recent activity:** collapsed under From Airbnb when events exist (last ~8) — sync audit (imports, conflicts, errors). Keep it; hosts use it to diagnose sync issues.
 
 ### To Airbnb (export)
 
-- **Share with Airbnb** switch enables the token-guarded iCal URL (`?as=airbnb`) so Kame bookings + manual blocks appear on Airbnb without echoing Airbnb’s own imports.
-- One URL + **Copy** — paste into Airbnb’s import calendar field.
-- **Reset link:** confirmation dialog, then rotate token — old URL stops working; host must re-paste into Airbnb.
+- Modal width ~**36rem** (was ~28rem) for room for help + long URLs.
+- **Share with Airbnb** switch (+ **?** help) — **off by default** (opt-in). Enables the token-guarded iCal URL (`?as=airbnb`) so Kame bookings + manual blocks appear on Airbnb without echoing Airbnb’s own imports. Turning **on** below Pro opens the upgrade modal; turning **off** is always allowed.
+- **Paste into Airbnb** (+ **?** help: Calendar → Availability → Connect calendars → Import calendar) — one URL + **Copy**.
 
 ### Conflicts
 
@@ -119,7 +121,7 @@ If Airbnb reports a night that already has a live Kame booking or manual block, 
 **Host Q&A**
 
 - Q: Where do I connect my Airbnb calendar?
-  A: Pricing → **Channel sync** → **From Airbnb** → Connect Airbnb. You need Pro or higher.
+  A: Pricing → **Channel sync** → **From Airbnb** → paste Airbnb’s Export calendar URL. Hover **?** for steps. You need Pro or higher.
 - Q: How do I block Airbnb when someone books here?
   A: Channel sync → **To Airbnb** → turn on Share with Airbnb → copy the link into Airbnb’s import calendar field.
 - Q: Does changing a nightly rate here change Airbnb’s price?
@@ -128,8 +130,6 @@ If Airbnb reports a night that already has a live Kame booking or manual block, 
   A: No. Synced nights are read-only on the calendar. They clear when Airbnb drops the date or you remove the feed.
 - Q: Can I sync Booking.com or VRBO?
   A: Not yet — Channel sync is Airbnb-only for now.
-- Q: My export link stopped working in Airbnb.
-  A: It was probably reset. Open Channel sync → To Airbnb, copy the current link, and paste it into Airbnb again.
 
 ---
 

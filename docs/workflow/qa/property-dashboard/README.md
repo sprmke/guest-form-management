@@ -36,27 +36,29 @@ Deep review of **property-level** dashboard modules (`/org/:orgSlug/property/:pr
 
 ## Index
 
-| #   | Module              | File                                                                       | Top findings                                                         |
-| --- | ------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| 01  | Dashboard           | [01-dashboard.md](./01-dashboard.md)                                       | **P1 fixed:** bare `/bookings` `/finance` `/maintenance` deep-links  |
-| 02  | Bookings            | [02-bookings.md](./02-bookings.md)                                         | Strong workflow surface; Free import gate OK                         |
-| 03  | Bookings detail     | [03-bookings-detail.md](./03-bookings-detail.md)                           | Dense but powerful; AI review Pro+                                   |
-| 04  | Finance             | [04-finance.md](./04-finance.md)                                           | Solid ledger; export Starter+                                        |
-| 05  | Pricing             | [05-pricing.md](./05-pricing.md)                                           | Channel Sync live but **guide outdated** (updated)                   |
-| 06  | Maintenance         | [06-maintenance.md](./06-maintenance.md)                                   | Parity with Finance patterns                                         |
-| 07  | Team                | [07-team.md](./07-team.md)                                                 | RBAC templates clear; Free seat=1                                    |
-| 08  | Marketing           | [08-marketing.md](./08-marketing.md)                                       | Studio heavy; Free watermark + 429 under load                        |
-| 09  | Inbox               | [09-inbox.md](./09-inbox.md)                                               | Core loop free; Meta Business+                                       |
-| 10  | Notifications       | [10-notifications.md](./10-notifications.md)                               | Telegram enable Starter+                                             |
-| 11  | Templates           | [11-templates.md](./11-templates.md)                                       | Custom templates unused for sends                                    |
-| 12  | Public pages        | [12-public-pages.md](./12-public-pages.md)                                 | Explore-open Free; save Pro+                                         |
-| 13  | Plans               | [13-plans.md](./13-plans.md)                                               | Property mirror of org billing                                       |
-| 14  | Settings            | [14-settings.md](./14-settings.md)                                         | Completeness dots good; dual edit surfaces                           |
-| 15  | Help                | [15-help-support.md](./15-help-support.md)                                 | Baseline access OK                                                   |
-| 16  | Plans & RBAC matrix | [16-plans-and-rbac.md](./16-plans-and-rbac.md)                             | Tier × template expectations                                         |
-| 17  | Phase 2 actions     | [17-phase2-module-actions.md](./17-phase2-module-actions.md)               | Dialogs + CTA inventory; guest-balance toast fix                     |
-| 18  | Phase 3 deep        | [18-phase3-deep-interactions.md](./18-phase3-deep-interactions.md)         | Settings save, Marketing download, GAF, Telegram validate, Meta gate |
-| 19  | Phase 4 Business+   | [19-phase4-business-integrations.md](./19-phase4-business-integrations.md) | Live Telegram send + Save; Meta OAuth start; Publish empty-state     |
+| #   | Module               | File                                                                       | Top findings                                                         |
+| --- | -------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| 01  | Dashboard            | [01-dashboard.md](./01-dashboard.md)                                       | **P1 fixed:** bare `/bookings` `/finance` `/maintenance` deep-links  |
+| 02  | Bookings             | [02-bookings.md](./02-bookings.md)                                         | Strong workflow surface; Free import gate OK                         |
+| 03  | Bookings detail      | [03-bookings-detail.md](./03-bookings-detail.md)                           | Dense but powerful; AI review Pro+                                   |
+| 04  | Finance              | [04-finance.md](./04-finance.md)                                           | Solid ledger; export Starter+                                        |
+| 05  | Pricing              | [05-pricing.md](./05-pricing.md)                                           | Channel Sync live but **guide outdated** (updated)                   |
+| 06  | Maintenance          | [06-maintenance.md](./06-maintenance.md)                                   | Parity with Finance patterns                                         |
+| 07  | Team                 | [07-team.md](./07-team.md)                                                 | RBAC templates clear; Free seat=1                                    |
+| 08  | Marketing            | [08-marketing.md](./08-marketing.md)                                       | Studio heavy; Free watermark + 429 under load                        |
+| 09  | Inbox                | [09-inbox.md](./09-inbox.md)                                               | Core loop free; Meta Business+                                       |
+| 10  | Notifications        | [10-notifications.md](./10-notifications.md)                               | Telegram enable Starter+                                             |
+| 11  | Templates            | [11-templates.md](./11-templates.md)                                       | Custom templates unused for sends                                    |
+| 12  | Public pages         | [12-public-pages.md](./12-public-pages.md)                                 | Explore-open Free; save Pro+                                         |
+| 13  | Plans                | [13-plans.md](./13-plans.md)                                               | Property mirror of org billing                                       |
+| 14  | Settings             | [14-settings.md](./14-settings.md)                                         | Completeness dots good; dual edit surfaces                           |
+| 15  | Help                 | [15-help-support.md](./15-help-support.md)                                 | Baseline access OK                                                   |
+| 16  | Plans & RBAC matrix  | [16-plans-and-rbac.md](./16-plans-and-rbac.md)                             | Tier × template expectations                                         |
+| 17  | Phase 2 actions      | [17-phase2-module-actions.md](./17-phase2-module-actions.md)               | Dialogs + CTA inventory; guest-balance toast fix                     |
+| 18  | Phase 3 deep         | [18-phase3-deep-interactions.md](./18-phase3-deep-interactions.md)         | Settings save, Marketing download, GAF, Telegram validate, Meta gate |
+| 19  | Phase 4 Business+    | [19-phase4-business-integrations.md](./19-phase4-business-integrations.md) | Live Telegram send + Save; Meta OAuth start; Publish empty-state     |
+| 20  | Superhost            | [20-superhost.md](./20-superhost.md)                                       | Superhost progress surface                                           |
+| 21  | Org + property roles | [21-org-property-team-roles.md](./21-org-property-team-roles.md)           | **Closed:** UUID auth + listing lifecycle; QA script 18/18 pass      |
 
 ## Host critique (overall)
 

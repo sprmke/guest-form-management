@@ -45,7 +45,7 @@ Guest form **logic** was generalized in guest-form-configurable-sections (sectio
 | All `MainLayout` pages     | ~~Hero image~~ → brand-color band; footer was `© 2024 Kame Home — Azure North`     |
 | All `KameFormBrandHeader`  | Eyebrow `Monaco 2604 · Azure North`, alt `Kame Home`                               |
 | `/form`                    | Azure parking/pet/GAF copy; schema default `Monaco 2604`; Facebook contact strings |
-| `/success`                 | `Ka-Homies!`, Azure GAF note                                                       |
+| `/success`                 | Azure GAF note                                                                     |
 | `/sd-form`                 | `Thanks for staying at Kame Home!`                                                 |
 | `/parking/:bookingId`      | Azure last-minute warning; Facebook error copy                                     |
 | `/stay-guide`, `/messages` | Already dynamic                                                                    |

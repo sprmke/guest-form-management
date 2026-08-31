@@ -57,7 +57,7 @@ VRBO / any iCal channel):
 - `supabase/functions/_shared/calendarSyncRun.ts` — DB-orchestration wrapper: `runFeedSync` (claim → decrypt URL → `fetchExternalIcs` → 304 / feed-hash short-circuit → parse → empty-feed guard → `diffFeed` → apply block create/reschedule/touch/remove → `markFeedSuccess`), `runConflictPass`, `loadDueCalendarFeeds`, `loadExportRanges`, failing-feed + conflict notification emit (dedupe keyed), `CALENDAR_SYNC_FAILING_THRESHOLD = 4`
 - `supabase/functions/ical-export/index.ts` — `servePublic` GET `?property=<slug>&token=<t>[&as=<provider>]`; constant-time token compare, weak ETag + 304, identical 404 on every failure, `Cache-Control: public, max-age=900`
 - `supabase/functions/calendar-sync-cron/index.ts` — global sweep (`CALENDAR_SYNC_CRON_SECRET` gate, `loadDueCalendarFeeds(100)`, 55 s budget, per-property `calendarSync` entitlement check) + scoped `{feedId}`/`{propertyId}` "Sync now" (`resolveScopedPropertyAccess('pricing.channels:edit')` + `requirePropertyFeature('calendarSync')`)
-- `supabase/functions/calendar-sync-settings/index.ts` — `serveAuthenticated`; GET (`pricing.channels:view`) returns shaped feeds (masked URL + health), export URLs, recent events; PATCH (`pricing.channels:edit` + `requirePropertyFeature`) actions `addFeed`/`updateFeed`/`removeFeed`/`rotateExportToken`/`setExportEnabled`/`syncNow`
+- `supabase/functions/calendar-sync-settings/index.ts` — `serveAuthenticated`; GET (`pricing.channels:view`) returns shaped feeds (masked URL + health), export URLs, recent events; PATCH (`pricing.channels:edit` + `requirePropertyFeature`) actions `addFeed`/`updateFeed`/`removeFeed`/`setExportEnabled`/`syncNow`
 - `supabase/config.toml` — `[functions.ical-export]` / `[functions.calendar-sync-cron]` / `[functions.calendar-sync-settings]` (+ Phase 2 `get-form-completion` / `submit-form-completion` / `issue-guest-form-completion-token`), all `verify_jwt = false`
 
 **Done — notification wiring:**
@@ -696,7 +696,7 @@ top-level module.
 ### Hooks
 
 `useCalendarSyncSettings` (query, key `['calendar-sync', propertyId]`), `useUpdateCalendarSyncFeed`
-/ `useRotateExportToken` / `useRunCalendarSync` (mutations) under `pricing/hooks/`. Invalidate the
+/ `useSetExportEnabled` / `useRunCalendarSync` (mutations) under `pricing/hooks/`. Invalidate the
 settings key on mutate.
 
 ### Mobile / a11y

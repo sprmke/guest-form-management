@@ -45,17 +45,18 @@ See epics #101–#119 in historical [`archive/todos/BACKLOG_DRAFT.md`](./archive
 
 ## Guides (live — per-route behavior)
 
-| Doc                                                                                                          | Purpose                                                                |
-| ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
-| [`guides/README.md`](./guides/README.md)                                                                     | Route guides overview                                                  |
-| [`guides/routes/README.md`](./guides/routes/README.md)                                                       | Route → file index                                                     |
-| [`guides/testing/contract-expiry-lifecycle-manual.md`](./guides/testing/contract-expiry-lifecycle-manual.md) | Sublessee / Auth Rep contract-expiry manual E2E                        |
-| [`guides/testing/smart-search-intents-manual.md`](./guides/testing/smart-search-intents-manual.md)           | Nearby / concept / literal search manual E2E                           |
-| [`guides/testing/custom-pages-module-manual.md`](./guides/testing/custom-pages-module-manual.md)             | Public Pages module + stay-guide redesign manual E2E                   |
-| [`guides/testing/ai-dashboard-assistant-manual.md`](./guides/testing/ai-dashboard-assistant-manual.md)       | AI dashboard assistant manual E2E — read/actions/guardrails            |
-| [`guides/testing/parking-playwright.md`](./guides/testing/parking-playwright.md)                             | Parking Playwright harness — mocked guest/host E2E + side-by-side demo |
-| [`guides/testing/property-team-rbac-playwright.md`](./guides/testing/property-team-rbac-playwright.md)       | Property team RBAC Playwright smoke — seeded template nav + redirects  |
-| [`guides/testing/image-upload-optimization-manual.md`](./guides/testing/image-upload-optimization-manual.md) | Image/video upload optimization — functional + quality/OCR/perf gates  |
+| Doc                                                                                                          | Purpose                                                                      |
+| ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| [`guides/README.md`](./guides/README.md)                                                                     | Route guides overview                                                        |
+| [`guides/routes/README.md`](./guides/routes/README.md)                                                       | Route → file index                                                           |
+| [`guides/testing/contract-expiry-lifecycle-manual.md`](./guides/testing/contract-expiry-lifecycle-manual.md) | Sublessee / Auth Rep contract-expiry manual E2E                              |
+| [`guides/testing/smart-search-intents-manual.md`](./guides/testing/smart-search-intents-manual.md)           | Nearby / concept / literal search manual E2E                                 |
+| [`guides/testing/custom-pages-module-manual.md`](./guides/testing/custom-pages-module-manual.md)             | Public Pages module + stay-guide redesign manual E2E                         |
+| [`guides/testing/ai-dashboard-assistant-manual.md`](./guides/testing/ai-dashboard-assistant-manual.md)       | AI dashboard assistant manual E2E — read/actions/guardrails                  |
+| [`guides/testing/parking-playwright.md`](./guides/testing/parking-playwright.md)                             | Parking Playwright harness — mocked guest/host E2E + side-by-side demo       |
+| [`guides/testing/voucher-reveal-playwright.md`](./guides/testing/voucher-reveal-playwright.md)               | Voucher reveal styles — host settings + guest claim worlds (reel/wheel/flip) |
+| [`guides/testing/property-team-rbac-playwright.md`](./guides/testing/property-team-rbac-playwright.md)       | Property team RBAC Playwright smoke — seeded template nav + redirects        |
+| [`guides/testing/image-upload-optimization-manual.md`](./guides/testing/image-upload-optimization-manual.md) | Image/video upload optimization — functional + quality/OCR/perf gates        |
 
 ## Archive
 

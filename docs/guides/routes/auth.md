@@ -34,7 +34,7 @@ Routes:
 
 Guests can sign in two ways, both real and both landing in the same Supabase Auth session:
 
-1. **Contextual checkout modal** (`GuestAuthModal`) — appears when a guest opens a gated surface (booking form, messages, reserve, contact host, save) or commits an action that needs a session.
+1. **Contextual checkout modal** (`GuestAuthModal`) — appears when a guest opens a gated surface (booking form, messages, reserve, contact host, **Contact ticket**, save) or commits an action that needs a session.
 2. **Standalone pages** (`/for-guests/login`, `/for-guests/register`) — reachable directly (nav "Sign In" link, deep links, bookmarks), same email-OTP + Google flow as the modal, just as a full page.
 
 Guests can browse listings and pick dates without signing in. Opening **`/properties/:slug/form`**, **`/parkings/:slug/form`**, or **`/messages`** directly requires auth first (modal + skeleton), same as Reserve / Contact host.
@@ -45,6 +45,7 @@ Guests can browse listings and pick dates without signing in. Opening **`/proper
 4. **Property detail → Contact host** — `GuestAuthModal` first when anonymous, then **`ContactHostSheet`**
 5. **Direct form / messages entry** — `/properties/:slug/form`, `/parkings/:slug/form`, and `/messages` open **`GuestAuthModal`** on load when anonymous (skeleton until signed in); submit still re-checks if the session expired
 6. **Save property (heart)** — any listing card, list row, or detail gallery Save button → `GuestAuthModal` when anonymous; persists to `guest_saved_properties` after login (OAuth resume via `save_property` intent)
+7. **Contact (`/contact`)** — category card → `requireGuestAuth` → `GuestAuthModal`, then **`NewTicketModal`** (OAuth resume navigates back with `?category=`)
 
 Marketing **Become a host?** on explore pages runs the global mode-switch curtain to **`/for-hosts`**. On explore pages, signed-in guests with host org access see **Dashboard** in the avatar menu under **Host** — that link runs the same mode-switch curtain, then lands on the last org dashboard (or **`/dashboard`**). When already in host mode (e.g. **`/for-hosts`** avatar menu), **Dashboard** navigates directly with no curtain. On `/for-hosts`, the pill CTA is **Explore** (back to guest mode); signed-in hosts use the avatar menu for **Dashboard**, signed-out hosts see **Sign In** → **`/for-hosts/login`**. On explore pages, signed-in guests see the avatar menu (**`/account/*`** — profile, stays, wishlist, messages, see **[[profile|Guest account — operator guide]]**), signed-out guests now see a real **Sign In** link → **`/for-guests/login`**.
 

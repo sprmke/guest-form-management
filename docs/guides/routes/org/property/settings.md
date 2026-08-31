@@ -24,7 +24,7 @@ Route: `/org/:orgSlug/property/:propertySlug/settings`
 | Guest Form         | Done     | Done       | Done | Pet / parking / decor + preferred parking + complimentary own parking + Cleaning Time |
 | Location           | Done     | Done       | Done | Compact address + Manage modal (picker + Save / discard)                              |
 | Socials            | Done     | Done       | Done | Facebook / Airbnb / Instagram / TikTok (org inherit)                                  |
-| Reviews & vouchers | Done     | Done       | Done | External reviews + next-stay voucher config + Superhost                               |
+| Reviews & vouchers | Done     | Done       | Done | External reviews + next-stay voucher config                                           |
 | Payment            | Done     | Done       | Done | Compact method rows + Manage modal (account/QR editor)                                |
 | Building Forms     | Done     | Done       | Done | Shared GAF + pet PDF fields                                                           |
 | Email automations  | Done     | Done       | Done | Recipients + timing inline; Automated sends via Manage modal                          |
@@ -33,7 +33,7 @@ Route: `/org/:orgSlug/property/:propertySlug/settings`
 | AI Overrides       | Done     | Done       | Done | Hidden unless plan has AI credits (`aiMonthlyCreditAllowance` > 0)                    |
 | Danger Zone        | Done     | Done       | Done | Archive + delete with confirmations                                                   |
 
-> **Also editable in Page Editor:** Photos & Videos, Brand color, Description, Amenities, House Rules, Cancellation, and Socials (URLs only) — same fields, same storage. **External reviews, vouchers, and Superhost** are Settings-only (**Reviews & vouchers**).
+> **Also editable in Page Editor:** Photos & Videos, Brand color, Description, Amenities, House Rules, Cancellation, and Socials (URLs only) — same fields, same storage. **External reviews and vouchers** are Settings-only (**Reviews & vouchers**).
 
 ---
 
@@ -278,7 +278,7 @@ Social URL fields in `app_settings` (empty = inherit org). Also editable in the 
 
 ## Reviews & vouchers
 
-External reviews, next-stay voucher configuration, and Superhost proof. Section id `guest-rewards`. RBAC: `settings.socials:edit`.
+External reviews and next-stay voucher configuration. Section id `guest-rewards`. RBAC: `settings.socials:edit`.
 
 Summary rows match Amenities / Automated sends: muted compact card (`bg-muted/40`), one-line status, outline **Manage** (modals unchanged).
 
@@ -298,11 +298,9 @@ Hosts can seed up to **5** Airbnb/Facebook reviews (**Reviewer**, **Review**, an
 
 Platform defaults (all presets on): 5%→25, 10%→34, 15%→20, 20%→12, 25%→5, 50%→3, 100% / free stay→1.
 
-Host UI: compact summary (`Next-stay vouchers · {prize summary|Off}` · optional style label when not Reel) + **Manage** modal — enable toggle, **Style** segmented control (**Reel** / **Wheel** / **Flip**), full preset catalog (checkbox per discount), **Weight** steppers + live **Odds**, rate select, **Reset defaults**. Save with section **Save Changes** → `app-settings` PATCH (`vouchersEnabled`, `voucherPrizes`, `voucherRevealStyle`). Guest `/sd-form` and guest-review animate with the chosen style (reel / wheel / flip). Claim rolls via `claim-sd-voucher`; awarded `next_stay_voucher_amount` stores the **percent** (1–100). Legacy peso `KAME-*` awards still display as ₱.
+Host UI: compact summary (`Next-stay vouchers · {prize summary|Off}` · optional style label when not Reel) + **Manage** modal — enable toggle, **Style** picker with **animated preview thumbnails** (**Reel** / **Wheel** / **Flip**), full preset catalog (checkbox per discount), **Weight** steppers + live **Odds**, rate select, **Reset defaults**. Previews loop subtly in the modal (static when OS reduce motion is on). Save with page **Save Changes** (sticky footer when dirty) → `app-settings` PATCH (`vouchersEnabled`, `voucherPrizes`, `voucherRevealStyle`). Style-only edits in this section count as savable changes (not “No changes to save”). Guest `/sd-form` and guest-review animate with the chosen style (reel / wheel / flip). Claim rolls via `claim-sd-voucher`; awarded `next_stay_voucher_amount` stores the **percent** (1–100). Legacy peso `KAME-*` awards still display as ₱.
 
-### Superhost
-
-`superhost_verification_url`, `superhost_proof_image_url`, `superhost_status` — proof upload via `upload-app-settings-asset`; status resets to `pending` when URL/proof change (unless already approved). Summary: `Superhost · {status}` + **Manage**.
+**Superhost** is not configured per property — hosts earn it automatically org-wide (see [`docs/workflow/planned/superhost-program.md`](../../../../workflow/planned/superhost-program.md); progress lives under **Org settings → Trust**).
 
 ---
 
@@ -350,10 +348,10 @@ Per-property operational settings in `app_settings` (below Building Forms in the
 
 ### Recipients
 
-| Field                                             | Column                 | Notes                                                                                            |
-| ------------------------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------ |
-| Property email (Azure North) / Team email (other) | `email_reply_to`       | Required. Ops inbox: new booking alerts + CC on GAF/pet requests; Reply-To on most guest emails. |
-| Parking owners                                    | `parking_owner_emails` | Comma-separated BCC for parking broadcast                                                        |
+| Field                                             | Column                 | Notes                                                                                                                  |
+| ------------------------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Property email (Azure North) / Team email (other) | `email_reply_to`       | Required. Ops inbox: new booking alerts + CC on GAF/pet requests; Reply-To on most guest emails.                       |
+| Parking owners (legacy)                           | `parking_owner_emails` | Retired — property parking broadcast emails removed (Phase 7). Parking uses marketplace **Find parking** / `linkStay`. |
 
 **GAF / pet request `To:`** is **not** edited here. It comes from the property’s development **PMO email** (`developments.settings.pmoEmail` via super-admin `/admin/developments/:slug`), then legacy `app_settings.email_to`, then the Azure North default. The Automation toggles panel shows that resolved address as read-only.
 
