@@ -50,7 +50,10 @@ serveAuthenticated('submit-org-verification', async (req) => {
     }
 
     if (!canSubmitBaseVerification(verification)) {
-      return jsonError(req, 'Required: valid ID');
+      const missing: string[] = [];
+      if (!verification.assets.validIdPath) missing.push('valid ID');
+      if (!verification.assets.socialProofPath) missing.push('Facebook Page screenshot');
+      return jsonError(req, `Required: ${missing.join(', ')}`);
     }
 
     verification = {

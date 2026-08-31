@@ -101,7 +101,7 @@ export type OrgVerificationAssetType = (typeof ORG_VERIFICATION_ASSET_TYPES)[num
 export type OrgVerificationAssets = {
   /** Tier 1 — government-issued ID. */
   validIdPath: string | null;
-  /** Tier 2 — Facebook Page screenshot (platform is pinned to Facebook). */
+  /** Tier 1 — Facebook Page screenshot (platform is pinned to Facebook). Also required on Tier 2. */
   socialProofPath: string | null;
   /** Tier 2 — selfie holding the valid ID. */
   selfieWithIdPath: string | null;
@@ -369,11 +369,11 @@ export function isOrgVerifiedBadge(state: OrgVerificationState): boolean {
 }
 
 /**
- * Tier 1 (host identity) — Valid ID only.
- * Facebook Page and listing authority are not part of host base.
+ * Tier 1 (host identity) — Valid ID and Facebook Page screenshot.
+ * Listing authority is not part of host base.
  */
 export function canSubmitBaseVerification(state: OrgVerificationState): boolean {
-  return Boolean(state.assets.validIdPath);
+  return Boolean(state.assets.validIdPath && state.assets.socialProofPath);
 }
 
 /**

@@ -213,6 +213,8 @@ export function OnboardingPage() {
   const [userContractEndDate, setUserContractEndDate] = useState('');
   const [validIdFile, setValidIdFile] = useState<File | null>(null);
   const [validIdPreview, setValidIdPreview] = useState<string | null>(null);
+  const [socialProofFile, setSocialProofFile] = useState<File | null>(null);
+  const [socialProofPreview, setSocialProofPreview] = useState<string | null>(null);
   const [verificationTouched, setVerificationTouched] = useState(false);
   const [verificationFormOpen, setVerificationFormOpen] = useState(false);
   const createdTenantRef = useRef<CreatedOnboardingTenant | null>(null);
@@ -342,7 +344,7 @@ export function OnboardingPage() {
     !towerUnitChecking &&
     userRoleReady;
 
-  const hostVerificationReady = Boolean(validIdFile);
+  const hostVerificationReady = Boolean(validIdFile && socialProofFile);
   const verificationReady = hostVerificationReady;
 
   const canAdvance =
@@ -414,6 +416,13 @@ export function OnboardingPage() {
         return;
       }
     }
+    if (socialProofFile) {
+      const err = validateVerificationFile(socialProofFile);
+      if (err) {
+        setError(err);
+        return;
+      }
+    }
     setError(null);
     setSubmitting(true);
 
@@ -477,8 +486,9 @@ export function OnboardingPage() {
         await queryClient.invalidateQueries({ queryKey: ORGANIZATIONS_QUERY_KEY });
       }
 
-      // Host Tier 1 — identity only (org scope).
+      // Host Tier 1 — Valid ID + Facebook Page screenshot (org scope).
       await uploadVerificationAsset(data.organization.id, 'valid_id', validIdFile!);
+      await uploadVerificationAsset(data.organization.id, 'social_proof', socialProofFile!);
       await callEdgeFunction('submit-org-verification', {
         method: 'POST',
         body: JSON.stringify({
@@ -994,6 +1004,15 @@ export function OnboardingPage() {
                             onFileChange={(file, preview) => {
                               setValidIdFile(file);
                               setValidIdPreview(preview);
+                            }}
+                            socialProofFile={socialProofFile}
+                            socialProofPreviewUrl={socialProofPreview}
+                            socialProofError={
+                              verificationTouched && !socialProofFile ? 'Required' : null
+                            }
+                            onSocialProofChange={(file, preview) => {
+                              setSocialProofFile(file);
+                              setSocialProofPreview(preview);
                             }}
                             onUploadError={setError}
                           />

@@ -1,11 +1,18 @@
 import { OnboardingProofUpload } from '@/features/dashboard/org/components/onboarding/OnboardingProofUpload';
-import { validateVerificationFile } from '@/features/dashboard/org/lib/orgVerification';
+import {
+  propertyAccessScreenshotHelp,
+  validateVerificationFile,
+} from '@/features/dashboard/org/lib/orgVerification';
 
 type Props = {
   file: File | null;
   previewUrl: string | null;
   error: string | null;
   onFileChange: (file: File | null, preview: string | null) => void;
+  socialProofFile: File | null;
+  socialProofPreviewUrl: string | null;
+  socialProofError: string | null;
+  onSocialProofChange: (file: File | null, preview: string | null) => void;
   onUploadError: (message: string | null) => void;
 };
 
@@ -14,6 +21,10 @@ export function OnboardingHostVerificationSection({
   previewUrl,
   error,
   onFileChange,
+  socialProofFile,
+  socialProofPreviewUrl,
+  socialProofError,
+  onSocialProofChange,
   onUploadError,
 }: Props) {
   return (
@@ -42,6 +53,26 @@ export function OnboardingHostVerificationSection({
           }
           onUploadError(null);
           onFileChange(nextFile, preview);
+        }}
+      />
+      <OnboardingProofUpload
+        id="onboarding-facebook-page"
+        label="Facebook Page screenshot"
+        help={propertyAccessScreenshotHelp('facebook')}
+        file={socialProofFile}
+        previewUrl={socialProofPreviewUrl}
+        error={socialProofError}
+        onFileChange={(nextFile, preview) => {
+          if (nextFile) {
+            const err = validateVerificationFile(nextFile);
+            if (err) {
+              onUploadError(err);
+              onSocialProofChange(null, null);
+              return;
+            }
+          }
+          onUploadError(null);
+          onSocialProofChange(nextFile, preview);
         }}
       />
     </div>

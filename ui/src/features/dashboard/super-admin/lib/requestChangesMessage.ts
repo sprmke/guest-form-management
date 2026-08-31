@@ -40,7 +40,14 @@ export function hostRequestChangesReasonLabel(id: HostRequestChangesReasonId): s
 }
 
 export function buildChangeDocOptions(detail: OrgApprovalDetail): ChangeDocOption[] {
-  return [{ id: 'validId', label: 'Valid ID', url: detail.assetUrls.validIdUrl }];
+  return [
+    { id: 'validId', label: 'Valid ID', url: detail.assetUrls.validIdUrl },
+    {
+      id: 'socialProof',
+      label: 'Facebook Page screenshot',
+      url: detail.assetUrls.socialProofUrl,
+    },
+  ];
 }
 
 /** Compose the host-facing message from preset reasons + selected docs + optional notes. */

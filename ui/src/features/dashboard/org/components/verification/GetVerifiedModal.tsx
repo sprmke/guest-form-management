@@ -664,7 +664,10 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
     setSocialProof({
       file: null,
       previewUrl: null,
-      path: next.assets.socialProofPath,
+      path:
+        clearValidId && next.baseChangesRequestedDocs.includes('socialProof')
+          ? null
+          : next.assets.socialProofPath,
     });
     setSelfie({ file: null, previewUrl: null, path: next.assets.selfieWithIdPath });
     setPlatformAdmin({
@@ -700,8 +703,9 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
     hostModes,
     {
       validId: slotReady(validId),
+      socialProof: slotReady(socialProof),
     },
-    hostChangesRequested ? { changesRequestedDocs: ['validId'] } : undefined
+    hostChangesRequested ? { changesRequestedDocs: detail.baseChangesRequestedDocs } : undefined
   );
 
   const canSubmitVerified = canSubmitVerifiedTier(detail, {
@@ -732,6 +736,10 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
       if (validId.file) {
         const uploaded = await uploadVerificationAsset(org.id, 'valid_id', validId.file);
         setValidId({ file: null, previewUrl: uploaded.previewUrl, path: uploaded.path });
+      }
+      if (socialProof.file) {
+        const uploaded = await uploadVerificationAsset(org.id, 'social_proof', socialProof.file);
+        setSocialProof({ file: null, previewUrl: uploaded.previewUrl, path: uploaded.path });
       }
 
       await callEdgeFunction('submit-org-verification', {
@@ -903,6 +911,20 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
                             file,
                             previewUrl: preview,
                             path: file ? null : validId.path,
+                          });
+                        }}
+                        socialProofFile={socialProof.file}
+                        socialProofPreviewUrl={socialProof.previewUrl}
+                        socialProofError={slotRequiredError(
+                          hostTouched,
+                          submitting !== null,
+                          socialProof
+                        )}
+                        onSocialProofChange={(file, preview) => {
+                          setSocialProof({
+                            file,
+                            previewUrl: preview,
+                            path: file ? null : socialProof.path,
                           });
                         }}
                         onUploadError={(message) => {

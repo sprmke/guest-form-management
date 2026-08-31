@@ -89,7 +89,7 @@ export type VerificationChecklistItem = {
 };
 
 /** Host Tier 1 checklist rows backed by an uploaded file (submitted-docs list + count). */
-const HOST_TIER_DOCUMENT_ITEM_IDS = new Set(['valid-id']);
+const HOST_TIER_DOCUMENT_ITEM_IDS = new Set(['valid-id', 'facebook-page']);
 
 /** Recommended Tier 2 checklist rows backed by an uploaded file. */
 const RECOMMENDED_TIER_DOCUMENT_ITEM_IDS = new Set([
@@ -282,6 +282,11 @@ export function buildHostTierChecklist(detail: OrgVerificationDetail): Verificat
       label: 'Valid ID',
       complete: Boolean(detail.assets.validIdPath),
     },
+    {
+      id: 'facebook-page',
+      label: 'Facebook Page screenshot',
+      complete: Boolean(detail.assets.socialProofPath),
+    },
   ];
 }
 
@@ -419,12 +424,13 @@ export function canSubmitVerifiedTier(
   );
 }
 
-/** Client-side gate for Tier 1 — Valid ID only (mirrors server `canSubmitBaseVerification`). */
+/** Client-side gate for Tier 1 — Valid ID + Facebook Page (mirrors server `canSubmitBaseVerification`). */
 export function canSubmitHostTier(
   detail: OrgVerificationDetail,
   _hostModes: string[],
   slots: {
     validId: boolean;
+    socialProof: boolean;
   },
   options?: { changesRequestedDocs?: OrgVerificationChangeDocId[] | null }
 ): boolean {
@@ -439,8 +445,8 @@ export function canSubmitHostTier(
 
   if (docs.length > 0) {
     if (docs.includes('validId') && !slots.validId) return false;
-    return true;
+    if (docs.includes('socialProof') && !slots.socialProof) return false;
   }
 
-  return Boolean(slots.validId);
+  return Boolean(slots.validId && slots.socialProof);
 }

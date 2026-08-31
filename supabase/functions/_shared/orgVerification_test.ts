@@ -21,24 +21,28 @@ function withValidId(): OrgVerificationState {
   };
 }
 
-Deno.test('host base submit requires Valid ID only', () => {
-  assertFalse(canSubmitBaseVerification(emptyOrgVerificationState()));
-  assert(canSubmitBaseVerification(withValidId()));
-});
+function withHostBaseDocs(): OrgVerificationState {
+  return {
+    ...withValidId(),
+    assets: {
+      ...withValidId().assets,
+      socialProofPath: 'org/id/social_proof/fb.jpg',
+    },
+  };
+}
 
-Deno.test('host base submit does not require Facebook Page screenshot', () => {
-  const withIdNoFacebook = withValidId();
-  assert(canSubmitBaseVerification(withIdNoFacebook));
-  assertFalse(canSubmitEnhancedVerification(withIdNoFacebook));
+Deno.test('host base submit requires Valid ID and Facebook Page screenshot', () => {
+  assertFalse(canSubmitBaseVerification(emptyOrgVerificationState()));
+  assertFalse(canSubmitBaseVerification(withValidId()));
+  assert(canSubmitBaseVerification(withHostBaseDocs()));
 });
 
 Deno.test('host Recommended still requires Facebook Page, selfie, and platform admin', () => {
   const ready: OrgVerificationState = {
-    ...withValidId(),
+    ...withHostBaseDocs(),
     platformAdminPlatform: 'instagram',
     assets: {
-      ...withValidId().assets,
-      socialProofPath: 'org/id/social_proof/fb.jpg',
+      ...withHostBaseDocs().assets,
       selfieWithIdPath: 'org/id/selfie_with_id/s.jpg',
       platformAdminProofPath: 'org/id/platform_admin_proof/ig.jpg',
     },
