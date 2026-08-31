@@ -1,7 +1,7 @@
 ---
 title: 'QA — Property Marketing'
 status: active
-updated: 2026-08-29
+updated: 2026-08-30
 ---
 
 # 08 — Marketing
@@ -13,6 +13,8 @@ Route: `/org/:orgSlug/property/:propertySlug/marketing`
 - Content Studio (Calendar / Design / Video) is a major differentiator when entitled.
 - Watermark / upgrade for `marketingStudio` (Pro+); Meta publish Business+.
 - Telegram marketing alerts correctly live under Notifications (guide callout).
+- **Phase 3 (Pro):** Design editor → **Download PNG** succeeded; **Publish** → Upgrade to Business.
+- **Phase 4 (Business):** Publish dialog empty-state + Inbox deep-link; confirm **Publish** disabled until Meta channel connected.
 
 ## Issues
 
@@ -34,4 +36,4 @@ Route: `/org/:orgSlug/property/:propertySlug/marketing`
 
 ## Evidence
 
-Live Marketing title; console 429/400; `planFeatures` / matrix.
+Live Marketing title; Phase 3 download + Publish gate; Phase 4 Business publish empty-state; console 429/400; `planFeatures` / matrix.
