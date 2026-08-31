@@ -16,7 +16,7 @@ Route: `/org/:orgSlug/settings`
 | Section                | E2E save | Validation   | Docs | Notes                                                                                                            |
 | ---------------------- | -------- | ------------ | ---- | ---------------------------------------------------------------------------------------------------------------- |
 | Basic information      | Yes      | Yes          | Done | Logo, name, slug, brand color, tagline, description, contact info                                                |
-| Socials                | Yes      | Yes          | Done | Social URLs; main platform auto-derived on save                                                                  |
+| Socials                | Yes      | Yes          | Done | Social URLs (at least one required)                                                                              |
 | AI platform            | Yes      | Server       | Done | Per-org usage quotas and enabled features; read-only when platform AI off                                        |
 | AI dashboard assistant | Yes      | Server       | Done | Opt-in + quotas; chat starters, file attach, per-page pin + Search all modules, canvas Open/Back, history delete |
 | Danger zone            | Partial  | Slug confirm | Done | Delete when no bookings; finance/maintenance can block; see § Danger zone                                        |
@@ -25,7 +25,7 @@ Route: `/org/:orgSlug/settings`
 
 ## Overview
 
-Organization settings uses `AdminSectionNavLayout` with **two save paths**. The desktop **Unsaved changes** footer stays in the main content column (aligned to `max-w-4xl`) so the secondary section nav stays fully usable.
+Organization settings uses `AdminSectionNavLayout` with **two save paths**. The desktop **Unsaved changes** footer stays in the main content column (aligned to `max-w-4xl`) so the secondary section nav stays fully usable. Field helpers use a **?** beside the label (`FieldLabel` / `OrgSettingsField` `help`) — not muted text under the control.
 
 1. **Profile** (`organizations` + `organizations.settings` JSONB) → `update-organization`
 2. **Operator** (`org_settings` row) → `org-settings` — social links + team logo only (email automations live on each property)
@@ -90,11 +90,10 @@ Guest/operator **contact name, phone, and email** for templates and public surfa
 | Facebook page | `org_settings.facebook_reviews_url` | Optional; DB value wins over `FACEBOOK_REVIEWS_URL` env; env used only when column is null/empty |
 | Instagram     | `org_settings.instagram_url`        | Optional; DB value wins over `INSTAGRAM_URL` env                                                 |
 | TikTok        | `org_settings.tiktok_url`           | Optional; DB value wins over `TIKTOK_URL` env                                                    |
-| Main platform | `org_settings.main_social_platform` | Auto-set on save from filled URLs (first valid platform); properties inherit when empty          |
 
-**Validation:** at least one social URL. Main platform is derived automatically on save (not editable at org level).
+**Validation:** at least one social URL.
 
-Properties inherit org social URLs and main platform when their `app_settings` columns are empty — see **property settings** § Socials.
+Properties inherit org social URLs when their `app_settings` columns are empty — see **property settings** § Socials.
 
 **App origin** (email links, default GCash QR base URL) is **not** per-org — set deployment env **`PUBLIC_GUEST_APP_ORIGIN`**. Legacy `org_settings.public_guest_app_origin` is used only when the env var is unset.
 
@@ -202,8 +201,8 @@ Save runs **`planOrgSettingsSave`** (client) before PATCH. Only **dirty** sectio
 | Tagline / description       | Optional; max length when filled                                                      | `update-organization`                             |
 | Brand color                 | Optional hex `#RRGGBB`; defaults to `#24a88e` when unset                              | `update-organization`                             |
 | Facebook URL                | Optional `http(s)` URL                                                                | `org-settings` PATCH                              |
-| Main social platform        | Required when any social URL is set                                                   | `org-settings` PATCH                              |
 | Instagram / TikTok / Airbnb | Optional `http(s)` URL                                                                | `org-settings` PATCH                              |
+| At least one social URL     | Required                                                                              | Client + `org-settings` PATCH                     |
 
 Per-property operator settings (email routing, parking defaults, SD cron, automations) are validated on **property settings** — see **[[guides/routes/org/property/settings|Property Settings — operator guide]]**.
 
@@ -256,4 +255,4 @@ Danger zone: slug confirmation + `delete-organization`; blocked when booking his
 - [AI dashboard assistant — manual tests](../../testing/ai-dashboard-assistant-manual.md)
 - [`docs/architecture/validation-and-env.md`](../../../architecture/validation-and-env.md) — `PUBLIC_GUEST_APP_ORIGIN`, `FACEBOOK_REVIEWS_URL`
 - [`docs/archive/operations/ai-platform-billing.md`](../../../archive/operations/ai-platform-billing.md) — billing and quota guidance
-- [`docs/workflow/in-progress/ai-usage-metering-credits-foundation.md`](../../../workflow/in-progress/ai-usage-metering-credits-foundation.md) — credits shadow ledger + wallet plan
+- [`docs/workflow/done/ai-usage-metering-credits-foundation.md`](../../../workflow/done/ai-usage-metering-credits-foundation.md) — credits shadow ledger + wallet plan

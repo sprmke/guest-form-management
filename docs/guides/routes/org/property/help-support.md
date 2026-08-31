@@ -37,7 +37,7 @@ This is where you go if you're stuck, found something broken, or want to ask us 
 - Q: How do I know when someone replies to my ticket?
   A: You'll get an email. You can also open Tickets any time to see the latest status and read the conversation.
 - Q: Can I attach a video?
-  A: Yes. Tickets about something broken can include up to 3 files (screenshots or short videos, up to 20 MB each).
+  A: Yes. Tickets about something broken can include up to 3 files — images up to 10 MB (compressed automatically before upload) or short videos up to 50 MB. Trim or compress a longer clip first; videos aren't re-encoded for you.
 - Q: What's the difference between Ask AI and a ticket?
   A: Ask AI answers questions about your bookings and data right away. A ticket goes to our support team. Use a ticket when something is broken, you have an idea, or the assistant can't help.
 - Q: What's the difference between FAQs and Guides?
@@ -67,16 +67,16 @@ List, new ticket, and conversation live in one Tickets workspace (`/tickets`, `/
 
 ### Fields
 
-| Field              | Category         | Storage                              | Validation                                                                                |
-| ------------------ | ---------------- | ------------------------------------ | ----------------------------------------------------------------------------------------- |
-| Category           | all              | `support_tickets.category`           | Required: Broken, Idea, Question, or Business                                             |
-| Subject            | all              | `support_tickets.subject`            | Required, ≤200 chars. Desktop: shares a row with Urgency (Broken) or reach-you (Business) |
-| Description        | all              | first `support_ticket_messages`      | Required, ≤5000 chars                                                                     |
-| Severity           | Bug report       | `category_fields.severity`           | Required: low / medium / high (defaults to medium)                                        |
-| Page URL           | Bug report       | `category_fields.page_url`           | Auto-filled, hidden                                                                       |
-| Browser info       | Bug report       | `category_fields.browser_info`       | Auto-filled, hidden                                                                       |
-| Attachments        | Bug report       | Storage `support-ticket-attachments` | Optional. 0–3 files, image or video, 20 MB each. Dashed dropzone + previews               |
-| Contact preference | Business inquiry | `category_fields.contact_preference` | Required, ≤200 chars                                                                      |
+| Field              | Category         | Storage                              | Validation                                                                                                                                                                         |
+| ------------------ | ---------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Category           | all              | `support_tickets.category`           | Required: Broken, Idea, Question, or Business                                                                                                                                      |
+| Subject            | all              | `support_tickets.subject`            | Required, ≤200 chars. Desktop: shares a row with Urgency (Broken) or reach-you (Business)                                                                                          |
+| Description        | all              | first `support_ticket_messages`      | Required, ≤5000 chars                                                                                                                                                              |
+| Severity           | Bug report       | `category_fields.severity`           | Required: low / medium / high (defaults to medium)                                                                                                                                 |
+| Page URL           | Bug report       | `category_fields.page_url`           | Auto-filled, hidden                                                                                                                                                                |
+| Browser info       | Bug report       | `category_fields.browser_info`       | Auto-filled, hidden                                                                                                                                                                |
+| Attachments        | Bug report       | Storage `support-ticket-attachments` | Optional. 0–3 files. Images (`CONTENT`-optimized before upload) ≤ 10 MB; video ≤ 50 MB (not transcoded). `validateUploadFile` per kind; dashed dropzone + previews. HEIC accepted. |
+| Contact preference | Business inquiry | `category_fields.contact_preference` | Required, ≤200 chars                                                                                                                                                               |
 
 Required fields show a red `*`. Submit stays disabled until Subject and Details are filled (plus reach-you for Business), and any in-progress attachment upload finishes. Idea no longer has a “why it would help” field.
 
