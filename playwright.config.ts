@@ -31,7 +31,16 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      // Re-apply slowMo after device defaults so launchOptions is not dropped on merge.
+      use: {
+        ...devices['Desktop Chrome'],
+        ...(slowMo
+          ? {
+              headless: false,
+              launchOptions: { slowMo },
+            }
+          : {}),
+      },
     },
     {
       name: 'chromium-side-by-side',
