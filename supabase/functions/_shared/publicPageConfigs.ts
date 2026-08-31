@@ -523,7 +523,9 @@ function normalizeShowcaseHeroEyebrow(
   const source = raw.source;
   if (source !== 'location' && source !== 'development' && source !== 'custom') return undefined;
   const customText = readOptionalString(raw.customText, 120);
-  if (source === 'location' && !customText) return undefined;
+  if (source === 'location') {
+    return customText ? { source: 'location', customText } : { source: 'location' };
+  }
   if (source === 'custom') return { source: 'custom', customText };
   if (source === 'development') return { source: 'development' };
   return { source: 'location' };
