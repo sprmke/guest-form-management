@@ -7,8 +7,7 @@ type Props = {
 
 /**
  * Non-dismissible full-viewport lock when a Public Pages guest URL is opened
- * without the property’s Pro+ entitlement. No close control — only leave by
- * navigating away (e.g. View plans).
+ * without the property’s plan entitlement. No close control — leave via Home.
  */
 export function PublicPagePlanAccessOverlay({ pageLabel }: Props) {
   const titleId = 'public-page-plan-lock-title';
@@ -24,17 +23,16 @@ export function PublicPagePlanAccessOverlay({ pageLabel }: Props) {
     >
       <div className="border-border bg-card text-card-foreground w-full max-w-md rounded-2xl border p-6 shadow-xl sm:p-8">
         <h1 id={titleId} className="text-lg font-semibold tracking-tight sm:text-xl">
-          {pageLabel} isn’t available on this plan
+          {pageLabel} isn’t available
         </h1>
         <p id={descId} className="text-muted-foreground mt-3 text-sm leading-relaxed">
-          This page needs a Pro plan or higher. Make sure the property is subscribed to a plan that
-          includes {pageLabel} before sharing or opening this link.
+          This page isn’t available right now. Please contact your host to report the issue.
         </p>
         <Link
-          to="/for-hosts/pricing"
+          to="/"
           className="bg-primary text-primary-foreground hover:bg-primary/90 mt-6 inline-flex min-h-[44px] w-full items-center justify-center rounded-lg px-4 text-sm font-medium transition-colors"
         >
-          View plans
+          Home
         </Link>
       </div>
     </div>
