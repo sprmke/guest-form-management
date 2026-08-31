@@ -1,13 +1,15 @@
 /**
- * upload-guest-chat-asset — Guest web chat image/PDF upload.
+ * upload-inbox-chat-asset — Host inbox image/PDF upload (web chat replies).
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
-import { assertGuestOwnsWebConversation } from '../_shared/webGuestChatService.ts';
+import { resolveInboxAccess } from '../_shared/inboxAccess.ts';
 import type { NormalizedInboxAttachment } from '../_shared/inboxAttachments.ts';
 import { jsonError, jsonSuccess } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+import { conversationAllowedInScope, getConversationById } from '../_shared/socialInboxService.ts';
+import { resolveMetaConnectionIdsForScope } from '../_shared/metaInboxScope.ts';
 import { assertWithinUploadLimit } from '../_shared/uploadLimits.ts';
 import { formatPublicUrl } from '../_shared/utils.ts';
 
@@ -21,7 +23,16 @@ const ALLOWED_MIME = new Set([
   'application/pdf',
 ]);
 
-serveAuthenticated('upload-guest-chat-asset', async (req, user) => {
+function extensionForMime(mime: string): string {
+  if (mime === 'image/png') return '.png';
+  if (mime === 'image/webp') return '.webp';
+  if (mime === 'application/pdf') return '.pdf';
+  if (mime === 'image/heic') return '.heic';
+  if (mime === 'image/heif') return '.heif';
+  return '.jpg';
+}
+
+serveAuthenticated('upload-inbox-chat-asset', async (req, user) => {
   if (req.method !== 'POST') {
     return jsonError(req, 'Method not allowed', 405);
   }
@@ -31,6 +42,8 @@ serveAuthenticated('upload-guest-chat-asset', async (req, user) => {
   const conversationId = String(
     formData.get('conversationId') ?? formData.get('conversation_id') ?? ''
   ).trim();
+  const propertyId = String(formData.get('propertyId') ?? formData.get('property_id') ?? '').trim();
+  const parkingId = String(formData.get('parkingId') ?? formData.get('parking_id') ?? '').trim();
 
   if (!(file instanceof File)) {
     return jsonError(req, 'file is required', 400);
@@ -45,27 +58,34 @@ serveAuthenticated('upload-guest-chat-asset', async (req, user) => {
   }
   assertWithinUploadLimit(file, mime === 'application/pdf' ? 'pdf' : 'image');
 
-  let conv;
-  try {
-    conv = await assertGuestOwnsWebConversation(user.id, conversationId);
-  } catch (e) {
-    const message = (e as Error).message;
-    if (message === 'Conversation not found') return jsonError(req, message, 404);
-    throw e;
+  const scopeBody: Record<string, unknown> = {};
+  if (propertyId) scopeBody.propertyId = propertyId;
+  if (parkingId) scopeBody.parkingId = parkingId;
+
+  const ctx = await resolveInboxAccess(req, 'reply', scopeBody);
+  const conv = await getConversationById(ctx.orgId, conversationId);
+  if (!conv) {
+    return jsonError(req, 'Conversation not found', 404);
   }
 
-  const ext =
-    mime === 'image/png'
-      ? '.png'
-      : mime === 'image/webp'
-        ? '.webp'
-        : mime === 'application/pdf'
-          ? '.pdf'
-          : mime === 'image/heic'
-            ? '.heic'
-            : mime === 'image/heif'
-              ? '.heif'
-              : '.jpg';
+  if (conv.platform !== 'web') {
+    return jsonError(req, 'Attachments are only supported for website chat', 400);
+  }
+
+  const metaIds = new Set(await resolveMetaConnectionIdsForScope(ctx.orgId, ctx.scope));
+  if (
+    !conversationAllowedInScope(conv, {
+      propertyId: ctx.propertyId,
+      parkingId: ctx.parkingId,
+      metaIds,
+    })
+  ) {
+    return jsonError(req, 'Conversation not found', 404);
+  }
+
+  void user;
+
+  const ext = extensionForMime(mime);
   const fileName = String(formData.get('fileName') ?? file.name ?? `upload${ext}`).trim();
   const safeName = fileName.replace(/[^\w.\-() ]+/g, '_').slice(0, 120) || `upload${ext}`;
   const storagePath = `${conv.organization_id}/${conv.id}/${crypto.randomUUID()}${ext}`;
