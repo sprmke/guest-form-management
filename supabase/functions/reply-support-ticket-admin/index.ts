@@ -62,7 +62,7 @@ serveSuperAdmin('reply-support-ticket-admin', async (req, adminUser) => {
       ticket_id: ticketId,
       sender_type: 'admin',
       sender_user_id: adminUser.id,
-      sender_name: profile.name || 'Kame Homes Support',
+      sender_name: profile.name || 'Support',
       body: message,
       attachments,
     })
