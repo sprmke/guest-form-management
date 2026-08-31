@@ -1,7 +1,5 @@
 import { useState } from 'react';
 
-import { Award } from 'lucide-react';
-
 import { useClearAppSettingsImage } from '@/features/dashboard/bookings/hooks/useAppSettings';
 import { useUploadAppSettingsAsset } from '@/features/dashboard/bookings/hooks/useUploadAppSettingsAsset';
 import { withStorageUrlCacheBust } from '@/features/dashboard/bookings/lib/storageUrls';
@@ -11,6 +9,7 @@ import {
 } from '@/features/dashboard/org/lib/propertyExternalReviews';
 
 import { ImageUploadDropzone } from '@/components/forms/ImageUploadDropzone';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -110,37 +109,22 @@ export function PropertySuperhostVerificationBlock({
 
   return (
     <>
-      <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
-        <div className="p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 items-start gap-3">
-              <div className="border-border bg-background flex size-10 shrink-0 items-center justify-center rounded-lg border sm:size-11">
-                <Award className="text-primary size-5 sm:size-[22px]" />
-              </div>
-              <div className="min-w-0">
-                <h3 className="text-sidebar-foreground text-sm font-bold sm:text-[13px]">
-                  Superhost
-                </h3>
-                <p className={cn('mt-1.5 text-xs sm:text-[11px]', superhostToneClass(status))}>
-                  {statusLabel}
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setManageOpen(true)}
-              className={cn(
-                'inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg px-4',
-                'border-primary/30 bg-primary/5 text-primary border text-sm font-semibold sm:w-auto sm:text-[13px]',
-                'hover:border-primary/40 hover:bg-primary/10 transition-colors'
-              )}
-            >
-              Manage
-            </button>
-          </div>
-          {error ? <p className="text-destructive mt-3 text-xs">{error}</p> : null}
+      <div className="space-y-1.5">
+        <div className="bg-muted/40 flex min-h-[44px] w-full items-center justify-between gap-3 rounded-lg border px-4 py-3">
+          <p className="min-w-0 text-sm font-medium">
+            Superhost
+            <span className={cn('font-normal', superhostToneClass(status))}> · {statusLabel}</span>
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-[44px] shrink-0"
+            onClick={() => setManageOpen(true)}
+          >
+            Manage
+          </Button>
         </div>
+        {error ? <p className="text-destructive text-xs">{error}</p> : null}
       </div>
 
       <ResponsiveModal open={manageOpen} onOpenChange={setManageOpen}>

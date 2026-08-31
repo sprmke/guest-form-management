@@ -15,7 +15,6 @@ export function SettingsField({
   error,
   children,
   help,
-  hintBelow,
   className,
 }: {
   id?: string;
@@ -23,20 +22,15 @@ export function SettingsField({
   required?: boolean;
   error?: string | null;
   children: ReactNode;
-  /** Tooltip on a ? next to the label. Prefer this over `hintBelow` for explanatory copy. */
+  /** Tooltip on a ? next to the label. */
   help?: string;
-  hintBelow?: string;
   className?: string;
 }) {
   return (
     <div className={cn('space-y-2', className)}>
       <FieldLabel htmlFor={id} label={label} required={required} help={help} />
       {children}
-      {error ? (
-        <p className="text-destructive text-xs">{error}</p>
-      ) : hintBelow ? (
-        <p className="text-muted-foreground text-xs">{hintBelow}</p>
-      ) : null}
+      {error ? <p className="text-destructive text-xs">{error}</p> : null}
     </div>
   );
 }
